@@ -96,12 +96,12 @@ body::after {
 }
 .nav-links a {
   font-family: var(--font-mono), monospace;
-  font-size: 13px; color: var(--muted2);
+  font-size: 15px; color: var(--muted2);
+  text-decoration: none; letter-spacing: 0.08em; text-transform: uppercase;
   transition: color 0.2s;
 }
 .nav-links a:hover { color: var(--white); }
-.nav-links a.active { color: var(--white); position: relative; }
-.nav-links a.active::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 1px; background: var(--red); }
+.nav-links a.active { color: var(--white); }
 .nav-auth {
   display: flex; align-items: center; gap: 12px;
 }
