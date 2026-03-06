@@ -19,11 +19,11 @@ const RATIO      = Math.round(EXP_MODEL.price / (CHEAPER === 'A' ? MODEL_A : MOD
 const MONTHLY    = Math.round((EXP_MODEL.price - (CHEAPER === 'A' ? MODEL_A : MODEL_B).price) * 10)
 
 const STEPS = [
-  { n:1, label:'Battle' },
+  { n:1, label:'Duel' },
   { n:2, label:'Vote Blind' },
-  { n:3, label:'Price Reveal' },
-  { n:4, label:'Re-Vote' },
-  { n:5, label:'Savings & Reveal' },
+  { n:3, label:'Reveal Price' },
+  { n:4, label:'Vote Again' },
+  { n:5, label:'Meet the Model' },
 ]
 
 export default function XDuel() {
@@ -59,7 +59,7 @@ export default function XDuel() {
 
   const goStep = (n: number) => { setStep(n); window.scrollTo({ top:0, behavior:'smooth' }) }
 
-  const startBattle = () => {
+  const startDuel = () => {
     setLoadingA(true); setLoadingB(true)
     setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
@@ -117,7 +117,7 @@ export default function XDuel() {
           {step === 1 && (
             <div className="step-section">
               <div className="prompt-header">
-                <div className="prompt-label">Step 01 — Enter Your Prompt</div>
+                <div className="prompt-label">Step 01 — Duel</div>
                 <h1 className="prompt-title">Start the <span>XDuel</span></h1>
                 <div className="prompt-sub">Two anonymous models will respond. You vote blind. Then the truth drops.</div>
               </div>
@@ -137,7 +137,7 @@ export default function XDuel() {
                 />
                 <div className="prompt-actions">
                   <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
-                  <button className="btn-battle" onClick={startBattle} disabled={prompt.trim().length < 3}>
+                  <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
                     ⚔️ Start XDuel →
                   </button>
                 </div>
@@ -150,7 +150,7 @@ export default function XDuel() {
             <div className="step-section">
               <div className="prompt-header" style={{marginBottom:24}}>
                 <div className="prompt-label">
-                  {phase==='vote' ? 'Step 02 — Vote Blind' : 'Step 03 — Price Reveal'}
+                  {phase==='vote' ? 'Step 02 — Vote Blind' : 'Step 03 — Reveal Price'}
                 </div>
                 <h1 className="prompt-title">
                   {phase==='vote' ? <>Which is <span>Better?</span></> : <>Now You Know the <span>Cost</span></>}
@@ -256,7 +256,7 @@ export default function XDuel() {
           {step === 5 && (
             <div className="step-section">
               <div className="prompt-header" style={{marginBottom:32}}>
-                <div className="prompt-label">Step 05/06 — Savings & Reveal</div>
+                <div className="prompt-label">Step 05 — Meet the Model</div>
                 <h1 className="prompt-title">
                   {userChoseCheaper ? <>Great Value <span>Choice! 🎉</span></>
                   : vote2==='T'     ? <>You Called It a <span>Tie</span></>
