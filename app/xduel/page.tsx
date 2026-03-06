@@ -96,7 +96,8 @@ export default function XDuel() {
 
   const castVote = (choice: Vote) => {
     setVote1(choice)
-    setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(3) }, 500)
+    // Show prices immediately, skip step 3 pause — go straight to revote (step 4)
+    setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
   }
 
   const castRevote = (choice: Vote) => {
@@ -177,7 +178,7 @@ export default function XDuel() {
             <div className="step-section">
               <div className="prompt-header" style={{marginBottom:24}}>
                 <div className="prompt-label">
-                  {phase==='vote' ? 'Step 02 — Vote' : 'Step 03 — Reveal Price'}
+                  {phase==='vote' ? 'Step 02 — Vote' : 'Step 04 — Vote Again'}
                 </div>
                 <h1 className="prompt-title">
                   {phase==='vote' ? <>Which is <span>Better?</span></> : <>Now You Know the <span>Cost</span></>}
