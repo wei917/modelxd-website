@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import Nav from './components/Nav'
 
 export default function Home() {
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -83,26 +84,7 @@ export default function Home() {
       <div className="cursor-ring" ref={ringRef} />
 
       {/* Nav */}
-      <nav className="nav">
-        <div className="nav-logo">
-          <Image src="/logo.png" alt="ModelXD" width={72} height={72} style={{ objectFit: 'contain' }} />
-        </div>
-        <div className="nav-links">
-          <Link href="/xduel">XDuel</Link>
-          <Link href="/vote">Vote</Link>
-          <Link href="/leaderboard">Leaderboard</Link>
-          <Link href="/create">Create</Link>
-        </div>
-        <div className="nav-auth">
-          <button className="nav-login">Log In</button>
-          <div className="nav-avatar">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="5.5" r="2.5" stroke="#6e7a8a" strokeWidth="1.2"/>
-              <path d="M2.5 13.5c0-3.038 2.462-5.5 5.5-5.5s5.5 2.462 5.5 5.5" stroke="#6e7a8a" strokeWidth="1.2" strokeLinecap="round"/>
-            </svg>
-          </div>
-        </div>
-      </nav>
+      <Nav />
 
       {/* Hero */}
       <section className="hero">
