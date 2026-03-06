@@ -20,7 +20,7 @@ const MONTHLY    = Math.round((EXP_MODEL.price - (CHEAPER === 'A' ? MODEL_A : MO
 
 const STEPS = [
   { n:1, label:'Duel' },
-  { n:2, label:'Vote Blind' },
+  { n:2, label:'Vote' },
   { n:3, label:'Reveal Price' },
   { n:4, label:'Vote Again' },
   { n:5, label:'Meet the Model' },
@@ -150,7 +150,7 @@ export default function XDuel() {
             <div className="step-section">
               <div className="prompt-header" style={{marginBottom:24}}>
                 <div className="prompt-label">
-                  {phase==='vote' ? 'Step 02 — Vote Blind' : 'Step 03 — Reveal Price'}
+                  {phase==='vote' ? 'Step 02 — Vote' : 'Step 03 — Reveal Price'}
                 </div>
                 <h1 className="prompt-title">
                   {phase==='vote' ? <>Which is <span>Better?</span></> : <>Now You Know the <span>Cost</span></>}
@@ -190,7 +190,7 @@ export default function XDuel() {
                     >
                       {(phase==='vote'?vote1:vote2)==='A'
                         ? (phase==='revote'?'✓ Final pick':'✓ Your pick')
-                        : (phase==='revote'?'👆 Still prefer this':'👆 This one is better')}
+                        : (phase==='revote'?'👆 Prefer this':'👆 This one is better')}
                     </button>
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export default function XDuel() {
                     >
                       {(phase==='vote'?vote1:vote2)==='B'
                         ? (phase==='revote'?'✓ Final pick':'✓ Your pick')
-                        : (phase==='revote'?'👆 Still prefer this':'👆 This one is better')}
+                        : (phase==='revote'?'👆 Prefer this':'👆 This one is better')}
                     </button>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ export default function XDuel() {
                   >
                     {(phase==='vote'?vote1:vote2)==='T'
                       ? (phase==='revote'?'✓ Final: Tie':'✓ Tied')
-                      : (phase==='revote'?"🤝 Still a Tie":"🤝 It's a Tie")}
+                      : (phase==='revote'?"🤝 A Tie":"🤝 It's a Tie")}
                   </button>
                 </div>
               </div>

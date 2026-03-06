@@ -153,7 +153,7 @@ export default function Home() {
         <div className="flow-steps">
           {[
             { emoji: '⚔️', num: '01', title: 'Duel',           desc: 'Enter any prompt across text, image, or video' },
-            { emoji: '🔒', num: '02', title: 'Vote Blind',      desc: 'Two anonymous responses. Pick the better one' },
+            { emoji: '🔒', num: '02', title: 'Vote',      desc: 'Two anonymous responses. Pick the better one' },
             { emoji: '💰', num: '03', title: 'Reveal Price',    desc: 'Prices drop. Tension builds. Does it change things?' },
             { emoji: '🔄', num: '04', title: 'Vote Again',      desc: 'Vote again with full price visibility. Did you switch?' },
             { emoji: '💡', num: '05', title: 'Meet the Model',  desc: 'Identities unmasked. See your savings. Were you overpaying?' },
