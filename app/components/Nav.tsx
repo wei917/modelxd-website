@@ -17,7 +17,7 @@ export default function Nav() {
   return (
     <nav className="nav">
       <Link href="/" className="nav-logo-text">
-        Model<em>XD</em>
+        Model<span className="x">X</span><span className="d">D</span>
       </Link>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, label }) => (

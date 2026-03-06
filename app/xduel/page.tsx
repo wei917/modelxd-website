@@ -213,10 +213,17 @@ export default function XDuel() {
                       ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                       : (modelA?.response ?? '')}
                   </div>
-                  {modelA && !loading && (
+                  {modelA && modelB && !loading && (
                     <div className="response-time-bar">
                       <span className="response-time-label">Response time</span>
-                      <span className="response-time-value">{(modelA.responseTime / 1000).toFixed(2)}s</span>
+                      <span className="response-time-value" style={{color: modelA.responseTime <= modelB.responseTime ? '#4a9eff' : 'var(--muted2)'}}>
+                        {(modelA.responseTime / 1000).toFixed(2)}s
+                        {modelA.responseTime < modelB.responseTime && (
+                          <span style={{marginLeft:6,fontSize:9,color:'#4a9eff',letterSpacing:'0.1em'}}>
+                            ⚡ {((modelB.responseTime - modelA.responseTime) / 1000).toFixed(2)}s faster
+                          </span>
+                        )}
+                      </span>
                     </div>
                   )}
                   {showPrices && modelA && (
@@ -244,10 +251,17 @@ export default function XDuel() {
                       ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                       : (modelB?.response ?? '')}
                   </div>
-                  {modelB && !loading && (
+                  {modelA && modelB && !loading && (
                     <div className="response-time-bar">
                       <span className="response-time-label">Response time</span>
-                      <span className="response-time-value">{(modelB.responseTime / 1000).toFixed(2)}s</span>
+                      <span className="response-time-value" style={{color: modelB.responseTime <= modelA.responseTime ? 'var(--red)' : 'var(--muted2)'}}>
+                        {(modelB.responseTime / 1000).toFixed(2)}s
+                        {modelB.responseTime < modelA.responseTime && (
+                          <span style={{marginLeft:6,fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>
+                            ⚡ {((modelA.responseTime - modelB.responseTime) / 1000).toFixed(2)}s faster
+                          </span>
+                        )}
+                      </span>
                     </div>
                   )}
                   {showPrices && modelB && (
@@ -270,7 +284,7 @@ export default function XDuel() {
                 >
                   {(phase==='vote'?vote1:vote2)==='A'
                     ? '✓ Picked A'
-                    : '← A is better'}
+                    : <><span>←</span><span>A is better</span></>}
                 </button>
                 <button
                   className={`btn-tie ${(phase==='vote'?vote1:vote2)==='T'?'voted':''}`}
@@ -288,7 +302,7 @@ export default function XDuel() {
                 >
                   {(phase==='vote'?vote1:vote2)==='B'
                     ? '✓ Picked B'
-                    : 'B is better →'}
+                    : <><span>B is better</span><span>→</span></>}
                 </button>
               </div>
 
