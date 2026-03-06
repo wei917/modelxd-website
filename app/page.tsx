@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Home() {
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -84,8 +85,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="nav">
         <div className="nav-logo">
-          <img src="/logo.png" alt="ModelXD" style={{ height: '32px', width: '32px', objectFit: 'contain' }} />
-          Model<span className="xd">XD</span>
+          <Image src="/logo.png" alt="ModelXD" width={72} height={72} style={{ objectFit: 'contain' }} />
         </div>
         <div className="nav-links">
           <Link href="/xduel">XDuel</Link>
@@ -116,13 +116,12 @@ export default function Home() {
         <div className="corner corner-br" />
         <div className="hero-inner">
           <div className="hero-eyebrow">AI Model Intelligence Platform · Est. 2026</div>
-          <img src="/logo.png" alt="ModelXD Logo" style={{ width: 'clamp(80px, 10vw, 120px)', marginBottom: '24px', opacity: 0.92 }} />
           <h1 className="hero-headline">
             <span className="line1">Overpaying AI?! <span className="xd" style={{ color: 'var(--red)' }}>XD</span></span>
             <span className="line3">XDuel to Find Your Best Models</span>
           </h1>
           <div className="hero-ctas">
-            <button className="btn-primary">Start XDuel →</button>
+            <Link href="/xduel" className="btn-primary">Start XDuel →</Link>
           </div>
         </div>
       </section>
@@ -270,9 +269,8 @@ export default function Home() {
 
       {/* Footer */}
       <footer>
-        <div className="footer-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <img src="/logo.png" alt="ModelXD" style={{ height: '20px', width: '20px', objectFit: 'contain' }} />
-          Model<span className="xd">XD</span>
+        <div className="footer-logo">
+          <Image src="/logo.png" alt="ModelXD" width={32} height={32} style={{ objectFit: 'contain' }} />
         </div>
         <div className="footer-copy">STOP OVERPAYING FOR AI · XDUEL TO FIND THE BEST MODEL FOR YOUR MONEY</div>
         <div className="footer-copy">© 2026 MODELXD</div>
