@@ -298,38 +298,16 @@ export default function XDuel() {
             </div>
           )}
 
-          {/* ── STEP 5: Savings + Reveal ── */}
+          {/* ── STEP 5: Reveal ── */}
           {step === 5 && (
             <div className="step-section">
               <div className="prompt-header" style={{marginBottom:32}}>
                 <div className="prompt-label">Step 05 — Meet the Model</div>
-                <h1 className="prompt-title">
-                  {userChoseCheaper ? <>Great Value <span>Choice! 🎉</span></>
-                  : vote2==='T'     ? <>You Called It a <span>Tie</span></>
-                  :                   <>Were You <span>Overpaying? 😂</span></>}
-                </h1>
-                <div className="prompt-sub">
-                  {userChoseCheaper ? 'You picked the cheaper model — and it held up in quality.'
-                  : vote2==='T'     ? 'One was significantly cheaper — but quality felt equal to you.'
-                  : vote1===vote2   ? 'You consistently preferred the pricier model. Classic. XD.'
-                  :                   'You switched but still picked the expensive one. XD.'}
-                </div>
-              </div>
-
-              <div className="savings-reveal">
-                <span className="savings-reveal-emoji">{savingsEmoji}</span>
-                <div className="savings-reveal-amount">${monthly.toLocaleString()}</div>
-                <div className="savings-reveal-period">per month · at 10M tokens</div>
-                <p className="savings-reveal-desc">
-                  Switching to the cheaper model saves{' '}
-                  <strong style={{color:'var(--green)'}}>{ratio}× in API costs</strong>{' '}
-                  per month at 10M tokens — with no measurable quality difference on most tasks.
-                </p>
+                <h1 className="prompt-title">The <span>Reveal</span></h1>
               </div>
 
               {/* Model reveal */}
               <div style={{
-                marginTop: 32,
                 opacity: showReveal ? 1 : 0,
                 transform: showReveal ? 'translateY(0)' : 'translateY(16px)',
                 transition: 'opacity 0.5s ease, transform 0.5s ease',
@@ -342,14 +320,15 @@ export default function XDuel() {
                     const wins = id === cheaper
                     return (
                       <div key={m.name} className={`reveal-card ${wins?'winner':''} ${i===0?'border-right':''}`}>
-                        <div className="reveal-verdict">{wins ? '🎉' : '😬'}</div>
                         <div className="reveal-model-name">{m.name}</div>
                         <div className="reveal-provider">{m.provider.toUpperCase()}</div>
                         <div className="reveal-price" style={{color:wins?'var(--green)':'var(--red)'}}>
                           {m.priceLabel}
                         </div>
-                        <div className="reveal-stat">
-                          {wins ? `${ratio}× cheaper · community preferred` : 'More expensive option'}
+                        <div className="reveal-stat" style={{color:wins?'var(--green)':'var(--muted2)'}}>
+                          {wins
+                            ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at 10M tokens`
+                            : 'More expensive option'}
                         </div>
                       </div>
                     )
