@@ -516,10 +516,10 @@ footer {
 .btn-battle:hover { background: #ff5249; box-shadow: 0 0 32px var(--red-glow); }
 .btn-battle:disabled { opacity: 0.4; pointer-events: none; }
 
-.battle-arena { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border2); }
+.battle-arena { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border2); border-bottom: none; }
 .battle-card { background: var(--surface); position: relative; overflow: hidden; transition: background 0.3s; cursor: none; }
 .battle-card:first-child { border-right: 1px solid var(--border2); }
-.battle-card.voted-this:first-child { border-left: 2px solid var(--red); background: rgba(232,69,60,0.03); }
+.battle-card.voted-this:first-child { border-left: 2px solid #4a9eff; background: rgba(74,158,255,0.03); }
 .battle-card.voted-this:last-child  { border-right: 2px solid var(--red); background: rgba(232,69,60,0.03); }
 .battle-card.voted-other { opacity: 0.45; }
 .battle-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -532,17 +532,21 @@ footer {
 .loading-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted2); animation: loadPulse 1.2s ease-in-out infinite; }
 .loading-dot:nth-child(2) { animation-delay: 0.2s; }
 .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-.battle-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
-.btn-vote { width: 100%; padding: 12px; border: 1px solid var(--border2); background: transparent; color: var(--white); font-family: var(--font-display), sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: none; transition: all 0.2s; border-radius: 4px; }
-.btn-vote.a:hover { border-color: #4a9eff; background: rgba(74,158,255,0.1); color: #4a9eff; }
-.btn-vote.b:hover { border-color: var(--red); background: var(--red-dim); color: var(--red); }
-.btn-vote.voted     { border-color: var(--red); background: var(--red-dim); color: var(--red); }
-.btn-vote.a-voted   { border-color: #4a9eff; background: rgba(74,158,255,0.1); color: #4a9eff; }
+.response-time-bar { padding: 8px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); }
+.response-time-label { font-family: var(--font-mono), monospace; font-size: 9px; color: var(--muted2); letter-spacing: 0.12em; text-transform: uppercase; }
+.response-time-value { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); letter-spacing: 0.08em; }
+/* Vote row — 3 buttons below the cards */
+.vote-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; border: 1px solid var(--border2); border-top: none; }
+.btn-vote { padding: 14px 12px; border: none; border-right: 1px solid var(--border2); background: transparent; color: var(--white); font-family: var(--font-display), sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: none; transition: all 0.2s; }
+.btn-vote:last-child { border-right: none; border-left: 1px solid var(--border2); }
+.btn-vote.a:hover { background: rgba(74,158,255,0.1); color: #4a9eff; }
+.btn-vote.b:hover { background: var(--red-dim); color: var(--red); }
+.btn-vote.voted     { background: var(--red-dim); color: var(--red); }
+.btn-vote.a-voted   { background: rgba(74,158,255,0.1); color: #4a9eff; }
 .btn-vote:disabled  { pointer-events: none; }
-.tie-row { grid-column: 1 / -1; display: flex; justify-content: center; padding: 12px; border-top: 1px solid var(--border); background: var(--surface2); }
-.btn-tie { padding: 8px 32px; border: 1px solid var(--border2); border-radius: 4px; background: transparent; color: var(--muted2); font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: none; transition: all 0.2s; }
-.btn-tie:hover { border-color: var(--white); color: var(--white); }
-.btn-tie.voted { border-color: var(--muted2); color: var(--white); background: rgba(255,255,255,0.05); }
+.btn-tie { padding: 14px 28px; border: none; border-left: 1px solid var(--border2); border-right: 1px solid var(--border2); background: transparent; color: var(--muted2); font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: none; transition: all 0.2s; white-space: nowrap; }
+.btn-tie:hover { color: var(--white); background: rgba(255,255,255,0.04); }
+.btn-tie.voted { color: var(--white); background: rgba(255,255,255,0.05); }
 .btn-tie:disabled { pointer-events: none; }
 
 .price-badge { display: inline-flex; align-items: center; font-family: var(--font-mono), monospace; font-size: 12px; padding: 6px 12px; border-radius: 3px; letter-spacing: 0.05em; }

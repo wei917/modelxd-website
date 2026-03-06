@@ -15,6 +15,7 @@ type ModelResult = {
   tokens: number
   cost: number
   priceLabel: string
+  responseTime: number  // milliseconds
 }
 
 const STEPS = [
@@ -115,7 +116,7 @@ export default function XDuel() {
 
   const approxTokens     = Math.round(prompt.length / 3)
   const userChoseCheaper = vote2 === cheaper
-  const savingsEmoji     = vote2 === 'T' ? '🤝' : userChoseCheaper ? '🎉' : '😂'
+  const savingsEmoji     = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
 
   return (
     <>
@@ -212,6 +213,12 @@ export default function XDuel() {
                       ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                       : (modelA?.response ?? '')}
                   </div>
+                  {modelA && !loading && (
+                    <div className="response-time-bar">
+                      <span className="response-time-label">Response time</span>
+                      <span className="response-time-value">{(modelA.responseTime / 1000).toFixed(2)}s</span>
+                    </div>
+                  )}
                   {showPrices && modelA && (
                     <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
                       <span className="price-label">Estimated cost this prompt</span>
@@ -220,17 +227,6 @@ export default function XDuel() {
                       </span>
                     </div>
                   )}
-                  <div className="battle-footer">
-                    <button
-                      className={`btn-vote a ${(phase==='vote'?vote1:vote2)==='A'?'voted a-voted':''}`}
-                      onClick={() => phase==='vote' ? castVote('A') : castRevote('A')}
-                      disabled={loading || !modelA || (phase==='vote' ? !!vote1 : !!vote2)}
-                    >
-                      {(phase==='vote'?vote1:vote2)==='A'
-                        ? (phase==='revote'?'✓ Final pick':'✓ Your pick')
-                        : (phase==='revote'?'👆 Prefer this':'👆 This one is better')}
-                    </button>
-                  </div>
                 </div>
 
                 {/* Model B */}
@@ -248,6 +244,12 @@ export default function XDuel() {
                       ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                       : (modelB?.response ?? '')}
                   </div>
+                  {modelB && !loading && (
+                    <div className="response-time-bar">
+                      <span className="response-time-label">Response time</span>
+                      <span className="response-time-value">{(modelB.responseTime / 1000).toFixed(2)}s</span>
+                    </div>
+                  )}
                   {showPrices && modelB && (
                     <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
                       <span className="price-label">Estimated cost this prompt</span>
@@ -256,31 +258,38 @@ export default function XDuel() {
                       </span>
                     </div>
                   )}
-                  <div className="battle-footer">
-                    <button
-                      className={`btn-vote b ${(phase==='vote'?vote1:vote2)==='B'?'voted':''}`}
-                      onClick={() => phase==='vote' ? castVote('B') : castRevote('B')}
-                      disabled={loading || !modelB || (phase==='vote' ? !!vote1 : !!vote2)}
-                    >
-                      {(phase==='vote'?vote1:vote2)==='B'
-                        ? (phase==='revote'?'✓ Final pick':'✓ Your pick')
-                        : (phase==='revote'?'👆 Prefer this':'👆 This one is better')}
-                    </button>
-                  </div>
                 </div>
+              </div>
 
-                {/* Tie */}
-                <div className="tie-row">
-                  <button
-                    className={`btn-tie ${(phase==='vote'?vote1:vote2)==='T'?'voted':''}`}
-                    onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
-                    disabled={loading || (!modelA && !modelB) || (phase==='vote' ? !!vote1 : !!vote2)}
-                  >
-                    {(phase==='vote'?vote1:vote2)==='T'
-                      ? (phase==='revote'?'✓ Final: Tie':'✓ Tied')
-                      : (phase==='revote'?"🤝 A Tie":"🤝 It's a Tie")}
-                  </button>
-                </div>
+              {/* Vote row — 3 buttons in one line */}
+              <div className="vote-row">
+                <button
+                  className={`btn-vote a ${(phase==='vote'?vote1:vote2)==='A'?'voted a-voted':''}`}
+                  onClick={() => phase==='vote' ? castVote('A') : castRevote('A')}
+                  disabled={loading || !modelA || (phase==='vote' ? !!vote1 : !!vote2)}
+                >
+                  {(phase==='vote'?vote1:vote2)==='A'
+                    ? '✓ Picked A'
+                    : '← A is better'}
+                </button>
+                <button
+                  className={`btn-tie ${(phase==='vote'?vote1:vote2)==='T'?'voted':''}`}
+                  onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
+                  disabled={loading || (!modelA && !modelB) || (phase==='vote' ? !!vote1 : !!vote2)}
+                >
+                  {(phase==='vote'?vote1:vote2)==='T'
+                    ? '✓ Tied'
+                    : '⚖ Tie'}
+                </button>
+                <button
+                  className={`btn-vote b ${(phase==='vote'?vote1:vote2)==='B'?'voted':''}`}
+                  onClick={() => phase==='vote' ? castVote('B') : castRevote('B')}
+                  disabled={loading || !modelB || (phase==='vote' ? !!vote1 : !!vote2)}
+                >
+                  {(phase==='vote'?vote1:vote2)==='B'
+                    ? '✓ Picked B'
+                    : 'B is better →'}
+                </button>
               </div>
 
               <div className="action-bar">

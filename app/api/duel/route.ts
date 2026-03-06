@@ -13,7 +13,8 @@ const MODEL_B_ID = 'google/gemini-2.5-flash'
 const MODEL_A_INFO = { name: 'GPT-4o Mini',    provider: 'OpenAI', outputPrice: 0.60  }
 const MODEL_B_INFO = { name: 'Gemini 2.5 Flash', provider: 'Google', outputPrice: 2.50 }
 
-async function callModel(modelId: string, prompt: string): Promise<{ text: string; tokens: number }> {
+async function callModel(modelId: string, prompt: string): Promise<{ text: string; tokens: number; responseTime: number }> {
+  const start = Date.now()
   const res = await fetch(GATEWAY_URL, {
     method: 'POST',
     headers: {
@@ -26,6 +27,7 @@ async function callModel(modelId: string, prompt: string): Promise<{ text: strin
       max_tokens: 512,
     }),
   })
+  const responseTime = Date.now() - start
 
   if (!res.ok) {
     const err = await res.text()
@@ -35,7 +37,7 @@ async function callModel(modelId: string, prompt: string): Promise<{ text: strin
   const data = await res.json()
   const text   = data.choices?.[0]?.message?.content ?? '(no response)'
   const tokens = data.usage?.completion_tokens ?? 0
-  return { text, tokens }
+  return { text, tokens, responseTime }
 }
 
 export async function POST(req: Request) {
@@ -63,17 +65,19 @@ export async function POST(req: Request) {
   return Response.json({
     modelA: {
       ...MODEL_A_INFO,
-      response: resultA.text,
-      tokens:   resultA.tokens,
-      cost:     costA,
-      priceLabel: `$${MODEL_A_INFO.outputPrice.toFixed(2)} / 1M tokens`,
+      response:     resultA.text,
+      tokens:       resultA.tokens,
+      cost:         costA,
+      responseTime: resultA.responseTime,
+      priceLabel:   `$${MODEL_A_INFO.outputPrice.toFixed(2)} / 1M tokens`,
     },
     modelB: {
       ...MODEL_B_INFO,
-      response: resultB.text,
-      tokens:   resultB.tokens,
-      cost:     costB,
-      priceLabel: `$${MODEL_B_INFO.outputPrice.toFixed(2)} / 1M tokens`,
+      response:     resultB.text,
+      tokens:       resultB.tokens,
+      cost:         costB,
+      responseTime: resultB.responseTime,
+      priceLabel:   `$${MODEL_B_INFO.outputPrice.toFixed(2)} / 1M tokens`,
     },
   })
 }
