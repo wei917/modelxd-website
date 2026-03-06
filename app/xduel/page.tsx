@@ -7,16 +7,15 @@ type Vote = 'A' | 'B' | 'T' | null
 type Mode = 'text' | 'image' | 'video'
 type ArenaPhase = 'vote' | 'revote'
 
-const MODEL_A = { name: 'GPT-4o',       provider: 'OpenAI', price: 10.0  }
-const MODEL_B = { name: 'Gemini Flash', provider: 'Google', price: 0.075 }
-
-const RESP_A = `GPT-4o delivers a comprehensive and well-structured response here. The answer covers the key concepts with clarity, appropriate depth, and useful examples. This is the kind of quality output you'd expect from a frontier model — articulate, accurate, and well-reasoned throughout.`
-const RESP_B = `Gemini Flash cuts straight to the point with a crisp, efficient answer. The core concepts are explained clearly without unnecessary padding. In blind testing, this response rated comparably to Model A on most quality metrics — at a fraction of the cost.`
-
-const CHEAPER    = MODEL_A.price < MODEL_B.price ? 'A' : 'B'
-const EXP_MODEL  = CHEAPER === 'A' ? MODEL_B : MODEL_A
-const RATIO      = Math.round(EXP_MODEL.price / (CHEAPER === 'A' ? MODEL_A : MODEL_B).price)
-const MONTHLY    = Math.round((EXP_MODEL.price - (CHEAPER === 'A' ? MODEL_A : MODEL_B).price) * 10)
+type ModelResult = {
+  name: string
+  provider: string
+  outputPrice: number
+  response: string
+  tokens: number
+  cost: number
+  priceLabel: string
+}
 
 const STEPS = [
   { n:1, label:'Duel' },
@@ -33,13 +32,22 @@ export default function XDuel() {
   const [step,       setStep]       = useState(1)
   const [mode,       setMode]       = useState<Mode>('text')
   const [prompt,     setPrompt]     = useState('')
-  const [loadingA,   setLoadingA]   = useState(true)
-  const [loadingB,   setLoadingB]   = useState(true)
+  const [loading,    setLoading]    = useState(false)
+  const [apiError,   setApiError]   = useState<string | null>(null)
+  const [modelA,     setModelA]     = useState<ModelResult | null>(null)
+  const [modelB,     setModelB]     = useState<ModelResult | null>(null)
   const [vote1,      setVote1]      = useState<Vote>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
+
+  // Derived from real API data
+  const cheaper    = modelA && modelB ? (modelA.outputPrice < modelB.outputPrice ? 'A' : 'B') : null
+  const expModel   = cheaper === 'A' ? modelB : modelA
+  const cheapModel = cheaper === 'A' ? modelA : modelB
+  const ratio      = expModel && cheapModel ? Math.round(expModel.outputPrice / cheapModel.outputPrice) : 0
+  const monthly    = expModel && cheapModel ? Math.round((expModel.outputPrice - cheapModel.outputPrice) * 10) : 0
 
   useEffect(() => {
     let mx = 0, my = 0, rx = 0, ry = 0, id: number
@@ -59,13 +67,30 @@ export default function XDuel() {
 
   const goStep = (n: number) => { setStep(n); window.scrollTo({ top:0, behavior:'smooth' }) }
 
-  const startDuel = () => {
-    setLoadingA(true); setLoadingB(true)
+  const startDuel = async () => {
+    setLoading(true)
+    setApiError(null)
+    setModelA(null); setModelB(null)
     setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     goStep(2)
-    setTimeout(() => setLoadingA(false), 1200)
-    setTimeout(() => setLoadingB(false), 1800)
+
+    try {
+      const res = await fetch('/api/duel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'API error')
+      setModelA(data.modelA)
+      setModelB(data.modelB)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setApiError(msg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const castVote = (choice: Vote) => {
@@ -85,10 +110,11 @@ export default function XDuel() {
   const reset = () => {
     setStep(1); setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false); setPrompt('')
+    setModelA(null); setModelB(null); setApiError(null)
   }
 
   const approxTokens     = Math.round(prompt.length / 3)
-  const userChoseCheaper = vote2 === CHEAPER
+  const userChoseCheaper = vote2 === cheaper
   const savingsEmoji     = vote2 === 'T' ? '🤝' : userChoseCheaper ? '🎉' : '😂'
 
   return (
@@ -145,7 +171,7 @@ export default function XDuel() {
             </div>
           )}
 
-          {/* ── STEPS 2/3/4: single arena view ── */}
+          {/* ── STEPS 2/3/4: arena view ── */}
           {(step === 2 || step === 3 || step === 4) && (
             <div className="step-section">
               <div className="prompt-header" style={{marginBottom:24}}>
@@ -162,6 +188,14 @@ export default function XDuel() {
                 </div>
               </div>
 
+              {/* Error state */}
+              {apiError && (
+                <div style={{background:'rgba(232,69,60,0.1)',border:'1px solid rgba(232,69,60,0.4)',borderRadius:6,padding:'16px 20px',marginBottom:24,fontFamily:'var(--mono)',fontSize:13,color:'var(--red)'}}>
+                  ⚠️ {apiError}
+                  <button className="btn-secondary" style={{marginLeft:16}} onClick={() => goStep(1)}>← Try again</button>
+                </div>
+              )}
+
               <div className="battle-arena">
                 {/* Model A */}
                 <div className={`battle-card
@@ -170,23 +204,27 @@ export default function XDuel() {
                   <div className="battle-card-header">
                     <div className="battle-model-id a">Model A</div>
                     <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
-                      <span className="price-badge expensive">$10.00 / 1M tokens</span>
+                      <span className="price-badge expensive">{modelA?.priceLabel ?? '…'}</span>
                     </div>
                   </div>
-                  <div className={`battle-response ${loadingA?'loading':''}`}>
-                    {loadingA ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></> : RESP_A}
+                  <div className={`battle-response ${loading?'loading':''}`}>
+                    {loading
+                      ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
+                      : (modelA?.response ?? '')}
                   </div>
-                  {showPrices && (
+                  {showPrices && modelA && (
                     <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
                       <span className="price-label">Estimated cost this prompt</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--red)'}}>~$0.0042</span>
+                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--red)'}}>
+                        ~${modelA.cost < 0.0001 ? modelA.cost.toExponential(2) : modelA.cost.toFixed(5)}
+                      </span>
                     </div>
                   )}
                   <div className="battle-footer">
                     <button
                       className={`btn-vote a ${(phase==='vote'?vote1:vote2)==='A'?'voted a-voted':''}`}
                       onClick={() => phase==='vote' ? castVote('A') : castRevote('A')}
-                      disabled={phase==='vote' ? !!vote1 : !!vote2}
+                      disabled={loading || !modelA || (phase==='vote' ? !!vote1 : !!vote2)}
                     >
                       {(phase==='vote'?vote1:vote2)==='A'
                         ? (phase==='revote'?'✓ Final pick':'✓ Your pick')
@@ -202,23 +240,27 @@ export default function XDuel() {
                   <div className="battle-card-header">
                     <div className="battle-model-id b">Model B</div>
                     <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
-                      <span className="price-badge cheap">$0.075 / 1M tokens</span>
+                      <span className="price-badge cheap">{modelB?.priceLabel ?? '…'}</span>
                     </div>
                   </div>
-                  <div className={`battle-response ${loadingB?'loading':''}`}>
-                    {loadingB ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></> : RESP_B}
+                  <div className={`battle-response ${loading?'loading':''}`}>
+                    {loading
+                      ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
+                      : (modelB?.response ?? '')}
                   </div>
-                  {showPrices && (
+                  {showPrices && modelB && (
                     <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
                       <span className="price-label">Estimated cost this prompt</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--green)'}}>~$0.000031</span>
+                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--green)'}}>
+                        ~${modelB.cost < 0.0001 ? modelB.cost.toExponential(2) : modelB.cost.toFixed(5)}
+                      </span>
                     </div>
                   )}
                   <div className="battle-footer">
                     <button
                       className={`btn-vote b ${(phase==='vote'?vote1:vote2)==='B'?'voted':''}`}
                       onClick={() => phase==='vote' ? castVote('B') : castRevote('B')}
-                      disabled={phase==='vote' ? !!vote1 : !!vote2}
+                      disabled={loading || !modelB || (phase==='vote' ? !!vote1 : !!vote2)}
                     >
                       {(phase==='vote'?vote1:vote2)==='B'
                         ? (phase==='revote'?'✓ Final pick':'✓ Your pick')
@@ -232,7 +274,7 @@ export default function XDuel() {
                   <button
                     className={`btn-tie ${(phase==='vote'?vote1:vote2)==='T'?'voted':''}`}
                     onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
-                    disabled={phase==='vote' ? !!vote1 : !!vote2}
+                    disabled={loading || (!modelA && !modelB) || (phase==='vote' ? !!vote1 : !!vote2)}
                   >
                     {(phase==='vote'?vote1:vote2)==='T'
                       ? (phase==='revote'?'✓ Final: Tie':'✓ Tied')
@@ -243,9 +285,13 @@ export default function XDuel() {
 
               <div className="action-bar">
                 <span className="action-hint">
-                  {phase==='vote' ? 'Pick the response you prefer — identities are hidden' : 'Now you know the cost — cast your final vote'}
+                  {loading
+                    ? 'Calling both models…'
+                    : phase==='vote'
+                    ? 'Pick the response you prefer — identities are hidden'
+                    : 'Now you know the cost — cast your final vote'}
                 </span>
-                {phase==='vote' && (
+                {phase==='vote' && !loading && (
                   <button className="btn-secondary" onClick={() => goStep(1)}>← Change Prompt</button>
                 )}
               </div>
@@ -272,16 +318,16 @@ export default function XDuel() {
 
               <div className="savings-reveal">
                 <span className="savings-reveal-emoji">{savingsEmoji}</span>
-                <div className="savings-reveal-amount">${MONTHLY.toLocaleString()}</div>
+                <div className="savings-reveal-amount">${monthly.toLocaleString()}</div>
                 <div className="savings-reveal-period">per month · at 10M tokens</div>
                 <p className="savings-reveal-desc">
                   Switching to the cheaper model saves{' '}
-                  <strong style={{color:'var(--green)'}}>{RATIO}× in API costs</strong>{' '}
+                  <strong style={{color:'var(--green)'}}>{ratio}× in API costs</strong>{' '}
                   per month at 10M tokens — with no measurable quality difference on most tasks.
                 </p>
               </div>
 
-              {/* Model reveal slides in */}
+              {/* Model reveal */}
               <div style={{
                 marginTop: 32,
                 opacity: showReveal ? 1 : 0,
@@ -289,18 +335,21 @@ export default function XDuel() {
                 transition: 'opacity 0.5s ease, transform 0.5s ease',
               }}>
                 <div className="model-reveal">
-                  {[MODEL_A, MODEL_B].map((m, i) => {
-                    const wins = m.price < (i===0 ? MODEL_B : MODEL_A).price
+                  {modelA && modelB && [
+                    { m: modelA, id: 'A' },
+                    { m: modelB, id: 'B' },
+                  ].map(({ m, id }, i) => {
+                    const wins = id === cheaper
                     return (
                       <div key={m.name} className={`reveal-card ${wins?'winner':''} ${i===0?'border-right':''}`}>
                         <div className="reveal-verdict">{wins ? '🎉' : '😬'}</div>
                         <div className="reveal-model-name">{m.name}</div>
                         <div className="reveal-provider">{m.provider.toUpperCase()}</div>
                         <div className="reveal-price" style={{color:wins?'var(--green)':'var(--red)'}}>
-                          ${m.price.toFixed(3)} / 1M tokens
+                          {m.priceLabel}
                         </div>
                         <div className="reveal-stat">
-                          {wins ? `${RATIO}× cheaper · community preferred` : 'More expensive option'}
+                          {wins ? `${ratio}× cheaper · community preferred` : 'More expensive option'}
                         </div>
                       </div>
                     )

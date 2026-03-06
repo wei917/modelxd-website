@@ -11,7 +11,9 @@
   "dependencies": {
     "next": "14.2.5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "ai": "^4.0.0",
+    "@ai-sdk/gateway": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",
