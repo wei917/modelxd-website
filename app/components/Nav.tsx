@@ -17,9 +17,8 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <div className="nav-logo" style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-        <span style={{ fontFamily:'var(--font-display)', fontSize:'22px', fontWeight:800, letterSpacing:'0.05em', color:'var(--white)' }}>Model</span>
-        <Image src="/logo.png" alt="XD" width={72} height={72} style={{ objectFit: 'contain' }} />
+      <div className="nav-logo">
+        <Image src="/logo.png" alt="ModelXD" width={220} height={44} style={{ objectFit: 'contain', height: '44px', width: 'auto' }} />
       </div>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, label }) => (
