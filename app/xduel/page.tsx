@@ -221,17 +221,24 @@ export default function XDuel() {
                         {(modelA.responseTime / 1000).toFixed(2)}s
                         {modelA.responseTime < modelB.responseTime && (
                           <span style={{marginLeft:6,fontSize:9,color:'#4a9eff',letterSpacing:'0.1em'}}>
-                            ⚡ {((modelB.responseTime - modelA.responseTime) / 1000).toFixed(2)}s faster
+                            ⚡ {Math.round((modelB.responseTime - modelA.responseTime) / modelB.responseTime * 100)}% faster
                           </span>
                         )}
                       </span>
                     </div>
                   )}
-                  {showPrices && modelA && (
+                  {showPrices && modelA && modelB && (
                     <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
                       <span className="price-label">Estimated cost this prompt</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--red)'}}>
-                        ~${modelA.cost < 0.0001 ? modelA.cost.toExponential(2) : modelA.cost.toFixed(5)}
+                      <span style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontFamily:'var(--mono)',fontSize:12,color:modelA.outputPrice <= modelB.outputPrice ? '#4a9eff' : 'var(--red)'}}>
+                          ~${modelA.cost < 0.0001 ? modelA.cost.toExponential(2) : modelA.cost.toFixed(5)}
+                        </span>
+                        {modelA.outputPrice < modelB.outputPrice && (
+                          <span style={{fontFamily:'var(--mono)',fontSize:9,color:'#4a9eff',letterSpacing:'0.1em'}}>
+                            💰 {Math.round((modelB.outputPrice - modelA.outputPrice) / modelB.outputPrice * 100)}% saving
+                          </span>
+                        )}
                       </span>
                     </div>
                   )}
@@ -259,17 +266,24 @@ export default function XDuel() {
                         {(modelB.responseTime / 1000).toFixed(2)}s
                         {modelB.responseTime < modelA.responseTime && (
                           <span style={{marginLeft:6,fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>
-                            ⚡ {((modelA.responseTime - modelB.responseTime) / 1000).toFixed(2)}s faster
+                            ⚡ {Math.round((modelA.responseTime - modelB.responseTime) / modelA.responseTime * 100)}% faster
                           </span>
                         )}
                       </span>
                     </div>
                   )}
-                  {showPrices && modelB && (
+                  {showPrices && modelA && modelB && (
                     <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
                       <span className="price-label">Estimated cost this prompt</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--green)'}}>
-                        ~${modelB.cost < 0.0001 ? modelB.cost.toExponential(2) : modelB.cost.toFixed(5)}
+                      <span style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontFamily:'var(--mono)',fontSize:12,color:modelB.outputPrice <= modelA.outputPrice ? 'var(--red)' : 'var(--muted2)'}}>
+                          ~${modelB.cost < 0.0001 ? modelB.cost.toExponential(2) : modelB.cost.toFixed(5)}
+                        </span>
+                        {modelB.outputPrice < modelA.outputPrice && (
+                          <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>
+                            💰 {Math.round((modelA.outputPrice - modelB.outputPrice) / modelA.outputPrice * 100)}% saving
+                          </span>
+                        )}
                       </span>
                     </div>
                   )}
