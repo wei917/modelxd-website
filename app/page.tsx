@@ -152,12 +152,11 @@ export default function Home() {
         <div className="section-title">How <span>XDuel</span> Works</div>
         <div className="flow-steps">
           {[
-            { emoji: '📝', num: '01', title: 'Battle',       desc: 'Enter any prompt across text, image, or video' },
-            { emoji: '🔒', num: '02', title: 'Vote Blind',   desc: 'Two anonymous responses. Pick the better one' },
-            { emoji: '💰', num: '03', title: 'Price Reveal', desc: 'Prices drop. Tension builds. Does it change things?' },
-            { emoji: '🔄', num: '04', title: 'Re-Vote',      desc: 'Vote again with full price visibility. Did you switch?' },
-            { emoji: '💸', num: '05', title: 'Savings',      desc: 'See exactly how much you could save per month' },
-            { emoji: '😂', num: '06', title: 'Reveal',       desc: 'Model names exposed. Were you overpaying? XD' },
+            { emoji: '⚔️', num: '01', title: 'Duel',           desc: 'Enter any prompt across text, image, or video' },
+            { emoji: '🔒', num: '02', title: 'Vote Blind',      desc: 'Two anonymous responses. Pick the better one' },
+            { emoji: '💰', num: '03', title: 'Reveal Price',    desc: 'Prices drop. Tension builds. Does it change things?' },
+            { emoji: '🔄', num: '04', title: 'Vote Again',      desc: 'Vote again with full price visibility. Did you switch?' },
+            { emoji: '💡', num: '05', title: 'Meet the Model',  desc: 'Identities unmasked. See your savings. Were you overpaying?' },
           ].map(step => (
             <div className="flow-step" key={step.num}>
               <div className="step-dot">{step.emoji}</div>

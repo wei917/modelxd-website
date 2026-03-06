@@ -96,8 +96,7 @@ body::after {
 }
 .nav-links a {
   font-family: var(--font-mono), monospace;
-  font-size: 11px; color: var(--muted2);
-  text-decoration: none; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 13px; color: var(--muted2);
   transition: color 0.2s;
 }
 .nav-links a:hover { color: var(--white); }
@@ -127,7 +126,7 @@ body::after {
 .hero {
   min-height: calc(100vh - 120px);
   display: flex; flex-direction: column; justify-content: center;
-  padding: 80px 48px 40px;
+  padding: 40px 48px 60px;
   position: relative; overflow: hidden;
 }
 .hero-line {
@@ -162,14 +161,14 @@ body::after {
 .hero-headline {
   font-family: var(--font-display), sans-serif;
   font-weight: 900;
-  font-size: clamp(72px, 11vw, 148px);
+  font-size: clamp(52px, 8vw, 108px);
   line-height: 0.88; letter-spacing: -0.01em; text-transform: uppercase;
   opacity: 0; animation: fadeUp 0.8s 0.35s forwards;
 }
 .hero-headline .line1 { display: block; color: var(--white); }
 .hero-headline .line1 .xd { color: var(--red); }
 .hero-headline .line3 {
-  display: block; color: var(--white); opacity: 0.18;
+  display: block; color: var(--white); opacity: 0.55;
   font-weight: 300;
   font-size: clamp(24px, 3.5vw, 48px);
   letter-spacing: 0.04em; margin-top: 8px;
