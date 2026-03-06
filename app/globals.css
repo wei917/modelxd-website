@@ -84,13 +84,14 @@ body::after {
   background: rgba(0,0,0,0.7);
   backdrop-filter: blur(20px);
 }
-.nav-logo {
+.nav-logo-text {
   font-family: var(--font-display), sans-serif;
-  font-size: 22px; font-weight: 800; letter-spacing: 0.05em;
-  color: var(--white);
-  display: flex; align-items: baseline; gap: 1px;
+  font-size: 28px; font-weight: 900;
+  text-transform: uppercase; letter-spacing: -0.01em;
+  color: var(--white); text-decoration: none;
+  line-height: 1;
 }
-.nav-logo .xd { color: var(--red); }
+.nav-logo-text em { color: var(--red); font-style: normal; }
 .nav-links {
   display: flex; align-items: center; gap: 36px;
 }

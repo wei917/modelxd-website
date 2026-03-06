@@ -1,15 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 
 const NAV_LINKS = [
-  { href: '/',            label: 'Home' },
-  { href: '/xduel',      label: 'XDuel' },
-  { href: '/vote',       label: 'Vote' },
-  { href: '/leaderboard',label: 'Leaderboard' },
-  { href: '/create',     label: 'Create' },
+  { href: '/',             label: 'Home' },
+  { href: '/xduel',       label: 'XDuel' },
+  { href: '/vote',        label: 'Vote' },
+  { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/create',      label: 'Create' },
 ]
 
 export default function Nav() {
@@ -17,9 +16,9 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <div className="nav-logo">
-        <Image src="/logo.png" alt="ModelXD" width={224} height={52} style={{ height:'44px', width:'auto', objectFit:'contain' }} />
-      </div>
+      <Link href="/" className="nav-logo-text">
+        Model<em>XD</em>
+      </Link>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, label }) => (
           <Link
