@@ -91,7 +91,7 @@ body::after {
   color: var(--white); text-decoration: none;
   line-height: 1;
 }
-.nav-logo-text .x { color: #4a9eff; font-style: normal; }
+.nav-logo-text .x { color: var(--red); font-style: normal; }
 .nav-logo-text .d { color: var(--red); font-style: normal; }
 .nav-links {
   display: flex; align-items: center; gap: 36px;
