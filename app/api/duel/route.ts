@@ -1,19 +1,51 @@
 // app/api/duel/route.ts
-// Calls two AI models in parallel via Vercel AI Gateway
+// Always reads models from Supabase ai_models (source of truth)
+// Falls back to lib/models.ts if Supabase is unavailable
+
+import { createClient } from '@supabase/supabase-js'
+import { getModelsByMode, pickTwo, ModelEntry } from '../../../lib/models'
 
 const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions'
+const LOG = '[duel]'
 
-// The two models that battle each other
-// Full model list: https://vercel.com/ai-gateway/models
-const MODEL_A_ID = 'openai/gpt-4o-mini'
-const MODEL_B_ID = 'google/gemini-2.5-flash'
+async function getModels(mode: string): Promise<ModelEntry[]> {
+  const modeFilter = mode === 'text' ? 'language' : mode
 
-// Pricing per 1M output tokens (for cost reveal)
-// Update these if you swap models
-const MODEL_A_INFO = { name: 'GPT-4o Mini',    provider: 'OpenAI', outputPrice: 0.60  }
-const MODEL_B_INFO = { name: 'Gemini 2.5 Flash', provider: 'Google', outputPrice: 2.50 }
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-async function callModel(modelId: string, prompt: string): Promise<{ text: string; tokens: number; responseTime: number }> {
+    const { data, error } = await supabase
+      .from('ai_models')
+      .select('*')
+      .eq('mode', modeFilter)
+      .eq('enabled', true)
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length < 2) throw new Error('Not enough models in DB')
+
+    console.log(`${LOG} Loaded ${data.length} ${mode} models from Supabase`)
+
+    return data.map(row => ({
+      id:          row.id,
+      name:        row.name,
+      provider:    row.provider,
+      outputPrice: row.output_price ?? 0,
+      inputPrice:  row.input_price ?? 0,
+      mode:        mode as 'text' | 'image' | 'video',
+    }))
+  } catch (err) {
+    console.warn(`${LOG} Supabase unavailable, using fallback catalog:`, err)
+    return getModelsByMode(mode as 'text' | 'image' | 'video')
+  }
+}
+
+async function callModel(
+  modelId: string,
+  prompt: string
+): Promise<{ text: string; tokens: number; responseTime: number }> {
   const start = Date.now()
   const res = await fetch(GATEWAY_URL, {
     method: 'POST',
@@ -41,7 +73,7 @@ async function callModel(modelId: string, prompt: string): Promise<{ text: strin
 }
 
 export async function POST(req: Request) {
-  const { prompt } = await req.json()
+  const { prompt, mode = 'text' } = await req.json()
 
   if (!prompt || prompt.trim().length < 3) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
@@ -51,33 +83,46 @@ export async function POST(req: Request) {
     return Response.json({ error: 'AI_GATEWAY_API_KEY not set' }, { status: 500 })
   }
 
-  // Call both models at the same time
+  // Load models from Supabase (fallback to lib/models.ts)
+  const pool = await getModels(mode)
+  if (pool.length < 2) {
+    return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
+  }
+
+  const [modelA, modelB] = pickTwo(pool)
+  console.log(`${LOG} Duel: ${modelA.id} vs ${modelB.id}`)
+
+  // Call both models in parallel
   const [resultA, resultB] = await Promise.all([
-    callModel(MODEL_A_ID, prompt),
-    callModel(MODEL_B_ID, prompt),
+    callModel(modelA.id, prompt),
+    callModel(modelB.id, prompt),
   ])
 
-  // Compute per-prompt cost estimate
-  // Formula: (output tokens / 1,000,000) * price per 1M tokens
-  const costA = (resultA.tokens / 1_000_000) * MODEL_A_INFO.outputPrice
-  const costB = (resultB.tokens / 1_000_000) * MODEL_B_INFO.outputPrice
+  console.log(`${LOG} Results — A: ${resultA.tokens} tokens ${resultA.responseTime}ms | B: ${resultB.tokens} tokens ${resultB.responseTime}ms`)
+
+  const costA = (resultA.tokens / 1_000_000) * modelA.outputPrice
+  const costB = (resultB.tokens / 1_000_000) * modelB.outputPrice
 
   return Response.json({
     modelA: {
-      ...MODEL_A_INFO,
+      name:         modelA.name,
+      provider:     modelA.provider,
+      outputPrice:  modelA.outputPrice,
       response:     resultA.text,
       tokens:       resultA.tokens,
       cost:         costA,
       responseTime: resultA.responseTime,
-      priceLabel:   `$${MODEL_A_INFO.outputPrice.toFixed(2)} / 1M tokens`,
+      priceLabel:   `$${modelA.outputPrice.toFixed(2)} / 1M tokens`,
     },
     modelB: {
-      ...MODEL_B_INFO,
+      name:         modelB.name,
+      provider:     modelB.provider,
+      outputPrice:  modelB.outputPrice,
       response:     resultB.text,
       tokens:       resultB.tokens,
       cost:         costB,
       responseTime: resultB.responseTime,
-      priceLabel:   `$${MODEL_B_INFO.outputPrice.toFixed(2)} / 1M tokens`,
+      priceLabel:   `$${modelB.outputPrice.toFixed(2)} / 1M tokens`,
     },
   })
 }
