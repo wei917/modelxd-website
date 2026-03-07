@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     id:             m.id,
     name:           m.name,
     provider:       m.owned_by,
-    mode:           m.type,
+    mode:           m.type === 'language' ? 'text' : m.type,  // normalize gateway 'language' → 'text'
     input_price:    m.pricing?.input
                       ? parseFloat(m.pricing.input) * 1_000_000
                       : null,
@@ -104,9 +104,9 @@ export async function GET(req: Request) {
     synced:   rows.length,
     duration: `${duration}ms`,
     breakdown: {
-      language: rows.filter(r => r.mode === 'language').length,
-      image:    rows.filter(r => r.mode === 'image').length,
-      video:    rows.filter(r => r.mode === 'video').length,
+      text:  rows.filter(r => r.mode === 'text').length,
+      image: rows.filter(r => r.mode === 'image').length,
+      video: rows.filter(r => r.mode === 'video').length,
     }
   })
 }

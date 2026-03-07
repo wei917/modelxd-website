@@ -9,7 +9,7 @@ const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions'
 const LOG = '[duel]'
 
 async function getModels(mode: string): Promise<ModelEntry[]> {
-  const modeFilter = mode === 'text' ? 'language' : mode
+  const modeFilter = mode  // DB now stores 'text' | 'image' | 'video' directly
 
   try {
     const supabase = createClient(
