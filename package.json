@@ -14,7 +14,8 @@
     "react-dom": "^18",
     "ai": "^4.0.0",
     "@ai-sdk/gateway": "^1.0.0",
-    "@supabase/supabase-js": "^2.49.0"
+    "@supabase/supabase-js": "^2.49.0",
+    "@supabase/ssr": "^0.6.0"
   },
   "devDependencies": {
     "@types/node": "^20",

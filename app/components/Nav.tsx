@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createSupabaseBrowser } from '../../lib/supabase-client'
+import type { User } from '@supabase/supabase-js'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Home' },
@@ -13,6 +16,35 @@ const NAV_LINKS = [
 
 export default function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createSupabaseBrowser()
+
+  useEffect(() => {
+    // Get current session
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.refresh()
+  }
 
   return (
     <nav className="nav">
@@ -31,13 +63,18 @@ export default function Nav() {
         ))}
       </div>
       <div className="nav-auth">
-        <button className="nav-login">Log In</button>
-        <div className="nav-avatar">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="5.5" r="2.5" stroke="#6e7a8a" strokeWidth="1.2"/>
-            <path d="M2.5 13.5c0-3.038 2.462-5.5 5.5-5.5s5.5 2.462 5.5 5.5" stroke="#6e7a8a" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </div>
+        {user ? (
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <img
+              src={user.user_metadata?.avatar_url}
+              alt={user.user_metadata?.full_name}
+              style={{width:28,height:28,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.15)'}}
+            />
+            <button className="nav-login" onClick={handleLogout}>Log Out</button>
+          </div>
+        ) : (
+          <button className="nav-login" onClick={handleLogin}>Log In</button>
+        )}
       </div>
     </nav>
   )
