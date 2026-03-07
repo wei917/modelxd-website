@@ -11,6 +11,17 @@ const LOG = '[sync-models]'
 // Only sync these types — skip embedding, moderation, etc.
 const SUPPORTED_MODES = new Set(['language', 'image', 'video'])
 
+function parseReleasedAt(m: any): string | null {
+  // Gateway returns Unix timestamp in `released` field
+  // Could be missing (null/0) or a full date — we store as date string e.g. "2025-04-01"
+  if (!m.released || m.released === 0) return null
+  try {
+    return new Date(m.released * 1000).toISOString().split('T')[0]
+  } catch {
+    return null
+  }
+}
+
 function parseImagePricing(m: any): object | null {
   const raw = m.pricing?.image_gen_pricing
   if (!raw || !Array.isArray(raw)) return null
@@ -76,6 +87,7 @@ export async function GET(req: Request) {
     context_window: m.context_window ?? null,
     max_tokens:     m.max_tokens ?? null,
     tags:           m.tags ?? [],
+    released_at:    parseReleasedAt(m),
     raw:            m,
     synced_at:      new Date().toISOString(),
   }))

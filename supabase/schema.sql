@@ -21,6 +21,7 @@ create table if not exists ai_models (
   context_window  bigint,
   max_tokens      bigint,
   tags            text[],
+  released_at     date,                 -- e.g. '2025-04-01', null if unknown
 
   -- enabled=false by default — review new models in dashboard before enabling
   enabled         boolean default false,
