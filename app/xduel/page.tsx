@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
+import ReactMarkdown from 'react-markdown'
 
 type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
@@ -311,7 +312,7 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
-                          : <>{m.text}{m.streaming && <span className="stream-cursor">▋</span>}</>
+                          : <><ReactMarkdown className="markdown-body">{m.text}</ReactMarkdown>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
                       {m?.done && bothDone && (
