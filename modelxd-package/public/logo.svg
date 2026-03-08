@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 56" height="44" style="display:block;">
+  <defs>
+    <filter id="redGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.91 0 0 0 0 0.27 0 0 0 0 0.24 0 0 0 0 0.7" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="starGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.8 0" result="whiteBlur"/>
+      <feMerge><feMergeNode in="whiteBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Model text -->
+  <text x="0" y="41" font-family="'Barlow Condensed',sans-serif" font-weight="800" font-size="44" letter-spacing="1" fill="#f0f2f5">Model</text>
+  <!-- XD orbital mark -->
+  <g transform="translate(208,28)" filter="url(#redGlow)">
+    <ellipse cx="0" cy="0" rx="34" ry="19" fill="none" stroke="#e8453c" stroke-width="1.5" transform="rotate(-12)" opacity="0.85"/>
+    <line x1="-26" y1="-15" x2="26" y2="15" stroke="#e8453c" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-26" y1="15" x2="26" y2="-15" stroke="#e8453c" stroke-width="2.5" stroke-linecap="round"/>
+    <g filter="url(#starGlow)">
+      <polygon points="0,-8 1.2,-1.2 8,0 1.2,1.2 0,8 -1.2,1.2 -8,0 -1.2,-1.2" fill="#e8453c"/>
+      <circle cx="0" cy="0" r="1.8" fill="#ffffff"/>
+    </g>
+  </g>
+</svg>

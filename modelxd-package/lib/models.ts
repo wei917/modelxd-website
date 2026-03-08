@@ -45,8 +45,3 @@ export function pickTwo(models: ModelEntry[]): [ModelEntry, ModelEntry] {
   const shuffled = [...models].sort(() => Math.random() - 0.5)
   return [shuffled[0], shuffled[1]]
 }
-
-export function pickN(models: ModelEntry[], n: number): ModelEntry[] {
-  const shuffled = [...models].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, n)
-}

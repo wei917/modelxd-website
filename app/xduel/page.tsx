@@ -3,19 +3,25 @@
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
 
-type Vote = 'A' | 'B' | 'T' | null
+type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
 type ArenaPhase = 'vote' | 'revote'
 
-type ModelResult = {
+type ModelMeta = {
   name: string
   provider: string
   outputPrice: number
-  response: string
-  tokens: number
-  cost: number
   priceLabel: string
-  responseTime: number  // milliseconds
+}
+
+type ModelState = {
+  meta: ModelMeta
+  text: string
+  tokens: number
+  responseTime: number
+  streaming: boolean
+  done: boolean
+  cost: number
 }
 
 const STEPS = [
@@ -26,29 +32,34 @@ const STEPS = [
   { n:5, label:'Meet the Model' },
 ]
 
+const LABELS = ['A','B','C','D']
+
 export default function XDuel() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
 
   const [step,       setStep]       = useState(1)
   const [mode,       setMode]       = useState<Mode>('text')
+  const [count,      setCount]      = useState(2)
   const [prompt,     setPrompt]     = useState('')
   const [loading,    setLoading]    = useState(false)
   const [apiError,   setApiError]   = useState<string | null>(null)
-  const [modelA,     setModelA]     = useState<ModelResult | null>(null)
-  const [modelB,     setModelB]     = useState<ModelResult | null>(null)
+  const [models,     setModels]     = useState<ModelState[]>([])
   const [vote1,      setVote1]      = useState<Vote>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
 
-  // Derived from real API data
-  const cheaper    = modelA && modelB ? (modelA.outputPrice < modelB.outputPrice ? 'A' : 'B') : null
-  const expModel   = cheaper === 'A' ? modelB : modelA
-  const cheapModel = cheaper === 'A' ? modelA : modelB
-  const ratio      = expModel && cheapModel ? Math.round(expModel.outputPrice / cheapModel.outputPrice) : 0
-  const monthly    = expModel && cheapModel ? Math.round((expModel.outputPrice - cheapModel.outputPrice) * 10) : 0
+  const bothDone    = models.length > 0 && models.every(m => m.done)
+  const anyStreaming = models.some(m => m.streaming)
+
+  // Cheapest model index
+  const cheapestIdx = models.length > 0
+    ? models.reduce((minI, m, i, arr) => m.meta.outputPrice < arr[minI].meta.outputPrice ? i : minI, 0)
+    : -1
+
+  const currentVote = phase === 'vote' ? vote1 : vote2
 
   useEffect(() => {
     let mx = 0, my = 0, rx = 0, ry = 0, id: number
@@ -71,7 +82,7 @@ export default function XDuel() {
   const startDuel = async () => {
     setLoading(true)
     setApiError(null)
-    setModelA(null); setModelB(null)
+    setModels([])
     setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     goStep(2)
@@ -80,54 +91,122 @@ export default function XDuel() {
       const res = await fetch('/api/duel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, mode, count }),
       })
-      const text = await res.text()
-      if (!text) throw new Error('Empty response from server')
-      let data: any
-      try { data = JSON.parse(text) } catch { throw new Error('Invalid response from server') }
-      if (!res.ok) throw new Error(data.error ?? `Server error ${res.status}`)
-      setModelA(data.modelA)
-      setModelB(data.modelB)
+
+      if (!res.ok || !res.body) {
+        const err = await res.text()
+        throw new Error(err || `Server error ${res.status}`)
+      }
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let currentEvent = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            try {
+              const payload = JSON.parse(line.slice(6))
+
+              if (currentEvent === 'meta') {
+                // Initialize model states from meta
+                const initialModels: ModelState[] = payload.models.map((m: ModelMeta) => ({
+                  meta:         m,
+                  text:         '',
+                  tokens:       0,
+                  responseTime: 0,
+                  streaming:    true,
+                  done:         false,
+                  cost:         0,
+                }))
+                setModels(initialModels)
+                setLoading(false)
+
+              } else if (currentEvent.startsWith('delta:')) {
+                const idx = payload.index
+                setModels(prev => prev.map((m, i) =>
+                  i === idx ? { ...m, text: m.text + payload.text } : m
+                ))
+
+              } else if (currentEvent.startsWith('done:')) {
+                const idx = payload.index
+                setModels(prev => prev.map((m, i) =>
+                  i === idx ? {
+                    ...m,
+                    tokens:       payload.tokens,
+                    responseTime: payload.responseTime,
+                    cost:         (payload.tokens / 1_000_000) * m.meta.outputPrice,
+                    streaming:    false,
+                    done:         true,
+                  } : m
+                ))
+
+              } else if (currentEvent.startsWith('error:')) {
+                const idx = payload.index
+                setModels(prev => prev.map((m, i) =>
+                  i === idx ? { ...m, text: `⚠️ ${payload.message}`, streaming: false, done: true } : m
+                ))
+              }
+            } catch {}
+          }
+        }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       setApiError(msg)
-    } finally {
       setLoading(false)
     }
   }
 
   const castVote = (choice: Vote) => {
     setVote1(choice)
-    // Show prices immediately, skip step 3 pause — go straight to revote (step 4)
     setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
   }
 
   const castRevote = (choice: Vote) => {
     setVote2(choice)
-    setStep(4)
     setTimeout(() => {
       goStep(5)
       setTimeout(() => setShowReveal(true), 600)
     }, 600)
   }
 
-  const reset = () => {
-    setStep(1); setVote1(null); setVote2(null)
-    setPhase('vote'); setShowPrices(false); setShowReveal(false); setPrompt('')
-    setModelA(null); setModelB(null); setApiError(null)
-  }
-
-  const rematch = () => {
-    setStep(1); setVote1(null); setVote2(null)
+  const clearState = (keepPrompt = false) => {
+    setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
-    setModelA(null); setModelB(null); setApiError(null)
-    // keep prompt — user will click Start Duel again with same prompt
+    setModels([]); setApiError(null)
+    if (!keepPrompt) setPrompt('')
   }
 
-  const approxTokens     = Math.round(prompt.length / 3)
-  const userChoseCheaper = vote2 === cheaper
-  const savingsEmoji     = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
+  const approxTokens = Math.round(prompt.length / 3)
+
+  // Cheapest model for savings calc
+  const cheapestModel = cheapestIdx >= 0 ? models[cheapestIdx] : null
+  const mostExpensive = models.length > 0
+    ? models.reduce((maxM, m) => m.meta.outputPrice > maxM.meta.outputPrice ? m : maxM, models[0])
+    : null
+  const ratio   = cheapestModel && mostExpensive && cheapestModel.meta.outputPrice > 0
+    ? Math.round(mostExpensive.meta.outputPrice / cheapestModel.meta.outputPrice)
+    : 0
+  const monthly = cheapestModel && mostExpensive
+    ? Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 10)
+    : 0
+
+  const userChoseCheaper = typeof vote2 === 'number' && vote2 === cheapestIdx
+  const savingsEmoji = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
+
+  const voteLabel = (v: Vote) => v === 'T' ? 'a Tie' : v !== null ? `Model ${LABELS[v as number]}` : ''
 
   return (
     <>
@@ -166,6 +245,14 @@ export default function XDuel() {
                   </button>
                 ))}
               </div>
+              {/* Count selector */}
+              <div className="mode-selector" style={{marginTop:8}}>
+                {[2,3,4].map(n => (
+                  <button key={n} className={`mode-btn ${count===n?'active':''}`} onClick={() => setCount(n)}>
+                    <span className="mode-dot" />{n} Models
+                  </button>
+                ))}
+              </div>
               <div className="prompt-box">
                 <textarea
                   className="prompt-textarea"
@@ -196,7 +283,7 @@ export default function XDuel() {
                 <div className="prompt-sub">
                   {phase==='vote'
                     ? `"${prompt.substring(0,80)}${prompt.length>80?'…':''}"`
-                    : <span>You picked <strong style={{color:'var(--white)'}}>{vote1==='T'?'a Tie':`Model ${vote1}`}</strong> — vote again knowing the price</span>}
+                    : <span>You picked <strong style={{color:'var(--white)'}}>{voteLabel(vote1)}</strong> — vote again knowing the price</span>}
                 </div>
               </div>
 
@@ -208,138 +295,100 @@ export default function XDuel() {
                 </div>
               )}
 
-              <div className="battle-arena">
-                {/* Model A */}
-                <div className={`battle-card
-                  ${(phase==='vote'?vote1:vote2)==='A'?'voted-this':''}
-                  ${(phase==='vote'?vote1:vote2)&&(phase==='vote'?vote1:vote2)!=='A'?'voted-other':''}`}>
-                  <div className="battle-card-header">
-                    <div className="battle-model-id a">Model A</div>
-                    <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
-                      <span className="price-badge expensive">{modelA?.priceLabel ?? '…'}</span>
-                    </div>
-                  </div>
-                  <div className={`battle-response ${loading?'loading':''}`}>
-                    {loading
-                      ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
-                      : (modelA?.response ?? '')}
-                  </div>
-                  {modelA && modelB && !loading && (
-                    <div className="response-time-bar">
-                      <span className="response-time-label">Response time</span>
-                      <span className="response-time-value" style={{color: modelA.responseTime <= modelB.responseTime ? '#4a9eff' : 'var(--muted2)'}}>
-                        {(modelA.responseTime / 1000).toFixed(2)}s
-                        {modelA.responseTime < modelB.responseTime && (
-                          <span style={{marginLeft:6,fontSize:9,color:'#4a9eff',letterSpacing:'0.1em'}}>
-                            ⚡ {Math.round((modelB.responseTime - modelA.responseTime) / modelB.responseTime * 100)}% faster
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {showPrices && modelA && modelB && (
-                    <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
-                      <span className="price-label">Estimated cost this prompt</span>
-                      <span style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontFamily:'var(--mono)',fontSize:12,color:modelA.outputPrice <= modelB.outputPrice ? '#4a9eff' : 'var(--red)'}}>
-                          ~${modelA.cost < 0.0001 ? modelA.cost.toExponential(2) : modelA.cost.toFixed(5)}
-                        </span>
-                        {modelA.outputPrice < modelB.outputPrice && (
-                          <span style={{fontFamily:'var(--mono)',fontSize:9,color:'#4a9eff',letterSpacing:'0.1em'}}>
-                            💰 {Math.round((modelB.outputPrice - modelA.outputPrice) / modelB.outputPrice * 100)}% saving
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                </div>
+              {/* Battle cards — responsive grid */}
+              <div className="battle-arena" style={{
+                gridTemplateColumns: `repeat(${models.length || count}, 1fr)`
+              }}>
+                {(loading ? Array(count).fill(null) : models).map((m: ModelState | null, i: number) => {
+                  const isVoted   = currentVote === i
+                  const isOther   = currentVote !== null && currentVote !== 'T' && currentVote !== i
+                  const cheapest  = i === cheapestIdx
+                  const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
 
-                {/* Model B */}
-                <div className={`battle-card
-                  ${(phase==='vote'?vote1:vote2)==='B'?'voted-this':''}
-                  ${(phase==='vote'?vote1:vote2)&&(phase==='vote'?vote1:vote2)!=='B'?'voted-other':''}`}>
-                  <div className="battle-card-header">
-                    <div className="battle-model-id b">Model B</div>
-                    <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
-                      <span className="price-badge cheap">{modelB?.priceLabel ?? '…'}</span>
-                    </div>
-                  </div>
-                  <div className={`battle-response ${loading?'loading':''}`}>
-                    {loading
-                      ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
-                      : (modelB?.response ?? '')}
-                  </div>
-                  {modelA && modelB && !loading && (
-                    <div className="response-time-bar">
-                      <span className="response-time-label">Response time</span>
-                      <span className="response-time-value" style={{color: modelB.responseTime <= modelA.responseTime ? 'var(--red)' : 'var(--muted2)'}}>
-                        {(modelB.responseTime / 1000).toFixed(2)}s
-                        {modelB.responseTime < modelA.responseTime && (
-                          <span style={{marginLeft:6,fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>
-                            ⚡ {Math.round((modelA.responseTime - modelB.responseTime) / modelA.responseTime * 100)}% faster
+                  return (
+                    <div key={i} className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''}`}>
+                      <div className="battle-card-header">
+                        <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
+                        <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
+                          <span className="price-badge" style={{color: cheapest ? '#34d399' : 'var(--red)'}}>
+                            {m?.meta.priceLabel ?? '…'}
                           </span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {showPrices && modelA && modelB && (
-                    <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
-                      <span className="price-label">Estimated cost this prompt</span>
-                      <span style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontFamily:'var(--mono)',fontSize:12,color:modelB.outputPrice <= modelA.outputPrice ? 'var(--red)' : 'var(--muted2)'}}>
-                          ~${modelB.cost < 0.0001 ? modelB.cost.toExponential(2) : modelB.cost.toFixed(5)}
-                        </span>
-                        {modelB.outputPrice < modelA.outputPrice && (
-                          <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>
-                            💰 {Math.round((modelA.outputPrice - modelB.outputPrice) / modelA.outputPrice * 100)}% saving
+                        </div>
+                      </div>
+                      <div className={`battle-response ${loading||!m?'loading':''}`}>
+                        {loading || !m
+                          ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
+                          : <>{m.text}{m.streaming && <span className="stream-cursor">▋</span>}</>
+                        }
+                      </div>
+                      {m?.done && bothDone && (
+                        <div className="response-time-bar">
+                          <span className="response-time-label">Response time</span>
+                          <span className="response-time-value" style={{color: cardColor}}>
+                            {(m.responseTime / 1000).toFixed(2)}s
+                            {models.every((other, j) => j === i || m.responseTime <= other.responseTime) && (
+                              <span style={{marginLeft:6,fontSize:9,letterSpacing:'0.1em',color:cardColor}}>⚡ fastest</span>
+                            )}
                           </span>
-                        )}
-                      </span>
+                        </div>
+                      )}
+                      {showPrices && m?.done && (
+                        <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
+                          <span className="price-label">Estimated cost</span>
+                          <span style={{display:'flex',alignItems:'center',gap:8}}>
+                            <span style={{fontFamily:'var(--mono)',fontSize:12,color: cheapest ? '#34d399' : 'var(--muted2)'}}>
+                              ~${m.cost < 0.0001 ? m.cost.toExponential(2) : m.cost.toFixed(5)}
+                            </span>
+                            {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
+                              <span style={{fontFamily:'var(--mono)',fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>
+                                💰 {Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) / mostExpensive.meta.outputPrice * 100)}% saving
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  )
+                })}
               </div>
 
-              {/* Vote row — 3 buttons in one line */}
+              {/* Vote row */}
               <div className="vote-row">
+                {LABELS.slice(0, models.length || count).map((label, i) => {
+                  const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
+                  const voted = currentVote === i
+                  return (
+                    <button
+                      key={i}
+                      className={`btn-vote ${voted ? 'voted' : ''}`}
+                      style={voted ? {borderColor: cardColor, color: cardColor} : {}}
+                      onClick={() => phase==='vote' ? castVote(i) : castRevote(i)}
+                      disabled={!bothDone || currentVote !== null}
+                    >
+                      {voted ? `✓ Picked ${label}` : `${label} is better`}
+                    </button>
+                  )
+                })}
                 <button
-                  className={`btn-vote a ${(phase==='vote'?vote1:vote2)==='A'?'voted a-voted':''}`}
-                  onClick={() => phase==='vote' ? castVote('A') : castRevote('A')}
-                  disabled={loading || !modelA || (phase==='vote' ? !!vote1 : !!vote2)}
-                >
-                  {(phase==='vote'?vote1:vote2)==='A'
-                    ? '✓ Picked A'
-                    : <><span>←</span><span>A is better</span></>}
-                </button>
-                <button
-                  className={`btn-tie ${(phase==='vote'?vote1:vote2)==='T'?'voted':''}`}
+                  className={`btn-tie ${currentVote==='T'?'voted':''}`}
                   onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
-                  disabled={loading || (!modelA && !modelB) || (phase==='vote' ? !!vote1 : !!vote2)}
+                  disabled={!bothDone || currentVote !== null}
                 >
-                  {(phase==='vote'?vote1:vote2)==='T'
-                    ? '✓ Tied'
-                    : '⚖ Tie'}
-                </button>
-                <button
-                  className={`btn-vote b ${(phase==='vote'?vote1:vote2)==='B'?'voted':''}`}
-                  onClick={() => phase==='vote' ? castVote('B') : castRevote('B')}
-                  disabled={loading || !modelB || (phase==='vote' ? !!vote1 : !!vote2)}
-                >
-                  {(phase==='vote'?vote1:vote2)==='B'
-                    ? '✓ Picked B'
-                    : <><span>B is better</span><span>→</span></>}
+                  {currentVote==='T' ? '✓ Tied' : '⚖ Tie'}
                 </button>
               </div>
 
               <div className="action-bar">
                 <span className="action-hint">
                   {loading
-                    ? 'Calling both models…'
+                    ? 'Connecting…'
+                    : anyStreaming
+                    ? 'Models are responding…'
                     : phase==='vote'
                     ? 'Pick the response you prefer — identities are hidden'
                     : 'Now you know the cost — cast your final vote'}
                 </span>
-                {phase==='vote' && !loading && (
+                {phase==='vote' && bothDone && (
                   <button className="btn-secondary" onClick={() => goStep(1)}>← Change Prompt</button>
                 )}
               </div>
@@ -354,26 +403,25 @@ export default function XDuel() {
                 <h1 className="prompt-title">The <span>Reveal</span></h1>
               </div>
 
-              {/* Model reveal */}
               <div style={{
                 opacity: showReveal ? 1 : 0,
                 transform: showReveal ? 'translateY(0)' : 'translateY(16px)',
                 transition: 'opacity 0.5s ease, transform 0.5s ease',
               }}>
-                <div className="model-reveal">
-                  {modelA && modelB && [
-                    { m: modelA, id: 'A' },
-                    { m: modelB, id: 'B' },
-                  ].map(({ m, id }, i) => {
-                    const wins = id === cheaper
+                <div className="model-reveal" style={{gridTemplateColumns:`repeat(${models.length},1fr)`}}>
+                  {models.map((m, i) => {
+                    const wins = i === cheapestIdx
                     return (
-                      <div key={m.name} className={`reveal-card ${wins?'winner':''} ${i===0?'border-right':''}`}>
-                        <div className="reveal-model-name">{m.name}</div>
-                        <div className="reveal-provider">{m.provider.toUpperCase()}</div>
-                        <div className="reveal-price" style={{color:wins?'var(--green)':'var(--red)'}}>
-                          {m.priceLabel}
+                      <div key={i} className={`reveal-card ${wins?'winner':''} ${i<models.length-1?'border-right':''}`}>
+                        <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--muted2)',marginBottom:4}}>
+                          MODEL {LABELS[i]}
                         </div>
-                        <div className="reveal-stat" style={{color:wins?'var(--green)':'var(--muted2)'}}>
+                        <div className="reveal-model-name">{m.meta.name}</div>
+                        <div className="reveal-provider">{m.meta.provider.toUpperCase()}</div>
+                        <div className="reveal-price" style={{color:wins?'#34d399':'var(--red)'}}>
+                          {m.meta.priceLabel}
+                        </div>
+                        <div className="reveal-stat" style={{color:wins?'#34d399':'var(--muted2)'}}>
                           {wins
                             ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at 10M tokens`
                             : 'More expensive option'}
@@ -390,9 +438,7 @@ export default function XDuel() {
                   : vote2==='T'     ? 'Interesting. The cheaper model held its own.'
                   :                   'The cheaper model was right there. XD.'}
                 </span>
-                <div style={{display:'flex',gap:12}}>
-                  <button className="btn-next" onClick={rematch}>Next Duel →</button>
-                </div>
+                <button className="btn-next" onClick={() => { clearState(true); goStep(1) }}>Next Duel →</button>
               </div>
             </div>
           )}
