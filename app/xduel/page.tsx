@@ -115,6 +115,13 @@ export default function XDuel() {
     setModelA(null); setModelB(null); setApiError(null)
   }
 
+  const rematch = () => {
+    setStep(1); setVote1(null); setVote2(null)
+    setPhase('vote'); setShowPrices(false); setShowReveal(false)
+    setModelA(null); setModelB(null); setApiError(null)
+    // keep prompt — user will click Start Duel again with same prompt
+  }
+
   const approxTokens     = Math.round(prompt.length / 3)
   const userChoseCheaper = vote2 === cheaper
   const savingsEmoji     = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
@@ -381,8 +388,7 @@ export default function XDuel() {
                   :                   'The cheaper model was right there. XD.'}
                 </span>
                 <div style={{display:'flex',gap:12}}>
-                  <button className="btn-secondary" onClick={reset}>New XDuel</button>
-                  <button className="btn-next" onClick={reset}>Duel Again →</button>
+                  <button className="btn-next" onClick={rematch}>Next Duel →</button>
                 </div>
               </div>
             </div>
