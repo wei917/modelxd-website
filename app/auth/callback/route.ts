@@ -27,8 +27,32 @@ export async function GET(request: Request) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data.user) {
+      const user = data.user
+      const meta = user.user_metadata
+
+      // Update last_sign_in in profiles
+      await supabase
+        .from('profiles')
+        .update({ last_sign_in: new Date().toISOString() })
+        .eq('id', user.id)
+
+      // Log the login event — safe fields only, no tokens
+      await supabase
+        .from('activity_logs')
+        .insert({
+          user_id:  user.id,
+          event:    'login',
+          metadata: {
+            email:          user.email,
+            full_name:      meta?.full_name ?? null,
+            avatar_url:     meta?.avatar_url ?? null,
+            provider:       user.app_metadata?.provider ?? null,
+            email_verified: user.email_confirmed_at != null,
+          },
+        })
+
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
