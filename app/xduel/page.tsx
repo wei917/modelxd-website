@@ -312,7 +312,7 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
-                          : <><ReactMarkdown className="markdown-body">{m.text}</ReactMarkdown>{m.streaming && <span className="stream-cursor">▋</span>}</>
+                          : <><div className="markdown-body"><ReactMarkdown>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
                       {m?.done && bothDone && (
