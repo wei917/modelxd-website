@@ -324,15 +324,25 @@ export default function XDuel() {
                     <div key={i} className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''}`}>
                       <div className="battle-card-header">
                         <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
-                        <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s',display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
                           {m?.done && bothDone && (
-                            <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--muted2)'}}>
+                            <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--muted2)',opacity:1,transition:'opacity 0.3s'}}>
                               ⏱ {(m.responseTime/1000).toFixed(2)}s
+                              {(() => {
+                                const maxTime = Math.max(...models.map(x => x.responseTime))
+                                if (m.responseTime < maxTime) {
+                                  const pct = Math.round((maxTime - m.responseTime) / maxTime * 100)
+                                  return <span style={{marginLeft:4,fontSize:9,color:cardColor}}>⚡ {pct}% faster</span>
+                                }
+                                return null
+                              })()}
                             </span>
                           )}
-                          <span className="price-badge" style={{color: cheapest ? '#34d399' : 'var(--red)'}}>
-                            {m?.meta.priceLabel ?? '…'}
-                          </span>
+                          <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
+                            <span className="price-badge" style={{color: cheapest ? '#34d399' : 'var(--red)'}}>
+                              {m?.meta.priceLabel ?? '…'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className={`battle-response ${loading||!m?'loading':''}`}>
@@ -358,9 +368,14 @@ export default function XDuel() {
                           <span className="response-time-label">Response time</span>
                           <span className="response-time-value" style={{color: cardColor}}>
                             {(m.responseTime / 1000).toFixed(2)}s
-                            {models.every((other, j) => j === i || m.responseTime <= other.responseTime) && (
-                              <span style={{marginLeft:6,fontSize:9,letterSpacing:'0.1em',color:cardColor}}>⚡ fastest</span>
-                            )}
+                            {(() => {
+                              const maxTime = Math.max(...models.map(x => x.responseTime))
+                              if (m.responseTime < maxTime) {
+                                const pct = Math.round((maxTime - m.responseTime) / maxTime * 100)
+                                return <span style={{marginLeft:6,fontSize:9,letterSpacing:'0.1em',color:cardColor}}>⚡ {pct}% faster</span>
+                              }
+                              return null
+                            })()}
                           </span>
                         </div>
                         {showPrices && (
