@@ -82,8 +82,11 @@ export default function XDuel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'API error')
+      const text = await res.text()
+      if (!text) throw new Error('Empty response from server')
+      let data: any
+      try { data = JSON.parse(text) } catch { throw new Error('Invalid response from server') }
+      if (!res.ok) throw new Error(data.error ?? `Server error ${res.status}`)
       setModelA(data.modelA)
       setModelB(data.modelB)
     } catch (err: unknown) {
