@@ -1,10 +1,9 @@
 // app/api/duel/route.ts
-// Streams N models in parallel via SSE
-// Events: meta | delta:{index} | done:{index} | error:{index}
-// Request body: { prompt, mode?, count? }  — count defaults to 2, max 4
+// N workers share a shuffled model queue.
+// Each worker pops the next model, calls it, retries on failure.
 
 import { createClient } from '@supabase/supabase-js'
-import { getModelsByMode, pickN, ModelEntry } from '../../../lib/models'
+import { getModelsByMode, ModelEntry } from '../../../lib/models'
 
 const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions'
 const LOG = '[duel]'
@@ -13,7 +12,7 @@ function sse(event: string, data: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 }
 
-async function getModels(mode: string, count: number): Promise<ModelEntry[]> {
+async function getModels(mode: string): Promise<ModelEntry[]> {
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +25,7 @@ async function getModels(mode: string, count: number): Promise<ModelEntry[]> {
       .eq('enabled', true)
 
     if (error) throw new Error(error.message)
-    if (!data || data.length < count) throw new Error(`Not enough models in DB (need ${count}, have ${data?.length ?? 0})`)
+    if (!data || data.length < 2) throw new Error('Not enough models in DB')
 
     console.log(`${LOG} Loaded ${data.length} ${mode} models from Supabase`)
     return data.map(row => ({
@@ -43,73 +42,119 @@ async function getModels(mode: string, count: number): Promise<ModelEntry[]> {
   }
 }
 
-async function streamModel(
+// Try one model — returns true on success, false on any error
+async function tryModel(
   model: ModelEntry,
   index: number,
   prompt: string,
   controller: ReadableStreamDefaultController
-) {
+): Promise<boolean> {
   const start = Date.now()
   let tokens = 0
 
-  const res = await fetch(GATEWAY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: model.id,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 512,
-      stream: true,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch(GATEWAY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: model.id,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 512,
+        stream: true,
+      }),
+    })
+  } catch (err) {
+    console.warn(`${LOG} Slot[${index}] ${model.id} fetch error:`, err)
+    return false
+  }
 
   if (!res.ok || !res.body) {
-    const err = await res.text()
-    controller.enqueue(sse(`error:${index}`, { index, message: `${res.status}: ${err}` }))
-    return
+    const errText = await res.text().catch(() => res.statusText)
+    console.warn(`${LOG} Slot[${index}] ${model.id} HTTP ${res.status}: ${errText.slice(0, 120)}`)
+    return false
   }
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const raw = line.slice(6).trim()
-      if (raw === '[DONE]') continue
-      try {
-        const chunk = JSON.parse(raw)
-        const delta = chunk.choices?.[0]?.delta?.content
-        if (delta) {
-          tokens++
-          controller.enqueue(sse(`delta:${index}`, { index, text: delta }))
-        }
-        if (chunk.usage?.completion_tokens) {
-          tokens = chunk.usage.completion_tokens
-        }
-      } catch {}
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const raw = line.slice(6).trim()
+        if (raw === '[DONE]') continue
+        try {
+          const chunk = JSON.parse(raw)
+          const delta = chunk.choices?.[0]?.delta?.content
+          if (delta) {
+            tokens++
+            controller.enqueue(sse(`delta:${index}`, { index, text: delta }))
+          }
+          if (chunk.usage?.completion_tokens) {
+            tokens = chunk.usage.completion_tokens
+          }
+        } catch {}
+      }
     }
+  } catch (err) {
+    console.warn(`${LOG} Slot[${index}] ${model.id} stream error:`, err)
+    return false
   }
 
   const responseTime = Date.now() - start
-  console.log(`${LOG} Model[${index}] ${model.id} done: ${tokens} tokens ${responseTime}ms`)
+  console.log(`${LOG} Slot[${index}] ${model.id} done: ${tokens} tokens ${responseTime}ms`)
   controller.enqueue(sse(`done:${index}`, { index, tokens, responseTime }))
+  return true
+}
+
+// Worker: keeps popping from the shared queue until one succeeds
+async function runWorker(
+  index: number,
+  queue: ModelEntry[],       // shared mutable array — pop() is the sync "lock"
+  prompt: string,
+  controller: ReadableStreamDefaultController,
+  resolvedModels: ModelEntry[]
+) {
+  while (queue.length > 0) {
+    const model = queue.shift()!  // grab next available model
+    console.log(`${LOG} Slot[${index}] trying ${model.id} (${queue.length} left in queue)`)
+
+    // Update meta so frontend shows who is currently being tried
+    controller.enqueue(sse(`trying:${index}`, {
+      index,
+      name:        model.name,
+      provider:    model.provider,
+      outputPrice: model.outputPrice,
+      priceLabel:  `$${model.outputPrice.toFixed(2)} / 1M tokens`,
+    }))
+
+    const ok = await tryModel(model, index, prompt, controller)
+    if (ok) {
+      resolvedModels[index] = model
+      return
+    }
+    // Failed — loop will try next model from queue
+  }
+  // Queue exhausted
+  console.error(`${LOG} Slot[${index}] all models exhausted`)
+  controller.enqueue(sse(`done:${index}`, { index, tokens: 0, responseTime: 0, failed: true }))
 }
 
 export async function POST(req: Request) {
   const { prompt, mode = 'text', count = 2 } = await req.json()
-  const n = Math.min(Math.max(2, count), 4)  // clamp 2–4
+  const n = Math.min(Math.max(2, count), 4)
 
   if (!prompt || prompt.trim().length < 3) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
@@ -118,13 +163,16 @@ export async function POST(req: Request) {
     return Response.json({ error: 'AI_GATEWAY_API_KEY not set' }, { status: 500 })
   }
 
-  const pool = await getModels(mode, n)
+  const pool = await getModels(mode)
   if (pool.length < n) {
     return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
   }
 
-  const contestants = pickN(pool, n)
-  console.log(`${LOG} Duel (${n}): ${contestants.map(m => m.id).join(' vs ')}`)
+  // Shuffle once — shared queue all workers draw from
+  const queue: ModelEntry[] = [...pool].sort(() => Math.random() - 0.5)
+  const resolvedModels: ModelEntry[] = new Array(n)
+
+  console.log(`${LOG} Starting duel: ${n} workers, ${queue.length} models in queue`)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -132,21 +180,23 @@ export async function POST(req: Request) {
       const enqueueRaw = controller.enqueue.bind(controller)
       controller.enqueue = (chunk: string) => enqueueRaw(enc.encode(chunk))
 
-      // Send metadata for all models first
-      controller.enqueue(sse('meta', {
-        count: n,
-        models: contestants.map(m => ({
+      // Send initial meta with placeholder names — will update via trying/resolved events
+      controller.enqueue(sse('meta', { count: n }))
+
+      // Launch all workers in parallel — they compete for models from the shared queue
+      await Promise.all(
+        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, controller, resolvedModels))
+      )
+
+      // Send final resolved models for the reveal step
+      controller.enqueue(sse('resolved', {
+        models: resolvedModels.map(m => m ? {
           name:        m.name,
           provider:    m.provider,
           outputPrice: m.outputPrice,
           priceLabel:  `$${m.outputPrice.toFixed(2)} / 1M tokens`,
-        })),
+        } : null),
       }))
-
-      // Stream all models in parallel
-      await Promise.all(
-        contestants.map((m, i) => streamModel(m, i, prompt, controller))
-      )
 
       controller.close()
     },

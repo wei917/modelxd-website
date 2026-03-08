@@ -48,7 +48,8 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <Link href="/" className="nav-logo-text">
+      <Link href="/" className="nav-logo-text" style={{display:'flex',alignItems:'center',gap:8}}>
+        <img src="/logo.png" alt="ModelXD" style={{width:28,height:28,borderRadius:6}} />
         Model<span className="x">X</span><span className="d">D</span>
       </Link>
       <div className="nav-links">

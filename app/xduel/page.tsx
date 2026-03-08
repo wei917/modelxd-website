@@ -121,9 +121,10 @@ export default function XDuel() {
               const payload = JSON.parse(line.slice(6))
 
               if (currentEvent === 'meta') {
-                // Initialize model states from meta
-                const initialModels: ModelState[] = payload.models.map((m: ModelMeta) => ({
-                  meta:         m,
+                // Initialize N empty slots — meta filled in via trying: events
+                const emptyMeta: ModelMeta = { name: '…', provider: '…', outputPrice: 0, priceLabel: '…' }
+                const initialModels: ModelState[] = Array.from({ length: payload.count }, () => ({
+                  meta:         emptyMeta,
                   text:         '',
                   tokens:       0,
                   responseTime: 0,
@@ -133,6 +134,13 @@ export default function XDuel() {
                 }))
                 setModels(initialModels)
                 setLoading(false)
+
+              } else if (currentEvent.startsWith('trying:')) {
+                // Worker picked a model — update that slot's meta
+                const idx = payload.index
+                setModels(prev => prev.map((m, i) =>
+                  i === idx ? { ...m, meta: { name: payload.name, provider: payload.provider, outputPrice: payload.outputPrice, priceLabel: payload.priceLabel }, text: '', streaming: true, done: false } : m
+                ))
 
               } else if (currentEvent.startsWith('delta:')) {
                 const idx = payload.index
@@ -152,6 +160,13 @@ export default function XDuel() {
                     done:         true,
                   } : m
                 ))
+
+              } else if (currentEvent === 'resolved') {
+                                // Update with actually-used models after any fallbacks
+                                setModels(prev => prev.map((m, i) => ({
+                                  ...m,
+                                  meta: payload.models[i] ?? m.meta,
+                                })))
 
               } else if (currentEvent.startsWith('error:')) {
                 const idx = payload.index
