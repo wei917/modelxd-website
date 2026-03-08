@@ -318,7 +318,12 @@ export default function XDuel() {
                     <div key={i} className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''}`}>
                       <div className="battle-card-header">
                         <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
-                        <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
+                        <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s',display:'flex',alignItems:'center',gap:8}}>
+                          {m?.done && bothDone && (
+                            <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--muted2)'}}>
+                              ⏱ {(m.responseTime/1000).toFixed(2)}s
+                            </span>
+                          )}
                           <span className="price-badge" style={{color: cheapest ? '#34d399' : 'var(--red)'}}>
                             {m?.meta.priceLabel ?? '…'}
                           </span>
@@ -330,7 +335,19 @@ export default function XDuel() {
                           : <><div className="markdown-body"><ReactMarkdown>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
-                      {m?.done && bothDone && (
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Stats row — response time + cost, one column per model */}
+              {bothDone && (
+                <div className="stats-row" style={{gridTemplateColumns:`repeat(${models.length},1fr)`}}>
+                  {models.map((m, i) => {
+                    const cheapest  = i === cheapestIdx
+                    const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
+                    return (
+                      <div key={i} className="stats-cell">
                         <div className="response-time-bar">
                           <span className="response-time-label">Response time</span>
                           <span className="response-time-value" style={{color: cardColor}}>
@@ -340,51 +357,62 @@ export default function XDuel() {
                             )}
                           </span>
                         </div>
-                      )}
-                      {showPrices && m?.done && (
-                        <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
-                          <span className="price-label">Estimated cost</span>
-                          <span style={{display:'flex',alignItems:'center',gap:8}}>
-                            <span style={{fontFamily:'var(--mono)',fontSize:12,color: cheapest ? '#34d399' : 'var(--muted2)'}}>
-                              ~${m.cost < 0.0001 ? m.cost.toExponential(2) : m.cost.toFixed(5)}
-                            </span>
-                            {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
-                              <span style={{fontFamily:'var(--mono)',fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>
-                                💰 {Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) / mostExpensive.meta.outputPrice * 100)}% saving
+                        {showPrices && (
+                          <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
+                            <span className="price-label">Estimated cost</span>
+                            <span style={{display:'flex',alignItems:'center',gap:8}}>
+                              <span style={{fontFamily:'var(--mono)',fontSize:12,color: cheapest ? '#34d399' : 'var(--muted2)'}}>
+                                ~${m.cost < 0.0001 ? m.cost.toExponential(2) : m.cost.toFixed(5)}
                               </span>
-                            )}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                              {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
+                                <span style={{fontFamily:'var(--mono)',fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>
+                                  💰 {Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) / mostExpensive.meta.outputPrice * 100)}% saving
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
-              {/* Vote row */}
+              {/* Vote row — A | ... | Tie | ... | B */}
               <div className="vote-row">
-                {LABELS.slice(0, models.length || count).map((label, i) => {
-                  const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
-                  const voted = currentVote === i
-                  return (
+                {(() => {
+                  const total = models.length || count
+                  const half = Math.ceil(total / 2)
+                  const allLabels = LABELS.slice(0, total)
+                  const left = allLabels.slice(0, half)
+                  const right = allLabels.slice(half)
+                  const makeBtn = (label: string, i: number) => {
+                    const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
+                    const voted = currentVote === i
+                    return (
+                      <button
+                        key={i}
+                        className={`btn-vote ${voted ? 'voted' : ''}`}
+                        style={voted ? {borderColor: cardColor, color: cardColor} : {}}
+                        onClick={() => phase==='vote' ? castVote(i) : castRevote(i)}
+                        disabled={!bothDone || currentVote !== null}
+                      >
+                        {voted ? `✓ Picked ${label}` : `${label} is better`}
+                      </button>
+                    )
+                  }
+                  return <>
+                    {left.map((label, i) => makeBtn(label, i))}
                     <button
-                      key={i}
-                      className={`btn-vote ${voted ? 'voted' : ''}`}
-                      style={voted ? {borderColor: cardColor, color: cardColor} : {}}
-                      onClick={() => phase==='vote' ? castVote(i) : castRevote(i)}
+                      className={`btn-tie ${currentVote==='T'?'voted':''}`}
+                      onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
                       disabled={!bothDone || currentVote !== null}
                     >
-                      {voted ? `✓ Picked ${label}` : `${label} is better`}
-                    </button>
-                  )
-                })}
-                <button
-                  className={`btn-tie ${currentVote==='T'?'voted':''}`}
-                  onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
-                  disabled={!bothDone || currentVote !== null}
-                >
                   {currentVote==='T' ? '✓ Tied' : '⚖ Tie'}
-                </button>
+                    </button>
+                    {right.map((label, i) => makeBtn(label, half + i))}
+                  </>
+                })()}
               </div>
 
               <div className="action-bar">
