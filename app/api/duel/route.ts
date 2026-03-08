@@ -7,6 +7,7 @@ import { getModelsByMode, ModelEntry } from '../../../lib/models'
 
 const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions'
 const LOG = '[duel]'
+const TIMEOUT_MS = 15000  // 15s per model attempt
 
 function sse(event: string, data: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -42,7 +43,6 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
   }
 }
 
-// Try one model — returns true on success, false on any error
 async function tryModel(
   model: ModelEntry,
   index: number,
@@ -52,9 +52,11 @@ async function tryModel(
   const start = Date.now()
   let tokens = 0
 
+  console.log(`${LOG} Slot[${index}] fetching ${model.id}...`)
+
   let res: Response
   try {
-    res = await fetch(GATEWAY_URL, {
+    const fetchPromise = fetch(GATEWAY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,25 +69,43 @@ async function tryModel(
         stream: true,
       }),
     })
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+    )
+    res = await Promise.race([fetchPromise, timeoutPromise])
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} fetch error:`, err)
+    console.warn(`${LOG} Slot[${index}] ${model.id} fetch failed: ${err}`)
     return false
   }
 
+  console.log(`${LOG} Slot[${index}] ${model.id} HTTP ${res.status}`)
+
   if (!res.ok || !res.body) {
     const errText = await res.text().catch(() => res.statusText)
-    console.warn(`${LOG} Slot[${index}] ${model.id} HTTP ${res.status}: ${errText.slice(0, 120)}`)
+    console.warn(`${LOG} Slot[${index}] ${model.id} error body: ${errText.slice(0, 200)}`)
     return false
   }
+
+  console.log(`${LOG} Slot[${index}] ${model.id} streaming...`)
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let firstChunk = true
 
   try {
     while (true) {
-      const { done, value } = await reader.read()
+      const readPromise = reader.read()
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Stream read timeout`)), TIMEOUT_MS)
+      )
+      const { done, value } = await Promise.race([readPromise, timeoutPromise])
       if (done) break
+
+      if (firstChunk) {
+        console.log(`${LOG} Slot[${index}] ${model.id} first chunk received (+${Date.now()-start}ms)`)
+        firstChunk = false
+      }
 
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\n')
@@ -109,29 +129,27 @@ async function tryModel(
       }
     }
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} stream error:`, err)
+    console.warn(`${LOG} Slot[${index}] ${model.id} stream error: ${err}`)
     return false
   }
 
   const responseTime = Date.now() - start
-  console.log(`${LOG} Slot[${index}] ${model.id} done: ${tokens} tokens ${responseTime}ms`)
+  console.log(`${LOG} Slot[${index}] ${model.id} complete: ${tokens} tokens ${responseTime}ms`)
   controller.enqueue(sse(`done:${index}`, { index, tokens, responseTime }))
   return true
 }
 
-// Worker: keeps popping from the shared queue until one succeeds
 async function runWorker(
   index: number,
-  queue: ModelEntry[],       // shared mutable array — pop() is the sync "lock"
+  queue: ModelEntry[],
   prompt: string,
   controller: ReadableStreamDefaultController,
   resolvedModels: ModelEntry[]
 ) {
   while (queue.length > 0) {
-    const model = queue.shift()!  // grab next available model
-    console.log(`${LOG} Slot[${index}] trying ${model.id} (${queue.length} left in queue)`)
+    const model = queue.shift()!
+    console.log(`${LOG} Slot[${index}] trying ${model.id} (${queue.length} remaining in queue)`)
 
-    // Update meta so frontend shows who is currently being tried
     controller.enqueue(sse(`trying:${index}`, {
       index,
       name:        model.name,
@@ -145,9 +163,9 @@ async function runWorker(
       resolvedModels[index] = model
       return
     }
-    // Failed — loop will try next model from queue
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed — trying next`)
   }
-  // Queue exhausted
+
   console.error(`${LOG} Slot[${index}] all models exhausted`)
   controller.enqueue(sse(`done:${index}`, { index, tokens: 0, responseTime: 0, failed: true }))
 }
@@ -168,11 +186,10 @@ export async function POST(req: Request) {
     return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
   }
 
-  // Shuffle once — shared queue all workers draw from
   const queue: ModelEntry[] = [...pool].sort(() => Math.random() - 0.5)
   const resolvedModels: ModelEntry[] = new Array(n)
 
-  console.log(`${LOG} Starting duel: ${n} workers, ${queue.length} models in queue`)
+  console.log(`${LOG} Starting duel: ${n} workers, ${queue.length} models in queue: ${queue.map(m=>m.id).join(', ')}`)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -180,15 +197,12 @@ export async function POST(req: Request) {
       const enqueueRaw = controller.enqueue.bind(controller)
       controller.enqueue = (chunk: string) => enqueueRaw(enc.encode(chunk))
 
-      // Send initial meta with placeholder names — will update via trying/resolved events
       controller.enqueue(sse('meta', { count: n }))
 
-      // Launch all workers in parallel — they compete for models from the shared queue
       await Promise.all(
         Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, controller, resolvedModels))
       )
 
-      // Send final resolved models for the reveal step
       controller.enqueue(sse('resolved', {
         models: resolvedModels.map(m => m ? {
           name:        m.name,
