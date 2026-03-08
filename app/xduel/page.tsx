@@ -245,14 +245,7 @@ export default function XDuel() {
                   </button>
                 ))}
               </div>
-              {/* Count selector */}
-              <div className="mode-selector" style={{marginTop:8}}>
-                {[2,3,4].map(n => (
-                  <button key={n} className={`mode-btn ${count===n?'active':''}`} onClick={() => setCount(n)}>
-                    <span className="mode-dot" />{n} Models
-                  </button>
-                ))}
-              </div>
+
               <div className="prompt-box">
                 <textarea
                   className="prompt-textarea"
