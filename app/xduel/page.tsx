@@ -268,6 +268,12 @@ export default function XDuel() {
                   placeholder="Ask anything... e.g. 'Explain quantum entanglement in simple terms'"
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      if (prompt.trim().length >= 3) startDuel()
+                    }
+                  }}
                 />
                 <div className="prompt-actions">
                   <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
