@@ -32,25 +32,31 @@ export async function GET(request: Request) {
       const user = data.user
       const meta = user.user_metadata
 
-      // Update last_sign_in in profiles
+      // Safe metadata from Google/Apple — no tokens
+      const safeMetadata = {
+        email:          user.email,
+        full_name:      meta?.full_name ?? null,
+        avatar_url:     meta?.avatar_url ?? null,
+        provider:       user.app_metadata?.provider ?? null,
+        email_verified: user.email_confirmed_at != null,
+      }
+
+      // Update profiles — latest login info + metadata
       await supabase
         .from('profiles')
-        .update({ last_sign_in: new Date().toISOString() })
+        .update({
+          last_sign_in: new Date().toISOString(),
+          metadata:     safeMetadata,
+        })
         .eq('id', user.id)
 
-      // Log the login event — safe fields only, no tokens
+      // Log every login event with metadata for history
       await supabase
         .from('activity_logs')
         .insert({
           user_id:  user.id,
           event:    'login',
-          metadata: {
-            email:          user.email,
-            full_name:      meta?.full_name ?? null,
-            avatar_url:     meta?.avatar_url ?? null,
-            provider:       user.app_metadata?.provider ?? null,
-            email_verified: user.email_confirmed_at != null,
-          },
+          metadata: safeMetadata,
         })
 
       return NextResponse.redirect(`${origin}${next}`)
