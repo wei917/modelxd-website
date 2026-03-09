@@ -37,7 +37,7 @@ export const MODELS: ModelEntry[] = [
   { id: 'alibaba/wan-v2.6-t2v',        name: 'Wan 2.6 Text-to-Video',provider: 'Alibaba', inputPrice: 0,     outputPrice: 0.10,  modes: ['video'] },
 ]
 
-export function getModelsByMode(modes: ['text'] | 'image' | 'video'): ModelEntry[] {
+export function getModelsByMode(mode: 'text' | 'image' | 'video'): ModelEntry[] {
   return MODELS.filter(m => m.modes.includes(mode))
 }
 
