@@ -18,6 +18,7 @@ type ModelMeta = {
 type ModelState = {
   meta: ModelMeta
   text: string
+  isImage: boolean
   tokens: number
   responseTime: number
   streaming: boolean
