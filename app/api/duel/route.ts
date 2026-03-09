@@ -4,10 +4,13 @@
 
 import { getModelsByMode, ModelEntry } from '../../../lib/models'
 
+export const maxDuration = 300 // Vercel Pro max — needed for slow image models
+
 const GATEWAY_URL      = 'https://ai-gateway.vercel.sh/v1/chat/completions'
 const GATEWAY_IMG_URL  = 'https://ai-gateway.vercel.sh/v1/images/generations'
 const LOG              = '[duel]'
-const TIMEOUT_MS       = 30000  // 30s (image gen takes longer)
+const TIMEOUT_MS       = 30000
+const TIMEOUT_IMG_MS   = 120000  // 2 min for image gen
 
 function sse(event: string, data: object) {
   return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -146,6 +149,12 @@ async function tryImageModel(
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
 
+  const isXai = model.id.toLowerCase().includes('grok') || model.provider?.toLowerCase() === 'xai'
+
+  // xAI does not support size, n, quality, or style params
+  const body: Record<string, unknown> = { model: model.id, prompt }
+  if (!isXai) { body.n = 1; body.size = '1024x1024' }
+
   let res: Response
   try {
     res = await Promise.race([
@@ -155,14 +164,9 @@ async function tryImageModel(
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
         },
-        body: JSON.stringify({
-          model:  model.id,
-          prompt,
-          n:      1,
-          size:   '1024x1024',
-        }),
+        body: JSON.stringify(body),
       }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_MS)),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_IMG_MS)),
     ])
   } catch (err) {
     console.warn(`${LOG} Slot[${index}] ${model.id} fetch failed: ${err}`)
