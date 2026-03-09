@@ -478,6 +478,16 @@ export default function XDuel() {
                         <div className="reveal-price" style={{color:wins?'#34d399':'var(--red)'}}>
                           {m.meta.priceLabel}
                         </div>
+                        <div style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--muted2)',marginTop:4}}>
+                          {(() => {
+                            const maxTime = Math.max(...models.map(x => x.responseTime))
+                            const pct = m.responseTime < maxTime ? Math.round((maxTime - m.responseTime) / maxTime * 100) : null
+                            return <>
+                              <span style={{color:'var(--white)'}}>⏱ {(m.responseTime/1000).toFixed(2)}s</span>
+                              {pct !== null && <span style={{marginLeft:6,color:'#4a9eff'}}>⚡ {pct}% faster</span>}
+                            </>
+                          })()}
+                        </div>
                         <div className="reveal-stat" style={{color:wins?'#34d399':'var(--muted2)'}}>
                           {wins
                             ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at 10M tokens`
