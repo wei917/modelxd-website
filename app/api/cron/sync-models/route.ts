@@ -1,25 +1,25 @@
 // app/api/cron/sync-models/route.ts
 // Runs daily via Vercel Cron
-// Fetches ALL language/image/video models from Vercel AI Gateway
-// Upserts into Supabase ai_models — control visibility via enabled column in dashboard
+// Each model gets one row with modes[] array — e.g. ['text','image']
 
 import { createClient } from '@supabase/supabase-js'
 
 const GATEWAY_MODELS = 'https://ai-gateway.vercel.sh/v1/models'
 const LOG = '[sync-models]'
 
-// Only sync these types — skip embedding, moderation, etc.
-const SUPPORTED_MODES = new Set(['language', 'image', 'video'])
+// Gateway type → our mode name
+const TYPE_MAP: Record<string, string> = {
+  language: 'text',
+  image:    'image',
+  video:    'video',
+}
+const SUPPORTED_TYPES = new Set(Object.keys(TYPE_MAP))
 
 function parseReleasedAt(m: any): string | null {
-  // Gateway returns Unix timestamp in `released` field
-  // Could be missing (null/0) or a full date — we store as date string e.g. "2025-04-01"
   if (!m.released || m.released === 0) return null
   try {
     return new Date(m.released * 1000).toISOString().split('T')[0]
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
 function parseImagePricing(m: any): object | null {
@@ -38,10 +38,9 @@ export async function GET(req: Request) {
   const start = Date.now()
   console.log(`${LOG} Starting sync...`)
 
-  // Verify Vercel Cron secret
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    console.error(`${LOG} Unauthorized request`)
+    console.error(`${LOG} Unauthorized`)
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -50,75 +49,74 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SECRET_KEY!
   )
 
-  // Step 1: Fetch all models from gateway
-  console.log(`${LOG} Fetching model catalog from gateway...`)
+  // Fetch all models from gateway
+  console.log(`${LOG} Fetching model catalog...`)
   let allModels: any[]
   try {
     const res = await fetch(GATEWAY_MODELS)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     allModels = data.data
-    console.log(`${LOG} Fetched ${allModels.length} total models from gateway`)
+    console.log(`${LOG} Fetched ${allModels.length} total models`)
   } catch (err) {
-    console.error(`${LOG} Failed to fetch gateway models:`, err)
+    console.error(`${LOG} Failed to fetch:`, err)
     return Response.json({ error: 'Failed to fetch gateway models' }, { status: 502 })
   }
 
-  // Step 2: Filter to supported types only
-  const toSync = allModels.filter(m => SUPPORTED_MODES.has(m.type))
-  console.log(`${LOG} Filtered to ${toSync.length} language/image/video models`)
+  // Group by model id — one model may appear multiple times with different types
+  const modelMap = new Map<string, any>()
+  for (const m of allModels) {
+    if (!SUPPORTED_TYPES.has(m.type)) continue
+    const mode = TYPE_MAP[m.type]
 
-  // Step 3: Map to ai_models schema
-  // Note: enabled is NOT set here — we never overwrite it on update
-  // New models are inserted with enabled=false so you can review before enabling
-  const rows = toSync.map(m => ({
-    id:             m.id,
-    name:           m.name,
-    provider:       m.owned_by,
-    mode:           m.type === 'language' ? 'text' : m.type,  // normalize gateway 'language' → 'text'
-    input_price:    m.pricing?.input
-                      ? parseFloat(m.pricing.input) * 1_000_000
-                      : null,
-    output_price:   m.pricing?.output
-                      ? parseFloat(m.pricing.output) * 1_000_000
-                      : null,
-    image_pricing:  parseImagePricing(m),
-    video_pricing:  parseVideoPricing(m),
-    context_window: m.context_window ?? null,
-    max_tokens:     m.max_tokens ?? null,
-    tags:           m.tags ?? [],
-    released_at:    parseReleasedAt(m),
-    raw:            m,
-    synced_at:      new Date().toISOString(),
-  }))
+    if (modelMap.has(m.id)) {
+      // Already seen this model — just add the new mode
+      modelMap.get(m.id).modes.push(mode)
+    } else {
+      modelMap.set(m.id, {
+        id:             m.id,
+        name:           m.name,
+        provider:       m.owned_by,
+        modes:          [mode],
+        input_price:    m.pricing?.input  ? parseFloat(m.pricing.input)  * 1_000_000 : null,
+        output_price:   m.pricing?.output ? parseFloat(m.pricing.output) * 1_000_000 : null,
+        image_pricing:  parseImagePricing(m),
+        video_pricing:  parseVideoPricing(m),
+        context_window: m.context_window ?? null,
+        max_tokens:     m.max_tokens ?? null,
+        tags:           m.tags ?? [],
+        released_at:    parseReleasedAt(m),
+        raw:            m,
+        synced_at:      new Date().toISOString(),
+      })
+    }
+  }
 
-  // Step 4: Upsert — update pricing/metadata for existing models
-  // New models default to enabled=false (set in schema default)
-  // Existing models keep their enabled value unchanged (not in upsert payload)
+  const rows = Array.from(modelMap.values())
+  console.log(`${LOG} ${rows.length} unique models (${allModels.filter(m => SUPPORTED_TYPES.has(m.type)).length} entries merged)`)
+
+  // Upsert — never overwrite enabled
   const { error } = await supabase
     .from('ai_models')
-    .upsert(rows, {
-      onConflict: 'id',
-      ignoreDuplicates: false,  // always update pricing on existing rows
-    })
+    .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
 
   if (error) {
-    console.error(`${LOG} Supabase upsert failed:`, error.message)
+    console.error(`${LOG} Upsert failed:`, error.message)
     return Response.json({ error: error.message }, { status: 500 })
   }
 
   const duration = Date.now() - start
   console.log(`${LOG} Sync complete — ${rows.length} models upserted in ${duration}ms`)
-  console.log(`${LOG} Tip: go to Supabase Table Editor to enable/disable models`)
 
   return Response.json({
     ok:       true,
     synced:   rows.length,
     duration: `${duration}ms`,
     breakdown: {
-      text:  rows.filter(r => r.mode === 'text').length,
-      image: rows.filter(r => r.mode === 'image').length,
-      video: rows.filter(r => r.mode === 'video').length,
+      text:       rows.filter(r => r.modes.includes('text')).length,
+      image:      rows.filter(r => r.modes.includes('image')).length,
+      video:      rows.filter(r => r.modes.includes('video')).length,
+      multimodal: rows.filter(r => r.modes.length > 1).length,
     }
   })
 }

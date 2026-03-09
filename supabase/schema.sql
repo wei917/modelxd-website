@@ -5,7 +5,7 @@ create table if not exists ai_models (
   id              text primary key,       -- 'openai/gpt-4o'
   name            text not null,          -- 'GPT-4o'
   provider        text not null,          -- 'openai'
-  mode            text not null,          -- 'language' | 'image' | 'video'
+  modes           text[] not null,        -- ['text'], ['image'], ['text','image','video']
 
   -- Text pricing (per 1M tokens)
   input_price     numeric,
@@ -21,14 +21,18 @@ create table if not exists ai_models (
   context_window  bigint,
   max_tokens      bigint,
   tags            text[],
-  released_at     date,                 -- e.g. '2025-04-01', null if unknown
-
-  -- enabled=false by default — review new models in dashboard before enabling
+  released_at     date,
   enabled         boolean default false,
-
   raw             jsonb,
   synced_at       timestamptz default now()
 );
 
-create index if not exists ai_models_mode_idx    on ai_models(mode);
+-- GIN index for fast ANY(modes) queries
+create index if not exists ai_models_modes_idx   on ai_models using gin(modes);
 create index if not exists ai_models_enabled_idx on ai_models(enabled);
+
+-- Migration from old single 'mode' column (run if upgrading):
+-- alter table ai_models add column if not exists modes text[];
+-- update ai_models set modes = array[mode] where modes is null;
+-- alter table ai_models alter column modes set not null;
+-- alter table ai_models drop column if exists mode;

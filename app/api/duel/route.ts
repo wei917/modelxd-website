@@ -22,7 +22,7 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
     const { data, error } = await supabase
       .from('ai_models')
       .select('*')
-      .eq('mode', mode)
+      .contains('modes', [mode])
       .eq('enabled', true)
 
     if (error) throw new Error(error.message)
@@ -35,7 +35,7 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
       provider:    row.provider,
       outputPrice: row.output_price ?? 0,
       inputPrice:  row.input_price ?? 0,
-      mode:        mode as 'text' | 'image' | 'video',
+      modes:       [mode as 'text' | 'image' | 'video'],
     }))
   } catch (err) {
     console.warn(`${LOG} Supabase unavailable, using fallback:`, err)
