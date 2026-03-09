@@ -157,7 +157,9 @@ export default function XDuel() {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
-                    cost:         (payload.tokens / 1_000_000) * m.meta.outputPrice,
+                    cost:         payload.imageCost !== undefined
+                      ? payload.imageCost
+                      : (payload.tokens / 1_000_000) * m.meta.outputPrice,
                     streaming:    false,
                     done:         true,
                   } : m

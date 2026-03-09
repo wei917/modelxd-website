@@ -196,8 +196,9 @@ async function tryImageModel(
   console.log(`${LOG} Slot[${index}] ${model.id} image done: ${responseTime}ms`)
 
   // For image mode we send the full URL as a single delta, then done
+  const imageCost = model.outputPrice // outputPrice = price per image for image models
   controller.enqueue(sse(`delta:${index}`, { index, text: imageUrl, isImage: true }))
-  controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime }))
+  controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime, imageCost }))
   return true
 }
 
@@ -220,7 +221,9 @@ async function runWorker(
       name:       model.name,
       provider:   model.provider,
       outputPrice: model.outputPrice,
-      priceLabel: `$${model.outputPrice.toFixed(2)} / 1M tokens`,
+      priceLabel: mode === 'image'
+        ? `$${model.outputPrice.toFixed(3)} / image`
+        : `$${model.outputPrice.toFixed(2)} / 1M tokens`,
     }))
 
     const ok = mode === 'image'
