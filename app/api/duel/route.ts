@@ -179,8 +179,10 @@ async function tryImageModel(
   let imageUrl: string
   try {
     const data = await res.json()
-    imageUrl = data.data?.[0]?.url ?? data.data?.[0]?.b64_json
-    if (!imageUrl) throw new Error('No image URL in response')
+    const raw = data.data?.[0]?.url ?? data.data?.[0]?.b64_json
+    if (!raw) throw new Error('No image URL in response')
+    // If it's raw base64 (no http prefix), add data URI prefix
+    imageUrl = raw.startsWith('http') ? raw : `data:image/png;base64,${raw}`
   } catch (err) {
     console.warn(`${LOG} Slot[${index}] ${model.id} parse failed: ${err}`)
     return false
