@@ -348,7 +348,7 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
-                          : <><div className="markdown-body"><ReactMarkdown>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
+                          : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
                     </div>
@@ -362,31 +362,28 @@ export default function XDuel() {
                   {models.map((m, i) => {
                     const cheapest  = i === cheapestIdx
                     const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
+                    const maxTime   = Math.max(...models.map(x => x.responseTime))
+                    const pct       = m.responseTime < maxTime ? Math.round((maxTime - m.responseTime) / maxTime * 100) : null
                     return (
                       <div key={i} className="stats-cell">
-                        <div className="response-time-bar">
-                          <span className="response-time-label">Response time</span>
-                          <span className="response-time-value" style={{color: cardColor}}>
+                        <div className="stats-line">
+                          <span className="stats-label">Response Time</span>
+                          <span className="stats-value" style={{color: cardColor}}>
                             {(m.responseTime / 1000).toFixed(2)}s
-                            {(() => {
-                              const maxTime = Math.max(...models.map(x => x.responseTime))
-                              if (m.responseTime < maxTime) {
-                                const pct = Math.round((maxTime - m.responseTime) / maxTime * 100)
-                                return <span style={{marginLeft:6,fontSize:9,letterSpacing:'0.1em',color:cardColor}}>⚡ {pct}% faster</span>
-                              }
-                              return null
-                            })()}
+                            {pct !== null && (
+                              <span style={{marginLeft:6,fontSize:9,letterSpacing:'0.1em',color:cardColor}}>⚡ {pct}% faster</span>
+                            )}
                           </span>
                         </div>
                         {showPrices && (
-                          <div className="price-reveal-bar" style={{animation:'slideDown 0.35s ease forwards'}}>
-                            <span className="price-label">Estimated cost</span>
-                            <span style={{display:'flex',alignItems:'center',gap:8}}>
-                              <span style={{fontFamily:'var(--mono)',fontSize:12,color: cheapest ? '#34d399' : 'var(--muted2)'}}>
-                                ~${m.cost < 0.0001 ? m.cost.toExponential(2) : m.cost.toFixed(5)}
+                          <div className="stats-line" style={{animation:'slideDown 0.35s ease forwards'}}>
+                            <span className="stats-label">Estimated Cost</span>
+                            <span className="stats-value" style={{display:'flex',alignItems:'center',gap:8}}>
+                              <span style={{color: cheapest ? '#34d399' : 'var(--muted2)'}}>
+                                {m.cost < 0.0001 ? m.cost.toExponential(2) : '$' + m.cost.toFixed(5)}
                               </span>
                               {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
-                                <span style={{fontFamily:'var(--mono)',fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>
+                                <span style={{fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>
                                   💰 {Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) / mostExpensive.meta.outputPrice * 100)}% saving
                                 </span>
                               )}
@@ -414,7 +411,9 @@ export default function XDuel() {
                       <button
                         key={i}
                         className={`btn-vote ${voted ? 'voted' : ''}`}
-                        style={voted ? {borderColor: cardColor, color: cardColor} : {}}
+                        style={voted
+                          ? {borderColor: cardColor, color: cardColor, background: `${cardColor}18`}
+                          : {'--hover-color': cardColor} as React.CSSProperties}
                         onClick={() => phase==='vote' ? castVote(i) : castRevote(i)}
                         disabled={!bothDone || currentVote !== null}
                       >
