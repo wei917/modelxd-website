@@ -126,6 +126,7 @@ export default function XDuel() {
                 const initialModels: ModelState[] = Array.from({ length: payload.count }, () => ({
                   meta:         emptyMeta,
                   text:         '',
+            isImage:      false,
                   tokens:       0,
                   responseTime: 0,
                   streaming:    true,
@@ -348,6 +349,8 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
+                          : m.isImage
+                          ? <img src={m.text} alt="Generated" style={{width:'100%',borderRadius:4,display:'block'}} />
                           : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
