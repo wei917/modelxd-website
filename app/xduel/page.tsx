@@ -157,9 +157,7 @@ export default function XDuel() {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
-                    cost:         payload.imageCost !== undefined
-                      ? payload.imageCost
-                      : (payload.tokens / 1_000_000) * m.meta.outputPrice,
+                    cost:         payload.cost ?? (payload.tokens / 1_000_000) * m.meta.outputPrice,
                     streaming:    false,
                     done:         true,
                   } : m
@@ -386,7 +384,9 @@ export default function XDuel() {
                             <span className="stats-label">Estimated Cost</span>
                             <span className="stats-value" style={{display:'flex',alignItems:'center',gap:8}}>
                               <span style={{color: cheapest ? '#34d399' : 'var(--muted2)'}}>
-                                {m.cost < 0.0001 ? m.cost.toExponential(2) : '$' + m.cost.toFixed(5)}
+                                {m.isImage
+                                  ? `$${parseFloat(m.cost.toFixed(4))} / image`
+                                  : m.cost < 0.0001 ? m.cost.toExponential(2) : '$' + m.cost.toFixed(5)}
                               </span>
                               {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
                                 <span style={{fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>

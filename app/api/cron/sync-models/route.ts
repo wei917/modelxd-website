@@ -79,7 +79,9 @@ export async function GET(req: Request) {
         provider:       m.owned_by,
         modes:          [mode],
         input_price:    m.pricing?.input  ? parseFloat(m.pricing.input)  * 1_000_000 : null,
-        output_price:   m.pricing?.output ? parseFloat(m.pricing.output) * 1_000_000 : null,
+        output_price:   m.pricing?.output ? parseFloat(m.pricing.output) * 1_000_000
+                      : m.pricing?.image  ? parseFloat(m.pricing.image)               // image models: flat per-image price, no * 1M
+                      : null,
         image_pricing:  parseImagePricing(m),
         video_pricing:  parseVideoPricing(m),
         context_window: m.context_window ?? null,

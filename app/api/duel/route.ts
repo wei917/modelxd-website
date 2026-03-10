@@ -1,16 +1,19 @@
 // app/api/duel/route.ts
-// SSE streaming duel — text mode streams tokens, image mode returns URLs
-// N workers share a shuffled model queue with fallback retry.
+// SSE streaming duel — text mode streams tokens, image mode returns base64
+// Uses AI SDK (@ai-sdk/gateway) for accurate cost via providerMetadata.gateway.marketCost
 
+import { createGateway }               from '@ai-sdk/gateway'
+import { streamText, experimental_generateImage as generateImage } from 'ai'
 import { getModelsByMode, ModelEntry } from '../../../lib/models'
 
 export const maxDuration = 300 // Vercel Pro max — needed for slow image models
 
-const GATEWAY_URL      = 'https://ai-gateway.vercel.sh/v1/chat/completions'
-const GATEWAY_IMG_URL  = 'https://ai-gateway.vercel.sh/v1/images/generations'
-const LOG              = '[duel]'
-const TIMEOUT_MS       = 30000
-const TIMEOUT_IMG_MS   = 120000  // 2 min for image gen
+const LOG = '[duel]'
+
+const gateway = createGateway({
+  apiKey:  process.env.AI_GATEWAY_API_KEY,
+  baseURL: 'https://ai-gateway.vercel.sh/v1/ai',
+})
 
 function sse(event: string, data: object) {
   return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -47,7 +50,12 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
   }
 }
 
-// ── Text: streaming chat completions ─────────────────────────────────────────
+function priceLabel(mode: string, outputPrice: number): string {
+  if (mode === 'image') return `$${parseFloat(outputPrice.toFixed(4))} / image`
+  return `$${outputPrice.toFixed(2)} / 1M tokens`
+}
+
+// ── Text: streaming via AI SDK ────────────────────────────────────────────────
 
 async function tryTextModel(
   model: ModelEntry,
@@ -56,89 +64,43 @@ async function tryTextModel(
   controller: ReadableStreamDefaultController
 ): Promise<boolean> {
   const start = Date.now()
-  let tokens = 0
-
   console.log(`${LOG} Slot[${index}] text: ${model.id}`)
 
-  let res: Response
   try {
-    res = await Promise.race([
-      fetch(GATEWAY_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model:      model.id,
-          messages:   [{ role: 'user', content: prompt }],
-          max_tokens: 512,
-          stream:     true,
-        }),
-      }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`Timeout`)), TIMEOUT_MS)),
-    ])
-  } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} fetch failed: ${err}`)
-    return false
-  }
+    const result = streamText({
+      model:     gateway(model.id),
+      messages:  [{ role: 'user', content: prompt }],
+      maxTokens: 512,
+    })
 
-  console.log(`${LOG} Slot[${index}] ${model.id} HTTP ${res.status}`)
-  if (!res.ok || !res.body) {
-    const errText = await res.text().catch(() => res.statusText)
-    console.warn(`${LOG} Slot[${index}] error: ${errText.slice(0, 200)}`)
-    return false
-  }
-
-  const reader  = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer    = ''
-  let firstChunk = true
-
-  try {
-    while (true) {
-      const { done, value } = await Promise.race([
-        reader.read(),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Stream timeout')), TIMEOUT_MS)),
-      ])
-      if (done) break
-
+    let firstChunk = true
+    for await (const delta of result.textStream) {
       if (firstChunk) {
-        console.log(`${LOG} Slot[${index}] first chunk +${Date.now()-start}ms`)
+        console.log(`${LOG} Slot[${index}] first chunk +${Date.now() - start}ms`)
         firstChunk = false
       }
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
-        const raw = line.slice(6).trim()
-        if (raw === '[DONE]') continue
-        try {
-          const chunk = JSON.parse(raw)
-          const delta = chunk.choices?.[0]?.delta?.content
-          if (delta) {
-            tokens++
-            controller.enqueue(sse(`delta:${index}`, { index, text: delta }))
-          }
-          if (chunk.usage?.completion_tokens) tokens = chunk.usage.completion_tokens
-        } catch {}
-      }
+      controller.enqueue(sse(`delta:${index}`, { index, text: delta }))
     }
+
+    const usage    = await result.usage
+    const meta     = await result.providerMetadata
+    const tokens   = usage?.completionTokens ?? 0
+    // Use gateway's marketCost if available, else fall back to manual calc
+    const cost     = (meta?.gateway as any)?.marketCost
+                  ?? (tokens / 1_000_000) * model.outputPrice
+
+    const responseTime = Date.now() - start
+    console.log(`${LOG} Slot[${index}] ${model.id} done: ${tokens} tokens ${responseTime}ms cost=$${cost}`)
+    controller.enqueue(sse(`done:${index}`, { index, tokens, responseTime, cost }))
+    return true
+
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] stream error: ${err}`)
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${err}`)
     return false
   }
-
-  const responseTime = Date.now() - start
-  console.log(`${LOG} Slot[${index}] ${model.id} done: ${tokens} tokens ${responseTime}ms`)
-  controller.enqueue(sse(`done:${index}`, { index, tokens, responseTime }))
-  return true
 }
 
-// ── Image: single POST, returns URL ──────────────────────────────────────────
+// ── Image: via AI SDK generateImage ──────────────────────────────────────────
 
 async function tryImageModel(
   model: ModelEntry,
@@ -149,57 +111,33 @@ async function tryImageModel(
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
 
-  const isXai = model.id.toLowerCase().includes('grok') || model.provider?.toLowerCase() === 'xai'
-
-  // xAI does not support size, n, quality, or style params
-  const body: Record<string, unknown> = { model: model.id, prompt }
-  if (!isXai) { body.n = 1; body.size = '1024x1024' }
-
-  let res: Response
   try {
-    res = await Promise.race([
-      fetch(GATEWAY_IMG_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
-        },
-        body: JSON.stringify(body),
-      }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_IMG_MS)),
-    ])
+    const result = await generateImage({
+      model:  gateway.imageModel(model.id),
+      prompt,
+    })
+
+    const image = result.images?.[0]
+    if (!image) throw new Error('No image in response')
+
+    // AI SDK returns base64 for image-only models, url for multimodal
+    const imageUrl = image.url ?? `data:image/png;base64,${image.base64}`
+
+    const meta = result.providerMetadata
+    // Use gateway's marketCost if available, else use flat outputPrice from Supabase
+    const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
+
+    const responseTime = Date.now() - start
+    console.log(`${LOG} Slot[${index}] ${model.id} image done: ${responseTime}ms cost=$${cost}`)
+
+    controller.enqueue(sse(`delta:${index}`, { index, text: imageUrl, isImage: true }))
+    controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime, cost }))
+    return true
+
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} fetch failed: ${err}`)
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${err}`)
     return false
   }
-
-  console.log(`${LOG} Slot[${index}] ${model.id} HTTP ${res.status}`)
-  if (!res.ok) {
-    const errText = await res.text().catch(() => res.statusText)
-    console.warn(`${LOG} Slot[${index}] error: ${errText.slice(0, 200)}`)
-    return false
-  }
-
-  let imageUrl: string
-  try {
-    const data = await res.json()
-    const raw = data.data?.[0]?.url ?? data.data?.[0]?.b64_json
-    if (!raw) throw new Error('No image URL in response')
-    // If it's raw base64 (no http prefix), add data URI prefix
-    imageUrl = raw.startsWith('http') ? raw : `data:image/png;base64,${raw}`
-  } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} parse failed: ${err}`)
-    return false
-  }
-
-  const responseTime = Date.now() - start
-  console.log(`${LOG} Slot[${index}] ${model.id} image done: ${responseTime}ms`)
-
-  // For image mode we send the full URL as a single delta, then done
-  const imageCost = model.outputPrice // outputPrice = price per image for image models
-  controller.enqueue(sse(`delta:${index}`, { index, text: imageUrl, isImage: true }))
-  controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime, imageCost }))
-  return true
 }
 
 // ── Worker: pop model from queue, retry on failure ────────────────────────────
@@ -218,12 +156,10 @@ async function runWorker(
 
     controller.enqueue(sse(`trying:${index}`, {
       index,
-      name:       model.name,
-      provider:   model.provider,
+      name:        model.name,
+      provider:    model.provider,
       outputPrice: model.outputPrice,
-      priceLabel: mode === 'image'
-        ? `$${model.outputPrice.toFixed(3)} / image`
-        : `$${model.outputPrice.toFixed(2)} / 1M tokens`,
+      priceLabel:  priceLabel(mode, model.outputPrice),
     }))
 
     const ok = mode === 'image'
@@ -254,10 +190,10 @@ export async function POST(req: Request) {
     return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
   }
 
-  const queue: ModelEntry[]          = [...pool].sort(() => Math.random() - 0.5)
+  const queue: ModelEntry[]               = [...pool].sort(() => Math.random() - 0.5)
   const resolvedModels: (ModelEntry | null)[] = Array(n).fill(null)
 
-  console.log(`${LOG} Starting duel: ${n} workers, mode=${mode}, queue: ${queue.map(m=>m.id).join(', ')}`)
+  console.log(`${LOG} Starting duel: ${n} workers, mode=${mode}, queue: ${queue.map(m => m.id).join(', ')}`)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -272,7 +208,7 @@ export async function POST(req: Request) {
           provider:    m.provider,
           outputPrice: m.outputPrice,
           inputPrice:  m.inputPrice,
-          priceLabel:  `$${m.outputPrice.toFixed(2)} / 1M tokens`,
+          priceLabel:  priceLabel(mode, m.outputPrice),
         } : null)
       }))
       controller.close()
