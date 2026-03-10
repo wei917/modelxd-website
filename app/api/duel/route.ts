@@ -84,7 +84,7 @@ async function tryTextModel(
 
     const usage    = await result.usage
     const meta     = await result.providerMetadata
-    const tokens   = usage?.completionTokens ?? 0
+    const tokens   = usage?.outputTokens ?? 0
     // Use gateway's marketCost if available, else fall back to manual calc
     const cost     = (meta?.gateway as any)?.marketCost
                   ?? (tokens / 1_000_000) * model.outputPrice
@@ -120,8 +120,8 @@ async function tryImageModel(
     const image = result.images?.[0]
     if (!image) throw new Error('No image in response')
 
-    // AI SDK returns base64 for image-only models, url for multimodal
-    const imageUrl = image.url ?? `data:image/png;base64,${image.base64}`
+    // ai@6 GeneratedFile has base64 + mediaType, no .url
+    const imageUrl = `data:${image.mediaType};base64,${image.base64}`
 
     const meta = result.providerMetadata
     // Use gateway's marketCost if available, else use flat outputPrice from Supabase
