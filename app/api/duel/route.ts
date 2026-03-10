@@ -70,7 +70,7 @@ async function tryTextModel(
     const result = streamText({
       model:     gateway(model.id),
       messages:  [{ role: 'user', content: prompt }],
-      maxTokens: 512,
+      maxOutputTokens: 512,
     })
 
     let firstChunk = true
