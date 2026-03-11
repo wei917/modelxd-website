@@ -280,7 +280,11 @@ export default function XDuel() {
               <div className="prompt-box">
                 <textarea
                   className="prompt-textarea"
-                  placeholder="Ask anything... e.g. 'Explain quantum entanglement in simple terms'"
+                  placeholder={
+                    mode === 'image' ? "Describe an image... e.g. 'A cinematic photo of a red panda in a snowy forest at dusk'" :
+                    mode === 'video' ? "Describe a video... e.g. 'A timelapse of a thunderstorm rolling over a mountain range'" :
+                    "Ask anything... e.g. 'Explain quantum entanglement in simple terms'"
+                  }
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => {
