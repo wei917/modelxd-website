@@ -133,7 +133,8 @@ async function tryTextModel(
     return true
 
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${err}`)
+    const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
     return false
   }
 }
@@ -173,7 +174,8 @@ async function tryImageModel(
     return true
 
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${err}`)
+    const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
     return false
   }
 }
@@ -212,7 +214,8 @@ async function tryVideoModel(
     return true
 
   } catch (err) {
-    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${err}`)
+    const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
     return false
   }
 }
