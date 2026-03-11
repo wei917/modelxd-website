@@ -39,6 +39,10 @@ const LABELS = ['A','B','C','D']
 export default function XDuel() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
+  const setCursor = (color: string) => {
+    if (cursorRef.current) cursorRef.current.style.background = color
+    if (ringRef.current)   ringRef.current.style.borderColor  = color + '66'
+  }
 
   const [step,       setStep]       = useState(1)
   const [mode,       setMode]       = useState<Mode>('text')
@@ -157,7 +161,7 @@ export default function XDuel() {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
-                    cost:         payload.cost ?? (payload.tokens / 1_000_000) * m.meta.outputPrice,
+                    cost:         payload.cost != null ? Number(payload.cost) : (payload.tokens / 1_000_000) * m.meta.outputPrice,
                     streaming:    false,
                     done:         true,
                   } : m
@@ -320,10 +324,14 @@ export default function XDuel() {
                   const isVoted   = currentVote === i
                   const isOther   = currentVote !== null && currentVote !== 'T' && currentVote !== i
                   const cheapest  = i === cheapestIdx
-                  const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
-
+                  const cardColor    = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
+                  const cardColorHex = i === 0 ? '#4a9eff' : i === 1 ? '#e8453c' : i === 2 ? '#a78bfa' : '#34d399'
                   return (
-                    <div key={i} className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''}`}>
+                    <div key={i}
+                      className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''}`}
+                      onMouseEnter={() => setCursor(cardColorHex)}
+                      onMouseLeave={() => setCursor('#e8453c')}
+                    >
                       <div className="battle-card-header">
                         <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
                         <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -410,6 +418,7 @@ export default function XDuel() {
                   const allLabels = LABELS.slice(0, total)
                   const left = allLabels.slice(0, half)
                   const right = allLabels.slice(half)
+                  const cardColorHex2 = (i: number) => i === 0 ? '#4a9eff' : i === 1 ? '#e8453c' : i === 2 ? '#a78bfa' : '#34d399'
                   const makeBtn = (label: string, i: number) => {
                     const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
                     const voted = currentVote === i
@@ -422,6 +431,8 @@ export default function XDuel() {
                           : {'--hover-color': cardColor} as React.CSSProperties}
                         onClick={() => phase==='vote' ? castVote(i) : castRevote(i)}
                         disabled={!bothDone || currentVote !== null}
+                        onMouseEnter={() => setCursor(cardColorHex2(i))}
+                        onMouseLeave={() => setCursor('#e8453c')}
                       >
                         {voted ? `✓ Picked ${label}` : `${label} is better`}
                       </button>
@@ -433,6 +444,8 @@ export default function XDuel() {
                       className={`btn-tie ${currentVote==='T'?'voted':''}`}
                       onClick={() => phase==='vote' ? castVote('T') : castRevote('T')}
                       disabled={!bothDone || currentVote !== null}
+                      onMouseEnter={() => setCursor('#888888')}
+                      onMouseLeave={() => setCursor('#e8453c')}
                     >
                   {currentVote==='T' ? '✓ Tied' : '⚖ Tie'}
                     </button>
