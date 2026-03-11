@@ -3,7 +3,7 @@
 // Uses AI SDK (@ai-sdk/gateway) for accurate cost via providerMetadata.gateway.marketCost
 
 import { createGateway }               from '@ai-sdk/gateway'
-import { streamText, experimental_generateImage as generateImage } from 'ai'
+import { streamText, experimental_generateImage as generateImage, experimental_generateVideo as generateVideo } from 'ai'
 import { getModelsByMode, ModelEntry } from '../../../lib/models'
 
 export const maxDuration = 300 // Vercel Pro max — needed for slow image models
@@ -178,6 +178,45 @@ async function tryImageModel(
   }
 }
 
+// ── Video: via AI SDK generateVideo ──────────────────────────────────────────
+
+async function tryVideoModel(
+  model:      ModelEntry,
+  index:      number,
+  prompt:     string,
+  controller: ReadableStreamDefaultController
+): Promise<boolean> {
+  const start = Date.now()
+  console.log(`${LOG} Slot[${index}] video: ${model.id}`)
+
+  try {
+    const result = await generateVideo({
+      model:   gateway.videoModel(model.id),
+      prompt,
+      aspectRatio: '16:9',
+    })
+
+    const video = result.videos?.[0]
+    if (!video) throw new Error('No video in response')
+
+    const videoUrl = `data:${video.mediaType};base64,${video.base64}`
+
+    const meta = result.providerMetadata
+    const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
+
+    const responseTime = Date.now() - start
+    console.log(`${LOG} Slot[${index}] ${model.id} video done: ${responseTime}ms cost=$${cost}`)
+
+    controller.enqueue(sse(`delta:${index}`, { index, text: videoUrl, isVideo: true }))
+    controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime, cost }))
+    return true
+
+  } catch (err) {
+    console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${err}`)
+    return false
+  }
+}
+
 // ── Worker: pop model from queue, retry on failure ────────────────────────────
 
 async function runWorker(
@@ -202,6 +241,8 @@ async function runWorker(
 
     const ok = mode === 'image'
       ? await tryImageModel(model, index, prompt, controller)
+      : mode === 'video'
+      ? await tryVideoModel(model, index, prompt, controller)
       : await tryTextModel(model, index, prompt, controller)
 
     if (ok) {
@@ -211,6 +252,7 @@ async function runWorker(
     console.warn(`${LOG} Slot[${index}] ${model.id} failed — trying next`)
   }
   console.error(`${LOG} Slot[${index}] all models exhausted`)
+  controller.enqueue(sse(`error:${index}`, { index, message: 'All models failed — no response available for this slot.' }))
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────

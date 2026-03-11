@@ -19,6 +19,7 @@ type ModelState = {
   meta: ModelMeta
   text: string
   isImage: boolean
+  isVideo: boolean
   tokens: number
   responseTime: number
   streaming: boolean
@@ -133,6 +134,7 @@ export default function XDuel() {
                   meta:         emptyMeta,
                   text:         '',
             isImage:      false,
+            isVideo:      false,
                   tokens:       0,
                   responseTime: 0,
                   streaming:    true,
@@ -152,7 +154,7 @@ export default function XDuel() {
               } else if (currentEvent.startsWith('delta:')) {
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) =>
-                  i === idx ? { ...m, text: m.text + payload.text, isImage: payload.isImage ?? m.isImage } : m
+                  i === idx ? { ...m, text: m.text + payload.text, isImage: payload.isImage ?? m.isImage, isVideo: payload.isVideo ?? m.isVideo } : m
                 ))
 
               } else if (currentEvent.startsWith('done:')) {
@@ -362,11 +364,13 @@ export default function XDuel() {
                           </div>
                         </div>
                       </div>
-                      <div className={`battle-response ${loading||!m?'loading':''} ${mode==='image'?'image-response':''}`}>
+                      <div className={`battle-response ${loading||!m?'loading':''} ${(mode==='image'||mode==='video')?'image-response':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                           : m.isImage
-                          ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
+                          ? m.isVideo
+          ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
+          : <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
                           : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
