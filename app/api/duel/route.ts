@@ -197,18 +197,22 @@ async function tryVideoModel(
   console.log(`${LOG} Slot[${index}] video: ${model.id}`)
 
   try {
+    console.log(`${LOG} Slot[${index}] calling gateway.videoModel(${model.id})`)
     const result = await generateVideo({
       model:   gateway.videoModel(model.id),
       prompt,
       aspectRatio: '16:9',
     })
+    console.log(`${LOG} Slot[${index}] generateVideo returned, videos count: ${result.videos?.length}`)
 
     const video = result.videos?.[0]
     if (!video) throw new Error('No video in response')
 
+    console.log(`${LOG} Slot[${index}] video mediaType=${video.mediaType} base64Length=${video.base64?.length ?? 0}`)
     const videoUrl = `data:${video.mediaType};base64,${video.base64}`
 
     const meta = result.providerMetadata
+    console.log(`${LOG} Slot[${index}] providerMetadata=${JSON.stringify(meta)}`)
     const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
 
     const responseTime = Date.now() - start
@@ -221,6 +225,7 @@ async function tryVideoModel(
   } catch (err) {
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
     console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
+    if (err instanceof Error && err.stack) console.warn(`${LOG} stack: ${err.stack}`)
     return false
   }
 }
