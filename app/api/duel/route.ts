@@ -213,6 +213,7 @@ export async function POST(req: Request) {
   const queue: ModelEntry[]               = [...pool].sort(() => Math.random() - 0.5)
   const resolvedModels: (ModelEntry | null)[] = Array(n).fill(null)
 
+  console.log(`${LOG} Pool: ${pool.length} ${mode} models available`)
   console.log(`${LOG} Starting duel: ${n} workers, mode=${mode}, queue: ${queue.map(m => m.id).join(', ')}`)
 
   const stream = new ReadableStream({
