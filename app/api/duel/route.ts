@@ -202,14 +202,18 @@ async function tryVideoModel(
       model:   gateway.videoModel(model.id),
       prompt,
       aspectRatio: '16:9',
+      providerOptions: {
+        gateway: { pollTimeoutMs: 280_000 }, // just under Vercel's 300s max
+      },
     })
-    console.log(`${LOG} Slot[${index}] generateVideo returned, videos count: ${result.videos?.length}`)
+    console.log(`${LOG} Slot[${index}] generateVideo returned, video=${!!result.video} videos=${result.videos?.length}`)
 
-    const video = result.videos?.[0]
+    const video = result.video ?? result.videos?.[0]
     if (!video) throw new Error('No video in response')
 
-    console.log(`${LOG} Slot[${index}] video mediaType=${video.mediaType} base64Length=${video.base64?.length ?? 0}`)
-    const videoUrl = `data:${video.mediaType};base64,${video.base64}`
+    console.log(`${LOG} Slot[${index}] video base64Length=${video.base64?.length ?? 0} uint8ArrayLength=${video.uint8Array?.length ?? 0}`)
+    const mediaType = (video as any).mediaType ?? 'video/mp4'
+    const videoUrl = `data:${mediaType};base64,${video.base64}`
 
     const meta = result.providerMetadata
     console.log(`${LOG} Slot[${index}] providerMetadata=${JSON.stringify(meta)}`)
