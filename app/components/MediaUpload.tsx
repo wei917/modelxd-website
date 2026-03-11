@@ -5,9 +5,10 @@
 
 import { useState, useRef, useCallback } from 'react'
 
-// XDuel buckets are public  → onSuccess returns publicUrl directly
-// Create buckets are private → onSuccess returns path, call /api/upload/signed-read to view
-type Bucket = 'xduel-images' | 'xduel-videos' | 'create-images' | 'create-videos'
+// xduel-user-* buckets are public  → onSuccess returns publicUrl directly
+// create-user-* buckets are private → onSuccess returns path, call /api/upload/signed-read to view
+// Note: ai-* buckets are server-written (duel API), not used here
+type Bucket = 'xduel-user-images' | 'xduel-user-videos' | 'create-user-images' | 'create-user-videos'
 
 interface UploadResult {
   path: string
@@ -25,10 +26,10 @@ interface Props {
 }
 
 const DEFAULTS: Record<Bucket, { accept: string; label: string; maxSizeMB: number }> = {
-  'xduel-images':  { accept: 'image/jpeg,image/png,image/gif,image/webp',       label: 'Upload Image', maxSizeMB: 10  },
-  'xduel-videos':  { accept: 'video/mp4,video/webm,video/quicktime,video/mov',  label: 'Upload Video', maxSizeMB: 50  },
-  'create-images': { accept: 'image/jpeg,image/png,image/gif,image/webp',       label: 'Upload Image', maxSizeMB: 10  },
-  'create-videos': { accept: 'video/mp4,video/webm,video/quicktime,video/mov',  label: 'Upload Video', maxSizeMB: 500 },
+  'xduel-user-images':  { accept: 'image/jpeg,image/png,image/gif,image/webp',      label: 'Upload Image', maxSizeMB: 10  },
+  'xduel-user-videos':  { accept: 'video/mp4,video/webm,video/quicktime,video/mov', label: 'Upload Video', maxSizeMB: 500 },
+  'create-user-images': { accept: 'image/jpeg,image/png,image/gif,image/webp',      label: 'Upload Image', maxSizeMB: 10  },
+  'create-user-videos': { accept: 'video/mp4,video/webm,video/quicktime,video/mov', label: 'Upload Video', maxSizeMB: 500 },
 }
 
 export default function MediaUpload({

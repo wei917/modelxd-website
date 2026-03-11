@@ -7,12 +7,13 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
 const BUCKETS = {
-  // XDuel mode — public, server writes AI output (no user upload needed)
-  'xduel-images': { maxBytes: 10  * 1024 * 1024, mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
-  'xduel-videos': { maxBytes: 50  * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
-  // Create mode — private, user uploads + AI output
-  'create-images': { maxBytes: 10  * 1024 * 1024, mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
-  'create-videos': { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
+  // XDuel — public, user-uploaded reference inputs
+  'xduel-user-images': { maxBytes: 10  * 1024 * 1024, mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
+  'xduel-user-videos': { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
+  // Create — private, user-uploaded inputs
+  'create-user-images': { maxBytes: 10  * 1024 * 1024, mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
+  'create-user-videos': { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
+  // Note: ai-* buckets are written server-side in /api/duel, not via signed upload URLs
 } as const
 
 type Bucket = keyof typeof BUCKETS

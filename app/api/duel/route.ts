@@ -150,7 +150,8 @@ async function tryImageModel(
   model: ModelEntry,
   index: number,
   prompt: string,
-  controller: ReadableStreamDefaultController
+  controller: ReadableStreamDefaultController,
+  duelMode: string
 ): Promise<boolean> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
@@ -169,12 +170,12 @@ async function tryImageModel(
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
     const ext = image.mediaType?.split('/')[1] ?? 'png'
     const path = `${model.id.replace(/\//g, '-')}-${Date.now()}.${ext}`
-    const { error: uploadError } = await sb.storage.from('xduel-images').upload(path, image.uint8Array, {
+    const { error: uploadError } = await sb.storage.from(duelMode === 'create' ? 'create-ai-images' : 'xduel-ai-images').upload(path, image.uint8Array, {
       contentType: image.mediaType ?? 'image/png',
       upsert: false,
     })
     if (uploadError) throw new Error(`Supabase upload failed: ${uploadError.message}`)
-    const { data: { publicUrl: imageUrl } } = sb.storage.from('xduel-images').getPublicUrl(path)
+    const { data: { publicUrl: imageUrl } } = sb.storage.from(duelMode === 'create' ? 'create-ai-images' : 'xduel-ai-images').getPublicUrl(path)
     console.log(`${LOG} Slot[${index}] image uploaded: ${imageUrl}`)
 
     const meta = result.providerMetadata
@@ -201,7 +202,8 @@ async function tryVideoModel(
   model:      ModelEntry,
   index:      number,
   prompt:     string,
-  controller: ReadableStreamDefaultController
+  controller: ReadableStreamDefaultController,
+  duelMode:   string
 ): Promise<boolean> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] video: ${model.id}`)
@@ -243,12 +245,12 @@ async function tryVideoModel(
       const mediaType = (video as any).mediaType ?? 'video/mp4'
       const ext = mediaType.split('/')[1] ?? 'mp4'
       const path = `${model.id.replace(/\//g,'-')}-${Date.now()}.${ext}`
-      const { error: uploadError } = await sb.storage.from('xduel-videos').upload(path, video.uint8Array, {
+      const { error: uploadError } = await sb.storage.from(duelMode === 'create' ? 'create-ai-videos' : 'xduel-ai-videos').upload(path, video.uint8Array, {
         contentType: mediaType,
         upsert: false,
       })
       if (uploadError) throw new Error(`Supabase upload failed: ${uploadError.message}`)
-      const { data: { publicUrl } } = sb.storage.from('xduel-videos').getPublicUrl(path)
+      const { data: { publicUrl } } = sb.storage.from(duelMode === 'create' ? 'create-ai-videos' : 'xduel-ai-videos').getPublicUrl(path)
       videoUrl = publicUrl
       console.log(`${LOG} Slot[${index}] supabase uploaded: ${publicUrl}`)
     }
@@ -300,9 +302,9 @@ async function runWorker(
     }))
 
     const ok = mode === 'image'
-      ? await tryImageModel(model, index, prompt, controller)
+      ? await tryImageModel(model, index, prompt, controller, mode)
       : mode === 'video'
-      ? await tryVideoModel(model, index, prompt, controller)
+      ? await tryVideoModel(model, index, prompt, controller, mode)
       : await tryTextModel(model, index, prompt, controller)
 
     if (ok) {

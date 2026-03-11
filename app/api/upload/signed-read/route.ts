@@ -14,15 +14,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { path, bucket = 'create-videos', expiresIn = 3600 } = await req.json() as {
+    const { path, bucket = 'create-user-videos', expiresIn = 3600 } = await req.json() as {
       path: string
-      bucket?: 'create-images' | 'create-videos'
+      bucket?: 'create-ai-images' | 'create-ai-videos' | 'create-user-images' | 'create-user-videos'
       expiresIn?: number
     }
 
     // Only private (create-*) buckets need signed read URLs
     if (!bucket.startsWith('create-')) {
-      return NextResponse.json({ error: 'xduel buckets are public — use the direct URL' }, { status: 400 })
+      return NextResponse.json({ error: 'xduel-* buckets are public — use the direct URL' }, { status: 400 })
     }
 
     // Ensure the path belongs to this user
