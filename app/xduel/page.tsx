@@ -52,6 +52,7 @@ export default function XDuel() {
   const [apiError,   setApiError]   = useState<string | null>(null)
   const [models,     setModels]     = useState<ModelState[]>([])
   const [vote1,      setVote1]      = useState<Vote>(null)
+  const [lightbox,   setLightbox]   = useState<string | null>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
   const [showPrices, setShowPrices] = useState(false)
@@ -232,6 +233,12 @@ export default function XDuel() {
 
   return (
     <>
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
+          <img src={lightbox} alt="Full size" style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)'}} onClick={e => e.stopPropagation()} />
+          <button onClick={() => setLightbox(null)} style={{position:'absolute',top:24,right:32,background:'none',border:'none',color:'rgba(255,255,255,0.6)',fontSize:32,cursor:'none',lineHeight:1}}>&times;</button>
+        </div>
+      )}
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
       <Nav />
@@ -355,11 +362,11 @@ export default function XDuel() {
                           </div>
                         </div>
                       </div>
-                      <div className={`battle-response ${loading||!m?'loading':''}`}>
+                      <div className={`battle-response ${loading||!m?'loading':''}`} style={m?.isImage && !loading ? {padding:0} : {}}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                           : m.isImage
-                          ? <img src={m.text} alt="Generated" style={{width:'100%',borderRadius:4,display:'block'}} />
+                          ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
                           : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
