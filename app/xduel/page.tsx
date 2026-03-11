@@ -224,9 +224,15 @@ export default function XDuel() {
   const ratio   = cheapestModel && mostExpensive && cheapestModel.meta.outputPrice > 0
     ? Math.round(mostExpensive.meta.outputPrice / cheapestModel.meta.outputPrice)
     : 0
+  // text:  savings per 10M tokens
+  // image/video: savings per 1000 generations
+  const isMediaMode = mode === 'image' || mode === 'video'
   const monthly = cheapestModel && mostExpensive
-    ? Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 10)
+    ? isMediaMode
+      ? Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 1000)
+      : Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 10)
     : 0
+  const monthlyLabel = isMediaMode ? '1K generations' : '10M tokens'
 
   const userChoseCheaper = typeof vote2 === 'number' && vote2 === cheapestIdx
   const savingsEmoji = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
@@ -371,10 +377,10 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''} ${(mode==='image'||mode==='video')?'image-response':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
+                          : m.isVideo
+                          ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : m.isImage
-                          ? m.isVideo
-          ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
-          : <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
+                          ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
                           : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
@@ -524,7 +530,7 @@ export default function XDuel() {
                         </div>
                         <div className="reveal-stat" style={{color:wins?'#34d399':'var(--muted2)'}}>
                           {wins
-                            ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at 10M tokens`
+                            ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
                             : 'More expensive option'}
                         </div>
                       </div>
