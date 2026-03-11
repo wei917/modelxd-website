@@ -64,7 +64,6 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
 
     const data = rows
 
-    if (error) throw error
     if (!data || data.length < 2) throw new Error('Not enough models in DB')
 
     console.log(`${LOG} Loaded ${data.length} ${mode} models from Supabase`)
