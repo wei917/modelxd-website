@@ -14,7 +14,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { path, expiresIn = 3600 } = await req.json() as { path: string; expiresIn?: number }
+    const { path, bucket = 'create-videos', expiresIn = 3600 } = await req.json() as {
+      path: string
+      bucket?: 'create-images' | 'create-videos'
+      expiresIn?: number
+    }
+
+    // Only private (create-*) buckets need signed read URLs
+    if (!bucket.startsWith('create-')) {
+      return NextResponse.json({ error: 'xduel buckets are public — use the direct URL' }, { status: 400 })
+    }
 
     // Ensure the path belongs to this user
     if (!path.startsWith(`${user.id}/`)) {
@@ -27,7 +36,7 @@ export async function POST(req: NextRequest) {
     )
 
     const { data, error } = await supabaseAdmin.storage
-      .from('user-videos')
+      .from(bucket)
       .createSignedUrl(path, expiresIn) // default 1 hour
 
     if (error || !data) {

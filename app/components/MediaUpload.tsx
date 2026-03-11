@@ -5,26 +5,30 @@
 
 import { useState, useRef, useCallback } from 'react'
 
-type Bucket = 'user-images' | 'user-videos'
+// XDuel buckets are public  → onSuccess returns publicUrl directly
+// Create buckets are private → onSuccess returns path, call /api/upload/signed-read to view
+type Bucket = 'xduel-images' | 'xduel-videos' | 'create-images' | 'create-videos'
 
 interface UploadResult {
-  path: string        // storage path (always available)
-  publicUrl: string | null  // non-null for user-images only
+  path: string
+  publicUrl: string | null  // non-null for xduel-* (public), null for create-* (private)
 }
 
 interface Props {
   bucket: Bucket
-  accept?: string         // override default accept string
+  accept?: string
   label?: string
-  maxSizeMB?: number      // for display only — server enforces real limit
+  maxSizeMB?: number
   onSuccess?: (result: UploadResult) => void
   onError?: (msg: string) => void
   className?: string
 }
 
 const DEFAULTS: Record<Bucket, { accept: string; label: string; maxSizeMB: number }> = {
-  'user-images': { accept: 'image/jpeg,image/png,image/gif,image/webp', label: 'Upload Image',  maxSizeMB: 10  },
-  'user-videos': { accept: 'video/mp4,video/webm,video/quicktime,video/mov', label: 'Upload Video', maxSizeMB: 500 },
+  'xduel-images':  { accept: 'image/jpeg,image/png,image/gif,image/webp',       label: 'Upload Image', maxSizeMB: 10  },
+  'xduel-videos':  { accept: 'video/mp4,video/webm,video/quicktime,video/mov',  label: 'Upload Video', maxSizeMB: 50  },
+  'create-images': { accept: 'image/jpeg,image/png,image/gif,image/webp',       label: 'Upload Image', maxSizeMB: 10  },
+  'create-videos': { accept: 'video/mp4,video/webm,video/quicktime,video/mov',  label: 'Upload Video', maxSizeMB: 500 },
 }
 
 export default function MediaUpload({
@@ -89,7 +93,7 @@ export default function MediaUpload({
 
       setStatus('done')
       setProgress(100)
-      onSuccess?.({ path, publicUrl })
+      onSuccess?.({ path, publicUrl: publicUrl ?? null })
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Upload failed'

@@ -7,8 +7,12 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
 const BUCKETS = {
-  'user-images': { maxBytes: 10 * 1024 * 1024,  mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
-  'user-videos': { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
+  // XDuel mode — public, server writes AI output (no user upload needed)
+  'xduel-images': { maxBytes: 10  * 1024 * 1024, mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
+  'xduel-videos': { maxBytes: 50  * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
+  // Create mode — private, user uploads + AI output
+  'create-images': { maxBytes: 10  * 1024 * 1024, mimes: ['image/jpeg','image/png','image/gif','image/webp'] },
+  'create-videos': { maxBytes: 500 * 1024 * 1024, mimes: ['video/mp4','video/webm','video/quicktime','video/mov'] },
 } as const
 
 type Bucket = keyof typeof BUCKETS
@@ -68,8 +72,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create upload URL' }, { status: 500 })
     }
 
-    // Build the public URL (for user-images) or path (for user-videos, needs signed read URL)
-    const publicUrl = bucket === 'user-images'
+    // xduel buckets are public — return direct URL; create buckets are private — use /api/upload/signed-read
+    const isPublic = bucket.startsWith('xduel-')
+    const publicUrl = isPublic
       ? supabaseAdmin.storage.from(bucket).getPublicUrl(path).data.publicUrl
       : null
 
@@ -77,7 +82,7 @@ export async function POST(req: NextRequest) {
       signedUrl: data.signedUrl,
       token: data.token,
       path,
-      publicUrl, // non-null for user-images, null for user-videos
+      publicUrl,
     })
 
   } catch (err) {
