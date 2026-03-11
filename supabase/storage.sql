@@ -23,6 +23,28 @@ on conflict (id) do nothing;
 
 
 -- =============================================================
+-- Drop existing policies (safe to re-run)
+-- =============================================================
+
+drop policy if exists "xduel-ai-images: public read" on storage.objects;
+drop policy if exists "xduel-ai-videos: public read" on storage.objects;
+drop policy if exists "xduel-user-images: public read" on storage.objects;
+drop policy if exists "xduel-user-images: owner insert" on storage.objects;
+drop policy if exists "xduel-user-images: owner delete" on storage.objects;
+drop policy if exists "xduel-user-videos: public read" on storage.objects;
+drop policy if exists "xduel-user-videos: owner insert" on storage.objects;
+drop policy if exists "xduel-user-videos: owner delete" on storage.objects;
+drop policy if exists "create-ai-images: owner read" on storage.objects;
+drop policy if exists "create-ai-videos: owner read" on storage.objects;
+drop policy if exists "create-user-images: owner read" on storage.objects;
+drop policy if exists "create-user-images: owner insert" on storage.objects;
+drop policy if exists "create-user-images: owner delete" on storage.objects;
+drop policy if exists "create-user-videos: owner read" on storage.objects;
+drop policy if exists "create-user-videos: owner insert" on storage.objects;
+drop policy if exists "create-user-videos: owner delete" on storage.objects;
+
+
+-- =============================================================
 -- STEP 2: RLS Policies
 -- =============================================================
 
