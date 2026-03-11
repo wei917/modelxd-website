@@ -226,33 +226,50 @@ async function tryVideoModel(
     const meta = result.providerMetadata
     console.log(`${LOG} Slot[${index}] providerMetadata=${JSON.stringify(meta)}`)
 
-    // Prefer direct URL from provider metadata (avoids sending 6MB+ base64 over SSE)
-    const providerVideoUrl = (meta?.alibaba as any)?.videoUrl
-      ?? (meta?.xai as any)?.videoUrl
-      ?? (meta?.klingai as any)?.videoUrl
-      ?? (meta?.google as any)?.videoUrl
-      ?? (meta?.bytedance as any)?.videoUrl
+    // Always upload to Supabase — provider URLs (Alibaba, xAI) are signed S3 URLs that expire
+    const { createClient } = await import('@supabase/supabase-js')
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+    const bucket = duelMode === 'create' ? 'create-ai-videos' : 'xduel-ai-videos'
 
     let videoUrl: string
-    if (providerVideoUrl) {
-      console.log(`${LOG} Slot[${index}] using provider videoUrl: ${providerVideoUrl.substring(0, 80)}...`)
-      videoUrl = providerVideoUrl
-    } else {
-      // Upload to Supabase Storage to avoid sending MBs of base64 over SSE
-      console.log(`${LOG} Slot[${index}] no provider URL, uploading to Supabase Storage...`)
-      const { createClient } = await import('@supabase/supabase-js')
-      const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+    if (video.uint8Array?.length) {
+      // Provider returned bytes directly (Kling, ByteDance, Google)
+      console.log(`${LOG} Slot[${index}] uploading uint8Array to Supabase...`)
       const mediaType = (video as any).mediaType ?? 'video/mp4'
       const ext = mediaType.split('/')[1] ?? 'mp4'
       const path = `${model.id.replace(/\//g,'-')}-${Date.now()}.${ext}`
-      const { error: uploadError } = await sb.storage.from(duelMode === 'create' ? 'create-ai-videos' : 'xduel-ai-videos').upload(path, video.uint8Array, {
+      const { error: uploadError } = await sb.storage.from(bucket).upload(path, video.uint8Array, {
         contentType: mediaType,
         upsert: false,
       })
       if (uploadError) throw new Error(`Supabase upload failed: ${uploadError.message}`)
-      const { data: { publicUrl } } = sb.storage.from(duelMode === 'create' ? 'create-ai-videos' : 'xduel-ai-videos').getPublicUrl(path)
+      const { data: { publicUrl } } = sb.storage.from(bucket).getPublicUrl(path)
       videoUrl = publicUrl
-      console.log(`${LOG} Slot[${index}] supabase uploaded: ${publicUrl}`)
+      console.log(`${LOG} Slot[${index}] uploaded from bytes: ${publicUrl}`)
+    } else {
+      // Provider returned a URL only (Alibaba, xAI) — fetch bytes and re-upload to Supabase
+      // Provider URLs are signed S3 links that expire, so we must persist them ourselves
+      const providerUrl = (meta?.alibaba as any)?.videoUrl
+        ?? (meta?.xai as any)?.videoUrl
+        ?? (meta?.klingai as any)?.videoUrl
+        ?? (meta?.google as any)?.videoUrl
+        ?? (meta?.bytedance as any)?.videoUrl
+      if (!providerUrl) throw new Error('No video bytes or URL in response')
+      console.log(`${LOG} Slot[${index}] fetching provider URL to re-upload...`)
+      const fetchRes = await fetch(providerUrl)
+      if (!fetchRes.ok) throw new Error(`Failed to fetch provider video: ${fetchRes.status}`)
+      const contentType = fetchRes.headers.get('content-type') ?? 'video/mp4'
+      const ext = contentType.split('/')[1]?.split(';')[0] ?? 'mp4'
+      const path = `${model.id.replace(/\//g,'-')}-${Date.now()}.${ext}`
+      const bytes = new Uint8Array(await fetchRes.arrayBuffer())
+      const { error: uploadError } = await sb.storage.from(bucket).upload(path, bytes, {
+        contentType,
+        upsert: false,
+      })
+      if (uploadError) throw new Error(`Supabase upload failed: ${uploadError.message}`)
+      const { data: { publicUrl } } = sb.storage.from(bucket).getPublicUrl(path)
+      videoUrl = publicUrl
+      console.log(`${LOG} Slot[${index}] uploaded from provider URL: ${publicUrl}`)
     }
 
     const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
