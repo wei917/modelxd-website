@@ -79,8 +79,13 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
       modes:       m.modes ?? [mode],
     }))
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    // If Supabase returned data but not enough models, don't silently fallback — surface it
+    if (msg.includes('Not enough models')) throw err
     console.warn(`${LOG} Supabase unavailable, using fallback:`, err)
-    return getModelsByMode(mode as 'text' | 'image' | 'video')
+    const fallback = getModelsByMode(mode as 'text' | 'image' | 'video')
+    if (fallback.length < 2) throw new Error(`No models available for mode: ${mode}`)
+    return fallback
   }
 }
 
@@ -218,8 +223,14 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
   }
 
-  const n    = Math.min(Math.max(count, 2), 4)
-  const pool = await getModels(mode)
+  const n = Math.min(Math.max(count, 2), 4)
+  let pool: ModelEntry[]
+  try {
+    pool = await getModels(mode)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to load models'
+    return Response.json({ error: msg }, { status: 400 })
+  }
   if (pool.length < 2) {
     return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
   }
