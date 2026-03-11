@@ -10,6 +10,24 @@ export const maxDuration = 300 // Vercel Pro max — needed for slow image model
 
 const LOG = '[duel]'
 
+// Extract a representative per-image price from whichever pricing structure exists in raw jsonb
+function getImagePrice(pricing: any): number {
+  if (!pricing) return 0
+  // Flat price field e.g. { image: "0.07" }
+  if (pricing.image) return parseFloat(pricing.image)
+  // image_gen_pricing list e.g. [{ resolution, cost }]
+  if (Array.isArray(pricing.image_gen_pricing) && pricing.image_gen_pricing.length > 0)
+    return parseFloat(pricing.image_gen_pricing[0].cost)
+  // image_dimension_quality_pricing list — pick medium+1024x1024, else first entry
+  if (Array.isArray(pricing.image_dimension_quality_pricing) && pricing.image_dimension_quality_pricing.length > 0) {
+    const preferred = pricing.image_dimension_quality_pricing.find(
+      (e: any) => e.quality === 'medium' && e.size === '1024x1024'
+    ) ?? pricing.image_dimension_quality_pricing[0]
+    return parseFloat(preferred.cost)
+  }
+  return 0
+}
+
 const gateway = createGateway({
   apiKey:  process.env.AI_GATEWAY_API_KEY,
   baseURL: 'https://ai-gateway.vercel.sh/v1/ai',
@@ -40,8 +58,10 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
       id:          m.id,
       name:        m.name,
       provider:    m.provider,
-      outputPrice: m.output_price ?? 0,
-      inputPrice:  m.input_price  ?? 0,
+      outputPrice: mode === 'image'
+        ? getImagePrice(m.raw?.pricing)
+        : (m.output_price ?? 0),
+      inputPrice:  m.input_price ?? 0,
       modes:       m.modes ?? [mode],
     }))
   } catch (err) {
