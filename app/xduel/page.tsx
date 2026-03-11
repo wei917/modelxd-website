@@ -339,7 +339,7 @@ export default function XDuel() {
                       onMouseEnter={() => setCursor(cardColorHex)}
                       onMouseLeave={() => setCursor('#e8453c')}
                     >
-                      <div className="battle-card-header">
+                      <div className={`battle-card-header ${mode==='image'?'image-mode':''}`}>
                         <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
                         <div style={{display:'flex',alignItems:'center',gap:10}}>
                           {m?.done && bothDone && (
@@ -362,7 +362,7 @@ export default function XDuel() {
                           </div>
                         </div>
                       </div>
-                      <div className={`battle-response ${loading||!m?'loading':''}`} style={m?.isImage && !loading ? {padding:0} : {}}>
+                      <div className={`battle-response ${loading||!m?'loading':''} ${mode==='image'?'image-response':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
                           : m.isImage

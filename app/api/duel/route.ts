@@ -46,18 +46,23 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
     )
     const tagFilter = mode === 'image' ? 'image-generation' : mode === 'video' ? 'video-generation' : null
 
-    let query = supabase
-      .from('ai_models')
-      .select('*')
-      .eq('enabled', true)
-
+    let rows: any[] = []
     if (tagFilter) {
-      query = query.contains('tags', [tagFilter])
+      const { data: byTag,  error: e1 } = await supabase.from('ai_models').select('*').eq('enabled', true).contains('tags',  [tagFilter])
+      const { data: byMode, error: e2 } = await supabase.from('ai_models').select('*').eq('enabled', true).contains('modes', [mode])
+      if (e1) throw e1
+      if (e2) throw e2
+      const seen = new Set<string>()
+      for (const m of [...(byTag ?? []), ...(byMode ?? [])]) {
+        if (!seen.has(m.id)) { seen.add(m.id); rows.push(m) }
+      }
     } else {
-      query = query.contains('modes', [mode])
+      const { data, error } = await supabase.from('ai_models').select('*').eq('enabled', true).contains('modes', [mode])
+      if (error) throw error
+      rows = data ?? []
     }
 
-    const { data, error } = await query
+    const data = rows
 
     if (error) throw error
     if (!data || data.length < 2) throw new Error('Not enough models in DB')

@@ -97,10 +97,21 @@ export async function GET(req: Request) {
   const rows = Array.from(modelMap.values())
   console.log(`${LOG} ${rows.length} unique models (${allModels.filter(m => SUPPORTED_TYPES.has(m.type)).length} entries merged)`)
 
-  // Upsert — never overwrite enabled
-  const { error } = await supabase
-    .from('ai_models')
-    .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
+  // For new models: insert with enabled=true. For existing: update everything except enabled.
+  const { data: existing } = await supabase.from('ai_models').select('id')
+  const existingIds = new Set((existing ?? []).map((r: any) => r.id))
+  const newRows     = rows.filter(r => !existingIds.has(r.id)).map(r => ({ ...r, enabled: true }))
+  const updateRows  = rows.filter(r =>  existingIds.has(r.id))
+
+  const inserts = newRows.length > 0
+    ? supabase.from('ai_models').insert(newRows)
+    : Promise.resolve({ error: null })
+  const updates = updateRows.length > 0
+    ? supabase.from('ai_models').upsert(updateRows, { onConflict: 'id', ignoreDuplicates: false })
+    : Promise.resolve({ error: null })
+
+  const [{ error: insertErr }, { error: updateErr }] = await Promise.all([inserts, updates])
+  const error = insertErr ?? updateErr
 
   if (error) {
     console.error(`${LOG} Upsert failed:`, error.message)
