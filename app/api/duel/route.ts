@@ -2,8 +2,7 @@
 // SSE streaming duel — text mode streams tokens, image mode returns base64
 // Uses AI SDK (@ai-sdk/gateway) for accurate cost via providerMetadata.gateway.marketCost
 
-import { createGateway }               from '@ai-sdk/gateway'
-import { streamText, experimental_generateImage as generateImage, experimental_generateVideo as generateVideo } from 'ai'
+import { createGateway, streamText, experimental_generateImage as generateImage, experimental_generateVideo as generateVideo } from 'ai'
 import { getModelsByMode, ModelEntry } from '../../../lib/models'
 
 export const maxDuration = 300 // Vercel Pro max — needed for slow image models
@@ -30,7 +29,7 @@ function getImagePrice(pricing: any): number {
 
 const gateway = createGateway({
   apiKey:  process.env.AI_GATEWAY_API_KEY,
-  baseURL: 'https://ai-gateway.vercel.sh/v1/ai',
+  baseURL: 'https://ai-gateway.vercel.sh/v3/ai',
 })
 
 function sse(event: string, data: object) {
@@ -62,7 +61,13 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
       rows = data ?? []
     }
 
-    const data = rows
+    const data = mode === 'video'
+      ? rows.filter((m: any) => {
+          const id = (m.id as string).toLowerCase()
+          // Exclude image-to-video, reference-to-video, and editing models — duel needs text-to-video only
+          return !id.includes('-i2v') && !id.includes('-r2v') && !id.includes('-edit') && !id.includes('video-edit')
+        })
+      : rows
 
     if (!data || data.length < 2) throw new Error('Not enough models in DB')
 
