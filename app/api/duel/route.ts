@@ -78,6 +78,8 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
       provider:    m.provider,
       outputPrice: mode === 'image'
         ? getImagePrice(m.raw?.pricing)
+        : mode === 'video'
+        ? getVideoPrice(m.raw?.pricing, m.output_price)
         : (m.output_price ?? 0),
       inputPrice:  m.input_price ?? 0,
       modes:       m.modes ?? [mode],
@@ -95,7 +97,18 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
 
 function priceLabel(mode: string, outputPrice: number): string {
   if (mode === 'image') return `$${parseFloat(outputPrice.toFixed(4))} / image`
+  if (mode === 'video') return `$${parseFloat(outputPrice.toFixed(4))} / video`
   return `$${outputPrice.toFixed(2)} / 1M tokens`
+}
+
+function getVideoPrice(pricing: any, fallback: number | null): number {
+  if (!pricing) return fallback ?? 0
+  // Try common video pricing fields
+  if (pricing.video)       return parseFloat(pricing.video)
+  if (pricing.video_price) return parseFloat(pricing.video_price)
+  if (pricing.per_second)  return parseFloat(pricing.per_second) * 5 // assume 5s clip
+  if (Array.isArray(pricing.video_gen_pricing)) return parseFloat(pricing.video_gen_pricing[0].cost)
+  return fallback ?? 0
 }
 
 // ── Text: streaming via AI SDK ────────────────────────────────────────────────
@@ -129,7 +142,7 @@ async function tryTextModel(
     const meta     = await result.providerMetadata
     const tokens   = usage?.outputTokens ?? 0
     // Use gateway's marketCost if available, else fall back to manual calc
-    const cost     = (meta?.gateway as any)?.marketCost
+    const cost     = Number((meta?.gateway as any)?.marketCost)
                   ?? (tokens / 1_000_000) * model.outputPrice
 
     const responseTime = Date.now() - start
@@ -180,7 +193,7 @@ async function tryImageModel(
 
     const meta = result.providerMetadata
     // Use gateway's marketCost if available, else use flat outputPrice from Supabase
-    const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
+    const cost = Number((meta?.gateway as any)?.marketCost ?? model.outputPrice)
 
     const responseTime = Date.now() - start
     console.log(`${LOG} Slot[${index}] ${model.id} image done: ${responseTime}ms cost=$${cost}`)
@@ -272,7 +285,7 @@ async function tryVideoModel(
       console.log(`${LOG} Slot[${index}] uploaded from provider URL: ${publicUrl}`)
     }
 
-    const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
+    const cost = Number((meta?.gateway as any)?.marketCost ?? model.outputPrice)
     const responseTime = Date.now() - start
     console.log(`${LOG} Slot[${index}] ${model.id} video done: ${responseTime}ms cost=$${cost}`)
 
