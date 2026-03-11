@@ -1,5 +1,5 @@
 // app/api/duel/route.ts
-// SSE streaming duel — text mode streams tokens, image mode returns base64
+// SSE streaming duel — text mode streams tokens, image/video mode uploads to Supabase Storage
 // Uses AI SDK (@ai-sdk/gateway) for accurate cost via providerMetadata.gateway.marketCost
 
 import { createGateway, streamText, experimental_generateImage as generateImage, experimental_generateVideo as generateVideo } from 'ai'
@@ -164,8 +164,18 @@ async function tryImageModel(
     const image = result.images?.[0]
     if (!image) throw new Error('No image in response')
 
-    // ai@6 GeneratedFile has base64 + mediaType, no .url
-    const imageUrl = `data:${image.mediaType};base64,${image.base64}`
+    // Upload to Supabase Storage to avoid sending large base64 over SSE
+    const { createClient } = await import('@supabase/supabase-js')
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+    const ext = image.mediaType?.split('/')[1] ?? 'png'
+    const path = `${model.id.replace(/\//g, '-')}-${Date.now()}.${ext}`
+    const { error: uploadError } = await sb.storage.from('ai-images').upload(path, image.uint8Array, {
+      contentType: image.mediaType ?? 'image/png',
+      upsert: false,
+    })
+    if (uploadError) throw new Error(`Supabase upload failed: ${uploadError.message}`)
+    const { data: { publicUrl: imageUrl } } = sb.storage.from('ai-images').getPublicUrl(path)
+    console.log(`${LOG} Slot[${index}] image uploaded: ${imageUrl}`)
 
     const meta = result.providerMetadata
     // Use gateway's marketCost if available, else use flat outputPrice from Supabase
@@ -211,14 +221,39 @@ async function tryVideoModel(
     const video = result.video ?? result.videos?.[0]
     if (!video) throw new Error('No video in response')
 
-    console.log(`${LOG} Slot[${index}] video base64Length=${video.base64?.length ?? 0} uint8ArrayLength=${video.uint8Array?.length ?? 0}`)
-    const mediaType = (video as any).mediaType ?? 'video/mp4'
-    const videoUrl = `data:${mediaType};base64,${video.base64}`
-
     const meta = result.providerMetadata
     console.log(`${LOG} Slot[${index}] providerMetadata=${JSON.stringify(meta)}`)
-    const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
 
+    // Prefer direct URL from provider metadata (avoids sending 6MB+ base64 over SSE)
+    const providerVideoUrl = (meta?.alibaba as any)?.videoUrl
+      ?? (meta?.xai as any)?.videoUrl
+      ?? (meta?.klingai as any)?.videoUrl
+      ?? (meta?.google as any)?.videoUrl
+      ?? (meta?.bytedance as any)?.videoUrl
+
+    let videoUrl: string
+    if (providerVideoUrl) {
+      console.log(`${LOG} Slot[${index}] using provider videoUrl: ${providerVideoUrl.substring(0, 80)}...`)
+      videoUrl = providerVideoUrl
+    } else {
+      // Upload to Supabase Storage to avoid sending MBs of base64 over SSE
+      console.log(`${LOG} Slot[${index}] no provider URL, uploading to Supabase Storage...`)
+      const { createClient } = await import('@supabase/supabase-js')
+      const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+      const mediaType = (video as any).mediaType ?? 'video/mp4'
+      const ext = mediaType.split('/')[1] ?? 'mp4'
+      const path = `${model.id.replace(/\//g,'-')}-${Date.now()}.${ext}`
+      const { error: uploadError } = await sb.storage.from('videos').upload(path, video.uint8Array, {
+        contentType: mediaType,
+        upsert: false,
+      })
+      if (uploadError) throw new Error(`Supabase upload failed: ${uploadError.message}`)
+      const { data: { publicUrl } } = sb.storage.from('videos').getPublicUrl(path)
+      videoUrl = publicUrl
+      console.log(`${LOG} Slot[${index}] supabase uploaded: ${publicUrl}`)
+    }
+
+    const cost = (meta?.gateway as any)?.marketCost ?? model.outputPrice
     const responseTime = Date.now() - start
     console.log(`${LOG} Slot[${index}] ${model.id} video done: ${responseTime}ms cost=$${cost}`)
 
