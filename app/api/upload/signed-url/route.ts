@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const config = BUCKETS[bucket]
 
     // Validate mime type
-    if (!config.mimes.includes(contentType as any)) {
+    if (!(config.mimes as readonly string[]).includes(contentType)) {
       return NextResponse.json({ error: `Invalid file type "${contentType}" for bucket "${bucket}"` }, { status: 400 })
     }
 
