@@ -230,6 +230,14 @@ async function tryVideoModel(
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
     console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
     if (err instanceof Error && err.stack) console.warn(`${LOG} stack: ${err.stack}`)
+    // Surface quota/rate limit errors immediately — retrying other models won't help
+    const isFatal = err instanceof Error && (
+      err.constructor.name.includes('RateLimit') ||
+      err.constructor.name.includes('Quota') ||
+      err.message.toLowerCase().includes('quota') ||
+      err.message.toLowerCase().includes('rate limit')
+    )
+    if (isFatal) controller.enqueue(sse(`error:${index}`, { index, message: err.message }))
     return false
   }
 }
