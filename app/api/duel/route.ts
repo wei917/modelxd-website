@@ -44,11 +44,20 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SECRET_KEY!
     )
-    const { data, error } = await supabase
+    const tagFilter = mode === 'image' ? 'image-generation' : mode === 'video' ? 'video-generation' : null
+
+    let query = supabase
       .from('ai_models')
       .select('*')
-      .contains('modes', [mode])
       .eq('enabled', true)
+
+    if (tagFilter) {
+      query = query.contains('tags', [tagFilter])
+    } else {
+      query = query.contains('modes', [mode])
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
     if (!data || data.length < 2) throw new Error('Not enough models in DB')
@@ -210,7 +219,11 @@ export async function POST(req: Request) {
     return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
   }
 
-  const queue: ModelEntry[]               = [...pool].sort(() => Math.random() - 0.5)
+  const queue: ModelEntry[] = [...pool]
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]]
+  }
   const resolvedModels: (ModelEntry | null)[] = Array(n).fill(null)
 
   console.log(`${LOG} Pool: ${pool.length} ${mode} models available`)
