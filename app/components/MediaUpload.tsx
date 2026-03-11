@@ -120,7 +120,7 @@ export default function MediaUpload({
     handleFile(e.dataTransfer.files[0])
   }
 
-  const isImage = bucket === 'user-images'
+  const isImage = bucket.includes('images')
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
