@@ -96,8 +96,8 @@ async function getModels(mode: string): Promise<ModelEntry[]> {
 }
 
 function priceLabel(mode: string, outputPrice: number): string {
-  if (mode === 'image') return `$${parseFloat(outputPrice.toFixed(4))} / image`
-  if (mode === 'video') return `$${parseFloat(outputPrice.toFixed(4))} / video`
+  if (mode === 'image') return `$${(outputPrice * 1000).toFixed(2)} / 1k images`
+  if (mode === 'video') return `$${(outputPrice * 1000).toFixed(2)} / 1k videos`
   return `$${outputPrice.toFixed(2)} / 1M tokens`
 }
 
