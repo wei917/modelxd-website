@@ -170,7 +170,8 @@ async function tryImageModel(
   index: number,
   prompt: string,
   controller: ReadableStreamDefaultController,
-  duelMode: string
+  duelMode: string,
+  duelId: string
 ): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
@@ -188,7 +189,7 @@ async function tryImageModel(
     const { createClient } = await import('@supabase/supabase-js')
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
     const ext = image.mediaType?.split('/')[1] ?? 'png'
-    const path = `${model.id.replace(/\//g, '-')}-${Date.now()}.${ext}`
+    const path = `${duelId}_model${index}.${ext}`
     const { error: uploadError } = await sb.storage.from(duelMode === 'create' ? 'create-ai-images' : 'xduel-ai-images').upload(path, image.uint8Array, {
       contentType: image.mediaType ?? 'image/png',
       upsert: false,
@@ -223,7 +224,8 @@ async function tryVideoModel(
   index:      number,
   prompt:     string,
   controller: ReadableStreamDefaultController,
-  duelMode:   string
+  duelMode:   string,
+  duelId:     string
 ): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] video: ${model.id}`)
@@ -257,7 +259,7 @@ async function tryVideoModel(
       console.log(`${LOG} Slot[${index}] uploading uint8Array to Supabase...`)
       const mediaType = (video as any).mediaType ?? 'video/mp4'
       const ext = mediaType.split('/')[1] ?? 'mp4'
-      const path = `${model.id.replace(/\//g,'-')}-${Date.now()}.${ext}`
+      const path = `${duelId}_model${index}.${ext}`
       const { error: uploadError } = await sb.storage.from(bucket).upload(path, video.uint8Array, {
         contentType: mediaType,
         upsert: false,
@@ -280,7 +282,7 @@ async function tryVideoModel(
       if (!fetchRes.ok) throw new Error(`Failed to fetch provider video: ${fetchRes.status}`)
       const contentType = fetchRes.headers.get('content-type') ?? 'video/mp4'
       const ext = contentType.split('/')[1]?.split(';')[0] ?? 'mp4'
-      const path = `${model.id.replace(/\//g,'-')}-${Date.now()}.${ext}`
+      const path = `${duelId}_model${index}.${ext}`
       const bytes = new Uint8Array(await fetchRes.arrayBuffer())
       const { error: uploadError } = await sb.storage.from(bucket).upload(path, bytes, {
         contentType,
@@ -325,7 +327,8 @@ async function runWorker(
   mode:           string,
   controller:     ReadableStreamDefaultController,
   resolvedModels: (ModelEntry | null)[],
-  resolvedResults: ({ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null)[]
+  resolvedResults: ({ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null)[],
+  duelId:         string
 ) {
   while (queue.length > 0) {
     const model = queue.shift()!
@@ -341,9 +344,9 @@ async function runWorker(
     }))
 
     const result = mode === 'image'
-      ? await tryImageModel(model, index, prompt, controller, mode)
+      ? await tryImageModel(model, index, prompt, controller, mode, duelId)
       : mode === 'video'
-      ? await tryVideoModel(model, index, prompt, controller, mode)
+      ? await tryVideoModel(model, index, prompt, controller, mode, duelId)
       : await tryTextModel(model, index, prompt, controller)
 
     if (result) {
@@ -404,7 +407,7 @@ export async function POST(req: Request) {
     async start(controller) {
       controller.enqueue(sse('meta', { count: n, mode, duelId }))
       await Promise.all(
-        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, mode, controller, resolvedModels, resolvedResults))
+        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, mode, controller, resolvedModels, resolvedResults, duelId))
       )
       const resolvedSlots = resolvedModels.map(m => m ? {
         id:          m.id,
