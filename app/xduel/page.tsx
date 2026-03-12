@@ -48,6 +48,7 @@ export default function XDuel() {
   const [step,       setStep]       = useState(1)
   const [mode,       setMode]       = useState<Mode>('text')
   const [count,      setCount]      = useState(2)
+  const [duelId,     setDuelId]     = useState<string | null>(null)
   const [prompt,     setPrompt]     = useState('')
   const [loading,    setLoading]    = useState(false)
   const [apiError,   setApiError]   = useState<string | null>(null)
@@ -92,6 +93,7 @@ export default function XDuel() {
     setApiError(null)
     setModels([])
     setVote1(null); setVote2(null)
+    setDuelId(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     goStep(2)
 
@@ -128,6 +130,7 @@ export default function XDuel() {
               const payload = JSON.parse(line.slice(6))
 
               if (currentEvent === 'meta') {
+                if (payload.duelId) setDuelId(payload.duelId)
                 // Initialize N empty slots — meta filled in via trying: events
                 const emptyMeta: ModelMeta = { name: '…', provider: '…', outputPrice: 0, priceLabel: '…' }
                 const initialModels: ModelState[] = Array.from({ length: payload.count }, () => ({
@@ -148,7 +151,7 @@ export default function XDuel() {
                 // Worker picked a model — update that slot's meta
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) =>
-                  i === idx ? { ...m, meta: { name: payload.name, provider: payload.provider, outputPrice: payload.outputPrice, priceLabel: payload.priceLabel }, text: '', streaming: true, done: false } : m
+                  i === idx ? { ...m, meta: { id: payload.id ?? '', name: payload.name, provider: payload.provider, outputPrice: payload.outputPrice, priceLabel: payload.priceLabel }, text: '', streaming: true, done: false } : m
                 ))
 
               } else if (currentEvent.startsWith('delta:')) {
@@ -197,10 +200,26 @@ export default function XDuel() {
   const castVote = (choice: Vote) => {
     setVote1(choice)
     setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
+    if (duelId) fetch('/api/duel/vote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        duelId,
+        vote1: choice === 'T' ? 'T' : String(choice),
+        vote1ModelId: choice === 'T' ? null : models[choice as number]?.meta?.id ?? null,
+      }),
+    }).catch(console.error)
   }
 
   const castRevote = (choice: Vote) => {
     setVote2(choice)
+    if (duelId) fetch('/api/duel/vote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        duelId,
+        vote2: choice === 'T' ? 'T' : String(choice),
+        vote2ModelId: choice === 'T' ? null : models[choice as number]?.meta?.id ?? null,
+      }),
+    }).catch(console.error)
     setTimeout(() => {
       goStep(5)
       setTimeout(() => setShowReveal(true), 600)

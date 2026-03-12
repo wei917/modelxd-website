@@ -113,12 +113,14 @@ function getVideoPrice(pricing: any, fallback: number | null): number {
 
 // ── Text: streaming via AI SDK ────────────────────────────────────────────────
 
+type DuelResult = { text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number }
+
 async function tryTextModel(
   model: ModelEntry,
   index: number,
   prompt: string,
   controller: ReadableStreamDefaultController
-): Promise<boolean> {
+): Promise<DuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] text: ${model.id}`)
 
@@ -130,11 +132,13 @@ async function tryTextModel(
     })
 
     let firstChunk = true
+    let fullText = ''
     for await (const delta of result.textStream) {
       if (firstChunk) {
         console.log(`${LOG} Slot[${index}] first chunk +${Date.now() - start}ms`)
         firstChunk = false
       }
+      fullText += delta
       controller.enqueue(sse(`delta:${index}`, { index, text: delta }))
     }
 
@@ -159,13 +163,15 @@ async function tryTextModel(
 
 // ── Image: via AI SDK generateImage ──────────────────────────────────────────
 
+type DuelResult = { text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number }
+
 async function tryImageModel(
   model: ModelEntry,
   index: number,
   prompt: string,
   controller: ReadableStreamDefaultController,
   duelMode: string
-): Promise<boolean> {
+): Promise<DuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
 
@@ -211,13 +217,15 @@ async function tryImageModel(
 
 // ── Video: via AI SDK generateVideo ──────────────────────────────────────────
 
+type DuelResult = { text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number }
+
 async function tryVideoModel(
   model:      ModelEntry,
   index:      number,
   prompt:     string,
   controller: ReadableStreamDefaultController,
   duelMode:   string
-): Promise<boolean> {
+): Promise<DuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] video: ${model.id}`)
 
@@ -291,7 +299,7 @@ async function tryVideoModel(
 
     controller.enqueue(sse(`delta:${index}`, { index, text: videoUrl, isVideo: true }))
     controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime, cost }))
-    return true
+    return { text: videoUrl, isImage: false, isVideo: true, responseTime, cost }
 
   } catch (err) {
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
@@ -305,7 +313,7 @@ async function tryVideoModel(
       err.message.toLowerCase().includes('rate limit')
     )
     if (isFatal) controller.enqueue(sse(`error:${index}`, { index, message: err.message }))
-    return false
+    return null
   }
 }
 
@@ -317,7 +325,8 @@ async function runWorker(
   prompt:         string,
   mode:           string,
   controller:     ReadableStreamDefaultController,
-  resolvedModels: (ModelEntry | null)[]
+  resolvedModels: (ModelEntry | null)[],
+  resolvedResults: ({ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null)[]
 ) {
   while (queue.length > 0) {
     const model = queue.shift()!
@@ -325,20 +334,22 @@ async function runWorker(
 
     controller.enqueue(sse(`trying:${index}`, {
       index,
+      id:          model.id,
       name:        model.name,
       provider:    model.provider,
       outputPrice: model.outputPrice,
       priceLabel:  priceLabel(mode, model.outputPrice),
     }))
 
-    const ok = mode === 'image'
+    const result = mode === 'image'
       ? await tryImageModel(model, index, prompt, controller, mode)
       : mode === 'video'
       ? await tryVideoModel(model, index, prompt, controller, mode)
       : await tryTextModel(model, index, prompt, controller)
 
-    if (ok) {
+    if (result) {
       resolvedModels[index] = model
+      resolvedResults[index] = result
       return
     }
     console.warn(`${LOG} Slot[${index}] ${model.id} failed — trying next`)
@@ -351,6 +362,17 @@ async function runWorker(
 
 export async function POST(req: Request) {
   const { prompt, mode = 'text', count = 2 } = await req.json()
+
+  // Auth check — must be signed in
+  const { createClient: createSupa } = await import('@supabase/supabase-js')
+  const { createSupabaseServer } = await import('@/lib/supabase-server')
+  const supabaseUser = createSupabaseServer()
+  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+  if (authError || !user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const duelId = crypto.randomUUID()
 
   if (!prompt || prompt.trim().length < 3) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
@@ -374,26 +396,42 @@ export async function POST(req: Request) {
     [queue[i], queue[j]] = [queue[j], queue[i]]
   }
   const resolvedModels: (ModelEntry | null)[] = Array(n).fill(null)
+  const resolvedResults: ({ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null)[] = Array(n).fill(null)
 
   console.log(`${LOG} Pool: ${pool.length} ${mode} models available`)
   console.log(`${LOG} Starting duel: ${n} workers, mode=${mode}, queue: ${queue.map(m => m.id).join(', ')}`)
 
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(sse('meta', { count: n, mode }))
+      controller.enqueue(sse('meta', { count: n, mode, duelId }))
       await Promise.all(
-        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, mode, controller, resolvedModels))
+        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, mode, controller, resolvedModels, resolvedResults))
       )
-      controller.enqueue(sse('resolved', {
-        models: resolvedModels.map(m => m ? {
-          id:          m.id,
-          name:        m.name,
-          provider:    m.provider,
-          outputPrice: m.outputPrice,
-          inputPrice:  m.inputPrice,
-          priceLabel:  priceLabel(mode, m.outputPrice),
-        } : null)
-      }))
+      const resolvedSlots = resolvedModels.map(m => m ? {
+        id:          m.id,
+        name:        m.name,
+        provider:    m.provider,
+        outputPrice: m.outputPrice,
+        inputPrice:  m.inputPrice,
+        priceLabel:  priceLabel(mode, m.outputPrice),
+      } : null)
+
+      controller.enqueue(sse('resolved', { models: resolvedSlots }))
+
+      // Persist duel to DB (fire and forget — don't block SSE close)
+      const slotResults = resolvedSlots.map((m, i) => ({ ...m, ...resolvedResults[i] }))
+      const sb = createSupa(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+      sb.from('duels').insert({
+        id:      duelId,
+        user_id: user.id,
+        mode,
+        prompt,
+        slots:   slotResults,
+      }).then(({ error }) => {
+        if (error) console.error(`${LOG} Failed to save duel ${duelId}:`, error.message)
+        else console.log(`${LOG} Duel ${duelId} saved`)
+      })
+
       controller.close()
     }
   })
