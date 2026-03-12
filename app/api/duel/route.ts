@@ -114,13 +114,14 @@ function getVideoPrice(pricing: any, fallback: number | null): number {
 // ── Text: streaming via AI SDK ────────────────────────────────────────────────
 
 type DuelResult = { text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number }
+type MaybeDuelResult = DuelResult | null
 
 async function tryTextModel(
   model: ModelEntry,
   index: number,
   prompt: string,
   controller: ReadableStreamDefaultController
-): Promise<DuelResult> {
+): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] text: ${model.id}`)
 
@@ -157,7 +158,7 @@ async function tryTextModel(
   } catch (err) {
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
     console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
-    return null
+    return null as MaybeDuelResult
   }
 }
 
@@ -170,7 +171,7 @@ async function tryImageModel(
   prompt: string,
   controller: ReadableStreamDefaultController,
   duelMode: string
-): Promise<DuelResult> {
+): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
 
@@ -210,7 +211,7 @@ async function tryImageModel(
   } catch (err) {
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
     console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
-    return null
+    return null as MaybeDuelResult
   }
 }
 
@@ -223,7 +224,7 @@ async function tryVideoModel(
   prompt:     string,
   controller: ReadableStreamDefaultController,
   duelMode:   string
-): Promise<DuelResult> {
+): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] video: ${model.id}`)
 
@@ -311,7 +312,7 @@ async function tryVideoModel(
       err.message.toLowerCase().includes('rate limit')
     )
     if (isFatal) controller.enqueue(sse(`error:${index}`, { index, message: err.message }))
-    return null
+    return null as MaybeDuelResult
   }
 }
 
