@@ -9,6 +9,7 @@ type Mode = 'text' | 'image' | 'video'
 type ArenaPhase = 'vote' | 'revote'
 
 type ModelMeta = {
+  id?: string
   name: string
   provider: string
   outputPrice: number
