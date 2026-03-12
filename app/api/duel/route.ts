@@ -163,7 +163,6 @@ async function tryTextModel(
 
 // ── Image: via AI SDK generateImage ──────────────────────────────────────────
 
-type DuelResult = { text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number }
 
 async function tryImageModel(
   model: ModelEntry,
@@ -217,7 +216,6 @@ async function tryImageModel(
 
 // ── Video: via AI SDK generateVideo ──────────────────────────────────────────
 
-type DuelResult = { text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number }
 
 async function tryVideoModel(
   model:      ModelEntry,
