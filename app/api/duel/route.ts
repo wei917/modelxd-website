@@ -421,7 +421,16 @@ export async function POST(req: Request) {
       controller.enqueue(sse('resolved', { models: resolvedSlots }))
 
       // Persist duel to DB (fire and forget — don't block SSE close)
-      const slotResults = resolvedSlots.map((m, i) => ({ ...m, ...resolvedResults[i] }))
+      const slotResults = resolvedSlots.map((m, i) => {
+        const result = resolvedResults[i]
+        const realCost = result?.cost ?? 0
+        const realPriceLabel = result?.isVideo
+          ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
+          : result?.isImage
+          ? `$${(realCost * 1000).toFixed(2)} / 1k images`
+          : priceLabel(mode, m?.outputPrice ?? 0)
+        return { ...m, ...result, priceLabel: realPriceLabel }
+      })
       const sb = createSupa(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
       sb.from('duels').insert({
         id:      duelId,

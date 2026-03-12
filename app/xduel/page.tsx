@@ -163,16 +163,24 @@ export default function XDuel() {
 
               } else if (currentEvent.startsWith('done:')) {
                 const idx = payload.index
-                setModels(prev => prev.map((m, i) =>
-                  i === idx ? {
+                setModels(prev => prev.map((m, i) => {
+                  if (i !== idx) return m
+                  const realCost = payload.cost != null ? Number(payload.cost) : m.isImage ? m.meta.outputPrice : (payload.tokens / 1_000_000) * m.meta.outputPrice
+                  const realPriceLabel = m.isVideo
+                    ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
+                    : m.isImage
+                    ? `$${(realCost * 1000).toFixed(2)} / 1k images`
+                    : m.meta.priceLabel
+                  return {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
-                    cost:         payload.cost != null ? Number(payload.cost) : m.isImage ? m.meta.outputPrice : (payload.tokens / 1_000_000) * m.meta.outputPrice,
+                    cost:         realCost,
+                    meta:         { ...m.meta, priceLabel: realPriceLabel },
                     streaming:    false,
                     done:         true,
-                  } : m
-                ))
+                  }
+                }))
 
               } else if (currentEvent === 'resolved') {
                                 // Update with actually-used models after any fallbacks
