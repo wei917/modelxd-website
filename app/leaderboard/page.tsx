@@ -2,7 +2,7 @@
 // app/leaderboard/page.tsx
 // Model leaderboard based on informed votes (vote2) across all duels
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Nav from '../components/Nav'
 import { createSupabaseBrowser } from '@/lib/supabase-client'
 
@@ -24,6 +24,17 @@ export default function LeaderboardPage() {
   const [mode,    setMode]    = useState<Mode>('all')
   const [stats,   setStats]   = useState<ModelStats[]>([])
   const [loading, setLoading] = useState(true)
+  const cursorRef = useRef<HTMLDivElement>(null)
+  const ringRef   = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (cursorRef.current) { cursorRef.current.style.left = e.clientX+'px'; cursorRef.current.style.top = e.clientY+'px' }
+      if (ringRef.current)   { ringRef.current.style.left   = e.clientX+'px'; ringRef.current.style.top   = e.clientY+'px' }
+    }
+    window.addEventListener('mousemove', move)
+    return () => window.removeEventListener('mousemove', move)
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +104,8 @@ export default function LeaderboardPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#080808', color: '#fff' }}>
+      <div className="cursor" ref={cursorRef} />
+      <div className="cursor-ring" ref={ringRef} />
       <Nav />
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '100px 24px 60px' }}>

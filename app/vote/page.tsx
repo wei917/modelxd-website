@@ -45,6 +45,17 @@ export default function VotePage() {
   const [rows, setRows] = useState<Record<Mode, Duel[]>>({ video: [], image: [], text: [] })
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const cursorRef = useRef<HTMLDivElement>(null)
+  const ringRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (cursorRef.current) { cursorRef.current.style.left = e.clientX+'px'; cursorRef.current.style.top = e.clientY+'px' }
+      if (ringRef.current)   { ringRef.current.style.left   = e.clientX+'px'; ringRef.current.style.top   = e.clientY+'px' }
+    }
+    window.addEventListener('mousemove', move)
+    return () => window.removeEventListener('mousemove', move)
+  }, [])
 
   useEffect(() => {
     const sb = createSupabaseBrowser()
@@ -95,6 +106,8 @@ export default function VotePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#080808', color: '#fff' }}>
+      <div className="cursor" ref={cursorRef} />
+      <div className="cursor-ring" ref={ringRef} />
       <Nav />
 
       <div style={{ paddingTop: 80 }}>
