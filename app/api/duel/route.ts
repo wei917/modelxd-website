@@ -152,12 +152,12 @@ async function tryTextModel(
     const responseTime = Date.now() - start
     console.log(`${LOG} Slot[${index}] ${model.id} done: ${tokens} tokens ${responseTime}ms cost=$${cost}`)
     controller.enqueue(sse(`done:${index}`, { index, tokens, responseTime, cost }))
-    return true
+    return { text: fullText, isImage: false, isVideo: false, responseTime, cost }
 
   } catch (err) {
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
     console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
-    return false
+    return null
   }
 }
 
@@ -205,12 +205,12 @@ async function tryImageModel(
 
     controller.enqueue(sse(`delta:${index}`, { index, text: imageUrl, isImage: true }))
     controller.enqueue(sse(`done:${index}`,  { index, tokens: 1, responseTime, cost }))
-    return true
+    return { text: imageUrl, isImage: true, isVideo: false, responseTime, cost }
 
   } catch (err) {
     const errMsg = err instanceof Error ? `${err.message}${(err as any).cause ? ' | cause: ' + (err as any).cause : ''}` : String(err)
     console.warn(`${LOG} Slot[${index}] ${model.id} failed: ${errMsg}`)
-    return false
+    return null
   }
 }
 
