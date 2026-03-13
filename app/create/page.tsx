@@ -1,6 +1,9 @@
 'use client'
 // app/create/page.tsx
-// Private AI studio — pick up to 4 models, write prompt, generate, save privately
+// Private AI studio:
+// 1. Pick up to 4 models + prompt → generate side by side
+// 2. Pick one to continue → this is the vote, others dismissed
+// 3. Multi-turn chat with chosen model
 
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
@@ -8,6 +11,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-client'
 import ReactMarkdown from 'react-markdown'
 
 type Mode = 'text' | 'image' | 'video'
+type Phase = 'setup' | 'generating' | 'picking' | 'chatting'
 
 interface DBModel {
   id: string
@@ -23,7 +27,6 @@ interface SlotModel {
   name: string
   provider: string
   outputPrice: number
-  priceLabel: string
 }
 
 interface SlotState {
@@ -38,11 +41,19 @@ interface SlotState {
   priceLabel: string
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  isImage?: boolean
+  isVideo?: boolean
+}
+
 interface GalleryItem {
   id: string
   mode: string
   prompt: string
   slots: any[]
+  chosen_model_id: string | null
   created_at: string
 }
 
@@ -54,14 +65,8 @@ const PROVIDER_COLORS: Record<string, string> = {
 const LABELS = ['A', 'B', 'C', 'D']
 const SLOT_COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399']
 
-const providerColor  = (p: string) => PROVIDER_COLORS[p.toLowerCase()] ?? '#888'
+const providerColor   = (p: string) => PROVIDER_COLORS[p.toLowerCase()] ?? '#888'
 const providerInitial = (p: string) => p.charAt(0).toUpperCase()
-
-function makePriceLabel(mode: Mode, cost: number, outputPrice: number) {
-  if (mode === 'video') return `$${(cost * 1000).toFixed(2)} / 1k videos`
-  if (mode === 'image') return `$${(cost * 1000).toFixed(2)} / 1k images`
-  return `$${outputPrice.toFixed(2)} / 1M tokens`
-}
 
 // ── Model Picker Dialog ───────────────────────────────────────────────────────
 function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
@@ -93,7 +98,8 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
           </div>
         </div>
         <div style={{ padding: '12px 16px 8px' }}>
-          <span style={{ padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.5px',
+          <span style={{
+            padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.5px',
             background: mode === 'video' ? '#34d39922' : mode === 'image' ? '#a78bfa22' : '#4a9eff22',
             color: mode === 'video' ? '#34d399' : mode === 'image' ? '#a78bfa' : '#4a9eff',
           }}>{mode} models</span>
@@ -105,7 +111,8 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
             const already = selectedIds.includes(m.id)
             const color   = providerColor(m.provider)
             return (
-              <div key={m.id} onClick={() => !already && onSelect({ id: m.id, name: m.name, provider: m.provider, outputPrice: m.output_price ?? 0, priceLabel: '' })}
+              <div key={m.id}
+                onClick={() => !already && onSelect({ id: m.id, name: m.name, provider: m.provider, outputPrice: m.output_price ?? 0 })}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #161616', cursor: already ? 'default' : 'pointer', opacity: already ? 0.4 : 1 }}
                 onMouseEnter={e => { if (!already) (e.currentTarget as HTMLElement).style.background = '#1a1a1a' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -153,25 +160,34 @@ function Gallery({ userId }: { userId: string }) {
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
         {items.map(item => {
-          const slots    = (item.slots ?? []).filter(Boolean)
-          const mode     = item.mode as Mode
+          const slots     = (item.slots ?? []).filter(Boolean)
+          const mode      = item.mode as Mode
           const modeColor = mode === 'video' ? '#34d399' : mode === 'image' ? '#a78bfa' : '#4a9eff'
+          const chosen    = slots.find((s: any) => s.id === item.chosen_model_id)
+          const preview   = chosen ?? slots[0]
           return (
             <div key={item.id} style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12, overflow: 'hidden' }}>
-              {slots[0] && (
-                slots[0].isVideo ? <video src={slots[0].text} muted loop playsInline style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover' }} />
-                : slots[0].isImage ? <img src={slots[0].text} alt="" onClick={() => setLightbox(slots[0].text)} style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover', cursor: 'zoom-in' }} />
-                : <div style={{ padding: '12px 14px', fontSize: 12, color: '#555', lineHeight: 1.6, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)' }}>{slots[0].text?.slice(0, 200)}</div>
+              {preview && (
+                preview.isVideo ? <video src={preview.text} muted loop playsInline style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover' }} />
+                : preview.isImage ? <img src={preview.text} alt="" onClick={() => setLightbox(preview.text)} style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover', cursor: 'zoom-in' }} />
+                : <div style={{ padding: '12px 14px', fontSize: 12, color: '#555', lineHeight: 1.6, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)' }}>{preview.text?.slice(0, 200)}</div>
               )}
               <div style={{ padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: modeColor, background: modeColor + '18', padding: '2px 7px', borderRadius: 8, textTransform: 'uppercase' as const }}>{mode}</span>
+                  {item.chosen_model_id && <span style={{ fontSize: 9, color: '#34d399', background: '#34d39918', padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>CHOSEN</span>}
                   <span style={{ fontSize: 11, color: '#333', marginLeft: 'auto' }}>{new Date(item.created_at).toLocaleDateString()}</span>
                 </div>
                 <div style={{ fontSize: 12, color: '#666', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.prompt}</div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                   {slots.map((s: any, i: number) => (
-                    <span key={i} style={{ fontSize: 10, color: SLOT_COLORS[i], background: SLOT_COLORS[i] + '18', padding: '2px 7px', borderRadius: 6, fontFamily: 'var(--mono)', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                    <span key={i} style={{
+                      fontSize: 10, padding: '2px 7px', borderRadius: 6, fontFamily: 'var(--mono)',
+                      maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+                      color: s.id === item.chosen_model_id ? '#34d399' : '#444',
+                      background: s.id === item.chosen_model_id ? '#34d39918' : '#ffffff08',
+                      textDecoration: s.id !== item.chosen_model_id && item.chosen_model_id ? 'line-through' : 'none',
+                    }}>
                       {(s.id ?? '').split('/')[1] ?? s.name}
                     </span>
                   ))}
@@ -189,6 +205,7 @@ function Gallery({ userId }: { userId: string }) {
 export default function CreatePage() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
   const setCursor = (color: string) => {
     if (cursorRef.current) cursorRef.current.style.background = color
     if (ringRef.current)   ringRef.current.style.borderColor  = color + '66'
@@ -200,11 +217,18 @@ export default function CreatePage() {
   const [selectedModels, setSelectedModels] = useState<(SlotModel | null)[]>([null, null, null, null])
   const [slots,          setSlots]          = useState<SlotState[]>([])
   const [pickerSlot,     setPickerSlot]     = useState<number | null>(null)
-  const [generating,     setGenerating]     = useState(false)
+  const [phase,          setPhase]          = useState<Phase>('setup')
   const [tab,            setTab]            = useState<'create' | 'gallery'>('create')
   const [lightbox,       setLightbox]       = useState<string | null>(null)
-  const [saved,          setSaved]          = useState(false)
 
+  // Post-pick state
+  const [chosenIdx,      setChosenIdx]      = useState<number | null>(null)
+  const [chatHistory,    setChatHistory]    = useState<ChatMessage[]>([])
+  const [chatInput,      setChatInput]      = useState('')
+  const [chatStreaming,  setChatStreaming]  = useState(false)
+  const [createId,       setCreateId]       = useState<string | null>(null)
+
+  // Cursor
   useEffect(() => {
     let mx = 0, my = 0, rx = 0, ry = 0, rafId: number
     const move = (e: MouseEvent) => {
@@ -225,21 +249,26 @@ export default function CreatePage() {
     createSupabaseBrowser().auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
   }, [])
 
-  useEffect(() => { setSelectedModels([null, null, null, null]); setSlots([]); setSaved(false) }, [mode])
+  useEffect(() => {
+    setSelectedModels([null, null, null, null]); setSlots([]); setPhase('setup')
+    setChosenIdx(null); setChatHistory([]); setCreateId(null)
+  }, [mode])
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatHistory, chatStreaming])
 
   const activeModels = selectedModels.filter(Boolean) as SlotModel[]
   const selectedIds  = activeModels.map(m => m.id)
 
-  const addModel = (i: number, model: SlotModel) => {
-    setSelectedModels(prev => prev.map((m, idx) => idx === i ? model : m))
-    setPickerSlot(null)
-  }
-  const removeModel = (i: number) => setSelectedModels(prev => prev.map((m, idx) => idx === i ? null : m))
+  const addModel    = (i: number, m: SlotModel) => { setSelectedModels(prev => prev.map((v, idx) => idx === i ? m : v)); setPickerSlot(null) }
+  const removeModel = (i: number) => setSelectedModels(prev => prev.map((v, idx) => idx === i ? null : v))
 
   const generate = async () => {
-    if (!prompt.trim() || activeModels.length === 0 || generating) return
-    setGenerating(true); setSaved(false)
+    if (!prompt.trim() || activeModels.length === 0 || phase === 'generating') return
+    setPhase('generating')
     setSlots(activeModels.map(() => ({ text: '', isImage: false, isVideo: false, streaming: true, done: false, cost: 0, responseTime: 0, error: null, priceLabel: '' })))
+    setChosenIdx(null); setChatHistory([]); setCreateId(null)
 
     try {
       const res = await fetch('/api/create', {
@@ -267,15 +296,13 @@ export default function CreatePage() {
                 const idx = p.index
                 setSlots(prev => prev.map((s, i) => i !== idx ? s : { ...s, text: s.text + (p.text ?? ''), isImage: p.isImage ?? s.isImage, isVideo: p.isVideo ?? s.isVideo }))
               } else if (currentEvent.startsWith('done:')) {
-                const idx        = p.index
+                const idx = p.index
                 const outputPrice = activeModels[idx]?.outputPrice ?? 0
                 setSlots(prev => prev.map((s, i) => {
                   if (i !== idx) return s
                   const realCost = Number(p.cost ?? 0) || outputPrice
-                  const pl = s.isVideo
-                    ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
-                    : s.isImage
-                    ? `$${(realCost * 1000).toFixed(2)} / 1k images`
+                  const pl = s.isVideo ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
+                    : s.isImage ? `$${(realCost * 1000).toFixed(2)} / 1k images`
                     : `$${outputPrice.toFixed(2)} / 1M tokens`
                   return { ...s, streaming: false, done: true, cost: realCost, responseTime: p.responseTime, priceLabel: pl }
                 }))
@@ -287,25 +314,91 @@ export default function CreatePage() {
           }
         }
       }
-    } catch (err) { console.error(err) }
-    setGenerating(false)
+      setPhase('picking')
+    } catch (err) {
+      console.error(err)
+      setPhase('setup')
+    }
   }
 
-  // Auto-save when all done
-  useEffect(() => {
-    const allDone = slots.length > 0 && slots.every(s => s.done) && !generating
-    if (!allDone || !userId || saved) return
-    createSupabaseBrowser().from('creates').insert({
+  const pickModel = async (idx: number) => {
+    if (!userId) return
+    setChosenIdx(idx)
+    const chosen  = activeModels[idx]
+    const initial = slots[idx]
+
+    // Seed chat with initial exchange
+    setChatHistory([
+      { role: 'user',      content: prompt },
+      { role: 'assistant', content: initial.text, isImage: initial.isImage, isVideo: initial.isVideo },
+    ])
+    setPhase('chatting')
+
+    // Save to DB with chosen model recorded
+    const sb = createSupabaseBrowser()
+    const { data } = await sb.from('creates').insert({
       user_id: userId, mode, prompt,
+      chosen_model_id: chosen.id,
       slots: slots.map((s, i) => ({
         id: activeModels[i]?.id, name: activeModels[i]?.name, provider: activeModels[i]?.provider,
         outputPrice: activeModels[i]?.outputPrice, priceLabel: s.priceLabel,
         text: s.text, isImage: s.isImage, isVideo: s.isVideo, cost: s.cost, responseTime: s.responseTime,
+        chosen: i === idx,
       })),
-    }).then(({ error }) => { if (!error) setSaved(true) })
-  }, [slots, generating])
+    }).select('id').single()
+    if (data?.id) setCreateId(data.id)
+  }
 
-  const canGenerate = prompt.trim().length >= 3 && activeModels.length > 0 && !generating
+  const sendChat = async () => {
+    if (!chatInput.trim() || chatStreaming || chosenIdx === null) return
+    const userMsg = chatInput.trim()
+    setChatInput('')
+    const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: userMsg }]
+    setChatHistory(newHistory)
+    setChatStreaming(true)
+
+    const chosen = activeModels[chosenIdx]
+    try {
+      const res = await fetch('/api/create/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelId: chosen.id, messages: newHistory }),
+      })
+      if (!res.ok || !res.body) throw new Error(await res.text())
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = '', currentEvent = '', assistantText = ''
+
+      setChatHistory(h => [...h, { role: 'assistant', content: '' }])
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim() }
+          else if (line.startsWith('data: ') && currentEvent === 'delta') {
+            try {
+              const p = JSON.parse(line.slice(6))
+              assistantText += p.text ?? ''
+              setChatHistory(h => h.map((m, i) => i === h.length - 1 ? { ...m, content: assistantText } : m))
+            } catch {}
+          }
+        }
+      }
+    } catch (err) { console.error(err) }
+    setChatStreaming(false)
+  }
+
+  const reset = () => {
+    setPhase('setup'); setSlots([]); setChosenIdx(null)
+    setChatHistory([]); setChatInput(''); setCreateId(null)
+    setPrompt('')
+  }
+
+  const canGenerate = prompt.trim().length >= 3 && activeModels.length > 0 && phase !== 'generating'
 
   return (
     <>
@@ -349,102 +442,207 @@ export default function CreatePage() {
           {tab === 'gallery' ? (
             userId ? <Gallery userId={userId} /> : <div style={{ color: '#444', textAlign: 'center', padding: 40 }}>Sign in to view your gallery.</div>
           ) : (
-            <>
-              {/* Mode */}
-              <div className="mode-selector" style={{ marginBottom: 24 }}>
-                {(['text', 'image', 'video'] as Mode[]).map(m => (
-                  <button key={m} className={`mode-btn ${mode === m ? 'active' : ''}`} onClick={() => setMode(m)}>
-                    <span className="mode-dot" />{m.charAt(0).toUpperCase() + m.slice(1)}
-                  </button>
-                ))}
-              </div>
 
-              {/* Model slots */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
-                {[0, 1, 2, 3].map(i => {
-                  const model = selectedModels[i]
-                  const color = SLOT_COLORS[i]
-                  return model ? (
-                    <div key={i} style={{ background: '#0d0d0d', border: `1px solid ${color}44`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), border: `1px solid ${providerColor(model.provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
-                        {providerInitial(model.provider)}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, color: color, fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.id.split('/')[1] ?? model.id}</div>
-                        <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{model.provider}</div>
-                      </div>
-                      <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
-                    </div>
-                  ) : (
-                    <button key={i} onClick={() => setPickerSlot(i)} style={{ background: '#0a0a0a', border: '1px dashed #1e1e1e', borderRadius: 10, padding: '14px', color: '#333', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s' }}
-                      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color }}
-                      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#1e1e1e'; el.style.color = '#333' }}
-                    >
-                      <span style={{ fontSize: 18 }}>+</span> Model {LABELS[i]}
+            /* ── CHATTING PHASE ── */
+            phase === 'chatting' && chosenIdx !== null ? (
+              <div>
+                {/* Chosen model header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, padding: '14px 18px', background: '#0d0d0d', border: `1px solid ${SLOT_COLORS[chosenIdx]}44`, borderRadius: 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: providerColor(activeModels[chosenIdx].provider) + '22', color: providerColor(activeModels[chosenIdx].provider), border: `1px solid ${providerColor(activeModels[chosenIdx].provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>
+                    {providerInitial(activeModels[chosenIdx].provider)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{activeModels[chosenIdx].name}</div>
+                    <div style={{ fontSize: 11, color: '#555' }}>{activeModels[chosenIdx].provider} · {slots[chosenIdx]?.priceLabel}</div>
+                  </div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: '#34d399', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ Your pick</span>
+                    <button onClick={reset} style={{ background: 'transparent', border: '1px solid #222', color: '#555', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
+                      ← New Session
                     </button>
-                  )
-                })}
-              </div>
+                  </div>
+                </div>
 
-              {/* Prompt */}
-              <div className="prompt-box">
-                <textarea className="prompt-textarea"
-                  placeholder={mode === 'image' ? "Describe an image…" : mode === 'video' ? "Describe a video…" : "Ask anything…"}
-                  value={prompt} onChange={e => setPrompt(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (canGenerate) generate() } }}
-                />
-                <div className="prompt-actions">
-                  <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
-                  <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
-                    {generating ? '⏳ Generating…' : '✦ Generate →'}
+                {/* Dismissed models */}
+                {activeModels.length > 1 && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' as const }}>
+                    <span style={{ fontSize: 11, color: '#333', alignSelf: 'center' }}>Dismissed:</span>
+                    {activeModels.map((m, i) => i === chosenIdx ? null : (
+                      <span key={i} style={{ fontSize: 11, color: '#333', background: '#111', border: '1px solid #1a1a1a', padding: '3px 10px', borderRadius: 8, fontFamily: 'var(--mono)', textDecoration: 'line-through' }}>
+                        {m.id.split('/')[1] ?? m.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Chat messages */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20, minHeight: 200 }}>
+                  {chatHistory.map((msg, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                      {msg.role === 'assistant' && (
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: providerColor(activeModels[chosenIdx].provider) + '22', color: providerColor(activeModels[chosenIdx].provider), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0, marginRight: 10, marginTop: 4 }}>
+                          {providerInitial(activeModels[chosenIdx].provider)}
+                        </div>
+                      )}
+                      <div style={{
+                        maxWidth: '72%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                        background: msg.role === 'user' ? '#1a1a1a' : '#0d0d0d',
+                        border: `1px solid ${msg.role === 'user' ? '#2a2a2a' : '#1a1a1a'}`,
+                        fontSize: 14, lineHeight: 1.7, color: msg.role === 'user' ? '#ccc' : '#ddd',
+                      }}>
+                        {msg.isVideo ? <video src={msg.content} autoPlay loop muted playsInline controls style={{ width: '100%', borderRadius: 6 }} />
+                        : msg.isImage ? <img src={msg.content} alt="" onClick={() => setLightbox(msg.content)} style={{ maxWidth: '100%', borderRadius: 6, cursor: 'zoom-in' }} />
+                        : <div className="markdown-body"><ReactMarkdown>{msg.content}</ReactMarkdown></div>}
+                        {i === chatHistory.length - 1 && msg.role === 'assistant' && chatStreaming && <span className="stream-cursor">▋</span>}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Chat input */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                  <textarea
+                    value={chatInput} onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
+                    placeholder="Continue the conversation…"
+                    rows={2}
+                    style={{ flex: 1, background: '#0d0d0d', border: '1px solid #222', borderRadius: 10, padding: '12px 16px', color: '#fff', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
+                  />
+                  <button onClick={sendChat} disabled={chatStreaming || !chatInput.trim()} style={{
+                    padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff',
+                    fontWeight: 700, fontSize: 14, cursor: chatStreaming ? 'wait' : 'pointer', flexShrink: 0,
+                    opacity: chatStreaming || !chatInput.trim() ? 0.5 : 1,
+                  }}>
+                    {chatStreaming ? '…' : '→'}
                   </button>
                 </div>
               </div>
 
-              {/* Results */}
-              {slots.length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                  <div className="battle-arena" style={{ gridTemplateColumns: `repeat(${slots.length}, 1fr)` }}>
-                    {slots.map((slot, i) => {
-                      const model = activeModels[i]
-                      const color = SLOT_COLORS[i]
-                      return (
-                        <div key={i} className="battle-card"
-                          onMouseEnter={() => setCursor(color)}
-                          onMouseLeave={() => setCursor('#e8453c')}
-                        >
-                          <div className={`battle-card-header ${mode !== 'text' ? 'image-mode' : ''}`}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ width: 20, height: 20, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800 }}>
-                                {providerInitial(model.provider)}
-                              </div>
-                              <div className="battle-model-id" style={{ color, fontSize: 12 }}>{model.id.split('/')[1] ?? model.id}</div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              {slot.done && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted2)' }}>⏱ {(slot.responseTime / 1000).toFixed(2)}s</span>}
-                              {slot.done && slot.priceLabel && <span className="price-badge" style={{ color }}>{slot.priceLabel}</span>}
-                            </div>
-                          </div>
-                          <div className={`battle-response ${mode !== 'text' ? 'image-response' : ''} ${slot.streaming && !slot.text ? 'loading' : ''}`}>
-                            {slot.streaming && !slot.text
-                              ? <><div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" /></>
-                              : slot.error ? <div style={{ padding: 16, color: 'var(--red)', fontSize: 13 }}>⚠️ {slot.error}</div>
-                              : slot.isVideo ? <video src={slot.text} autoPlay loop muted playsInline controls style={{ width: '100%', display: 'block' }} />
-                              : slot.isImage ? <img src={slot.text} alt="Generated" onClick={() => setLightbox(slot.text)} style={{ width: '100%', display: 'block', cursor: 'zoom-in' }} />
-                              : <><div className="markdown-body"><ReactMarkdown>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
-                            }
-                          </div>
+            ) : (
+              /* ── SETUP / GENERATING / PICKING ── */
+              <>
+                {/* Mode */}
+                <div className="mode-selector" style={{ marginBottom: 24 }}>
+                  {(['text', 'image', 'video'] as Mode[]).map(m => (
+                    <button key={m} className={`mode-btn ${mode === m ? 'active' : ''}`} onClick={() => { if (phase === 'setup') setMode(m) }}>
+                      <span className="mode-dot" />{m.charAt(0).toUpperCase() + m.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Model slots */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+                  {[0, 1, 2, 3].map(i => {
+                    const model = selectedModels[i]
+                    const color = SLOT_COLORS[i]
+                    return model ? (
+                      <div key={i} style={{ background: '#0d0d0d', border: `1px solid ${color}44`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), border: `1px solid ${providerColor(model.provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                          {providerInitial(model.provider)}
                         </div>
-                      )
-                    })}
-                  </div>
-                  <div className="action-bar" style={{ marginTop: 16 }}>
-                    <span className="action-hint">{generating ? 'Generating…' : saved ? '✓ Saved to your private gallery' : ''}</span>
-                    <button className="btn-battle" onClick={generate} disabled={generating} style={{ fontSize: 13 }}>↺ Regenerate</button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color, fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.id.split('/')[1] ?? model.id}</div>
+                          <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{model.provider}</div>
+                        </div>
+                        {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
+                      </div>
+                    ) : (
+                      <button key={i} onClick={() => phase === 'setup' && setPickerSlot(i)}
+                        disabled={phase !== 'setup'}
+                        style={{ background: '#0a0a0a', border: '1px dashed #1e1e1e', borderRadius: 10, padding: '14px', color: '#333', fontSize: 12, cursor: phase === 'setup' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: phase !== 'setup' ? 0.4 : 1 }}
+                        onMouseEnter={e => { if (phase === 'setup') { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#1e1e1e'; el.style.color = '#333' }}
+                      >
+                        <span style={{ fontSize: 18 }}>+</span> Model {LABELS[i]}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Prompt */}
+                <div className="prompt-box">
+                  <textarea className="prompt-textarea"
+                    placeholder={mode === 'image' ? "Describe an image…" : mode === 'video' ? "Describe a video…" : "Ask anything…"}
+                    value={prompt} onChange={e => setPrompt(e.target.value)}
+                    disabled={phase !== 'setup'}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (canGenerate) generate() } }}
+                  />
+                  <div className="prompt-actions">
+                    <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
+                    {phase === 'setup' || phase === 'generating' ? (
+                      <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
+                        {phase === 'generating' ? '⏳ Generating…' : '✦ Generate →'}
+                      </button>
+                    ) : (
+                      <button className="btn-secondary" onClick={reset}>← Start Over</button>
+                    )}
                   </div>
                 </div>
-              )}
-            </>
+
+                {/* Results */}
+                {slots.length > 0 && (
+                  <div style={{ marginTop: 24 }}>
+                    {phase === 'picking' && (
+                      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                        <div style={{ fontSize: 13, color: '#e8453c', fontWeight: 700, marginBottom: 4 }}>Which model do you want to continue with?</div>
+                        <div style={{ fontSize: 12, color: '#555' }}>Pick one — the others will be dismissed</div>
+                      </div>
+                    )}
+                    <div className="battle-arena" style={{ gridTemplateColumns: `repeat(${slots.length}, 1fr)` }}>
+                      {slots.map((slot, i) => {
+                        const model = activeModels[i]
+                        const color = SLOT_COLORS[i]
+                        return (
+                          <div key={i} className="battle-card"
+                            onMouseEnter={() => setCursor(color)}
+                            onMouseLeave={() => setCursor('#e8453c')}
+                          >
+                            <div className={`battle-card-header ${mode !== 'text' ? 'image-mode' : ''}`}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 20, height: 20, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800 }}>
+                                  {providerInitial(model.provider)}
+                                </div>
+                                <div className="battle-model-id" style={{ color, fontSize: 12 }}>{model.id.split('/')[1] ?? model.id}</div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {slot.done && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted2)' }}>⏱ {(slot.responseTime / 1000).toFixed(2)}s</span>}
+                                {slot.done && slot.priceLabel && <span className="price-badge" style={{ color }}>{slot.priceLabel}</span>}
+                              </div>
+                            </div>
+                            <div className={`battle-response ${mode !== 'text' ? 'image-response' : ''} ${slot.streaming && !slot.text ? 'loading' : ''}`}>
+                              {slot.streaming && !slot.text
+                                ? <><div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" /></>
+                                : slot.error ? <div style={{ padding: 16, color: 'var(--red)', fontSize: 13 }}>⚠️ {slot.error}</div>
+                                : slot.isVideo ? <video src={slot.text} autoPlay loop muted playsInline controls style={{ width: '100%', display: 'block' }} />
+                                : slot.isImage ? <img src={slot.text} alt="Generated" onClick={() => setLightbox(slot.text)} style={{ width: '100%', display: 'block', cursor: 'zoom-in' }} />
+                                : <><div className="markdown-body"><ReactMarkdown>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
+                              }
+                            </div>
+                            {/* Pick button */}
+                            {phase === 'picking' && slot.done && !slot.error && (
+                              <div style={{ padding: 12, borderTop: '1px solid #111' }}>
+                                <button onClick={() => pickModel(i)} style={{
+                                  width: '100%', padding: '10px 0', borderRadius: 8,
+                                  background: 'transparent', border: `1px solid ${color}`,
+                                  color, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                }}
+                                  onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = color + '18' }}
+                                  onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent' }}
+                                >
+                                  Continue with {model.name} →
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
           )}
         </div>
       </div>

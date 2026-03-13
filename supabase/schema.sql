@@ -88,6 +88,7 @@ create table if not exists creates (
   user_id    uuid not null references auth.users(id) on delete cascade,
   mode       text not null check (mode in ('text', 'image', 'video')),
   prompt     text not null,
+  chosen_model_id text,
   slots      jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
