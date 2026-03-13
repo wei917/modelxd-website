@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
+    "target": "ES2020",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
+    "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -21,6 +22,7 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
@@ -30,13 +32,9 @@
   "include": [
     "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
+    "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "supabase/functions",
-    "supabase/**",
-    "_shared"
+    "node_modules"
   ]
 }
