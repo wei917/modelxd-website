@@ -3,7 +3,7 @@
 // Returns storage path + metadata; server handles resize/thumbnail
 
 import { useRef, useState } from 'react'
-import { createSupabaseBrowser } from '@/lib/supabase-client'
+import { createBrowserClient } from '@supabase/ssr'
 
 export type Attachment = {
   storagePath: string   // e.g. 'originals/uuid.jpg' — path inside bucket
@@ -49,7 +49,7 @@ export default function AttachmentButton({
     setUploading(true)
     const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
     try {
-      const sb     = createSupabaseBrowser()
+      const sb     = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
       const bucket = getBucket(file.type, context)
       const ext    = file.name.split('.').pop() ?? 'bin'
       const path   = `originals/${crypto.randomUUID()}.${ext}`

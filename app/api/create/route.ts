@@ -11,6 +11,13 @@ import { createGateway } from '@ai-sdk/gateway'
 const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY! })
 const LOG      = '[create]'
 
+
+async function signedUrl(sb: any, bucket: string, path: string): Promise<string> {
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24) // 24h
+  if (error || !data) throw new Error(`Signed URL failed: ${error?.message}`)
+  return data.signedUrl
+}
+
 function sse(event: string, data: object) {
   return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
@@ -92,7 +99,7 @@ async function runImage(
     })
     if (error) throw new Error(`Upload failed: ${error.message}`)
 
-    const { data: { publicUrl } } = sb.storage.from('create-ai-images').getPublicUrl(path)
+    const publicUrl = await signedUrl(sb, 'create-ai-images', path)
     const meta = result.providerMetadata
     const cost = Number((meta?.gateway as any)?.marketCost ?? 0)
     const responseTime = Date.now() - start
@@ -132,7 +139,7 @@ async function runVideo(
       const path = `${duelId}_model${index}.${ext}`
       const { error } = await sb.storage.from(bucket).upload(path, video.uint8Array, { contentType: mediaType, upsert: false })
       if (error) throw new Error(`Upload failed: ${error.message}`)
-      publicUrl = sb.storage.from(bucket).getPublicUrl(path).data.publicUrl
+      publicUrl = await signedUrl(sb, bucket, path)
     } else {
       const providerUrl = (video as any).url
       const fetchRes    = await fetch(providerUrl)
@@ -143,7 +150,7 @@ async function runVideo(
       const bytes = new Uint8Array(await fetchRes.arrayBuffer())
       const { error } = await sb.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })
       if (error) throw new Error(`Upload failed: ${error.message}`)
-      publicUrl = sb.storage.from(bucket).getPublicUrl(path).data.publicUrl
+      publicUrl = await signedUrl(sb, bucket, path)
     }
 
     const meta = result.providerMetadata

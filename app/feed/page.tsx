@@ -3,7 +3,8 @@
 // Public feed of all duels, filterable by mode
 
 import { useEffect, useState, useCallback } from 'react'
-import { createSupabaseBrowser } from '@/lib/supabase-client'
+import { createBrowserClient } from '@supabase/ssr'
+const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
 type Mode = 'all' | 'text' | 'image' | 'video'
 

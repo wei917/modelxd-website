@@ -30,7 +30,7 @@ type ModelState = {
 }
 
 const STEPS = [
-  { n:1, label:'Prompt' },
+  { n:1, label:'Task' },
   { n:2, label:'Vote' },
   { n:3, label:'Reveal Price' },
   { n:4, label:'Vote Again' },

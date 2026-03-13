@@ -7,7 +7,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
-import { createSupabaseBrowser } from '@/lib/supabase-client'
+import { createBrowserClient } from '@supabase/ssr'
+const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
 

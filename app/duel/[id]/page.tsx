@@ -6,7 +6,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Nav from '../../components/Nav'
-import { createSupabaseBrowser } from '@/lib/supabase-client'
+import { createBrowserClient } from '@supabase/ssr'
+const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
 
 type VoteChoice = number | 'T' | null
@@ -36,7 +37,7 @@ interface Duel {
 }
 
 const STEPS = [
-  { n:1, label:'Prompt' },
+  { n:1, label:'Task' },
   { n:2, label:'Vote' },
   { n:3, label:'Reveal Price' },
   { n:4, label:'Vote Again' },
