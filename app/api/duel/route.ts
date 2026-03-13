@@ -8,24 +8,22 @@ import { getModelsByMode, ModelEntry } from '../../../lib/models'
 export const maxDuration = 300 // Vercel Pro max — needed for slow image models
 
 const LOG = '[duel]'
-type AttachmentInput = { base64: string; mediaType: string } | null
+type AttachmentInput = { buffer: Buffer; mediaType: string } | null
 
 function buildUserContent(prompt: string, attachment: AttachmentInput): any {
   if (!attachment) return prompt
-  const { base64, mediaType } = attachment
+  const { buffer, mediaType } = attachment
+  const base64 = buffer.toString('base64')
   const parts: any[] = []
   if (mediaType.startsWith('image/')) {
     parts.push({ type: 'image', image: base64, mimeType: mediaType })
   } else if (mediaType === 'application/pdf') {
     parts.push({ type: 'file', data: base64, mimeType: 'application/pdf' })
   } else if (mediaType === 'text/plain') {
-    // decode text and prepend to prompt
-    const decoded = Buffer.from(base64, 'base64').toString('utf-8')
-    parts.push({ type: 'text', text: `File content:
-${decoded}
+    return `File content:
+${buffer.toString('utf-8')}
 
-${prompt}` })
-    return parts[0].text  // plain string is fine
+${prompt}`
   } else if (mediaType.startsWith('video/')) {
     parts.push({ type: 'file', data: base64, mimeType: mediaType })
   }
