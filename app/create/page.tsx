@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
 import { createSupabaseBrowser } from '@/lib/supabase-client'
 import ReactMarkdown from 'react-markdown'
+import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
 
 type Mode = 'text' | 'image' | 'video'
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting'
@@ -220,6 +221,7 @@ export default function CreatePage() {
   const [phase,          setPhase]          = useState<Phase>('setup')
   const [tab,            setTab]            = useState<'create' | 'gallery'>('create')
   const [lightbox,       setLightbox]       = useState<string | null>(null)
+  const [attachment,     setAttachment]     = useState<Attachment | null>(null)
 
   // Post-pick state
   const [chosenIdx,      setChosenIdx]      = useState<number | null>(null)
@@ -251,7 +253,7 @@ export default function CreatePage() {
 
   useEffect(() => {
     setSelectedModels([null, null, null, null]); setSlots([]); setPhase('setup')
-    setChosenIdx(null); setChatHistory([]); setCreateId(null)
+    setChosenIdx(null); setChatHistory([]); setCreateId(null); setAttachment(null)
   }, [mode])
 
   useEffect(() => {
@@ -274,7 +276,7 @@ export default function CreatePage() {
       const res = await fetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, models: activeModels.map(m => m.id) }),
+        body: JSON.stringify({ prompt, mode, models: activeModels.map(m => m.id), attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null }),
       })
       if (!res.ok || !res.body) throw new Error(await res.text())
 
@@ -395,7 +397,7 @@ export default function CreatePage() {
   const reset = () => {
     setPhase('setup'); setSlots([]); setChosenIdx(null)
     setChatHistory([]); setChatInput(''); setCreateId(null)
-    setPrompt('')
+    setPrompt(''); setAttachment(null)
   }
 
   const canGenerate = prompt.trim().length >= 3 && activeModels.length > 0 && phase !== 'generating'
@@ -569,6 +571,7 @@ export default function CreatePage() {
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (canGenerate) generate() } }}
                   />
                   <div className="prompt-actions">
+                    <AttachmentButton attachment={attachment} onChange={setAttachment} disabled={phase !== 'setup'} context="create" />
                     <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
                     {phase === 'setup' || phase === 'generating' ? (
                       <button className="btn-battle" onClick={generate} disabled={!canGenerate}>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
 import ReactMarkdown from 'react-markdown'
+import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
 
 type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
@@ -60,6 +61,7 @@ export default function XDuel() {
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
+  const [attachment,  setAttachment]  = useState<Attachment | null>(null)
 
   const bothDone    = models.length > 0 && models.every(m => m.done)
   const anyStreaming = models.some(m => m.streaming)
@@ -102,7 +104,7 @@ export default function XDuel() {
       const res = await fetch('/api/duel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, count }),
+        body: JSON.stringify({ prompt, mode, count, attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null }),
       })
 
       if (!res.ok || !res.body) {
@@ -239,7 +241,7 @@ export default function XDuel() {
     setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     setModels([]); setApiError(null)
-    if (!keepPrompt) setPrompt('')
+    if (!keepPrompt) { setPrompt(''); setAttachment(null) }
   }
 
   const approxTokens = Math.round(prompt.length / 3)
@@ -329,6 +331,7 @@ export default function XDuel() {
                   }}
                 />
                 <div className="prompt-actions">
+                  <AttachmentButton attachment={attachment} onChange={setAttachment} context="xduel" />
                   <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
                   <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
                     ⚔️ Start XDuel →

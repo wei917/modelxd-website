@@ -1,13 +1,38 @@
 // app/api/create/route.ts
 // Like /api/duel but user-specified models, saved to `creates` table (private)
 
-export const runtime    = 'edge'
+// Node runtime required for Sharp (image resizing)
+export const runtime    = 'nodejs'
 export const maxDuration = 300
 
 import { streamText, experimental_generateImage as generateImage, experimental_generateVideo as generateVideo } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
 
 type r = Result
+
+type AttachmentInput = { base64: string; mediaType: string } | null
+
+function buildUserContent(prompt: string, attachment: AttachmentInput): any {
+  if (!attachment) return prompt
+  const { base64, mediaType } = attachment
+  const parts: any[] = []
+  if (mediaType.startsWith('image/')) {
+    parts.push({ type: 'image', image: base64, mimeType: mediaType })
+  } else if (mediaType === 'application/pdf') {
+    parts.push({ type: 'file', data: base64, mimeType: 'application/pdf' })
+  } else if (mediaType === 'text/plain') {
+    const decoded = Buffer.from(base64, 'base64').toString('utf-8')
+    return `File content:
+${decoded}
+
+${prompt}`
+  } else if (mediaType.startsWith('video/')) {
+    parts.push({ type: 'file', data: base64, mimeType: mediaType })
+  }
+  parts.push({ type: 'text', text: prompt })
+  return parts
+}
+
 const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY! })
 
 const LOG = '[create]'
@@ -45,7 +70,9 @@ async function runText(modelId: string, index: number, prompt: string, controlle
 async function runImage(modelId: string, index: number, prompt: string, controller: ReadableStreamDefaultController, duelId: string): Promise<Result> {
   const start = Date.now()
   try {
-    const result = await generateImage({ model: gateway.imageModel(modelId), prompt })
+    const imgOpts: any = { model: gateway.imageModel(modelId), prompt }
+    if (attachment?.mediaType.startsWith('image/')) imgOpts.providerOptions = { openai: { image: attachment.base64 } }
+    const result = await generateImage(imgOpts)
     const image  = result.images?.[0]
     if (!image) throw new Error('No image returned')
 
@@ -73,7 +100,9 @@ async function runImage(modelId: string, index: number, prompt: string, controll
 async function runVideo(modelId: string, index: number, prompt: string, controller: ReadableStreamDefaultController, duelId: string): Promise<Result> {
   const start = Date.now()
   try {
-    const result = await generateVideo({ model: gateway.videoModel(modelId), prompt })
+    const vidOpts: any = { model: gateway.videoModel(modelId), prompt }
+    if (attachment?.mediaType.startsWith('image/')) vidOpts.providerOptions = { openai: { image: attachment.base64 } }
+    const result = await generateVideo(vidOpts)
     const video  = result.videos?.[0]
     if (!video) throw new Error('No video returned')
 
@@ -116,7 +145,28 @@ async function runVideo(modelId: string, index: number, prompt: string, controll
 }
 
 export async function POST(req: Request) {
-  const { prompt, mode = 'text', models: modelIds } = await req.json()
+  const { prompt, mode = 'text', models: modelIds, attachment: attachmentInput = null } = await req.json()
+
+  // Process attachment server-side
+  let processedAttachment: AttachmentInput = null
+  let attachmentId: string | null = null
+  if (attachmentInput?.storagePath && user) {
+    try {
+      const { processAttachment } = await import('@/lib/attachment')
+      const result = await processAttachment(
+        user.id,
+        attachmentInput.bucket,
+        attachmentInput.storagePath,
+        attachmentInput.mediaType,
+        attachmentInput.fileName,
+        attachmentInput.fileSize,
+      )
+      processedAttachment = { buffer: result.buffer, mediaType: result.mediaType }
+      attachmentId = result.attachmentId
+    } catch (err) {
+      console.warn('[create] attachment processing failed:', err)
+    }
+  }
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
@@ -131,9 +181,9 @@ export async function POST(req: Request) {
       controller.enqueue(sse('meta', { count: modelIds.length, mode, duelId }))
       await Promise.all(
         modelIds.map((modelId: string, i: number) =>
-          mode === 'image' ? runImage(modelId, i, prompt, controller, duelId)
-          : mode === 'video' ? runVideo(modelId, i, prompt, controller, duelId)
-          : runText(modelId, i, prompt, controller, duelId)
+          mode === 'image' ? runImage(modelId, i, prompt, controller, duelId, processedAttachment)
+          : mode === 'video' ? runVideo(modelId, i, prompt, controller, duelId, processedAttachment)
+          : runText(modelId, i, prompt, controller, duelId, processedAttachment)
         )
       )
       controller.enqueue(sse('end', {}))

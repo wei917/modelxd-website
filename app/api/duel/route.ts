@@ -8,6 +8,32 @@ import { getModelsByMode, ModelEntry } from '../../../lib/models'
 export const maxDuration = 300 // Vercel Pro max — needed for slow image models
 
 const LOG = '[duel]'
+type AttachmentInput = { base64: string; mediaType: string } | null
+
+function buildUserContent(prompt: string, attachment: AttachmentInput): any {
+  if (!attachment) return prompt
+  const { base64, mediaType } = attachment
+  const parts: any[] = []
+  if (mediaType.startsWith('image/')) {
+    parts.push({ type: 'image', image: base64, mimeType: mediaType })
+  } else if (mediaType === 'application/pdf') {
+    parts.push({ type: 'file', data: base64, mimeType: 'application/pdf' })
+  } else if (mediaType === 'text/plain') {
+    // decode text and prepend to prompt
+    const decoded = Buffer.from(base64, 'base64').toString('utf-8')
+    parts.push({ type: 'text', text: `File content:
+${decoded}
+
+${prompt}` })
+    return parts[0].text  // plain string is fine
+  } else if (mediaType.startsWith('video/')) {
+    parts.push({ type: 'file', data: base64, mimeType: mediaType })
+  }
+  parts.push({ type: 'text', text: prompt })
+  return parts
+}
+
+
 
 // Extract a representative per-image price from whichever pricing structure exists in raw jsonb
 function getImagePrice(pricing: any): number {
@@ -120,7 +146,8 @@ async function tryTextModel(
   model: ModelEntry,
   index: number,
   prompt: string,
-  controller: ReadableStreamDefaultController
+  controller: ReadableStreamDefaultController,
+  attachment: AttachmentInput = null
 ): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] text: ${model.id}`)
@@ -128,7 +155,7 @@ async function tryTextModel(
   try {
     const result = streamText({
       model:     gateway(model.id),
-      messages:  [{ role: 'user', content: prompt }],
+      messages:  [{ role: 'user', content: buildUserContent(prompt, attachment) }],
       maxOutputTokens: 512,
     })
 
@@ -171,16 +198,18 @@ async function tryImageModel(
   prompt: string,
   controller: ReadableStreamDefaultController,
   duelMode: string,
-  duelId: string
+  duelId: string,
+  attachment: AttachmentInput = null
 ): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] image: ${model.id}`)
 
   try {
-    const result = await generateImage({
-      model:  gateway.imageModel(model.id),
-      prompt,
-    })
+    const imgOptions: any = { model: gateway.imageModel(model.id), prompt }
+    if (attachment?.mediaType.startsWith('image/')) {
+      imgOptions.providerOptions = { openai: { image: attachment.base64 } }
+    }
+    const result = await generateImage(imgOptions)
 
     const image = result.images?.[0]
     if (!image) throw new Error('No image in response')
@@ -225,7 +254,8 @@ async function tryVideoModel(
   prompt:     string,
   controller: ReadableStreamDefaultController,
   duelMode:   string,
-  duelId:     string
+  duelId:     string,
+  attachment: AttachmentInput = null
 ): Promise<MaybeDuelResult> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] video: ${model.id}`)
@@ -328,7 +358,8 @@ async function runWorker(
   controller:     ReadableStreamDefaultController,
   resolvedModels: (ModelEntry | null)[],
   resolvedResults: ({ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null)[],
-  duelId:         string
+  duelId:         string,
+  attachment:     AttachmentInput = null
 ) {
   while (queue.length > 0) {
     const model = queue.shift()!
@@ -344,10 +375,10 @@ async function runWorker(
     }))
 
     const result = mode === 'image'
-      ? await tryImageModel(model, index, prompt, controller, mode, duelId)
+      ? await tryImageModel(model, index, prompt, controller, mode, duelId, attachment)
       : mode === 'video'
-      ? await tryVideoModel(model, index, prompt, controller, mode, duelId)
-      : await tryTextModel(model, index, prompt, controller)
+      ? await tryVideoModel(model, index, prompt, controller, mode, duelId, attachment)
+      : await tryTextModel(model, index, prompt, controller, attachment)
 
     if (result) {
       resolvedModels[index] = model
@@ -363,7 +394,29 @@ async function runWorker(
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  const { prompt, mode = 'text', count = 2 } = await req.json()
+  const { prompt, mode = 'text', count = 2, attachment: attachmentInput = null } = await req.json()
+
+  // Process attachment if present: fetch from bucket, resize, store in DB
+  let processedAttachment: AttachmentInput = null
+  let attachmentId: string | null = null
+  if (attachmentInput?.storagePath && user) {
+    try {
+      const { processAttachment } = await import('@/lib/attachment')
+      const result = await processAttachment(
+        user.id,
+        attachmentInput.bucket,
+        attachmentInput.storagePath,
+        attachmentInput.mediaType,
+        attachmentInput.fileName,
+        attachmentInput.fileSize,
+      )
+      processedAttachment = { buffer: result.buffer, mediaType: result.mediaType }
+      attachmentId = result.attachmentId
+    } catch (err) {
+      console.warn('[duel] attachment processing failed:', err)
+      // Non-fatal — continue without attachment
+    }
+  }
 
   // Auth check — must be signed in
   const { createClient: createSupa } = await import('@supabase/supabase-js')
@@ -407,7 +460,7 @@ export async function POST(req: Request) {
     async start(controller) {
       controller.enqueue(sse('meta', { count: n, mode, duelId }))
       await Promise.all(
-        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, mode, controller, resolvedModels, resolvedResults, duelId))
+        Array.from({ length: n }, (_, i) => runWorker(i, queue, prompt, mode, controller, resolvedModels, resolvedResults, duelId, processedAttachment))
       )
       const resolvedSlots = resolvedModels.map(m => m ? {
         id:          m.id,
@@ -438,6 +491,7 @@ export async function POST(req: Request) {
         mode,
         prompt,
         slots:   slotResults,
+        attachment_id: attachmentId,
       }).then(({ error }) => {
         if (error) console.error(`${LOG} Failed to save duel ${duelId}:`, error.message)
         else console.log(`${LOG} Duel ${duelId} saved`)
