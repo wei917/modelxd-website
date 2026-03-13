@@ -392,12 +392,21 @@ async function runWorker(
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  // Auth check — must be signed in
+  const { createClient: createSupa } = await import('@supabase/supabase-js')
+  const { createSupabaseServer } = await import('@/lib/supabase-server')
+  const supabaseUser = createSupabaseServer()
+  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+  if (authError || !user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { prompt, mode = 'text', count = 2, attachment: attachmentInput = null } = await req.json()
 
   // Process attachment if present: fetch from bucket, resize, store in DB
   let processedAttachment: AttachmentInput = null
   let attachmentId: string | null = null
-  if (attachmentInput?.storagePath && user) {
+  if (attachmentInput?.storagePath) {
     try {
       const { processAttachment } = await import('@/lib/attachment')
       const result = await processAttachment(
@@ -414,15 +423,6 @@ export async function POST(req: Request) {
       console.warn('[duel] attachment processing failed:', err)
       // Non-fatal — continue without attachment
     }
-  }
-
-  // Auth check — must be signed in
-  const { createClient: createSupa } = await import('@supabase/supabase-js')
-  const { createSupabaseServer } = await import('@/lib/supabase-server')
-  const supabaseUser = createSupabaseServer()
-  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-  if (authError || !user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const duelId = crypto.randomUUID()
