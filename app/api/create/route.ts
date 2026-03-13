@@ -32,7 +32,7 @@ async function runText(modelId: string, index: number, prompt: string, controlle
     const meta  = await result.providerMetadata
     const cost  = Number((meta?.gateway as any)?.marketCost ?? 0)
     const responseTime = Date.now() - start
-    controller.enqueue(sse(`done:${index}`, { index, tokens: usage?.completionTokens ?? 0, responseTime, cost }))
+    controller.enqueue(sse(`done:${index}`, { index, tokens: usage?.outputTokens ?? 0, responseTime, cost }))
     return { text: fullText, isImage: false, isVideo: false, responseTime, cost }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
