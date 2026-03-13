@@ -71,7 +71,7 @@ async function runImage(modelId: string, index: number, prompt: string, controll
   const start = Date.now()
   try {
     const imgOpts: any = { model: gateway.imageModel(modelId), prompt }
-    if (attachment?.mediaType.startsWith('image/')) imgOpts.providerOptions = { openai: { image: attachment.base64 } }
+    if (attachment?.mediaType.startsWith('image/')) imgOpts.providerOptions = { openai: { image: attachment.buffer.toString('base64') } }
     const result = await generateImage(imgOpts)
     const image  = result.images?.[0]
     if (!image) throw new Error('No image returned')
@@ -101,7 +101,7 @@ async function runVideo(modelId: string, index: number, prompt: string, controll
   const start = Date.now()
   try {
     const vidOpts: any = { model: gateway.videoModel(modelId), prompt }
-    if (attachment?.mediaType.startsWith('image/')) vidOpts.providerOptions = { openai: { image: attachment.base64 } }
+    if (attachment?.mediaType.startsWith('image/')) vidOpts.providerOptions = { openai: { image: attachment.buffer.toString('base64') } }
     const result = await generateVideo(vidOpts)
     const video  = result.videos?.[0]
     if (!video) throw new Error('No video returned')

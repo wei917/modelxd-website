@@ -207,7 +207,7 @@ async function tryImageModel(
   try {
     const imgOptions: any = { model: gateway.imageModel(model.id), prompt }
     if (attachment?.mediaType.startsWith('image/')) {
-      imgOptions.providerOptions = { openai: { image: attachment.base64 } }
+      imgOptions.providerOptions = { openai: { image: attachment.buffer.toString('base64') } }
     }
     const result = await generateImage(imgOptions)
 
