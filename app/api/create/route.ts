@@ -4,7 +4,7 @@
 export const runtime    = 'edge'
 export const maxDuration = 300
 
-import { streamText, generateImage, generateVideo } from 'ai'
+import { streamText, experimental_generateImage as generateImage, experimental_generateVideo as generateVideo } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
 
 type r = Result

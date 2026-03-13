@@ -267,9 +267,18 @@ export default function CreatePage() {
                 const idx = p.index
                 setSlots(prev => prev.map((s, i) => i !== idx ? s : { ...s, text: s.text + (p.text ?? ''), isImage: p.isImage ?? s.isImage, isVideo: p.isVideo ?? s.isVideo }))
               } else if (currentEvent.startsWith('done:')) {
-                const idx = p.index; const cost = Number(p.cost ?? 0)
-                const pl  = makePriceLabel(mode, cost, activeModels[idx]?.outputPrice ?? 0)
-                setSlots(prev => prev.map((s, i) => i !== idx ? s : { ...s, streaming: false, done: true, cost, responseTime: p.responseTime, priceLabel: pl }))
+                const idx        = p.index
+                const outputPrice = activeModels[idx]?.outputPrice ?? 0
+                setSlots(prev => prev.map((s, i) => {
+                  if (i !== idx) return s
+                  const realCost = Number(p.cost ?? 0) || outputPrice
+                  const pl = s.isVideo
+                    ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
+                    : s.isImage
+                    ? `$${(realCost * 1000).toFixed(2)} / 1k images`
+                    : `$${outputPrice.toFixed(2)} / 1M tokens`
+                  return { ...s, streaming: false, done: true, cost: realCost, responseTime: p.responseTime, priceLabel: pl }
+                }))
               } else if (currentEvent.startsWith('error:')) {
                 const idx = p.index
                 setSlots(prev => prev.map((s, i) => i !== idx ? s : { ...s, streaming: false, done: true, error: p.message }))
