@@ -74,7 +74,6 @@ create policy "xduel-user-images: owner insert"
   with check (
     bucket_id = 'xduel-user-images'
     and auth.uid() is not null
-    and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 create policy "xduel-user-images: owner delete"
@@ -93,7 +92,6 @@ create policy "xduel-user-videos: owner insert"
   with check (
     bucket_id = 'xduel-user-videos'
     and auth.uid() is not null
-    and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 create policy "xduel-user-videos: owner delete"
@@ -140,7 +138,6 @@ create policy "create-user-images: owner insert"
   with check (
     bucket_id = 'create-user-images'
     and auth.uid() is not null
-    and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 create policy "create-user-images: owner delete"
@@ -162,7 +159,6 @@ create policy "create-user-videos: owner insert"
   with check (
     bucket_id = 'create-user-videos'
     and auth.uid() is not null
-    and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 create policy "create-user-videos: owner delete"
