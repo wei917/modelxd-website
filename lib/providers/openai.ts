@@ -1,7 +1,7 @@
 // lib/providers/openai.ts
 // OpenAI provider: text (streaming), image (t2i + i2i), video (sora async poll)
 
-import OpenAI from 'openai'
+import OpenAI, { toFile } from 'openai'
 import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment } from './types'
 
 function client() {
@@ -25,9 +25,9 @@ function calcVideoCost(model: ModelInfo, resolution: string, seconds: number): n
 
 // ── Text (streaming) ─────────────────────────────────────────────────────────
 export async function streamText(
-  model:      ModelInfo,
-  messages:   { role: 'user' | 'assistant'; content: any }[],
-  callbacks:  TextStreamCallbacks
+  model:     ModelInfo,
+  messages:  { role: 'user' | 'assistant'; content: any }[],
+  callbacks: TextStreamCallbacks
 ): Promise<void> {
   const ai = client()
   try {
@@ -72,18 +72,17 @@ export async function generateImage(
   let b64: string
 
   if (attachment?.mediaType.startsWith('image/')) {
-    // i2i — use images.edit endpoint
-    const blob = new Blob([attachment.buffer], { type: attachment.mediaType })
-    const file = new File([blob], 'input.jpg', { type: attachment.mediaType })
-    const res = await ai.images.edit({
+    // i2i via images.edit
+    const file = await toFile(attachment.buffer, 'input.png', { type: attachment.mediaType })
+    const res  = await ai.images.edit({
       model:   model.model_name,
       image:   file,
       prompt,
       size:    size as any,
-      quality: quality as any,
-      n: 1,
+      n:       1,
     })
-    b64 = res.data[0].b64_json!
+    b64 = res.data?.[0]?.b64_json ?? ''
+    if (!b64) throw new Error('No image returned from OpenAI edit')
   } else {
     // t2i
     const res = await ai.images.generate({
@@ -92,9 +91,10 @@ export async function generateImage(
       size:            size as any,
       quality:         quality as any,
       response_format: 'b64_json',
-      n: 1,
+      n:               1,
     })
-    b64 = res.data[0].b64_json!
+    b64 = res.data?.[0]?.b64_json ?? ''
+    if (!b64) throw new Error('No image returned from OpenAI generate')
   }
 
   return {
@@ -106,58 +106,50 @@ export async function generateImage(
 
 // ── Video (sora async poll) ───────────────────────────────────────────────────
 export async function generateVideo(
-  model:      ModelInfo,
-  prompt:     string,
-  size:       string = '1280x720',
-  seconds:    number = 16,
-  attachment: Attachment | null = null,
+  model:       ModelInfo,
+  prompt:      string,
+  size:        string = '1280x720',
+  seconds:     number = 16,
+  attachment:  Attachment | null = null,
   onProgress?: (pct: number) => void
 ): Promise<VideoResult> {
   const ai = client()
 
-  const params: any = {
-    model:  model.model_name,
-    prompt,
-    size,
-    n: 1,
-  }
+  const params: any = { model: model.model_name, prompt, size, n: 1 }
 
-  // i2v — pass image as first frame
   if (attachment?.mediaType.startsWith('image/')) {
     params.image = `data:${attachment.mediaType};base64,${attachment.buffer.toString('base64')}`
   }
 
-  // Create job
-  let job = await (ai as any).videos.create(params)
-  const jobId = job.id
+  let job: any = await (ai as any).videos.create(params)
+  const jobId  = job.id as string
 
-  // Poll until complete
-  const POLL_INTERVAL = 15_000 // 15s
-  const MAX_WAIT      = 20 * 60 * 1000 // 20 min
+  const POLL_INTERVAL = 15_000
+  const MAX_WAIT      = 20 * 60 * 1000
+  const start         = Date.now()
 
-  const start = Date.now()
   while (job.status !== 'completed' && job.status !== 'failed') {
     if (Date.now() - start > MAX_WAIT) throw new Error('Video generation timed out')
     await new Promise(r => setTimeout(r, POLL_INTERVAL))
     job = await (ai as any).videos.retrieve(jobId)
-    if (onProgress && job.progress != null) onProgress(job.progress)
+    if (onProgress && job.progress != null) onProgress(job.progress as number)
   }
 
-  if (job.status === 'failed') throw new Error(job.error?.message ?? 'Video generation failed')
+  if (job.status === 'failed') throw new Error((job.error as any)?.message ?? 'Video generation failed')
 
-  // Fetch the video content
   const response = await fetch(`https://api.openai.com/v1/videos/${jobId}/content`, {
     headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY!}` },
   })
   if (!response.ok) throw new Error(`Failed to fetch video: ${response.status}`)
 
-  const buffer = Buffer.from(await response.arrayBuffer())
-  const resolution = size.includes('1792') || size.includes('1024x1792') ? '1080p' : '720p'
+  const buffer     = Buffer.from(await response.arrayBuffer())
+  const parts = size.split('x').map(Number)
+  const resolution = (parts[0] ?? 0) >= 1792 || (parts[1] ?? 0) >= 1792 ? '1080p' : '720p'
 
   return {
     buffer,
-    mediaType: 'video/mp4',
+    mediaType:       'video/mp4',
     durationSeconds: seconds,
-    cost: calcVideoCost(model, resolution, seconds),
+    cost:            calcVideoCost(model, resolution, seconds),
   }
 }

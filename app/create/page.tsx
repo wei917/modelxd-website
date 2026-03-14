@@ -42,7 +42,6 @@ interface SlotState {
   cost: number
   responseTime: number
   error: string | null
-  priceLabel: string
 }
 
 interface ChatMessage {
@@ -272,7 +271,7 @@ export default function CreatePage() {
   const generate = async () => {
     if (!prompt.trim() || activeModels.length === 0 || phase === 'generating') return
     setPhase('generating')
-    setSlots(activeModels.map(() => ({ text: '', isImage: false, isVideo: false, streaming: true, done: false, cost: 0, responseTime: 0, error: null, priceLabel: '' })))
+    setSlots(activeModels.map(() => ({ text: '', isImage: false, isVideo: false, streaming: true, done: false, cost: 0, responseTime: 0, error: null })))
     setChosenIdx(null); setChatHistory([]); setCreateId(null)
 
     try {
@@ -302,14 +301,10 @@ export default function CreatePage() {
                 setSlots(prev => prev.map((s, i) => i !== idx ? s : { ...s, text: s.text + (p.text ?? ''), isImage: p.isImage ?? s.isImage, isVideo: p.isVideo ?? s.isVideo }))
               } else if (currentEvent.startsWith('done:')) {
                 const idx = p.index
-                const outputPrice = activeModels[idx]?.outputPrice ?? 0
                 setSlots(prev => prev.map((s, i) => {
                   if (i !== idx) return s
-                  const realCost = Number(p.cost ?? 0) || outputPrice
-                  const pl = s.isVideo ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
-                    : s.isImage ? `$${(realCost * 1000).toFixed(2)} / 1k images`
-                    : `$${outputPrice.toFixed(2)} / 1M tokens`
-                  return { ...s, streaming: false, done: true, cost: realCost, responseTime: p.responseTime, priceLabel: pl }
+                  const cost = Number(p.cost ?? 0)
+                  return { ...s, streaming: false, done: true, cost, responseTime: p.responseTime }
                 }))
               } else if (currentEvent.startsWith('error:')) {
                 const idx = p.index
@@ -346,7 +341,7 @@ export default function CreatePage() {
       chosen_model_id: chosen.id,
       slots: slots.map((s, i) => ({
         id: activeModels[i]?.id, name: activeModels[i]?.name, provider: activeModels[i]?.provider,
-        outputPrice: activeModels[i]?.outputPrice, priceLabel: s.priceLabel,
+        model_name: activeModels[i]?.model_name,
         text: s.text, isImage: s.isImage, isVideo: s.isVideo, cost: s.cost, responseTime: s.responseTime,
         chosen: i === idx,
       })),
@@ -458,7 +453,7 @@ export default function CreatePage() {
                   </div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{activeModels[chosenIdx].name}</div>
-                    <div style={{ fontSize: 11, color: '#555' }}>{activeModels[chosenIdx].provider} · {slots[chosenIdx]?.priceLabel}</div>
+                    <div style={{ fontSize: 11, color: '#555' }}>{activeModels[chosenIdx].provider} · ${(slots[chosenIdx]?.cost ?? 0).toFixed(4)}</div>
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <span style={{ fontSize: 11, color: '#34d399', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ Your pick</span>
@@ -613,7 +608,7 @@ export default function CreatePage() {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 {slot.done && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted2)' }}>⏱ {(slot.responseTime / 1000).toFixed(2)}s</span>}
-                                {slot.done && slot.priceLabel && <span className="price-badge" style={{ color }}>{slot.priceLabel}</span>}
+                                {slot.done && slot.cost > 0 && <span className="price-badge" style={{ color }}>${slot.cost.toFixed(4)}</span>}
                               </div>
                             </div>
                             <div className={`battle-response ${mode !== 'text' ? 'image-response' : ''} ${slot.streaming && !slot.text ? 'loading' : ''}`}>

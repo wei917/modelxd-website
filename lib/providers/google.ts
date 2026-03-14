@@ -16,33 +16,24 @@ function calcTextCost(model: ModelInfo, inputTokens: number, outputTokens: numbe
 }
 
 function calcImageCost(model: ModelInfo, outputTokens: number): number {
-  // Google charges per output image token
   return (outputTokens / 1_000_000) * (model.output_image_price ?? 0)
 }
 
 function calcVideoCost(model: ModelInfo, seconds: number): number {
-  // Use first available rate (Google Veo is flat per second regardless of resolution)
   const rate = model.video_pricing ? Object.values(model.video_pricing)[0] : 0
   return (rate ?? 0) * seconds
 }
 
 function buildContents(
-  messages: { role: 'user' | 'assistant'; content: any }[],
+  messages:   { role: 'user' | 'assistant'; content: any }[],
   attachment: Attachment | null
 ): any[] {
   return messages.map((msg, i) => {
     const isLast = i === messages.length - 1
     const parts: any[] = []
 
-    // Add attachment to last user message
     if (isLast && msg.role === 'user' && attachment) {
-      if (attachment.mediaType.startsWith('image/')) {
-        parts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.buffer.toString('base64') } })
-      } else if (attachment.mediaType === 'application/pdf' || attachment.mediaType === 'text/plain') {
-        parts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.buffer.toString('base64') } })
-      } else if (attachment.mediaType.startsWith('video/')) {
-        parts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.buffer.toString('base64') } })
-      }
+      parts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.buffer.toString('base64') } })
     }
 
     if (typeof msg.content === 'string') {
@@ -75,11 +66,12 @@ export async function streamText(
     let inputTokens = 0, outputTokens = 0, cachedTokens = 0
 
     for await (const chunk of result) {
-      const text = chunk.text()
+      // chunk.text is a getter that returns string in @google/genai
+      const text = chunk.text as string | undefined
       if (text) callbacks.onDelta(text)
 
       if (chunk.usageMetadata) {
-        inputTokens  = chunk.usageMetadata.promptTokenCount      ?? inputTokens
+        inputTokens  = chunk.usageMetadata.promptTokenCount       ?? inputTokens
         outputTokens = chunk.usageMetadata.candidatesTokenCount   ?? outputTokens
         cachedTokens = chunk.usageMetadata.cachedContentTokenCount ?? cachedTokens
       }
@@ -94,7 +86,7 @@ export async function streamText(
   }
 }
 
-// ── Image (Gemini native image generation) ───────────────────────────────────
+// ── Image ─────────────────────────────────────────────────────────────────────
 export async function generateImage(
   model:      ModelInfo,
   prompt:     string,
@@ -104,8 +96,6 @@ export async function generateImage(
   const ai = client()
 
   const parts: any[] = []
-
-  // i2i — include reference image
   if (attachment?.mediaType.startsWith('image/')) {
     parts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.buffer.toString('base64') } })
   }
@@ -114,56 +104,50 @@ export async function generateImage(
   const result = await ai.models.generateContent({
     model:    model.model_name,
     contents: [{ role: 'user', parts }],
-    config:   { responseModalities: ['IMAGE', 'TEXT'] },
+    config:   { responseModalities: ['IMAGE', 'TEXT'] } as any,
   })
 
-  // Find image part in response
   const candidate = result.candidates?.[0]
   const imagePart = candidate?.content?.parts?.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'))
-
-  if (!imagePart?.inlineData) throw new Error('No image returned from Gemini')
+  if (!imagePart?.inlineData?.data) throw new Error('No image returned from Gemini')
 
   const outputTokens = result.usageMetadata?.candidatesTokenCount ?? 0
-  const cost = calcImageCost(model, outputTokens)
 
   return {
-    buffer:    Buffer.from(imagePart.inlineData.data, 'base64'),
-    mediaType: imagePart.inlineData.mimeType,
-    cost,
+    buffer:    Buffer.from(imagePart.inlineData.data as string, 'base64'),
+    mediaType: (imagePart.inlineData.mimeType as string) ?? 'image/png',
+    cost:      calcImageCost(model, outputTokens),
   }
 }
 
 // ── Video (Veo async poll) ────────────────────────────────────────────────────
 export async function generateVideo(
-  model:      ModelInfo,
-  prompt:     string,
-  aspectRatio: string = '16:9',
+  model:           ModelInfo,
+  prompt:          string,
+  aspectRatio:     string = '16:9',
   durationSeconds: number = 8,
-  attachment: Attachment | null = null,
-  onProgress?: (pct: number) => void
+  attachment:      Attachment | null = null,
+  onProgress?:     (pct: number) => void
 ): Promise<VideoResult> {
   const ai = client()
 
   const config: any = { aspectRatio, durationSeconds }
 
-  // i2v — pass image as reference
   let imageObj: any = null
   if (attachment?.mediaType.startsWith('image/')) {
     imageObj = {
-      imageBytes:    attachment.buffer.toString('base64'),
-      mimeType:      attachment.mediaType,
+      imageBytes: attachment.buffer.toString('base64'),
+      mimeType:   attachment.mediaType,
     }
   }
 
-  // Start generation
-  let operation = await ai.models.generateVideos({
-    model: model.model_name,
+  let operation: any = await ai.models.generateVideos({
+    model:  model.model_name,
     prompt,
-    image: imageObj,
+    image:  imageObj,
     config,
   })
 
-  // Poll until done
   const POLL_INTERVAL = 15_000
   const MAX_WAIT      = 20 * 60 * 1000
   const start         = Date.now()
@@ -172,16 +156,16 @@ export async function generateVideo(
   while (!operation.done) {
     if (Date.now() - start > MAX_WAIT) throw new Error('Video generation timed out')
     await new Promise(r => setTimeout(r, POLL_INTERVAL))
-    operation = await ai.operations.get(operation)
-    progress  = Math.min(progress + 10, 90) // approximate
+    // Pass operation name string for polling
+    operation = await (ai.operations as any).get({ operation: operation.name ?? operation })
+    progress  = Math.min(progress + 10, 90)
     onProgress?.(progress)
   }
 
   const videos = operation.response?.generatedVideos
   if (!videos?.length) throw new Error('No video returned from Veo')
 
-  // Fetch video bytes
-  const videoUri = videos[0].video?.uri
+  const videoUri = videos[0].video?.uri as string | undefined
   if (!videoUri) throw new Error('No video URI in response')
 
   const response = await fetch(`${videoUri}&key=${process.env.GOOGLE_AI_API_KEY}`)
@@ -191,8 +175,8 @@ export async function generateVideo(
 
   return {
     buffer,
-    mediaType: 'video/mp4',
+    mediaType:       'video/mp4',
     durationSeconds,
-    cost: calcVideoCost(model, durationSeconds),
+    cost:            calcVideoCost(model, durationSeconds),
   }
 }

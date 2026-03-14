@@ -1,0 +1,23 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/duel/vote/route": "app/api/duel/vote/route.js",
+  "/api/cron/sync-models/route": "app/api/cron/sync-models/route.js",
+  "/api/upload/signed-url/route": "app/api/upload/signed-url/route.js",
+  "/api/upload/signed-read/route": "app/api/upload/signed-read/route.js",
+  "/apple-icon.png/route": "app/apple-icon.png/route.js",
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/create/page": "app/create/page.js",
+  "/duel/[id]/page": "app/duel/[id]/page.js",
+  "/feed/page": "app/feed/page.js",
+  "/icon.png/route": "app/icon.png/route.js",
+  "/leaderboard/page": "app/leaderboard/page.js",
+  "/icon.svg/route": "app/icon.svg/route.js",
+  "/page": "app/page.js",
+  "/profile/[userId]/page": "app/profile/[userId]/page.js",
+  "/vote/page": "app/vote/page.js",
+  "/xduel/page": "app/xduel/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/api/create/route": "app/api/create/route.js",
+  "/api/create/chat/route": "app/api/create/chat/route.js",
+  "/api/duel/route": "app/api/duel/route.js"
+}
