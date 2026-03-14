@@ -51,9 +51,11 @@ async function runText(
 ): Promise<Result> {
   const start = Date.now()
   try {
+    const userContent = buildUserContent(prompt, attachment)
+    console.log(`${LOG} [${index}] runText model=${modelId} contentType=${typeof userContent === 'string' ? 'string' : 'parts:'+userContent.length} hasAttachment=${!!attachment}`)
     const result = streamText({
       model: gateway(modelId),
-      messages: [{ role: 'user', content: buildUserContent(prompt, attachment) }],
+      messages: [{ role: 'user', content: userContent }],
       maxOutputTokens: 512,
     })
     let fullText = ''
@@ -88,7 +90,20 @@ async function runImage(
         gateway: { image: attachment.buffer.toString('base64'), mimeType: attachment.mediaType }
       }
     }
+    const logOpts = {
+      model: modelId,
+      prompt: prompt.slice(0, 80),
+      hasAttachment: !!attachment,
+      attachmentMediaType: attachment?.mediaType ?? null,
+      attachmentBytes: attachment?.buffer?.length ?? 0,
+      providerOptions: imgOpts.providerOptions
+        ? JSON.parse(JSON.stringify(imgOpts.providerOptions, (k, v) =>
+            k === 'image' && typeof v === 'string' && v.length > 50 ? `[base64 ${v.length} chars]` : v))
+        : null,
+    }
+    console.log(`${LOG} [${index}] runImage CALL:`, JSON.stringify(logOpts))
     const result = await generateImage(imgOpts)
+    console.log(`${LOG} [${index}] runImage result: images=${result.images?.length ?? 0} mediaType=${result.images?.[0]?.mediaType ?? 'none'}`)
     const image  = result.images?.[0]
     if (!image) throw new Error('No image returned')
 
@@ -125,7 +140,9 @@ async function runVideo(
     const vidOpts: any = attachment?.mediaType.startsWith('image/')
       ? { model: gateway.videoModel(modelId), prompt: { image: attachment.buffer, text: prompt } }
       : { model: gateway.videoModel(modelId), prompt }
+    console.log(`${LOG} [${index}] runVideo model=${modelId} prompt="${prompt.slice(0,60)}" hasAttachment=${!!attachment} i2v=${attachment?.mediaType.startsWith('image/') ?? false}`)
     const result = await generateVideo(vidOpts)
+    console.log(`${LOG} [${index}] runVideo result: videos=${result.videos?.length ?? 0}`)
     const video  = result.videos?.[0]
     if (!video) throw new Error('No video returned')
 
