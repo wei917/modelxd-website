@@ -466,7 +466,7 @@ footer {
 /* ─────────────────────────────────────────
    XDUEL PAGE
 ───────────────────────────────────────── */
-.xduel-page { padding-top: 60px; min-height: 100vh; display: flex; flex-direction: column; }
+.xduel-page { padding-top: 60px; min-height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
 
 .step-bar {
   display: flex; align-items: center; justify-content: center;
@@ -490,7 +490,7 @@ footer {
 .step-connector { width: 32px; height: 1px; background: var(--border2); flex-shrink: 0; }
 .step-connector.done { background: var(--green); }
 
-.arena { flex: 1; padding: 40px 48px; max-width: 1200px; margin: 0 auto; width: 100%; }
+.arena { flex: 1; padding: 40px 48px 80px; max-width: 1200px; margin: 0 auto; width: 100%; }
 .step-section { animation: fadeUp 0.5s forwards; }
 
 .prompt-header { margin-bottom: 32px; }
@@ -518,7 +518,7 @@ footer {
 .btn-battle:disabled { opacity: 0.4; pointer-events: none; }
 
 .battle-arena { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border2); border-bottom: none; }
-.battle-card { background: var(--surface); position: relative; overflow: hidden; transition: background 0.3s; cursor: none; }
+.battle-card { background: var(--surface); position: relative; overflow: visible; transition: background 0.3s; cursor: none; }
 .battle-card:first-child { border-right: 1px solid var(--border2); }
 .battle-card.voted-this:first-child { border-left: 2px solid #4a9eff; background: rgba(74,158,255,0.03); }
 .battle-card.voted-this:last-child  { border-right: 2px solid var(--red); background: rgba(232,69,60,0.03); }
