@@ -1,49 +1,50 @@
 // app/api/create/chat/route.ts
-// Multi-turn chat continuation with a chosen model
+// Continue conversation with chosen model after picking
 
-export const runtime     = 'edge'
+export const runtime     = 'nodejs'
 export const maxDuration = 120
 
-import { streamText } from 'ai'
-import { createGateway } from '@ai-sdk/gateway'
-
-const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY! })
+import { getModelById } from '@/lib/models'
+import * as providers   from '@/lib/providers'
 
 function sse(event: string, data: object) {
   return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
 
 export async function POST(req: Request) {
-  const { modelId, messages } = await req.json()
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { modelId, messages } = await req.json()
   if (!modelId || !messages?.length) return Response.json({ error: 'Missing params' }, { status: 400 })
 
-  // Only pass text messages to the model (skip image/video content)
+  const model = await getModelById(modelId)
+  if (!model) return Response.json({ error: 'Model not found' }, { status: 404 })
+
+  // Filter out image/video messages — only pass text turns to the model
   const chatMessages = messages
     .filter((m: any) => !m.isImage && !m.isVideo)
     .map((m: any) => ({ role: m.role, content: m.content }))
 
   const stream = new ReadableStream({
     async start(controller) {
-      try {
-        const result = streamText({
-          model: gateway(modelId),
-          messages: chatMessages,
-          maxOutputTokens: 1024,
-        })
-        for await (const chunk of result.textStream) {
-          controller.enqueue(sse('delta', { text: chunk }))
+      await providers.streamText(
+        model,
+        chatMessages,
+        {
+          onDelta: (text) => controller.enqueue(sse('delta', { text })),
+          onDone:  (r)    => {
+            controller.enqueue(sse('done', { cost: r.cost, inputTokens: r.inputTokens, outputTokens: r.outputTokens }))
+            controller.close()
+          },
+          onError: (msg)  => {
+            controller.enqueue(sse('error', { message: msg }))
+            controller.close()
+          },
         }
-        controller.enqueue(sse('done', {}))
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        controller.enqueue(sse('error', { message: msg }))
-      }
-      controller.close()
+      )
     }
   })
 

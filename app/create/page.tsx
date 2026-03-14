@@ -16,19 +16,21 @@ type Mode = 'text' | 'image' | 'video'
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting'
 
 interface DBModel {
-  id: string
-  name: string
+  id: string          // uuid
   provider: string
+  model_name: string
+  name: string
   modes: string[]
-  output_price: number
   tags: string[]
+  image_pricing: Record<string, number> | null
+  video_pricing: Record<string, number> | null
 }
 
 interface SlotModel {
-  id: string
-  name: string
+  id: string          // uuid
   provider: string
-  outputPrice: number
+  model_name: string
+  name: string
 }
 
 interface SlotState {
@@ -114,7 +116,7 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
             const color   = providerColor(m.provider)
             return (
               <div key={m.id}
-                onClick={() => !already && onSelect({ id: m.id, name: m.name, provider: m.provider, outputPrice: m.output_price ?? 0 })}
+                onClick={() => !already && onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, name: m.name })}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #161616', cursor: already ? 'default' : 'pointer', opacity: already ? 0.4 : 1 }}
                 onMouseEnter={e => { if (!already) (e.currentTarget as HTMLElement).style.background = '#1a1a1a' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -190,7 +192,7 @@ function Gallery({ userId }: { userId: string }) {
                       background: s.id === item.chosen_model_id ? '#34d39918' : '#ffffff08',
                       textDecoration: s.id !== item.chosen_model_id && item.chosen_model_id ? 'line-through' : 'none',
                     }}>
-                      {(s.id ?? '').split('/')[1] ?? s.name}
+                      {s.model_name ?? s.name}
                     </span>
                   ))}
                 </div>
@@ -277,7 +279,7 @@ export default function CreatePage() {
       const res = await fetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, models: activeModels.map(m => m.id), attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null }),
+        body: JSON.stringify({ prompt, mode, modelIds: activeModels.map(m => m.id), attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null }),
       })
       if (!res.ok || !res.body) throw new Error(await res.text())
 
@@ -472,7 +474,7 @@ export default function CreatePage() {
                     <span style={{ fontSize: 11, color: '#333', alignSelf: 'center' }}>Dismissed:</span>
                     {activeModels.map((m, i) => i === chosenIdx ? null : (
                       <span key={i} style={{ fontSize: 11, color: '#333', background: '#111', border: '1px solid #1a1a1a', padding: '3px 10px', borderRadius: 8, fontFamily: 'var(--mono)', textDecoration: 'line-through' }}>
-                        {m.id.split('/')[1] ?? m.name}
+                        {m.model_name ?? m.name}
                       </span>
                     ))}
                   </div>
@@ -545,7 +547,7 @@ export default function CreatePage() {
                           {providerInitial(model.provider)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, color, fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.id.split('/')[1] ?? model.id}</div>
+                          <div style={{ fontSize: 11, color, fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.model_name}</div>
                           <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{model.provider}</div>
                         </div>
                         {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
@@ -607,7 +609,7 @@ export default function CreatePage() {
                                 <div style={{ width: 20, height: 20, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800 }}>
                                   {providerInitial(model.provider)}
                                 </div>
-                                <div className="battle-model-id" style={{ color, fontSize: 12 }}>{model.id.split('/')[1] ?? model.id}</div>
+                                <div className="battle-model-id" style={{ color, fontSize: 12 }}>{model.model_name}</div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 {slot.done && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted2)' }}>⏱ {(slot.responseTime / 1000).toFixed(2)}s</span>}
