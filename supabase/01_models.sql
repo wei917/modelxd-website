@@ -118,7 +118,7 @@ values
     '{"512px": 0.045, "1024px": 0.067, "2048px": 0.101, "4096px": 0.151}'::jsonb,
     array['512x512','1024x1024','2048x2048','4096x4096'],
     array['vision'], true),
-  ('google', 'gemini-3-pro-image', 'Gemini 3 Pro Image',
+  ('google', 'gemini-3-pro-image-preview', 'Gemini 3 Pro Image',
     array['image'], 120.00, 120.00,
     '{"1024px": 0.134, "2048px": 0.134, "4096px": 0.240}'::jsonb,
     array['1024x1024','2048x2048','4096x4096'],
@@ -139,3 +139,8 @@ values
     array['1280x720','720x1280'],
     array[4, 6, 8], array[]::text[], true)
 on conflict (provider, model_name) do nothing;
+
+-- RLS: public read, service role only for writes
+alter table ai_models enable row level security;
+create policy "ai_models: public read" on ai_models for select using (true);
+-- Inserts/updates only via service role key (no authenticated user policy = blocked for anon/auth users)

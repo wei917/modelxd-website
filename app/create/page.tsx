@@ -124,10 +124,10 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
                   {providerInitial(m.provider)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: already ? '#555' : '#fff', fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {m.id.split('/')[1] ?? m.id}
+                  <div style={{ fontSize: 13, color: already ? '#555' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {m.name}
                   </div>
-                  <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{m.provider}</div>
+                  <div style={{ fontSize: 11, color: '#555', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.provider} · {m.model_name}</div>
                 </div>
                 {m.tags?.includes('reasoning') && <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>REASONING</span>}
                 {already && <span style={{ fontSize: 11, color: '#444' }}>Added</span>}
@@ -542,8 +542,8 @@ export default function CreatePage() {
                           {providerInitial(model.provider)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, color, fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.model_name}</div>
-                          <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{model.provider}</div>
+                          <div style={{ fontSize: 12, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.name}</div>
+                          <div style={{ fontSize: 10, color: '#555', marginTop: 2, fontFamily: 'var(--mono)' }}>{model.provider} · {model.model_name}</div>
                         </div>
                         {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
                       </div>
@@ -604,7 +604,7 @@ export default function CreatePage() {
                                 <div style={{ width: 20, height: 20, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800 }}>
                                   {providerInitial(model.provider)}
                                 </div>
-                                <div className="battle-model-id" style={{ color, fontSize: 12 }}>{model.model_name}</div>
+                                <div className="battle-model-id" style={{ color, fontSize: 12 }}>{model.name}</div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 {slot.done && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted2)' }}>⏱ {(slot.responseTime / 1000).toFixed(2)}s</span>}
