@@ -41,7 +41,7 @@ async function runSlot(
   try {
     if (mode === 'text') {
       let fullText = ''
-      let result: { inputTokens: number; outputTokens: number; cachedTokens: number; cost: number } | null = null
+      let doneResult: { inputTokens: number; outputTokens: number; cachedTokens: number; cost: number } = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, cost: 0 }
 
       await providers.streamText(
         model,
@@ -51,7 +51,7 @@ async function runSlot(
             fullText += text
             controller.enqueue(sse(`delta:${index}`, { index, text }))
           },
-          onDone: (r) => { result = r },
+          onDone: (r) => { doneResult = r },
           onError: (msg) => { throw new Error(msg) },
         },
         attachment
@@ -61,11 +61,11 @@ async function runSlot(
       controller.enqueue(sse(`done:${index}`, {
         index,
         responseTime,
-        cost:         result?.cost ?? 0,
-        inputTokens:  result?.inputTokens ?? 0,
-        outputTokens: result?.outputTokens ?? 0,
+        cost:         doneResult.cost,
+        inputTokens:  doneResult.inputTokens,
+        outputTokens: doneResult.outputTokens,
       }))
-      return { text: fullText, isImage: false, isVideo: false, responseTime, cost: result?.cost ?? 0 }
+      return { text: fullText, isImage: false, isVideo: false, responseTime, cost: doneResult.cost }
 
     } else if (mode === 'image') {
       controller.enqueue(sse(`delta:${index}`, { index, isImage: true, generating: true }))
