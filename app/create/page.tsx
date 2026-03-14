@@ -157,18 +157,18 @@ function Gallery({ userId }: { userId: string }) {
   return (
     <>
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
-          <img src={lightbox} alt="Full size" style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)'}} onClick={e => e.stopPropagation()} />
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+          <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
           <div onClick={e => e.stopPropagation()} style={{position:'absolute',top:20,right:24,display:'flex',gap:10}}>
             <a href={lightbox} download target="_blank" rel="noreferrer"
-              style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,padding:'8px 14px',color:'#fff',fontSize:13,fontWeight:600,textDecoration:'none',backdropFilter:'blur(8px)',cursor:'pointer'}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.2)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.1)'}
+              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 16px',color:'#fff',fontSize:13,fontWeight:600,textDecoration:'none',backdropFilter:'blur(8px)',cursor:'pointer'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.25)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.15)'}
             >↓ Download</a>
             <button onClick={() => setLightbox(null)}
-              style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,padding:'8px 14px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)'}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.2)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.1)'}
+              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 16px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.25)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.15)'}
             >✕ Close</button>
           </div>
         </div>
@@ -415,9 +415,20 @@ export default function CreatePage() {
   return (
     <>
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}>
-          <img src={lightbox} alt="" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8 }} onClick={e => e.stopPropagation()} />
-          <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 24, right: 32, background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 32, cursor: 'none', lineHeight: 1 }}>&times;</button>
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+          <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
+          <div onClick={e => e.stopPropagation()} style={{position:'absolute',top:20,right:24,display:'flex',gap:10}}>
+            <a href={lightbox} download target="_blank" rel="noreferrer"
+              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 16px',color:'#fff',fontSize:13,fontWeight:600,textDecoration:'none',backdropFilter:'blur(8px)',cursor:'pointer'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.25)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.15)'}
+            >↓ Download</a>
+            <button onClick={() => setLightbox(null)}
+              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 16px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)'}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.25)'}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.15)'}
+            >✕ Close</button>
+          </div>
         </div>
       )}
       {pickerSlot !== null && (

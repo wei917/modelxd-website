@@ -45,6 +45,8 @@ export default function AttachmentButton({
   const [uploading, setUploading] = useState(false)
 
   const handleFile = async (file: File) => {
+    const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain','video/mp4','video/quicktime','video/webm']
+    if (!ALLOWED.includes(file.type)) { alert(`Unsupported file type: ${file.type || 'unknown'}\nAllowed: images, PDF, txt, video`); return }
     if (file.size > MAX_MB * 1024 * 1024) { alert(`File too large — max ${MAX_MB}MB`); return }
     setUploading(true)
     const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
@@ -100,7 +102,7 @@ export default function AttachmentButton({
 
   return (
     <>
-      <input ref={inputRef} type="file" accept={ACCEPT} style={{ display: 'none' }}
+      <input ref={inputRef} type="file" accept={ACCEPT} multiple={false} style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
       <button
         onClick={() => !disabled && inputRef.current?.click()}
