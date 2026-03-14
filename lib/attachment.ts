@@ -8,7 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const SERVICE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY!
 
 // Max dimensions
 const RESIZED_MAX   = 1920
