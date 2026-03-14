@@ -168,13 +168,16 @@ async function runVideo(
 }
 
 export async function POST(req: Request) {
+  console.log(`${LOG} POST /api/create received`)
   // Auth check first — user must be available before attachment processing
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+  console.log(`${LOG} auth: user=${user?.id ?? 'none'} error=${authError?.message ?? 'none'}`)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { prompt, mode = 'text', models: modelIds, attachment: attachmentInput = null } = await req.json()
+  console.log(`${LOG} prompt=${prompt?.slice(0,40)} mode=${mode} models=${JSON.stringify(modelIds)} attachment=${attachmentInput?.storagePath ?? 'none'}`)
 
   if (!prompt || prompt.trim().length < 3) return Response.json({ error: 'Prompt too short' }, { status: 400 })
   if (!modelIds || !Array.isArray(modelIds) || modelIds.length === 0) return Response.json({ error: 'No models specified' }, { status: 400 })
