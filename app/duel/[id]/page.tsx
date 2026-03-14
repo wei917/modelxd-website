@@ -180,19 +180,15 @@ export default function DuelPage() {
   return (
     <>
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
-          <div onClick={e => e.stopPropagation()} style={{position:'absolute',top:20,right:24,display:'flex',gap:10}}>
+          <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:100000,display:'flex',gap:10}}>
             <a href={lightbox} download target="_blank" rel="noreferrer"
-              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 16px',color:'#fff',fontSize:13,fontWeight:600,textDecoration:'none',backdropFilter:'blur(8px)',cursor:'pointer'}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.25)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.15)'}
+              style={{display:'flex',alignItems:'center',gap:6,background:'#e8453c',border:'none',borderRadius:8,padding:'10px 18px',color:'#fff',fontSize:13,fontWeight:700,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
             >↓ Download</a>
             <button onClick={() => setLightbox(null)}
-              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 16px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',backdropFilter:'blur(8px)'}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.25)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.15)'}
-            >✕ Close</button>
+              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'10px 18px',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
+            >✕</button>
           </div>
         </div>
       )}

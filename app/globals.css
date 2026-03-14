@@ -529,9 +529,10 @@ footer {
 .battle-model-id.b { color: var(--red); }
 .battle-anon { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
 .battle-response { padding: 24px; font-size: 14px; color: var(--white); line-height: 1.8; font-weight: 300; min-height: 280px; }
-.battle-response.image-response { padding: 0; min-height: 0; }
+.battle-response.image-response { padding: 0; min-height: 280px; }
+.battle-response.image-response.loading { min-height: 280px; display: flex; align-items: center; justify-content: center; }
 .image-response img { display: block; width: 100%; border-radius: 0; }
-.battle-card-header.image-mode { border-bottom: none; }
+.battle-card-header.image-mode { border-bottom: 1px solid var(--border); }
 .battle-response.loading { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted2); }
 .loading-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted2); animation: loadPulse 1.2s ease-in-out infinite; }
 .loading-dot:nth-child(2) { animation-delay: 0.2s; }
