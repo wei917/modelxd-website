@@ -205,7 +205,10 @@ async function tryImageModel(
   try {
     const imgOptions: any = { model: gateway.imageModel(model.id), prompt }
     if (attachment?.mediaType.startsWith('image/')) {
-      imgOptions.providerOptions = { openai: { image: attachment.buffer.toString('base64') } }
+      // Pass reference image — gateway routes to provider-specific i2i endpoint
+      imgOptions.providerOptions = {
+        gateway: { image: attachment.buffer.toString('base64'), mimeType: attachment.mediaType }
+      }
     }
     const result = await generateImage(imgOptions)
 
