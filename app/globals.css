@@ -517,7 +517,7 @@ footer {
 .btn-battle:hover { background: #ff5249; box-shadow: 0 0 32px var(--red-glow); }
 .btn-battle:disabled { opacity: 0.4; pointer-events: none; }
 
-.battle-arena { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border2); border-bottom: none; }
+.battle-arena { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border2); }
 .battle-card { background: var(--surface); position: relative; overflow: visible; transition: background 0.3s; cursor: none; }
 .battle-card:first-child { border-right: 1px solid var(--border2); }
 .battle-card.voted-this:first-child { border-left: 2px solid #4a9eff; background: rgba(74,158,255,0.03); }

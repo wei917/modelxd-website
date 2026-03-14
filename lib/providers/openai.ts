@@ -84,15 +84,14 @@ export async function generateImage(
     b64 = res.data?.[0]?.b64_json ?? ''
     if (!b64) throw new Error('No image returned from OpenAI edit')
   } else {
-    // t2i
+    // t2i — gpt-image-1.x returns b64_json by default, don't pass response_format
     const res = await ai.images.generate({
-      model:           model.model_name,
+      model:   model.model_name,
       prompt,
-      size:            size as any,
-      quality:         quality as any,
-      response_format: 'b64_json',
-      n:               1,
-    })
+      size:    size as any,
+      quality: quality as any,
+      n:       1,
+    } as any)
     b64 = res.data?.[0]?.b64_json ?? ''
     if (!b64) throw new Error('No image returned from OpenAI generate')
   }
