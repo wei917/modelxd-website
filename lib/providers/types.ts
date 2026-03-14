@@ -2,6 +2,7 @@
 // Shared types for all provider implementations
 
 export interface ModelInfo {
+  id:         string
   provider:   string
   model_name: string
   name:       string
