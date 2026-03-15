@@ -135,11 +135,11 @@ export default function ProfilePage() {
         <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
           <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:100000,display:'flex',gap:10}}>
-            <a href={lightbox} download target="_blank" rel="noreferrer"
-              style={{display:'flex',alignItems:'center',gap:6,background:'#e8453c',border:'none',borderRadius:8,padding:'10px 18px',color:'#fff',fontSize:13,fontWeight:700,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
-            >↓ Download</a>
-            <button onClick={() => setLightbox(null)}
-              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'10px 18px',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
+            <a href={lightbox} download target="_blank" rel="noreferrer" title="Download"
+              style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
+            >↓</a>
+            <button onClick={() => setLightbox(null)} title="Close"
+              style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
             >✕</button>
           </div>
         </div>
