@@ -1,8 +1,8 @@
 // lib/providers/openai.ts
+// OpenAI provider: text (streaming), image (t2i + i2i), video (sora async poll)
 
 import OpenAI, { toFile } from 'openai'
 import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment } from './types'
-import { logResponse } from './log'
 
 function client() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
@@ -30,13 +30,10 @@ export async function streamText(
   callbacks: TextStreamCallbacks
 ): Promise<void> {
   const ai = client()
-  const TAG = `[openai/${model.model_name}]`
-  console.log(`${TAG} streamText start messages=${messages.length}`)
   try {
     const stream = await ai.chat.completions.create({
-      model:           model.model_name,
-      stream:          true,
-      stream_options:  { include_usage: true },
+      model:  model.model_name,
+      stream: true,
       messages,
     })
 
@@ -50,20 +47,19 @@ export async function streamText(
         inputTokens  = chunk.usage.prompt_tokens ?? 0
         outputTokens = chunk.usage.completion_tokens ?? 0
         cachedTokens = (chunk.usage as any).prompt_tokens_details?.cached_tokens ?? 0
-        logResponse(TAG, 'final chunk (usage)', chunk)
       }
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
-    console.log(`${TAG} streamText cost=$${cost.toFixed(6)} input=${inputTokens} output=${outputTokens} cached=${cachedTokens}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+    callbacks.onDone({
+      inputTokens, outputTokens, cachedTokens,
+      cost: calcTextCost(model, inputTokens, outputTokens, cachedTokens),
+    })
   } catch (err) {
-    console.error(`${TAG} streamText error:`, err)
     callbacks.onError(err instanceof Error ? err.message : String(err))
   }
 }
 
-// ── Image ────────────────────────────────────────────────────────────────────
+// ── Image (t2i + i2i) ────────────────────────────────────────────────────────
 export async function generateImage(
   model:      ModelInfo,
   prompt:     string,
@@ -72,32 +68,42 @@ export async function generateImage(
   attachment: Attachment | null = null
 ): Promise<ImageResult> {
   const ai = client()
-  const TAG = `[openai/${model.model_name}]`
-  console.log(`${TAG} generateImage quality=${quality} size=${size} i2i=${!!attachment}`)
 
   let b64: string
-  let res: any
 
   if (attachment?.mediaType.startsWith('image/')) {
+    // i2i via images.edit
     const file = await toFile(attachment.buffer, 'input.png', { type: attachment.mediaType })
-    res = await ai.images.edit({ model: model.model_name, image: file, prompt, size: size as any, n: 1 } as any)
-    logResponse(TAG, 'images.edit response', res)
+    const res  = await ai.images.edit({
+      model:   model.model_name,
+      image:   file,
+      prompt,
+      size:    size as any,
+      n:       1,
+    })
     b64 = res.data?.[0]?.b64_json ?? ''
     if (!b64) throw new Error('No image returned from OpenAI edit')
   } else {
-    res = await ai.images.generate({ model: model.model_name, prompt, size: size as any, quality: quality as any, n: 1 } as any)
-    logResponse(TAG, 'images.generate response', res)
+    // t2i — gpt-image-1.x returns b64_json by default, don't pass response_format
+    const res = await ai.images.generate({
+      model:   model.model_name,
+      prompt,
+      size:    size as any,
+      quality: quality as any,
+      n:       1,
+    } as any)
     b64 = res.data?.[0]?.b64_json ?? ''
     if (!b64) throw new Error('No image returned from OpenAI generate')
   }
 
-  const cost = calcImageCost(model, quality)
-  console.log(`${TAG} generateImage cost=$${cost.toFixed(6)}`)
-
-  return { buffer: Buffer.from(b64, 'base64'), mediaType: 'image/png', cost }
+  return {
+    buffer:    Buffer.from(b64, 'base64'),
+    mediaType: 'image/png',
+    cost:      calcImageCost(model, quality),
+  }
 }
 
-// ── Video ────────────────────────────────────────────────────────────────────
+// ── Video (sora async poll) ───────────────────────────────────────────────────
 export async function generateVideo(
   model:       ModelInfo,
   prompt:      string,
@@ -107,16 +113,15 @@ export async function generateVideo(
   onProgress?: (pct: number) => void
 ): Promise<VideoResult> {
   const ai = client()
-  const TAG = `[openai/${model.model_name}]`
-  console.log(`${TAG} generateVideo size=${size} seconds=${seconds} i2v=${!!attachment}`)
 
   const params: any = { model: model.model_name, prompt, size, n: 1 }
+
   if (attachment?.mediaType.startsWith('image/')) {
     params.image = `data:${attachment.mediaType};base64,${attachment.buffer.toString('base64')}`
   }
 
   let job: any = await (ai as any).videos.create(params)
-  logResponse(TAG, 'videos.create response', job)
+  const jobId  = job.id as string
 
   const POLL_INTERVAL = 15_000
   const MAX_WAIT      = 20 * 60 * 1000
@@ -125,22 +130,25 @@ export async function generateVideo(
   while (job.status !== 'completed' && job.status !== 'failed') {
     if (Date.now() - start > MAX_WAIT) throw new Error('Video generation timed out')
     await new Promise(r => setTimeout(r, POLL_INTERVAL))
-    job = await (ai as any).videos.retrieve(job.id)
-    logResponse(TAG, 'videos.retrieve poll', job)
+    job = await (ai as any).videos.retrieve(jobId)
     if (onProgress && job.progress != null) onProgress(job.progress as number)
   }
 
   if (job.status === 'failed') throw new Error((job.error as any)?.message ?? 'Video generation failed')
 
-  const parts      = size.split('x').map(Number)
-  const resolution = (parts[0] ?? 0) >= 1792 || (parts[1] ?? 0) >= 1792 ? '1080p' : '720p'
-  const cost       = calcVideoCost(model, resolution, seconds)
-  console.log(`${TAG} generateVideo done resolution=${resolution} cost=$${cost.toFixed(4)}`)
-
-  const response = await fetch(`https://api.openai.com/v1/videos/${job.id}/content`, {
+  const response = await fetch(`https://api.openai.com/v1/videos/${jobId}/content`, {
     headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY!}` },
   })
   if (!response.ok) throw new Error(`Failed to fetch video: ${response.status}`)
 
-  return { buffer: Buffer.from(await response.arrayBuffer()), mediaType: 'video/mp4', durationSeconds: seconds, cost }
+  const buffer     = Buffer.from(await response.arrayBuffer())
+  const parts = size.split('x').map(Number)
+  const resolution = (parts[0] ?? 0) >= 1792 || (parts[1] ?? 0) >= 1792 ? '1080p' : '720p'
+
+  return {
+    buffer,
+    mediaType:       'video/mp4',
+    durationSeconds: seconds,
+    cost:            calcVideoCost(model, resolution, seconds),
+  }
 }

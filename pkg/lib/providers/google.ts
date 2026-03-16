@@ -1,8 +1,8 @@
 // lib/providers/google.ts
+// Google provider: text (streaming), image (Gemini native), video (Veo async poll)
 
 import { GoogleGenAI } from '@google/genai'
 import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment } from './types'
-import { logResponse } from './log'
 
 function client() {
   return new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! })
@@ -31,9 +31,11 @@ function buildContents(
   return messages.map((msg, i) => {
     const isLast = i === messages.length - 1
     const parts: any[] = []
+
     if (isLast && msg.role === 'user' && attachment) {
       parts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.buffer.toString('base64') } })
     }
+
     if (typeof msg.content === 'string') {
       parts.push({ text: msg.content })
     } else if (Array.isArray(msg.content)) {
@@ -41,6 +43,7 @@ function buildContents(
         if (p.type === 'text') parts.push({ text: p.text })
       }
     }
+
     return { role: msg.role === 'assistant' ? 'model' : 'user', parts }
   })
 }
@@ -53,33 +56,33 @@ export async function streamText(
   attachment: Attachment | null = null
 ): Promise<void> {
   const ai = client()
-  const TAG = `[google/${model.model_name}]`
-  console.log(`${TAG} streamText start messages=${messages.length} hasAttachment=${!!attachment}`)
   try {
     const contents = buildContents(messages, attachment)
-    const result   = await ai.models.generateContentStream({ model: model.model_name, contents })
+    console.log(`[google] streamText model=${model.model_name} messages=${messages.length} hasAttachment=${!!attachment}`)
+    const result   = await ai.models.generateContentStream({
+      model:    model.model_name,
+      contents,
+    })
 
     let inputTokens = 0, outputTokens = 0, cachedTokens = 0
-    let lastChunk: any = null
 
     for await (const chunk of result) {
+      // chunk.text is a getter that returns string in @google/genai
       const text = chunk.text as string | undefined
       if (text) callbacks.onDelta(text)
+
       if (chunk.usageMetadata) {
         inputTokens  = chunk.usageMetadata.promptTokenCount       ?? inputTokens
         outputTokens = chunk.usageMetadata.candidatesTokenCount   ?? outputTokens
         cachedTokens = chunk.usageMetadata.cachedContentTokenCount ?? cachedTokens
-        lastChunk = chunk
       }
     }
 
-    if (lastChunk) logResponse(TAG, 'final stream chunk', lastChunk)
-
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
-    console.log(`${TAG} streamText cost=$${cost.toFixed(6)} input=${inputTokens} output=${outputTokens} cached=${cachedTokens}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+    callbacks.onDone({
+      inputTokens, outputTokens, cachedTokens,
+      cost: calcTextCost(model, inputTokens, outputTokens, cachedTokens),
+    })
   } catch (err) {
-    console.error(`${TAG} streamText error:`, err)
     callbacks.onError(err instanceof Error ? err.message : String(err))
   }
 }
@@ -92,8 +95,7 @@ export async function generateImage(
   attachment: Attachment | null = null
 ): Promise<ImageResult> {
   const ai = client()
-  const TAG = `[google/${model.model_name}]`
-  console.log(`${TAG} generateImage size=${size} i2i=${!!attachment}`)
+  console.log(`[google] generateImage model=${model.model_name} prompt="${prompt.slice(0,60)}" hasAttachment=${!!attachment}`)
 
   const parts: any[] = []
   if (attachment?.mediaType.startsWith('image/')) {
@@ -107,24 +109,26 @@ export async function generateImage(
     config:   { responseModalities: ['IMAGE', 'TEXT'] },
   })
 
-  logResponse(TAG, 'generateContent response', result)
-
-  const outputTokens = result.usageMetadata?.candidatesTokenCount ?? 0
-  const cost = calcImageCost(model, outputTokens)
-  console.log(`${TAG} generateImage cost=$${cost.toFixed(6)} outputTokens=${outputTokens}`)
+  console.log(`[google] generateImage response candidates=${result.candidates?.length ?? 0}`)
 
   const candidate = result.candidates?.[0]
   const imagePart = candidate?.content?.parts?.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'))
-  if (!imagePart?.inlineData?.data) throw new Error('No image returned from Gemini')
+  if (!imagePart?.inlineData?.data) {
+    console.error(`[google] generateImage no image part found, parts:`, JSON.stringify(candidate?.content?.parts?.map((p: any) => ({ type: p.text ? 'text' : 'inlineData', mimeType: p.inlineData?.mimeType }))))
+    throw new Error('No image returned from Gemini')
+  }
+
+  const outputTokens = result.usageMetadata?.candidatesTokenCount ?? 0
+  console.log(`[google] generateImage success outputTokens=${outputTokens}`)
 
   return {
     buffer:    Buffer.from(imagePart.inlineData.data as string, 'base64'),
     mediaType: (imagePart.inlineData.mimeType as string) ?? 'image/png',
-    cost,
+    cost:      calcImageCost(model, outputTokens),
   }
 }
 
-// ── Video ─────────────────────────────────────────────────────────────────────
+// ── Video (Veo async poll) ────────────────────────────────────────────────────
 export async function generateVideo(
   model:           ModelInfo,
   prompt:          string,
@@ -134,17 +138,23 @@ export async function generateVideo(
   onProgress?:     (pct: number) => void
 ): Promise<VideoResult> {
   const ai = client()
-  const TAG = `[google/${model.model_name}]`
-  console.log(`${TAG} generateVideo aspectRatio=${aspectRatio} duration=${durationSeconds}s i2v=${!!attachment}`)
 
   const config: any = { aspectRatio, durationSeconds }
+
   let imageObj: any = null
   if (attachment?.mediaType.startsWith('image/')) {
-    imageObj = { imageBytes: attachment.buffer.toString('base64'), mimeType: attachment.mediaType }
+    imageObj = {
+      imageBytes: attachment.buffer.toString('base64'),
+      mimeType:   attachment.mediaType,
+    }
   }
 
-  let operation: any = await ai.models.generateVideos({ model: model.model_name, prompt, image: imageObj, config })
-  logResponse(TAG, 'generateVideos initial response', operation)
+  let operation: any = await ai.models.generateVideos({
+    model:  model.model_name,
+    prompt,
+    image:  imageObj,
+    config,
+  })
 
   const POLL_INTERVAL = 15_000
   const MAX_WAIT      = 20 * 60 * 1000
@@ -154,14 +164,11 @@ export async function generateVideo(
   while (!operation.done) {
     if (Date.now() - start > MAX_WAIT) throw new Error('Video generation timed out')
     await new Promise(r => setTimeout(r, POLL_INTERVAL))
+    // Pass operation name string for polling
     operation = await (ai.operations as any).get({ operation: operation.name ?? operation })
-    logResponse(TAG, 'operations.get poll', operation)
-    progress = Math.min(progress + 10, 90)
+    progress  = Math.min(progress + 10, 90)
     onProgress?.(progress)
   }
-
-  const cost = calcVideoCost(model, durationSeconds)
-  console.log(`${TAG} generateVideo done cost=$${cost.toFixed(4)}`)
 
   const videos = operation.response?.generatedVideos
   if (!videos?.length) throw new Error('No video returned from Veo')
@@ -172,5 +179,12 @@ export async function generateVideo(
   const response = await fetch(`${videoUri}&key=${process.env.GOOGLE_AI_API_KEY}`)
   if (!response.ok) throw new Error(`Failed to fetch video: ${response.status}`)
 
-  return { buffer: Buffer.from(await response.arrayBuffer()), mediaType: 'video/mp4', durationSeconds, cost }
+  const buffer = Buffer.from(await response.arrayBuffer())
+
+  return {
+    buffer,
+    mediaType:       'video/mp4',
+    durationSeconds,
+    cost:            calcVideoCost(model, durationSeconds),
+  }
 }

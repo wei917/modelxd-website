@@ -370,7 +370,7 @@ export default function CreatePage() {
       const res = await fetch('/api/create/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ modelId: chosen.id, messages: newHistory, mode }),
+        body: JSON.stringify({ modelId: chosen.id, messages: newHistory }),
       })
       if (!res.ok || !res.body) throw new Error(await res.text())
 
@@ -378,10 +378,7 @@ export default function CreatePage() {
       const decoder = new TextDecoder()
       let buffer = '', currentEvent = '', assistantText = ''
 
-      // For image/video we add a placeholder immediately; for text we stream into it
-      if (mode === 'text') {
-        setChatHistory(h => [...h, { role: 'assistant', content: '' }])
-      }
+      setChatHistory(h => [...h, { role: 'assistant', content: '' }])
 
       while (true) {
         const { done, value } = await reader.read()
@@ -390,24 +387,11 @@ export default function CreatePage() {
         const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
         for (const line of lines) {
           if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim() }
-          else if (line.startsWith('data: ')) {
+          else if (line.startsWith('data: ') && currentEvent === 'delta') {
             try {
               const p = JSON.parse(line.slice(6))
-              if (currentEvent === 'delta') {
-                // text streaming
-                assistantText += p.text ?? ''
-                setChatHistory(h => h.map((m, i) => i === h.length - 1 ? { ...m, content: assistantText } : m))
-              } else if (currentEvent === 'image') {
-                // image done — append as image message
-                setChatHistory(h => [...h, { role: 'assistant', content: p.url, isImage: true }])
-              } else if (currentEvent === 'video') {
-                // video done — append as video message
-                setChatHistory(h => [...h, { role: 'assistant', content: p.url, isVideo: true }])
-              } else if (currentEvent === 'progress') {
-                // could show progress in future
-              } else if (currentEvent === 'error') {
-                setChatHistory(h => [...h, { role: 'assistant', content: `Error: ${p.message}` }])
-              }
+              assistantText += p.text ?? ''
+              setChatHistory(h => h.map((m, i) => i === h.length - 1 ? { ...m, content: assistantText } : m))
             } catch {}
           }
         }
@@ -663,7 +647,7 @@ export default function CreatePage() {
                                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = color + '18' }}
                                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent' }}
                                 >
-                                  {mode === 'image' || mode === 'video' ? `Generate more with ${model.name} →` : `Select ${model.name} →`}
+                                  Continue with {model.name} →
                                 </button>
                               </div>
                             )}
