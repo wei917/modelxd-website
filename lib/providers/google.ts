@@ -58,6 +58,7 @@ export async function streamText(
   const ai = client()
   try {
     const contents = buildContents(messages, attachment)
+    console.log(`[google] streamText model=${model.model_name} messages=${messages.length} hasAttachment=${!!attachment}`)
     const result   = await ai.models.generateContentStream({
       model:    model.model_name,
       contents,
@@ -94,6 +95,7 @@ export async function generateImage(
   attachment: Attachment | null = null
 ): Promise<ImageResult> {
   const ai = client()
+  console.log(`[google] generateImage model=${model.model_name} prompt="${prompt.slice(0,60)}" hasAttachment=${!!attachment}`)
 
   const parts: any[] = []
   if (attachment?.mediaType.startsWith('image/')) {
@@ -104,14 +106,20 @@ export async function generateImage(
   const result = await ai.models.generateContent({
     model:    model.model_name,
     contents: [{ role: 'user', parts }],
-    config:   { responseModalities: ['IMAGE', 'TEXT'] } as any,
+    config:   { responseModalities: ['IMAGE', 'TEXT'] },
   })
+
+  console.log(`[google] generateImage response candidates=${result.candidates?.length ?? 0}`)
 
   const candidate = result.candidates?.[0]
   const imagePart = candidate?.content?.parts?.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'))
-  if (!imagePart?.inlineData?.data) throw new Error('No image returned from Gemini')
+  if (!imagePart?.inlineData?.data) {
+    console.error(`[google] generateImage no image part found, parts:`, JSON.stringify(candidate?.content?.parts?.map((p: any) => ({ type: p.text ? 'text' : 'inlineData', mimeType: p.inlineData?.mimeType }))))
+    throw new Error('No image returned from Gemini')
+  }
 
   const outputTokens = result.usageMetadata?.candidatesTokenCount ?? 0
+  console.log(`[google] generateImage success outputTokens=${outputTokens}`)
 
   return {
     buffer:    Buffer.from(imagePart.inlineData.data as string, 'base64'),
