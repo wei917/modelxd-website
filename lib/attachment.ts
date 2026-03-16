@@ -27,6 +27,12 @@ function supabaseAdmin() {
   return createClient(SERVICE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 }
 
+// Exported: fetch a private file and return as Attachment for providers
+export async function fetchAttachmentBuffer(att: { bucket: string; storagePath: string; mediaType: string }): Promise<{ buffer: Buffer; mediaType: string }> {
+  const buffer = await fetchPrivateFile(att.bucket, att.storagePath)
+  return { buffer, mediaType: att.mediaType }
+}
+
 // Get a signed URL so we can fetch from private bucket
 async function fetchPrivateFile(bucket: string, path: string): Promise<Buffer> {
   const sb = supabaseAdmin()

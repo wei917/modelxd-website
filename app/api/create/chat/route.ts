@@ -38,8 +38,8 @@ export async function POST(req: Request) {
           // Resolve attachment if provided
           let resolvedAttachment = null
           if (attachment?.storagePath) {
-            const { fetchAttachment } = await import('@/lib/attachment')
-            resolvedAttachment = await fetchAttachment(attachment)
+            const { fetchAttachmentBuffer } = await import('@/lib/attachment')
+            resolvedAttachment = await fetchAttachmentBuffer(attachment)
           }
 
           const result = await providers.generateImage(
@@ -71,8 +71,8 @@ export async function POST(req: Request) {
         try {
           let resolvedAttachment = null
           if (attachment?.storagePath) {
-            const { fetchAttachment } = await import('@/lib/attachment')
-            resolvedAttachment = await fetchAttachment(attachment)
+            const { fetchAttachmentBuffer } = await import('@/lib/attachment')
+            resolvedAttachment = await fetchAttachmentBuffer(attachment)
           }
 
           const result = await providers.generateVideo(
