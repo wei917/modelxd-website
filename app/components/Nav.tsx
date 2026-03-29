@@ -7,11 +7,11 @@ import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 
 const NAV_LINKS = [
-  { href: '/',             label: 'Home' },
-  { href: '/xduel',       label: 'XDuel' },
-  { href: '/vote',        label: 'Vote' },
-  { href: '/leaderboard', label: 'Leaderboard' },
-  { href: '/create',      label: 'Create' },
+  { href: '/',             label: 'Home',        protected: false },
+  { href: '/xduel',       label: 'XDuel',        protected: true  },
+  { href: '/vote',        label: 'Vote',         protected: true  },
+  { href: '/leaderboard', label: 'Leaderboard',  protected: false },
+  { href: '/create',      label: 'Create',       protected: true  },
 ]
 
 export default function Nav() {
@@ -21,23 +21,17 @@ export default function Nav() {
   const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
   useEffect(() => {
-    // Get current session
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
-
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
 
@@ -46,19 +40,28 @@ export default function Nav() {
     router.refresh()
   }
 
+  const handleProtectedClick = (e: React.MouseEvent, href: string, isProtected: boolean) => {
+    if (isProtected && !user) {
+      e.preventDefault()
+      router.push(`/login?from=${href}`)
+    }
+  }
+
   return (
     <nav className="nav">
       <Link href="/" className="nav-logo-text" style={{display:'flex',alignItems:'center',gap:8}}>
         <img src="/logo.png" alt="ModelXD" style={{width:36,height:36,borderRadius:8}} />{"Model"}<span className="x">XD</span>
       </Link>
       <div className="nav-links">
-        {NAV_LINKS.map(({ href, label }) => (
+        {NAV_LINKS.map(({ href, label, protected: isProtected }) => (
           <Link
             key={href}
             href={href}
             className={pathname === href ? 'active' : ''}
+            onClick={(e) => handleProtectedClick(e, href, isProtected)}
+            style={isProtected && !user ? { opacity: 0.5 } : {}}
           >
-            {label}
+            {label}{isProtected && !user ? ' 🔒' : ''}
           </Link>
         ))}
       </div>
