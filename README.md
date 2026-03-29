@@ -102,5 +102,3 @@ npm run start    # serve production build
 - Hook up **Supabase** for auth + storing votes
 - Connect real AI APIs (OpenAI, Anthropic, Google) for live model responses
 - Build `/vote`, `/leaderboard`, `/create` pages
-
-hello
