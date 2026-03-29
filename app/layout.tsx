@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Barlow_Condensed, Barlow, JetBrains_Mono } from 'next/font/google'
+import { ThemeProvider } from '../lib/ThemeContext'
 import './globals.css'
 
 const barlowCondensed = Barlow_Condensed({
@@ -25,15 +26,13 @@ export const metadata: Metadata = {
   description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${barlowCondensed.variable} ${barlow.variable} ${jetbrainsMono.variable}`}>
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
