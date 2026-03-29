@@ -209,7 +209,7 @@ export default function LoginPage() {
           margin-bottom: 12px; line-height: 1.1;
         }
         .login-feature-desc { font-size: 14px; color: var(--muted2); line-height: 1.6; }
-        .login-feature-lock { position: absolute; top: 16px; right: 16px; font-size: 14px; opacity: 0.3; }
+
         .login-why-grid {
           display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;
         }
@@ -281,7 +281,7 @@ export default function LoginPage() {
           <div className="login-feature-grid">
             {FEATURES.map((f, i) => (
               <div className="login-feature-card reveal" key={f.num} style={{ transitionDelay: `${i * 0.1}s` }}>
-                <div className="login-feature-lock">🔒</div>
+
                 <div className="login-feature-num">{f.num} / {f.label}</div>
                 <span className="login-feature-emoji">{f.emoji}</span>
                 <div className="login-feature-badge">{f.label}</div>

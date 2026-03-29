@@ -61,7 +61,7 @@ export default function Nav() {
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
             style={isProtected && !user ? { opacity: 0.5 } : {}}
           >
-            {label}{isProtected && !user ? ' 🔒' : ''}
+            {label}
           </Link>
         ))}
       </div>
