@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { useAuthModal } from './AuthModalContext'
 
 export function useRequireAuth() {
-  const router = useRouter()
-  const pathname = usePathname()
+  const { show } = useAuthModal()
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -14,9 +13,7 @@ export function useRequireAuth() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
     )
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.replace(`/login?from=${pathname}`)
-      }
+      if (!data.user) show()
     })
-  }, [router, pathname])
+  }, [show])
 }

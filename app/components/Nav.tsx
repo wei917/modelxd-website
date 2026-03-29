@@ -1,26 +1,30 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import { useTheme } from '../../lib/ThemeContext'
+import { useAuthModal } from '../../lib/AuthModalContext'
 
 const NAV_LINKS = [
-  { href: '/',             label: 'Home',        protected: false },
-  { href: '/xduel',       label: 'XDuel',        protected: true  },
-  { href: '/vote',        label: 'Vote',         protected: true  },
-  { href: '/leaderboard', label: 'Leaderboard',  protected: false },
-  { href: '/create',      label: 'Create',       protected: true  },
+  { href: '/',             label: 'Home',       protected: false },
+  { href: '/xduel',       label: 'XDuel',       protected: true  },
+  { href: '/vote',        label: 'Vote',        protected: true  },
+  { href: '/leaderboard', label: 'Leaderboard', protected: false },
+  { href: '/create',      label: 'Create',      protected: true  },
 ]
 
 export default function Nav() {
   const pathname = usePathname()
-  const router = useRouter()
   const { theme, toggle } = useTheme()
+  const { show } = useAuthModal()
   const [user, setUser] = useState<User | null>(null)
-  const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  )
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
@@ -30,29 +34,23 @@ export default function Nav() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-  }
-
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.refresh()
+    window.location.reload()
   }
 
-  const handleProtectedClick = (e: React.MouseEvent, href: string, isProtected: boolean) => {
+  const handleProtectedClick = (e: React.MouseEvent, isProtected: boolean) => {
     if (isProtected && !user) {
       e.preventDefault()
-      router.push(`/login?from=${href}`)
+      show()
     }
   }
 
   return (
     <nav className="nav">
-      <Link href="/" className="nav-logo-text" style={{display:'flex',alignItems:'center',gap:8}}>
-        <img src="/logo.png" alt="ModelXD" style={{width:36,height:36,borderRadius:8}} />{"Model"}<span className="x">XD</span>
+      <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8 }} />
+        {'Model'}<span className="x">XD</span>
       </Link>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, label, protected: isProtected }) => (
@@ -60,7 +58,7 @@ export default function Nav() {
             key={href}
             href={href}
             className={pathname === href ? 'active' : ''}
-            onClick={(e) => handleProtectedClick(e, href, isProtected)}
+            onClick={(e) => handleProtectedClick(e, isProtected)}
             style={isProtected && !user ? { opacity: 0.5 } : {}}
           >
             {label}
@@ -68,7 +66,6 @@ export default function Nav() {
         ))}
       </div>
       <div className="nav-auth">
-        {/* Theme toggle */}
         <label className="theme-toggle" title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}>
           <input type="checkbox" checked={theme === 'light'} onChange={toggle} />
           <div className="theme-toggle-track">
@@ -77,20 +74,19 @@ export default function Nav() {
             <div className="theme-toggle-thumb" />
           </div>
         </label>
-
         {user ? (
-          <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link href="/profile">
               <img
                 src={user.user_metadata?.avatar_url}
                 alt={user.user_metadata?.full_name}
-                style={{width:28,height:28,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.15)',cursor:'pointer'}}
+                style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
               />
             </Link>
             <button className="nav-login" onClick={handleLogout}>Log Out</button>
           </div>
         ) : (
-          <button className="nav-login" onClick={handleLogin}>Log In</button>
+          <button className="nav-login" onClick={show}>Log In</button>
         )}
       </div>
     </nav>
