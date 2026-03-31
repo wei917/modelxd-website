@@ -122,7 +122,6 @@ export default function AuthModal() {
           <div className="auth-divider" />
 
           <div className="auth-title">Sign in to <span className="accent">XDuel</span></div>
-          <p className="auth-sub">Free account · Takes 10 seconds</p>
 
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">

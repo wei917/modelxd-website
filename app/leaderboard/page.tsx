@@ -104,7 +104,7 @@ export default function LeaderboardPage() {
   }, [mode])
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080808', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--white)' }}>
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
       <Nav />
@@ -113,9 +113,9 @@ export default function LeaderboardPage() {
         {/* Header */}
         <div style={{ marginBottom: 40 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: '-1px' }}>
-            <span style={{ color: '#e8453c' }}>Leader</span>board
+            <span style={{ color: 'var(--red)' }}>Leader</span>board
           </h1>
-          <p style={{ color: '#555', marginTop: 8, fontSize: 15 }}>
+          <p style={{ color: 'var(--muted)', marginTop: 8, fontSize: 15 }}>
             Model rankings based on community votes — informed vote (after reveal) only.
           </p>
         </div>
@@ -129,8 +129,8 @@ export default function LeaderboardPage() {
               style={{
                 padding: '7px 16px', borderRadius: 20, border: 'none',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                background: mode === m ? '#e8453c' : '#1a1a1a',
-                color: mode === m ? '#fff' : '#666',
+                background: mode === m ? 'var(--red)' : 'var(--surface)',
+                color: mode === m ? '#fff' : 'var(--muted)',
                 textTransform: 'capitalize', transition: 'all 0.15s',
               }}
             >
@@ -140,15 +140,15 @@ export default function LeaderboardPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', color: '#444', padding: 80 }}>Loading…</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading…</div>
         ) : stats.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#444', padding: 80 }}>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>
             No votes yet{mode !== 'all' ? ` for ${mode} mode` : ''}.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Table header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 80px 80px 100px', gap: 12, padding: '8px 16px', fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 80px 80px 100px', gap: 12, padding: '8px 16px', fontSize: 10, color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
               <span>#</span>
               <span>Model</span>
               <span style={{ textAlign: 'right' }}>Wins</span>
@@ -170,7 +170,7 @@ export default function LeaderboardPage() {
 function LeaderboardRow({ rank, model }: { rank: number; model: ModelStats }) {
   const pct = Math.round(model.winRate * 100)
   const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
-  const barColor = pct >= 60 ? '#34d399' : pct >= 40 ? '#e8453c' : '#444'
+  const barColor = pct >= 60 ? 'var(--green)' : pct >= 40 ? 'var(--red)' : 'var(--muted)'
 
   return (
     <div style={{
@@ -178,40 +178,40 @@ function LeaderboardRow({ rank, model }: { rank: number; model: ModelStats }) {
       gridTemplateColumns: '40px 1fr 80px 80px 80px 100px',
       gap: 12,
       padding: '14px 16px',
-      background: rank <= 3 ? '#0d0d0d' : 'transparent',
-      border: `1px solid ${rank <= 3 ? '#1a1a1a' : 'transparent'}`,
+      background: rank <= 3 ? 'var(--surface)' : 'transparent',
+      border: `1px solid ${rank <= 3 ? 'var(--border2)' : 'transparent'}`,
       borderRadius: 10,
       alignItems: 'center',
       transition: 'background 0.15s',
     }}
-    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#0d0d0d'}
-    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = rank <= 3 ? '#0d0d0d' : 'transparent'}
+    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = rank <= 3 ? 'var(--surface)' : 'transparent'}
     >
       {/* Rank */}
-      <div style={{ fontSize: 14, color: rank <= 3 ? '#fff' : '#444', fontWeight: 700, textAlign: 'center' }}>
+      <div style={{ fontSize: 14, color: rank <= 3 ? 'var(--white)' : 'var(--muted)', fontWeight: 700, textAlign: 'center' }}>
         {medal ?? rank}
       </div>
 
       {/* Model info */}
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{model.name}</div>
-        <div style={{ fontSize: 11, color: '#444', marginTop: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--white)' }}>{model.name}</div>
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
           {model.provider.toUpperCase()} · {model.priceLabel}
         </div>
       </div>
 
       {/* W / L / T */}
-      <div style={{ textAlign: 'right', fontSize: 13, color: '#34d399', fontWeight: 600 }}>{model.wins}</div>
-      <div style={{ textAlign: 'right', fontSize: 13, color: '#e8453c', fontWeight: 600 }}>{model.losses}</div>
-      <div style={{ textAlign: 'right', fontSize: 13, color: '#888' }}>{model.ties}</div>
+      <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--green)', fontWeight: 600 }}>{model.wins}</div>
+      <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--red)', fontWeight: 600 }}>{model.losses}</div>
+      <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--muted2)' }}>{model.ties}</div>
 
       {/* Win rate bar */}
       <div style={{ textAlign: 'right' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: barColor, marginBottom: 4 }}>{pct}%</div>
-        <div style={{ height: 3, background: '#1a1a1a', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ height: 3, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 2, transition: 'width 0.5s ease' }} />
         </div>
-        <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>{model.total} battles</div>
+        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{model.total} battles</div>
       </div>
     </div>
   )
