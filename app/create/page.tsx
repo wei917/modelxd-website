@@ -7,7 +7,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
-import { useRequireAuth } from '../../lib/useRequireAuth'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
@@ -215,7 +214,6 @@ function Gallery({ userId }: { userId: string }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CreatePage() {
-  useRequireAuth()
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)

@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
 import { Barlow_Condensed, Barlow, JetBrains_Mono } from 'next/font/google'
-import { ThemeProvider } from '../lib/ThemeContext'
-import { AuthModalProvider } from '../lib/AuthModalContext'
-import AuthModal from './components/AuthModal'
 import './globals.css'
 
 const barlowCondensed = Barlow_Condensed({
@@ -10,11 +7,13 @@ const barlowCondensed = Barlow_Condensed({
   weight: ['300', '400', '500', '600', '700', '800', '900'],
   variable: '--font-display',
 })
+
 const barlow = Barlow({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
   variable: '--font-body',
 })
+
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
@@ -26,16 +25,15 @@ export const metadata: Metadata = {
   description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
       <body className={`${barlowCondensed.variable} ${barlow.variable} ${jetbrainsMono.variable}`}>
-        <ThemeProvider>
-          <AuthModalProvider>
-            {children}
-            <AuthModal />
-          </AuthModalProvider>
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   )
