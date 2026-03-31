@@ -8,10 +8,14 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+
+  // Determine post-login destination: query param > cookie > home
+  const cookieStore = cookies()
+  const nextParam = searchParams.get('next')
+  const nextCookie = cookieStore.get('auth_redirect')?.value
+  const next = nextParam ?? nextCookie ?? '/'
 
   if (code) {
-    const cookieStore = cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -59,7 +63,10 @@ export async function GET(request: Request) {
           metadata: safeMetadata,
         })
 
-      return NextResponse.redirect(`${origin}${next}`)
+      // Clear the auth_redirect cookie now that we've consumed it
+      const response = NextResponse.redirect(`${origin}${next}`)
+      response.cookies.set('auth_redirect', '', { path: '/', maxAge: 0 })
+      return response
     }
   }
 
