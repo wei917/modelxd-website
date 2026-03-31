@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 
 export default function AuthModal() {
-  const { open, hide } = useAuthModal()
+  const { open, nextPath, hide } = useAuthModal()
   const [loading, setLoading] = useState(false)
 
   const supabase = createBrowserClient(
@@ -16,9 +16,10 @@ export default function AuthModal() {
 
   const handleLogin = async () => {
     setLoading(true)
+    const destination = nextPath ?? window.location.pathname
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${window.location.pathname}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${destination}` },
     })
   }
 

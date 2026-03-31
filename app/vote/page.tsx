@@ -6,6 +6,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Nav from '../components/Nav'
+import { useRequireAuth } from '../../lib/useRequireAuth'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
@@ -42,6 +43,7 @@ const CARD_W = 280
 const CARD_GAP = 14
 
 export default function VotePage() {
+  useRequireAuth()
   const router = useRouter()
   const [rows, setRows] = useState<Record<Mode, Duel[]>>({ video: [], image: [], text: [] })
   const [loading, setLoading] = useState(true)
