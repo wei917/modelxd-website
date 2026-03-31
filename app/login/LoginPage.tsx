@@ -18,9 +18,10 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     setLoading(true)
+    document.cookie = `auth_redirect=${redirect}; path=/; max-age=600; SameSite=Lax`
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${redirect}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
 
@@ -153,7 +154,6 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Continue with Google'}
           </button>
 
-          <p className="auth-note">No credit card · No password</p>
 
           {/* Feature list */}
           <div className="auth-features">

@@ -17,9 +17,10 @@ export default function AuthModal() {
   const handleLogin = async () => {
     setLoading(true)
     const destination = nextPath ?? window.location.pathname
+    document.cookie = `auth_redirect=${destination}; path=/; max-age=600; SameSite=Lax`
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${destination}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
 
@@ -133,7 +134,6 @@ export default function AuthModal() {
             {loading ? 'Signing in...' : 'Continue with Google'}
           </button>
 
-          <p className="auth-note">No credit card · No password</p>
 
           <div className="auth-features">
             {[
