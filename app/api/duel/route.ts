@@ -58,6 +58,7 @@ async function runSlot(
       )
 
       const responseTime = Date.now() - start
+      console.log(`${LOG} Slot[${index}] text done in ${responseTime}ms cost=${doneResult.cost}`)
       controller.enqueue(sse(`done:${index}`, {
         index,
         responseTime,

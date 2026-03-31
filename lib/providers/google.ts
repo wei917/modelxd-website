@@ -57,13 +57,18 @@ export async function streamText(
   console.log(`${TAG} streamText start messages=${messages.length} hasAttachment=${!!attachment}`)
   try {
     const contents = buildContents(messages, attachment)
+    console.log(`${TAG} calling generateContentStream...`)
     const result   = await ai.models.generateContentStream({ model: model.model_name, contents })
+    console.log(`${TAG} stream created, reading chunks...`)
 
     let inputTokens = 0, outputTokens = 0, cachedTokens = 0
     let lastChunk: any = null
+    let chunkCount = 0
 
     for await (const chunk of result) {
+      chunkCount++
       const text = chunk.text as string | undefined
+      if (chunkCount === 1) console.log(`${TAG} first chunk received, text=${!!text}`)
       if (text) callbacks.onDelta(text)
       if (chunk.usageMetadata) {
         inputTokens  = chunk.usageMetadata.promptTokenCount       ?? inputTokens
@@ -71,8 +76,12 @@ export async function streamText(
         cachedTokens = chunk.usageMetadata.cachedContentTokenCount ?? cachedTokens
         lastChunk = chunk
       }
+      // Log finish reason if present
+      const finishReason = chunk.candidates?.[0]?.finishReason
+      if (finishReason) console.log(`${TAG} chunk finishReason=${finishReason}`)
     }
 
+    console.log(`${TAG} stream ended, totalChunks=${chunkCount}`)
     if (lastChunk) logResponse(TAG, 'final stream chunk', lastChunk)
 
     const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
