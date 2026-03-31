@@ -40,6 +40,15 @@ const STEPS = [
 
 const LABELS = ['A','B','C','D']
 
+/** Format a per-call cost as a readable dollar amount (never scientific notation) */
+function formatCost(cost: number, isImage: boolean, isVideo: boolean): string {
+  if (isImage) return `$${parseFloat(cost.toFixed(4))} / image`
+  if (isVideo) return `$${parseFloat(cost.toFixed(4))} / video`
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return `$${cost.toFixed(6)}`
+  return `$${cost.toFixed(4)}`
+}
+
 export default function XDuel() {
   useRequireAuth()
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -136,13 +145,18 @@ export default function XDuel() {
 
               if (currentEvent === 'meta') {
                 if (payload.duelId) setDuelId(payload.duelId)
-                // Initialize N empty slots — meta filled in via trying: events
-                const emptyMeta: ModelMeta = { name: '…', provider: '…', outputPrice: 0, priceLabel: '…' }
-                const initialModels: ModelState[] = Array.from({ length: payload.count }, () => ({
-                  meta:         emptyMeta,
+                // Initialize slots with model info from meta (includes price data)
+                const initialModels: ModelState[] = payload.models.map((pm: any) => ({
+                  meta: {
+                    id:          pm.id ?? '',
+                    name:        pm.name,
+                    provider:    pm.provider,
+                    outputPrice: pm.outputPrice ?? 0,
+                    priceLabel:  pm.priceLabel ?? '…',
+                  },
                   text:         '',
-            isImage:      false,
-            isVideo:      false,
+                  isImage:      false,
+                  isVideo:      false,
                   tokens:       0,
                   responseTime: 0,
                   streaming:    true,
@@ -170,17 +184,11 @@ export default function XDuel() {
                 setModels(prev => prev.map((m, i) => {
                   if (i !== idx) return m
                   const realCost = payload.cost != null ? Number(payload.cost) : m.isImage ? m.meta.outputPrice : (payload.tokens / 1_000_000) * m.meta.outputPrice
-                  const realPriceLabel = m.isVideo
-                    ? `$${(realCost * 1000).toFixed(2)} / 1k videos`
-                    : m.isImage
-                    ? `$${(realCost * 1000).toFixed(2)} / 1k images`
-                    : m.meta.priceLabel
                   return {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
                     cost:         realCost,
-                    meta:         { ...m.meta, priceLabel: realPriceLabel },
                     streaming:    false,
                     done:         true,
                   }
@@ -407,13 +415,24 @@ export default function XDuel() {
                               })()}
                             </span>
                           )}
-                          <div style={{opacity:showPrices?1:0,transition:'opacity 0.5s'}}>
-                            <span className="price-badge" style={{color: cheapest ? '#34d399' : 'var(--red)'}}>
-                              {m?.meta.priceLabel ?? '…'}
-                            </span>
-                          </div>
                         </div>
                       </div>
+                      {showPrices && m && (
+                        <div style={{
+                          padding:'8px 16px',
+                          background: cheapest ? 'rgba(0,200,150,0.08)' : 'rgba(232,69,60,0.08)',
+                          borderBottom:'1px solid var(--border)',
+                          fontFamily:'var(--font-mono)',
+                          fontSize:13,
+                          fontWeight:700,
+                          color: cheapest ? '#34d399' : 'var(--red)',
+                          textAlign:'center',
+                          transition:'opacity 0.5s',
+                        }}>
+                          {m.meta.priceLabel}
+                          {cheapest && models.length > 1 && <span style={{marginLeft:8,fontSize:10,fontWeight:500,opacity:0.7}}>💰 cheapest</span>}
+                        </div>
+                      )}
                       <div className={`battle-response ${loading||!m?'loading':''} ${(mode==='image'||mode==='video')?'image-response':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
@@ -453,9 +472,7 @@ export default function XDuel() {
                             <span className="stats-label">Estimated Cost</span>
                             <span className="stats-value" style={{display:'flex',alignItems:'center',gap:8}}>
                               <span style={{color: cheapest ? '#34d399' : 'var(--muted2)'}}>
-                                {m.isImage
-                                  ? `$${parseFloat(m.cost.toFixed(4))} / image`
-                                  : m.cost < 0.0001 ? m.cost.toExponential(2) : '$' + m.cost.toFixed(5)}
+                                {formatCost(m.cost, m.isImage, m.isVideo)}
                               </span>
                               {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
                                 <span style={{fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>

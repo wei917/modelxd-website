@@ -156,7 +156,17 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(sse('meta', { count: n, mode, duelId, models: models.map(m => ({ id: m.id, provider: m.provider, model_name: m.model_name, name: m.name })) }))
+      controller.enqueue(sse('meta', { count: n, mode, duelId, models: models.map(m => ({
+        id: m.id, provider: m.provider, model_name: m.model_name, name: m.name,
+        outputPrice: m.output_price ?? 0,
+        priceLabel: mode === 'image'
+          ? m.image_pricing ? `$${Object.values(m.image_pricing)[0]} / image` : '—'
+          : mode === 'video'
+          ? m.video_pricing ? `$${Object.values(m.video_pricing)[0]} / video` : '—'
+          : m.output_price != null
+          ? `$${m.output_price.toFixed(2)} / 1M tokens`
+          : '—',
+      })) }))
 
       const results = await Promise.all(
         models.map((model, i) => runSlot(i, model, mode, prompt, attachment, duelId, controller))
