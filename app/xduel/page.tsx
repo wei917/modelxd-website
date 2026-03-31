@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
+import { useRequireAuth } from '../../lib/useRequireAuth'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
 
@@ -40,6 +41,7 @@ const STEPS = [
 const LABELS = ['A','B','C','D']
 
 export default function XDuel() {
+  useRequireAuth()
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const setCursor = (color: string) => {

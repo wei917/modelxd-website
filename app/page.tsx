@@ -3,33 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
 import Nav from './components/Nav'
 
 export default function Home() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
   const [savings, setSavings] = useState(2_847_293)
-
-  const handleStartXDuel = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    )
-    const { data } = await supabase.auth.getUser()
-    if (data.user) {
-      router.push('/xduel')
-    } else {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/xduel`,
-        },
-      })
-    }
-  }
 
   // Custom cursor
   useEffect(() => {
@@ -124,7 +103,7 @@ export default function Home() {
             <span className="line3">XDuel to Find Your Best Models</span>
           </h1>
           <div className="hero-ctas">
-            <button onClick={handleStartXDuel} className="btn-primary">Start XDuel →</button>
+            <Link href="/xduel" className="btn-primary">Start XDuel →</Link>
           </div>
         </div>
       </section>
