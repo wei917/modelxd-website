@@ -23,7 +23,7 @@ function calcVideoCost(model: ModelInfo, resolution: string, seconds: number): n
   return (model.video_pricing?.[resolution] ?? 0) * seconds
 }
 
-// ── Text (streaming) ─────────────────────────────────────────────────────────
+// ── Text (streaming via Responses API) ───────────────────────────────────────
 export async function streamText(
   model:     ModelInfo,
   messages:  { role: 'user' | 'assistant'; content: any }[],
@@ -33,24 +33,25 @@ export async function streamText(
   const TAG = `[openai/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length}`)
   try {
-    const stream = await ai.chat.completions.create({
-      model:           model.model_name,
-      stream:          true,
-      stream_options:  { include_usage: true },
-      messages,
+    const stream = await (ai as any).responses.create({
+      model:  model.model_name,
+      stream: true,
+      input:  messages,
     })
 
     let inputTokens = 0, outputTokens = 0, cachedTokens = 0
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content
-      if (delta) callbacks.onDelta(delta)
-
-      if (chunk.usage) {
-        inputTokens  = chunk.usage.prompt_tokens ?? 0
-        outputTokens = chunk.usage.completion_tokens ?? 0
-        cachedTokens = (chunk.usage as any).prompt_tokens_details?.cached_tokens ?? 0
-        logResponse(TAG, 'final chunk (usage)', chunk)
+    for await (const event of stream) {
+      if (event.type === 'response.output_text.delta') {
+        callbacks.onDelta(event.delta ?? '')
+      } else if (event.type === 'response.completed') {
+        const usage = event.response?.usage
+        if (usage) {
+          inputTokens  = usage.input_tokens ?? 0
+          outputTokens = usage.output_tokens ?? 0
+          cachedTokens = usage.input_tokens_details?.cached_tokens ?? 0
+          logResponse(TAG, 'response.completed', event.response)
+        }
       }
     }
 
