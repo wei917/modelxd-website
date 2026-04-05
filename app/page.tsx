@@ -106,14 +106,6 @@ export default function Home() {
 
       {/* Hero */}
       <section className="hero">
-        <div className="hero-line" style={{ top: '20%' }} />
-        <div className="hero-line" style={{ top: '80%' }} />
-        <div className="hero-vline" style={{ left: '48px' }} />
-        <div className="hero-vline" style={{ right: '48px' }} />
-        <div className="corner corner-tl" />
-        <div className="corner corner-tr" />
-        <div className="corner corner-bl" />
-        <div className="corner corner-br" />
         <div className="hero-inner">
           <div className="hero-eyebrow">AI Model Intelligence Platform · Est. 2026</div>
           <h1 className="hero-headline">
