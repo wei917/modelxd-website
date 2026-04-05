@@ -33,15 +33,20 @@ export async function streamText(
   const TAG = `[openai/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length}`)
   try {
+    console.log(`${TAG} calling responses.create...`)
     const stream = await (ai as any).responses.create({
       model:  model.model_name,
       stream: true,
       input:  messages,
     })
+    console.log(`${TAG} stream created, reading events...`)
 
     let inputTokens = 0, outputTokens = 0, cachedTokens = 0
+    let eventCount = 0
 
     for await (const event of stream) {
+      eventCount++
+      if (eventCount === 1) console.log(`${TAG} first event: type=${event.type}`)
       if (event.type === 'response.output_text.delta') {
         callbacks.onDelta(event.delta ?? '')
       } else if (event.type === 'response.completed') {
@@ -52,9 +57,12 @@ export async function streamText(
           cachedTokens = usage.input_tokens_details?.cached_tokens ?? 0
           logResponse(TAG, 'response.completed', event.response)
         }
+      } else if (event.type === 'error') {
+        console.error(`${TAG} stream error event:`, JSON.stringify(event))
       }
     }
 
+    console.log(`${TAG} stream ended, totalEvents=${eventCount}`)
     const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
     console.log(`${TAG} streamText cost=$${cost.toFixed(6)} input=${inputTokens} output=${outputTokens} cached=${cachedTokens}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
