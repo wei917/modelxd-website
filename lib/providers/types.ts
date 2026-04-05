@@ -6,6 +6,8 @@ export interface ModelInfo {
   provider:   string
   model_name: string
   name:       string
+  input_modalities:   string[]     // ['text','image','video']
+  output_modalities:  string[]     // ['text'] | ['image'] | ['video']
   input_price:        number | null
   cached_input_price: number | null
   output_price:       number | null

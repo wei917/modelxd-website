@@ -19,7 +19,7 @@ export async function getModelsByMode(mode: string): Promise<ModelInfo[]> {
     .from('ai_models')
     .select('*')
     .eq('enabled', true)
-    .contains('modes', [mode])
+    .contains('output_modalities', [mode])
     .order('provider')
 
   if (error) throw new Error(`Failed to load models: ${error.message}`)
