@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
-import { useTheme } from '../../lib/ThemeContext'
 import { useAuthModal } from '../../lib/AuthModalContext'
 
 const NAV_LINKS = [
@@ -18,7 +17,6 @@ const NAV_LINKS = [
 
 export default function Nav() {
   const pathname = usePathname()
-  const { theme, toggle } = useTheme()
   const { show } = useAuthModal()
   const [user, setUser] = useState<User | null>(null)
   const supabase = createBrowserClient(
@@ -66,14 +64,6 @@ export default function Nav() {
         ))}
       </div>
       <div className="nav-auth">
-        <label className="theme-toggle" title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}>
-          <input type="checkbox" checked={theme === 'light'} onChange={toggle} />
-          <div className="theme-toggle-track">
-            <span className="theme-toggle-icon">🌙</span>
-            <span className="theme-toggle-icon">☀️</span>
-            <div className="theme-toggle-thumb" />
-          </div>
-        </label>
         {user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link href="/profile">
