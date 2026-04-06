@@ -176,7 +176,12 @@ export default function XDuel() {
               } else if (currentEvent.startsWith('delta:')) {
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) =>
-                  i === idx ? { ...m, text: m.text + payload.text, isImage: payload.isImage ?? m.isImage, isVideo: payload.isVideo ?? m.isVideo } : m
+                  i === idx ? {
+                    ...m,
+                    text: payload.text != null ? (payload.isImage || payload.isVideo ? payload.text : m.text + payload.text) : m.text,
+                    isImage: payload.isImage ?? m.isImage,
+                    isVideo: payload.isVideo ?? m.isVideo,
+                  } : m
                 ))
 
               } else if (currentEvent.startsWith('done:')) {

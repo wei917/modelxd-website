@@ -76,7 +76,8 @@ async function runSlot(
       // Upload to Supabase
       const { createClient } = await import('@supabase/supabase-js')
       const sb   = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
-      const ext  = result.mediaType.split('/')[1] ?? 'png'
+      const rawExt = result.mediaType.split('/')[1] ?? 'png'
+      const ext    = rawExt === 'jpeg' ? 'jpg' : rawExt
       const path = `${duelId}_slot${index}.${ext}`
       const { error } = await sb.storage.from('xduel-ai-images').upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
       if (error) throw new Error(`Upload failed: ${error.message}`)
