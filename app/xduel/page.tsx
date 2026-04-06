@@ -455,10 +455,15 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''} ${(mode==='image'||mode==='video')?'image-response':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
-                          : m.isVideo
+                          : m.isVideo && m.text
                           ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
-                          : m.isImage
+                          : m.isImage && m.text
                           ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
+                          : (m.isImage || m.isVideo) && !m.text
+                          ? <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'60px 20px',color:'var(--muted2)',fontSize:13,gap:8}}>
+                              <div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/>
+                              <span style={{marginLeft:8}}>Generating{m.isImage ? ' image' : ' video'}…</span>
+                            </div>
                           : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
