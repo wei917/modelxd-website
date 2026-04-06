@@ -161,17 +161,23 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(sse('meta', { count: n, mode, duelId, models: models.map(m => ({
-        id: m.id, provider: m.provider, model_name: m.model_name, name: m.name,
-        outputPrice: m.output_price ?? 0,
-        priceLabel: mode === 'image'
-          ? m.image_pricing ? `$${Object.values(m.image_pricing)[0]} / image` : '—'
-          : mode === 'video'
-          ? m.video_pricing ? `$${Object.values(m.video_pricing)[0]} / video` : '—'
-          : m.output_price != null
-          ? `$${m.output_price.toFixed(2)} / 1M tokens`
-          : '—',
-      })) }))
+      controller.enqueue(sse('meta', { count: n, mode, duelId, models: models.map(m => {
+        let priceLabel = '—'
+        let outputPrice = m.output_price ?? 0
+        if (mode === 'image' && m.image_pricing) {
+          // Duel uses 'medium' quality for OpenAI, '1024px' for Google
+          const cost = m.image_pricing['medium'] ?? m.image_pricing['1024px'] ?? Object.values(m.image_pricing)[0] ?? 0
+          priceLabel = `$${parseFloat(cost.toFixed(4))} / image`
+          outputPrice = cost
+        } else if (mode === 'video' && m.video_pricing) {
+          const cost = m.video_pricing['720p'] ?? m.video_pricing['default'] ?? Object.values(m.video_pricing)[0] ?? 0
+          priceLabel = `$${parseFloat(cost.toFixed(4))} / sec`
+          outputPrice = cost
+        } else if (m.output_price != null) {
+          priceLabel = `$${m.output_price.toFixed(2)} / 1M tokens`
+        }
+        return { id: m.id, provider: m.provider, model_name: m.model_name, name: m.name, outputPrice, priceLabel }
+      }) }))
 
       const results = await Promise.all(
         models.map((model, i) => runSlot(i, model, mode, prompt, attachment, duelId, controller))

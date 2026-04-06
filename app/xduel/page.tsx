@@ -77,8 +77,14 @@ export default function XDuel() {
   const bothDone    = models.length > 0 && models.every(m => m.done)
   const anyStreaming = models.some(m => m.streaming)
 
-  // Cheapest model index
-  const cheapestIdx = models.length > 0
+  // Cheapest model index — use actual generation cost if available, otherwise list price
+  const cheapestIdx = models.length > 0 && models.every(m => m.done)
+    ? models.reduce((minI, m, i, arr) => {
+        const mCost = m.cost > 0 ? m.cost : m.meta.outputPrice
+        const minCost = arr[minI].cost > 0 ? arr[minI].cost : arr[minI].meta.outputPrice
+        return mCost < minCost ? i : minI
+      }, 0)
+    : models.length > 0
     ? models.reduce((minI, m, i, arr) => m.meta.outputPrice < arr[minI].meta.outputPrice ? i : minI, 0)
     : -1
 
@@ -189,11 +195,18 @@ export default function XDuel() {
                 setModels(prev => prev.map((m, i) => {
                   if (i !== idx) return m
                   const realCost = payload.cost != null ? Number(payload.cost) : m.isImage ? m.meta.outputPrice : (payload.tokens / 1_000_000) * m.meta.outputPrice
+                  // Update priceLabel to reflect actual cost
+                  const realPriceLabel = m.isImage
+                    ? `$${parseFloat(realCost.toFixed(4))} / image`
+                    : m.isVideo
+                    ? `$${parseFloat(realCost.toFixed(4))} / video`
+                    : m.meta.priceLabel
                   return {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
                     cost:         realCost,
+                    meta:         { ...m.meta, priceLabel: realPriceLabel },
                     streaming:    false,
                     done:         true,
                   }
@@ -436,6 +449,7 @@ export default function XDuel() {
                         }}>
                           {m.meta.priceLabel}
                           {cheapest && models.length > 1 && <span style={{marginLeft:8,fontSize:10,fontWeight:500,opacity:0.7}}>💰 cheapest</span>}
+                          {!cheapest && models.length > 1 && <span style={{marginLeft:8,fontSize:10,fontWeight:500,opacity:0.7}}>💸 more expensive</span>}
                         </div>
                       )}
                       <div className={`battle-response ${loading||!m?'loading':''} ${(mode==='image'||mode==='video')?'image-response':''}`}>
@@ -474,16 +488,30 @@ export default function XDuel() {
                         </div>
                         {showPrices && (
                           <div className="stats-line" style={{animation:'slideDown 0.35s ease forwards'}}>
-                            <span className="stats-label">Estimated Cost</span>
+                            <span className="stats-label">Price</span>
                             <span className="stats-value" style={{display:'flex',alignItems:'center',gap:8}}>
                               <span style={{color: cheapest ? '#34d399' : 'var(--muted2)'}}>
-                                {formatCost(m.cost, m.isImage, m.isVideo)}
+                                {m.meta.priceLabel}
                               </span>
-                              {cheapest && mostExpensive && cheapestModel && mostExpensive.meta.outputPrice > cheapestModel.meta.outputPrice && (
-                                <span style={{fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>
-                                  💰 {Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) / mostExpensive.meta.outputPrice * 100)}% saving
-                                </span>
-                              )}
+                              {cheapest && models.length > 1 && (() => {
+                                const otherCosts = models.filter((_, j) => j !== i).map(o => o.cost > 0 ? o.cost : o.meta.outputPrice)
+                                const myCost = m.cost > 0 ? m.cost : m.meta.outputPrice
+                                const maxOther = Math.max(...otherCosts)
+                                if (maxOther > myCost && maxOther > 0) {
+                                  const savingPct = Math.round((maxOther - myCost) / maxOther * 100)
+                                  return <span style={{fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>💰 {savingPct}% cheaper</span>
+                                }
+                                return null
+                              })()}
+                              {!cheapest && models.length > 1 && (() => {
+                                const cheapestCost = cheapestModel ? (cheapestModel.cost > 0 ? cheapestModel.cost : cheapestModel.meta.outputPrice) : 0
+                                const myCost = m.cost > 0 ? m.cost : m.meta.outputPrice
+                                if (myCost > cheapestCost && myCost > 0) {
+                                  const morePct = Math.round((myCost - cheapestCost) / myCost * 100)
+                                  return <span style={{fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>{morePct}% more expensive</span>
+                                }
+                                return null
+                              })()}
                             </span>
                           </div>
                         )}
