@@ -90,7 +90,8 @@ export async function POST(req: Request) {
           await supabaseStorage.storage.from('generations').upload(
             `${user.id}/${fileName}`, result.buffer, { contentType: 'video/mp4', upsert: true }
           )
-          const { data: { publicUrl } } = supabaseStorage.storage.from('generations').getPublicUrl(`${user.id}/${fileName}`)
+          const { data: urlData } = supabaseStorage.storage.from('generations').getPublicUrl(`${user.id}/${fileName}`)
+          const publicUrl = urlData?.publicUrl ?? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/generations/${user.id}/${fileName}`
           controller.enqueue(sse('video', { url: publicUrl, cost: result.cost }))
         } catch (err) {
           controller.enqueue(sse('error', { message: err instanceof Error ? err.message : String(err) }))

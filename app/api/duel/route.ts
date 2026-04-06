@@ -80,7 +80,9 @@ async function runSlot(
       const path = `${duelId}_slot${index}.${ext}`
       const { error } = await sb.storage.from('xduel-ai-images').upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
       if (error) throw new Error(`Upload failed: ${error.message}`)
-      const { data: { publicUrl } } = sb.storage.from('xduel-ai-images').getPublicUrl(path)
+      const { data: urlData } = sb.storage.from('xduel-ai-images').getPublicUrl(path)
+      const publicUrl = urlData?.publicUrl ?? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/xduel-ai-images/${path}`
+      console.log(`${LOG} Slot[${index}] image uploaded, publicUrl=${publicUrl}`)
 
       const responseTime = Date.now() - start
       controller.enqueue(sse(`delta:${index}`, { index, text: publicUrl, isImage: true }))
@@ -102,7 +104,8 @@ async function runSlot(
       const path = `${duelId}_slot${index}.${ext}`
       const { error } = await sb.storage.from('xduel-ai-videos').upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
       if (error) throw new Error(`Upload failed: ${error.message}`)
-      const { data: { publicUrl } } = sb.storage.from('xduel-ai-videos').getPublicUrl(path)
+      const { data: urlData } = sb.storage.from('xduel-ai-videos').getPublicUrl(path)
+      const publicUrl = urlData?.publicUrl ?? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/xduel-ai-videos/${path}`
 
       const responseTime = Date.now() - start
       controller.enqueue(sse(`delta:${index}`, { index, text: publicUrl, isVideo: true }))
