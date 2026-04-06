@@ -54,8 +54,8 @@ export default function PublicProfilePage() {
       })
   }, [userId])
 
-  if (loading) return <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#333' }}>Loading…</div></>
-  if (notFound) return <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#333', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>◎</div><div>Profile not found</div></div></>
+  if (loading) return <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading…</div></>
+  if (notFound) return <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>◎</div><div>Profile not found</div></div></>
 
   const initials = (profile!.display_name ?? '?').charAt(0).toUpperCase()
   const joined   = new Date(profile!.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -73,13 +73,13 @@ export default function PublicProfilePage() {
             {/* Avatar */}
             <div style={{
               width: 100, height: 100, borderRadius: '50%', overflow: 'hidden',
-              background: profile!.avatar_url ? 'transparent' : '#1a1a1a',
+              background: profile!.avatar_url ? 'transparent' : 'var(--surface2)',
               border: '2px solid #222', marginBottom: 20,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {profile!.avatar_url
                 ? <img src={profile!.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: 36, fontWeight: 800, color: '#e8453c' }}>{initials}</span>
+                : <span style={{ fontSize: 36, fontWeight: 800, color: 'var(--red)' }}>{initials}</span>
               }
             </div>
 
@@ -87,7 +87,7 @@ export default function PublicProfilePage() {
               {profile!.display_name ?? 'Anonymous'}
             </h1>
 
-            <div style={{ fontSize: 12, color: '#444', marginBottom: 16, fontFamily: 'var(--mono)' }}>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, fontFamily: 'var(--mono)' }}>
               Joined {joined}
             </div>
 
@@ -97,7 +97,7 @@ export default function PublicProfilePage() {
               </p>
             )}
 
-            <div style={{ marginTop: 32, padding: '16px 24px', background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12, fontSize: 12, color: '#444' }}>
+            <div style={{ marginTop: 32, padding: '16px 24px', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, fontSize: 12, color: 'var(--muted)' }}>
               Stats and activity are private to this user.
             </div>
 

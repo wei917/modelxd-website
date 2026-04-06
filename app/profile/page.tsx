@@ -124,7 +124,7 @@ export default function ProfilePage() {
   }
 
   if (!profile) return (
-    <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#333' }}>Loading…</div></>
+    <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading…</div></>
   )
 
   const initials = (profile.display_name ?? user?.email ?? '?').charAt(0).toUpperCase()
@@ -159,20 +159,20 @@ export default function ProfilePage() {
                 onClick={() => !uploading && fileRef.current?.click()}
                 style={{
                   width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', cursor: 'pointer',
-                  background: profile.avatar_url ? 'transparent' : '#1a1a1a',
+                  background: profile.avatar_url ? 'transparent' : 'var(--surface2)',
                   border: '2px solid #222', position: 'relative',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 32, fontWeight: 800, color: '#e8453c' }}>{initials}</span>
+                  : <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--red)' }}>{initials}</span>
                 }
                 <div style={{
                   position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   opacity: 0, transition: 'opacity 0.2s', borderRadius: '50%',
-                  fontSize: 11, color: '#fff', fontWeight: 600,
+                  fontSize: 11, color: 'var(--white)', fontWeight: 600,
                 }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '0'}
@@ -191,19 +191,19 @@ export default function ProfilePage() {
                   <input
                     value={editName} onChange={e => setEditName(e.target.value)}
                     placeholder="Display name"
-                    style={{ background: '#0d0d0d', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 18, fontWeight: 700, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ background: 'var(--surface)', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', color: 'var(--white)', fontSize: 18, fontWeight: 700, outline: 'none', fontFamily: 'inherit' }}
                   />
                   <textarea
                     value={editBio} onChange={e => setEditBio(e.target.value)}
                     placeholder="Bio (optional)"
                     rows={3}
-                    style={{ background: '#0d0d0d', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', color: '#ccc', fontSize: 13, outline: 'none', resize: 'none', fontFamily: 'inherit' }}
+                    style={{ background: 'var(--surface)', border: '1px solid #333', borderRadius: 8, padding: '8px 12px', color: '#ccc', fontSize: 13, outline: 'none', resize: 'none', fontFamily: 'inherit' }}
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={saveProfile} disabled={saving} style={{ padding: '7px 18px', borderRadius: 8, background: '#e8453c', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                    <button onClick={saveProfile} disabled={saving} style={{ padding: '7px 18px', borderRadius: 8, background: 'var(--red)', border: 'none', color: 'var(--white)', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
                       {saving ? 'Saving…' : 'Save'}
                     </button>
-                    <button onClick={() => setEditing(false)} style={{ padding: '7px 14px', borderRadius: 8, background: 'transparent', border: '1px solid #222', color: '#666', fontSize: 13, cursor: 'pointer' }}>
+                    <button onClick={() => setEditing(false)} style={{ padding: '7px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted2)', fontSize: 13, cursor: 'pointer' }}>
                       Cancel
                     </button>
                   </div>
@@ -212,14 +212,14 @@ export default function ProfilePage() {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                     <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{profile.display_name ?? 'Anonymous'}</h1>
-                    <button onClick={() => setEditing(true)} style={{ background: 'transparent', border: '1px solid #222', color: '#555', borderRadius: 7, padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
+                    <button onClick={() => setEditing(true)} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted)', borderRadius: 7, padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
                       Edit
                     </button>
                   </div>
-                  <div style={{ fontSize: 12, color: '#444', marginBottom: 8, fontFamily: 'var(--mono)' }}>{user?.email}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8, fontFamily: 'var(--mono)' }}>{user?.email}</div>
                   {profile.bio
                     ? <p style={{ fontSize: 13, color: '#777', lineHeight: 1.6, margin: 0 }}>{profile.bio}</p>
-                    : <p style={{ fontSize: 13, color: '#333', margin: 0, fontStyle: 'italic' }}>No bio yet — click Edit to add one</p>
+                    : <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0, fontStyle: 'italic' }}>No bio yet — click Edit to add one</p>
                   }
                 </>
               )}
@@ -227,7 +227,7 @@ export default function ProfilePage() {
 
             {/* Public profile link */}
             <a href={`/profile/${user?.id}`} target="_blank"
-              style={{ fontSize: 11, color: '#444', border: '1px solid #1e1e1e', borderRadius: 8, padding: '6px 12px', textDecoration: 'none', flexShrink: 0, marginTop: 4 }}
+              style={{ fontSize: 11, color: 'var(--muted)', border: '1px solid #1e1e1e', borderRadius: 8, padding: '6px 12px', textDecoration: 'none', flexShrink: 0, marginTop: 4 }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#888'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#444'}
             >
@@ -250,7 +250,7 @@ export default function ProfilePage() {
           {/* ── Creates tab ── */}
           {tab === 'creates' && (
             creates.length === 0
-              ? <div style={{ color: '#333', textAlign: 'center', padding: 60, fontSize: 13 }}>No creates yet — go to Studio to start.</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>No creates yet — go to Studio to start.</div>
               : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
                   {creates.map(item => {
                     const slots   = (item.slots ?? []).filter(Boolean)
@@ -259,20 +259,20 @@ export default function ProfilePage() {
                     const chosen  = slots.find((s: any) => s.id === item.chosen_model_id)
                     const preview = chosen ?? slots[0]
                     return (
-                      <div key={item.id} style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12, overflow: 'hidden' }}>
+                      <div key={item.id} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden' }}>
                         {preview && (
                           preview.isVideo
                             ? <video src={preview.text} muted loop playsInline style={{ width: '100%', maxHeight: 140, objectFit: 'cover', display: 'block' }} />
                             : preview.isImage
                             ? <img src={preview.text} alt="" onClick={() => setLightbox(preview.text)} style={{ width: '100%', maxHeight: 140, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }} />
-                            : <div style={{ padding: '10px 12px', fontSize: 11, color: '#555', lineHeight: 1.6, maxHeight: 80, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
+                            : <div style={{ padding: '10px 12px', fontSize: 11, color: 'var(--muted)', lineHeight: 1.6, maxHeight: 80, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
                         )}
                         <div style={{ padding: '10px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                             <span style={{ fontSize: 9, fontWeight: 700, color: modeColor, background: modeColor+'18', padding: '2px 7px', borderRadius: 8, textTransform: 'uppercase' as const }}>{mode}</span>
                             <span style={{ fontSize: 11, color: '#2a2a2a', marginLeft: 'auto' }}>{new Date(item.created_at).toLocaleDateString()}</span>
                           </div>
-                          <div style={{ fontSize: 12, color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.prompt}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.prompt}</div>
                         </div>
                       </div>
                     )
@@ -283,27 +283,27 @@ export default function ProfilePage() {
           {/* ── Votes tab ── */}
           {tab === 'votes' && (
             votes.length === 0
-              ? <div style={{ color: '#333', textAlign: 'center', padding: 60, fontSize: 13 }}>No votes yet — head to XDuel to start voting.</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>No votes yet — head to XDuel to start voting.</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {votes.map((v: any) => {
                     const duel = v.duels
                     return (
                       <a key={v.id} href={`/duel/${v.duel_id}`} style={{ textDecoration: 'none' }}>
-                        <div style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}
+                        <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}
                           onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = '#2a2a2a'}
-                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = '#1a1a1a'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border2)'}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>
                               {duel?.prompt ?? 'Duel'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#444' }}>
+                            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
                               {duel?.mode ?? 'text'} · {new Date(v.created_at).toLocaleDateString()}
                             </div>
                           </div>
                           {v.winner_model_id
-                            ? <span style={{ fontSize: 11, color: '#34d399', background: '#34d39918', padding: '3px 9px', borderRadius: 7, flexShrink: 0 }}>Voted</span>
-                            : <span style={{ fontSize: 11, color: '#888', background: '#ffffff0a', padding: '3px 9px', borderRadius: 7, flexShrink: 0 }}>Tie</span>
+                            ? <span style={{ fontSize: 11, color: 'var(--green)', background: '#34d39918', padding: '3px 9px', borderRadius: 7, flexShrink: 0 }}>Voted</span>
+                            : <span style={{ fontSize: 11, color: 'var(--muted2)', background: '#ffffff0a', padding: '3px 9px', borderRadius: 7, flexShrink: 0 }}>Tie</span>
                           }
                         </div>
                       </a>
@@ -316,13 +316,13 @@ export default function ProfilePage() {
           {tab === 'stats' && stats && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
               {[
-                { label: 'XDuels Created', value: stats.duels, color: '#e8453c' },
+                { label: 'XDuels Created', value: stats.duels, color: 'var(--red)' },
                 { label: 'Studio Creates', value: stats.creates, color: '#a78bfa' },
-                { label: 'Votes Cast',     value: stats.votes,   color: '#34d399' },
+                { label: 'Votes Cast',     value: stats.votes,   color: 'var(--green)' },
               ].map(s => (
-                <div key={s.label} style={{ background: '#0d0d0d', border: `1px solid ${s.color}22`, borderRadius: 12, padding: '24px 20px', textAlign: 'center' }}>
+                <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${s.color}22`, borderRadius: 12, padding: '24px 20px', textAlign: 'center' }}>
                   <div style={{ fontSize: 40, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 8 }}>{s.value}</div>
-                  <div style={{ fontSize: 12, color: '#555' }}>{s.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{s.label}</div>
                 </div>
               ))}
             </div>

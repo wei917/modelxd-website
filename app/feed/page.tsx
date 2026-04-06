@@ -75,14 +75,14 @@ export default function FeedPage() {
     v === null ? '—' : v === 'T' ? 'Tie' : `Model ${String.fromCharCode(65 + parseInt(v))}`
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080808', color: '#fff', fontFamily: 'var(--sans, sans-serif)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--white)', fontFamily: 'var(--sans, sans-serif)' }}>
       {/* Header */}
       <div style={{ borderBottom: '1px solid #1a1a1a', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: 24 }}>
-        <a href="/xduel" style={{ color: '#e8453c', fontWeight: 700, fontSize: 18, textDecoration: 'none', letterSpacing: '-0.5px' }}>
+        <a href="/xduel" style={{ color: 'var(--red)', fontWeight: 700, fontSize: 18, textDecoration: 'none', letterSpacing: '-0.5px' }}>
           ← XDuel
         </a>
-        <span style={{ color: '#333' }}>|</span>
-        <span style={{ color: '#888', fontSize: 14 }}>Public Feed</span>
+        <span style={{ color: 'var(--muted)' }}>|</span>
+        <span style={{ color: 'var(--muted2)', fontSize: 14 }}>Public Feed</span>
 
         {/* Mode filter */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -97,7 +97,7 @@ export default function FeedPage() {
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
-                background: mode === m ? '#e8453c' : '#1a1a1a',
+                background: mode === m ? 'var(--red)' : 'var(--surface2)',
                 color: mode === m ? '#fff' : '#666',
                 textTransform: 'capitalize',
                 transition: 'all 0.15s',
@@ -112,9 +112,9 @@ export default function FeedPage() {
       {/* Feed */}
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 24px' }}>
         {loading && duels.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#444', padding: 80 }}>Loading…</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading…</div>
         ) : duels.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#444', padding: 80 }}>No duels yet in this mode.</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>No duels yet in this mode.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {duels.map(duel => (
@@ -135,7 +135,7 @@ export default function FeedPage() {
               onClick={loadMore}
               style={{
                 background: 'transparent', border: '1px solid #333',
-                color: '#888', borderRadius: 8, padding: '10px 24px',
+                color: 'var(--muted2)', borderRadius: 8, padding: '10px 24px',
                 fontSize: 13, cursor: 'pointer',
               }}
             >
@@ -145,7 +145,7 @@ export default function FeedPage() {
         )}
 
         {loading && duels.length > 0 && (
-          <div style={{ textAlign: 'center', color: '#444', padding: 24 }}>Loading…</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>Loading…</div>
         )}
       </div>
     </div>
@@ -163,8 +163,8 @@ function DuelCard({ duel, expanded, onToggle, voteLabel }: {
 
   return (
     <div style={{
-      background: '#0d0d0d',
-      border: '1px solid #1a1a1a',
+      background: 'var(--surface)',
+      border: '1px solid var(--border2)',
       borderRadius: 12,
       overflow: 'hidden',
     }}>
@@ -195,7 +195,7 @@ function DuelCard({ duel, expanded, onToggle, voteLabel }: {
           </div>
           <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {duel.slots.filter(Boolean).map((s, i) => (
-              <span key={i} style={{ fontSize: 11, color: '#555' }}>
+              <span key={i} style={{ fontSize: 11, color: 'var(--muted)' }}>
                 {String.fromCharCode(65 + i)}: {s.name}
               </span>
             ))}
@@ -205,14 +205,14 @@ function DuelCard({ duel, expanded, onToggle, voteLabel }: {
         {/* Votes + date */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {duel.vote2 && (
-            <div style={{ fontSize: 11, color: '#e8453c', fontWeight: 600 }}>
+            <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 600 }}>
               {voteLabel(duel.vote2)}
             </div>
           )}
-          <div style={{ fontSize: 11, color: '#444', marginTop: 2 }}>{date}</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{date}</div>
         </div>
 
-        <span style={{ color: '#333', fontSize: 12, flexShrink: 0, marginTop: 2 }}>
+        <span style={{ color: 'var(--muted)', fontSize: 12, flexShrink: 0, marginTop: 2 }}>
           {expanded ? '▲' : '▼'}
         </span>
       </div>
@@ -222,11 +222,11 @@ function DuelCard({ duel, expanded, onToggle, voteLabel }: {
         <div style={{ borderTop: '1px solid #1a1a1a', padding: '20px', display: 'grid', gridTemplateColumns: `repeat(${duel.slots.length}, 1fr)`, gap: 16 }}>
           {duel.slots.filter(Boolean).map((slot, i) => (
             <div key={i}>
-              <div style={{ fontSize: 10, color: '#555', marginBottom: 6, fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 6, fontFamily: 'monospace' }}>
                 MODEL {String.fromCharCode(65 + i)}
               </div>
-              <div style={{ fontSize: 13, color: '#fff', fontWeight: 600, marginBottom: 2 }}>{slot.name}</div>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>{slot.provider.toUpperCase()} · {slot.priceLabel}</div>
+              <div style={{ fontSize: 13, color: 'var(--white)', fontWeight: 600, marginBottom: 2 }}>{slot.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>{slot.provider.toUpperCase()} · {slot.priceLabel}</div>
 
               {slot.isVideo ? (
                 <video
@@ -246,7 +246,7 @@ function DuelCard({ duel, expanded, onToggle, voteLabel }: {
                 </div>
               )}
 
-              <div style={{ marginTop: 8, fontSize: 11, color: '#444' }}>
+              <div style={{ marginTop: 8, fontSize: 11, color: 'var(--muted)' }}>
                 ⏱ {(slot.responseTime / 1000).toFixed(2)}s · ${Number(slot.cost).toFixed(4)}
               </div>
             </div>
@@ -256,9 +256,9 @@ function DuelCard({ duel, expanded, onToggle, voteLabel }: {
 
       {/* Vote summary footer */}
       {(duel.vote1 || duel.vote2) && (
-        <div style={{ borderTop: '1px solid #1a1a1a', padding: '10px 20px', display: 'flex', gap: 20, fontSize: 11, color: '#555' }}>
-          {duel.vote1 && <span>Blind vote: <span style={{ color: '#888' }}>{voteLabel(duel.vote1)}</span></span>}
-          {duel.vote2 && <span>Final vote: <span style={{ color: '#e8453c' }}>{voteLabel(duel.vote2)}</span></span>}
+        <div style={{ borderTop: '1px solid #1a1a1a', padding: '10px 20px', display: 'flex', gap: 20, fontSize: 11, color: 'var(--muted)' }}>
+          {duel.vote1 && <span>Blind vote: <span style={{ color: 'var(--muted2)' }}>{voteLabel(duel.vote1)}</span></span>}
+          {duel.vote2 && <span>Final vote: <span style={{ color: 'var(--red)' }}>{voteLabel(duel.vote2)}</span></span>}
         </div>
       )}
     </div>

@@ -93,12 +93,12 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#111', border: '1px solid #222', borderRadius: 14, width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '16px 16px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#0d0d0d', border: '1px solid #222', borderRadius: 8, padding: '10px 14px' }}>
-            <span style={{ color: '#444' }}>⌕</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px' }}>
+            <span style={{ color: 'var(--muted)' }}>⌕</span>
             <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search models…"
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 14, fontFamily: 'inherit' }} />
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit' }} />
           </div>
         </div>
         <div style={{ padding: '12px 16px 8px' }}>
@@ -109,8 +109,8 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
           }}>{mode} models</span>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {loading ? <div style={{ padding: 32, textAlign: 'center', color: '#444' }}>Loading…</div>
-          : filtered.length === 0 ? <div style={{ padding: 32, textAlign: 'center', color: '#444' }}>No models found</div>
+          {loading ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
+          : filtered.length === 0 ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>No models found</div>
           : filtered.map(m => {
             const already = selectedIds.includes(m.id)
             const color   = providerColor(m.provider)
@@ -118,7 +118,7 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
               <div key={m.id}
                 onClick={() => !already && onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, name: m.name })}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #161616', cursor: already ? 'default' : 'pointer', opacity: already ? 0.4 : 1 }}
-                onMouseEnter={e => { if (!already) (e.currentTarget as HTMLElement).style.background = '#1a1a1a' }}
+                onMouseEnter={e => { if (!already) (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: color + '22', color, border: `1px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
@@ -128,10 +128,10 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
                   <div style={{ fontSize: 13, color: already ? '#555' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.name}
                   </div>
-                  <div style={{ fontSize: 11, color: '#555', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.provider} · {m.model_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.provider} · {m.model_name}</div>
                 </div>
                 {m.tags?.includes('reasoning') && <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>REASONING</span>}
-                {already && <span style={{ fontSize: 11, color: '#444' }}>Added</span>}
+                {already && <span style={{ fontSize: 11, color: 'var(--muted)' }}>Added</span>}
               </div>
             )
           })}
@@ -152,8 +152,8 @@ function Gallery({ userId }: { userId: string }) {
       .then(({ data }) => { setItems(data ?? []); setLoading(false) })
   }, [userId])
 
-  if (loading) return <div style={{ color: '#444', textAlign: 'center', padding: 40 }}>Loading gallery…</div>
-  if (items.length === 0) return <div style={{ color: '#333', textAlign: 'center', padding: 60, fontSize: 13 }}>Your creations will appear here.</div>
+  if (loading) return <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 40 }}>Loading gallery…</div>
+  if (items.length === 0) return <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Your creations will appear here.</div>
 
   return (
     <>
@@ -178,19 +178,19 @@ function Gallery({ userId }: { userId: string }) {
           const chosen    = slots.find((s: any) => s.id === item.chosen_model_id)
           const preview   = chosen ?? slots[0]
           return (
-            <div key={item.id} style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 12, overflow: 'hidden' }}>
+            <div key={item.id} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden' }}>
               {preview && (
                 preview.isVideo ? <video src={preview.text} muted loop playsInline style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover' }} />
                 : preview.isImage ? <img src={preview.text} alt="" onClick={() => setLightbox(preview.text)} style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover', cursor: 'zoom-in' }} />
-                : <div style={{ padding: '12px 14px', fontSize: 12, color: '#555', lineHeight: 1.6, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)' }}>{preview.text?.slice(0, 200)}</div>
+                : <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)' }}>{preview.text?.slice(0, 200)}</div>
               )}
               <div style={{ padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: modeColor, background: modeColor + '18', padding: '2px 7px', borderRadius: 8, textTransform: 'uppercase' as const }}>{mode}</span>
-                  {item.chosen_model_id && <span style={{ fontSize: 9, color: '#34d399', background: '#34d39918', padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>CHOSEN</span>}
-                  <span style={{ fontSize: 11, color: '#333', marginLeft: 'auto' }}>{new Date(item.created_at).toLocaleDateString()}</span>
+                  {item.chosen_model_id && <span style={{ fontSize: 9, color: 'var(--green)', background: '#34d39918', padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>CHOSEN</span>}
+                  <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>{new Date(item.created_at).toLocaleDateString()}</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#666', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.prompt}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted2)', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.prompt}</div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                   {slots.map((s: any, i: number) => (
                     <span key={i} style={{
@@ -473,24 +473,24 @@ export default function CreatePage() {
           </div>
 
           {tab === 'gallery' ? (
-            userId ? <Gallery userId={userId} /> : <div style={{ color: '#444', textAlign: 'center', padding: 40 }}>Sign in to view your gallery.</div>
+            userId ? <Gallery userId={userId} /> : <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 40 }}>Sign in to view your gallery.</div>
           ) : (
 
             /* ── CHATTING PHASE ── */
             phase === 'chatting' && chosenIdx !== null ? (
               <div>
                 {/* Chosen model header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, padding: '14px 18px', background: '#0d0d0d', border: `1px solid ${SLOT_COLORS[chosenIdx]}44`, borderRadius: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, padding: '14px 18px', background: 'var(--surface)', border: `1px solid ${SLOT_COLORS[chosenIdx]}44`, borderRadius: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: providerColor(activeModels[chosenIdx].provider) + '22', color: providerColor(activeModels[chosenIdx].provider), border: `1px solid ${providerColor(activeModels[chosenIdx].provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>
                     {providerInitial(activeModels[chosenIdx].provider)}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{activeModels[chosenIdx].name}</div>
-                    <div style={{ fontSize: 11, color: '#555' }}>{activeModels[chosenIdx].provider} · ${(slots[chosenIdx]?.cost ?? 0).toFixed(4)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--white)' }}>{activeModels[chosenIdx].name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>{activeModels[chosenIdx].provider} · ${(slots[chosenIdx]?.cost ?? 0).toFixed(4)}</div>
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: '#34d399', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ Your pick</span>
-                    <button onClick={reset} style={{ background: 'transparent', border: '1px solid #222', color: '#555', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
+                    <span style={{ fontSize: 11, color: 'var(--green)', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ Your pick</span>
+                    <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted)', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
                       ← New Session
                     </button>
                   </div>
@@ -499,9 +499,9 @@ export default function CreatePage() {
                 {/* Dismissed models */}
                 {activeModels.length > 1 && (
                   <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' as const }}>
-                    <span style={{ fontSize: 11, color: '#333', alignSelf: 'center' }}>Dismissed:</span>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>Dismissed:</span>
                     {activeModels.map((m, i) => i === chosenIdx ? null : (
-                      <span key={i} style={{ fontSize: 11, color: '#333', background: '#111', border: '1px solid #1a1a1a', padding: '3px 10px', borderRadius: 8, fontFamily: 'var(--mono)', textDecoration: 'line-through' }}>
+                      <span key={i} style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--border2)', padding: '3px 10px', borderRadius: 8, fontFamily: 'var(--mono)', textDecoration: 'line-through' }}>
                         {m.model_name ?? m.name}
                       </span>
                     ))}
@@ -519,8 +519,8 @@ export default function CreatePage() {
                       )}
                       <div style={{
                         maxWidth: '72%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                        background: msg.role === 'user' ? '#1a1a1a' : '#0d0d0d',
-                        border: `1px solid ${msg.role === 'user' ? '#2a2a2a' : '#1a1a1a'}`,
+                        background: msg.role === 'user' ? 'var(--surface2)' : 'var(--surface)',
+                        border: `1px solid var(--border2)`,
                         fontSize: 14, lineHeight: 1.7, color: msg.role === 'user' ? '#ccc' : '#ddd',
                       }}>
                         {msg.isVideo ? <video src={msg.content} autoPlay loop muted playsInline controls style={{ width: '100%', borderRadius: 6 }} />
@@ -540,10 +540,10 @@ export default function CreatePage() {
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
                     placeholder="Continue the conversation…"
                     rows={2}
-                    style={{ flex: 1, background: '#0d0d0d', border: '1px solid #222', borderRadius: 10, padding: '12px 16px', color: '#fff', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
+                    style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
                   />
                   <button onClick={sendChat} disabled={chatStreaming || !chatInput.trim()} style={{
-                    padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff',
+                    padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
                     fontWeight: 700, fontSize: 14, cursor: chatStreaming ? 'wait' : 'pointer', flexShrink: 0,
                     opacity: chatStreaming || !chatInput.trim() ? 0.5 : 1,
                   }}>
@@ -570,20 +570,20 @@ export default function CreatePage() {
                     const model = selectedModels[i]
                     const color = SLOT_COLORS[i]
                     return model ? (
-                      <div key={i} style={{ background: '#0d0d0d', border: `1px solid ${color}44`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${color}44`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 24, height: 24, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), border: `1px solid ${providerColor(model.provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
                           {providerInitial(model.provider)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.name}</div>
-                          <div style={{ fontSize: 10, color: '#555', marginTop: 2, fontFamily: 'var(--mono)' }}>{model.provider} · {model.model_name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.name}</div>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{model.provider} · {model.model_name}</div>
                         </div>
-                        {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
+                        {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
                       </div>
                     ) : (
                       <button key={i} onClick={() => phase === 'setup' && setPickerSlot(i)}
                         disabled={phase !== 'setup'}
-                        style={{ background: '#0a0a0a', border: '1px dashed #1e1e1e', borderRadius: 10, padding: '14px', color: '#333', fontSize: 12, cursor: phase === 'setup' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: phase !== 'setup' ? 0.4 : 1 }}
+                        style={{ background: '#0a0a0a', border: '1px dashed #1e1e1e', borderRadius: 10, padding: '14px', color: 'var(--muted)', fontSize: 12, cursor: phase === 'setup' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: phase !== 'setup' ? 0.4 : 1 }}
                         onMouseEnter={e => { if (phase === 'setup') { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#1e1e1e'; el.style.color = '#333' }}
                       >
@@ -619,8 +619,8 @@ export default function CreatePage() {
                   <div style={{ marginTop: 24 }}>
                     {phase === 'picking' && (
                       <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                        <div style={{ fontSize: 13, color: '#e8453c', fontWeight: 700, marginBottom: 4 }}>Which model do you want to continue with?</div>
-                        <div style={{ fontSize: 12, color: '#555' }}>Pick one — the others will be dismissed</div>
+                        <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>Which model do you want to continue with?</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>Pick one — the others will be dismissed</div>
                       </div>
                     )}
                     <div className="battle-arena" style={{ gridTemplateColumns: `repeat(${slots.length}, 1fr)` }}>

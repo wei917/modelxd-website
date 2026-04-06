@@ -108,7 +108,7 @@ export default function VotePage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080808', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--white)' }}>
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
       <Nav />
@@ -117,15 +117,15 @@ export default function VotePage() {
         {/* Hero */}
         <div style={{ padding: '48px 32px 32px', maxWidth: 1200, margin: '0 auto' }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: '-1px' }}>
-            Vote on <span style={{ color: '#e8453c' }}>Duels</span>
+            Vote on <span style={{ color: 'var(--red)' }}>Duels</span>
           </h1>
-          <p style={{ color: '#555', marginTop: 8, fontSize: 15 }}>
+          <p style={{ color: 'var(--muted)', marginTop: 8, fontSize: 15 }}>
             Pick the better AI response — blind voting, no model names shown until you vote.
           </p>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', color: '#444', padding: 80 }}>Loading duels…</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading duels…</div>
         ) : (
           MODE_ROWS.map(({ mode, label, emoji }) => (
             <ModeRow
@@ -168,7 +168,7 @@ function ModeRow({ label, duels, onSelect }: {
       {/* Row header */}
       <div style={{ padding: '0 32px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16, maxWidth: 1200, margin: '0 auto 16px' }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{label}</h2>
-        <span style={{ color: '#444', fontSize: 13 }}>{duels.length} duels</span>
+        <span style={{ color: 'var(--muted)', fontSize: 13 }}>{duels.length} duels</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <ScrollBtn dir="left"  disabled={!canLeft}  onClick={() => scroll('left')}  />
           <ScrollBtn dir="right" disabled={!canRight} onClick={() => scroll('right')} />
@@ -176,7 +176,7 @@ function ModeRow({ label, duels, onSelect }: {
       </div>
 
       {duels.length === 0 ? (
-        <div style={{ padding: '0 32px', color: '#333', fontSize: 14 }}>No duels to vote on yet.</div>
+        <div style={{ padding: '0 32px', color: 'var(--muted)', fontSize: 14 }}>No duels to vote on yet.</div>
       ) : (
         <div
           ref={scrollRef}
@@ -215,23 +215,23 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
       style={{
         flexShrink: 0,
         width: CARD_W,
-        background: '#0d0d0d',
-        border: '1px solid #1a1a1a',
+        background: 'var(--surface)',
+        border: '1px solid var(--border2)',
         borderRadius: 12,
         overflow: 'hidden',
         cursor: 'pointer',
         transition: 'border-color 0.15s, transform 0.15s',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e8453c'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1a1a1a'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--red)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
     >
       {/* Preview — top half */}
-      <div style={{ height: 160, background: '#111', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ height: 160, background: 'var(--surface)', position: 'relative', overflow: 'hidden' }}>
         {preview}
         {/* VS badge */}
         <div style={{
           position: 'absolute', top: 8, right: 8,
-          background: '#e8453c', color: '#fff',
+          background: 'var(--red)', color: 'var(--white)',
           fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 20,
           letterSpacing: '0.5px',
         }}>VS</div>
@@ -243,11 +243,11 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
           {duel.prompt}
         </div>
         <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 10, color: '#444' }}>
+          <div style={{ fontSize: 10, color: 'var(--muted)' }}>
             {slot0?.name ?? '?'} vs {slot1?.name ?? '?'}
           </div>
           <div style={{
-            fontSize: 10, fontWeight: 700, color: '#e8453c',
+            fontSize: 10, fontWeight: 700, color: 'var(--red)',
             background: 'rgba(232,69,60,0.1)', padding: '3px 8px', borderRadius: 10,
           }}>
             VOTE
@@ -270,7 +270,7 @@ function VideoPreview({ src }: { src: string }) {
 function TextPreview({ text }: { text: string }) {
   return (
     <div style={{
-      padding: 14, fontSize: 12, color: '#666', lineHeight: 1.6,
+      padding: 14, fontSize: 12, color: 'var(--muted2)', lineHeight: 1.6,
       overflow: 'hidden', height: '100%',
       maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
     }}>
@@ -286,8 +286,8 @@ function ScrollBtn({ dir, disabled, onClick }: { dir: 'left' | 'right'; disabled
       disabled={disabled}
       style={{
         width: 30, height: 30, borderRadius: '50%',
-        border: '1px solid #222', background: disabled ? '#111' : '#1a1a1a',
-        color: disabled ? '#333' : '#888', cursor: disabled ? 'default' : 'pointer',
+        border: '1px solid var(--border2)', background: disabled ? 'var(--surface)' : 'var(--surface2)',
+        color: disabled ? 'var(--muted)' : 'var(--muted2)', cursor: disabled ? 'default' : 'pointer',
         fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >

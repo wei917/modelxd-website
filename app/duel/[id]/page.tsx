@@ -143,16 +143,16 @@ export default function DuelPage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#080808' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Nav />
-      <div style={{ textAlign: 'center', color: '#444', paddingTop: 160 }}>Loading duel…</div>
+      <div style={{ textAlign: 'center', color: 'var(--muted)', paddingTop: 160 }}>Loading duel…</div>
     </div>
   )
 
   if (notFound || !duel) return (
-    <div style={{ minHeight: '100vh', background: '#080808' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Nav />
-      <div style={{ textAlign: 'center', color: '#444', paddingTop: 160 }}>Duel not found.</div>
+      <div style={{ textAlign: 'center', color: 'var(--muted)', paddingTop: 160 }}>Duel not found.</div>
     </div>
   )
 
