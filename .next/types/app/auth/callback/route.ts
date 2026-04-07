@@ -1,4 +1,4 @@
-// File: /home/claude/modelxd-fixed/app/auth/callback/route.ts
+// File: /Users/cwei/Documents/Claude/Projects/ModelXD/app/auth/callback/route.ts
 import * as entry from '../../../../../app/auth/callback/route.js'
 import type { NextRequest } from 'next/server.js'
 

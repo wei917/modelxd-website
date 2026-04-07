@@ -25,6 +25,9 @@ interface DBModel {
   tags: string[]
   image_pricing: Record<string, number> | null
   video_pricing: Record<string, number> | null
+  image_sizes: string[] | null
+  video_sizes: string[] | null
+  video_durations: number[] | null
 }
 
 interface SlotModel {
@@ -32,6 +35,17 @@ interface SlotModel {
   provider: string
   model_name: string
   name: string
+  image_pricing: Record<string, number> | null
+  video_pricing: Record<string, number> | null
+  image_sizes: string[] | null
+  video_sizes: string[] | null
+  video_durations: number[] | null
+}
+
+interface SlotOptions {
+  quality: string | null    // 'low' | 'medium' | 'high' for image
+  size: string | null       // e.g. '1024x1024' for image, '1280x720' for video
+  duration: number | null   // seconds for video
 }
 
 interface SlotState {
@@ -92,13 +106,14 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ padding: '16px 16px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px' }}>
             <span style={{ color: 'var(--muted)' }}>⌕</span>
             <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search models…"
               style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit' }} />
+
           </div>
         </div>
         <div style={{ padding: '12px 16px 8px' }}>
@@ -116,8 +131,8 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
             const color   = providerColor(m.provider)
             return (
               <div key={m.id}
-                onClick={() => !already && onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, name: m.name })}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #161616', cursor: already ? 'default' : 'pointer', opacity: already ? 0.4 : 1 }}
+                onClick={() => !already && onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, name: m.name, image_pricing: m.image_pricing, video_pricing: m.video_pricing, image_sizes: m.image_sizes, video_sizes: m.video_sizes, video_durations: m.video_durations })}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: already ? 'default' : 'pointer', opacity: already ? 0.4 : 1 }}
                 onMouseEnter={e => { if (!already) (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
@@ -125,7 +140,7 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
                   {providerInitial(m.provider)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: already ? '#555' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 13, color: already ? 'var(--muted)' : 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.name}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.provider} · {m.model_name}</div>
@@ -196,8 +211,8 @@ function Gallery({ userId }: { userId: string }) {
                     <span key={i} style={{
                       fontSize: 10, padding: '2px 7px', borderRadius: 6, fontFamily: 'var(--mono)',
                       maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
-                      color: s.id === item.chosen_model_id ? '#34d399' : '#444',
-                      background: s.id === item.chosen_model_id ? '#34d39918' : '#ffffff08',
+                      color: s.id === item.chosen_model_id ? 'var(--green)' : 'var(--muted)',
+                      background: s.id === item.chosen_model_id ? 'var(--green-dim)' : 'var(--surface2)',
                       textDecoration: s.id !== item.chosen_model_id && item.chosen_model_id ? 'line-through' : 'none',
                     }}>
                       {s.model_name ?? s.name}
@@ -234,6 +249,23 @@ export default function CreatePage() {
   const [tab,            setTab]            = useState<'create' | 'gallery'>('create')
   const [lightbox,       setLightbox]       = useState<string | null>(null)
   const [attachment,     setAttachment]     = useState<Attachment | null>(null)
+  const [slotOptions,   setSlotOptions]    = useState<(SlotOptions | null)[]>([null, null, null, null])
+
+  const defaultOptions = (model: SlotModel | null, m: Mode): SlotOptions => {
+    if (!model) return { quality: null, size: null, duration: null }
+    if (m === 'image') {
+      const qualities = model.image_pricing ? Object.keys(model.image_pricing) : []
+      const defaultQuality = qualities.length > 0 ? (qualities.includes('medium') ? 'medium' : qualities[0]) : null
+      const sizes = model.image_sizes ?? []
+      return { quality: defaultQuality, size: sizes[0] ?? null, duration: null }
+    }
+    if (m === 'video') {
+      const sizes = model.video_sizes ?? []
+      const durations = model.video_durations ?? []
+      return { quality: null, size: sizes[0] ?? null, duration: durations[0] ?? null }
+    }
+    return { quality: null, size: null, duration: null }
+  }
 
   // Post-pick state
   const [chosenIdx,      setChosenIdx]      = useState<number | null>(null)
@@ -266,6 +298,7 @@ export default function CreatePage() {
   useEffect(() => {
     setSelectedModels([null, null, null, null]); setSlots([]); setPhase('setup')
     setChosenIdx(null); setChatHistory([]); setCreateId(null); setAttachment(null)
+    setSlotOptions([null, null, null, null])
   }, [mode])
 
   useEffect(() => {
@@ -275,8 +308,15 @@ export default function CreatePage() {
   const activeModels = selectedModels.filter(Boolean) as SlotModel[]
   const selectedIds  = activeModels.map(m => m.id)
 
-  const addModel    = (i: number, m: SlotModel) => { setSelectedModels(prev => prev.map((v, idx) => idx === i ? m : v)); setPickerSlot(null) }
-  const removeModel = (i: number) => setSelectedModels(prev => prev.map((v, idx) => idx === i ? null : v))
+  const addModel    = (i: number, m: SlotModel) => {
+    setSelectedModels(prev => prev.map((v, idx) => idx === i ? m : v))
+    setSlotOptions(prev => prev.map((v, idx) => idx === i ? defaultOptions(m, mode) : v))
+    setPickerSlot(null)
+  }
+  const removeModel = (i: number) => {
+    setSelectedModels(prev => prev.map((v, idx) => idx === i ? null : v))
+    setSlotOptions(prev => prev.map((v, idx) => idx === i ? null : v))
+  }
 
   const generate = async () => {
     if (!prompt.trim() || activeModels.length === 0 || phase === 'generating') return
@@ -288,7 +328,16 @@ export default function CreatePage() {
       const res = await fetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, modelIds: activeModels.map(m => m.id), attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null }),
+        body: JSON.stringify({
+          prompt, mode,
+          modelIds: activeModels.map(m => m.id),
+          modelOptions: activeModels.map((m, idx) => {
+            const origIdx = selectedModels.indexOf(m)
+            const opts = slotOptions[origIdx]
+            return opts ? { quality: opts.quality, size: opts.size, duration: opts.duration } : {}
+          }),
+          attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null,
+        }),
       })
       if (!res.ok || !res.body) throw new Error(await res.text())
 
@@ -421,7 +470,7 @@ export default function CreatePage() {
   const reset = () => {
     setPhase('setup'); setSlots([]); setChosenIdx(null)
     setChatHistory([]); setChatInput(''); setCreateId(null)
-    setPrompt(''); setAttachment(null)
+    setPrompt(''); setAttachment(null); setSlotOptions([null, null, null, null])
   }
 
   const canGenerate = prompt.trim().length >= 3 && activeModels.length > 0 && phase !== 'generating'
@@ -466,7 +515,7 @@ export default function CreatePage() {
                   padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   background: tab === t ? 'var(--red)' : 'transparent',
                   border: `1px solid ${tab === t ? 'var(--red)' : '#222'}`,
-                  color: tab === t ? '#fff' : '#666',
+                  color: tab === t ? '#fff' : 'var(--muted)',
                 }}>{t === 'create' ? '✦ Create' : '⊞ Gallery'}</button>
               ))}
             </div>
@@ -521,7 +570,7 @@ export default function CreatePage() {
                         maxWidth: '72%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
                         background: msg.role === 'user' ? 'var(--surface2)' : 'var(--surface)',
                         border: `1px solid var(--border2)`,
-                        fontSize: 14, lineHeight: 1.7, color: msg.role === 'user' ? '#ccc' : '#ddd',
+                        fontSize: 14, lineHeight: 1.7, color: msg.role === 'user' ? 'var(--muted2)' : 'var(--white)',
                       }}>
                         {msg.isVideo ? <video src={msg.content} autoPlay loop muted playsInline controls style={{ width: '100%', borderRadius: 6 }} />
                         : msg.isImage ? <img src={msg.content} alt="" onClick={() => setLightbox(msg.content)} style={{ maxWidth: '100%', borderRadius: 6, cursor: 'zoom-in' }} />
@@ -564,31 +613,156 @@ export default function CreatePage() {
                   ))}
                 </div>
 
-                {/* Model slots */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+                {/* Model slots + per-model options */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20, alignItems: 'start' }}>
                   {[0, 1, 2, 3].map(i => {
                     const model = selectedModels[i]
                     const color = SLOT_COLORS[i]
-                    return model ? (
-                      <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${color}44`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), border: `1px solid ${providerColor(model.provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
-                          {providerInitial(model.provider)}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.name}</div>
-                          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{model.provider} · {model.model_name}</div>
-                        </div>
-                        {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
-                      </div>
-                    ) : (
+                    const opts = slotOptions[i]
+
+                    if (!model) return (
                       <button key={i} onClick={() => phase === 'setup' && setPickerSlot(i)}
                         disabled={phase !== 'setup'}
-                        style={{ background: '#0a0a0a', border: '1px dashed #1e1e1e', borderRadius: 10, padding: '14px', color: 'var(--muted)', fontSize: 12, cursor: phase === 'setup' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: phase !== 'setup' ? 0.4 : 1 }}
+                        style={{ background: 'var(--surface)', border: '1px dashed var(--border2)', borderRadius: 10, padding: '14px', color: 'var(--muted)', fontSize: 12, cursor: phase === 'setup' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: phase !== 'setup' ? 0.4 : 1 }}
                         onMouseEnter={e => { if (phase === 'setup') { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#1e1e1e'; el.style.color = '#333' }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--muted)' }}
                       >
                         <span style={{ fontSize: 18 }}>+</span> Model {LABELS[i]}
                       </button>
+                    )
+
+                    // Determine which options this model has
+                    const imgQualities = mode === 'image' && model.image_pricing ? Object.keys(model.image_pricing) : []
+                    const imgSizes = mode === 'image' ? (model.image_sizes ?? []) : []
+                    const vidSizes = mode === 'video' ? (model.video_sizes ?? []) : []
+                    const vidDurations = mode === 'video' ? (model.video_durations ?? []) : []
+                    const hasOptions = phase === 'setup' && opts && (imgQualities.length > 0 || imgSizes.length > 0 || vidSizes.length > 0 || vidDurations.length > 1)
+
+                    return (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* Model card */}
+                        <div style={{ background: 'var(--surface)', border: `1px solid ${color}44`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: providerColor(model.provider) + '22', color: providerColor(model.provider), border: `1px solid ${providerColor(model.provider)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                            {providerInitial(model.provider)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{model.name}</div>
+                            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{model.provider} · {model.model_name}</div>
+                          </div>
+                          {phase === 'setup' && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
+                        </div>
+
+                        {/* Options panel directly below this model's card */}
+                        {hasOptions && opts && (
+                          <div style={{ background: 'var(--surface)', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
+                            {/* Image: Quality */}
+                            {imgQualities.length > 0 && (
+                              <div style={{ marginBottom: imgSizes.length > 0 ? 8 : 0 }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted2)', marginBottom: 5 }}>Quality</div>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  {imgQualities.map(q => {
+                                    const active = opts.quality === q
+                                    const price = model.image_pricing?.[q]
+                                    return (
+                                      <button key={q} onClick={() => setSlotOptions(prev => prev.map((o, idx) => idx === i && o ? { ...o, quality: q } : o))}
+                                        style={{
+                                          flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                                          background: active ? color + '22' : 'transparent',
+                                          border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
+                                          color: active ? color : 'var(--muted)',
+                                          transition: 'all 0.15s',
+                                        }}
+                                      >
+                                        {q.charAt(0).toUpperCase() + q.slice(1)}
+                                        {price != null && <div style={{ fontSize: 8, color: 'var(--muted)', marginTop: 1 }}>${price.toFixed(3)}</div>}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {/* Image: Size */}
+                            {imgSizes.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, color: 'var(--muted2)', marginBottom: 5 }}>Size</div>
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
+                                  {imgSizes.map(s => {
+                                    const active = opts.size === s
+                                    const isSquare = s.includes('x') && s.split('x')[0] === s.split('x')[1]
+                                    const isLandscape = s.includes('x') && parseInt(s.split('x')[0]) > parseInt(s.split('x')[1])
+                                    const label = isSquare ? '1:1' : isLandscape ? '▬' : '▮'
+                                    return (
+                                      <button key={s} onClick={() => setSlotOptions(prev => prev.map((o, idx) => idx === i && o ? { ...o, size: s } : o))}
+                                        style={{
+                                          flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                                          background: active ? color + '22' : 'transparent',
+                                          border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
+                                          color: active ? color : 'var(--muted)',
+                                          transition: 'all 0.15s', textAlign: 'center' as const,
+                                        }}
+                                      >
+                                        <div>{label}</div>
+                                        <div style={{ fontSize: 8, color: 'var(--muted)', marginTop: 1 }}>{s}</div>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {/* Video: Resolution */}
+                            {vidSizes.length > 0 && (
+                              <div style={{ marginBottom: vidDurations.length > 1 ? 8 : 0 }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted2)', marginBottom: 5 }}>Resolution</div>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  {vidSizes.map(s => {
+                                    const active = opts.size === s
+                                    const shortLabel = s.includes('x') ? s.split('x')[1] + 'p' : s
+                                    const price = model.video_pricing?.[shortLabel] ?? model.video_pricing?.[s]
+                                    return (
+                                      <button key={s} onClick={() => setSlotOptions(prev => prev.map((o, idx) => idx === i && o ? { ...o, size: s } : o))}
+                                        style={{
+                                          flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                                          background: active ? color + '22' : 'transparent',
+                                          border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
+                                          color: active ? color : 'var(--muted)',
+                                          transition: 'all 0.15s',
+                                        }}
+                                      >
+                                        {shortLabel}
+                                        {price != null && <div style={{ fontSize: 8, color: 'var(--muted)', marginTop: 1 }}>${price.toFixed(2)}</div>}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {/* Video: Duration */}
+                            {vidDurations.length > 1 && (
+                              <div>
+                                <div style={{ fontSize: 10, color: 'var(--muted2)', marginBottom: 5 }}>Duration</div>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  {vidDurations.map(d => {
+                                    const active = opts.duration === d
+                                    return (
+                                      <button key={d} onClick={() => setSlotOptions(prev => prev.map((o, idx) => idx === i && o ? { ...o, duration: d } : o))}
+                                        style={{
+                                          flex: 1, padding: '5px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                                          background: active ? color + '22' : 'transparent',
+                                          border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
+                                          color: active ? color : 'var(--muted)',
+                                          transition: 'all 0.15s',
+                                        }}
+                                      >
+                                        {d}s
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
@@ -655,7 +829,7 @@ export default function CreatePage() {
                             </div>
                             {/* Pick button */}
                             {phase === 'picking' && slot.done && !slot.error && (
-                              <div style={{ padding: 12, borderTop: '1px solid #111' }}>
+                              <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
                                 <button onClick={() => pickModel(i)} style={{
                                   width: '100%', padding: '10px 0', borderRadius: 8,
                                   background: 'transparent', border: `1px solid ${color}`,

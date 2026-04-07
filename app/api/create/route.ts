@@ -21,7 +21,8 @@ async function runSlot(
   prompt:     string,
   attachment: providers.Attachment | null,
   sessionId:  string,
-  controller: ReadableStreamDefaultController
+  controller: ReadableStreamDefaultController,
+  options:    { quality?: string; size?: string; duration?: number } = {}
 ): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name}`)
@@ -52,7 +53,9 @@ async function runSlot(
     } else if (mode === 'image') {
       controller.enqueue(sse(`delta:${index}`, { index, isImage: true, generating: true }))
 
-      const result = await providers.generateImage(model, prompt, 'medium', '1024x1024', attachment)
+      const quality = (options.quality ?? 'medium') as 'low' | 'medium' | 'high'
+      const size = options.size ?? '1024x1024'
+      const result = await providers.generateImage(model, prompt, quality, size, attachment)
 
       const { createClient } = await import('@supabase/supabase-js')
       const sb   = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
@@ -73,8 +76,10 @@ async function runSlot(
     } else if (mode === 'video') {
       controller.enqueue(sse(`delta:${index}`, { index, isVideo: true, generating: true }))
 
+      const videoSize = options.size ?? '1280x720'
+      const videoDuration = options.duration ?? 16
       const result = await providers.generateVideo(
-        model, prompt, '1280x720', 16, attachment,
+        model, prompt, videoSize, videoDuration, attachment,
         (pct) => controller.enqueue(sse(`progress:${index}`, { index, pct }))
       )
 
@@ -110,7 +115,7 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { prompt, mode = 'text', modelIds, attachment: attachmentInput = null } = await req.json()
+  const { prompt, mode = 'text', modelIds, modelOptions = [], attachment: attachmentInput = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)}`)
 
   if (!prompt?.trim() || prompt.trim().length < 3) return Response.json({ error: 'Prompt too short' }, { status: 400 })
@@ -138,7 +143,7 @@ export async function POST(req: Request) {
       controller.enqueue(sse('meta', { count: models.length, mode, sessionId }))
 
       const results = await Promise.all(
-        models.map((model, i) => runSlot(i, model, mode, prompt, attachment, sessionId, controller))
+        models.map((model, i) => runSlot(i, model, mode, prompt, attachment, sessionId, controller, modelOptions[i] ?? {}))
       )
 
       // Save to creates table (without chosen_model_id yet — set when user picks)

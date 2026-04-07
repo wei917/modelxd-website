@@ -1,4 +1,4 @@
-// File: /home/claude/modelxd-fixed/app/page.tsx
+// File: /Users/cwei/Documents/Claude/Projects/ModelXD/app/page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -1,4 +1,4 @@
-// File: /home/claude/modelxd-fixed/app/layout.tsx
+// File: /Users/cwei/Documents/Claude/Projects/ModelXD/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
