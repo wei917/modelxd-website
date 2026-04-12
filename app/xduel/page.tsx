@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Nav from '../components/Nav'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
@@ -28,6 +27,10 @@ type ModelState = {
   streaming: boolean
   done: boolean
   cost: number
+  // When a slot errors out, we carry the message here so the render path
+  // can show a proper error block instead of stuffing it into <video src>
+  // or <img src>, which the browser silently treats as a broken asset.
+  errorMessage: string | null
 }
 
 const STEPS = [
@@ -168,6 +171,7 @@ export default function XDuel() {
                   streaming:    true,
                   done:         false,
                   cost:         0,
+                  errorMessage: null,
                 }))
                 setModels(initialModels)
                 setLoading(false)
@@ -222,7 +226,21 @@ export default function XDuel() {
               } else if (currentEvent.startsWith('error:')) {
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) =>
-                  i === idx ? { ...m, text: `⚠️ ${payload.message}`, streaming: false, done: true } : m
+                  i === idx
+                    ? {
+                        ...m,
+                        // Clear text/isImage/isVideo so the render path
+                        // doesn't try to stuff the error string into a
+                        // <video src>/<img src> attribute. We carry the
+                        // message in a dedicated errorMessage slot.
+                        text: '',
+                        isImage: false,
+                        isVideo: false,
+                        errorMessage: payload.message || 'Unknown error',
+                        streaming: false,
+                        done: true,
+                      }
+                    : m
                 ))
               }
             } catch {}
@@ -314,7 +332,6 @@ export default function XDuel() {
       )}
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
-      <Nav />
 
       <div className="xduel-page">
 
@@ -455,6 +472,21 @@ export default function XDuel() {
                       <div className={`battle-response ${loading||!m?'loading':''} ${(mode==='image'||mode==='video')?'image-response':''}`}>
                         {loading || !m
                           ? <><div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/></>
+                          : m?.errorMessage
+                          ? <div style={{
+                              display:'flex',
+                              flexDirection:'column',
+                              alignItems:'center',
+                              justifyContent:'center',
+                              padding:'40px 24px',
+                              gap:12,
+                              color:'var(--red)',
+                              textAlign:'center',
+                            }}>
+                              <div style={{fontSize:28,lineHeight:1}}>⚠️</div>
+                              <div style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,letterSpacing:1,textTransform:'uppercase',opacity:0.8}}>Generation failed</div>
+                              <div style={{fontSize:13,lineHeight:1.5,maxWidth:460,color:'var(--muted)',wordBreak:'break-word'}}>{m.errorMessage}</div>
+                            </div>
                           : m.isVideo && m.text
                           ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : m.isImage && m.text

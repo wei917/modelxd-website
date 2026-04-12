@@ -3,7 +3,6 @@
 // Model leaderboard based on informed votes (vote2) across all duels
 
 import { useEffect, useState, useRef } from 'react'
-import Nav from '../components/Nav'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
@@ -107,7 +106,6 @@ export default function LeaderboardPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--white)' }}>
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
-      <Nav />
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '100px 24px 60px' }}>
         {/* Header */}

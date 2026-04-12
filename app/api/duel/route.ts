@@ -91,22 +91,45 @@ async function runSlot(
       return { text: publicUrl, isImage: true, isVideo: false, responseTime, cost: result.cost }
 
     } else if (mode === 'video') {
+      console.log(`${LOG} Slot[${index}] VIDEO START model=${model.provider}/${model.model_name}`)
       controller.enqueue(sse(`delta:${index}`, { index, isVideo: true, generating: true }))
 
-      const result = await providers.generateVideo(
-        model, prompt, '1280x720', 16, attachment,
-        (pct) => controller.enqueue(sse(`progress:${index}`, { index, pct }))
-      )
+      let result
+      try {
+        result = await providers.generateVideo(
+          model, prompt, '1280x720', 8, attachment,
+          (pct) => controller.enqueue(sse(`progress:${index}`, { index, pct }))
+        )
+      } catch (genErr: any) {
+        console.error(`${LOG} Slot[${index}] VIDEO GEN FAILED model=${model.model_name} err=${genErr?.message ?? genErr}`)
+        throw new Error(`Video generation failed: ${genErr?.message ?? genErr}`)
+      }
+      console.log(`${LOG} Slot[${index}] VIDEO GEN OK bytes=${result.buffer.length} mime=${result.mediaType}`)
 
       // Upload to Supabase
       const { createClient } = await import('@supabase/supabase-js')
       const sb   = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
       const path = `${duelId}_slot${index}.${ext}`
-      const { error } = await sb.storage.from('xduel-ai-videos').upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
-      if (error) throw new Error(`Upload failed: ${error.message}`)
+
+      let uploadError: any = null
+      try {
+        const { error } = await sb.storage.from('xduel-ai-videos').upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
+        uploadError = error
+      } catch (uploadEx: any) {
+        // Some upload failures throw instead of returning { error } (e.g.
+        // network-level fetch failures from undici).
+        console.error(`${LOG} Slot[${index}] VIDEO UPLOAD THREW path=${path} err=${uploadEx?.message ?? uploadEx} cause=${uploadEx?.cause?.message ?? ''}`)
+        throw new Error(`Video upload failed (threw): ${uploadEx?.message ?? uploadEx}`)
+      }
+      if (uploadError) {
+        console.error(`${LOG} Slot[${index}] VIDEO UPLOAD ERROR path=${path} err=${uploadError.message}`)
+        throw new Error(`Video upload failed: ${uploadError.message}`)
+      }
+
       const { data: urlData } = sb.storage.from('xduel-ai-videos').getPublicUrl(path)
       const publicUrl = urlData?.publicUrl ?? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/xduel-ai-videos/${path}`
+      console.log(`${LOG} Slot[${index}] VIDEO UPLOADED publicUrl=${publicUrl}`)
 
       const responseTime = Date.now() - start
       controller.enqueue(sse(`delta:${index}`, { index, text: publicUrl, isVideo: true }))
@@ -128,7 +151,7 @@ async function runSlot(
 export async function POST(req: Request) {
   // Auth
   const { createSupabaseServer } = await import('@/lib/supabase-server')
-  const supabaseUser = createSupabaseServer()
+  const supabaseUser = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 

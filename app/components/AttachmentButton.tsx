@@ -17,10 +17,10 @@ export type Attachment = {
 const ACCEPT  = 'image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,video/mp4,video/quicktime,video/webm'
 const MAX_MB  = 20
 
-function getBucket(mediaType: string, context: 'xduel' | 'create'): string {
+function getBucket(mediaType: string, context: 'xduel' | 'xcreate'): string {
   const isVideo = mediaType.startsWith('video/')
   if (context === 'xduel') return isVideo ? 'xduel-user-videos'  : 'xduel-user-images'
-  return isVideo ? 'create-user-videos' : 'create-user-images'
+  return isVideo ? 'xcreate-user-videos' : 'xcreate-user-images'
 }
 
 function fileIcon(mediaType: string) {
@@ -39,7 +39,7 @@ export default function AttachmentButton({
   attachment: Attachment | null
   onChange:   (a: Attachment | null) => void
   disabled?:  boolean
-  context?:   'xduel' | 'create'
+  context?:   'xduel' | 'xcreate'
 }) {
   const inputRef    = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)

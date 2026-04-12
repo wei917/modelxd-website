@@ -5,7 +5,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Nav from '../components/Nav'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
@@ -111,7 +110,6 @@ export default function VotePage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--white)' }}>
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
-      <Nav />
 
       <div style={{ paddingTop: 80 }}>
         {/* Hero */}

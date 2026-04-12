@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import Nav from '../../components/Nav'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,8 +53,8 @@ export default function PublicProfilePage() {
       })
   }, [userId])
 
-  if (loading) return <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading…</div></>
-  if (notFound) return <><Nav /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>◎</div><div>Profile not found</div></div></>
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading…</div>
+  if (notFound) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>◎</div><div>Profile not found</div></div>
 
   const initials = (profile!.display_name ?? '?').charAt(0).toUpperCase()
   const joined   = new Date(profile!.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -64,7 +63,6 @@ export default function PublicProfilePage() {
     <>
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
-      <Nav />
 
       <div className="xduel-page">
         <div className="arena" style={{ maxWidth: 600 }}>

@@ -12,22 +12,27 @@ const NAV_LINKS = [
   { href: '/xduel',       label: 'XDuel',       protected: true  },
   { href: '/vote',        label: 'Vote',        protected: true  },
   { href: '/leaderboard', label: 'Leaderboard', protected: false },
-  { href: '/create',      label: 'Create',      protected: true  },
+  { href: '/xcreate',     label: 'XCreate',     protected: true  },
 ]
 
 export default function Nav() {
   const pathname = usePathname()
   const { show } = useAuthModal()
   const [user, setUser] = useState<User | null>(null)
+  const [authLoaded, setAuthLoaded] = useState(false)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   )
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user)
+      setAuthLoaded(true)
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      setAuthLoaded(true)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -57,14 +62,28 @@ export default function Nav() {
             href={href}
             className={pathname === href ? 'active' : ''}
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
-            style={isProtected && !user ? { opacity: 0.5 } : {}}
+            // Only dim protected links once we know the user is logged out.
+            // Before authLoaded fires we can't know yet, so keep full opacity
+            // to avoid a flash.
+            style={authLoaded && isProtected && !user ? { opacity: 0.5 } : {}}
           >
             {label}
           </Link>
         ))}
       </div>
+      {/*
+        Auth slot has a reserved min-width via CSS so the logged-in
+        (avatar + Log Out) and logged-out (Log In) variants don't push the
+        center nav links around. Until auth resolves we render an invisible
+        placeholder of the same shape to reserve space.
+      */}
       <div className="nav-auth">
-        {user ? (
+        {!authLoaded ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, visibility: 'hidden' }} aria-hidden>
+            <div style={{ width: 28, height: 28, borderRadius: '50%' }} />
+            <button className="nav-login" tabIndex={-1}>Log Out</button>
+          </div>
+        ) : user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link href="/profile">
               <img

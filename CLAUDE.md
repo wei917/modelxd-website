@@ -7,7 +7,7 @@ ModelXD (modelxd.com) is an AI model comparison platform. Users run "duels" betw
 ## Tech Stack
 
 - **Framework**: Next.js 14 App Router (React 18)
-- **Hosting**: Vercel (with cron jobs)
+- **Hosting**: Vercel
 - **Database + Auth**: Supabase (PostgreSQL + Google OAuth)
 - **AI Providers**: OpenAI API (Responses API for text, Images API, Videos API), Google Gemini API
 - **Styling**: CSS variables in `app/globals.css`, inline styles. Light theme only (no dark mode).
@@ -31,7 +31,7 @@ app/
 │   └── AttachmentButton.tsx    # File upload for prompts
 ├── xduel/page.tsx              # XDuel — the core 5-step blind comparison flow
 ├── vote/page.tsx               # Vote on archived duels
-├── create/page.tsx             # Multi-model prompt runner (text/image/video)
+├── xcreate/page.tsx            # XCreate — multi-model prompt runner (text/image/video)
 ├── leaderboard/page.tsx        # Model rankings from community votes
 ├── feed/page.tsx               # Public duel feed
 ├── profile/page.tsx            # User profile + duel history
@@ -42,9 +42,8 @@ app/
 └── api/
     ├── duel/route.ts           # POST — runs XDuel (picks random models, streams SSE)
     ├── duel/vote/route.ts      # POST — saves vote1/vote2 to DB
-    ├── create/route.ts         # POST — single-shot multi-model generation
-    ├── create/chat/route.ts    # POST — chat continuation (SSE streaming)
-    └── cron/sync-models/route.ts # GET — weekly model sync (LLM parses pricing pages)
+    ├── xcreate/route.ts        # POST — single-shot multi-model generation
+    └── xcreate/chat/route.ts   # POST — chat continuation (SSE streaming)
 
 lib/
 ├── models.ts                   # DB queries: getModelsByMode (uses output_modalities)
@@ -63,7 +62,7 @@ lib/
 supabase/
 ├── 01_models.sql               # ai_models table + seed data (RUN THIS to populate)
 ├── 02_duels.sql                # duels table
-├── 03_creates.sql              # creates table
+├── 03_xcreates.sql             # xcreates table
 ├── 04_attachments.sql          # attachments table
 ├── 05_profiles.sql             # profiles + activity_logs tables
 └── storage.sql                 # Storage buckets (xduel-ai-images, xduel-ai-videos, etc.)
@@ -86,12 +85,6 @@ supabase/
 - Landing page "Start XDuel" button checks auth, shows modal if needed
 - Auth modal triggers Google OAuth → callback reads `auth_redirect` cookie → redirects to intended page
 - Cookie-based redirect because Supabase OAuth strips query params from redirectTo
-
-### Model Sync (app/api/cron/sync-models/route.ts)
-- Runs weekly (Monday 6am UTC) via Vercel cron
-- Fetches OpenAI/Google pricing pages, sends HTML to gpt-4.1-mini for structured extraction
-- Per-provider fail-safe: if parse fails, no DB changes for that provider
-- If parse succeeds: disables all models for that provider, upserts parsed models as enabled
 
 ## Database: ai_models Table
 
@@ -150,7 +143,6 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 SUPABASE_SECRET_KEY=sb_secret_xxx
 OPENAI_API_KEY=sk-xxx
 GOOGLE_AI_API_KEY=xxx
-CRON_SECRET=xxx          # Protects /api/cron/sync-models
 ```
 
 ## Dev Commands

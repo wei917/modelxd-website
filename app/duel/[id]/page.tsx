@@ -5,7 +5,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Nav from '../../components/Nav'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
@@ -144,14 +143,12 @@ export default function DuelPage() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <Nav />
       <div style={{ textAlign: 'center', color: 'var(--muted)', paddingTop: 160 }}>Loading duel…</div>
     </div>
   )
 
   if (notFound || !duel) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <Nav />
       <div style={{ textAlign: 'center', color: 'var(--muted)', paddingTop: 160 }}>Duel not found.</div>
     </div>
   )
@@ -194,7 +191,6 @@ export default function DuelPage() {
       )}
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
-      <Nav />
 
       <div className="xduel-page">
 

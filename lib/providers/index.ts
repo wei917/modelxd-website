@@ -1,17 +1,24 @@
 // lib/providers/index.ts
-// Routes to correct provider based on model.provider field
+// Routes to the OpenRouter provider. ModelXD uses OpenRouter for all
+// text, image, and video generation — one API key, one wire format.
 
-import * as openai  from './openai'
-import * as google  from './google'
-import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment } from './types'
+import * as openrouter from './openrouter'
+import type {
+  ModelInfo,
+  TextStreamCallbacks,
+  ImageResult,
+  VideoResult,
+  Attachment,
+} from './types'
 
 export type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment }
 
-function getProvider(model: ModelInfo) {
-  switch (model.provider) {
-    case 'openai': return openai
-    case 'google': return google
-    default: throw new Error(`Unknown provider: ${model.provider}`)
+function assertOpenRouter(model: ModelInfo): void {
+  if (model.provider !== 'openrouter') {
+    throw new Error(
+      `Unsupported provider "${model.provider}". ModelXD now routes everything through OpenRouter — `
+      + `make sure ai_models rows have provider='openrouter' (run scripts/sync-openrouter.ts).`
+    )
   }
 }
 
@@ -21,31 +28,8 @@ export async function streamText(
   callbacks:  TextStreamCallbacks,
   attachment: Attachment | null = null
 ): Promise<void> {
-  const p = getProvider(model)
-  // Google streamText accepts attachment, OpenAI builds it into messages
-  if (model.provider === 'google') {
-    return (p as typeof google).streamText(model, messages, callbacks, attachment)
-  }
-  // For OpenAI, inject attachment into last user message content
-  if (attachment && model.provider === 'openai') {
-    const msgs = [...messages]
-    const last  = msgs[msgs.length - 1]
-    if (last.role === 'user') {
-      const parts: any[] = []
-      if (attachment.mediaType.startsWith('image/')) {
-        parts.push({ type: 'image_url', image_url: { url: `data:${attachment.mediaType};base64,${attachment.buffer.toString('base64')}` } })
-      } else if (attachment.mediaType === 'application/pdf' || attachment.mediaType === 'text/plain') {
-        const text = attachment.buffer.toString('utf-8')
-        parts.push({ type: 'text', text: `File content:\n${text}\n\n${last.content}` })
-        msgs[msgs.length - 1] = { ...last, content: parts[0].text }
-        return p.streamText(model, msgs, callbacks)
-      }
-      parts.push({ type: 'text', text: last.content })
-      msgs[msgs.length - 1] = { ...last, content: parts }
-    }
-    return p.streamText(model, msgs, callbacks)
-  }
-  return p.streamText(model, messages, callbacks)
+  assertOpenRouter(model)
+  return openrouter.streamText(model, messages, callbacks, attachment)
 }
 
 export async function generateImage(
@@ -55,13 +39,8 @@ export async function generateImage(
   size:       string = '1024x1024',
   attachment: Attachment | null = null
 ): Promise<ImageResult> {
-  if (model.provider === 'openai') {
-    return openai.generateImage(model, prompt, quality, size, attachment)
-  }
-  if (model.provider === 'google') {
-    return google.generateImage(model, prompt, size, attachment)
-  }
-  throw new Error(`Provider ${model.provider} does not support image generation`)
+  assertOpenRouter(model)
+  return openrouter.generateImage(model, prompt, quality, size, attachment)
 }
 
 export async function generateVideo(
@@ -72,16 +51,6 @@ export async function generateVideo(
   attachment: Attachment | null = null,
   onProgress?: (pct: number) => void
 ): Promise<VideoResult> {
-  if (model.provider === 'openai') {
-    return openai.generateVideo(model, prompt, size, seconds, attachment, onProgress)
-  }
-  if (model.provider === 'google') {
-    // Convert size to aspectRatio for Google
-    const aspectRatio = size.includes('x') ? (
-      parseInt(size.split('x')[0]) > parseInt(size.split('x')[1]) ? '16:9' : '9:16'
-    ) : '16:9'
-    const dur = Math.min(seconds, 8) // Veo max is 8s
-    return google.generateVideo(model, prompt, aspectRatio, dur, attachment, onProgress)
-  }
-  throw new Error(`Provider ${model.provider} does not support video generation`)
+  assertOpenRouter(model)
+  return openrouter.generateVideo(model, prompt, size, seconds, attachment, onProgress)
 }

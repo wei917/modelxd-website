@@ -160,7 +160,7 @@ export default function LoginPage() {
             {[
               { icon: '⚔️', text: <><strong>XDuel</strong> — blind-test models on your prompts</> },
               { icon: '🗳️', text: <><strong>Vote</strong> — judge archived battles</> },
-              { icon: '✨', text: <><strong>Create</strong> — run prompts across models side by side</> },
+              { icon: '✨', text: <><strong>XCreate</strong> — run prompts across models side by side</> },
             ].map((f, i) => (
               <div className="auth-feature-row" key={i}>
                 <span className="auth-feature-icon">{f.icon}</span>

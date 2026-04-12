@@ -9,13 +9,16 @@ export default function AuthModal() {
   const { open, nextPath, hide } = useAuthModal()
   const [loading, setLoading] = useState(false)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  )
-
   const handleLogin = async () => {
     setLoading(true)
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    if (!url || !key) {
+      console.error('[AuthModal] Supabase env vars missing')
+      setLoading(false)
+      return
+    }
+    const supabase = createBrowserClient(url, key)
     const destination = nextPath ?? window.location.pathname
     document.cookie = `auth_redirect=${destination}; path=/; max-age=600; SameSite=Lax`
     await supabase.auth.signInWithOAuth({
@@ -139,7 +142,7 @@ export default function AuthModal() {
             {[
               { icon: '⚔️', text: <><strong>XDuel</strong> — blind-test models on your prompts</> },
               { icon: '🗳️', text: <><strong>Vote</strong> — judge archived battles</> },
-              { icon: '✨', text: <><strong>Create</strong> — run prompts across models side by side</> },
+              { icon: '✨', text: <><strong>XCreate</strong> — run prompts across models side by side</> },
             ].map((f, i) => (
               <div className="auth-feature-row" key={i}>
                 <span className="auth-feature-icon">{f.icon}</span>

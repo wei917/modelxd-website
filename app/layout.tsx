@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Barlow_Condensed, Barlow, JetBrains_Mono } from 'next/font/google'
 import { AuthModalProvider } from '../lib/AuthModalContext'
 import AuthModal from './components/AuthModal'
+import Nav from './components/Nav'
 import './globals.css'
 
 const barlowCondensed = Barlow_Condensed({
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${barlowCondensed.variable} ${barlow.variable} ${jetbrainsMono.variable}`}>
         <AuthModalProvider>
+          <Nav />
           {children}
           <AuthModal />
         </AuthModalProvider>

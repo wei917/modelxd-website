@@ -14,11 +14,11 @@ values
   ('xduel-ai-videos',    'xduel-ai-videos',    true,  52428800,  array['video/mp4','video/webm','video/quicktime']),
   ('xduel-user-images',  'xduel-user-images',  true,  10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
   ('xduel-user-videos',  'xduel-user-videos',  true,  524288000, array['video/mp4','video/webm','video/quicktime','video/mov']),
-  -- Create — private
-  ('create-ai-images',   'create-ai-images',   false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
-  ('create-ai-videos',   'create-ai-videos',   false, 52428800,  array['video/mp4','video/webm','video/quicktime']),
-  ('create-user-images', 'create-user-images', false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
-  ('create-user-videos', 'create-user-videos', false, 524288000, array['video/mp4','video/webm','video/quicktime','video/mov'])
+  -- XCreate — private
+  ('xcreate-ai-images',   'xcreate-ai-images',   false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
+  ('xcreate-ai-videos',   'xcreate-ai-videos',   false, 52428800,  array['video/mp4','video/webm','video/quicktime']),
+  ('xcreate-user-images', 'xcreate-user-images', false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
+  ('xcreate-user-videos', 'xcreate-user-videos', false, 524288000, array['video/mp4','video/webm','video/quicktime','video/mov'])
 on conflict (id) do nothing;
 
 
@@ -34,14 +34,14 @@ drop policy if exists "xduel-user-images: owner delete" on storage.objects;
 drop policy if exists "xduel-user-videos: public read" on storage.objects;
 drop policy if exists "xduel-user-videos: owner insert" on storage.objects;
 drop policy if exists "xduel-user-videos: owner delete" on storage.objects;
-drop policy if exists "create-ai-images: owner read" on storage.objects;
-drop policy if exists "create-ai-videos: owner read" on storage.objects;
-drop policy if exists "create-user-images: owner read" on storage.objects;
-drop policy if exists "create-user-images: owner insert" on storage.objects;
-drop policy if exists "create-user-images: owner delete" on storage.objects;
-drop policy if exists "create-user-videos: owner read" on storage.objects;
-drop policy if exists "create-user-videos: owner insert" on storage.objects;
-drop policy if exists "create-user-videos: owner delete" on storage.objects;
+drop policy if exists "xcreate-ai-images: owner read" on storage.objects;
+drop policy if exists "xcreate-ai-videos: owner read" on storage.objects;
+drop policy if exists "xcreate-user-images: owner read" on storage.objects;
+drop policy if exists "xcreate-user-images: owner insert" on storage.objects;
+drop policy if exists "xcreate-user-images: owner delete" on storage.objects;
+drop policy if exists "xcreate-user-videos: owner read" on storage.objects;
+drop policy if exists "xcreate-user-videos: owner insert" on storage.objects;
+drop policy if exists "xcreate-user-videos: owner delete" on storage.objects;
 
 
 -- =============================================================
@@ -103,68 +103,68 @@ create policy "xduel-user-videos: owner delete"
 
 
 -- -------------------------------------------------------------
--- create-ai-*  owner read, server (service role) writes
+-- xcreate-ai-*  owner read, server (service role) writes
 -- Files stored as userId/filename so owner filter works
 -- -------------------------------------------------------------
 
-create policy "create-ai-images: owner read"
+create policy "xcreate-ai-images: owner read"
   on storage.objects for select
   using (
-    bucket_id = 'create-ai-images'
+    bucket_id = 'xcreate-ai-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "create-ai-videos: owner read"
+create policy "xcreate-ai-videos: owner read"
   on storage.objects for select
   using (
-    bucket_id = 'create-ai-videos'
+    bucket_id = 'xcreate-ai-videos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
 
 -- -------------------------------------------------------------
--- create-user-*  owner read/write, signed URL for sharing
+-- xcreate-user-*  owner read/write, signed URL for sharing
 -- -------------------------------------------------------------
 
-create policy "create-user-images: owner read"
+create policy "xcreate-user-images: owner read"
   on storage.objects for select
   using (
-    bucket_id = 'create-user-images'
+    bucket_id = 'xcreate-user-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "create-user-images: owner insert"
+create policy "xcreate-user-images: owner insert"
   on storage.objects for insert
   with check (
-    bucket_id = 'create-user-images'
+    bucket_id = 'xcreate-user-images'
     and auth.uid() is not null
   );
 
-create policy "create-user-images: owner delete"
+create policy "xcreate-user-images: owner delete"
   on storage.objects for delete
   using (
-    bucket_id = 'create-user-images'
+    bucket_id = 'xcreate-user-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "create-user-videos: owner read"
+create policy "xcreate-user-videos: owner read"
   on storage.objects for select
   using (
-    bucket_id = 'create-user-videos'
+    bucket_id = 'xcreate-user-videos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "create-user-videos: owner insert"
+create policy "xcreate-user-videos: owner insert"
   on storage.objects for insert
   with check (
-    bucket_id = 'create-user-videos'
+    bucket_id = 'xcreate-user-videos'
     and auth.uid() is not null
   );
 
-create policy "create-user-videos: owner delete"
+create policy "xcreate-user-videos: owner delete"
   on storage.objects for delete
   using (
-    bucket_id = 'create-user-videos'
+    bucket_id = 'xcreate-user-videos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 

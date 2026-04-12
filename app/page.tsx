@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
-import Nav from './components/Nav'
 
 export default function Home() {
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -25,6 +24,19 @@ export default function Home() {
       router.push('/xduel')
     } else {
       show('/xduel')
+    }
+  }
+
+  const handleStartXCreate = async () => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    )
+    const { data } = await supabase.auth.getUser()
+    if (data.user) {
+      router.push('/xcreate')
+    } else {
+      show('/xcreate')
     }
   }
 
@@ -101,19 +113,16 @@ export default function Home() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
-      {/* Nav */}
-      <Nav />
-
       {/* Hero */}
       <section className="hero">
         <div className="hero-inner">
-          <div className="hero-eyebrow">AI Model Intelligence Platform · Est. 2026</div>
           <h1 className="hero-headline">
-            <span className="line1">Overpaying AI?! <span className="xd" style={{ color: 'var(--red)' }}>XD</span></span>
-            <span className="line3">XDuel to Find Your Best Models</span>
+            <span className="line1">Overpaying for AI?! <span className="xd" style={{ color: 'var(--red)' }}>XD</span></span>
+            <span className="line3"><span style={{ color: 'var(--red)' }}>XDuel</span> to find out, <span style={{ color: 'var(--red)' }}>XCreate</span> to see<br />which model is best for you</span>
           </h1>
           <div className="hero-ctas">
             <button onClick={handleStartXDuel} className="btn-primary">Start XDuel →</button>
+            <button onClick={handleStartXCreate} className="btn-outline">Try XCreate →</button>
           </div>
         </div>
       </section>
@@ -148,11 +157,11 @@ export default function Home() {
           <div className="feature-tag">Live Rankings</div>
         </div>
         <div className="feature reveal">
-          <div className="feature-num">04 / CREATE</div>
+          <div className="feature-num">04 / XCREATE</div>
           <span className="feature-icon">✨</span>
-          <div className="feature-title">Create<br />Mode</div>
-          <p className="feature-desc">Already know what you want? Run your prompt across <strong>multiple models simultaneously.</strong> Text, image, video — side by side.</p>
-          <div className="feature-tag">Multi-Model</div>
+          <div className="feature-title">Creating Is<br />Believing</div>
+          <p className="feature-desc"><strong>One prompt. Many models. All at once.</strong> Run text, image, and video generations side by side — stop reading reviews and <strong>see the difference yourself.</strong></p>
+          <div className="feature-tag">XCreate Studio</div>
         </div>
       </div>
 
@@ -263,7 +272,7 @@ export default function Home() {
         <div className="footer-logo">
           <Image src="/logo.png" alt="ModelXD" width={32} height={32} style={{ objectFit: 'contain' }} />
         </div>
-        <div className="footer-copy">STOP OVERPAYING FOR AI · XDUEL TO FIND THE BEST MODEL FOR YOUR MONEY</div>
+        <div className="footer-copy">XDUEL TO FIND · XCREATE TO BELIEVE · STOP OVERPAYING FOR AI</div>
         <div className="footer-copy">© 2026 MODELXD</div>
       </footer>
     </>

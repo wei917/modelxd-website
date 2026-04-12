@@ -15,6 +15,14 @@
   --font-display: var(--font-display);
   --font-mono:    var(--font-mono);
   --font-body:    var(--font-body);
+  /* Aliases — several pre-existing rules reference these short names
+     (e.g. markdown-body, stats-cell, profile/page.tsx). Without the
+     aliases those font-family / color rules silently fall back to body
+     defaults, which broke the profile page's typographic hierarchy. */
+  --mono:         var(--font-mono);
+  --sans:         var(--font-body);
+  --text:         var(--white);
+  --card:         var(--surface);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -82,7 +90,10 @@ body {
 .nav-links a:hover { color: var(--white); }
 .nav-links a.active { color: var(--white); }
 .nav-auth {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  /* Reserve enough width for the widest variant (avatar + Log Out button)
+     so the center .nav-links don't shift when the auth state resolves. */
+  min-width: 170px;
 }
 .nav-login {
   font-family: var(--font-mono), monospace;
@@ -137,8 +148,17 @@ body {
   letter-spacing: 0.04em; margin-top: 8px;
   text-transform: none;
 }
+.hero-sub {
+  margin-top: 28px;
+  max-width: 640px;
+  font-size: 16px; line-height: 1.6; font-weight: 300;
+  color: var(--muted2);
+  opacity: 0; animation: fadeUp 0.8s 0.45s forwards;
+}
+.hero-sub strong { color: var(--white); font-weight: 600; }
 .hero-ctas {
-  margin-top: 48px;
+  margin-top: 40px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   opacity: 0; animation: fadeUp 0.8s 0.55s forwards;
 }
 .btn-primary {
@@ -151,6 +171,19 @@ body {
 .btn-primary:hover {
   background: #ff5249;
   box-shadow: 0 0 40px var(--red-glow);
+  transform: translateY(-1px);
+}
+.btn-outline {
+  padding: 14px 32px; background: transparent;
+  border: 1px solid var(--border2); border-radius: 4px; color: var(--white);
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: none; transition: all 0.2s; text-decoration: none; display: inline-block;
+}
+.btn-outline:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-dim);
   transform: translateY(-1px);
 }
 
@@ -417,6 +450,14 @@ footer {
 @keyframes livePulse {
   0%,100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
   50% { opacity: 0.5; box-shadow: 0 0 4px var(--green); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%     { opacity: 0.4; transform: scale(0.85); }
 }
 .reveal {
   opacity: 0; transform: translateY(32px);
