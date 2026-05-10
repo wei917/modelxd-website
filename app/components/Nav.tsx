@@ -7,12 +7,12 @@ import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../lib/AuthModalContext'
 
+// The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
-  { href: '/',             label: 'Home',       protected: false },
-  { href: '/xduel',       label: 'XDuel',       protected: true  },
-  { href: '/vote',        label: 'Vote',        protected: true  },
-  { href: '/leaderboard', label: 'Leaderboard', protected: false },
-  { href: '/xcreate',     label: 'XCreate',     protected: true  },
+  { href: '/xduel',       label: 'XDuel',        protected: true  },
+  { href: '/xcreate',     label: 'XCreate',      protected: true  },
+  { href: '/vote',        label: 'XVote',        protected: true  },
+  { href: '/leaderboard', label: 'Leaderboard',  protected: false },
 ]
 
 export default function Nav() {
@@ -53,7 +53,7 @@ export default function Nav() {
     <nav className="nav">
       <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8 }} />
-        {'Model'}<span className="x">XD</span>
+        <span>Model<span className="x">XD</span></span>
       </Link>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, label, protected: isProtected }) => (
@@ -62,10 +62,6 @@ export default function Nav() {
             href={href}
             className={pathname === href ? 'active' : ''}
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
-            // Only dim protected links once we know the user is logged out.
-            // Before authLoaded fires we can't know yet, so keep full opacity
-            // to avoid a flash.
-            style={authLoaded && isProtected && !user ? { opacity: 0.5 } : {}}
           >
             {label}
           </Link>
@@ -86,11 +82,24 @@ export default function Nav() {
         ) : user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link href="/profile">
-              <img
-                src={user.user_metadata?.avatar_url}
-                alt={user.user_metadata?.full_name}
-                style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer' }}
-              />
+              {user.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt={user.user_metadata?.full_name}
+                  style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', cursor: 'pointer' }}
+                />
+              ) : (
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'var(--red)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                }}>
+                  {(user.user_metadata?.full_name || user.email || '?')
+                    .split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
+              )}
             </Link>
             <button className="nav-login" onClick={handleLogout}>Log Out</button>
           </div>

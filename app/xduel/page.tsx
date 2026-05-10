@@ -75,7 +75,7 @@ export default function XDuel() {
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
-  const [attachment,  setAttachment]  = useState<Attachment | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
 
   const bothDone    = models.length > 0 && models.every(m => m.done)
   const anyStreaming = models.some(m => m.streaming)
@@ -124,7 +124,7 @@ export default function XDuel() {
       const res = await fetch('/api/duel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, count, attachment: attachment ? { storagePath: attachment.storagePath, bucket: attachment.bucket, mediaType: attachment.mediaType, fileName: attachment.fileName, fileSize: attachment.fileSize } : null }),
+        body: JSON.stringify({ prompt, mode, count, attachment: attachments[0] ? { storagePath: attachments[0].storagePath, bucket: attachments[0].bucket, mediaType: attachments[0].mediaType, fileName: attachments[0].fileName, fileSize: attachments[0].fileSize } : null }),
       })
 
       if (!res.ok || !res.body) {
@@ -205,12 +205,22 @@ export default function XDuel() {
                     : m.isVideo
                     ? `$${parseFloat(realCost.toFixed(4))} / video`
                     : m.meta.priceLabel
+                  // Image/video models that are token-billed (e.g. gpt-image-2)
+                  // have a headline outputPrice of 0 because calcImageCost
+                  // can't compute without a usage block. Once the real cost
+                  // comes back from the API, fold it back into meta.outputPrice
+                  // so the reveal-page savings math (cheapest vs most expensive)
+                  // has the actual numbers to work with. For text models, keep
+                  // outputPrice as the per-1M-token rate from the catalog.
+                  const realOutputPrice = (m.isImage || m.isVideo) && realCost > 0
+                    ? realCost
+                    : m.meta.outputPrice
                   return {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
                     cost:         realCost,
-                    meta:         { ...m.meta, priceLabel: realPriceLabel },
+                    meta:         { ...m.meta, priceLabel: realPriceLabel, outputPrice: realOutputPrice },
                     streaming:    false,
                     done:         true,
                   }
@@ -287,7 +297,7 @@ export default function XDuel() {
     setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     setModels([]); setApiError(null)
-    if (!keepPrompt) { setPrompt(''); setAttachment(null) }
+    if (!keepPrompt) { setPrompt(''); setAttachments([]) }
   }
 
   const approxTokens = Math.round(prompt.length / 3)
@@ -297,17 +307,32 @@ export default function XDuel() {
   const mostExpensive = models.length > 0
     ? models.reduce((maxM, m) => m.meta.outputPrice > maxM.meta.outputPrice ? m : maxM, models[0])
     : null
-  const ratio   = cheapestModel && mostExpensive && cheapestModel.meta.outputPrice > 0
-    ? Math.round(mostExpensive.meta.outputPrice / cheapestModel.meta.outputPrice)
+  // Ratio shown as e.g. "1.4× cheaper" or "2× cheaper". Math.round() collapsed
+  // anything between 1.0 and 1.5 into "1× cheaper" which read as "no
+  // difference" — keep one decimal until we cross 10×, then drop it.
+  const rawRatio = cheapestModel && mostExpensive && cheapestModel.meta.outputPrice > 0
+    ? mostExpensive.meta.outputPrice / cheapestModel.meta.outputPrice
     : 0
+  const ratio = rawRatio >= 10
+    ? Math.round(rawRatio).toString()
+    : rawRatio > 0
+      ? (Math.round(rawRatio * 10) / 10).toString()
+      : '0'
   // text:  savings per 10M tokens
   // image/video: savings per 1000 generations
   const isMediaMode = mode === 'image' || mode === 'video'
-  const monthly = cheapestModel && mostExpensive
+  // Image / video models are billed per generation in fractional dollars
+  // (e.g. $0.04). Math.round() on a $14.10 figure was fine, but the previous
+  // version used Math.round on $0.04, which floored to $0. Switch to two-
+  // decimal precision and let toLocaleString format it.
+  const monthlyRaw = cheapestModel && mostExpensive
     ? isMediaMode
-      ? Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 1000)
-      : Math.round((mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 10)
+      ? (mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 1000
+      : (mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 10
     : 0
+  const monthly = isMediaMode
+    ? Math.round(monthlyRaw * 100) / 100   // keep cents, e.g. $14.10
+    : Math.round(monthlyRaw)               // text: integer dollars at 10M tokens
   const monthlyLabel = isMediaMode ? '1K generations' : '10M tokens'
 
   const userChoseCheaper = typeof vote2 === 'number' && vote2 === cheapestIdx
@@ -318,9 +343,9 @@ export default function XDuel() {
   return (
     <>
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
-          <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:100000,display:'flex',gap:10}}>
+          <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:99100,display:'flex',gap:10}}>
             <a href={lightbox} download target="_blank" rel="noreferrer" title="Download"
               style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
             >↓</a>
@@ -334,29 +359,41 @@ export default function XDuel() {
       <div className="cursor-ring" ref={ringRef} />
 
       <div className="xduel-page">
-
-        {/* Step bar */}
-        <div className="step-bar">
-          {STEPS.map((s, i) => (
-            <span key={s.n} style={{display:'contents'}}>
-              <div className={`step-item ${step===s.n?'active':''} ${step>s.n?'done':''}`}>
-                <div className="step-num">{s.n}</div>{s.label}
-              </div>
-              {i < STEPS.length-1 && <div className={`step-connector ${step>s.n?'done':''}`} />}
-            </span>
-          ))}
-        </div>
-
         <div className="arena">
+
+          {/* ── Page header — always top of arena ── */}
+          <div className="prompt-header">
+            <div className="prompt-label">XDuel</div>
+            <h1 className="prompt-title">
+              {step === 1 ? <>Start the <span>XDuel</span></> :
+               step === 5 ? <>The <span>Reveal</span></> :
+               phase === 'vote' ? <>Vote <span>Blind</span></> :
+               <>Vote <span>Again</span></>}
+            </h1>
+            <div className="prompt-sub">
+              {step === 1 ? "Create a task for two anonymous models. You vote the result you like and we will reveal the best model for you." :
+               step === 5 ? null :
+               phase === 'vote'
+                ? `"${prompt.substring(0,80)}${prompt.length>80?'…':''}"`
+                : <span>You picked <strong style={{color:'var(--white)'}}>{voteLabel(vote1)}</strong> — now you know the price. Does it change your mind?</span>}
+            </div>
+          </div>
+
+          {/* Step progress bar */}
+          <div className="step-bar">
+            {STEPS.map((s, i) => (
+              <span key={s.n} style={{display:'contents'}}>
+                <div className={`step-item ${step===s.n?'active':''} ${step>s.n?'done':''}`}>
+                  <div className="step-num">{s.n}</div>{s.label}
+                </div>
+                {i < STEPS.length-1 && <div className={`step-connector ${step>s.n?'done':''}`} />}
+              </span>
+            ))}
+          </div>
 
           {/* ── STEP 1 ── */}
           {step === 1 && (
             <div className="step-section">
-              <div className="prompt-header">
-                <div className="prompt-label">Step 01 — Duel</div>
-                <h1 className="prompt-title">Start the <span>XDuel</span></h1>
-                <div className="prompt-sub">Two anonymous models will respond. You vote blind. Then the truth drops.</div>
-              </div>
               <div className="mode-selector">
                 {(['text','image','video'] as Mode[]).map(m => (
                   <button key={m} className={`mode-btn ${mode===m?'active':''}`} onClick={() => setMode(m)}>
@@ -376,14 +413,14 @@ export default function XDuel() {
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                       e.preventDefault()
                       if (prompt.trim().length >= 3) startDuel()
                     }
                   }}
                 />
                 <div className="prompt-actions">
-                  <AttachmentButton attachment={attachment} onChange={setAttachment} context="xduel" />
+                  <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" />
                   <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
                   <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
                     ⚔️ Start XDuel →
@@ -396,20 +433,6 @@ export default function XDuel() {
           {/* ── STEPS 2/3/4: arena view ── */}
           {(step === 2 || step === 3 || step === 4) && (
             <div className="step-section">
-              <div className="prompt-header" style={{marginBottom:24}}>
-                <div className="prompt-label">
-                  {phase==='vote' ? 'Step 02 — Vote' : 'Step 04 — Vote Again'}
-                </div>
-                <h1 className="prompt-title">
-                  {phase==='vote' ? <>Which is <span>Better?</span></> : <>Now You Know the <span>Cost</span></>}
-                </h1>
-                <div className="prompt-sub">
-                  {phase==='vote'
-                    ? `"${prompt.substring(0,80)}${prompt.length>80?'…':''}"`
-                    : <span>You picked <strong style={{color:'var(--white)'}}>{voteLabel(vote1)}</strong> — vote again knowing the price</span>}
-                </div>
-              </div>
-
               {/* Error state */}
               {apiError && (
                 <div style={{background:'rgba(232,69,60,0.1)',border:'1px solid rgba(232,69,60,0.4)',borderRadius:6,padding:'16px 20px',marginBottom:24,fontFamily:'var(--mono)',fontSize:13,color:'var(--red)'}}>
@@ -496,7 +519,7 @@ export default function XDuel() {
                               <div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/>
                               <span style={{marginLeft:8}}>Generating{m.isImage ? ' image' : ' video'}…</span>
                             </div>
-                          : <><div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
+                          : <><div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
                     </div>
@@ -622,11 +645,6 @@ export default function XDuel() {
           {/* ── STEP 5: Reveal ── */}
           {step === 5 && (
             <div className="step-section">
-              <div className="prompt-header" style={{marginBottom:32}}>
-                <div className="prompt-label">Step 05 — Meet the Model</div>
-                <h1 className="prompt-title">The <span>Reveal</span></h1>
-              </div>
-
               <div style={{
                 opacity: showReveal ? 1 : 0,
                 transform: showReveal ? 'translateY(0)' : 'translateY(16px)',
@@ -657,8 +675,10 @@ export default function XDuel() {
                         </div>
                         <div className="reveal-stat" style={{color:wins?'#34d399':'var(--muted2)'}}>
                           {wins
-                            ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
-                            : 'More expensive option'}
+                            ? (monthly > 0
+                                ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
+                                : '⚖ Same price as the other')
+                            : (monthly > 0 ? 'More expensive option' : 'Same price')}
                         </div>
                       </div>
                     )

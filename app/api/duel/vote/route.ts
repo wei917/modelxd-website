@@ -40,6 +40,15 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SECRET_KEY!,
     )
 
+    // When vote2 arrives, compute vote_changed by comparing with vote1
+    if (vote2ModelId !== undefined) {
+      // Fetch current vote1_model_id to compare
+      const { data: duel } = await sb.from('duels').select('vote1_model_id').eq('id', duelId).single()
+      if (duel) {
+        update.vote_changed = (duel.vote1_model_id !== vote2ModelId)
+      }
+    }
+
     const { error } = await sb
       .from('duels')
       .update(update)

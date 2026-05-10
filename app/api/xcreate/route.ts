@@ -16,6 +16,7 @@ import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
+import { debitCredits, ensureDailyGrant, InsufficientCreditsError } from '@/lib/credits'
 
 const LOG = '[xcreate]'
 
@@ -27,7 +28,18 @@ function serviceClient() {
   )
 }
 
-type SlotOpts = { quality?: string; size?: string; duration?: number }
+type SlotOpts = {
+  quality?:        string
+  size?:           string
+  duration?:       number
+  aspect_ratio?:   string
+  /** Alibaba video and image. null/undefined = use provider default. */
+  watermark?:      boolean | null
+  /** Number of outputs (image gen). Mainly for qwen-image-2.0 series 1..6. */
+  count?:          number | null
+  mode?:           string
+  thinking_level?: string
+}
 
 /**
  * Retry a Supabase Storage upload with exponential backoff on transient
@@ -63,21 +75,24 @@ async function uploadWithRetry(
 }
 
 async function runSlot(
-  sb:         ReturnType<typeof serviceClient>,
-  jobId:      string,
-  index:      number,
-  model:      ModelInfo,
-  mode:       string,
-  prompt:     string,
-  attachment: providers.Attachment | null,
-  options:    SlotOpts,
-): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null> {
+  sb:          ReturnType<typeof serviceClient>,
+  userId:      string,
+  jobId:       string,
+  index:       number,
+  model:       ModelInfo,
+  mode:        string,
+  prompt:      string,
+  attachments: providers.Attachment[],
+  options:     SlotOpts,
+): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; responseId?: string; conversationHistory?: any[] } | null> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name}`)
 
   const patch = async (fields: Record<string, any>) => {
     await sb.from('xcreate_job_slots').update(fields).eq('job_id', jobId).eq('slot_index', index)
   }
+
+  const callContext: providers.CallContext = { userId }
 
   try {
     if (mode === 'text') {
@@ -101,7 +116,8 @@ async function runSlot(
           onDone:  (r) => { doneResult = r },
           onError: (msg) => { throw new Error(msg) },
         },
-        attachment
+        attachments,
+        callContext,
       )
 
       const rt = Date.now() - start
@@ -114,18 +130,54 @@ async function runSlot(
 
       const quality = (options.quality ?? 'medium') as 'low' | 'medium' | 'high'
       const size    = options.size ?? '1024x1024'
-      const result  = await providers.generateImage(model, prompt, quality, size, attachment)
+      const result  = await providers.generateImage(
+        model, prompt, quality, size, attachments, null, null, callContext,
+        {
+          watermark:    options.watermark ?? null,
+          aspect_ratio: options.aspect_ratio ?? null,
+          count:        options.count ?? null,
+        },
+      )
 
-      const ext  = result.mediaType.split('/')[1] ?? 'png'
-      const path = `${jobId}_slot${index}.${ext}`
-      console.log(`${LOG} Slot[${index}] uploading ${result.buffer.length} bytes (${result.mediaType}) to xcreate-ai-images/${path}`)
-      await uploadWithRetry(sb, 'xcreate-ai-images', path, result.buffer, result.mediaType)
-      const { data: signed, error: signErr } = await sb.storage.from('xcreate-ai-images').createSignedUrl(path, 60 * 60 * 24)
-      if (signErr || !signed) throw new Error('Failed to create signed URL')
+      // Multi-image support: upload primary + extras. URLs joined with '\n'
+      // in the slot's `text` field; UI splits on newlines and renders a grid.
+      const allImages = [
+        { buffer: result.buffer, mediaType: result.mediaType },
+        ...(result.extras ?? []),
+      ]
+      console.log(`${LOG} Slot[${index}] uploading ${allImages.length} image(s) (${allImages.map(im => im.buffer.length).join('+')} bytes)`)
 
+      const signedUrls: string[] = []
+      for (let imgIdx = 0; imgIdx < allImages.length; imgIdx++) {
+        const im   = allImages[imgIdx]
+        const ext  = im.mediaType.split('/')[1] ?? 'png'
+        const suffix = allImages.length > 1 ? `_${imgIdx}` : ''
+        const path = `${userId}/${jobId}_slot${index}${suffix}.${ext}`
+        await uploadWithRetry(sb, 'xcreate-ai-images', path, im.buffer, im.mediaType)
+        // Short 24h TTL — XCreate is private, so we don't want leaked
+        // signed URLs to work forever. The profile gallery page re-signs
+        // on load (parses bucket+path out of the stored URL), so a
+        // short TTL is fine in practice: the user always sees a fresh
+        // URL when they revisit.
+        const { data: signed, error: signErr } = await sb.storage.from('xcreate-ai-images').createSignedUrl(path, 60 * 60 * 24)
+        if (signErr || !signed) throw new Error('Failed to create signed URL')
+        signedUrls.push(signed.signedUrl)
+
+        // Per-image media event in provider_calls.
+        providers.logMediaUrl(result.requestId, {
+          provider: model.provider, model_name: model.model_name, model_id: model.id ?? null,
+          mode: 'image', user_id: userId,
+        }, `xcreate-ai-images/${path}`)
+      }
+
+      const joinedUrls = signedUrls.join('\n')
       const rt = Date.now() - start
-      await patch({ text: signed.signedUrl, is_image: true, streaming: false, done: true, cost: result.cost, response_time: rt })
-      return { text: signed.signedUrl, isImage: true, isVideo: false, responseTime: rt, cost: result.cost }
+      await patch({ text: joinedUrls, is_image: true, streaming: false, done: true, cost: result.cost, response_time: rt })
+      return {
+        text: joinedUrls, isImage: true, isVideo: false, responseTime: rt, cost: result.cost,
+        responseId: result.responseId,                    // OpenAI multi-turn
+        conversationHistory: result.conversationHistory,  // Google multi-turn
+      }
     }
 
     if (mode === 'video') {
@@ -133,17 +185,32 @@ async function runSlot(
 
       const videoSize     = options.size ?? '1280x720'
       const videoDuration = options.duration ?? 16
+      // Watermark is Alibaba-only and tri-state (null/true/false). Forward
+      // exactly what the user picked; the router only sends it when truthy
+      // and only to Alibaba. Aspect ratio is passed through as `ratio`.
+      const videoWatermark:   boolean | null = options.watermark ?? null
+      const videoAspectRatio: string  | null = options.aspect_ratio ?? null
+      console.log(`${LOG} Slot[${index}] video options received: watermark=${JSON.stringify(options.watermark)} aspect_ratio=${JSON.stringify(options.aspect_ratio)} → forwarding watermark=${videoWatermark}`)
       const result = await providers.generateVideo(
-        model, prompt, videoSize, videoDuration, attachment,
-        (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) }
+        model, prompt, videoSize, videoDuration, attachments,
+        (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
+        callContext,
+        { watermark: videoWatermark, aspect_ratio: videoAspectRatio },
       )
 
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
-      const path = `${jobId}_slot${index}.${ext}`
+      const path = `${userId}/${jobId}_slot${index}.${ext}`
       console.log(`${LOG} Slot[${index}] uploading ${result.buffer.length} bytes (${result.mediaType}) to xcreate-ai-videos/${path}`)
       await uploadWithRetry(sb, 'xcreate-ai-videos', path, result.buffer, result.mediaType)
+      // 24h TTL — see image-upload comment above. Profile gallery
+      // re-signs on load so this stays fresh through normal use.
       const { data: signed, error: signErr } = await sb.storage.from('xcreate-ai-videos').createSignedUrl(path, 60 * 60 * 24)
       if (signErr || !signed) throw new Error('Failed to create signed URL')
+
+      providers.logMediaUrl(result.requestId, {
+        provider: model.provider, model_name: model.model_name, model_id: model.id ?? null,
+        mode: 'video', user_id: userId,
+      }, `xcreate-ai-videos/${path}`)
 
       const rt = Date.now() - start
       await patch({ text: signed.signedUrl, is_video: true, streaming: false, done: true, cost: result.cost, response_time: rt, progress: 100 })
@@ -167,28 +234,67 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { prompt, mode = 'text', modelIds, modelOptions = [], attachment: attachmentInput = null, jobId: clientJobId = null } = await req.json()
+  // Daily $1 credit grant — handles users who stayed logged in across the
+  // UTC-midnight boundary and never went through /auth/callback today.
+  // Idempotent within the same UTC day. Fire-and-forget — we don't block
+  // generation if the grant call hits a transient error.
+  ensureDailyGrant(user.id, 100).catch(err =>
+    console.warn(`${LOG} ensureDailyGrant failed:`, err instanceof Error ? err.message : err)
+  )
+
+  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)} jobId=${clientJobId ?? 'server-generated'}`)
 
-  if (!prompt?.trim() || prompt.trim().length < 3) return Response.json({ error: 'Prompt too short' }, { status: 400 })
+  // In video/image mode an attached file (image_to_video, image_to_image,
+  // reference_frames, etc.) is enough to drive generation — the model can
+  // animate or transform the input without any text. Only require a prompt
+  // when there's no attachment to fall back on.
+  const attachmentList: any[] = (Array.isArray(attachmentInputs) && attachmentInputs.length > 0)
+    ? attachmentInputs
+    : (legacyAttachmentInput ? [legacyAttachmentInput] : [])
+  const hasAttachmentInput = attachmentList.some(a => a?.storagePath)
+  const promptTooShort = !prompt?.trim() || prompt.trim().length < 3
+  const promptIsOptional = (mode === 'video' || mode === 'image') && hasAttachmentInput
+  if (promptTooShort && !promptIsOptional) {
+    return Response.json({ error: 'Prompt too short' }, { status: 400 })
+  }
   if (!Array.isArray(modelIds) || modelIds.length === 0) return Response.json({ error: 'No models specified' }, { status: 400 })
 
   // Load models by UUID
   const models = (await Promise.all(modelIds.map((id: string) => getModelById(id)))).filter(Boolean) as ModelInfo[]
   if (models.length === 0) return Response.json({ error: 'No valid models found' }, { status: 400 })
 
-  // Process attachment
-  let attachment: providers.Attachment | null = null
+  // Process attachments (supports both new array and legacy single attachment)
+  const rawInputs: any[] = Array.isArray(attachmentInputs) && attachmentInputs.length > 0
+    ? attachmentInputs
+    : legacyAttachmentInput ? [legacyAttachmentInput] : []
+  const attachments: providers.Attachment[] = []
   let attachmentId: string | null = null
-  if (attachmentInput?.storagePath) {
+  // Re-use the service client for signed-URL generation on attachment
+  // inputs. Some providers (Alibaba I2V) require a HTTP(S) URL for the
+  // input image; we sign the original Supabase storage object so they
+  // can fetch it directly instead of receiving inline base64.
+  const sb = serviceClient()
+  for (const inp of rawInputs) {
+    if (!inp?.storagePath) continue
     try {
-      const result = await processAttachment(user.id, attachmentInput.bucket, attachmentInput.storagePath, attachmentInput.mediaType, attachmentInput.fileName, attachmentInput.fileSize)
-      attachment   = { buffer: result.buffer, mediaType: result.mediaType }
-      attachmentId = result.attachmentId
+      const result = await processAttachment(user.id, inp.bucket, inp.storagePath, inp.mediaType, inp.fileName, inp.fileSize)
+      const attach: providers.Attachment = { buffer: result.buffer, mediaType: result.mediaType }
+      // Signed URL valid for 1h — long enough for the provider to fetch
+      // and download the image. Only attempted for image attachments
+      // since that's where it matters; other types fall back to buffer.
+      if (result.mediaType.startsWith('image/') && inp.bucket && inp.storagePath) {
+        try {
+          const { data: signed } = await sb.storage.from(inp.bucket).createSignedUrl(inp.storagePath, 60 * 60)
+          if (signed?.signedUrl) attach.url = signed.signedUrl
+        } catch (sigErr) {
+          console.warn(`${LOG} signed-url failed (will fall back to base64):`, sigErr)
+        }
+      }
+      attachments.push(attach)
+      if (!attachmentId) attachmentId = result.attachmentId  // keep first for DB reference
     } catch (err) { console.warn(`${LOG} attachment failed:`, err) }
   }
-
-  const sb = serviceClient()
 
   // Close any still-running jobs for this user. We assume a user can only
   // have one generation at a time; if a previous tab was left behind this
@@ -220,7 +326,7 @@ export async function POST(req: Request) {
     model_id:   m.id,
     provider:   m.provider,
     model_name: m.model_name,
-    name:       m.name,
+    name:       m.display_name,
     options:    modelOptions[i] ?? {},
   }))
   const { error: slotErr } = await sb.from('xcreate_job_slots').insert(slotRows)
@@ -233,25 +339,57 @@ export async function POST(req: Request) {
   // Run all slots in parallel. Vercel Node.js serverless keeps the function
   // alive after client disconnect up to maxDuration, so we just await.
   const results = await Promise.all(
-    models.map((m, i) => runSlot(sb, job.id, i, m, mode, prompt, attachment, modelOptions[i] ?? {}))
+    models.map((m, i) => runSlot(sb, user.id, job.id, i, m, mode, prompt, attachments, modelOptions[i] ?? {}))
   )
 
   // Save finished run to xcreates table (without chosen_model_id yet — set on pick).
+  // Persist the exact options each slot ran with so re-entering the run from
+  // the profile gallery can show "this was generated at 720p, 6s, watermark
+  // off" etc. without having to re-derive from the cost / output alone.
   const slotsForXCreate = models.map((m, i) => ({
     model_id:     m.id,
     provider:     m.provider,
     model_name:   m.model_name,
-    name:         m.name,
+    name:         m.display_name,
     text:         results[i]?.text ?? null,
     isImage:      results[i]?.isImage ?? false,
     isVideo:      results[i]?.isVideo ?? false,
     cost:         results[i]?.cost ?? 0,
     responseTime: results[i]?.responseTime ?? 0,
+    options:      modelOptions[i] ?? {},  // mode/quality/size/duration/aspect_ratio/watermark/count
+    // Multi-turn image editing context
+    responseId:          results[i]?.responseId ?? null,           // OpenAI
+    conversationHistory: results[i]?.conversationHistory ?? null,  // Google
   }))
   const { data: xcreateRow } = await sb.from('xcreates').insert({
     user_id: user.id, mode, prompt,
     slots: slotsForXCreate, attachment_id: attachmentId,
   }).select('id').single()
+
+  // ── Phase 2: Debit credits for total generation cost ──────────────────
+  const totalCostDollars = slotsForXCreate.reduce((sum, s) => sum + (s.cost ?? 0), 0)
+  const totalCostCents   = Math.round(totalCostDollars * 100)
+  if (totalCostCents > 0) {
+    try {
+      const newBalance = await debitCredits({
+        userId:        user.id,
+        amountCents:   totalCostCents,
+        referenceType: 'xcreate',
+        referenceId:   xcreateRow?.id ?? job.id,
+        description:   `XCreate ${mode} generation (${models.length} model${models.length > 1 ? 's' : ''})`,
+        metadata:      { mode, modelCount: models.length, jobId: job.id },
+      })
+      console.log(`${LOG} Debited ${totalCostCents}¢ for job ${job.id}; new balance: ${newBalance}¢`)
+    } catch (err) {
+      if (err instanceof InsufficientCreditsError) {
+        console.warn(`${LOG} Insufficient credits for job ${job.id} (need ${totalCostCents}¢)`)
+        // Generation already completed — don't fail the job, but log the shortfall.
+        // Future: could mark job as unpaid or block next generation.
+      } else {
+        console.error(`${LOG} debit failed for job ${job.id}:`, err)
+      }
+    }
+  }
 
   await sb.from('xcreate_jobs').update({
     status: 'completed',

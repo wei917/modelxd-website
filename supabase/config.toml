@@ -1,0 +1,14 @@
+# Supabase project config — controls how `supabase functions deploy` and
+# the Edge Functions runtime treat each function.
+
+[functions.log-provider-call]
+# Disable JWT verification at the gateway. We use the new Supabase key
+# format (sb_secret_*), which is NOT a JWT — sending it as
+# `Authorization: Bearer <sb_secret>` makes the gateway return
+# UNAUTHORIZED_INVALID_JWT_FORMAT before the function ever runs.
+#
+# The function still does its own auth internally: it reads
+# SUPABASE_SERVICE_ROLE_KEY from Deno env and uses that to insert into
+# the `provider_calls` table. RLS on that table has no public policies,
+# so writes are gated by the service-role bypass.
+verify_jwt = false

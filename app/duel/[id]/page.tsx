@@ -76,7 +76,7 @@ export default function DuelPage() {
       if (cursorRef.current) { cursorRef.current.style.left = mx+'px'; cursorRef.current.style.top = my+'px' }
     }
     const tick = () => {
-      rx += (mx-rx)*0.12; ry += (my-ry)*0.12
+      rx += (mx-rx)*0.35; ry += (my-ry)*0.35
       if (ringRef.current) { ringRef.current.style.left = rx+'px'; ringRef.current.style.top = ry+'px' }
       rafId = requestAnimationFrame(tick)
     }
@@ -134,7 +134,17 @@ export default function DuelPage() {
         vote2ModelId: typeof choice === 'number' ? duel!.slots[choice]?.id ?? null : null,
       }),
     }).catch(console.error)
-    // Mark voted
+    // Record community vote (for server-side filtering + popularity count)
+    if (userId && duel!.user_id !== userId) {
+      fetch('/api/duel/community-vote', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duelId: duel!.id,
+          voteChoice: choice === 'T' ? 'T' : String(choice),
+        }),
+      }).catch(console.error)
+    }
+    // Mark voted in localStorage (backwards compat)
     const votedKey = `voted_duels_${userId ?? 'anon'}`
     const voted = JSON.parse(localStorage.getItem(votedKey) ?? '[]') as string[]
     if (!voted.includes(duel!.id)) localStorage.setItem(votedKey, JSON.stringify([...voted, duel!.id]))
@@ -177,9 +187,9 @@ export default function DuelPage() {
   return (
     <>
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+        <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
-          <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:100000,display:'flex',gap:10}}>
+          <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:99100,display:'flex',gap:10}}>
             <a href={lightbox} download target="_blank" rel="noreferrer" title="Download"
               style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
             >↓</a>
@@ -259,7 +269,7 @@ export default function DuelPage() {
                           ? <video src={slot.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : slot.isImage
                           ? <img src={slot.text} alt="Generated" onClick={() => setLightbox(slot.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
-                          : <div className="markdown-body"><ReactMarkdown components={{a: ({href, children}) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{slot.text}</ReactMarkdown></div>
+                          : <div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>
                         }
                       </div>
                     </div>
@@ -410,7 +420,7 @@ export default function DuelPage() {
                           ? <video src={slot.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : slot.isImage
                           ? <img src={slot.text} alt="Generated" onClick={() => setLightbox(slot.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
-                          : <div className="markdown-body"><ReactMarkdown>{slot.text}</ReactMarkdown></div>
+                          : <div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>
                         }
                       </div>
                     </div>

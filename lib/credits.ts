@@ -143,6 +143,32 @@ export async function debitCredits(opts: DebitOptions): Promise<number> {
   return Number(data)
 }
 
+// ── ensureDailyGrant ──────────────────────────────────────────────────────
+
+/**
+ * Grant the user their daily free credit if they haven't already received
+ * it today (UTC). Idempotent — calling repeatedly within the same UTC
+ * calendar day is a no-op after the first call (race-safe via the SQL
+ * function's atomic UPDATE).
+ *
+ * Returns the user's current balance in cents (post-grant if granted,
+ * current otherwise — callers don't need to distinguish).
+ *
+ * Designed to be called eagerly from any auth-required entry point: auth
+ * callback, server-side credit-debiting routes (/api/duel, /api/xcreate),
+ * etc. The cost when the grant is already claimed is one round-trip + one
+ * indexed UPDATE that hits zero rows, which is cheap.
+ */
+export async function ensureDailyGrant(userId: string, amountCents = 100): Promise<number> {
+  const sb = serviceClient()
+  const { data, error } = await sb.rpc('grant_daily_credits', {
+    p_user_id:      userId,
+    p_amount_cents: amountCents,
+  })
+  if (error) throw new Error(`ensureDailyGrant failed: ${error.message}`)
+  return Number(data)
+}
+
 // ── Read helpers (server-side) ────────────────────────────────────────────
 
 /**

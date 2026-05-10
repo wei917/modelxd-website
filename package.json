@@ -3,19 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev":   "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "sync-openrouter": "tsx scripts/sync-openrouter.ts",
-    "sync-openrouter:dry": "tsx scripts/sync-openrouter.ts --dry"
+    "lint":  "next lint"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.0",
+    "@google/genai": "^1.50.1",
     "@supabase/ssr": "^0.6.0",
     "@supabase/supabase-js": "^2.49.0",
     "ai": "^6.0.0",
     "next": "^16.2.3",
+    "openai": "^6.34.0",
     "react": "^18",
     "react-dom": "^18",
     "react-markdown": "^10.1.0",
