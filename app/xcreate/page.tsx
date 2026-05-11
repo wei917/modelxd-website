@@ -1741,9 +1741,26 @@ export default function CreatePage() {
       })
     })
 
+    // Re-sign any expired Supabase signed URLs in slot.text. Stored URLs
+    // were minted with a 24h TTL, so anything older than a day comes back
+    // as a broken image without this step. Same logic as the profile
+    // page's gallery hydrate.
+    const refreshedSlots = await Promise.all(restoredSlots.map(async (slot) => {
+      if (!slot.text || typeof slot.text !== 'string') return slot
+      const parts = slot.text.split('\n')
+      const fresh = await Promise.all(parts.map(async (part: string) => {
+        const m = part.match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
+        if (!m) return part
+        const [, bucket, path] = m
+        const { data: signed } = await sb.storage.from(bucket).createSignedUrl(decodeURIComponent(path), 60 * 60 * 24)
+        return signed?.signedUrl ?? part
+      }))
+      return { ...slot, text: fresh.join('\n') }
+    }))
+
     setSelectedModels(restoredModels)
     setSlotOptions(restoredOptions)
-    setSlots(restoredSlots)
+    setSlots(refreshedSlots)
     setXcreateId(item.id)
 
     // Decide which slot to continue with.

@@ -7,14 +7,14 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
 
 const FEATURES = [
-  { key: 'xduel',  num: '01', label: 'XDUEL',    title: 'Blind Duel',   desc: 'Two anonymous models respond to your prompt. You vote blind. Then prices drop. Were you overpaying?' },
-  { key: 'vote',   num: '02', label: 'VOTE',      title: 'Community',    desc: 'Vote on archived duels. Every vote strengthens the leaderboard. Community-powered truth about every model.' },
-  { key: 'rating', num: '03', label: 'XDRATING',  title: 'Rankings',     desc: 'Quality, Value, and Stickiness — three scores per model. No benchmarks. Just real user preferences.' },
-  { key: 'create', num: '04', label: 'XCREATE',   title: 'Studio',       desc: 'One prompt. Up to 4 models. Side by side. Pick the winner and keep chatting. Stop reading reviews — see for yourself.' },
+  { key: 'xduel',       num: '01', label: 'XDUEL',       title: 'Blind Duel',   desc: 'Two anonymous models respond to your prompt. You vote blind. Then prices drop. Were you overpaying?' },
+  { key: 'create',      num: '02', label: 'XCREATE',     title: 'Studio',       desc: 'One prompt. Up to 4 models. Side by side. Pick the winner and keep chatting. Stop reading reviews — see for yourself.' },
+  { key: 'xvote',       num: '03', label: 'XVOTE',       title: 'Community',    desc: 'Vote on archived duels. Every vote strengthens the leaderboard. Community-powered truth about every model.' },
+  { key: 'leaderboard', num: '04', label: 'LEADERBOARD', title: 'Rankings',     desc: 'Quality, Value, and Stickiness — three scores per model. No benchmarks. Just real user preferences.' },
 ]
 
 const STEPS = [
-  { num: '01', title: 'Duel',          desc: 'Enter any prompt — text, image, or video' },
+  { num: '01', title: 'Duel',          desc: 'Pick a mode — text, image, or video — and enter your prompt' },
   { num: '02', title: 'Vote Blind',    desc: 'Pick the better response. No names, no bias' },
   { num: '03', title: 'Reveal Price',  desc: 'See what each model costs. Does it change things?' },
   { num: '04', title: 'Vote Again',    desc: 'Vote again with full price visibility' },
@@ -79,11 +79,11 @@ export default function Home() {
             <h1 className="prompt-title">
               Overpaying for <span>AI?!</span>
             </h1>
-            <div className="prompt-sub" style={{ maxWidth: 640, marginTop: 16 }}>
-              Blind-test AI models with XDuel. Compare 4 outputs side by side with XCreate. Find the best model for you.
+            <div className="prompt-sub" style={{ maxWidth: 720, marginTop: 16, fontSize: 18 }}>
+              XDuel or XCreate side-by-side to find your best value models.
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 16, marginTop: 40, marginBottom: 60, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, marginTop: 32, marginBottom: 0, flexWrap: 'wrap' }}>
             <button onClick={() => handleNav('/xduel')} className="btn-primary">Start XDuel →</button>
             <button onClick={() => handleNav('/xcreate')} className="btn-outline">Try XCreate →</button>
           </div>
@@ -95,15 +95,12 @@ export default function Home() {
         <div className="home-inner">
           <div className="prompt-header">
             <div className="prompt-label">What You Can Do</div>
-            <h1 className="prompt-title">Four <span>Tools</span></h1>
           </div>
           <div className="home-features-grid">
             {FEATURES.map(f => (
               <div className="home-feature" key={f.key}>
                 <div className="home-feature-num">
-                  <span style={{ color: 'var(--red)' }}>{f.num}</span>
-                  <span style={{ opacity: 0.4 }}>/</span>
-                  <span>{f.label}</span>
+                  <span style={{ color: 'var(--red)' }}>{f.label}</span>
                 </div>
                 <div className="home-feature-title">{f.title}</div>
                 <div className="home-feature-desc">{f.desc}</div>

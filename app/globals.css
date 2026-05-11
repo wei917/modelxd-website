@@ -189,8 +189,8 @@ body {
 .home-feature:hover { background: var(--surface); }
 .home-feature-num {
   font-family: var(--font-mono), monospace;
-  font-size: 10px; color: var(--muted); letter-spacing: 0.15em;
-  margin-bottom: 20px; display: flex; gap: 6px;
+  font-size: 16px; font-weight: 700; color: var(--muted); letter-spacing: 0.15em;
+  margin-bottom: 6px; display: flex; gap: 6px;
 }
 .home-feature-title {
   font-family: var(--font-display), sans-serif;
