@@ -15,6 +15,7 @@ import type {
   Attachment,
 } from './types'
 import { calcTextCost, calcImageCost, calcVideoCost } from './pricing'
+import { logResponse } from './log'
 
 let _ai: GoogleGenAI | null = null
 function ai(): GoogleGenAI {
@@ -138,13 +139,53 @@ export async function generateImage(
     contents = [{ role: 'user', parts }]
   }
 
-  const response = await ai().models.generateContent({
+  // Map the UI size ("1024x1024", "1024x1536", ...) to Gemini's image
+  // config — both an aspect ratio and an imageSize tier. Without these,
+  // the model picks its own shape regardless of what we asked for.
+  // Per docs (https://ai.google.dev/gemini-api/docs/image-generation):
+  //   responseFormat.image.aspectRatio: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5,
+  //                                    5:4, 9:16, 16:9, 21:9
+  //   responseFormat.image.imageSize:   "1K" | "2K" | "4K"
+  const { aspectRatio, imageSize } = (() => {
+    const parts = size.includes('x') ? size.split('x').map(s => parseInt(s, 10)) : []
+    const w = parts[0] || 1024
+    const h = parts[1] || 1024
+    const target = w / h
+    const choices: Array<[string, number]> = [
+      ['1:1', 1],     ['2:3', 2/3],   ['3:2', 3/2],
+      ['3:4', 3/4],   ['4:3', 4/3],   ['4:5', 4/5],   ['5:4', 5/4],
+      ['9:16', 9/16], ['16:9', 16/9], ['21:9', 21/9],
+    ]
+    let bestLabel = choices[0][0]
+    let bestDelta = Infinity
+    for (const [label, ratio] of choices) {
+      const d = Math.abs(Math.log(target) - Math.log(ratio))
+      if (d < bestDelta) { bestDelta = d; bestLabel = label }
+    }
+    // Map long-edge pixels to Google's tier names.
+    const longEdge = Math.max(w, h)
+    const tier = longEdge >= 3840 ? '4K' : longEdge >= 1536 ? '2K' : '1K'
+    return { aspectRatio: bestLabel, imageSize: tier }
+  })()
+
+  // NB: the SDK's GenerateContentConfig has a typed `imageConfig` field
+  // with `aspectRatio` and `imageSize` (see ImageConfig in node.d.ts).
+  // Some doc snippets show `responseFormat: { image: {...} }` but that
+  // path isn't in the SDK's typed surface, so it gets dropped before
+  // serialization. `imageConfig` is the field that actually reaches the
+  // wire as `image_config` in the REST payload.
+  const requestPayload: any = {
     model: model.model_name,
     contents,
     config: {
       responseModalities: ['IMAGE', 'TEXT'],
+      imageConfig: { aspectRatio, imageSize },
     },
-  })
+  }
+  console.log(`${TAG} requesting aspectRatio=${aspectRatio} imageSize=${imageSize} for size=${size}`)
+  logResponse(TAG, 'REQUEST', requestPayload)
+
+  const response = await ai().models.generateContent(requestPayload)
 
   // ── debug: dump everything Google sent back so we can map usage → cost ──
   try {

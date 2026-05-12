@@ -1965,7 +1965,7 @@ export default function CreatePage() {
                     onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChat() } }}
                     placeholder="Continue the conversation…"
                     rows={2}
-                    style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
+                    style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
                   />
                   <button onClick={sendChat} disabled={chatStreaming || !chatInput.trim()} style={{
                     padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
@@ -2016,7 +2016,7 @@ export default function CreatePage() {
                     if (!model) return (
                       <button key={i} onClick={() => !isLocked && setPickerSlot(i)}
                         disabled={isLocked}
-                        style={{ background: 'var(--surface)', border: '1px dashed var(--border2)', borderRadius: 10, padding: '0 14px', height: 56, boxSizing: 'border-box', color: 'var(--muted)', fontSize: 12, cursor: !isLocked ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: isLocked ? 0.4 : 1 }}
+                        style={{ background: '#ffffff', border: '1px dashed var(--border2)', borderRadius: 10, padding: '0 14px', height: 56, boxSizing: 'border-box', color: 'var(--muted)', fontSize: 12, cursor: !isLocked ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: isLocked ? 0.4 : 1 }}
                         onMouseEnter={e => { if (!isLocked) { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--muted)' }}
                       >
@@ -2084,7 +2084,7 @@ export default function CreatePage() {
                         {/* Model card — name + remove only. Cost estimate lives
                             in the summary row right above the prompt box, not
                             here, so the grid stays clean. */}
-                        <div style={{ background: 'var(--surface)', border: `1px solid ${color}44`, borderRadius: 10, padding: '0 14px', height: 56, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
+                        <div style={{ background: '#ffffff', border: `1px solid ${color}44`, borderRadius: 10, padding: '0 14px', height: 56, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
                           {/* Split a name like "GPT-5.4 (free)" into a bold
                               main line and a smaller muted sub-line for the
                               parenthetical variant. The sub-line may truncate
@@ -2166,7 +2166,7 @@ export default function CreatePage() {
                           const isLast = (k: typeof groupsInOrder[number]) => groupsInOrder.indexOf(k) === lastIdx
 
                           return (
-                            <div style={{ background: 'var(--surface)', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
+                            <div style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
                               {/* Mode (top of config) */}
                               {showMode && (
                                 <Group label="Mode" last={isLast('mode')}>
@@ -2549,7 +2549,7 @@ export default function CreatePage() {
                                     const urls = (slot.text ?? '').split('\n').filter(Boolean)
                                     if (urls.length <= 1) {
                                       const u = urls[0] ?? ''
-                                      return <img src={u} alt="Generated" onClick={() => setLightbox(u)} style={{ width: '100%', display: 'block', cursor: 'zoom-in' }} />
+                                      return <img src={u} alt="Generated" onClick={() => setLightbox(u)} style={{ display: 'block', cursor: 'zoom-in' }} />
                                     }
                                     const cols = urls.length === 2 ? 2 : urls.length === 3 ? 3 : 2
                                     return (

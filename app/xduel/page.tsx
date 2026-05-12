@@ -513,7 +513,7 @@ export default function XDuel() {
                           : m.isVideo && m.text
                           ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : m.isImage && m.text
-                          ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
+                          ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{borderRadius:4,display:'block',cursor:'zoom-in'}} />
                           : (m.isImage || m.isVideo) && !m.text
                           ? <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'60px 20px',color:'var(--muted2)',fontSize:13,gap:8}}>
                               <div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/>

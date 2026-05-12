@@ -7,18 +7,25 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
 
 const FEATURES = [
-  { key: 'xduel',       num: '01', label: 'XDUEL',       title: 'Blind Duel',   desc: 'Two anonymous models respond to your prompt. You vote blind. Then prices drop. Were you overpaying?' },
-  { key: 'create',      num: '02', label: 'XCREATE',     title: 'Studio',       desc: 'One prompt. Up to 4 models. Side by side. Pick the winner and keep chatting. Stop reading reviews — see for yourself.' },
-  { key: 'xvote',       num: '03', label: 'XVOTE',       title: 'Community',    desc: 'Vote on archived duels. Every vote strengthens the leaderboard. Community-powered truth about every model.' },
-  { key: 'leaderboard', num: '04', label: 'LEADERBOARD', title: 'Rankings',     desc: 'Quality, Value, and Stickiness — three scores per model. No benchmarks. Just real user preferences.' },
+  { key: 'xduel',       num: '01', label: 'XDUEL',       title: 'Blind Duel',  desc: 'Blind-test two AI models. Vote before and after the price reveal.' },
+  { key: 'create',      num: '02', label: 'XCREATE',     title: 'Studio',      desc: 'One prompt. Up to 4 models side by side.' },
+  { key: 'xvote',       num: '03', label: 'XVOTE',       title: 'Community',   desc: 'Skip generation. Just compare.' },
+  { key: 'leaderboard', num: '04', label: 'LEADERBOARD', title: 'Rankings',    desc: 'See which AI models perform best.' },
 ]
 
 const STEPS = [
-  { num: '01', title: 'Duel',          desc: 'Pick a mode — text, image, or video — and enter your prompt' },
-  { num: '02', title: 'Vote Blind',    desc: 'Pick the better response. No names, no bias' },
-  { num: '03', title: 'Reveal Price',  desc: 'See what each model costs. Does it change things?' },
-  { num: '04', title: 'Vote Again',    desc: 'Vote again with full price visibility' },
-  { num: '05', title: 'Unmask',        desc: 'Models revealed. See your savings' },
+  { num: '01', title: 'One prompt, see two AI model responses side by side' },
+  { num: '02', title: 'Vote blindly' },
+  { num: '03', title: 'Reveal price' },
+  { num: '04', title: 'Vote again' },
+  { num: '05', title: 'Reveal the models' },
+]
+
+const XCREATE_STEPS = [
+  { num: '01', title: 'Select up to 4 models' },
+  { num: '02', title: 'Enter one prompt' },
+  { num: '03', title: 'View the results side by side' },
+  { num: '04', title: 'Pick your favorite to continue' },
 ]
 
 const MODES = [
@@ -77,7 +84,7 @@ export default function Home() {
           <div className="prompt-header">
             <div className="prompt-label">Model<span style={{ color: 'var(--red)' }}>XD</span></div>
             <h1 className="prompt-title">
-              Overpaying for <span>AI?!</span>
+              Overpaying for AI?! <span>XD</span>
             </h1>
             <div className="prompt-sub" style={{ maxWidth: 720, marginTop: 16, fontSize: 18 }}>
               XDuel or XCreate side-by-side to find your best value models.
@@ -94,7 +101,7 @@ export default function Home() {
       <div className="home-section">
         <div className="home-inner">
           <div className="prompt-header">
-            <div className="prompt-label">What You Can Do</div>
+            <div className="prompt-label">What You Can Do Here</div>
           </div>
           <div className="home-features-grid">
             {FEATURES.map(f => (
@@ -124,12 +131,48 @@ export default function Home() {
                   <div className="home-step-num">{s.num}</div>
                   <div style={{ flex: 1 }}>
                     <div className="home-step-title">{s.title}</div>
-                    <div className="home-step-desc">{s.desc}</div>
                   </div>
                 </div>
                 {i < STEPS.length - 1 && <div className="home-step-line" />}
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── How XCreate Works ── */}
+      <div className="home-section reveal">
+        <div className="home-inner">
+          <div className="prompt-header">
+            <div className="prompt-label">XCreate Flow</div>
+          </div>
+          <div className="home-xcreate-grid">
+            <div className="home-steps">
+              {XCREATE_STEPS.map((s, i) => (
+                <div className="home-step" key={s.num}>
+                  <div className="home-step-row">
+                    <div className="home-step-num">{s.num}</div>
+                    <div style={{ flex: 1 }}>
+                      <div className="home-step-title">{s.title}</div>
+                    </div>
+                  </div>
+                  {i < XCREATE_STEPS.length - 1 && <div className="home-step-line" />}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <img
+                src="/xcreate-preview.png"
+                alt="XCreate — four AI models generating the same prompt side by side"
+                style={{
+                  maxWidth: '100%',
+                  height: 'auto',
+                  borderRadius: 12,
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
