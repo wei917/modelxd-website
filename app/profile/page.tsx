@@ -25,7 +25,7 @@ interface Profile {
   avatar_url: string | null
 }
 
-type Tab = 'duels' | 'xcreates' | 'votes' | 'stats' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -84,7 +84,6 @@ export default function ProfilePage() {
   // tabs effect's deps means setting `xcreateRefreshTick + 1` triggers
   // exactly one new fetch without disturbing filter/page state.
   const [xcreateRefreshTick, setXcreateRefreshTick] = useState(0)
-  const [stats,       setStats]       = useState<any>(null)
   const [deleting,    setDeleting]    = useState<string | null>(null)
   const [copyId,      setCopyId]      = useState<string | null>(null)
   const [deleteModal, setDeleteModal] = useState<{ type: 'duel' | 'xcreate'; id: string; prompt: string } | null>(null)
@@ -275,15 +274,6 @@ export default function ProfilePage() {
             setVotes(data ?? []); markLoaded('votes')
           }
         })
-    } else if (tab === 'stats') {
-      Promise.all([
-        client.from('xcreates').select('id', { count: 'exact' }).eq('user_id', user.id),
-        client.from('duels').select('id', { count: 'exact' }).eq('user_id', user.id),
-        client.from('duel_votes').select('id', { count: 'exact' }).eq('user_id', user.id)
-          .then(r => r.error ? { count: 0 } : r),  // fallback if table missing
-      ]).then(([c, d, v]) => {
-        setStats({ xcreates: c.count ?? 0, duels: d.count ?? 0, votes: v.count ?? 0 })
-      })
     } else if (tab === 'activities') {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
       client.from('credit_transactions').select('*').eq('user_id', user.id)
@@ -597,7 +587,7 @@ export default function ProfilePage() {
             display: 'flex', gap: 0, marginBottom: 32,
             borderBottom: '1px solid var(--border)',
           }}>
-            {([['duels', '⚔ XDuels'], ['xcreates', '✦ XCreates'], ['votes', '⊞ XVotes'], ['activities', '◈ Activities'], ['stats', '◎ Stats']] as [Tab, string][]).map(([t, label]) => {
+            {([['duels', '⚔ XDuels'], ['xcreates', '✦ XCreates'], ['votes', '⊞ XVotes'], ['activities', '◈ Activities']] as [Tab, string][]).map(([t, label]) => {
               const active = tab === t
               return (
                 <button
@@ -1036,50 +1026,6 @@ export default function ProfilePage() {
                     )
                   })}
                 </div>
-          )}
-
-          {/* ── Stats tab ──
-              Three-column grid of numeric callouts in the display font.
-              Each card has a 3px accent edge in its category color (matching
-              the balance card treatment above) so the categories read as
-              related but distinct. */}
-          {tab === 'stats' && stats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-              {[
-                { label: 'XDuels Created', value: stats.duels,    color: 'var(--red)',  num: '01' },
-                { label: 'XCreates',       value: stats.xcreates, color: '#8b5cf6',     num: '02' },
-                { label: 'Votes Cast',     value: stats.votes,    color: 'var(--green)', num: '03' },
-              ].map(s => (
-                <div
-                  key={s.label}
-                  style={{
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border2)',
-                    borderTop: `3px solid ${s.color}`,
-                    borderRadius: '2px 2px 10px 10px',
-                    padding: '28px 24px 24px',
-                    position: 'relative',
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', top: 14, right: 16,
-                    fontFamily: 'var(--font-mono), monospace',
-                    fontSize: 9, color: 'var(--muted)', letterSpacing: '0.15em',
-                  }}>{s.num}</div>
-                  <div style={{
-                    fontFamily: 'var(--font-display), sans-serif',
-                    fontSize: 56, fontWeight: 900, color: s.color,
-                    lineHeight: 0.95, letterSpacing: '-0.03em',
-                    marginBottom: 12,
-                  }}>{s.value}</div>
-                  <div style={{
-                    fontSize: 10, color: 'var(--muted2)',
-                    fontFamily: 'var(--font-mono), monospace',
-                    letterSpacing: '0.15em', textTransform: 'uppercase',
-                  }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
           )}
 
         </div>

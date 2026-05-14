@@ -77,6 +77,26 @@ export default function XDuel() {
   const [showReveal, setShowReveal] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
 
+  // Daily XDuel quota state. XDuel is free for users but ModelXD pays
+  // the provider bills — so the server caps usage per mode per UTC day.
+  // We mirror the cap in the UI so users see "1 / 3 image XDuels used
+  // today" before clicking Start. Refetched after each successful run
+  // and after a 429.
+  type Quota = {
+    limits: { text: number; image: number; video: number }
+    used:   { text: number; image: number; video: number }
+  }
+  const [quota, setQuota] = useState<Quota | null>(null)
+  const fetchQuota = async () => {
+    try {
+      const r = await fetch('/api/duel/quota')
+      if (!r.ok) return
+      const j = await r.json()
+      setQuota({ limits: j.limits, used: j.used })
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { fetchQuota() }, [])
+
   const bothDone    = models.length > 0 && models.every(m => m.done)
   const anyStreaming = models.some(m => m.streaming)
 
@@ -128,8 +148,18 @@ export default function XDuel() {
       })
 
       if (!res.ok || !res.body) {
-        const err = await res.text()
-        throw new Error(err || `Server error ${res.status}`)
+        // Try to parse a structured JSON error first so we can show a
+        // friendlier message for known cases (quota, unverified email).
+        const text = await res.text()
+        let parsed: { error?: string; message?: string; mode?: string; limit?: number } | null = null
+        try { parsed = JSON.parse(text) } catch { /* not JSON */ }
+        if (res.status === 429 && parsed?.error === 'daily_limit_reached') {
+          throw new Error(parsed.message ?? `Daily free ${parsed.mode ?? ''} XDuel limit reached. Resets at UTC midnight.`)
+        }
+        if (res.status === 403 && parsed?.error === 'email_not_verified') {
+          throw new Error(parsed.message ?? 'Please verify your email before using XDuel.')
+        }
+        throw new Error(text || `Server error ${res.status}`)
       }
 
       const reader  = res.body.getReader()
@@ -261,7 +291,14 @@ export default function XDuel() {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       setApiError(msg)
       setLoading(false)
+      // Quota state may have shifted (either we consumed a slot before
+      // failing, or we hit the cap). Refresh so the UI matches reality.
+      fetchQuota()
+      return
     }
+    // Refresh quota after a successful duel so the counter advances
+    // in the UI without requiring a page reload.
+    fetchQuota()
   }
 
   const castVote = (choice: Vote) => {
@@ -401,6 +438,27 @@ export default function XDuel() {
                   </button>
                 ))}
               </div>
+
+              {/* Daily XDuel quota readout. XDuel runs on the house, so
+                  we cap per mode per UTC day. */}
+              {quota && (() => {
+                const used  = quota.used[mode]
+                const limit = quota.limits[mode]
+                const left  = Math.max(0, limit - used)
+                const atCap = left === 0
+                return (
+                  <div style={{
+                    margin: '8px 0 18px',
+                    fontFamily: 'var(--font-mono), monospace',
+                    fontSize: 11, letterSpacing: '0.08em',
+                    color: atCap ? 'var(--red)' : 'var(--muted2)',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <span>{used} / {limit} FREE {mode.toUpperCase()} XDUELS TODAY</span>
+                    {atCap && <span>· RESETS AT UTC MIDNIGHT</span>}
+                  </div>
+                )
+              })()}
 
               <div className="prompt-box">
                 <textarea

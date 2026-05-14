@@ -234,6 +234,15 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Verified-user gate. Google OAuth auto-confirms email at sign-up, so
+  // this is a no-op today; protects future email/password flows.
+  if (!user.email_confirmed_at) {
+    return Response.json(
+      { error: 'email_not_verified', message: 'Please verify your email before using XCreate.' },
+      { status: 403 },
+    )
+  }
+
   // Daily $1 credit grant — handles users who stayed logged in across the
   // UTC-midnight boundary and never went through /auth/callback today.
   // Idempotent within the same UTC day. Fire-and-forget — we don't block

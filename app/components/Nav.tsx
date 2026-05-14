@@ -37,6 +37,24 @@ export default function Nav() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Daily $1 grant — fire once per UTC day per browser. The server
+  // grant_daily_credits function is idempotent so duplicate POSTs are
+  // safe, but we gate on localStorage to keep the chatter down on
+  // every page load. The key is per-user so a different account on
+  // the same browser still gets its grant. Cleared automatically on
+  // logout (different user.id → fresh check).
+  useEffect(() => {
+    if (!user) return
+    if (typeof window === 'undefined') return
+    const todayUtc = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    const key = `modelxd:dailyGrant:${user.id}`
+    const last = window.localStorage.getItem(key)
+    if (last === todayUtc) return
+    fetch('/api/credits/ensure-daily', { method: 'POST' })
+      .then(r => r.ok ? window.localStorage.setItem(key, todayUtc) : null)
+      .catch(() => {})
+  }, [user?.id])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.reload()

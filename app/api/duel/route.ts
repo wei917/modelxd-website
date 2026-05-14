@@ -228,6 +228,17 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Verified-user gate: block anyone whose email isn't confirmed.
+  // Google OAuth (the only sign-in path today) auto-confirms email at
+  // login, so this is effectively a no-op now — but it guards against
+  // any future email/password / magic-link flow we add.
+  if (!user.email_confirmed_at) {
+    return Response.json(
+      { error: 'email_not_verified', message: 'Please verify your email before using XDuel.' },
+      { status: 403 },
+    )
+  }
+
   // Daily $1 credit grant for users who crossed UTC midnight while logged
   // in (auth callback only fires on fresh sign-in). Idempotent and
   // fire-and-forget — never blocks the duel.
@@ -252,20 +263,43 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
   }
 
+  // Quota gate — XDuel is free for the user but ModelXD pays the bill,
+  // so each mode has its own daily cap (see DUEL_LIMITS).
+  // Atomic check-and-increment: if the user is over their cap for this
+  // mode, returns -1 and we 429 immediately. On any post-quota failure
+  // below we refund the slot so the user isn't penalized.
+  if (mode !== 'text' && mode !== 'image' && mode !== 'video') {
+    return Response.json({ error: `Invalid mode: ${mode}` }, { status: 400 })
+  }
+  const { consumeDuelQuota, refundDuelQuota, DUEL_LIMITS } = await import('@/lib/duel-quota')
+  const usedAfter = await consumeDuelQuota(user.id, mode as 'text' | 'image' | 'video')
+  if (usedAfter < 0) {
+    return Response.json(
+      {
+        error:   'daily_limit_reached',
+        mode,
+        limit:   DUEL_LIMITS[mode as 'text' | 'image' | 'video'],
+        message: `You've used today's free ${mode} XDuel${DUEL_LIMITS[mode as 'text' | 'image' | 'video'] === 1 ? '' : 's'}. Resets at UTC midnight.`,
+      },
+      { status: 429 },
+    )
+  }
+  const refundQuota = () => refundDuelQuota(user.id, mode as 'text' | 'image' | 'video').catch(() => {})
+
   const n = Math.min(Math.max(count, 2), 4)
 
   // Load + pick models
   let pool: ModelInfo[]
   try { pool = await getModelsByMode(mode) }
-  catch (err) { return Response.json({ error: String(err) }, { status: 400 }) }
-  if (pool.length < 2) return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
+  catch (err) { refundQuota(); return Response.json({ error: String(err) }, { status: 400 }) }
+  if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
   // Filter out models that require image input when user has no attachment
   const hasAttachment = !!attachmentInput?.storagePath
   if (!hasAttachment) {
     pool = pool.filter(m => !requiresAttachment(m))
   }
-  if (pool.length < 2) return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 })
+  if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
   const models = shuffle(pool).slice(0, n)
   const duelId = crypto.randomUUID()
