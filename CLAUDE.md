@@ -31,21 +31,25 @@ app/
 │   ├── AuthModal.tsx           # Fullscreen login overlay (Google OAuth)
 │   └── AttachmentButton.tsx    # File upload for prompts
 ├── xduel/page.tsx              # XDuel — the core 5-step blind comparison flow
-├── vote/page.tsx               # XVote — vote on archived duels (route stays /vote, branded as XVote)
+├── xvote/page.tsx              # XVote — vote on archived duels
 ├── xcreate/page.tsx            # XCreate — multi-model prompt runner (text/image/video)
 ├── leaderboard/page.tsx        # Unified Leaderboard — catalog + XD rankings
 ├── feed/page.tsx               # Public duel feed
 ├── profile/page.tsx            # User profile + duel history
 ├── profile/[userId]/page.tsx   # Public profile view
-├── duel/[id]/page.tsx          # Individual duel permalink
+├── xduel/[id]/page.tsx         # Individual duel permalink
+├── duel/[id]/page.tsx          # 308 redirect to /xduel/[id] (legacy)
+├── vote/page.tsx               # 308 redirect to /xvote (legacy)
 ├── models/page.tsx             # Redirect to /leaderboard (legacy URL)
 ├── methodology/page.tsx        # How XD scoring works
 ├── auth/callback/route.ts      # OAuth callback — exchanges code, reads auth_redirect cookie
 ├── login/                      # Login page (legacy, AuthModal is primary)
 ├── admin/models/               # Admin-only catalog editor — table + form for ai_models
 └── api/
-    ├── duel/route.ts           # POST — runs XDuel (picks random models, streams SSE)
-    ├── duel/vote/route.ts      # POST — saves vote1/vote2 to DB
+    ├── xduel/route.ts          # POST — runs XDuel (picks random models, streams SSE)
+    ├── xduel/vote/route.ts     # POST — saves vote1/vote2 to DB
+    ├── xduel/quota/route.ts    # GET — today's per-mode XDuel quotas + usage
+    ├── xduel/community-vote/route.ts  # POST — community vote (from /xvote)
     ├── leaderboard/route.ts    # GET — Bradley-Terry MLE ratings from duel/xcreate votes
     ├── xcreate/route.ts        # POST — single-shot multi-model generation
     ├── xcreate/chat/route.ts   # POST — chat continuation (SSE streaming)
@@ -316,7 +320,7 @@ The old separate `/models` catalog was merged into Leaderboard in May 2026;
 
 1. **Catalog management moved to admin UI** — All sync scripts (`lib/sync-{openai,google,dashscope}.ts`, CLI wrappers, the Vercel cron route, the legacy `populate-release-dates` route) deleted. `ai_models` is now hand-edited at `/admin/models`. Schema is fixed: see `docs/ai_models-schema.md`.
 2. **Models merged into Leaderboard** — The standalone `/models` catalog page was merged into `/leaderboard` so the latter is now the single destination for browsing models. The unified page lists every enabled model with an XD Score column (blank for unvoted), and inherits the catalog's search, provider filter, mode filter, and sortable headers. Default sort is XD Score DESC. Nav drops to 5 items (HOME · XDUEL · XCREATE · XVOTE · LEADERBOARD). `/models` server-redirects to `/leaderboard` to preserve old links. XCreate's "BROWSE ALL MODELS →" CTA now points to `/leaderboard`. See "Leaderboard" section.
-3. **Vote → XVote rebrand** — Nav label and `/vote` page header now read "XVote" to match the X-family (XDuel/XCreate). Route stays `/vote`. Nav order: XDUEL · XCREATE · XVOTE · LEADERBOARD (the explicit Home link was removed; the logo doubles as home). Verb usage of "vote" in body copy stays unchanged.
+3. **Vote → XVote rebrand** — Nav label and page header read "XVote" to match the X-family (XDuel/XCreate). Route renamed `/vote` → `/xvote`; old URL 308-redirects. Permalink renamed `/duel/<id>` → `/xduel/<id>`; old URL 308-redirects. API paths renamed `/api/duel/*` → `/api/xduel/*` (internal-only callers updated in the same commit). Nav order: XDUEL · XCREATE · XVOTE · LEADERBOARD. Verb usage of "vote" in body copy stays unchanged.
 4. **Nav: removed dimming on protected links** — XDuel/XCreate/XVote render at full opacity for logged-out users. Clicking still triggers the auth modal.
 5. **OpenRouter removed entirely** — all Alibaba text models now go direct through DashScope's OpenAI-compatible endpoint. Files deleted: `lib/providers/openrouter.ts`, `lib/sync-openrouter.ts`, `scripts/sync-openrouter.ts`, `app/api/dev/sync-openrouter/route.ts`. SQL migration: `supabase/21_drop_openrouter.sql`
 6. **Release dates** — now hand-entered through `/admin/models` like everything else.
@@ -419,7 +423,7 @@ The router (`lib/providers/index.ts`) accepts an optional `CallContext`
 param (`{ userId? }`) on `streamText`, `generateImage`, `generateVideo`. Route
 handlers pass it explicitly:
 
-- `app/api/duel/route.ts` — `runSlot()` takes `userId` and forwards it.
+- `app/api/xduel/route.ts` — `runSlot()` takes `userId` and forwards it.
 - `app/api/xcreate/route.ts` — `runSlot()` already had `userId`; now forwards it.
 - `app/api/xcreate/chat/route.ts` — passes `{ userId: user.id }` directly.
 
