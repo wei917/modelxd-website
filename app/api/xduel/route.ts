@@ -1,4 +1,4 @@
-// app/api/duel/route.ts
+// app/api/xduel/route.ts
 // XDuel: randomly pick N models, run in parallel, stream results via SSE
 
 export const runtime     = 'nodejs'

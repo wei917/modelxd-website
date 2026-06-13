@@ -155,7 +155,7 @@ export async function debitCredits(opts: DebitOptions): Promise<number> {
  * current otherwise — callers don't need to distinguish).
  *
  * Designed to be called eagerly from any auth-required entry point: auth
- * callback, server-side credit-debiting routes (/api/duel, /api/xcreate),
+ * callback, server-side credit-debiting routes (/api/xduel, /api/xcreate),
  * etc. The cost when the grant is already claimed is one round-trip + one
  * indexed UPDATE that hits zero rows, which is cheap.
  */

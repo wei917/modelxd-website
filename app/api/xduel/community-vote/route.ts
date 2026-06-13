@@ -1,4 +1,4 @@
-// app/api/duel/community-vote/route.ts
+// app/api/xduel/community-vote/route.ts
 // Records that a logged-in user voted on someone else's duel.
 // Inserts into duel_votes (the trigger bumps duels.community_vote_count).
 // Also returns the list of duel IDs this user has already voted on (for

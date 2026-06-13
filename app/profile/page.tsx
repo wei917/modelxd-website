@@ -180,7 +180,7 @@ export default function ProfilePage() {
   // Copy permalink
   const handleShare = (type: 'duel' | 'xcreate', id: string) => {
     const url = type === 'duel'
-      ? `${window.location.origin}/duel/${id}`
+      ? `${window.location.origin}/xduel/${id}`
       : `${window.location.origin}/xcreate?id=${id}`
     navigator.clipboard.writeText(url).then(() => {
       setCopyId(id)
@@ -644,7 +644,7 @@ export default function ProfilePage() {
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'translateY(0)' }}
                       >
                         {preview && (
-                          <a href={`/duel/${item.id}`} style={{ textDecoration: 'none' }}>
+                          <a href={`/xduel/${item.id}`} style={{ textDecoration: 'none' }}>
                             {preview.isVideo
                               ? <video src={preview.text} muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
                               : preview.isImage
@@ -897,7 +897,7 @@ export default function ProfilePage() {
                     const duel = v.duels
                     const isTie = v.vote_choice === 'T'
                     return (
-                      <a key={v.id} href={`/duel/${v.duel_id}`} style={{ textDecoration: 'none' }}>
+                      <a key={v.id} href={`/xduel/${v.duel_id}`} style={{ textDecoration: 'none' }}>
                         <div
                           style={{
                             background: 'var(--surface)', border: '1px solid var(--border2)',

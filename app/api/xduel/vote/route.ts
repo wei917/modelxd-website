@@ -1,4 +1,4 @@
-// app/api/duel/vote/route.ts
+// app/api/xduel/vote/route.ts
 // Saves blind vote (vote1) and informed vote (vote2) to the duels table
 
 import { NextRequest, NextResponse } from 'next/server'

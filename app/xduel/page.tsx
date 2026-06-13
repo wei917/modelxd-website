@@ -89,7 +89,7 @@ export default function XDuel() {
   const [quota, setQuota] = useState<Quota | null>(null)
   const fetchQuota = async () => {
     try {
-      const r = await fetch('/api/duel/quota')
+      const r = await fetch('/api/xduel/quota')
       if (!r.ok) return
       const j = await r.json()
       setQuota({ limits: j.limits, used: j.used })
@@ -141,7 +141,7 @@ export default function XDuel() {
     goStep(2)
 
     try {
-      const res = await fetch('/api/duel', {
+      const res = await fetch('/api/xduel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, mode, count, attachment: attachments[0] ? { storagePath: attachments[0].storagePath, bucket: attachments[0].bucket, mediaType: attachments[0].mediaType, fileName: attachments[0].fileName, fileSize: attachments[0].fileSize } : null }),
@@ -304,7 +304,7 @@ export default function XDuel() {
   const castVote = (choice: Vote) => {
     setVote1(choice)
     setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
-    if (duelId) fetch('/api/duel/vote', {
+    if (duelId) fetch('/api/xduel/vote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         duelId,
@@ -316,7 +316,7 @@ export default function XDuel() {
 
   const castRevote = (choice: Vote) => {
     setVote2(choice)
-    if (duelId) fetch('/api/duel/vote', {
+    if (duelId) fetch('/api/xduel/vote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         duelId,

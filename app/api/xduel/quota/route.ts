@@ -1,4 +1,4 @@
-// app/api/duel/quota/route.ts
+// app/api/xduel/quota/route.ts
 //
 // Returns the signed-in user's XDuel quota usage for today (UTC) along
 // with the configured per-mode caps, so the UI can show "1 / 3 image
@@ -27,7 +27,7 @@ export async function GET() {
     .maybeSingle()
 
   if (error) {
-    console.warn('[api/duel/quota] read failed:', error.message)
+    console.warn('[api/xduel/quota] read failed:', error.message)
     // Don't 500 — return zeros so the UI degrades gracefully.
   }
 

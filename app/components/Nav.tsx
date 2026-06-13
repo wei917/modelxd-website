@@ -11,7 +11,7 @@ import { useAuthModal } from '../../lib/AuthModalContext'
 const NAV_LINKS = [
   { href: '/xduel',       label: 'XDuel',        protected: true  },
   { href: '/xcreate',     label: 'XCreate',      protected: true  },
-  { href: '/vote',        label: 'XVote',        protected: true  },
+  { href: '/xvote',       label: 'XVote',        protected: true  },
   { href: '/leaderboard', label: 'Leaderboard',  protected: false },
 ]
 
