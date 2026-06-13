@@ -289,7 +289,6 @@ body {
 .provider-dot.google    { background: var(--provider-google); }
 .provider-dot.anthropic { background: var(--provider-anthropic); }
 .provider-dot.alibaba   { background: var(--provider-alibaba); }
-.provider-dot.xai       { background: #6b7280; }   /* deprecated; kept for legacy rows */
 
 /* ── Provider stripe — top accent line on XCreate result cards ── */
 .provider-stripe {
@@ -302,7 +301,6 @@ body {
 .provider-stripe.google    { background: var(--provider-google); }
 .provider-stripe.anthropic { background: var(--provider-anthropic); }
 .provider-stripe.alibaba   { background: var(--provider-alibaba); }
-.provider-stripe.xai       { background: #6b7280; }
 
 /* ── Streaming pulse — animated dot on cards while a slot is generating ── */
 @keyframes xc-pulse {

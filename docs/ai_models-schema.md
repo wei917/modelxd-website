@@ -9,14 +9,14 @@ Authoritative reference for the post-migration `ai_models` table. Use this when 
 | column | type | nullable | populated when | notes |
 |---|---|---|---|---|
 | `id` | `uuid` | NOT NULL (default `gen_random_uuid()`) | always | primary key. Don't write this on insert; let Postgres generate it. |
-| `provider` | `text` | NOT NULL | always | One of: `openai`, `google`, `xai`, `alibaba`. Used everywhere as a discriminator. Add a new value here only when the provider's runtime support is also wired up in `lib/providers/`. |
+| `provider` | `text` | NOT NULL | always | One of: `openai`, `google`, `alibaba`. Used everywhere as a discriminator. Add a new value here only when the provider's runtime support is also wired up in `lib/providers/`. |
 | `model_name` | `text` | NOT NULL | always | Exact API id used to call the model (e.g. `gpt-5.4`, `gemini-3.1-pro-preview`, `wan2.7-i2v`). Together with `provider` this is the natural key — sync upserts use `ON CONFLICT (provider, model_name)`. |
 | `display_name` | `text` | NOT NULL | always | Human-facing label shown in the UI (e.g. `GPT-5.4 Pro`, `Nano Banana 2`, `Wan 2.7 I2V`). Should be short — fits in a leaderboard cell. |
 | `enabled` | `bool` | NOT NULL (default `true`) | always | Only `enabled = true` rows are picked for duels and offered in XCreate. Use this to soft-hide deprecated models without losing their historical vote data. |
 | `is_popular` | `bool` | NOT NULL (default `false`) | always | Drives the **POPULAR** badge on the leaderboard. Only set on the headline model per provider per mode. |
 | `created_at` | `timestamptz` | NOT NULL (default `now()`) | auto | Row creation. Don't set explicitly. |
 | `updated_at` | `timestamptz` | NOT NULL (default `now()`) | auto / on upsert | Update this whenever you touch a row. The sync scripts set it to `now()`. |
-| `released_at` | `timestamptz` | nullable | mostly | When this exact model variant became publicly available. Month-precision is fine (use the 1st of the month). For OpenAI/xAI this comes from each provider's `/v1/models` `created` field; for Google it's scraped from the docs `Latest update` field; for DashScope it's hardcoded for the video models the API doesn't list. Null is acceptable for legacy/deprecated rows. |
+| `released_at` | `timestamptz` | nullable | mostly | When this exact model variant became publicly available. Month-precision is fine (use the 1st of the month). Hand-entered through `/admin/models`. Null is acceptable for legacy/deprecated rows. |
 | `input_modalities` | `text[]` | NOT NULL | always | What the model **accepts**. Subset of `['text', 'image', 'video', 'audio']`. List a modality here **only if it's required** — purely text-prompted image generators have `['text']`, not `['text', 'image']`. The duel route uses this to decide whether a model needs an attachment. |
 | `output_modalities` | `text[]` | NOT NULL | always | What the model **generates**. One of `['text']`, `['image']`, `['video']`, or `['text','image']` (for image models that may also return text). This is what `getModelsByMode()` queries — it's the canonical mode discriminator. |
 | `tags` | `text[]` | NOT NULL (default `'{}'`) | always | Free-form labels: `'vision'`, `'reasoning'`, `'image-edit'`, `'video-i2v'`, etc. Used for filtering and provider-specific behavior. Empty array is fine. |

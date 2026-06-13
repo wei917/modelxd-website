@@ -2414,7 +2414,14 @@ export default function CreatePage() {
                                        : undefined
                     return (
                   <div className="prompt-actions">
-                    <AttachmentButton attachments={attachments} onChange={setAttachments} disabled={isLocked} context="xcreate" multiple={true} accept={attachAccept} />
+                    {/* Attachments only render outside text mode. In
+                        text mode the run is text-in → text-out, so an
+                        attachment would be silently ignored by most
+                        selected models. Image / video modes still allow
+                        attachments per the slot's input shape. */}
+                    {mode !== 'text' && (
+                      <AttachmentButton attachments={attachments} onChange={setAttachments} disabled={isLocked} context="xcreate" multiple={true} accept={attachAccept} />
+                    )}
                     <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
                     {totalEstDollars != null && phase !== 'generating' && (
                       <span

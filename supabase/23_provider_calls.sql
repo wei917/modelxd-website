@@ -26,7 +26,7 @@ create table if not exists provider_calls (
 
   -- Request descriptors (present on both events for query convenience —
   -- no join needed to ask "how many image calls did Google get today").
-  provider      text        not null     check (provider in ('openai','google','xai','alibaba')),
+  provider      text        not null     check (provider in ('openai','google','alibaba')),
   model_name    text        not null,                            -- API id, e.g. 'gpt-5.4'
   model_id      uuid        references ai_models(id) on delete set null,
   mode          text        not null     check (mode in ('text','image','video')),

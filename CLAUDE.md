@@ -9,7 +9,7 @@ ModelXD (modelxd.com) is an AI model comparison platform. Users run "duels" betw
 - **Framework**: Next.js 14 App Router (React 18)
 - **Hosting**: Vercel
 - **Database + Auth**: Supabase (PostgreSQL + Google OAuth)
-- **AI Providers**: OpenAI API, Google Gemini API, xAI (Grok) API, Alibaba DashScope API
+- **AI Providers**: OpenAI API, Google Gemini API, Alibaba DashScope API
 - **Styling**: CSS variables in `app/globals.css`, inline styles. Light theme only (no dark mode).
 - **Fonts**: Barlow (body/UI), Barlow Condensed (display headings), JetBrains Mono (code/scores). CSS vars: `--font-body`, `--font-display`, `--font-mono`
 
@@ -62,7 +62,6 @@ lib/
 │   ├── index.ts                # Provider router: dispatches to correct provider
 │   ├── openai.ts               # OpenAI: text (Responses API streaming), image
 │   ├── google.ts               # Google: text (generateContentStream), image
-│   ├── xai.ts                  # xAI/Grok: text (Chat Completions), image
 │   ├── alibaba.ts              # Alibaba DashScope: text, image, video
 │   └── log.ts                  # Logging helper (strips binary data)
 ├── supabase-client.ts          # Browser Supabase client
@@ -111,8 +110,8 @@ supabase/
 ## Database: ai_models Table
 
 Key columns:
-- `provider`: 'openai' | 'google' | 'xai' | 'alibaba' (OpenRouter was removed — all models are direct-provider now)
-- `released_at`: timestamp — when the model was released. Populated by sync scripts (OpenAI/xAI auto-fetch from `/v1/models`; Google scrapes the docs page; DashScope uses hardcoded dates).
+- `provider`: 'openai' | 'google' | 'alibaba' (xAI and OpenRouter removed — all models are direct-provider now)
+- `released_at`: timestamp — when the model was released. Hand-entered through `/admin/models`.
 - `model_name`: exact API string (e.g., 'gpt-5.4', 'gemini-3.1-pro-preview')
 - `name`: display name
 - `input_modalities`: what the model accepts ['text', 'image', 'video']
@@ -186,16 +185,6 @@ Key columns:
 - **HappyHorse 1.0**: Alibaba's top-ranked video model. 15B params, native 1080p, 3-15s, joint video+audio. Pricing: $0.14/sec (720p), $0.24/sec (1080p)
 - Catalog management: rows in `ai_models` are managed manually via `/admin/models`.
 
-## xAI Provider Notes
-
-- **Text**: Direct xAI API using OpenAI SDK with custom baseURL (provider='xai')
-- Endpoint: `POST https://api.x.ai/v1/chat/completions` (OpenAI-compatible)
-- Streaming via SSE with `stream: true`
-- **Image**: Uses xAI Images API (provider='xai')
-- Endpoint: `POST https://api.x.ai/v1/images/generations`
-- Image editing: `POST https://api.x.ai/v1/images/edits`
-- Catalog management: rows in `ai_models` are managed manually via `/admin/models`.
-
 ## Admin
 
 There's a hidden admin catalog editor at **`/admin/models`** for hand-curating
@@ -252,7 +241,6 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 SUPABASE_SECRET_KEY=sb_secret_xxx
 OPENAI_API_KEY=sk-xxx
 GOOGLE_AI_API_KEY=xxx
-XAI_API_KEY=xai-xxx                   # xAI (Grok) — text + image generation
 DASHSCOPE_API_KEY=sk-xxx              # Alibaba DashScope — image/video generation
 DASHSCOPE_BASE_URL=                   # Optional; defaults to https://dashscope-intl.aliyuncs.com
 
@@ -272,14 +260,14 @@ npx tsc --noEmit         # Type check (run before packaging)
 
 The `ai_models` table is hand-curated through the **`/admin/models`** UI.
 There are no automated sync scripts — the previous Playwright-scraping
-+ API-discovery infrastructure (`lib/sync-{openai,google,xai,dashscope}.ts`,
++ API-discovery infrastructure (`lib/sync-{openai,google,dashscope}.ts`,
 the matching CLI wrappers in `scripts/`, and the `app/api/cron/sync-models`
 Vercel cron) was removed in May 2026 in favor of hand-curation. Reasons:
 
 - **Pricing is small data, slow to change.** The full surfaced catalog is
   ~50–60 rows across four providers, updated maybe a handful of times
   per quarter. Manual entry is faster than maintaining scrapers.
-- **No major provider exposes a pricing API.** OpenAI, Google, xAI,
+- **No major provider exposes a pricing API.** OpenAI, Google, and
   Alibaba all publish prices as docs pages. Scrapers break when those
   pages restructure, and silent breakage produced wrong prices on the
   leaderboard.
@@ -326,7 +314,7 @@ The old separate `/models` catalog was merged into Leaderboard in May 2026;
 
 ## Recent Major Changes (May 2026)
 
-1. **Catalog management moved to admin UI** — All sync scripts (`lib/sync-{openai,google,xai,dashscope}.ts`, CLI wrappers, the Vercel cron route, the legacy `populate-release-dates` route) deleted. `ai_models` is now hand-edited at `/admin/models`. Schema is fixed: see `docs/ai_models-schema.md`.
+1. **Catalog management moved to admin UI** — All sync scripts (`lib/sync-{openai,google,dashscope}.ts`, CLI wrappers, the Vercel cron route, the legacy `populate-release-dates` route) deleted. `ai_models` is now hand-edited at `/admin/models`. Schema is fixed: see `docs/ai_models-schema.md`.
 2. **Models merged into Leaderboard** — The standalone `/models` catalog page was merged into `/leaderboard` so the latter is now the single destination for browsing models. The unified page lists every enabled model with an XD Score column (blank for unvoted), and inherits the catalog's search, provider filter, mode filter, and sortable headers. Default sort is XD Score DESC. Nav drops to 5 items (HOME · XDUEL · XCREATE · XVOTE · LEADERBOARD). `/models` server-redirects to `/leaderboard` to preserve old links. XCreate's "BROWSE ALL MODELS →" CTA now points to `/leaderboard`. See "Leaderboard" section.
 3. **Vote → XVote rebrand** — Nav label and `/vote` page header now read "XVote" to match the X-family (XDuel/XCreate). Route stays `/vote`. Nav order: XDUEL · XCREATE · XVOTE · LEADERBOARD (the explicit Home link was removed; the logo doubles as home). Verb usage of "vote" in body copy stays unchanged.
 4. **Nav: removed dimming on protected links** — XDuel/XCreate/XVote render at full opacity for logged-out users. Clicking still triggers the auth modal.

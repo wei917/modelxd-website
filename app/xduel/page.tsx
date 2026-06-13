@@ -433,7 +433,12 @@ export default function XDuel() {
             <div className="step-section">
               <div className="mode-selector">
                 {(['text','image','video'] as Mode[]).map(m => (
-                  <button key={m} className={`mode-btn ${mode===m?'active':''}`} onClick={() => setMode(m)}>
+                  <button key={m} className={`mode-btn ${mode===m?'active':''}`} onClick={() => {
+                    setMode(m)
+                    // Text mode hides the attachment button — clear any
+                    // staged attachments so they don't silently submit.
+                    if (m === 'text') setAttachments([])
+                  }}>
                     <span className="mode-dot" />{m.charAt(0).toUpperCase()+m.slice(1)}
                   </button>
                 ))}
@@ -478,7 +483,14 @@ export default function XDuel() {
                   }}
                 />
                 <div className="prompt-actions">
-                  <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" />
+                  {/* Attachments are only meaningful in image/video modes
+                      (image_to_image, image_to_video, etc.). In text mode
+                      the duel pool may pick a non-vision model, so the
+                      attachment would silently be ignored — better to
+                      hide the button entirely. */}
+                  {mode !== 'text' && (
+                    <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" />
+                  )}
                   <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
                   <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
                     ⚔️ Start XDuel →

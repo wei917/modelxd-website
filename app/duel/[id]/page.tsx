@@ -98,16 +98,57 @@ export default function DuelPage() {
         if (error || !data) { setNotFound(true); setLoading(false); return }
         setDuel(data)
         setLoading(false)
-        const votedKey = `voted_duels_${data.user_id ?? 'anon'}`
-        const voted = JSON.parse(localStorage.getItem(votedKey) ?? '[]') as string[]
-        if (voted.includes(id)) {
-          setAlreadyVoted(true)
-          setShowPrices(true)
-          setShowReveal(true)
-          setStep(5)
-        }
       })
   }, [id])
+
+  // "Already voted" check — DB-first, localStorage as fallback.
+  // 1. If the viewer is the duel OWNER and the duel row already has
+  //    vote1, they voted as part of creating it. Skip the vote UI.
+  // 2. If the viewer is a NON-OWNER, look in duel_votes (the community
+  //    vote table) for a row matching (user_id, duel_id).
+  // 3. Anonymous viewer or DB miss → fall back to localStorage keyed by
+  //    the *viewer's* id (or 'anon'), not the duel owner's id.
+  useEffect(() => {
+    if (!duel) return
+
+    const finalize = () => {
+      setAlreadyVoted(true)
+      setShowPrices(true)
+      setShowReveal(true)
+      setStep(5)
+    }
+
+    // Case 1: viewer is the duel creator and the original vote is on
+    // the duel row.
+    if (userId && duel.user_id === userId && duel.vote1 != null) {
+      finalize()
+      return
+    }
+
+    // Case 2: viewer is logged in but didn't create the duel — check
+    // duel_votes (community vote table).
+    if (userId && duel.user_id !== userId) {
+      const sb = createSupabaseBrowser()
+      sb.from('duel_votes')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('duel_id', duel.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) { finalize(); return }
+          // No DB row — check localStorage as the last fallback.
+          const votedKey = `voted_duels_${userId}`
+          const voted = JSON.parse(localStorage.getItem(votedKey) ?? '[]') as string[]
+          if (voted.includes(duel.id)) finalize()
+        })
+      return
+    }
+
+    // Case 3: anonymous viewer (no userId) — only localStorage.
+    const votedKey = `voted_duels_${userId ?? 'anon'}`
+    const voted = JSON.parse(localStorage.getItem(votedKey) ?? '[]') as string[]
+    if (voted.includes(duel.id)) finalize()
+  }, [duel, userId])
 
   const goStep = (n: number) => { setStep(n); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
