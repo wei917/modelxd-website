@@ -18,6 +18,11 @@ const NAV_LINKS = [
 export default function Nav() {
   const pathname = usePathname()
   const { show } = useAuthModal()
+
+  // Hide the Nav on the password gate. The links would just redirect
+  // back to /coming-soon (no cookie yet) and the "Log in" button would
+  // try to start an OAuth flow that lands in the same loop.
+  if (pathname === '/coming-soon') return null
   const [user, setUser] = useState<User | null>(null)
   const [authLoaded, setAuthLoaded] = useState(false)
   const supabase = createBrowserClient(
