@@ -5,5 +5,5 @@
 import { redirect } from 'next/navigation'
 
 export default function ModelsRedirect(): never {
-  redirect('/leaderboard')
+  redirect('/xboard')
 }

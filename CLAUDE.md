@@ -294,7 +294,7 @@ The old separate `/models` catalog was merged into Leaderboard in May 2026;
 
 ### Data flow
 - Page loads all enabled models from `ai_models` (Supabase) — every model appears, voted or not.
-- Page also calls `/api/leaderboard?mode=all` to fetch XD scores, merged in by `modelId`.
+- Page also calls `/api/xboard?mode=all` to fetch XD scores, merged in by `modelId`.
 - Models with no votes show an empty XD Score cell and sort to the bottom regardless of direction.
 
 ### Scoring (unchanged)

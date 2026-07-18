@@ -723,8 +723,8 @@ function ModelForm({ row, onSave, onCancel, busy }: {
           </div>
         </Field>
 
-        {m.modes.includes('reference_frames') && (
-          <Field label="Reference image count" hint="How many reference image slots to expose when the user picks reference_frames mode.">
+        {(m.modes.includes('reference_frames') || m.modes.includes('image_edit')) && (
+          <Field label="Max input images" hint="How many image slots to expose for reference_frames / image_edit runs. E.g. Nano Banana blends up to 3 input images.">
             <input type="number" min={1} step={1}
               value={m.input_config?.image?.count ?? 3}
               onChange={e => {

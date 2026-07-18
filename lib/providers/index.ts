@@ -13,8 +13,10 @@
 import * as openai     from './openai'
 import * as google     from './google'
 import * as alibaba    from './alibaba'
+import * as xai        from './xai'
 import { startCall, endCall, logMediaUrl } from './call-log'
 import { estimateCost } from './pricing'
+import { extractPdfText } from '../pdf-extract'
 import type {
   ModelInfo,
   TextStreamCallbacks,
@@ -34,7 +36,82 @@ export interface CallContext {
   userId?: string | null
 }
 
-const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba']
+const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai']
+
+// Providers whose text path can ingest a raw PDF natively (full fidelity:
+// text + page images). A model only takes the native path when it ALSO
+// declares `pdf_to_text` in its `modes` (set per-model in /admin/models).
+// Anything else falls back to server-side text extraction, so every text
+// model handles PDFs regardless — native is purely a fidelity upgrade.
+const PROVIDERS_WITH_NATIVE_PDF = new Set(['openai', 'google'])
+
+function modelSupportsNativePdf(model: ModelInfo): boolean {
+  return (
+    PROVIDERS_WITH_NATIVE_PDF.has(model.provider) &&
+    (model.modes ?? []).includes('pdf_to_text')
+  )
+}
+
+const isPdf = (a: Attachment) => a.mediaType === 'application/pdf'
+const isText = (a: Attachment) => a.mediaType.startsWith('text/')
+
+/**
+ * Resolve document attachments (PDF / plain-text) for the text path.
+ *
+ * - Plain-text files are always folded into the prompt (no provider gains
+ *   anything from receiving them as a separate part — it's just text).
+ * - PDFs are kept as-is ONLY when the model can read them natively
+ *   (provider in PROVIDERS_WITH_NATIVE_PDF *and* model declares
+ *   `pdf_to_text`). Otherwise the PDF's text layer is extracted server-side
+ *   and folded into the prompt, and the raw PDF is dropped so the provider
+ *   never sees binary it can't handle.
+ *
+ * Returns possibly-rewritten messages + attachments. Image/video
+ * attachments (not used by the text path today) pass through untouched.
+ */
+async function resolveDocAttachments(
+  model: ModelInfo,
+  messages: { role: 'user' | 'assistant'; content: any }[],
+  attachments: Attachment[],
+): Promise<{ messages: typeof messages; attachments: Attachment[] }> {
+  const docs = attachments.filter(a => isPdf(a) || isText(a))
+  if (docs.length === 0) return { messages, attachments }
+
+  const native = modelSupportsNativePdf(model)
+  const kept: Attachment[] = []
+  const foldedTexts: string[] = []
+
+  for (const a of attachments) {
+    if (isText(a)) {
+      foldedTexts.push(a.buffer.toString('utf-8'))
+      continue
+    }
+    if (isPdf(a)) {
+      if (native) { kept.push(a); continue }   // provider embeds it natively
+      try {
+        const text = await extractPdfText(a.buffer)
+        foldedTexts.push(text || '[PDF contained no extractable text — it may be scanned/image-only.]')
+      } catch (err) {
+        console.warn('[providers] PDF text extraction failed:', err instanceof Error ? err.message : err)
+        foldedTexts.push('[PDF could not be read.]')
+      }
+      continue
+    }
+    kept.push(a) // image/video — untouched
+  }
+
+  if (foldedTexts.length === 0) return { messages, attachments: kept }
+
+  // Prepend the document text to the last user message so the model sees
+  // the document as context ahead of the user's actual prompt.
+  const docBlock = `Attached document(s):\n\n${foldedTexts.join('\n\n---\n\n')}`
+  const rewritten = messages.map((m, i) =>
+    i === messages.length - 1 && m.role === 'user'
+      ? { ...m, content: `${docBlock}\n\n---\n\n${String(m.content)}` }
+      : m,
+  )
+  return { messages: rewritten, attachments: kept }
+}
 
 function assertSupported(model: ModelInfo): void {
   if (!SUPPORTED_PROVIDERS.includes(model.provider)) {
@@ -66,6 +143,10 @@ export async function streamText(
   context?:    CallContext,
 ): Promise<{ requestId: string | null }> {
   assertSupported(model)
+
+  // Resolve document attachments (PDF / txt): natively-capable models keep
+  // the PDF; everyone else gets the extracted text folded into the prompt.
+  ;({ messages, attachments } = await resolveDocAttachments(model, messages, attachments))
 
   // Estimate cost from prompt length so we can compare estimate-vs-real
   // in analytics. Only the last user message matters for typical chat —
@@ -143,16 +224,16 @@ export async function generateImage(
 
   const desc      = descriptor(model, 'image', context)
   const requestId = startCall(desc, {
-    estimated_cost_usd: estimateCost(model, 'image', { promptChars: prompt.length, quality }),
+    estimated_cost_usd: estimateCost(model, 'image', { promptChars: prompt.length, quality, size }),
   })
   const t0        = Date.now()
 
   try {
     let result: ImageResult
     if (model.provider === 'openai') {
-      result = await openai.generateImage(model, prompt, quality, size, attachments, previousResponseId ?? null)
+      result = await openai.generateImage(model, prompt, quality, size, attachments, previousResponseId ?? null, options)
     } else if (model.provider === 'google') {
-      result = await google.generateImage(model, prompt, quality, size, attachments, conversationHistory ?? null)
+      result = await google.generateImage(model, prompt, quality, size, attachments, conversationHistory ?? null, options)
     } else {
       result = await alibaba.generateImage(model, prompt, quality, size, attachments, options)
     }
@@ -184,6 +265,10 @@ export interface VideoOptions {
   watermark?: boolean | null
   /** Aspect ratio string (e.g. '16:9'). Passed as `ratio` to Alibaba. */
   aspect_ratio?: string | null
+  /** The slot's recipe (reference_frames / start_end_frames /
+   *  image_to_video ...). Google/Veo needs it to decide whether image
+   *  attachments are referenceImages or start/end interpolation frames. */
+  mode?: string | null
 }
 
 /** Optional generation-time parameters for image models. */
@@ -209,8 +294,8 @@ export async function generateVideo(
 ): Promise<VideoResult & { requestId: string | null }> {
   assertSupported(model)
 
-  // Alibaba/DashScope and Google/Veo both support native video generation.
-  if (model.provider !== 'alibaba' && model.provider !== 'google') {
+  // Alibaba/DashScope, Google/Veo and xAI/Grok Imagine support native video.
+  if (model.provider !== 'alibaba' && model.provider !== 'google' && model.provider !== 'xai') {
     throw new Error(`Video generation not supported for provider: ${model.provider}`)
   }
 
@@ -227,7 +312,9 @@ export async function generateVideo(
 
   try {
     const result = model.provider === 'google'
-      ? await google.generateVideo(model, prompt, size, seconds, attachments, onProgress)
+      ? await google.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+      : model.provider === 'xai'
+      ? await xai.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
       : await alibaba.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     endCall(requestId, desc, {
       status:         'success',

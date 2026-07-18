@@ -5,13 +5,20 @@
 // 2. Pick one to continue → this is the vote, others dismissed
 // 3. Multi-turn chat with chosen model
 
-import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
+import { useT } from '../../lib/i18n'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
+import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
+import TemplatePicker from '../components/TemplatePicker'
+import MatchResult, { type RatingDelta, type MatchResultEntry } from '../components/MatchResult'
+import { computeMatchScores } from '../../lib/matchScore'
+import ProviderLogo from '../components/ProviderLogo'
+import { XCREATE_TEMPLATES, type Template } from './templates'
 
 type Mode = 'text' | 'image' | 'video'
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting'
@@ -113,6 +120,85 @@ function modeLabel(modePattern: string): string {
   }
 }
 
+// ── Processing recipes (Layer 2) ─────────────────────────────────────────────
+// Each output type (text/image/video) offers a set of "recipes" — one
+// ModelMode (input→output pattern). A single recipe applies to the whole run:
+// it filters the model picker to models that support it and decides what the
+// user uploads (see recipeInputSlots).
+interface Recipe {
+  id:      ModelMode
+  title:   string   // short friendly name
+  recipe:  string   // input → output, e.g. "TEXT → IMAGE"
+  provide: string   // what the user supplies
+}
+const RECIPES: Record<Mode, Recipe[]> = {
+  text: [
+    { id: 'text_to_text',  title: 'Text to Text',  recipe: 'TEXT → TEXT',  provide: 'a prompt' },
+    { id: 'image_to_text', title: 'Image to Text', recipe: 'IMAGE → TEXT', provide: '1 image + a prompt' },
+    { id: 'pdf_to_text',   title: 'PDF to Text',   recipe: 'PDF → TEXT',   provide: '1 PDF + a prompt' },
+    { id: 'video_to_text', title: 'Video to Text', recipe: 'VIDEO → TEXT', provide: '1 video + a prompt' },
+  ],
+  image: [
+    { id: 'text_to_image', title: 'Text to Image',  recipe: 'TEXT → IMAGE',  provide: 'a prompt' },
+    { id: 'image_edit',    title: 'Image to Image', recipe: 'IMAGE → IMAGE', provide: '1 image + a prompt' },
+  ],
+  video: [
+    { id: 'text_to_video',    title: 'Text to Video',      recipe: 'TEXT → VIDEO',     provide: 'a prompt' },
+    { id: 'image_to_video',   title: 'Image to Video',     recipe: 'IMAGE → VIDEO',    provide: '1 image + a prompt' },
+    { id: 'video_to_video',   title: 'Video to Video',     recipe: 'VIDEO → VIDEO',    provide: '1 video + a prompt' },
+    { id: 'start_end_frames', title: 'Frames to Video',    recipe: '2 FRAMES → VIDEO', provide: '2 images: first + last' },
+    { id: 'reference_frames', title: 'Reference to Video', recipe: 'REFS → VIDEO',     provide: '1–2 portraits + a prompt' },
+  ],
+}
+
+// Inline icon for each output mode tab (text / image / video).
+function ModeIcon({ m }: { m: Mode }) {
+  const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
+  if (m === 'text')  return (<svg {...p}><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h14"/></svg>)
+  if (m === 'image') return (<svg {...p}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>)
+  return (<svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3l-5 3z"/></svg>)
+}
+
+// Input-type icon for the sub-mode menu (superset of ModeIcon: adds
+// pdf / frames / references). Same 16px stroke style as ModeIcon.
+function InputIcon({ kind }: { kind: 'text' | 'image' | 'video' | 'pdf' | 'frames' | 'references' }) {
+  const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
+  if (kind === 'text' || kind === 'image' || kind === 'video') return <ModeIcon m={kind} />
+  if (kind === 'pdf')    return (<svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>)
+  if (kind === 'frames') return (<svg {...p}><rect x="2" y="6" width="9" height="12" rx="1"/><rect x="13" y="6" width="9" height="12" rx="1"/></svg>)
+  return (<svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>)
+}
+
+// recipe id → [input icon, output icon] for the sub-mode menu entries.
+const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames' | 'references', Mode]> = {
+  text_to_text:     ['text',       'text'],
+  image_to_text:    ['image',      'text'],
+  pdf_to_text:      ['pdf',        'text'],
+  video_to_text:    ['video',      'text'],
+  text_to_image:    ['text',       'image'],
+  image_edit:       ['image',      'image'],
+  text_to_video:    ['text',       'video'],
+  image_to_video:   ['image',      'video'],
+  video_to_video:   ['video',      'video'],
+  start_end_frames: ['frames',     'video'],
+  reference_frames: ['references', 'video'],
+}
+
+// Upload slots a recipe needs (label + hint). [] = no upload (text_to_*).
+function recipeInputSlots(r: ModelMode | null): { label: string; hint?: string }[] {
+  switch (r) {
+    case 'start_end_frames': return [{ label: 'START FRAME', hint: 'Start of the video' }, { label: 'END FRAME', hint: 'End of the video' }]
+    case 'reference_frames': return [{ label: 'REFERENCE 1', hint: 'A person or subject' }, { label: 'REFERENCE 2', hint: 'Optional second subject' }]
+    case 'image_edit':
+    case 'image_to_video':
+    case 'image_to_text':    return [{ label: 'IMAGE', hint: 'Upload an image' }]
+    case 'video_to_video':
+    case 'video_to_text':    return [{ label: 'VIDEO', hint: 'Upload a video' }]
+    case 'pdf_to_text':      return [{ label: 'PDF', hint: 'Upload a PDF' }]
+    default:                 return []
+  }
+}
+
 /**
  * Infer the aspect-ratio label (e.g. '16:9', '21:9', '9:16', '1:1') from
  * a pixel size string. Compares the W/H ratio against a candidate list
@@ -198,6 +284,7 @@ interface DBModel {
   modes:         string[]
   model_pricing: ModelPricing | null
   output_config: OutputConfig | null
+  input_config?: { image?: { count?: number }; video?: { count?: number } } | null
 }
 
 type ModelMode =
@@ -222,6 +309,10 @@ interface SlotModel {
   modes:         ModelMode[]
   model_pricing: ModelPricing | null
   output_config: OutputConfig | null
+  /** Per-modality input overrides — notably image.count = how many
+   *  reference images the model accepts (model-dependent, up to 14
+   *  for Gemini 3 image models). */
+  input_config?: { image?: { count?: number }; video?: { count?: number } } | null
 }
 
 interface SlotOptions {
@@ -320,18 +411,35 @@ function estimateSlotDollars(
     return (inTokens * tin + outTokens * tout) / 1_000_000
   }
   if (m === 'image') {
+    // Official per-image rates FIRST, keyed by the selected size ("1024"
+    // tier or "1024x1024") then quality — these mirror the provider's
+    // published per-image equivalents (e.g. Gemini 3 Pro 4K = $0.24), so
+    // they beat any token guess. Multiply by count — qwen and gpt-image-2
+    // return N images per call and bill per image / per image's tokens.
+    const nImgs = Math.max(1, opts?.count ?? 1)
+    const r = p.per_image
+    const size = opts?.size ?? null
+    const q    = opts?.quality ?? null
+    if (r) {
+      // Most specific key wins: "quality:size" (gpt-image-2's measured
+      // matrix) → size tier ("1024" for Gemini) → quality → fallbacks.
+      const flat = (q && size && r[`${q}:${size}`] != null) ? r[`${q}:${size}`]
+                 : (size && r[size] != null) ? r[size]
+                 : (q && r[q] != null)       ? r[q]
+                 : (r.medium ?? r.default ?? Object.values(r)[0] ?? null)
+      if (flat != null) return flat * nImgs
+    }
+    // Token-billed with no per-image table (e.g. gpt-image-2): rough
+    // heuristic — ~1400 output image tokens (1372 measured on a real
+    // gpt-image-2 response). Order-of-magnitude only; quality moves it.
     const imgOut = rateOf(t.image_output, lvl)
     if (imgOut > 0) {
       const inTokens     = Math.max(1, Math.ceil(promptLen / 4))
-      const outImageTok  = 1290
+      const outImageTok  = 1400 * nImgs
       const tin = rateOf(t.text_input, lvl)
       return (inTokens * tin + outImageTok * imgOut) / 1_000_000
     }
-    // Per-image flat rate by quality tier
-    const r = p.per_image
-    if (!r) return null
-    const q = opts?.quality ?? null
-    return (q && r[q] != null) ? r[q] : (r.medium ?? r.default ?? Object.values(r)[0] ?? null)
+    return null
   }
   if (m === 'video') {
     const r = p.per_video_second
@@ -408,9 +516,10 @@ function companyLabel(id: string): string {
     .join(' ')
 }
 
-function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
-  mode: Mode; onSelect: (m: SlotModel) => void; onClose: () => void; selectedIds: string[]
+function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }: {
+  mode: Mode; recipeMode: ModelMode; onSelect: (m: SlotModel) => void; onClose: () => void; selectedIds: string[]
 }) {
+  const t = useT()
   const [search,      setSearch]      = useState('')
   const [models,      setModels]      = useState<DBModel[]>([])
   const [loading,     setLoading]     = useState(true)
@@ -431,11 +540,16 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
       .then(({ data }) => { setModels(data ?? []); setLoading(false) })
   }, [mode])
 
-  // Count models per company in the current mode so we can show the top
-  // companies as chips. We show at most ~10 chips to keep the row tidy.
+  // Only models that support the run's recipe (Layer 2) — EVERYTHING in
+  // the dialog (chips, counts, list) is based on this set, so "All (N)"
+  // means N pickable models, not N models in the mode.
+  const eligible = models.filter(m => (m.modes ?? []).includes(recipeMode))
+
+  // Count models per company so we can show the top companies as chips.
+  // We show at most ~10 chips to keep the row tidy.
   const companyCounts = (() => {
     const counts: Record<string, number> = {}
-    for (const m of models) {
+    for (const m of eligible) {
       const c = companyOf(m)
       counts[c] = (counts[c] ?? 0) + 1
     }
@@ -448,7 +562,7 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
 
   // Apply filters in order: company → text search.
   const q = search.trim().toLowerCase()
-  const filteredUnsorted = models.filter(m => {
+  const filteredUnsorted = eligible.filter(m => {
     if (company && companyOf(m) !== company) return false
     if (q) {
       return (
@@ -460,14 +574,31 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
     return true
   })
   // Sort by release date in the chosen direction. Null dates always last.
-  const filtered = [...filteredUnsorted].sort((a, b) => {
+  const byReleased = (a: DBModel, b: DBModel) => {
     const aT = a.released_at ? new Date(a.released_at).getTime() : NaN
     const bT = b.released_at ? new Date(b.released_at).getTime() : NaN
     if (Number.isNaN(aT) && Number.isNaN(bT)) return 0
     if (Number.isNaN(aT)) return 1
     if (Number.isNaN(bT)) return -1
     return sortDir === 'desc' ? bT - aT : aT - bT
-  })
+  }
+  const filtered = [...filteredUnsorted].sort(byReleased)
+
+  // Models in this mode that DON'T support the current sub-mode. Shown
+  // dimmed below the eligible list (same company/search filters), so
+  // users can see the rest of the catalog exists and why it's unpickable.
+  const hiddenAll = models.filter(m => !(m.modes ?? []).includes(recipeMode))
+  const hiddenFiltered = [...hiddenAll.filter(m => {
+    if (company && companyOf(m) !== company) return false
+    if (q) {
+      return (
+        m.display_name.toLowerCase().includes(q) ||
+        m.model_name.toLowerCase().includes(q) ||
+        m.provider.toLowerCase().includes(q)
+      )
+    }
+    return true
+  })].sort(byReleased)
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -513,7 +644,7 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
           </button>
 
           <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>
-            {filtered.length} of {models.length}
+            {filtered.length} of {eligible.length}
           </span>
         </div>
 
@@ -562,6 +693,14 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
             )
           })}
         </div>
+        {/* Sub-mode filter notice — the list is scoped to the run's
+            "Create from" choice; make that visible so a shorter list
+            doesn't read as a smaller catalog. */}
+        {!loading && hiddenAll.length > 0 && (
+          <div style={{ margin: '0 16px 10px', padding: '8px 12px', flexShrink: 0, background: 'rgba(214,59,50,0.05)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.5 }}>
+            Showing models that support <b style={{ color: 'var(--white)', fontWeight: 600 }}>{t('recipe.' + recipeMode)}</b>
+          </div>
+        )}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {loading ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
           : filtered.length === 0 ? (
@@ -586,11 +725,12 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
             const dup = selectedIds.includes(m.id)
             return (
               <div key={m.id}
-                onClick={() => onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config })}
+                onClick={() => onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config, input_config: m.input_config ?? null })}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
+                <ProviderLogo provider={m.provider} size={18} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.display_name}
@@ -612,6 +752,21 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
                 )}
                 {m.tags?.includes('reasoning') && <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>REASONING</span>}
                 {(() => {
+                  // Image-capacity badge — only meaningful for recipes with
+                  // image upload slots. Makes it visible WHY the slot cap
+                  // drops when a lower-capacity model joins the run (the run
+                  // uses the min across selected models so every model gets
+                  // the identical attachment set).
+                  if (recipeMode !== 'reference_frames' && recipeMode !== 'image_edit') return null
+                  const n = m.input_config?.image?.count ?? (recipeMode === 'reference_frames' ? 2 : 1)
+                  if (recipeMode === 'image_edit' && n <= 1) return null  // 1 input is the norm for edit
+                  return (
+                    <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
+                      UP TO {n} {recipeMode === 'reference_frames' ? 'REFS' : 'IMGS'}
+                    </span>
+                  )
+                })()}
+                {(() => {
                   // Show NEEDS ATTACHMENT only when EVERY declared mode requires
                   // some non-text input. If the model has any text-only mode
                   // (text_to_text / text_to_image / text_to_video), it can run
@@ -629,6 +784,36 @@ function ModelPickerDialog({ mode, onSelect, onClose, selectedIds }: {
               </div>
             )
           })}
+
+          {/* Dimmed remainder — exists, just not pickable for this
+              sub-mode. Builds trust that the catalog is bigger than the
+              current filter. */}
+          {!loading && hiddenFiltered.length > 0 && (
+            <>
+              <div style={{ padding: '10px 16px 6px', fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.12em', textTransform: 'uppercase' as const, borderBottom: '1px solid var(--border)' }}>
+                {'Doesn’t support '}{t('recipe.' + recipeMode)} ({hiddenFiltered.length})
+              </div>
+              {hiddenFiltered.map(m => (
+                <div key={m.id}
+                  title={`${m.display_name} doesn't support ${t('recipe.' + recipeMode)}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', opacity: 0.45, cursor: 'default' }}
+                >
+                  <ProviderLogo provider={m.provider} size={18} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {m.display_name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.model_name}</div>
+                  </div>
+                  {m.released_at && (
+                    <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
+                      {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -721,10 +906,15 @@ function GalleryDetail({ item, onClose, onContinue }: {
                 width: '100%', maxHeight: '55vh', borderRadius: 10, background: '#000', display: 'block',
               }} />
             ) : active.isImage ? (
-              <img src={active.text} alt="" style={{
-                width: '100%', maxHeight: '55vh', objectFit: 'contain',
-                borderRadius: 10, display: 'block', background: '#000',
-              }} />
+              // Multi-output runs store newline-joined URLs — stack them.
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                {(active.text ?? '').split('\n').filter(Boolean).map((u: string, ui: number) => (
+                  <img key={ui} src={u} alt="" style={{
+                    width: '100%', maxHeight: '55vh', objectFit: 'contain',
+                    borderRadius: 10, display: 'block', background: '#000',
+                  }} />
+                ))}
+              </div>
             ) : (
               <div style={{
                 fontSize: 14, lineHeight: 1.7, color: 'var(--white)',
@@ -748,7 +938,7 @@ function GalleryDetail({ item, onClose, onContinue }: {
         {/* Footer actions */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', background: 'var(--bg)' }}>
           {active?.isImage && (
-            <a href={active.text} download target="_blank" rel="noreferrer" style={{
+            <a href={(active.text ?? '').split('\n')[0]} download target="_blank" rel="noreferrer" style={{
               fontSize: 12, padding: '8px 14px', borderRadius: 8,
               background: 'var(--surface2)', border: '1px solid var(--border2)',
               color: 'var(--muted2)', textDecoration: 'none', cursor: 'pointer',
@@ -835,11 +1025,16 @@ async function refreshSlotUrls(
 // Mode filter (text/image/video) is controlled from the parent so the filter
 // tabs can live on the right side of the top-level XCreate/Gallery tab row
 // — keeps a single selector bar instead of stacking two.
-function Gallery({ userId, filterMode, onCounts, onOpen }: {
+
+function Gallery({ userId, filterMode, onCounts, onOpen, limit = 40, compact = false }: {
   userId: string,
   filterMode: Mode,
   onCounts: (c: Record<Mode, number>) => void,
   onOpen: (item: GalleryItem, slotIdx: number) => void,
+  /** Max rows to fetch — the in-studio "Recent" strip uses a small limit. */
+  limit?: number,
+  /** Compact (in-studio) mode: render nothing at all when empty. */
+  compact?: boolean,
 }) {
   const [items,   setItems]   = useState<GalleryItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -849,7 +1044,7 @@ function Gallery({ userId, filterMode, onCounts, onOpen }: {
     let cancelled = false
     ;(async () => {
       const sb = createSupabaseBrowser()
-      const { data } = await sb.from('xcreates').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(40)
+      const { data } = await sb.from('xcreates').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit)
       if (cancelled) return
       // Show rows immediately so the UI doesn't block on signing, then
       // swap in refreshed URLs once the batch sign completes.
@@ -864,7 +1059,7 @@ function Gallery({ userId, filterMode, onCounts, onOpen }: {
       }
     })()
     return () => { cancelled = true }
-  }, [userId])
+  }, [userId, limit])
 
   // Recompute per-mode counts whenever items change so the parent's filter tabs
   // can show totals next to each mode.
@@ -878,7 +1073,8 @@ function Gallery({ userId, filterMode, onCounts, onOpen }: {
 
   const filteredItems = items.filter(it => it.mode === filterMode)
 
-  if (loading) return <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 40 }}>Loading gallery…</div>
+  if (loading) return compact ? null : <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 40 }}>Loading gallery…</div>
+  if (compact && filteredItems.length === 0) return null
 
   return (
     <>
@@ -927,7 +1123,7 @@ function Gallery({ userId, filterMode, onCounts, onOpen }: {
             >
               {preview && (
                 preview.isVideo ? <video src={preview.text} muted loop playsInline autoPlay style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover', pointerEvents: 'none' }} />
-                : preview.isImage ? <img src={preview.text} alt="" style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover', pointerEvents: 'none' }} />
+                : preview.isImage ? <img src={(preview.text ?? '').split('\n')[0]} alt="" style={{ width: '100%', display: 'block', maxHeight: 160, objectFit: 'cover', pointerEvents: 'none' }} />
                 : <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)' }}>{preview.text?.slice(0, 200)}</div>
               )}
               <div style={{ padding: '10px 12px' }}>
@@ -964,8 +1160,20 @@ function Gallery({ userId, filterMode, onCounts, onOpen }: {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+// useSearchParams() (the ?id= deep-link) requires a Suspense boundary for
+// the production build's prerender pass — dev mode tolerates its absence,
+// `next build` hard-fails. The wrapper is the whole fix.
 export default function CreatePage() {
+  return (
+    <Suspense fallback={null}>
+      <CreateStudio />
+    </Suspense>
+  )
+}
+
+function CreateStudio() {
   useRequireAuth()
+  const t = useT()
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -979,7 +1187,9 @@ export default function CreatePage() {
   // user understands why the page didn't open the run they expected.
   // null = no error, string = message to display.
   const [loadError,      setLoadError]      = useState<string | null>(null)
-  const [mode,           setMode]           = useState<Mode>('text')
+  // Image by default — visual wow at a fraction of video's cost. Video
+  // stays the marketing star; text is the cheap third tab.
+  const [mode,           setMode]           = useState<Mode>('image')
   const [prompt,         setPrompt]         = useState('')
   const [selectedModels, setSelectedModels] = useState<(SlotModel | null)[]>([null, null, null, null])
   const [slots,          setSlots]          = useState<SlotState[]>([])
@@ -990,7 +1200,64 @@ export default function CreatePage() {
   const [lightbox,       setLightbox]       = useState<string | null>(null)
   const [attachments,    setAttachments]    = useState<Attachment[]>([])
   const [slotOptions,   setSlotOptions]    = useState<(SlotOptions | null)[]>([null, null, null, null])
+  // Per-slot config panel visibility — collapsed by default; the ⚙ on
+  // each model card toggles it. Defaults chosen by validateOpts are fine
+  // for most runs, so the knobs stay out of the way until wanted.
+  const [optsOpen,      setOptsOpen]       = useState<boolean[]>([false, false, false, false])
   // (galleryFilter / galleryCounts removed with the in-page Gallery tab.)
+
+  // Active template — purely a UI hint (highlights the picked card). The
+  // actual state (mode, models, options, prompt, attachment slots) is
+  // applied immediately by applyTemplate() and the user can edit any
+  // of it after, so we don't "enforce" anything from the template after
+  // application.
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null)
+
+  // Applying a tool/template from the galleries below the prompt box
+  // scrolls the composer into view and flashes it, so the user sees
+  // what just got pre-filled (otherwise a click down there looks inert).
+  const promptBoxRef = useRef<HTMLDivElement | null>(null)
+  const [promptFlash, setPromptFlash] = useState(false)
+
+  // Mega-dropdown under the mode tabs (LMArena-style): hovering/clicking
+  // a mode tab opens a rich panel with that mode's sub-modes + popular
+  // tools & templates. Selecting anything inside closes it.
+  // Prompt refiner removed July 2026 (CC: not ready to build it, and every
+  // click was a paid LLM call). The /api/xcreate/refine route was deleted
+  // with it — restore both together if it ever comes back.
+
+  // Mode buttons switch the mode directly (first sub-mode as default —
+  // the mode-change effect handles that). The "From:" button opens a
+  // small dropdown list of the current mode's sub-modes.
+  const [fromOpen, setFromOpen] = useState(false)
+  const modeBlockRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!fromOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (!modeBlockRef.current?.contains(e.target as Node)) setFromOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFromOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [fromOpen])
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flashComposer = () => {
+    promptBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setPromptFlash(true)
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setPromptFlash(false), 1500)
+  }
+
+  // Layer 2 — the processing recipe (one ModelMode for the whole run). Drives
+  // model-picker filtering and the input slots. Defaults to the first recipe
+  // for the current output type. `catalog` holds the enabled models' modes so
+  // we can hide recipes no model supports.
+  const [recipeMode, setRecipeMode] = useState<ModelMode>('text_to_image')  // matches the image default mode
+  const [catalog, setCatalog] = useState<{ modes: ModelMode[]; output_modalities: string[] }[]>([])
 
   // validateOpts is the single source of truth for "what options are valid
   // for this model in this mode". It accepts a (possibly stale) opts object
@@ -1125,6 +1392,10 @@ export default function CreatePage() {
 
   // Post-pick state
   const [chosenIdx,      setChosenIdx]      = useState<number | null>(null)
+  // Post-pick match report (傳說對決 style). null = hidden. Delta is
+  // fetched async after the vote+refit round-trip (undefined = loading).
+  const [matchResult, setMatchResult] = useState<{ eyebrow: string; title: string; winnerName: string; winnerProvider: string; entries: MatchResultEntry[] } | null>(null)
+  const [matchDelta,  setMatchDelta]  = useState<RatingDelta | null | undefined>(undefined)
   const [chatHistory,    setChatHistory]    = useState<ChatMessage[]>([])
   const [chatInput,      setChatInput]      = useState('')
   const [chatStreaming,  setChatStreaming]  = useState(false)
@@ -1177,14 +1448,15 @@ export default function CreatePage() {
   // The URL is left intact so the user can copy the deep link or refresh
   // and end up back where they were. `galleryLoadedRef` keeps the load
   // from re-firing within the same component lifetime.
-  const galleryLoadedRef = useRef(false)
+  const galleryLoadedRef = useRef<string | null>(null)
+  const searchIdParam = useSearchParams()?.get('id') ?? null
   useEffect(() => {
-    if (galleryLoadedRef.current || typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    const idParam = params.get('id')
+    if (typeof window === 'undefined') return
+    const idParam = searchIdParam
     if (!idParam) return
+    if (galleryLoadedRef.current === idParam) return  // same run already loaded
     if (!userId) return  // wait for auth — RLS would reject unauthenticated
-    galleryLoadedRef.current = true
+    galleryLoadedRef.current = idParam
     ;(async () => {
       try {
         const sb = createSupabaseBrowser()
@@ -1206,10 +1478,10 @@ export default function CreatePage() {
         setLoadError('Could not load this XCreate. Please try again.')
       }
     })()
-  // Intentionally exhaustive: loadFromGallery is stable enough; we only
-  // want this to fire once per fresh page load (after auth resolves).
+  // Refires when the ?id param changes (nav history clicks) — the ref
+  // guards against reloading the SAME id (e.g. auth state flaps).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
+  }, [userId, searchIdParam])
 
   useEffect(() => {
     // When resuming an in-progress job, the mode is restored from the job
@@ -1218,7 +1490,18 @@ export default function CreatePage() {
     setSelectedModels([null, null, null, null]); setSlots([]); setPhase('setup')
     setChosenIdx(null); setChatHistory([]); setXcreateId(null); setAttachments([])
     setSlotOptions([null, null, null, null])
+    setRecipeMode(RECIPES[mode][0].id)  // reset Layer 2 to the first recipe
   }, [mode])
+
+  // Load enabled models' modes once so the recipe picker can hide recipes that
+  // no enabled model supports (avoids dead-end selections).
+  useEffect(() => {
+    createSupabaseBrowser()
+      .from('ai_models')
+      .select('modes, output_modalities')
+      .eq('enabled', true)
+      .then(({ data }) => setCatalog((data ?? []) as { modes: ModelMode[]; output_modalities: string[] }[]))
+  }, [])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1227,9 +1510,41 @@ export default function CreatePage() {
   const activeModels = selectedModels.filter(Boolean) as SlotModel[]
   const selectedIds  = activeModels.map(m => m.id)
 
+  // Multi-image slot count for reference_frames AND image_edit — both are
+  // model-dependent (input_config.image.count; e.g. Gemini 3 image models
+  // mix up to 14 reference images). With multiple models in the run, cap at the
+  // SMALLEST count so every selected model accepts the same attachment
+  // set. No models / no count declared → 2 for references, 1 for edit.
+  const refSlotCount = (() => {
+    if (recipeMode !== 'reference_frames' && recipeMode !== 'image_edit') return 0
+    const counts = activeModels
+      .map(m => m.input_config?.image?.count)
+      .filter((n): n is number => typeof n === 'number' && n > 0)
+    const dflt = recipeMode === 'reference_frames' ? 2 : 1
+    const cap = counts.length ? Math.min(...counts) : dflt
+    return Math.max(1, Math.min(16, cap))
+  })()
+  // If the cap shrinks (model with fewer slots added), drop attachments
+  // that no longer have a slot so we never send more than a model allows —
+  // and TELL the user instead of dropping silently.
+  const [refDropNotice, setRefDropNotice] = useState<string | null>(null)
+  useEffect(() => { setRefDropNotice(null) }, [recipeMode])
+  useEffect(() => {
+    if (refSlotCount === 0) return
+    const over = attachments.filter(a => (a.slotIndex ?? 0) >= refSlotCount).length
+    if (over === 0) return
+    setRefDropNotice(`${over} image${over > 1 ? 's' : ''} removed — the selected models accept up to ${refSlotCount} image${refSlotCount > 1 ? 's' : ''} together`)
+    setAttachments(prev => prev.filter(a => (a.slotIndex ?? 0) < refSlotCount))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refSlotCount, recipeMode, attachments])
+
   const addModel    = (i: number, m: SlotModel) => {
     setSelectedModels(prev => prev.map((v, idx) => idx === i ? m : v))
-    setSlotOptions(prev => prev.map((v, idx) => idx === i ? defaultOptions(m, mode) : v))
+    // New models adopt the run's recipe (Layer 2), not their own first mode.
+    setSlotOptions(prev => prev.map((v, idx) => idx === i
+      ? validateOpts(m, mode, { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null })
+      : v))
+    setOptsOpen(prev => prev.map((v, idx) => idx === i ? false : v))
     setSlots([])  // clear any stale results from previous run
     setPhase('setup')
     setPickerSlot(null)
@@ -1237,8 +1552,113 @@ export default function CreatePage() {
   const removeModel = (i: number) => {
     setSelectedModels(prev => prev.map((v, idx) => idx === i ? null : v))
     setSlotOptions(prev => prev.map((v, idx) => idx === i ? null : v))
+    setOptsOpen(prev => prev.map((v, idx) => idx === i ? false : v))
     setSlots([])  // clear any stale results from previous run
     setPhase('setup')
+  }
+
+  // Default model — every mode starts usable. When the studio is blank
+  // (fresh mode/recipe, no template, nothing picked), pre-fill slot A
+  // with the most popular / newest enabled model that supports the
+  // recipe. Functional updates keep this atomic: if a template apply or
+  // job restore lands first, the guards see a non-empty array and no-op.
+  useEffect(() => {
+    if (phase !== 'setup' || activeTemplateId) return
+    if (selectedModels.some(Boolean)) return
+    let cancelled = false
+    createSupabaseBrowser()
+      .from('ai_models')
+      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+      .eq('enabled', true)
+      .contains('output_modalities', [mode])
+      .contains('modes', [recipeMode])
+      .order('is_popular', { ascending: false })
+      .order('released_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (cancelled || !data?.[0]) return
+        const row = data[0] as any
+        const m: SlotModel = {
+          id: row.id, provider: row.provider, model_name: row.model_name,
+          display_name: row.display_name, modes: (row.modes ?? []) as ModelMode[],
+          model_pricing: row.model_pricing, output_config: row.output_config, input_config: row.input_config ?? null,
+        }
+        setSelectedModels(prev => prev.some(Boolean) ? prev : prev.map((v, idx) => idx === 0 ? m : v))
+        setSlotOptions(prev => prev.some(Boolean) ? prev : prev.map((v, idx) => idx === 0
+          ? validateOpts(m, mode, { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null })
+          : v))
+      })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, recipeMode, phase, activeTemplateId])
+
+  // Layer 2: choose the processing recipe for the whole run. Drops any selected
+  // model that doesn't support the new recipe, re-validates the rest, and
+  // clears uploads (the required inputs change with the recipe).
+  const selectRecipe = (r: ModelMode) => {
+    setRecipeMode(r)
+    setActiveTemplateId(null)
+    setAttachments([])
+    setSlots([]); setPhase('setup'); setChosenIdx(null)
+    setSelectedModels(prev => prev.map(m => (m && (m.modes ?? []).includes(r)) ? m : null))
+    setSlotOptions(prev => prev.map((o, i) => {
+      const m = selectedModels[i]
+      if (!m || !(m.modes ?? []).includes(r)) return null
+      return validateOpts(m, mode, { ...(o ?? defaultOptions(m, mode)), mode: r })
+    }))
+  }
+
+  // Like selectRecipe, but PRESERVES the current uploads — used when the
+  // sub-mode change was inferred FROM an upload (wiping the file that
+  // triggered the switch would be absurd).
+  const switchRecipeKeepingUploads = (r: ModelMode) => {
+    setRecipeMode(r)
+    setSlots([]); setPhase('setup'); setChosenIdx(null)
+    setSelectedModels(prev => prev.map(m => (m && (m.modes ?? []).includes(r)) ? m : null))
+    setSlotOptions(prev => prev.map((o, i) => {
+      const m = selectedModels[i]
+      if (!m || !(m.modes ?? []).includes(r)) return null
+      return validateOpts(m, mode, { ...(o ?? defaultOptions(m, mode)), mode: r })
+    }))
+  }
+
+  // Infer the sub-mode from what the user just attached (Gemini/Kling
+  // pattern: drop a photo → image-powered run, no menu required).
+  // Respects an explicit multi-image choice (frames/references stay put).
+  const inferRecipeFromUploads = (atts: Attachment[]): ModelMode | null => {
+    const kinds  = atts.map(a => a.mediaType?.startsWith('video/') ? 'video' : a.mediaType === 'application/pdf' ? 'pdf' : 'image')
+    const nImg   = kinds.filter(k => k === 'image').length
+    const hasVid = kinds.includes('video')
+    const hasPdf = kinds.includes('pdf')
+    if (mode === 'text') {
+      if (hasPdf) return 'pdf_to_text'
+      if (hasVid) return 'video_to_text'
+      return nImg > 0 ? 'image_to_text' : null
+    }
+    if (mode === 'image') return nImg > 0 ? 'image_edit' : null
+    // video
+    if (hasVid) return 'video_to_video'
+    if (nImg === 0) return null
+    if (nImg === 1) {
+      // A single image fits image_to_video — but don't fight an explicit
+      // frames/references choice, which also starts with one image.
+      if (recipeMode === 'reference_frames' || recipeMode === 'start_end_frames') return recipeMode
+      return 'image_to_video'
+    }
+    // 2+ images: keep frames if chosen, otherwise references (1-N slots).
+    if (recipeMode === 'start_end_frames') return recipeMode
+    return 'reference_frames'
+  }
+
+  // Composer attachment handler: store, then auto-switch the sub-mode if
+  // an upload implies one. Only on ADD (removals never switch), and never
+  // while a template drives the slots.
+  const handleComposerAttachments = (next: Attachment[]) => {
+    const grew = next.length > attachments.length
+    setAttachments(next)
+    if (!grew || activeTemplateId) return
+    const r = inferRecipeFromUploads(next)
+    if (r && r !== recipeMode) switchRecipeKeepingUploads(r)
   }
 
   // ── Polling helpers ─────────────────────────────────────────────────────────
@@ -1328,7 +1748,7 @@ export default function CreatePage() {
         // Look up SlotModel details for each slot (for the picker / options UI)
         const sb = createSupabaseBrowser()
         const modelIds = data.slots.map((s: any) => s.modelId)
-        const { data: modelRows } = await sb.from('ai_models').select('id, provider, model_name, display_name, modes, model_pricing, output_config').in('id', modelIds)
+        const { data: modelRows } = await sb.from('ai_models').select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config').in('id', modelIds)
         const byId: Record<string, SlotModel> = {}
         ;(modelRows ?? []).forEach((m: any) => {
           byId[m.id] = {
@@ -1336,6 +1756,7 @@ export default function CreatePage() {
             modes:         (m.modes ?? []) as ModelMode[],
             model_pricing: m.model_pricing,
             output_config: m.output_config,
+            input_config:  m.input_config ?? null,
           }
         })
         const restoredModels: (SlotModel | null)[] = [null, null, null, null]
@@ -1403,8 +1824,8 @@ export default function CreatePage() {
         aspect_ratio: opts.aspect_ratio,
         watermark:    opts.watermark,
         count:        opts.count,
-        mode:         opts.mode,
-      } : {})
+        mode:         recipeMode,   // Layer-2 recipe applies to every slot
+      } : { mode: recipeMode })
     }
     fetch('/api/xcreate', {
       method: 'POST',
@@ -1427,28 +1848,57 @@ export default function CreatePage() {
     if (!userId) return
     setChosenIdx(idx)
     const chosen  = activeModels[idx]
-    const initial = slots[idx]
 
-    // Seed chat with initial exchange
-    setChatHistory([
-      { role: 'user',      content: prompt },
-      { role: 'assistant', content: initial.text, isImage: initial.isImage, isVideo: initial.isVideo },
+    // "Generate more with X" = record the vote, then START OVER with the
+    // winner pre-selected (July 2026, CC) — NOT chat continuation. The
+    // label always promised fresh generation; now the behavior matches.
+    // Prompt + attachments are kept so the user can tweak and re-run;
+    // the winner carries ITS slot options (size/quality/count) into
+    // slot A. Chat plumbing stays for gallery-restored runs.
+    // Build the match report from THIS run before any state resets — the
+    // closures below still see the pre-reset slots/models.
+    const scores = computeMatchScores(activeModels.map((m, i) => ({
+      votePts:      i === idx ? 1 : 0,
+      responseTime: slots[i]?.responseTime ?? 0,
+      cost:         slots[i]?.cost ?? 0,
+      error:        !!slots[i]?.error,
+    })))
+    setMatchResult({
+      eyebrow: `Run complete · ${activeModels.length} model${activeModels.length > 1 ? 's' : ''} · ${mode}`,
+      title:   `${chosen.display_name} wins`,
+      winnerName: chosen.display_name,
+      winnerProvider: chosen.provider,
+      entries: activeModels.map((m, i) => ({
+        name:         m.display_name,
+        provider:     m.provider,
+        score:        scores[i],
+        responseTime: slots[i]?.responseTime ?? 0,
+        cost:         slots[i]?.cost ?? 0,
+        isPick:       i === idx,
+        error:        !!slots[i]?.error,
+      })),
+    })
+    setMatchDelta(undefined)
+
+    const rawIndices = selectedModels.map((m, i) => (m ? i : -1)).filter(i => i >= 0)
+    const carried = slotOptions[rawIndices[idx] ?? idx]
+    setSelectedModels([chosen, null, null, null])
+    setSlotOptions([
+      validateOpts(chosen, mode, carried ?? { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null }),
+      null, null, null,
     ])
-    setPhase('chatting')
+    setOptsOpen([false, false, false, false])
+    setSlots([])
+    setChatHistory([])
+    setChosenIdx(null)
+    setPhase('setup')
+    flashComposer()
 
-    // Fetch multi-turn context from the server-created xcreates row.
-    // The server route stores responseId/conversationHistory in slots jsonb.
     const sb = createSupabaseBrowser()
-    if (xcreateId) {
-      try {
-        const { data: xrow } = await sb.from('xcreates').select('slots').eq('id', xcreateId).single()
-        if (xrow?.slots?.[idx]) {
-          const serverSlot = xrow.slots[idx]
-          if (serverSlot.responseId) setImageResponseId(serverSlot.responseId)
-          if (serverSlot.conversationHistory) setImageConvHistory(serverSlot.conversationHistory)
-        }
-      } catch {}
-    }
+
+    // Snapshot the winner's rating BEFORE the vote lands (for the delta).
+    const ratingsBefore: any[] | null = await fetch(`/api/xboard?mode=${mode}`)
+      .then(r => r.json()).catch(() => null)
 
     // Save to DB with chosen model recorded.
     //
@@ -1501,6 +1951,23 @@ export default function CreatePage() {
       }).select('id').single()
       if (data?.id) setXcreateId(data.id)
     }
+
+    // XDRating delta for the match report: the vote is written above (the
+    // DB trigger updated the aggregates in-transaction), so refit and read
+    // back the winner's score. Fire-and-forget relative to the UI.
+    ;(async () => {
+      try {
+        const beforeRows = ratingsBefore
+        const before = beforeRows?.find((r: any) => r.modelId === chosen.id)?.xdScore ?? null
+        await fetch('/api/xdrating/refit?source=vote&force=1', { method: 'POST' })
+        const rows = await fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
+        const after = rows.find((r: any) => r.modelId === chosen.id)?.xdScore ?? null
+        setMatchDelta(before !== null && after !== null ? { before, after } : null)
+      } catch (err) {
+        console.warn('[xcreate] rating delta unavailable:', err)
+        setMatchDelta(null)
+      }
+    })()
   }
 
   const sendChat = async () => {
@@ -1601,12 +2068,79 @@ export default function CreatePage() {
     } catch (err) { console.warn('[xcreate] failed to save chat history:', err) }
   }
 
+  // Apply a template: set mode, pre-pick recommended models (matched by
+  // model_name from the live catalog), apply per-slot options (input
+  // shape + aspect ratio + duration), and fill the prompt. The user can
+  // edit anything after — templates are starting points, not contracts.
+  const applyTemplate = async (t: Template) => {
+    // Block the mode-change effect from wiping the state we're setting.
+    modeClearedRef.current = true
+
+    setMode(t.mode as Mode)
+    setRecipeMode((t.slotMode as ModelMode) ?? RECIPES[t.mode as Mode][0].id)
+    setPrompt(t.starterPrompt)
+    setAttachments([])
+    setActiveTemplateId(t.id)
+    setSlots([])
+    setPhase('setup')
+    setChosenIdx(null)
+    setChatHistory([])
+
+    // Look up recommended models from the live catalog.
+    const sb = createSupabaseBrowser()
+    const { data: rows } = await sb.from('ai_models')
+      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+      .eq('enabled', true)
+      .in('model_name', t.recommendedModels)
+    const ordered = t.recommendedModels
+      .map(name => (rows ?? []).find((r: any) => r.model_name === name))
+      .filter(Boolean) as any[]
+
+    const newSelected: (SlotModel | null)[] = [null, null, null, null]
+    ordered.slice(0, 4).forEach((m, i) => {
+      newSelected[i] = {
+        id:            m.id,
+        provider:      m.provider,
+        model_name:    m.model_name,
+        display_name:  m.display_name,
+        modes:         (m.modes ?? []) as ModelMode[],
+        model_pricing: m.model_pricing,
+        output_config: m.output_config,
+        input_config:  m.input_config ?? null,
+      }
+    })
+    setSelectedModels(newSelected)
+
+    // Per-slot options: prefer the template's slot mode + aspect ratio +
+    // duration; validateOpts clamps anything the model doesn't actually
+    // support (e.g. Veo locks duration to 8s for start_end_frames).
+    const newOpts: (SlotOptions | null)[] = [null, null, null, null]
+    newSelected.forEach((m, i) => {
+      if (!m) return
+      const base: SlotOptions = defaultOptions(m, t.mode as Mode)
+      const proposed: SlotOptions = {
+        ...base,
+        mode:         (t.slotMode as ModelMode) ?? base.mode ?? null,
+        aspect_ratio: t.aspectRatio ?? base.aspect_ratio ?? null,
+        duration:     t.duration    ?? base.duration     ?? null,
+      }
+      newOpts[i] = validateOpts(m, t.mode as Mode, proposed)
+    })
+    setSlotOptions(newOpts)
+
+    // Bring the composer into view and flash it so the pre-fill is
+    // visible even when the template was clicked from the galleries
+    // below the prompt box.
+    flashComposer()
+  }
+
   const reset = () => {
     setPhase('setup'); setSlots([]); setChosenIdx(null)
     setChatHistory([]); setChatInput(''); setXcreateId(null)
     setPrompt(''); setAttachments([])
     setSelectedModels([null, null, null, null])
     setSlotOptions([null, null, null, null])
+    setActiveTemplateId(null)
     setImageResponseId(null); setImageConvHistory(null)
     // Strip ?id=... from the URL so refreshing doesn't re-load the
     // run we just abandoned, and so the address bar matches the fresh
@@ -1635,7 +2169,7 @@ export default function CreatePage() {
     const sb = createSupabaseBrowser()
     const modelIds = rawSlots.map((s: any) => s.id).filter(Boolean)
     const { data: modelRows } = await sb.from('ai_models')
-      .select('id, provider, model_name, display_name, modes, model_pricing, output_config')
+      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
       .in('id', modelIds)
     const byId: Record<string, SlotModel> = {}
     ;(modelRows ?? []).forEach((m: any) => {
@@ -1644,6 +2178,7 @@ export default function CreatePage() {
         modes:         (m.modes ?? []) as ModelMode[],
         model_pricing: m.model_pricing,
         output_config: m.output_config,
+        input_config:  m.input_config ?? null,
       }
     })
 
@@ -1660,7 +2195,7 @@ export default function CreatePage() {
       // Fetch by provider+model_name pairs
       const orFilters = missingSlots.map((s: any) => `and(provider.eq.${s.provider},model_name.eq.${s.model_name})`).join(',')
       const { data: fallbackRows } = await sb.from('ai_models')
-        .select('id, provider, model_name, display_name, modes, model_pricing, output_config')
+        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
         .or(orFilters)
       ;(fallbackRows ?? []).forEach((m: any) => {
         const key = `${m.provider}/${m.model_name}`
@@ -1669,6 +2204,7 @@ export default function CreatePage() {
           modes:         (m.modes ?? []) as ModelMode[],
           model_pricing: m.model_pricing,
           output_config: m.output_config,
+          input_config:  m.input_config ?? null,
         }
         byProviderModel[key] = slot
         // Map old UUID → new model
@@ -1737,7 +2273,7 @@ export default function CreatePage() {
         done:         true,
         cost:         Number(s.cost ?? 0),
         responseTime: Number(s.responseTime ?? 0),
-        error:        null,
+        error:        s.error ?? null,
       })
     })
 
@@ -1764,12 +2300,20 @@ export default function CreatePage() {
     setXcreateId(item.id)
 
     // Decide which slot to continue with.
+    //
+    // Two paths into loadFromGallery:
+    //   1. Explicit "Continue with X" click from the picker → pass
+    //      continueIdx. Jump straight to chatting with that slot.
+    //   2. Deep-link reopen via /xcreate?id=<uuid> → continueIdx is
+    //      undefined. Even if the row has a stored chosen_model_id from
+    //      a previous session, default to PICKING so the user sees all
+    //      models' results side-by-side. They can click "Continue with
+    //      X" again to dive back into chatting. Previously this auto-
+    //      jumped to chatting and hid the other two results, which read
+    //      as "I can't see all results from all models" on revisit.
     let targetIdx: number | null = null
     if (typeof continueIdx === 'number' && continueIdx >= 0 && continueIdx < rawSlots.length) {
       targetIdx = continueIdx
-    } else if (item.chosen_model_id) {
-      const idx = rawSlots.findIndex((s: any) => s.id === item.chosen_model_id)
-      if (idx !== -1) targetIdx = idx
     }
 
     if (targetIdx !== null && restoredModels[targetIdx]) {
@@ -1847,27 +2391,70 @@ export default function CreatePage() {
         </div>
       )}
       {pickerSlot !== null && (
-        <ModelPickerDialog mode={mode} selectedIds={selectedIds} onSelect={m => addModel(pickerSlot, m)} onClose={() => setPickerSlot(null)} />
+        <ModelPickerDialog mode={mode} recipeMode={recipeMode} selectedIds={selectedIds} onSelect={m => addModel(pickerSlot, m)} onClose={() => setPickerSlot(null)} />
       )}
 
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
-      <div className="xduel-page">
-        <div className="arena">
-
-          {/* Header */}
-          <div className="prompt-header">
-            <div className="prompt-label">XCreate</div>
-            <h1 className="prompt-title">
-              Your Private <span>Studio</span>
-            </h1>
-            <div className="prompt-sub" style={{ marginTop: 8 }}>
-              <Link href="/leaderboard" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none' }}>
-                BROWSE ALL MODELS →
-              </Link>
-            </div>
+      {/* Post-pick match report — fixed overlay; the studio underneath is
+          already reset to setup with the winner in slot A (pickModel). */}
+      {matchResult && (
+        <div
+          onClick={() => { setMatchResult(null); flashComposer() }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99500,
+            background: 'rgba(15,15,15,0.45)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            overflowY: 'auto',
+          }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(920px, 100%)' }}>
+            <MatchResult
+              eyebrow={matchResult.eyebrow}
+              title={matchResult.title}
+              winnerProvider={matchResult.winnerProvider}
+              entries={matchResult.entries}
+              ratingDelta={matchDelta}
+            >
+              <button
+                type="button"
+                onClick={() => { setMatchResult(null); flashComposer() }}
+                style={{
+                  padding: '13px 26px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: 'var(--red)', color: '#fff', fontWeight: 800, fontSize: 14,
+                }}
+              >
+                ⚡ Keep creating with {matchResult.winnerName}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMatchResult(null); reset() }}
+                style={{
+                  padding: '13px 26px', borderRadius: 10, border: '1px solid var(--border2)',
+                  background: 'transparent', color: 'var(--white)', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                }}
+              >
+                Start Over
+              </button>
+              <a
+                href="/xboard"
+                style={{
+                  padding: '13px 26px', borderRadius: 10, border: '1px solid var(--border2)',
+                  color: 'var(--white)', fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                }}
+              >
+                View XBoard
+              </a>
+            </MatchResult>
           </div>
+        </div>
+      )}
+
+      <div className="xduel-page">
+        <div className="arena xcreate-arena">
+
+          {/* Title + eyebrow live in the content TopBar now. */}
 
           {/* (Gallery tab removed — moved to /profile under the XCreates
               tab. XCreate is now single-purpose: the studio.) */}
@@ -1949,7 +2536,15 @@ export default function CreatePage() {
                         fontSize: 14, lineHeight: 1.7, color: msg.role === 'user' ? 'var(--muted2)' : 'var(--white)',
                       }}>
                         {msg.isVideo ? <video src={msg.content} autoPlay loop muted playsInline controls style={{ width: '100%', borderRadius: 6 }} />
-                        : msg.isImage ? <img src={msg.content} alt="" onClick={() => setLightbox(msg.content)} style={{ maxWidth: '100%', borderRadius: 6, cursor: 'zoom-in' }} />
+                        : msg.isImage ? (
+                          // Multi-output runs store newline-joined URLs — render
+                          // one image per URL (single-URL content is unaffected).
+                          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                            {msg.content.split('\n').filter(Boolean).map((u, ui) => (
+                              <img key={ui} src={u} alt="" onClick={() => setLightbox(u)} style={{ maxWidth: '100%', borderRadius: 6, cursor: 'zoom-in' }} />
+                            ))}
+                          </div>
+                        )
                         : <div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{msg.content}</ReactMarkdown></div>}
                         {i === chatHistory.length - 1 && msg.role === 'assistant' && chatStreaming && <span className="stream-cursor">▋</span>}
                       </div>
@@ -1985,19 +2580,92 @@ export default function CreatePage() {
                     Start Over to switch modes. Switching modes nukes any
                     prior selection/results via the mode-change useEffect
                     above, which is intentional. */}
-                <div className="mode-selector" style={{ marginBottom: 24, opacity: isLocked ? 0.45 : 1 }}>
-                  {(['text', 'image', 'video'] as Mode[]).map(m => (
-                    <button key={m} className={`mode-btn ${mode === m ? 'active' : ''}`}
-                      disabled={isLocked}
-                      onClick={() => { if (!isLocked) setMode(m) }}
-                      style={{ cursor: isLocked ? 'default' : undefined }}
-                    >
-                      <span className="mode-dot" />{m.charAt(0).toUpperCase() + m.slice(1)}
-                    </button>
-                  ))}
+                {/* Mode group + "From:" dropdown. Clicking a mode switches
+                    it immediately (first sub-mode as default); the From
+                    button opens a small list of the mode's sub-modes. */}
+                <div
+                  ref={modeBlockRef}
+                  style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
+                >
+                  <div className="mode-row">
+                    {/* Column 1 — "Generate:" + segmented mode group. */}
+                    <div className="mode-col">
+                      <div className="field-label">{t('xcreate.generate')}</div>
+                      <div className="mode-seg">
+                        {(['text', 'image', 'video'] as Mode[]).map(m => (
+                          <button key={m} className={`mode-seg-btn ${mode === m ? 'active' : ''}`}
+                            disabled={isLocked}
+                            onClick={() => {
+                              if (isLocked) return
+                              setFromOpen(false)
+                              if (m !== mode) { setMode(m); setActiveTemplateId(null) }
+                            }}
+                            style={{ cursor: isLocked ? 'default' : undefined }}
+                          >
+                            <ModeIcon m={m} />{t('mode.' + m)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Column 2 — "From:" + small dropdown list of the
+                        current mode's sub-modes. */}
+                    <div className="mode-col" style={{ position: 'relative' as const }}>
+                      <div className="field-label">{t('xcreate.from')}</div>
+                      <button type="button" className="recipe-crumb-btn" disabled={isLocked}
+                        aria-haspopup="listbox" aria-expanded={fromOpen}
+                        onClick={() => !isLocked && setFromOpen(o => !o)}>
+                        {t('recipefrom.' + recipeMode)}
+                        <span aria-hidden style={{ fontSize: 9, color: 'var(--muted)' }}>▾</span>
+                      </button>
+                      {fromOpen && (() => {
+                        const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
+                        const recipes = avail.length ? avail : RECIPES[mode]
+                        return (
+                          <div className="from-menu" role="listbox">
+                            {recipes.map(r => {
+                              const ic = RECIPE_ICONS[r.id]
+                              return (
+                                <button key={r.id} type="button" role="option"
+                                  aria-selected={r.id === recipeMode}
+                                  className={`from-menu-item ${r.id === recipeMode ? 'active' : ''}`}
+                                  onClick={() => { selectRecipe(r.id); setFromOpen(false) }}>
+                                  {ic && <span className="recipe-entry-icons" aria-hidden><InputIcon kind={ic[0]} /></span>}
+                                  {t('recipefrom.' + r.id)}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Model slots + per-model options */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  <div className="field-label" style={{ marginBottom: 0 }}>{t('xcreate.selectmodels')}</div>
+                  {/* One-click expand/collapse for every filled slot's ⚙
+                      panel — any panel open → close all, else open all. */}
+                  {activeModels.length > 0 && (() => {
+                    const anyOpen = optsOpen.some((v, idx) => v && selectedModels[idx])
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setOptsOpen(selectedModels.map(m => (m ? !anyOpen : false)))}
+                        style={{
+                          background: 'none', border: '1px solid var(--border2)', borderRadius: 8,
+                          padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono), monospace',
+                          letterSpacing: '0.06em', color: 'var(--muted2)', cursor: 'pointer',
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        <span style={{ fontSize: 17, lineHeight: 1 }}>⚙</span>
+                        {anyOpen ? 'Hide Configs' : 'Show Configs'}
+                      </button>
+                    )
+                  })()}
+                </div>
                 {/* Once a generation run has started (generating → picking →
                     chatting), drop empty slots from the grid so the model row
                     column-aligns with the results grid below. While still in
@@ -2007,7 +2675,7 @@ export default function CreatePage() {
                   const slotsToShow = isRunning ? [0, 1, 2, 3].filter(i => selectedModels[i]) : [0, 1, 2, 3]
                   const columnCount = slotsToShow.length
                   return (
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, 1fr)`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
+                <div className="xcreate-slot-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, 1fr)`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
                   {slotsToShow.map(i => {
                     const model = selectedModels[i]
                     const color = SLOT_COLORS[i]
@@ -2055,20 +2723,23 @@ export default function CreatePage() {
                     // Watermark is Alibaba-only — applies to both video (HappyHorse, Wan)
                     // and image (Qwen Image). Hidden for OpenAI / Google / Anthropic.
                     const showWatermark = (mode === 'video' || mode === 'image') && model.provider === 'alibaba'
-                    // Image count slider — hidden for now. Qwen Image's batch-n
-                    // produces near-identical images and the workaround
-                    // (parallel n=1 with seeds) costs the same. Keep schema
-                    // (`output_config.image.max_count`) but force count=1 in UI.
+                    // Image count slider — shown when the model declares
+                    // output_config.image.max_count > 1 (gpt-image-2: n up
+                    // to 10 independent samples; qwen 2.0: up to 6, though
+                    // its batch-n has produced near-identical images —
+                    // alibaba.ts de-dupes and warns when that happens).
+                    // Re-enabled July 2026 per CC for the e-commerce flow.
                     const imgMaxCount = mode === 'image' ? (model.output_config?.image?.max_count ?? 1) : 1
-                    void imgMaxCount  // eslint: keep ref so the catalog field remains discoverable
-                    const showCount = false
+                    const showCount = imgMaxCount > 1
                     // Per-slot options are interactive only during setup.
                     // Once a run starts they're frozen (no point in changing
                     // a knob after generation is already done) — Start Over
                     // is the only way back. Still rendered when locked so
                     // the user can see what config was used; pointer-events
                     // off + reduced opacity make the "locked" state clear.
-                    const hasOptions = !isLocked && opts && (
+                    // (The ⚙ toggle itself stays clickable when locked —
+                    // opening a read-only panel is harmless and useful.)
+                    const hasOptions = !!opts && (
                       availableModes.length > 1 ||
                       imgQualities.length > 0 || imgSizes.length > 0 || imgArs.length > 0 ||
                       vidSizes.length > 0 || vidDurations.length > 0 || vidArs.length > 0 ||
@@ -2084,7 +2755,14 @@ export default function CreatePage() {
                         {/* Model card — name + remove only. Cost estimate lives
                             in the summary row right above the prompt box, not
                             here, so the grid stays clean. */}
-                        <div style={{ background: '#ffffff', border: `1px solid ${color}44`, borderRadius: 10, padding: '0 14px', height: 56, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
+                        <div
+                          onClick={() => !isLocked && setPickerSlot(i)}
+                          title={!isLocked ? 'Change model' : undefined}
+                          style={{ background: '#ffffff', border: `1px solid ${color}44`, borderRadius: 10, padding: '0 14px', height: 56, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', cursor: !isLocked ? 'pointer' : 'default', transition: 'border-color 0.15s' }}
+                          onMouseEnter={e => { if (!isLocked) (e.currentTarget as HTMLElement).style.borderColor = color }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = `${color}44` }}
+                        >
+                          <ProviderLogo provider={model.provider} size={18} />
                           {/* Split a name like "GPT-5.4 (free)" into a bold
                               main line and a smaller muted sub-line for the
                               parenthetical variant. The sub-line may truncate
@@ -2106,12 +2784,22 @@ export default function CreatePage() {
                               </div>
                             )
                           })()}
-                          {!isLocked && <button onClick={() => removeModel(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
+                          {hasOptions && (
+                            <button
+                              onClick={e => { e.stopPropagation(); setOptsOpen(prev => prev.map((v, idx) => idx === i ? !v : v)) }}
+                              title={optsOpen[i] ? 'Hide options' : 'Options'}
+                              aria-expanded={optsOpen[i]}
+                              style={{ background: 'none', border: 'none', color: optsOpen[i] ? color : 'var(--muted)', cursor: 'pointer', fontSize: 24, lineHeight: 1, padding: '4px 2px', flexShrink: 0 }}
+                            >⚙</button>
+                          )}
+                          {!isLocked && <button title="Remove" onClick={e => { e.stopPropagation(); removeModel(i) }} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 26, lineHeight: 1, padding: '4px 2px', flexShrink: 0 }}>×</button>}
                         </div>
 
-                        {/* Options panel directly below this model's card.
+                        {/* Options panel directly below this model's card —
+                            collapsed by default (validateOpts defaults are
+                            sensible); the card's ⚙ toggles it.
                             Order: Mode → Resolution/Size → Duration → Aspect Ratio → Quality. */}
-                        {hasOptions && opts && (() => {
+                        {hasOptions && opts && optsOpen[i] && (() => {
                           // Helper to keep all option pills consistent.
                           const Pill = ({ active, onClick, children, narrow }: {
                             active: boolean; onClick: () => void; children: React.ReactNode; narrow?: boolean
@@ -2152,8 +2840,7 @@ export default function CreatePage() {
                           const showArI   = mode === 'image' && imgArs.length > 0 && isTextOnlyInput
                           const showArV   = mode === 'video' && vidArs.length > 0 && isTextOnlyInput
                           const showQual  = mode === 'image' && imgQualities.length > 1
-                          const groupsInOrder: Array<'mode' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
-                          if (showMode)      groupsInOrder.push('mode')
+                          const groupsInOrder: Array<'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
                           if (showSizeV)     groupsInOrder.push('size_v')
                           if (showDur)       groupsInOrder.push('dur')
                           if (showArV)       groupsInOrder.push('ar_v')
@@ -2166,17 +2853,9 @@ export default function CreatePage() {
                           const isLast = (k: typeof groupsInOrder[number]) => groupsInOrder.indexOf(k) === lastIdx
 
                           return (
-                            <div style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
-                              {/* Mode (top of config) */}
-                              {showMode && (
-                                <Group label="Mode" last={isLast('mode')}>
-                                  {availableModes.map(mp => (
-                                    <Pill key={mp} active={opts.mode === mp} onClick={() => updateSlotOpts(i, { mode: mp })}>
-                                      {modeLabel(mp)}
-                                    </Pill>
-                                  ))}
-                                </Group>
-                              )}
+                            <div style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px', pointerEvents: isLocked ? 'none' as const : 'auto' as const, opacity: isLocked ? 0.55 : 1 }}>
+                              {/* Per-slot Mode pills removed — the processing
+                                  recipe is now a single Layer-2 selector above. */}
                               {/* Video: Resolution */}
                               {showSizeV && (
                                 <Group label="Resolution" last={isLast('size_v')}>
@@ -2270,13 +2949,16 @@ export default function CreatePage() {
                               {showSizeI && (
                                 <Group label="Size" last={isLast('size_i')}>
                                   {imgSizes.map(s => {
-                                    const isSquare = s.includes('x') && s.split('x')[0] === s.split('x')[1]
-                                    const isLandscape = s.includes('x') && parseInt(s.split('x')[0]) > parseInt(s.split('x')[1])
-                                    const label = isSquare ? '1:1' : isLandscape ? '▬' : '▮'
+                                    // No shape icon — aspect ratio has its own picker,
+                                    // and tier-style sizes ("1024" / "2048" / "4096")
+                                    // have no shape at all. Bare tiers read best in
+                                    // Google's K notation (1K / 2K / 4K).
+                                    const label = /^\d+$/.test(s)
+                                      ? (parseInt(s) >= 1024 ? `${Math.round(parseInt(s) / 1024)}K` : `${s}px`)
+                                      : s
                                     return (
                                       <Pill key={s} active={opts.size === s} onClick={() => updateSlotOpts(i, { size: s })}>
-                                        <div style={{ fontSize: 13 }}>{label}</div>
-                                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{s}</div>
+                                        <div style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{label}</div>
                                       </Pill>
                                     )
                                   })}
@@ -2304,7 +2986,7 @@ export default function CreatePage() {
                               )}
                               {/* Image: Count slider (only for models with max_count > 1) */}
                               {showCount && (
-                                <Group label={`Count (${opts.count ?? 1} of ${imgMaxCount})`} last={isLast('count')}>
+                                <Group label={`Output Count (${opts.count ?? 1} of ${imgMaxCount})`} last={isLast('count')}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 28 }}>
                                     <input
                                       type="range"
@@ -2354,34 +3036,108 @@ export default function CreatePage() {
                   )
                 })()}
 
-                {/* Per-slot cost estimate row — aligned to the 4-column model
-                    slot grid above so each estimate sits directly under its
-                    model card. The total sits on the far right. Hidden while
-                    generating to reduce noise. */}
-                {activeModels.length > 0 && phase !== 'generating' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14, alignItems: 'center' }}>
-                    {[0, 1, 2, 3].map(i => {
-                      const m = selectedModels[i]
-                      if (!m) return <div key={i} />
-                      const d = estimateSlotDollars(m, mode, slotOptions[i], prompt.length)
-                      const color = SLOT_COLORS[i]
-                      return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 4px', gap: 6 }}>
-                          <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Est. cost</span>
-                          <span
-                            title={mode === 'text' ? 'Assumes ~500-token response' : 'Based on your selected options'}
-                            style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--mono)', color }}
-                          >
-                            {d != null ? `~${fmtDollars(d)}` : '—'}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                {/* (Per-slot EST. COST row removed — the total estimate in
+                    the composer's action row is the single cost signal.) */}
 
-                {/* Prompt */}
-                <div className="prompt-box" style={{ opacity: isLocked ? 0.55 : 1 }}>
+                {/* (Popular strip removed — it lives in the mode dropdown
+                    now; the full catalog stays below the composer.) */}
+
+                {/* Prompt — framed composer. The labeled upload slots
+                    (ROSE/JACK/YOUR PHOTO…) render INSIDE the frame, above
+                    the borderless textarea (Pollo-style), so prompt +
+                    assets read as one unit. */}
+                <div ref={promptBoxRef} className="prompt-box framed" style={{
+                  opacity: isLocked ? 0.55 : 1,
+                  boxShadow: promptFlash ? '0 0 0 3px rgba(214,59,50,0.30)' : 'none',
+                  transition: 'box-shadow 0.4s ease, border-color 0.2s',
+                }}>
+                  {(() => {
+                    const activeTemplate = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
+                    const templateSlots = activeTemplate?.attachmentSlots
+                    // Template's named slots win (ROSE/JACK …); otherwise the
+                    // run's recipe decides the upload slots (works in text mode
+                    // too, e.g. image→text / pdf→text).
+                    let slots = (templateSlots && templateSlots.length > 0) ? templateSlots : recipeInputSlots(recipeMode)
+                    // Reference / edit slots scale with the selected models
+                    // (min of input_config.image.count; defaults 2 / 1).
+                    // Progressive disclosure: show filled slots + ONE empty
+                    // one — the next empty slot is the "add" affordance,
+                    // and the "up to N" note announces the capacity.
+                    if ((!templateSlots || templateSlots.length === 0) && refSlotCount > 0) {
+                      const isRefs = recipeMode === 'reference_frames'
+                      const filled = attachments.filter(a => (a.slotIndex ?? 0) < refSlotCount).length
+                      const visible = Math.min(filled + 1, refSlotCount)
+                      slots = Array.from({ length: visible }, (_, i) => ({
+                        label: isRefs ? `REFERENCE ${i + 1}` : `IMAGE ${i + 1}`,
+                        hint:  i === 0
+                          ? (isRefs ? 'A person or subject' : 'The main image to edit')
+                          : (isRefs ? 'Optional' : 'Optional — reference image'),
+                      }))
+                    }
+                    // Template slots also grow, reference_frames only: the
+                    // named slots are the default set; once ALL are filled,
+                    // reveal one more generic slot at a time up to the
+                    // models' shared capacity (refSlotCount). image_edit
+                    // templates stay fixed — their prompts assume an exact
+                    // input shape (e.g. Remove Background = 1 photo).
+                    else if (
+                      templateSlots && templateSlots.length > 0 &&
+                      recipeMode === 'reference_frames' &&
+                      refSlotCount > templateSlots.length
+                    ) {
+                      const filled = attachments.filter(a => (a.slotIndex ?? 0) < refSlotCount).length
+                      const visible = Math.max(
+                        templateSlots.length,
+                        Math.min(filled + 1, refSlotCount),
+                      )
+                      slots = Array.from({ length: visible }, (_, i) =>
+                        templateSlots[i] ?? { label: `IMAGE ${i + 1}`, hint: 'Optional' })
+                    }
+                    // Always-on attach slot: when the recipe needs no
+                    // upload, show one optional slot anyway. Dropping a
+                    // file there auto-switches the sub-mode (see
+                    // handleComposerAttachments).
+                    const generic = !slots || slots.length === 0
+                    if (generic) {
+                      slots = [{ label: 'ATTACH', hint: 'Optional' }]
+                    }
+                    // What the slots accept: recipe-specific media, or the
+                    // mode's full union for the generic slot.
+                    const IMG = 'image/jpeg,image/png,image/gif,image/webp'
+                    const VID = 'video/mp4,video/quicktime,video/webm'
+                    const accept =
+                      !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
+                      : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
+                      : generic && mode === 'text' ? `${IMG},${VID},application/pdf`
+                      : generic && mode === 'video' ? `${IMG},${VID}`
+                      : undefined
+                    const isFrames = recipeMode === 'start_end_frames'
+                    return (
+                      <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+                        <LabeledSlotsPicker
+                          slots={slots}
+                          attachments={attachments}
+                          onChange={handleComposerAttachments}
+                          disabled={isLocked}
+                          context="xcreate"
+                          arrows={isFrames}
+                          swappable={isFrames}
+                          compact
+                          accept={accept}
+                        />
+                        {/* ("up to N images" capacity note removed July 2026
+                            per CC — slots just keep appearing until the cap;
+                            no announcement needed.) */}
+                        {refDropNotice && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#f59e0b', background: '#f59e0b14', border: '1px solid #f59e0b40', borderRadius: 8, padding: '3px 8px' }}>
+                            ⚠ {refDropNotice}
+                            <button onClick={() => setRefDropNotice(null)} aria-label="Dismiss"
+                              style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
                   <textarea className="prompt-textarea"
                     placeholder={mode === 'image' ? "Describe an image…" : mode === 'video' ? "Describe a video…" : "Ask anything…"}
                     value={prompt} onChange={e => setPrompt(e.target.value)}
@@ -2391,76 +3147,94 @@ export default function CreatePage() {
                     readOnly={isLocked}
                     onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (canGenerate) generate() } }}
                   />
-                  {(() => {
-                    // Filter the file picker by what the selected slot modes
-                    // actually need. If every active slot is on an image-only
-                    // mode (image_to_video, image_edit, start_end_frames, etc.)
-                    // we hand the input an `image/*` accept string so the OS
-                    // dialog only shows images. Same for video-only modes.
-                    // Mixed selection = full accept (default).
-                    const IMAGE_MODES = ['image_to_text', 'image_edit', 'image_to_video', 'start_end_frames', 'reference_frames']
-                    const VIDEO_MODES = ['video_to_video', 'video_to_text']
-                    const AUDIO_MODES = ['audio_to_text']
-                    const PDF_MODES   = ['pdf_to_text']
-                    const activeOpts = slotOptions.filter((o, i) => o && selectedModels[i])
-                    const allImage = activeOpts.length > 0 && activeOpts.every(o => o!.mode != null && IMAGE_MODES.includes(o!.mode))
-                    const allVideo = activeOpts.length > 0 && activeOpts.every(o => o!.mode != null && VIDEO_MODES.includes(o!.mode))
-                    const allAudio = activeOpts.length > 0 && activeOpts.every(o => o!.mode != null && AUDIO_MODES.includes(o!.mode))
-                    const allPdf   = activeOpts.length > 0 && activeOpts.every(o => o!.mode != null && PDF_MODES.includes(o!.mode))
-                    const attachAccept = allImage ? 'image/jpeg,image/png,image/gif,image/webp'
-                                       : allVideo ? 'video/mp4,video/quicktime,video/webm'
-                                       : allAudio ? 'audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg'
-                                       : allPdf   ? 'application/pdf'
-                                       : undefined
-                    return (
-                  <div className="prompt-actions">
-                    {/* Attachments only render outside text mode. In
-                        text mode the run is text-in → text-out, so an
-                        attachment would be silently ignored by most
-                        selected models. Image / video modes still allow
-                        attachments per the slot's input shape. */}
-                    {mode !== 'text' && (
-                      <AttachmentButton attachments={attachments} onChange={setAttachments} disabled={isLocked} context="xcreate" multiple={true} accept={attachAccept} />
-                    )}
-                    <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
-                    {totalEstDollars != null && phase !== 'generating' && (
-                      <span
-                        title={mode === 'text' ? 'Estimated total — assumes ~500-token response per model' : 'Estimated total based on your selected options'}
-                        style={{
-                          fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)',
-                          color: 'var(--muted2)', whiteSpace: 'nowrap' as const,
-                        }}
-                      >
-                        Total ~{fmtDollars(totalEstDollars)}
-                      </span>
-                    )}
-                    {/* Setup phase: real Generate button.
-                        Generating phase: disabled "⏳ Generating…" indicator
-                          so the user knows the request is in flight.
-                        Picking / chatting phase: nothing — Start Over is
-                          the only path back to a new generation. */}
-                    {phase === 'setup' && (
-                      <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
-                        ✦ Generate →
-                      </button>
-                    )}
-                    {phase === 'generating' && (
-                      <button className="btn-battle" disabled style={{ opacity: 0.7 }}>
-                        ⏳ Generating…
-                      </button>
-                    )}
-                  </div>
-                    )
-                  })()}
+                  {/* Fill-in hint — INSIDE the prompt box (CC), shown while
+                      the prompt contains a {{placeholder}}. Distinctive
+                      double-brace delimiter can't false-fire on normal
+                      user text; disappears once the user replaces them.
+                      Defaults still generate fine untouched. */}
+                  {phase === 'setup' && /\{\{[^}]+\}\}/.test(prompt) && (
+                    <div style={{ padding: '0 16px 12px', fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
+                      ✏️ Replace the {'{{marked}}'} parts with your own words — or keep the defaults
+                    </div>
+                  )}
                 </div>
+
+                {/* Actions row — OUTSIDE the prompt box (July 2026, CC):
+                    sits just below the composer as a normal flex row, so it
+                    can never overlap the prompt text. (XDuel keeps its own
+                    overlay .prompt-actions — this row is XCreate-only.) */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
+                  <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
+                  {totalEstDollars != null && phase !== 'generating' && (
+                    <span
+                      title={mode === 'text' ? 'Estimated total — assumes ~500-token response per model' : 'Estimated total based on your selected options'}
+                      style={{
+                        fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)',
+                        color: 'var(--muted2)', whiteSpace: 'nowrap' as const,
+                      }}
+                    >
+                      Estimated Cost ~{fmtDollars(totalEstDollars)}
+                    </span>
+                  )}
+                  {/* Setup phase: real Generate button.
+                      Generating phase: disabled "⏳ Generating…" indicator.
+                      Picking / chatting phase: nothing — Start Over is the
+                      only path back to a new generation. */}
+                  {phase === 'setup' && (
+                    <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
+                      ✦ Generate →
+                    </button>
+                  )}
+                  {phase === 'generating' && (
+                    <button className="btn-battle" disabled style={{ opacity: 0.7 }}>
+                      ⏳ Generating…
+                    </button>
+                  )}
+                </div>
+
+                {/* Discovery — the full tools + templates catalog, below the
+                    composer (CapCut "Inspiration" pattern: browse when you
+                    want it, out of the way when you're working). Hidden once
+                    a run has results so it doesn't compete with them.
+                    Clicking anything applies it and scrolls back up to the
+                    flashing composer. */}
+                {phase === 'setup' && slots.length === 0 && (() => {
+                  // Category sections (Popular / Tools / Templates), each
+                  // wrapped so EVERY card is visible — no horizontal
+                  // scrolling (July 2026: CC prefers the full catalog on
+                  // screen over Netflix rows). Items may appear in more
+                  // than one section — that's fine.
+                  const forMode = XCREATE_TEMPLATES.filter(x => x.mode === mode)
+                  const rows: { key: string; caption: string; items: Template[] }[] = [
+                    { key: 'popular',   caption: t('xcreate.popular'),      items: forMode.filter(x => x.popular) },
+                    { key: 'tools',     caption: t('xcreate.alltools'),     items: forMode.filter(x => x.kind === 'tool') },
+                    { key: 'templates', caption: t('xcreate.alltemplates'), items: forMode.filter(x => x.kind !== 'tool') },
+                  ]
+                  return (
+                    <div style={{ marginTop: 36 }}>
+                      {rows.filter(r => r.items.length > 0).map(r => (
+                        <div key={r.key} style={{ marginBottom: 22 }}>
+                          <div className="ms-cap">{r.caption}</div>
+                          <TemplatePicker
+                            templates={r.items}
+                            selectedId={activeTemplateId}
+                            onSelect={applyTemplate}
+                            onClear={reset}
+                            layout="wrap"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
 
                 {/* Results */}
                 {slots.length > 0 && (
                   <div style={{ marginTop: 24 }}>
                     {phase === 'picking' && (
                       <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                        <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>Which model do you want to continue with?</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>Pick one — the others will be dismissed</div>
+                        <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>Which result won?</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>Pick it to record your vote and keep generating with that model</div>
                       </div>
                     )}
                     {/* 4 results → 2×2 grid (readable), otherwise single row.
@@ -2505,7 +3279,16 @@ export default function CreatePage() {
                                 (e.g. quality tiers > 1, multiple sizes, etc.),
                                 matching the form's picker visibility. */}
                             {(() => {
-                              const used = slotOptions[i]
+                              // `i` indexes the COMPACTED activeModels/slots
+                              // array, but slotOptions is indexed by the raw
+                              // 4-slot positions (with null gaps). Map back
+                              // to the raw index or a model in slot C reads
+                              // slot B's (possibly null) options and the
+                              // summary silently disappears.
+                              const rawIndices = selectedModels
+                                .map((m, idx) => (m ? idx : -1))
+                                .filter(idx => idx >= 0)
+                              const used = slotOptions[rawIndices[i] ?? i]
                               if (!used) return null
                               const oc = model.output_config ?? {}
                               const sizes = mode === 'video' ? (oc.video?.sizes ?? []) : mode === 'image' ? (oc.image?.sizes ?? []) : []
@@ -2548,7 +3331,7 @@ export default function CreatePage() {
                               {slot.streaming && !slot.text
                                 ? <><div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" /></>
                                 : slot.error ? <div style={{ padding: 16, color: 'var(--red)', fontSize: 13 }}>⚠️ {slot.error}</div>
-                                : slot.isVideo ? <video src={slot.text} autoPlay loop muted playsInline controls style={{ width: '100%', display: 'block' }} />
+                                : slot.isVideo ? <video src={slot.text} autoPlay loop muted playsInline controls style={{ display: 'block' }} />
                                 : slot.isImage ? (() => {
                                     // Multi-image slots store URLs newline-delimited
                                     // in `slot.text`. Single image still renders flush;
@@ -2592,6 +3375,20 @@ export default function CreatePage() {
                         )
                       })}
                     </div>
+                    {/* Generating phase: show "Start a new run" so the
+                        user isn't stuck waiting on a long video. The
+                        server-side job continues regardless — its row is
+                        already in `xcreates` and the result will surface
+                        in /profile (XCreates tab) when done. Polling
+                        just stops client-side. */}
+                    {phase === 'generating' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8, marginTop: 32 }}>
+                        <button className="btn-secondary" onClick={reset}>↻ Start a new run</button>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                          Current run continues in background — check Profile when ready
+                        </span>
+                      </div>
+                    )}
                     {(phase === 'picking' || phase === 'chatting') && (() => {
                       const totalActual = slots.reduce((sum, s) => sum + (s.done && s.cost > 0 ? s.cost : 0), 0)
                       return (

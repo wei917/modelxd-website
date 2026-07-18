@@ -28,11 +28,15 @@ export interface CreditTier {
 }
 
 export const CREDIT_TIERS: CreditTier[] = [
-  { id: 'tier_5',   priceCents:  500, label: '$5',   description: 'Starter — a few XCreates' },
-  { id: 'tier_10',  priceCents: 1000, label: '$10',  description: 'Casual — most popular' },
-  { id: 'tier_25',  priceCents: 2500, label: '$25',  description: 'Regular — heavy XCreate use' },
-  { id: 'tier_100', priceCents: 10000, label: '$100', description: 'Power — bulk credit load' },
+  { id: 'tier_10',  priceCents:  1000, label: '$10',  description: 'Starter' },
+  { id: 'tier_20',  priceCents:  2000, label: '$20',  description: 'Most popular' },
+  { id: 'tier_100', priceCents: 10000, label: '$100', description: 'Power' },
 ]
+
+// Custom amounts (the 4th card in the payment screen) are validated
+// server-side in the checkout route: whole dollars, $1 minimum, $1000 cap.
+export const CUSTOM_MIN_CENTS = 100
+export const CUSTOM_MAX_CENTS = 100000
 
 export function getTier(id: string): CreditTier | null {
   return CREDIT_TIERS.find(t => t.id === id) ?? null
@@ -104,8 +108,14 @@ export interface CheckoutSession {
 
 export interface CreateCheckoutOpts {
   tier:        CreditTier
+  /** Account that RECEIVES the credits (the purchaser unless gifting). */
   userId:      string
   userEmail?:  string | null
+  /** Set when the purchaser is buying credits for another account —
+   *  purchaser's email, recorded in metadata + the ledger description. */
+  giftFromEmail?: string | null
+  /** Recipient's email, shown on the Stripe line item for gifts. */
+  giftToEmail?:   string | null
   successUrl:  string
   cancelUrl:   string
 }
@@ -125,7 +135,9 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts): Promise<C
     'line_items[0][quantity]': 1,
     'line_items[0][price_data][currency]':     'usd',
     'line_items[0][price_data][unit_amount]':  opts.tier.priceCents,
-    'line_items[0][price_data][product_data][name]': `ModelXD Credits — ${opts.tier.label}`,
+    'line_items[0][price_data][product_data][name]': opts.giftToEmail
+      ? `ModelXD Credits Gift — ${opts.tier.label} for ${opts.giftToEmail}`
+      : `ModelXD Credits — ${opts.tier.label}`,
     'line_items[0][price_data][product_data][description]': opts.tier.description,
     success_url:          opts.successUrl,
     cancel_url:           opts.cancelUrl,
@@ -133,6 +145,9 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts): Promise<C
     'metadata[user_id]':     opts.userId,
     'metadata[tier_id]':     opts.tier.id,
     'metadata[credit_cents]': opts.tier.priceCents,
+  }
+  if (opts.giftFromEmail) {
+    body['metadata[gift_from]'] = opts.giftFromEmail
   }
   if (opts.userEmail) {
     body.customer_email = opts.userEmail

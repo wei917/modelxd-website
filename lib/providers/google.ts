@@ -16,6 +16,7 @@ import type {
 } from './types'
 import { calcTextCost, calcImageCost, calcVideoCost } from './pricing'
 import { logResponse } from './log'
+import { VARIATION_DIRECTIVES } from './types'
 
 let _ai: GoogleGenAI | null = null
 function ai(): GoogleGenAI {
@@ -42,10 +43,13 @@ export async function streamText(
   const contents: Content[] = messages.map((m, i) => {
     const parts: Part[] = []
 
-    // Add attachments to last user message
+    // Add attachments to last user message. Gemini ingests both images and
+    // PDFs as inlineData (native document understanding for PDFs). The
+    // router only forwards a PDF here when the model declares `pdf_to_text`;
+    // plain-text files are folded into the prompt upstream.
     if (i === messages.length - 1 && m.role === 'user' && attachments.length > 0) {
       for (const att of attachments) {
-        if (att.mediaType.startsWith('image/')) {
+        if (att.mediaType.startsWith('image/') || att.mediaType === 'application/pdf') {
           parts.push({
             inlineData: {
               mimeType: att.mediaType,
@@ -107,9 +111,22 @@ export async function generateImage(
   size: string = '1024x1024',
   attachments: Attachment[] = [],
   conversationHistory: Array<{ role: string; parts: any[] }> | null = null,
+  options?: { count?: number | null } | null,
 ): Promise<ImageResult & { conversationHistory?: any[] }> {
   const TAG = `[google/${model.model_name}]`
-  console.log(`${TAG} generateImage size=${size} attachments=${attachments.length} historyLen=${conversationHistory?.length ?? 0}`)
+
+  // Output count: Gemini's API has NO n/candidateCount for image output —
+  // one request = one generation. We deliver multi-output the way image
+  // aggregators do: N PARALLEL requests, merged into primary + extras.
+  // Each request bills its own usage tokens, so cost scales linearly and
+  // stays exact. Gated on output_config.image.max_count like other
+  // providers. Multi-turn continuation always follows the FIRST image.
+  const maxCount = model.output_config?.image?.max_count ?? 1
+  const n = (maxCount > 1 && typeof options?.count === 'number' && options.count >= 1)
+    ? Math.min(options.count, maxCount)
+    : 1
+
+  console.log(`${TAG} generateImage size=${size} attachments=${attachments.length} historyLen=${conversationHistory?.length ?? 0} count=${n}`)
 
   let contents: Content[]
 
@@ -185,7 +202,23 @@ export async function generateImage(
   console.log(`${TAG} requesting aspectRatio=${aspectRatio} imageSize=${imageSize} for size=${size}`)
   logResponse(TAG, 'REQUEST', requestPayload)
 
-  const response = await ai().models.generateContent(requestPayload)
+  // n parallel generations (n=1 → a single call, exactly as before).
+  // Same-prompt parallel samples come out near-identical (low sample
+  // variance — same failure ChatGPT avoids by rewriting the prompt per
+  // image), so each call past the first gets a numbered variation hint
+  // appended to the user prompt.
+  const payloadFor = (vi: number) => {
+    if (n <= 1) return requestPayload
+    const hint = `\n\n(Variation ${vi + 1} of ${n} — this take must use ${VARIATION_DIRECTIVES[vi % VARIATION_DIRECTIVES.length]}.)`
+    const varied = contents.map((c, ci) => ci === contents.length - 1
+      ? { ...c, parts: (c.parts ?? []).map(p => (p as any).text ? { text: (p as any).text + hint } : p) }
+      : c)
+    return { ...requestPayload, contents: varied }
+  }
+  const responses = await Promise.all(
+    Array.from({ length: n }, (_, vi) => ai().models.generateContent(payloadFor(vi)))
+  )
+  const response = responses[0]
 
   // ── debug: dump everything Google sent back so we can map usage → cost ──
   try {
@@ -202,26 +235,50 @@ export async function generateImage(
     console.log(`${TAG} response (stringify failed): ${(e as Error).message}`)
   }
 
-  // Extract image from response
-  let imageBuffer: Buffer | null = null
-  let mimeType = 'image/png'
+  // Extract EVERY image from EVERY response. Two multi-image sources:
+  // n > 1 parallel calls, and a single response containing multiple image
+  // parts (storytelling-style prompts). First image = primary, the rest
+  // ride in `extras` (same contract as qwen / gpt-image-2 multi-output).
+  // responseParts (→ conversation history) come from the FIRST response
+  // only, so multi-turn edits continue from the primary image.
+  const found: Array<{ buffer: Buffer; mediaType: string }> = []
   const responseParts: Part[] = []
 
-  const candidates = response.candidates
-  if (candidates && candidates.length > 0) {
+  for (let ri = 0; ri < responses.length; ri++) {
+    const candidates = responses[ri].candidates
+    if (!candidates || candidates.length === 0) continue
     const parts = candidates[0].content?.parts ?? []
     for (const part of parts) {
-      responseParts.push(part as Part)
+      if (ri === 0) responseParts.push(part as Part)
       if ((part as any).inlineData) {
         const data = (part as any).inlineData
-        imageBuffer = Buffer.from(data.data, 'base64')
-        mimeType = data.mimeType ?? 'image/png'
+        found.push({
+          buffer:    Buffer.from(data.data, 'base64'),
+          mediaType: data.mimeType ?? 'image/png',
+        })
       }
     }
   }
 
+  const imageBuffer = found[0]?.buffer ?? null
+  const mimeType    = found[0]?.mediaType ?? 'image/png'
+
   if (!imageBuffer) {
-    throw new Error(`Gemini returned no image. Response: ${JSON.stringify(response).slice(0, 500)}`)
+    // Surface WHY instead of dumping raw JSON (which truncates before the
+    // useful bits). Two common causes: (1) the model answered with TEXT
+    // (a refusal or a clarifying question) — show that text; (2) the
+    // candidate was blocked — show finishReason (e.g. IMAGE_SAFETY,
+    // PROHIBITED_CONTENT) and any promptFeedback.blockReason.
+    const cand         = (response as any)?.candidates?.[0]
+    const textPart     = (cand?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join(' ').trim()
+    const finishReason = cand?.finishReason
+    const blockReason  = (response as any)?.promptFeedback?.blockReason
+    const why = [
+      finishReason && finishReason !== 'STOP' ? `finishReason=${finishReason}` : null,
+      blockReason ? `blockReason=${blockReason}` : null,
+      textPart ? `model said: "${textPart.slice(0, 300)}"` : null,
+    ].filter(Boolean).join(' — ')
+    throw new Error(`Gemini returned no image${why ? ` (${why})` : ''}. Try again, rephrase the prompt, or switch models.`)
   }
 
   // Build updated conversation history for multi-turn
@@ -242,19 +299,24 @@ export async function generateImage(
     },
   ]
 
-  // Cost — split out per-modality token counts from Gemini's usageMetadata
-  // so calcImageCost can apply per-modality rates if the model is token-billed.
+  // Cost — split out per-modality token counts from usageMetadata, SUMMED
+  // across all n responses (each parallel call bills independently), so
+  // calcImageCost can apply per-modality rates if the model is token-billed.
   const usage = response.usageMetadata as any
-  const promptTokensDetails:    Array<{ modality?: string; tokenCount?: number }> = usage?.promptTokensDetails    ?? []
-  const candidatesTokensDetails: Array<{ modality?: string; tokenCount?: number }> = usage?.candidatesTokensDetails ?? []
-
-  const findTokens = (arr: typeof promptTokensDetails, mod: string): number =>
+  type TokenDetail = { modality?: string; tokenCount?: number }
+  const findTokens = (arr: TokenDetail[], mod: string): number =>
     arr.find(d => d.modality === mod)?.tokenCount ?? 0
 
-  const inputTextTokens   = findTokens(promptTokensDetails, 'TEXT')
-  const inputImageTokens  = findTokens(promptTokensDetails, 'IMAGE')
-  const outputImageTokens = findTokens(candidatesTokensDetails, 'IMAGE')
-  const outputTextTokens  = findTokens(candidatesTokensDetails, 'TEXT')
+  let inputTextTokens = 0, inputImageTokens = 0, outputImageTokens = 0, outputTextTokens = 0
+  for (const r of responses) {
+    const u = r.usageMetadata as any
+    const promptTokensDetails:     TokenDetail[] = u?.promptTokensDetails     ?? []
+    const candidatesTokensDetails: TokenDetail[] = u?.candidatesTokensDetails ?? []
+    inputTextTokens   += findTokens(promptTokensDetails, 'TEXT')
+    inputImageTokens  += findTokens(promptTokensDetails, 'IMAGE')
+    outputImageTokens += findTokens(candidatesTokensDetails, 'IMAGE')
+    outputTextTokens  += findTokens(candidatesTokensDetails, 'TEXT')
+  }
 
   // Token-based cost via calcImageCost (uses model_pricing.tokens.{text_input,
   // image_input, text_output, image_output}); falls back to per-image flat
@@ -268,11 +330,12 @@ export async function generateImage(
     outputImageTokens,
   })
 
-  console.log(`${TAG} image ok bytes=${imageBuffer.length} historyLen=${updatedHistory.length} cost=$${cost.toFixed(6)} tokens(in_text=${inputTextTokens}, in_image=${inputImageTokens}, out_image=${outputImageTokens}, out_text=${outputTextTokens})`)
+  console.log(`${TAG} image ok count=${found.length} bytes=[${found.map(f => f.buffer.length).join(',')}] historyLen=${updatedHistory.length} cost=$${cost.toFixed(6)} tokens(in_text=${inputTextTokens}, in_image=${inputImageTokens}, out_image=${outputImageTokens}, out_text=${outputTextTokens})`)
   return {
     buffer:             imageBuffer,
     mediaType:          mimeType,
     cost,
+    extras:             found.slice(1),
     conversationHistory: updatedHistory,
     inputTextTokens,
     inputImageTokens,
@@ -290,9 +353,17 @@ export async function generateImage(
 //   3. operation.response.generatedVideos[0].video has a `.uri` we can fetch
 //      with the API key appended.
 //
-// Image attachments map to image-to-video. The first image attachment is
-// used as the conditioning frame. Multi-image (referenceImages) support
-// could be added later for veo-3.1's reference_frames mode.
+// How image attachments map to the Veo request depends on the recipe
+// (options.mode):
+//   • reference_frames → config.referenceImages (max 3, type 'asset',
+//     duration must be 8s): subjects/products to PRESERVE in a new scene.
+//   • start_end_frames  → image (start) + config.lastFrame (end)
+//     interpolation.
+//   • image_to_video / unset → image[0] as the conditioning frame; a 2nd
+//     image still falls back to lastFrame for backward compatibility.
+// Getting this wrong is not cosmetic: sending person+product as
+// start/end frames asks Veo to MORPH one into the other, which the
+// safety filter rejects ("prompt conflicted with our safety policies").
 
 export async function generateVideo(
   model:       ModelInfo,
@@ -301,6 +372,7 @@ export async function generateVideo(
   seconds:     number = 8,
   attachments: Attachment[] = [],
   onProgress?: (pct: number) => void,
+  options?:    { mode?: string | null },
 ): Promise<VideoResult> {
   const TAG = `[google/${model.model_name}]`
 
@@ -331,32 +403,56 @@ export async function generateVideo(
   }
 
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
-  if (imageAtts.length >= 1) {
-    request.image = {
-      imageBytes: imageAtts[0].buffer.toString('base64'),
-      mimeType:   imageAtts[0].mediaType,
+  const recipe = options?.mode ?? null
+
+  if (recipe === 'reference_frames' && imageAtts.length >= 1) {
+    // Reference images: preserve these subjects/products in a NEW scene
+    // described by the prompt. Docs: up to 3 images, referenceType
+    // 'asset', durationSeconds must be 8.
+    const refs = imageAtts.slice(0, 3)
+    if (imageAtts.length > 3) {
+      console.warn(`${TAG} ${imageAtts.length} reference images attached; Veo accepts 3 — extras dropped`)
     }
-    console.log(`${TAG} using image[0] as conditioning frame (mime=${imageAtts[0].mediaType}, ${imageAtts[0].buffer.length}b)`)
-  }
-  // Veo 3.1 supports start+end frame interpolation via `config.lastFrame`.
-  // When the user attaches a second image, treat it as the end frame so
-  // start_end_frames mode actually consumes both. Older Veo versions ignore
-  // the field — that's fine, they just fall back to start-frame-only.
-  //
-  // Veo 3.1's lastFrame ONLY works with durationSeconds=8 — any other value
-  // returns a generic 400 "use case not supported". Force-override the
-  // duration here so the request actually succeeds. (This is documented in
-  // a Google AI Forum thread, not the official docs.)
-  if (imageAtts.length >= 2) {
-    request.config.lastFrame = {
-      imageBytes: imageAtts[1].buffer.toString('base64'),
-      mimeType:   imageAtts[1].mediaType,
-    }
+    request.config.referenceImages = refs.map(a => ({
+      image: {
+        imageBytes: a.buffer.toString('base64'),
+        mimeType:   a.mediaType,
+      },
+      referenceType: 'asset',
+    }))
     if (request.config.durationSeconds !== 8) {
-      console.log(`${TAG} lastFrame requires durationSeconds=8 (was ${request.config.durationSeconds}); overriding`)
+      console.log(`${TAG} referenceImages require durationSeconds=8 (was ${request.config.durationSeconds}); overriding`)
       request.config.durationSeconds = 8
     }
-    console.log(`${TAG} using image[1] as lastFrame (mime=${imageAtts[1].mediaType}, ${imageAtts[1].buffer.length}b)`)
+    console.log(`${TAG} using ${refs.length} referenceImages (asset)`)
+  } else {
+    if (imageAtts.length >= 1) {
+      request.image = {
+        imageBytes: imageAtts[0].buffer.toString('base64'),
+        mimeType:   imageAtts[0].mediaType,
+      }
+      console.log(`${TAG} using image[0] as conditioning frame (mime=${imageAtts[0].mediaType}, ${imageAtts[0].buffer.length}b)`)
+    }
+    // Veo 3.1 supports start+end frame interpolation via `config.lastFrame`.
+    // When the user attaches a second image, treat it as the end frame so
+    // start_end_frames mode actually consumes both. Older Veo versions ignore
+    // the field — that's fine, they just fall back to start-frame-only.
+    //
+    // Veo 3.1's lastFrame ONLY works with durationSeconds=8 — any other value
+    // returns a generic 400 "use case not supported". Force-override the
+    // duration here so the request actually succeeds. (This is documented in
+    // a Google AI Forum thread, not the official docs.)
+    if (imageAtts.length >= 2) {
+      request.config.lastFrame = {
+        imageBytes: imageAtts[1].buffer.toString('base64'),
+        mimeType:   imageAtts[1].mediaType,
+      }
+      if (request.config.durationSeconds !== 8) {
+        console.log(`${TAG} lastFrame requires durationSeconds=8 (was ${request.config.durationSeconds}); overriding`)
+        request.config.durationSeconds = 8
+      }
+      console.log(`${TAG} using image[1] as lastFrame (mime=${imageAtts[1].mediaType}, ${imageAtts[1].buffer.length}b)`)
+    }
   }
 
   if (onProgress) onProgress(2)

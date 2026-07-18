@@ -217,3 +217,23 @@ export interface TextStreamCallbacks {
   }) => void
   onError: (message: string) => void
 }
+
+/** Concrete per-sample scene directives for multi-output image runs.
+ *  Same-prompt parallel samples come out near-identical (low sample
+ *  variance); a generic "make it different" hint barely helps. Naming a
+ *  concretely different camera/lighting/setting per index is what
+ *  ChatGPT's per-image prompt rewriting effectively does. Subject-neutral
+ *  on purpose — works for products, portraits, scenes alike. Shared by
+ *  openai.ts and google.ts. */
+export const VARIATION_DIRECTIVES = [
+  'a different camera angle — three-quarter or profile view',
+  'an overhead or top-down perspective',
+  'a close-up composition emphasizing texture and detail',
+  'an outdoor setting with natural daylight',
+  'a dark, moody backdrop with dramatic lighting',
+  'a bright minimalist backdrop with soft shadows',
+  'a wide composition with generous negative space',
+  'a real-life environment where the subject would naturally appear',
+  'warm golden-hour lighting from the side',
+  'a low camera angle looking slightly upward',
+]

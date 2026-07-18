@@ -2,8 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRequireAuth } from '../../lib/useRequireAuth'
+import { useT } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
+import MatchResult, { type RatingDelta } from '../components/MatchResult'
+import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
+import { usePageTitle } from '../../lib/PageTitleContext'
 
 type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
@@ -54,6 +58,7 @@ function formatCost(cost: number, isImage: boolean, isVideo: boolean): string {
 
 export default function XDuel() {
   useRequireAuth()
+  const t = useT()
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const setCursor = (color: string) => {
@@ -62,17 +67,26 @@ export default function XDuel() {
   }
 
   const [step,       setStep]       = useState(1)
-  const [mode,       setMode]       = useState<Mode>('text')
+  const [mode,       setMode]       = useState<Mode>('image')  // visual wow, sustainable cost
   const [count,      setCount]      = useState(2)
   const [duelId,     setDuelId]     = useState<string | null>(null)
   const [prompt,     setPrompt]     = useState('')
   const [loading,    setLoading]    = useState(false)
   const [apiError,   setApiError]   = useState<string | null>(null)
   const [models,     setModels]     = useState<ModelState[]>([])
+  // XDRating movement for the match report (step 5). undefined = fetching,
+  // null = unavailable (tie / refit throttled / error) — chip hides.
+  const [duelDelta,  setDuelDelta]  = useState<RatingDelta | null | undefined>(undefined)
+  // XBoard rows captured BEFORE the blind vote lands — the report's delta
+  // must cover the WHOLE duel (both votes), not just the informed vote.
+  // Without this, vote1's refit is already priced in by the time the
+  // report reads "before" and the chip shows a misleading partial delta.
+  const preDuelRatingsRef = useRef<any[] | null>(null)
   const [vote1,      setVote1]      = useState<Vote>(null)
   const [lightbox,   setLightbox]   = useState<string | null>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
+  const { setOverride } = usePageTitle()
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -301,8 +315,26 @@ export default function XDuel() {
     fetchQuota()
   }
 
+  // Publish the wizard-step title into the content TopBar ("// XDuel" +
+  // big title) — every page's title lives in the bar now (CC, July 16).
+  useEffect(() => {
+    setOverride({
+      eyebrow: t('xduel.eyebrow'),
+      title: step === 1 ? t('xduel.start') :
+             step === 5 ? t('xduel.reveal') :
+             phase === 'vote' ? t('xduel.voteblind') :
+             t('xduel.voteagain'),
+    })
+    return () => setOverride(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, phase, t])
+
   const castVote = (choice: Vote) => {
     setVote1(choice)
+    // Snapshot ratings before this duel's first vote can trigger a refit.
+    fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
+      .then(rows => { preDuelRatingsRef.current = rows })
+      .catch(() => { preDuelRatingsRef.current = null })
     setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
     if (duelId) fetch('/api/xduel/vote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -316,14 +348,40 @@ export default function XDuel() {
 
   const castRevote = (choice: Vote) => {
     setVote2(choice)
-    if (duelId) fetch('/api/xduel/vote', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        duelId,
-        vote2: choice === 'T' ? 'T' : String(choice),
-        vote2ModelId: choice === 'T' ? null : models[choice as number]?.meta?.id ?? null,
-      }),
-    }).catch(console.error)
+    const winnerId = choice === 'T' ? null : models[choice as number]?.meta?.id ?? null
+    setDuelDelta(winnerId ? undefined : null)
+    ;(async () => {
+      try {
+        // Before-rating for the winner, then vote → refit → after-rating.
+        // See docs/xdrating-pipeline.md (true delta is fine at current
+        // volume; switch to an Elo-style display delta if refits start
+        // coalescing post-launch).
+        let before: number | null = null
+        if (winnerId) {
+          // Prefer the pre-duel snapshot (covers both votes); fall back to
+          // a live read (covers only vote2) if the early fetch failed.
+          const rows = preDuelRatingsRef.current
+            ?? await fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
+          before = rows?.find((r: any) => r.modelId === winnerId)?.xdScore ?? null
+        }
+        if (duelId) await fetch('/api/xduel/vote', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            duelId,
+            vote2: choice === 'T' ? 'T' : String(choice),
+            vote2ModelId: winnerId,
+          }),
+        })
+        if (!winnerId) return
+        await fetch('/api/xdrating/refit?source=vote&force=1', { method: 'POST' })
+        const rows = await fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
+        const after = rows.find((r: any) => r.modelId === winnerId)?.xdScore ?? null
+        setDuelDelta(before !== null && after !== null ? { before, after } : null)
+      } catch (err) {
+        console.warn('[xduel] rating delta unavailable:', err)
+        setDuelDelta(null)
+      }
+    })()
     setTimeout(() => {
       goStep(5)
       setTimeout(() => setShowReveal(true), 600)
@@ -331,7 +389,7 @@ export default function XDuel() {
   }
 
   const clearState = (keepPrompt = false) => {
-    setVote1(null); setVote2(null)
+    setVote1(null); setVote2(null); setDuelDelta(undefined)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     setModels([]); setApiError(null)
     if (!keepPrompt) { setPrompt(''); setAttachments([]) }
@@ -398,15 +456,10 @@ export default function XDuel() {
       <div className="xduel-page">
         <div className="arena">
 
-          {/* ── Page header — always top of arena ── */}
+          {/* ── Page header — eyebrow + big title live in the TopBar
+              (PageTitleContext override above); only the contextual
+              sub-line stays in the flow. ── */}
           <div className="prompt-header">
-            <div className="prompt-label">XDuel</div>
-            <h1 className="prompt-title">
-              {step === 1 ? <>Start the <span>XDuel</span></> :
-               step === 5 ? <>The <span>Reveal</span></> :
-               phase === 'vote' ? <>Vote <span>Blind</span></> :
-               <>Vote <span>Again</span></>}
-            </h1>
             <div className="prompt-sub">
               {step === 1 ? "Create a task for two anonymous models. You vote the result you like and we will reveal the best model for you." :
                step === 5 ? null :
@@ -483,17 +536,20 @@ export default function XDuel() {
                   }}
                 />
                 <div className="prompt-actions">
-                  {/* Attachments are only meaningful in image/video modes
-                      (image_to_image, image_to_video, etc.). In text mode
-                      the duel pool may pick a non-vision model, so the
-                      attachment would silently be ignored — better to
-                      hide the button entirely. */}
-                  {mode !== 'text' && (
+                  {/* Image/video modes accept the full set (image_to_image,
+                      image_to_video, etc.). Text mode accepts documents only
+                      (PDF / txt): the router feeds the PDF natively to
+                      pdf_to_text-capable models and folds extracted text into
+                      the prompt for the rest, so every picked model can read
+                      it — keeping the blind duel fair. */}
+                  {mode === 'text' ? (
+                    <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" accept="application/pdf,text/plain" />
+                  ) : (
                     <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" />
                   )}
                   <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
                   <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
-                    ⚔️ Start XDuel →
+                    ⚔️ {t('xduel.cta')} →
                   </button>
                 </div>
               </div>
@@ -581,7 +637,7 @@ export default function XDuel() {
                               <div style={{fontSize:13,lineHeight:1.5,maxWidth:460,color:'var(--muted)',wordBreak:'break-word'}}>{m.errorMessage}</div>
                             </div>
                           : m.isVideo && m.text
-                          ? <video src={m.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
+                          ? <video src={m.text} autoPlay loop muted playsInline controls style={{display:'block'}} />
                           : m.isImage && m.text
                           ? <img src={m.text} alt="Generated" onClick={() => setLightbox(m.text)} style={{borderRadius:4,display:'block',cursor:'zoom-in'}} />
                           : (m.isImage || m.isVideo) && !m.text
@@ -720,40 +776,41 @@ export default function XDuel() {
                 transform: showReveal ? 'translateY(0)' : 'translateY(16px)',
                 transition: 'opacity 0.5s ease, transform 0.5s ease',
               }}>
-                <div className="model-reveal" style={{gridTemplateColumns:`repeat(${models.length},1fr)`}}>
-                  {models.map((m, i) => {
-                    const wins = i === cheapestIdx
-                    return (
-                      <div key={i} className={`reveal-card ${wins?'winner':''} ${i<models.length-1?'border-right':''}`}>
-                        <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--muted2)',marginBottom:4}}>
-                          MODEL {LABELS[i]}
-                        </div>
-                        <div className="reveal-model-name">{m.meta.name}</div>
-                        <div className="reveal-provider">{m.meta.provider.toUpperCase()}</div>
-                        <div className="reveal-price" style={{color:wins?'#34d399':'var(--red)'}}>
-                          {m.meta.priceLabel}
-                        </div>
-                        <div style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--muted2)',marginTop:4}}>
-                          {(() => {
-                            const maxTime = Math.max(...models.map(x => x.responseTime))
-                            const pct = m.responseTime < maxTime ? Math.round((maxTime - m.responseTime) / maxTime * 100) : null
-                            return <>
-                              <span style={{color:'var(--white)'}}>⏱ {(m.responseTime/1000).toFixed(2)}s</span>
-                              {pct !== null && <span style={{marginLeft:6,color:'#4a9eff'}}>⚡ {pct}% faster</span>}
-                            </>
-                          })()}
-                        </div>
-                        <div className="reveal-stat" style={{color:wins?'#34d399':'var(--muted2)'}}>
-                          {wins
-                            ? (monthly > 0
-                                ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
-                                : '⚖ Same price as the other')
-                            : (monthly > 0 ? 'More expensive option' : 'Same price')}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                {(() => {
+                  // 傳說對決-style match report — per-run scores from
+                  // lib/matchScore.ts (vote-heavy 60/20/20), MVP = top score.
+                  const scores = computeMatchScores(models.map((m, i) => ({
+                    votePts:      duelVotePts(i, vote1, vote2),
+                    responseTime: m.responseTime,
+                    cost:         m.cost,
+                    error:        !!m.errorMessage,
+                  })))
+                  const winnerIdx  = typeof vote2 === 'number' ? vote2 : null
+                  const winnerName = winnerIdx !== null ? models[winnerIdx]?.meta.name : null
+                  return (
+                    <MatchResult
+                      eyebrow={`Duel complete · ${models.length} models · blind → informed`}
+                      title={winnerName ? `${winnerName} wins` : "It's a tie"}
+                      winnerProvider={winnerIdx !== null ? models[winnerIdx]?.meta.provider : null}
+                      entries={models.map((m, i) => ({
+                        name:         m.meta.name,
+                        provider:     m.meta.provider,
+                        score:        scores[i],
+                        responseTime: m.responseTime,
+                        cost:         m.cost,
+                        isPick:       winnerIdx === i,
+                        error:        !!m.errorMessage,
+                        priceLabel:   m.meta.priceLabel,
+                        note: i === cheapestIdx
+                          ? (monthly > 0
+                              ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
+                              : '⚖ Same price as the other')
+                          : (monthly > 0 ? 'More expensive option' : 'Same price'),
+                      }))}
+                      ratingDelta={duelDelta}
+                    />
+                  )
+                })()}
               </div>
 
               <div className="action-bar">

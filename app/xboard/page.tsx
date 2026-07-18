@@ -1,13 +1,14 @@
 'use client'
 // app/leaderboard/page.tsx
 // Leaderboard — unified catalog + ranking. Every enabled model from
-// ai_models is listed; XD scores from /api/leaderboard are merged in by
+// ai_models is listed; XD scores from /api/xboard are merged in by
 // model id. Models with no votes show "—" for XD Score and sort to the
 // bottom regardless of direction.
 
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
+import ProviderLogo from '../components/ProviderLogo'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ export default function LeaderboardPage() {
       .eq('enabled', true)
       .then(({ data }) => (data as AIModel[]) ?? [])
 
-    const scoresP = fetch('/api/leaderboard?mode=all')
+    const scoresP = fetch('/api/xboard?mode=all')
       .then(r => r.ok ? r.json() as Promise<LeaderboardEntry[]> : [])
       .catch(() => [] as LeaderboardEntry[])
 
@@ -292,15 +293,10 @@ export default function LeaderboardPage() {
       <div className="xduel-page">
         <div className="arena">
 
-          {/* Eyebrow */}
-          <div className="prompt-label">Leaderboard</div>
-
-          {/* Title */}
-          <h1 className="prompt-title">
-            <span style={{ color: 'var(--red)' }}>Leader</span>board
-          </h1>
+          {/* Eyebrow + big title live in the content TopBar (TITLES map,
+              accentX renders the leading X in red). */}
           <div className="prompt-sub">
-            Every model on ModelXD, ranked by XD score from community blind comparisons.
+            The ModelXD leaderboard — every model, ranked by XDRating from community blind comparisons.
             <Link href="/methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 12 }}>
               HOW SCORING WORKS →
             </Link>
@@ -472,7 +468,8 @@ function ModelRow({ model: m }: { model: MergedRow }) {
       </div>
 
       {/* Provider */}
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <ProviderLogo provider={m.provider} size={14} />
         <span style={{
           fontSize: 12, color: 'var(--muted2)', fontFamily: 'var(--font-body), sans-serif',
           fontWeight: 600, textTransform: 'capitalize',
@@ -560,7 +557,11 @@ function LeaderboardTable({
   onSort:  (k: SortKey) => void
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+    // Outer scroller — the table needs ~790px of width to render cleanly.
+    // On mobile (≤760px), horizontal scroll preserves the dense layout
+    // rather than mangling the column alignment.
+    <div style={{ overflowX: 'auto' as const, WebkitOverflowScrolling: 'touch' as const, border: '1px solid var(--border)', borderRadius: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', minWidth: 790 }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: '2fr 130px 100px 100px 130px 90px 140px',
@@ -579,6 +580,7 @@ function LeaderboardTable({
         <SortHeader label="Price"     sortKey="price"    active={sortBy} dir={sortDir} onSort={onSort} align="right" />
       </div>
       {rows.map(m => <ModelRow key={m.id} model={m} />)}
+    </div>
     </div>
   )
 }

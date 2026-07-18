@@ -23,3 +23,6 @@ tsconfig.tsbuildinfo
 outputs/
 samples/
 supabase/.temp/
+_to_delete/
+public/templates/_raw/
+商標申請資料包.md

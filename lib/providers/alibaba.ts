@@ -409,22 +409,38 @@ export async function generateVideo(
 
   console.log(`${TAG} generateVideo resolution=${resolution} duration=${seconds}s aspect=${options?.aspect_ratio ?? 'default'} attachments=${attachments.length} watermark=${options?.watermark ?? 'default'}`)
 
-  // Build request body — differs for T2V vs I2V vs kf2v (start+end).
-  // I2V detection: any image-typed attachment, OR model name ending in '-i2v'.
+  // Build request body — differs by model family:
+  //   • R2V  (HappyHorse 1.0 R2V, reference_frames mode) → input.media
+  //     entries are typed as 'reference_image'. 1-N images supported,
+  //     each acts as a character/scene reference. Used by our Titanic /
+  //     Diner Dance / Royal Throne / Astronaut / Concert templates.
+  //   • kf2v (start_end_frames) → input.media is [first_frame, last_frame]
+  //     for two-image temporal interpolation. Wan 2.7 / cinematic-transition.
+  //   • I2V  (image_to_video) → input.media is [first_frame] with the
+  //     single uploaded image as the start frame.
+  //   • T2V  → no media, prompt-only.
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
-  const imageAtt  = imageAtts[0] // kept for the existing first-frame path
-  const isI2V     = !!imageAtt || /-i2v$/i.test(model.model_name)
-  const isKf2v    = imageAtts.length >= 2 || /-kf2v/i.test(model.model_name)
+  const imageAtt  = imageAtts[0]
+  const isR2V     = /-r2v$/i.test(model.model_name)
+  const isKf2v    = !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
+  const isI2V     = !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 
   const input: any = { prompt }
-  if (imageAtt) {
-    // HappyHorse / Wan kf2v expects input.media as an array of frame objects.
-    // Single image → just first_frame. Two images → first_frame + last_frame
-    // (start+end interpolation). The URL must be HTTP/HTTPS — prefer a
-    // signed Supabase Storage URL populated by the route handler. Fall back
-    // to a base64 data URL for local/dev paths where signing wasn't
-    // possible (the API may reject base64 in production; a warning is
-    // logged in that case).
+  if (isR2V && imageAtts.length > 0) {
+    // Reference-to-Video: every image is a reference, all typed
+    // 'reference_image'. HappyHorse R2V supports up to 14 references —
+    // we just forward whatever the user uploaded, in slot order.
+    input.media = imageAtts.map(a => ({
+      type: 'reference_image',
+      url:  a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`,
+    }))
+    const signedCount = imageAtts.filter(a => !!a.url).length
+    console.log(`${TAG} R2V: ${imageAtts.length} reference_image(s) (${signedCount} signed)`)
+  } else if (imageAtt) {
+    // I2V / kf2v path: first image = start frame, optional second = end frame.
+    // URL must be HTTP/HTTPS — prefer a signed Supabase Storage URL populated
+    // by the route handler. Fall back to base64 for local/dev paths where
+    // signing wasn't possible (the API may reject base64 in production).
     const firstUrl = imageAtt.url ?? `data:${imageAtt.mediaType};base64,${imageAtt.buffer.toString('base64')}`
     const media: any[] = [{ type: 'first_frame', url: firstUrl }]
     if (isKf2v && imageAtts.length >= 2) {

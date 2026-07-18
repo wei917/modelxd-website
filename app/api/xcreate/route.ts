@@ -84,7 +84,7 @@ async function runSlot(
   prompt:      string,
   attachments: providers.Attachment[],
   options:     SlotOpts,
-): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; responseId?: string; conversationHistory?: any[] } | null> {
+): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; error?: string; responseId?: string; conversationHistory?: any[] } | null> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name}`)
 
@@ -195,7 +195,7 @@ async function runSlot(
         model, prompt, videoSize, videoDuration, attachments,
         (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
         callContext,
-        { watermark: videoWatermark, aspect_ratio: videoAspectRatio },
+        { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null },
       )
 
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
@@ -223,7 +223,11 @@ async function runSlot(
     const rt  = Date.now() - start
     console.warn(`${LOG} Slot[${index}] failed after ${rt}ms: ${msg}`)
     try { await patch({ streaming: false, done: true, error: msg, response_time: rt }) } catch {}
-    return null
+    // Return the error (instead of null) so it gets persisted into the
+    // xcreates.slots row below. Otherwise a failed slot shows its error live
+    // (read from xcreate_job_slots) but becomes a blank card when the run is
+    // reopened from the gallery, because the error was never saved.
+    return { text: '', isImage: false, isVideo: false, responseTime: rt, cost: 0, error: msg }
   }
 }
 
@@ -365,6 +369,7 @@ export async function POST(req: Request) {
     isVideo:      results[i]?.isVideo ?? false,
     cost:         results[i]?.cost ?? 0,
     responseTime: results[i]?.responseTime ?? 0,
+    error:        results[i]?.error ?? null,
     options:      modelOptions[i] ?? {},  // mode/quality/size/duration/aspect_ratio/watermark/count
     // Multi-turn image editing context
     responseId:          results[i]?.responseId ?? null,           // OpenAI

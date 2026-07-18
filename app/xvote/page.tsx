@@ -96,11 +96,8 @@ export default function VotePage() {
       <div className="xduel-page">
         <div className="arena">
 
+          {/* Eyebrow + big title live in the content TopBar (TITLES map). */}
           <div className="prompt-header">
-            <div className="prompt-label">XVote</div>
-            <h1 className="prompt-title">
-              Vote on <span>Duels</span>
-            </h1>
             <div className="prompt-sub">
               Pick the better AI response — blind voting, no model names shown until you vote.
             </div>

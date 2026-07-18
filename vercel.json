@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/xdrating/refit?source=cron&force=1",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

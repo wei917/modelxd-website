@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { maybeRefit } from '@/lib/xdrating'
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,6 +59,17 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('[vote] update error:', error.message)
       return NextResponse.json({ error: 'Failed to save vote' }, { status: 500 })
+    }
+
+    // Refresh the XDRating snapshot. The DB trigger already updated the
+    // aggregate tables inside the vote's transaction; this fits BT over
+    // them (throttled to one run / 10s — see docs/xdrating-pipeline.md).
+    // Awaited on purpose: serverless may kill un-awaited work, and a
+    // skipped run returns in one indexed select.
+    try {
+      await maybeRefit(sb, 'vote')
+    } catch (err) {
+      console.warn('[vote] refit skipped:', err instanceof Error ? err.message : err)
     }
 
     return NextResponse.json({ ok: true })

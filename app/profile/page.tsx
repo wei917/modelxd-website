@@ -48,10 +48,9 @@ const KIND_LABELS: Record<CreditTransaction['kind'], string> = {
 // server re-validates the tier id when building the Checkout Session, so
 // if these drift the worst case is a 400, not a wrong charge.
 const DISPLAY_TIERS: { id: string; priceCents: number; label: string; description: string }[] = [
-  { id: 'tier_5',   priceCents:   500, label: '$5',   description: 'Starter — a few XCreates' },
-  { id: 'tier_10',  priceCents:  1000, label: '$10',  description: 'Casual — most popular' },
-  { id: 'tier_25',  priceCents:  2500, label: '$25',  description: 'Regular — heavy XCreate use' },
-  { id: 'tier_100', priceCents: 10000, label: '$100', description: 'Power — bulk credit load' },
+  { id: 'tier_10',  priceCents:  1000, label: '$10',  description: 'Starter' },
+  { id: 'tier_20',  priceCents:  2000, label: '$20',  description: 'Most popular' },
+  { id: 'tier_100', priceCents: 10000, label: '$100', description: 'Power' },
 ]
 
 export default function ProfilePage() {
@@ -76,10 +75,12 @@ export default function ProfilePage() {
   const XCREATES_PAGE_SIZE = 12
   const [xcreatePage, setXcreatePage] = useState(0)
   const [xcreateTotal, setXcreateTotal] = useState<number | null>(null)
-  // XCreate type filter — 'all' shows every mode, otherwise filters the
-  // already-loaded cache client-side. Filter clicks don't trigger a
-  // re-fetch; the Refresh button below does.
-  const [xcreateFilter, setXcreateFilter] = useState<'all' | 'text' | 'image' | 'video'>('all')
+  // XCreate type filter — 'all' shows every mode, otherwise filters by mode.
+  // Filtering and paging are both done server-side now, so changing either
+  // re-fetches the matching page from /api/profile/xcreates.
+  // Default to 'image' (CC, July 17): it's the most-used mode and 'all'
+  // pulls every row's slots jsonb on first open — noticeably slow.
+  const [xcreateFilter, setXcreateFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
   // Bump this to force a re-fetch (Refresh button). Adding it to the
   // tabs effect's deps means setting `xcreateRefreshTick + 1` triggers
   // exactly one new fetch without disturbing filter/page state.
@@ -171,7 +172,10 @@ export default function ProfilePage() {
       })
       if (res.ok) {
         if (type === 'duel') setDuels(prev => prev.filter(d => d.id !== id))
-        else setXcreates(prev => prev.filter(x => x.id !== id))
+        else {
+          setXcreates(prev => prev.filter(x => x.id !== id))
+          setXcreateTotal(t => (t ?? 1) - 1)
+        }
       }
     } catch { /* silent */ }
     setDeleting(null)
@@ -209,50 +213,9 @@ export default function ProfilePage() {
           }
         })
     } else if (tab === 'xcreates') {
-      // Pull a fat slice (up to 200 rows) once per tab visit and do
-      // both filtering and pagination client-side from this cache. Filter
-      // clicks then feel instant. A manual "Refresh" button re-runs this
-      // same fetch when the user wants fresh data. Past ~200 rows we'd
-      // need to fall back to server-paged fetching, but that's a future-
-      // problem — today's users have far fewer runs than that.
-      ;(async () => {
-        let rows: any[] = []
-        const { data, error } = await client.from('xcreates').select('*').eq('user_id', user.id).is('deleted_at', null)
-          .order('created_at', { ascending: false }).limit(200)
-        if (error) {
-          // Fallback for DBs that don't have `deleted_at` yet.
-          const { data: fb } = await client.from('xcreates').select('*').eq('user_id', user.id)
-            .order('created_at', { ascending: false }).limit(200)
-          rows = fb ?? []
-        } else {
-          rows = data ?? []
-        }
-        // Re-sign every slot's stored image/video URL so expired tokens
-        // don't show up as broken images in the gallery. The browser
-        // client is authenticated; RLS scopes signing to files the user
-        // owns. We parse `/storage/v1/object/sign/<bucket>/<path>?token`
-        // out of the existing URL to find what to re-sign.
-        const refreshed = await Promise.all(rows.map(async row => {
-          const slots = (row.slots ?? []) as any[]
-          const newSlots = await Promise.all(slots.map(async (s: any) => {
-            if (!s?.text || typeof s.text !== 'string') return s
-            // Slot.text can be a single URL or newline-separated URLs (multi-image).
-            const parts = s.text.split('\n')
-            const fresh = await Promise.all(parts.map(async (part: string) => {
-              const m = part.match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
-              if (!m) return part   // Not a Supabase signed URL — leave as-is.
-              const [, bucket, path] = m
-              const { data: signed } = await client.storage.from(bucket).createSignedUrl(decodeURIComponent(path), 60 * 60 * 24)
-              return signed?.signedUrl ?? part
-            }))
-            return { ...s, text: fresh.join('\n') }
-          }))
-          return { ...row, slots: newSlots }
-        }))
-        setXcreates(refreshed)
-        setXcreateTotal(refreshed.length)
-        markLoaded('xcreates')
-      })()
+      // XCreates are fetched + re-signed server-side, one page at a time, by
+      // the dedicated effect below (keyed on page/filter). Nothing to do in
+      // this per-tab effect.
     } else if (tab === 'votes') {
       // Try duel_votes table; fall back to showing user's own duels that have votes.
       client.from('duel_votes').select('*, duels(id, prompt, mode, slots)').eq('user_id', user.id)
@@ -289,18 +252,59 @@ export default function ProfilePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, user, xcreateRefreshTick])
 
+  // Fetch the visible XCreate page from the server, which fetches + re-signs
+  // ONLY that page's rows (one batched sign per bucket) and returns them
+  // ready to render. Server-paged, so the browser never over-fetches the
+  // whole history or signs anything itself. Re-runs on page/filter/refresh.
+  useEffect(() => {
+    if (tab !== 'xcreates' || !user) return
+    let cancelled = false
+    setTabsLoaded(s => ({ ...s, xcreates: false }))
+    ;(async () => {
+      try {
+        const res  = await fetch(`/api/profile/xcreates?page=${xcreatePage}&filter=${xcreateFilter}`)
+        const json = await res.json().catch(() => ({}))
+        if (cancelled) return
+        setXcreates(json.rows ?? [])
+        setXcreateTotal(json.total ?? 0)
+      } catch {
+        if (!cancelled) { setXcreates([]); setXcreateTotal(0) }
+      } finally {
+        if (!cancelled) setTabsLoaded(s => ({ ...s, xcreates: true }))
+      }
+    })()
+    return () => { cancelled = true }
+  }, [tab, user, xcreatePage, xcreateFilter, xcreateRefreshTick])
+
   // Kick off a Stripe Checkout Session for the selected tier. The server
   // re-validates the tier id and builds a session keyed to the signed-in
   // user, then returns a hosted URL that we redirect to. Credits are
   // granted from the webhook, not on return — so the success banner just
   // tells the user to hang tight while we poll for the balance.
-  const startCheckout = async (tierId: string) => {
-    setCheckoutTier(tierId)
+  // Custom amount (whole dollars, $5–$500 — server re-validates) and the
+  // optional gift recipient. A filled gift email routes the credits to
+  // that account (must already exist; the server checks and 400s if not).
+  const [customAmount, setCustomAmount] = useState('200')
+  // Recipient: 'self' (default) or 'other' — the email box only appears
+  // (and only applies) when buying for someone else.
+  const [giftMode,     setGiftMode]     = useState<'self' | 'other'>('self')
+  const [giftEmail,    setGiftEmail]    = useState('')
+
+  const startCheckout = async (tierId: string | null, customCents?: number) => {
+    if (giftMode === 'other' && !giftEmail.trim()) {
+      alert("Enter the recipient's email, or switch back to \"For myself\".")
+      return
+    }
+    setCheckoutTier(tierId ?? 'custom')
     try {
       const res = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tierId }),
+        body:    JSON.stringify({
+          tierId:         tierId ?? undefined,
+          customCents,
+          recipientEmail: giftMode === 'other' ? (giftEmail.trim() || undefined) : undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
@@ -633,12 +637,13 @@ export default function ProfilePage() {
                       <div
                         key={item.id}
                         style={{
-                          background: 'var(--surface)',
+                          background: 'var(--bg)',
                           border: '1px solid var(--border2)',
                           borderRadius: 10,
                           overflow: 'hidden',
                           transition: 'border-color 0.2s, transform 0.2s',
                           opacity: isDel ? 0.4 : 1,
+                          display: 'flex', flexDirection: 'column' as const,
                         }}
                         onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'translateY(0)' }}
@@ -653,7 +658,7 @@ export default function ProfilePage() {
                             }
                           </a>
                         )}
-                        <div style={{ padding: '12px 14px' }}>
+                        <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column' as const }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{
                               fontSize: 9, fontWeight: 700, color: modeColor,
@@ -669,7 +674,7 @@ export default function ProfilePage() {
                             }}>{new Date(item.created_at).toLocaleDateString()}</span>
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4, marginBottom: 8 }}>{item.prompt}</div>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                             <button
                               onClick={() => handleShare('duel', item.id)}
                               style={{
@@ -704,12 +709,10 @@ export default function ProfilePage() {
             // Filter + paginate the cached list client-side. Switching the
             // filter is instant (no network round-trip); Refresh button
             // below triggers a re-fetch into `xcreates` state.
-            const filteredAll = xcreateFilter === 'all'
-              ? xcreates
-              : xcreates.filter((x: any) => x.mode === xcreateFilter)
-            const pagedFrom    = xcreatePage * XCREATES_PAGE_SIZE
-            const pagedTo      = pagedFrom + XCREATES_PAGE_SIZE
-            const visibleSlice = filteredAll.slice(pagedFrom, pagedTo)
+            // The server already returns this page filtered, paged, and
+            // signed — `xcreates` holds exactly the current page's rows.
+            const visibleSlice = xcreates
+            const totalCount   = xcreateTotal ?? 0
             return (
             <>
               {/* Toolbar: filter pills on the left, Refresh button on the
@@ -787,13 +790,14 @@ export default function ProfilePage() {
                         // Inner buttons stop propagation.
                         onClick={() => setPreviewItem(item)}
                         style={{
-                          background: 'var(--surface)',
+                          background: 'var(--bg)',
                           border: '1px solid var(--border2)',
                           borderRadius: 10,
                           overflow: 'hidden',
                           transition: 'border-color 0.2s, transform 0.2s',
                           opacity: isDel ? 0.4 : 1,
                           cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column' as const,
                         }}
                         onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'translateY(0)' }}
@@ -805,7 +809,7 @@ export default function ProfilePage() {
                             ? <img src={preview.text} alt="" onClick={e => { e.stopPropagation(); setLightbox(preview.text) }} style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }} />
                             : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
                         )}
-                        <div style={{ padding: '12px 14px' }}>
+                        <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column' as const }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{
                               fontSize: 9, fontWeight: 700, color: modeColor,
@@ -821,7 +825,7 @@ export default function ProfilePage() {
                             }}>{new Date(item.created_at).toLocaleDateString()}</span>
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4, marginBottom: 8 }}>{item.prompt}</div>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                             {/* No Share button on XCreates — they're a private studio.
                                 Detail opens the conversation view (xcreate?id=...);
                                 Delete removes the run. */}
@@ -854,8 +858,8 @@ export default function ProfilePage() {
                 </div>}
               {/* Pagination footer — computed off the filtered slice so
                   pagination shrinks/grows with the active filter. */}
-              {tabsLoaded.xcreates && filteredAll.length > XCREATES_PAGE_SIZE && (() => {
-                const totalPages = Math.ceil(filteredAll.length / XCREATES_PAGE_SIZE)
+              {tabsLoaded.xcreates && totalCount > XCREATES_PAGE_SIZE && (() => {
+                const totalPages = Math.ceil(totalCount / XCREATES_PAGE_SIZE)
                 const canPrev = xcreatePage > 0
                 const canNext = xcreatePage < totalPages - 1
                 const btn = (label: string, enabled: boolean, onClick: () => void) => (
@@ -1206,7 +1210,7 @@ export default function ProfilePage() {
 
             {/* Tier grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-              {DISPLAY_TIERS.map((t, idx) => {
+              {DISPLAY_TIERS.map((t) => {
                 const isSelected = checkoutTier === t.id
                 const isDimmed = checkoutTier !== null && !isSelected
                 return (
@@ -1243,17 +1247,6 @@ export default function ProfilePage() {
                       }
                     }}
                   >
-                    {/* Corner numeral */}
-                    <div style={{
-                      position: 'absolute' as const,
-                      top: 10, right: 12,
-                      fontFamily: 'var(--font-mono), monospace',
-                      fontSize: 9, letterSpacing: '0.12em',
-                      color: 'var(--muted2)', fontWeight: 600,
-                    }}>
-                      0{idx + 1}
-                    </div>
-
                     <div style={{
                       fontSize: 28, fontWeight: 900, color: 'var(--white)',
                       fontFamily: 'var(--font-display), serif',
@@ -1273,6 +1266,122 @@ export default function ProfilePage() {
                   </button>
                 )
               })}
+
+              {/* Custom amount — the 4th card. The whole TILE is the buy
+                  action, exactly like the fixed tiers; the inline input
+                  only edits the amount (clicks on it don't launch). */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (checkoutTier) return
+                  const n = Math.round(Number(customAmount))
+                  if (!Number.isFinite(n) || n < 1 || n > 1000) { alert('Enter a whole amount between $1 and $1000'); return }
+                  startCheckout(null, n * 100)
+                }}
+                onMouseEnter={e => {
+                  if (!checkoutTier) {
+                    const el = e.currentTarget as HTMLElement
+                    el.style.borderColor = 'var(--red)'
+                    el.style.background = 'var(--red-dim)'
+                    el.style.transform = 'translateY(-1px)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!checkoutTier) {
+                    const el = e.currentTarget as HTMLElement
+                    el.style.borderColor = 'var(--border2)'
+                    el.style.background = 'var(--surface)'
+                    el.style.transform = 'translateY(0)'
+                  }
+                }}
+                style={{
+                  position: 'relative' as const,
+                  padding: '18px 18px 16px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border2)',
+                  borderRadius: 8,
+                  cursor: checkoutTier ? 'default' : 'pointer',
+                  transition: 'all 0.15s ease-out',
+                  opacity: checkoutTier && checkoutTier !== 'custom' ? 0.4 : 1,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontSize: 28, fontWeight: 900, fontFamily: 'var(--font-display), serif', color: 'var(--white)' }}>$</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    step={1}
+                    value={customAmount}
+                    onChange={e => setCustomAmount(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    placeholder="200"
+                    disabled={!!checkoutTier}
+                    style={{
+                      width: 88, fontSize: 28, fontWeight: 900,
+                      fontFamily: 'var(--font-display), serif',
+                      border: 'none', borderBottom: '2px solid var(--border2)',
+                      background: 'transparent', color: 'var(--white)', outline: 'none',
+                    }}
+                  />
+                </div>
+                <div style={{
+                  fontSize: 10.5, color: 'var(--muted2)',
+                  fontFamily: 'var(--font-mono), monospace',
+                  letterSpacing: '0.06em', textTransform: 'uppercase' as const, lineHeight: 1.4,
+                }}>
+                  Custom — $1 to $1000
+                </div>
+              </div>
+            </div>
+
+            {/* Recipient: myself (default) or someone else — the email box
+                appears only for gifts. Server verifies the account exists. */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {([['self', 'For myself'], ['other', '🎁 For someone else']] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => { if (!checkoutTier) setGiftMode(mode) }}
+                    disabled={!!checkoutTier}
+                    style={{
+                      flex: 1, padding: '9px 0', borderRadius: 7,
+                      border: `1px solid ${giftMode === mode ? 'var(--red)' : 'var(--border2)'}`,
+                      background: giftMode === mode ? 'var(--red-dim)' : 'var(--surface)',
+                      color: giftMode === mode ? 'var(--red)' : 'var(--muted2)',
+                      fontFamily: 'var(--font-mono), monospace', fontSize: 10.5,
+                      letterSpacing: '0.1em', textTransform: 'uppercase' as const,
+                      fontWeight: 700, cursor: checkoutTier ? 'default' : 'pointer',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {giftMode === 'other' && (
+                <div style={{ marginTop: 10 }}>
+                  <input
+                    type="email"
+                    value={giftEmail}
+                    onChange={e => setGiftEmail(e.target.value)}
+                    placeholder="their-email@example.com — must have a ModelXD account"
+                    disabled={!!checkoutTier}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 7,
+                      border: `1px solid ${giftEmail.trim() ? 'var(--red)' : 'var(--border2)'}`,
+                      background: 'var(--surface)', color: 'var(--white)',
+                      fontSize: 13, outline: 'none',
+                    }}
+                  />
+                  {giftEmail.trim() && (
+                    <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 6 }}>
+                      Your card, their balance — credits go to {giftEmail.trim()}.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {checkoutTier && (

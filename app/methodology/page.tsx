@@ -217,7 +217,7 @@ export default function MethodologyPage() {
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
             <Link href="/xduel" className="btn-primary" style={{ textDecoration: 'none' }}>Start XDuel →</Link>
-            <Link href="/leaderboard" className="btn-outline" style={{ textDecoration: 'none' }}>View XDRating →</Link>
+            <Link href="/xboard" className="btn-outline" style={{ textDecoration: 'none' }}>View XDRating →</Link>
           </div>
         </div>
       </div>

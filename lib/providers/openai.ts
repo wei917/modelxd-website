@@ -14,6 +14,7 @@ import type {
   Attachment,
 } from './types'
 import { calcTextCost, calcImageCost } from './pricing'
+import { VARIATION_DIRECTIVES } from './types'
 
 let _client: OpenAI | null = null
 function client(): OpenAI {
@@ -170,27 +171,34 @@ async function streamTextBackground(
 
 function buildMultimodalInput(text: string, attachments: Attachment[]) {
   const images = attachments.filter(a => a.mediaType.startsWith('image/'))
-  const docs   = attachments.filter(a => a.mediaType === 'application/pdf' || a.mediaType.startsWith('text/'))
+  // PDFs are passed natively via `input_file` (base64 data URL). The
+  // Responses API extracts both the text layer and a rendered image of each
+  // page for vision-capable models. The router (lib/providers/index.ts)
+  // only forwards a PDF here when the model declares `pdf_to_text`; plain
+  // text files are folded into the prompt upstream, so they don't reach
+  // this function as attachments.
+  const pdfs   = attachments.filter(a => a.mediaType === 'application/pdf')
 
-  if (images.length > 0) {
-    const content: any[] = images.map(img => ({
+  if (images.length === 0 && pdfs.length === 0) {
+    return { role: 'user' as const, content: text }
+  }
+
+  const content: any[] = []
+  for (const img of images) {
+    content.push({
       type: 'input_image',
       image_url: `data:${img.mediaType};base64,${img.buffer.toString('base64')}`,
-    }))
-    // Append any document text
-    if (docs.length > 0) {
-      const docText = docs.map(d => d.buffer.toString('utf-8')).join('\n\n---\n\n')
-      content.push({ type: 'input_text', text: `${docText}\n\n${text}` })
-    } else {
-      content.push({ type: 'input_text', text })
-    }
-    return { role: 'user' as const, content }
+    })
   }
-  if (docs.length > 0) {
-    const docText = docs.map(d => d.buffer.toString('utf-8')).join('\n\n---\n\n')
-    return { role: 'user' as const, content: `File content:\n${docText}\n\n${text}` }
+  for (let i = 0; i < pdfs.length; i++) {
+    content.push({
+      type: 'input_file',
+      filename: `document-${i + 1}.pdf`,
+      file_data: `data:application/pdf;base64,${pdfs[i].buffer.toString('base64')}`,
+    })
   }
-  return { role: 'user' as const, content: text }
+  content.push({ type: 'input_text', text })
+  return { role: 'user' as const, content }
 }
 
 // ── image generation ─────────────────────────────────────────────────────────
@@ -220,15 +228,16 @@ export async function generateImage(
   size: string = '1024x1024',
   attachments: Attachment[] = [],
   previousResponseId: string | null = null,
+  options?: { count?: number | null } | null,
 ): Promise<ImageResult & { responseId?: string }> {
   const TAG = `[openai/${model.model_name}]`
-  console.log(`${TAG} generateImage quality=${quality} size=${size} attachments=${attachments.length} prevId=${previousResponseId ?? 'none'}`)
+  console.log(`${TAG} generateImage quality=${quality} size=${size} attachments=${attachments.length} prevId=${previousResponseId ?? 'none'} count=${options?.count ?? 1}`)
 
   const images = attachments.filter(a => a.mediaType.startsWith('image/'))
 
   // ── Direct Images API (gpt-image-*) ────────────────────────────────────────
   if (isDirectImageModel(model.model_name)) {
-    return generateImageDirect(model, prompt, quality, size, images, TAG)
+    return generateImageDirect(model, prompt, quality, size, images, TAG, options)
   }
 
   // ── Responses API + image_generation tool (chat-driving models) ────────────
@@ -324,77 +333,111 @@ async function generateImageDirect(
   size:     string,
   images:   Attachment[],
   TAG:      string,
+  options?: { count?: number | null } | null,
 ): Promise<ImageResult & { responseId?: string }> {
   // All current gpt-image-* models accept `quality` (low/medium/high). Even
   // though gpt-image-2 is token-billed, the field still controls how much
   // compute the model uses, so we pass it through.
-  let respAny: any
-  if (images.length > 0) {
-    // ── Edit path ──
-    // The SDK accepts a Blob/File-like for `image`. We synthesise a File from
-    // the buffer to keep this Node-runtime friendly.
-    const first = images[0]
-    const file  = await toUploadable(first)
-    const params: any = {
-      model:   model.model_name,
-      prompt,
-      image:   file,
-      size,
-      quality,
-      n:       1,
+
+  // n (image count): only when the row declares max_count > 1 — mirrors the
+  // qwen pattern in alibaba.ts. The API allows n 1..10 for generations AND
+  // edits on gpt-image-* (the n=1 restriction was dall-e-3 only).
+  const maxCount = model.output_config?.image?.max_count ?? 1
+  const n = (maxCount > 1 && typeof options?.count === 'number' && options.count >= 1)
+    ? Math.min(options.count, maxCount)
+    : 1
+
+  // Multi-output diversity: n>1 as a single API call means n independent
+  // samples of IDENTICAL conditioning — GPT image models have low sample
+  // variance, so all n come out near-identical (verified July 2026 with
+  // the Product Shots prompt: 8 near-clones). ChatGPT gets variety by
+  // rewriting the prompt per image; we do the same cheaply — n parallel
+  // n:1 calls, each with a numbered variation hint appended. Input tokens
+  // are billed per sample either way, so this costs the same.
+  const variantPrompt = (vi: number) => n <= 1 ? prompt :
+    `${prompt}\n\n(Variation ${vi + 1} of ${n} — this take must use ${VARIATION_DIRECTIVES[vi % VARIATION_DIRECTIVES.length]}.)`
+
+  const files = images.length > 0 ? await Promise.all(images.map(toUploadable)) : null
+
+  const callOnce = async (vi: number): Promise<any> => {
+    if (files) {
+      // ── Edit path ── The SDK accepts a Blob/File-like or an ARRAY for
+      // `image` — gpt-image-* edits take multiple reference images
+      // (order preserved, prompts say "first image" / "second image").
+      const params: any = {
+        model:   model.model_name,
+        prompt:  variantPrompt(vi),
+        image:   files.length === 1 ? files[0] : files,
+        size,
+        quality,
+        n:       1,
+      }
+      if (vi === 0) console.log(`${TAG} images.edit body:`, JSON.stringify({ ...params, image: images.map(im => `<${im.mediaType} ${im.buffer.length}B>`).join(',') }))
+      return (client().images as any).edit(params)
     }
-    console.log(`${TAG} images.edit body:`, JSON.stringify({ ...params, image: `<${first.mediaType} ${first.buffer.length}B>` }))
-    respAny = await (client().images as any).edit(params)
-  } else {
     // ── Generate path ──
     const params: any = {
       model:   model.model_name,
-      prompt,
+      prompt:  variantPrompt(vi),
       size,
       quality,
       n:       1,
     }
-    console.log(`${TAG} images.generate body:`, JSON.stringify(params))
-    respAny = await client().images.generate(params)
+    if (vi === 0) console.log(`${TAG} images.generate body:`, JSON.stringify(params))
+    return client().images.generate(params)
   }
 
-  console.log(`${TAG} response:`, JSON.stringify({
-    created: respAny.created,
-    data_count: (respAny.data ?? []).length,
-    usage: respAny.usage,
+  const resps: any[] = await Promise.all(Array.from({ length: n }, (_, vi) => callOnce(vi)))
+
+  console.log(`${TAG} responses=${resps.length}`, JSON.stringify({
+    data_counts: resps.map(r => (r.data ?? []).length),
+    usage_first: resps[0]?.usage,
   }))
 
-  const item = (respAny.data ?? [])[0] ?? {}
-  let buffer: Buffer
-  if (item.b64_json) {
-    buffer = Buffer.from(item.b64_json, 'base64')
-  } else if (item.url) {
-    // Some models return a hosted URL — fetch and bufferize.
-    const res = await fetch(item.url)
-    const ab  = await res.arrayBuffer()
-    buffer    = Buffer.from(ab)
-  } else {
-    throw new Error(`OpenAI Images API returned no image. Response: ${JSON.stringify(respAny).slice(0, 500)}`)
+  // Decode EVERY returned image across all calls. Primary buffer is the
+  // first; the rest ride in `extras` — same contract as qwen / Gemini.
+  const decoded: Buffer[] = []
+  for (const r of resps) {
+    for (const item of (r.data ?? []) as any[]) {
+      if (item?.b64_json) {
+        decoded.push(Buffer.from(item.b64_json, 'base64'))
+      } else if (item?.url) {
+        // Some models return a hosted URL — fetch and bufferize.
+        const res = await fetch(item.url)
+        const ab  = await res.arrayBuffer()
+        decoded.push(Buffer.from(ab))
+      }
+    }
   }
+  if (decoded.length === 0) {
+    throw new Error(`OpenAI Images API returned no image. Response: ${JSON.stringify(resps[0]).slice(0, 500)}`)
+  }
+  const buffer = decoded[0]
+  const respAny: any = resps[0]  // responseId/metadata source
 
   const mediaType = 'image/png'
 
   // Cost: GPT Image 2 (and other token-billed image models) returns a usage
-  // block with text/image input tokens and image output tokens. Pass it to
-  // calcImageCost so the token branch fires when model_pricing.tokens is set.
-  // Falls back to per_image[size] / per_image[quality] for flat-rate models.
-  const usage = respAny.usage
-  const inputTextTokens   = usage?.input_tokens_details?.text_tokens  ?? 0
-  const inputImageTokens  = usage?.input_tokens_details?.image_tokens ?? 0
-  const outputImageTokens = usage?.output_tokens ?? 0
+  // block per call — SUM across all parallel calls so billing stays exact.
+  let inputTextTokens = 0, inputImageTokens = 0, outputImageTokens = 0
+  for (const r of resps) {
+    inputTextTokens   += r.usage?.input_tokens_details?.text_tokens  ?? 0
+    inputImageTokens  += r.usage?.input_tokens_details?.image_tokens ?? 0
+    outputImageTokens += r.usage?.output_tokens ?? 0
+  }
   const cost = calcImageCost(model, quality, size, {
     inputTextTokens,
     inputImageTokens,
     outputImageTokens,
   })
 
-  console.log(`${TAG} image ok (direct) sent_model=${model.model_name} bytes=${buffer.length} in_text=${inputTextTokens} in_img=${inputImageTokens} out_img=${outputImageTokens} cost=$${cost.toFixed(6)}`)
-  return { buffer, mediaType, cost }
+  console.log(`${TAG} image ok (direct) sent_model=${model.model_name} count=${decoded.length} bytes=[${decoded.map(b => b.length).join(',')}] in_text=${inputTextTokens} in_img=${inputImageTokens} out_img=${outputImageTokens} cost=$${cost.toFixed(6)}`)
+  return {
+    buffer,
+    mediaType,
+    cost,
+    extras: decoded.slice(1).map(b => ({ buffer: b, mediaType })),
+  }
 }
 
 // Convert an Attachment buffer into something the OpenAI SDK accepts as a

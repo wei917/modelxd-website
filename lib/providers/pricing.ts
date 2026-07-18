@@ -206,7 +206,8 @@ export function estimateCost(
   mode:   'text' | 'image' | 'video',
   opts: {
     promptChars?:  number     // text/image: prompt length in characters
-    quality?:      string     // image: quality tier for flat-billed
+    quality?:      string     // image: quality tier
+    size?:         string     // image: selected size ("1024", "1024x1024", …)
     resolution?:   string     // video: resolution key
     seconds?:      number     // video: duration
   } = {},
@@ -228,19 +229,28 @@ export function estimateCost(
   }
 
   if (mode === 'image') {
-    // Token-billed: estimate ~1290 image-output tokens (Gemini baseline)
-    // plus prompt-length text input.
-    const imgOut = resolveTokenRate(t.image_output)
+    // Official per-image rates FIRST — most specific key wins:
+    // "quality:size" (gpt-image-2's measured matrix) → size tier
+    // ("1024" for Gemini) → quality → medium → default.
+    const q = opts.quality ?? 'medium'
+    const s = opts.size ?? ''
+    const flat = pickRate(p.per_image, `${q}:${s}`, s, q, 'medium', 'default')
+    if (flat > 0) return flat
+    // Token-billed with no per-image table (e.g. gpt-image-2): rough
+    // heuristic — ~1400 output image tokens (1372 measured on a real
+    // gpt-image-2 response). Quality moves the real number a lot; treat
+    // this as order-of-magnitude only.
+    const imgOut = resolveTokenRate(t.image_output, opts.quality)
     if (imgOut > 0) {
       const inputTokens     = Math.max(1, Math.ceil(promptChars / 4))
-      const outputImageTok  = 1290
+      const outputImageTok  = 1400
       const tin             = resolveTokenRate(t.text_input)
       return (
         (inputTokens     / 1_000_000) * tin +
         (outputImageTok  / 1_000_000) * imgOut
       )
     }
-    return pickRate(p.per_image, opts.quality ?? 'medium', 'medium', 'default')
+    return 0
   }
 
   if (mode === 'video') {

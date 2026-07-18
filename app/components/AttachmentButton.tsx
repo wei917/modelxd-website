@@ -12,14 +12,22 @@ export type Attachment = {
   fileName:    string
   fileSize:    number
   previewUrl?: string   // local object URL for image preview only
+  // Optional slot tag, set ONLY by LabeledSlotsPicker so it can match
+  // each attachment back to its named slot (ROSE / JACK / FIRST FRAME /
+  // ...). Without this, a single upload to "JACK" while "ROSE" is empty
+  // would appear in the ROSE slot because attachments[0] is always
+  // first regardless of which slot it came from. Server-side code can
+  // ignore this field; the provider router just sees the array order.
+  slotIndex?:  number
 }
 
-// PDF support was dropped pre-v1 — the four providers handle PDFs in
-// inconsistent shapes and the previous fallback path silently decoded
-// PDF bytes as UTF-8 and pasted the binary into the prompt. Better to
-// block uploads than mangle them. Reintroduce once the native PDF paths
-// are properly wired up per provider.
-const ACCEPT  = 'image/jpeg,image/png,image/gif,image/webp,text/plain,video/mp4,video/quicktime,video/webm'
+// PDF support: PDFs are now wired up properly. The router
+// (lib/providers/index.ts) passes a PDF natively to models that declare
+// `pdf_to_text` (OpenAI input_file / Gemini inlineData) and falls back to
+// server-side text extraction (lib/pdf-extract.ts) for everything else, so
+// every text model can read a PDF. Text mode restricts the picker to
+// PDF/txt via the `accept` prop; image/video modes use the full list.
+const ACCEPT  = 'image/jpeg,image/png,image/gif,image/webp,text/plain,application/pdf,video/mp4,video/quicktime,video/webm'
 // Per-file upload cap. 100 MB comfortably fits a few seconds of 1080p
 // video (the heaviest input we typically take for image_to_video /
 // video_to_video flows), plus any image or PDF. NOTE: Supabase Storage
@@ -63,7 +71,7 @@ export default function AttachmentButton({
   const [uploading, setUploading] = useState(false)
 
   const handleFiles = async (files: FileList) => {
-    const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','video/mp4','video/quicktime','video/webm']
+    const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','application/pdf','video/mp4','video/quicktime','video/webm']
     const toUpload = Array.from(files).filter(f => {
       if (!ALLOWED.includes(f.type)) { alert(`Unsupported file type: ${f.type || 'unknown'}`); return false }
       if (f.size > MAX_MB * 1024 * 1024) { alert(`${f.name} too large — max ${MAX_MB}MB`); return false }

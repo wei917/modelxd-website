@@ -3,8 +3,11 @@
      more "paper-white" rather than dim parchment, while still warm
      enough not to feel sterile screen-grey. */
   --bg:        #fdfdfb;
-  --surface:   #f6f6f3;
-  --surface2:  #eeeeea;
+  /* Grey panel fills removed — both surface tokens now match the page bg, so
+     every card/bar/chip that used them reads as flat white. Re-point these to
+     a grey if you want the panels back. */
+  --surface:   var(--bg);
+  --surface2:  var(--bg);
   --border:    rgba(0,0,0,0.08);
   --border2:   rgba(0,0,0,0.15);
   --white:     #0f0f0f;
@@ -27,6 +30,7 @@
   --provider-google:    #3454c4;
   --provider-anthropic: #c44a25;
   --provider-alibaba:   #e07b00;
+  --provider-xai:       #0f0f0f;
 
   /* XD Score heatmap — 5 stops mapped from poor (red) to elite (forest). */
   --score-poor:   #b91c1c;
@@ -54,6 +58,15 @@
   --card:         var(--surface);
 }
 
+/* Chinese mode: re-point the font tokens to Noto Sans TC (Traditional /
+   Taiwan) so all UI text renders with proper CJK glyphs. Latin text keeps
+   working since Noto TC includes Latin. */
+html[lang="zh-Hant"] {
+  --font-body:    var(--font-zh);
+  --font-display: var(--font-zh);
+  --font-mono:    var(--font-zh);
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -64,6 +77,16 @@ body {
   font-family: var(--font-body), sans-serif;
   overflow-x: hidden;
   cursor: none;
+}
+
+/* Touch devices have no cursor — and applying `cursor: none` there
+   breaks tap/long-press feedback in some browsers. Override on any
+   device whose primary pointer can't hover (touch screens). */
+@media (hover: none), (pointer: coarse) {
+  body, body * { cursor: auto; }
+  /* Also hide the custom red-dot cursor renderers — they're decorative
+     and useless on touch. */
+  .cursor, .cursor-ring { display: none !important; }
 }
 
 /* ── Custom cursor ── */
@@ -111,40 +134,159 @@ body {
 }
 
 /* ── Nav ── */
-.nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  padding: 0 48px;
-  height: 60px;
+/* ── App shell: left sidebar + content ─────────────────────────────────────
+   Desktop = a sticky left rail beside the page. Mobile (≤760px) collapses it
+   back into a fixed top bar + hamburger (see media query). Using a flex shell
+   means /coming-soon (where Nav renders null) gets no empty left gutter. */
+.app-shell { display: flex; align-items: flex-start; min-height: 100vh; }
+.app-main  { flex: 1; min-width: 0; }
+
+/* Content-area top bar (desktop): page title left, account controls right.
+   Hidden on mobile (the nav top bar + hamburger overlay carry auth there). */
+.topbar {
+  position: sticky; top: 0; z-index: 90;
   display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
+  height: 64px; padding: 0 28px;
+  background: #ffffff; border-bottom: 1px solid var(--border);
+}
+.topbar-title { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.topbar-eyebrow {
+  font-family: var(--font-mono), monospace; font-size: 9px;
+  color: var(--red); letter-spacing: 0.2em; text-transform: uppercase;
+}
+.topbar-eyebrow::before { content: '//'; margin-right: 4px; }
+.topbar-h {
+  font-family: var(--font-display), sans-serif;
+  font-size: 19px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.02em;
+  color: var(--white); line-height: 1;
+}
+.topbar-h .tb-accent { color: var(--red); }
+.topbar-auth { display: flex; align-items: center; gap: 12px; }
+.lang-toggle { font-family: var(--font-mono), monospace; font-size: 11px; padding: 6px 10px; border: 1px solid var(--border2); border-radius: 6px; background: transparent; color: var(--muted2); cursor: pointer; letter-spacing: 0.08em; transition: all 0.15s; }
+.lang-toggle:hover { border-color: var(--red); color: var(--red); }
+.topbar-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+}
+@media (max-width: 760px) { .topbar { display: none; } }
+
+.nav {
+  position: sticky; top: 0; align-self: flex-start; z-index: 100;
+  width: 208px; height: 100vh; flex-shrink: 0;
+  padding: 22px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  border-right: 1px solid var(--border);
   background: #ffffff;
-  backdrop-filter: none;
 }
 .nav-logo-text {
+  display: flex; align-items: center; gap: 8px;
   font-family: var(--font-body), sans-serif;     /* Barlow regular (not condensed) */
-  font-size: 28px; font-weight: 900;
+  font-size: 24px; font-weight: 900;
   text-transform: uppercase; letter-spacing: -0.02em;
   color: var(--white); text-decoration: none;
-  line-height: 1;
+  line-height: 1; padding: 4px 8px 14px;
 }
 .nav-logo-text .x { color: var(--red); font-style: normal; }
 .nav-logo-text .d { color: var(--red); font-style: normal; }
 .nav-links {
-  display: flex; align-items: center; gap: 36px;
+  display: flex; flex-direction: column; gap: 2px;
 }
 .nav-links a {
+  display: flex; align-items: center; gap: 11px;
   font-family: var(--font-mono), monospace;
-  font-size: 15px; color: var(--muted2);
-  text-decoration: none; letter-spacing: 0.08em; text-transform: uppercase;
-  transition: color 0.2s;
+  font-size: 13px; color: var(--muted2);
+  text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 10px 12px; border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
 }
-.nav-links a:hover { color: var(--white); }
-.nav-links a.active { color: var(--white); }
+.nav-links a:hover  { color: var(--white); background: rgba(214,59,50,0.06); }
+.nav-links a.active { color: var(--red);   background: var(--red-dim); }
 .nav-auth {
-  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
-  /* Reserve enough width for the widest variant (avatar + Log Out button)
-     so the center .nav-links don't shift when the auth state resolves. */
-  min-width: 170px;
+  margin-top: auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 8px 4px;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+/* ── Mobile nav: hamburger menu under 760px ─────────────────────────────── */
+.nav-burger {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  width: 36px; height: 36px;
+  padding: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+.nav-burger span {
+  position: relative;
+  display: block;
+  width: 16px; height: 2px;
+  background: var(--white);
+  border-radius: 1px;
+}
+.nav-burger span::before,
+.nav-burger span::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 16px; height: 2px;
+  background: var(--white);
+  border-radius: 1px;
+}
+.nav-burger span::before { top: -6px; }
+.nav-burger span::after  { top:  6px; }
+
+.nav-mobile-overlay {
+  position: fixed;
+  top: 60px; left: 0; right: 0; bottom: 0;
+  background: #ffffff;
+  display: none;
+  flex-direction: column;
+  padding: 32px 28px;
+  gap: 8px;
+  z-index: 99;
+  overflow-y: auto;
+}
+.nav-mobile-overlay a,
+.nav-mobile-overlay button {
+  display: flex; align-items: center; gap: 11px;
+  font-family: var(--font-mono), monospace;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--white);
+  text-decoration: none;
+  padding: 14px 4px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.nav-mobile-overlay a.active { color: var(--red); }
+
+@media (max-width: 760px) {
+  /* Collapse the sidebar back into a fixed top bar. */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; bottom: auto;
+    width: auto; height: 60px;
+    flex-direction: row; align-items: center; justify-content: space-between;
+    gap: 0; padding: 0 16px;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .nav-logo-text { font-size: 22px; padding: 0; }
+  .nav-links { display: none; }
+  .nav-auth   { display: none; }
+  .nav-burger { display: inline-flex; }
+  .nav-mobile-overlay.open { display: flex; }
 }
 .nav-login {
   font-family: var(--font-mono), monospace;
@@ -286,6 +428,7 @@ body {
   box-shadow: 0 0 0 1.5px rgba(255,255,255,0.5), 0 0 0 2px rgba(0,0,0,0.06);
 }
 .provider-dot.openai    { background: var(--provider-openai); }
+.provider-dot.xai       { background: var(--provider-xai); }
 .provider-dot.google    { background: var(--provider-google); }
 .provider-dot.anthropic { background: var(--provider-anthropic); }
 .provider-dot.alibaba   { background: var(--provider-alibaba); }
@@ -468,7 +611,10 @@ body {
 /* ─────────────────────────────────────────
    XDUEL PAGE
 ───────────────────────────────────────── */
-.xduel-page { padding-top: 60px; min-height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+/* Desktop: the content TopBar provides the top spacing, so pages need only a
+   little padding. Mobile: restore 60px to clear the fixed nav top bar. */
+.xduel-page { padding-top: 20px; min-height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+@media (max-width: 760px) { .xduel-page { padding-top: 60px; } }
 
 .step-bar {
   display: flex; align-items: center; justify-content: center;
@@ -493,22 +639,89 @@ body {
 .step-connector { width: 32px; height: 1px; background: var(--border2); flex-shrink: 0; }
 .step-connector.done { background: var(--green); }
 
-.arena { flex: 1; padding: 40px 48px 80px; max-width: 1200px; margin: 0 auto; width: 100%; }
+.arena { flex: 1; padding: 24px 40px 80px; max-width: 1200px; margin: 0 auto; width: 100%; }
 .step-section { animation: fadeUp 0.5s forwards; }
 
 .prompt-header { margin-bottom: 32px; }
 .prompt-label { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--red); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .prompt-label::before { content: '//'; }
-.prompt-title { font-family: var(--font-display), sans-serif; font-size: 48px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1; }
+.prompt-title { font-family: var(--font-display), sans-serif; font-size: clamp(26px, 4.5vw, 36px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.05; }
 .prompt-title span { color: var(--red); }
 .prompt-sub { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); margin-top: 8px; letter-spacing: 0.05em; }
 
-.mode-selector { display: flex; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 32px; width: fit-content; }
-.mode-btn { font-family: var(--font-mono), monospace; font-size: 11px; padding: 10px 24px; background: var(--surface); color: var(--muted2); border: none; cursor: none; letter-spacing: 0.1em; text-transform: uppercase; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
-.mode-btn:hover { background: var(--surface2); color: var(--white); }
-.mode-btn.active { background: var(--bg); color: var(--white); }
-.mode-btn.active .mode-dot { background: var(--red); }
-.mode-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.2s; }
+/* Underline tabs — active mode gets a red underline + dark text; the old
+   boxed/segmented look and grey fills are gone. The .mode-dot from the
+   markup is hidden (the underline is the active indicator now). */
+.mode-selector { display: flex; gap: 28px; margin-bottom: 32px; border-bottom: 1px solid var(--border); width: fit-content; }
+.mode-btn { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono), monospace; font-size: 12px; padding: 8px 2px; background: transparent; color: var(--muted2); border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: none; letter-spacing: 0.12em; text-transform: uppercase; transition: color 0.2s, border-color 0.2s; }
+.mode-btn:hover { color: var(--white); }
+.mode-btn.active { color: var(--white); border-bottom-color: var(--red); }
+.mode-dot { display: none; }
+
+/* Mode/recipe selector captions + recipe pills (Layer 2). */
+.ms-cap { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.recipe-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.recipe-pill {
+  font-family: var(--font-mono), monospace; font-size: 12px;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 8px 15px; border-radius: 999px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--muted2); cursor: pointer; transition: all 0.12s;
+}
+.recipe-pill:hover { border-color: var(--red); color: var(--white); }
+.recipe-pill.active { background: var(--red); border-color: var(--red); color: #fff; }
+.recipe-pill:disabled { cursor: default; }
+.recipe-provide { margin-top: 14px; font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.04em; color: var(--muted2); }
+
+/* XCreate mode tabs — compact with icons, generously spaced. Full width
+   so the baseline reads as a real tab strip; the recipe pills attach
+   directly beneath as the active tab's own content. */
+.mode-selector.lg { gap: 44px; width: 100%; }
+.mode-selector.lg .mode-btn { font-size: 15px; gap: 7px; padding: 4px 2px 8px; letter-spacing: 0.06em; }
+
+/* Mode mega-dropdown (LMArena-style): hovering/clicking a mode tab opens
+   a floating panel with that mode's sub-modes + popular tools/templates.
+   The crumb chip under the tabs shows the current sub-mode when closed. */
+.mode-caret { font-size: 9px; margin-left: 2px; opacity: 0.6; }
+/* Sub-mode summary line: Creation Mode: "Frames to Video". Plain text,
+   not a pill — hover or tap reopens the menu. Generous tap padding for
+   touch devices. */
+/* "Create from" + dropdown button. The button is the menu trigger:
+   hover opens on desktop, tap toggles on touch. */
+.recipe-crumb { display: inline-flex; align-items: center; gap: 10px; margin-top: 12px; }
+/* Mode row: two labeled columns — "Generate:" (segmented group) and
+   "From:" (source dropdown). Wraps on narrow screens. */
+.mode-row { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; row-gap: 12px; }
+.mode-col { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.field-label { font-family: var(--font-body), sans-serif; font-size: 13px; font-weight: 600; color: var(--white); }
+.mode-seg { display: inline-flex; background: #ffffff; border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; }
+.mode-seg-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; background: transparent; border: none; border-right: 1px solid var(--border); font-family: var(--font-mono), monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); cursor: pointer; transition: background 0.15s, color 0.15s; }
+.mode-seg-btn:last-child { border-right: none; }
+.mode-seg-btn:hover { color: var(--white); }
+.mode-seg-btn.active { background: rgba(214,59,50,0.08); color: var(--red); }
+.recipe-crumb.in-tabstrip { margin-top: 0; align-self: center; }
+.recipe-crumb-label { font-family: var(--font-body), sans-serif; font-size: 13px; font-weight: 600; color: var(--white); }
+.recipe-crumb-btn { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 200px; padding: 9px 16px; background: #ffffff; border: 1px solid var(--border2); border-radius: 10px; font-family: var(--font-body), sans-serif; font-size: 13px; font-weight: 600; color: var(--white); cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.recipe-crumb-btn:hover { border-color: var(--red); box-shadow: 0 2px 10px rgba(214,59,50,0.10); }
+.recipe-crumb-btn:disabled { cursor: default; opacity: 0.6; }
+@keyframes megaIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Small dropdown list under the "From:" button — plain select-style
+   menu. Items: input icon + noun. (Mega panel + frost removed — the
+   template rows below the composer handle discovery.) */
+.from-menu { position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 200px; z-index: 70; background: #ffffff; border: 1px solid var(--border2); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); padding: 6px; animation: megaIn 0.14s ease-out; }
+.from-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; padding: 9px 14px; background: transparent; border: none; border-radius: 7px; font-family: var(--font-body), sans-serif; font-size: 13px; font-weight: 400; color: var(--white); cursor: pointer; transition: background 0.12s; }
+.from-menu-item:hover { background: rgba(0,0,0,0.04); }
+.from-menu-item.active { color: var(--red); background: rgba(214,59,50,0.07); }
+.recipe-entry-icons { display: inline-flex; align-items: center; color: var(--muted2); }
+.from-menu-item.active .recipe-entry-icons { color: var(--red); }
+
+/* XCreate: left-align the setup area (not centered) and pull it up. */
+/* Same column as every other page (1200px − 40px sides = 1120px content),
+   so the composer, slots, actions row and galleries all share one edge —
+   no per-element width caps (CC, July 17: mixed alignments looked weird). */
+.arena.xcreate-arena { margin: 0 auto; max-width: 1200px; padding: 12px 40px 80px; }
+
 
 /* Base text-input styling. All editable controls default to a true white
    background so they read as "fill this in" rather than blending into
@@ -528,17 +741,57 @@ select {
 }
 
 .prompt-box { position: relative; margin-bottom: 24px; }
+/* 56px bottom padding clears XDuel's overlaid .prompt-actions. XCreate's
+   actions row moved BELOW the composer (July 2026) and no longer overlays. */
 .prompt-textarea { width: 100%; min-height: 140px; background: #ffffff; border: 1px solid var(--border2); border-radius: 6px; padding: 20px 24px 56px; color: var(--white); font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.6; resize: none; outline: none; transition: border-color 0.2s; }
+/* Framed variant (XCreate): the wrapper carries the white box + border so
+   upload thumbnails can sit INSIDE the composer above the textarea
+   (Pollo-style). The textarea goes borderless inside it. */
+.prompt-box.framed { background: #ffffff; border: 1px solid var(--border2); border-radius: 6px; transition: border-color 0.2s; }
+.prompt-box.framed:focus-within { border-color: var(--red); }
+/* Framed (XCreate) composer has no overlaid actions row anymore — reclaim
+   the reserved bottom strip. */
+.prompt-box.framed .prompt-textarea { border: none; background: transparent; padding-bottom: 20px; }
+.prompt-box.framed .prompt-slots { padding: 14px 16px 0; }
 .prompt-textarea:focus { border-color: var(--red); }
 .prompt-textarea::placeholder { color: var(--muted); }
-.prompt-actions { position: absolute; bottom: 12px; right: 12px; display: flex; align-items: center; gap: 8px; }
-.prompt-counter { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--muted); }
+/* Solid background so the row never visually mixes with prompt text, and
+   nowrap on every child so the row can't grow taller than the reserved
+   textarea padding. */
+.prompt-actions { position: absolute; bottom: 12px; right: 12px; display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 6px; padding-left: 8px; white-space: nowrap; }
+.prompt-counter { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--muted); white-space: nowrap; }
 .btn-battle { padding: 10px 28px; background: var(--red); border: none; border-radius: 4px; color: #fff; font-family: var(--font-display), sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: none; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
 .btn-battle:hover { background: #ff5249; box-shadow: 0 0 32px var(--red-glow); }
 .btn-battle:disabled { opacity: 0.4; pointer-events: none; }
 
 .battle-arena { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border2); overflow: hidden; }
-.battle-card { background: var(--surface); position: relative; overflow: hidden; min-width: 0; transition: background 0.3s; cursor: none; }
+/* Stack battle cards vertically on phones — the side-by-side comparison
+   is still visually preserved (top vs bottom) but each card gets the
+   full viewport width so prompts, images, and videos are readable. */
+@media (max-width: 760px) {
+  .battle-arena { grid-template-columns: 1fr !important; }
+  .battle-card:first-child {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border2);
+  }
+
+  /* XCreate's model-slot + cost row also stacks. Inline style sets
+     repeat(N, 1fr); !important overrides that. */
+  .xcreate-slot-grid { grid-template-columns: 1fr !important; }
+
+  /* Trim the page padding so content has more room. Hero sections still
+     get some breathing room from the inner padding. */
+  .home-inner { padding: 0 16px !important; }
+
+  /* Prompt textarea fonts can render too small inside narrow viewports;
+     iOS auto-zooms inputs under 16px — set the input font size at 16px
+     to prevent that annoying zoom. */
+  input[type="text"], input[type="number"], input[type="email"],
+  input[type="password"], input[type="search"], textarea, select {
+    font-size: 16px !important;
+  }
+}
+.battle-card { background: var(--bg); position: relative; overflow: hidden; min-width: 0; transition: background 0.3s; cursor: none; }
 .battle-card:first-child { border-right: 1px solid var(--border2); }
 .battle-card.voted-this:first-child { border-left: 2px solid #4a9eff; background: rgba(74,158,255,0.03); }
 .battle-card.voted-this:last-child  { border-right: 2px solid var(--red); background: rgba(232,69,60,0.03); }
@@ -552,10 +805,17 @@ select {
 .battle-response.image-response {
   padding: 0; min-height: 280px;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
+  /* No clamp for image results (July 2026): multi-output stacks (e.g. 8
+     images) must be fully visible. The base .battle-response max-height
+     is a text-mode scroll cap — images instead grow the grid row, and
+     side-by-side cards stretch to match the tallest (cells with fewer
+     images center vertically via the flex alignment above). */
+  max-height: none;
+  overflow: visible;
 }
 .battle-response.image-response.loading { min-height: 280px; display: flex; align-items: center; justify-content: center; }
-.image-response img {
+.image-response img,
+.image-response video {
   display: block;
   max-width: 100%;
   max-height: 600px;
@@ -693,3 +953,43 @@ select {
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 .xc-slider::-moz-range-thumb:active { cursor: grabbing; transform: scale(1.1); }
+
+/* ── XCreate history in the nav rail (chat-history pattern) ─────────────────
+   Lives UNDER the main menu items, separated by a divider line so it reads
+   as a distinct layer (CC). Rows are smaller + sentence-case vs the
+   uppercase mono menu links. Scrolls independently if long. */
+.nav-history {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  overflow-y: auto; scrollbar-width: thin;
+  min-height: 0;
+}
+.nav-history-head {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 4px 12px 6px;
+  background: none; border: none; cursor: pointer; border-radius: 8px;
+}
+.nav-history-head:hover .nav-history-cap,
+.nav-history-head:hover .nav-history-toggle { color: var(--red); }
+.nav-history-cap {
+  font-family: var(--font-mono), monospace; font-size: 9px;
+  color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase;
+}
+.nav-history-toggle { color: var(--muted); font-size: 12px; line-height: 1; }
+.nav-history-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.nav-history-item:hover { background: var(--red-dim); }
+.nav-history-item svg { color: var(--muted); }
+.nav-history-item:hover svg { color: var(--red); }
+.nav-history-text {
+  flex: 1; min-width: 0;
+  font-family: var(--font-body), sans-serif; font-size: 12px;
+  color: var(--muted2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nav-history-item:hover .nav-history-text { color: var(--white); }
+@media (max-width: 760px) { .nav-history { display: none; } }

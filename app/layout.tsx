@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
-import { Barlow, JetBrains_Mono, Archivo_Black } from 'next/font/google'
+import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC } from 'next/font/google'
 import { AuthModalProvider } from '../lib/AuthModalContext'
+import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
+import TopBar from './components/TopBar'
+import { PageTitleProvider } from '../lib/PageTitleContext'
 import './globals.css'
 
 // Barlow at body weights — used for paragraph copy and UI labels.
@@ -33,21 +36,50 @@ const archivoBlack = Archivo_Black({
   weight: ['400'],
   variable: '--font-logo',
 })
+// Traditional Chinese (Taiwan) — used when the site is switched to 中文.
+// CJK glyph ranges are huge, so we don't preload; the browser fetches the
+// needed ranges on demand via unicode-range.
+const notoTC = Noto_Sans_TC({
+  subsets: ['latin'],
+  weight: ['400', '500', '700', '900'],
+  variable: '--font-zh',
+  preload: false,
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'ModelXD — Stop Overpaying for AI',
   description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
 }
 
+// Tell mobile browsers to use the device's real width instead of
+// rendering at a desktop "virtual viewport" and then scaling down.
+// Without this every page looks zoomed-out on phones.
+export const viewport = {
+  width:         'device-width',
+  initialScale:  1,
+  maximumScale:  5,        // allow pinch-zoom for accessibility
+  viewportFit:   'cover',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable}`}>
-        <AuthModalProvider>
-          <Nav />
-          {children}
-          <AuthModal />
-        </AuthModalProvider>
+      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable}`}>
+        <LangProvider>
+          <AuthModalProvider>
+            <PageTitleProvider>
+            <div className="app-shell">
+              <Nav />
+              <div className="app-main">
+                <TopBar />
+                {children}
+              </div>
+            </div>
+            <AuthModal />
+            </PageTitleProvider>
+          </AuthModalProvider>
+        </LangProvider>
       </body>
     </html>
   )

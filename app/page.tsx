@@ -5,12 +5,13 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
+import { useLang } from '../lib/i18n'
 
 const FEATURES = [
   { key: 'xduel',       num: '01', label: 'XDUEL',       title: 'Blind Duel',  desc: 'Blind-test two AI models. Vote before and after the price reveal.' },
   { key: 'create',      num: '02', label: 'XCREATE',     title: 'Studio',      desc: 'One prompt. Up to 4 models side by side.' },
   { key: 'xvote',       num: '03', label: 'XVOTE',       title: 'Community',   desc: 'Skip generation. Just compare.' },
-  { key: 'leaderboard', num: '04', label: 'LEADERBOARD', title: 'Rankings',    desc: 'See which AI models perform best.' },
+  { key: 'xboard',      num: '04', label: 'XBOARD',      title: 'Rankings',    desc: 'See which AI models perform best.' },
 ]
 
 const STEPS = [
@@ -39,6 +40,7 @@ export default function Home() {
   const ringRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { show } = useAuthModal()
+  const { lang, t } = useLang()
 
   const handleNav = async (path: string) => {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
@@ -82,17 +84,19 @@ export default function Home() {
       <div className="xduel-page" style={{ minHeight: 'auto' }}>
         <div className="arena" style={{ paddingBottom: 0 }}>
           <div className="prompt-header">
-            <div className="prompt-label">Model<span style={{ color: 'var(--red)' }}>XD</span></div>
+            <div className="prompt-label">
+              {lang === 'zh' ? '模型大對決' : <>Model<span style={{ color: 'var(--red)' }}>XD</span></>}
+            </div>
             <h1 className="prompt-title">
-              Overpaying for AI?! <span>XD</span>
+              {t('home.hero')} <span>XD</span>
             </h1>
             <div className="prompt-sub" style={{ maxWidth: 720, marginTop: 16, fontSize: 18 }}>
-              XDuel or XCreate side-by-side to find your best value models.
+              {t('home.sub')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 32, marginBottom: 0, flexWrap: 'wrap' }}>
-            <button onClick={() => handleNav('/xduel')} className="btn-primary">Start XDuel →</button>
-            <button onClick={() => handleNav('/xcreate')} className="btn-outline">Try XCreate →</button>
+            <button onClick={() => handleNav('/xduel')} className="btn-primary">{t('home.cta')}</button>
+            <button onClick={() => handleNav('/xcreate')} className="btn-outline">{t('home.cta2')}</button>
           </div>
         </div>
       </div>

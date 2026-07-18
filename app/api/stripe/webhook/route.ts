@@ -126,11 +126,14 @@ export async function POST(req: Request) {
       kind:          'purchase',
       referenceType: 'stripe_checkout_session',
       referenceId:   sessionId,
-      description:   `Stripe purchase (${tierId ?? 'custom'})`,
+      description:   metadata.gift_from
+        ? `Gift from ${metadata.gift_from} (${tierId ?? 'custom'})`
+        : `Stripe purchase (${tierId ?? 'custom'})`,
       metadata: {
         stripe_event_id:     event.id,
         stripe_payment_intent: session.payment_intent ?? null,
         tier_id:             tierId ?? null,
+        gift_from:           metadata.gift_from ?? null,
       },
     })
     console.log(`${LOG} granted ${creditCents}¢ to ${userId} (new balance ${newBalance}¢)`)
