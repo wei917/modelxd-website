@@ -14,7 +14,7 @@
 // usage. Nominative use: it labels OpenAI's models as theirs.
 // Unknown providers (or a missing file) render nothing.
 
-const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai']
+const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot']
 
 export default function ProviderLogo({
   provider,

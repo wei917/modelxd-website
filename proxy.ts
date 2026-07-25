@@ -16,10 +16,9 @@
 //     The /coming-soon page has a form that POSTs to /api/site-auth,
 //     which sets the cookie on a correct password.
 //
-// To enable on Production only:
-//   Vercel → Settings → Environment Variables → add SITE_PASSWORD with
-//   the password, scoped to Production. Leave Preview / Development
-//   without it.
+// Host scoping: even with SITE_PASSWORD set, only modelxd.com and
+//   www.modelxd.com are gated. localhost, dev.modelxd.com and Vercel
+//   preview URLs always pass through.
 //
 // Bypass list: a few paths must work without the cookie, otherwise
 // they'd break:
@@ -50,6 +49,14 @@ function isBypassed(pathname: string): boolean {
 export async function proxy(req: NextRequest) {
   const sitePw = process.env.SITE_PASSWORD
   if (!sitePw) return NextResponse.next()           // gate disabled
+
+  // Only the real production hosts are gated. localhost, dev.modelxd.com
+  // and *.vercel.app previews pass through even when SITE_PASSWORD is set
+  // (CC, July 19) — so the same env file works everywhere.
+  const host = req.nextUrl.hostname
+  if (host !== 'modelxd.com' && host !== 'www.modelxd.com') {
+    return NextResponse.next()
+  }
 
   const pathname = req.nextUrl.pathname
   if (isBypassed(pathname)) return NextResponse.next()

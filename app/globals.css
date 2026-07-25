@@ -16,6 +16,10 @@
   --red:       #d63b32;
   --red-dim:   rgba(214,59,50,0.1);
   --red-glow:  rgba(214,59,50,0.25);
+  /* Second accent, used only where two choices must stay told apart
+     at a glance (landing comparator). Tuned for contrast on --bg. */
+  --blue:      #2f6fd0;
+  --blue-dim:  rgba(47,111,208,0.1);
   --green:     #009970;
   --green-dim: rgba(0,153,112,0.1);
 
@@ -173,6 +177,39 @@ body {
 }
 @media (max-width: 760px) { .topbar { display: none; } }
 
+/* Sidebar footer links (Terms / Contact) — pinned to the bottom. */
+.nav-auth { margin-top: auto; padding: 0 12px 10px; }
+.nav-auth-profile {
+  display: flex; align-items: center; gap: 10px; text-decoration: none;
+  padding: 6px 8px; margin: 0 -8px; border-radius: 8px; transition: background 0.15s;
+}
+.nav-auth-profile:hover { background: var(--surface2); }
+.nav-auth-profile img, .nav-auth-initials {
+  width: 30px; height: 30px; border-radius: 50%; display: block;
+  border: 1px solid var(--border); flex-shrink: 0;
+}
+.nav-auth-initials {
+  background: var(--red); color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.nav-auth-name {
+  font-family: var(--font-mono), monospace; font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted2);
+}
+.nav-auth .nav-login { width: 100%; }
+.nav-foot {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px 0; border-top: 1px solid var(--border);
+}
+.nav-foot a {
+  font-family: var(--font-mono), monospace; font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none; padding: 4px 0;
+  transition: color 0.15s;
+}
+.nav-foot a:hover, .nav-foot a.active { color: var(--red); }
+
 .nav {
   position: sticky; top: 0; align-self: flex-start; z-index: 100;
   width: 208px; height: 100vh; flex-shrink: 0;
@@ -309,6 +346,12 @@ body {
 /* ── Home page layout ── */
 .home-section { padding: 60px 0; border-bottom: 1px solid var(--border); }
 .home-section.surface { background: var(--surface); }
+/* Every section draws its own bottom rule, so the line "above" a section is
+   really the previous one's. The first section has only the hero above it,
+   which has no rule — hence the missing line over "How XDuel Works". Opt the
+   first one into a top rule rather than giving every section both, which
+   would double to 2px everywhere they meet (CC, July 25). */
+.home-section.rule-top { border-top: 1px solid var(--border); }
 .home-inner { max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 48px; box-sizing: border-box; }
 
 /* Hero title — larger than prompt-title for landing page impact */
@@ -433,17 +476,18 @@ body {
 .provider-dot.anthropic { background: var(--provider-anthropic); }
 .provider-dot.alibaba   { background: var(--provider-alibaba); }
 
-/* ── Provider stripe — top accent line on XCreate result cards ── */
+/* ── Slot stripe — top accent line on XCreate result cards ──
+   Color is passed inline from SLOT_COLORS[i], NOT from the provider:
+   which provider lands in which slot changes every run, so the slot
+   position is the stable identity. The background below is only a
+   fallback so the ribbon is never invisible. */
 .provider-stripe {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 3px;
   border-radius: 12px 12px 0 0;
+  background: var(--border2);
 }
-.provider-stripe.openai    { background: var(--provider-openai); }
-.provider-stripe.google    { background: var(--provider-google); }
-.provider-stripe.anthropic { background: var(--provider-anthropic); }
-.provider-stripe.alibaba   { background: var(--provider-alibaba); }
 
 /* ── Streaming pulse — animated dot on cards while a slot is generating ── */
 @keyframes xc-pulse {
@@ -458,10 +502,6 @@ body {
   animation: xc-pulse 1.2s ease-in-out infinite;
   margin-right: 6px;
 }
-.streaming-dot.openai    { background: var(--provider-openai); }
-.streaming-dot.google    { background: var(--provider-google); }
-.streaming-dot.anthropic { background: var(--provider-anthropic); }
-.streaming-dot.alibaba   { background: var(--provider-alibaba); }
 .home-savings-period {
   font-family: var(--font-mono), monospace;
   font-size: 11px; color: var(--muted); letter-spacing: 0.12em;
@@ -499,28 +539,6 @@ body {
   font-family: var(--font-mono), monospace;
   font-size: 11px; color: var(--muted2); letter-spacing: 0.06em;
   margin-top: 12px; display: flex; gap: 8px; align-items: center;
-}
-
-/* ── Home: Modes ── */
-.home-modes {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
-  background: var(--border); border: 1px solid var(--border);
-}
-.home-mode {
-  background: var(--bg); padding: 32px 28px; transition: background 0.2s;
-}
-.home-mode:hover { background: var(--surface2); }
-.home-mode-title {
-  font-family: var(--font-display), sans-serif;
-  font-size: 24px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.03em; color: var(--white); margin-bottom: 8px;
-}
-.home-mode-desc { font-size: 13px; color: var(--muted2); line-height: 1.6; font-weight: 300; }
-.home-mode-models { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-.home-mode-tag {
-  font-family: var(--font-mono), monospace;
-  font-size: 10px; padding: 3px 8px; border: 1px solid var(--border2);
-  border-radius: 2px; color: var(--muted2); letter-spacing: 0.06em;
 }
 
 /* ── Home: Audience ── */
@@ -649,6 +667,10 @@ body {
 .prompt-title span { color: var(--red); }
 .prompt-sub { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); margin-top: 8px; letter-spacing: 0.05em; }
 
+/* In-page header (post-TopBar, CC July 20): small red "// PAGE" eyebrow
+   (reuses .prompt-label) + a bigger real headline below it. */
+.page-headline { font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 800; color: var(--white); line-height: 1.35; margin: 2px 0 0; max-width: 900px; }
+
 /* Underline tabs — active mode gets a red underline + dark text; the old
    boxed/segmented look and grey fills are gone. The .mode-dot from the
    markup is hidden (the underline is the active indicator now). */
@@ -716,11 +738,15 @@ body {
 .recipe-entry-icons { display: inline-flex; align-items: center; color: var(--muted2); }
 .from-menu-item.active .recipe-entry-icons { color: var(--red); }
 
-/* XCreate: left-align the setup area (not centered) and pull it up. */
-/* Same column as every other page (1200px − 40px sides = 1120px content),
-   so the composer, slots, actions row and galleries all share one edge —
-   no per-element width caps (CC, July 17: mixed alignments looked weird). */
-.arena.xcreate-arena { margin: 0 auto; max-width: 1200px; padding: 12px 40px 80px; }
+/* XCreate: same column as every other page (1200px − 40px sides = 1120px
+   content), so the composer, slots, actions row and galleries all share one
+   edge — no per-element width caps (CC, July 17: mixed alignments looked
+   weird).
+   Top padding must match .arena's 24px. It was 12px ("pull it up"), which
+   left the "// XCREATE" eyebrow sitting 12px higher than the identical
+   eyebrow on XDuel / XVote / XBoard — visible when tabbing between pages
+   (CC, July 25). */
+.arena.xcreate-arena { margin: 0 auto; max-width: 1200px; padding: 24px 40px 80px; }
 
 
 /* Base text-input styling. All editable controls default to a true white
@@ -993,3 +1019,254 @@ select {
 }
 .nav-history-item:hover .nav-history-text { color: var(--white); }
 @media (max-width: 760px) { .nav-history { display: none; } }
+
+/* ── XDuel popular-prompt chips (July 19) ─────────────────────────────
+   The XDuel analog of XCreate's popular templates: one row of clickable
+   starter prompts under the composer, filtered to the active mode. */
+.prompt-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 12px;
+}
+.prompt-chips-label {
+  font-family: var(--font-mono), monospace; font-size: 10px;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+}
+.prompt-chip {
+  font-size: 12.5px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--border2); background: #ffffff; color: var(--muted2);
+  cursor: pointer; transition: all 0.15s; line-height: 1;
+}
+.prompt-chip:hover {
+  border-color: var(--red); color: var(--red); background: var(--red-dim);
+}
+.prompt-chip-hint {
+  margin-top: 8px; font-size: 12px; color: var(--muted2);
+}
+
+/* ── XDuel model-count selector (July 19) — sits on the mode row. ── */
+.mode-count-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 32px;
+}
+.count-selector {
+  display: flex; align-items: center; gap: 6px; margin-left: auto;
+  padding-bottom: 6px;
+}
+.count-label {
+  font-family: var(--font-mono), monospace; font-size: 10px;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+  margin-right: 2px;
+}
+.count-btn {
+  width: 30px; height: 30px; border-radius: 7px;
+  border: 1px solid var(--border2); background: #ffffff; color: var(--muted2);
+  font-size: 13px; cursor: pointer; transition: all 0.15s; line-height: 1;
+}
+.count-btn:hover { border-color: var(--red); color: var(--red); }
+.count-btn.active {
+  border-color: var(--red); background: var(--red); color: #ffffff;
+}
+.count-note { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-left: 6px; white-space: nowrap; }
+
+/* ── XBoard provider multi-select dropdown (July 19) ── */
+.provider-filter-btn {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono), monospace; font-size: 11px; padding: 8px 14px;
+  background: #ffffff; color: var(--muted2);
+  border: 1px solid var(--border2); border-radius: 6px; cursor: pointer;
+  letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.15s;
+}
+.provider-filter-btn:hover { border-color: var(--red); }
+.provider-filter-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 300;
+  min-width: 220px; background: #ffffff; border: 1px solid var(--border2);
+  border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.provider-filter-item {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 8px 10px; border: none; border-radius: 7px; background: transparent;
+  font-size: 13px; color: var(--muted2); cursor: pointer; text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+.provider-filter-item:hover { background: rgba(0,0,0,0.04); color: var(--white); }
+.provider-filter-item.active { color: var(--white); }
+.provider-filter-check {
+  width: 14px; flex: none; color: var(--red); font-size: 12px; font-weight: 700;
+}
+.provider-filter-count {
+  margin-left: auto; font-family: var(--font-mono), monospace;
+  font-size: 10px; color: var(--muted);
+}
+.count-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.count-btn.wide { width: auto; padding: 0 12px; font-size: 12px; }
+
+
+/* ══ Landing: value snapshot bar + tier comparator (CC, July 25) ══════════ */
+
+/* Full-bleed strip above the hero. Deliberately NOT inside .arena's 1200px
+   column — it reads as a ticker pinned to the top of the content area, so it
+   hugs the viewport edges the way the sidebar does. */
+.value-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 13px 40px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.vb-label {
+  font-family: var(--font-mono), monospace; font-size: 11px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted2);
+  margin-right: 6px; white-space: nowrap;
+}
+/* Fixed width so the three read as one row of equal slots rather than
+   jittering every time the leaderboard changes to a longer model name.
+   334px is measured, not guessed: worst case across the whole catalogue is
+   "Gemini Omni Flash Preview" (the longest nickname after the shortName
+   rules in /api/snapshot) beside the widest English label, VIDEO — 328px
+   rendered, including the hover arrow, which holds its layout slot even at
+   opacity 0. Sized for the worst case, not today's picks, so a change at
+   the top of the leaderboard can't reintroduce an ellipsis. */
+.vb-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  flex: 0 0 334px; box-sizing: border-box;
+  padding: 8px 14px; border: 1px solid var(--border2); border-radius: 8px;
+  font-family: var(--font-mono), monospace; font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted2);
+  white-space: nowrap; overflow: hidden;
+}
+.vb-mode { flex: 0 0 auto; color: var(--muted); }
+.vb-dot { font-style: normal; margin-left: 9px; color: var(--border2); }
+
+/* Clickable variant. It has to read as pressable without shouting over the
+   two hero CTAs directly below it, so the affordance is an arrow that only
+   arrives on hover plus a quiet border/lift — no fill, no accent chrome. */
+button.vb-chip {
+  background: var(--bg); text-align: left; cursor: none;
+  transition: border-color 0.16s, box-shadow 0.16s, transform 0.16s;
+}
+button.vb-chip:hover, button.vb-chip:focus-visible {
+  border-color: var(--border2); outline: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+.vb-go {
+  flex: 0 0 auto; margin-left: auto; color: var(--muted);
+  opacity: 0; transform: translateX(-4px);
+  transition: opacity 0.16s, transform 0.16s;
+}
+button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
+  opacity: 1; transform: translateX(0);
+}
+/* The mode label stays left-aligned as a fixed anchor; the name centres in
+   whatever space is left. Safety net for names longer than the slot. */
+.vb-chip b {
+  flex: 1 1 auto; min-width: 0; font-weight: 600; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Same mode accents XBoard uses (see its provider/mode column) so a grade
+   means the same colour on both pages. */
+.vb-chip .g-text  { color: var(--mode-text); }
+.vb-chip .g-image { color: var(--mode-image); }
+.vb-chip .g-video { color: var(--mode-video); }
+@media (max-width: 900px) {
+  .value-bar { padding: 12px 20px; gap: 10px; }
+}
+
+/* ── Tier comparator ── */
+/* The comparator is the hero's whole visual, so it breaks out of .arena's
+   1200px text column when the viewport can spare it — the value-snapshot bar
+   above is already full-bleed, so the page has this language. The clamp is
+   self-limiting: it only claws back margin that exists, reaching zero at
+   ~1370px wide, so narrow screens are untouched (CC, July 25). */
+.vc {
+  margin-top: 60px; user-select: none; -webkit-user-select: none;
+  margin-inline: calc(-1 * clamp(0px, (100vw - 1370px) / 2, 140px));
+}
+
+.vc-stage { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+
+/* Each side is a window onto the full four-tier strip: the chosen tier fills
+   it, the others stay as slivers at the edges. The slivers are the whole
+   point — they make it obvious there is more to drag to without needing a
+   caption to say so. */
+.vc-panel {
+  position: relative; display: flex; overflow: hidden;
+  border: 1px solid var(--border2); border-radius: 4px;
+  aspect-ratio: 3 / 2; background: var(--bg);
+}
+.vc-cell {
+  position: relative; flex: 0 0 22px; min-width: 0; cursor: none; overflow: hidden;
+  border-right: 1px solid var(--border);
+  filter: grayscale(1); opacity: 0.32;
+  transition: flex-grow 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+              flex-basis 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+              opacity 0.32s, filter 0.32s;
+}
+.vc-cell:last-child { border-right: none; }
+.vc-cell.on { flex: 1 1 auto; filter: none; opacity: 1; }
+.vc-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* A sliver is 22px wide — a label can't fit, so it gets the bare letter
+   rotated up its spine instead of a squeezed, unreadable word. */
+.vc-letter {
+  position: absolute; inset: 0; z-index: 2; display: flex;
+  align-items: center; justify-content: center;
+  font-family: var(--font-mono), monospace; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.2em; color: var(--muted2);
+  /* NB: this was two `transition` declarations, so the second silently
+     killed the colour transition. One shorthand, both properties. */
+  writing-mode: vertical-rl;
+  transition: color 0.2s, opacity 0.18s ease 0.3s;
+}
+.vc-cell.on .vc-letter { opacity: 0; transition: opacity 0.12s ease; }
+/* Overlay, not inset box-shadow — an inset shadow paints beneath the cell's
+   own <img>, so the accent ring was invisible. */
+.vc-cell.on::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  border: 2px solid transparent;
+}
+.vc-panel.is-left  .vc-cell.on::after { border-color: var(--red); }
+.vc-panel.is-right .vc-cell.on::after { border-color: var(--blue); }
+/* Slivers read as a faint edge until hovered, then declare themselves. */
+.vc-cell:not(.on):hover { opacity: 0.62; }
+.vc-cell:not(.on):hover .vc-letter { color: var(--white); }
+
+/* ── Axis ──
+   Narrower than the panels above it and centred: a full-width track made the
+   four stops sit ~370px apart, which read as four separate controls rather
+   than one scale (CC, July 25). */
+.vc-axis {
+  position: relative; margin-top: 34px; padding: 0 4px;
+  max-width: 680px; margin-left: auto; margin-right: auto;
+}
+.vc-axis-row { display: flex; align-items: center; gap: 20px; }
+.vc-end {
+  font-family: var(--font-display), sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--white);
+  white-space: nowrap; flex-shrink: 0;
+}
+.vc-track {
+  position: relative; flex: 1; height: 2px; background: var(--border2);
+  border-radius: 2px; touch-action: none;
+}
+/* A 2px line is an unfair click target. This gives the axis a 36px tall
+   invisible hit area without changing the layout. Unpositioned, so it stays
+   painted beneath the thumbs. */
+.vc-track::before { content: ''; position: absolute; inset: -17px 0; }
+.vc-thumb {
+  position: absolute; top: 50%; z-index: 2;
+  width: 17px; height: 17px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: none; padding: 0;
+  cursor: none; touch-action: none;
+  transition: left 0.42s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.15s;
+}
+.vc-thumb.dragging { transition: box-shadow 0.15s; }
+.vc-thumb.t-left  { background: var(--red);  box-shadow: 0 0 0 0 var(--red-glow); }
+.vc-thumb.t-right { background: var(--blue); box-shadow: 0 0 0 0 var(--blue-dim); }
+.vc-thumb:hover, .vc-thumb:focus-visible { box-shadow: 0 0 0 7px var(--red-glow); outline: none; }
+.vc-thumb.t-right:hover, .vc-thumb.t-right:focus-visible { box-shadow: 0 0 0 7px var(--blue-dim); }
+
+@media (max-width: 760px) {
+  .vc-stage { grid-template-columns: 1fr; gap: 16px; }
+  .vc-axis-row { gap: 10px; }
+  .vc-end { font-size: 11px; }
+}

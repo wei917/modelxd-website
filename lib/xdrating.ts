@@ -163,6 +163,8 @@ export interface LeaderboardRow {
   provider: string
   priceLabel: string
   releasedAt: string | null
+  /** Blind-vote-only Bradley-Terry rating — pure quality, price unseen. */
+  qualityScore: number
   xdScore: number
   totalVotes: number
 }
@@ -300,6 +302,7 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
         provider: info[modelId].provider,
         priceLabel: info[modelId].priceLabel,
         releasedAt: info[modelId].releasedAt,
+        qualityScore: qR,
         xdScore: xdScoreOf(qR, vR, sRate),
         totalVotes: votes[modelId],
       }

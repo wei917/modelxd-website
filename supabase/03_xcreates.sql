@@ -17,6 +17,7 @@ create table if not exists xcreates (
   chosen_model_id text,
   slots           jsonb not null default '[]',
   attachment_id   uuid,
+  input_attachments jsonb,  -- full original-upload list (July 2026)
   created_at      timestamptz not null default now()
 );
 
@@ -27,3 +28,6 @@ alter table xcreates enable row level security;
 create policy "xcreates: owner read"   on xcreates for select using (auth.uid() = user_id);
 create policy "xcreates: owner insert" on xcreates for insert with check (auth.uid() = user_id);
 create policy "xcreates: owner delete" on xcreates for delete using (auth.uid() = user_id);
+
+-- Idempotent for existing databases:
+alter table xcreates add column if not exists input_attachments jsonb;

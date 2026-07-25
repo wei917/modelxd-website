@@ -16,7 +16,8 @@ import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
-import { debitCredits, ensureDailyGrant, InsufficientCreditsError } from '@/lib/credits'
+import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
+import { sanitizeProviderError } from '@/lib/provider-errors'
 
 const LOG = '[xcreate]'
 
@@ -84,7 +85,7 @@ async function runSlot(
   prompt:      string,
   attachments: providers.Attachment[],
   options:     SlotOpts,
-): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; error?: string; responseId?: string; conversationHistory?: any[] } | null> {
+): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; error?: string; errorRef?: string | null; responseId?: string; conversationHistory?: any[] } | null> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name}`)
 
@@ -118,6 +119,7 @@ async function runSlot(
         },
         attachments,
         callContext,
+        { thinking: options.thinking_level ?? null },
       )
 
       const rt = Date.now() - start
@@ -221,13 +223,15 @@ async function runSlot(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const rt  = Date.now() - start
-    console.warn(`${LOG} Slot[${index}] failed after ${rt}ms: ${msg}`)
-    try { await patch({ streaming: false, done: true, error: msg, response_time: rt }) } catch {}
+    const ref = (err as any)?.requestId ?? null
+    console.warn(`${LOG} Slot[${index}] failed after ${rt}ms (ref=${ref}): ${msg}`)
+    const userMsg = sanitizeProviderError(msg)
+    try { await patch({ streaming: false, done: true, error: userMsg, error_ref: ref, response_time: rt }) } catch {}
     // Return the error (instead of null) so it gets persisted into the
     // xcreates.slots row below. Otherwise a failed slot shows its error live
     // (read from xcreate_job_slots) but becomes a blank card when the run is
     // reopened from the gallery, because the error was never saved.
-    return { text: '', isImage: false, isVideo: false, responseTime: rt, cost: 0, error: msg }
+    return { text: '', isImage: false, isVideo: false, responseTime: rt, cost: 0, error: userMsg, errorRef: ref }
   }
 }
 
@@ -247,14 +251,6 @@ export async function POST(req: Request) {
     )
   }
 
-  // Daily $1 credit grant — handles users who stayed logged in across the
-  // UTC-midnight boundary and never went through /auth/callback today.
-  // Idempotent within the same UTC day. Fire-and-forget — we don't block
-  // generation if the grant call hits a transient error.
-  ensureDailyGrant(user.id, 100).catch(err =>
-    console.warn(`${LOG} ensureDailyGrant failed:`, err instanceof Error ? err.message : err)
-  )
-
   const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)} jobId=${clientJobId ?? 'server-generated'}`)
 
@@ -270,6 +266,11 @@ export async function POST(req: Request) {
   const promptIsOptional = (mode === 'video' || mode === 'image') && hasAttachmentInput
   if (promptTooShort && !promptIsOptional) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
+  }
+  // Cap prompt size (client enforces maxLength=8000; this is the backstop).
+  // Long text belongs in a .txt attachment — folded server-side with a 200k-char guardrail.
+  if (typeof prompt === 'string' && prompt.length > 8000) {
+    return Response.json({ error: 'Prompt too long (max 8,000 characters) — attach long text as a .txt file instead.' }, { status: 400 })
   }
   if (!Array.isArray(modelIds) || modelIds.length === 0) return Response.json({ error: 'No models specified' }, { status: 400 })
 
@@ -293,16 +294,12 @@ export async function POST(req: Request) {
     try {
       const result = await processAttachment(user.id, inp.bucket, inp.storagePath, inp.mediaType, inp.fileName, inp.fileSize)
       const attach: providers.Attachment = { buffer: result.buffer, mediaType: result.mediaType }
-      // Signed URL valid for 1h — long enough for the provider to fetch
-      // and download the image. Only attempted for image attachments
-      // since that's where it matters; other types fall back to buffer.
-      if (result.mediaType.startsWith('image/') && inp.bucket && inp.storagePath) {
-        try {
-          const { data: signed } = await sb.storage.from(inp.bucket).createSignedUrl(inp.storagePath, 60 * 60)
-          if (signed?.signedUrl) attach.url = signed.signedUrl
-        } catch (sigErr) {
-          console.warn(`${LOG} signed-url failed (will fall back to base64):`, sigErr)
-        }
+      // Providers get the RESIZED copy's signed URL (1h) — images are
+      // capped at 1920px server-side, so a 4K upload never reaches the
+      // model at full size (output tops out around 2K anyway). Videos
+      // pass through unresized; their 'resized' copy is byte-identical.
+      if (result.mediaType.startsWith('image/') || result.mediaType.startsWith('video/')) {
+        attach.url = result.resizedUrl
       }
       attachments.push(attach)
       if (!attachmentId) attachmentId = result.attachmentId  // keep first for DB reference
@@ -370,6 +367,7 @@ export async function POST(req: Request) {
     cost:         results[i]?.cost ?? 0,
     responseTime: results[i]?.responseTime ?? 0,
     error:        results[i]?.error ?? null,
+    errorRef:     results[i]?.errorRef ?? null,
     options:      modelOptions[i] ?? {},  // mode/quality/size/duration/aspect_ratio/watermark/count
     // Multi-turn image editing context
     responseId:          results[i]?.responseId ?? null,           // OpenAI
@@ -378,11 +376,22 @@ export async function POST(req: Request) {
   const { data: xcreateRow } = await sb.from('xcreates').insert({
     user_id: user.id, mode, prompt,
     slots: slotsForXCreate, attachment_id: attachmentId,
+    // Full input list (July 19) — lets the gallery restore the original
+    // uploads when a past run is reopened (attachment_id only kept #1).
+    input_attachments: rawInputs
+      .filter((i: any) => i?.storagePath)
+      .map((i: any) => ({ storagePath: i.storagePath, bucket: i.bucket, mediaType: i.mediaType, fileName: i.fileName, fileSize: i.fileSize })),
   }).select('id').single()
 
   // ── Phase 2: Debit credits for total generation cost ──────────────────
+  // Multi-model runs get a discount (CC, July 19): 2 models −10%,
+  // 3 −15%, 4 −20%. Table lives in lib/xcreate-discount.ts (shared with
+  // the composer UI, which shows the same rate as a red label).
+  const { discountFor } = await import('@/lib/xcreate-discount')
+  const discount = discountFor(models.length)
   const totalCostDollars = slotsForXCreate.reduce((sum, s) => sum + (s.cost ?? 0), 0)
-  const totalCostCents   = Math.round(totalCostDollars * 100)
+  const preDiscountCents = Math.round(totalCostDollars * 100)
+  const totalCostCents   = Math.round(preDiscountCents * (1 - discount))
   if (totalCostCents > 0) {
     try {
       const newBalance = await debitCredits({
@@ -390,8 +399,8 @@ export async function POST(req: Request) {
         amountCents:   totalCostCents,
         referenceType: 'xcreate',
         referenceId:   xcreateRow?.id ?? job.id,
-        description:   `XCreate ${mode} generation (${models.length} model${models.length > 1 ? 's' : ''})`,
-        metadata:      { mode, modelCount: models.length, jobId: job.id },
+        description:   `XCreate ${mode} generation (${models.length} model${models.length > 1 ? 's' : ''}${discount > 0 ? `, ${Math.round(discount * 100)}% multi-model discount` : ''})`,
+        metadata:      { mode, modelCount: models.length, jobId: job.id, discount, preDiscountCents },
       })
       console.log(`${LOG} Debited ${totalCostCents}¢ for job ${job.id}; new balance: ${newBalance}¢`)
     } catch (err) {

@@ -33,6 +33,8 @@ interface Duel {
   vote2: string | null
   user_id: string
   created_at: string
+  /** Public URL of the user's input file (July 19+ duels). */
+  input_media?: { url: string; mediaType: string; fileName: string | null } | null
 }
 
 const STEPS = [
@@ -276,6 +278,24 @@ export default function DuelPage() {
                 : <span style={{color:'#555',fontSize:13}}>{duel.prompt.substring(0,120)}{duel.prompt.length>120?'…':''}</span>
               }
             </div>
+            {/* Original input — OWNER-ONLY (CC, July 19): inputs are raw,
+                unmoderated user uploads, so we never show them to other
+                voters. (Revisit with a moderation pass if we ever want
+                voters to see edit-duel originals.) */}
+            {userId && duel.user_id === userId && duel.input_media?.url && (
+              <div style={{ marginTop: 14, display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 9, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Original input</span>
+                {duel.input_media.mediaType.startsWith('image/') ? (
+                  <img src={duel.input_media.url} alt="Original input" style={{ maxHeight: 110, maxWidth: 200, borderRadius: 8, border: '1px solid var(--border2)', display: 'block' }} />
+                ) : duel.input_media.mediaType.startsWith('video/') ? (
+                  <video src={duel.input_media.url} controls muted style={{ maxHeight: 110, maxWidth: 200, borderRadius: 8, border: '1px solid var(--border2)', display: 'block' }} />
+                ) : (
+                  <a href={duel.input_media.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--muted2)' }}>
+                    📄 {duel.input_media.fileName ?? 'attached document'}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── STEPS 2 & 4: Battle cards ── */}

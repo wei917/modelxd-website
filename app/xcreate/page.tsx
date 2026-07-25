@@ -9,11 +9,13 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
+import { discountFor } from '../../lib/xcreate-discount'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
-import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
+import AttachmentButton, { attachSampleFile, commitAttachments, type Attachment } from '../components/AttachmentButton'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
+import ModeIcon from '../components/ModeIcon'
 import TemplatePicker from '../components/TemplatePicker'
 import MatchResult, { type RatingDelta, type MatchResultEntry } from '../components/MatchResult'
 import { computeMatchScores } from '../../lib/matchScore'
@@ -95,6 +97,7 @@ function modeMatchesMode(modePattern: string, m: 'text' | 'image' | 'video'): bo
     modePattern === 'text_to_video' ||
     modePattern === 'image_to_video' ||
     modePattern === 'video_to_video' ||
+    modePattern === 'video_edit' ||
     modePattern === 'start_end_frames' ||
     modePattern === 'reference_frames'
   )
@@ -114,6 +117,7 @@ function modeLabel(modePattern: string): string {
     case 'text_to_video':    return 'Text → Video'
     case 'image_to_video':   return 'Image → Video'
     case 'video_to_video':   return 'Video → Video'
+    case 'video_edit':       return 'Video + Refs → Video'
     case 'start_end_frames': return 'Start + End Frames'
     case 'reference_frames': return 'Reference Frames'
     default:                 return modePattern
@@ -146,18 +150,12 @@ const RECIPES: Record<Mode, Recipe[]> = {
     { id: 'text_to_video',    title: 'Text to Video',      recipe: 'TEXT → VIDEO',     provide: 'a prompt' },
     { id: 'image_to_video',   title: 'Image to Video',     recipe: 'IMAGE → VIDEO',    provide: '1 image + a prompt' },
     { id: 'video_to_video',   title: 'Video to Video',     recipe: 'VIDEO → VIDEO',    provide: '1 video + a prompt' },
+    { id: 'video_edit',       title: 'Edit a Video',       recipe: 'VIDEO + REFS → VIDEO', provide: '1 video + reference images + a prompt' },
     { id: 'start_end_frames', title: 'Frames to Video',    recipe: '2 FRAMES → VIDEO', provide: '2 images: first + last' },
     { id: 'reference_frames', title: 'Reference to Video', recipe: 'REFS → VIDEO',     provide: '1–2 portraits + a prompt' },
   ],
 }
 
-// Inline icon for each output mode tab (text / image / video).
-function ModeIcon({ m }: { m: Mode }) {
-  const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
-  if (m === 'text')  return (<svg {...p}><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h14"/></svg>)
-  if (m === 'image') return (<svg {...p}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>)
-  return (<svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3l-5 3z"/></svg>)
-}
 
 // Input-type icon for the sub-mode menu (superset of ModeIcon: adds
 // pdf / frames / references). Same 16px stroke style as ModeIcon.
@@ -180,6 +178,7 @@ const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames
   text_to_video:    ['text',       'video'],
   image_to_video:   ['image',      'video'],
   video_to_video:   ['video',      'video'],
+  video_edit:       ['video',      'video'],
   start_end_frames: ['frames',     'video'],
   reference_frames: ['references', 'video'],
 }
@@ -192,6 +191,11 @@ function recipeInputSlots(r: ModelMode | null): { label: string; hint?: string }
     case 'image_edit':
     case 'image_to_video':
     case 'image_to_text':    return [{ label: 'IMAGE', hint: 'Upload an image' }]
+    case 'video_edit':       return [
+      { label: 'VIDEO',       hint: 'The video to edit (MP4/MOV, 3–60s)' },
+      { label: 'REF IMAGE 1', hint: 'Optional — e.g. the new outfit' },
+      { label: 'REF IMAGE 2', hint: 'Optional second reference' },
+    ]
     case 'video_to_video':
     case 'video_to_text':    return [{ label: 'VIDEO', hint: 'Upload a video' }]
     case 'pdf_to_text':      return [{ label: 'PDF', hint: 'Upload a PDF' }]
@@ -298,6 +302,7 @@ type ModelMode =
   | 'text_to_video'
   | 'image_to_video'
   | 'video_to_video'
+  | 'video_edit'
   | 'start_end_frames'
   | 'reference_frames'
 
@@ -326,6 +331,9 @@ interface SlotOptions {
   /** Number of outputs to generate. Only meaningful for image models that
    *  declare `output_config.image.max_count > 1`. Defaults to 1. */
   count: number | null
+  /** Reasoning/thinking level for text models that declare
+   *  output_config.text.thinking_levels. null = provider default (Auto). */
+  thinking_level?: string | null
 }
 
 interface SlotState {
@@ -337,6 +345,7 @@ interface SlotState {
   cost: number
   responseTime: number
   error: string | null
+  errorRef?: string | null
 }
 
 interface ChatMessage {
@@ -354,6 +363,8 @@ interface GalleryItem {
   chosen_model_id: string | null
   chat_history: ChatMessage[] | null
   created_at: string
+  /** Original uploads (storagePath/bucket/…), persisted July 19+. */
+  input_attachments?: Attachment[] | null
 }
 
 const LABELS = ['A', 'B', 'C', 'D']
@@ -370,6 +381,11 @@ const SLOT_COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399']
 // Image: per-image price from image_pricing[quality]. One image per slot.
 // Video: per-second price from video_pricing[resolutionKey] × duration.
 function resolutionKeyForSize(size: string): string | null {
+  // Plain resolution keys ('480p', '720p', '4k') pass through directly -
+  // some models (Grok Imagine) declare sizes this way, and falling back
+  // to the 720p rate mis-estimated 480p runs (CC, July 20).
+  if (/^\d+p$/i.test(size)) return size.toLowerCase()
+  if (/^4k$/i.test(size)) return '4K'
   if (!size.includes('x')) return null
   const [w, h] = size.split('x').map(Number)
   if (!w || !h) return null
@@ -396,17 +412,18 @@ function estimateSlotDollars(
   m: Mode,
   opts: SlotOptions | null,
   promptLen: number,
+  /** Extra input tokens from attached documents (txt/PDF) - the server
+   *  folds up to ~50k tokens per file, so big uploads cost real input. */
+  docTokens: number = 0,
 ): number | null {
   const p = model.model_pricing ?? {}
   const t = p.tokens ?? {}
-  // Note: SlotOptions doesn't yet carry a thinking_level field — pass null
-  // for now. When we wire the thinking-level picker, swap in opts.thinking_level.
-  const lvl: string | null = null
+  const lvl: string | null = opts?.thinking_level ?? null
   if (m === 'text') {
     const tin  = rateOf(t.text_input,  lvl)
     const tout = rateOf(t.text_output, lvl)
     if (tin === 0 && tout === 0) return null
-    const inTokens  = Math.max(1, Math.ceil(promptLen / 4))
+    const inTokens  = Math.max(1, Math.ceil(promptLen / 4)) + docTokens
     const outTokens = 500
     return (inTokens * tin + outTokens * tout) / 1_000_000
   }
@@ -516,13 +533,64 @@ function companyLabel(id: string): string {
     .join(' ')
 }
 
-function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }: {
-  mode: Mode; recipeMode: ModelMode; onSelect: (m: SlotModel) => void; onClose: () => void; selectedIds: string[]
+/**
+ * Force a real download instead of a navigation.
+ *
+ * `<a href={url} download>` looks right but silently does nothing here: the
+ * HTML spec ignores the `download` attribute for CROSS-ORIGIN hrefs, and
+ * every result URL is a Supabase signed URL on *.supabase.co, not our own
+ * origin. The browser falls back to plain navigation, which is why the
+ * button opened a new tab and left the user to save it by hand
+ * (CC, July 25).
+ *
+ * Fetching to a blob puts the bytes on our own origin, so `download` is
+ * honoured and the filename sticks. Falls back to opening the URL if the
+ * fetch fails (expired signature, offline) — that's the old behaviour, so
+ * a failure is no worse than before.
+ */
+async function downloadFile(url: string, filename: string) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const obj  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = obj
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    // Revoke on the next tick — revoking synchronously can cancel the
+    // download in Safari before it starts.
+    setTimeout(() => URL.revokeObjectURL(obj), 10_000)
+  } catch (err) {
+    console.warn('download failed, opening instead:', err)
+    window.open(url, '_blank', 'noopener')
+  }
+}
+
+/** result URL -> a sensible filename, keeping the real extension. */
+function downloadName(url: string, kind: 'image' | 'video') {
+  const ext = (url.split('?')[0].match(/\.(jpe?g|png|webp|gif|mp4|webm|mov)$/i)?.[1] ?? (kind === 'video' ? 'mp4' : 'png')).toLowerCase()
+  return `modelxd-${kind}-${Date.now()}.${ext}`
+}
+
+function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds }: {
+  mode: Mode; recipeMode: ModelMode; onSelect: (m: SlotModel) => void; onClose: () => void
+  /** Per-slot selected model ids (null = empty slot) - index maps to A/B/C/D. */
+  slotIds: (string | null)[]
 }) {
   const t = useT()
   const [search,      setSearch]      = useState('')
   const [models,      setModels]      = useState<DBModel[]>([])
   const [loading,     setLoading]     = useState(true)
+  // Esc closes the picker (CC, July 19) — same as clicking the backdrop.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // null = "All" (no company filter active).
   const [company,     setCompany]     = useState<string | null>(null)
   // Sort direction for release date. 'desc' = newest first.
@@ -722,7 +790,9 @@ function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }:
             // Note: we used to disable already-picked models, but users may
             // want the same model in multiple slots to compare configs (e.g.
             // gpt-image-2 at low vs high quality side-by-side).
-            const dup = selectedIds.includes(m.id)
+            // Slot letters this model already occupies (A/B/C/D) - shown
+            // as a status badge at the LEFT edge of the row (CC, July 20).
+            const inSlots = slotIds.flatMap((id, i) => id === m.id ? ['ABCD'[i]] : [])
             return (
               <div key={m.id}
                 onClick={() => onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config, input_config: m.input_config ?? null })}
@@ -730,6 +800,14 @@ function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }:
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
+                {/* Left status: the slot letter(s) this model occupies. */}
+                <span style={{ width: 18, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+                  {inSlots.length > 0 && (
+                    <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: 'var(--red)', borderRadius: 5, padding: '2px 5px', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em' }}>
+                      {inSlots.join('')}
+                    </span>
+                  )}
+                </span>
                 <ProviderLogo provider={m.provider} size={18} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -747,7 +825,7 @@ function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }:
                     fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)',
                     whiteSpace: 'nowrap' as const, flexShrink: 0,
                   }}>
-                    {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })}
                   </span>
                 )}
                 {m.tags?.includes('reasoning') && <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>REASONING</span>}
@@ -780,7 +858,6 @@ function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }:
                     ? <span style={{ fontSize: 9, color: '#f59e0b', background: '#f59e0b18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>NEEDS ATTACHMENT</span>
                     : null
                 })()}
-                {dup && <span style={{ fontSize: 11, color: 'var(--muted)' }}>Added</span>}
               </div>
             )
           })}
@@ -798,6 +875,7 @@ function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }:
                   title={`${m.display_name} doesn't support ${t('recipe.' + recipeMode)}`}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', opacity: 0.45, cursor: 'default' }}
                 >
+                  <span style={{ width: 18, flexShrink: 0 }} />
                   <ProviderLogo provider={m.provider} size={18} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -807,7 +885,7 @@ function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, selectedIds }:
                   </div>
                   {m.released_at && (
                     <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
-                      {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })}
                     </span>
                   )}
                 </div>
@@ -938,18 +1016,18 @@ function GalleryDetail({ item, onClose, onContinue }: {
         {/* Footer actions */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end', background: 'var(--bg)' }}>
           {active?.isImage && (
-            <a href={(active.text ?? '').split('\n')[0]} download target="_blank" rel="noreferrer" style={{
+            <button onClick={() => { const u = (active.text ?? '').split('\n')[0]; downloadFile(u, downloadName(u, 'image')) }} style={{
               fontSize: 12, padding: '8px 14px', borderRadius: 8,
               background: 'var(--surface2)', border: '1px solid var(--border2)',
-              color: 'var(--muted2)', textDecoration: 'none', cursor: 'pointer',
-            }}>↓ Download</a>
+              color: 'var(--muted2)', cursor: 'pointer',
+            }}>↓ Download</button>
           )}
           {active?.isVideo && (
-            <a href={active.text} download target="_blank" rel="noreferrer" style={{
+            <button onClick={() => downloadFile(active.text, downloadName(active.text, 'video'))} style={{
               fontSize: 12, padding: '8px 14px', borderRadius: 8,
               background: 'var(--surface2)', border: '1px solid var(--border2)',
-              color: 'var(--muted2)', textDecoration: 'none', cursor: 'pointer',
-            }}>↓ Download</a>
+              color: 'var(--muted2)', cursor: 'pointer',
+            }}>↓ Download</button>
           )}
           <button onClick={() => onContinue(item, activeIdx)} style={{
             fontSize: 12, padding: '8px 14px', borderRadius: 8,
@@ -1163,6 +1241,37 @@ function Gallery({ userId, filterMode, onCounts, onOpen, limit = 40, compact = f
 // useSearchParams() (the ?id= deep-link) requires a Suspense boundary for
 // the production build's prerender pass — dev mode tolerates its absence,
 // `next build` hard-fails. The wrapper is the whole fix.
+// Option pill + group for the per-slot config panel. MODULE scope on
+// purpose: inline definitions made React remount the panel on every state
+// update, breaking slider drags (see the config panel below).
+function OptPill({ color, active, onClick, children, narrow }: {
+  color: string; active: boolean; onClick: () => void; children: React.ReactNode; narrow?: boolean
+}) {
+  return (
+    <button onClick={onClick}
+      style={{
+        flex: 1, padding: narrow ? '6px 4px' : '7px 6px',
+        borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        background: active ? color + '22' : 'transparent',
+        border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
+        color: active ? color : 'var(--muted)',
+        transition: 'all 0.15s', textAlign: 'center' as const,
+      }}>
+      {children}
+    </button>
+  )
+}
+function OptGroup({ label, children, last }: {
+  label: string; children: React.ReactNode; last?: boolean
+}) {
+  return (
+    <div style={{ marginBottom: last ? 0 : 8 }}>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 6, fontWeight: 600 }}>{label}</div>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>{children}</div>
+    </div>
+  )
+}
+
 export default function CreatePage() {
   return (
     <Suspense fallback={null}>
@@ -1212,6 +1321,10 @@ function CreateStudio() {
   // of it after, so we don't "enforce" anything from the template after
   // application.
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null)
+  // True while a template's bundled sample file is being fetched + uploaded
+  // (see applyTemplate). Keeps Generate disabled so a run can't start with
+  // the attachment half-arrived.
+  const [attachingSample, setAttachingSample] = useState(false)
 
   // Applying a tool/template from the galleries below the prompt box
   // scrolls the composer into view and flashes it, so the user sees
@@ -1339,9 +1452,11 @@ function CreateStudio() {
       // Watermark default = Off. Only ever true/false now.
       return { mode, quality: null, size, duration, aspect_ratio, watermark: opts.watermark === true ? true : false, count: null }
     }
-    // Text mode: no watermark concept. Keep it null so the summary line
-    // and any future UI gating won't render watermark options for text.
-    return { mode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: null, count: null }
+    // Text mode: no watermark concept. Thinking level clamps to the
+    // model's declared set; null = Auto (provider default).
+    const thinkLevels = model.output_config?.text?.thinking_levels ?? []
+    const thinking_level = opts.thinking_level && thinkLevels.includes(opts.thinking_level) ? opts.thinking_level : null
+    return { mode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: null, count: null, thinking_level }
   }
 
   const defaultOptions = (model: SlotModel | null, m: Mode): SlotOptions =>
@@ -1450,6 +1565,75 @@ function CreateStudio() {
   // from re-firing within the same component lifetime.
   const galleryLoadedRef = useRef<string | null>(null)
   const searchIdParam = useSearchParams()?.get('id') ?? null
+
+  // ── ?model=<model_name>&mode=<text|image|video> deep link ──
+  //
+  // Opens the studio with one model already in slot A. Used by the landing
+  // page's value-snapshot chips ("best image value → Nano Banana 2"), and
+  // reusable anywhere a specific model is worth acting on (XBoard rows).
+  //
+  // Matched on model_name, not the uuid: it's the stable provider-side
+  // identifier, it survives a row being recreated, and it makes the link
+  // readable. Unknown or disabled model -> we simply leave the studio
+  // empty rather than erroring; the URL is a suggestion, not a contract.
+  const searchModelParam = useSearchParams()?.get('model') ?? null
+  const searchModeParam  = useSearchParams()?.get('mode')  ?? null
+  const modelLinkRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!searchModelParam) return
+    if (modelLinkRef.current === searchModelParam) return
+    modelLinkRef.current = searchModelParam
+    ;(async () => {
+      const sb = createSupabaseBrowser()
+      const { data } = await sb.from('ai_models')
+        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+        .eq('model_name', searchModelParam)
+        .eq('enabled', true)
+        .maybeSingle()
+      if (!data) return
+
+      const m: SlotModel = {
+        id: data.id, provider: data.provider, model_name: data.model_name,
+        display_name: data.display_name, modes: (data.modes ?? []) as ModelMode[],
+        model_pricing: data.model_pricing, output_config: data.output_config,
+        input_config: data.input_config ?? null,
+      }
+
+      // Same guard applyTemplate uses: stop the mode-change effect from
+      // wiping the slot we're about to fill.
+      modeClearedRef.current = true
+      const nextMode: Mode = (['text', 'image', 'video'] as const).includes(searchModeParam as Mode)
+        ? (searchModeParam as Mode)
+        : 'image'
+      // Prefer the model's own first recipe for this mode; fall back to the
+      // mode's default so an odd catalogue entry can't leave a dead studio.
+      const recipes = RECIPES[nextMode]
+      const nextRecipe = recipes.find(r => m.modes.includes(r.id as ModelMode))?.id ?? recipes[0].id
+      setMode(nextMode)
+      setRecipeMode(nextRecipe as ModelMode)
+      setSelectedModels([m, null, null, null])
+      setSlotOptions([
+        validateOpts(m, nextMode, { ...defaultOptions(m, nextMode), mode: nextRecipe as ModelMode }),
+        null, null, null,
+      ])
+      setPhase('setup')
+
+      // Consume the params, then strip them. ?model= is a seed, not state:
+      // leaving it in the address bar means that the moment the user swaps
+      // the model or the mode the URL is lying, and a refresh or a shared
+      // link silently drags them back to the original pick. Unlike ?id=,
+      // which names a saved run and is worth keeping, there is nothing here
+      // to return to. Same consume-and-strip reset() already does for ?id=.
+      // Other params are preserved so this can't clobber a future deep link.
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('model')
+        url.searchParams.delete('mode')
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchModelParam, searchModeParam])
   useEffect(() => {
     if (typeof window === 'undefined') return
     const idParam = searchIdParam
@@ -1539,20 +1723,34 @@ function CreateStudio() {
   }, [refSlotCount, recipeMode, attachments])
 
   const addModel    = (i: number, m: SlotModel) => {
-    setSelectedModels(prev => prev.map((v, idx) => idx === i ? m : v))
+    // Slots fill left-to-right (CC, July 20): picking into an EMPTY slot
+    // always lands in the leftmost empty one (open the D picker with B
+    // free -> the model appears in B). Replacing a filled slot stays put.
+    const firstEmpty = selectedModels.findIndex(v => !v)
+    const target = selectedModels[i] ? i : (firstEmpty === -1 ? i : firstEmpty)
+    setSelectedModels(prev => prev.map((v, idx) => idx === target ? m : v))
     // New models adopt the run's recipe (Layer 2), not their own first mode.
-    setSlotOptions(prev => prev.map((v, idx) => idx === i
+    setSlotOptions(prev => prev.map((v, idx) => idx === target
       ? validateOpts(m, mode, { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null })
       : v))
-    setOptsOpen(prev => prev.map((v, idx) => idx === i ? false : v))
+    setOptsOpen(prev => prev.map((v, idx) => idx === target ? false : v))
     setSlots([])  // clear any stale results from previous run
     setPhase('setup')
     setPickerSlot(null)
   }
   const removeModel = (i: number) => {
-    setSelectedModels(prev => prev.map((v, idx) => idx === i ? null : v))
-    setSlotOptions(prev => prev.map((v, idx) => idx === i ? null : v))
-    setOptsOpen(prev => prev.map((v, idx) => idx === i ? false : v))
+    // Compact left (CC, July 20): removing a middle model shifts the ones
+    // to its right down, so filled slots always run A -> D with no gaps.
+    // Options and open-panel flags travel with their model; the freed tail
+    // slot resets. A generic left-compactor keeps the three arrays in sync.
+    const compact = <T,>(arr: T[], empty: T): T[] => {
+      const next = arr.filter((_, idx) => idx !== i)
+      next.push(empty)
+      return next
+    }
+    setSelectedModels(prev => compact(prev, null))
+    setSlotOptions(prev => compact(prev, null))
+    setOptsOpen(prev => compact(prev, false))
     setSlots([])  // clear any stale results from previous run
     setPhase('setup')
   }
@@ -1637,7 +1835,7 @@ function CreateStudio() {
     }
     if (mode === 'image') return nImg > 0 ? 'image_edit' : null
     // video
-    if (hasVid) return 'video_to_video'
+    if (hasVid) return nImg > 0 ? 'video_edit' : (recipeMode === 'video_edit' ? 'video_edit' : 'video_to_video')
     if (nImg === 0) return null
     if (nImg === 1) {
       // A single image fits image_to_video — but don't fight an explicit
@@ -1681,6 +1879,7 @@ function CreateStudio() {
       cost:         Number(sl.cost ?? 0),
       responseTime: Number(sl.responseTime ?? 0),
       error:        sl.error ?? null,
+      errorRef:     sl.errorRef ?? null,
     }))
     setSlots(nextSlots)
 
@@ -1810,6 +2009,19 @@ function CreateStudio() {
     // selectedModels directly. Don't use activeModels.map + indexOf — when
     // the same model is picked into two different slots, indexOf collapses
     // them onto the first slot's options.
+    // Attachments live in the browser until this moment — upload them
+    // now, before the POST. Roll the UI back if it fails: better no run
+    // than a run whose input silently didn't make it.
+    let committed: Attachment[]
+    try {
+      committed = await commitAttachments(attachments)
+    } catch (err) {
+      setPhase('setup'); setSlots([])
+      setLoadError(`Couldn't upload ${err instanceof Error ? err.message : String(err)}. Please try again.`)
+      return
+    }
+    if (committed !== attachments) setAttachments(committed)
+
     const ids: string[] = []
     const optsList: Array<Record<string, unknown>> = []
     for (let i = 0; i < selectedModels.length; i++) {
@@ -1835,7 +2047,7 @@ function CreateStudio() {
         prompt, mode,
         modelIds: ids,
         modelOptions: optsList,
-        attachments: attachments.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
+        attachments: committed.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
       }),
     }).catch(err => console.warn('[xcreate] POST failed:', err))
 
@@ -1940,6 +2152,7 @@ function CreateStudio() {
           user_id: userId, mode, prompt,
           chosen_model_id: chosen.id,
           slots: slotsPayload,
+          input_attachments: attachments.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
         }).select('id').single()
         if (data?.id) setXcreateId(data.id)
       }
@@ -1948,6 +2161,7 @@ function CreateStudio() {
         user_id: userId, mode, prompt,
         chosen_model_id: chosen.id,
         slots: slotsPayload,
+        input_attachments: attachments.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
       }).select('id').single()
       if (data?.id) setXcreateId(data.id)
     }
@@ -2132,6 +2346,25 @@ function CreateStudio() {
     // visible even when the template was clicked from the galleries
     // below the prompt box.
     flashComposer()
+
+    // Templates that ship a sample doc (e.g. Earnings Report Analysis)
+    // auto-attach it through the same storage pipeline as a real upload,
+    // so the template is one click from a run. setAttachments([]) above
+    // already cleared the previous template's sample.
+    if (t.sampleUrl) {
+      setAttachingSample(true)
+      const att = await attachSampleFile(
+        t.sampleUrl,
+        t.sampleName ?? 'sample.txt',
+        t.sampleType ?? 'text/plain',
+        'xcreate',
+      )
+      setAttachingSample(false)
+      if (att) setAttachments([{ ...att, slotIndex: 0 }])
+      // Say so rather than leaving a prompt that references a document
+      // the user can't see. They can still attach their own and run.
+      else setLoadError(`Couldn't load the sample file for "${t.title}". Attach your own document to run this template.`)
+    }
   }
 
   const reset = () => {
@@ -2217,7 +2450,25 @@ function CreateStudio() {
     modeClearedRef.current = true
     setMode(itemMode)
     setPrompt(item.prompt)
-    setAttachments([])
+    // Restore the original uploads (rows created July 19+ persist them).
+    // Signed URLs give images their previews — owner-read storage policy
+    // lets the browser client sign its own objects.
+    const savedInputs = (item.input_attachments ?? []).filter(a => a?.storagePath)
+    if (savedInputs.length > 0) {
+      const restored: Attachment[] = await Promise.all(savedInputs.map(async a => {
+        let previewUrl: string | undefined
+        if (a.mediaType?.startsWith('image/')) {
+          try {
+            const { data: signed } = await sb.storage.from(a.bucket).createSignedUrl(a.storagePath, 60 * 60)
+            previewUrl = signed?.signedUrl ?? undefined
+          } catch { /* preview is optional */ }
+        }
+        return { ...a, previewUrl }
+      }))
+      setAttachments(restored)
+    } else {
+      setAttachments([])
+    }
 
     const restoredModels:  (SlotModel | null)[]   = [null, null, null, null]
     const restoredOptions: (SlotOptions | null)[] = [null, null, null, null]
@@ -2274,6 +2525,7 @@ function CreateStudio() {
         cost:         Number(s.cost ?? 0),
         responseTime: Number(s.responseTime ?? 0),
         error:        s.error ?? null,
+        errorRef:     s.errorRef ?? null,
       })
     })
 
@@ -2351,13 +2603,21 @@ function CreateStudio() {
   const hasAttachment = attachments.length > 0
   const promptOk = prompt.trim().length >= 3 ||
     ((mode === 'video' || mode === 'image') && hasAttachment)
-  const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating'
+  const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating' && !attachingSample
 
   // Once the user fires a generation, every setup control (mode tabs,
   // model picker, per-slot options, prompt, attachment) freezes — we
   // don't want them mutating state behind already-rendered results.
   // The only way out is the Start Over button (which calls reset()).
   const isLocked = phase !== 'setup'
+
+  // Estimated input tokens contributed by attached documents: txt/PDF at
+  // ~bytes/4, capped at 50k tokens per file to mirror the server's 200k-char
+  // fold guardrail (CC caught the estimate ignoring a huge PDF, July 23).
+  const docTokens = attachments.reduce((sum, a) =>
+    (a.mediaType === 'application/pdf' || a.mediaType.startsWith('text/'))
+      ? sum + Math.min(Math.ceil((a.fileSize ?? 0) / 4), 50_000)
+      : sum, 0)
 
   // Sum of per-slot USD estimates for the currently-selected models at their
   // currently-selected options. Null if no slot has pricing — in that case
@@ -2369,7 +2629,7 @@ function CreateStudio() {
     for (let i = 0; i < selectedModels.length; i++) {
       const m = selectedModels[i]
       if (!m) continue
-      const d = estimateSlotDollars(m, mode, slotOptions[i], prompt.length)
+      const d = estimateSlotDollars(m, mode, slotOptions[i], prompt.length, docTokens)
       if (d != null) { total += d; anyKnown = true }
     }
     return anyKnown ? total : null
@@ -2381,9 +2641,9 @@ function CreateStudio() {
         <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
           <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:99100,display:'flex',gap:10}}>
-            <a href={lightbox} download target="_blank" rel="noreferrer" title="Download"
-              style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
-            >↓</a>
+            <button onClick={() => downloadFile(lightbox, downloadName(lightbox, 'image'))} title="Download"
+              style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
+            >↓</button>
             <button onClick={() => setLightbox(null)} title="Close"
               style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
             >✕</button>
@@ -2391,7 +2651,7 @@ function CreateStudio() {
         </div>
       )}
       {pickerSlot !== null && (
-        <ModelPickerDialog mode={mode} recipeMode={recipeMode} selectedIds={selectedIds} onSelect={m => addModel(pickerSlot, m)} onClose={() => setPickerSlot(null)} />
+        <ModelPickerDialog mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m)} onClose={() => setPickerSlot(null)} />
       )}
 
       <div className="cursor" ref={cursorRef} />
@@ -2454,7 +2714,9 @@ function CreateStudio() {
       <div className="xduel-page">
         <div className="arena xcreate-arena">
 
-          {/* Title + eyebrow live in the content TopBar now. */}
+          {/* In-page header: "// XCREATE" eyebrow + big headline (CC, July 20). */}
+          <div className="prompt-label">{t('xcreate.eyebrow')}</div>
+          <h1 className="page-headline" style={{ marginBottom: 24 }}>{t('xcreate.subtitle')}</h1>
 
           {/* (Gallery tab removed — moved to /profile under the XCreates
               tab. XCreate is now single-purpose: the studio.) */}
@@ -2645,26 +2907,12 @@ function CreateStudio() {
                 {/* Model slots + per-model options */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                   <div className="field-label" style={{ marginBottom: 0 }}>{t('xcreate.selectmodels')}</div>
-                  {/* One-click expand/collapse for every filled slot's ⚙
-                      panel — any panel open → close all, else open all. */}
-                  {activeModels.length > 0 && (() => {
-                    const anyOpen = optsOpen.some((v, idx) => v && selectedModels[idx])
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => setOptsOpen(selectedModels.map(m => (m ? !anyOpen : false)))}
-                        style={{
-                          background: 'none', border: '1px solid var(--border2)', borderRadius: 8,
-                          padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono), monospace',
-                          letterSpacing: '0.06em', color: 'var(--muted2)', cursor: 'pointer',
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                        }}
-                      >
-                        <span style={{ fontSize: 17, lineHeight: 1 }}>⚙</span>
-                        {anyOpen ? 'Hide Configs' : 'Show Configs'}
-                      </button>
-                    )
-                  })()}
+                  {/* Discount nudge (CC, July 20) — quiet grey hint. */}
+                  {activeModels.length < 4 && (
+                    <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em' }}>
+                      {t('xcreate.savemore')}
+                    </span>
+                  )}
                 </div>
                 {/* Once a generation run has started (generating → picking →
                     chatting), drop empty slots from the grid so the model row
@@ -2675,24 +2923,51 @@ function CreateStudio() {
                   const slotsToShow = isRunning ? [0, 1, 2, 3].filter(i => selectedModels[i]) : [0, 1, 2, 3]
                   const columnCount = slotsToShow.length
                   return (
-                <div className="xcreate-slot-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, 1fr)`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
+                <div className="xcreate-slot-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
                   {slotsToShow.map(i => {
                     const model = selectedModels[i]
                     const color = SLOT_COLORS[i]
                     const opts = slotOptions[i]
 
-                    if (!model) return (
+                    if (!model) {
+                      // Discount teaser (CC, July 20): what the run's discount
+                      // BECOMES if this slot is filled. Counted by position
+                      // among the empty slots - not the slot letter - so it
+                      // stays correct when a middle model is removed:
+                      // A+C filled -> empty B teases 15% (3rd model), D 20%.
+                      const emptyBefore = [0, 1, 2, 3].filter(j => j < i && !selectedModels[j]).length
+                      const wouldBeCount = activeModels.length + emptyBefore + 1
+                      const teaser = wouldBeCount >= 2 && wouldBeCount <= 4 && discountFor(wouldBeCount) > 0
+                        ? t(`discount.${wouldBeCount}`)
+                        : null
+                      return (
                       <button key={i} onClick={() => !isLocked && setPickerSlot(i)}
                         disabled={isLocked}
-                        style={{ background: '#ffffff', border: '1px dashed var(--border2)', borderRadius: 10, padding: '0 14px', height: 56, boxSizing: 'border-box', color: 'var(--muted)', fontSize: 12, cursor: !isLocked ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: isLocked ? 0.4 : 1 }}
+                        style={{ position: 'relative', background: '#ffffff', border: '1px dashed var(--border2)', borderRadius: 10, padding: '0 14px', height: 56, boxSizing: 'border-box', color: 'var(--muted)', fontSize: 12, cursor: !isLocked ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: isLocked ? 0.4 : 1 }}
                         onMouseEnter={e => { if (!isLocked) { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--muted)' }}
                       >
-                        <span style={{ fontSize: 18 }}>+</span> Model {LABELS[i]}
+                        <span style={{ fontSize: 18 }}>+</span> {t('xcreate.modelslot').replace('{l}', LABELS[i])}
+                        {/* Discount tag - pinned to the top-right corner,
+                            slightly overhanging like a price sticker. */}
+                        {teaser && (
+                          <span style={{
+                            position: 'absolute', top: -8, right: -6,
+                            fontSize: 9, fontWeight: 800, color: '#fff',
+                            background: 'var(--red)', borderRadius: 999,
+                            padding: '3px 8px', lineHeight: 1,
+                            fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em',
+                            whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(232,69,60,0.35)',
+                          }}>
+                            {teaser}
+                          </span>
+                        )}
                       </button>
-                    )
+                      )
+                    }
 
                     // Determine which options this model has
+                    const thinkLevels  = mode === 'text' ? (model.output_config?.text?.thinking_levels ?? []) : []
                     const imgQualities = mode === 'image' ? (model.output_config?.image?.qualities ?? []) : []
                     const imgSizes     = mode === 'image' ? (model.output_config?.image?.sizes ?? []) : []
                     const imgArs       = mode === 'image' ? (model.output_config?.image?.aspect_ratios ?? []) : []
@@ -2740,6 +3015,7 @@ function CreateStudio() {
                     // (The ⚙ toggle itself stays clickable when locked —
                     // opening a read-only panel is harmless and useful.)
                     const hasOptions = !!opts && (
+                      thinkLevels.length > 0 ||
                       availableModes.length > 1 ||
                       imgQualities.length > 0 || imgSizes.length > 0 || imgArs.length > 0 ||
                       vidSizes.length > 0 || vidDurations.length > 0 || vidArs.length > 0 ||
@@ -2748,7 +3024,7 @@ function CreateStudio() {
 
                     // Upfront USD estimate for this slot given its current
                     // options + the live prompt length. Recomputed every render.
-                    const estDollars = estimateSlotDollars(model, mode, opts, prompt.length)
+                    const estDollars = estimateSlotDollars(model, mode, opts, prompt.length, docTokens)
 
                     return (
                       <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2758,10 +3034,29 @@ function CreateStudio() {
                         <div
                           onClick={() => !isLocked && setPickerSlot(i)}
                           title={!isLocked ? 'Change model' : undefined}
-                          style={{ background: '#ffffff', border: `1px solid ${color}44`, borderRadius: 10, padding: '0 14px', height: 56, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', cursor: !isLocked ? 'pointer' : 'default', transition: 'border-color 0.15s' }}
+                          style={{ position: 'relative', background: '#ffffff', border: `1px solid ${color}44`, borderRadius: 10, padding: '0 14px', height: 56, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', cursor: !isLocked ? 'pointer' : 'default', transition: 'border-color 0.15s' }}
                           onMouseEnter={e => { if (!isLocked) (e.currentTarget as HTMLElement).style.borderColor = color }}
                           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = `${color}44` }}
                         >
+                          {/* Discount tag stays once the slot is filled (CC):
+                              rank among the FILLED slots decides the number -
+                              2nd model 10%, 3rd 15%, 4th 20% - so it survives
+                              middle removals the same way the teasers do. */}
+                          {(() => {
+                            const filledRank = [0, 1, 2, 3].filter(j => j < i && selectedModels[j]).length + 1
+                            return filledRank >= 2 && filledRank <= 4 && discountFor(filledRank) > 0 ? (
+                              <span style={{
+                                position: 'absolute', top: -8, right: -6,
+                                fontSize: 9, fontWeight: 800, color: '#fff',
+                                background: 'var(--red)', borderRadius: 999,
+                                padding: '3px 8px', lineHeight: 1,
+                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em',
+                                whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(232,69,60,0.35)',
+                              }}>
+                                {t(`discount.${filledRank}`)}
+                              </span>
+                            ) : null
+                          })()}
                           <ProviderLogo provider={model.provider} size={18} />
                           {/* Split a name like "GPT-5.4 (free)" into a bold
                               main line and a smaller muted sub-line for the
@@ -2786,7 +3081,16 @@ function CreateStudio() {
                           })()}
                           {hasOptions && (
                             <button
-                              onClick={e => { e.stopPropagation(); setOptsOpen(prev => prev.map((v, idx) => idx === i ? !v : v)) }}
+                              onClick={e => {
+                                e.stopPropagation()
+                                // Any gear toggles the config panels for ALL
+                                // filled slots together (CC, July 20) - the
+                                // separate Show Configs button is gone.
+                                setOptsOpen(prev => {
+                                  const anyOpen = prev.some((v, idx) => v && selectedModels[idx])
+                                  return selectedModels.map(mm => (mm ? !anyOpen : false))
+                                })
+                              }}
                               title={optsOpen[i] ? 'Hide options' : 'Options'}
                               aria-expanded={optsOpen[i]}
                               style={{ background: 'none', border: 'none', color: optsOpen[i] ? color : 'var(--muted)', cursor: 'pointer', fontSize: 24, lineHeight: 1, padding: '4px 2px', flexShrink: 0 }}
@@ -2800,30 +3104,16 @@ function CreateStudio() {
                             sensible); the card's ⚙ toggles it.
                             Order: Mode → Resolution/Size → Duration → Aspect Ratio → Quality. */}
                         {hasOptions && opts && optsOpen[i] && (() => {
-                          // Helper to keep all option pills consistent.
+                          // Pill/Group are module-level (OptPill/OptGroup):
+                          // defining them inline changed their component
+                          // identity every render, so each state update
+                          // REMOUNTED the panel and killed an in-progress
+                          // slider drag (CC bug report, July 20). Local
+                          // aliases bind the slot color.
                           const Pill = ({ active, onClick, children, narrow }: {
                             active: boolean; onClick: () => void; children: React.ReactNode; narrow?: boolean
-                          }) => (
-                            <button onClick={onClick}
-                              style={{
-                                flex: 1, padding: narrow ? '6px 4px' : '7px 6px',
-                                borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                                background: active ? color + '22' : 'transparent',
-                                border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
-                                color: active ? color : 'var(--muted)',
-                                transition: 'all 0.15s', textAlign: 'center' as const,
-                              }}>
-                              {children}
-                            </button>
-                          )
-                          const Group = ({ label, children, last }: {
-                            label: string; children: React.ReactNode; last?: boolean
-                          }) => (
-                            <div style={{ marginBottom: last ? 0 : 8 }}>
-                              <div style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 6, fontWeight: 600 }}>{label}</div>
-                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>{children}</div>
-                            </div>
-                          )
+                          }) => <OptPill color={color} active={active} onClick={onClick} narrow={narrow}>{children}</OptPill>
+                          const Group = OptGroup
 
                           // Decide which groups are visible so we can pass `last` to drop the bottom margin.
                           const showMode  = availableModes.length > 1
@@ -2840,7 +3130,9 @@ function CreateStudio() {
                           const showArI   = mode === 'image' && imgArs.length > 0 && isTextOnlyInput
                           const showArV   = mode === 'video' && vidArs.length > 0 && isTextOnlyInput
                           const showQual  = mode === 'image' && imgQualities.length > 1
-                          const groupsInOrder: Array<'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
+                          const showThink = mode === 'text' && thinkLevels.length > 0
+                          const groupsInOrder: Array<'think' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
+                          if (showThink)     groupsInOrder.push('think')
                           if (showSizeV)     groupsInOrder.push('size_v')
                           if (showDur)       groupsInOrder.push('dur')
                           if (showArV)       groupsInOrder.push('ar_v')
@@ -2856,6 +3148,19 @@ function CreateStudio() {
                             <div style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px', pointerEvents: isLocked ? 'none' as const : 'auto' as const, opacity: isLocked ? 0.55 : 1 }}>
                               {/* Per-slot Mode pills removed — the processing
                                   recipe is now a single Layer-2 selector above. */}
+                              {/* Text: Thinking / reasoning level */}
+                              {showThink && (
+                                <Group label={t('xcreate.thinking')} last={isLast('think')}>
+                                  <Pill active={opts.thinking_level == null} onClick={() => updateSlotOpts(i, { thinking_level: null })}>
+                                    {t('xcreate.auto')}
+                                  </Pill>
+                                  {thinkLevels.map(l => (
+                                    <Pill key={l} active={opts.thinking_level === l} onClick={() => updateSlotOpts(i, { thinking_level: l })}>
+                                      {l}
+                                    </Pill>
+                                  ))}
+                                </Group>
+                              )}
                               {/* Video: Resolution */}
                               {showSizeV && (
                                 <Group label="Resolution" last={isLast('size_v')}>
@@ -3107,6 +3412,7 @@ function CreateStudio() {
                     const VID = 'video/mp4,video/quicktime,video/webm'
                     const accept =
                       !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
+                      : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
                       : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
                       : generic && mode === 'text' ? `${IMG},${VID},application/pdf`
                       : generic && mode === 'video' ? `${IMG},${VID}`
@@ -3139,7 +3445,8 @@ function CreateStudio() {
                     )
                   })()}
                   <textarea className="prompt-textarea"
-                    placeholder={mode === 'image' ? "Describe an image…" : mode === 'video' ? "Describe a video…" : "Ask anything…"}
+                    maxLength={8000}
+                    placeholder={t('xcreate.ph.' + mode)}
                     value={prompt} onChange={e => setPrompt(e.target.value)}
                     // Locked once a run starts. The user can still see what
                     // prompt was used, but can't edit it until Start Over.
@@ -3164,7 +3471,18 @@ function CreateStudio() {
                     can never overlap the prompt text. (XDuel keeps its own
                     overlay .prompt-actions — this row is XCreate-only.) */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
-                  <span className="prompt-counter">{activeModels.length === 0 ? 'Pick at least one model' : `${activeModels.length} model${activeModels.length > 1 ? 's' : ''} selected`}</span>
+                  <span className="prompt-counter">{activeModels.length === 0 ? t('xcreate.pickone') : activeModels.length === 1 ? t('xcreate.selected1') : t('xcreate.selected').replace('{n}', String(activeModels.length))}</span>
+                  {/* Multi-model discount — red little label, full string
+                      from i18n (en "10% off" = zh "9折"). */}
+                  {activeModels.length >= 2 && phase !== 'generating' && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, color: 'var(--red)',
+                      fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.06em',
+                      whiteSpace: 'nowrap' as const,
+                    }}>
+                      {t(`discount.${activeModels.length}`)}
+                    </span>
+                  )}
                   {totalEstDollars != null && phase !== 'generating' && (
                     <span
                       title={mode === 'text' ? 'Estimated total — assumes ~500-token response per model' : 'Estimated total based on your selected options'}
@@ -3173,7 +3491,7 @@ function CreateStudio() {
                         color: 'var(--muted2)', whiteSpace: 'nowrap' as const,
                       }}
                     >
-                      Estimated Cost ~{fmtDollars(totalEstDollars)}
+                      {t('xcreate.estcost')}{fmtDollars(totalEstDollars * (1 - discountFor(activeModels.length)))}
                     </span>
                   )}
                   {/* Setup phase: real Generate button.
@@ -3182,12 +3500,12 @@ function CreateStudio() {
                       only path back to a new generation. */}
                   {phase === 'setup' && (
                     <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
-                      ✦ Generate →
+                      {t('xcreate.generatebtn')}
                     </button>
                   )}
                   {phase === 'generating' && (
                     <button className="btn-battle" disabled style={{ opacity: 0.7 }}>
-                      ⏳ Generating…
+                      {t('xcreate.generating')}
                     </button>
                   )}
                 </div>
@@ -3255,15 +3573,17 @@ function CreateStudio() {
                             onMouseEnter={() => setCursor(color)}
                             onMouseLeave={() => setCursor('#e8453c')}
                           >
-                            {/* Provider identity stripe — 3px ribbon at the
-                                top of the card. Lets you read the provider
-                                of every result at a glance without parsing
-                                the model name. */}
-                            <span className={`provider-stripe ${model.provider}`} aria-hidden="true" />
+                            {/* Slot identity stripe — 3px ribbon at the top
+                                of the card, in the slot's color. Deliberately
+                                NOT bound to the provider: the provider in any
+                                given slot changes run to run, so a per-slot
+                                color is what stays stable and matches the
+                                model name, price badge and hover cursor. */}
+                            <span className="provider-stripe" style={{ background: color }} aria-hidden="true" />
                             <div className={`battle-card-header ${mode !== 'text' ? 'image-mode' : ''}`}>
                               <div className="battle-model-id" style={{ color, fontSize: 12, display: 'flex', alignItems: 'center' }}>
                                 {!slot.done && slot.streaming && (
-                                  <span className={`streaming-dot ${model.provider}`} aria-hidden="true" />
+                                  <span className="streaming-dot" style={{ background: color }} aria-hidden="true" />
                                 )}
                                 {stripModelVariant(model.display_name)}
                               </div>
@@ -3330,7 +3650,16 @@ function CreateStudio() {
                             <div className={`battle-response ${mode !== 'text' ? 'image-response' : ''} ${slot.streaming && !slot.text ? 'loading' : ''}`}>
                               {slot.streaming && !slot.text
                                 ? <><div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" /></>
-                                : slot.error ? <div style={{ padding: 16, color: 'var(--red)', fontSize: 13 }}>⚠️ {slot.error}</div>
+                                : slot.error ? (
+                                  <div style={{ padding: 16, color: 'var(--red)', fontSize: 13 }}>
+                                    ⚠️ {slot.error}
+                                    {slot.errorRef && (
+                                      <div title={slot.errorRef} style={{ fontSize: 10, marginTop: 6, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em', userSelect: 'all' }}>
+                                        Ref: {slot.errorRef.slice(0, 8)}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
                                 : slot.isVideo ? <video src={slot.text} autoPlay loop muted playsInline controls style={{ display: 'block' }} />
                                 : slot.isImage ? (() => {
                                     // Multi-image slots store URLs newline-delimited

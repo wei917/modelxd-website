@@ -9,6 +9,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import ProviderLogo from '../components/ProviderLogo'
+import { useT } from '../../lib/i18n'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,11 +46,11 @@ interface AIModel {
 
 interface LeaderboardEntry {
   modelId: string
+  qualityScore: number
   xdScore: number
   totalVotes: number
 }
 
-type FilterProvider = 'all' | 'openai' | 'google' | 'alibaba'
 type FilterMode = 'all' | 'text' | 'image' | 'video'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,6 +60,9 @@ const PROVIDER_LABELS: Record<string, string> = {
   google:    'Google',
   alibaba:   'Alibaba',
   anthropic: 'Anthropic',
+  xai:       'xAI',
+  runway:    'Runway',
+  moonshot:  'Moonshot',
 }
 
 function fmtPrice(p: number | null): string {
@@ -131,10 +135,11 @@ function priceParts(m: AIModel): { amount: string; unit: string } | null {
   return { amount: fmtPrice(v), unit }
 }
 
-type SortKey = 'name' | 'provider' | 'released' | 'price' | 'xdScore'
+type SortKey = 'name' | 'provider' | 'released' | 'price' | 'quality' | 'xdScore'
 type SortDir = 'asc' | 'desc'
 
 interface MergedRow extends AIModel {
+  qualityScore: number | null
   xdScore: number | null
 }
 
@@ -144,6 +149,7 @@ function sortValue(m: MergedRow, key: SortKey): string | number | null {
     case 'provider': return m.provider?.toLowerCase() ?? null
     case 'released': return m.released_at ?? null
     case 'price':    return headlinePrice(m)
+    case 'quality':  return m.qualityScore
     case 'xdScore':  return m.xdScore
   }
 }
@@ -183,13 +189,27 @@ function scoreTier(score: number | null): 'poor' | 'fair' | 'mid' | 'good' | 'el
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function LeaderboardPage() {
+  const t = useT()
   const [models, setModels] = useState<AIModel[]>([])
   const [scores, setScores] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
-  const [filterProvider, setFilterProvider] = useState<FilterProvider>('all')
+  // Multi-select provider filter (CC, July 19): empty = all providers.
+  // A dropdown, not buttons — the provider list will keep growing.
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([])
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false)
+  const providerMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!providerMenuOpen) return
+    const close = (e: MouseEvent) => {
+      if (!providerMenuRef.current?.contains(e.target as Node)) setProviderMenuOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [providerMenuOpen])
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [search, setSearch] = useState('')
   // Default: highest XD score first.
+  const [qualityScores, setQualityScores] = useState<Record<string, number>>({})
   const [sortBy, setSortBy] = useState<SortKey>('xdScore')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -222,20 +242,22 @@ export default function LeaderboardPage() {
     Promise.all([modelsP, scoresP]).then(([ms, ss]) => {
       setModels(ms)
       const map: Record<string, number> = {}
-      for (const e of ss) map[e.modelId] = e.xdScore
+      const qmap: Record<string, number> = {}
+      for (const e of ss) { map[e.modelId] = e.xdScore; if (e.qualityScore != null) qmap[e.modelId] = e.qualityScore }
       setScores(map)
+      setQualityScores(qmap)
       setLoading(false)
     })
   }, [])
 
   const merged: MergedRow[] = useMemo(
-    () => models.map(m => ({ ...m, xdScore: scores[m.id] ?? null })),
-    [models, scores],
+    () => models.map(m => ({ ...m, qualityScore: qualityScores[m.id] ?? null, xdScore: scores[m.id] ?? null })),
+    [models, scores, qualityScores],
   )
 
   const filtered = useMemo(() => {
     let list = merged
-    if (filterProvider !== 'all') list = list.filter(m => m.provider === filterProvider)
+    if (selectedProviders.length > 0) list = list.filter(m => selectedProviders.includes(m.provider))
     if (filterMode !== 'all') list = list.filter(m => primaryMode(m) === filterMode)
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -258,7 +280,7 @@ export default function LeaderboardPage() {
       return String(va).localeCompare(String(vb)) * dir
     }
     return [...list].sort(cmp)
-  }, [merged, filterProvider, filterMode, search, sortBy, sortDir])
+  }, [merged, selectedProviders, filterMode, search, sortBy, sortDir])
 
   const handleSort = (k: SortKey) => {
     if (sortBy === k) {
@@ -266,7 +288,7 @@ export default function LeaderboardPage() {
     } else {
       setSortBy(k)
       // Score and price feel right starting DESC; alphabetical fields ASC.
-      setSortDir(k === 'xdScore' || k === 'price' || k === 'released' ? 'desc' : 'asc')
+      setSortDir(k === 'xdScore' || k === 'quality' || k === 'price' || k === 'released' ? 'desc' : 'asc')
     }
   }
 
@@ -275,6 +297,13 @@ export default function LeaderboardPage() {
     for (const m of models) c[m.provider] = (c[m.provider] ?? 0) + 1
     return c
   }, [models])
+
+  // Every provider present in the catalog, alphabetical — new companies
+  // show up in the dropdown automatically.
+  const providerList = useMemo(
+    () => [...new Set(models.map(m => m.provider))].sort(),
+    [models],
+  )
 
   const modeCounts = useMemo(() => {
     const c: Record<string, number> = { all: models.length }
@@ -293,14 +322,14 @@ export default function LeaderboardPage() {
       <div className="xduel-page">
         <div className="arena">
 
-          {/* Eyebrow + big title live in the content TopBar (TITLES map,
-              accentX renders the leading X in red). */}
-          <div className="prompt-sub">
-            The ModelXD leaderboard — every model, ranked by XDRating from community blind comparisons.
-            <Link href="/methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 12 }}>
-              HOW SCORING WORKS →
+          {/* In-page header: "// XBOARD" eyebrow + big headline (CC, July 20). */}
+          <div className="prompt-label">{t('xboard.eyebrow')}</div>
+          <h1 className="page-headline">
+            {t('xboard.subtitle')}
+            <Link href="/methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 14, whiteSpace: 'nowrap' }}>
+              {t('xboard.how').toUpperCase()} →
             </Link>
-          </div>
+          </h1>
 
           {/* Search bar */}
           <div style={{ marginTop: 24, marginBottom: 20 }}>
@@ -308,7 +337,7 @@ export default function LeaderboardPage() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search models..."
+              placeholder={t('xboard.search')}
               style={{
                 width: '100%', maxWidth: 400, padding: '10px 16px',
                 background: 'var(--surface)', border: '1px solid var(--border2)',
@@ -323,35 +352,60 @@ export default function LeaderboardPage() {
 
           {/* Filters */}
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
-            {/* Provider filter */}
-            <div style={{ display: 'flex', gap: 1, background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', width: 'fit-content' }}>
-              {(['all', 'openai', 'google', 'alibaba'] as FilterProvider[]).map(p => (
-                <button key={p} onClick={() => setFilterProvider(p)}
-                  style={{
-                    fontFamily: 'var(--font-mono), monospace', fontSize: 11, padding: '8px 16px',
-                    background: filterProvider === p ? 'var(--bg)' : 'var(--surface)',
-                    color: filterProvider === p ? 'var(--white)' : 'var(--muted2)',
-                    border: 'none', cursor: 'pointer', letterSpacing: '0.08em', textTransform: 'uppercase',
-                    transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
-                  }}>
-                  {p === 'all' ? 'All' : PROVIDER_LABELS[p] ?? p}
-                  <span style={{
-                    fontSize: 9, color: filterProvider === p ? 'var(--muted2)' : 'var(--muted)',
-                    fontWeight: 600,
-                  }}>
-                    {counts[p] ?? 0}
-                  </span>
-                </button>
-              ))}
+            {/* Provider filter — multi-select dropdown (empty = all). */}
+            <div ref={providerMenuRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setProviderMenuOpen(o => !o)}
+                className="provider-filter-btn"
+              >
+                {t('xboard.providers')}
+                <span style={{ color: 'var(--white)' }}>
+                  {selectedProviders.length === 0
+                    ? t('common.all')
+                    : selectedProviders.length <= 2
+                      ? selectedProviders.map(p => PROVIDER_LABELS[p] ?? p).join(', ')
+                      : `${selectedProviders.length} selected`}
+                </span>
+                <span style={{ fontSize: 8 }}>▼</span>
+              </button>
+              {providerMenuOpen && (
+                <div className="provider-filter-menu">
+                  <button
+                    className={`provider-filter-item ${selectedProviders.length === 0 ? 'active' : ''}`}
+                    onClick={() => setSelectedProviders([])}
+                  >
+                    <span className="provider-filter-check">{selectedProviders.length === 0 ? '✓' : ''}</span>
+                    {t('xboard.allproviders')}
+                    <span className="provider-filter-count">{counts.all ?? 0}</span>
+                  </button>
+                  {providerList.map(p => {
+                    const on = selectedProviders.includes(p)
+                    return (
+                      <button
+                        key={p}
+                        className={`provider-filter-item ${on ? 'active' : ''}`}
+                        onClick={() => setSelectedProviders(prev =>
+                          on ? prev.filter(x => x !== p) : [...prev, p],
+                        )}
+                      >
+                        <span className="provider-filter-check">{on ? '✓' : ''}</span>
+                        <ProviderLogo provider={p} size={13} />
+                        {PROVIDER_LABELS[p] ?? p}
+                        <span className="provider-filter-count">{counts[p] ?? 0}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Mode filter */}
-            <div className="mode-selector" style={{ marginBottom: 0 }}>
+            <div className="mode-seg">
               {(['all', 'text', 'image', 'video'] as FilterMode[]).map(m => (
                 <button key={m} onClick={() => setFilterMode(m)}
-                  className={`mode-btn${filterMode === m ? ' active' : ''}`}>
+                  className={`mode-seg-btn${filterMode === m ? ' active' : ''}`}>
                   <span className={`mode-dot${filterMode === m ? ' active' : ''}`} />
-                  {m === 'all' ? 'all' : m}
+                  {m === 'all' ? t('common.all') : t('mode.' + m)}
                   <span style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 600 }}>
                     {modeCounts[m] ?? 0}
                   </span>
@@ -365,7 +419,7 @@ export default function LeaderboardPage() {
             fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted)',
             letterSpacing: '0.08em', marginBottom: 16, marginTop: 20,
           }}>
-            {filtered.length} MODEL{filtered.length !== 1 ? 'S' : ''}
+            {t('xboard.modelcount').replace('{n}', String(filtered.length)).toUpperCase()}
           </div>
 
           {loading ? (
@@ -398,9 +452,9 @@ export default function LeaderboardPage() {
                       fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
                       textTransform: 'uppercase', color: 'var(--muted2)',
                     }}>
-                      <span style={{ color: groupAccent }}>● {group}</span>
+                      <span style={{ color: groupAccent }}>● {t('mode.' + group)}</span>
                       <span style={{ color: 'var(--muted)', fontWeight: 500 }}>
-                        {rows.length} model{rows.length !== 1 ? 's' : ''}
+                        {t('xboard.modelcount').replace('{n}', String(rows.length))}
                       </span>
                     </div>
                     <LeaderboardTable
@@ -435,7 +489,7 @@ function ModelRow({ model: m }: { model: MergedRow }) {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 130px 100px 100px 130px 90px 140px',
+        gridTemplateColumns: '2fr 100px 130px 100px 100px 130px 90px 140px',
         gap: 0, padding: '12px 20px',
         background: 'var(--bg)',
         alignItems: 'center',
@@ -449,6 +503,12 @@ function ModelRow({ model: m }: { model: MergedRow }) {
         <span style={{ fontSize: 17, fontWeight: 400, color: 'var(--white)', fontFamily: 'var(--font-body), sans-serif' }}>
           {m.display_name}
         </span>
+      </div>
+
+      {/* Quality — blind-vote-only rating (price never seen). Plain mono
+          number: the XD chip next door keeps the colour weight. */}
+      <div style={{ textAlign: 'right', paddingRight: 32, fontSize: 13, fontFamily: 'var(--font-mono), monospace', fontWeight: 600, color: 'var(--muted2)' }}>
+        {m.qualityScore != null ? m.qualityScore : '—'}
       </div>
 
       {/* XD Score — rendered as a heatmap chip when present. Scores carry
@@ -556,6 +616,7 @@ function LeaderboardTable({
   sortDir: SortDir
   onSort:  (k: SortKey) => void
 }) {
+  const t = useT()
   return (
     // Outer scroller — the table needs ~790px of width to render cleanly.
     // On mobile (≤760px), horizontal scroll preserves the dense layout
@@ -564,20 +625,21 @@ function LeaderboardTable({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', minWidth: 790 }}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 130px 100px 100px 130px 90px 140px',
+        gridTemplateColumns: '2fr 100px 130px 100px 100px 130px 90px 140px',
         gap: 0, padding: '10px 20px',
         fontSize: 10, color: 'var(--muted)', fontWeight: 700,
         letterSpacing: '0.12em', textTransform: 'uppercase',
         fontFamily: 'var(--font-mono), monospace',
         background: 'var(--surface)',
       }}>
-        <SortHeader label="Model"     sortKey="name"     active={sortBy} dir={sortDir} onSort={onSort} />
+        <SortHeader label={t('xboard.col.model')}     sortKey="name"     active={sortBy} dir={sortDir} onSort={onSort} />
+        <SortHeader label={t('xboard.col.quality')} sortKey="quality" active={sortBy} dir={sortDir} onSort={onSort} align="right" />
         <SortHeader label="XD Score"  sortKey="xdScore"  active={sortBy} dir={sortDir} onSort={onSort} align="right" />
-        <SortHeader label="Provider"  sortKey="provider" active={sortBy} dir={sortDir} onSort={onSort} />
-        <SortHeader label="Released"  sortKey="released" active={sortBy} dir={sortDir} onSort={onSort} />
-        <span>Input</span>
-        <span>Output</span>
-        <SortHeader label="Price"     sortKey="price"    active={sortBy} dir={sortDir} onSort={onSort} align="right" />
+        <SortHeader label={t('xboard.col.provider')}  sortKey="provider" active={sortBy} dir={sortDir} onSort={onSort} />
+        <SortHeader label={t('xboard.col.released')}  sortKey="released" active={sortBy} dir={sortDir} onSort={onSort} />
+        <span>{t('xboard.col.input')}</span>
+        <span>{t('xboard.col.output')}</span>
+        <SortHeader label={t('xboard.col.price')}     sortKey="price"    active={sortBy} dir={sortDir} onSort={onSort} align="right" />
       </div>
       {rows.map(m => <ModelRow key={m.id} model={m} />)}
     </div>

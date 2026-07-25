@@ -26,6 +26,18 @@
 // is present (see the prompt box in xcreate/page.tsx). Don't write
 // meta-instructions like "(edit this prompt to say...)".
 
+/**
+ * Bundled sample files live in the public `samples` storage bucket, not in
+ * public/. Repo assets have to be committed AND deployed to exist, and when
+ * they aren't the password-gate middleware answers 200 with its own HTML
+ * rather than a 404 — which is how the novel silently became a login page
+ * for every model (see attachSampleFile in AttachmentButton). Storage has
+ * neither failure mode: no gate, no .gitignore, no deploy coupling.
+ *
+ * Upload with x-upsert to replace a sample in place; the URL never changes.
+ */
+export const SAMPLES_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/samples`
+
 export type TemplateMode = 'text' | 'image' | 'video'
 
 export interface TemplateSlot {
@@ -66,6 +78,16 @@ export interface Template {
   /** Optional gradient color (any CSS color) used by the no-preview
    *  fallback card background. Defaults to slot-color-rotation if unset. */
   previewBgColor?: string
+
+  /** Optional bundled sample file auto-attached when the template is
+   *  applied, so a doc-analysis template is one click from a real run
+   *  instead of "now go find a PDF". Mirrors XDuel's popular-prompt
+   *  chips (see POPULAR_PROMPTS in app/xduel/page.tsx). Drop the file at
+   *  public/samples/<name> and keep it under the 10MB doc cap in
+   *  AttachmentButton. The user can remove it and attach their own. */
+  sampleUrl?:     string
+  sampleName?:    string
+  sampleType?:    string   // MIME type; defaults to text/plain
 }
 
 export const XCREATE_TEMPLATES: Template[] = [
@@ -110,7 +132,6 @@ export const XCREATE_TEMPLATES: Template[] = [
       { label: 'NEW BACKGROUND', hint: 'Optional — or describe it in the prompt' },
     ],
   },
-  // (Fix Colors tool removed July 2026 per CC — cut from the lineup.)
   {
     id:                'tool-upscale',
     kind:              'tool',
@@ -141,13 +162,6 @@ export const XCREATE_TEMPLATES: Template[] = [
       { label: 'YOUR PHOTO', hint: 'Upload the photo to clean up' },
     ],
   },
-
-  // ── Google-doc use cases (July 2026) ─────────────────────────────────────
-  //
-  // Single-image tools distilled from Google's image-generation guide
-  // (ai.google.dev/gemini-api/docs/image-generation): stickers, studio
-  // product shots, semantic inpainting. Prompts follow the doc's advice —
-  // be specific, describe lighting, say what must NOT change.
   {
     // Upgraded July 2026 (CC: "we want a more special one") — from one
     // sticker to a full 9-emotion sticker sheet. The messaging-app
@@ -168,8 +182,6 @@ export const XCREATE_TEMPLATES: Template[] = [
       { label: 'YOUR PHOTO', hint: 'Any subject — a clear face works best' },
     ],
   },
-  // (Studio Product Shot + Product in Scene merged into the Product Shots
-  // template below, July 2026 — one reference_frames flow covers both.)
   {
     // Renamed from "Change One Thing" July 16 (CC) — id + thumbnail keep
     // the old slug so nothing else moves.
@@ -205,65 +217,57 @@ export const XCREATE_TEMPLATES: Template[] = [
       { label: 'YOUR PHOTO', hint: 'A portrait — face clearly visible' },
     ],
   },
-
-  // Slot-order note for multi-image prompts: attachments reach the provider
-  // in slot order, so prompts say "first image" / "second image".
-  // (Studio Product Shot + Product in Scene tools were merged into the
-  // Product Shots template in the image-templates section, July 2026.)
-
-  // ── Video templates (rebuilt July 15) ─────────────────────────────────────
+  // ── Video ─────────────────────────────────────────────────────────────
   //
-  // The July 15 cull removed the whole first batch (titanic-bow, diner-dance,
-  // royal-throne, astronaut-moon, concert-stage, cinematic-transition,
-  // landscape-timelapse — "they are not good"). This second batch is grounded
-  // in the viral-genre research (Reddit/GitHub prompt collections, YouTube):
-  // hug-my-younger-self is the single biggest self-insertion genre, stadium
-  // self-insertion is timely (championship final July 19), ASMR glass-fruit
-  // is the reigning Veo audio showcase, and product video is the utility play.
-  //
-  // STATUS: pending CC's test runs in XCreate — no previewUrl until a real
-  // output earns the card (best result becomes the 480×270 preview). Cull
-  // anything that fails the bar; don't ship a card on faith.
+  // The only start_end_frames template — this recipe is the one people don't
+  // discover on their own, because "two photos" reads like a reference-image
+  // flow until you see the result. Both Veo 3.1 and Wan 2.7 lock the clip to
+  // 8s in this mode, so duration is fixed rather than a suggestion.
   {
-    id:                'video-hug-younger-self',
-    emoji:             '🫂',
+    id:                'video-start-end-frames',
+    emoji:             '🎞',
     popular:           true,
-    title:             'Hug My Younger Self',
-    subtitle:          'You today embrace the kid you were',
+    title:             'Start + End Frames',
+    subtitle:          'Your first and last frame — we generate the video between',
     mode:              'video',
-    slotMode:          'reference_frames',
-    // The viral formula: adult stands waiting, the child runs into frame,
-    // one emotional hug, slight slow-motion at contact. Both identities
-    // must come from the reference photos — say it explicitly, models
-    // drift faces otherwise. Warm golden-hour grade is genre canon.
-    starterPrompt:     'The adult from the first reference image stands in {{a sunlit childhood backyard}}, looking around as if remembering the place. The child from the second reference image runs into frame and they embrace in a long heartfelt hug, the adult closing their eyes and smiling through tears. Slight slow motion at the moment of the hug. Both people must look exactly like their reference photos. Warm golden-hour light, gentle handheld camera, soft nostalgic film grade. Quiet ambient sound with soft piano.',
+    slotMode:          'start_end_frames',
+    // The braced part is the motion to fill in; the rest is identity-lock
+    // and continuity, which is what stops models treating the two frames as
+    // separate scenes and cutting between them.
+    starterPrompt:     'Animate smoothly from the first frame to the last frame — {{she turns and her dress flares as she spins}}. Keep her identity, outfit, and the location exactly as in the two photos. One continuous take, natural motion throughout, no cuts and no scene changes. Golden-hour light, slow cinematic camera drift. Soft ambient sound.',
     aspectRatio:       '16:9',
     duration:          8,
-    recommendedModels: ['veo-3.1-generate-preview', 'happyhorse-1.0-r2v'],
+    recommendedModels: ['veo-3.1-generate-preview', 'wan2.7-i2v'],
+    previewUrl:        '/templates/video-start-end-frames.jpg',
     attachmentSlots: [
-      { label: 'YOU NOW',      hint: 'A clear photo of you today' },
-      { label: 'YOU AS A KID', hint: 'A childhood photo — clear face' },
+      { label: 'FIRST FRAME', hint: 'How the clip starts' },
+      { label: 'LAST FRAME',  hint: 'How it ends — same person and place' },
     ],
   },
   {
-    id:                'video-big-game',
-    emoji:             '🏟',
+    id:                'video-outfit-swap',
+    emoji:             '🧥',
     popular:           true,
-    title:             'You at the Big Game',
-    subtitle:          'Your photo → front row at the final',
+    title:             'Outfit Swap in Video',
+    subtitle:          'Change what someone wears — in a real video',
     mode:              'video',
-    slotMode:          'reference_frames',
-    // Timely (the final is this Sunday) but deliberately generic — "the
-    // championship final", no tournament or league marks, no real team
-    // kits or logos (IP pattern: describe the energy, not the brand).
-    starterPrompt:     'The person from the reference image is in the stands at a packed soccer stadium during the championship final, wearing {{a red}} scarf. The home side scores — the person leaps up screaming with joy, arms in the air, high-fiving strangers as the crowd around them erupts. Confetti drifts through the floodlights. The person must look exactly like the reference photo. Handheld fan-camera energy, night match under bright stadium lights, deafening crowd roar and chanting.',
+    slotMode:          'video_edit',
+    starterPrompt:     'Make the person in the video wear {{the outfit from the reference image}}. Keep their identity, face, movement, the background and everything else in the video exactly the same. The new clothing should move naturally with their body.',
     aspectRatio:       '16:9',
     duration:          8,
-    recommendedModels: ['veo-3.1-generate-preview', 'happyhorse-1.0-r2v'],
+    recommendedModels: ['happyhorse-1.0-video-edit'],
+    previewUrl:        '/templates/video-outfit-swap.jpg',
     attachmentSlots: [
-      { label: 'YOUR PHOTO', hint: 'A clear selfie or portrait' },
+      { label: 'VIDEO',      hint: 'A video of a person (MP4/MOV, 3–60s)' },
+      { label: 'NEW OUTFIT', hint: 'Photo of the clothing to wear' },
     ],
   },
+  // ── Image tools (task verbs on the user's own photo) ─────────────────────
+  //
+  // Same engine as templates (image_edit + one upload slot + tuned starter
+  // prompt); presented as compact utility cards. Every tool still runs on
+  // up to 4 models at once — "remove the background with 2 models, keep
+  // the cleaner cut" is a workflow nobody else offers.
   {
     id:                'video-asmr-glass-fruit',
     emoji:             '🍓',
@@ -275,7 +279,19 @@ export const XCREATE_TEMPLATES: Template[] = [
     // slicing "fruit" made of glass, and the AUDIO carries the clip —
     // crystalline crack + tinkling shards. Veo 3.1 generates the sound;
     // the prompt describes it in detail because that is what gets scored.
-    starterPrompt:     'Extreme macro ASMR video: a sharp chef\'s knife slowly slices through {{a ripe strawberry}} made entirely of translucent colored glass, resting on a dark wooden cutting board. Each cut cracks with a crisp crystalline snap, and thin glass slices topple over with delicate high-pitched tinkles. Studio product lighting with refractions sparkling through the glass flesh and tiny glass seeds. Shallow depth of field, slow deliberate knife movement, no music — only the pristine ASMR audio of glass cutting and settling.',
+    //
+    // Three deliberate choices, from the community Veo 3 prompting guides
+    // (github.com/snubroot/Veo-3-Prompting-Guide and the glass-cutting
+    // write-ups) — don't "tidy" them away:
+    //   1. Audio lives in its own sentence prefixed "Audio:". Burying sound
+    //      inside the visual description is what causes Veo to hallucinate
+    //      music or ambience nobody asked for.
+    //   2. "no on-screen text whatsoever" — Veo readily burns in captions,
+    //      which ruins an ASMR clip. Stacked with no talking / no music.
+    //   3. "Only the hand, the knife and the fruit are visible" bounds the
+    //      frame, and the break-away beat ("front section breaks away
+    //      cleanly") gives the clip a payoff instead of a continuous saw.
+    starterPrompt:     'Extreme macro shot: a sharp chef\'s knife slowly slices clean through {{a ripe strawberry}} made entirely of translucent colored glass, resting on a dark wooden cutting board. The blade meets resistance, then the front section breaks away cleanly and thin glass slices topple over. Studio product lighting, sharp refractions and caustics through the glass flesh and tiny glass seeds, shallow depth of field, slow deliberate movement. Only the hand, the knife and the fruit are visible. Audio: a crisp crystalline crack as the blade bites, delicate high-pitched tinkling as the slices settle, quiet room tone. No talking, no music, no on-screen text whatsoever.',
     aspectRatio:       '16:9',
     duration:          8,
     recommendedModels: ['veo-3.1-generate-preview', 'happyhorse-1.0-t2v'],
@@ -299,6 +315,7 @@ export const XCREATE_TEMPLATES: Template[] = [
     aspectRatio:       '16:9',
     duration:          8,
     recommendedModels: ['veo-3.1-generate-preview', 'happyhorse-1.0-r2v'],
+    previewUrl:        '/templates/video-product-video.jpg',
     attachmentSlots: [
       { label: 'IMAGE 1', hint: 'A clear photo of the product' },
       { label: 'IMAGE 2', hint: 'Optional — another angle' },
@@ -511,5 +528,72 @@ export const XCREATE_TEMPLATES: Template[] = [
     // Designed typographic card (PIL, site type system) — not AI-generated.
     previewUrl:        '/templates/text-decimals.jpg',
     attachmentSlots: [],
+  },
+  // ── Text templates shared with XDuel's popular prompts (CC, July 20) —
+  // same tasks, same thumbnails, so both pages feel consistent. ──
+  {
+    id:                'text-explain-5',
+    emoji:             '🧒',
+    popular:           true,
+    title:             "Explain like I'm 5",
+    subtitle:          'How do airplanes fly?',
+    mode:              'text',
+    slotMode:          'text_to_text',
+    starterPrompt:     'Explain how airplanes stay in the air to a 5-year-old.',
+    recommendedModels: ['gemini-3.1-flash-lite', 'qwen3.6-plus'],
+    previewUrl:        '/templates/xduel-explain-like-i-m-5.jpg',
+    attachmentSlots: [],
+  },
+  {
+    id:                'text-monday-haiku',
+    emoji:             '✍️',
+    popular:           true,
+    title:             'Monday Haiku',
+    subtitle:          'A tiny writing task',
+    mode:              'text',
+    slotMode:          'text_to_text',
+    starterPrompt:     'Write a haiku about Monday mornings.',
+    recommendedModels: ['gpt-5.6-luna', 'gemini-3.1-flash-lite'],
+    previewUrl:        '/templates/xduel-monday-haiku.jpg',
+    attachmentSlots: [],
+  },
+  {
+    id:                'text-summarization',
+    emoji:             '📖',
+    popular:           true,
+    title:             'Summarization',
+    subtitle:          'Attach a document to summarize',
+    mode:              'text',
+    slotMode:          'text_to_text',
+    starterPrompt:     'Summarize this document in three paragraphs, then give one insight most readers miss.',
+    recommendedModels: ['gpt-5.6-sol', 'qwen3.6-plus'],
+    previewUrl:        '/templates/xduel-summarization.jpg',
+    attachmentSlots: [{ label: 'DOCUMENT', hint: 'PDF or .txt to summarize' }],
+  },
+  // Document-reasoning task with a built-in skeptic step (part 3). Models
+  // that just paraphrase the Highlights page fail it, which is exactly the
+  // kind of gap a side-by-side run should expose. Tuned against Tesla's
+  // Q2-2026 deck: "strong quarter" up front, operating margin 4.1% -> 1.4%
+  // and FCF +$146M -> -$1.1B in the tables behind it.
+  {
+    id:                'text-earnings-analysis',
+    emoji:             '📊',
+    popular:           true,
+    title:             'Earnings Report Analysis',
+    subtitle:          'Attach a quarterly report to analyze',
+    mode:              'text',
+    slotMode:          'text_to_text',
+    starterPrompt:     'Analyze this earnings report. Give me: (1) the headline numbers and how they moved year over year, (2) the two metrics that matter most for this business and what they signal, (3) anything the report frames favorably that a careful reader should question. End with a one-line verdict.',
+    recommendedModels: ['claude-opus-5', 'gpt-5.6-sol'],
+    previewUrl:        '/templates/text-earnings-analysis.jpg',
+    // Bundled so the template runs on one click. Tesla's Q2-2026 deck,
+    // recompressed 10.1MB -> 2.2MB (images downsampled to 72dpi; every
+    // table and number preserved, and the doc path folds PDFs to text
+    // anyway). Swap in a newer quarter by upserting over this object in
+    // the samples bucket — no deploy needed.
+    sampleUrl:         `${SAMPLES_BASE}/tesla-q2-2026-update.pdf`,
+    sampleName:        'tesla-q2-2026-update.pdf',
+    sampleType:        'application/pdf',
+    attachmentSlots: [{ label: 'EARNINGS REPORT', hint: 'PDF of a quarterly or annual report' }],
   },
 ]

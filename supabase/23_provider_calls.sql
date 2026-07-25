@@ -21,12 +21,15 @@ create table if not exists provider_calls (
   -- Correlation id shared by the start and end events of one request.
   -- Generated client-side in Next.js so both events can fire async.
   request_id    uuid        not null,
-  event         text        not null     check (event in ('start','end')),
+  event         text        not null     check (event in ('start','end','media')),
   created_at    timestamptz not null     default now(),
 
   -- Request descriptors (present on both events for query convenience —
   -- no join needed to ask "how many image calls did Google get today").
-  provider      text        not null     check (provider in ('openai','google','alibaba')),
+  -- No allowlist: `provider` is copied from ai_models.provider, which is
+  -- already the source of truth. A second hardcoded list here only ever lost
+  -- log rows for newly-added providers (see 52_provider_calls_all_providers).
+  provider      text        not null,
   model_name    text        not null,                            -- API id, e.g. 'gpt-5.4'
   model_id      uuid        references ai_models(id) on delete set null,
   mode          text        not null     check (mode in ('text','image','video')),

@@ -4,7 +4,6 @@ import { AuthModalProvider } from '../lib/AuthModalContext'
 import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
-import TopBar from './components/TopBar'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import './globals.css'
 
@@ -72,7 +71,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="app-shell">
               <Nav />
               <div className="app-main">
-                <TopBar />
                 {children}
               </div>
             </div>

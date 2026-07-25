@@ -12,12 +12,12 @@ values
   -- XDuel — public
   ('xduel-ai-images',    'xduel-ai-images',    true,  10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
   ('xduel-ai-videos',    'xduel-ai-videos',    true,  52428800,  array['video/mp4','video/webm','video/quicktime']),
-  ('xduel-user-images',  'xduel-user-images',  true,  10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
+  ('xduel-user-images',  'xduel-user-images',  true,  10485760,  array['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain']),
   ('xduel-user-videos',  'xduel-user-videos',  true,  524288000, array['video/mp4','video/webm','video/quicktime','video/mov']),
   -- XCreate — private
   ('xcreate-ai-images',   'xcreate-ai-images',   false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
   ('xcreate-ai-videos',   'xcreate-ai-videos',   false, 52428800,  array['video/mp4','video/webm','video/quicktime']),
-  ('xcreate-user-images', 'xcreate-user-images', false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp']),
+  ('xcreate-user-images', 'xcreate-user-images', false, 10485760,  array['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain']),
   ('xcreate-user-videos', 'xcreate-user-videos', false, 524288000, array['video/mp4','video/webm','video/quicktime','video/mov'])
 on conflict (id) do nothing;
 

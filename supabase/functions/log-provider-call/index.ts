@@ -29,7 +29,14 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
-const ALLOWED_PROVIDERS = new Set(['openai', 'google', 'alibaba', 'anthropic'])
+// NOTE: there is deliberately NO provider allowlist here. It used to be a
+// hardcoded Set that drifted out of sync with lib/providers SUPPORTED_PROVIDERS
+// and silently 400'd every runway + moonshot call for weeks (CC, July 25) —
+// because call-log.ts is fire-and-forget, nothing surfaced the rejection.
+// `provider` is copied from ai_models.provider, which already governs routing
+// in lib/providers — it is not user input, so there is nothing to validate.
+// 52_provider_calls_all_providers drops the matching DB check for the same
+// reason. Adding a provider is pure data again: no redeploy, no migration.
 const ALLOWED_MODES     = new Set(['text', 'image', 'video'])
 const ALLOWED_STATUS    = new Set(['success', 'failed'])
 
@@ -74,7 +81,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 
 function validateCommon(b: CommonFields): string | null {
   if (!b.request_id)                       return 'request_id required'
-  if (!ALLOWED_PROVIDERS.has(b.provider))  return `unknown provider: ${b.provider}`
+  if (!b.provider)                         return 'provider required'
   if (!ALLOWED_MODES.has(b.mode))          return `unknown mode: ${b.mode}`
   if (!b.model_name)                       return 'model_name required'
   return null

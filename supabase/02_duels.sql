@@ -11,6 +11,7 @@ create table if not exists duels (
   vote1_model_id text,
   vote2_model_id text,
   attachment_id  uuid,
+  input_media    jsonb,  -- {url, mediaType, fileName} public input (July 2026)
   created_at    timestamptz not null default now()
 );
 
@@ -22,3 +23,6 @@ alter table duels enable row level security;
 create policy "duels: public read"  on duels for select using (true);
 create policy "duels: owner insert" on duels for insert with check (auth.uid() = user_id);
 create policy "duels: owner update" on duels for update using (auth.uid() = user_id);
+
+-- Idempotent for existing databases:
+alter table duels add column if not exists input_media jsonb;

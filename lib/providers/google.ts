@@ -28,6 +28,30 @@ function ai(): GoogleGenAI {
   return _ai
 }
 
+// ── Transient-error retry (July 19) ─────────────────────────────────────
+// Google surfaces rate limits as 429 RESOURCE_EXHAUSTED and brief
+// capacity blips as 500/503 UNAVAILABLE. Those deserve a short backoff
+// retry instead of instantly failing the slot (which in a duel burns the
+// user's daily quota on a transient). Anything else (400s, safety
+// blocks, NOT_FOUND) re-throws immediately — retrying those wastes money.
+const RETRYABLE = /\b(429|500|502|503|529)\b|RESOURCE_EXHAUSTED|UNAVAILABLE|overloaded|rate limit/i
+export async function withRetry<T>(fn: () => Promise<T>, label: string, attempts = 3, baseDelayMs = 2000): Promise<T> {
+  let lastErr: unknown
+  for (let i = 1; i <= attempts; i++) {
+    try { return await fn() } catch (err) {
+      lastErr = err
+      const msg = err instanceof Error ? err.message : String(err)
+      const status = (err as any)?.status
+      const retryable = RETRYABLE.test(msg) || [429, 500, 502, 503, 529].includes(status)
+      if (!retryable || i === attempts) throw err
+      const delay = baseDelayMs * Math.pow(3, i - 1) // 2s, 6s
+      console.warn(`[google] ${label}: transient error (attempt ${i}/${attempts}), retrying in ${delay}ms — ${msg.slice(0, 140)}`)
+      await new Promise(r => setTimeout(r, delay))
+    }
+  }
+  throw lastErr
+}
+
 // ── text (streaming) ──────────────────────────────────────────────────────────
 
 export async function streamText(
@@ -35,9 +59,10 @@ export async function streamText(
   messages: { role: 'user' | 'assistant'; content: any }[],
   callbacks: TextStreamCallbacks,
   attachments: Attachment[] = [],
+  thinking: string | null = null,
 ): Promise<void> {
   const TAG = `[google/${model.model_name}]`
-  console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
+  console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} thinking=${thinking ?? 'auto'}`)
 
   // Convert to Gemini format
   const contents: Content[] = messages.map((m, i) => {
@@ -69,10 +94,12 @@ export async function streamText(
   })
 
   try {
-    const stream = await ai().models.generateContentStream({
+    const stream = await withRetry(() => ai().models.generateContentStream({
       model: model.model_name,
       contents,
-    })
+      // Thinking level (validated live July 22: MINIMAL/LOW/MEDIUM/HIGH).
+      ...(thinking ? { config: { thinkingConfig: { thinkingLevel: thinking.toUpperCase() as any } } } : {}),
+    }), 'text generateContentStream')
 
     let inputTokens = 0
     let outputTokens = 0
@@ -90,7 +117,7 @@ export async function streamText(
       }
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, 0)
+    const cost = calcTextCost(model, inputTokens, outputTokens, 0, { thinkingLevel: thinking })
     console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cost=$${cost.toFixed(6)}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens: 0, cost })
   } catch (err: any) {
@@ -111,7 +138,7 @@ export async function generateImage(
   size: string = '1024x1024',
   attachments: Attachment[] = [],
   conversationHistory: Array<{ role: string; parts: any[] }> | null = null,
-  options?: { count?: number | null } | null,
+  options?: { count?: number | null; aspect_ratio?: string | null } | null,
 ): Promise<ImageResult & { conversationHistory?: any[] }> {
   const TAG = `[google/${model.model_name}]`
 
@@ -163,24 +190,54 @@ export async function generateImage(
   //   responseFormat.image.aspectRatio: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5,
   //                                    5:4, 9:16, 16:9, 21:9
   //   responseFormat.image.imageSize:   "1K" | "2K" | "4K"
+  //
+  // `size` arrives in one of TWO shapes, and that broke this badly:
+  //   • "1024x1536" — most catalogue rows
+  //   • "2048"      — the Gemini 3 image rows (gemini-3.1-flash-image,
+  //                   gemini-3-pro-image, gemini-3.1-flash-lite-image),
+  //                   which declare bare long-edge tiers because Google
+  //                   takes a tier + a ratio rather than dimensions.
+  //
+  // The old code did `size.includes('x') ? split : []` then `parts[0] || 1024`,
+  // so a bare size fell through to 1024x1024 -> ratio 1:1 and tier 1K. Every
+  // request to those three models came out SQUARE at 1K no matter which
+  // aspect ratio the user picked, because the picked ratio was never read
+  // here at all (CC, July 25).
+  //
+  // Fix: trust options.aspect_ratio — it's what the user actually chose —
+  // and only fall back to inferring from dimensions when it's absent.
   const { aspectRatio, imageSize } = (() => {
-    const parts = size.includes('x') ? size.split('x').map(s => parseInt(s, 10)) : []
-    const w = parts[0] || 1024
-    const h = parts[1] || 1024
-    const target = w / h
-    const choices: Array<[string, number]> = [
-      ['1:1', 1],     ['2:3', 2/3],   ['3:2', 3/2],
-      ['3:4', 3/4],   ['4:3', 4/3],   ['4:5', 4/5],   ['5:4', 5/4],
-      ['9:16', 9/16], ['16:9', 16/9], ['21:9', 21/9],
-    ]
-    let bestLabel = choices[0][0]
-    let bestDelta = Infinity
-    for (const [label, ratio] of choices) {
-      const d = Math.abs(Math.log(target) - Math.log(ratio))
-      if (d < bestDelta) { bestDelta = d; bestLabel = label }
+    const SUPPORTED = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9']
+    const hasDims = size.includes('x')
+    const dims = hasDims ? size.split('x').map(s => parseInt(s, 10)) : []
+    const w = hasDims ? (dims[0] || 1024) : 0
+    const h = hasDims ? (dims[1] || 1024) : 0
+
+    let bestLabel = options?.aspect_ratio && SUPPORTED.includes(options.aspect_ratio)
+      ? options.aspect_ratio
+      : ''
+    if (!bestLabel) {
+      if (hasDims) {
+        const target = w / h
+        const choices: Array<[string, number]> = [
+          ['1:1', 1],     ['2:3', 2/3],   ['3:2', 3/2],
+          ['3:4', 3/4],   ['4:3', 4/3],   ['4:5', 4/5],   ['5:4', 5/4],
+          ['9:16', 9/16], ['16:9', 16/9], ['21:9', 21/9],
+        ]
+        let bestDelta = Infinity
+        bestLabel = choices[0][0]
+        for (const [label, ratio] of choices) {
+          const d = Math.abs(Math.log(target) - Math.log(ratio))
+          if (d < bestDelta) { bestDelta = d; bestLabel = label }
+        }
+      } else {
+        bestLabel = '1:1'
+      }
     }
-    // Map long-edge pixels to Google's tier names.
-    const longEdge = Math.max(w, h)
+
+    // Long edge -> Google's tier name. For a bare size the number IS the
+    // long edge; previously this always resolved to 1K.
+    const longEdge = hasDims ? Math.max(w, h) : (parseInt(size, 10) || 1024)
     const tier = longEdge >= 3840 ? '4K' : longEdge >= 1536 ? '2K' : '1K'
     return { aspectRatio: bestLabel, imageSize: tier }
   })()
@@ -199,7 +256,7 @@ export async function generateImage(
       imageConfig: { aspectRatio, imageSize },
     },
   }
-  console.log(`${TAG} requesting aspectRatio=${aspectRatio} imageSize=${imageSize} for size=${size}`)
+  console.log(`${TAG} requesting aspectRatio=${aspectRatio} imageSize=${imageSize} for size=${size} picked=${options?.aspect_ratio ?? 'none'}`)
   logResponse(TAG, 'REQUEST', requestPayload)
 
   // n parallel generations (n=1 → a single call, exactly as before).
@@ -216,7 +273,7 @@ export async function generateImage(
     return { ...requestPayload, contents: varied }
   }
   const responses = await Promise.all(
-    Array.from({ length: n }, (_, vi) => ai().models.generateContent(payloadFor(vi)))
+    Array.from({ length: n }, (_, vi) => withRetry(() => ai().models.generateContent(payloadFor(vi)), `image generateContent[${vi}]`))
   )
   const response = responses[0]
 
@@ -386,6 +443,17 @@ export async function generateVideo(
   const resolution = minDim >= 2160 ? '4k' : minDim >= 1080 ? '1080p' : '720p'
   const aspectRatio = w === h ? '1:1' : (w >= h ? '16:9' : '9:16')
 
+  // ── Gemini Omni Flash (July 19) — the Interactions API, not Veo's
+  // generateVideos. Synchronous call; video comes back as inline base64
+  // (≤4MB) or a file URI we poll + download. Tasks: text_to_video /
+  // image_to_video / reference_to_video / edit. Resolution (360p-4k) and
+  // duration (3-10s) rides in response_format (verified live, July 20).
+  // Resolution is NOT settable on flash-preview - output is 720p; we bill
+  // from actual usage tokens (5,792/s of 720p).
+  if (model.model_name.startsWith('gemini-omni')) {
+    return generateOmniVideo(model, prompt, aspectRatio, seconds, attachments, onProgress, options)
+  }
+
   console.log(`${TAG} generateVideos start aspect=${aspectRatio} resolution=${resolution} duration=${seconds}s attachments=${attachments.length}`)
 
   // Build the request. Cast to `any` because the SDK's TS surface for
@@ -457,7 +525,7 @@ export async function generateVideo(
 
   if (onProgress) onProgress(2)
 
-  let operation: any = await (ai().models as any).generateVideos(request)
+  let operation: any = await withRetry(() => (ai().models as any).generateVideos(request), 'video generateVideos')
   console.log(`${TAG} operation submitted name=${operation?.name ?? '(unknown)'}`)
 
   // Poll. Veo typically takes 1–3 minutes; we cap at 10 minutes total.
@@ -580,4 +648,106 @@ export async function generateVideo(
     cost,
     usageMetadata:   meta && Object.keys(meta).length > 0 ? meta : null,
   }
+}
+
+
+// ── Gemini Omni Flash (Interactions API) ────────────────────────────────────
+async function generateOmniVideo(
+  model:       ModelInfo,
+  prompt:      string,
+  aspectRatio: string,
+  seconds:     number,
+  attachments: Attachment[],
+  onProgress?: (pct: number) => void,
+  options?:    { mode?: string | null },
+): Promise<VideoResult> {
+  const TAG = `[google/${model.model_name}]`
+  const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+
+  // Task selection: explicit sub-mode wins; otherwise infer from inputs.
+  const task =
+    options?.mode === 'reference_frames' ? 'reference_to_video' :
+    options?.mode === 'image_to_video'   ? 'image_to_video' :
+    options?.mode === 'text_to_video'    ? 'text_to_video' :
+    imageAtts.length >= 2 ? 'reference_to_video' :
+    imageAtts.length === 1 ? 'image_to_video' : 'text_to_video'
+
+  const input: any = imageAtts.length === 0 ? prompt : [
+    ...imageAtts.map(a => ({ type: 'image', data: a.buffer.toString('base64'), mime_type: a.mediaType })),
+    { type: 'text', text: prompt },
+  ]
+
+  // Duration is a "Ns" string, clamped to the API's 3-10s window.
+  const duration = `${Math.max(3, Math.min(10, Math.round(seconds || 8)))}s`
+  console.log(`${TAG} interactions.create task=${task} aspect=${aspectRatio} dur=${duration} images=${imageAtts.length}`)
+  if (onProgress) onProgress(5)
+
+  const interaction: any = await withRetry(() => (ai() as any).interactions.create({
+    model: model.model_name,
+    input,
+    // aspect_ratio lives at generation_config level (the API rejects it
+    // inside video_config — verified July 19). Omit for the 16:9 default.
+    generation_config: {
+      video_config: { task },
+      ...(aspectRatio === '9:16' ? { aspect_ratio: '9:16' } : {}),
+    },
+    // Duration lives in response_format (verified live July 20: 3s-10s).
+    // 'resolution' is rejected by flash-preview - 720p only, don't send it.
+    response_format: { type: 'video', duration },
+  }), 'omni interactions.create')
+
+  if (onProgress) onProgress(70)
+  console.log(`${TAG} interaction id=${interaction?.id} status=${interaction?.status}`)
+
+  // Locate the video part: SDK convenience wrapper first, then steps[].
+  let videoPart: any = interaction?.output_video ?? null
+  if (!videoPart) {
+    for (const step of interaction?.steps ?? []) {
+      if (step?.type !== 'model_output') continue
+      videoPart = (step.content ?? []).find((c: any) => c?.type === 'video') ?? videoPart
+    }
+  }
+  if (!videoPart) {
+    throw new Error(`Omni returned no video (status=${interaction?.status ?? 'unknown'}). Try again or rephrase the prompt.`)
+  }
+
+  const apiKey = process.env.GOOGLE_AI_API_KEY!
+  let buffer: Buffer
+  if (videoPart.data) {
+    buffer = Buffer.from(videoPart.data, 'base64')
+  } else if (videoPart.uri) {
+    // Poll the file until ACTIVE, then download with the key appended.
+    const fileId = String(videoPart.uri).match(/files\/([^:?]+)/)?.[1]
+    if (fileId) {
+      for (let i = 0; i < 30; i++) {
+        const st: any = await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${fileId}?key=${apiKey}`).then(r => r.json()).catch(() => null)
+        if (st?.state === 'ACTIVE') break
+        if (st?.state === 'FAILED') throw new Error('Omni video file processing failed')
+        await new Promise(r => setTimeout(r, 2000))
+      }
+    }
+    const sep = String(videoPart.uri).includes('?') ? '&' : '?'
+    const dl = await fetch(`${videoPart.uri}${sep}key=${apiKey}`)
+    if (!dl.ok) throw new Error(`Failed to download Omni video: ${dl.status}`)
+    buffer = Buffer.from(await dl.arrayBuffer())
+  } else {
+    throw new Error('Omni video part had neither data nor uri')
+  }
+
+  // Cost: prefer usage tokens (5,792 output tokens ≈ 1s of 720p video ≈
+  // $0.10/s effective). Fall back to an 8s assumption.
+  const usage: any = interaction?.usage ?? interaction?.usage_metadata ?? null
+  // Prefer the video-modality token count (verified shape July 19:
+  // usage.output_tokens_by_modality[{modality:'video',tokens:57920}] for
+  // a 10s clip — exactly 5,792 tokens/s).
+  const videoTokens = (usage?.output_tokens_by_modality ?? []).find((m: any) => m?.modality === 'video')?.tokens ?? null
+  const outTokens = videoTokens ?? usage?.total_output_tokens ?? usage?.output_tokens ?? null
+  const secondsOut = outTokens ? outTokens / 5792 : 8
+  const rate = (model.model_pricing as any)?.per_video_second?.['720p'] ?? 0.10
+  const cost = rate * secondsOut
+  try { console.log(`${TAG} usage=${JSON.stringify(usage).slice(0, 300)} → ${secondsOut.toFixed(1)}s $${cost.toFixed(3)}`) } catch { /* ignore */ }
+
+  if (onProgress) onProgress(100)
+  console.log(`${TAG} omni video ok bytes=${buffer.length} task=${task}`)
+  return { buffer, mediaType: videoPart.mime_type ?? 'video/mp4', durationSeconds: Math.round(secondsOut), cost }
 }

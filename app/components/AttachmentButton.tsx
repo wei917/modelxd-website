@@ -2,10 +2,12 @@
 // Attachment button — uploads original files to private Supabase bucket
 // Supports multiple file selection for multi-image reference
 
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 export type Attachment = {
+  // Empty string while the attachment is still pending — set by
+  // commitAttachments() at submit time. See `file` below.
   storagePath: string   // e.g. 'originals/uuid.jpg' — path inside bucket
   bucket:      string   // e.g. 'xduel-user-images'
   mediaType:   string
@@ -19,6 +21,15 @@ export type Attachment = {
   // first regardless of which slot it came from. Server-side code can
   // ignore this field; the provider router just sees the array order.
   slotIndex?:  number
+  /** The bytes, held in the browser until the user actually submits.
+   *  Present on a pending attachment, absent once uploaded.
+   *
+   *  Nothing reaches storage on pick (CC, July 25). Uploading eagerly
+   *  meant every file the user picked and then removed — or picked and
+   *  never ran — left an object in the bucket with no `attachments` row
+   *  pointing at it, unattributable because paths carry no user id. Now
+   *  a discarded pick costs nothing; it was never sent. */
+  file?:       File
 }
 
 // PDF support: PDFs are now wired up properly. The router
@@ -49,6 +60,90 @@ function fileIcon(mediaType: string) {
   return '📎'
 }
 
+/** Wrap a picked file as a pending attachment. No network. */
+export function pendingAttachment(
+  file: File, context: 'xduel' | 'xcreate', slotIndex?: number,
+): Attachment {
+  return {
+    storagePath: '',
+    bucket:      getBucket(file.type, context),
+    mediaType:   file.type,
+    fileName:    file.name,
+    fileSize:    file.size,
+    previewUrl:  file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+    file,
+    ...(slotIndex === undefined ? {} : { slotIndex }),
+  }
+}
+
+/**
+ * Upload every still-pending attachment and return descriptors with real
+ * storage paths. Call this once, immediately before submitting a run.
+ *
+ * Throws on the first failure rather than silently dropping a file — a
+ * run missing its input is worse than a run that didn't start, because
+ * the models answer anyway and the output just looks wrong.
+ *
+ * Already-uploaded attachments pass through untouched, so re-running an
+ * existing set costs nothing.
+ */
+export async function commitAttachments(atts: Attachment[]): Promise<Attachment[]> {
+  if (!atts.some(a => a.file)) return atts
+  const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+  const out: Attachment[] = []
+  for (const att of atts) {
+    if (!att.file) { out.push(att); continue }
+    const ext  = att.fileName.split('.').pop() ?? 'bin'
+    const path = `originals/${crypto.randomUUID()}.${ext}`
+    const { error } = await sb.storage.from(att.bucket).upload(path, att.file, {
+      contentType: att.mediaType, upsert: false,
+    })
+    if (error) throw new Error(`${att.fileName}: ${error.message}`)
+    const { file: _dropped, ...rest } = att
+    out.push({ ...rest, storagePath: path })
+  }
+  return out
+}
+
+/**
+ * Fetch a bundled sample from the `samples` bucket and hand it back as a
+ * pending attachment. Returns null (never throws) if anything is off.
+ *
+ * The validation is not paranoia. When a sample isn't reachable the
+ * password-gate middleware can answer 200 with the gate's HTML rather
+ * than a 404, and a naive `new File([blob], 'novel.txt')` then feeds that
+ * HTML to every model as "the document". That shipped once, and it fails
+ * silently: the run completes and the answers just look inexplicably
+ * wrong. Trust the served content type, not the URL's extension.
+ */
+export async function attachSampleFile(
+  url:       string,
+  fileName:  string,
+  mediaType: string,
+  context:   'xduel' | 'xcreate',
+): Promise<Attachment | null> {
+  let blob: Blob
+  try {
+    const res = await fetch(url)
+    if (!res.ok) { console.warn(`sample fetch ${url}: HTTP ${res.status}`); return null }
+    blob = await res.blob()
+  } catch (err) {
+    console.warn(`sample fetch ${url} failed:`, err)
+    return null
+  }
+
+  // Only the html-when-we-wanted-something-else case is rejected, so an
+  // origin that serves application/octet-stream still works.
+  const served = (blob.type || '').split(';')[0].trim().toLowerCase()
+  if (served === 'text/html' && mediaType !== 'text/html') {
+    console.warn(`sample ${url} served text/html, expected ${mediaType} — not deployed?`)
+    return null
+  }
+  if (blob.size === 0) { console.warn(`sample ${url} is empty`); return null }
+
+  return pendingAttachment(new File([blob], fileName, { type: mediaType }), context)
+}
+
 // ── Multi-file version (for XCreate) ────────────────────────────────────────
 
 export default function AttachmentButton({
@@ -67,14 +162,17 @@ export default function AttachmentButton({
   /** Override the file picker filter. Falls back to the full ACCEPT string. */
   accept?:     string
 }) {
-  const inputRef    = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = async (files: FileList) => {
     const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','application/pdf','video/mp4','video/quicktime','video/webm']
     const toUpload = Array.from(files).filter(f => {
       if (!ALLOWED.includes(f.type)) { alert(`Unsupported file type: ${f.type || 'unknown'}`); return false }
-      if (f.size > MAX_MB * 1024 * 1024) { alert(`${f.name} too large — max ${MAX_MB}MB`); return false }
+      // Docs (PDF / txt) cap at 10MB — we only ever fold ≤200k chars of
+      // text anyway, so bigger uploads are pure waste. Media keeps MAX_MB.
+      const isDoc = f.type === 'application/pdf' || f.type.startsWith('text/')
+      const capMb = isDoc ? 10 : MAX_MB
+      if (f.size > capMb * 1024 * 1024) { alert(`${f.name} too large — max ${capMb}MB${isDoc ? ' for documents' : ''}`); return false }
       return true
     })
     if (toUpload.length === 0) return
@@ -84,42 +182,9 @@ export default function AttachmentButton({
     if (remaining <= 0) { alert(`Maximum ${MAX_FILES} files allowed`); return }
     const batch = toUpload.slice(0, remaining)
 
-    setUploading(true)
-    try {
-      const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
-      const newAttachments: Attachment[] = []
-
-      for (const file of batch) {
-        const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
-        const bucket = getBucket(file.type, context)
-        const ext    = file.name.split('.').pop() ?? 'bin'
-        const path   = `originals/${crypto.randomUUID()}.${ext}`
-
-        const { error } = await sb.storage.from(bucket).upload(path, file, {
-          contentType: file.type,
-          upsert:      false,
-        })
-        if (error) { console.warn(`Upload failed for ${file.name}: ${error.message}`); continue }
-
-        newAttachments.push({
-          storagePath: path,
-          bucket,
-          mediaType:   file.type,
-          fileName:    file.name,
-          fileSize:    file.size,
-          previewUrl,
-        })
-      }
-
-      if (newAttachments.length > 0) {
-        onChange([...attachments, ...newAttachments])
-      }
-    } catch (err) {
-      alert(`Upload failed: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setUploading(false)
-      if (inputRef.current) inputRef.current.value = ''
-    }
+    // Held in memory; commitAttachments() uploads at submit.
+    onChange([...attachments, ...batch.map(f => pendingAttachment(f, context))])
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   const removeAt = (idx: number) => {
@@ -127,13 +192,6 @@ export default function AttachmentButton({
     onChange(next)
     if (inputRef.current) inputRef.current.value = ''
   }
-
-  if (uploading) return (
-    <div style={{ padding: '6px 10px', fontSize: 12, color: '#555', fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', border: '2px solid #333', borderTopColor: '#666', animation: 'spin 0.6s linear infinite' }} />
-      uploading…
-    </div>
-  )
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

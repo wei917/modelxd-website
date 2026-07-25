@@ -119,7 +119,7 @@ export default function Nav() {
   useEffect(() => { setMenuOpen(false) }, [pathname])
 
   // Daily $1 grant — fire once per UTC day per browser. The server
-  // grant_daily_credits function is idempotent so duplicate POSTs are
+  // endpoint only logs locale/last-seen now; duplicate POSTs are
   // safe, but we gate on localStorage to keep the chatter down on
   // every page load. The key is per-user so a different account on
   // the same browser still gets its grant. Cleared automatically on
@@ -131,9 +131,18 @@ export default function Nav() {
     const key = `modelxd:dailyGrant:${user.id}`
     const last = window.localStorage.getItem(key)
     if (last === todayUtc) return
-    fetch('/api/credits/ensure-daily', { method: 'POST' })
-      .then(r => r.ok ? window.localStorage.setItem(key, todayUtc) : null)
+    fetch('/api/credits/ensure-daily', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // App language rides along for market analytics (profiles.language).
+      body: JSON.stringify({ lang }),
+    })
+      // Only mark the day claimed when the grant actually happened —
+      // unverified users get ok:false and retry after verifying.
+      .then(r => r.json())
+      .then(d => { if (d?.ok) window.localStorage.setItem(key, todayUtc) })
       .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   // Hide the Nav on the password gate. The links would just redirect
@@ -143,11 +152,6 @@ export default function Nav() {
   // requires the same hooks to run in the same order on every render,
   // or you get "Rendered fewer hooks than expected".
   if (pathname === '/coming-soon') return null
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.reload()
-  }
 
   const handleProtectedClick = (e: React.MouseEvent, href: string, isProtected: boolean) => {
     if (isProtected && !user) {
@@ -160,7 +164,7 @@ export default function Nav() {
     <nav className="nav">
       <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8 }} />
-        <span>{lang === 'zh' ? '模型大對決' : <>Model<span className="x">XD</span></>}</span>
+        <span>{lang.startsWith('zh') ? t('brand') : <>Model<span className="x">XD</span></>}</span>
       </Link>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
@@ -199,6 +203,34 @@ export default function Nav() {
         </div>
       )}
 
+      {/* Auth — bottom of the sidebar, above Terms (CC, July 20): the
+          content-area TopBar is gone; profile avatar / Sign In live HERE. */}
+      <div className="nav-auth">
+        {!authLoaded ? (
+          <div style={{ height: 30 }} aria-hidden />
+        ) : user ? (
+          <Link href="/profile" className="nav-auth-profile" aria-label={t('nav.profile')}>
+            {user.user_metadata?.avatar_url ? (
+              <img src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="nav-auth-initials">
+                {(user.user_metadata?.full_name || user.email || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+              </span>
+            )}
+            <span className="nav-auth-name">{t('nav.profile')}</span>
+          </Link>
+        ) : (
+          <button className="nav-login" onClick={() => show()}>{t('auth.signin')}</button>
+        )}
+      </div>
+
+      {/* Terms + Contact — pinned to the bottom of the sidebar (CC, July 20). */}
+      <div className="nav-foot">
+        <Link href="/terms" className={pathname === '/terms' ? 'active' : ''}>{t('nav.terms')}</Link>
+        <Link href="/privacy" className={pathname === '/privacy' ? 'active' : ''}>{t('nav.privacy')}</Link>
+        <a href="mailto:founder@modelxd.com">{t('nav.contact')}</a>
+      </div>
+
       {/* Auth (profile + sign in/out) moved to the content-area TopBar on
           desktop. On mobile it lives in the hamburger overlay below. */}
 
@@ -227,11 +259,15 @@ export default function Nav() {
             <NavIcon name={icon} />{t(i18n)}
           </Link>
         ))}
+        <div className="nav-foot" style={{ marginTop: 8 }}>
+          <Link href="/terms">{t('nav.terms')}</Link>
+          <Link href="/privacy">{t('nav.privacy')}</Link>
+          <a href="mailto:founder@modelxd.com">{t('nav.contact')}</a>
+        </div>
+        {/* Sign Out moved to the profile page (CC, July 19) — the
+            Profile link above is the path to it. */}
         {authLoaded && (user ? (
-          <>
-            <Link href="/profile">{t('nav.profile')}</Link>
-            <button type="button" onClick={handleLogout}>{t('auth.signout')}</button>
-          </>
+          <Link href="/profile">{t('nav.profile')}</Link>
         ) : (
           <button type="button" onClick={() => { setMenuOpen(false); show() }}>{t('auth.signin')}</button>
         ))}

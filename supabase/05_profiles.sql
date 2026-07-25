@@ -6,8 +6,18 @@ create table if not exists profiles (
   bio          text,
   avatar_url   text,
   created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
+  updated_at   timestamptz not null default now(),
+  -- Market analytics (July 2026, formerly 46_user_locale.sql): written by
+  -- /api/credits/ensure-daily on every authenticated page load.
+  language     text,         -- app language or Accept-Language first tag
+  country      text,         -- Vercel x-vercel-ip-country geo header
+  last_seen_at timestamptz
 );
+
+-- Idempotent for databases created before the locale columns existed:
+alter table profiles add column if not exists language text;
+alter table profiles add column if not exists country text;
+alter table profiles add column if not exists last_seen_at timestamptz;
 
 alter table profiles enable row level security;
 create policy "profiles: public read"  on profiles for select using (true);

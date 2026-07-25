@@ -25,16 +25,18 @@ function serviceClient() {
 }
 
 /**
- * Atomically consume one daily duel quota slot for the given mode.
+ * Atomically consume `cost` daily duel quota slots for the given mode
+ * (multi-model duels cost ceil(n/2) — see app/api/xduel/route.ts).
  * Returns the new count after increment, or -1 if the user is at/over
  * the cap (no row was modified). Throws on RPC failure.
  */
-export async function consumeDuelQuota(userId: string, mode: DuelMode): Promise<number> {
+export async function consumeDuelQuota(userId: string, mode: DuelMode, cost = 1): Promise<number> {
   const sb = serviceClient()
   const { data, error } = await sb.rpc('consume_duel_quota', {
     p_user_id: userId,
     p_mode:    mode,
     p_limit:   DUEL_LIMITS[mode],
+    p_cost:    cost,
   })
   if (error) throw new Error(`consumeDuelQuota failed: ${error.message}`)
   return data as number
@@ -45,11 +47,12 @@ export async function consumeDuelQuota(userId: string, mode: DuelMode): Promise<
  * Decrements the counter floored at 0 so users aren't billed for a duel
  * we never actually ran.
  */
-export async function refundDuelQuota(userId: string, mode: DuelMode): Promise<void> {
+export async function refundDuelQuota(userId: string, mode: DuelMode, cost = 1): Promise<void> {
   const sb = serviceClient()
   const { error } = await sb.rpc('refund_duel_quota', {
     p_user_id: userId,
     p_mode:    mode,
+    p_cost:    cost,
   })
   if (error) console.warn(`refundDuelQuota failed: ${error.message}`)
 }

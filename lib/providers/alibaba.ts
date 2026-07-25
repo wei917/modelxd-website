@@ -420,13 +420,31 @@ export async function generateVideo(
   //     single uploaded image as the start frame.
   //   • T2V  → no media, prompt-only.
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
   const imageAtt  = imageAtts[0]
-  const isR2V     = /-r2v$/i.test(model.model_name)
-  const isKf2v    = !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
-  const isI2V     = !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
+  const isVideoEdit = /-video-edit$/i.test(model.model_name)
+  const isR2V     = !isVideoEdit && /-r2v$/i.test(model.model_name)
+  const isKf2v    = !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
+  const isI2V     = !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 
   const input: any = { prompt }
-  if (isR2V && imageAtts.length > 0) {
+  if (isVideoEdit) {
+    // Video editing (happyhorse-1.0-video-edit): exactly 1 video +
+    // 0–5 reference_image elements. "Change the sofa to the one in the
+    // image" / clothes-swap style edits (CC, July 19). The video MUST be
+    // an HTTP(S) URL — the route signs video attachments for this.
+    const videoAtt = videoAtts[0]
+    if (!videoAtt) throw new Error('This model edits an existing video — attach a video (MP4/MOV, 3–60s) plus up to 5 reference images.')
+    if (!videoAtt.url) throw new Error('Video attachment has no signed URL — cannot send to DashScope video-edit.')
+    input.media = [
+      { type: 'video', url: videoAtt.url },
+      ...imageAtts.slice(0, 5).map(a => ({
+        type: 'reference_image',
+        url:  a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`,
+      })),
+    ]
+    console.log(`${TAG} video-edit: 1 video + ${Math.min(imageAtts.length, 5)} reference_image(s)`)
+  } else if (isR2V && imageAtts.length > 0) {
     // Reference-to-Video: every image is a reference, all typed
     // 'reference_image'. HappyHorse R2V supports up to 14 references —
     // we just forward whatever the user uploaded, in slot order.
@@ -459,16 +477,21 @@ export async function generateVideo(
 
   // parameters object — only set optional fields when explicitly provided
   // by the caller. null = use provider default (don't send).
-  const parameters: Record<string, unknown> = {
-    resolution,
-    duration: seconds,
-    prompt_extend: true,
-  }
+  // Video-edit accepts only resolution/watermark/seed — duration and
+  // ratio come from the input video (output capped at 15s by the API).
+  const parameters: Record<string, unknown> = isVideoEdit
+    ? { resolution }
+    : {
+        resolution,
+        duration: seconds,
+        prompt_extend: true,
+      }
   if (options?.watermark === true)  parameters.watermark = true
   if (options?.watermark === false) parameters.watermark = false
   // ratio is T2V-only on HappyHorse. The I2V variant doesn't accept it —
-  // output aspect always matches the first frame. Skip the param for I2V.
-  if (!isI2V && options?.aspect_ratio) parameters.ratio = options.aspect_ratio
+  // output aspect always matches the first frame. Skip the param for I2V
+  // and video-edit.
+  if (!isI2V && !isVideoEdit && options?.aspect_ratio) parameters.ratio = options.aspect_ratio
 
   const body = {
     model: model.model_name,

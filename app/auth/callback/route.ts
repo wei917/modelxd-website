@@ -90,17 +90,6 @@ export async function GET(request: Request) {
       metadata: safeMetadata,
     })
 
-  // Daily $1 free credit grant (idempotent within the same UTC day).
-  // Runs on every login so users coming back find their wallet topped up
-  // without needing to do anything. Failures here are non-fatal — we'd
-  // rather let the user in than block sign-in over a credit-grant hiccup.
-  try {
-    const { ensureDailyGrant } = await import('@/lib/credits')
-    await ensureDailyGrant(user.id, 100)
-  } catch (err) {
-    console.warn('[auth/callback] daily grant failed:', err instanceof Error ? err.message : err)
-  }
-
   // Consume the auth_redirect cookie so it doesn't leak into future logins
   cookieStore.set('auth_redirect', '', { path: '/', maxAge: 0 })
 

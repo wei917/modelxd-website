@@ -6,6 +6,7 @@ export const maxDuration = 300
 
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
 import { processAttachment }              from '@/lib/attachment'
+import { sanitizeProviderError }          from '@/lib/provider-errors'
 import * as providers                     from '@/lib/providers'
 import { modePriceLabel }                 from '@/lib/providers/pricing'
 
@@ -213,8 +214,11 @@ async function runSlot(
     throw new Error(`Unknown mode: ${mode}`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.warn(`${LOG} Slot[${index}] ${model.provider}/${model.model_name} failed: ${msg}`)
-    controller.enqueue(sse(`error:${index}`, { index, message: msg }))
+    // provider_calls request id - shown to the user as a report reference
+    // and searchable in the provider_calls table for debugging.
+    const ref = (err as any)?.requestId ?? null
+    console.warn(`${LOG} Slot[${index}] ${model.provider}/${model.model_name} failed (ref=${ref}): ${msg}`)
+    controller.enqueue(sse(`error:${index}`, { index, message: sanitizeProviderError(msg), ref }))
     return null
   }
 }
@@ -239,17 +243,6 @@ export async function POST(req: Request) {
     )
   }
 
-  // Daily $1 credit grant for users who crossed UTC midnight while logged
-  // in (auth callback only fires on fresh sign-in). Idempotent and
-  // fire-and-forget — never blocks the duel.
-  ;(async () => {
-    try {
-      const { ensureDailyGrant } = await import('@/lib/credits')
-      await ensureDailyGrant(user.id, 100)
-    } catch (err) {
-      console.warn(`${LOG} ensureDailyGrant failed:`, err instanceof Error ? err.message : err)
-    }
-  })()
 
   const { prompt, mode = 'text', count = 2, attachment: attachmentInput = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} count=${count}`)
@@ -262,6 +255,11 @@ export async function POST(req: Request) {
   if (promptTooShort && !promptIsOptional) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
   }
+  // Cap prompt size (client enforces maxLength=8000; this is the backstop).
+  // Long text belongs in a .txt attachment — folded server-side with a 200k-char guardrail.
+  if (typeof prompt === 'string' && prompt.length > 8000) {
+    return Response.json({ error: 'Prompt too long (max 8,000 characters) — attach long text as a .txt file instead.' }, { status: 400 })
+  }
 
   // Quota gate — XDuel is free for the user but ModelXD pays the bill,
   // so each mode has its own daily cap (see DUEL_LIMITS).
@@ -272,21 +270,25 @@ export async function POST(req: Request) {
     return Response.json({ error: `Invalid mode: ${mode}` }, { status: 400 })
   }
   const { consumeDuelQuota, refundDuelQuota, DUEL_LIMITS } = await import('@/lib/duel-quota')
-  const usedAfter = await consumeDuelQuota(user.id, mode as 'text' | 'image' | 'video')
+  // Multi-model duels cost proportionally more (house pays per model):
+  // one slot per extra model — 2 models = 1, 3 = 2, 4 = 3 (CC, July 19).
+  const n = Math.min(Math.max(count, 2), 4)
+  const quotaCost = n - 1
+  // Paid duels were tried and removed (CC, July 19) — free quota only.
+  // The XCreate studio is the paid path; the 429 message points there.
+  const usedAfter = await consumeDuelQuota(user.id, mode as 'text' | 'image' | 'video', quotaCost)
   if (usedAfter < 0) {
     return Response.json(
       {
         error:   'daily_limit_reached',
         mode,
         limit:   DUEL_LIMITS[mode as 'text' | 'image' | 'video'],
-        message: `You've used today's free ${mode} XDuel${DUEL_LIMITS[mode as 'text' | 'image' | 'video'] === 1 ? '' : 's'}. Resets at UTC midnight.`,
+        message: `You've used today's free ${mode} XDuel${DUEL_LIMITS[mode as 'text' | 'image' | 'video'] === 1 ? '' : 's'} — resets at UTC midnight. Want to keep creating? Pick your favorite models in XCreate.`,
       },
       { status: 429 },
     )
   }
-  const refundQuota = () => refundDuelQuota(user.id, mode as 'text' | 'image' | 'video').catch(() => {})
-
-  const n = Math.min(Math.max(count, 2), 4)
+  const refundQuota = () => refundDuelQuota(user.id, mode as 'text' | 'image' | 'video', quotaCost).catch(() => {})
 
   // Load + pick models
   let pool: ModelInfo[]
@@ -311,21 +313,27 @@ export async function POST(req: Request) {
     try {
       const result = await processAttachment(user.id, attachmentInput.bucket, attachmentInput.storagePath, attachmentInput.mediaType, attachmentInput.fileName, attachmentInput.fileSize)
       const attach: providers.Attachment = { buffer: result.buffer, mediaType: result.mediaType }
-      // Sign a public URL for image attachments — Alibaba I2V wants HTTP(S),
-      // not base64. 1 hour is plenty for the provider to fetch.
-      if (result.mediaType.startsWith('image/') && attachmentInput.bucket && attachmentInput.storagePath) {
-        try {
-          const { createClient: cc } = await import('@supabase/supabase-js')
-          const sbSign = cc(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
-          const { data: signed } = await sbSign.storage.from(attachmentInput.bucket).createSignedUrl(attachmentInput.storagePath, 60 * 60)
-          if (signed?.signedUrl) attach.url = signed.signedUrl
-        } catch (sigErr) {
-          console.warn(`${LOG} attachment signed-url failed (will fall back to base64):`, sigErr)
-        }
+      // Providers get the RESIZED copy's signed URL — capped at 1920px
+      // server-side, so oversized uploads never hit the model raw.
+      if (result.mediaType.startsWith('image/')) {
+        attach.url = result.resizedUrl
       }
       attachments.push(attach)
       attachmentId = result.attachmentId
     } catch (err) { console.warn(`${LOG} attachment failed:`, err) }
+  }
+  // Public URL of the input for XVote / replay display (July 19). XDuel
+  // user buckets are public (duels are public by design), so this URL is
+  // stable — unlike the 1h signed URL above.
+  let inputMedia: { url: string; mediaType: string; fileName: string | null } | null = null
+  if (attachmentInput?.storagePath) {
+    // Public-bucket URL is deterministic — no client/signing needed.
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+    inputMedia = {
+      url:       `${base}/storage/v1/object/public/${attachmentInput.bucket}/${attachmentInput.storagePath}`,
+      mediaType: attachmentInput.mediaType,
+      fileName:  attachmentInput.fileName ?? null,
+    }
   }
 
   const stream = new ReadableStream({
@@ -338,6 +346,16 @@ export async function POST(req: Request) {
       const results = await Promise.all(
         models.map((model, i) => runSlot(i, model, mode, prompt, attachments, duelId, controller, user.id))
       )
+
+      // Broken duel = free duel (CC, July 19): if ANY slot failed, the
+      // duel can't be voted on fairly (and XVote hides it), so give the
+      // user their quota back. The duel row is still saved for the
+      // owner's history/debugging.
+      const failedSlots = results.filter(r => r === null).length
+      if (failedSlots > 0) {
+        await refundQuota()
+        console.log(`${LOG} ${failedSlots}/${models.length} slots failed — quota refunded (cost ${quotaCost})`)
+      }
 
       // Save to DB
       const { createClient } = await import('@supabase/supabase-js')
@@ -365,9 +383,19 @@ export async function POST(req: Request) {
       await sb.from('duels').insert({
         id: duelId, user_id: user.id, mode, prompt,
         slots, attachment_id: attachmentId,
+        input_media: inputMedia,
       })
 
-      controller.enqueue(sse('end', { duelId }))
+      // Giveaway ledger (July 19): XDuel is house-paid, so record what
+      // this duel actually cost us. Fire-and-forget — reporting must
+      // never fail a duel.
+      const duelCostCents = Math.round(slots.reduce((sum, sl) => sum + (sl.cost ?? 0), 0) * 100)
+      if (duelCostCents > 0) {
+        sb.rpc('bump_giveaway', { p_kind: `xduel_${mode}`, p_cents: duelCostCents })
+          .then(({ error: gErr }) => { if (gErr) console.warn(`${LOG} bump_giveaway failed: ${gErr.message}`) })
+      }
+
+      controller.enqueue(sse('end', { duelId, refunded: failedSlots > 0 }))
       controller.close()
     }
   })

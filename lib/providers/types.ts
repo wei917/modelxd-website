@@ -76,6 +76,7 @@ export type ModelMode =
   | 'text_to_video'
   | 'image_to_video'
   | 'video_to_video'
+  | 'video_edit'        // video + reference images → edited video (HappyHorse Video Edit)
   | 'start_end_frames'
   // shared (image / video)
   | 'reference_frames'

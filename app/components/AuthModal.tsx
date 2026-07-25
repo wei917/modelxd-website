@@ -4,9 +4,23 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
+import { useT } from '../../lib/i18n'
+
+// Same glyphs as Nav's NavIcon (app/components/Nav.tsx) — keep in sync.
+function AuthFeatureIcon({ name }: { name: string }) {
+  const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
+  switch (name) {
+    case 'duel':   return (<svg {...p}><path d="M21 3v5l-11 9l-4 4l-3-3l4-4l9-11z"/><path d="M5 13l6 6"/><path d="M14.32 17.32l3.68 3.68l3-3l-3.68-3.68"/><path d="M10 5.5l-2-2.5h-5v5l3 2.5"/></svg>)
+    case 'create': return (<svg {...p}><path d="M6 21l15-15l-3-3l-15 15l3 3z"/><path d="M15 6l3 3"/><path d="M9 3a2 2 0 0 0 2 2a2 2 0 0 0-2 2a2 2 0 0 0-2-2a2 2 0 0 0 2-2"/></svg>)
+    case 'vote':   return (<svg {...p}><path d="M7 11v8a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4v-1a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2h-7a3 3 0 0 1-3-3"/></svg>)
+    case 'board':  return (<svg {...p}><path d="M4 20h16"/><path d="M5 12h2v7H5z"/><path d="M10.5 8h2v11h-2z"/><path d="M16 4h2v15h-2z"/></svg>)
+    default:       return null
+  }
+}
 
 export default function AuthModal() {
   const { open, nextPath, hide } = useAuthModal()
+  const t = useT()
   const [loading, setLoading] = useState(false)
 
   const handleLogin = async () => {
@@ -109,7 +123,7 @@ export default function AuthModal() {
           border-top: 1px solid var(--border); padding-top: 24px; text-align: left;
         }
         .auth-feature-row { display: flex; align-items: center; gap: 12px; }
-        .auth-feature-icon { font-size: 16px; flex-shrink: 0; width: 28px; text-align: center; }
+        .auth-feature-icon { flex-shrink: 0; width: 28px; display: flex; align-items: center; justify-content: center; color: var(--muted2); }
         .auth-feature-text { font-size: 12px; color: var(--muted2); line-height: 1.4; }
         .auth-feature-text strong { color: var(--white); font-weight: 500; }
       `}</style>
@@ -125,7 +139,7 @@ export default function AuthModal() {
 
           <div className="auth-divider" />
 
-          <div className="auth-title">Sign in to <span className="accent">XDuel</span></div>
+          <div className="auth-title">{t('auth.titleprefix')} Model<span className="accent">XD</span></div>
 
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -134,18 +148,19 @@ export default function AuthModal() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            {loading ? 'Signing in...' : 'Continue with Google'}
+            {loading ? t('auth.signingin') : t('auth.google')}
           </button>
 
 
           <div className="auth-features">
             {[
-              { icon: '⚔️', text: <><strong>XDuel</strong> — blind-test models on your prompts</> },
-              { icon: '🗳️', text: <><strong>Vote</strong> — judge archived battles</> },
-              { icon: '✨', text: <><strong>XCreate</strong> — run prompts across models side by side</> },
+              { icon: 'duel',   text: <><strong>XDuel</strong> — {t('auth.f.xduel')}</> },
+              { icon: 'create', text: <><strong>XCreate</strong> — {t('auth.f.xcreate')}</> },
+              { icon: 'vote',   text: <><strong>XVote</strong> — {t('auth.f.xvote')}</> },
+              { icon: 'board',  text: <><strong>XBoard</strong> — {t('auth.f.xboard')}</> },
             ].map((f, i) => (
               <div className="auth-feature-row" key={i}>
-                <span className="auth-feature-icon">{f.icon}</span>
+                <span className="auth-feature-icon"><AuthFeatureIcon name={f.icon} /></span>
                 <span className="auth-feature-text">{f.text}</span>
               </div>
             ))}

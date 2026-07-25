@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       kind: 'grant',
       referenceType: referenceType ?? 'admin_grant',
       referenceId:   referenceId,
-      description:   description ?? 'Dev admin grant',
+      description:   description ?? 'Gift from a friend',
     })
     return Response.json({
       ok: true,

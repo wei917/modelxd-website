@@ -4,8 +4,10 @@
 // Features: hides voted duels, popularity sorting, search, pagination.
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import ModeIcon from '../components/ModeIcon'
 import { useRouter } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
+import { useT } from '../../lib/i18n'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
@@ -29,6 +31,7 @@ interface Duel {
   mode: string
   prompt: string
   slots: SlotData[]
+  input_media?: { url: string; mediaType: string } | null
   vote2: string | null
   community_vote_count: number
   created_at: string
@@ -37,6 +40,7 @@ interface Duel {
 const PAGE_SIZE = 12
 
 export default function VotePage() {
+  const t = useT()
   useRequireAuth()
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
@@ -96,25 +100,23 @@ export default function VotePage() {
       <div className="xduel-page">
         <div className="arena">
 
-          {/* Eyebrow + big title live in the content TopBar (TITLES map). */}
+          {/* In-page header: "// XVOTE" eyebrow + big headline (CC, July 20). */}
           <div className="prompt-header">
-            <div className="prompt-sub">
-              Pick the better AI response — blind voting, no model names shown until you vote.
-            </div>
+            <div className="prompt-label">{t('xvote.eyebrow')}</div>
+            <h1 className="page-headline">{t('xvote.subtitle')}</h1>
           </div>
 
           {/* Controls row */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', flexWrap: 'wrap', marginBottom: 32 }}>
             {/* Mode selector */}
-            <div className="mode-selector" style={{ marginBottom: 0 }}>
+            <div className="mode-seg">
               {(['text', 'image', 'video'] as Mode[]).map(m => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`mode-btn${mode === m ? ' active' : ''}`}
+                  className={`mode-seg-btn${mode === m ? ' active' : ''}`}
                 >
-                  <span className={`mode-dot${mode === m ? ' active' : ''}`} />
-                  {m}
+                  <ModeIcon m={m} />{t('mode.' + m)}
                 </button>
               ))}
             </div>
@@ -129,7 +131,7 @@ export default function VotePage() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search duels…"
+                placeholder={t('xvote.search')}
                 style={{
                   width: '100%',
                   padding: '0 16px 0 38px',
@@ -163,15 +165,15 @@ export default function VotePage() {
             </div>
 
             {/* Sort toggle */}
-            <div className="mode-selector" style={{ marginBottom: 0 }}>
+            <div className="mode-seg">
               {(['recent', 'popular'] as SortMode[]).map(s => (
                 <button
                   key={s}
                   onClick={() => setSortMode(s)}
-                  className={`mode-btn${sortMode === s ? ' active' : ''}`}
+                  className={`mode-seg-btn${sortMode === s ? ' active' : ''}`}
                 >
                   <span className={`mode-dot${sortMode === s ? ' active' : ''}`} />
-                  {s === 'recent' ? 'Recent' : 'Popular'}
+                  {s === 'recent' ? t('xvote.recentsort') : t('xvote.popularsort')}
                 </button>
               ))}
             </div>
@@ -199,6 +201,19 @@ export default function VotePage() {
 
 /* ── Paginated mode section ──────────────────────────────────────────── */
 
+
+// Fisher-Yates. The Recent feed shuffles its window so tiles don't read
+// as a precise timeline — otherwise visitors could gauge exactly how many
+// duels are being played and when (CC, July 17). Popular keeps its order.
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
   mode: Mode
   userId: string | null
@@ -207,6 +222,7 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
   search: string
   onSelect: (d: Duel) => void
 }) {
+  const t = useT()
   const [duels, setDuels] = useState<Duel[]>([])
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -226,6 +242,11 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
       .select('id, mode, prompt, slots, vote2, community_vote_count, created_at', { count: 'exact' })
       .eq('mode', mode)
       .is('deleted_at', null)
+      // Hide duels where any slot failed or came back empty (CC, July 19)
+      // — broken duels aren't worth voting on, and a safety-blocked run
+      // (e.g. a bad upload) never surfaces publicly at all.
+      .not('slots', 'cs', JSON.stringify([{ text: null }]))
+      .not('slots', 'cs', JSON.stringify([{ text: '' }]))
 
     if (sortMode === 'popular') {
       q = q.order('community_vote_count', { ascending: false }).order('created_at', { ascending: false })
@@ -243,13 +264,15 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
         .from('duels')
         .select('id, mode, prompt, slots, vote2, created_at', { count: 'exact' })
         .eq('mode', mode)
+        .not('slots', 'cs', JSON.stringify([{ text: null }]))
+        .not('slots', 'cs', JSON.stringify([{ text: '' }]))
         .order('created_at', { ascending: false })
         .limit(200)
 
       const fallback = await q2
       if (fallback.error || !fallback.data) { setDuels([]); setTotal(0); setLoading(false); return }
       const normalized = (fallback.data as any[]).map(d => ({ ...d, community_vote_count: 0 })) as Duel[]
-      setDuels(normalized)
+      setDuels(sortMode === 'recent' ? shuffled(normalized) : normalized)
       setTotal(fallback.count ?? fallback.data.length)
       setLoading(false)
       return
@@ -258,7 +281,7 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
     if (!data) { setDuels([]); setTotal(0); setLoading(false); return }
     // Ensure community_vote_count defaults to 0 for old rows
     const normalized = (data as any[]).map(d => ({ ...d, community_vote_count: d.community_vote_count ?? 0 })) as Duel[]
-    setDuels(normalized)
+    setDuels(sortMode === 'recent' ? shuffled(normalized) : normalized)
     setTotal(count ?? data.length)
     setLoading(false)
   }, [mode, userId, sortMode])
@@ -286,7 +309,7 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
     <div style={{ marginBottom: 48 }}>
       {/* Duel count */}
       <div style={{ marginBottom: 16, color: 'var(--muted)', fontSize: 13 }}>
-        {filtered.length} duel{filtered.length !== 1 ? 's' : ''}
+        {t('xvote.duelcount').replace('{n}', String(filtered.length))}
       </div>
 
       {loading ? (
@@ -369,6 +392,7 @@ function SlotPreview({ slot }: { slot: SlotData | undefined }) {
 }
 
 function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void }) {
+  const t = useT()
   const slots = (duel.slots ?? []).filter(Boolean)
   const slotCount = slots.length
   const hasMedia = slots.some(s => s.isImage || s.isVideo)
@@ -408,12 +432,23 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
         borderTop: '1px solid var(--border)',
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: slotCount <= 2 ? '1fr' : '1fr 1fr',
+        // Media rows get a FIXED height so tall/spanning images crop
+        // (objectFit cover) instead of stretching the tile — a 3-slot
+        // image duel was ballooning to ~1200px (CC, July 19). Text
+        // previews keep flexible rows.
+        gridTemplateRows: hasMedia
+          ? (slotCount <= 2 ? '220px' : '150px 150px')
+          : (slotCount <= 2 ? '1fr' : '1fr 1fr'),
         gap: 1, background: 'var(--border)',
         minHeight: hasMedia ? 140 : 100,
       }}>
         {slots.slice(0, 4).map((slot, i) => (
-          <div key={i} style={{ overflow: 'hidden', position: 'relative', background: 'var(--surface)' }}>
+          <div key={i} style={{
+            overflow: 'hidden', position: 'relative', background: 'var(--surface)',
+            // 3-model duels: the odd slot spans the bottom row instead of
+            // leaving an empty cell (CC, July 19).
+            gridColumn: slotCount === 3 && i === 2 ? '1 / -1' : undefined,
+          }}>
             <SlotPreview slot={slot} />
             <div style={{
               position: 'absolute', top: 6, left: 6,
@@ -427,6 +462,10 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
           </div>
         ))}
 
+        {/* NOTE: no input thumb here (CC, July 19) — user uploads are
+            unmoderated, so they only ever display to their owner (see
+            /xduel/[id]). */}
+
         {/* VS badge */}
         <div style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -434,7 +473,7 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
           fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 20,
           letterSpacing: '0.08em', zIndex: 2,
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-        }}>VS</div>
+        }}>{slotCount <= 2 ? 'VS' : `${slotCount}-WAY`}</div>
       </div>
 
       {/* Footer — mode + vote count + CTA */}
@@ -468,7 +507,7 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
           fontSize: 10, fontWeight: 700, color: 'var(--red)',
           letterSpacing: '0.12em',
         }}>
-          VOTE →
+          {t('xvote.votebtn').toUpperCase()} →
         </span>
       </div>
     </div>

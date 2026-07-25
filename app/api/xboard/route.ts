@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const { data: snapshot, error } = await sb
     .from('model_ratings')
-    .select('model_id, xd_score, total_votes, price_label')
+    .select('model_id, xd_score, quality_rating, total_votes, price_label')
     .eq('mode', mode)
     .order('xd_score', { ascending: false })
     .order('total_votes', { ascending: false })
@@ -31,6 +31,10 @@ export async function GET(req: NextRequest) {
     const { data: aiModels } = await sb
       .from('ai_models')
       .select('id, provider, display_name, released_at')
+      // Disabled models keep their historical ratings in the snapshot,
+      // but a model users can't pick (e.g. one the provider retired —
+      // Veo 3, July 19) shouldn't rank on the public board.
+      .eq('enabled', true)
     const byId = new Map((aiModels ?? []).map(m => [m.id, m]))
 
     const result: LeaderboardRow[] = snapshot
@@ -43,6 +47,7 @@ export async function GET(req: NextRequest) {
           provider:   m.provider,
           priceLabel: r.price_label ?? '',
           releasedAt: m.released_at,
+          qualityScore: r.quality_rating,
           xdScore:    r.xd_score,
           totalVotes: Number(r.total_votes),
         }

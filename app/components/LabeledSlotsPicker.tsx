@@ -17,8 +17,7 @@
 // router receives the same shape as the generic picker would have built.
 
 import { useRef, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import type { Attachment } from './AttachmentButton'
+import { pendingAttachment, type Attachment } from './AttachmentButton'
 
 const MAX_MB    = 100
 const MIN_DIM   = 300  // HappyHorse R2V rejects anything under 300px on either axis;
@@ -27,10 +26,6 @@ const MIN_DIM   = 300  // HappyHorse R2V rejects anything under 300px on either 
                        // server round-trip + cryptic provider error.
 const ALLOWED   = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const ACCEPT    = ALLOWED.join(',')  // default: images only
-
-function getImageBucket(context: 'xduel' | 'xcreate'): string {
-  return context === 'xduel' ? 'xduel-user-images' : 'xcreate-user-images'
-}
 
 /** Read intrinsic dimensions of an image File via a one-shot Image element.
  *  Resolves to null if the file isn't a decodable image. */
@@ -89,15 +84,21 @@ export default function LabeledSlotsPicker({
 
   const allowedTypes = (accept ?? ACCEPT).split(',').map(s => s.trim())
 
+  // Validates and wraps — no network. The bytes stay in the browser until
+  // the run is submitted (commitAttachments), so a slot the user fills and
+  // then clears never reaches storage at all.
   const uploadOne = async (file: File, idx: number) => {
     if (!allowedTypes.includes(file.type)) { alert(`Unsupported file type: ${file.type || 'unknown'}`); return null }
     if (file.size > MAX_MB * 1024 * 1024) { alert(`${file.name} too large — max ${MAX_MB}MB`); return null }
 
-    // Check dimensions BEFORE uploading (images only). HappyHorse R2V
-    // rejects sub-300px references with a slow round-trip error; bail
-    // early with a clear message instead.
+    // Check dimensions up front (images only). HappyHorse R2V rejects
+    // sub-300px references with a slow round-trip error; bail early with
+    // a clear message instead. Decoding a large photo isn't instant, so
+    // the slot shows its spinner while we read it.
     if (file.type.startsWith('image/')) {
-      const dims = await readImageDimensions(file)
+      setUploadingIdx(idx)
+      let dims: { width: number; height: number } | null
+      try { dims = await readImageDimensions(file) } finally { setUploadingIdx(null) }
       if (!dims) { alert(`Couldn't read image dimensions for ${file.name}.`); return null }
       if (dims.width < MIN_DIM || dims.height < MIN_DIM) {
         alert(
@@ -109,26 +110,7 @@ export default function LabeledSlotsPicker({
       }
     }
 
-    setUploadingIdx(idx)
-    try {
-      const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
-      const bucket = getImageBucket(context)
-      const ext    = file.name.split('.').pop() ?? 'jpg'
-      const path   = `originals/${crypto.randomUUID()}.${ext}`
-      const { error } = await sb.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false })
-      if (error) { alert(`Upload failed: ${error.message}`); return null }
-      return {
-        storagePath: path,
-        bucket,
-        mediaType:   file.type,
-        fileName:    file.name,
-        fileSize:    file.size,
-        previewUrl:  URL.createObjectURL(file),
-        slotIndex:   idx,
-      } as Attachment
-    } finally {
-      setUploadingIdx(null)
-    }
+    return pendingAttachment(file, context, idx)
   }
 
   // Keep the parent's `attachments` array sorted by slotIndex so the
@@ -307,11 +289,18 @@ function FrameSlot({
                 alt={label}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
-            ) : (
-              // Video / PDF: no thumbnail — dark tile with a type glyph.
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em' }}>
-                {attachment.mediaType === 'application/pdf' ? 'PDF' : '▶'}
+            ) : attachment.mediaType === 'application/pdf' || attachment.mediaType?.startsWith('text/') ? (
+              // Document: generated "page" thumbnail — light sheet with a
+              // page glyph and the file extension (TXT / PDF / …).
+              <div style={{ width: '100%', height: '100%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <span style={{ fontSize: compact ? 16 : 22, lineHeight: 1 }}>📄</span>
+                <span style={{ fontSize: 8, fontWeight: 700, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', color: 'var(--muted)' }}>
+                  {(attachment.fileName?.split('.').pop() ?? 'DOC').toUpperCase().slice(0, 4)}
+                </span>
               </div>
+            ) : (
+              // Video: no thumbnail — dark tile with a play glyph.
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11 }}>▶</div>
             )}
             {!disabled && (
               <button

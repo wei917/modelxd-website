@@ -21,7 +21,10 @@ tsconfig.tsbuildinfo
 
 # scratch / fixtures (local-only)
 outputs/
-samples/
+# Root-anchored: this is the local scratch dir. Without the leading slash
+# it also swallowed public/samples/, so the bundled template sample files
+# were never committed and 404'd in production (caught July 25, 2026).
+/samples/
 supabase/.temp/
 _to_delete/
 public/templates/_raw/

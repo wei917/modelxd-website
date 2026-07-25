@@ -14,9 +14,21 @@ import * as openai     from './openai'
 import * as google     from './google'
 import * as alibaba    from './alibaba'
 import * as xai        from './xai'
+import * as anthropic  from './anthropic'
+import * as runway     from './runway'
+import * as moonshot   from './moonshot'
 import { startCall, endCall, logMediaUrl } from './call-log'
 import { estimateCost } from './pricing'
-import { extractPdfText } from '../pdf-extract'
+import { extractPdfText, estimatePdfTokens } from '../pdf-extract'
+
+// Native-PDF context guard: a PDF whose estimated tokens exceed the
+// provider's context window fails fast with a clear message instead of a
+// wasted upstream 400 (lenient bounds; borderline cases still get a clean
+// mapped error from lib/provider-errors.ts).
+const NATIVE_PDF_TOKEN_LIMITS: Record<string, number> = {
+  openai: 400_000,
+  google: 1_000_000,
+}
 import type {
   ModelInfo,
   TextStreamCallbacks,
@@ -36,7 +48,7 @@ export interface CallContext {
   userId?: string | null
 }
 
-const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai']
+const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot']
 
 // Providers whose text path can ingest a raw PDF natively (full fidelity:
 // text + page images). A model only takes the native path when it ALSO
@@ -83,11 +95,29 @@ async function resolveDocAttachments(
 
   for (const a of attachments) {
     if (isText(a)) {
-      foldedTexts.push(a.buffer.toString('utf-8'))
+      // Same guardrail as PDF extraction (lib/pdf-extract.ts MAX_CHARS):
+      // never fold more than ~50k tokens of a text file into the prompt.
+      const raw = a.buffer.toString('utf-8')
+      foldedTexts.push(raw.length > 200_000 ? raw.slice(0, 200_000) + '\n\n[…truncated]' : raw)
       continue
     }
     if (isPdf(a)) {
-      if (native) { kept.push(a); continue }   // provider embeds it natively
+      if (native) {
+        // Provider embeds it natively. Fail fast if the PDF clearly cannot
+        // fit the model's context window.
+        const limit = NATIVE_PDF_TOKEN_LIMITS[model.provider]
+        if (limit) {
+          const est = await estimatePdfTokens(a.buffer).catch(() => 0)
+          if (est > limit) {
+            throw new Error(
+              `Input too large: the attached PDF is roughly ${Math.round(est / 1000)}k tokens, ` +
+              `which exceeds the context window of this model.`,
+            )
+          }
+        }
+        kept.push(a)
+        continue
+      }
       try {
         const text = await extractPdfText(a.buffer)
         foldedTexts.push(text || '[PDF contained no extractable text — it may be scanned/image-only.]')
@@ -141,8 +171,10 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   context?:    CallContext,
+  genOptions?: { thinking?: string | null },
 ): Promise<{ requestId: string | null }> {
   assertSupported(model)
+  const thinking = genOptions?.thinking ?? null
 
   // Resolve document attachments (PDF / txt): natively-capable models keep
   // the PDF; everyone else gets the extracted text folded into the prompt.
@@ -181,9 +213,13 @@ export async function streamText(
 
   try {
     if (model.provider === 'openai') {
-      await openai.streamText(model, messages, wrappedCallbacks, attachments)
+      await openai.streamText(model, messages, wrappedCallbacks, attachments, thinking)
     } else if (model.provider === 'google') {
-      await google.streamText(model, messages, wrappedCallbacks, attachments)
+      await google.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+    } else if (model.provider === 'anthropic') {
+      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+    } else if (model.provider === 'moonshot') {
+      await moonshot.streamText(model, messages, wrappedCallbacks, attachments, thinking)
     } else {
       await alibaba.streamText(model, messages, wrappedCallbacks, attachments)
     }
@@ -204,6 +240,9 @@ export async function streamText(
       latency_ms:    Date.now() - t0,
       error_message: (err as Error).message?.slice(0, 1000) ?? 'unknown error',
     })
+    // Tag the error with the provider_calls request id so routes can
+    // surface a report/debug reference to the user (CC, July 20).
+    if (err instanceof Error) (err as any).requestId = requestId
     throw err
   }
 }
@@ -234,6 +273,8 @@ export async function generateImage(
       result = await openai.generateImage(model, prompt, quality, size, attachments, previousResponseId ?? null, options)
     } else if (model.provider === 'google') {
       result = await google.generateImage(model, prompt, quality, size, attachments, conversationHistory ?? null, options)
+    } else if (model.provider === 'xai') {
+      result = await xai.generateImage(model, prompt, quality, size, attachments, options)
     } else {
       result = await alibaba.generateImage(model, prompt, quality, size, attachments, options)
     }
@@ -254,6 +295,9 @@ export async function generateImage(
       latency_ms:    Date.now() - t0,
       error_message: (err as Error).message?.slice(0, 1000) ?? 'unknown error',
     })
+    // Tag the error with the provider_calls request id so routes can
+    // surface a report/debug reference to the user (CC, July 20).
+    if (err instanceof Error) (err as any).requestId = requestId
     throw err
   }
 }
@@ -294,15 +338,15 @@ export async function generateVideo(
 ): Promise<VideoResult & { requestId: string | null }> {
   assertSupported(model)
 
-  // Alibaba/DashScope, Google/Veo and xAI/Grok Imagine support native video.
-  if (model.provider !== 'alibaba' && model.provider !== 'google' && model.provider !== 'xai') {
+  // Alibaba/DashScope, Google/Veo, xAI/Grok Imagine and Runway support native video.
+  if (model.provider !== 'alibaba' && model.provider !== 'google' && model.provider !== 'xai' && model.provider !== 'runway') {
     throw new Error(`Video generation not supported for provider: ${model.provider}`)
   }
 
   // Resolution key inferred from min(width,height) of the size string.
   const sizeMatch = size.match(/(\d+)\s*[x×*]\s*(\d+)/i)
   const minDim = sizeMatch ? Math.min(parseInt(sizeMatch[1], 10), parseInt(sizeMatch[2], 10)) : 720
-  const resolution = minDim >= 2160 ? '4k' : minDim >= 1080 ? '1080p' : '720p'
+  const resolution = minDim >= 2160 ? '4k' : minDim >= 1080 ? '1080p' : minDim >= 720 ? '720p' : '480p'
 
   const desc      = descriptor(model, 'video', context)
   const requestId = startCall(desc, {
@@ -315,6 +359,8 @@ export async function generateVideo(
       ? await google.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
       : model.provider === 'xai'
       ? await xai.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+      : model.provider === 'runway'
+      ? await runway.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
       : await alibaba.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     endCall(requestId, desc, {
       status:         'success',
@@ -329,6 +375,9 @@ export async function generateVideo(
       latency_ms:    Date.now() - t0,
       error_message: (err as Error).message?.slice(0, 1000) ?? 'unknown error',
     })
+    // Tag the error with the provider_calls request id so routes can
+    // surface a report/debug reference to the user (CC, July 20).
+    if (err instanceof Error) (err as any).requestId = requestId
     throw err
   }
 }

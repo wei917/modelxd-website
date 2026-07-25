@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import ReactMarkdown from 'react-markdown'
 import type { UserCredits, CreditTransaction } from '../../lib/credits'
+import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +24,43 @@ interface Profile {
   display_name: string | null
   bio: string | null
   avatar_url: string | null
+}
+
+// Shared content-mode filter pills (XDuels / XCreates / XVotes tabs).
+function ModePills({ value, onChange }: {
+  value: 'all' | 'text' | 'image' | 'video'
+  onChange: (v: 'all' | 'text' | 'image' | 'video') => void
+}) {
+  const t = useT()
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const }}>
+      {([
+        { id: 'all',   key: 'common.all',  color: 'var(--muted2)' },
+        { id: 'text',  key: 'mode.text',   color: '#4a9eff' },
+        { id: 'image', key: 'mode.image',  color: '#a78bfa' },
+        { id: 'video', key: 'mode.video',  color: '#34d399' },
+      ] as const).map(opt => {
+        const active = value === opt.id
+        return (
+          <button key={opt.id}
+            onClick={() => onChange(opt.id)}
+            style={{
+              padding: '6px 14px', borderRadius: 999,
+              background: active ? opt.color + '22' : 'transparent',
+              border: `1px solid ${active ? opt.color + '88' : 'var(--border2)'}`,
+              color: active ? opt.color : 'var(--muted2)',
+              fontSize: 11, fontWeight: 700,
+              fontFamily: 'var(--font-mono), monospace',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+          >
+            {t(opt.key)}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 type Tab = 'duels' | 'xcreates' | 'votes' | 'activities'
@@ -54,6 +92,8 @@ const DISPLAY_TIERS: { id: string; priceCents: number; label: string; descriptio
 ]
 
 export default function ProfilePage() {
+  const { lang, setLang } = useLang()
+  const t = useT()
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const [user,        setUser]        = useState<any>(null)
@@ -81,6 +121,27 @@ export default function ProfilePage() {
   // Default to 'image' (CC, July 17): it's the most-used mode and 'all'
   // pulls every row's slots jsonb on first open — noticeably slow.
   const [xcreateFilter, setXcreateFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
+  // Content-mode filters for the XDuels / XVotes tabs (CC, July 19) —
+  // same pills as XCreates; these lists are client-cached so filtering
+  // is instant.
+  // Default 'image' across all three content tabs (CC, July 19) —
+  // matches XCreates; image grids are the most scannable landing view.
+  const [duelFilter, setDuelFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
+  const [voteFilter, setVoteFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
+  // Credit activity ledger lives with the balance card, not the content
+  // tabs (CC, July 19).
+  const [showActivity, setShowActivity] = useState(false)
+  // Danger zone (delete account): expand → type DELETE → call the API.
+  const [dangerOpen, setDangerOpen] = useState(false)
+  const [dangerText, setDangerText] = useState('')
+  const [dangerBusy, setDangerBusy] = useState(false)
+  const [dangerErr, setDangerErr] = useState<string | null>(null)
+  useEffect(() => {
+    if (!showActivity) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowActivity(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showActivity])
   // Bump this to force a re-fetch (Refresh button). Adding it to the
   // tabs effect's deps means setting `xcreateRefreshTick + 1` triggers
   // exactly one new fetch without disturbing filter/page state.
@@ -237,7 +298,8 @@ export default function ProfilePage() {
             setVotes(data ?? []); markLoaded('votes')
           }
         })
-    } else if (tab === 'activities') {
+    }
+    if (showActivity) {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
       client.from('credit_transactions').select('*').eq('user_id', user.id)
         .order('created_at', { ascending: false }).limit(100)
@@ -250,7 +312,7 @@ export default function ProfilePage() {
   // 200-row xcreate cache. Filter + pagination are now both client-side
   // so they intentionally don't appear here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, user, xcreateRefreshTick])
+  }, [tab, user, xcreateRefreshTick, showActivity])
 
   // Fetch the visible XCreate page from the server, which fetches + re-signs
   // ONLY that page's rows (one batched sign per bucket) and returns them
@@ -289,6 +351,12 @@ export default function ProfilePage() {
   // (and only applies) when buying for someone else.
   const [giftMode,     setGiftMode]     = useState<'self' | 'other'>('self')
   const [giftEmail,    setGiftEmail]    = useState('')
+  // Which tile is chosen. Separate from checkoutTier, which means "a Stripe
+  // redirect is in flight". Picking a tile used to launch checkout on the
+  // click, which sent people to Stripe before they'd finished reading the
+  // options (CC, July 25) — now the tiles only select, and the Pay button
+  // is the single thing that spends money. 'custom' = use customAmount.
+  const [pickedTier,   setPickedTier]   = useState<string | null>('tier_20')
 
   const startCheckout = async (tierId: string | null, customCents?: number) => {
     if (giftMode === 'other' && !giftEmail.trim()) {
@@ -319,6 +387,26 @@ export default function ProfilePage() {
     }
   }
 
+  // Returning from Stripe with the browser's Back button restores this page
+  // from the bfcache with its React state intact — checkoutOpen still true
+  // and checkoutTier still set. That renders the checkout overlay with every
+  // control disabled (disabled={!!checkoutTier}) and its dismiss handler
+  // gated on !checkoutTier, i.e. a full-screen blurred sheet with nothing
+  // clickable and no way out. That's the hang (CC, July 25).
+  //
+  // Stripe's own Cancel button navigates to cancel_url, which is a fresh
+  // load and resets state naturally — only the back-button path breaks, so
+  // the fix is scoped to a genuine bfcache restore.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return
+      setCheckoutTier(null)
+      setCheckoutOpen(false)
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
+
   // Post-redirect banner + balance refresh. When Stripe sends the user
   // back with ?checkout=success we poll user_credits for ~15s so the
   // webhook-granted balance appears without a manual refresh. The
@@ -328,6 +416,10 @@ export default function ProfilePage() {
     const params = new URLSearchParams(window.location.search)
     const result = params.get('checkout')
     if (result !== 'success' && result !== 'cancel') return
+    // Whatever brought us back, the checkout attempt is over — never leave
+    // the modal in its locked "processing" state.
+    setCheckoutTier(null)
+    setCheckoutOpen(false)
     setCheckoutBanner(result)
     // Strip the query so a reload doesn't re-fire the banner.
     const url = new URL(window.location.href)
@@ -345,7 +437,7 @@ export default function ProfilePage() {
         const { data: c } = await client.from('user_credits').select('*').eq('user_id', data.user.id).maybeSingle()
         if (c) setCredits(c as UserCredits)
         // Also refresh ledger if the Credits tab is open.
-        if (tab === 'activities') {
+        if (showActivity) {
           const { data: t } = await client.from('credit_transactions').select('*').eq('user_id', data.user.id)
             .order('created_at', { ascending: false }).limit(100)
           setTxns((t ?? []) as CreditTransaction[])
@@ -457,8 +549,26 @@ export default function ProfilePage() {
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
             <span style={{ width: 24, height: 1, background: 'var(--red)' }} />
-            Account  ·  {user?.email ? 'Signed in' : ''}
+            {t('profile.account')}  ·  {user?.email ? t('profile.signedin') : ''}
+            {/* Language picker — auto-detect handles first visits; this is
+                the manual override. Labels are each language's own name. */}
+            <select
+              value={lang}
+              onChange={e => setLang(e.target.value as Lang)}
+              aria-label="Language"
+              style={{
+                marginLeft: 'auto', padding: '6px 10px', borderRadius: 7,
+                border: '1px solid var(--border2)', background: 'var(--surface)',
+                color: 'var(--white)', fontSize: 12, cursor: 'pointer', outline: 'none',
+                letterSpacing: 'normal', textTransform: 'none',
+              }}
+            >
+              {LANGS.map(l => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
           </div>
+
 
           {/* ── Header row ──
               Profile block (avatar + name + email) on the left; credit
@@ -480,7 +590,7 @@ export default function ProfilePage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {profile.avatar_url
-                  ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={profile.avatar_url} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--red)' }}>{initials}</span>
                 }
               </div>
@@ -491,6 +601,17 @@ export default function ProfilePage() {
                   {profile.display_name ?? 'Anonymous'}
                 </h1>
                 <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
+                {/* Sign Out belongs with the identity block (CC, July 19). */}
+                <button
+                  onClick={async () => { await sb().auth.signOut(); window.location.href = '/' }}
+                  style={{
+                    marginTop: 10, padding: '6px 14px', borderRadius: 7,
+                    border: '1px solid var(--border2)', background: 'transparent',
+                    color: 'var(--muted2)', fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  {t('auth.signout')}
+                </button>
               </div>
             </div>
 
@@ -514,7 +635,7 @@ export default function ProfilePage() {
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
                   <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--red)', display: 'inline-block' }} />
-                  Credit balance
+                  {t('profile.balance')}
                 </div>
                 <div style={{
                   fontSize: 32, fontWeight: 800, color: 'var(--white)',
@@ -528,8 +649,8 @@ export default function ProfilePage() {
                     fontSize: 11, color: 'var(--muted2)', marginTop: 8,
                     fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em',
                   }}>
-                    Spent {formatCents(credits.lifetime_spent_cents)}
-                    {credits.lifetime_granted_cents > 0 && <>   ·   Granted {formatCents(credits.lifetime_granted_cents)}</>}
+                    {t('profile.spent')} {formatCents(credits.lifetime_spent_cents)}
+                    {credits.lifetime_granted_cents > 0 && <>   ·   {t('profile.granted')} {formatCents(credits.lifetime_granted_cents)}</>}
                   </div>
                 )}
               </div>
@@ -554,7 +675,21 @@ export default function ProfilePage() {
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 8px 24px rgba(31,170,52,0.34)'; el.style.transform = 'translateY(-1px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)' }}
               >
-                + Add credits
+                {t('profile.addcredits')}
+              </button>
+              {/* Ledger toggle — credit activity belongs to this card. */}
+              <button
+                onClick={() => setShowActivity(true)}
+                style={{
+                  padding: '12px 16px', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--border2)',
+                  color: 'var(--muted2)', fontWeight: 700, fontSize: 12,
+                  fontFamily: 'var(--font-mono), monospace',
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' as const,
+                }}
+              >
+                {t('profile.activity')}
               </button>
             </div>
           </div>
@@ -586,17 +721,145 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* Credit activity — pop-up dialog (CC, July 20), not inline. */}
+          {showActivity && (
+            <div
+              onClick={e => { if (e.target === e.currentTarget) setShowActivity(false) }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 1200,
+                background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+              }}
+            >
+              <div style={{
+                background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 12,
+                width: '100%', maxWidth: 860, maxHeight: '78vh',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+              }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '16px 20px', borderBottom: '1px solid var(--border)',
+                }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono), monospace', fontSize: 12, fontWeight: 700,
+                    letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--white)',
+                  }}>{t('profile.activity')}</span>
+                  <button
+                    onClick={() => setShowActivity(false)}
+                    aria-label="Close"
+                    style={{
+                      width: 28, height: 28, background: 'transparent',
+                      border: '1px solid var(--border2)', borderRadius: 6,
+                      color: 'var(--muted2)', fontSize: 14, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >✕</button>
+                </div>
+                <div style={{ overflowY: 'auto', padding: 20 }}>
+                  {txns.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 72, fontSize: 13, border: '1px dashed var(--border2)', borderRadius: 10 }}>
+                  No credit activity yet. Grants and purchases will appear here.
+                </div>
+              : <div style={{
+                  border: '1px solid var(--border2)',
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  background: 'var(--surface)',
+                }}>
+                  {/* Column headers */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '160px 110px 1fr 130px 130px',
+                    fontSize: 9, color: 'var(--muted2)',
+                    textTransform: 'uppercase' as const, letterSpacing: '0.12em',
+                    fontFamily: 'var(--font-mono), monospace', fontWeight: 700,
+                    padding: '14px 20px',
+                    background: 'var(--surface2)',
+                    borderBottom: '1px solid var(--border2)',
+                  }}>
+                    <div>Date</div>
+                    <div>Type</div>
+                    <div>Description</div>
+                    <div style={{ textAlign: 'right' }}>Amount</div>
+                    <div style={{ textAlign: 'right' }}>Balance</div>
+                  </div>
+                  {txns.map((t, idx) => {
+                    const positive = t.amount_cents >= 0
+                    const color = positive ? 'var(--green)' : 'var(--red)'
+                    const zebra = idx % 2 === 1
+                    return (
+                      <div
+                        key={t.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '160px 110px 1fr 130px 130px',
+                          alignItems: 'center',
+                          padding: '13px 20px',
+                          background: zebra ? 'var(--bg)' : 'transparent',
+                          borderBottom: idx === txns.length - 1 ? 'none' : '1px solid var(--border)',
+                          fontSize: 12,
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = zebra ? 'var(--bg)' : 'transparent'}
+                      >
+                        <div style={{ color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', fontSize: 11, letterSpacing: '0.02em' }}>
+                          {new Date(t.created_at).toLocaleDateString()}
+                          {' '}
+                          <span style={{ color: 'var(--muted)' }}>
+                            {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{
+                            display: 'inline-block', padding: '3px 9px', borderRadius: 3,
+                            fontSize: 9, fontWeight: 700,
+                            background: color === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)',
+                            color,
+                            fontFamily: 'var(--font-mono), monospace',
+                            letterSpacing: '0.1em',
+                            textTransform: 'uppercase',
+                          }}>{KIND_LABELS[t.kind]}</span>
+                        </div>
+                        <div style={{ color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12 }}>
+                          {t.description ?? (t.reference_type ? `${t.reference_type}${t.reference_id ? ` · ${t.reference_id}` : ''}` : '—')}
+                        </div>
+                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color, fontSize: 12, letterSpacing: '0.02em' }}>
+                          {positive ? '+' : ''}{formatCents(t.amount_cents)}
+                        </div>
+                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', fontSize: 12, letterSpacing: '0.02em' }}>
+                          {formatCents(t.balance_after_cents)}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Privacy summary — sits right above the content tabs so the
+              public/private expectations frame what's below (CC, July 19). */}
+          <div style={{
+            marginBottom: 10,
+            fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6,
+          }}>
+            {t('profile.privacy')}
+          </div>
+
           {/* ── Tabs ── */}
           <div style={{
             display: 'flex', gap: 0, marginBottom: 32,
             borderBottom: '1px solid var(--border)',
           }}>
-            {([['duels', '⚔ XDuels'], ['xcreates', '✦ XCreates'], ['votes', '⊞ XVotes'], ['activities', '◈ Activities']] as [Tab, string][]).map(([t, label]) => {
-              const active = tab === t
+            {([['duels', '⚔ ' + t('nav.xduel')], ['xcreates', '✦ ' + t('nav.xcreate')], ['votes', '⊞ ' + t('nav.xvote')]] as [Tab, string][]).map(([tb, label]) => {
+              const active = tab === tb
               return (
                 <button
-                  key={t}
-                  onClick={() => { setTab(t); if (t === 'xcreates') setXcreatePage(0) }}
+                  key={tb}
+                  onClick={() => { setTab(tb); if (tb === 'xcreates') setXcreatePage(0) }}
                   style={{
                     padding: '12px 20px', background: 'transparent', border: 'none',
                     borderBottom: active ? '2px solid var(--red)' : '2px solid transparent',
@@ -620,13 +883,17 @@ export default function ProfilePage() {
           </div>
 
           {/* ── XDuels tab ── */}
-          {tab === 'duels' && (
+          {tab === 'duels' && (() => {
+            const visibleDuels = duelFilter === 'all' ? duels : duels.filter(d => d.mode === duelFilter)
+            return (
             !tabsLoaded.duels
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
-              : duels.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>No XDuels yet — head to XDuel to start.</div>
+              : <>
+              <ModePills value={duelFilter} onChange={setDuelFilter} />
+              {visibleDuels.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{duelFilter === 'all' ? t('profile.noduels') : t('profile.noduels')}</div>
               : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-                  {duels.map(item => {
+                  {visibleDuels.map(item => {
                     const slots   = (item.slots ?? []).filter(Boolean)
                     const mode    = item.mode
                     const modeColor = mode === 'video' ? '#34d399' : mode === 'image' ? '#a78bfa' : '#4a9eff'
@@ -684,7 +951,7 @@ export default function ProfilePage() {
                                 fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
                                 transition: 'all 0.15s',
                               }}
-                            >{copied ? '✓ Copied' : '↗ Share'}</button>
+                            >{copied ? t('common.copied') : t('common.share')}</button>
                             <button
                               onClick={() => handleDelete('duel', item.id, item.prompt)}
                               disabled={isDel}
@@ -695,14 +962,16 @@ export default function ProfilePage() {
                                 fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
                                 transition: 'all 0.15s', opacity: isDel ? 0.5 : 1,
                               }}
-                            >{isDel ? '…' : '✕ Delete'}</button>
+                            >{isDel ? '…' : t('common.delete')}</button>
                           </div>
                         </div>
                       </div>
                     )
                   })}
-                </div>
-          )}
+                </div>}
+              </>
+            )
+          })()}
 
           {/* ── XCreates tab ── */}
           {tab === 'xcreates' && (() => {
@@ -723,10 +992,10 @@ export default function ProfilePage() {
                 marginBottom: 16, flexWrap: 'wrap' as const,
               }}>
                 {([
-                  { id: 'all',   label: 'All',   color: 'var(--muted2)' },
-                  { id: 'text',  label: 'Text',  color: '#4a9eff' },
-                  { id: 'image', label: 'Image', color: '#a78bfa' },
-                  { id: 'video', label: 'Video', color: '#34d399' },
+                  { id: 'all',   label: t('common.all'),  color: 'var(--muted2)' },
+                  { id: 'text',  label: t('mode.text'),   color: '#4a9eff' },
+                  { id: 'image', label: t('mode.image'),  color: '#a78bfa' },
+                  { id: 'video', label: t('mode.video'),  color: '#34d399' },
                 ] as const).map(opt => {
                   const active = xcreateFilter === opt.id
                   return (
@@ -849,7 +1118,7 @@ export default function ProfilePage() {
                                 fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
                                 transition: 'all 0.15s', opacity: isDel ? 0.5 : 1,
                               }}
-                            >{isDel ? '…' : '✕ Delete'}</button>
+                            >{isDel ? '…' : t('common.delete')}</button>
                           </div>
                         </div>
                       </div>
@@ -891,13 +1160,17 @@ export default function ProfilePage() {
           })()}
 
           {/* ── Votes tab ── */}
-          {tab === 'votes' && (
+          {tab === 'votes' && (() => {
+            const visibleVotes = voteFilter === 'all' ? votes : votes.filter((v: any) => v.duels?.mode === voteFilter)
+            return (
             !tabsLoaded.votes
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
-              : votes.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>No votes yet — head to the Vote page to start voting on community duels.</div>
+              : <>
+              <ModePills value={voteFilter} onChange={setVoteFilter} />
+              {visibleVotes.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.novotes')}</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {votes.map((v: any) => {
+                  {visibleVotes.map((v: any) => {
                     const duel = v.duels
                     const isTie = v.vote_choice === 'T'
                     return (
@@ -944,93 +1217,73 @@ export default function ProfilePage() {
                       </a>
                     )
                   })}
-                </div>
-          )}
+                </div>}
+              </>
+            )
+          })()}
 
           {/* ── Credits tab ──
               Rendered as a proper striped ledger: one bordered container,
               row dividers instead of per-row borders, alternating row
               background for legibility, mono numerics pinned to the right. */}
-          {tab === 'activities' && (
-            txns.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 72, fontSize: 13, border: '1px dashed var(--border2)', borderRadius: 10 }}>
-                  No credit activity yet. Grants and purchases will appear here.
+
+          {/* ── Danger zone — delete account (Privacy Policy §5) ── */}
+          <div style={{ marginTop: 56, border: '1px solid rgba(232,69,60,0.35)', borderRadius: 10, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>
+                  {t('profile.danger')}
                 </div>
-              : <div style={{
-                  border: '1px solid var(--border2)',
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  background: 'var(--surface)',
-                }}>
-                  {/* Column headers */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '160px 110px 1fr 130px 130px',
-                    fontSize: 9, color: 'var(--muted2)',
-                    textTransform: 'uppercase' as const, letterSpacing: '0.12em',
-                    fontFamily: 'var(--font-mono), monospace', fontWeight: 700,
-                    padding: '14px 20px',
-                    background: 'var(--surface2)',
-                    borderBottom: '1px solid var(--border2)',
-                  }}>
-                    <div>Date</div>
-                    <div>Type</div>
-                    <div>Description</div>
-                    <div style={{ textAlign: 'right' }}>Amount</div>
-                    <div style={{ textAlign: 'right' }}>Balance</div>
-                  </div>
-                  {txns.map((t, idx) => {
-                    const positive = t.amount_cents >= 0
-                    const color = positive ? 'var(--green)' : 'var(--red)'
-                    const zebra = idx % 2 === 1
-                    return (
-                      <div
-                        key={t.id}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '160px 110px 1fr 130px 130px',
-                          alignItems: 'center',
-                          padding: '13px 20px',
-                          background: zebra ? 'var(--bg)' : 'transparent',
-                          borderBottom: idx === txns.length - 1 ? 'none' : '1px solid var(--border)',
-                          fontSize: 12,
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = zebra ? 'var(--bg)' : 'transparent'}
-                      >
-                        <div style={{ color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', fontSize: 11, letterSpacing: '0.02em' }}>
-                          {new Date(t.created_at).toLocaleDateString()}
-                          {' '}
-                          <span style={{ color: 'var(--muted)' }}>
-                            {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <div>
-                          <span style={{
-                            display: 'inline-block', padding: '3px 9px', borderRadius: 3,
-                            fontSize: 9, fontWeight: 700,
-                            background: color === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)',
-                            color,
-                            fontFamily: 'var(--font-mono), monospace',
-                            letterSpacing: '0.1em',
-                            textTransform: 'uppercase',
-                          }}>{KIND_LABELS[t.kind]}</span>
-                        </div>
-                        <div style={{ color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12 }}>
-                          {t.description ?? (t.reference_type ? `${t.reference_type}${t.reference_id ? ` · ${t.reference_id}` : ''}` : '—')}
-                        </div>
-                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color, fontSize: 12, letterSpacing: '0.02em' }}>
-                          {positive ? '+' : ''}{formatCents(t.amount_cents)}
-                        </div>
-                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', fontSize: 12, letterSpacing: '0.02em' }}>
-                          {formatCents(t.balance_after_cents)}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-          )}
+                <div style={{ fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('profile.deletewarn')}</div>
+              </div>
+              {!dangerOpen && (
+                <button
+                  onClick={() => { setDangerOpen(true); setDangerText(''); setDangerErr(null) }}
+                  style={{ padding: '9px 16px', borderRadius: 6, background: 'transparent', border: '1px solid var(--red)', color: 'var(--red)', fontWeight: 700, fontSize: 11, fontFamily: 'var(--font-display), sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+                >
+                  {t('profile.deleteaccount')}
+                </button>
+              )}
+            </div>
+            {dangerOpen && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+                <input
+                  value={dangerText}
+                  onChange={e => setDangerText(e.target.value)}
+                  placeholder={t('profile.deleteconfirm')}
+                  disabled={dangerBusy}
+                  style={{ flex: 1, minWidth: 220, padding: '9px 12px', borderRadius: 6, border: '1px solid var(--border2)', background: '#fff', fontSize: 13, fontFamily: 'var(--font-mono), monospace', outline: 'none' }}
+                />
+                <button
+                  disabled={dangerText !== 'DELETE' || dangerBusy}
+                  onClick={async () => {
+                    setDangerBusy(true); setDangerErr(null)
+                    try {
+                      const res = await fetch('/api/profile/delete-account', { method: 'POST' })
+                      const j = await res.json().catch(() => ({}))
+                      if (!res.ok) throw new Error(j?.error ?? 'Delete failed. Please try again.')
+                      await sb().auth.signOut()
+                      window.location.href = '/'
+                    } catch (err) {
+                      setDangerErr(err instanceof Error ? err.message : 'Delete failed. Please try again.')
+                      setDangerBusy(false)
+                    }
+                  }}
+                  style={{ padding: '9px 16px', borderRadius: 6, background: dangerText === 'DELETE' && !dangerBusy ? 'var(--red)' : 'var(--border2)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 11, fontFamily: 'var(--font-display), sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase', cursor: dangerText === 'DELETE' && !dangerBusy ? 'pointer' : 'default' }}
+                >
+                  {dangerBusy ? t('profile.deleting') : t('profile.deleteaccount')}
+                </button>
+                <button
+                  disabled={dangerBusy}
+                  onClick={() => { setDangerOpen(false); setDangerText(''); setDangerErr(null) }}
+                  style={{ padding: '9px 12px', borderRadius: 6, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted2)', fontSize: 11, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+                {dangerErr && <div style={{ width: '100%', fontSize: 12, color: 'var(--red)' }}>⚠️ {dangerErr}</div>}
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
@@ -1211,12 +1464,12 @@ export default function ProfilePage() {
             {/* Tier grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               {DISPLAY_TIERS.map((t) => {
-                const isSelected = checkoutTier === t.id
+                const isSelected = pickedTier === t.id
                 const isDimmed = checkoutTier !== null && !isSelected
                 return (
                   <button
                     key={t.id}
-                    onClick={() => startCheckout(t.id)}
+                    onClick={() => setPickedTier(t.id)}
                     disabled={!!checkoutTier}
                     style={{
                       textAlign: 'left' as const,
@@ -1241,8 +1494,8 @@ export default function ProfilePage() {
                     onMouseLeave={e => {
                       if (!checkoutTier) {
                         const el = e.currentTarget as HTMLElement
-                        el.style.borderColor = 'var(--border2)'
-                        el.style.background = 'var(--surface)'
+                        el.style.borderColor = isSelected ? 'var(--red)' : 'var(--border2)'
+                        el.style.background = isSelected ? 'var(--red-dim)' : 'var(--surface)'
                         el.style.transform = 'translateY(0)'
                       }
                     }}
@@ -1273,12 +1526,7 @@ export default function ProfilePage() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  if (checkoutTier) return
-                  const n = Math.round(Number(customAmount))
-                  if (!Number.isFinite(n) || n < 1 || n > 1000) { alert('Enter a whole amount between $1 and $1000'); return }
-                  startCheckout(null, n * 100)
-                }}
+                onClick={() => { if (!checkoutTier) setPickedTier('custom') }}
                 onMouseEnter={e => {
                   if (!checkoutTier) {
                     const el = e.currentTarget as HTMLElement
@@ -1290,20 +1538,21 @@ export default function ProfilePage() {
                 onMouseLeave={e => {
                   if (!checkoutTier) {
                     const el = e.currentTarget as HTMLElement
-                    el.style.borderColor = 'var(--border2)'
-                    el.style.background = 'var(--surface)'
+                    const on = pickedTier === 'custom'
+                    el.style.borderColor = on ? 'var(--red)' : 'var(--border2)'
+                    el.style.background = on ? 'var(--red-dim)' : 'var(--surface)'
                     el.style.transform = 'translateY(0)'
                   }
                 }}
                 style={{
                   position: 'relative' as const,
                   padding: '18px 18px 16px',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border2)',
+                  background: pickedTier === 'custom' ? 'var(--red-dim)' : 'var(--surface)',
+                  border: `1px solid ${pickedTier === 'custom' ? 'var(--red)' : 'var(--border2)'}`,
                   borderRadius: 8,
                   cursor: checkoutTier ? 'default' : 'pointer',
                   transition: 'all 0.15s ease-out',
-                  opacity: checkoutTier && checkoutTier !== 'custom' ? 0.4 : 1,
+                  opacity: checkoutTier !== null && pickedTier !== 'custom' ? 0.4 : 1,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
@@ -1314,8 +1563,8 @@ export default function ProfilePage() {
                     max={1000}
                     step={1}
                     value={customAmount}
-                    onChange={e => setCustomAmount(e.target.value)}
-                    onClick={e => e.stopPropagation()}
+                    onChange={e => { setCustomAmount(e.target.value); setPickedTier('custom') }}
+                    onClick={e => { e.stopPropagation(); if (!checkoutTier) setPickedTier('custom') }}
                     placeholder="200"
                     disabled={!!checkoutTier}
                     style={{
@@ -1383,6 +1632,48 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* The one control that spends money. Everything above it only
+                selects; nothing leaves the page until this is pressed. */}
+            {(() => {
+              const customCents = Math.round(Number(customAmount)) * 100
+              const customValid = Number.isFinite(customCents) && customCents >= 100 && customCents <= 100000
+              const tier = DISPLAY_TIERS.find(x => x.id === pickedTier)
+              const cents = pickedTier === 'custom' ? customCents : (tier?.priceCents ?? 0)
+              const ready = !checkoutTier && (pickedTier === 'custom' ? customValid : !!tier)
+              const amount = cents > 0 && (pickedTier !== 'custom' || customValid)
+                ? `$${(cents / 100).toLocaleString()}`
+                : ''
+              return (
+                <button
+                  onClick={() => {
+                    if (!ready) return
+                    if (pickedTier === 'custom') startCheckout(null, customCents)
+                    else if (tier) startCheckout(tier.id)
+                  }}
+                  disabled={!ready}
+                  style={{
+                    width: '100%', marginTop: 20, padding: '15px 20px',
+                    background: ready ? 'var(--red)' : 'var(--border)',
+                    color: ready ? '#fff' : 'var(--muted)',
+                    border: 'none', borderRadius: 8,
+                    fontFamily: 'var(--font-display), sans-serif',
+                    fontSize: 15, fontWeight: 800, letterSpacing: '0.08em',
+                    textTransform: 'uppercase' as const,
+                    cursor: ready ? 'pointer' : 'default',
+                    transition: 'background 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={e => { if (ready) (e.currentTarget as HTMLElement).style.boxShadow = '0 0 28px var(--red-glow)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                >
+                  {checkoutTier
+                    ? 'Redirecting…'
+                    : pickedTier === 'custom' && !customValid
+                      ? 'Enter $1 – $1000'
+                      : `Pay ${amount} →`}
+                </button>
+              )
+            })()}
 
             {checkoutTier && (
               <div style={{

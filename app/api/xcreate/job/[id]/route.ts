@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { data: slots } = await sb
     .from('xcreate_job_slots')
-    .select('slot_index, model_id, provider, model_name, name, options, text, is_image, is_video, streaming, done, cost, response_time, progress, error')
+    .select('slot_index, model_id, provider, model_name, name, options, text, is_image, is_video, streaming, done, cost, response_time, progress, error, error_ref')
     .eq('job_id', job.id)
     .order('slot_index', { ascending: true })
 
@@ -55,6 +55,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       responseTime: s.response_time,
       progress:     s.progress,
       error:        s.error,
+      errorRef:     s.error_ref ?? null,
     })),
   })
 }

@@ -18,7 +18,7 @@
 //   per_video_second lives in the DB row; input surcharges are read from
 //   the row's extra keys so pricing stays data-driven.
 
-import type { ModelInfo, Attachment, VideoResult } from './types'
+import type { ModelInfo, Attachment, VideoResult, ImageResult } from './types'
 
 const BASE = 'https://api.x.ai/v1'
 
@@ -60,7 +60,9 @@ export async function generateVideo(
     console.log(`${TAG} reference_images=${urls.length}`)
   } else if (imageAtts.length > 0) {
     const a = imageAtts[0]
-    body.image = a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
+    // The API requires the OBJECT form here - a bare URL/data-URI string is
+    // rejected at deserialization (verified live July 20, v1 and v1.5).
+    body.image = { type: 'image_url', url: a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}` }
     console.log(`${TAG} image-to-video via ${a.url ? 'signed url' : 'data URI'} (${a.buffer.length}b)`)
   }
 
@@ -116,4 +118,75 @@ export async function generateVideo(
   if (onProgress) onProgress(100)
 
   return { buffer, mediaType: 'video/mp4', durationSeconds: billedSeconds, cost }
+}
+
+
+// ── Grok Imagine Image ───────────────────────────────────────────────────────
+//
+// Text-to-image: POST /v1/images/generations
+// Image editing: POST /v1/images/edits (JSON body, image as URL / data URI)
+// Docs: docs.x.ai/developers/models/grok-imagine-image
+// Pricing: $0.02 per output image (1k & 2k), $0.002 per input image —
+// read from model_pricing.per_image so it stays data-driven.
+export async function generateImage(
+  model:       ModelInfo,
+  prompt:      string,
+  _quality:    'low' | 'medium' | 'high' = 'medium',
+  size:        string = '1024x1024',
+  attachments: Attachment[] = [],
+  options?:    { count?: number | null; aspect_ratio?: string | null },
+): Promise<ImageResult> {
+  const TAG = `[xai/${model.model_name}]`
+  const resolution = /2048|2k/i.test(String(size)) ? '2k' : '1k'
+  const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  const editing = imageAtts.length > 0
+  const n = Math.max(1, Math.min(4, options?.count ?? 1))
+
+  const body: any = { model: model.model_name, prompt, response_format: 'b64_json' }
+  if (editing) {
+    const a = imageAtts[0]
+    body.image = { type: 'image_url', url: a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}` }
+  } else {
+    body.resolution = resolution
+    if (options?.aspect_ratio) body.aspect_ratio = options.aspect_ratio
+    if (n > 1) body.n = n
+  }
+
+  const endpoint = `${BASE}/images/${editing ? 'edits' : 'generations'}`
+  console.log(`${TAG} generateImage ${editing ? 'edit' : 'generate'} resolution=${resolution} n=${n}`)
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey()}` },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    throw new Error(`Grok image request failed (${res.status}): ${(await res.text()).slice(0, 400)}`)
+  }
+  const json: any = await res.json()
+  const items: any[] = json.data ?? []
+  if (items.length === 0) throw new Error('Grok returned no image')
+
+  const decode = async (item: any): Promise<Buffer> => {
+    if (item.b64_json) return Buffer.from(item.b64_json, 'base64')
+    if (item.url) {
+      const r = await fetch(item.url)
+      if (!r.ok) throw new Error(`Grok image download failed (${r.status})`)
+      return Buffer.from(await r.arrayBuffer())
+    }
+    throw new Error('Grok image item missing b64_json/url')
+  }
+  const buffers = await Promise.all(items.map(decode))
+
+  const per = (model.model_pricing?.per_image ?? {}) as Record<string, number>
+  const outRate   = per[resolution] ?? per['1k'] ?? per.default ?? 0.02
+  const inputRate = per.input_image ?? 0.002
+  const cost = buffers.length * outRate + (editing ? imageAtts.length * inputRate : 0)
+  console.log(`${TAG} done images=${buffers.length} cost=$${cost.toFixed(4)}`)
+
+  return {
+    buffer:    buffers[0],
+    mediaType: 'image/png',
+    cost,
+    extras:    buffers.slice(1).map(b => ({ buffer: b, mediaType: 'image/png' })),
+  }
 }

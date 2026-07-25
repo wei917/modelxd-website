@@ -42,6 +42,7 @@ export async function streamText(
   messages: { role: 'user' | 'assistant'; content: any }[],
   callbacks: TextStreamCallbacks,
   attachments: Attachment[] = [],
+  thinking: string | null = null,
 ): Promise<void> {
   const TAG = `[openai/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
@@ -60,10 +61,13 @@ export async function streamText(
   }
 
   try {
-    const requestBody = {
+    const requestBody: any = {
       model: model.model_name,
       input,
       stream: true,
+      // Reasoning effort (thinking level) - validated live July 22:
+      // none / minimal / low / medium / high / xhigh / max.
+      ...(thinking ? { reasoning: { effort: thinking } } : {}),
     }
     console.log(`${TAG} request body:`, JSON.stringify({ ...requestBody, input: `[${input.length} message(s)]` }))
 
@@ -100,7 +104,7 @@ export async function streamText(
       }
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking })
     console.log(`${TAG} done sent_model=${model.model_name} returned_model=${responseModel} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} cost=$${cost.toFixed(6)}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
   } catch (err: any) {

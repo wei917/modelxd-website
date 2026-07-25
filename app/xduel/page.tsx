@@ -1,16 +1,91 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import ModeIcon from '../components/ModeIcon'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
-import AttachmentButton, { type Attachment } from '../components/AttachmentButton'
+import { attachSampleFile, commitAttachments, type Attachment } from '../components/AttachmentButton'
+import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
+import TemplatePicker from '../components/TemplatePicker'
+import { SAMPLES_BASE, type Template } from '../xcreate/templates'
 import MatchResult, { type RatingDelta } from '../components/MatchResult'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
 
 type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
+
+// Popular starter prompts, per mode (CC, July 19) — the XDuel analog of
+// XCreate's popular templates. Clicking a chip fills the prompt box;
+// chips marked needsImage want a photo attached (image_to_image / i2v).
+const POPULAR_PROMPTS: Record<Mode, { label: string; prompt: string; needsImage?: boolean; sampleUrl?: string; sampleName?: string }[]> = {
+  text: [
+    { label: '9.9 vs 9.11',       prompt: 'Which number is bigger: 9.9 or 9.11? Explain your reasoning.' },
+    { label: 'Explain like I\'m 5', prompt: 'Explain how airplanes stay in the air to a 5-year-old.' },
+    { label: 'Monday haiku',      prompt: 'Write a haiku about Monday mornings.' },
+    // Auto-attaches the bundled public-domain novel (CC, July 19) — a
+    // real summarization stress test (~38k tokens per model).
+    { label: 'Summarization', prompt: 'Summarize this novel in three paragraphs, then give one insight most readers miss.', sampleUrl: `${SAMPLES_BASE}/alice-in-wonderland.txt`, sampleName: 'alice-in-wonderland.txt' },
+  ],
+  image: [
+    { label: 'Remove background people', needsImage: true, prompt: 'Remove the people in the background of my photo. Keep the main subject and everything else exactly the same.' },
+    { label: 'Ghibli style',             needsImage: true, prompt: 'Turn my photo into a Studio Ghibli-style illustration. Keep the composition and subjects recognizable.' },
+    { label: 'Neon sign text',           prompt: "A photorealistic neon sign at night that says 'MODEL XD', glowing pink and blue, reflected on a rain-slicked street." },
+    { label: 'Astronaut on a horse',     prompt: 'A hyper-realistic photo of an astronaut riding a white horse on the moon, Earth glowing in the black sky.' },
+  ],
+  video: [
+    { label: 'Make my photo move', needsImage: true, prompt: 'Bring this photo to life with natural, subtle motion. Keep the subject exactly the same.' },
+    { label: 'Wave at the camera', needsImage: true, prompt: 'Make the person in this photo smile and wave at the camera naturally.' },
+    { label: 'Glass fruit ASMR',   prompt: 'ASMR video: a knife slowly slices a translucent glass apple on a wooden cutting board, crisp crystal sounds, macro shot.' },
+    { label: 'Surfing dog',        prompt: 'A golden retriever surfing a big wave, cinematic slow motion, golden hour light.' },
+    { label: 'Storm timelapse',    prompt: 'A timelapse of a thunderstorm rolling over a mountain range at dusk, lightning flashing inside the clouds.' },
+  ],
+}
+// XCreate-style popular cards (CC, July 20): the chips row is rendered
+// with the same TemplatePicker card gallery XCreate uses, so both pages'
+// "Popular" sections look identical. Cards are derived from
+// POPULAR_PROMPTS; emoji/subtitle per label.
+const POPULAR_CARD_META: Record<string, { emoji: string; subtitle: string }> = {
+  '9.9 vs 9.11':             { emoji: '🔢', subtitle: 'A classic reasoning trap' },
+  "Explain like I'm 5":      { emoji: '🧒', subtitle: 'How do airplanes fly?' },
+  'Monday haiku':            { emoji: '✍️', subtitle: 'A tiny writing duel' },
+  'Summarization': { emoji: '📖', subtitle: 'Auto-attaches the book (.txt)' },
+  'Remove background people': { emoji: '🧹', subtitle: 'Uses your photo' },
+  'Ghibli style':            { emoji: '🎨', subtitle: 'Uses your photo' },
+  'Restore old photo':       { emoji: '🖼️', subtitle: 'Uses your photo' },
+  'Neon sign text':          { emoji: '💡', subtitle: 'Can they spell it right?' },
+  'Astronaut on a horse':    { emoji: '🧑‍🚀', subtitle: 'The classic benchmark' },
+  'Make my photo move':      { emoji: '📷', subtitle: 'Uses your photo' },
+  'Wave at the camera':      { emoji: '👋', subtitle: 'Uses your photo' },
+  'Glass fruit ASMR':        { emoji: '🍏', subtitle: 'Macro + sound design' },
+  'Surfing dog':             { emoji: '🐕', subtitle: 'Cinematic slow motion' },
+  'Storm timelapse':         { emoji: '⛈️', subtitle: 'Lightning in the clouds' },
+}
+const POPULAR_PREVIEW_OVERRIDE: Record<string, string> = {
+  // Reuse XCreate's existing thumbnails where the task is the same.
+  '9.9 vs 9.11':              '/templates/text-decimals.jpg',
+  'Remove background people': '/templates/tool-remove-background.jpg',
+  'Ghibli style':             '/templates/style-watercolor-anime.jpg',
+}
+const POPULAR_CARDS: Record<Mode, Template[]> = (['text','image','video'] as Mode[]).reduce((acc, m) => {
+  acc[m] = POPULAR_PROMPTS[m].map(p => ({
+    id:            'xduel-' + p.label.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    emoji:         POPULAR_CARD_META[p.label]?.emoji ?? '⚔️',
+    title:         p.label,
+    subtitle:      POPULAR_CARD_META[p.label]?.subtitle ?? p.prompt,
+    mode:          m,
+    slotMode:      '',
+    starterPrompt: p.prompt,
+    kind:          'tool' as const,
+    previewUrl:    POPULAR_PREVIEW_OVERRIDE[p.label]
+                     ?? '/templates/xduel-' + p.label.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.jpg',
+    recommendedModels: [],
+    attachmentSlots: [],
+  }))
+  return acc
+}, {} as Record<Mode, Template[]>)
+
 type ArenaPhase = 'vote' | 'revote'
 
 type ModelMeta = {
@@ -35,14 +110,15 @@ type ModelState = {
   // can show a proper error block instead of stuffing it into <video src>
   // or <img src>, which the browser silently treats as a broken asset.
   errorMessage: string | null
+  errorRef: string | null
 }
 
 const STEPS = [
-  { n:1, label:'Task' },
-  { n:2, label:'Vote' },
-  { n:3, label:'Reveal Price' },
-  { n:4, label:'Vote Again' },
-  { n:5, label:'Meet the Model' },
+  { n:1, key:'xduel.step.task' },
+  { n:2, key:'xduel.step.vote' },
+  { n:3, key:'xduel.step.reveal' },
+  { n:4, key:'xduel.step.voteagain' },
+  { n:5, key:'xduel.step.meet' },
 ]
 
 const LABELS = ['A','B','C','D']
@@ -90,6 +166,11 @@ export default function XDuel() {
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  // Set when a clicked popular-prompt chip wants a photo and none is attached.
+  const [chipNeedsImage, setChipNeedsImage] = useState(false)
+  const [attachingSample, setAttachingSample] = useState(false)
+  // Which popular card is highlighted (XCreate-style selected ring).
+  const [popularId, setPopularId] = useState<string | null>(null)
 
   // Daily XDuel quota state. XDuel is free for users but ModelXD pays
   // the provider bills — so the server caps usage per mode per UTC day.
@@ -101,6 +182,14 @@ export default function XDuel() {
     used:   { text: number; image: number; video: number }
   }
   const [quota, setQuota] = useState<Quota | null>(null)
+  // If the remaining quota can't cover the selected count (cost =
+  // count - 1), fall back to the biggest affordable count.
+  useEffect(() => {
+    if (!quota) return
+    const left = Math.max(0, quota.limits[mode] - quota.used[mode])
+    if (count - 1 > left) setCount(Math.max(2, Math.min(4, left + 1)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quota, mode])
   const fetchQuota = async () => {
     try {
       const r = await fetch('/api/xduel/quota')
@@ -155,10 +244,14 @@ export default function XDuel() {
     goStep(2)
 
     try {
+      // Attachments are held in the browser until submit — upload now.
+      const committed = await commitAttachments(attachments)
+      if (committed !== attachments) setAttachments(committed)
+      const a0 = committed[0]
       const res = await fetch('/api/xduel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, count, attachment: attachments[0] ? { storagePath: attachments[0].storagePath, bucket: attachments[0].bucket, mediaType: attachments[0].mediaType, fileName: attachments[0].fileName, fileSize: attachments[0].fileSize } : null }),
+        body: JSON.stringify({ prompt, mode, count, attachment: a0 ? { storagePath: a0.storagePath, bucket: a0.bucket, mediaType: a0.mediaType, fileName: a0.fileName, fileSize: a0.fileSize } : null }),
       })
 
       if (!res.ok || !res.body) {
@@ -216,6 +309,7 @@ export default function XDuel() {
                   done:         false,
                   cost:         0,
                   errorMessage: null,
+                  errorRef: null,
                 }))
                 setModels(initialModels)
                 setLoading(false)
@@ -270,6 +364,14 @@ export default function XDuel() {
                   }
                 }))
 
+              } else if (currentEvent === 'end') {
+                // A duel with a failed slot refunds the quota server-side
+                // (July 19). Tell the user plainly — no provider details.
+                if (payload?.refunded) {
+                  setApiError('One of the models could not finish, so this duel did not count against your free quota. Feel free to try again.')
+                  fetchQuota()
+                }
+
               } else if (currentEvent === 'resolved') {
                                 // Update with actually-used models after any fallbacks
                                 setModels(prev => prev.map((m, i) => ({
@@ -291,6 +393,7 @@ export default function XDuel() {
                         isImage: false,
                         isVideo: false,
                         errorMessage: payload.message || 'Unknown error',
+                        errorRef: payload.ref ?? null,
                         streaming: false,
                         done: true,
                       }
@@ -320,7 +423,7 @@ export default function XDuel() {
   useEffect(() => {
     setOverride({
       eyebrow: t('xduel.eyebrow'),
-      title: step === 1 ? t('xduel.start') :
+      title: step === 1 ? t('xduel.title') :
              step === 5 ? t('xduel.reveal') :
              phase === 'vote' ? t('xduel.voteblind') :
              t('xduel.voteagain'),
@@ -395,7 +498,14 @@ export default function XDuel() {
     if (!keepPrompt) { setPrompt(''); setAttachments([]) }
   }
 
-  const approxTokens = Math.round(prompt.length / 3)
+  // Prompt chars ≈ /3; attached .txt files count too (≈ bytes/4) —
+  // they're folded into the prompt server-side, so they cost real tokens.
+  // The server folds at most 200k chars per file (lib/providers/index.ts),
+  // so the estimate caps at ~50k tokens per attachment to match.
+  const attachTokens = attachments.reduce((sum, a) =>
+    a.mediaType?.startsWith('text/') ? sum + Math.min(Math.round((a.fileSize ?? 0) / 4), 50_000) : sum, 0)
+  const attachTruncated = attachments.some(a => a.mediaType?.startsWith('text/') && (a.fileSize ?? 0) > 200_000)
+  const approxTokens = Math.round(prompt.length / 3) + attachTokens
 
   // Cheapest model for savings calc
   const cheapestModel = cheapestIdx >= 0 ? models[cheapestIdx] : null
@@ -416,6 +526,9 @@ export default function XDuel() {
   // text:  savings per 10M tokens
   // image/video: savings per 1000 generations
   const isMediaMode = mode === 'image' || mode === 'video'
+  // Remaining free duels for the current mode (XDuel is free-only —
+  // paid duels were tried and removed July 19; XCreate is the paid path).
+  const quotaLeft = quota ? Math.max(0, quota.limits[mode] - quota.used[mode]) : Infinity
   // Image / video models are billed per generation in fractional dollars
   // (e.g. $0.04). Math.round() on a $14.10 figure was fine, but the previous
   // version used Math.round on $0.04, which floored to $0. Switch to two-
@@ -456,17 +569,17 @@ export default function XDuel() {
       <div className="xduel-page">
         <div className="arena">
 
-          {/* ── Page header — eyebrow + big title live in the TopBar
-              (PageTitleContext override above); only the contextual
-              sub-line stays in the flow. ── */}
+          {/* ── In-page header: "// XDUEL" eyebrow + the step's guiding
+              line as the big headline (CC, July 20). ── */}
           <div className="prompt-header">
-            <div className="prompt-sub">
-              {step === 1 ? "Create a task for two anonymous models. You vote the result you like and we will reveal the best model for you." :
+            <div className="prompt-label">{t('xduel.eyebrow')}</div>
+            <h1 className="page-headline">
+              {step === 1 ? t('xduel.subtitle') :
                step === 5 ? null :
                phase === 'vote'
                 ? `"${prompt.substring(0,80)}${prompt.length>80?'…':''}"`
-                : <span>You picked <strong style={{color:'var(--white)'}}>{voteLabel(vote1)}</strong> — now you know the price. Does it change your mind?</span>}
-            </div>
+                : <span>You picked <strong style={{color:'var(--red)'}}>{voteLabel(vote1)}</strong> — now you know the price. Does it change your mind?</span>}
+            </h1>
           </div>
 
           {/* Step progress bar */}
@@ -474,7 +587,7 @@ export default function XDuel() {
             {STEPS.map((s, i) => (
               <span key={s.n} style={{display:'contents'}}>
                 <div className={`step-item ${step===s.n?'active':''} ${step>s.n?'done':''}`}>
-                  <div className="step-num">{s.n}</div>{s.label}
+                  <div className="step-num">{s.n}</div>{t(s.key)}
                 </div>
                 {i < STEPS.length-1 && <div className={`step-connector ${step>s.n?'done':''}`} />}
               </span>
@@ -484,48 +597,74 @@ export default function XDuel() {
           {/* ── STEP 1 ── */}
           {step === 1 && (
             <div className="step-section">
-              <div className="mode-selector">
-                {(['text','image','video'] as Mode[]).map(m => (
-                  <button key={m} className={`mode-btn ${mode===m?'active':''}`} onClick={() => {
-                    setMode(m)
-                    // Text mode hides the attachment button — clear any
-                    // staged attachments so they don't silently submit.
-                    if (m === 'text') setAttachments([])
-                  }}>
-                    <span className="mode-dot" />{m.charAt(0).toUpperCase()+m.slice(1)}
-                  </button>
-                ))}
+              {/* Step-1 composer header — same labeled-column language as
+                  XCreate's "Generate: / From:" row (CC redesign, July 19). */}
+              <div className="mode-row" style={{ marginBottom: 20 }}>
+                <div className="mode-col">
+                  <div className="field-label">{t('xduel.tasktype')}</div>
+                  <div className="mode-seg">
+                    {(['text','image','video'] as Mode[]).map(m => (
+                      <button key={m} className={`mode-seg-btn ${mode===m?'active':''}`} onClick={() => {
+                        setMode(m)
+                        setChipNeedsImage(false)
+                        setPopularId(null)
+                        // Text mode hides the attachment button — clear any
+                        // staged attachments so they don't silently submit.
+                        if (m === 'text') setAttachments([])
+                      }}>
+                        <ModeIcon m={m} />{t('mode.' + m)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mode-col">
+                  <div className="field-label">{t('xduel.howmany')}</div>
+                  <div className="count-selector" style={{ paddingBottom: 0 }}>
+                    {[2, 3, 4].map(c => (
+                      <button
+                        key={c}
+                        className={`count-btn ${count === c ? 'active' : ''}`}
+                        disabled={c - 1 > quotaLeft}
+                        title={c - 1 > quotaLeft ? 'Not enough free duels left today' : `Counts as ${c - 1} duel${c > 2 ? 's' : ''}`}
+                        onClick={() => setCount(c)}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                    <span className="count-note" style={quotaLeft === 0 ? { color: 'var(--red)' } : undefined}>
+                      {quota
+                        ? quotaLeft === 0
+                          ? t('xduel.noneleft').replace('{mode}', t('mode.' + mode))
+                          : `${count > 2 ? t('xduel.countsas').replace('{n}', String(count - 1)) : t('xduel.countsas1')} · ${t('xduel.freeleft').replace('{n}', String(quotaLeft)).replace('{mode}', t('mode.' + mode))}`
+                        : ''}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Daily XDuel quota readout. XDuel runs on the house, so
-                  we cap per mode per UTC day. */}
-              {quota && (() => {
-                const used  = quota.used[mode]
-                const limit = quota.limits[mode]
-                const left  = Math.max(0, limit - used)
-                const atCap = left === 0
-                return (
-                  <div style={{
-                    margin: '8px 0 18px',
-                    fontFamily: 'var(--font-mono), monospace',
-                    fontSize: 11, letterSpacing: '0.08em',
-                    color: atCap ? 'var(--red)' : 'var(--muted2)',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
-                    <span>{used} / {limit} FREE {mode.toUpperCase()} XDUELS TODAY</span>
-                    {atCap && <span>· RESETS AT UTC MIDNIGHT</span>}
-                  </div>
-                )
-              })()}
-
-              <div className="prompt-box">
+              {/* XCreate-style framed composer (CC, July 20): upload slot
+                  INSIDE the frame above the borderless textarea; the action
+                  row (counter + battle button) sits below the box. Text mode
+                  accepts documents only (PDF / txt): the router feeds the PDF
+                  natively to pdf_to_text-capable models and folds extracted
+                  text into the prompt for the rest — keeping the duel fair. */}
+              <div className="prompt-box framed">
+                <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+                  <LabeledSlotsPicker
+                    slots={[{ label: 'ATTACH', hint: mode === 'text' ? 'Optional — PDF or .txt' : 'Optional' }]}
+                    attachments={attachments}
+                    onChange={setAttachments}
+                    context="xduel"
+                    compact
+                    accept={mode === 'text'
+                      ? 'application/pdf,text/plain'
+                      : 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm'}
+                  />
+                </div>
                 <textarea
                   className="prompt-textarea"
-                  placeholder={
-                    mode === 'image' ? "Describe an image... e.g. 'A cinematic photo of a red panda in a snowy forest at dusk'" :
-                    mode === 'video' ? "Describe a video... e.g. 'A timelapse of a thunderstorm rolling over a mountain range'" :
-                    "Ask anything... e.g. 'Explain quantum entanglement in simple terms'"
-                  }
+                  maxLength={8000}
+                  placeholder={t('xduel.ph.' + mode)}
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => {
@@ -535,24 +674,62 @@ export default function XDuel() {
                     }
                   }}
                 />
-                <div className="prompt-actions">
-                  {/* Image/video modes accept the full set (image_to_image,
-                      image_to_video, etc.). Text mode accepts documents only
-                      (PDF / txt): the router feeds the PDF natively to
-                      pdf_to_text-capable models and folds extracted text into
-                      the prompt for the rest, so every picked model can read
-                      it — keeping the blind duel fair. */}
-                  {mode === 'text' ? (
-                    <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" accept="application/pdf,text/plain" />
-                  ) : (
-                    <AttachmentButton attachments={attachments} onChange={setAttachments} context="xduel" />
-                  )}
-                  <span className="prompt-counter">{approxTokens > 0 ? `~${approxTokens} tokens` : ''}</span>
-                  <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
-                    ⚔️ {t('xduel.cta')} →
-                  </button>
-                </div>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
+                <span className="prompt-counter">
+                  {prompt.length > 7000
+                    ? `${prompt.length.toLocaleString()} / 8,000 — for longer text, attach a .txt file`
+                    : approxTokens > 0 ? `~${approxTokens.toLocaleString()} tokens${attachTruncated ? ' (large file — first 200k characters used)' : ''}` : ''}
+                </span>
+                <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
+                  ⚔️ {t('xduel.cta')} →
+                </button>
+              </div>
+
+              {/* Popular starter prompts — same card gallery as XCreate's
+                  Popular section (TemplatePicker, wrap layout). */}
+              <div style={{ marginTop: 36 }}>
+                <div className="ms-cap">{t('xcreate.popular')}</div>
+                <TemplatePicker
+                  templates={POPULAR_CARDS[mode]}
+                  selectedId={popularId}
+                  disabled={attachingSample}
+                  layout="wrap"
+                  onClear={() => {
+                    setPopularId(null)
+                    setPrompt('')
+                    setChipNeedsImage(false)
+                    setAttachments([])
+                  }}
+                  onSelect={async card => {
+                    const p = POPULAR_PROMPTS[mode].find(x => x.label === card.title)
+                    if (!p) return
+                    setPopularId(card.id)
+                    setPrompt(p.prompt)
+                    setChipNeedsImage(!!p.needsImage)
+                    // Attachments follow the template (CC, July 20): a card
+                    // with a bundled sample replaces whatever is attached;
+                    // a text card without one clears the previous sample.
+                    // (Image/video cards keep the user's own uploaded photo
+                    // - those prompts are meant to run on it.)
+                    if (!p.sampleUrl && mode === 'text') setAttachments([])
+                    if (p.sampleUrl && !attachments.some(a => a.fileName === p.sampleName)) {
+                      // Fetch the bundled sample and attach it like a
+                      // user upload (same storage pipeline).
+                      setAttachingSample(true)
+                      const att = await attachSampleFile(
+                        p.sampleUrl, p.sampleName ?? 'sample.txt', 'text/plain', 'xduel',
+                      )
+                      setAttachingSample(false)
+                      if (att) setAttachments([{ ...att, slotIndex: 0 }])
+                      else setApiError(`Couldn't load the sample document for "${p.label}". Attach your own file to run this prompt.`)
+                    }
+                  }}
+                />
+              </div>
+              {chipNeedsImage && attachments.length === 0 && (
+                <div className="prompt-chip-hint">{t('xduel.attachhint')}</div>
+              )}
             </div>
           )}
 
@@ -635,6 +812,11 @@ export default function XDuel() {
                               <div style={{fontSize:28,lineHeight:1}}>⚠️</div>
                               <div style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,letterSpacing:1,textTransform:'uppercase',opacity:0.8}}>Generation failed</div>
                               <div style={{fontSize:13,lineHeight:1.5,maxWidth:460,color:'var(--muted)',wordBreak:'break-word'}}>{m.errorMessage}</div>
+                              {m.errorRef && (
+                                <div title={m.errorRef} style={{fontSize:10,marginTop:6,color:'var(--muted)',fontFamily:'var(--font-mono), monospace',letterSpacing:'0.05em',userSelect:'all'}}>
+                                  Ref: {m.errorRef.slice(0, 8)}
+                                </div>
+                              )}
                             </div>
                           : m.isVideo && m.text
                           ? <video src={m.text} autoPlay loop muted playsInline controls style={{display:'block'}} />
@@ -708,7 +890,14 @@ export default function XDuel() {
               )}
 
               {/* Vote row — A | ... | Tie | ... | B */}
-              <div className="vote-row">
+              {/* Columns: half the vote buttons, TIE, the other half —
+                  sized to the model count (2–4, CC July 19). */}
+              <div
+                className="vote-row"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.ceil((models.length || count) / 2)}, 1fr) auto repeat(${Math.floor((models.length || count) / 2)}, 1fr)`,
+                }}
+              >
                 {(() => {
                   const total = models.length || count
                   const half = Math.ceil(total / 2)
@@ -731,7 +920,7 @@ export default function XDuel() {
                         onMouseEnter={() => setCursor(cardColorHex2(i))}
                         onMouseLeave={() => setCursor('#e8453c')}
                       >
-                        {voted ? `✓ Picked ${label}` : `${label} is better`}
+                        {voted ? t('xduel.picked').replace('{l}', label) : t('xduel.isbetter').replace('{l}', label)}
                       </button>
                     )
                   }
@@ -756,13 +945,13 @@ export default function XDuel() {
                   {loading
                     ? 'Connecting…'
                     : anyStreaming
-                    ? 'Models are responding…'
+                    ? t('xduel.responding')
                     : phase==='vote'
-                    ? 'Pick the response you prefer — identities are hidden'
-                    : 'Now you know the cost — cast your final vote'}
+                    ? t('xduel.pickhint')
+                    : t('xduel.finalvote')}
                 </span>
                 {phase==='vote' && bothDone && (
-                  <button className="btn-secondary" onClick={() => goStep(1)}>← Change Prompt</button>
+                  <button className="btn-secondary" onClick={() => goStep(1)}>← {t('xduel.changeprompt')}</button>
                 )}
               </div>
             </div>

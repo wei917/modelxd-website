@@ -119,6 +119,10 @@ const PROMPTS: Record<string, string> = {
   'concept-art':
     'High-detail concept art of a cyberpunk Taipei street at night, dense neon signage, light rain, ' +
     'anamorphic lens flares, moody atmosphere.' + QUALITY_SUFFIX,
+  'text-earnings-analysis':
+    'A clean conceptual illustration of a rising bar chart and a line graph on a soft neutral gradient ' +
+    'background, one bar subtly dipping against the trend, minimal modern financial abstraction, ' +
+    'muted paper-white and slate palette.' + STYLE_SUFFIX,
   'reasoning-compare':
     'A clean conceptual illustration of two glowing speech bubbles facing off on a soft gradient background, ' +
     'minimal, modern, abstract representation of comparing ideas.' + STYLE_SUFFIX,

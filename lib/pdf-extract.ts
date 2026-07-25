@@ -20,3 +20,17 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
   const merged = (Array.isArray(text) ? text.join('\n\n') : text).trim()
   return merged.length > MAX_CHARS ? merged.slice(0, MAX_CHARS) + '\n\n[…truncated]' : merged
 }
+
+/**
+ * Rough token estimate for NATIVE PDF ingestion (OpenAI / Google), where
+ * the provider bills each page as an image (~258 tokens) plus its text.
+ * Used to fail fast before sending a PDF the model's context window
+ * cannot hold (see lib/providers/index.ts).
+ */
+export async function estimatePdfTokens(buffer: Buffer): Promise<number> {
+  const { getDocumentProxy, extractText } = await import('unpdf')
+  const pdf = await getDocumentProxy(new Uint8Array(buffer))
+  const { totalPages, text } = await extractText(pdf, { mergePages: true })
+  const chars = (Array.isArray(text) ? text.join('') : text).length
+  return totalPages * 258 + Math.ceil(chars / 4)
+}
