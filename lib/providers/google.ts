@@ -676,9 +676,12 @@ async function generateOmniVideo(
     imageAtts.length >= 2 ? 'reference_to_video' :
     imageAtts.length === 1 ? 'image_to_video' : 'text_to_video'
 
-  // A video input has to go through the Files API: the Interactions API takes
-  // it as a `document` part pointing at files/{id}, and Google discourages
-  // inline base64 for clips. (ai.google.dev/gemini-api/docs/omni)
+  // A video input has to go through the Files API, then rides as a `video`
+  // part pointing at the returned uri. Live-probed July 25: a `document` part
+  // is rejected with "Exactly one input video is required for edit task", and
+  // `file_uri` is not a recognised key — it must be `{ type:'video', uri }`.
+  // Inline `{ type:'video', data, mime_type }` also works but Google
+  // discourages base64 for clips. (ai.google.dev/gemini-api/docs/omni)
   //
   // Caveat worth knowing when this errors: editing an UPLOADED video is not
   // available to users in the EEA, Switzerland or the UK. Google enforces that
@@ -712,7 +715,7 @@ async function generateOmniVideo(
   }
 
   const input: any = (imageAtts.length === 0 && !isEdit) ? prompt : [
-    ...(videoUri ? [{ type: 'document', uri: videoUri }] : []),
+    ...(videoUri ? [{ type: 'video', uri: videoUri }] : []),
     ...imageAtts.map(a => ({ type: 'image', data: a.buffer.toString('base64'), mime_type: a.mediaType })),
     { type: 'text', text: prompt },
   ]
@@ -733,7 +736,10 @@ async function generateOmniVideo(
     },
     // Duration lives in response_format (verified live July 20: 3s-10s).
     // 'resolution' is rejected by flash-preview - 720p only, don't send it.
-    response_format: { type: 'video', duration },
+    // The edit task rejects duration outright ("Duration cannot be set in
+    // response format for edit task", live-probed July 25) — an edit keeps
+    // the input clip's length, same as xAI's /videos/edits.
+    response_format: isEdit ? { type: 'video' } : { type: 'video', duration },
   }), 'omni interactions.create')
 
   if (onProgress) onProgress(70)
@@ -786,8 +792,10 @@ async function generateOmniVideo(
   const rate = (model.model_pricing as any)?.per_video_second?.['720p'] ?? 0.10
   // Output tokens cover the generated clip. Google publishes no input-video
   // price for Omni Flash, so an edit's input is currently uncosted rather than
-  // guessed — revisit if they publish one. (Runway resells Omni v2v at roughly
-  // $0.11/s of input, if an estimate is ever needed.)
+  // guessed — revisit if they publish one. Measured July 25 on a 4s 720p edit:
+  // 22,080 input video tokens vs 23,168 output, i.e. input is roughly the same
+  // order as output, so an edit's true cost is close to 2x what we report.
+  // (Runway resells Omni v2v at roughly $0.11/s of input, for reference.)
   const cost = rate * secondsOut
   try { console.log(`${TAG} usage=${JSON.stringify(usage).slice(0, 300)} → ${secondsOut.toFixed(1)}s $${cost.toFixed(3)}`) } catch { /* ignore */ }
 
