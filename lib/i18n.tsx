@@ -124,6 +124,7 @@ export const STRINGS: Record<string, Entry> = {
   'xduel.voteblind':  { en: 'Vote Blind',       'zh-Hant': '盲測投票',    'zh-Hans': '盲测投票',    ja: 'ブラインド投票',  ko: '블라인드 투표' },
   'xduel.voteagain':  { en: 'Vote Again',       'zh-Hant': '再次投票',    'zh-Hans': '再次投票',    ja: 'もう一度投票',    ko: '다시 투표' },
   'xduel.cta':        { en: 'Start XDuel',      'zh-Hant': '開始對決',    'zh-Hans': '开始对决',    ja: '対決を開始',      ko: '대결 시작' },
+  'xduel.publichint': { en: 'Duels are public. Yours will appear in XVote for others to vote on.', 'zh-Hant': '對決是公開的。你的結果會出現在 XVote 供其他人投票。', 'zh-Hans': '对决是公开的。你的结果会出现在 XVote 供其他人投票。', ja: '対決は公開されます。結果は XVote に表示され、他のユーザーが投票できます。', ko: '대결은 공개됩니다. 결과는 XVote에 표시되어 다른 사용자가 투표할 수 있습니다.' },
 
   // ── Home (hero + CTAs) ──
   'home.hero':        { en: 'Overpaying for AI?!', 'zh-Hant': '為 AI 付太多了嗎？', 'zh-Hans': '为 AI 付太多了吗？', ja: 'AIに払いすぎていませんか？', ko: 'AI 요금, 너무 많이 내고 있나요?' },
@@ -160,8 +161,6 @@ export const STRINGS: Record<string, Entry> = {
   'xduel.responding':    { en: 'Models are responding…', 'zh-Hant': '模型回應中…', 'zh-Hans': '模型回应中…', ja: 'モデルが応答中…', ko: '모델이 응답 중…' },
   'xvote.subtitle':      { en: 'Explore AI Duels. Pick Your Favorites.', 'zh-Hant': '探索 AI 對決，選出你的最愛。', 'zh-Hans': '探索 AI 对决，选出你的最爱。', ja: 'AI対決を見て、お気に入りを選ぼう。', ko: 'AI 대결을 둘러보고 마음에 드는 쪽을 고르세요.' },
   'xvote.search':        { en: 'Search duels…', 'zh-Hant': '搜尋對決…', 'zh-Hans': '搜索对决…', ja: '対決を検索…', ko: '대결 검색…' },
-  'xvote.recentsort':    { en: 'Recent', 'zh-Hant': '最新', 'zh-Hans': '最新', ja: '新着', ko: '최신' },
-  'xvote.popularsort':   { en: 'Popular', 'zh-Hant': '熱門', 'zh-Hans': '热门', ja: '人気', ko: '인기' },
   'xvote.duelcount':     { en: '{n} duels', 'zh-Hant': '{n} 場對決', 'zh-Hans': '{n} 场对决', ja: '{n}件の対決', ko: '대결 {n}개' },
   'xvote.votebtn':       { en: 'Vote', 'zh-Hant': '投票', 'zh-Hans': '投票', ja: '投票', ko: '투표' },
   'xboard.subtitle':     { en: 'The AI Leaderboard. See Who Comes Out on Top.', 'zh-Hant': 'AI 排行榜。看看誰勝出。', 'zh-Hans': 'AI 排行榜。看看谁胜出。', ja: 'AIリーダーボード。頂点に立つのは誰か。', ko: 'AI 리더보드. 최종 승자를 확인하세요.' },

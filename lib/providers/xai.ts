@@ -11,7 +11,11 @@
 //   • text_to_video   — prompt only
 //   • image_to_video  — `image` (signed URL preferred, data URI fallback)
 //   • reference_frames— `reference_images` (HTTP URLs required)
-//   • video_to_video  — editing/extension; not wired yet (needs video upload)
+//   • video_to_video  — `POST /v1/videos/edits`, body `video: { url }`.
+//     Edits ignore duration / resolution / aspect_ratio: the output matches
+//     the input and is capped at 720p, and the input itself is capped at
+//     8.7s. /videos/generations rejects video input, hence the endpoint
+//     switch below. (docs.x.ai → Model capabilities → Video → Editing)
 //
 // Pricing (docs.x.ai/developers/models/grok-imagine-video):
 //   output 480p $0.05/s · 720p $0.07/s; inputs: image $0.002, video $0.01/s.
@@ -45,11 +49,31 @@ export async function generateVideo(
   const duration = Math.max(1, Math.min(15, Math.round(seconds)))
   const recipe = options?.mode ?? null
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
+  // A video upload switches endpoints entirely — /videos/generations refuses
+  // video input, so an edit has to go to /videos/edits instead.
+  const isEdit = videoAtts.length > 0
 
-  const body: any = { model: model.model_name, prompt, duration, resolution }
-  if (options?.aspect_ratio) body.aspect_ratio = options.aspect_ratio
+  const body: any = { model: model.model_name, prompt }
+  if (!isEdit) {
+    // Edits derive all three from the input clip; sending them is at best
+    // ignored and at worst a deserialization error.
+    body.duration = duration
+    body.resolution = resolution
+    if (options?.aspect_ratio) body.aspect_ratio = options.aspect_ratio
+  }
 
-  if (recipe === 'reference_frames' && imageAtts.length > 0) {
+  if (isEdit) {
+    const v = videoAtts[0]
+    // `video` takes a public URL or a base64 data URL. The route signs
+    // storage links onto att.url; the data-URI fallback keeps parity with
+    // the image path, which needs the same object (not bare string) form.
+    body.video = { url: v.url ?? `data:${v.mediaType};base64,${v.buffer.toString('base64')}` }
+    if (imageAtts.length > 0) {
+      console.log(`${TAG} video-edit ignoring ${imageAtts.length} image attachment(s) — /videos/edits takes one video`)
+    }
+    console.log(`${TAG} video-edit via ${v.url ? 'signed url' : 'data URI'} (${v.buffer.length}b)`)
+  } else if (recipe === 'reference_frames' && imageAtts.length > 0) {
     // Reference-to-video needs HTTP(S) URLs — the route provides signed
     // storage links on att.url when available.
     const urls = imageAtts.map(a => a.url).filter((u): u is string => !!u)
@@ -66,10 +90,13 @@ export async function generateVideo(
     console.log(`${TAG} image-to-video via ${a.url ? 'signed url' : 'data URI'} (${a.buffer.length}b)`)
   }
 
-  console.log(`${TAG} generate start resolution=${resolution} duration=${duration}s mode=${recipe ?? 'auto'}`)
+  const endpoint = isEdit ? 'videos/edits' : 'videos/generations'
+  console.log(`${TAG} ${isEdit ? 'edit' : 'generate'} start ` +
+    `resolution=${isEdit ? 'from input (<=720p)' : resolution} ` +
+    `duration=${isEdit ? 'from input' : duration + 's'} mode=${recipe ?? 'auto'}`)
   if (onProgress) onProgress(2)
 
-  const res = await fetch(`${BASE}/videos/generations`, {
+  const res = await fetch(`${BASE}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey()}` },
     body: JSON.stringify(body),
@@ -111,9 +138,18 @@ export async function generateVideo(
   // Cost: billed output seconds × per-resolution rate, + input surcharges.
   const billedSeconds = Number(final.video?.duration) || duration
   const pricing: any = model.model_pricing ?? {}
-  const rate = Number(pricing.per_video_second?.[resolution] ?? 0)
+  // An edit matches the input resolution and ignores the UI picker, so the
+  // requested key would misprice it. Bill at the documented 720p cap rather
+  // than quietly under-report our own spend.
+  const rate = Number(pricing.per_video_second?.[isEdit ? '720p' : resolution] ?? 0)
   const inputImageCost = imageAtts.length * Number(pricing.input_per_image ?? 0)
-  const cost = billedSeconds * rate + inputImageCost
+  // Input video is charged per second on top of output. For an edit the
+  // output duration equals the input duration, so billedSeconds doubles as
+  // the input length.
+  const inputVideoCost = isEdit
+    ? billedSeconds * Number(pricing.input_per_video_second ?? 0)
+    : 0
+  const cost = billedSeconds * rate + inputImageCost + inputVideoCost
   console.log(`${TAG} video ok bytes=${buffer.length} duration=${billedSeconds}s cost=$${cost.toFixed(4)}`)
   if (onProgress) onProgress(100)
 

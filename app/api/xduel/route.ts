@@ -34,6 +34,38 @@ function requiresAttachment(m: ModelInfo): boolean {
   return inputs.includes('image') || inputs.includes('video') || inputs.includes('audio')
 }
 
+// requiresAttachment() answers "does this model need SOMETHING?" but never
+// "can it read THIS?". That gap meant a video upload still matched every
+// image_to_video model in the pool (Runway Gen-4 Turbo, Grok Imagine Video
+// 1.5, HappyHorse 1.0 I2V), which then failed at the provider with a type
+// error the user never asked for. Match the upload to what a model actually
+// consumes instead. (CC, July 25)
+type AttachmentKind = 'image' | 'video' | 'document'
+
+function attachmentKind(mediaType: string): AttachmentKind {
+  if (mediaType.startsWith('video/')) return 'video'
+  if (mediaType.startsWith('image/')) return 'image'
+  return 'document'
+}
+
+// Which declared modes actually CONSUME each kind of upload:
+//   image → image_to_*, image_edit, reference_frames, start_end_frames
+//   video → video_to_*, video_edit
+//   doc   → pdf_to_*
+const CONSUMES: Record<AttachmentKind, (mode: string) => boolean> = {
+  image:    mode => mode.startsWith('image_') || mode === 'reference_frames' || mode === 'start_end_frames',
+  video:    mode => mode.startsWith('video_'),
+  document: mode => mode.startsWith('pdf_'),
+}
+
+function acceptsAttachment(m: ModelInfo, kind: AttachmentKind): boolean {
+  const modes = m.modes ?? []
+  if (modes.length > 0) return modes.some(CONSUMES[kind])
+  // Legacy rows with no declared modes: fall back to the coarse list.
+  const inputs = m.input_modalities ?? []
+  return kind === 'document' ? inputs.includes('text') : inputs.includes(kind)
+}
+
 function sse(event: string, data: object) {
   return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
@@ -296,12 +328,22 @@ export async function POST(req: Request) {
   catch (err) { refundQuota(); return Response.json({ error: String(err) }, { status: 400 }) }
   if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
-  // Filter out models that require image input when user has no attachment
+  // Match the pool to the attachment the user actually sent.
   const hasAttachment = !!attachmentInput?.storagePath
+  const attKind = hasAttachment ? attachmentKind(attachmentInput.mediaType ?? '') : null
   if (!hasAttachment) {
     pool = pool.filter(m => !requiresAttachment(m))
+  } else {
+    pool = pool.filter(m => acceptsAttachment(m, attKind!))
   }
-  if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
+  if (pool.length < 2) {
+    refundQuota()
+    return Response.json({
+      error: attKind
+        ? `Not enough ${mode} models accept a ${attKind} attachment. Try a different file, or run without one.`
+        : `Not enough models for mode: ${mode}`,
+    }, { status: 400 })
+  }
 
   const models = shuffle(pool).slice(0, n)
   const duelId = crypto.randomUUID()

@@ -12,7 +12,6 @@ import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
 type Mode = 'video' | 'image' | 'text'
-type SortMode = 'recent' | 'popular'
 
 interface SlotData {
   id: string
@@ -46,7 +45,6 @@ export default function VotePage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
   const [mode, setMode] = useState<Mode>('image')
-  const [sortMode, setSortMode] = useState<SortMode>('recent')
   const [search, setSearch] = useState('')
   const [ready, setReady] = useState(false)
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -163,20 +161,6 @@ export default function VotePage() {
                 >×</button>
               )}
             </div>
-
-            {/* Sort toggle */}
-            <div className="mode-seg">
-              {(['recent', 'popular'] as SortMode[]).map(s => (
-                <button
-                  key={s}
-                  onClick={() => setSortMode(s)}
-                  className={`mode-seg-btn${sortMode === s ? ' active' : ''}`}
-                >
-                  <span className={`mode-dot${sortMode === s ? ' active' : ''}`} />
-                  {s === 'recent' ? t('xvote.recentsort') : t('xvote.popularsort')}
-                </button>
-              ))}
-            </div>
           </div>
 
           {!ready ? (
@@ -187,7 +171,6 @@ export default function VotePage() {
               mode={mode}
               userId={userId}
               votedIds={votedIds}
-              sortMode={sortMode}
               search={search}
               onSelect={handleClick}
             />
@@ -202,23 +185,58 @@ export default function VotePage() {
 /* ── Paginated mode section ──────────────────────────────────────────── */
 
 
-// Fisher-Yates. The Recent feed shuffles its window so tiles don't read
-// as a precise timeline — otherwise visitors could gauge exactly how many
-// duels are being played and when (CC, July 17). Popular keeps its order.
-function shuffled<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
+// ── Blended feed ranking (CC, July 25) ───────────────────────────────
+// Replaces the Recent / Popular toggle. Every duel gets a weight from
+// three signals, then the feed order is drawn by weighted random sampling
+// without replacement (Efraimidis-Spirakis: key = U^(1/w), sort by key
+// desc). Heavier duels land near the top on *most* loads without ever
+// being pinned there, so the feed genuinely reshuffles per visit instead
+// of showing one fixed ranking.
+//
+//   recency     exp(-ageHours / HALF_LIFE_H) — smooth decay, no cliff at
+//               an arbitrary "new" cutoff.
+//   popularity  log1p(votes) / log1p(maxVotes) — logarithmic so a 40-vote
+//               duel edges ahead of a 4-vote one instead of burying it.
+//   needsVotes  1 / (1 + votes) — the deliberate counterweight. XVote
+//               exists to COLLECT votes, and a popularity-led feed starves
+//               exactly the duels the leaderboard is waiting on. That is
+//               why models sat at "—" on XBoard with no score.
+//
+// The randomness also preserves the July 17 rule that this grid must not
+// read as a precise timeline — a strict created_at order would let
+// visitors gauge how many duels get played and when.
+const HALF_LIFE_H = 72     // a 3-day-old duel keeps half its recency weight
+const W_RECENCY   = 1.0
+const W_POPULAR   = 0.8
+const W_NEEDS     = 0.6
+const W_FLOOR     = 0.15   // nothing is ever weight 0, so the tail still surfaces
+
+function blendedOrder(duels: Duel[]): Duel[] {
+  if (duels.length === 0) return []
+  const now = Date.now()
+  const maxVotes = Math.max(1, ...duels.map(d => d.community_vote_count || 0))
+  const logMax = Math.log1p(maxVotes)
+  return duels
+    .map(d => {
+      const ageH  = Math.max(0, (now - new Date(d.created_at).getTime()) / 3_600_000)
+      const votes = d.community_vote_count || 0
+      const recency    = Math.exp(-ageH / HALF_LIFE_H)
+      const popularity = logMax > 0 ? Math.log1p(votes) / logMax : 0
+      const needsVotes = 1 / (1 + votes)
+      const w = W_FLOOR + W_RECENCY * recency + W_POPULAR * popularity + W_NEEDS * needsVotes
+      // Math.random() can return exactly 0, which would zero every key
+      // regardless of weight — nudge it off the boundary.
+      const u = Math.random() || Number.MIN_VALUE
+      return { d, key: Math.pow(u, 1 / w) }
+    })
+    .sort((a, b) => b.key - a.key)
+    .map(x => x.d)
 }
 
-function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
+function ModeSection({ mode, userId, votedIds, search, onSelect }: {
   mode: Mode
   userId: string | null
   votedIds: Set<string>
-  sortMode: SortMode
   search: string
   onSelect: (d: Duel) => void
 }) {
@@ -237,7 +255,7 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
 
     // Try with new columns first; fall back to old schema if migration
     // hasn't been run yet (community_vote_count / deleted_at missing).
-    let q = sb
+    const baseQuery = () => sb
       .from('duels')
       .select('id, mode, prompt, slots, vote2, community_vote_count, created_at', { count: 'exact' })
       .eq('mode', mode)
@@ -248,15 +266,21 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
       .not('slots', 'cs', JSON.stringify([{ text: null }]))
       .not('slots', 'cs', JSON.stringify([{ text: '' }]))
 
-    if (sortMode === 'popular') {
-      q = q.order('community_vote_count', { ascending: false }).order('created_at', { ascending: false })
-    } else {
-      q = q.order('created_at', { ascending: false })
-    }
+    // Two windows, merged. blendedOrder weighs recency against popularity,
+    // but it can only rank what it is handed — a single created_at window
+    // would permanently hide an all-time popular duel that has scrolled
+    // past the newest 200, so its votes could never grow further.
+    const [recentRes, popularRes] = await Promise.all([
+      baseQuery().order('created_at', { ascending: false }).limit(200),
+      baseQuery().order('community_vote_count', { ascending: false })
+                 .order('created_at', { ascending: false }).limit(100),
+    ])
 
-    q = q.limit(200)
-
-    let { data, error, count } = await q
+    const error = recentRes.error
+    const count = recentRes.count
+    const merged = new Map<string, any>()
+    for (const row of [...(recentRes.data ?? []), ...(popularRes.data ?? [])]) merged.set(row.id, row)
+    const data = error ? null : Array.from(merged.values())
 
     // Fallback: if the new columns don't exist yet, query without them.
     if (error) {
@@ -272,7 +296,7 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
       const fallback = await q2
       if (fallback.error || !fallback.data) { setDuels([]); setTotal(0); setLoading(false); return }
       const normalized = (fallback.data as any[]).map(d => ({ ...d, community_vote_count: 0 })) as Duel[]
-      setDuels(sortMode === 'recent' ? shuffled(normalized) : normalized)
+      setDuels(blendedOrder(normalized))
       setTotal(fallback.count ?? fallback.data.length)
       setLoading(false)
       return
@@ -281,15 +305,15 @@ function ModeSection({ mode, userId, votedIds, sortMode, search, onSelect }: {
     if (!data) { setDuels([]); setTotal(0); setLoading(false); return }
     // Ensure community_vote_count defaults to 0 for old rows
     const normalized = (data as any[]).map(d => ({ ...d, community_vote_count: d.community_vote_count ?? 0 })) as Duel[]
-    setDuels(sortMode === 'recent' ? shuffled(normalized) : normalized)
+    setDuels(blendedOrder(normalized))
     setTotal(count ?? data.length)
     setLoading(false)
-  }, [mode, userId, sortMode])
+  }, [mode, userId])
 
   useEffect(() => { fetchDuels() }, [fetchDuels])
 
-  // Reset to page 0 when search/sort changes
-  useEffect(() => { setPage(0) }, [search, sortMode])
+  // Reset to page 0 when search changes
+  useEffect(() => { setPage(0) }, [search])
 
   // Filter voted + search
   let filtered = duels.filter(d => !votedIds.has(d.id))
