@@ -47,7 +47,7 @@ const notoTC = Noto_Sans_TC({
 })
 
 export const metadata: Metadata = {
-  title: 'ModelXD — Stop Overpaying for AI',
+  title: 'ModelXD',
   description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
 }
 

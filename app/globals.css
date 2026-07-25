@@ -322,6 +322,11 @@ body {
   .nav-logo-text { font-size: 22px; padding: 0; }
   .nav-links { display: none; }
   .nav-auth   { display: none; }
+  /* The sidebar-pinned Terms/Privacy/Contact block is a direct child of .nav,
+     so without this it renders stacked inside the 60px top bar and overlaps
+     the burger. The hamburger overlay carries its own .nav-foot copy, which
+     is nested deeper and therefore unaffected by the child selector. */
+  .nav > .nav-foot { display: none; }
   .nav-burger { display: inline-flex; }
   .nav-mobile-overlay.open { display: flex; }
 }
@@ -656,6 +661,22 @@ body {
 }
 .step-connector { width: 32px; height: 1px; background: var(--border2); flex-shrink: 0; }
 .step-connector.done { background: var(--green); }
+/* Under ~760px the five steps are wider than the viewport. justify-content:
+   center plus the default overflow-x: visible pushed step 1 and step 5 outside
+   the box, where body{overflow-x:hidden} clipped them away entirely. Let the
+   bar scroll instead, and tighten the spacing so most of it fits unscrolled. */
+@media (max-width: 760px) {
+  .step-bar {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 14px;
+  }
+  .step-bar::-webkit-scrollbar { display: none; }
+  .step-item { padding: 0 10px; flex-shrink: 0; }
+  .step-connector { width: 16px; }
+}
 
 .arena { flex: 1; padding: 24px 40px 80px; max-width: 1200px; margin: 0 auto; width: 100%; }
 .step-section { animation: fadeUp 0.5s forwards; }
@@ -1067,6 +1088,11 @@ select {
   border-color: var(--red); background: var(--red); color: #ffffff;
 }
 .count-note { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-left: 6px; white-space: nowrap; }
+/* nowrap ran the quota note off the right edge on phones. */
+@media (max-width: 760px) {
+  .mode-count-row { flex-wrap: wrap; gap: 8px; }
+  .count-note { white-space: normal; margin-left: 0; }
+}
 
 /* ── XBoard provider multi-select dropdown (July 19) ── */
 .provider-filter-btn {

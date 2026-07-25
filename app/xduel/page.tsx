@@ -203,14 +203,16 @@ export default function XDuel() {
   const bothDone    = models.length > 0 && models.every(m => m.done)
   const anyStreaming = models.some(m => m.streaming)
 
-  // Cheapest model index — use actual generation cost if available, otherwise list price
-  const cheapestIdx = models.length > 0 && models.every(m => m.done)
-    ? models.reduce((minI, m, i, arr) => {
-        const mCost = m.cost > 0 ? m.cost : m.meta.outputPrice
-        const minCost = arr[minI].cost > 0 ? arr[minI].cost : arr[minI].meta.outputPrice
-        return mCost < minCost ? i : minI
-      }, 0)
-    : models.length > 0
+  // Cheapest model index — LIST price (meta.outputPrice), never this run's
+  // actual spend. A user is picking a model, not one response, and list price
+  // is what priceLabel shows, what the step-3 badges compare and what step 5's
+  // "Nx cheaper / saves $X per month" is built on. Ranking by actual cost meant
+  // a verbose cheap model could out-spend a terse expensive one on a single
+  // run, putting the green "cheapest" highlight and the "Smart call, you saved
+  // money" verdict on a card whose list price is actually higher. Per-run cost
+  // still feeds the match score's cost component (lib/matchScore.ts), which is
+  // a genuine per-run efficiency measure — that is a different question.
+  const cheapestIdx = models.length > 0
     ? models.reduce((minI, m, i, arr) => m.meta.outputPrice < arr[minI].meta.outputPrice ? i : minI, 0)
     : -1
 
@@ -861,22 +863,35 @@ export default function XDuel() {
                               <span style={{color: cheapest ? '#34d399' : 'var(--muted2)'}}>
                                 {m.meta.priceLabel}
                               </span>
+                              {/* Both badges compare LIST prices (meta.outputPrice), the same
+                                  number priceLabel renders immediately to the left and the same
+                                  basis step 5 uses for "Nx cheaper". They used to compare
+                                  m.cost -- this run's actual spend, which includes reasoning
+                                  tokens -- so a 4x list-price gap was labelled "92% cheaper"
+                                  next to "$2.50 / 1M", contradicting step 5 in the same flow. */}
                               {cheapest && models.length > 1 && (() => {
-                                const otherCosts = models.filter((_, j) => j !== i).map(o => o.cost > 0 ? o.cost : o.meta.outputPrice)
-                                const myCost = m.cost > 0 ? m.cost : m.meta.outputPrice
-                                const maxOther = Math.max(...otherCosts)
-                                if (maxOther > myCost && maxOther > 0) {
-                                  const savingPct = Math.round((maxOther - myCost) / maxOther * 100)
+                                const maxOther = Math.max(...models.filter((_, j) => j !== i).map(o => o.meta.outputPrice))
+                                const mine = m.meta.outputPrice
+                                if (maxOther > mine && maxOther > 0) {
+                                  const savingPct = Math.round((maxOther - mine) / maxOther * 100)
                                   return <span style={{fontSize:9,color:'#34d399',letterSpacing:'0.1em'}}>💰 {savingPct}% cheaper</span>
                                 }
                                 return null
                               })()}
                               {!cheapest && models.length > 1 && (() => {
-                                const cheapestCost = cheapestModel ? (cheapestModel.cost > 0 ? cheapestModel.cost : cheapestModel.meta.outputPrice) : 0
-                                const myCost = m.cost > 0 ? m.cost : m.meta.outputPrice
-                                if (myCost > cheapestCost && myCost > 0) {
-                                  const morePct = Math.round((myCost - cheapestCost) / myCost * 100)
-                                  return <span style={{fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>{morePct}% more expensive</span>
+                                // "X% more expensive" is relative to the CHEAPER baseline, not to
+                                // my own price -- dividing by myCost capped the figure below 100%
+                                // and printed the exact same number as the "cheaper" badge, which
+                                // cannot be true of both framings. Past 2x, "Nx the price" reads
+                                // clearer than "300% more expensive".
+                                const base = cheapestModel ? cheapestModel.meta.outputPrice : 0
+                                const mine = m.meta.outputPrice
+                                if (mine > base && base > 0) {
+                                  const times = mine / base
+                                  const label = times >= 2
+                                    ? `${times >= 10 ? Math.round(times) : Math.round(times * 10) / 10}× the price`
+                                    : `${Math.round((mine - base) / base * 100)}% more expensive`
+                                  return <span style={{fontSize:9,color:'var(--red)',letterSpacing:'0.1em'}}>{label}</span>
                                 }
                                 return null
                               })()}
