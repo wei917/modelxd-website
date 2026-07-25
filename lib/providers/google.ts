@@ -663,23 +663,63 @@ async function generateOmniVideo(
 ): Promise<VideoResult> {
   const TAG = `[google/${model.model_name}]`
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
+  const isEdit    = videoAtts.length > 0
 
-  // Task selection: explicit sub-mode wins; otherwise infer from inputs.
+  // Task selection: a video input forces 'edit'; otherwise explicit sub-mode
+  // wins and we fall back to inferring from the attachments.
   const task =
+    isEdit                               ? 'edit' :
     options?.mode === 'reference_frames' ? 'reference_to_video' :
     options?.mode === 'image_to_video'   ? 'image_to_video' :
     options?.mode === 'text_to_video'    ? 'text_to_video' :
     imageAtts.length >= 2 ? 'reference_to_video' :
     imageAtts.length === 1 ? 'image_to_video' : 'text_to_video'
 
-  const input: any = imageAtts.length === 0 ? prompt : [
+  // A video input has to go through the Files API: the Interactions API takes
+  // it as a `document` part pointing at files/{id}, and Google discourages
+  // inline base64 for clips. (ai.google.dev/gemini-api/docs/omni)
+  //
+  // Caveat worth knowing when this errors: editing an UPLOADED video is not
+  // available to users in the EEA, Switzerland or the UK. Google enforces that
+  // server-side, so it surfaces as a provider error rather than something we
+  // can pre-empt. Editing a model-GENERATED video still works in those regions.
+  let videoUri: string | null = null
+  if (isEdit) {
+    const v = videoAtts[0]
+    console.log(`${TAG} uploading video to Files API (${v.buffer.length}b ${v.mediaType})`)
+    const uploaded: any = await withRetry(() => (ai() as any).files.upload({
+      file:   new Blob([new Uint8Array(v.buffer)], { type: v.mediaType }),
+      config: { mimeType: v.mediaType },
+    }), 'omni files.upload')
+    videoUri = uploaded?.uri ?? null
+    if (!videoUri) throw new Error('Files API upload returned no uri for the video attachment')
+    // The file must reach ACTIVE before the model can read it — same poll the
+    // output-download path below uses.
+    const fileId = String(uploaded?.name ?? '').match(/files\/(.+)$/)?.[1]
+    if (fileId) {
+      const key = process.env.GOOGLE_AI_API_KEY!
+      for (let i = 0; i < 30; i++) {
+        const st: any = await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${fileId}?key=${key}`)
+          .then(r => r.json()).catch(() => null)
+        if (st?.state === 'ACTIVE') break
+        if (st?.state === 'FAILED') throw new Error('Omni could not process the uploaded video')
+        await new Promise(r => setTimeout(r, 2000))
+      }
+    }
+    console.log(`${TAG} video uploaded uri=${videoUri}`)
+    if (onProgress) onProgress(15)
+  }
+
+  const input: any = (imageAtts.length === 0 && !isEdit) ? prompt : [
+    ...(videoUri ? [{ type: 'document', uri: videoUri }] : []),
     ...imageAtts.map(a => ({ type: 'image', data: a.buffer.toString('base64'), mime_type: a.mediaType })),
     { type: 'text', text: prompt },
   ]
 
   // Duration is a "Ns" string, clamped to the API's 3-10s window.
   const duration = `${Math.max(3, Math.min(10, Math.round(seconds || 8)))}s`
-  console.log(`${TAG} interactions.create task=${task} aspect=${aspectRatio} dur=${duration} images=${imageAtts.length}`)
+  console.log(`${TAG} interactions.create task=${task} aspect=${aspectRatio} dur=${duration} images=${imageAtts.length} videos=${videoAtts.length}`)
   if (onProgress) onProgress(5)
 
   const interaction: any = await withRetry(() => (ai() as any).interactions.create({
@@ -744,6 +784,10 @@ async function generateOmniVideo(
   const outTokens = videoTokens ?? usage?.total_output_tokens ?? usage?.output_tokens ?? null
   const secondsOut = outTokens ? outTokens / 5792 : 8
   const rate = (model.model_pricing as any)?.per_video_second?.['720p'] ?? 0.10
+  // Output tokens cover the generated clip. Google publishes no input-video
+  // price for Omni Flash, so an edit's input is currently uncosted rather than
+  // guessed — revisit if they publish one. (Runway resells Omni v2v at roughly
+  // $0.11/s of input, if an estimate is ever needed.)
   const cost = rate * secondsOut
   try { console.log(`${TAG} usage=${JSON.stringify(usage).slice(0, 300)} → ${secondsOut.toFixed(1)}s $${cost.toFixed(3)}`) } catch { /* ignore */ }
 

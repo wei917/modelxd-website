@@ -678,19 +678,20 @@ export default function XDuel() {
                 />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
+                <span className="prompt-counter">
+                  {prompt.length > 7000
+                    ? `${prompt.length.toLocaleString()} / 8,000 — for longer text, attach a .txt file`
+                    : approxTokens > 0 ? `~${approxTokens.toLocaleString()} tokens${attachTruncated ? ' (large file — first 200k characters used)' : ''}` : ''}
+                </span>
                 {/* Duels are published to XVote, so say so before the user
-                    commits rather than after (CC, July 25). */}
-                <span className="prompt-counter" style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    commits rather than after. Sits directly beside the CTA so
+                    it reads as a condition of pressing it (CC, July 25). */}
+                <span className="prompt-counter" style={{ display: 'flex', alignItems: 'center', gap: 6, textAlign: 'right' }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                     <circle cx="12" cy="12" r="10" />
                     <path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20a15.3 15.3 0 0 1 0-20" />
                   </svg>
                   {t('xduel.publichint')}
-                </span>
-                <span className="prompt-counter">
-                  {prompt.length > 7000
-                    ? `${prompt.length.toLocaleString()} / 8,000 — for longer text, attach a .txt file`
-                    : approxTokens > 0 ? `~${approxTokens.toLocaleString()} tokens${attachTruncated ? ' (large file — first 200k characters used)' : ''}` : ''}
                 </span>
                 <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
                   ⚔️ {t('xduel.cta')} →
