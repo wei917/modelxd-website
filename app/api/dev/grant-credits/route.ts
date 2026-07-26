@@ -23,6 +23,10 @@ export const dynamic = 'force-dynamic'
 interface GrantBody {
   userId?: string
   amountCents?: number
+  /** Who issued the gift. Stamped into metadata so a gift leaves a trace —
+   *  the ledger row belongs to the RECIPIENT, so without this there is no
+   *  record anywhere of who gave it (CC, July 26). */
+  grantedBy?: string
   description?: string
   referenceType?: string
   referenceId?: string
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'invalid JSON body' }, { status: 400 })
   }
 
-  const { userId, amountCents, description, referenceType, referenceId } = body
+  const { userId, amountCents, description, referenceType, referenceId, grantedBy } = body
   if (!userId || typeof userId !== 'string') {
     return Response.json({ error: 'userId (uuid) required' }, { status: 400 })
   }
@@ -56,6 +60,7 @@ export async function POST(request: Request) {
       referenceType: referenceType ?? 'admin_grant',
       referenceId:   referenceId,
       description:   description ?? 'Gift from a friend',
+      metadata:      grantedBy ? { granted_by: grantedBy } : undefined,
     })
     return Response.json({
       ok: true,

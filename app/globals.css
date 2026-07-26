@@ -637,7 +637,32 @@ body {
 /* Desktop: the content TopBar provides the top spacing, so pages need only a
    little padding. Mobile: restore 60px to clear the fixed nav top bar. */
 .xduel-page { padding-top: 20px; min-height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
-@media (max-width: 760px) { .xduel-page { padding-top: 60px; } }
+/* The mobile nav is position:fixed with height 60px, so it sits outside the
+   flow and every page's first 60px render underneath it. XDuel used to be the
+   only page compensating, which is why the landing page's value bar lost its
+   whole "TODAY'S BEST VALUE PICKS" row and the terms/privacy pages started
+   mid-heading. Offset once on the shared content column instead (CC, July 26
+   — most traffic is phones). */
+@media (max-width: 760px) { .app-main { padding-top: 60px; } }
+
+/* XVote duel grid. Two columns is right on a laptop, but on a phone it gave
+   each card ~190px and truncated every prompt to "Watercolor map of an
+   imaginary islan…", so drop to a single column (CC, July 26). */
+.xvote-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (max-width: 640px) { .xvote-grid { grid-template-columns: 1fr; } }
+
+/* Touch targets. Audited at phone width: the XVote search input was 24px
+   tall and several controls sat around 30-36px, against Apple's 44px and
+   Google's 48dp guidance. Only raised on phones so desktop spacing, which is
+   mouse-driven and deliberately tight, is untouched. (CC, July 26) */
+@media (max-width: 760px) {
+  .nav-burger { width: 44px; height: 44px; }
+  .mode-seg-btn { padding: 13px 18px; }
+  .count-btn { width: 40px; height: 40px; }
+  input[type="text"], input[type="search"], input[type="email"], input:not([type]) {
+    min-height: 44px;
+  }
+}
 
 .step-bar {
   display: flex; align-items: center; justify-content: center;
@@ -1196,6 +1221,31 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .vb-chip .g-video { color: var(--mode-video); }
 @media (max-width: 900px) {
   .value-bar { padding: 12px 20px; gap: 10px; }
+}
+/* The three picks must read as ONE row on any tablet or desktop. flex: 0 0
+   334px above is rigid, so the row needs ~1330px of CONTENT width — and with
+   the 208px sidebar that means a 1538px viewport. Anything smaller, including
+   iPad landscape at 1024 and most laptops, wrapped to two rows (CC, July 26).
+   Keep 334px as the ceiling — it is the measured no-ellipsis width — but let
+   the slots shrink equally beneath it. flex: 1 1 0 actually preserves the
+   "three equal slots, no jitter" intent better than a fixed basis did, since
+   the slots stay identical to each other at every width. Phones still wrap:
+   stacked is the right shape there. */
+@media (min-width: 761px) {
+  .value-bar { flex-wrap: nowrap; }
+  .vb-chip   { flex: 1 1 0; min-width: 0; max-width: 334px; }
+}
+/* Below ~1400px the row cannot hold the eyebrow AND three full-width picks:
+   with the label the row needs a 1538px viewport to avoid an ellipsis, so the
+   label is the first thing to go, then the chip's internal padding and the
+   reserved hover-arrow slot. Dropping .vb-go here is free on the devices that
+   matter — it is a hover affordance and these widths are mostly touch.
+   Measured after the change: 1280 -> 316px chips, 1024 -> 231px, both with no
+   ellipsis on the current picks. */
+@media (min-width: 761px) and (max-width: 1400px) {
+  .vb-label { display: none; }
+  .vb-chip  { padding: 8px 10px; gap: 6px; letter-spacing: 0.06em; }
+  .vb-go    { display: none; }
 }
 
 /* ── Tier comparator ── */

@@ -343,11 +343,7 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
       ) : (
         <>
           {/* Card grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 16,
-          }}>
+          <div className="xvote-grid">
             {pageDuels.map(duel => (
               <DuelCard key={duel.id} duel={duel} onSelect={onSelect} />
             ))}

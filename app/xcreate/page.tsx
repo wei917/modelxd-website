@@ -1296,6 +1296,9 @@ function CreateStudio() {
   // user understands why the page didn't open the run they expected.
   // null = no error, string = message to display.
   const [loadError,      setLoadError]      = useState<string | null>(null)
+  // Set when the server refuses a run for balance reasons, so the error
+  // banner can offer the top-up route instead of just saying no.
+  const [needsTopUp,     setNeedsTopUp]     = useState(false)
   // Image by default — visual wow at a fraction of video's cost. Video
   // stays the marketing star; text is the cheap third tab.
   const [mode,           setMode]           = useState<Mode>('image')
@@ -2049,7 +2052,24 @@ function CreateStudio() {
         modelOptions: optsList,
         attachments: committed.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
       }),
-    }).catch(err => console.warn('[xcreate] POST failed:', err))
+    })
+      .then(async res => {
+        if (res.ok) return
+        // The balance gate returns 402 BEFORE any model runs, so this lands
+        // within a second — well before polling has anything to show. Without
+        // reading the response at all (the old fire-and-forget), a refusal was
+        // completely invisible and the UI just span forever.
+        const detail = await res.json().catch(() => null)
+        stopPolling()
+        setPhase('setup')
+        if (res.status === 402) {
+          setNeedsTopUp(true)
+          setLoadError(detail?.message ?? 'Not enough credits for this run.')
+        } else {
+          setLoadError(detail?.error ?? `Generation failed (HTTP ${res.status}).`)
+        }
+      })
+      .catch(err => console.warn('[xcreate] POST failed:', err))
 
     // Begin polling right away. First couple of polls may 404 until the
     // server has inserted the job row — pollOnce handles 404 gracefully.
@@ -2736,9 +2756,21 @@ function CreateStudio() {
             }}>
               <span style={{ fontSize: 16 }}>⚠</span>
               <span style={{ flex: 1 }}>{loadError}</span>
+              {needsTopUp && (
+                <a
+                  href="/profile"
+                  style={{
+                    flexShrink: 0, padding: '7px 14px', borderRadius: 6,
+                    background: 'var(--red)', color: '#fff', textDecoration: 'none',
+                    fontFamily: 'var(--font-mono), monospace', fontSize: 11,
+                    letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
+                  }}
+                >{t('xcreate.addcredits')}</a>
+              )}
               <button
                 onClick={() => {
                   setLoadError(null)
+                  setNeedsTopUp(false)
                   // Strip ?id=… so a refresh doesn't re-show the same error.
                   if (typeof window !== 'undefined' && window.location.search) {
                     const url = new URL(window.location.href)

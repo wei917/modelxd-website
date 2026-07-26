@@ -16,7 +16,8 @@ import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
-import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
+import { debitCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
+import { estimateCost } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 
 const LOG = '[xcreate]'
@@ -277,6 +278,45 @@ export async function POST(req: Request) {
   // Load models by UUID
   const models = (await Promise.all(modelIds.map((id: string) => getModelById(id)))).filter(Boolean) as ModelInfo[]
   if (models.length === 0) return Response.json({ error: 'No valid models found' }, { status: 400 })
+
+  // ── Pre-flight balance gate ────────────────────────────────────────────
+  // The debit at the bottom of this route runs AFTER generation, and its
+  // InsufficientCreditsError was caught-and-logged while the job still
+  // completed — so a user at $0 kept the output and ModelXD ate the provider
+  // bill. Four generations across two accounts had already run that way,
+  // with zero credit_transactions rows, before this landed (CC, July 26).
+  //
+  // Estimate with the same estimateCost() the client uses for its
+  // "Estimated Cost ~$X" line, and apply the same multi-model discount, so
+  // the figure we gate on is the figure the user was shown. The exact cost
+  // is only knowable after generation; this is deliberately the estimate.
+  {
+    const { discountFor } = await import('@/lib/xcreate-discount')
+    const estDollars = models.reduce((sum, m, i) => {
+      const o = (modelOptions[i] ?? {}) as Record<string, any>
+      return sum + estimateCost(m, mode as 'text' | 'image' | 'video', {
+        promptChars: typeof prompt === 'string' ? prompt.length : 0,
+        quality:     o.quality,
+        size:        o.size,
+        resolution:  o.size ?? o.resolution,
+        seconds:     o.duration ?? o.seconds,
+      })
+    }, 0)
+    const estCents = Math.round(estDollars * 100 * (1 - discountFor(models.length)))
+    if (estCents > 0) {
+      const credits = await getUserCredits(user.id)
+      const balanceCents = credits?.balance_cents ?? 0
+      if (balanceCents < estCents) {
+        console.warn(`${LOG} blocked: needs ~${estCents}c, balance ${balanceCents}c (user ${user.id})`)
+        return Response.json({
+          error:   'insufficient_credits',
+          message: `This run costs about ${formatCents(estCents)} and your balance is ${formatCents(balanceCents)}.`,
+          requiredCents: estCents,
+          balanceCents,
+        }, { status: 402 })
+      }
+    }
+  }
 
   // Process attachments (supports both new array and legacy single attachment)
   const rawInputs: any[] = Array.isArray(attachmentInputs) && attachmentInputs.length > 0

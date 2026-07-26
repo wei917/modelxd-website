@@ -211,6 +211,7 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.selected':    { en: '{n} models selected', 'zh-Hant': '已選 {n} 個模型', 'zh-Hans': '已选 {n} 个模型', ja: '{n}モデル選択中', ko: '모델 {n}개 선택됨' },
   'xcreate.selected1':   { en: '1 model selected', 'zh-Hant': '已選 1 個模型', 'zh-Hans': '已选 1 个模型', ja: '1モデル選択中', ko: '모델 1개 선택됨' },
   'xcreate.estcost':     { en: 'Estimated Cost ~', 'zh-Hant': '預估費用 ~', 'zh-Hans': '预估费用 ~', ja: '推定コスト ~', ko: '예상 비용 ~' },
+  'xcreate.addcredits':  { en: 'Add credits', 'zh-Hant': '加值', 'zh-Hans': '充值', ja: 'クレジット追加', ko: '크레딧 충전' },
   'xcreate.generatebtn': { en: '✦ Generate →', 'zh-Hant': '✦ 生成 →', 'zh-Hans': '✦ 生成 →', ja: '✦ 生成 →', ko: '✦ 생성 →' },
   'xcreate.generating':  { en: '⏳ Generating…', 'zh-Hant': '⏳ 生成中…', 'zh-Hans': '⏳ 生成中…', ja: '⏳ 生成中…', ko: '⏳ 생성 중…' },
   'xcreate.attach':      { en: 'Attach', 'zh-Hant': '附件', 'zh-Hans': '附件', ja: '添付', ko: '첨부' },
