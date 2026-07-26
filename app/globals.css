@@ -1243,9 +1243,17 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    Measured after the change: 1280 -> 316px chips, 1024 -> 231px, both with no
    ellipsis on the current picks. */
 @media (min-width: 761px) and (max-width: 1400px) {
-  .vb-label { display: none; }
-  .vb-chip  { padding: 8px 10px; gap: 6px; letter-spacing: 0.06em; }
-  .vb-go    { display: none; }
+  /* Hiding the eyebrow here was the wrong trade — CC wants it on iPad, and
+     the actual requirement was that the three BOXES not wrap, not that the
+     row be a single line. So give the label its own full-width line and let
+     the picks share the row beneath it. Measured at 1024 (iPad landscape):
+     label visible, one chip row at 231px each, nothing clipped, bar 82px.
+     Inline variants all clipped: full label -> 156px chips and all three
+     names truncated; 9px label -> 177px and one still truncated. */
+  .value-bar { flex-wrap: wrap; row-gap: 8px; }
+  .vb-label  { flex: 0 0 100%; margin-right: 0; }
+  .vb-chip   { padding: 8px 10px; gap: 6px; letter-spacing: 0.06em; }
+  .vb-go     { display: none; }
 }
 
 /* ── Tier comparator ── */
