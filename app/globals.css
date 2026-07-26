@@ -1302,6 +1302,25 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   transition: color 0.2s, opacity 0.18s ease 0.3s;
 }
 .vc-cell.on .vc-letter { opacity: 0; transition: opacity 0.12s ease; }
+/* The tier names (Budget / Value / Premium / Flagship) already existed in
+   i18n but were only the img alt, so the strips showed bare letters. A word
+   needs tighter tracking than a single letter to fit the 22px collapsed
+   strip. (CC, July 26) */
+.vc-letter { font-size: 9px; letter-spacing: 0.08em; }
+/* The open cell shows the name horizontally instead — vertical text reads
+   badly across a wide panel, and the expanded tile is the one a user most
+   wants named. Delayed fade-in so it lands after the cell finishes opening. */
+.vc-name {
+  position: absolute; left: 10px; bottom: 10px; z-index: 3;
+  font-family: var(--font-mono), monospace; font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700;
+  padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+  background: rgba(0, 0, 0, 0.55); color: #fff;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.18s ease 0.28s;
+}
+.vc-cell.on .vc-name { opacity: 1; }
+@media (max-width: 760px) { .vc-name { font-size: 9px; padding: 4px 9px; left: 8px; bottom: 8px; } }
 /* Overlay, not inset box-shadow — an inset shadow paints beneath the cell's
    own <img>, so the accent ring was invisible. */
 .vc-cell.on::after {

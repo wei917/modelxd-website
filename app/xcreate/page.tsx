@@ -1299,6 +1299,7 @@ function CreateStudio() {
   // Set when the server refuses a run for balance reasons, so the error
   // banner can offer the top-up route instead of just saying no.
   const [needsTopUp,     setNeedsTopUp]     = useState(false)
+  const [balanceCents,   setBalanceCents]   = useState<number | null>(null)
   // Image by default — visual wow at a fraction of video's cost. Video
   // stays the marketing star; text is the cheap third tab.
   const [mode,           setMode]           = useState<Mode>('image')
@@ -1990,6 +1991,20 @@ function CreateStudio() {
     return () => { cancelled = true }
   }, [userId])
 
+  // Current balance, so the estimate line can warn BEFORE the user commits
+  // rather than letting the server refuse afterwards. RLS on user_credits
+  // allows an owner read, so the browser client is enough (same as profile).
+  useEffect(() => {
+    if (!userId) { setBalanceCents(null); return }
+    let cancelled = false
+    createSupabaseBrowser()
+      .from('user_credits').select('balance_cents').eq('user_id', userId).maybeSingle()
+      .then(({ data }: { data: { balance_cents?: number } | null }) => {
+        if (!cancelled) setBalanceCents(data?.balance_cents ?? 0)
+      })
+    return () => { cancelled = true }
+  }, [userId])
+
   const generate = async () => {
     // Mirror canGenerate: video / image with an attachment is enough to
     // proceed even if the prompt is empty (image_to_video, image_to_image,
@@ -2062,8 +2077,14 @@ function CreateStudio() {
         const detail = await res.json().catch(() => null)
         stopPolling()
         setPhase('setup')
+        // Clear the optimistic streaming slots too — without this the cards
+        // keep spinning behind the error bar and the run looks stuck.
+        setSlots([])
         if (res.status === 402) {
           setNeedsTopUp(true)
+          // The refusal carries the authoritative balance; adopt it so the
+          // cost line's warning is correct immediately.
+          if (typeof detail?.balanceCents === 'number') setBalanceCents(detail.balanceCents)
           setLoadError(detail?.message ?? 'Not enough credits for this run.')
         } else {
           setLoadError(detail?.error ?? `Generation failed (HTTP ${res.status}).`)
@@ -3526,6 +3547,27 @@ function CreateStudio() {
                       {t('xcreate.estcost')}{fmtDollars(totalEstDollars * (1 - discountFor(activeModels.length)))}
                     </span>
                   )}
+                  {/* Pre-flight warning. The server still gates with a 402,
+                      but being told after a click is a worse experience than
+                      seeing it while choosing models (CC, July 26). */}
+                  {(() => {
+                    if (totalEstDollars == null || balanceCents == null || phase === 'generating') return null
+                    const estC = Math.round(totalEstDollars * (1 - discountFor(activeModels.length)) * 100)
+                    if (estC <= 0 || estC <= balanceCents) return null
+                    return (
+                      <span style={{
+                        display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' as const,
+                        fontSize: 12, fontFamily: 'var(--font-body), sans-serif', color: 'var(--red)',
+                      }}>
+                        {t('xcreate.lowbalance')} {fmtDollars(balanceCents / 100)}
+                        <a href="/profile" style={{
+                          padding: '5px 11px', borderRadius: 5, background: 'var(--red)', color: '#fff',
+                          textDecoration: 'none', fontFamily: 'var(--font-mono), monospace', fontSize: 10,
+                          letterSpacing: '0.1em', textTransform: 'uppercase' as const, fontWeight: 700,
+                        }}>{t('xcreate.addcredits')}</a>
+                      </span>
+                    )
+                  })()}
                   {/* Setup phase: real Generate button.
                       Generating phase: disabled "⏳ Generating…" indicator.
                       Picking / chatting phase: nothing — Start Over is the

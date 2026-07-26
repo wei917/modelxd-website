@@ -155,7 +155,8 @@ function TierComparator() {
                 key={tier.id}
                 onClick={() => setPick(side, i)}
               >
-                <span className="vc-letter">{tier.id.toUpperCase()}</span>
+                <span className="vc-letter">{t(tier.key)}</span>
+                <span className="vc-name">{t(tier.key)}</span>
                 <img src={tier.src} alt={t(tier.key)} draggable={false} />
               </div>
             ))}
