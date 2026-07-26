@@ -252,7 +252,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null } = await req.json()
+  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)} jobId=${clientJobId ?? 'server-generated'}`)
 
   // In video/image mode an attached file (image_to_video, image_to_image,
@@ -290,6 +290,21 @@ export async function POST(req: Request) {
   // "Estimated Cost ~$X" line, and apply the same multi-model discount, so
   // the figure we gate on is the figure the user was shown. The exact cost
   // is only knowable after generation; this is deliberately the estimate.
+  // ── Workflow lineage (CC, July 26): a step run edits a prior creation's
+  // output. Ownership is validated BEFORE the credit reserve so a bad
+  // parentId can never cost anything.
+  let parentRow: any = null
+  let rootIdForRun: string | null = null
+  if (parentId && typeof parentId === 'string') {
+    const svc = serviceClient()
+    const { data: p } = await svc.from('xcreates').select('id, user_id, root_id, slots').eq('id', parentId).maybeSingle()
+    if (!p || p.user_id !== user.id) {
+      return Response.json({ error: 'Parent creation not found' }, { status: 404 })
+    }
+    parentRow = p
+    rootIdForRun = p.root_id ?? p.id
+  }
+
   // Stable id up front: the reserve, the job row and the reconciliation all
   // key off the same value, and the reserve happens before the row exists.
   const jobIdForRun: string = (clientJobId && typeof clientJobId === 'string')
@@ -370,6 +385,43 @@ export async function POST(req: Request) {
     } catch (err) { console.warn(`${LOG} attachment failed:`, err) }
   }
 
+  // Parent output -> this run's input, resolved server-side. The stored
+  // slot URL is a 24h signed URL that may be long expired, but the storage
+  // path inside it never changes, so parse it out and read the object
+  // directly. This is what lets "Edit this" skip download/re-upload
+  // entirely (most traffic is phones; CC, July 26).
+  if (parentRow) {
+    try {
+      const pslots: any[] = Array.isArray(parentRow.slots) ? parentRow.slots : []
+      const pick = (typeof parentSlotIdx === 'number' && pslots[parentSlotIdx])
+        ? pslots[parentSlotIdx]
+        : pslots.find((s: any) => s.chosen) ?? pslots.find((s: any) => s.text)
+      const firstUrl = typeof pick?.text === 'string' ? pick.text.split('\n')[0] : null
+      const um = firstUrl?.match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
+      if (um) {
+        const [, pBucket, rawPath] = um
+        const pPath = decodeURIComponent(rawPath)
+        const { data: blob, error: dlErr } = await sb.storage.from(pBucket).download(pPath)
+        if (dlErr || !blob) throw new Error(dlErr?.message ?? 'storage download failed')
+        const pBuffer = Buffer.from(await blob.arrayBuffer())
+        const pExt = pPath.split('.').pop()?.toLowerCase() ?? ''
+        const pMedia = pExt === 'mp4' ? 'video/mp4'
+          : pExt === 'webp' ? 'image/webp'
+          : (pExt === 'jpg' || pExt === 'jpeg') ? 'image/jpeg'
+          : 'image/png'
+        // Fresh 1h signed URL for providers that take URLs (Alibaba video
+        // edit, Grok) rather than inline bytes.
+        const { data: pSigned } = await sb.storage.from(pBucket).createSignedUrl(pPath, 60 * 60)
+        attachments.unshift({ buffer: pBuffer, mediaType: pMedia, url: pSigned?.signedUrl } as providers.Attachment)
+        console.log(`${LOG} step input from parent ${parentRow.id} (${pBucket}/${pPath}, ${pBuffer.length}b)`)
+      } else {
+        console.warn(`${LOG} parent ${parentRow.id} has no parseable output URL — step runs without an input`)
+      }
+    } catch (err) {
+      console.warn(`${LOG} failed to load parent output:`, err)
+    }
+  }
+
   // Runs are concurrent (CC, July 26). This used to fail every other running
   // job for the user on each new POST, on the assumption of one generation at
   // a time — which is exactly what stopped a second run from being startable.
@@ -445,6 +497,16 @@ export async function POST(req: Request) {
       .filter((i: any) => i?.storagePath)
       .map((i: any) => ({ storagePath: i.storagePath, bucket: i.bucket, mediaType: i.mediaType, fileName: i.fileName, fileSize: i.fileSize })),
   }).select('id').single()
+
+  // Lineage stamp. A separate update (not part of the insert) so the API
+  // keeps working before supabase/53_xcreate_workflow.sql has been run —
+  // a missing column fails THIS update with a warn, not the whole run.
+  if (xcreateRow?.id) {
+    const { error: linErr } = await sb.from('xcreates')
+      .update({ parent_id: parentRow?.id ?? null, root_id: rootIdForRun ?? xcreateRow.id })
+      .eq('id', xcreateRow.id)
+    if (linErr) console.warn(`${LOG} lineage update failed (migration 53 run?):`, linErr.message)
+  }
 
   // ── Phase 2: Debit credits for total generation cost ──────────────────
   // Multi-model runs get a discount (CC, July 19): 2 models −10%,

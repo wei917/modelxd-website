@@ -23,7 +23,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import { XCREATE_TEMPLATES, type Template } from './templates'
 
 type Mode = 'text' | 'image' | 'video'
-type Phase = 'setup' | 'generating' | 'picking' | 'chatting'
+type Phase = 'setup' | 'generating' | 'picking' | 'chatting' | 'workflow'
 
 // Pricing + capabilities — see docs/ai_models-schema.md.
 type TokenRate = number | { default: number; by_level?: Record<string, number> }
@@ -482,6 +482,18 @@ function estimateSlotDollars(
 // second muted line; everything post-generation hides it entirely.
 function stripModelVariant(name: string): string {
   return name.replace(/\s*\([^)]*\)\s*$/, '').trim() || name
+}
+
+// Short price tag for the workflow composer's model dropdown — enough to
+// keep the price-honesty framing without the full estimator.
+function wfPriceLabel(m: any, mode: Mode): string {
+  const p = m?.model_pricing ?? {}
+  if (mode === 'image') {
+    const v = p.per_image?.default ?? p.per_image?.medium ?? p.per_image?.['1024']
+    return typeof v === 'number' ? `$${v}/img` : ''
+  }
+  const v = p.per_video_second?.['720p'] ?? p.per_video_second?.default
+  return typeof v === 'number' ? `$${v}/s` : ''
 }
 
 function fmtDollars(dollars: number | null): string {
@@ -1516,6 +1528,12 @@ function CreateStudio() {
   const [matchResult, setMatchResult] = useState<{ eyebrow: string; title: string; winnerName: string; winnerProvider: string; entries: MatchResultEntry[] } | null>(null)
   const [matchDelta,  setMatchDelta]  = useState<RatingDelta | null | undefined>(undefined)
   const [chatHistory,    setChatHistory]    = useState<ChatMessage[]>([])
+  // ── Workflow view (CC, July 26): the per-creation continuation surface.
+  // wfChain is the root_id lineage rendered as the step strip. ──
+  const [wfChain,      setWfChain]      = useState<Array<{ id: string; thumb: string | null; isVideo: boolean }>>([])
+  const [wfEditModels, setWfEditModels] = useState<any[]>([])
+  const [wfPrompt,     setWfPrompt]     = useState('')
+  const [wfModelId,    setWfModelId]    = useState<string | null>(null)
   const [chatInput,      setChatInput]      = useState('')
   const [chatStreaming,  setChatStreaming]  = useState(false)
   const [xcreateId,       setXcreateId]       = useState<string | null>(null)
@@ -2104,6 +2122,101 @@ function CreateStudio() {
     startPolling(newJobId)
   }
 
+  // Workflow chain + edit-capable model list. Chain fetch tolerates a
+  // pre-migration DB (missing root_id column) by collapsing to a
+  // single-step strip instead of erroring.
+  useEffect(() => {
+    if (phase !== 'workflow' || !xcreateId || !userId) return
+    let cancelled = false
+    ;(async () => {
+      const sb = createSupabaseBrowser()
+      const { data: mrows } = await sb.from('ai_models')
+        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+        .eq('enabled', true)
+      if (cancelled) return
+      const fits = (mrows ?? []).filter((m: any) => {
+        const mm: string[] = m.modes ?? []
+        return mode === 'image' ? mm.includes('image_edit') : mm.some(x => x.startsWith('video_'))
+      })
+      setWfEditModels(fits)
+      setWfModelId(prev => (prev && fits.some((m: any) => m.id === prev)) ? prev : (fits[0]?.id ?? null))
+
+      const thumbOf = (row: any) => {
+        const ss: any[] = Array.isArray(row.slots) ? row.slots : []
+        const s = ss.find((x: any) => x.chosen) ?? ss.find((x: any) => x.text)
+        // Stored URLs carry a 24h TTL; older steps may 403 and fall back to
+        // the numbered placeholder. Good enough for v1 — the CURRENT step is
+        // always freshly signed by the gallery-restore path.
+        return { thumb: typeof s?.text === 'string' ? s.text.split('\n')[0] : null, isVideo: !!s?.isVideo }
+      }
+      const { data: self, error: selfErr } = await sb.from('xcreates').select('id, slots, root_id').eq('id', xcreateId).maybeSingle()
+      if (cancelled) return
+      if (selfErr || !self) { setWfChain([{ id: xcreateId, thumb: null, isVideo: false }]); return }
+      const root = (self as any).root_id ?? xcreateId
+      const { data: rows, error: chainErr } = await sb.from('xcreates')
+        .select('id, slots, created_at').eq('root_id', root).order('created_at', { ascending: true })
+      if (cancelled) return
+      const list = (!chainErr && rows && rows.length > 0) ? rows : [self]
+      setWfChain(list.map((r: any) => ({ id: r.id, ...thumbOf(r) })))
+    })()
+    return () => { cancelled = true }
+  }, [phase, xcreateId, userId, mode])
+
+  // One workflow step: current output -> input of a fresh single-model run
+  // (image_edit / video_to_video), through the normal reserve/settle
+  // pipeline, with parent_id linking the chain server-side.
+  const generateStep = async () => {
+    if (!wfModelId || !xcreateId || wfPrompt.trim().length < 1) return
+    const m: any = wfEditModels.find((x: any) => x.id === wfModelId)
+    if (!m) return
+    const stepRecipe = mode === 'image'
+      ? 'image_edit'
+      : ((m.modes ?? []).includes('video_edit') ? 'video_edit' : 'video_to_video')
+    const parentAtSubmit = xcreateId
+    const parentSlot = chosenIdx ?? 0
+    const stepPrompt = wfPrompt.trim()
+    const prevSlots = slots, prevModels = selectedModels, prevChosen = chosenIdx
+    const newJobId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const model: SlotModel = {
+      id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name,
+      modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing,
+      output_config: m.output_config, input_config: m.input_config ?? null,
+    }
+    setPrompt(stepPrompt)
+    setWfPrompt('')
+    setSelectedModels([model, null, null, null])
+    setSlotOptions([validateOpts(model, mode, { mode: stepRecipe as any, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null }), null, null, null])
+    setSlots([{ text: '', isImage: false, isVideo: false, streaming: true, done: false, cost: 0, responseTime: 0, error: null }])
+    setChosenIdx(null); setChatHistory([]); setXcreateId(null)
+    setPhase('generating')
+    fetch('/api/xcreate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId: newJobId, prompt: stepPrompt, mode,
+        modelIds: [wfModelId], modelOptions: [{ mode: stepRecipe }],
+        parentId: parentAtSubmit, parentSlotIdx: parentSlot,
+      }),
+    })
+      .then(async res => {
+        if (res.ok) return
+        const detail = await res.json().catch(() => null)
+        stopPolling()
+        // Refusal: put the workflow view back exactly as it was.
+        setSelectedModels(prevModels); setSlots(prevSlots); setChosenIdx(prevChosen)
+        setXcreateId(parentAtSubmit)
+        setPhase('workflow')
+        if (res.status === 402) {
+          setNeedsTopUp(true)
+          if (typeof detail?.balanceCents === 'number') setBalanceCents(detail.balanceCents)
+          setLoadError(detail?.message ?? 'Not enough credits for this run.')
+        } else {
+          setLoadError(detail?.error ?? `Step failed (HTTP ${res.status}).`)
+        }
+      })
+      .catch(err => console.warn('[xcreate] step POST failed:', err))
+    startPolling(newJobId)
+  }
+
   const pickModel = async (idx: number) => {
     if (!userId) return
     setChosenIdx(idx)
@@ -2140,19 +2253,31 @@ function CreateStudio() {
     })
     setMatchDelta(undefined)
 
-    const rawIndices = selectedModels.map((m, i) => (m ? i : -1)).filter(i => i >= 0)
-    const carried = slotOptions[rawIndices[idx] ?? idx]
-    setSelectedModels([chosen, null, null, null])
-    setSlotOptions([
-      validateOpts(chosen, mode, carried ?? { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null }),
-      null, null, null,
-    ])
-    setOptsOpen([false, false, false, false])
-    setSlots([])
-    setChatHistory([])
-    setChosenIdx(null)
-    setPhase('setup')
-    flashComposer()
+    if (mode !== 'text' && xcreateId) {
+      // Workflow continuation (CC, July 26): picking an image/video winner
+      // lands on this creation's workflow view — the exact moment users
+      // said they wanted to keep editing — instead of resetting to a blank
+      // composer. chosenIdx was set at the top of this function, so the
+      // workflow hero already knows which slot won. Text keeps the July
+      // reset since its continuation surface is the chat.
+      setOptsOpen([false, false, false, false])
+      setPhase('workflow')
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      const rawIndices = selectedModels.map((m, i) => (m ? i : -1)).filter(i => i >= 0)
+      const carried = slotOptions[rawIndices[idx] ?? idx]
+      setSelectedModels([chosen, null, null, null])
+      setSlotOptions([
+        validateOpts(chosen, mode, carried ?? { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null }),
+        null, null, null,
+      ])
+      setOptsOpen([false, false, false, false])
+      setSlots([])
+      setChatHistory([])
+      setChosenIdx(null)
+      setPhase('setup')
+      flashComposer()
+    }
 
     const sb = createSupabaseBrowser()
 
@@ -2635,7 +2760,9 @@ function CreateStudio() {
           { role: 'assistant', content: initial.text, isImage: initial.isImage, isVideo: initial.isVideo },
         ])
       }
-      setPhase('chatting')
+      // Text continuation is a conversation; image/video continuation is
+      // the workflow view (CC, July 26).
+      setPhase(itemMode === 'text' ? 'chatting' : 'workflow')
     } else {
       setChosenIdx(null); setChatHistory([]); setPhase('picking')
     }
@@ -2812,8 +2939,89 @@ function CreateStudio() {
             </div>
           )}
 
-          {/* ── CHATTING PHASE ── */}
-          {phase === 'chatting' && chosenIdx !== null ? (
+          {/* ── WORKFLOW PHASE (CC, July 26): per-creation continuation.
+              Step strip = lineage from wfChain, hero = the chosen output,
+              composer = describe an edit + pick ANY edit-capable model.
+              Cross-model editing is the point — same price-honesty framing
+              as the main grid, one output at a time. */}
+          {phase === 'workflow' ? (
+            <div>
+              {/* Step strip — oldest → newest; the open step is outlined. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, flexWrap: 'wrap' as const }}>
+                {wfChain.map((step, i) => (
+                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {i > 0 && <span style={{ color: 'var(--muted)', fontSize: 14 }}>→</span>}
+                    <div style={{
+                      width: 72, height: 72, borderRadius: 10, overflow: 'hidden',
+                      border: step.id === xcreateId ? '2px solid var(--red)' : '1px solid var(--border2)',
+                      background: 'var(--surface)', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {step.thumb
+                        ? (step.isVideo
+                          ? <video src={step.thumb} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <img src={step.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
+                        : <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>{t('wf.step')} {i + 1}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Current result — the output every next step edits. */}
+              {(() => {
+                const hs = slots[chosenIdx ?? 0]
+                const url = typeof hs?.text === 'string' ? hs.text.split('\n')[0] : null
+                if (!url) return null
+                return (
+                  <div style={{ marginBottom: 24, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border2)', background: '#000' }}>
+                    {hs?.isVideo
+                      ? <video src={url} autoPlay loop muted playsInline controls style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain' }} />
+                      : <img src={url} alt="" onClick={() => setLightbox(url)} style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain', cursor: 'zoom-in' }} />}
+                  </div>
+                )
+              })()}
+
+              {/* Composer — describe the change, pick the model, go. */}
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                <textarea
+                  value={wfPrompt} onChange={e => setWfPrompt(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generateStep() } }}
+                  placeholder={t('wf.placeholder')}
+                  rows={2}
+                  style={{ width: '100%', boxSizing: 'border-box' as const, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
+                />
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' as const }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{t('wf.editwith')}</span>
+                  <select
+                    value={wfModelId ?? ''} onChange={e => setWfModelId(e.target.value || null)}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 10px', color: 'var(--white)', fontSize: 13, outline: 'none', maxWidth: 320 }}
+                  >
+                    {wfEditModels.map((m: any) => {
+                      const price = wfPriceLabel(m, mode)
+                      return <option key={m.id} value={m.id}>{stripModelVariant(m.display_name)}{price ? ` — ${price}` : ''}</option>
+                    })}
+                  </select>
+                  <button
+                    onClick={generateStep}
+                    disabled={!wfPrompt.trim() || !wfModelId}
+                    style={{
+                      marginLeft: 'auto', padding: '10px 22px', borderRadius: 10, border: 'none',
+                      background: 'var(--red)', color: 'var(--white)', fontWeight: 700, fontSize: 14,
+                      cursor: !wfPrompt.trim() || !wfModelId ? 'default' : 'pointer',
+                      opacity: !wfPrompt.trim() || !wfModelId ? 0.5 : 1,
+                    }}
+                  >✨ {t('wf.generate')} →</button>
+                  <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted)', borderRadius: 8, padding: '9px 14px', fontSize: 12, cursor: 'pointer' }}>
+                    ← New Session
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          ) :
+
+          /* ── CHATTING PHASE ── */
+          phase === 'chatting' && chosenIdx !== null ? (
               <div>
                 {/* Chosen model header — single line: name + run cost. */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, padding: '14px 18px', background: 'var(--surface)', border: `1px solid ${SLOT_COLORS[chosenIdx]}44`, borderRadius: 12 }}>
