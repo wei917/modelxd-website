@@ -318,7 +318,7 @@ export default function Home() {
       <div className="home-section reveal">
         <div className="home-inner">
           <div className="prompt-header">
-            <h1 className="prompt-title">Same Task, <span>Different Price</span></h1>
+            <h1 className="prompt-title">Same Result, <span>Pay Less</span></h1>
           </div>
           <div className="home-savings">
             <div className="home-savings-left">
@@ -359,12 +359,6 @@ export default function Home() {
           </div>
           <div className="home-audience">
             <div className="home-audience-card">
-              <div className="home-audience-label">FOR USERS</div>
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$17</div>
-              <div className="home-audience-period">avg. monthly savings</div>
-              <div className="home-audience-desc">You don&apos;t need premium models for everything. XDuel shows you which budget models beat them on your own prompts.</div>
-            </div>
-            <div className="home-audience-card">
               <div className="home-audience-label">FOR DEVELOPERS</div>
               {/* $780/mo, and the un-rounded figure is the point — a round
                   $1,000 reads invented, this one reads computed, because it is.
@@ -382,6 +376,12 @@ export default function Home() {
               <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$780</div>
               <div className="home-audience-period">monthly savings at 100M tokens</div>
               <div className="home-audience-desc">Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.</div>
+            </div>
+            <div className="home-audience-card">
+              <div className="home-audience-label">FOR USERS</div>
+              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$17</div>
+              <div className="home-audience-period">avg. monthly savings</div>
+              <div className="home-audience-desc">You don&apos;t need premium models for everything. XDuel shows you which budget models beat them on your own prompts.</div>
             </div>
           </div>
         </div>
