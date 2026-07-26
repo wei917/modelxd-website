@@ -314,6 +314,79 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── Savings ── */}
+      <div className="home-section reveal">
+        <div className="home-inner">
+          <div className="prompt-header">
+            <h1 className="prompt-title">Same Task, <span>Different Price</span></h1>
+          </div>
+          <div className="home-savings">
+            <div className="home-savings-left">
+              <div className="home-savings-amount">Up to 120×</div>
+              <div className="home-savings-period">price gap between models</div>
+              <div className="home-savings-detail">
+                Most users pick the expensive model out of habit. XDuel reveals when a <strong style={{ color: 'var(--green)' }}>cheaper model wins blind</strong> — so you only pay more when it actually matters.
+              </div>
+            </div>
+            <div className="home-savings-right">
+              <div className="home-compare-row loser">
+                <span className="home-compare-badge">POPULAR</span>
+                <span className="home-compare-name">Premium Model</span>
+                <span className="home-compare-price" style={{ color: 'var(--red)' }}>$$$</span>
+              </div>
+              <div className="home-compare-vs">VS</div>
+              <div className="home-compare-row winner">
+                <span className="home-compare-badge">UNDERDOG</span>
+                <span className="home-compare-name">You&apos;d Be Surprised</span>
+                <span className="home-compare-price" style={{ color: 'var(--green)' }}>$</span>
+              </div>
+              <div className="home-compare-result">
+                <span style={{ color: 'var(--green)', fontWeight: 700 }}>Blind-tested by the community</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Audience ──
+          Carries `surface` because the Modes section that used to sit between
+          this and Savings was removed (CC, July 25); without it two plain
+          sections would abut and read as one long block. */}
+      <div className="home-section surface reveal">
+        <div className="home-inner">
+          <div className="prompt-header">
+            <h1 className="prompt-title">Users & <span>Developers</span></h1>
+          </div>
+          <div className="home-audience">
+            <div className="home-audience-card">
+              <div className="home-audience-label">FOR USERS</div>
+              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$17</div>
+              <div className="home-audience-period">avg. monthly savings</div>
+              <div className="home-audience-desc">You don&apos;t need premium models for everything. XDuel shows you which budget models beat them on your own prompts.</div>
+            </div>
+            <div className="home-audience-card">
+              <div className="home-audience-label">FOR DEVELOPERS</div>
+              {/* $780/mo, and the un-rounded figure is the point — a round
+                  $1,000 reads invented, this one reads computed, because it is.
+                  100M tokens/mo on a mainstream flagship (GPT-5.5, $5/$30 =
+                  $17.50 per M blended 50/50 = $1,750/mo) with 60% of that
+                  traffic moved to Gemini 3.6 Flash ($1.50/$7.50 = $4.50/M):
+                  60M × $13.00 = $780. Deliberately targets the capable mid
+                  model, not Flash-Lite at $0.875/M — Flash-Lite would give
+                  $998 but "the cheapest model wins 60% of the time" is not a
+                  claim we can back. Checked against live model_pricing
+                  July 25 2026; re-derive before changing either number. The
+                  previous "$8,400 at 10M tokens" was unreachable at ANY
+                  assumption: 10M caps out at $1,041 even swapping the priciest
+                  model for the cheapest on 100% of traffic. */}
+              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$780</div>
+              <div className="home-audience-period">monthly savings at 100M tokens</div>
+              <div className="home-audience-desc">Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── How XDuel Works ── */}
       <div className="home-section surface reveal rule-top">
         <div className="home-inner">
@@ -399,79 +472,6 @@ export default function Home() {
               See which AI models deliver the best value — ranked by ModelXD community votes.
             </div>
             <button onClick={() => router.push('/xboard')} className="btn-primary">View XBoard →</button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Savings ── */}
-      <div className="home-section reveal">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">Stop <span>Overpaying</span></h1>
-          </div>
-          <div className="home-savings">
-            <div className="home-savings-left">
-              <div className="home-savings-amount">Up to 133×</div>
-              <div className="home-savings-period">cheaper per million tokens</div>
-              <div className="home-savings-detail">
-                Most users pick the expensive model out of habit. XDuel reveals when a <strong style={{ color: 'var(--green)' }}>cheaper model wins blind</strong> — so you only pay more when it actually matters.
-              </div>
-            </div>
-            <div className="home-savings-right">
-              <div className="home-compare-row loser">
-                <span className="home-compare-badge">POPULAR</span>
-                <span className="home-compare-name">Premium Model</span>
-                <span className="home-compare-price" style={{ color: 'var(--red)' }}>$$$</span>
-              </div>
-              <div className="home-compare-vs">VS</div>
-              <div className="home-compare-row winner">
-                <span className="home-compare-badge">UNDERDOG</span>
-                <span className="home-compare-name">You&apos;d Be Surprised</span>
-                <span className="home-compare-price" style={{ color: 'var(--green)' }}>$</span>
-              </div>
-              <div className="home-compare-result">
-                <span style={{ color: 'var(--green)', fontWeight: 700 }}>Blind-tested by the community</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Audience ──
-          Carries `surface` because the Modes section that used to sit between
-          this and Savings was removed (CC, July 25); without it two plain
-          sections would abut and read as one long block. */}
-      <div className="home-section surface reveal">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">Users & <span>Developers</span></h1>
-          </div>
-          <div className="home-audience">
-            <div className="home-audience-card">
-              <div className="home-audience-label">FOR USERS</div>
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$17</div>
-              <div className="home-audience-period">avg. monthly savings</div>
-              <div className="home-audience-desc">You don&apos;t need premium models for everything. XDuel shows you which budget models beat them on your own prompts.</div>
-            </div>
-            <div className="home-audience-card">
-              <div className="home-audience-label">FOR DEVELOPERS</div>
-              {/* $780/mo, and the un-rounded figure is the point — a round
-                  $1,000 reads invented, this one reads computed, because it is.
-                  100M tokens/mo on a mainstream flagship (GPT-5.5, $5/$30 =
-                  $17.50 per M blended 50/50 = $1,750/mo) with 60% of that
-                  traffic moved to Gemini 3.6 Flash ($1.50/$7.50 = $4.50/M):
-                  60M × $13.00 = $780. Deliberately targets the capable mid
-                  model, not Flash-Lite at $0.875/M — Flash-Lite would give
-                  $998 but "the cheapest model wins 60% of the time" is not a
-                  claim we can back. Checked against live model_pricing
-                  July 25 2026; re-derive before changing either number. The
-                  previous "$8,400 at 10M tokens" was unreachable at ANY
-                  assumption: 10M caps out at $1,041 even swapping the priciest
-                  model for the cheapest on 100% of traffic. */}
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$780</div>
-              <div className="home-audience-period">monthly savings at 100M tokens</div>
-              <div className="home-audience-desc">Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.</div>
-            </div>
           </div>
         </div>
       </div>
