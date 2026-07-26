@@ -1569,6 +1569,9 @@ function CreateStudio() {
   // from re-firing within the same component lifetime.
   const galleryLoadedRef = useRef<string | null>(null)
   const searchIdParam = useSearchParams()?.get('id') ?? null
+  // ?job=<uuid> — open a run that is still in flight. Distinct from ?id=,
+  // which opens a FINISHED xcreate. The sidebar links to whichever applies.
+  const searchJobParam = useSearchParams()?.get('job') ?? null
 
   // ── ?model=<model_name>&mode=<text|image|video> deep link ──
   //
@@ -1933,9 +1936,13 @@ function CreateStudio() {
     let cancelled = false
     ;(async () => {
       try {
-        const activeRes = await fetch('/api/xcreate/jobs/active', { cache: 'no-store' })
-        if (!activeRes.ok) return
-        const { jobId: activeId } = await activeRes.json()
+        // Only open the run the URL names. This used to fetch the newest
+        // RUNNING job and force phase='generating' — the exact state
+        // generate() bails out of — so navigating away and back mid-run
+        // locked the user out of starting anything new (CC, July 26).
+        // Bare /xcreate is a fresh canvas now; the sidebar is how you get
+        // back to something in flight, and runs are concurrent server-side.
+        const activeId = searchJobParam
         if (!activeId || cancelled) return
 
         const res = await fetch(`/api/xcreate/job/${activeId}`, { cache: 'no-store' })
@@ -1989,7 +1996,7 @@ function CreateStudio() {
       }
     })()
     return () => { cancelled = true }
-  }, [userId])
+  }, [userId, searchJobParam])
 
   // Current balance, so the estimate line can warn BEFORE the user commits
   // rather than letting the server refuse afterwards. RLS on user_credits

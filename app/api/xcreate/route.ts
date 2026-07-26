@@ -16,7 +16,7 @@ import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
-import { debitCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
+import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
 import { estimateCost } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 
@@ -290,6 +290,12 @@ export async function POST(req: Request) {
   // "Estimated Cost ~$X" line, and apply the same multi-model discount, so
   // the figure we gate on is the figure the user was shown. The exact cost
   // is only knowable after generation; this is deliberately the estimate.
+  // Stable id up front: the reserve, the job row and the reconciliation all
+  // key off the same value, and the reserve happens before the row exists.
+  const jobIdForRun: string = (clientJobId && typeof clientJobId === 'string')
+    ? clientJobId
+    : crypto.randomUUID()
+  let reservedCents = 0
   {
     const { discountFor } = await import('@/lib/xcreate-discount')
     const estDollars = models.reduce((sum, m, i) => {
@@ -304,16 +310,34 @@ export async function POST(req: Request) {
     }, 0)
     const estCents = Math.round(estDollars * 100 * (1 - discountFor(models.length)))
     if (estCents > 0) {
-      const credits = await getUserCredits(user.id)
-      const balanceCents = credits?.balance_cents ?? 0
-      if (balanceCents < estCents) {
-        console.warn(`${LOG} blocked: needs ~${estCents}c, balance ${balanceCents}c (user ${user.id})`)
-        return Response.json({
-          error:   'insufficient_credits',
-          message: `This run costs about ${formatCents(estCents)} and your balance is ${formatCents(balanceCents)}.`,
-          requiredCents: estCents,
-          balanceCents,
-        }, { status: 402 })
+      // RESERVE, don't just check. Runs are concurrent now, so a plain
+      // balance check would let N simultaneous requests each see the same
+      // healthy balance and all pass before the first debit lands. Debiting
+      // the estimate here makes the balance authoritative; the real cost is
+      // settled against this reserve once generation finishes.
+      try {
+        await debitCredits({
+          userId:        user.id,
+          amountCents:   estCents,
+          referenceType: 'xcreate_reserve',
+          referenceId:   jobIdForRun,
+          description:   `XCreate ${mode} reserve (${models.length} model${models.length > 1 ? 's' : ''})`,
+          metadata:      { mode, modelCount: models.length, jobId: jobIdForRun, estimateCents: estCents },
+        })
+        reservedCents = estCents
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          const credits = await getUserCredits(user.id)
+          const balanceCents = credits?.balance_cents ?? 0
+          console.warn(`${LOG} blocked: needs ~${estCents}c, balance ${balanceCents}c (user ${user.id})`)
+          return Response.json({
+            error:   'insufficient_credits',
+            message: `This run costs about ${formatCents(estCents)} and your balance is ${formatCents(balanceCents)}.`,
+            requiredCents: estCents,
+            balanceCents,
+          }, { status: 402 })
+        }
+        throw err
       }
     }
   }
@@ -346,11 +370,10 @@ export async function POST(req: Request) {
     } catch (err) { console.warn(`${LOG} attachment failed:`, err) }
   }
 
-  // Close any still-running jobs for this user. We assume a user can only
-  // have one generation at a time; if a previous tab was left behind this
-  // cleans it up so the active-job lookup returns the new one.
-  await sb.from('xcreate_jobs').update({ status: 'failed', error: 'superseded', completed_at: new Date().toISOString() })
-    .eq('user_id', user.id).eq('status', 'running')
+  // Runs are concurrent (CC, July 26). This used to fail every other running
+  // job for the user on each new POST, on the assumption of one generation at
+  // a time — which is exactly what stopped a second run from being startable.
+  // Stale rows are now the job list's problem, not this route's.
 
   // Insert the job row. If the client pre-generated a jobId (so it can start
   // polling before POST returns), use that id; otherwise let Postgres generate.
@@ -361,7 +384,7 @@ export async function POST(req: Request) {
     attachment_id: attachmentId,
     status: 'running',
   }
-  if (clientJobId && typeof clientJobId === 'string') jobInsert.id = clientJobId
+  jobInsert.id = jobIdForRun
 
   const { data: job, error: jobErr } = await sb.from('xcreate_jobs').insert(jobInsert).select('id').single()
   if (jobErr || !job) {
@@ -432,25 +455,44 @@ export async function POST(req: Request) {
   const totalCostDollars = slotsForXCreate.reduce((sum, s) => sum + (s.cost ?? 0), 0)
   const preDiscountCents = Math.round(totalCostDollars * 100)
   const totalCostCents   = Math.round(preDiscountCents * (1 - discount))
-  if (totalCostCents > 0) {
+  // Settle against the reserve taken before generation. The reserve was the
+  // estimate; now that the real cost is known, charge or refund the delta.
+  // A run that failed outright has totalCostCents 0, so the whole reserve
+  // comes back automatically.
+  const deltaCents = totalCostCents - reservedCents
+  const settleMeta = { mode, modelCount: models.length, jobId: job.id, discount, preDiscountCents, reservedCents, actualCents: totalCostCents }
+  if (deltaCents > 0) {
     try {
-      const newBalance = await debitCredits({
+      await debitCredits({
         userId:        user.id,
-        amountCents:   totalCostCents,
+        amountCents:   deltaCents,
         referenceType: 'xcreate',
         referenceId:   xcreateRow?.id ?? job.id,
-        description:   `XCreate ${mode} generation (${models.length} model${models.length > 1 ? 's' : ''}${discount > 0 ? `, ${Math.round(discount * 100)}% multi-model discount` : ''})`,
-        metadata:      { mode, modelCount: models.length, jobId: job.id, discount, preDiscountCents },
+        description:   `XCreate ${mode} settle (ran ${formatCents(deltaCents)} over estimate)`,
+        metadata:      settleMeta,
       })
-      console.log(`${LOG} Debited ${totalCostCents}¢ for job ${job.id}; new balance: ${newBalance}¢`)
+      console.log(`${LOG} settled +${deltaCents}¢ over the ${reservedCents}¢ reserve for job ${job.id}`)
     } catch (err) {
-      if (err instanceof InsufficientCreditsError) {
-        console.warn(`${LOG} Insufficient credits for job ${job.id} (need ${totalCostCents}¢)`)
-        // Generation already completed — don't fail the job, but log the shortfall.
-        // Future: could mark job as unpaid or block next generation.
-      } else {
-        console.error(`${LOG} debit failed for job ${job.id}:`, err)
-      }
+      // The reserve already covered the estimate, so the worst case here is
+      // absorbing the overage on this one run — never charging for nothing.
+      console.warn(`${LOG} settle debit failed for job ${job.id} (delta ${deltaCents}¢):`, err)
+    }
+  } else if (deltaCents < 0) {
+    try {
+      await grantCredits({
+        userId:        user.id,
+        amountCents:   -deltaCents,
+        kind:          'refund',
+        referenceType: 'xcreate_refund',
+        referenceId:   xcreateRow?.id ?? job.id,
+        description:   totalCostCents === 0
+          ? `XCreate ${mode} refund (run produced nothing)`
+          : `XCreate ${mode} refund (came in under estimate)`,
+        metadata:      settleMeta,
+      })
+      console.log(`${LOG} refunded ${-deltaCents}¢ of the ${reservedCents}¢ reserve for job ${job.id}`)
+    } catch (err) {
+      console.error(`${LOG} refund failed for job ${job.id} (owed ${-deltaCents}¢):`, err)
     }
   }
 

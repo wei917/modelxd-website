@@ -1056,6 +1056,14 @@ select {
 }
 .nav-history-item:hover { background: var(--red-dim); }
 .nav-history-item svg { color: var(--muted); }
+/* In-flight runs sit in the same list as finished ones, so they need a glyph
+   that reads as "still working" in the 14px slot the mode icon occupies. */
+.nav-history-spin {
+  width: 11px; height: 11px; flex-shrink: 0; border-radius: 50%;
+  border: 1.5px solid var(--border2); border-top-color: var(--red);
+  animation: navspin 0.7s linear infinite;
+}
+@keyframes navspin { to { transform: rotate(360deg); } }
 .nav-history-item:hover svg { color: var(--red); }
 .nav-history-text {
   flex: 1; min-width: 0;

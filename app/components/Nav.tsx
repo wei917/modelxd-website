@@ -65,7 +65,9 @@ export default function Nav() {
   // XCreate history (chat-history pattern): shown under the menu — with a
   // divider so it reads as a separate layer, not more menu items — only
   // while the user is in XCreate. Collapsible, persisted.
-  const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string }>>([])
+  // `running` rows are in-flight xcreate_jobs; the rest are finished xcreates.
+  // They share a list because to a user they are all just "my runs".
+  const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string; running?: boolean }>>([])
   const [recentCollapsed, setRecentCollapsed] = useState(false)
   const [authLoaded, setAuthLoaded] = useState(false)
   const supabase = createBrowserClient(
@@ -96,13 +98,34 @@ export default function Nav() {
   useEffect(() => {
     if (!onXcreate || !user) { setRecent([]); return }
     let cancelled = false
-    supabase.from('xcreates')
-      .select('id, prompt, mode, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10)
-      .then(({ data }) => { if (!cancelled) setRecent((data ?? []) as any[]) })
-    return () => { cancelled = true }
+    // Two sources: runs still generating (xcreate_jobs) and finished ones
+    // (xcreates). In-flight runs were invisible here before, which is why the
+    // page had to hijack itself to show one (CC, July 26). RLS gives an owner
+    // read on both tables, so the browser client is enough.
+    const load = async () => {
+      const [jobsRes, doneRes] = await Promise.all([
+        supabase.from('xcreate_jobs')
+          .select('id, prompt, mode, created_at')
+          .eq('user_id', user.id).eq('status', 'running')
+          // Same 10-minute cutoff the jobs/active route uses: past maxDuration
+          // (300s) a still-'running' row means a killed function, and nothing
+          // closes those any more.
+          .gt('created_at', new Date(Date.now() - 10 * 60_000).toISOString())
+          .order('created_at', { ascending: false }).limit(10),
+        supabase.from('xcreates')
+          .select('id, prompt, mode, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }).limit(10),
+      ])
+      if (cancelled) return
+      const running = (jobsRes.data ?? []).map((j: any) => ({ ...j, running: true }))
+      setRecent([...running, ...((doneRes.data ?? []) as any[])].slice(0, 12))
+    }
+    load()
+    // While anything is generating, refresh so a finished run stops spinning
+    // and moves into the completed list on its own.
+    const iv = setInterval(load, 5000)
+    return () => { cancelled = true; clearInterval(iv) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onXcreate, user?.id])
 
@@ -195,8 +218,15 @@ export default function Nav() {
             <span className="nav-history-toggle" aria-hidden>{recentCollapsed ? '»' : '«'}</span>
           </button>
           {!recentCollapsed && recent.map(item => (
-            <Link key={item.id} href={`/xcreate?id=${item.id}`} className="nav-history-item" title={item.prompt}>
-              <HistoryModeIcon m={item.mode} />
+            <Link
+              key={item.running ? `job-${item.id}` : item.id}
+              href={item.running ? `/xcreate?job=${item.id}` : `/xcreate?id=${item.id}`}
+              className="nav-history-item"
+              title={item.running ? `Generating — ${item.prompt}` : item.prompt}
+            >
+              {item.running
+                ? <span className="nav-history-spin" aria-label="Generating" />
+                : <HistoryModeIcon m={item.mode} />}
               <span className="nav-history-text">{item.prompt ? historyTitle(item.prompt) : '(no prompt)'}</span>
             </Link>
           ))}
