@@ -73,6 +73,11 @@ html[lang="zh-Hant"] {
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* scrollbar-gutter: the XDuel reveal adds a price strip, a vs bar and a
+   second question, which pushes the page past the viewport and summons a
+   scrollbar mid-flow. Every centred container then jumps ~8px left at the
+   exact moment the user is reading the cards. Reserving the gutter up front
+   costs 15px of width and removes the jump everywhere, not just here. */
 html { scroll-behavior: smooth; }
 
 body {
@@ -80,6 +85,10 @@ body {
   color: var(--white);
   font-family: var(--font-body), sans-serif;
   overflow-x: hidden;
+  /* Must sit on BODY, not html: html's overflow is `visible`, so the
+     viewport takes its overflow — and its scrollbar-gutter — from body.
+     Setting it on html computed to `stable` and did nothing. */
+  scrollbar-gutter: stable;
   cursor: none;
 }
 
@@ -868,6 +877,18 @@ select {
 .battle-card.voted-this:first-child { border-left: 2px solid #4a9eff; background: rgba(74,158,255,0.03); }
 .battle-card.voted-this:last-child  { border-right: 2px solid var(--red); background: rgba(232,69,60,0.03); }
 .battle-card.voted-other { opacity: 0.45; }
+/* The blind pick keeps its outline through the informed round (CC, July 29).
+   voted-this is driven by currentVote, which is vote2 (null) once the price
+   is revealed — so the card the user actually chose lost its highlight at
+   the exact moment the page is asking them to reconsider it. A full ring,
+   not just an edge, because by this point the card is a subject of the
+   question rather than a live target. */
+.battle-card.blind-pick { box-shadow: inset 0 0 0 2px currentColor; }
+.battle-card.blind-pick:first-child { color: #4a9eff; background: rgba(74,158,255,0.035); }
+.battle-card.blind-pick:last-child  { color: var(--red); background: rgba(232,69,60,0.035); }
+/* currentColor is only a carrier for the ring — text inside keeps its own. */
+.battle-card.blind-pick .battle-response,
+.battle-card.blind-pick .stats-line { color: var(--white); }
 .battle-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
 .battle-model-id { font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
 .battle-model-id.a { color: #4a9eff; }
@@ -1318,17 +1339,51 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 /* The open cell shows the name horizontally instead — vertical text reads
    badly across a wide panel, and the expanded tile is the one a user most
    wants named. Delayed fade-in so it lands after the cell finishes opening. */
+/* Solid icon badge (CC, July 29 — matching a mockup he supplied). The flat
+   corner chip before this was too quiet to carry a claim: small mono type
+   flush in the corner reads as a photo credit. This is the retail register
+   the comparison actually wants — a filled pill, display type at 15px, an
+   icon that states the axis before the words do, and a soft drop shadow so
+   it lifts off a bright photo instead of sinking into it. It still takes
+   the accent colour of its own side, so badge, panel ring and slider thumb
+   remain one object.
+   Note the label now names the SIDE (price vs quality), not the tier — the
+   tier name still rides the collapsed strips via .vc-letter. */
 .vc-name {
-  position: absolute; left: 10px; bottom: 10px; z-index: 3;
-  font-family: var(--font-mono), monospace; font-size: 10px;
-  letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700;
-  padding: 5px 11px; border-radius: 999px; white-space: nowrap;
-  background: rgba(0, 0, 0, 0.55); color: #fff;
+  position: absolute; left: 8px; bottom: 8px; z-index: 3;
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+  text-transform: uppercase; white-space: nowrap;
+  padding: 10px 17px; border-radius: 9px;
+  color: #fff; background: #111;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
   opacity: 0; pointer-events: none;
   transition: opacity 0.18s ease 0.28s;
 }
+.vc-name svg { width: 17px; height: 17px; flex: none; display: block; }
+/* Slightly translucent (CC, July 29) so the photo reads through the badge
+   and it sits IN the image rather than on top of it. The blur keeps the
+   white type legible over busy areas — plain alpha alone let high-contrast
+   detail (rigging, sun glare) chew through the letterforms. */
+.vc-panel.is-left  .vc-cell.on .vc-name { background: rgba(214, 59, 50, 0.86); }
+.vc-panel.is-right .vc-cell.on .vc-name { background: rgba(47, 111, 208, 0.86); }
+.vc-cell.on .vc-name { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 .vc-cell.on .vc-name { opacity: 1; }
-@media (max-width: 760px) { .vc-name { font-size: 9px; padding: 4px 9px; left: 8px; bottom: 8px; } }
+@media (max-width: 760px) {
+  .vc-name { font-size: 11px; gap: 6px; padding: 7px 11px; border-radius: 7px; left: 5px; bottom: 5px; }
+  .vc-name svg { width: 13px; height: 13px; }
+}
+
+/* The line under the stage. Without it the two panels look like two
+   different photos; the point is that the ONLY variable is the model. */
+.vc-note {
+  margin-top: 14px; text-align: center;
+  font-family: var(--font-mono), monospace; font-size: 11px;
+  letter-spacing: 0.06em; color: var(--muted);
+}
+.vc-note strong { color: var(--muted2); font-weight: 700; }
+@media (max-width: 760px) { .vc-note { font-size: 10px; margin-top: 10px; } }
 /* Overlay, not inset box-shadow — an inset shadow paints beneath the cell's
    own <img>, so the accent ring was invisible. */
 .vc-cell.on::after {
@@ -1380,4 +1435,80 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .vc-stage { grid-template-columns: 1fr; gap: 16px; }
   .vc-axis-row { gap: 10px; }
   .vc-end { font-size: 11px; }
+}
+
+
+/* ── XDuel price reveal (CC, July 29) ────────────────────────────────────
+   The informed round used to re-render the same buttons in an unvoted state,
+   so the quality vote vanished and it read as "do it again". Now the blind
+   pick is announced ON its card, the trade-off gets its own axis, and each
+   button states the reason as well as the action.
+
+   Colour discipline: red already means "expensive" on this page, so the
+   switch-and-save action is GREEN. Model identity colours are untouched. */
+
+.xd-badge {
+  margin-left: auto; padding: 3px 9px; border-radius: 999px;
+  font-family: var(--font-mono), monospace; font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; color: #fff;
+}
+.xd-badge.best { background: rgba(52,211,153,0.16); color: #17a673; }
+/* Reserved, not conditional: the badges occupy their space from the first
+   paint and only fade in, so revealing them cannot re-flow the header. */
+.xd-badge-slot { display: flex; align-items: center; gap: 8px; margin: 0 auto; }
+.xd-badge-slot .xd-badge { margin-left: 0; transition: opacity 0.25s ease; }
+.xd-badge.is-ghost { visibility: hidden; opacity: 0; }
+
+/* Speed on the left, price on the right, widths tracking the real spread. */
+.xd-vs {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px; margin-bottom: 14px;
+  border: 1px solid var(--border2); border-radius: 10px; background: var(--surface);
+}
+.xd-vs-side {
+  flex: 0 0 auto; font-family: var(--font-mono), monospace; font-size: 11px;
+  color: var(--muted); white-space: nowrap;
+}
+.xd-vs-side.left  { color: #4a9eff; }
+/* No trade-off to draw: one claim, centred, no opposing bars. */
+.xd-vs.solo { justify-content: center; }
+.xd-vs.solo .xd-vs-claim { margin-bottom: 0; }
+.xd-vs-mid { flex: 1 1 auto; min-width: 0; }
+.xd-vs-claim {
+  text-align: center; font-size: 15px; font-weight: 700;
+  color: #17a673; margin-bottom: 7px;
+}
+.xd-vs-track {
+  display: flex; align-items: center; justify-content: center; gap: 0;
+  height: 6px; border-radius: 3px; background: var(--surface2);
+}
+.xd-vs-fill { height: 6px; }
+.xd-vs-fill.speed { background: #4a9eff; border-radius: 3px 0 0 3px; }
+.xd-vs-fill.price { background: #17a673; border-radius: 0 3px 3px 0; }
+.xd-vs-pin {
+  flex: 0 0 auto; margin: 0 -1px; padding: 2px 7px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border2);
+  font-family: var(--font-mono), monospace; font-size: 9px; color: var(--muted);
+}
+
+.xd-q2 {
+  margin-bottom: 14px; font-size: 14.5px; line-height: 1.5;
+  color: var(--white); text-align: center; font-weight: 600;
+}
+
+/* Two-line button: the action, then why. */
+.vote-row.is-revote .btn-vote.is-stick { font-weight: 700; }
+.vote-row.is-revote .btn-vote.is-save { border-color: #17a673; color: #17a673; }
+.vote-row.is-revote .btn-vote.is-save:hover { background: rgba(52,211,153,0.10); }
+
+/* A real text duel is paragraphs, not one word — cap the response area so
+   the stat rows below it don't get pushed off screen. */
+.battle-card .battle-response { max-height: 320px; overflow-y: auto; }
+
+@media (max-width: 760px) {
+  .xd-vs { flex-direction: column; gap: 8px; padding: 10px 12px; }
+  .xd-vs-side { font-size: 10px; }
+  .xd-vs-claim { font-size: 13px; }
+  .xd-q2 { font-size: 13px; }
+  .xd-badge { font-size: 8.5px; padding: 2px 7px; }
 }

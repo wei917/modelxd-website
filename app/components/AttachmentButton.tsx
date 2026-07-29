@@ -153,6 +153,7 @@ export default function AttachmentButton({
   context = 'xduel',
   multiple = false,
   accept,
+  maxFiles,
 }: {
   attachments: Attachment[]
   onChange:    (a: Attachment[]) => void
@@ -161,6 +162,8 @@ export default function AttachmentButton({
   multiple?:   boolean
   /** Override the file picker filter. Falls back to the full ACCEPT string. */
   accept?:     string
+  /** Max total files. Defaults to MAX_FILES (5); batch flows pass 10. */
+  maxFiles?:   number
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -178,8 +181,9 @@ export default function AttachmentButton({
     if (toUpload.length === 0) return
 
     // Enforce max total files
-    const remaining = MAX_FILES - attachments.length
-    if (remaining <= 0) { alert(`Maximum ${MAX_FILES} files allowed`); return }
+    const cap = maxFiles ?? MAX_FILES
+    const remaining = cap - attachments.length
+    if (remaining <= 0) { alert(`Maximum ${cap} files allowed`); return }
     const batch = toUpload.slice(0, remaining)
 
     // Held in memory; commitAttachments() uploads at submit.
@@ -213,7 +217,7 @@ export default function AttachmentButton({
       ))}
 
       {/* Add button (show if under max) */}
-      {attachments.length < MAX_FILES && (
+      {attachments.length < (maxFiles ?? MAX_FILES) && (
         <>
           <input ref={inputRef} type="file" accept={accept ?? ACCEPT} multiple={multiple} style={{ display: 'none' }}
             onChange={e => { if (e.target.files?.length) handleFiles(e.target.files) }} />

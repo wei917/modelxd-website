@@ -86,6 +86,16 @@ const POPULAR_CARDS: Record<Mode, Template[]> = (['text','image','video'] as Mod
   return acc
 }, {} as Record<Mode, Template[]>)
 
+/** Text runs cost fractions of a cent, video costs dollars — one fixed
+ *  precision would print either "$0.00" or "$1.230000". */
+function fmtSpend(c: number): string {
+  if (!Number.isFinite(c) || c <= 0) return '$0'
+  if (c >= 1)      return `$${c.toFixed(2)}`
+  if (c >= 0.01)   return `$${c.toFixed(3)}`
+  if (c >= 0.0001) return `$${c.toFixed(4)}`
+  return '<$0.0001'
+}
+
 type ArenaPhase = 'vote' | 'revote'
 
 type ModelMeta = {
@@ -94,6 +104,11 @@ type ModelMeta = {
   provider: string
   outputPrice: number
   priceLabel: string
+  // The CATALOG rate ($/1M tokens, $/image, $/video). priceLabel is
+  // rewritten to this run's actual spend once image/video slots finish,
+  // which left the cards with no rate at all in those modes and no total
+  // in text mode. Keeping both lets every mode show rate AND total. (CC)
+  unitLabel?: string
 }
 
 type ModelState = {
@@ -301,6 +316,7 @@ export default function XDuel() {
                     provider:    pm.provider,
                     outputPrice: pm.outputPrice ?? 0,
                     priceLabel:  pm.priceLabel ?? '…',
+                    unitLabel:   pm.priceLabel ?? undefined,
                   },
                   text:         '',
                   isImage:      false,
@@ -320,7 +336,7 @@ export default function XDuel() {
                 // Worker picked a model — update that slot's meta
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) =>
-                  i === idx ? { ...m, meta: { id: payload.id ?? '', name: payload.name, provider: payload.provider, outputPrice: payload.outputPrice, priceLabel: payload.priceLabel }, text: '', streaming: true, done: false } : m
+                  i === idx ? { ...m, meta: { id: payload.id ?? '', name: payload.name, provider: payload.provider, outputPrice: payload.outputPrice, priceLabel: payload.priceLabel, unitLabel: payload.priceLabel }, text: '', streaming: true, done: false } : m
                 ))
 
               } else if (currentEvent.startsWith('delta:')) {
@@ -545,6 +561,40 @@ export default function XDuel() {
     : Math.round(monthlyRaw)               // text: integer dollars at 10M tokens
   const monthlyLabel = isMediaMode ? '1K generations' : '10M tokens'
 
+  // ── Price-reveal framing (CC, July 29) ─────────────────────────────────
+  // The headline is the pitch, so it should state what THIS duel actually
+  // showed rather than ask a generic question. Text answers that match
+  // word-for-word are the strongest version of the argument; otherwise fall
+  // back to the price spread, and only to a neutral line when there is no
+  // spread to talk about.
+  const priceAt = (i: number) => models[i]?.meta?.outputPrice
+  const pickedIdx  = typeof vote1 === 'number' ? vote1 : null
+  const dearestIdx = models.length > 0
+    ? models.reduce((maxI, m, i, arr) => m.meta.outputPrice > arr[maxI].meta.outputPrice ? i : maxI, 0)
+    : -1
+  const spreadPct = (() => {
+    const lo = priceAt(cheapestIdx), hi = priceAt(dearestIdx)
+    if (typeof lo !== 'number' || typeof hi !== 'number' || hi <= 0 || lo === hi) return null
+    return Math.round(((hi - lo) / hi) * 100)
+  })()
+  const answersMatch = models.length === 2 && mode === 'text' && !!models[0]?.text && !!models[1]?.text
+    && models[0].text.trim().replace(/\s+/g, ' ').toLowerCase() === models[1].text.trim().replace(/\s+/g, ' ').toLowerCase()
+  const revealHeadline = answersMatch && spreadPct
+    ? t('xduel.rv.same')
+    : spreadPct
+      ? t('xduel.rv.spread').replace('{p}', String(spreadPct))
+      : t('xduel.rv.neutral')
+  // Speed side of the trade-off, for the vs bar.
+  const fastestIdx = models.length > 0
+    ? models.reduce((minI, m, i, arr) => m.responseTime < arr[minI].responseTime ? i : minI, 0)
+    : -1
+  const speedPct = (() => {
+    const times = models.map(m => m.responseTime).filter(n => n > 0)
+    if (times.length < 2) return null
+    const lo = Math.min(...times), hi = Math.max(...times)
+    return hi > 0 && lo !== hi ? Math.round(((hi - lo) / hi) * 100) : null
+  })()
+
   const userChoseCheaper = typeof vote2 === 'number' && vote2 === cheapestIdx
   const savingsEmoji = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
 
@@ -580,7 +630,7 @@ export default function XDuel() {
                step === 5 ? null :
                phase === 'vote'
                 ? `"${prompt.substring(0,80)}${prompt.length>80?'…':''}"`
-                : <span>You picked <strong style={{color:'var(--red)'}}>{voteLabel(vote1)}</strong> — now you know the price. Does it change your mind?</span>}
+                : revealHeadline}
             </h1>
           </div>
 
@@ -768,12 +818,33 @@ export default function XDuel() {
                   const cardColorHex = i === 0 ? '#4a9eff' : i === 1 ? '#e8453c' : i === 2 ? '#a78bfa' : '#34d399'
                   return (
                     <div key={i}
-                      className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''}`}
+                      className={`battle-card ${isVoted?'voted-this':''} ${isOther?'voted-other':''} ${phase==='revote' && vote1===i ? 'blind-pick' : ''}`}
                       onMouseEnter={() => setCursor(cardColorHex)}
                       onMouseLeave={() => setCursor('#e8453c')}
                     >
                       <div className={`battle-card-header ${mode==='image'?'image-mode':''}`}>
                         <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
+                        {/* Anchored to the card rather than a separate strip:
+                            the blind pick is a fact ABOUT this model, and
+                            saying it here removes the duplicate row that
+                            used to sit under the arena.
+                            BOTH badges are always in the DOM and merely
+                            hidden — mounting them at reveal re-flowed the
+                            header and jumped the response time sideways at
+                            the exact moment the user was reading it. The
+                            slot is sized by the widest badge on either card
+                            from the first paint, so nothing moves. (CC) */}
+                        <div className="xd-badge-slot">
+                          <span
+                            className={`xd-badge pick ${phase === 'revote' && vote1 === i ? '' : 'is-ghost'}`}
+                            style={{ background: cardColor }}
+                            aria-hidden={!(phase === 'revote' && vote1 === i)}
+                          >{t('xduel.badgepick')}</span>
+                          <span
+                            className={`xd-badge best ${showPrices && cheapest && models.length > 1 ? '' : 'is-ghost'}`}
+                            aria-hidden={!(showPrices && cheapest && models.length > 1)}
+                          >{t('xduel.badgebest')}</span>
+                        </div>
                         <div style={{display:'flex',alignItems:'center',gap:10}}>
                           {m?.done && bothDone && (
                             <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--muted2)',opacity:1,transition:'opacity 0.3s'}}>
@@ -802,7 +873,12 @@ export default function XDuel() {
                           textAlign:'center',
                           transition:'opacity 0.5s',
                         }}>
-                          {m.meta.priceLabel}
+                          {m.meta.unitLabel ?? m.meta.priceLabel}
+                          {/* What this run actually cost. The rate alone
+                              never answered "so what did I just spend?" */}
+                          <span style={{marginLeft:8,fontSize:11,fontWeight:600,opacity:0.85}}>
+                            · {t('xduel.total')} {fmtSpend(m.cost)}
+                          </span>
                           {cheapest && models.length > 1 && <span style={{marginLeft:8,fontSize:10,fontWeight:500,opacity:0.7}}>💰 cheapest</span>}
                           {!cheapest && models.length > 1 && <span style={{marginLeft:8,fontSize:10,fontWeight:500,opacity:0.7}}>💸 more expensive</span>}
                         </div>
@@ -871,7 +947,10 @@ export default function XDuel() {
                             <span className="stats-label">Price</span>
                             <span className="stats-value" style={{display:'flex',alignItems:'center',gap:8}}>
                               <span style={{color: cheapest ? '#34d399' : 'var(--muted2)'}}>
-                                {m.meta.priceLabel}
+                                {m.meta.unitLabel ?? m.meta.priceLabel}
+                              </span>
+                              <span style={{color:'var(--muted2)',opacity:0.9}}>
+                                · {t('xduel.total')} {fmtSpend(m.cost)}
                               </span>
                               {/* Both badges compare LIST prices (meta.outputPrice), the same
                                   number priceLabel renders immediately to the left and the same
@@ -914,11 +993,57 @@ export default function XDuel() {
                 </div>
               )}
 
+              {/* ── The trade-off, on one axis (CC, July 29) ─────────────
+                  Speed left, price right, widths tracking the real spread.
+                  But a "vs" bar is a lie when one model wins BOTH axes —
+                  the first live duel threw up Model A as faster AND 88%
+                  cheaper, and splitting that into two opposing bars invents
+                  a tension that isn't there. When there's no trade-off we
+                  say so in one line instead. */}
+              {phase === 'revote' && spreadPct !== null && (() => {
+                const noTradeoff = fastestIdx === cheapestIdx || speedPct === null
+                if (noTradeoff) {
+                  return (
+                    <div className="xd-vs solo">
+                      <div className="xd-vs-claim">
+                        {speedPct !== null && fastestIdx === cheapestIdx
+                          ? t('xduel.rv.bothwin').replace('{l}', LABELS[cheapestIdx]).replace('{p}', String(spreadPct)).replace('{s}', String(speedPct))
+                          : t('xduel.rv.cheaper').replace('{l}', LABELS[cheapestIdx]).replace('{p}', String(spreadPct))}
+                      </div>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="xd-vs">
+                    <span className="xd-vs-side left">
+                      {t('xduel.rv.faster').replace('{l}', LABELS[fastestIdx]).replace('{p}', String(speedPct))}
+                    </span>
+                    <div className="xd-vs-mid">
+                      <div className="xd-vs-claim">
+                        {t('xduel.rv.cheaper').replace('{l}', LABELS[cheapestIdx]).replace('{p}', String(spreadPct))}
+                      </div>
+                      <div className="xd-vs-track">
+                        <span className="xd-vs-fill speed" style={{ width: `${Math.max(8, Math.min(60, speedPct))}%` }} />
+                        <span className="xd-vs-pin">vs</span>
+                        <span className="xd-vs-fill price" style={{ width: `${Math.max(8, Math.min(60, spreadPct))}%` }} />
+                      </div>
+                    </div>
+                    <span className="xd-vs-side right">
+                      {models[fastestIdx] ? `${(models[fastestIdx].responseTime/1000).toFixed(2)}s` : ''}
+                    </span>
+                  </div>
+                )
+              })()}
+
+              {phase === 'revote' && (
+                <div className="xd-q2">{t('xduel.q2')}</div>
+              )}
+
               {/* Vote row — A | ... | Tie | ... | B */}
               {/* Columns: half the vote buttons, TIE, the other half —
                   sized to the model count (2–4, CC July 19). */}
               <div
-                className="vote-row"
+                className={`vote-row${phase === 'revote' ? ' is-revote' : ''}`}
                 style={{
                   gridTemplateColumns: `repeat(${Math.ceil((models.length || count) / 2)}, 1fr) auto repeat(${Math.floor((models.length || count) / 2)}, 1fr)`,
                 }}
@@ -930,22 +1055,47 @@ export default function XDuel() {
                   const left = allLabels.slice(0, half)
                   const right = allLabels.slice(half)
                   const cardColorHex2 = (i: number) => i === 0 ? '#4a9eff' : i === 1 ? '#e8453c' : i === 2 ? '#a78bfa' : '#34d399'
+                  // In the informed round a button is no longer "X is
+                  // better" — it is "keep the one you already chose" or
+                  // "switch, and here is what that costs". Putting the price
+                  // delta on the button itself is the whole product thesis
+                  // in one control.
+                  const priceOf = (i: number) => models[i]?.meta?.outputPrice
+                  const deltaLabel = (i: number) => {
+                    if (phase !== 'revote' || typeof vote1 !== 'number') return null
+                    const a = priceOf(vote1), b = priceOf(i)
+                    if (typeof a !== 'number' || typeof b !== 'number' || a === b) return null
+                    const cheaper = b < a
+                    return { cheaper, text: `${cheaper ? '−' : '+'}${Math.abs(((b - a) / (a || 1)) * 100).toFixed(0)}%` }
+                  }
                   const makeBtn = (label: string, i: number) => {
                     const cardColor = i === 0 ? '#4a9eff' : i === 1 ? 'var(--red)' : i === 2 ? '#a78bfa' : '#34d399'
                     const voted = currentVote === i
+                    const isStick = phase === 'revote' && vote1 === i
+                    const d = deltaLabel(i)
                     return (
                       <button
                         key={i}
-                        className={`btn-vote ${voted ? 'voted' : ''}`}
+                        className={`btn-vote ${voted ? 'voted' : ''} ${isStick ? 'is-stick' : ''} ${!isStick && phase === 'revote' && d?.cheaper ? 'is-save' : ''}`}
                         style={voted
                           ? {borderColor: cardColor, color: cardColor, background: `${cardColor}18`}
-                          : {'--hover-color': cardColor} as React.CSSProperties}
+                          : isStick
+                            ? {borderColor: cardColor, color: cardColor, '--hover-color': cardColor} as React.CSSProperties
+                            : {'--hover-color': cardColor} as React.CSSProperties}
                         onClick={() => phase==='vote' ? castVote(i) : castRevote(i)}
                         disabled={!bothDone || currentVote !== null}
                         onMouseEnter={() => setCursor(cardColorHex2(i))}
                         onMouseLeave={() => setCursor('#e8453c')}
                       >
-                        {voted ? t('xduel.picked').replace('{l}', label) : t('xduel.isbetter').replace('{l}', label)}
+                        {voted
+                          ? t('xduel.picked').replace('{l}', label)
+                          : phase === 'revote'
+                            // The price row above already states every number.
+                            // The button only names the decision. ·B1
+                            ? (isStick
+                                ? t('xduel.stickwith').replace('{l}', label)
+                                : t('xduel.switchto').replace('{l}', label))
+                            : t('xduel.isbetter').replace('{l}', label)}
                       </button>
                     )
                   }
@@ -958,7 +1108,7 @@ export default function XDuel() {
                       onMouseEnter={() => setCursor('#888888')}
                       onMouseLeave={() => setCursor('#e8453c')}
                     >
-                  {currentVote==='T' ? '✓ Tied' : '⚖ Tie'}
+                  {currentVote==='T' ? '✓ Tied' : phase === 'revote' ? '⚖ ' + t('xduel.eithernow') : '⚖ Tie'}
                     </button>
                     {right.map((label, i) => makeBtn(label, half + i))}
                   </>
@@ -1014,7 +1164,7 @@ export default function XDuel() {
                         cost:         m.cost,
                         isPick:       winnerIdx === i,
                         error:        !!m.errorMessage,
-                        priceLabel:   m.meta.priceLabel,
+                        priceLabel:   m.meta.unitLabel ?? m.meta.priceLabel,
                         note: i === cheapestIdx
                           ? (monthly > 0
                               ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`

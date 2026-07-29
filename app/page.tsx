@@ -52,6 +52,25 @@ const TIERS = [
  * an overlap. That keeps "left is the cheaper one" true at all times, which
  * is what makes the two panels readable without labels repeating the price.
  */
+/* Inline so they inherit currentColor and ship with zero extra requests.
+   The icon states the axis before the words do: a price tag on the cheap
+   side, a cut gem on the expensive one. */
+function TagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M11.6 2.6a2 2 0 0 0-1.42.58L2.6 10.76a2 2 0 0 0 0 2.83l7.81 7.81a2 2 0 0 0 2.83 0l7.58-7.58a2 2 0 0 0 .58-1.42V4.6a2 2 0 0 0-2-2h-7.8Zm5.15 3.05a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Z" />
+    </svg>
+  )
+}
+
+function GemIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7.2 3h9.6a1 1 0 0 1 .8.4l3.2 4.27a1 1 0 0 1-.06 1.28l-8 8.74a1 1 0 0 1-1.48 0l-8-8.74a1 1 0 0 1-.06-1.28L6.4 3.4a1 1 0 0 1 .8-.4Zm.55 2-2.1 2.8h3.5L10.6 5H7.75Zm5.1 0 1.45 2.8h3.5L15.7 5h-2.85Zm-.85.36L10.6 7.8h2.8l-1.4-2.44ZM4.9 9.8l4.62 5.05L7.6 9.8H4.9Zm4.9 0 2.2 5.6 2.2-5.6H9.8Zm6.6 0-1.92 5.05L19.1 9.8h-2.7Z" />
+    </svg>
+  )
+}
+
 function TierComparator() {
   const { t } = useLang()
   // Opens on the extremes — cheapest vs best — so the range the comparator
@@ -156,13 +175,19 @@ function TierComparator() {
                 onClick={() => setPick(side, i)}
               >
                 <span className="vc-letter">{t(tier.key)}</span>
-                <span className="vc-name">{t(tier.key)}</span>
+                <span className="vc-name">
+                  {side === 0 ? <TagIcon /> : <GemIcon />}
+                  {t(side === 0 ? 'home.vc.badge.price' : 'home.vc.badge.quality')}
+                </span>
                 <img src={tier.src} alt={t(tier.key)} draggable={false} />
               </div>
             ))}
           </div>
         ))}
       </div>
+
+      {/* Same prompt, different model — the claim the comparison rests on. */}
+      <div className="vc-note">{t('home.vc.note')}</div>
 
       <div className="vc-axis">
         <div className="vc-axis-row">

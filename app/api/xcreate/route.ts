@@ -22,6 +22,52 @@ import { sanitizeProviderError } from '@/lib/provider-errors'
 
 const LOG = '[xcreate]'
 
+// ── Dev mock mode (CC, July 29) ──────────────────────────────────────────
+// Every end-to-end video test was costing about a dollar, which makes
+// iterating on the pipeline — the agent, the plan card, the board, the
+// polling, the lineage — absurdly expensive when none of that needs a real
+// generation to exercise.
+//
+// With XCREATE_MOCK=1 the provider call is skipped and a previous output of
+// the same mode is returned instead. EVERYTHING else runs for real: job
+// row, slot rows, progress, the xcreates insert, parent/board lineage, the
+// gallery entry. Cost is forced to zero, so no reserve and no settle.
+//
+// Two independent locks so this can never bill-skip in production: the env
+// var must be set AND NODE_ENV must not be production.
+function mockEnabled(): boolean {
+  return process.env.XCREATE_MOCK === '1' && process.env.NODE_ENV !== 'production'
+}
+
+/**
+ * Borrow the newest real output this user already has for `mode`, so the UI
+ * gets a genuine signed URL and video/image element rather than a
+ * placeholder. Returns null when they have no prior output to reuse.
+ */
+async function mockMedia(
+  sb: ReturnType<typeof serviceClient>,
+  userId: string,
+  mode: string,
+): Promise<{ text: string; isImage: boolean; isVideo: boolean } | null> {
+  const { data } = await sb.from('xcreates')
+    .select('slots')
+    .eq('user_id', userId).eq('mode', mode)
+    .order('created_at', { ascending: false })
+    .limit(12)
+  for (const row of data ?? []) {
+    const slots: any[] = Array.isArray((row as any).slots) ? (row as any).slots : []
+    const hit = slots.find(sl => typeof sl?.text === 'string' && sl.text.includes('/storage/v1/object/sign/') && !sl.error)
+    if (!hit) continue
+    // Re-sign: stored URLs carry a 1h TTL and are usually stale by now.
+    const m = String(hit.text).split('\n')[0].match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
+    if (!m) continue
+    const { data: signed } = await sb.storage.from(m[1]).createSignedUrl(decodeURIComponent(m[2]), 60 * 60)
+    if (!signed?.signedUrl) continue
+    return { text: signed.signedUrl, isImage: !!hit.isImage, isVideo: !!hit.isVideo }
+  }
+  return null
+}
+
 function serviceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,6 +141,25 @@ async function runSlot(
   }
 
   const callContext: providers.CallContext = { userId }
+
+  // Mock: pretend to work, return a prior output, charge nothing. Placed
+  // after the slot row exists so the client's polling sees the same
+  // running → done transition it always does.
+  if (mockEnabled()) {
+    await patch({ streaming: true, progress: 10 })
+    await new Promise(r => setTimeout(r, 1200))
+    const media = await mockMedia(sb, userId, mode)
+    const text = media?.text ?? '[mock] no prior output of this mode to reuse'
+    await patch({
+      text, is_image: !!media?.isImage, is_video: !!media?.isVideo,
+      streaming: false, done: true, cost: 0, response_time: Date.now() - start, progress: 100,
+    })
+    console.log(`${LOG} Slot[${index}] MOCK (no provider call, $0)`)
+    return {
+      text, isImage: !!media?.isImage, isVideo: !!media?.isVideo,
+      responseTime: Date.now() - start, cost: 0,
+    }
+  }
 
   try {
     if (mode === 'text') {
@@ -252,7 +317,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null } = await req.json()
+  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null, parentIds: parentIdsInput = null, nodeKind = null, boardId: boardIdInput = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)} jobId=${clientJobId ?? 'server-generated'}`)
 
   // In video/image mode an attached file (image_to_video, image_to_image,
@@ -293,16 +358,53 @@ export async function POST(req: Request) {
   // ── Workflow lineage (CC, July 26): a step run edits a prior creation's
   // output. Ownership is validated BEFORE the credit reserve so a bad
   // parentId can never cost anything.
-  let parentRow: any = null
+  //
+  // MULTI-PARENT (CC, July 28): a product video derives from the original
+  // photo AND the generated angles, and a multi-product scene derives from
+  // two separate roots — neither fits a single parentId. parentIds[] is the
+  // general form; parentId stays accepted so every existing caller (the
+  // workflow step composer, Edit-this, batch) is untouched.
+  //
+  // Ownership of EVERY parent is checked before the credit reserve, so a
+  // bad or borrowed id can never cost the user anything.
+  const parentIdList: string[] = (Array.isArray(parentIdsInput) && parentIdsInput.length > 0)
+    ? parentIdsInput.filter((x: any) => typeof x === 'string')
+    : (parentId && typeof parentId === 'string' ? [parentId] : [])
+  let parentRows: any[] = []
+  let parentRow: any = null          // first parent — legacy alias
   let rootIdForRun: string | null = null
-  if (parentId && typeof parentId === 'string') {
+  let boardIdForRun: string | null = (typeof boardIdInput === 'string' && boardIdInput) ? boardIdInput : null
+  if (parentIdList.length > 0) {
     const svc = serviceClient()
-    const { data: p } = await svc.from('xcreates').select('id, user_id, root_id, slots').eq('id', parentId).maybeSingle()
-    if (!p || p.user_id !== user.id) {
+    // board_id ships in a later migration than 53. Selecting a column that
+    // doesn't exist is a hard ERROR from PostgREST, not a null field, and
+    // that turned every fan-out on a pre-migration database into a bogus
+    // "Parent creation not found" 404. Try the board shape, fall back to the
+    // shape that has always existed.
+    let ps: any[] | null = null
+    {
+      const a = await svc.from('xcreates')
+        .select('id, user_id, root_id, board_id, slots')
+        .in('id', parentIdList)
+      if (!a.error) ps = a.data
+      else {
+        const b = await svc.from('xcreates')
+          .select('id, user_id, root_id, slots')
+          .in('id', parentIdList)
+        ps = b.data
+      }
+    }
+    const found = ps ?? []
+    if (found.length !== parentIdList.length || found.some((p: any) => p.user_id !== user.id)) {
       return Response.json({ error: 'Parent creation not found' }, { status: 404 })
     }
-    parentRow = p
-    rootIdForRun = p.root_id ?? p.id
+    // Preserve the caller's order: reference images are positional, so
+    // "original first, then angles" has to survive the .in() round-trip
+    // (Postgres returns rows in whatever order it likes).
+    parentRows = parentIdList.map(id => found.find((p: any) => p.id === id)).filter(Boolean)
+    parentRow = parentRows[0] ?? null
+    rootIdForRun = parentRow ? (parentRow.root_id ?? parentRow.id) : null
+    if (!boardIdForRun) boardIdForRun = parentRow?.board_id ?? rootIdForRun
   }
 
   // Stable id up front: the reserve, the job row and the reconciliation all
@@ -323,7 +425,9 @@ export async function POST(req: Request) {
         seconds:     o.duration ?? o.seconds,
       })
     }, 0)
-    const estCents = Math.round(estDollars * 100 * (1 - discountFor(models.length)))
+    // Mock runs cost nothing, so they must not reserve anything either —
+    // otherwise a test would still move the balance and then refund it.
+    const estCents = mockEnabled() ? 0 : Math.round(estDollars * 100 * (1 - discountFor(models.length)))
     if (estCents > 0) {
       // RESERVE, don't just check. Runs are concurrent now, so a plain
       // balance check would let N simultaneous requests each see the same
@@ -390,36 +494,46 @@ export async function POST(req: Request) {
   // path inside it never changes, so parse it out and read the object
   // directly. This is what lets "Edit this" skip download/re-upload
   // entirely (most traffic is phones; CC, July 26).
-  if (parentRow) {
-    try {
-      const pslots: any[] = Array.isArray(parentRow.slots) ? parentRow.slots : []
-      const pick = (typeof parentSlotIdx === 'number' && pslots[parentSlotIdx])
-        ? pslots[parentSlotIdx]
-        : pslots.find((s: any) => s.chosen) ?? pslots.find((s: any) => s.text)
-      const firstUrl = typeof pick?.text === 'string' ? pick.text.split('\n')[0] : null
-      const um = firstUrl?.match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
-      if (um) {
-        const [, pBucket, rawPath] = um
-        const pPath = decodeURIComponent(rawPath)
-        const { data: blob, error: dlErr } = await sb.storage.from(pBucket).download(pPath)
-        if (dlErr || !blob) throw new Error(dlErr?.message ?? 'storage download failed')
-        const pBuffer = Buffer.from(await blob.arrayBuffer())
-        const pExt = pPath.split('.').pop()?.toLowerCase() ?? ''
-        const pMedia = pExt === 'mp4' ? 'video/mp4'
-          : pExt === 'webp' ? 'image/webp'
-          : (pExt === 'jpg' || pExt === 'jpeg') ? 'image/jpeg'
-          : 'image/png'
-        // Fresh 1h signed URL for providers that take URLs (Alibaba video
-        // edit, Grok) rather than inline bytes.
-        const { data: pSigned } = await sb.storage.from(pBucket).createSignedUrl(pPath, 60 * 60)
-        attachments.unshift({ buffer: pBuffer, mediaType: pMedia, url: pSigned?.signedUrl } as providers.Attachment)
-        console.log(`${LOG} step input from parent ${parentRow.id} (${pBucket}/${pPath}, ${pBuffer.length}b)`)
-      } else {
-        console.warn(`${LOG} parent ${parentRow.id} has no parseable output URL — step runs without an input`)
+  // Parents are loaded in the order the caller listed them and inserted
+  // AHEAD of any fresh uploads, because reference-image slots are
+  // positional for every provider we call.
+  {
+    const parentAtts: providers.Attachment[] = []
+    for (let pi = 0; pi < parentRows.length; pi++) {
+      const pRow = parentRows[pi]
+      try {
+        const pslots: any[] = Array.isArray(pRow.slots) ? pRow.slots : []
+        // parentSlotIdx only ever meant "which slot of THE parent", so it
+        // applies to the first one; the rest use their own chosen slot.
+        const pick = (pi === 0 && typeof parentSlotIdx === 'number' && pslots[parentSlotIdx])
+          ? pslots[parentSlotIdx]
+          : pslots.find((s: any) => s.chosen) ?? pslots.find((s: any) => s.text)
+        const firstUrl = typeof pick?.text === 'string' ? pick.text.split('\n')[0] : null
+        const um = firstUrl?.match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
+        if (um) {
+          const [, pBucket, rawPath] = um
+          const pPath = decodeURIComponent(rawPath)
+          const { data: blob, error: dlErr } = await sb.storage.from(pBucket).download(pPath)
+          if (dlErr || !blob) throw new Error(dlErr?.message ?? 'storage download failed')
+          const pBuffer = Buffer.from(await blob.arrayBuffer())
+          const pExt = pPath.split('.').pop()?.toLowerCase() ?? ''
+          const pMedia = pExt === 'mp4' ? 'video/mp4'
+            : pExt === 'webp' ? 'image/webp'
+            : (pExt === 'jpg' || pExt === 'jpeg') ? 'image/jpeg'
+            : 'image/png'
+          // Fresh 1h signed URL for providers that take URLs (Alibaba video
+          // edit, Grok) rather than inline bytes.
+          const { data: pSigned } = await sb.storage.from(pBucket).createSignedUrl(pPath, 60 * 60)
+          parentAtts.push({ buffer: pBuffer, mediaType: pMedia, url: pSigned?.signedUrl } as providers.Attachment)
+          console.log(`${LOG} step input ${pi + 1}/${parentRows.length} from parent ${pRow.id} (${pBucket}/${pPath}, ${pBuffer.length}b)`)
+        } else {
+          console.warn(`${LOG} parent ${pRow.id} has no parseable output URL — skipped as an input`)
+        }
+      } catch (err) {
+        console.warn(`${LOG} failed to load parent ${pRow.id} output:`, err)
       }
-    } catch (err) {
-      console.warn(`${LOG} failed to load parent output:`, err)
     }
+    if (parentAtts.length > 0) attachments.unshift(...parentAtts)
   }
 
   // Runs are concurrent (CC, July 26). This used to fail every other running
@@ -502,10 +616,27 @@ export async function POST(req: Request) {
   // keeps working before supabase/53_xcreate_workflow.sql has been run —
   // a missing column fails THIS update with a warn, not the whole run.
   if (xcreateRow?.id) {
+    const lineage: Record<string, any> = {
+      parent_id: parentRow?.id ?? null,
+      root_id:   rootIdForRun ?? xcreateRow.id,
+    }
+    // Board columns are a later migration than 53. Attempt them, and on a
+    // missing-column error retry with the original two fields only, so a
+    // half-migrated database degrades to today's behaviour instead of
+    // losing the lineage stamp entirely.
+    const board: Record<string, any> = {
+      parent_ids: parentRows.length > 0 ? parentRows.map((p: any) => p.id) : null,
+      board_id:   boardIdForRun ?? rootIdForRun ?? xcreateRow.id,
+      node_kind:  typeof nodeKind === 'string' && nodeKind ? nodeKind : null,
+    }
     const { error: linErr } = await sb.from('xcreates')
-      .update({ parent_id: parentRow?.id ?? null, root_id: rootIdForRun ?? xcreateRow.id })
+      .update({ ...lineage, ...board })
       .eq('id', xcreateRow.id)
-    if (linErr) console.warn(`${LOG} lineage update failed (migration 53 run?):`, linErr.message)
+    if (linErr) {
+      console.warn(`${LOG} board lineage update failed, retrying without board columns:`, linErr.message)
+      const { error: linErr2 } = await sb.from('xcreates').update(lineage).eq('id', xcreateRow.id)
+      if (linErr2) console.warn(`${LOG} lineage update failed (migration 53 run?):`, linErr2.message)
+    }
   }
 
   // ── Phase 2: Debit credits for total generation cost ──────────────────

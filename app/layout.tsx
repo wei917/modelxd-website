@@ -4,6 +4,7 @@ import { AuthModalProvider } from '../lib/AuthModalContext'
 import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
+import GlobalCursor from './components/GlobalCursor'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import './globals.css'
 
@@ -75,6 +76,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
             <AuthModal />
+            {/* Default custom cursor for every page — see GlobalCursor.tsx.
+                Ends the "new page ships with an invisible mouse" bug class
+                (CC, July 27). */}
+            <GlobalCursor />
             </PageTitleProvider>
           </AuthModalProvider>
         </LangProvider>

@@ -37,6 +37,16 @@ export interface RatingDelta {
   after: number
 }
 
+/** Real spend is fractions of a cent on text and dollars on video — one
+ *  fixed precision would print either "$0.00" or "$1.230000". */
+function fmtSpend(c: number): string {
+  if (!Number.isFinite(c) || c <= 0) return '$0'
+  if (c >= 1)    return `$${c.toFixed(2)}`
+  if (c >= 0.01) return `$${c.toFixed(3)}`
+  if (c >= 0.0001) return `$${c.toFixed(4)}`
+  return '<$0.0001'
+}
+
 export default function MatchResult({
   eyebrow,
   title,
@@ -53,6 +63,14 @@ export default function MatchResult({
   children?: React.ReactNode
 }) {
   const maxScore = Math.max(...entries.map(e => e.score))
+  // What the run ACTUALLY cost, not the list price. The two can disagree:
+  // a cheaper-per-token model that writes four sentences against a dearer
+  // one that writes two ends up spending more. The score's cost component
+  // (lib/matchScore.ts) grades on this number, so the card has to show it
+  // or the grade looks arbitrary. (CC, July 29)
+  const spends = entries.filter(e => !e.error).map(e => e.cost)
+  const minSpend = spends.length ? Math.min(...spends) : 0
+  const spendsDiffer = spends.length > 1 && Math.max(...spends) > minSpend
   // "MVP" implies a field to be most-valuable IN — with only two
   // competitors the natural word is "WINNER", and a solo run gets no
   // badge at all (CC, July 16-17).
@@ -163,7 +181,21 @@ export default function MatchResult({
                 fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--muted2)',
               }}>
                 <span>⏱ {(e.responseTime / 1000).toFixed(1)}s</span>
-                <span>{e.priceLabel ?? `$${parseFloat(e.cost.toFixed(4))}`}</span>
+                <span>{e.priceLabel ?? fmtSpend(e.cost)}</span>
+              </div>
+
+              {/* Actual spend for THIS run — the number the score grades on. */}
+              <div style={{
+                marginTop: 5, textAlign: 'center',
+                fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.14em',
+                textTransform: 'uppercase',
+                color: e.error ? 'var(--muted)'
+                     : spendsDiffer && e.cost === minSpend ? 'var(--green)'
+                     : 'var(--muted2)',
+              }}>
+                {e.error
+                  ? 'spent —'
+                  : `spent ${fmtSpend(e.cost)}${spendsDiffer && e.cost === minSpend ? ' · lowest' : ''}`}
               </div>
 
               {e.note && (
