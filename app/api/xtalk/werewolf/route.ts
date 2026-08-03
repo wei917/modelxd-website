@@ -127,13 +127,36 @@ async function askModel(seat: Seat, s: Session, prompt: string, field: string) {
     if (chunk.trim()) { full = chunk; break }
   }
 
+  // Extracting the public field is a SAFETY boundary, not a convenience.
+  // The raw reply carries the model's private "reasoning"; if it ever
+  // becomes the public `say`, every player reads the schemer's plan (a
+  // human doctor saw a wolf's whole strategy this way — CC, Aug 3). So:
+  //   1. clean JSON  → take the field, reasoning goes to its own slot;
+  //   2. broken JSON → salvage BOTH fields with a tolerant regex (models
+  //      routinely put raw newlines in string values, which JSON.parse
+  //      rejects), so reasoning still lands in the redacted slot;
+  //   3. a reply that mentions "reasoning" but yields no clean field is a
+  //      malformed structured answer — it is DROPPED, never printed raw.
+  // Only a reply with no structure at all falls through to plain prose.
   const o = parseJsonReply(full)
-  const structured = !!(o && typeof o[field] === 'string')
+  const grab = (f: string): string | undefined => {
+    if (o && typeof o[f] === 'string') return String(o[f]).trim()
+    const m = new RegExp(`["']${f}["']\\s*:\\s*["']([\\s\\S]*?)["']\\s*[,}]`).exec(full)
+    return m ? m[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : undefined
+  }
+  const saidRaw   = grab(field)
+  const reasoning = grab('reasoning')
+  const looksStructured = /["']reasoning["']\s*:/.test(full) || new RegExp(`["']${field}["']\s*:`).test(full)
+  const say = saidRaw !== undefined
+    ? saidRaw
+    // No clean field, but the reply was clearly a (broken) structured answer:
+    // drop it rather than leak the reasoning baked into the raw text.
+    : looksStructured ? '' : full.trim()
   return {
-    say: structured ? String(o![field]).trim() : full.trim(),
-    reasoning: o && typeof o.reasoning === 'string' ? o.reasoning.trim() : undefined,
+    say,
+    reasoning,
     cost,
-    failed: !full.trim(),
+    failed: !full.trim() || (looksStructured && saidRaw === undefined),
     // Carried so the table can say WHY a seat went quiet. A silent turn that
     // reads as a strategic choice is worse than a visible error.
     error: !full.trim() ? (lastError ?? 'no response') : undefined,

@@ -80,6 +80,7 @@ export default function WerewolfLive({
   const [busy, setBusy]     = useState(false)
   const [error, setError]   = useState<string | null>(null)
   const [say, setSay]       = useState('')
+  const [revealThinking, setRevealThinking] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const running = useRef(false)
 
@@ -345,9 +346,24 @@ export default function WerewolfLive({
   // ── table ──────────────────────────────────────────────────────────────
   const me = board.humanSeat !== null ? board.players[board.humanSeat] : null
   const need = board.awaiting
+  const hasThinking = board.transcript.some(t => t.reasoning)
 
   return (
     <>
+      {hasThinking && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <button
+            onClick={() => setRevealThinking(v => !v)}
+            style={{
+              padding: '4px 12px', borderRadius: 999, cursor: 'none', fontSize: 11.5,
+              fontFamily: 'inherit',
+              border: `1px solid ${revealThinking ? 'var(--red)' : 'var(--border2)'}`,
+              background: revealThinking ? 'var(--red-dim)' : 'transparent',
+              color: revealThinking ? 'var(--red)' : 'var(--muted2)',
+            }}
+          >{revealThinking ? '🙈 ' + t('ww.thinking.hide') : '👁 ' + t('ww.thinking.show')}</button>
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
         {board.players.map(p => (
           <div key={p.seat} style={{
@@ -378,30 +394,30 @@ export default function WerewolfLive({
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-        {board.transcript.map((t, i) => (
+        {board.transcript.map((turn, i) => (
           <div key={i} style={{
-            border: `1px solid ${t.privateTo ? 'rgba(232,69,60,0.35)' : 'var(--border2)'}`,
+            border: `1px solid ${turn.privateTo ? 'rgba(232,69,60,0.35)' : 'var(--border2)'}`,
             borderRadius: 10, overflow: 'hidden',
-            background: t.system && !t.privateTo ? 'var(--surface2)' : 'var(--surface)',
+            background: turn.system && !turn.privateTo ? 'var(--surface2)' : 'var(--surface)',
           }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '7px 13px',
               borderBottom: '1px solid var(--border)',
               fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, fontWeight: 700,
               letterSpacing: '0.08em', textTransform: 'uppercase',
-              color: t.system && !t.privateTo ? 'var(--muted)' : colorOf(t.seat),
+              color: turn.system && !turn.privateTo ? 'var(--muted)' : colorOf(turn.seat),
             }}>
-              <span>{t.speaker}</span>
-              {t.privateTo && <span style={{ color: 'var(--red)', fontWeight: 400 }}>· private</span>}
-              {t.kind === 'vote' && <span style={{ opacity: 0.7, fontWeight: 400 }}>· vote</span>}
-              {typeof t.cost === 'number' && t.cost > 0 && (
+              <span>{turn.speaker}</span>
+              {turn.privateTo && <span style={{ color: 'var(--red)', fontWeight: 400 }}>· private</span>}
+              {turn.kind === 'vote' && <span style={{ opacity: 0.7, fontWeight: 400 }}>· vote</span>}
+              {typeof turn.cost === 'number' && turn.cost > 0 && (
                 <span style={{ marginLeft: 'auto', color: 'var(--muted2)', fontWeight: 400 }}>
-                  ${t.cost < 0.0001 ? '<0.0001' : t.cost.toFixed(4)}
+                  ${turn.cost < 0.0001 ? '<0.0001' : turn.cost.toFixed(4)}
                 </span>
               )}
             </div>
-            <div style={{ padding: '11px 13px', fontSize: 13.5, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{t.text}</div>
-            {t.reasoning && (
+            <div style={{ padding: '11px 13px', fontSize: 13.5, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{turn.text}</div>
+            {turn.reasoning && revealThinking && (
               <div style={{
                 padding: '9px 13px', borderTop: '1px dashed var(--border2)', background: 'rgba(0,0,0,0.02)',
                 fontSize: 12.5, lineHeight: 1.6, color: 'var(--muted)', fontStyle: 'italic', whiteSpace: 'pre-wrap',
@@ -410,8 +426,8 @@ export default function WerewolfLive({
                   fontFamily: 'var(--font-mono), monospace', fontStyle: 'normal', fontSize: 9.5,
                   letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--muted2)',
                   display: 'block', marginBottom: 4,
-                }}>thinking · only you see this</span>
-                {t.reasoning}
+                }}>{t('ww.thinking.label')}</span>
+                {turn.reasoning}
               </div>
             )}
           </div>
