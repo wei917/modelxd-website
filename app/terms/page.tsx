@@ -12,7 +12,7 @@ const S = {
 export default function TermsPage() {
   return (
     <div style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px' }}>
-      <div className="prompt-label">Terms</div>
+      <div className="prompt-label eyebrow">Terms</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
         Last updated: July 20, 2026

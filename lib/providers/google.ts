@@ -60,6 +60,7 @@ export async function streamText(
   callbacks: TextStreamCallbacks,
   attachments: Attachment[] = [],
   thinking: string | null = null,
+  search: boolean = false,
 ): Promise<void> {
   const TAG = `[google/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} thinking=${thinking ?? 'auto'}`)
@@ -94,15 +95,23 @@ export async function streamText(
   })
 
   try {
+    // One config object: thinking and grounding both live here, so they
+    // cannot be spread over each other the way two conditional spreads would.
+    const config: any = {}
+    // Thinking level (validated live July 22: MINIMAL/LOW/MEDIUM/HIGH).
+    if (thinking) config.thinkingConfig = { thinkingLevel: thinking.toUpperCase() as any }
+    // Grounding with Google Search.
+    if (search) config.tools = [{ googleSearch: {} }]
+
     const stream = await withRetry(() => ai().models.generateContentStream({
       model: model.model_name,
       contents,
-      // Thinking level (validated live July 22: MINIMAL/LOW/MEDIUM/HIGH).
-      ...(thinking ? { config: { thinkingConfig: { thinkingLevel: thinking.toUpperCase() as any } } } : {}),
+      ...(Object.keys(config).length > 0 ? { config } : {}),
     }), 'text generateContentStream')
 
     let inputTokens = 0
     let outputTokens = 0
+    let searchCount = 0
 
     for await (const chunk of stream) {
       const text = chunk.text
@@ -115,11 +124,17 @@ export async function streamText(
         inputTokens  = chunk.usageMetadata.promptTokenCount ?? 0
         outputTokens = chunk.usageMetadata.candidatesTokenCount ?? 0
       }
+
+      // Grounding metadata arrives on whichever chunk carries the citations.
+      // `webSearchQueries` is the list of queries Google actually ran; a
+      // grounded answer with the list omitted still cost at least one.
+      const gm = (chunk as any).candidates?.[0]?.groundingMetadata
+      if (gm) searchCount = Math.max(searchCount, gm.webSearchQueries?.length || 1)
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, 0, { thinkingLevel: thinking })
-    console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cost=$${cost.toFixed(6)}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens: 0, cost })
+    const cost = calcTextCost(model, inputTokens, outputTokens, 0, { thinkingLevel: thinking, searchCount })
+    console.log(`${TAG} done in=${inputTokens} out=${outputTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    callbacks.onDone({ inputTokens, outputTokens, cachedTokens: 0, cost, searchCount })
   } catch (err: any) {
     callbacks.onError(`Google: ${err?.message ?? err}`)
   }

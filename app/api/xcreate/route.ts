@@ -17,7 +17,7 @@ import { processAttachment }            from '@/lib/attachment'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
 import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
-import { estimateCost } from '@/lib/providers/pricing'
+import { estimateCost, searchRate, supportsWebSearch, resolveTokenRate } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 
 const LOG = '[xcreate]'
@@ -87,6 +87,10 @@ type SlotOpts = {
   count?:          number | null
   mode?:           string
   thinking_level?: string
+  /** Let this slot's model use the provider's built-in web search. The
+   *  router (lib/providers) re-checks the model's capability, so a stale
+   *  true from an older client can't reach a provider that would reject it. */
+  web_search?:     boolean
 }
 
 /**
@@ -120,6 +124,29 @@ async function uploadWithRetry(
     await new Promise(r => setTimeout(r, backoff))
   }
   throw new Error(`Upload failed: ${lastErr?.message ?? 'unknown'}`)
+}
+
+
+/**
+ * Image APIs take a pixel size, not a ratio, and only support a handful of
+ * buckets. Snap any "w:h" to the nearest supported one: square, portrait
+ * (2:3 — the closest thing to 9:16 on offer) or landscape (3:2).
+ */
+function sizeForAspect(aspect: unknown): string | null {
+  if (typeof aspect !== 'string') return null
+  const m = aspect.match(/^\s*(\d+(?:\.\d+)?)\s*[:x/]\s*(\d+(?:\.\d+)?)\s*$/)
+  if (!m) return null
+  const w = parseFloat(m[1]), h = parseFloat(m[2])
+  if (!(w > 0 && h > 0)) return null
+  const r = w / h
+  const buckets: Array<[number, string]> = [
+    [1024 / 1536, '1024x1536'],  // portrait — 9:16, 4:5, 2:3 all land here
+    [1, '1024x1024'],            // square
+    [1536 / 1024, '1536x1024'],  // landscape — 16:9, 3:2
+  ]
+  return buckets.reduce((best, b) =>
+    Math.abs(Math.log(r / b[0])) < Math.abs(Math.log(r / best[0])) ? b : best
+  )[1]
 }
 
 async function runSlot(
@@ -185,7 +212,7 @@ async function runSlot(
         },
         attachments,
         callContext,
-        { thinking: options.thinking_level ?? null },
+        { thinking: options.thinking_level ?? null, search: options.web_search === true },
       )
 
       const rt = Date.now() - start
@@ -197,7 +224,11 @@ async function runSlot(
       await patch({ is_image: true })
 
       const quality = (options.quality ?? 'medium') as 'low' | 'medium' | 'high'
-      const size    = options.size ?? '1024x1024'
+      // aspect_ratio alone was silently dropped for stills: `size` defaults
+      // to a square and `size` is what the image APIs actually honour, so a
+      // caller asking for 9:16 got a 1024x1024 back with no error anywhere.
+      // Derive size from the ratio whenever an explicit size wasn't given.
+      const size    = options.size ?? sizeForAspect(options.aspect_ratio) ?? '1024x1024'
       const result  = await providers.generateImage(
         model, prompt, quality, size, attachments, null, null, callContext,
         {
@@ -415,9 +446,27 @@ export async function POST(req: Request) {
   let reservedCents = 0
   {
     const { discountFor } = await import('@/lib/xcreate-discount')
+    // Reserve for search too. Search is billed per call ON TOP of tokens, and
+    // the pages it reads become input tokens — a searching slot has run 8x the
+    // cost of a plain one in testing. Reserving only the token estimate would
+    // put the whole search bill into the settle as an overage, which is
+    // exactly where a thin balance fails.
+    const SEARCH_ALLOWANCE = 8
+    // Pages the model reads come back as input tokens — measured ~30k on a
+    // searched answer — and they dwarf the per-call fee on expensive models.
+    // The client quotes with this figure (SEARCH_READ_TOKENS there); leaving
+    // it out of the reserve meant quoting $0.25 and holding $0.09, with the
+    // gap landing in the settle where a thin balance fails. Caught in the
+    // release test: reserve 9¢, actual 14¢. (CC, Aug 2)
+    const SEARCH_READ_TOKENS = 30_000
     const estDollars = models.reduce((sum, m, i) => {
       const o = (modelOptions[i] ?? {}) as Record<string, any>
-      return sum + estimateCost(m, mode as 'text' | 'image' | 'video', {
+      const searchEst = (o.web_search === true && supportsWebSearch(m))
+        ? SEARCH_ALLOWANCE * searchRate(m)
+          + (SEARCH_READ_TOKENS / 1_000_000)
+            * resolveTokenRate(m.model_pricing?.tokens?.text_input, o.thinking_level ?? null)
+        : 0
+      return sum + searchEst + estimateCost(m, mode as 'text' | 'image' | 'video', {
         promptChars: typeof prompt === 'string' ? prompt.length : 0,
         quality:     o.quality,
         size:        o.size,
@@ -602,8 +651,22 @@ export async function POST(req: Request) {
     responseId:          results[i]?.responseId ?? null,           // OpenAI
     conversationHistory: results[i]?.conversationHistory ?? null,  // Google
   }))
+  // Which rating pool this run belongs to. Recorded as one of three states,
+  // never derived at read time: an all-search run and an all-plain run are
+  // both valid comparisons, but a MIXED run — one model allowed to look
+  // things up while another was not — measures the settings, not the models,
+  // and must reach neither pool. See supabase/64_xcreate_search_pool.sql.
+  const searchFlags = mode === 'text'
+    ? models.map((m, i) => ((modelOptions[i] ?? {}) as SlotOpts).web_search === true && supportsWebSearch(m))
+    : []
+  const searchMode = searchFlags.length === 0
+    ? 'none'
+    : searchFlags.every(Boolean) ? 'all'
+    : searchFlags.some(Boolean)  ? 'mixed'
+    : 'none'
+
   const { data: xcreateRow } = await sb.from('xcreates').insert({
-    user_id: user.id, mode, prompt,
+    user_id: user.id, mode, prompt, search_mode: searchMode,
     slots: slotsForXCreate, attachment_id: attachmentId,
     // Full input list (July 19) — lets the gallery restore the original
     // uploads when a past run is reopened (attachment_id only kept #1).

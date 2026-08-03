@@ -38,6 +38,8 @@ interface AIModel {
   input_modalities: string[]
   output_modalities: string[]
   model_pricing: ModelPricing | null
+  modes: string[] | null
+  output_config: { text?: { capabilities?: string[] } } | null
   tags: string[]
   is_popular: boolean | null
   enabled: boolean
@@ -51,7 +53,65 @@ interface LeaderboardEntry {
   totalVotes: number
 }
 
-type FilterMode = 'all' | 'text' | 'image' | 'video'
+type FilterMode = 'text' | 'image' | 'video'
+
+/**
+ * Subtype of the selected category (CC, Aug 2: no separate boards — every
+ * special view is a subtype of its modality, the way video has text-to-video
+ * and video-edit).
+ *
+ *   text  → 'text_to_text' | 'search' | 'werewolf'
+ *   image → 'all' | any image recipe mode present in the catalog
+ *   video → 'all' | any video recipe mode present in the catalog
+ *
+ * Three different mechanics behind one row of chips: image/video subtypes
+ * filter the CATALOG by declared modes (same pool of numbers); 'search'
+ * swaps in the text_search rating pool (supabase/62 — answering from memory
+ * and answering after eight searches are different skills, so the scores
+ * never mix); 'werewolf' swaps the table itself for the XTalk game
+ * scoreboard, which is not a rating at all.
+ */
+type Subtype = string
+
+/**
+ * Subtype groups for image/video, in display order: chip key (labelled by
+ * its recipe.* string) → the catalog modes it covers. A group appears when
+ * any of its modes exists in the category.
+ */
+const SUBTYPE_GROUPS: [string, string[]][] = [
+  ['text_to_image',  ['text_to_image']],
+  ['image_edit',     ['image_edit']],
+  ['text_to_video',  ['text_to_video']],
+  ['image_to_video', ['image_to_video', 'reference_frames', 'start_end_frames']],
+  ['video_edit',     ['video_edit', 'video_to_video']],
+]
+
+/** Modes covered by a subtype chip ('text_to_text' covers itself). */
+const subtypeModes = (key: string): string[] =>
+  SUBTYPE_GROUPS.find(([k]) => k === key)?.[1] ?? [key]
+
+/** One aggregate row from /api/xboard/werewolf. */
+type WWRow = {
+  modelId: string
+  games: number
+  wins: number
+  wolfGames: number
+  wolfWins: number
+  villageGames: number
+  villageWins: number
+  survived: number
+}
+
+const canSearch = (m: AIModel) =>
+  (m.output_config?.text?.capabilities ?? []).includes('web_search')
+
+// Below this many rating signals the search board is labelled provisional.
+// Counted in VOTES, not duels: one duel contributes two signals per seat
+// (quality and value), and a user who votes in round one but not round two
+// contributes one — so votes cannot be divided back into a reliable duel
+// count. Showing the number we actually have beats showing a tidier one we
+// would be guessing. 60 signals is roughly 30 duels.
+const PROVISIONAL_BELOW = 60
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -206,7 +266,10 @@ export default function LeaderboardPage() {
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [providerMenuOpen])
-  const [filterMode, setFilterMode] = useState<FilterMode>('all')
+  const [filterMode, setFilterMode] = useState<FilterMode>('text')
+  const [subtype, setSubtype] = useState<Subtype>('all')
+  const [ww, setWw] = useState<{ totalGames: number; rows: WWRow[] } | null>(null)
+  const [votes, setVotes] = useState<Record<string, number>>({})
   const [search, setSearch] = useState('')
   // Default: highest XD score first.
   const [qualityScores, setQualityScores] = useState<Record<string, number>>({})
@@ -235,20 +298,45 @@ export default function LeaderboardPage() {
       .eq('enabled', true)
       .then(({ data }) => (data as AIModel[]) ?? [])
 
-    const scoresP = fetch('/api/xboard?mode=all')
+    modelsP.then(ms => { setModels(ms); setLoading(false) })
+  }, [])
+
+  // The search pool and the werewolf scoreboard only exist inside text.
+  const searchPool = filterMode === 'text' && subtype === 'search'
+  const wolfBoard  = filterMode === 'text' && subtype === 'werewolf'
+
+  // Scores load separately from the catalog: switching pools swaps the
+  // numbers, not the model list, so the catalog must not be re-fetched.
+  useEffect(() => {
+    let stale = false
+    fetch(`/api/xboard?mode=${searchPool ? 'text_search' : filterMode}`)
       .then(r => r.ok ? r.json() as Promise<LeaderboardEntry[]> : [])
       .catch(() => [] as LeaderboardEntry[])
+      .then((ss: LeaderboardEntry[]) => {
+        if (stale) return
+        const map: Record<string, number> = {}
+        const qmap: Record<string, number> = {}
+        const vmap: Record<string, number> = {}
+        for (const e of ss) {
+          map[e.modelId] = e.xdScore
+          vmap[e.modelId] = e.totalVotes
+          if (e.qualityScore != null) qmap[e.modelId] = e.qualityScore
+        }
+        setScores(map)
+        setQualityScores(qmap)
+        setVotes(vmap)
+      })
+    return () => { stale = true }
+  }, [searchPool, filterMode])
 
-    Promise.all([modelsP, scoresP]).then(([ms, ss]) => {
-      setModels(ms)
-      const map: Record<string, number> = {}
-      const qmap: Record<string, number> = {}
-      for (const e of ss) { map[e.modelId] = e.xdScore; if (e.qualityScore != null) qmap[e.modelId] = e.qualityScore }
-      setScores(map)
-      setQualityScores(qmap)
-      setLoading(false)
-    })
-  }, [])
+  // Werewolf standings — fetched on first visit to the subtype.
+  useEffect(() => {
+    if (!wolfBoard || ww !== null) return
+    fetch('/api/xboard/werewolf')
+      .then(r => r.ok ? r.json() : { totalGames: 0, rows: [] })
+      .catch(() => ({ totalGames: 0, rows: [] }))
+      .then(setWw)
+  }, [wolfBoard, ww])
 
   const merged: MergedRow[] = useMemo(
     () => models.map(m => ({ ...m, qualityScore: qualityScores[m.id] ?? null, xdScore: scores[m.id] ?? null })),
@@ -257,8 +345,18 @@ export default function LeaderboardPage() {
 
   const filtered = useMemo(() => {
     let list = merged
+    // The search sub-board lists only models that CAN search. Showing the
+    // rest with a dash would read as "ranked last", not "not eligible".
+    if (searchPool) list = list.filter(canSearch)
+    // Recipe-mode subtypes filter the catalog by declared modes ('search'
+    // and 'werewolf' are not recipe modes — they swap pools/tables instead).
+    // A chip is a GROUP: any covered mode counts.
+    if (subtype !== 'all' && subtype !== 'search' && subtype !== 'werewolf') {
+      const covered = subtypeModes(subtype)
+      list = list.filter(m => (m.modes ?? []).some(x => covered.includes(x)))
+    }
     if (selectedProviders.length > 0) list = list.filter(m => selectedProviders.includes(m.provider))
-    if (filterMode !== 'all') list = list.filter(m => primaryMode(m) === filterMode)
+    list = list.filter(m => primaryMode(m) === filterMode)
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(m =>
@@ -280,7 +378,7 @@ export default function LeaderboardPage() {
       return String(va).localeCompare(String(vb)) * dir
     }
     return [...list].sort(cmp)
-  }, [merged, selectedProviders, filterMode, search, sortBy, sortDir])
+  }, [merged, selectedProviders, filterMode, search, sortBy, sortDir, searchPool, subtype])
 
   const handleSort = (k: SortKey) => {
     if (sortBy === k) {
@@ -306,13 +404,37 @@ export default function LeaderboardPage() {
   )
 
   const modeCounts = useMemo(() => {
-    const c: Record<string, number> = { all: models.length }
+    const c: Record<string, number> = {}
     for (const m of models) {
       const mode = primaryMode(m)
       c[mode] = (c[mode] ?? 0) + 1
     }
     return c
   }, [models])
+
+  // Which subtype chips the selected category offers. Image/video chips are
+  // discovered from the catalog's declared modes so a new recipe shows up
+  // here without a code change; text's three are fixed by design.
+  const subtypeChips = useMemo((): [Subtype, string][] => {
+    const all: [Subtype, string] = ['all', t('common.all')]
+    if (filterMode === 'text') {
+      return [
+        all,
+        ['text_to_text', t('recipe.text_to_text')],
+        ['search',       t('xboard.text.search')],
+        ['werewolf',     t('xt.tpl.werewolf.name')],
+      ]
+    }
+    const present = new Set(
+      models.filter(m => primaryMode(m) === filterMode).flatMap(m => m.modes ?? []),
+    )
+    return [
+      all,
+      ...SUBTYPE_GROUPS
+        .filter(([, covered]) => covered.some(x => present.has(x)))
+        .map(([k]) => [k, t('recipe.' + k)] as [Subtype, string]),
+    ]
+  }, [filterMode, models, t])
 
   return (
     <>
@@ -323,7 +445,7 @@ export default function LeaderboardPage() {
         <div className="arena">
 
           {/* In-page header: "// XBOARD" eyebrow + big headline (CC, July 20). */}
-          <div className="prompt-label">{t('xboard.eyebrow')}</div>
+          <div className="prompt-label eyebrow">{t('xboard.eyebrow')}</div>
           <h1 className="page-headline">
             {t('xboard.subtitle')}
             <Link href="/methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 14, whiteSpace: 'nowrap' }}>
@@ -331,8 +453,45 @@ export default function LeaderboardPage() {
             </Link>
           </h1>
 
+          {/* Page-local layout: subtype rail + content. NOT the app nav —
+              a second, in-page menu (CC, Aug 2): subtypes will multiply, and
+              a vertical list scales where a chip row wraps into soup. */}
+          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', marginTop: 24 }}>
+            <aside style={{
+              width: 148, flexShrink: 0, position: 'sticky', top: 24,
+              borderLeft: '1px solid var(--border2)',
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-mono), monospace', fontSize: 9, fontWeight: 700,
+                letterSpacing: '0.18em', textTransform: 'uppercase',
+                color: 'var(--muted)', padding: '2px 0 9px 14px',
+              }}>
+                {t('mode.' + filterMode)}
+              </div>
+              {subtypeChips.map(([key, label]) => {
+                const active = subtype === key
+                return (
+                  <button key={key} onClick={() => setSubtype(key)} style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    padding: '6px 0 6px 13px', border: 'none', borderRadius: 0,
+                    borderLeft: `2px solid ${active ? 'var(--red)' : 'transparent'}`,
+                    marginLeft: -1, cursor: 'none', fontFamily: 'inherit', fontSize: 12.5,
+                    background: 'transparent',
+                    color: active ? 'var(--red)' : 'var(--muted2)',
+                    fontWeight: active ? 700 : 400,
+                    transition: 'color 0.12s, border-color 0.12s',
+                  }}
+                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--white)' }}
+                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--muted2)' }}
+                  >{label}</button>
+                )
+              })}
+            </aside>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+
           {/* Search bar */}
-          <div style={{ marginTop: 24, marginBottom: 20 }}>
+          <div style={{ marginBottom: 20 }}>
             <input
               type="text"
               value={search}
@@ -399,21 +558,25 @@ export default function LeaderboardPage() {
               )}
             </div>
 
-            {/* Mode filter */}
+            {/* Category filter. Picking a category resets its subtype to
+                the default so a leftover 'werewolf' can't leak into video. */}
             <div className="mode-seg">
-              {(['all', 'text', 'image', 'video'] as FilterMode[]).map(m => (
-                <button key={m} onClick={() => setFilterMode(m)}
+              {(['text', 'image', 'video'] as FilterMode[]).map(m => (
+                <button key={m}
+                  onClick={() => { setFilterMode(m); setSubtype('all') }}
                   className={`mode-seg-btn${filterMode === m ? ' active' : ''}`}>
                   <span className={`mode-dot${filterMode === m ? ' active' : ''}`} />
-                  {m === 'all' ? t('common.all') : t('mode.' + m)}
+                  {t('mode.' + m)}
                   <span style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 600 }}>
                     {modeCounts[m] ?? 0}
                   </span>
                 </button>
               ))}
             </div>
+
           </div>
 
+          {!wolfBoard ? <>
           {/* Results count */}
           <div style={{
             fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted)',
@@ -422,51 +585,32 @@ export default function LeaderboardPage() {
             {t('xboard.modelcount').replace('{n}', String(filtered.length)).toUpperCase()}
           </div>
 
+          {searchPool && (() => {
+            // The busiest seat's signal count, not a sum: summing across
+            // models would multiply one duel by the number of players in it.
+            const signals = Math.max(0, ...Object.values(votes).map(v => Number(v) || 0))
+            return (
+              <div style={{
+                border: '1px solid var(--border2)', borderRadius: 9, padding: '10px 13px',
+                marginBottom: 16, fontSize: 12, lineHeight: 1.5, color: 'var(--muted2)',
+                background: 'var(--surface)',
+              }}>
+                {signals < PROVISIONAL_BELOW && (
+                  <strong style={{ color: 'var(--red)', marginRight: 6 }}>
+                    {t('xboard.provisional').replace('{n}', String(signals))}
+                  </strong>
+                )}
+                {t('xboard.board.search.note')}
+              </div>
+            )
+          })()}
+
           {loading ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading...</div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>
               No models match your filters.
             </div>
-          ) : filterMode === 'all' ? (
-            // ── Mixing text / image / video on one ranked list isn't useful
-            // — a text model and a video model can't be compared. When the
-            // user has the "All" filter on, group rows into three sections
-            // (text, image, video). Each section gets its own header so it
-            // stays sortable. Sections with zero rows are hidden.
-            <>
-              {(['text', 'image', 'video'] as const).map(group => {
-                const rows = filtered.filter(m => primaryMode(m) === group)
-                if (rows.length === 0) return null
-                const groupAccent = group === 'video'
-                  ? 'var(--mode-video)'
-                  : group === 'image'
-                    ? 'var(--mode-image)'
-                    : 'var(--mode-text)'
-                return (
-                  <div key={group} style={{ marginBottom: 28 }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '0 4px 10px',
-                      fontFamily: 'var(--font-mono), monospace',
-                      fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
-                      textTransform: 'uppercase', color: 'var(--muted2)',
-                    }}>
-                      <span style={{ color: groupAccent }}>● {t('mode.' + group)}</span>
-                      <span style={{ color: 'var(--muted)', fontWeight: 500 }}>
-                        {t('xboard.modelcount').replace('{n}', String(rows.length))}
-                      </span>
-                    </div>
-                    <LeaderboardTable
-                      rows={rows}
-                      sortBy={sortBy}
-                      sortDir={sortDir}
-                      onSort={handleSort}
-                    />
-                  </div>
-                )
-              })}
-            </>
           ) : (
             <LeaderboardTable
               rows={filtered}
@@ -475,10 +619,51 @@ export default function LeaderboardPage() {
               onSort={handleSort}
             />
           )}
+          </> : (
+            <WerewolfBoard
+              ww={ww}
+              models={models}
+              providers={selectedProviders}
+              search={search}
+            />
+          )}
+
+            </div>
+          </div>
 
         </div>
       </div>
     </>
+  )
+}
+
+// ── Model name with instant overflow tooltip ────────────────────────────────
+
+function NameCell({ name }: { name: string }) {
+  const [tip, setTip] = useState(false)
+  return (
+    <span
+      style={{ position: 'relative', minWidth: 0, flex: 1, display: 'block' }}
+      onMouseEnter={e => {
+        const s = e.currentTarget.firstElementChild as HTMLElement | null
+        if (s && s.scrollWidth > s.clientWidth) setTip(true)
+      }}
+      onMouseLeave={() => setTip(false)}
+    >
+      <span style={{
+        display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--white)',
+        fontFamily: 'var(--font-body), sans-serif',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{name}</span>
+      {tip && (
+        <span style={{
+          position: 'absolute', left: 0, top: 'calc(100% + 5px)', zIndex: 60,
+          background: '#141310', color: '#fff', padding: '4px 9px',
+          borderRadius: 6, fontSize: 12, whiteSpace: 'nowrap',
+          boxShadow: '0 4px 14px rgba(0,0,0,.25)', pointerEvents: 'none',
+        }}>{name}</span>
+      )}
+    </span>
   )
 }
 
@@ -489,7 +674,7 @@ function ModelRow({ model: m }: { model: MergedRow }) {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 100px 130px 100px 100px 130px 90px 140px',
+        gridTemplateColumns: '2fr 100px 130px 100px 100px 130px 140px',
         gap: 0, padding: '12px 20px',
         background: 'var(--bg)',
         alignItems: 'center',
@@ -498,11 +683,10 @@ function ModelRow({ model: m }: { model: MergedRow }) {
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg)'}
     >
-      {/* Model name */}
+      {/* Model name — one line, always. Smaller face + a wider column
+          beats a taller row of wrapped text (CC, Aug 2). */}
       <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 17, fontWeight: 400, color: 'var(--white)', fontFamily: 'var(--font-body), sans-serif' }}>
-          {m.display_name}
-        </span>
+        <NameCell name={m.display_name} />
       </div>
 
       {/* Quality — blind-vote-only rating (price never seen). Plain mono
@@ -562,22 +746,6 @@ function ModelRow({ model: m }: { model: MergedRow }) {
         })}
       </div>
 
-      {/* Output modalities */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {(m.output_modalities ?? []).map(mod => {
-          const b = modalityBadge(mod)
-          return (
-            <span key={mod} style={{
-              fontSize: 10, color: b.color, background: b.bg,
-              padding: '2px 7px', borderRadius: 4, fontWeight: 600,
-              fontFamily: 'var(--font-mono), monospace',
-            }}>
-              {b.label}
-            </span>
-          )
-        })}
-      </div>
-
       {/* Price (industry-standard rate, slash-aligned across rows) */}
       <div style={{
         textAlign: 'right', fontSize: 12, color: 'var(--white)',
@@ -622,10 +790,10 @@ function LeaderboardTable({
     // On mobile (≤760px), horizontal scroll preserves the dense layout
     // rather than mangling the column alignment.
     <div style={{ overflowX: 'auto' as const, WebkitOverflowScrolling: 'touch' as const, border: '1px solid var(--border)', borderRadius: 8 }}>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', minWidth: 790 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', minWidth: 820 }}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 100px 130px 100px 100px 130px 90px 140px',
+        gridTemplateColumns: '2fr 100px 130px 100px 100px 130px 140px',
         gap: 0, padding: '10px 20px',
         fontSize: 10, color: 'var(--muted)', fontWeight: 700,
         letterSpacing: '0.12em', textTransform: 'uppercase',
@@ -638,7 +806,6 @@ function LeaderboardTable({
         <SortHeader label={t('xboard.col.provider')}  sortKey="provider" active={sortBy} dir={sortDir} onSort={onSort} />
         <SortHeader label={t('xboard.col.released')}  sortKey="released" active={sortBy} dir={sortDir} onSort={onSort} />
         <span>{t('xboard.col.input')}</span>
-        <span>{t('xboard.col.output')}</span>
         <SortHeader label={t('xboard.col.price')}     sortKey="price"    active={sortBy} dir={sortDir} onSort={onSort} align="right" />
       </div>
       {rows.map(m => <ModelRow key={m.id} model={m} />)}
@@ -689,5 +856,160 @@ function SortHeader({
         {isActive ? (dir === 'asc' ? '▲' : '▼') : '▲'}
       </span>
     </button>
+  )
+}
+
+// ── Werewolf scoreboard ──────────────────────────────────────────────────────
+//
+// Game results, not ratings. Rows come pre-aggregated from
+// /api/xboard/werewolf; the model catalog the page already holds supplies
+// names and logos, so a model that was disabled since its games simply
+// drops off — same rule the ranking board applies.
+
+// Below this many finished games the whole board is labelled provisional.
+const WW_PROVISIONAL_BELOW = 30
+
+function WerewolfBoard({
+  ww, models, providers, search,
+}: {
+  ww: { totalGames: number; rows: WWRow[] } | null
+  models: AIModel[]
+  providers: string[]
+  search: string
+}) {
+  const t = useT()
+  const byId = useMemo(() => new Map(models.map(m => [m.id, m])), [models])
+
+  // XD scores from the 'werewolf' rating pool (supabase/65): each game's
+  // team result is decomposed into winner-beats-loser pairs and fitted with
+  // the same Bradley-Terry as every other board. Win rate stays as a detail
+  // column — the score is comparable across the site, the fractions say how
+  // it was earned.
+  const [scores, setScores] = useState<Record<string, number> | null>(null)
+  useEffect(() => {
+    let stale = false
+    fetch('/api/xboard?mode=werewolf')
+      .then(r => r.ok ? r.json() as Promise<LeaderboardEntry[]> : [])
+      .catch(() => [] as LeaderboardEntry[])
+      .then(ss => {
+        if (stale) return
+        const map: Record<string, number> = {}
+        for (const e of ss) map[e.modelId] = e.xdScore
+        setScores(map)
+      })
+    return () => { stale = true }
+  }, [])
+
+  const rows = useMemo(() => {
+    let list = (ww?.rows ?? [])
+      .map(r => ({ r, m: byId.get(r.modelId)!, score: scores?.[r.modelId] ?? null }))
+      .filter(x => !!x.m)
+    if (providers.length > 0) list = list.filter(x => providers.includes(x.m.provider))
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(x => x.m.display_name.toLowerCase().includes(q) || x.m.provider.toLowerCase().includes(q))
+    }
+    // Score decides the order (unrated last); win rate then games break ties.
+    return list.sort((a, b) =>
+      (b.score ?? -1) - (a.score ?? -1) ||
+      (b.r.wins / b.r.games) - (a.r.wins / a.r.games) ||
+      b.r.games - a.r.games,
+    )
+  }, [ww, byId, providers, search, scores])
+
+  if (ww === null) {
+    return <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading...</div>
+  }
+
+  const pct = (w: number, g: number) => g === 0 ? '—' : `${Math.round(100 * w / g)}%`
+  const frac = (w: number, g: number) => g === 0 ? '—' : `${w} / ${g}`
+
+  return (
+    <>
+      <div style={{
+        border: '1px solid var(--border2)', borderRadius: 9, padding: '10px 13px',
+        marginBottom: 16, fontSize: 12, lineHeight: 1.5, color: 'var(--muted2)',
+        background: 'var(--surface)',
+      }}>
+        {ww.totalGames < WW_PROVISIONAL_BELOW && (
+          <strong style={{ color: 'var(--red)', marginRight: 6 }}>
+            {t('xboard.ww.provisional').replace('{n}', String(ww.totalGames))}
+          </strong>
+        )}
+        {t('xboard.ww.note')}
+      </div>
+
+      {rows.length === 0 ? (
+        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>
+          No games recorded yet.
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' as const, WebkitOverflowScrolling: 'touch' as const, border: '1px solid var(--border)', borderRadius: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', minWidth: 830 }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 110px 90px 110px 130px 130px 110px',
+              gap: 0, padding: '10px 20px',
+              fontSize: 10, color: 'var(--muted)', fontWeight: 700,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              fontFamily: 'var(--font-mono), monospace',
+              background: 'var(--surface)',
+            }}>
+              <span>{t('xboard.col.model')}</span>
+              <span style={{ textAlign: 'right' }}>XD Score</span>
+              <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.games')}</span>
+              <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.winrate')}</span>
+              <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.wolf')}</span>
+              <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.village')}</span>
+              <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.survival')}</span>
+            </div>
+            {rows.map(({ r, m, score }) => (
+              <div key={r.modelId} style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 110px 90px 110px 130px 130px 110px',
+                gap: 0, padding: '12px 20px',
+                background: 'var(--bg)', alignItems: 'center',
+                transition: 'background 0.12s',
+              }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg)'}
+              >
+                <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ProviderLogo provider={m.provider} size={14} />
+                  <NameCell name={m.display_name} />
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  {score != null ? (
+                    <span className={`xd-chip ${scoreTier(score)}`}>{score}</span>
+                  ) : (
+                    <span style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', fontWeight: 600 }}>—</span>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 600, color: 'var(--muted2)' }}>
+                  {r.games}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 700,
+                    color: r.wins * 2 > r.games ? 'var(--green)' : r.wins * 2 < r.games ? 'var(--red)' : 'var(--muted2)',
+                  }}>
+                    {pct(r.wins, r.games)}
+                  </span>
+                </div>
+                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--muted2)' }}>
+                  {frac(r.wolfWins, r.wolfGames)}
+                </div>
+                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--muted2)' }}>
+                  {frac(r.villageWins, r.villageGames)}
+                </div>
+                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--muted2)' }}>
+                  {frac(r.survived, r.games)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

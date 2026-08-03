@@ -23,11 +23,12 @@
 
 import { createSupabaseServer } from './supabase-server'
 
-export type Feature = 'canvas' | 'xdirector'
+export type Feature = 'canvas' | 'xdirector' | 'xtalk'
 
 const ENV_VAR: Record<Feature, string> = {
   canvas:    'FEATURE_CANVAS_EMAILS',
   xdirector: 'FEATURE_XDIRECTOR_EMAILS',
+  xtalk:     'FEATURE_XTALK_EMAILS',
 }
 
 function parseList(raw: string | undefined): string[] {
@@ -59,9 +60,10 @@ export async function getFeatures(): Promise<FeatureSet> {
     return {
       canvas:    emailHasFeature(email, 'canvas'),
       xdirector: emailHasFeature(email, 'xdirector'),
+      xtalk:     emailHasFeature(email, 'xtalk'),
     }
   } catch {
-    return { canvas: false, xdirector: false }
+    return { canvas: false, xdirector: false, xtalk: false }
   }
 }
 

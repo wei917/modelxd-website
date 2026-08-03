@@ -19,6 +19,7 @@ import { useT } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
+import { isSubmitEnter } from '../../lib/ime'
 
 // One bubble in the visible transcript. Generation bubbles update in place
 // as the job progresses.
@@ -30,6 +31,7 @@ type Bubble = {
   status?: 'generating' | 'done' | 'error'
   modelName?: string
   videoUrl?: string
+  imageUrl?: string
   cost?: number
   error?: string
   // ask bubbles — clickable answers instead of making the user type.
@@ -43,6 +45,21 @@ type Bubble = {
 }
 
 const MAX_AUTO_GENS = 3     // per user turn — a runaway agent can't chain-spend
+
+/**
+ * The chat used to write `/xdirector?c=...` straight into the address bar.
+ * It now lives inside /xcreate as Agent Mode, so hardcoding its old path
+ * threw the user back to a route they had already been redirected off —
+ * and silently dropped ?agent=1 with it. Only ever touch the query.
+ */
+function setConversationUrl(id: string | null) {
+  if (typeof window === 'undefined') return
+  const p = new URLSearchParams(window.location.search)
+  if (id) p.set('c', id)
+  else p.delete('c')
+  const qs = p.toString()
+  window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+}
 
 export default function XDirectorChat() {
   const t = useT()
@@ -131,20 +148,14 @@ export default function XDirectorChat() {
         // A dead link shouldn't strand the user on a blank page — drop the
         // id and let them start fresh.
         convIdRef.current = null
-        window.history.replaceState(null, '', '/xdirector')
+        setConversationUrl(null)
       } finally { setLoading(false) }
     })()
   }, [])
 
   const saveConversation = async (proto: any[], bubs: Bubble[]) => {
     if (proto.length === 0) return
-    if (!convIdRef.current) {
-      convIdRef.current = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-        ? crypto.randomUUID() : `${Date.now()}`
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', `/xdirector?c=${convIdRef.current}`)
-      }
-    }
+    ensureConvId()
     // `pending` carries a full copy of the message array per bubble — great
     // for resuming a click in-session, ruinous to store.
     const slim = bubs.map(({ pending, ...rest }) => rest)
@@ -163,6 +174,27 @@ export default function XDirectorChat() {
   }
 
   const endRef      = useRef<HTMLDivElement>(null)
+  // ── Board identity (CC, July 31) ──────────────────────────────────────
+  // Everything the agent makes in one conversation belongs on ONE canvas
+  // board, and the board IS the conversation — same uuid, so resuming a
+  // ?c= link reopens the same board with no extra column to store. Without
+  // this the agent's outputs were orphan rows that only ever existed as
+  // chat bubbles.
+  const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const ensureConvId = () => {
+    if (!convIdRef.current) {
+      convIdRef.current = newId()
+      setConversationUrl(convIdRef.current)
+    }
+    return convIdRef.current
+  }
+  // The most recent generation on this board. The next one hangs off it, so
+  // the canvas draws a lineage the user can follow instead of a scatter of
+  // unconnected tiles.
+  const lastGenIdRef = useRef<string | null>(null)
+  const [lastGenId, setLastGenId] = useState<string | null>(null)
+
   const committedRef = useRef<Attachment[]>([])          // last committed uploads, reused across shots
   const genCountRef  = useRef(0)                          // auto-gens this user turn
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -310,12 +342,29 @@ export default function XDirectorChat() {
     const jobId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
       ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
+    // The agent now directs stills as well as motion. Trust the declared
+    // medium but fall back to reading the recipe, because a recipe and a
+    // medium that disagree would bill against the wrong pipeline.
+    const medium: 'image' | 'video' =
+      inp.medium === 'image' || inp.medium === 'video'
+        ? inp.medium
+        : (typeof inp.recipe === 'string' && inp.recipe.includes('video') ? 'video' : 'image')
+
+    const board = ensureConvId()
+
     const payload: any = {
       jobId,
       prompt: inp.prompt,
-      mode: 'video',
+      mode: medium,
+      boardId: board,
+      nodeKind: medium,
+      ...(lastGenIdRef.current ? { parentIds: [lastGenIdRef.current] } : {}),
       modelIds: [inp.model_id],
-      modelOptions: [{ mode: inp.recipe, ...(typeof inp.duration === 'number' ? { duration: inp.duration } : {}) }],
+      modelOptions: [{
+        mode: inp.recipe,
+        ...(typeof inp.duration === 'number' ? { duration: inp.duration } : {}),
+        ...(typeof inp.aspect_ratio === 'string' ? { aspect_ratio: inp.aspect_ratio } : {}),
+      }],
     }
     if (inp.use_attachments && committedRef.current.length > 0) {
       payload.attachments = committedRef.current.map(a => ({
@@ -368,8 +417,13 @@ export default function XDirectorChat() {
         }
         const url = typeof slot?.text === 'string' ? slot.text.split('\n')[0] : null
         const cost = slot?.cost ?? 0
-        patchLastGen({ status: 'done', videoUrl: url ?? undefined, cost, modelName: slot?.name ?? inp.model_id })
-        return finish({ ok: true, videoUrl: url ? '(delivered to the user in the chat)' : null, costUsd: cost, model: slot?.name ?? inp.model_id, xcreateId: data.job?.xcreateId ?? null })
+        const xid = data.job?.xcreateId ?? null
+        if (xid) { lastGenIdRef.current = xid; setLastGenId(xid) }
+        patchLastGen({
+          status: 'done', cost, modelName: slot?.name ?? inp.model_id,
+          ...(medium === 'image' ? { imageUrl: url ?? undefined } : { videoUrl: url ?? undefined }),
+        })
+        return finish({ ok: true, url: url ? '(delivered to the user in the chat)' : null, medium, costUsd: cost, model: slot?.name ?? inp.model_id, xcreateId: xid })
       } catch { /* transient poll error — keep going */ }
     }, 2500)
   }
@@ -481,6 +535,22 @@ export default function XDirectorChat() {
   return (
     <div>
       <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.6, marginTop: -8 }}>{t('xdirector.subtitle')}</p>
+
+      {/* Everything this conversation made is one board. Until the canvas
+          sits alongside the chat, this is the way through to it. */}
+      {lastGenId && (
+        <a
+          href={`/xcreate?id=${lastGenId}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18,
+            padding: '7px 14px', borderRadius: 999,
+            border: '1px solid var(--border2)', background: 'var(--surface)',
+            color: 'var(--muted)', textDecoration: 'none',
+            fontFamily: 'var(--font-mono), monospace', fontSize: 11, fontWeight: 700,
+            letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+          }}
+        >⬚ {t('xdirector.opencanvas')}</a>
+      )}
 
         {/* Transcript */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20, minHeight: 160 }}>
@@ -599,7 +669,9 @@ export default function XDirectorChat() {
                 ? <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--red)' }}>⚠ {b.error}</div>
                 : b.videoUrl
                   ? <video src={b.videoUrl} autoPlay loop muted playsInline controls style={{ width: '100%', maxWidth: 560, display: 'block', background: '#000' }} />
-                  : <div style={{ padding: '14px', fontSize: 12, color: 'var(--muted)' }}>{b.text}</div>}
+                  : b.imageUrl
+                    ? <img src={b.imageUrl} alt="" style={{ width: '100%', maxWidth: 420, display: 'block', background: '#000' }} />
+                    : <div style={{ padding: '14px', fontSize: 12, color: 'var(--muted)' }}>{b.text}</div>}
             </div>
           ) : (
             <div key={i} style={{ display: 'flex', justifyContent: b.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -632,7 +704,7 @@ export default function XDirectorChat() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              onKeyDown={e => { if (isSubmitEnter(e)) { e.preventDefault(); send() } }}
               placeholder={t('xdirector.placeholder')}
               rows={2}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}

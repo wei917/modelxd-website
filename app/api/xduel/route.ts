@@ -12,6 +12,22 @@ import { modePriceLabel }                 from '@/lib/providers/pricing'
 
 const LOG = '[duel]'
 
+// ── search is deliberately absent here ──────────────────────────────────────
+//
+// XDuel had a match-level web-search toggle for about an hour. It came out
+// again, and not because of the raw cost — that was already solved by
+// charging it to credits. It came out because XDuel is the free front door.
+// A search duel measured $0.6405 against a $0.0039 median for a normal text
+// duel (164x), so it can never be part of the free quota, and a control that
+// answers "not enough credits" to most first-time visitors is a bad first
+// impression on the one surface that has to make a good one.
+//
+// Search lives in XCreate and XTalk, where the user is already paying and
+// chose the models on purpose. duels.search and the text_search rating pool
+// (supabase/61, 62) stay in place: the column is still correct for the rows
+// that have it, and re-adding the toggle is a small change if this is ever
+// reconsidered. (CC, Aug 2)
+
 // Models that REQUIRE an attachment to function.
 // input_modalities only lists 'image'/'video'/'audio' when REQUIRED (not optional).
 // Text-output vision models and pure text-to-image models have input_modalities: ['text'].
@@ -91,7 +107,7 @@ async function runSlot(
   duelId:      string,
   controller:  ReadableStreamDefaultController,
   userId:      string,
-): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number } | null> {
+): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; searches: number } | null> {
   const callContext: providers.CallContext = { userId }
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name} mode=${mode}`)
@@ -99,7 +115,7 @@ async function runSlot(
   try {
     if (mode === 'text') {
       let fullText = ''
-      let doneResult: { inputTokens: number; outputTokens: number; cachedTokens: number; cost: number } = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, cost: 0 }
+      let doneResult: { inputTokens: number; outputTokens: number; cachedTokens: number; cost: number; searchCount?: number } = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, cost: 0 }
 
       await providers.streamText(
         model,
@@ -117,15 +133,17 @@ async function runSlot(
       )
 
       const responseTime = Date.now() - start
-      console.log(`${LOG} Slot[${index}] text done in ${responseTime}ms cost=${doneResult.cost}`)
+      const searches = doneResult.searchCount ?? 0
+      console.log(`${LOG} Slot[${index}] text done in ${responseTime}ms cost=${doneResult.cost} searches=${searches}`)
       controller.enqueue(sse(`done:${index}`, {
         index,
         responseTime,
         cost:         doneResult.cost,
         inputTokens:  doneResult.inputTokens,
         outputTokens: doneResult.outputTokens,
+        searches,
       }))
-      return { text: fullText, isImage: false, isVideo: false, responseTime, cost: doneResult.cost }
+      return { text: fullText, isImage: false, isVideo: false, responseTime, cost: doneResult.cost, searches }
 
     } else if (mode === 'image') {
       controller.enqueue(sse(`delta:${index}`, { index, isImage: true, generating: true }))
@@ -183,7 +201,7 @@ async function runSlot(
       const responseTime = Date.now() - start
       controller.enqueue(sse(`delta:${index}`, { index, text: publicUrl, isImage: true }))
       controller.enqueue(sse(`done:${index}`,  { index, responseTime, cost: result.cost }))
-      return { text: publicUrl, isImage: true, isVideo: false, responseTime, cost: result.cost }
+      return { text: publicUrl, isImage: true, isVideo: false, responseTime, cost: result.cost, searches: 0 }
 
     } else if (mode === 'video') {
       console.log(`${LOG} Slot[${index}] VIDEO START model=${model.provider}/${model.model_name}`)
@@ -240,7 +258,7 @@ async function runSlot(
       const responseTime = Date.now() - start
       controller.enqueue(sse(`delta:${index}`, { index, text: publicUrl, isVideo: true }))
       controller.enqueue(sse(`done:${index}`,  { index, responseTime, cost: result.cost }))
-      return { text: publicUrl, isImage: false, isVideo: true, responseTime, cost: result.cost }
+      return { text: publicUrl, isImage: false, isVideo: true, responseTime, cost: result.cost, searches: 0 }
     }
 
     throw new Error(`Unknown mode: ${mode}`)
@@ -345,8 +363,10 @@ export async function POST(req: Request) {
     }, { status: 400 })
   }
 
+
   const models = shuffle(pool).slice(0, n)
   const duelId = crypto.randomUUID()
+
 
   // Process attachment (duel still uses single attachment from client)
   const attachments: providers.Attachment[] = []
@@ -418,6 +438,10 @@ export async function POST(req: Request) {
         isVideo:      results[i]?.isVideo ?? false,
         cost:         results[i]?.cost ?? 0,
         responseTime: results[i]?.responseTime ?? 0,
+        // Per-model tally. Zero WITH search allowed is a real datum — it
+        // means the model judged the question didn't need the web — so this
+        // is always written, never omitted when it happens to be 0.
+        searches:     results[i]?.searches ?? 0,
         priceLabel:   slotPrices[i].priceLabel,
         outputPrice:  slotPrices[i].outputPrice,
       }))
@@ -428,11 +452,12 @@ export async function POST(req: Request) {
         input_media: inputMedia,
       })
 
-      // Giveaway ledger (July 19): XDuel is house-paid, so record what
-      // this duel actually cost us. Fire-and-forget — reporting must
-      // never fail a duel.
       const duelCostCents = Math.round(slots.reduce((sum, sl) => sum + (sl.cost ?? 0), 0) * 100)
+
       if (duelCostCents > 0) {
+        // Giveaway ledger (July 19): XDuel is house-paid, so record what
+        // this duel actually cost us. Fire-and-forget — reporting must
+        // never fail a duel.
         sb.rpc('bump_giveaway', { p_kind: `xduel_${mode}`, p_cents: duelCostCents })
           .then(({ error: gErr }) => { if (gErr) console.warn(`${LOG} bump_giveaway failed: ${gErr.message}`) })
       }

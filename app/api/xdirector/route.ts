@@ -45,8 +45,14 @@ let workingModel: string | null = null
 const TOOLS: any[] = [
   {
     name: 'list_models',
-    description: 'List the video-capable AI models currently enabled on ModelXD, with live pricing, supported recipes (modes) AND their ModelXD leaderboard scores from real head-to-head user votes (xd_score, quality, value, votes). Always call this before recommending a model or generating.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    description: 'List the AI models currently enabled on ModelXD for a given medium, with live pricing, supported recipes (modes) AND their ModelXD leaderboard scores from real head-to-head user votes (xd_score, quality, value, votes). Always call this before recommending a model or generating. Pass medium="image" for stills and medium="video" for motion — the leaderboard is scored separately per medium, so asking for the wrong one gives you the wrong ranking.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        medium: { type: 'string', enum: ['image', 'video'], description: 'which board to read; defaults to video' },
+      },
+      required: [],
+    },
   },
   {
     name: 'ask_user',
@@ -66,7 +72,7 @@ const TOOLS: any[] = [
   },
   {
     name: 'start_generation',
-    description: 'Start one video generation on ModelXD. The result arrives later as a tool result (ok/videoUrl/cost or an error). Use exactly one model per call. recipe MUST be one of the modes returned by list_models for that model.',
+    description: 'Start one generation on ModelXD — a still image or a video. The result arrives later as a tool result (ok/url/cost or an error). Use exactly one model per call. recipe MUST be one of the modes returned by list_models for that model.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -75,8 +81,10 @@ const TOOLS: any[] = [
         prompt:          { type: 'string',  description: 'the full generation prompt you wrote' },
         duration:        { type: 'number',  description: 'seconds; omit unless the user asked for a specific length' },
         use_attachments: { type: 'boolean', description: 'true to pass the user\'s attached photos as reference inputs' },
+        medium:          { type: 'string', enum: ['image', 'video'], description: 'image for a still, video for motion. Must match the board you took model_id from.' },
+        aspect_ratio:    { type: 'string', description: 'e.g. "9:16" for Threads/Reels, "1:1", "16:9". Always set this for social posts.' },
       },
-      required: ['model_id', 'recipe', 'prompt'],
+      required: ['model_id', 'recipe', 'prompt', 'medium'],
     },
   },
 ]
@@ -97,7 +105,7 @@ const READ_SKILL_FILE_TOOL = {
 
 // ── Tool executors (server-side ones only) ─────────────────────────────────
 
-async function execListModels(): Promise<string> {
+async function execListModels(medium: 'image' | 'video' = 'video'): Promise<string> {
   const svc = serviceClient()
   const [{ data, error }, { data: ratings }] = await Promise.all([
     svc.from('ai_models')
@@ -112,12 +120,19 @@ async function execListModels(): Promise<string> {
     // product is that the community already knows which model wins.
     svc.from('model_ratings')
       .select('model_id, quality_rating, value_rating, xd_score, total_votes')
-      .eq('mode', 'video'),
+      .eq('mode', medium),
   ])
   if (error) return JSON.stringify({ error: error.message })
   const byId = new Map((ratings ?? []).map((r: any) => [r.model_id, r]))
-  const vids = (data ?? []).filter((m: any) =>
-    (m.modes ?? []).some((x: string) => x.includes('video')))
+  // An image model is one with a non-video generating mode. Matching on
+  // "image" alone missed image_to_video and, worse, matched nothing for
+  // models whose still mode is just "text_to_image".
+  const vids = (data ?? []).filter((m: any) => {
+    const modes: string[] = m.modes ?? []
+    return medium === 'video'
+      ? modes.some(x => x.includes('video'))
+      : modes.some(x => x.includes('image') && !x.includes('to_video'))
+  })
   // Compact per-model summary — the agent needs prices, modes and scores,
   // not the whole row. per_video_second keys are resolutions ('720p'...).
   const out = vids.map((m: any) => {
@@ -248,7 +263,8 @@ export async function POST(req: Request) {
             ...(content ? {} : { is_error: true }),
           })
         } else if (tu.name === 'list_models') {
-          results.push({ type: 'tool_result', tool_use_id: tu.id, content: await execListModels() })
+          const med = tu.input?.medium === 'image' ? 'image' : 'video'
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: await execListModels(med) })
         } else if (tu.name === 'ask_user') {
           // Chips. Same hand-off shape as a generation: the loop pauses and
           // resumes when the client posts the clicked answer back as this

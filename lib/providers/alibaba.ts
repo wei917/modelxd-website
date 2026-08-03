@@ -37,39 +37,92 @@ function defaultHeaders() {
 
 // ── cost helpers ───────────────────────────────────────────────────────────
 
-// ── text (streaming via OpenAI-compatible Chat Completions) ────────────────
-
-const CHAT_ENDPOINT = '/compatible-mode/v1/chat/completions'
+// ── text (streaming, native DashScope protocol) ────────────────────────────
+//
+// This used to go through /compatible-mode/v1/chat/completions, which
+// impersonates OpenAI's API so an OpenAI SDK works unchanged. That saves
+// human labour and costs fidelity: the shim can only carry fields OpenAI's
+// schema has a slot for, so DashScope-specific things fall out silently in
+// translation. `usage.plugins.search.count` — how many searches we owe money
+// for — has no OpenAI equivalent and simply never arrived. Same for
+// search_info. So: native everywhere, one path. (CC, Aug 2)
+//
+// Envelope differences from the shim, all of them load-bearing here:
+//   request   input.messages + parameters{}   (not top-level messages)
+//   deltas    output.choices[0].message.content with incremental_output
+//   usage     input_tokens / output_tokens    (not prompt_ / completion_)
+//   streaming X-DashScope-SSE: enable header  (not "stream": true)
+const NATIVE_TEXT_ENDPOINT = '/api/v1/services/aigc/text-generation/generation'
+// Qwen's VL path. Same endpoint the image models use, different direction:
+// here media goes IN and text comes out.
+const MULTIMODAL_ENDPOINT = IMAGE_ENDPOINT
 
 export async function streamText(
   model: ModelInfo,
   messages: { role: 'user' | 'assistant'; content: any }[],
   callbacks: TextStreamCallbacks,
   attachments: Attachment[] = [],
+  search: boolean = false,
+  thinking: string | null = null,
 ): Promise<void> {
   const TAG = `[alibaba/${model.model_name}]`
-  console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
 
-  // Build messages array
-  const chatMessages = messages.map((m, i) => {
-    if (i === messages.length - 1 && m.role === 'user' && attachments.length > 0) {
-      return buildMultimodalMessage(String(m.content), attachments)
-    }
-    return { role: m.role, content: String(m.content) }
-  })
+  // Which endpoint is a property of the MODEL, not of this request. A
+  // VL/omni model lives on multimodal-generation and is rejected outright by
+  // text-generation ("url error, please check url") even for a plain text
+  // prompt — verified live against qwen3.6-plus, Aug 2. A text-only Qwen is
+  // the other way round. So route on declared capability, not on whether
+  // this particular call happens to carry a file.
+  const media = attachments.filter(
+    a => a.mediaType.startsWith('image/') || a.mediaType.startsWith('video/'),
+  )
+  const multimodal = (model.modes ?? []).some(m => m === 'image_to_text' || m === 'video_to_text')
+                     || media.length > 0
+  const endpoint = multimodal ? MULTIMODAL_ENDPOINT : NATIVE_TEXT_ENDPOINT
+
+  // Search works on BOTH native endpoints, multimodal included — verified
+  // live Aug 2: qwen3.6-plus returned same-day headlines with
+  // search_info.search_results populated and usage.plugins.search.count = 1.
+  //
+  // It does NOT work in non-streaming mode ("Non-streaming mode does not
+  // support Web Search in thinking mode"), which is fine because this path
+  // always streams. That error is the tell if search ever silently stops.
+  const searchOn = search
+
+  console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} multimodal=${multimodal} search=${searchOn} thinking=${thinking ?? 'default'}`)
+
+  const nativeMessages = messages.map((m, i) => ({
+    role: m.role,
+    content: i === messages.length - 1 && m.role === 'user' && multimodal
+      ? mediaParts(String(m.content), media)
+      : multimodal
+      ? [{ text: String(m.content) }]
+      : String(m.content),
+  }))
+
+  const parameters: any = {
+    result_format:      'message',
+    incremental_output: true,
+    max_tokens:         4096,
+  }
+  if (searchOn) {
+    parameters.enable_search = true
+    // 'agent' is the strategy that lets the model decide when to search.
+    // enable_source is what makes search_info come back at all.
+    parameters.search_options = { search_strategy: 'agent', enable_source: true }
+  }
+  // The catalog declares Qwen's levels as thinking_true / thinking_false;
+  // DashScope takes a boolean. Anything unrecognised leaves the model on its
+  // own default rather than guessing.
+  if (thinking === 'thinking_true')  parameters.enable_thinking = true
+  if (thinking === 'thinking_false') parameters.enable_thinking = false
 
   let res: Response
   try {
-    res = await fetch(`${BASE_URL}${CHAT_ENDPOINT}`, {
+    res = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: defaultHeaders(),
-      body: JSON.stringify({
-        model: model.model_name,
-        stream: true,
-        messages: chatMessages,
-        max_tokens: 4096,
-        stream_options: { include_usage: true },
-      }),
+      headers: { ...defaultHeaders(), 'X-DashScope-SSE': 'enable' },
+      body: JSON.stringify({ model: model.model_name, input: { messages: nativeMessages }, parameters }),
     })
   } catch (err: any) {
     callbacks.onError(`DashScope request failed: ${err?.message ?? err}`)
@@ -82,13 +135,13 @@ export async function streamText(
     return
   }
 
-  // SSE stream
-  const reader = res.body.getReader()
+  const reader  = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let inputTokens = 0
   let outputTokens = 0
   let cachedTokens = 0
+  let searchCount = 0
 
   try {
     while (true) {
@@ -107,21 +160,25 @@ export async function streamText(
           let json: any
           try { json = JSON.parse(data) } catch { continue }
 
-          if (json?.error) {
-            const msg = typeof json.error === 'string'
-              ? json.error
-              : (json.error.message ?? JSON.stringify(json.error))
-            callbacks.onError(`DashScope: ${msg}`)
+          // Native errors arrive as a payload with a code and no output,
+          // not as an HTTP status — the stream has already started 200.
+          if (json?.code && !json?.output) {
+            callbacks.onError(`DashScope: ${json.message ?? json.code}`)
             return
           }
 
-          const delta = json?.choices?.[0]?.delta?.content
-          if (delta) callbacks.onDelta(String(delta))
+          const delta = textOf(json?.output?.choices?.[0]?.message?.content)
+          if (delta) callbacks.onDelta(delta)
 
-          if (json?.usage) {
-            inputTokens  = json.usage.prompt_tokens ?? inputTokens
-            outputTokens = json.usage.completion_tokens ?? outputTokens
-            cachedTokens = json.usage.prompt_tokens_details?.cached_tokens ?? cachedTokens
+          const u = json?.usage
+          if (u) {
+            inputTokens  = u.input_tokens  ?? inputTokens
+            outputTokens = u.output_tokens ?? outputTokens
+            cachedTokens = u.input_tokens_details?.cached_tokens
+                        ?? u.prompt_tokens_details?.cached_tokens
+                        ?? cachedTokens
+            const c = u.plugins?.search?.count
+            if (typeof c === 'number') searchCount = Math.max(searchCount, c)
           }
         }
       }
@@ -131,26 +188,43 @@ export async function streamText(
     return
   }
 
-  const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
-  console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} cost=$${cost.toFixed(6)}`)
-  callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+  const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { searchCount })
+  console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+  callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
 }
 
-function buildMultimodalMessage(text: string, attachments: Attachment[]) {
-  const images = attachments.filter(a => a.mediaType.startsWith('image/'))
-
-  if (images.length > 0) {
-    const content: any[] = images.map(img => ({
-      type: 'image_url',
-      image_url: {
-        url: `data:${img.mediaType};base64,${img.buffer.toString('base64')}`,
-      },
-    }))
-    content.push({ type: 'text', text })
-    return { role: 'user' as const, content }
+/**
+ * Message content for the multimodal endpoint: typed parts, media first.
+ *
+ * `url` is preferred over inline base64 — the router fills it with a signed
+ * URL of the RESIZED copy, so an oversized upload never goes up raw. Video
+ * has no base64 fallback worth using; a clip inlined as a data URL blows
+ * past the request limit long before it reaches the model.
+ */
+function mediaParts(text: string, media: Attachment[]): any[] {
+  const parts: any[] = []
+  for (const a of media) {
+    const src = a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
+    parts.push(a.mediaType.startsWith('video/') ? { video: src } : { image: src })
   }
+  parts.push({ text })
+  return parts
+}
 
-  return { role: 'user' as const, content: text }
+/**
+ * Pull the assistant's words out of a native content field.
+ *
+ * The text endpoint answers with a string; the multimodal endpoint answers
+ * with an array of parts. `reasoning_content` is deliberately NOT read here:
+ * with enable_thinking on, the chain of thought streams alongside the answer
+ * and must not end up in the duel transcript.
+ */
+function textOf(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content.map(p => (p && typeof p === 'object' && typeof (p as any).text === 'string' ? (p as any).text : '')).join('')
+  }
+  return ''
 }
 
 // ── async task polling ──────────────────────────────────────────────────────

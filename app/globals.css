@@ -717,7 +717,11 @@ body {
 
 .prompt-header { margin-bottom: 32px; }
 .prompt-label { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--red); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-.prompt-label::before { content: '//'; }
+/* The '//' belongs to the page's title bar only. It used to sit on every
+   .prompt-label, which meant each section heading inside a page repeated the
+   page's own signature — by the fourth '//' on one screen it had stopped
+   meaning "this is ModelXD" and started meaning nothing. Opt-in now. */
+.prompt-label.eyebrow::before { content: '//'; }
 .prompt-title { font-family: var(--font-display), sans-serif; font-size: clamp(26px, 4.5vw, 36px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.05; }
 .prompt-title span { color: var(--red); }
 .prompt-sub { font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); margin-top: 8px; letter-spacing: 0.05em; }
@@ -889,8 +893,19 @@ select {
 /* currentColor is only a carrier for the ring — text inside keeps its own. */
 .battle-card.blind-pick .battle-response,
 .battle-card.blind-pick .stats-line { color: var(--white); }
-.battle-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.battle-model-id { font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+.battle-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 7px; }
+/* "MODEL A" is a name, not a sentence — it must never wrap. It did at 3 and
+   4 models, where the card is ~295px wide and the header also carries the
+   reserved badge slot and the timing readout. Below the 2-model case the
+   badges drop to their own full-width row and the type steps down, so the
+   name stays on one line at every count. (CC, July 29) */
+.battle-model-id { font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.battle-card-header.n3 .battle-model-id,
+.battle-card-header.n4 .battle-model-id { font-size: 21px; letter-spacing: 0.03em; }
+.battle-card-header.n3 .xd-badge-slot,
+.battle-card-header.n4 .xd-badge-slot { flex: 1 1 100%; order: 3; margin: 0; justify-content: flex-start; }
+.battle-card-header.n3 .xd-badge,
+.battle-card-header.n4 .xd-badge { font-size: 8.5px; padding: 2px 7px; letter-spacing: 0.06em; }
 .battle-model-id.a { color: #4a9eff; }
 .battle-model-id.b { color: var(--red); }
 .battle-anon { font-family: var(--font-mono), monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
@@ -1511,4 +1526,238 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .xd-vs-claim { font-size: 13px; }
   .xd-q2 { font-size: 13px; }
   .xd-badge { font-size: 8.5px; padding: 2px 7px; }
+}
+
+
+/* ── XCreate surface toggle (Studio / Agent Mode) ─────────────────────────
+   The inactive half had no hover state at all, so the control read as a
+   label rather than something you could press. Hover now lifts the text to
+   full contrast and lays in a faint accent wash — enough to say "clickable"
+   without competing with the filled active half. */
+.surface-tab {
+  padding: 7px 15px; border-radius: 999px; border: none; cursor: none;
+  background: transparent; color: var(--muted);
+  font-family: var(--font-mono), monospace; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.surface-tab:hover { color: var(--red); background: rgba(214, 59, 50, 0.10); }
+.surface-tab.on { background: var(--red); color: #fff; }
+/* The active half is already where you are — hovering it should say
+   "nothing to do here", not offer a second state. */
+.surface-tab.on:hover { background: var(--red); color: #fff; }
+
+/* ── Shared option toggle ─────────────────────────────────────────────────
+   One quiet row rather than a second mode selector: an option that changes
+   what a run costs is not a task type, and giving it equal visual weight to
+   text/image/video implied it was. Built for XDuel's search toggle, which
+   was then removed; it now carries XTalk's table-level search. Kept generic
+   on purpose — the next boolean that changes a bill should look like this
+   one. (CC, Aug 2) */
+.opt-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 9px 13px;
+  border: 1px solid var(--border2);
+  border-radius: 9px;
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+.opt-toggle:hover { border-color: var(--border); }
+.opt-toggle.on {
+  border-color: rgba(214, 59, 50, 0.55);
+  background: var(--red-dim);
+}
+/* The native box is kept in the DOM (focus, keyboard, form semantics) and
+   only painted over — not display:none, which would drop it off the tab
+   order entirely. */
+.opt-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.opt-mark {
+  position: relative;
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  transition: background .15s ease, border-color .15s ease;
+}
+.opt-toggle.on .opt-mark {
+  background: var(--red);
+  border-color: var(--red);
+}
+.opt-mark::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform .15s ease;
+}
+.opt-toggle.on .opt-mark::after { transform: rotate(45deg) scale(1); }
+.opt-toggle input:focus-visible ~ .opt-mark {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+.opt-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.opt-only {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--red);
+}
+.opt-note {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted2);
+  flex: 1 1 220px;
+}
+
+/* ── XTalk: format cards ──────────────────────────────────────────────────
+   Catalogue entries, not tinted buttons.
+
+   Three revisions got here. Filling the chosen card with --red-dim fought a
+   system whose surfaces are all flat paper. A 46px thumbnail then gave each
+   format a mark but not a mood — at that size a boardroom and a moonlit
+   village are two grey smudges. The banner is what actually tells them
+   apart, and it earns its space by being the first thing you see.
+
+   Selection is the red frame plus a check on the banner, not a fill: the
+   same grammar .mode-selector uses. (CC's mock, Aug 2) */
+
+.xt-tpl-grid {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 26px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+}
+
+.xt-tpl {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  cursor: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-family: inherit;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.xt-tpl:hover { border-color: var(--border2); }
+.xt-tpl.is-on {
+  border-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red);
+}
+
+/* ── banner ── */
+.xt-tpl-banner {
+  position: relative;
+  display: block;
+  aspect-ratio: 458 / 165;
+  overflow: hidden;
+  background: #14161a;
+}
+.xt-tpl-banner img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Unselected banners sit back a step so the chosen card is the only one
+     at full strength — the check alone is too small to carry that on its own. */
+  filter: saturate(.85) brightness(.86);
+  transition: filter .18s ease, transform .4s ease;
+}
+.xt-tpl:hover .xt-tpl-banner img,
+.xt-tpl.is-on .xt-tpl-banner img { filter: none; }
+
+/* ── body ── */
+.xt-tpl-body {
+  display: flex;
+  padding: 11px 14px 12px;
+  flex: 1;
+}
+.xt-tpl-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  /* The whole card is a <button>, and the UA stylesheet makes button text
+     unselectable — so the one part people might want to copy (the name, the
+     description) could not be copied. The card stays a button because
+     clicking anywhere on it picks the format; only the prose opts back in.
+     Dragging to select still leaves the click working. (CC, Aug 2) */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.xt-tpl-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.xt-tpl-idx {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--muted);
+  transition: color .16s ease;
+}
+.xt-tpl.is-on .xt-tpl-idx { color: var(--red); }
+
+.xt-tpl-name {
+  font-family: var(--font-display), sans-serif;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  color: var(--white);
+}
+
+.xt-tpl-seats {
+  margin-left: auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.xt-tpl-tag {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted2);
+}
+
+/* Second line: what you can DO, under what it IS. Quieter than the tag so
+   the pair reads as one thought with a follow-on, not two competing claims. */
+.xt-tpl-blurb {
+  padding-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
 }

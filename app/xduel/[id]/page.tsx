@@ -214,12 +214,13 @@ export default function DuelPage() {
   const ratio   = cheapestModel && mostExpensive && cheapestModel.outputPrice > 0
     ? Math.round(mostExpensive.outputPrice / cheapestModel.outputPrice) : 0
   const isMediaMode = duel.mode === 'image' || duel.mode === 'video'
+  // Same heavy-user framing (and per-second video fix) as the live page.
   const monthly = cheapestModel && mostExpensive
-    ? isMediaMode
-      ? Math.round((mostExpensive.outputPrice - cheapestModel.outputPrice) * 1000)
-      : Math.round((mostExpensive.outputPrice - cheapestModel.outputPrice) * 10)
+    ? Math.round((mostExpensive.outputPrice - cheapestModel.outputPrice) *
+        (duel.mode === 'video' ? 8 * 1000 : duel.mode === 'image' ? 2000 : 100))
     : 0
-  const monthlyLabel = isMediaMode ? '1K generations' : '10M tokens'
+  const monthlyLabel =
+    duel.mode === 'video' ? '1K videos' : duel.mode === 'image' ? '2K images' : '100M tokens'
   const userChoseCheaper = typeof vote2 === 'number' && vote2 === cheapestIdx
   const savingsEmoji = vote2 === 'T' ? '⚖' : userChoseCheaper ? '🎉' : '😂'
   const voteLabel = (v: VoteChoice) => v === 'T' ? 'a Tie' : v !== null ? `Model ${LABELS[v as number]}` : ''
@@ -456,7 +457,7 @@ export default function DuelPage() {
                         </div>
                         <div className="reveal-stat" style={{color:wins?'#34d399':'var(--muted2)'}}>
                           {wins
-                            ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
+                            ? `${savingsEmoji} ${ratio}× cheaper — an AI-heavy user saves $${monthly.toLocaleString()}/mo (${monthlyLabel})`
                             : 'More expensive option'}
                         </div>
                       </div>

@@ -30,6 +30,9 @@ export interface MatchResultEntry {
   error?: boolean
   priceLabel?: string    // XDuel: per-unit price string
   note?: string          // XDuel: savings line under the card
+  /** Web searches this model ran. Billed per call ON TOP of tokens, so a
+   *  model can lose on cost purely by having looked things up more. */
+  searches?: number
 }
 
 export interface RatingDelta {
@@ -177,25 +180,35 @@ export default function MatchResult({
               </div>
 
               <div style={{
-                display: 'flex', justifyContent: 'center', gap: 14, marginTop: 11,
-                fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--muted2)',
+                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                gap: 9, marginTop: 11, flexWrap: 'wrap',
+                fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--muted2)',
               }}>
                 <span>⏱ {(e.responseTime / 1000).toFixed(1)}s</span>
+                {/* Rate and total sit on ONE line. Spend on its own row
+                    below read as a footnote — the whole point is that you
+                    see what a model charges and what it just cost you in the
+                    same glance. (CC, July 29) */}
                 <span>{e.priceLabel ?? fmtSpend(e.cost)}</span>
-              </div>
-
-              {/* Actual spend for THIS run — the number the score grades on. */}
-              <div style={{
-                marginTop: 5, textAlign: 'center',
-                fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.14em',
-                textTransform: 'uppercase',
-                color: e.error ? 'var(--muted)'
-                     : spendsDiffer && e.cost === minSpend ? 'var(--green)'
-                     : 'var(--muted2)',
-              }}>
-                {e.error
-                  ? 'spent —'
-                  : `spent ${fmtSpend(e.cost)}${spendsDiffer && e.cost === minSpend ? ' · lowest' : ''}`}
+                <span style={{
+                  color: e.error ? 'var(--muted)'
+                       : spendsDiffer && e.cost === minSpend ? 'var(--green)'
+                       : 'var(--muted2)',
+                  fontWeight: 700,
+                }}>
+                  {e.error ? '—' : `${fmtSpend(e.cost)} total`}
+                </span>
+                {/* Deliberately language-neutral: the count IS the message,
+                    and it explains a total that would otherwise look wrong
+                    next to the per-token rate. */}
+                {!e.error && (e.searches ?? 0) > 0 && (
+                  <span
+                    title={`${e.searches} web search${e.searches === 1 ? '' : 'es'} — billed per search, on top of tokens`}
+                    style={{ color: 'var(--muted2)' }}
+                  >
+                    🌐 {e.searches}
+                  </span>
+                )}
               </div>
 
               {e.note && (

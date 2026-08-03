@@ -1,24 +1,22 @@
 // app/xdirector/page.tsx
-// XDirector as a marketable destination (CC, July 27): a real page with its
-// own metadata for campaign links and SEO. The same XDirectorChat component
-// also powers Agent Mode inside /xcreate — two entrances, one implementation.
-import type { Metadata } from 'next'
+// XDirector is not a destination — it is the agent you talk to inside
+// XCreate. This route survives only so the ?c= conversation permalinks
+// already in the wild keep resolving; it forwards to the real surface.
+// (CC, July 31: "XCREATE is a page to create things, XDirector is a way to
+// create things living in agent mode in XCREATE.")
+import { redirect } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { hasFeature } from '@/lib/features'
-import XDirectorClient from './client'
 
-export const metadata: Metadata = {
-  title: 'XDirector — Your Personal AI Video Director | ModelXD',
-  description: 'Tell XDirector what you want. It picks the best-value AI model with real prices, writes the prompt, and generates your video — all in one conversation. Same result, pay less.',
-  openGraph: {
-    title: 'XDirector — Your Personal AI Video Director',
-    description: 'A director that knows what every AI video model costs. Same result, pay less.',
-  },
-}
-
-export default async function XDirectorPage() {
+export default async function XDirectorPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   // Limited beta. 404 rather than 403 so the page's existence isn't
   // advertised to people who can't use it yet.
   if (!(await hasFeature('xdirector'))) notFound()
-  return <XDirectorClient />
+  const sp = await searchParams
+  const c  = typeof sp.c === 'string' ? sp.c : null
+  redirect(`/xcreate?agent=1${c ? `&c=${encodeURIComponent(c)}` : ''}`)
 }

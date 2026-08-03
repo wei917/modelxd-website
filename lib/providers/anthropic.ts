@@ -15,6 +15,16 @@ import { calcTextCost } from './pricing'
 const BASE = 'https://api.anthropic.com/v1'
 const API_VERSION = '2023-06-01'
 
+// Server-side web search. `web_search_20250305` is the baseline version and
+// is what we pin: the later snapshots (20260209 adds dynamic filtering,
+// 20260318 adds response-inclusion control) buy features we don't use, and a
+// version string the account isn't entitled to is a hard 400 on every call.
+const WEB_SEARCH_TOOL = 'web_search_20250305'
+// Cap searches per response. At $10/1k a runaway research loop is a bill,
+// and a duel answer that needed more than five queries wasn't going to win
+// on cost anyway.
+const MAX_SEARCHES = 5
+
 function apiKey(): string {
   const k = process.env.ANTHROPIC_API_KEY
   if (!k) throw new Error('ANTHROPIC_API_KEY is not set')
@@ -43,6 +53,7 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   thinking:    string | null = null,
+  search:      boolean = false,
 ): Promise<void> {
   const TAG = `[anthropic/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
@@ -71,6 +82,10 @@ export async function streamText(
         // Adaptive thinking + effort (probed live July 23: low/medium/
         // high/xhigh/max on Fable 5 / Sonnet 5 / Opus 4.8).
         ...(thinking ? { thinking: { type: 'adaptive' }, output_config: { effort: thinking } } : {}),
+        // Server-side web search. Billed per search ($10/1k) on top of the
+        // tokens the results add to the prompt, hence max_uses: a runaway
+        // research loop is a real bill, not just a slow answer.
+        ...(search ? { tools: [{ type: WEB_SEARCH_TOOL, name: 'web_search', max_uses: MAX_SEARCHES }] } : {}),
       }),
     })
   } catch (err: any) {
@@ -90,6 +105,7 @@ export async function streamText(
   let inputTokens = 0
   let outputTokens = 0
   let cachedTokens = 0
+  let searchCount = 0
 
   try {
     while (true) {
@@ -108,6 +124,9 @@ export async function streamText(
           case 'message_start':
             inputTokens  = event.message?.usage?.input_tokens ?? 0
             cachedTokens = event.message?.usage?.cache_read_input_tokens ?? 0
+            if (typeof event.message?.usage?.server_tool_use?.web_search_requests === 'number') {
+              searchCount = Math.max(searchCount, event.message.usage.server_tool_use.web_search_requests)
+            }
             break
           case 'content_block_delta':
             if (event.delta?.type === 'text_delta' && event.delta.text) {
@@ -117,15 +136,20 @@ export async function streamText(
           case 'message_delta':
             outputTokens = event.usage?.output_tokens ?? outputTokens
             if (event.usage?.input_tokens) inputTokens = event.usage.input_tokens
+            // Anthropic reports the tally itself; take the largest seen
+            // rather than the last, since only some events carry usage.
+            if (typeof event.usage?.server_tool_use?.web_search_requests === 'number') {
+              searchCount = Math.max(searchCount, event.usage.server_tool_use.web_search_requests)
+            }
             break
           case 'error':
             throw new Error(event.error?.message ?? 'Anthropic stream error')
         }
       }
     }
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking })
-    console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} cost=$${cost.toFixed(6)}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
+    console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
   } catch (err: any) {
     console.error(`${TAG} ERROR`, err?.message ?? err)
     callbacks.onError(`Anthropic: ${err?.message ?? err}`)

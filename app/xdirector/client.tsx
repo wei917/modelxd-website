@@ -12,7 +12,7 @@ export default function XDirectorClient() {
   return (
     <div className="xduel-page">
       <div className="arena xcreate-arena">
-        <div className="prompt-label">{t('xdirector.eyebrow')}</div>
+        <div className="prompt-label eyebrow">{t('xdirector.eyebrow')}</div>
         <h1 className="page-headline" style={{ marginBottom: 8 }}>{t('xdirector.title')}</h1>
         <XDirectorChat />
       </div>

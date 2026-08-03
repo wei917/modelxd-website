@@ -100,7 +100,7 @@ export default function VotePage() {
 
           {/* In-page header: "// XVOTE" eyebrow + big headline (CC, July 20). */}
           <div className="prompt-header">
-            <div className="prompt-label">{t('xvote.eyebrow')}</div>
+            <div className="prompt-label eyebrow">{t('xvote.eyebrow')}</div>
             <h1 className="page-headline">{t('xvote.subtitle')}</h1>
           </div>
 

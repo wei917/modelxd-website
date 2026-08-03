@@ -75,6 +75,13 @@ export async function streamText(
     return
   }
 
+  // Tracked separately so "thought but never answered" can be told apart
+  // from "returned nothing at all". K3 is a reasoning model and does this
+  // occasionally: observed 2026-08-02, a 19s stream of reasoning_content
+  // that ended with no content delta and no usage block at all.
+  let answered = false
+  let thought  = false
+
   const reader  = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -107,9 +114,13 @@ export async function streamText(
             return
           }
 
-          // Only the answer text — reasoning_content stays server-side.
+          // Only the answer text. reasoning_content is deliberately NOT
+          // read: XTalk's werewolf table prints a speaker's turn verbatim,
+          // and a seer's chain of thought rendered as public speech would
+          // hand the table its own role.
           const delta = json?.choices?.[0]?.delta?.content
-          if (delta) callbacks.onDelta(String(delta))
+          if (delta) { answered = true; callbacks.onDelta(String(delta)) }
+          if (json?.choices?.[0]?.delta?.reasoning_content) thought = true
 
           if (json?.usage) {
             inputTokens  = json.usage.prompt_tokens ?? inputTokens
@@ -121,6 +132,18 @@ export async function streamText(
     }
   } catch (err: any) {
     callbacks.onError(`Stream read failed: ${err?.message ?? err}`)
+    return
+  }
+
+  // An empty completion is NOT a success. Reporting it as one wrote a
+  // provider_calls row with null tokens, null cost and status 'success' —
+  // indistinguishable from a healthy call in analytics, which is how this
+  // went unnoticed until a seat went silent on a decisive turn. Say what
+  // happened instead, so the caller can retry and the row reads as failed.
+  if (!answered) {
+    callbacks.onError(thought
+      ? 'Moonshot: the model produced reasoning but no answer (empty completion)'
+      : 'Moonshot: empty completion — no content returned')
     return
   }
 

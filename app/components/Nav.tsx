@@ -13,6 +13,9 @@ import { XCREATE_TEMPLATES } from '../xcreate/templates'
 const NAV_LINKS = [
   { href: '/xduel',       i18n: 'nav.xduel',       protected: true,  icon: 'duel'   },
   { href: '/xcreate',     i18n: 'nav.xcreate',     protected: true,  icon: 'create' },
+  // Beta. Hidden until /api/features says this user has it — the route
+  // 404s for everyone else anyway, so advertising it would only confuse.
+  { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk', feature: 'xtalk' },
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
 ]
@@ -27,6 +30,9 @@ function NavIcon({ name }: { name: string }) {
     case 'director': return (<svg {...p}><path d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z"/><path d="M4 11l-1-4l16-4l1 4z"/><path d="M8 10l2-4"/><path d="M13 9l2-4"/></svg>)
     case 'vote':   return (<svg {...p}><path d="M7 11v8a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4v-1a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2h-7a3 3 0 0 1-3-3"/></svg>)
     case 'board':  return (<svg {...p}><path d="M4 20h16"/><path d="M5 12h2v7H5z"/><path d="M10.5 8h2v11h-2z"/><path d="M16 4h2v15h-2z"/></svg>)
+    // Two bubbles, overlapping — one voice answering another, which is the
+    // whole difference between this and every other page.
+    case 'talk':   return (<svg {...p}><path d="M8 13H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="M6 13v3l3-3"/><path d="M19 20h-9a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2z"/><path d="M18 20v3l-3-3"/></svg>)
     default:       return null
   }
 }
@@ -62,7 +68,27 @@ export default function Nav() {
   const { show } = useAuthModal()
   const { lang, t } = useLang()
   const [menuOpen, setMenuOpen] = useState(false)
+  // dev.modelxd.com and localhost wear a Beta tag with an exit to the
+  // official site (CC, Aug 3) — anywhere that isn't www is a dev build.
+  // Hostname check after mount: env vars would need separate builds, and
+  // SSR must render the same markup on every host.
+  const [isDev, setIsDev] = useState(false)
+  useEffect(() => {
+    const h = window.location.hostname
+    setIsDev(h.startsWith('dev.') || h === 'localhost' || h === '127.0.0.1')
+  }, [])
   const [user, setUser] = useState<User | null>(null)
+  // Beta flags for nav items that carry a `feature` key. Fetched rather
+  // than passed down because Nav renders on every route, gated or not.
+  const [features, setFeatures] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    let dead = false
+    fetch('/api/features', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : {})
+      .then(d => { if (!dead) setFeatures(d ?? {}) })
+      .catch(() => {})
+    return () => { dead = true }
+  }, [user])
   // XCreate history (chat-history pattern): shown under the menu — with a
   // divider so it reads as a separate layer, not more menu items — only
   // while the user is in XCreate. Collapsible, persisted.
@@ -193,12 +219,36 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8 }} />
+      {/* The "logo" is the whole lockup — mark + wordmark. The Beta sticker
+          hangs off ITS bottom-right corner, overlapping the text slightly,
+          and the official-site link tucks in right beneath the sticker so
+          the pair reads as one message (CC, Aug 3). */}
+      <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+        <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0 }} />
         <span>{lang.startsWith('zh') ? t('brand') : <>Model<span className="x">XD</span></>}</span>
+        {isDev && (
+          <span style={{
+            position: 'absolute', bottom: 12, right: 8, whiteSpace: 'nowrap', opacity: 0.82,
+            padding: '1px 6px', borderRadius: 999, fontSize: 8, fontWeight: 800,
+            letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.5,
+            background: 'var(--red)', color: '#fff',
+            fontFamily: 'var(--font-mono), monospace',
+            boxShadow: '0 1px 4px rgba(0,0,0,.25)',
+          }}>Beta</span>
+        )}
       </Link>
+      {isDev && (
+        <a href="https://www.modelxd.com" style={{
+          display: 'inline-block', margin: '-13px 2px 0 auto', alignSelf: 'flex-end',
+          fontSize: 10.5, fontWeight: 700, color: 'var(--red)', textDecoration: 'none',
+          fontFamily: 'var(--font-mono), monospace', letterSpacing: '.04em',
+          borderBottom: '1px dashed var(--red)', paddingBottom: 1, whiteSpace: 'nowrap',
+        }}>
+          {t('beta.official')} →
+        </a>
+      )}
       <div className="nav-links">
-        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
+        {NAV_LINKS.filter(l => !l.feature || features[l.feature]).map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
             href={href}
@@ -287,7 +337,7 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
+        {NAV_LINKS.filter(l => !l.feature || features[l.feature]).map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
             href={href}

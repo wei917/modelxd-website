@@ -18,6 +18,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export const BASE_RATING = 1000
 const BT_ITERATIONS = 50
 const MODES = ['text', 'image', 'video'] as const
+// Search duels rate in their own pool (supabase/62_search_rating_pool.sql).
+// Fitted like any other mode, but deliberately NOT folded into 'all': a
+// combined score that mixes "answered from memory" with "answered after
+// eight web searches" is the exact contamination the split exists to undo.
+const SEARCH_MODES = ['text_search'] as const
+// Game pools (supabase/65): team outcomes decomposed into pairwise wins.
+// Quality signal only — a game has no price vote and no revote, so
+// xd_score IS the quality BT rating, and 'all' never includes them.
+const GAME_MODES = ['werewolf'] as const
 
 // ── Bradley-Terry MLE with a pseudo-count prior ─────────────────────────────
 //
@@ -95,7 +104,7 @@ export async function refitFromAggregates(sb: SupabaseClient): Promise<{ rows: n
   type Matrix = Record<string, Record<string, number>>
   const upserts: any[] = []
 
-  const fitMode = (modeKey: string, modes: readonly string[]) => {
+  const fitMode = (modeKey: string, modes: readonly string[], gameMode = false) => {
     const qWins: Matrix = {}
     const vWins: Matrix = {}
     const votes: Record<string, number> = {}
@@ -129,9 +138,12 @@ export async function refitFromAggregates(sb: SupabaseClient): Promise<{ rows: n
         mode:           modeKey,
         model_id:       id,
         quality_rating: qR,
-        value_rating:   vR,
-        stickiness:     sRate,
-        xd_score:       xdScoreOf(qR, vR, sRate),
+        // Game pools have exactly one signal, so the quality BT rating IS
+        // the score — averaging in a value fit of pure priors would just
+        // squash every rating toward 1000.
+        value_rating:   gameMode ? null : vR,
+        stickiness:     gameMode ? null : sRate,
+        xd_score:       gameMode ? qR : xdScoreOf(qR, vR, sRate),
         total_votes:    votes[id],
         price_label:    priceLabel[id] ?? null,
         updated_at:     new Date().toISOString(),
@@ -140,6 +152,8 @@ export async function refitFromAggregates(sb: SupabaseClient): Promise<{ rows: n
   }
 
   for (const m of MODES) fitMode(m, [m])
+  for (const m of SEARCH_MODES) fitMode(m, [m])
+  for (const m of GAME_MODES) fitMode(m, [m], true)
   fitMode('all', MODES)
 
   // Full replace: delete-then-upsert keeps models that dropped out of the
@@ -212,8 +226,18 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
     matrix[b][a] = (matrix[b][a] || 0) + 0.5
   }
 
+  // Rating pools are not duel modes. A search duel is still mode='text' on
+  // the row (that column drives quota and the picker) and is separated only
+  // by the `search` flag — so 'text' must EXCLUDE search duels here, not
+  // just 'text_search' include them. Getting only half of that right would
+  // leave search duels counted twice.
+  const searchPool = mode.endsWith('_search')
+  const baseMode   = searchPool ? mode.slice(0, -'_search'.length) : mode
+
   let duelQ = sb.from('duels').select('mode, slots, vote1, vote2, vote1_model_id, vote2_model_id, vote_changed')
-  if (mode !== 'all') duelQ = duelQ.eq('mode', mode)
+  if (mode !== 'all') duelQ = duelQ.eq('mode', baseMode)
+  if (mode !== 'all') duelQ = duelQ.eq('search', searchPool)
+  else duelQ = duelQ.eq('search', false)
   const { data: duels } = await duelQ
 
   for (const duel of duels ?? []) {
@@ -264,8 +288,17 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
     }
   }
 
+  // Same three-way split as the trigger (supabase/64): an all-search run
+  // rates in the search pool, an all-plain run in the normal one, and a
+  // mixed run in neither — hence `neq('mixed')` on the plain side rather
+  // than simply omitting the filter.
   let xcQ = sb.from('xcreates').select('mode, slots, chosen_model_id').not('chosen_model_id', 'is', null)
-  if (mode !== 'all') xcQ = xcQ.eq('mode', mode)
+  if (searchPool) {
+    xcQ = xcQ.eq('mode', baseMode).eq('search_mode', 'all')
+  } else {
+    if (mode !== 'all') xcQ = xcQ.eq('mode', mode)
+    xcQ = xcQ.or('search_mode.is.null,search_mode.eq.none')
+  }
   const { data: xcreates } = await xcQ
 
   for (const xc of xcreates ?? []) {

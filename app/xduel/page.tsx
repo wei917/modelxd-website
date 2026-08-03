@@ -12,6 +12,7 @@ import { SAMPLES_BASE, type Template } from '../xcreate/templates'
 import MatchResult, { type RatingDelta } from '../components/MatchResult'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
+import { isSubmitEnter } from '../../lib/ime'
 
 type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
@@ -121,6 +122,9 @@ type ModelState = {
   streaming: boolean
   done: boolean
   cost: number
+  /** Web searches this slot ran. Billed per call on top of tokens, so it is
+   *  shown next to spend rather than folded silently into it. */
+  searches: number
   // When a slot errors out, we carry the message here so the render path
   // can show a proper error block instead of stuffing it into <video src>
   // or <img src>, which the browser silently treats as a broken asset.
@@ -323,6 +327,7 @@ export default function XDuel() {
                   isVideo:      false,
                   tokens:       0,
                   responseTime: 0,
+                  searches:     0,
                   streaming:    true,
                   done:         false,
                   cost:         0,
@@ -376,6 +381,7 @@ export default function XDuel() {
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
                     cost:         realCost,
+                    searches:     Number(payload.searches ?? 0),
                     meta:         { ...m.meta, priceLabel: realPriceLabel, outputPrice: realOutputPrice },
                     streaming:    false,
                     done:         true,
@@ -551,15 +557,22 @@ export default function XDuel() {
   // (e.g. $0.04). Math.round() on a $14.10 figure was fine, but the previous
   // version used Math.round on $0.04, which floored to $0. Switch to two-
   // decimal precision and let toLocaleString format it.
-  const monthlyRaw = cheapestModel && mostExpensive
-    ? isMediaMode
-      ? (mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 1000
-      : (mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice) * 10
+  // Video outputPrice is PER SECOND (priceLabel "$0.4 / sec"), so a
+  // per-generation figure must multiply by clip length — 8s, the default
+  // the templates sell. Without it the video pitch was ~6x too small.
+  const VIDEO_SECONDS = 8
+  const delta = cheapestModel && mostExpensive
+    ? mostExpensive.meta.outputPrice - cheapestModel.meta.outputPrice
     : 0
+  const monthlyRaw =
+    mode === 'video' ? delta * VIDEO_SECONDS * 1000   // 1K clips × 8s
+    : mode === 'image' ? delta * 2000                 // 2K images
+    : delta * 100                                     // 100M tokens
   const monthly = isMediaMode
-    ? Math.round(monthlyRaw * 100) / 100   // keep cents, e.g. $14.10
-    : Math.round(monthlyRaw)               // text: integer dollars at 10M tokens
-  const monthlyLabel = isMediaMode ? '1K generations' : '10M tokens'
+    ? Math.round(monthlyRaw * 100) / 100
+    : Math.round(monthlyRaw)
+  const monthlyLabel =
+    mode === 'video' ? '1K videos' : mode === 'image' ? '2K images' : '100M tokens'
 
   // ── Price-reveal framing (CC, July 29) ─────────────────────────────────
   // The headline is the pitch, so it should state what THIS duel actually
@@ -624,7 +637,7 @@ export default function XDuel() {
           {/* ── In-page header: "// XDUEL" eyebrow + the step's guiding
               line as the big headline (CC, July 20). ── */}
           <div className="prompt-header">
-            <div className="prompt-label">{t('xduel.eyebrow')}</div>
+            <div className="prompt-label eyebrow">{t('xduel.eyebrow')}</div>
             <h1 className="page-headline">
               {step === 1 ? t('xduel.subtitle') :
                step === 5 ? null :
@@ -694,6 +707,7 @@ export default function XDuel() {
                 </div>
               </div>
 
+
               {/* XCreate-style framed composer (CC, July 20): upload slot
                   INSIDE the frame above the borderless textarea; the action
                   row (counter + battle button) sits below the box. Text mode
@@ -720,7 +734,7 @@ export default function XDuel() {
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    if (isSubmitEnter(e, { requireModifier: true })) {
                       e.preventDefault()
                       if (prompt.trim().length >= 3) startDuel()
                     }
@@ -822,7 +836,7 @@ export default function XDuel() {
                       onMouseEnter={() => setCursor(cardColorHex)}
                       onMouseLeave={() => setCursor('#e8453c')}
                     >
-                      <div className={`battle-card-header ${mode==='image'?'image-mode':''}`}>
+                      <div className={`battle-card-header ${mode==='image'?'image-mode':''} n${models.length || count}`}>
                         <div className="battle-model-id" style={{color: cardColor}}>Model {LABELS[i]}</div>
                         {/* Anchored to the card rather than a separate strip:
                             the blind pick is a fact ABOUT this model, and
@@ -1165,9 +1179,10 @@ export default function XDuel() {
                         isPick:       winnerIdx === i,
                         error:        !!m.errorMessage,
                         priceLabel:   m.meta.unitLabel ?? m.meta.priceLabel,
+                        searches:     m.searches,
                         note: i === cheapestIdx
                           ? (monthly > 0
-                              ? `${savingsEmoji} ${ratio}× cheaper — saves $${monthly.toLocaleString()}/mo at ${monthlyLabel}`
+                              ? `${savingsEmoji} ${ratio}× cheaper — an AI-heavy user saves $${monthly.toLocaleString()}/mo (${monthlyLabel})`
                               : '⚖ Same price as the other')
                           : (monthly > 0 ? 'More expensive option' : 'Same price'),
                       }))}

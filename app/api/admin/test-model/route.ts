@@ -42,12 +42,16 @@ export async function POST(req: Request): Promise<Response> {
   if (guard) return guard
   const admin = await getAdminUser() // already non-null past assertAdmin
 
-  let body: { model_id?: string; prompt?: string }
+  // search / thinking are here so a provider change can be exercised on ONE
+  // named model instead of hoping the duel's random draw picks it. (CC, Aug 2)
+  let body: { model_id?: string; prompt?: string; search?: boolean; thinking?: string | null }
   try { body = await req.json() }
   catch { return Response.json({ error: 'invalid json' }, { status: 400 }) }
 
   const modelId = body.model_id
   const prompt  = (body.prompt ?? '').trim()
+  const search   = !!body.search
+  const thinking = body.thinking ?? null
   if (!modelId)             return Response.json({ error: 'model_id required' }, { status: 400 })
   if (prompt.length < 1)    return Response.json({ error: 'prompt required' },   { status: 400 })
 
@@ -90,6 +94,7 @@ export async function POST(req: Request): Promise<Response> {
                   inputTokens:  r.inputTokens,
                   outputTokens: r.outputTokens,
                   cost:         r.cost,
+                  searchCount:  r.searchCount ?? 0,
                   latency_ms:   Date.now() - t0,
                 }))
                 controller.close()
@@ -101,6 +106,7 @@ export async function POST(req: Request): Promise<Response> {
             },
             [],
             ctx,
+            { search, thinking },
           )
         } catch (err) {
           controller.enqueue(sse('error', { message: (err as Error).message }))

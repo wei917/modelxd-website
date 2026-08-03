@@ -18,7 +18,7 @@ import * as anthropic  from './anthropic'
 import * as runway     from './runway'
 import * as moonshot   from './moonshot'
 import { startCall, endCall, logMediaUrl } from './call-log'
-import { estimateCost } from './pricing'
+import { estimateCost, supportsWebSearch } from './pricing'
 import { extractPdfText, estimatePdfTokens } from '../pdf-extract'
 
 // Native-PDF context guard: a PDF whose estimated tokens exceed the
@@ -143,6 +143,23 @@ async function resolveDocAttachments(
   return { messages: rewritten, attachments: kept }
 }
 
+/**
+ * Every router below names its providers explicitly and ends here. The
+ * routers used to end in a bare `else` pointing at Alibaba — correct when
+ * Alibaba was the only implementation, and silently wrong from the moment
+ * the second provider was added in front of it. A misrouted call does not
+ * fail cleanly: it reaches the wrong vendor with the wrong API key and
+ * reports an error naming a company the model has nothing to do with.
+ */
+function noImplementation(model: ModelInfo, kind: 'text' | 'image' | 'video', implemented: string[]): never {
+  throw new Error(
+    `Provider "${model.provider}" has no ${kind} implementation. ` +
+    `${kind[0].toUpperCase()}${kind.slice(1)} is implemented for: ${implemented.join(', ')}. ` +
+    `Model "${model.model_name}" declares ${kind} output but cannot be run — ` +
+    `disable the row in /admin/models or add a ${kind} path for this provider.`,
+  )
+}
+
 function assertSupported(model: ModelInfo): void {
   if (!SUPPORTED_PROVIDERS.includes(model.provider)) {
     throw new Error(
@@ -171,10 +188,19 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   context?:    CallContext,
-  genOptions?: { thinking?: string | null },
+  genOptions?: { thinking?: string | null; search?: boolean },
 ): Promise<{ requestId: string | null }> {
   assertSupported(model)
   const thinking = genOptions?.thinking ?? null
+
+  // Web search is opt-in per call AND gated on the model declaring the
+  // capability. Asking a model that cannot search to search is a hard
+  // upstream 400 on some providers, so the guard lives here rather than
+  // trusting every call site to have filtered its model list.
+  const search = !!genOptions?.search && supportsWebSearch(model)
+  if (genOptions?.search && !search) {
+    console.warn(`[providers] search requested but ${model.provider}/${model.model_name} is not search-capable — running without it`)
+  }
 
   // Resolve document attachments (PDF / txt): natively-capable models keep
   // the PDF; everyone else gets the extracted text folded into the prompt.
@@ -196,6 +222,7 @@ export async function streamText(
   let cached:   number | null = null
   let imgInTok: number | null = null
   let cost:     number | null = null
+  let searches: number | null = null
   let usage:    any            = null
   const wrappedCallbacks: TextStreamCallbacks = {
     onDelta: callbacks.onDelta,
@@ -205,6 +232,7 @@ export async function streamText(
       cached   = result.cachedTokens
       cost     = result.cost
       imgInTok = result.inputImageTokens ?? null
+      searches = result.searchCount      ?? null
       usage    = result.usageMetadata    ?? null
       callbacks.onDone(result)
     },
@@ -213,15 +241,19 @@ export async function streamText(
 
   try {
     if (model.provider === 'openai') {
-      await openai.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+      await openai.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
     } else if (model.provider === 'google') {
-      await google.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+      await google.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
     } else if (model.provider === 'anthropic') {
-      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
     } else if (model.provider === 'moonshot') {
       await moonshot.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+    } else if (model.provider === 'alibaba') {
+      await alibaba.streamText(model, messages, wrappedCallbacks, attachments, search, thinking)
     } else {
-      await alibaba.streamText(model, messages, wrappedCallbacks, attachments)
+      // xai ships generateImage/generateVideo only — it has no streamText,
+      // and used to land here. (CC, Aug 2)
+      noImplementation(model, 'text', ['openai', 'google', 'anthropic', 'moonshot', 'alibaba'])
     }
     endCall(requestId, desc, {
       status:               'success',
@@ -231,7 +263,7 @@ export async function streamText(
       cached_input_tokens:  cached,
       input_image_tokens:   imgInTok,
       cost_usd:             cost,
-      usage_metadata:       usage,
+      usage_metadata:       searches != null ? { ...(usage ?? {}), web_search_requests: searches } : usage,
     })
     return { requestId }
   } catch (err) {
@@ -275,8 +307,10 @@ export async function generateImage(
       result = await google.generateImage(model, prompt, quality, size, attachments, conversationHistory ?? null, options)
     } else if (model.provider === 'xai') {
       result = await xai.generateImage(model, prompt, quality, size, attachments, options)
-    } else {
+    } else if (model.provider === 'alibaba') {
       result = await alibaba.generateImage(model, prompt, quality, size, attachments, options)
+    } else {
+      noImplementation(model, 'image', ['openai', 'google', 'xai', 'alibaba'])
     }
     endCall(requestId, desc, {
       status:               'success',
@@ -355,13 +389,12 @@ export async function generateVideo(
   const t0        = Date.now()
 
   try {
-    const result = model.provider === 'google'
-      ? await google.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
-      : model.provider === 'xai'
-      ? await xai.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
-      : model.provider === 'runway'
-      ? await runway.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
-      : await alibaba.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    const result =
+      model.provider === 'google'  ? await google.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    : model.provider === 'xai'     ? await xai.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    : model.provider === 'runway'  ? await runway.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    : model.provider === 'alibaba' ? await alibaba.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    : noImplementation(model, 'video', ['google', 'xai', 'runway', 'alibaba'])
     endCall(requestId, desc, {
       status:         'success',
       latency_ms:     Date.now() - t0,

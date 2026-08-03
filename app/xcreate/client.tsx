@@ -19,9 +19,12 @@ import ModeIcon from '../components/ModeIcon'
 import TemplatePicker from '../components/TemplatePicker'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 import MatchResult, { type RatingDelta, type MatchResultEntry } from '../components/MatchResult'
+import XDirectorChat from '../components/XDirectorChat'
 import { computeMatchScores } from '../../lib/matchScore'
 import ProviderLogo from '../components/ProviderLogo'
+import ModelPickerDialog from '../components/ModelPickerDialog'
 import { XCREATE_TEMPLATES, type Template } from './templates'
+import { isSubmitEnter } from '../../lib/ime'
 
 type Mode = 'text' | 'image' | 'video'
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting' | 'workflow'
@@ -42,6 +45,8 @@ interface ModelPricing {
   }
   per_image?:        Record<string, number>
   per_video_second?: Record<string, number>
+  /** $ per web-search call, billed separately from tokens. */
+  per_search?:       number
 }
 
 type DurationSpec = number[] | { min: number; max: number }
@@ -58,6 +63,8 @@ interface OutputModalityConfig {
   qualities?:               string[]
   /** Max outputs per request — image models that can generate N images at once. */
   max_count?:               number
+  /** Free-form capability flags. On the TEXT modality, 'web_search' means the
+   *  provider's built-in search tool is wired up for this model. */
   capabilities?:            string[]
 }
 
@@ -335,6 +342,11 @@ interface SlotOptions {
   /** Reasoning/thinking level for text models that declare
    *  output_config.text.thinking_levels. null = provider default (Auto). */
   thinking_level?: string | null
+  /** Let the model search the web. Only offered when the model declares
+   *  `web_search` in output_config.text.capabilities. Off by default: it is
+   *  billed per search on top of tokens (~$0.01–0.014 a call, and the pages
+   *  it reads become input tokens), so it has to be asked for. */
+  web_search?: boolean
 }
 
 interface SlotState {
@@ -397,6 +409,11 @@ function resolutionKeyForSize(size: string): string | null {
   return '480p'
 }
 
+/** Searches to price in when a slot has web search on. Mirrors the server's
+ *  reserve in app/api/xcreate/route.ts — the two must not drift, or the quote
+ *  shown and the credits held stop matching. */
+const SEARCH_ALLOWANCE = 8
+
 // Resolve a polymorphic TokenRate to a number using the slot's chosen
 // thinking level (if any). Mirrors `resolveTokenRate` in pricing.ts.
 function rateOf(r: TokenRate | undefined, level?: string | null): number {
@@ -424,9 +441,20 @@ function estimateSlotDollars(
     const tin  = rateOf(t.text_input,  lvl)
     const tout = rateOf(t.text_output, lvl)
     if (tin === 0 && tout === 0) return null
-    const inTokens  = Math.max(1, Math.ceil(promptLen / 4)) + docTokens
-    const outTokens = 500
-    return (inTokens * tin + outTokens * tout) / 1_000_000
+    // Search changes the estimate in two ways, and both belong here: the
+    // per-call fee, and the pages the model reads back in as input tokens.
+    // Without them the figure never moves when you switch search on, and the
+    // first sign of an 8x bill is the receipt. SEARCH_ALLOWANCE mirrors the
+    // server's reserve so the quote and the hold agree.
+    const searching = opts?.web_search === true
+    const searchFee = searching ? SEARCH_ALLOWANCE * (p.per_search ?? 0) : 0
+    // Rough, and deliberately not precise: a searched answer read ~30k input
+    // tokens of page content in testing. An estimate that ignores it is
+    // wrong by more than one that is roughly right.
+    const readTokens = searching ? 30_000 : 0
+    const inTokens  = Math.max(1, Math.ceil(promptLen / 4)) + docTokens + readTokens
+    const outTokens = searching ? 900 : 500
+    return searchFee + (inTokens * tin + outTokens * tout) / 1_000_000
   }
   if (m === 'image') {
     // Official per-image rates FIRST, keyed by the selected size ("1024"
@@ -505,46 +533,6 @@ function fmtDollars(dollars: number | null): string {
   return `$${dollars.toFixed(4)}`
 }
 
-// ── Model Picker Dialog ───────────────────────────────────────────────────────
-// Group models by company using the provider field.
-// Falls back to "other" for anything unexpected.
-function companyOf(m: DBModel): string {
-  return m.provider || 'other'
-}
-
-// Human-friendly display name for a company id. Anything not in this map
-// gets titlecased on the fly.
-const COMPANY_LABELS: Record<string, string> = {
-  openai:              'OpenAI',
-  anthropic:           'Anthropic',
-  google:              'Google',
-  'meta-llama':        'Meta',
-  deepseek:            'DeepSeek',
-  mistralai:           'Mistral',
-  alibaba:             'Alibaba',
-  moonshotai:          'Moonshot',
-  'z-ai':              'Z.AI',
-  'black-forest-labs': 'Black Forest',
-  'stability-ai':      'Stability',
-  runway:              'Runway',
-  perplexity:          'Perplexity',
-  nvidia:              'NVIDIA',
-  amazon:              'Amazon',
-  nousresearch:        'Nous',
-  minimax:             'MiniMax',
-  'bytedance-seed':    'ByteDance',
-  'aion-labs':         'Aion',
-  baidu:               'Baidu',
-  'arcee-ai':          'Arcee',
-  sao10k:              'Sao10K',
-}
-function companyLabel(id: string): string {
-  if (COMPANY_LABELS[id]) return COMPANY_LABELS[id]
-  return id
-    .split('-')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
 
 /**
  * Force a real download instead of a navigation.
@@ -588,328 +576,6 @@ function downloadName(url: string, kind: 'image' | 'video') {
   return `modelxd-${kind}-${Date.now()}.${ext}`
 }
 
-function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds }: {
-  mode: Mode; recipeMode: ModelMode; onSelect: (m: SlotModel) => void; onClose: () => void
-  /** Per-slot selected model ids (null = empty slot) - index maps to A/B/C/D. */
-  slotIds: (string | null)[]
-}) {
-  const t = useT()
-  const [search,      setSearch]      = useState('')
-  const [models,      setModels]      = useState<DBModel[]>([])
-  const [loading,     setLoading]     = useState(true)
-  // Esc closes the picker (CC, July 19) — same as clicking the backdrop.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  // null = "All" (no company filter active).
-  const [company,     setCompany]     = useState<string | null>(null)
-  // Sort direction for release date. 'desc' = newest first.
-  const [sortDir,     setSortDir]     = useState<'desc' | 'asc'>('desc')
-
-  useEffect(() => {
-    // Order by release date, newest first. Rows with a null released_at
-    // fall to the bottom, then tie-break by name.
-    createSupabaseBrowser()
-      .from('ai_models')
-      .select('*')
-      .eq('enabled', true)
-      .contains('output_modalities', [mode])
-      .order('released_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => { setModels(data ?? []); setLoading(false) })
-  }, [mode])
-
-  // Only models that support the run's recipe (Layer 2) — EVERYTHING in
-  // the dialog (chips, counts, list) is based on this set, so "All (N)"
-  // means N pickable models, not N models in the mode.
-  const eligible = models.filter(m => (m.modes ?? []).includes(recipeMode))
-
-  // Count models per company so we can show the top companies as chips.
-  // We show at most ~10 chips to keep the row tidy.
-  const companyCounts = (() => {
-    const counts: Record<string, number> = {}
-    for (const m of eligible) {
-      const c = companyOf(m)
-      counts[c] = (counts[c] ?? 0) + 1
-    }
-    return counts
-  })()
-  const topCompanies = Object.entries(companyCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([c]) => c)
-
-  // Apply filters in order: company → text search.
-  const q = search.trim().toLowerCase()
-  const filteredUnsorted = eligible.filter(m => {
-    if (company && companyOf(m) !== company) return false
-    if (q) {
-      return (
-        m.display_name.toLowerCase().includes(q) ||
-        m.model_name.toLowerCase().includes(q) ||
-        m.provider.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
-  // Sort by release date in the chosen direction. Null dates always last.
-  const byReleased = (a: DBModel, b: DBModel) => {
-    const aT = a.released_at ? new Date(a.released_at).getTime() : NaN
-    const bT = b.released_at ? new Date(b.released_at).getTime() : NaN
-    if (Number.isNaN(aT) && Number.isNaN(bT)) return 0
-    if (Number.isNaN(aT)) return 1
-    if (Number.isNaN(bT)) return -1
-    return sortDir === 'desc' ? bT - aT : aT - bT
-  }
-  const filtered = [...filteredUnsorted].sort(byReleased)
-
-  // Models in this mode that DON'T support the current sub-mode. Shown
-  // dimmed below the eligible list (same company/search filters), so
-  // users can see the rest of the catalog exists and why it's unpickable.
-  const hiddenAll = models.filter(m => !(m.modes ?? []).includes(recipeMode))
-  const hiddenFiltered = [...hiddenAll.filter(m => {
-    if (company && companyOf(m) !== company) return false
-    if (q) {
-      return (
-        m.display_name.toLowerCase().includes(q) ||
-        m.model_name.toLowerCase().includes(q) ||
-        m.provider.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })].sort(byReleased)
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-        <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px' }}>
-            <span style={{ color: 'var(--muted)' }}>⌕</span>
-            <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search models…"
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit' }} />
-
-          </div>
-        </div>
-        <div style={{ padding: '12px 16px 8px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, flexShrink: 0 }}>
-          <span style={{
-            padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.5px',
-            background: mode === 'video' ? '#34d39922' : mode === 'image' ? '#a78bfa22' : '#4a9eff22',
-            color: mode === 'video' ? '#34d399' : mode === 'image' ? '#a78bfa' : '#4a9eff',
-          }}>{mode} models</span>
-
-          {/* Sort by release date — toggle between newest-first / oldest-first. */}
-          <button
-            onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-            style={{
-              padding: '4px 11px',
-              borderRadius: 12,
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: 'uppercase' as const,
-              letterSpacing: '0.5px',
-              cursor: 'pointer',
-              border: '1px solid var(--border2)',
-              background: 'transparent',
-              color: 'var(--muted2)',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-            title={sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'}
-          >
-            <span>{sortDir === 'desc' ? '↓' : '↑'}</span>
-            <span>Released</span>
-          </button>
-
-          <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>
-            {filtered.length} of {eligible.length}
-          </span>
-        </div>
-
-        {/* Company chip row — wraps onto multiple lines so the user never
-            has to scroll horizontally. Earlier version tried overflow-x:
-            auto, but trackpad horizontal scroll is unreliable and the
-            scrollbar was almost invisible on macOS, so chips past the
-            dialog width were effectively hidden. Wrapping is simpler and
-            never loses a chip.
-
-            flexShrink: 0 keeps the flex column above the model list from
-            squishing this row when the list is long. */}
-        <div
-          style={{
-            padding: '0 16px 12px',
-            display: 'flex',
-            gap: 6,
-            alignItems: 'center',
-            flexWrap: 'wrap' as const,
-            flexShrink: 0,
-          }}
-        >
-          {[null, ...topCompanies].map(c => {
-            const active = company === c
-            const label  = c === null ? 'All' : companyLabel(c)
-            return (
-              <button
-                key={c ?? '__all__'}
-                onClick={() => setCompany(c)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 12,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: `1px solid ${active ? 'var(--white)' : 'var(--border2)'}`,
-                  background: active ? 'var(--white)' : 'transparent',
-                  color:      active ? 'var(--bg)'   : 'var(--muted2)',
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap' as const,
-                  flexShrink: 0,
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
-        {/* Sub-mode filter notice — the list is scoped to the run's
-            "Create from" choice; make that visible so a shorter list
-            doesn't read as a smaller catalog. */}
-        {!loading && hiddenAll.length > 0 && (
-          <div style={{ margin: '0 16px 10px', padding: '8px 12px', flexShrink: 0, background: 'rgba(214,59,50,0.05)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.5 }}>
-            Showing models that support <b style={{ color: 'var(--white)', fontWeight: 600 }}>{t('recipe.' + recipeMode)}</b>
-          </div>
-        )}
-        <div style={{ overflowY: 'auto', flex: 1 }}>
-          {loading ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
-          : filtered.length === 0 ? (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <div>No models found</div>
-              {company && (
-                <button
-                  onClick={() => setCompany(null)}
-                  style={{
-                    padding: '5px 12px', borderRadius: 10, fontSize: 11, fontWeight: 700,
-                    background: 'transparent', border: '1px solid var(--border2)',
-                    color: 'var(--muted2)', cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >Clear filters</button>
-              )}
-            </div>
-          )
-          : filtered.map(m => {
-            // Note: we used to disable already-picked models, but users may
-            // want the same model in multiple slots to compare configs (e.g.
-            // gpt-image-2 at low vs high quality side-by-side).
-            // Slot letters this model already occupies (A/B/C/D) - shown
-            // as a status badge at the LEFT edge of the row (CC, July 20).
-            const inSlots = slotIds.flatMap((id, i) => id === m.id ? ['ABCD'[i]] : [])
-            return (
-              <div key={m.id}
-                onClick={() => onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config, input_config: m.input_config ?? null })}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-              >
-                {/* Left status: the slot letter(s) this model occupies. */}
-                <span style={{ width: 18, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-                  {inSlots.length > 0 && (
-                    <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: 'var(--red)', borderRadius: 5, padding: '2px 5px', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em' }}>
-                      {inSlots.join('')}
-                    </span>
-                  )}
-                </span>
-                <ProviderLogo provider={m.provider} size={18} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {m.display_name}
-                  </div>
-                  {/* Internal id — useful to disambiguate variants like
-                      gpt-5 vs gpt-5-mini in the picker. */}
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.model_name}</div>
-                </div>
-                {/* Release date badge — makes the newest-first sort order
-                    visible. Shown as "Mar 2026" style. Null dates (mostly
-                    video models) render nothing. */}
-                {m.released_at && (
-                  <span style={{
-                    fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)',
-                    whiteSpace: 'nowrap' as const, flexShrink: 0,
-                  }}>
-                    {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })}
-                  </span>
-                )}
-                {m.tags?.includes('reasoning') && <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>REASONING</span>}
-                {(() => {
-                  // Image-capacity badge — only meaningful for recipes with
-                  // image upload slots. Makes it visible WHY the slot cap
-                  // drops when a lower-capacity model joins the run (the run
-                  // uses the min across selected models so every model gets
-                  // the identical attachment set).
-                  if (recipeMode !== 'reference_frames' && recipeMode !== 'image_edit') return null
-                  const n = m.input_config?.image?.count ?? (recipeMode === 'reference_frames' ? 2 : 1)
-                  if (recipeMode === 'image_edit' && n <= 1) return null  // 1 input is the norm for edit
-                  return (
-                    <span style={{ fontSize: 9, color: '#a78bfa', background: '#a78bfa18', padding: '2px 6px', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
-                      UP TO {n} {recipeMode === 'reference_frames' ? 'REFS' : 'IMGS'}
-                    </span>
-                  )
-                })()}
-                {(() => {
-                  // Show NEEDS ATTACHMENT only when EVERY declared mode requires
-                  // some non-text input. If the model has any text-only mode
-                  // (text_to_text / text_to_image / text_to_video), it can run
-                  // without attachments and the badge is misleading.
-                  const TEXT_ONLY: ModelMode[] = ['text_to_text', 'text_to_image', 'text_to_video']
-                  const declared  = (m.modes ?? []) as ModelMode[]
-                  const hasModes  = declared.length > 0
-                  const hasTextOnly = declared.some(x => TEXT_ONLY.includes(x))
-                  const needsAttach = hasModes && !hasTextOnly
-                  return needsAttach
-                    ? <span style={{ fontSize: 9, color: '#f59e0b', background: '#f59e0b18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>NEEDS ATTACHMENT</span>
-                    : null
-                })()}
-              </div>
-            )
-          })}
-
-          {/* Dimmed remainder — exists, just not pickable for this
-              sub-mode. Builds trust that the catalog is bigger than the
-              current filter. */}
-          {!loading && hiddenFiltered.length > 0 && (
-            <>
-              <div style={{ padding: '10px 16px 6px', fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.12em', textTransform: 'uppercase' as const, borderBottom: '1px solid var(--border)' }}>
-                {'Doesn’t support '}{t('recipe.' + recipeMode)} ({hiddenFiltered.length})
-              </div>
-              {hiddenFiltered.map(m => (
-                <div key={m.id}
-                  title={`${m.display_name} doesn't support ${t('recipe.' + recipeMode)}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', opacity: 0.45, cursor: 'default' }}
-                >
-                  <span style={{ width: 18, flexShrink: 0 }} />
-                  <ProviderLogo provider={m.provider} size={18} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {m.display_name}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.model_name}</div>
-                  </div>
-                  {m.released_at && (
-                    <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
-                      {new Date(m.released_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── Gallery Detail Modal ──────────────────────────────────────────────────────
 // Shows all model results for a single saved creation. User can flip between
@@ -1475,7 +1141,12 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
     // model's declared set; null = Auto (provider default).
     const thinkLevels = model.output_config?.text?.thinking_levels ?? []
     const thinking_level = opts.thinking_level && thinkLevels.includes(opts.thinking_level) ? opts.thinking_level : null
-    return { mode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: null, count: null, thinking_level }
+    // Clamped against the capability, not just carried through: a model that
+    // loses the flag (or a slot swapped to one that never had it) must not
+    // keep a stale `true` and send a request the provider will reject.
+    const canSearch = (model.output_config?.text?.capabilities ?? []).includes('web_search')
+    const web_search = canSearch ? opts.web_search === true : false
+    return { mode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: null, count: null, thinking_level, web_search }
   }
 
   const defaultOptions = (model: SlotModel | null, m: Mode): SlotOptions =>
@@ -1832,26 +1503,39 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
   }
 
   // Default model — every mode starts usable. When the studio is blank
-  // (fresh mode/recipe, no template, nothing picked), pre-fill slot A
-  // with the most popular / newest enabled model that supports the
-  // recipe. Functional updates keep this atomic: if a template apply or
-  // job restore lands first, the guards see a non-empty array and no-op.
+  // (fresh mode/recipe, no template, nothing picked), pre-fill slot A with
+  // the model OUR OWN BOARD ranks highest for this recipe (CC, Aug 3: the
+  // default was Veo via a stale is_popular flag while the video board's
+  // top seat was HappyHorse — the product should default to what it
+  // recommends). Popularity/newest is only the fallback for recipes where
+  // nothing is rated yet. Functional updates keep this atomic: if a
+  // template apply or job restore lands first, the guards see a non-empty
+  // array and no-op.
   useEffect(() => {
     if (phase !== 'setup' || activeTemplateId) return
     if (selectedModels.some(Boolean)) return
     let cancelled = false
-    createSupabaseBrowser()
-      .from('ai_models')
-      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
-      .eq('enabled', true)
-      .contains('output_modalities', [mode])
-      .contains('modes', [recipeMode])
-      .order('is_popular', { ascending: false })
-      .order('released_at', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (cancelled || !data?.[0]) return
-        const row = data[0] as any
+    Promise.all([
+      createSupabaseBrowser()
+        .from('ai_models')
+        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+        .eq('enabled', true)
+        .contains('output_modalities', [mode])
+        .contains('modes', [recipeMode])
+        .order('is_popular', { ascending: false })
+        .order('released_at', { ascending: false, nullsFirst: false })
+        .then(({ data }) => data ?? []),
+      fetch(`/api/xboard?mode=${mode}`)
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => []),
+    ])
+      .then(([rows, board]: [any[], Array<{ modelId: string; xdScore: number }>]) => {
+        if (cancelled || rows.length === 0) return
+        const score = new Map(board.map(b => [b.modelId, b.xdScore]))
+        // Highest XD score wins; rows keep the popular/newest order, so
+        // unrated recipes fall back to exactly the old behaviour.
+        const row = rows.reduce((best, r) =>
+          (score.get(r.id) ?? -1) > (score.get(best.id) ?? -1) ? r : best, rows[0])
         const m: SlotModel = {
           id: row.id, provider: row.provider, model_name: row.model_name,
           display_name: row.display_name, modes: (row.modes ?? []) as ModelMode[],
@@ -2130,6 +1814,13 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
         aspect_ratio: opts.aspect_ratio,
         watermark:    opts.watermark,
         count:        opts.count,
+        // These two were missing from this allow-list, which made the ⚙
+        // panel a placebo for text runs: thinking and search rendered, saved
+        // state, changed the estimate — and were dropped right here, one
+        // line before the POST. Caught in the release test when a search-on
+        // run answered "I don't have web access". (CC, Aug 2)
+        thinking_level: opts.thinking_level,
+        web_search:     opts.web_search,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }
@@ -3128,6 +2819,59 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
     return anyKnown ? total : null
   })()
 
+  // ── Surface: how you drive XCreate ────────────────────────────────────
+  // XCreate is the PLACE you create things; the studio and XDirector are two
+  // ways to drive it, not two destinations. This used to be an <a> pointing
+  // at /xdirector, which made the agent a separate page — so anything it
+  // generated landed in a chat transcript instead of on this page's board.
+  // Now it is a mode of this page. (CC, July 31)
+  const [surface, setSurface] = useState<'studio' | 'agent'>('studio')
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    // ?c= is a conversation permalink — landing on one means agent mode.
+    if (p.get('agent') === '1' || p.get('c')) setSurface('agent')
+  }, [])
+  const goSurface = (next: 'studio' | 'agent') => {
+    setSurface(next)
+    const p = new URLSearchParams(window.location.search)
+    if (next === 'agent') p.set('agent', '1')
+    else { p.delete('agent'); p.delete('c') }
+    const qs = p.toString()
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+  }
+
+  const surfaceToggle = features.xdirector ? (
+    <div style={{
+      flexShrink: 0, marginTop: 6, display: 'inline-flex', padding: 3, gap: 3,
+      borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface)',
+    }}>
+      {([['studio', t('xcreate.surface.studio')], ['agent', '✨ ' + t('xdirector.toggle')]] as const).map(([key, label]) => (
+        <button
+          key={key}
+          className={`surface-tab${surface === key ? ' on' : ''}`}
+          onClick={() => goSurface(key as 'studio' | 'agent')}
+        >{label}</button>
+      ))}
+    </div>
+  ) : null
+
+  // Agent mode shares this page's header and chrome — only the working
+  // surface below it changes.
+  if (surface === 'agent') {
+    return (
+      <div className="xduel-page">
+        <div className="arena xcreate-arena">
+          <div className="prompt-label eyebrow">{t('xcreate.eyebrow')}</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
+            <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
+            {surfaceToggle}
+          </div>
+          <XDirectorChat />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {lightbox && (
@@ -3144,7 +2888,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
         </div>
       )}
       {pickerSlot !== null && (
-        <ModelPickerDialog mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m)} onClose={() => setPickerSlot(null)} />
+        <ModelPickerDialog mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m as unknown as SlotModel)} onClose={() => setPickerSlot(null)} />
       )}
 
       <div className="cursor" ref={cursorRef} />
@@ -3208,21 +2952,10 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
         <div className="arena xcreate-arena">
 
           {/* In-page header: "// XCREATE" eyebrow + big headline (CC, July 20). */}
-          <div className="prompt-label">{t('xcreate.eyebrow')}</div>
+          <div className="prompt-label eyebrow">{t('xcreate.eyebrow')}</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
             <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
-            {features.xdirector && (
-              <a
-              href="/xdirector"
-              style={{
-                flexShrink: 0, marginTop: 6, padding: '9px 16px', borderRadius: 999,
-                border: '1px solid var(--red)', background: 'var(--red)', color: '#fff',
-                textDecoration: 'none',
-                fontFamily: 'var(--font-mono), monospace', fontSize: 11, fontWeight: 700,
-                letterSpacing: '0.1em', textTransform: 'uppercase' as const,
-              }}
-            >{'✨ ' + t('xdirector.toggle')}</a>
-              )}
+            {surfaceToggle}
           </div>
 
           {/* (Gallery tab removed — moved to /profile under the XCreates
@@ -3359,7 +3092,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                 <textarea
                   value={wfPrompt} onChange={e => setWfPrompt(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generateStep() } }}
+                  onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); generateStep() } }}
                   placeholder={t('wf.placeholder')}
                   rows={2}
                   style={{ width: '100%', boxSizing: 'border-box' as const, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
@@ -3525,7 +3258,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
                   <textarea
                     value={chatInput} onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChat() } }}
+                    onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); sendChat() } }}
                     placeholder="Continue the conversation…"
                     rows={2}
                     style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none' }}
@@ -3674,6 +3407,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
 
                     // Determine which options this model has
                     const thinkLevels  = mode === 'text' ? (model.output_config?.text?.thinking_levels ?? []) : []
+                    const canSearch    = mode === 'text' && (model.output_config?.text?.capabilities ?? []).includes('web_search')
                     const imgQualities = mode === 'image' ? (model.output_config?.image?.qualities ?? []) : []
                     const imgSizes     = mode === 'image' ? (model.output_config?.image?.sizes ?? []) : []
                     const imgArs       = mode === 'image' ? (model.output_config?.image?.aspect_ratios ?? []) : []
@@ -3837,8 +3571,10 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                           const showArV   = mode === 'video' && vidArs.length > 0 && isTextOnlyInput
                           const showQual  = mode === 'image' && imgQualities.length > 1
                           const showThink = mode === 'text' && thinkLevels.length > 0
-                          const groupsInOrder: Array<'think' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
+                          const showSearch = mode === 'text' && canSearch
+                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
                           if (showThink)     groupsInOrder.push('think')
+                          if (showSearch)    groupsInOrder.push('search')
                           if (showSizeV)     groupsInOrder.push('size_v')
                           if (showDur)       groupsInOrder.push('dur')
                           if (showArV)       groupsInOrder.push('ar_v')
@@ -3865,6 +3601,20 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                                       {l}
                                     </Pill>
                                   ))}
+                                </Group>
+                              )}
+                              {/* Text: web search. Two pills rather than a
+                                  checkbox so it reads as one of the model's
+                                  settings, like thinking level, instead of a
+                                  form field bolted next to them. */}
+                              {showSearch && (
+                                <Group label={t('xcreate.websearch')} last={isLast('search')}>
+                                  <Pill active={opts.web_search !== true} onClick={() => updateSlotOpts(i, { web_search: false })}>
+                                    {t('xcreate.off')}
+                                  </Pill>
+                                  <Pill active={opts.web_search === true} onClick={() => updateSlotOpts(i, { web_search: true })}>
+                                    {t('xcreate.on')}
+                                  </Pill>
                                 </Group>
                               )}
                               {/* Video: Resolution */}
@@ -4158,7 +3908,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                     // prompt was used, but can't edit it until Start Over.
                     disabled={isLocked}
                     readOnly={isLocked}
-                    onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (canGenerate) generate() } }}
+                    onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); if (canGenerate) generate() } }}
                   />
                   {/* Fill-in hint — INSIDE the prompt box (CC), shown while
                       the prompt contains a {{placeholder}}. Distinctive

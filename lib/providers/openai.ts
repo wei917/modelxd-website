@@ -43,6 +43,7 @@ export async function streamText(
   callbacks: TextStreamCallbacks,
   attachments: Attachment[] = [],
   thinking: string | null = null,
+  search: boolean = false,
 ): Promise<void> {
   const TAG = `[openai/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
@@ -57,7 +58,7 @@ export async function streamText(
 
   // Pro models: background + poll path
   if (isProModel(model.model_name)) {
-    return streamTextBackground(model, input, callbacks, TAG)
+    return streamTextBackground(model, input, callbacks, TAG, thinking, search)
   }
 
   try {
@@ -68,6 +69,9 @@ export async function streamText(
       // Reasoning effort (thinking level) - validated live July 22:
       // none / minimal / low / medium / high / xhigh / max.
       ...(thinking ? { reasoning: { effort: thinking } } : {}),
+      // Built-in web search (Responses API). `web_search` is the current
+      // tool type; `web_search_2025_08_26` is the pinned older snapshot.
+      ...(search ? { tools: [{ type: 'web_search' }] } : {}),
     }
     console.log(`${TAG} request body:`, JSON.stringify({ ...requestBody, input: `[${input.length} message(s)]` }))
 
@@ -79,6 +83,9 @@ export async function streamText(
     let reasoningTokens = 0
     let responseModel: string | null = null
     let responseId: string | null = null
+    // OpenAI does not report a search tally in `usage`, so we count the
+    // per-call completion events as they stream past.
+    let searchCount = 0
 
     for await (const event of stream as any) {
       // Log non-delta events in full so we can see exactly what OpenAI returned
@@ -88,6 +95,9 @@ export async function streamText(
         responseModel = (event as any).response?.model ?? null
         responseId    = (event as any).response?.id ?? null
         console.log(`${TAG} response.created id=${responseId} model=${responseModel}`)
+      } else if (event.type === 'response.web_search_call.completed') {
+        searchCount++
+        console.log(`${TAG} web_search_call completed (#${searchCount})`)
       } else if (event.type === 'response.completed') {
         const resp = (event as any).response
         responseModel = resp?.model ?? responseModel
@@ -104,9 +114,9 @@ export async function streamText(
       }
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking })
-    console.log(`${TAG} done sent_model=${model.model_name} returned_model=${responseModel} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} cost=$${cost.toFixed(6)}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
+    console.log(`${TAG} done sent_model=${model.model_name} returned_model=${responseModel} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
   } catch (err: any) {
     console.error(`${TAG} ERROR`, err?.message ?? err, err?.response?.data ?? err)
     callbacks.onError(`OpenAI: ${err?.message ?? err}`)
@@ -123,6 +133,8 @@ async function streamTextBackground(
   input: any[],
   callbacks: TextStreamCallbacks,
   TAG: string,
+  thinking: string | null = null,
+  search: boolean = false,
 ): Promise<void> {
   console.log(`${TAG} background mode (pro model detected)`)
   try {
@@ -131,6 +143,7 @@ async function streamTextBackground(
       model: model.model_name,
       input,
       background: true,
+      ...(search ? { tools: [{ type: 'web_search' }] } : {}),
     } as any)
     const responseId = initial.id
     console.log(`${TAG} background started id=${responseId} status=${initial.status} model=${initial.model}`)
@@ -164,9 +177,12 @@ async function streamTextBackground(
     const cachedTokens    = usage.input_tokens_details?.cached_tokens ?? 0
     const reasoningTokens = usage.output_tokens_details?.reasoning_tokens ?? 0
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
-    console.log(`${TAG} background done sent_model=${model.model_name} returned_model=${resp.model} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} cost=$${cost.toFixed(6)}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+    // No stream to count events on here — tally the search calls the
+    // completed response actually contains.
+    const searchCount = (resp.output ?? []).filter((o: any) => o?.type === 'web_search_call').length
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
+    console.log(`${TAG} background done sent_model=${model.model_name} returned_model=${resp.model} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
   } catch (err: any) {
     console.error(`${TAG} background ERROR`, err?.message ?? err, err?.response?.data ?? err)
     callbacks.onError(`OpenAI: ${err?.message ?? err}`)

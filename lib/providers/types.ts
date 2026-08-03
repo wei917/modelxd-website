@@ -14,6 +14,11 @@
  *   per_image?         : flat per-image rates (e.g. Imagen). Used when the
  *                        provider bills a flat $/image, not per token.
  *   per_video_second?  : flat per-second rates by resolution (Veo, Wan).
+ *   per_search?        : flat $ per web-search call, billed by the provider
+ *                        SEPARATELY from tokens. Anthropic $10/1k, Gemini
+ *                        $14/1k, xAI ~$5/1k as of Aug 2026. Its presence
+ *                        does NOT mean the model can search — that is
+ *                        declared by output_config.text.capabilities.
  *
  * `calcImageCost` / `calcTextCost` / `calcVideoCost` pick the appropriate
  * branch based on what's set + what usage the provider returns.
@@ -43,6 +48,8 @@ export interface ModelPricing {
   }
   per_image?:        Record<string, number>
   per_video_second?: Record<string, number>
+  /** $ per web-search call. See the note above. */
+  per_search?:       number
 }
 
 // ── Capabilities: input + output config ──────────────────────────────────────
@@ -156,6 +163,9 @@ export interface TextResult {
   outputTokens:      number
   cachedTokens:      number
   cost:              number
+  /** Web searches the provider performed for this call. Billed per call on
+   *  top of tokens, so it is carried separately all the way to the UI. */
+  searchCount?:      number
   /** Image-input tokens (multimodal text models with vision). */
   inputImageTokens?: number
   /** Raw provider usage object — JSON-safe. Logged verbatim. */
@@ -214,6 +224,7 @@ export interface TextStreamCallbacks {
     cachedTokens:      number
     cost:              number
     inputImageTokens?: number
+    searchCount?:      number
     usageMetadata?:    any
   }) => void
   onError: (message: string) => void

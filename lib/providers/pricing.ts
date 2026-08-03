@@ -62,6 +62,9 @@ export function calcTextCost(
     /** Selected thinking level (e.g. 'minimal' / 'low' / 'high'). Used to
      *  resolve any per-level rates declared on the model. */
     thinkingLevel?:    string | null
+    /** Web searches the provider performed. Billed per call, NOT per token,
+     *  so it is a separate term rather than folded into the token maths. */
+    searchCount?:      number
   } = {},
 ): number {
   const t = pricing(model).tokens ?? {}
@@ -82,8 +85,29 @@ export function calcTextCost(
     (imageInputTokens / 1_000_000) * imageInputRate  +
     (videoInputTokens / 1_000_000) * videoInputRate  +
     (audioInputTokens / 1_000_000) * audioInputRate  +
-    (outputTokens     / 1_000_000) * textOutputRate
+    (outputTokens     / 1_000_000) * textOutputRate +
+    Math.max(0, details.searchCount ?? 0) * searchRate(model)
   )
+}
+
+// ── web search ──────────────────────────────────────────────────────────────
+
+/**
+ * Whether this model can run the provider's built-in web search.
+ *
+ * Capability and price are deliberately two different fields. A model can be
+ * search-capable with no rate on file (we would undercount, not crash), and a
+ * provider-wide rate can exist for models that cannot search. The picker
+ * gates on THIS, never on the presence of a price.
+ */
+export function supportsWebSearch(model: ModelInfo): boolean {
+  return (model.output_config?.text?.capabilities ?? []).includes('web_search')
+}
+
+/** $ per search call for this model. 0 when none is on file. */
+export function searchRate(model: ModelInfo): number {
+  const r = pricing(model).per_search
+  return typeof r === 'number' && r > 0 ? r : 0
 }
 
 // ── image generations ───────────────────────────────────────────────────────
