@@ -10,7 +10,11 @@
 // or hit maxDuration.
 
 export const runtime     = 'nodejs'
-export const maxDuration = 300
+// 800 (Vercel Fluid max): a reasoning model at full budget — K3 measured
+// at ~26 tok/s spending 2k+ tokens thinking — needs more than 300s. The
+// gateway may still drop the held POST early; that's fine, the client
+// ignores gateway timeouts and the job polling owns delivery.
+export const maxDuration = 800
 
 import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'

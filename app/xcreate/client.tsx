@@ -1837,6 +1837,16 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
     })
       .then(async res => {
         if (res.ok) return
+        // Gateway timeouts (504/502/524) mean the PROXY gave up holding this
+        // response open — the serverless function is still running the job
+        // and polling will deliver it. Treating them as failure made the
+        // client kill its own polling and wipe cards while Kimi K3 was 90s
+        // from finishing (CC, Aug 3). The POST is fire-and-forget; only a
+        // real pre-run refusal below may stop the run.
+        if (res.status === 504 || res.status === 502 || res.status === 524) {
+          console.warn(`[xcreate] POST gateway timeout (${res.status}) — job continues, polling owns delivery`)
+          return
+        }
         // The balance gate returns 402 BEFORE any model runs, so this lands
         // within a second — well before polling has anything to show. Without
         // reading the response at all (the old fire-and-forget), a refusal was
