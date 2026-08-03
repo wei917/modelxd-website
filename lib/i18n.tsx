@@ -102,6 +102,10 @@ export const STRINGS: Record<string, Entry> = {
   'ww.thinking.show':  { en: 'Reveal AI thinking', 'zh-Hant': '顯示 AI 思考', 'zh-Hans': '显示 AI 思考', ja: 'AI の思考を表示', ko: 'AI 사고 표시' },
   'ww.thinking.hide':  { en: 'Hide AI thinking', 'zh-Hant': '隱藏 AI 思考', 'zh-Hans': '隐藏 AI 思考', ja: 'AI の思考を隠す', ko: 'AI 사고 숨기기' },
   'ww.thinking.label': { en: 'Private thinking · hidden from players', 'zh-Hant': '私密思考 · 玩家看不到', 'zh-Hans': '私密思考 · 玩家看不到', ja: '非公開の思考 · プレイヤーには見えない', ko: '비공개 사고 · 플레이어에게 안 보임' },
+  'ww.delete':         { en: 'Delete game', 'zh-Hant': '刪除對局', 'zh-Hans': '删除对局', ja: '対局を削除', ko: '게임 삭제' },
+  'ww.delete.confirm': { en: 'Delete this game?', 'zh-Hant': '刪除這局？', 'zh-Hans': '删除这局？', ja: 'この対局を削除？', ko: '이 게임을 삭제?' },
+  'ww.delete.yes':     { en: 'Delete', 'zh-Hant': '刪除', 'zh-Hans': '删除', ja: '削除', ko: '삭제' },
+  'ww.rename':         { en: 'Rename this game', 'zh-Hant': '重新命名', 'zh-Hans': '重命名', ja: '名前を変更', ko: '이름 변경' },
   'xt.village':     { en: 'Village', 'zh-Hant': '好人', 'zh-Hans': '好人', ja: '村人', ko: '마을' },
   'ww.role.seer':   { en: 'Seer', 'zh-Hant': '預言家', 'zh-Hans': '预言家', ja: '占い師', ko: '예언자' },
   'ww.role.villager': { en: 'Villager', 'zh-Hant': '平民', 'zh-Hans': '平民', ja: '村人', ko: '마을 주민' },
@@ -206,6 +210,7 @@ export const STRINGS: Record<string, Entry> = {
   // ── Full-coverage pass (CC, July 19): page-body strings ──
   // Templates use {n}/{mode}/{l} placeholders — callers .replace() them.
   'common.all':          { en: 'All', 'zh-Hant': '全部', 'zh-Hans': '全部', ja: 'すべて', ko: '전체' },
+  'common.cancel':       { en: 'Cancel', 'zh-Hant': '取消', 'zh-Hans': '取消', ja: 'キャンセル', ko: '취소' },
   'beta.official':       { en: 'Official site', 'zh-Hant': '前往正式版', 'zh-Hans': '前往正式版', ja: '公式サイトへ', ko: '공식 사이트로' },
   'common.share':     { en: '↗ Share', 'zh-Hant': '↗ 分享', 'zh-Hans': '↗ 分享', ja: '↗ 共有', ko: '↗ 공유' },
   'common.copied':    { en: '✓ Copied', 'zh-Hant': '✓ 已複製', 'zh-Hans': '✓ 已复制', ja: '✓ コピー済み', ko: '✓ 복사됨' },

@@ -20,6 +20,7 @@ const ROLE_KEY: Record<string, string> = { wolf: 'ww.role.wolf', seer: 'ww.role.
 
 type Board = {
   sessionId: string
+  title: string | null
   status: 'active' | 'over'
   phase: string
   day: number
@@ -81,6 +82,29 @@ export default function WerewolfLive({
   const [error, setError]   = useState<string | null>(null)
   const [say, setSay]       = useState('')
   const [revealThinking, setRevealThinking] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [titleDraft, setTitleDraft] = useState<string | null>(null)
+
+  const saveTitle = async (raw: string) => {
+    if (!board) return
+    const title = raw.trim().slice(0, 80) || null
+    setTitleDraft(null)
+    setBoard(b => b ? { ...b, title } : b)  // optimistic
+    await createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    ).from('xtalk_sessions').update({ title }).eq('id', board.sessionId)
+  }
+
+  const deleteGame = async () => {
+    if (!board) return
+    await createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    ).from('xtalk_sessions').delete().eq('id', board.sessionId)
+    // Gone — back to the picker (the nav history refetches on the way in).
+    router.push('/xtalk')
+  }
   const bottom = useRef<HTMLDivElement>(null)
   const running = useRef(false)
 
@@ -350,6 +374,36 @@ export default function WerewolfLive({
 
   return (
     <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        {titleDraft !== null ? (
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={() => saveTitle(titleDraft)}
+            onKeyDown={e => { if (e.key === 'Enter') saveTitle(titleDraft); if (e.key === 'Escape') setTitleDraft(null) }}
+            placeholder={t('xt.tpl.werewolf.name')}
+            style={{
+              fontSize: 18, fontWeight: 700, color: 'var(--white)', fontFamily: 'inherit',
+              background: 'transparent', border: 'none', borderBottom: '1px solid var(--red)',
+              outline: 'none', padding: '2px 0', minWidth: 240,
+            }}
+          />
+        ) : (
+          <button
+            onClick={() => setTitleDraft(board.title ?? '')}
+            title={t('ww.rename')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, background: 'none', border: 'none',
+              cursor: 'none', padding: 0, fontFamily: 'inherit',
+              fontSize: 18, fontWeight: 700, color: board.title ? 'var(--white)' : 'var(--muted2)',
+            }}
+          >
+            {board.title || t('xt.tpl.werewolf.name')}
+            <span style={{ fontSize: 12, color: 'var(--muted)', opacity: 0.7 }}>✏</span>
+          </button>
+        )}
+      </div>
       {hasThinking && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button
@@ -476,7 +530,22 @@ export default function WerewolfLive({
         {board.status === 'over' && (
           <button className="btn-next" onClick={() => router.push('/xtalk')}>{t('ww.newgame')}</button>
         )}
-        <button onClick={onExit} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none', fontFamily: 'inherit', fontSize: 11 }}>
+        {confirmDelete ? (
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
+            <span style={{ color: 'var(--red)' }}>{t('ww.delete.confirm')}</span>
+            <button onClick={deleteGame} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'none', fontFamily: 'inherit', fontSize: 11, fontWeight: 700 }}>
+              {t('ww.delete.yes')}
+            </button>
+            <button onClick={() => setConfirmDelete(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none', fontFamily: 'inherit', fontSize: 11 }}>
+              {t('common.cancel')}
+            </button>
+          </span>
+        ) : (
+          <button onClick={() => setConfirmDelete(true)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none', fontFamily: 'inherit', fontSize: 11 }}>
+            {t('ww.delete')}
+          </button>
+        )}
+        <button onClick={onExit} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none', fontFamily: 'inherit', fontSize: 11 }}>
           {t('ww.leave')}
         </button>
       </div>

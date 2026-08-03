@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
@@ -65,6 +65,7 @@ function historyTitle(prompt: string): string {
 
 export default function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
   const { show } = useAuthModal()
   const { lang, t } = useLang()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -94,7 +95,18 @@ export default function Nav() {
   // while the user is in XCreate. Collapsible, persisted.
   // `running` rows are in-flight xcreate_jobs; the rest are finished xcreates.
   // They share a list because to a user they are all just "my runs".
-  const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string; running?: boolean }>>([])
+  const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string; running?: boolean; title?: string | null }>>([])
+  // Which history row is being renamed, across BOTH lists. One editor at a
+  // time keyed by table + id (CC, Aug 3).
+  const [editing, setEditing] = useState<{ table: 'xcreates' | 'xtalk_sessions'; id: string } | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const renameRow = async (table: 'xcreates' | 'xtalk_sessions', id: string, raw: string) => {
+    const title = raw.trim().slice(0, 80) || null
+    setEditing(null)
+    if (table === 'xcreates') setRecent(prev => prev.map(r => r.id === id ? { ...r, title } : r))
+    else setRecentGames(prev => prev.map(g => g.id === id ? { ...g, title } : g))
+    await supabase.from(table).update({ title }).eq('id', id)
+  }
   const [recentCollapsed, setRecentCollapsed] = useState(false)
   const [authLoaded, setAuthLoaded] = useState(false)
   const supabase = createBrowserClient(
@@ -126,16 +138,17 @@ export default function Nav() {
   // Werewolf games are server-held sessions with owner-read RLS, so the
   // browser client lists them the same way it lists xcreates. Discussions
   // aren't here: they live in client state and have no row to link to.
-  const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string }>>([])
+  const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string; title: string | null }>>([])
   useEffect(() => {
     if (!onXtalk || !user) { setRecentGames([]); return }
     let cancelled = false
-    supabase.from('xtalk_sessions')
-      .select('id, status, day, winner, created_at')
-      .eq('user_id', user.id)
-      .order('updated_at', { ascending: false })
-      .limit(10)
-      .then(({ data }) => { if (!cancelled) setRecentGames((data ?? []) as any[]) })
+    const gsel = (cols: string) => supabase.from('xtalk_sessions')
+      .select(cols).eq('user_id', user.id)
+      .order('updated_at', { ascending: false }).limit(10)
+    gsel('id, status, day, winner, created_at, title').then(async res => {
+      const r = res.error ? await gsel('id, status, day, winner, created_at') : res
+      if (!cancelled) setRecentGames(((r.data ?? []) as any[]).map(g => ({ ...g, title: g.title ?? null })))
+    })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onXtalk, user?.id, pathname])
@@ -157,9 +170,13 @@ export default function Nav() {
           .gt('created_at', new Date(Date.now() - 10 * 60_000).toISOString())
           .order('created_at', { ascending: false }).limit(10),
         supabase.from('xcreates')
-          .select('id, prompt, mode, created_at')
+          .select('id, prompt, mode, created_at, title')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false }).limit(10),
+          .order('created_at', { ascending: false }).limit(10)
+          .then(res => res.error
+            ? supabase.from('xcreates').select('id, prompt, mode, created_at')
+                .eq('user_id', user.id).order('created_at', { ascending: false }).limit(10)
+            : res),
       ])
       if (cancelled) return
       const running = (jobsRes.data ?? []).map((j: any) => ({ ...j, running: true }))
@@ -293,17 +310,36 @@ export default function Nav() {
             <span className="nav-history-toggle" aria-hidden>{recentCollapsed ? '»' : '«'}</span>
           </button>
           {!recentCollapsed && recent.map(item => (
-            <Link
-              key={item.running ? `job-${item.id}` : item.id}
-              href={item.running ? `/xcreate?job=${item.id}` : `/xcreate?id=${item.id}`}
-              className="nav-history-item"
-              title={item.running ? `Generating — ${item.prompt}` : item.prompt}
-            >
-              {item.running
-                ? <span className="nav-history-spin" aria-label="Generating" />
-                : <HistoryModeIcon m={item.mode} />}
-              <span className="nav-history-text">{item.prompt ? historyTitle(item.prompt) : '(no prompt)'}</span>
-            </Link>
+            editing && editing.table === 'xcreates' && editing.id === item.id ? (
+              <input
+                key={`edit-${item.id}`} autoFocus value={nameDraft}
+                onChange={e => setNameDraft(e.target.value)}
+                onBlur={() => renameRow('xcreates', item.id, nameDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') renameRow('xcreates', item.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
+                className="nav-history-item"
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
+              />
+            ) : (
+            <div key={item.running ? `job-${item.id}` : item.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link
+                href={item.running ? `/xcreate?job=${item.id}` : `/xcreate?id=${item.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+                title={item.running ? `Generating — ${item.prompt}` : (item.title || item.prompt)}
+              >
+                {item.running
+                  ? <span className="nav-history-spin" aria-label="Generating" />
+                  : <HistoryModeIcon m={item.mode} />}
+                <span className="nav-history-text">{item.title || (item.prompt ? historyTitle(item.prompt) : '(no prompt)')}</span>
+              </Link>
+              {!item.running && (
+                <button
+                  aria-label="rename" title={t('ww.rename')}
+                  onClick={(e) => { e.preventDefault(); setNameDraft(item.title || ''); setEditing({ table: 'xcreates', id: item.id }) }}
+                  style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, flexShrink: 0, opacity: 0.5 }}
+                >✏</button>
+              )}
+            </div>
+            )
           ))}
         </div>
       )}
@@ -316,19 +352,46 @@ export default function Nav() {
             <span className="nav-history-cap">{t('xt.recent')}</span>
           </div>
           {recentGames.map(g => (
-            <Link
-              key={g.id}
-              href={`/xtalk/${g.id}`}
-              className="nav-history-item"
-              title={`${t('xt.tpl.werewolf.name')} · ${new Date(g.created_at).toLocaleString()}`}
-            >
-              <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>
-                {g.status === 'active' ? '🎲' : g.winner === 'wolves' ? '🐺' : '🏘️'}
-              </span>
-              <span className="nav-history-text">
-                {t('xt.tpl.werewolf.name')} · D{g.day}{g.status === 'active' ? '' : ` · ${g.winner === 'wolves' ? t('ww.role.wolf') : t('xt.village')}`}
-              </span>
-            </Link>
+            editing && editing.table === 'xtalk_sessions' && editing.id === g.id ? (
+              <input
+                key={`edit-${g.id}`} autoFocus value={nameDraft}
+                onChange={e => setNameDraft(e.target.value)}
+                onBlur={() => renameRow('xtalk_sessions', g.id, nameDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') renameRow('xtalk_sessions', g.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
+                className="nav-history-item"
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
+              />
+            ) : (
+            <div key={g.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link
+                href={`/xtalk/${g.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+                title={`${g.title || t('xt.tpl.werewolf.name')} · ${new Date(g.created_at).toLocaleString()}`}
+              >
+                <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>
+                  {g.status === 'active' ? '🎲' : g.winner === 'wolves' ? '🐺' : '🏘️'}
+                </span>
+                <span className="nav-history-text">
+                  {g.title || `${t('xt.tpl.werewolf.name')} · D${g.day}${g.status === 'active' ? '' : ` · ${g.winner === 'wolves' ? t('ww.role.wolf') : t('xt.village')}`}`}
+                </span>
+              </Link>
+              <button
+                aria-label="rename" title={t('ww.rename')}
+                onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
+                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
+              >✏</button>
+              <button
+                aria-label="delete game"
+                title={t('ww.delete')}
+                onClick={async () => {
+                  await supabase.from('xtalk_sessions').delete().eq('id', g.id)
+                  setRecentGames(prev => prev.filter(x => x.id !== g.id))
+                  if (pathname === `/xtalk/${g.id}`) router.push('/xtalk')
+                }}
+                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
+              >×</button>
+            </div>
+            )
           ))}
         </div>
       )}

@@ -37,7 +37,7 @@ type Session = {
   id: string; user_id: string; status: string; human_seat: number | null
   players: Seat[]; phase: Phase; day: number; cursor: number
   turn_order: number[]; transcript: Turn[]; pending: any
-  winner: string | null; cost_usd: number; game_id: string | null
+  winner: string | null; cost_usd: number; game_id: string | null; title: string | null
 }
 
 /** The board, redacted for whoever is asking. */
@@ -45,6 +45,7 @@ function view(s: Session) {
   const me = s.human_seat
   return {
     sessionId: s.id,
+    title: s.title ?? null,
     status: s.status,
     phase: s.phase,
     day: s.day,
