@@ -55,7 +55,8 @@ function view(s: Session) {
     // the human about themselves. Never otherwise.
     players: s.players.map(p => ({
       seat: p.seat, name: p.name, provider: p.provider, alive: p.alive, isHuman: p.isHuman,
-      role: (s.status === 'over' || !p.alive || me === null || p.seat === me) ? p.role : null,
+      role: (s.status === 'over' || !p.alive || me === null || p.seat === me ||
+             (me !== null && s.players[me]?.role === 'wolf' && p.role === 'wolf')) ? p.role : null,
     })),
     transcript: redact(s.transcript, me),
     awaiting: awaitingHuman(s),
@@ -226,19 +227,29 @@ export async function POST(req: Request) {
     // the model's declared capability here so a hand-rolled request can't ask
     // a model to search when the provider has no tool wired for it.
     const rawOpts = (body.seatOpts && typeof body.seatOpts === 'object') ? body.seatOpts : {}
+    // A name is a player's identity in the transcript and the prompts, so it
+    // MUST be unique — the same model can now take several chairs, and two
+    // seats both called "Claude Fable 5" would make the game unplayable
+    // (who is accusing whom?). The Nth copy of a name becomes "name (N)".
+    // (CC, Aug 3)
+    const nameCounts: Record<string, number> = {}
+    const uniqueName = (base: string) => {
+      const n = (nameCounts[base] = (nameCounts[base] ?? 0) + 1)
+      return n === 1 ? base : `${base} (${n})`
+    }
     metas.forEach((m, i) => {
       const o = rawOpts[m!.id] ?? {}
       const levels = m!.output_config?.text?.thinking_levels ?? []
       const caps   = m!.output_config?.text?.capabilities ?? []
       seats.push({
-        seat: i, modelId: m!.id, name: m!.display_name, provider: m!.provider,
+        seat: i, modelId: m!.id, name: uniqueName(m!.display_name), provider: m!.provider,
         role: roles[i], alive: true, isHuman: false,
         thinking: typeof o.thinking === 'string' && levels.includes(o.thinking) ? o.thinking : null,
         search:   o.search === true && caps.includes('web_search'),
       })
     })
     if (humanName) seats.push({
-      seat: seats.length, modelId: null, name: humanName, provider: 'human',
+      seat: seats.length, modelId: null, name: uniqueName(humanName), provider: 'human',
       role: roles[seats.length], alive: true, isHuman: true,
     })
 
@@ -258,6 +269,10 @@ export async function POST(req: Request) {
     .select('*').eq('id', body.sessionId).eq('user_id', user.id).single()
   if (loadErr || !row) return Response.json({ error: 'session not found' }, { status: 404 })
   const s = row as Session
+
+  // Read-only board fetch — /xtalk/<id> resuming after a reload or from the
+  // nav history list. Never advances the game.
+  if (body.action === 'state') return Response.json(view(s))
 
   if (s.status === 'over') return Response.json(view(s))
 

@@ -35,6 +35,9 @@ export interface TemplateProps {
   models: Speaker[]
   /** Leave the template and return to the picker. */
   onExit: () => void
+  /** A server-held session to reopen (from /xtalk/<id>). Werewolf only —
+   *  discussion rooms live in client state and have nothing to resume. */
+  resumeId?: string | null
 }
 
 export interface XTalkTemplate {

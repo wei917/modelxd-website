@@ -24,6 +24,7 @@ const LABELS = 'ABCDEFGH'.split('')
 
 export default function ModelSlots({
   models, picked, onPicked, seatOpts, onSeatOpts, allowSearch = true, count, fixed = false,
+  allowDuplicates = false,
 }: {
   /** Every text model, already loaded by the shell. */
   models: Speaker[]
@@ -37,6 +38,10 @@ export default function ModelSlots({
   count: number
   /** Fixed tables never grow or shrink; an empty slot is a missing player. */
   fixed?: boolean
+  /** Werewolf lets the same model take several chairs — a 7×Fable table is
+   *  a clean test of one model against itself. Discussion does not: two of
+   *  one model in a conversation is just that model twice. */
+  allowDuplicates?: boolean
 }) {
   const t = useT()
   const [openSlot, setOpenSlot] = useState<number | null>(null)
@@ -76,7 +81,7 @@ export default function ModelSlots({
             // A div, not a button: the gear and the × inside are buttons, and
             // nesting buttons is invalid — the browser lifts the inner ones
             // out and the slot stops responding.
-            <div key={m.id} style={{
+            <div key={`slot-${i}`} style={{
               height: 52, padding: '0 10px 0 12px', borderRadius: 10,
               border: '1px solid var(--border2)', background: 'var(--surface)',
               display: 'flex', alignItems: 'center', gap: 9,
@@ -124,9 +129,10 @@ export default function ModelSlots({
           recipeMode="text_to_text"
           slotIds={Array.from({ length: count }, (_, i) => picked[i] ?? null)}
           onSelect={sel => {
-            // Picking a model already seated elsewhere would silently give it
-            // two chairs and, in Werewolf, two roles.
-            if (picked.includes(sel.id) && picked[openSlot] !== sel.id) { setOpenSlot(null); return }
+            // Discussion refuses a model already seated elsewhere; Werewolf
+            // allows it (same model in several chairs, disambiguated by the
+            // server with (2), (3)…).
+            if (!allowDuplicates && picked.includes(sel.id) && picked[openSlot] !== sel.id) { setOpenSlot(null); return }
             setAt(openSlot, sel.id)
             setOpenSlot(null)
           }}

@@ -122,6 +122,23 @@ export default function Nav() {
   // refreshes after a generation → the page URL gains ?id= → pathname
   // stays but a re-nav elsewhere and back re-fetches; good enough v1).
   const onXcreate = pathname?.startsWith('/xcreate') ?? false
+  const onXtalk   = pathname?.startsWith('/xtalk') ?? false
+  // Werewolf games are server-held sessions with owner-read RLS, so the
+  // browser client lists them the same way it lists xcreates. Discussions
+  // aren't here: they live in client state and have no row to link to.
+  const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string }>>([])
+  useEffect(() => {
+    if (!onXtalk || !user) { setRecentGames([]); return }
+    let cancelled = false
+    supabase.from('xtalk_sessions')
+      .select('id, status, day, winner, created_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => { if (!cancelled) setRecentGames((data ?? []) as any[]) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onXtalk, user?.id, pathname])
   useEffect(() => {
     if (!onXcreate || !user) { setRecent([]); return }
     let cancelled = false
@@ -286,6 +303,31 @@ export default function Nav() {
                 ? <span className="nav-history-spin" aria-label="Generating" />
                 : <HistoryModeIcon m={item.mode} />}
               <span className="nav-history-text">{item.prompt ? historyTitle(item.prompt) : '(no prompt)'}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* XTalk history — same layer as XCreate's, one row per werewolf
+          game. The glyph is the outcome: live, wolves won, village won. */}
+      {onXtalk && recentGames.length > 0 && (
+        <div className="nav-history">
+          <div className="nav-history-head" style={{ cursor: 'default' }}>
+            <span className="nav-history-cap">{t('xt.recent')}</span>
+          </div>
+          {recentGames.map(g => (
+            <Link
+              key={g.id}
+              href={`/xtalk/${g.id}`}
+              className="nav-history-item"
+              title={`${t('xt.tpl.werewolf.name')} · ${new Date(g.created_at).toLocaleString()}`}
+            >
+              <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>
+                {g.status === 'active' ? '🎲' : g.winner === 'wolves' ? '🐺' : '🏘️'}
+              </span>
+              <span className="nav-history-text">
+                {t('xt.tpl.werewolf.name')} · D{g.day}{g.status === 'active' ? '' : ` · ${g.winner === 'wolves' ? t('ww.role.wolf') : t('xt.village')}`}
+              </span>
             </Link>
           ))}
         </div>

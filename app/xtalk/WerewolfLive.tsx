@@ -11,7 +11,7 @@ import { isSubmitEnter } from '../../lib/ime'
 import { useLang, useT } from '../../lib/i18n'
 import { composition } from '../../lib/werewolf-engine'
 import { createBrowserClient } from '@supabase/ssr'
-import { canSearch, type SeatOpts } from './SeatConfig'
+import { type SeatOpts } from './SeatConfig'
 import ModelSlots from './ModelSlots'
 
 const COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399', '#f59e0b', '#ec4899', '#38bdf8', '#fb7185']
@@ -34,10 +34,11 @@ type Board = {
 const TABLE_SIZE = 7
 
 export default function WerewolfLive({
-  models, onExit,
+  models, onExit, resumeId = null,
 }: {
-  models: { id: string; display_name: string; provider: string }[]
+  models: { id: string; display_name: string; provider: string; model_pricing?: any }[]
   onExit: () => void
+  resumeId?: string | null
 }) {
   const { lang } = useLang()
   const t = useT()
@@ -52,7 +53,6 @@ export default function WerewolfLive({
   // out, not the models. Thinking stays per-seat — a slower thinker is a
   // playstyle; search is an information asymmetry, which is a different
   // thing. (CC, Aug 2)
-  const [tableSearch, setTableSearch] = useState(false)
   const [wantRole, setWantRole] = useState<'random' | 'wolf' | 'seer' | 'doctor' | 'villager'>('random')
   // Whoever is signed in. It defaulted to the literal string 'You', so every
   // recorded game had a player called "You" and the transcript read like the
@@ -111,6 +111,18 @@ export default function WerewolfLive({
     setBusy(false)
   }
 
+  // Reopen a server-held game (/xtalk/<id> or the nav history). state is
+  // read-only; if the game is still live, advance() picks up whatever AI
+  // acts were pending when the tab closed.
+  useEffect(() => {
+    if (!resumeId) return
+    ;(async () => {
+      const b = await post({ action: 'state', sessionId: resumeId })
+      if (b) { setBoard(b); if (b.status === 'active') advance(b) }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId])
+
   const start = async () => {
     const total = picked.length + (playing ? 1 : 0)
     if (total !== size) return
@@ -124,11 +136,15 @@ export default function WerewolfLive({
       // must not learn the seating from the shape of what it sent.
       seatOpts: Object.fromEntries(picked.map(id => [id, {
         thinking: seatOpts[id]?.thinking ?? null,
-        search:   tableSearch,
       }])),
     })
     setBusy(false)
-    if (b) { setBoard(b); advance(b) }
+    if (b) {
+      // The game now has an address. replaceState, not router.push: a
+      // navigation would remount the shell and drop the board mid-deal.
+      window.history.replaceState(null, '', `/xtalk/${b.sessionId}`)
+      setBoard(b); advance(b)
+    }
   }
 
   const answer = async (payload: any) => {
@@ -140,6 +156,26 @@ export default function WerewolfLive({
   }
 
   const seatsForModels = size - (playing ? 1 : 0)
+
+  /** Fill the empty chairs with a random cast (CC, Aug 3: seven hand-picks
+   *  before every game is setup, not play). Random rather than top-ranked —
+   *  identical casts every game would make the werewolf board a rerun.
+   *  Models above $100/1M output are left for deliberate picking only: a
+   *  three-day game with GPT-5.5 Pro at the table is a bill, not a default. */
+  const autoFill = () => {
+    const need = seatsForModels - picked.length
+    if (need <= 0) return
+    const rateOf = (m: any) => {
+      const r = m?.model_pricing?.tokens?.text_output
+      return typeof r === 'number' ? r : (r?.default ?? 0)
+    }
+    const pool = models
+      .filter(m => !picked.includes(m.id) && rateOf(m) < 100)
+      .map(m => ({ m, k: Math.random() }))
+      .sort((a, b) => a.k - b.k)
+      .map(x => x.m)
+    setPicked(prev => [...prev, ...pool.slice(0, need).map(m => m.id)])
+  }
   const toggle = (id: string) => setPicked(p =>
     p.includes(id) ? p.filter(x => x !== id) : p.length >= seatsForModels ? p : [...p, id])
 
@@ -262,6 +298,16 @@ export default function WerewolfLive({
               ? t('ww.count.ready')
               : t('ww.count.need').replace('{n}', String(seatsForModels - picked.length))}
           </span>
+          {picked.length < seatsForModels && (
+            <button
+              onClick={autoFill}
+              style={{
+                padding: '4px 12px', borderRadius: 999, cursor: 'none',
+                border: '1px dashed var(--border2)', background: 'transparent',
+                color: 'var(--muted2)', fontSize: 12, fontFamily: 'inherit',
+              }}
+            >🎲 {t('ww.autofill')}</button>
+          )}
         </div>
         <ModelSlots
           models={models}
@@ -272,23 +318,14 @@ export default function WerewolfLive({
           allowSearch={false}
           count={seatsForModels}
           fixed
+          allowDuplicates
         />
 
-        {/* Table-level web search. Only offered when EVERY seated model can
-            search — a table where some seats can look things up and others
-            cannot is not a game with a meaningful result. */}
-        {picked.length > 0 && picked.every(id => {
-          const m = models.find(x => x.id === id)
-          return !!m && canSearch(m)
-        }) && (
-          <label className={`opt-toggle ${tableSearch ? 'on' : ''}`}>
-            <input type="checkbox" checked={tableSearch} onChange={e => setTableSearch(e.target.checked)} />
-            <span className="opt-mark" aria-hidden="true" />
-            <span className="opt-label">{t('xcreate.websearch')}</span>
-            <span className="opt-note">{t('ww.search.note')}</span>
-          </label>
-        )}
-
+        {/* No web search at this table — deliberately (CC, Aug 3). Werewolf
+            is a closed world: everything that matters is in the transcript,
+            and the internet holds no evidence about who is lying HERE. The
+            toggle arrived by symmetry with Discussion and only added
+            per-search fees and latency to every act. */}
         {error && <div style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>⚠ {error}</div>}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button className="btn-next" disabled={total !== size || busy} onClick={start}>
@@ -328,6 +365,14 @@ export default function WerewolfLive({
       {me && (
         <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted)', marginBottom: 16 }}>
           {t('ww.youare').replace('{n}', me.name).replace('{r}', t(ROLE_KEY[me.role ?? 'villager']))}
+          {me.role === 'wolf' && (() => {
+            const pack = board.players.filter(p => p.seat !== me.seat && p.role === 'wolf').map(p => p.name)
+            return pack.length > 0 ? (
+              <span style={{ color: 'var(--red)', marginLeft: 10 }}>
+                {t('ww.packmate').replace('{w}', pack.join(', '))}
+              </span>
+            ) : null
+          })()}
         </div>
       )}
 
@@ -412,7 +457,7 @@ export default function WerewolfLive({
         <span>{t('ww.day').replace('{d}', String(board.day))}</span>
         <span>Total ${board.cost < 0.0001 && board.cost > 0 ? '<0.0001' : board.cost.toFixed(4)}</span>
         {board.status === 'over' && (
-          <button className="btn-next" onClick={() => { setBoard(null); setPicked([]) }}>{t('ww.newgame')}</button>
+          <button className="btn-next" onClick={() => { window.history.replaceState(null, '', '/xtalk'); setBoard(null); setPicked([]) }}>{t('ww.newgame')}</button>
         )}
         <button onClick={onExit} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none', fontFamily: 'inherit', fontSize: 11 }}>
           {t('ww.leave')}

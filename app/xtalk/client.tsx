@@ -18,11 +18,14 @@ const createSupabaseBrowser = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
-export default function XTalkClient() {
+export default function XTalkClient({ resumeId = null }: { resumeId?: string | null }) {
   useRequireAuth()
   const t = useT()
   const [models, setModels] = useState<Speaker[]>([])
-  const [active, setActive] = useState(XTALK_TEMPLATES[0].id)
+  // /xtalk/<id> opens straight onto the werewolf table it names; picking a
+  // template by hand drops the resume — you asked for something new.
+  const [active, setActive] = useState(resumeId ? 'werewolf' : XTALK_TEMPLATES[0].id)
+  const [resume, setResume] = useState<string | null>(resumeId)
   // Templates own their own state, so switching has to unmount the old one
   // rather than leave a half-finished game behind a chip.
   const [nonce, setNonce] = useState(0)
@@ -66,7 +69,7 @@ export default function XTalkClient() {
               <button
                 key={x.id}
                 className={`xt-tpl${on ? ' is-on' : ''}`}
-                onClick={() => { setActive(x.id); setNonce(n => n + 1) }}
+                onClick={() => { setActive(x.id); setResume(null); setNonce(n => n + 1) }}
               >
                 {/* No check badge and no square mark. The banner already
                     says which format this is, and the red frame already says
@@ -102,7 +105,11 @@ export default function XTalkClient() {
         <Room
           key={`${tpl.id}-${nonce}`}
           models={models}
-          onExit={() => { setActive(XTALK_TEMPLATES[0].id); setNonce(n => n + 1) }}
+          resumeId={active === 'werewolf' ? resume : null}
+          onExit={() => {
+            window.history.replaceState(null, '', '/xtalk')
+            setActive(XTALK_TEMPLATES[0].id); setResume(null); setNonce(n => n + 1)
+          }}
         />
       </div>
     </div>
