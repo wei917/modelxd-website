@@ -8,6 +8,7 @@
 // file should not have to change at all.
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
@@ -21,6 +22,7 @@ const createSupabaseBrowser = () => createBrowserClient(
 export default function XTalkClient({ resumeId = null }: { resumeId?: string | null }) {
   useRequireAuth()
   const t = useT()
+  const router = useRouter()
   const [models, setModels] = useState<Speaker[]>([])
   // /xtalk/<id> opens straight onto the werewolf table it names; picking a
   // template by hand drops the resume — you asked for something new.
@@ -107,7 +109,11 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
           models={models}
           resumeId={active === 'werewolf' ? resume : null}
           onExit={() => {
-            window.history.replaceState(null, '', '/xtalk')
+            // Navigate for real when leaving a /xtalk/<id> game (remounts to
+            // the picker); a plain reset kept the game URL and Next's router
+            // out of sync. On the bare /xtalk this is a no-op push and the
+            // local reset returns a discussion room to the picker.
+            router.push('/xtalk')
             setActive(XTALK_TEMPLATES[0].id); setResume(null); setNonce(n => n + 1)
           }}
         />

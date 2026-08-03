@@ -6,6 +6,7 @@
 // which is the only reason a human can sit at this table honestly.
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import ProviderLogo from '../components/ProviderLogo'
 import { isSubmitEnter } from '../../lib/ime'
 import { useLang, useT } from '../../lib/i18n'
@@ -42,6 +43,7 @@ export default function WerewolfLive({
 }) {
   const { lang } = useLang()
   const t = useT()
+  const router = useRouter()
   const [picked, setPicked] = useState<string[]>([])
   const [playing, setPlaying] = useState(false)      // is the human taking a seat
   // Fixed board. See the note by the composition line for why there is no
@@ -138,13 +140,12 @@ export default function WerewolfLive({
         thinking: seatOpts[id]?.thinking ?? null,
       }])),
     })
-    setBusy(false)
     if (b) {
-      // The game now has an address. replaceState, not router.push: a
-      // navigation would remount the shell and drop the board mid-deal.
-      window.history.replaceState(null, '', `/xtalk/${b.sessionId}`)
-      setBoard(b); advance(b)
+      // Stay busy through the navigation — the picker must not flash back.
+      router.replace(`/xtalk/${b.sessionId}`)
+      return
     }
+    setBusy(false)
   }
 
   const answer = async (payload: any) => {
@@ -457,7 +458,7 @@ export default function WerewolfLive({
         <span>{t('ww.day').replace('{d}', String(board.day))}</span>
         <span>Total ${board.cost < 0.0001 && board.cost > 0 ? '<0.0001' : board.cost.toFixed(4)}</span>
         {board.status === 'over' && (
-          <button className="btn-next" onClick={() => { window.history.replaceState(null, '', '/xtalk'); setBoard(null); setPicked([]) }}>{t('ww.newgame')}</button>
+          <button className="btn-next" onClick={() => router.push('/xtalk')}>{t('ww.newgame')}</button>
         )}
         <button onClick={onExit} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none', fontFamily: 'inherit', fontSize: 11 }}>
           {t('ww.leave')}
