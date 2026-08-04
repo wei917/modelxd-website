@@ -99,6 +99,7 @@ export default function Nav() {
   // Which history row is being renamed, across BOTH lists. One editor at a
   // time keyed by table + id (CC, Aug 3).
   const [editing, setEditing] = useState<{ table: 'xcreates' | 'xtalk_sessions'; id: string } | null>(null)
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
   const renameRow = async (table: 'xcreates' | 'xtalk_sessions', id: string, raw: string) => {
     const title = raw.trim().slice(0, 80) || null
@@ -380,16 +381,29 @@ export default function Nav() {
                 onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
               >✏</button>
-              <button
-                aria-label="delete game"
-                title={t('ww.delete')}
-                onClick={async () => {
-                  await supabase.from('xtalk_sessions').delete().eq('id', g.id)
-                  setRecentGames(prev => prev.filter(x => x.id !== g.id))
-                  if (pathname === `/xtalk/${g.id}`) router.push('/xtalk')
-                }}
-                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
-              >×</button>
+              {confirmDel === g.id ? (
+                <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  <button
+                    aria-label="confirm delete" title={t('ww.delete.confirm')}
+                    onClick={async () => {
+                      setConfirmDel(null)
+                      await supabase.from('xtalk_sessions').delete().eq('id', g.id)
+                      setRecentGames(prev => prev.filter(x => x.id !== g.id))
+                      if (pathname === `/xtalk/${g.id}`) router.push('/xtalk')
+                    }}
+                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
+                  >{t('ww.delete.yes')}</button>
+                  <button aria-label="cancel" onClick={() => setConfirmDel(null)}
+                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
+                </span>
+              ) : (
+                <button
+                  aria-label="delete game"
+                  title={t('ww.delete')}
+                  onClick={() => { setConfirmDel(g.id); setTimeout(() => setConfirmDel(c => c === g.id ? null : c), 4000) }}
+                  style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
+                >×</button>
+              )}
             </div>
             )
           ))}
