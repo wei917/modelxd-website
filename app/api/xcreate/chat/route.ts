@@ -24,6 +24,7 @@ function debitChatTurn(opts: {
   modelId:  string | null | undefined
   modelName: string
   mode:     'text' | 'image' | 'video'
+  refId?:    string | null
 }): void {
   const cents = Math.round(opts.cost * 100)
   if (cents <= 0) return
@@ -31,7 +32,7 @@ function debitChatTurn(opts: {
     userId:        opts.userId,
     amountCents:   cents,
     referenceType: 'xcreate_chat',
-    referenceId:   opts.modelId ?? opts.modelName,
+    referenceId:   opts.refId ?? opts.modelId ?? opts.modelName,
     description:   `XCreate chat ${opts.mode} continuation (${opts.modelName})`,
     metadata:      { mode: opts.mode, modelName: opts.modelName },
   })
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { modelId, messages, mode, attachment, previousResponseId, conversationHistory: clientConvHistory } = await req.json()
+  const { modelId, messages, mode, attachment, previousResponseId, conversationHistory: clientConvHistory, xcreateId } = await req.json()
   if (!modelId || !messages?.length) return Response.json({ error: 'Missing params' }, { status: 400 })
 
   const model = await getModelById(modelId)
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
 
           const b64 = result.buffer.toString('base64')
           const dataUrl = `data:${result.mediaType};base64,${b64}`
-          debitChatTurn({ userId: user.id, cost: result.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'image' })
+          debitChatTurn({ userId: user.id, cost: result.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'image', refId: xcreateId })
           controller.enqueue(sse('image', {
             url: dataUrl,
             cost: result.cost,
@@ -231,7 +232,7 @@ export async function POST(req: Request) {
             mode: 'video', user_id: user.id,
           }, `generations/${user.id}/${fileName}`)
 
-          debitChatTurn({ userId: user.id, cost: result.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'video' })
+          debitChatTurn({ userId: user.id, cost: result.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'video', refId: xcreateId })
           controller.enqueue(sse('video', { url: publicUrl, cost: result.cost }))
         } catch (err) {
           controller.enqueue(sse('error', { message: err instanceof Error ? err.message : String(err) }))
@@ -258,7 +259,7 @@ export async function POST(req: Request) {
         {
           onDelta: (text) => controller.enqueue(sse('delta', { text })),
           onDone:  (r)    => {
-            debitChatTurn({ userId: user.id, cost: r.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'text' })
+            debitChatTurn({ userId: user.id, cost: r.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'text', refId: xcreateId })
             controller.enqueue(sse('done', { cost: r.cost, inputTokens: r.inputTokens, outputTokens: r.outputTokens }))
             controller.close()
           },

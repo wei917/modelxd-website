@@ -132,6 +132,9 @@ export async function POST(req: Request) {
     search = false,
     // True → this is a bid poll, not a speaking turn: answer is one digit.
     bid: bidRequest = false,
+    // Client discussion id: every turn/bid of one conversation shares this so
+    // the credit ledger can collapse them into a single session row.
+    convId = null,
   } = await req.json()
   if (!modelId || (!gamePrompt && (typeof question !== 'string' || !question.trim()))) {
     return Response.json({ error: 'Missing modelId or question' }, { status: 400 })
@@ -175,7 +178,7 @@ export async function POST(req: Request) {
     if (cents > 0) {
       debitCredits({
         userId: user.id, amountCents: cents,
-        referenceType: 'xtalk_bid', referenceId: model.id ?? me,
+        referenceType: 'xtalk_bid', referenceId: (typeof convId === 'string' && convId) ? convId : (model.id ?? me),
         description: `XTalk bid (${me})`, metadata: { modelName: me },
       }).catch(err => console.warn(`${LOG} bid debit failed:`, err))
     }
@@ -206,7 +209,7 @@ export async function POST(req: Request) {
                   userId:        user.id,
                   amountCents:   cents,
                   referenceType: 'xtalk_turn',
-                  referenceId:   model.id ?? me,
+                  referenceId:   (typeof convId === 'string' && convId) ? convId : (model.id ?? me),
                   description:   `XTalk turn (${me})`,
                   metadata:      { modelName: me, persona: persona || null },
                 })

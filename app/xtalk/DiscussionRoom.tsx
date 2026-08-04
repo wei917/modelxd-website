@@ -95,6 +95,9 @@ export default function DiscussionRoom({ models }: TemplateProps) {
   // this is yours to turn off.
   const [rotate,   setRotate]   = useState(true)
   const turnsRef = useRef<Turn[]>([])
+  // A stable id for THIS discussion so every turn + bid it bills shares one
+  // ledger reference_id and collapses into a single session row. (CC, Aug 4)
+  const convId = useRef<string>(crypto.randomUUID())
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { turnsRef.current = turns }, [turns])
@@ -135,6 +138,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         modelId: model.id,
+        convId: convId.current,
         question: q,
         transcript: turnsRef.current.map(t => ({ speaker: t.speaker, isUser: t.isUser, text: t.text })),
         speakerNames: chosen.map(m => m.display_name),
@@ -212,7 +216,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          modelId: m.id, bid: true,
+          modelId: m.id, bid: true, convId: convId.current,
           question: latestFromHuman() || question.trim(),
           // The bid needs recency, not history: the tail is what decides
           // whether you were just addressed.
@@ -548,6 +552,25 @@ export default function DiscussionRoom({ models }: TemplateProps) {
                 </div>
               ))}
               <div ref={bottomRef} />
+            </div>
+
+            {/* Speaking order stays changeable mid-conversation (CC, Aug 3):
+                a room that opened on Auto can be taken over by hand the
+                moment it drifts. Switching only affects the NEXT action —
+                any round already running finishes on its old rule. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+              <span className="prompt-label" style={{ margin: 0 }}>Speaking order</span>
+              <div style={{ display: 'inline-flex', padding: 3, gap: 3, borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface)' }}>
+                {([['order', 'In order'], ['bid', 'Auto'], ['manual', 'Manual pick']] as const).map(([k, label]) => (
+                  <button key={k} className={`surface-tab${flow === k ? ' on' : ''}`} onClick={() => setFlow(k)}>{label}</button>
+                ))}
+              </div>
+              {flow === 'order' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'none' }}>
+                  <input type="checkbox" checked={rotate} onChange={e => setRotate(e.target.checked)} />
+                  rotate who opens each round
+                </label>
+              )}
             </div>
 
             {flow === 'manual' && (

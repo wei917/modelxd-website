@@ -48,6 +48,7 @@ type Keys = {
   packKills: (name: string) => string
   protects: (name: string) => string
   noReply: (name: string, target: string) => string
+  abstain: (name: string, reason: string) => string
   role: Record<'wolf' | 'seer' | 'doctor' | 'villager', string>
 }
 
@@ -64,6 +65,7 @@ const EN: Keys = {
   packKills: n => `The pack kills ${n}.`,
   protects: n => `Protects ${n}.`,
   noReply: (n, t) => `⚠ ${n} did not answer; the moderator chose ${t}.`,
+  abstain: (n, why) => `⚠ ${n} did not answer (${why}) — sits this round out.`,
   role: { wolf: 'a Werewolf', seer: 'the Seer', doctor: 'the Doctor', villager: 'a Villager' },
 }
 
@@ -80,6 +82,7 @@ const ZH_HANT: Keys = {
   packKills: n => `狼群決定殺 ${n}。`,
   protects: n => `保護 ${n}。`,
   noReply: (n, t) => `⚠ ${n} 沒有回應，由法官代為選擇 ${t}。`,
+  abstain: (n, why) => `⚠ ${n} 沒有回應（${why}）— 本回合棄權。`,
   role: { wolf: '狼人', seer: '預言家', doctor: '醫生', villager: '平民' },
 }
 
@@ -97,6 +100,7 @@ const ZH_HANS: Keys = {
   packKills: n => `狼群决定杀 ${n}。`,
   protects: n => `保护 ${n}。`,
   noReply: (n, t) => `⚠ ${n} 没有回应，由法官代为选择 ${t}。`,
+  abstain: (n, why) => `⚠ ${n} 没有回应（${why}）— 本回合弃权。`,
   role: { wolf: '狼人', seer: '预言家', doctor: '医生', villager: '平民' },
 }
 
@@ -113,6 +117,7 @@ const JA: Keys = {
   packKills: n => `人狼は ${n} を襲撃します。`,
   protects: n => `${n} を守ります。`,
   noReply: (n, t) => `⚠ ${n} が応答しなかったため、進行役が ${t} を選びました。`,
+  abstain: (n, why) => `⚠ ${n} が応答しませんでした（${why}）— このラウンドは棄権です。`,
   role: { wolf: '人狼', seer: '占い師', doctor: '医者', villager: '村人' },
 }
 
@@ -129,6 +134,7 @@ const KO: Keys = {
   packKills: n => `늑대들이 ${n} 님을 지목했습니다.`,
   protects: n => `${n} 님을 보호합니다.`,
   noReply: (n, t) => `⚠ ${n} 님이 응답하지 않아 진행자가 ${t} 님을 선택했습니다.`,
+  abstain: (n, why) => `⚠ ${n} 님이 응답하지 않아서(${why}) 이번 라운드는 기권합니다.`,
   role: { wolf: '늑대인간', seer: '예언자', doctor: '의사', villager: '마을 주민' },
 }
 

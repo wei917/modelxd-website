@@ -61,6 +61,7 @@ function view(s: Session) {
     })),
     transcript: redact(s.transcript, me),
     awaiting: awaitingHuman(s),
+    acting: nextActor(s),
   }
 }
 
@@ -88,6 +89,34 @@ function awaitingHuman(s: Session): null | { kind: 'kill' | 'check' | 'protect' 
   return null
 }
 
+/** Who the next `step` will ask a model — so the table can name who is
+ *  thinking instead of a faceless "the table is talking". Null when the
+ *  next act is the human's, a moderator resolution (dawn / vote tally), or
+ *  the game is over. */
+function nextActor(s: Session): { seat: number; name: string; provider: string } | null {
+  if (s.status === 'over') return null
+  if (awaitingHuman(s)) return null
+  const pick = (p?: Seat | null) =>
+    p && !p.isHuman ? { seat: p.seat, name: p.name, provider: p.provider } : null
+  switch (s.phase) {
+    case 'night_wolf': {
+      const pack = wolves(s.players)
+      return pack.length ? pick(pack[0]) : null
+    }
+    case 'night_seer':
+      return pick(alive(s.players).find(p => p.role === 'seer') ?? null)
+    case 'night_doctor':
+      return pick(alive(s.players).find(p => p.role === 'doctor') ?? null)
+    case 'day':
+    case 'vote':
+      return s.cursor < (s.turn_order?.length ?? 0)
+        ? pick(s.players[s.turn_order[s.cursor]])
+        : null
+    default:
+      return null
+  }
+}
+
 async function askModel(seat: Seat, s: Session, prompt: string, field: string) {
   const model = seat.modelId ? await getModelById(seat.modelId) : null
   if (!model) return { say: '', reasoning: undefined as string | undefined, cost: 0, failed: true }
@@ -106,25 +135,48 @@ async function askModel(seat: Seat, s: Session, prompt: string, field: string) {
   // transient 429/500 is far cheaper than the game it would otherwise
   // distort. Cost accumulates across attempts: the first attempt may have
   // billed real tokens before dying. (CC, Aug 2)
-  let full = '', cost = 0, lastError: string | null = null
+  let full = '', cost = 0, lastError: string | null = null, timedOut = false
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // A single model must never wedge the whole game. In production the
+  // function's own maxDuration eventually kills a hung provider stream; a
+  // local `next dev` server has NO such ceiling, so a slow or stalled stream
+  // (Kimi K3 is the usual culprit) would spin "…thinking" forever with the
+  // client unable to recover. This bounds every attempt: if the stream
+  // neither finishes nor errors in time, the turn is abandoned as a no-reply
+  // and the game moves on. A timeout is NOT retried — re-asking a slow model
+  // just doubles the wait. (CC, Aug 4)
+  const MODEL_TIMEOUT_MS = 90_000
+
+  for (let attempt = 0; attempt < 2 && !timedOut; attempt++) {
     if (attempt > 0) {
       console.warn(`${LOG} ${seat.name}: empty reply, retrying once`)
       await new Promise(r => setTimeout(r, 700))
     }
     let chunk = ''
-    await new Promise<void>(resolve => {
-      providers.streamText(model, msgs, {
-        onDelta: (t) => { chunk += t },
-        onDone:  (r) => { cost += r.cost ?? 0; resolve() },
-        onError: (m) => { lastError = m; console.warn(`${LOG} ${seat.name}:`, m); resolve() },
-      }, [], { userId: s.user_id, surface: 'xtalk-werewolf' } as any,
-         { thinking: seat.thinking ?? null, search: seat.search === true }).catch((e) => {
-        lastError = String(e?.message ?? e)
-        resolve()
-      })
-    })
+    let timer: ReturnType<typeof setTimeout> | null = null
+    await Promise.race([
+      new Promise<void>(resolve => {
+        providers.streamText(model, msgs, {
+          onDelta: (t) => { chunk += t },
+          onDone:  (r) => { cost += r.cost ?? 0; resolve() },
+          onError: (m) => { lastError = m; console.warn(`${LOG} ${seat.name}:`, m); resolve() },
+        }, [], { userId: s.user_id, surface: 'xtalk-werewolf' } as any,
+           { thinking: seat.thinking ?? null, search: seat.search === true }).catch((e) => {
+          lastError = String(e?.message ?? e)
+          resolve()
+        })
+      }),
+      new Promise<void>(resolve => {
+        timer = setTimeout(() => {
+          timedOut = true
+          lastError = lastError ?? `no response in ${Math.round(MODEL_TIMEOUT_MS / 1000)}s`
+          console.warn(`${LOG} ${seat.name}: timed out after ${MODEL_TIMEOUT_MS}ms`)
+          resolve()
+        }, MODEL_TIMEOUT_MS)
+      }),
+    ])
+    if (timer) clearTimeout(timer)
+    // A stream that produced partial text before stalling is still usable.
     if (chunk.trim()) { full = chunk; break }
   }
 
@@ -393,7 +445,7 @@ export async function POST(req: Request) {
       s.transcript.push({
         seat: seer.seat, speaker: seer.name, kind: 'night', cost: r.cost, reasoning: r.reasoning,
         privateTo: [seer.seat],
-        text: r.failed ? `⚠ no reply — moderator checked ${found.name}.` : `Investigates ${found.name}.`,
+        text: r.failed ? L.noReply(seer.name, found.name) : `Investigates ${found.name}.`,
       })
       s.transcript.push(mod(L.seerResult(found.name, found.role === 'wolf'), 'night', [seer.seat]))
       return finish({ transcript: s.transcript, phase: 'night_doctor', cursor: 0 })
@@ -453,7 +505,7 @@ export async function POST(req: Request) {
         seat: actor.seat, speaker: actor.name, kind: 'day', cost: r.cost, reasoning: r.reasoning,
         // Night and vote turns already flag a dead call; day used to print a
         // bare "(no reply)", which reads as the player choosing silence.
-        text: r.failed ? `⚠ ${actor.name} 沒有回應（${r.error}）— 本回合視為棄權。` : r.say,
+        text: r.failed ? L.abstain(actor.name, r.error ?? 'no response') : r.say,
       })
       return finish({ transcript: s.transcript, cursor: s.cursor + 1 })
     }
@@ -490,7 +542,7 @@ export async function POST(req: Request) {
       const { seat: v } = resolveSeat(r.say, targets)
       s.transcript.push({
         seat: actor.seat, speaker: actor.name, kind: 'vote', cost: r.cost, reasoning: r.reasoning,
-        text: r.failed ? `⚠ no reply — moderator recorded a vote for ${nameOf(s, v)}.` : `Votes ${nameOf(s, v)}.`,
+        text: r.failed ? L.noReply(actor.name, nameOf(s, v)) : `Votes ${nameOf(s, v)}.`,
       })
       return finish({ transcript: s.transcript, cursor: s.cursor + 1, pending: { ...s.pending, votes: { ...(s.pending.votes ?? {}), [actor.seat]: v } } })
     }

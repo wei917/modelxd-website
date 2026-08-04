@@ -2382,6 +2382,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
           modelId: chosen.id,
           messages: newHistory,
           mode,
+          xcreateId,                                  // groups chat charges by conversation
           previousResponseId: imageResponseId,       // OpenAI multi-turn
           conversationHistory: imageConvHistory,      // Google multi-turn
         }),

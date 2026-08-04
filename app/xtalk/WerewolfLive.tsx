@@ -30,6 +30,10 @@ type Board = {
   players: { seat: number; name: string; provider: string; alive: boolean; isHuman: boolean; role: string | null }[]
   transcript: { seat?: number; speaker: string; text: string; reasoning?: string; privateTo?: number[]; kind?: string; system?: boolean; cost?: number }[]
   awaiting: null | { kind: 'kill' | 'check' | 'protect' | 'speak' | 'vote'; targets: { seat: number; name: string }[] }
+  // Who the next server step will drive a model for — so a spinner can name
+  // the model that is actually thinking. Null on the human's turn or a
+  // moderator resolution step.
+  acting: null | { seat: number; name: string; provider: string }
 }
 
 /** The one board XTalk runs: 2 wolves, seer, doctor, 3 villagers. */
@@ -111,14 +115,29 @@ export default function WerewolfLive({
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth' }) }, [board?.transcript.length])
 
   const post = async (body: any): Promise<Board | null> => {
-    const res = await fetch('/api/xtalk/werewolf', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      // Sent every time, not stored: switching the site language mid-game
-      // should carry the table with it.
-      body: JSON.stringify({ ...body, lang }),
-    })
+    let res: Response
+    try {
+      res = await fetch('/api/xtalk/werewolf', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        // Sent every time, not stored: switching the site language mid-game
+        // should carry the table with it.
+        body: JSON.stringify({ ...body, lang }),
+      })
+    } catch {
+      // fetch only throws on a dropped connection — a server error still
+      // resolves with !res.ok below. Without this the throw escaped advance()
+      // and left running/busy stuck, wedging the table.
+      setError(t('ww.err.network')); return null
+    }
     const json = await res.json().catch(() => null)
-    if (!res.ok) { setError(json?.error ?? `request failed (${res.status})`); return null }
+    if (!res.ok) {
+      // A gateway timeout (502/503/504) means one model outran the function's
+      // budget. The game is saved up to the last finished act, so a reload
+      // resumes it — say that instead of a bare status code.
+      const msg = json?.error
+        ?? (res.status >= 502 && res.status <= 504 ? t('ww.err.timeout') : `request failed (${res.status})`)
+      setError(msg); return null
+    }
     setError(null)
     return json as Board
   }
@@ -128,14 +147,18 @@ export default function WerewolfLive({
     if (running.current) return
     running.current = true
     setBusy(true)
-    let b: Board | null = from
-    // Bounded so a server-side stall can never spin forever.
-    for (let i = 0; i < 200 && b && b.status === 'active' && !b.awaiting; i++) {
-      b = await post({ action: 'step', sessionId: b.sessionId })
-      if (b) setBoard(b)
+    try {
+      let b: Board | null = from
+      // Bounded so a server-side stall can never spin forever.
+      for (let i = 0; i < 200 && b && b.status === 'active' && !b.awaiting; i++) {
+        b = await post({ action: 'step', sessionId: b.sessionId })
+        if (b) setBoard(b)
+      }
+    } finally {
+      // Always released — a thrown post() used to leave these true forever.
+      running.current = false
+      setBusy(false)
     }
-    running.current = false
-    setBusy(false)
   }
 
   // Reopen a server-held game (/xtalk/<id> or the nav history). state is
@@ -426,10 +449,12 @@ export default function WerewolfLive({
             background: p.alive ? `${colorOf(p.seat)}12` : 'transparent',
             color: p.alive ? colorOf(p.seat) : 'var(--muted2)',
             fontSize: 12, fontWeight: 700, textDecoration: p.alive ? 'none' : 'line-through',
+            boxShadow: busy && board.acting?.seat === p.seat ? `0 0 0 2px ${colorOf(p.seat)}66` : 'none',
           }}>
             {p.isHuman ? <span>🙋</span> : <ProviderLogo provider={p.provider} size={14} />}
             {p.name}
             {p.role && <span style={{ fontWeight: 400, opacity: 0.85 }}>{t(ROLE_KEY[p.role] ?? '')}</span>}
+            {busy && board.acting?.seat === p.seat && <span className="stream-cursor" style={{ marginLeft: 2 }}>▋</span>}
           </div>
         ))}
       </div>
@@ -487,9 +512,22 @@ export default function WerewolfLive({
           </div>
         ))}
         {busy && !need && (
-          <div style={{ padding: '10px 13px', fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted)' }}>
-            <span className="stream-cursor">▋</span> {t('ww.talking')}
-          </div>
+          board.acting ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 13px',
+              fontFamily: 'var(--font-mono), monospace', fontSize: 11.5,
+              color: colorOf(board.acting.seat),
+            }}>
+              <ProviderLogo provider={board.acting.provider} size={14} />
+              <span style={{ fontWeight: 700 }}>{board.acting.name}</span>
+              <span className="stream-cursor">▋</span>
+              <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{t('ww.thinkingnow')}</span>
+            </div>
+          ) : (
+            <div style={{ padding: '10px 13px', fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted)' }}>
+              <span className="stream-cursor">▋</span> {t('ww.resolving')}
+            </div>
+          )
         )}
         <div ref={bottom} />
       </div>

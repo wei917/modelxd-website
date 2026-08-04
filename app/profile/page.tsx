@@ -81,6 +81,58 @@ const KIND_LABELS: Record<CreditTransaction['kind'], string> = {
   adjustment: 'Adjustment',
 }
 
+// Friendly, human label for a grouped ledger session, from its primary
+// reference_type. XCreate's reserve / charge / refund / chat all collapse to
+// one word so a generation and its follow-ups read as a single session.
+const REF_LABELS: Record<string, string> = {
+  xtalk_werewolf: 'Werewolf game',
+  xtalk_turn: 'Discussion',
+  xtalk_bid: 'Discussion',
+  xcreate: 'XCreate',
+  xcreate_reserve: 'XCreate',
+  xcreate_refund: 'XCreate',
+  xcreate_chat: 'XCreate',
+  stripe_checkout_session: 'Purchase',
+  welcome: 'Welcome bonus',
+  admin_grant: 'Admin grant',
+  asset: 'Asset',
+}
+const refLabel = (rt: string | null): string => (rt && REF_LABELS[rt]) || rt || 'Activity'
+
+// One ledger row per session. Charges sharing a reference_id — every turn of a
+// werewolf game, a generation and its refunds, a discussion's turns — collapse
+// into one expandable group; rows without a reference_id (most grants and
+// purchases) stand alone. Input is newest-first and order is preserved, so
+// groups sort by their most recent charge. (CC, Aug 4)
+type LedgerGroup = {
+  key: string
+  txns: CreditTransaction[]
+  total: number
+  latest: string
+  balanceAfter: number
+  label: string
+}
+function buildLedgerGroups(rows: CreditTransaction[]): LedgerGroup[] {
+  const order: string[] = []
+  const map = new Map<string, CreditTransaction[]>()
+  for (const t of rows) {
+    const key = t.reference_id ? `ref:${t.reference_id}` : `solo:${t.id}`
+    if (!map.has(key)) { map.set(key, []); order.push(key) }
+    map.get(key)!.push(t)
+  }
+  return order.map(key => {
+    const g = map.get(key)!
+    return {
+      key,
+      txns: g,
+      total: g.reduce((s, r) => s + r.amount_cents, 0),
+      latest: g[0].created_at,
+      balanceAfter: g[0].balance_after_cents,
+      label: refLabel(g[0].reference_type),
+    }
+  })
+}
+
 // Client-side mirror of CREDIT_TIERS in lib/stripe.ts. Kept here so we
 // don't have to pull a server-only module into a 'use client' file. The
 // server re-validates the tier id when building the Checkout Session, so
@@ -158,6 +210,8 @@ export default function ProfilePage() {
   // rows, so we can read both tables directly from the browser client.
   const [credits,     setCredits]     = useState<UserCredits | null>(null)
   const [txns,        setTxns]        = useState<CreditTransaction[]>([])
+  // Which session groups are expanded in the activity ledger.
+  const [openGroups,  setOpenGroups]  = useState<Record<string, boolean>>({})
   // Checkout UI: picker modal + in-flight flag + post-redirect banner
   const [checkoutOpen,     setCheckoutOpen]     = useState(false)
   const [checkoutTier,     setCheckoutTier]     = useState<string | null>(null)
@@ -302,7 +356,7 @@ export default function ProfilePage() {
     if (showActivity) {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
       client.from('credit_transactions').select('*').eq('user_id', user.id)
-        .order('created_at', { ascending: false }).limit(100)
+        .order('created_at', { ascending: false }).limit(300)
         .then(({ data }) => setTxns((data ?? []) as CreditTransaction[]))
       // Refresh balance at the same time in case a debit just landed.
       client.from('user_credits').select('*').eq('user_id', user.id).maybeSingle()
@@ -784,56 +838,127 @@ export default function ProfilePage() {
                     <div style={{ textAlign: 'right' }}>Amount</div>
                     <div style={{ textAlign: 'right' }}>Balance</div>
                   </div>
-                  {txns.map((t, idx) => {
-                    const positive = t.amount_cents >= 0
-                    const color = positive ? 'var(--green)' : 'var(--red)'
-                    const zebra = idx % 2 === 1
-                    return (
-                      <div
-                        key={t.id}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '160px 110px 1fr 130px 130px',
-                          alignItems: 'center',
-                          padding: '13px 20px',
-                          background: zebra ? 'var(--bg)' : 'transparent',
-                          borderBottom: idx === txns.length - 1 ? 'none' : '1px solid var(--border)',
-                          fontSize: 12,
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = zebra ? 'var(--bg)' : 'transparent'}
-                      >
-                        <div style={{ color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', fontSize: 11, letterSpacing: '0.02em' }}>
-                          {new Date(t.created_at).toLocaleDateString()}
-                          {' '}
-                          <span style={{ color: 'var(--muted)' }}>
-                            {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <div>
-                          <span style={{
-                            display: 'inline-block', padding: '3px 9px', borderRadius: 3,
-                            fontSize: 9, fontWeight: 700,
-                            background: color === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)',
-                            color,
-                            fontFamily: 'var(--font-mono), monospace',
-                            letterSpacing: '0.1em',
-                            textTransform: 'uppercase',
-                          }}>{KIND_LABELS[t.kind]}</span>
-                        </div>
-                        <div style={{ color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12 }}>
-                          {t.description ?? (t.reference_type ? `${t.reference_type}${t.reference_id ? ` · ${t.reference_id}` : ''}` : '—')}
-                        </div>
-                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color, fontSize: 12, letterSpacing: '0.02em' }}>
-                          {positive ? '+' : ''}{formatCents(t.amount_cents)}
-                        </div>
-                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', fontSize: 12, letterSpacing: '0.02em' }}>
-                          {formatCents(t.balance_after_cents)}
-                        </div>
+                  {(() => {
+                    const groups = buildLedgerGroups(txns)
+                    const cellDate = (iso: string) => (
+                      <div style={{ color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', fontSize: 11, letterSpacing: '0.02em' }}>
+                        {new Date(iso).toLocaleDateString()}{' '}
+                        <span style={{ color: 'var(--muted)' }}>
+                          {new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
                     )
-                  })}
+                    return groups.map((g, idx) => {
+                      const last  = idx === groups.length - 1
+                      const zebra = idx % 2 === 1
+                      const base = {
+                        display: 'grid',
+                        gridTemplateColumns: '160px 110px 1fr 130px 130px',
+                        alignItems: 'center',
+                        padding: '13px 20px',
+                        background: zebra ? 'var(--bg)' : 'transparent',
+                        fontSize: 12,
+                        transition: 'background 0.15s',
+                      } as const
+
+                      // A lone charge (most grants, purchases, one-offs) — plain row.
+                      if (g.txns.length === 1) {
+                        const t = g.txns[0]
+                        const positive = t.amount_cents >= 0
+                        const color = positive ? 'var(--green)' : 'var(--red)'
+                        return (
+                          <div key={g.key}
+                            style={{ ...base, borderBottom: last ? 'none' : '1px solid var(--border)' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = zebra ? 'var(--bg)' : 'transparent'}
+                          >
+                            {cellDate(t.created_at)}
+                            <div>
+                              <span style={{
+                                display: 'inline-block', padding: '3px 9px', borderRadius: 3, fontSize: 9, fontWeight: 700,
+                                background: color === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)', color,
+                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase',
+                              }}>{KIND_LABELS[t.kind]}</span>
+                            </div>
+                            <div style={{ color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12 }}>
+                              {t.description ?? refLabel(t.reference_type)}
+                            </div>
+                            <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color, fontSize: 12, letterSpacing: '0.02em' }}>
+                              {positive ? '+' : ''}{formatCents(t.amount_cents)}
+                            </div>
+                            <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', fontSize: 12, letterSpacing: '0.02em' }}>
+                              {formatCents(t.balance_after_cents)}
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      // A session: one summary row, click to expand its charges.
+                      const open = !!openGroups[g.key]
+                      const positive = g.total >= 0
+                      const color = positive ? 'var(--green)' : 'var(--red)'
+                      return (
+                        <div key={g.key}>
+                          <div
+                            style={{ ...base, cursor: 'pointer', borderBottom: (last && !open) ? 'none' : '1px solid var(--border)' }}
+                            onClick={() => setOpenGroups(s => ({ ...s, [g.key]: !s[g.key] }))}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = zebra ? 'var(--bg)' : 'transparent'}
+                          >
+                            {cellDate(g.latest)}
+                            <div>
+                              <span style={{
+                                display: 'inline-block', padding: '3px 9px', borderRadius: 3, fontSize: 9, fontWeight: 700,
+                                background: 'var(--surface2)', color: 'var(--muted2)', border: '1px solid var(--border2)',
+                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em',
+                              }}>{g.txns.length}×</span>
+                            </div>
+                            <div style={{ color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ color: 'var(--muted2)', fontSize: 10, width: 9, display: 'inline-block' }}>{open ? '▾' : '▸'}</span>
+                              <span style={{ fontWeight: 600 }}>{g.label}</span>
+                              <span style={{ color: 'var(--muted)', fontSize: 11 }}>· {g.txns.length} charges</span>
+                            </div>
+                            <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color, fontSize: 12, letterSpacing: '0.02em' }}>
+                              {positive ? '+' : ''}{formatCents(g.total)}
+                            </div>
+                            <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', fontSize: 12, letterSpacing: '0.02em' }}>
+                              {formatCents(g.balanceAfter)}
+                            </div>
+                          </div>
+                          {open && g.txns.map((t, j) => {
+                            const p = t.amount_cents >= 0
+                            const cc = p ? 'var(--green)' : 'var(--red)'
+                            const lastChild = last && j === g.txns.length - 1
+                            return (
+                              <div key={t.id} style={{
+                                display: 'grid', gridTemplateColumns: '160px 110px 1fr 130px 130px', alignItems: 'center',
+                                padding: '10px 20px', background: 'var(--surface2)', fontSize: 11.5,
+                                borderBottom: lastChild ? 'none' : '1px solid var(--border)',
+                              }}>
+                                {cellDate(t.created_at)}
+                                <div>
+                                  <span style={{
+                                    display: 'inline-block', padding: '2px 8px', borderRadius: 3, fontSize: 8.5, fontWeight: 700,
+                                    background: cc === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)', color: cc,
+                                    fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase',
+                                  }}>{KIND_LABELS[t.kind]}</span>
+                                </div>
+                                <div style={{ color: 'var(--muted2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: 17, paddingRight: 12 }}>
+                                  {t.description ?? refLabel(t.reference_type)}
+                                </div>
+                                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color: cc, fontSize: 11.5, letterSpacing: '0.02em' }}>
+                                  {p ? '+' : ''}{formatCents(t.amount_cents)}
+                                </div>
+                                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted)', fontSize: 11.5, letterSpacing: '0.02em' }}>
+                                  {formatCents(t.balance_after_cents)}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>}
                 </div>
               </div>
