@@ -1669,6 +1669,22 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   transition: border-color .16s ease, box-shadow .16s ease;
 }
 .xt-tpl:hover { border-color: var(--border2); }
+/* Wrapper exists only so the ? can sit over the card without being nested
+   inside its button. It becomes the grid item, so it must stretch. */
+.xt-tpl-wrap { position: relative; display: flex; }
+.xt-tpl-wrap > .xt-tpl { flex: 1; }
+.xt-tpl-help {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 24px; height: 24px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.55); color: #fff;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px; font-weight: 700; line-height: 1; cursor: none;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.xt-tpl-help:hover { background: var(--red); border-color: var(--red); transform: scale(1.08); }
 .xt-tpl.is-on {
   border-color: var(--red);
   box-shadow: 0 0 0 1px var(--red);

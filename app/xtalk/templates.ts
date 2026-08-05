@@ -67,6 +67,15 @@ export interface XTalkTemplate {
    * the state — the difference between watching and being able to play.
    */
   hiddenInfo: boolean
+  /**
+   * Optional "how to play", shown in a sheet behind the card's ? button.
+   * A seven-role board needs a few paragraphs to explain, and paragraphs on
+   * the card itself would bury the one line that says what the format IS.
+   * Templates that are self-evident (a discussion is just a discussion)
+   * leave this out and get no ? button. (CC, Aug 5)
+   */
+  helpTitleKey?: string
+  help?: { headKey: string; bodyKey: string }[]
   component: ComponentType<TemplateProps>
 }
 
@@ -107,6 +116,15 @@ export const XTALK_TEMPLATES: XTalkTemplate[] = [
     minPlayers: 7,
     maxPlayers: 7,
     hiddenInfo: true,
+    helpTitleKey: 'ww.help.title',
+    help: [
+      { headKey: 'ww.help.goal.h',  bodyKey: 'ww.help.goal.b'  },
+      { headKey: 'ww.help.roles.h', bodyKey: 'ww.help.roles.b' },
+      { headKey: 'ww.help.night.h', bodyKey: 'ww.help.night.b' },
+      { headKey: 'ww.help.day.h',   bodyKey: 'ww.help.day.b'   },
+      { headKey: 'ww.help.win.h',   bodyKey: 'ww.help.win.b'   },
+      { headKey: 'ww.help.you.h',   bodyKey: 'ww.help.you.b'   },
+    ],
     component: WerewolfLive,
   },
 ]
