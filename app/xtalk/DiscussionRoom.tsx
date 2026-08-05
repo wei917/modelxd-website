@@ -14,9 +14,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import ProviderLogo from '../components/ProviderLogo'
+import TemplateHelp from './TemplateHelp'
 import { type SeatOpts } from './SeatConfig'
 import ModelSlots from './ModelSlots'
 import { isSubmitEnter } from '../../lib/ime'
+import { useT } from '../../lib/i18n'
 import type { TemplateProps, Speaker } from './templates'
 
 type Turn = {
@@ -43,6 +45,15 @@ type Turn = {
 let turnSeq = 0
 const nextTurnId = () => ++turnSeq
 
+/** The three speaking-order modes, labelled in the reader's language.
+ *  A function, not a constant: the labels have to re-resolve when the site
+ *  language changes. */
+const FLOWS = (t: (k: string) => string): ['order' | 'bid' | 'manual', string][] => [
+  ['order',  t('xt.d.order.inorder')],
+  ['bid',    t('xt.d.order.auto')],
+  ['manual', t('xt.d.order.manual')],
+]
+
 const COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399']
 
 // Speaking-credit economy (Auto order). A seat opens with 6, earns 2 per
@@ -64,6 +75,7 @@ const PERSONA_PRESETS = [
 ]
 
 export default function DiscussionRoom({ models }: TemplateProps) {
+  const t = useT()
   const [picked,   setPicked]   = useState<string[]>([])
   const [question, setQuestion] = useState('')
   // Per-speaker character. This is the real diversity lever: without it the
@@ -352,8 +364,12 @@ export default function DiscussionRoom({ models }: TemplateProps) {
     <>
 {turns.length === 0 ? (
           <>
+            <div style={{ marginBottom: 12 }}>
+              <TemplateHelp templateId="discussion" variant="link" />
+            </div>
             <div className="prompt-label" style={{ marginBottom: 10 }}>
-              Pick 2–{MAX_SPEAKERS} models {picked.length > 0 && `· ${picked.length} chosen`}
+              {t('xt.d.pick').replace('{n}', String(MAX_SPEAKERS))}
+              {picked.length > 0 && ` · ${t('xt.d.chosen').replace('{n}', String(picked.length))}`}
             </div>
             {/* One trailing empty slot, so the row shows where the next
                 speaker goes instead of asking you to hunt for them in a
@@ -371,16 +387,16 @@ export default function DiscussionRoom({ models }: TemplateProps) {
               <div style={{ marginBottom: 22 }}>
                 {/* ── Speaking order ── (its own section — CC, Aug 3) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <div className="prompt-label" style={{ margin: 0 }}>Speaking order</div>
+                  <div className="prompt-label" style={{ margin: 0 }}>{t('xt.d.order')}</div>
                   <div style={{ display: 'inline-flex', padding: 3, gap: 3, borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface)' }}>
-                    {([['order', 'In order'], ['bid', 'Auto'], ['manual', 'Manual pick']] as const).map(([k, label]) => (
+                    {(FLOWS(t)).map(([k, label]) => (
                       <button key={k} className={`surface-tab${flow === k ? ' on' : ''}`} onClick={() => setFlow(k)}>{label}</button>
                     ))}
                   </div>
                   {flow === 'order' && (
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'none' }}>
                       <input type="checkbox" checked={rotate} onChange={e => setRotate(e.target.checked)} />
-                      rotate who opens each round
+                      {t('xt.d.rotate')}
                     </label>
                   )}
                 </div>
@@ -420,11 +436,10 @@ export default function DiscussionRoom({ models }: TemplateProps) {
                     border: '1px dashed var(--border2)', borderRadius: 9, padding: '9px 13px',
                     marginBottom: 18, fontSize: 12, lineHeight: 1.6, color: 'var(--muted2)',
                   }}>
-                    Before every turn, each model bids 0–4 for the floor — 4 means “someone
-                    addressed me directly and I must respond”. Highest bid speaks and PAYS its
-                    bid in speaking credits ({WALLET_START} to start, +{WALLET_REGEN} a round, {WALLET_CAP} max) —
-                    hog the floor and you go broke; listen a while and you can outbid anyone.
-                    Ties go to whoever was just named.
+                    {t('xt.d.bidnote')
+                      .replace('{s}', String(WALLET_START))
+                      .replace('{r}', String(WALLET_REGEN))
+                      .replace('{c}', String(WALLET_CAP))}
                   </div>
                 )}
                 {flow === 'manual' && (
@@ -432,8 +447,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
                     border: '1px dashed var(--border2)', borderRadius: 9, padding: '9px 13px',
                     marginBottom: 18, fontSize: 12, lineHeight: 1.6, color: 'var(--muted2)',
                   }}>
-                    Nobody speaks until you call on them — once the room opens, click a
-                    speaker to give them the floor.
+                    {t('xt.d.manualnote')}
                   </div>
                 )}
 
@@ -441,7 +455,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
                     only way to stop three models agreeing is to order them to
                     argue, which makes the disagreement an artefact of the
                     instruction rather than a difference of view. (CC, July 31) */}
-                <div className="prompt-label" style={{ marginBottom: 10 }}>Character</div>
+                <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.d.character')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {chosen.map((m, i) => (
                     <div key={m.id} style={{
@@ -496,7 +510,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
             <textarea
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="Say something to start them off — e.g. 'Is buying an AI wrapper startup ever a good idea?'"
+              placeholder={t('xt.d.ph.start')}
               rows={3}
               style={{
                 width: '100%', padding: '14px 16px', borderRadius: 10, resize: 'vertical',
@@ -506,13 +520,13 @@ export default function DiscussionRoom({ models }: TemplateProps) {
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <button className="btn-next" disabled={chosen.length < 2 || !question.trim()} onClick={start}>
-                Open the room →
+                {t('xt.d.open')}
               </button>
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted)' }}>
-                {chosen.length < 2 ? 'Pick at least 2 models'
-                  : flow === 'manual' ? `${chosen.length} speakers · you call on them`
-                  : flow === 'bid' ? `${chosen.length} speakers · they bid for the floor`
-                  : `${chosen.length} speakers · ${chosen.map(m => m.display_name.split(' ')[0]).join(' → ')}`}
+                {chosen.length < 2 ? t('xt.d.need2')
+                  : flow === 'manual' ? `${t('xt.d.speakers').replace('{n}', String(chosen.length))} · ${t('xt.d.sum.manual')}`
+                  : flow === 'bid' ? `${t('xt.d.speakers').replace('{n}', String(chosen.length))} · ${t('xt.d.sum.bid')}`
+                  : `${t('xt.d.speakers').replace('{n}', String(chosen.length))} · ${chosen.map(m => m.display_name.split(' ')[0]).join(' → ')}`}
               </span>
             </div>
           </>
@@ -559,23 +573,23 @@ export default function DiscussionRoom({ models }: TemplateProps) {
                 moment it drifts. Switching only affects the NEXT action —
                 any round already running finishes on its old rule. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-              <span className="prompt-label" style={{ margin: 0 }}>Speaking order</span>
+              <span className="prompt-label" style={{ margin: 0 }}>{t('xt.d.order')}</span>
               <div style={{ display: 'inline-flex', padding: 3, gap: 3, borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface)' }}>
-                {([['order', 'In order'], ['bid', 'Auto'], ['manual', 'Manual pick']] as const).map(([k, label]) => (
+                {(FLOWS(t)).map(([k, label]) => (
                   <button key={k} className={`surface-tab${flow === k ? ' on' : ''}`} onClick={() => setFlow(k)}>{label}</button>
                 ))}
               </div>
               {flow === 'order' && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'none' }}>
                   <input type="checkbox" checked={rotate} onChange={e => setRotate(e.target.checked)} />
-                  rotate who opens each round
+                  {t('xt.d.rotate')}
                 </label>
               )}
             </div>
 
             {flow === 'manual' && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 12, alignItems: 'center' }}>
-                <span className="prompt-label" style={{ margin: 0 }}>Who speaks next</span>
+                <span className="prompt-label" style={{ margin: 0 }}>{t('xt.d.whonext')}</span>
                 {chosen.map((m, i) => (
                   <button key={m.id} disabled={running} onClick={() => speakOne(m)}
                     style={{
@@ -604,7 +618,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
               <span style={{
                 fontFamily: 'var(--font-mono), monospace', fontSize: 10,
                 letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginRight: 4,
-              }}>In the room</span>
+              }}>{t('xt.d.inroom')}</span>
 
               {chosen.map((m, i) => (
                 <span key={m.id} style={{
@@ -660,7 +674,7 @@ export default function DiscussionRoom({ models }: TemplateProps) {
                 value={interject}
                 onChange={e => setInterject(e.target.value)}
                 onKeyDown={e => { if (isSubmitEnter(e)) { e.preventDefault(); sendInterjection() } }}
-                placeholder={running ? 'Cut in — whoever has not spoken yet will read it' : flow === 'manual' ? 'Say something yourself — nobody replies until you call on them' : 'Say something — they will all read it'}
+                placeholder={running ? t('xt.d.ph.cutin') : flow === 'manual' ? t('xt.d.ph.manual') : t('xt.d.ph.say')}
                 rows={2}
                 style={{
                   flex: 1, padding: '12px 14px', borderRadius: 10, resize: 'none',

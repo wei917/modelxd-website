@@ -1685,6 +1685,21 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 .xt-tpl-help:hover { background: var(--red); border-color: var(--red); transform: scale(1.08); }
+/* Inline "how to play" link, used inside a room rather than on a card. */
+.xt-help-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; padding: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted2); cursor: none;
+  border-bottom: 1px solid transparent; transition: color .15s, border-color .15s;
+}
+.xt-help-link > span {
+  width: 15px; height: 15px; border-radius: 999px; flex-shrink: 0;
+  border: 1px solid currentColor; font-size: 9px; letter-spacing: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.xt-help-link:hover { color: var(--red); border-bottom-color: var(--red); }
 .xt-tpl.is-on {
   border-color: var(--red);
   box-shadow: 0 0 0 1px var(--red);

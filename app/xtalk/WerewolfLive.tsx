@@ -14,6 +14,7 @@ import { composition } from '../../lib/werewolf-engine'
 import { createBrowserClient } from '@supabase/ssr'
 import { type SeatOpts } from './SeatConfig'
 import ModelSlots from './ModelSlots'
+import TemplateHelp from './TemplateHelp'
 
 const COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399', '#f59e0b', '#ec4899', '#38bdf8', '#fb7185']
 const ROLE_KEY: Record<string, string> = { wolf: 'ww.role.wolf', seer: 'ww.role.seer', doctor: 'ww.role.doctor', villager: 'ww.role.villager' }
@@ -235,6 +236,13 @@ export default function WerewolfLive({
     const total = picked.length + (playing ? 1 : 0)
     return (
       <>
+        {/* Rules first. The board line below states the composition, but a
+            reader who has never played does not know what a Seer is — the
+            link has to come before the thing it explains. (CC, Aug 5) */}
+        <div style={{ marginBottom: 12 }}>
+          <TemplateHelp templateId="werewolf" variant="link" />
+        </div>
+
         {/* The board, set as a spec line rather than a control.
             It was a section heading over a single box reading
             "7  2🐺 · 1🔮 · 1🩺 · 3🧑‍🌾" — a heading implies a choice there
