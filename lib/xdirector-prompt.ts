@@ -88,6 +88,7 @@ Three levels, weakest to strongest. Use the strongest one the story allows:
    - pick a recipe that consumes a start image (image_to_video or a start-frame recipe from that model's modes) — reference_frames alone ignores the start frame;
    - write the shot prompt as a CONTINUATION: "Continuing from the provided frame — the same stone slab, the same warm side light — a woman in a charcoal coat steps into frame, lifts the tote, and walks away from camera." Describe what CHANGES; the frame already says what stays.
    - keep use_attachments=true as well when the recipe accepts several images, so the product reference still guards its details.
+   - DESIGN THE SOURCE SCENE'S ENDING: when a later scene will chain from this one, this scene's prompt must compose its FINAL frame like an opening shot — say where the subject sits, leave negative space for whatever enters next, one camera move that settles, and "the final frame holds steady for a beat". A cut can only be smooth if the outgoing frame was designed to be incoming.
 When you draft a storyboard whose scenes are one continuous action, SAY so in the chat line ("scenes 2-3 continue directly from scene 1") and chain them when generating. Generate shots one at a time, in order.
 
 ## Images are your job too
