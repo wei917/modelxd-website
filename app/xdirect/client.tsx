@@ -11,7 +11,7 @@
 // The storyboard state lives HERE and flows down to both the chat (which
 // sends it to the director and persists it) and the strip (which edits it).
 
-import { Suspense, useCallback, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -68,6 +68,24 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   const onConversationId = useCallback((id: string) => setBoardId(id), [])
   const onActivity = useCallback(() => refreshRef.current(), [])
   const onStoryboard = useCallback((scenes: any[]) => setStoryboard(scenes as Scene[]), [])
+
+  // Scene URLs are signed for ~24h at generation time; the board loader
+  // re-signs every output URL on load. Ride that: whenever fresh nodes
+  // arrive, point each done scene at its row's fresh URL so preview,
+  // download and frame-chaining keep working on old conversations. One-way,
+  // change-detected — no render loop.
+  useEffect(() => {
+    if (storyboard.length === 0 || nodes.length === 0) return
+    let changed = false
+    const next = storyboard.map(s => {
+      if (s.status !== 'done' || !s.row_id) return s
+      const n: any = nodes.find((n: any) => n.rowId === s.row_id && n.thumb)
+      if (n?.thumb && n.thumb !== s.url) { changed = true; return { ...s, url: n.thumb } }
+      return s
+    })
+    if (changed) setStoryboard(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes])
   const onBusy = useCallback((b: boolean) => setChatBusy(b), [])
 
   return (

@@ -5,7 +5,7 @@ license: Proprietary. ModelXD.
 compatibility: Designed for ModelXD XDirector. Needs image models and aspect_ratio support on start_generation.
 metadata:
   author: ModelXD
-  version: "1.0"
+  version: "1.1"
   category: social
   cover: assets/cover.jpg
 ---
@@ -87,3 +87,10 @@ When the set is done, give the user the caption text to go with it — matched
 to the platform's length in `references/PLATFORMS.md`, in the user's own
 language, in their voice if you have a sample of it. A bare image is not a
 post. Read `references/CAPTIONS.md` before writing it.
+
+## If the post wants motion
+
+Stills generate directly, as ever. The moment a post needs VIDEO — a looping
+product beat, a clip for Reels — that video goes through the storyboard like
+any other: set_storyboard first (usually one scene), the card is the confirm,
+generation waits for the user.
