@@ -639,9 +639,11 @@ can sit at the table honestly. One act per request; the client loops.
    XTalk and home are ~10–15px out. Desktop-first, so this is deliberate debt.
 4. **XTalk attachments** are still not accepted by `/api/xtalk`.
 5. **`lib/ThemeContext.tsx` is dead code** — wire it up or delete it.
-6. **Owner has TWO account ids observed in the wild** (`247efcdb…` and
-   `c9a73e58…`) — possible anonymous-auth id rotation orphaning games, history
-   and credits. Never investigated.
+6. **Owner has TWO account ids — SOLVED (Aug 6):** they are two real Google
+   accounts, `wei917@gmail.com` (`247efcdb…`) and `founder@modelxd.com`
+   (`c9a73e58…`), signed into different browsers. Not anonymous-auth
+   rotation. Consequence stands: history, boards and credits don't cross
+   between them — decide whether to consolidate or live with it.
 7. **Naming**: `/methodology` calls the system **XDRating** and links to
    `/xboard`, which is titled **XBoard**. The system/page split is intentional
    but reads oddly; nobody has decided whether to unify them.

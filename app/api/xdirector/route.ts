@@ -387,6 +387,25 @@ export async function POST(req: Request) {
           action = { kind: 'ask', toolUseId: tu.id, input: tu.input }
           break
         } else if (tu.name === 'start_generation') {
+          // ENFORCEMENT, not etiquette (CC, Aug 6): a video generation must
+          // reference a scene on the actual board. The prompt says so too,
+          // but a photo attached to an imperative "generate me an ad" beat
+          // the prompt in the wild within the hour — the director anchored
+          // on the reference flow and skipped the storyboard. Prompts guide;
+          // this rejects. The model gets the error as a tool result and
+          // self-corrects into set_storyboard in the same POST.
+          const inp: any = tu.input ?? {}
+          const isVideo = inp.medium === 'video'
+            || (inp.medium !== 'image' && typeof inp.recipe === 'string' && inp.recipe.includes('video'))
+          const knownScenes = new Set([...(clientBoard ?? []), ...(storyboardOut ?? [])].map(s => s.id))
+          const sceneOk = typeof inp.scene_id === 'string' && knownScenes.has(inp.scene_id)
+          if (isVideo && !sceneOk) {
+            results.push({
+              type: 'tool_result', tool_use_id: tu.id, is_error: true,
+              content: 'Rejected: video generations only run from storyboard scenes. Call set_storyboard to put the scenes on the board (this is free), tell the user to review them, and generate only when they ask — then pass the scene_id.',
+            })
+            continue
+          }
           // Hand off to the client. Loop pauses here; it resumes when the
           // client POSTs back with the matching tool_result appended.
           action = { kind: 'generate', toolUseId: tu.id, input: tu.input }
