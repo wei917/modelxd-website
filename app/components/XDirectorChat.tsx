@@ -28,6 +28,12 @@ type Bubble = {
   role: 'user' | 'agent' | 'gen' | 'ask' | 'plan'
   text?: string
   files?: string[]          // attachment names shown under a user bubble
+  /** Committed attachment descriptors (storagePath etc.), persisted with the
+   *  bubble so a RESTORED conversation can still generate with its reference
+   *  photos. Before this, committedRef lived only in memory: a reload +
+   *  scene ▶ fired a reference recipe with zero images and the provider
+   *  failed (IMG_3776, Aug 6). */
+  atts?: Array<{ storagePath: string; bucket?: string; mediaType: string; fileName: string; fileSize?: number }>
   // gen bubbles:
   status?: 'generating' | 'done' | 'error'
   modelName?: string
@@ -186,6 +192,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           setBubbles(Array.isArray(c.bubbles) ? c.bubbles : [])
           // Resume under the same skill the chat was produced with.
           if (typeof c.skill === 'string' && c.skill) setActiveSkill(c.skill)
+          // Rehydrate the reference photos: the LAST user bubble that carried
+          // committed attachments defines what use_attachments means now,
+          // exactly as it would mid-session.
+          const withAtts = [...(Array.isArray(c.bubbles) ? c.bubbles : [])]
+            .reverse().find((b: any) => b.role === 'user' && Array.isArray(b.atts) && b.atts.length > 0)
+          if (withAtts) committedRef.current = withAtts.atts as any
           if (Array.isArray(c.storyboard) && c.storyboard.length > 0) {
             storyboardRef.current = c.storyboard
             onStoryboard?.(c.storyboard)
@@ -477,6 +489,28 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // When this generation IS a storyboard scene, its card mirrors the whole
     // lifecycle: generating → done (thumb + real cost) or error.
     const sceneId: string | null = typeof inp.scene_id === 'string' ? inp.scene_id : null
+
+    // Fail FAST when a reference recipe has nothing to reference — the
+    // provider round-trip for this is a guaranteed loss (Gemini burned a
+    // real attempt on images=0, Aug 6), and the director gets an error it
+    // can actually act on instead of "model failed to generate".
+    if (inp.use_attachments && committedRef.current.length === 0) {
+      const err = 'No reference photos are available in this session — ask the user to re-attach the photo, then retry.'
+      pushBubble({ role: 'gen', status: 'error', modelName: models[inp.model_id]?.name ?? inp.model_id, error: err })
+      if (sceneId) patchScene(sceneId, { status: 'error', error: err })
+      const toolMsg = {
+        role: 'user',
+        content: [...pendingToolResults, {
+          type: 'tool_result', tool_use_id: action.toolUseId,
+          content: JSON.stringify({ ok: false, error: err }), is_error: true,
+        }],
+      }
+      const withResult = [...msgs, toolMsg]
+      setProtocol(withResult)
+      await agentTurn(withResult)
+      return
+    }
+
     setBusy('generating')
     pushBubble({ role: 'gen', status: 'generating', modelName: models[inp.model_id]?.name ?? inp.model_id, text: inp.prompt })
     if (sceneId) patchScene(sceneId, { status: 'generating', error: undefined })
@@ -613,7 +647,17 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       committedRef.current = committed.filter(a => a.storagePath)
     }
 
-    pushBubble({ role: 'user', text, files: atts.map(a => a.fileName) })
+    pushBubble({
+      role: 'user', text, files: atts.map(a => a.fileName),
+      // Persisted with the conversation — this is what lets a restored
+      // session keep generating against the same reference photos.
+      ...(committedRef.current.length > 0 ? {
+        atts: committedRef.current.map(a => ({
+          storagePath: a.storagePath!, bucket: a.bucket, mediaType: a.mediaType,
+          fileName: a.fileName, fileSize: a.fileSize,
+        })),
+      } : {}),
+    })
     setInput(''); setAtts([])
 
     const noteParts: string[] = [text]
