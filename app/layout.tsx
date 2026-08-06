@@ -4,6 +4,7 @@ import { AuthModalProvider } from '../lib/AuthModalContext'
 import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
+import Omnibox from './components/Omnibox'
 import GlobalCursor from './components/GlobalCursor'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import './globals.css'
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="app-shell">
               <Nav />
               <div className="app-main">
+                <Omnibox />
                 {children}
               </div>
             </div>

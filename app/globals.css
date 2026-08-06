@@ -1792,3 +1792,196 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   line-height: 1.5;
   color: var(--muted);
 }
+
+/* ── Omnibox ────────────────────────────────────────────────────────────
+   Search + agent entry, top of every page. Hidden under 760px for the same
+   reason .topbar is: the mobile nav already owns that strip. ⌘K still
+   works, so nothing is unreachable — it just has no visible perch. */
+.omni-bar {
+  position: sticky; top: 0; z-index: 80;
+  display: flex; align-items: center;
+  padding: 10px 28px;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 760px) { .omni-bar { display: none; } }
+
+.omni-trigger {
+  display: inline-flex; align-items: center; gap: 9px;
+  width: 100%; max-width: 420px;
+  padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--muted); font-family: inherit; font-size: 13px;
+  cursor: none; transition: border-color .15s, box-shadow .15s;
+}
+.omni-trigger:hover { border-color: var(--red); box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+.omni-trigger-text { flex: 1; text-align: left; }
+.omni-kbd {
+  font-family: var(--font-mono), monospace; font-size: 10px;
+  color: var(--muted2); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 1px 5px; background: #fff;
+}
+
+.omni-overlay {
+  position: fixed; inset: 0; z-index: 1300;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(5px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 14vh 24px 24px;
+}
+.omni-panel {
+  width: 100%; max-width: 640px;
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 12px;
+  box-shadow: 0 28px 90px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column; overflow: hidden; max-height: 66vh;
+}
+.omni-input-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.omni-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  color: var(--white); font-family: inherit; font-size: 15px;
+}
+.omni-esc {
+  font-family: var(--font-mono), monospace; font-size: 10px; color: var(--muted2);
+  border: 1px solid var(--border2); border-radius: 4px; padding: 2px 6px;
+  background: transparent; cursor: none;
+}
+.omni-list { overflow-y: auto; padding: 6px 6px 10px; }
+.omni-section {
+  font-family: var(--font-mono), monospace; font-size: 9px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted2);
+  padding: 12px 12px 5px;
+}
+.omni-row {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; border: none;
+  background: transparent; color: var(--white);
+  font-family: inherit; font-size: 13.5; text-align: left; cursor: none;
+}
+.omni-row.on { background: var(--surface2); }
+.omni-dot {
+  width: 5px; height: 5px; border-radius: 999px;
+  background: var(--muted2); flex-shrink: 0; margin: 0 4px;
+}
+.omni-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.omni-sub {
+  font-family: var(--font-mono), monospace; font-size: 10.5;
+  color: var(--muted2); flex-shrink: 0;
+}
+.omni-ask.on { background: var(--red-dim); }
+.omni-ask .omni-label { color: var(--red); }
+.omni-spark { color: var(--red); font-size: 12px; width: 13px; text-align: center; flex-shrink: 0; }
+.omni-q { color: var(--muted2); }
+.omni-empty { padding: 26px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* Hero variant — the landing page's centred ask field. */
+.omni-hero { padding: 46px 24px 8px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.omni-hero-input {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; max-width: 620px;
+  padding: 16px 22px; border-radius: 999px;
+  border: 1px solid var(--border2); background: #fff;
+  color: var(--muted); font-family: inherit; font-size: 15.5;
+  cursor: none; box-shadow: 0 2px 14px rgba(0,0,0,0.05);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.omni-hero-input:hover { border-color: var(--red); box-shadow: 0 6px 26px rgba(0,0,0,0.09); transform: translateY(-1px); }
+.omni-hero-text { flex: 1; text-align: left; }
+.omni-hero-hint { font-family: var(--font-mono), monospace; font-size: 10.5; color: var(--muted2); letter-spacing: .06em; }
+@media (max-width: 760px) { .omni-hero { padding: 26px 18px 4px; } .omni-hero-input { font-size: 14; padding: 13px 18px; } }
+
+/* Agent answer, rendered in place under the ask row. */
+.omni-answer {
+  margin: 6px 12px 4px; padding: 12px 14px;
+  border: 1px solid var(--border2); border-left: 2px solid var(--red);
+  border-radius: 8px; background: var(--surface);
+}
+.omni-answer-text { font-size: 13.5; line-height: 1.7; color: var(--white); white-space: pre-line; }
+.omni-answer-go {
+  margin-top: 10px; padding: 6px 13px; border-radius: 999px;
+  border: 1px solid var(--red); background: var(--red-dim); color: var(--red);
+  font-family: var(--font-mono), monospace; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; cursor: none;
+}
+.omni-answer-go:hover { background: var(--red); color: #fff; }
+.omni-row:disabled { opacity: .6; }
+
+/* ── Landing agent ──
+   A reserved answer panel with the field beneath it. The panel height is
+   fixed so replying never reflows the page; long conversations scroll
+   inside it. */
+.la-wrap { max-width: 760px; margin: 0 auto; padding: 34px 24px 6px; }
+
+.la-panel {
+  height: 310px; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 16px 4px; margin-bottom: 14px;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface);
+}
+.la-panel::-webkit-scrollbar { width: 6px; }
+.la-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
+
+.la-you {
+  align-self: flex-end; max-width: 85%;
+  padding: 8px 14px; border-radius: 13px 13px 3px 13px;
+  background: var(--surface2); color: var(--white);
+  font-size: 13px; line-height: 1.6;
+}
+.la-agent {
+  align-self: flex-start; max-width: 94%;
+  padding: 11px 14px; border-radius: 13px 13px 13px 3px;
+  border: 1px solid var(--border2); border-left: 2px solid var(--red);
+  background: #fff;
+}
+.la-intro { border-left-color: var(--red); }
+.la-agent-text { font-size: 13.5; line-height: 1.75; color: var(--white); white-space: pre-line; }
+.la-dim { color: var(--muted); }
+.la-go {
+  margin-top: 10px; padding: 5px 13px; border-radius: 999px;
+  border: 1px solid var(--red); background: var(--red-dim); color: var(--red);
+  font-family: var(--font-mono), monospace; font-size: 10.5; font-weight: 700;
+  letter-spacing: .08em; cursor: none;
+}
+.la-go:hover { background: var(--red); color: #fff; }
+
+.la-field {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px 13px 20px; border-radius: 999px;
+  border: 1px solid var(--border2); background: #fff;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.05);
+  transition: border-color .15s, box-shadow .15s;
+}
+.la-field:focus-within { border-color: var(--red); box-shadow: 0 6px 26px rgba(0,0,0,0.10); }
+.la-icon { color: var(--muted2); flex-shrink: 0; }
+.la-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  font-family: inherit; font-size: 15; color: var(--white);
+}
+.la-send {
+  flex-shrink: 0; width: 31px; height: 31px; border-radius: 999px;
+  border: none; background: var(--red); color: #fff;
+  font-size: 14px; line-height: 1; cursor: none;
+  transition: opacity .15s, transform .15s;
+}
+.la-send:disabled { opacity: .3; }
+.la-send:not(:disabled):hover { transform: scale(1.07); }
+.la-hint {
+  margin-top: 10px; text-align: center;
+  font-family: var(--font-mono), monospace; font-size: 10.5;
+  color: var(--muted2); letter-spacing: .06em;
+}
+@media (max-width: 760px) {
+  .la-wrap { padding: 20px 16px 4px; }
+  .la-panel { height: 260px; }
+  .la-input { font-size: 14; }
+}
+.la-restart {
+  background: none; border: none; padding: 0; cursor: none;
+  font-family: var(--font-mono), monospace; font-size: 10.5;
+  letter-spacing: .06em; color: var(--muted2);
+  border-bottom: 1px solid transparent; transition: color .15s, border-color .15s;
+}
+.la-restart:hover { color: var(--red); border-bottom-color: var(--red); }

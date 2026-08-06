@@ -38,7 +38,7 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
   useEffect(() => {
     createSupabaseBrowser()
       .from('ai_models')
-      .select('id, display_name, provider, model_pricing, output_config, output_modalities, enabled')
+      .select('id, model_name, display_name, provider, model_pricing, output_config, output_modalities, enabled, blocked_features')
       .eq('enabled', true)
       .contains('output_modalities', ['text'])
       .order('is_popular', { ascending: false })

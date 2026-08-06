@@ -25,6 +25,7 @@ import {
 } from '@/lib/werewolf-engine'
 import { seatPrompt, outputContract, parseJsonReply } from '@/app/xtalk/werewolf'
 import { M, languageRule } from '@/lib/werewolf-lang'
+import { FEATURE, isBlockedFor } from '@/lib/model-features'
 
 const LOG = '[xtalk/werewolf]'
 const svc = () => createClient(
@@ -292,6 +293,16 @@ export async function POST(req: Request) {
 
     const metas = await Promise.all(modelIds.map(id => getModelById(id)))
     if (metas.some(m => !m)) return Response.json({ error: 'unknown model' }, { status: 400 })
+    // The picker already hides these, so reaching here means a stale tab or a
+    // hand-made request. Refused rather than filtered: silently seating six
+    // players at a seven-player table would deal the wrong board.
+    const banned = metas.filter(m => isBlockedFor(m as any, FEATURE.werewolf)).map(m => m!.display_name)
+    if (banned.length) {
+      return Response.json(
+        { error: `not available for Werewolf: ${banned.join(', ')}` },
+        { status: 400 },
+      )
+    }
 
     // The human may ask for a role — being the wolf is the fun seat, and it
     // changes nothing for the models, who are dealt from the same bag.

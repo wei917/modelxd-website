@@ -24,7 +24,7 @@ const LABELS = 'ABCDEFGH'.split('')
 
 export default function ModelSlots({
   models, picked, onPicked, seatOpts, onSeatOpts, allowSearch = true, count, fixed = false,
-  allowDuplicates = false,
+  allowDuplicates = false, feature,
 }: {
   /** Every text model, already loaded by the shell. */
   models: Speaker[]
@@ -42,6 +42,9 @@ export default function ModelSlots({
    *  a clean test of one model against itself. Discussion does not: two of
    *  one model in a conversation is just that model twice. */
   allowDuplicates?: boolean
+  /** Surface key, forwarded to the picker so models blocked for this format
+   *  are never offered. See lib/model-features.ts. */
+  feature?: string
 }) {
   const t = useT()
   const [openSlot, setOpenSlot] = useState<number | null>(null)
@@ -128,6 +131,7 @@ export default function ModelSlots({
           // no-op here and it reads as a plain list. See its header note.
           recipeMode="text_to_text"
           slotIds={Array.from({ length: count }, (_, i) => picked[i] ?? null)}
+          feature={feature}
           onSelect={sel => {
             // Discussion refuses a model already seated elsewhere; Werewolf
             // allows it (same model in several chairs, disambiguated by the

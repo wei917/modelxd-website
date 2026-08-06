@@ -2842,29 +2842,15 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
     // ?c= is a conversation permalink — landing on one means agent mode.
     if (p.get('agent') === '1' || p.get('c')) setSurface('agent')
   }, [])
-  const goSurface = (next: 'studio' | 'agent') => {
-    setSurface(next)
-    const p = new URLSearchParams(window.location.search)
-    if (next === 'agent') p.set('agent', '1')
-    else { p.delete('agent'); p.delete('c') }
-    const qs = p.toString()
-    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
-  }
-
-  const surfaceToggle = features.xdirector ? (
-    <div style={{
-      flexShrink: 0, marginTop: 6, display: 'inline-flex', padding: 3, gap: 3,
-      borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface)',
-    }}>
-      {([['studio', t('xcreate.surface.studio')], ['agent', '✨ ' + t('xdirector.toggle')]] as const).map(([key, label]) => (
-        <button
-          key={key}
-          className={`surface-tab${surface === key ? ' on' : ''}`}
-          onClick={() => goSurface(key as 'studio' | 'agent')}
-        >{label}</button>
-      ))}
-    </div>
-  ) : null
+  // The Studio / Agent toggle is GONE (CC, Aug 5). The site agent is the way
+  // in now: ask for something on the landing page or in the omnibox and it
+  // routes you here with ?agent=1 and your request already typed. A toggle
+  // that duplicates that only asks the user to know, in advance, which of two
+  // surfaces their idea belongs to — which is the question the agent exists
+  // to answer for them.
+  //
+  // The MODE itself is unchanged: ?agent=1 (and ?c= permalinks) still resolve,
+  // so every route the agent hands out keeps working.
 
   // Agent mode shares this page's header and chrome — only the working
   // surface below it changes.
@@ -2875,7 +2861,6 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
           <div className="prompt-label eyebrow">{t('xcreate.eyebrow')}</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
             <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
-            {surfaceToggle}
           </div>
           <XDirectorChat />
         </div>
@@ -2966,7 +2951,6 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
           <div className="prompt-label eyebrow">{t('xcreate.eyebrow')}</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
             <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
-            {surfaceToggle}
           </div>
 
           {/* (Gallery tab removed — moved to /profile under the XCreates

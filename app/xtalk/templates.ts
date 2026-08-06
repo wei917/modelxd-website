@@ -21,6 +21,11 @@ export type Speaker = {
   id: string
   display_name: string
   provider: string
+  /** Stable provider-side id. Used to match format-level bans (see
+   *  WEREWOLF_BANNED_MODELS) — display names get rewritten, this does not. */
+  model_name?: string | null
+  /** Feature keys this model is not offered for — lib/model-features.ts. */
+  blocked_features?: string[] | null
   model_pricing?: any
   /** Needed to know what this seat can be CONFIGURED with — which thinking
    *  levels it declares, and whether web search is wired for it. Without it

@@ -11,6 +11,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import { isSubmitEnter } from '../../lib/ime'
 import { useLang, useT } from '../../lib/i18n'
 import { composition } from '../../lib/werewolf-engine'
+import { FEATURE, allowedFor } from '../../lib/model-features'
 import { createBrowserClient } from '@supabase/ssr'
 import { type SeatOpts } from './SeatConfig'
 import ModelSlots from './ModelSlots'
@@ -41,15 +42,19 @@ type Board = {
 const TABLE_SIZE = 7
 
 export default function WerewolfLive({
-  models, onExit, resumeId = null,
+  models: allModels, onExit, resumeId = null,
 }: {
-  models: { id: string; display_name: string; provider: string; model_pricing?: any }[]
+  models: { id: string; display_name: string; provider: string; model_name?: string | null; blocked_features?: string[] | null; model_pricing?: any }[]
   onExit: () => void
   resumeId?: string | null
 }) {
   const { lang } = useLang()
   const t = useT()
   const router = useRouter()
+  // Filtered once, at the top: every downstream use — the picker, autofill,
+  // the seat lookup — reads this, so a banned model cannot reach a chair
+  // through any of them.
+  const models = allowedFor(allModels, FEATURE.werewolf)
   const [picked, setPicked] = useState<string[]>([])
   const [playing, setPlaying] = useState(false)      // is the human taking a seat
   // Fixed board. See the note by the composition line for why there is no
@@ -376,6 +381,7 @@ export default function WerewolfLive({
           count={seatsForModels}
           fixed
           allowDuplicates
+          feature={FEATURE.werewolf}
         />
 
         {/* No web search at this table — deliberately (CC, Aug 3). Werewolf

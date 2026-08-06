@@ -11,6 +11,7 @@
 // list. That is why this could be shared without being generalised first.
 
 import { useEffect, useState } from 'react'
+import { allowedFor } from '../../lib/model-features'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT } from '../../lib/i18n'
 import ProviderLogo from './ProviderLogo'
@@ -32,6 +33,8 @@ export type ModelMode =
  *  structural typing lets those satisfy this without either side importing
  *  the other's. */
 export interface PickerModel {
+  /** Feature keys this model is not offered for — lib/model-features.ts. */
+  blocked_features?: string[] | null
   id: string
   provider: string
   model_name: string
@@ -87,14 +90,21 @@ function companyLabel(id: string): string {
     .join(' ')
 }
 
-export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds }: {
+export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature }: {
   mode: Mode; recipeMode: ModelMode; onSelect: (m: PickerModel) => void; onClose: () => void
+  /** model_name values this table cannot seat (see WEREWOLF_BANNED_MODELS).
+   *  Hidden outright rather than shown-and-disabled: a greyed row invites
+   *  "why not?", and the answer — our timeout budget — is not the user's
+   *  problem to reason about. */
+  /** Surface this picker is choosing for. Models with the key in their
+   *  blocked_features are not offered. See lib/model-features.ts. */
+  feature?: string
   /** Per-slot selected model ids (null = empty slot) - index maps to A/B/C/D. */
   slotIds: (string | null)[]
 }) {
   const t = useT()
   const [search,      setSearch]      = useState('')
-  const [models,      setModels]      = useState<PickerModel[]>([])
+  const [allModels,   setAllModels]   = useState<PickerModel[]>([])
   const [loading,     setLoading]     = useState(true)
   // Esc closes the picker (CC, July 19) — same as clicking the backdrop.
   useEffect(() => {
@@ -136,12 +146,17 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
       .eq('enabled', true)
       .contains('output_modalities', [mode])
       .order('released_at', { ascending: false, nullsFirst: false })
-      .then(({ data }) => { setModels(data ?? []); setLoading(false) })
+      .then(({ data }) => { setAllModels(data ?? []); setLoading(false) })
   }, [mode])
 
   // Only models that support the run's recipe (Layer 2) — EVERYTHING in
   // the dialog (chips, counts, list) is based on this set, so "All (N)"
   // means N pickable models, not N models in the mode.
+  // Feature-level availability, straight off the row (ai_models.blocked_features).
+  // Hidden outright rather than shown-and-disabled: a greyed row invites
+  // "why not?", and the reason — our per-call timeout budget — is not the
+  // user's problem to reason about.
+  const models = feature ? allowedFor(allModels, feature) : allModels
   const eligible = models.filter(m => (m.modes ?? []).includes(recipeMode))
 
   // Count models per company so we can show the top companies as chips.

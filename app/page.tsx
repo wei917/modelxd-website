@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import LandingAgent from './components/LandingAgent'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -314,6 +315,16 @@ export default function Home() {
         })}
       </div>
 
+      {/* ── Ask bar ──
+          Google-shaped on purpose (CC, Aug 5): today's picks stay on top,
+          then one centred field, then everything else moves down. A visitor
+          who already knows what they want types it; a visitor who does not
+          scrolls into the pitch. The same palette the app surfaces open with
+          ⌘K, so there is one search on the site, not two. Deliberately NOT
+          the palette: a modal over the page you just landed on hides the
+          thing the visitor came to look at. */}
+      <LandingAgent />
+
       {/* ── Hero ── */}
       <div className="xduel-page" style={{ minHeight: 'auto' }}>
         {/* paddingBottom was 0 back when the CTA buttons ended the hero and
@@ -385,28 +396,40 @@ export default function Home() {
           <div className="home-audience">
             <div className="home-audience-card">
               <div className="home-audience-label">FOR DEVELOPERS</div>
-              {/* $780/mo, and the un-rounded figure is the point — a round
-                  $1,000 reads invented, this one reads computed, because it is.
-                  100M tokens/mo on a mainstream flagship (GPT-5.5, $5/$30 =
-                  $17.50 per M blended 50/50 = $1,750/mo) with 60% of that
-                  traffic moved to Gemini 3.6 Flash ($1.50/$7.50 = $4.50/M):
-                  60M × $13.00 = $780. Deliberately targets the capable mid
+              {/* $3,900/mo, and the un-rounded figure is the point — a round
+                  $4,000 reads invented, this one reads computed, because it is.
+                  500M tokens/mo (a real production app, ~16M/day) on a
+                  mainstream flagship (GPT-5.5, $5/$30 = $17.50 per M blended
+                  50/50 = $8,750/mo) with 60% of that traffic moved to
+                  Gemini 3.6 Flash ($1.50/$7.50 = $4.50/M):
+                  300M × $13.00 = $3,900. Deliberately targets the capable mid
                   model, not Flash-Lite at $0.875/M — Flash-Lite would give
-                  $998 but "the cheapest model wins 60% of the time" is not a
-                  claim we can back. Checked against live model_pricing
-                  July 25 2026; re-derive before changing either number. The
-                  previous "$8,400 at 10M tokens" was unreachable at ANY
-                  assumption: 10M caps out at $1,041 even swapping the priciest
-                  model for the cheapest on 100% of traffic. */}
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$780</div>
-              <div className="home-audience-period">monthly savings at 100M tokens</div>
+                  $4,988 but "the cheapest model wins 60% of the time" is not a
+                  claim we can back. Only the VOLUME changed from the earlier
+                  $780-at-100M version (CC, Aug 5); the per-token logic and
+                  both model prices are identical and were re-checked against
+                  live model_pricing the same day. Re-derive before changing
+                  any number here. */}
+              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$3,900</div>
+              <div className="home-audience-period">monthly savings at 500M tokens</div>
               <div className="home-audience-desc">Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.</div>
             </div>
             <div className="home-audience-card">
-              <div className="home-audience-label">FOR USERS</div>
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$17</div>
-              <div className="home-audience-period">avg. monthly savings</div>
-              <div className="home-audience-desc">You don&apos;t need premium models for everything. XDuel shows you which budget models beat them on your own prompts.</div>
+              <div className="home-audience-label">FOR AI USERS</div>
+              {/* $176/mo, derived the same way as the developer figure so the
+                  two can be defended with one method. The old "~$17 avg.
+                  monthly savings" was text-only and unattributed — it read as
+                  a guess, and it understated the case badly, because video is
+                  where a heavy user's money actually goes.
+                  100 eight-second 1080p clips a month (3–4 a day, a working
+                  creator): Veo 3.1 Preview at $0.40/sec = $3.20 a clip = $320.
+                  HappyHorse 1.1 at $0.18/sec = $1.44 a clip = $144.
+                  Saving $176/mo — and HappyHorse is the model our own board
+                  ranks top for text-to-video, so this is the recommendation we
+                  already make, priced out. Live model_pricing, Aug 5 2026. */}
+              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$176</div>
+              <div className="home-audience-period">monthly savings on 100 video clips</div>
+              <div className="home-audience-desc">You don&apos;t need the priciest model for everything. XDuel and XBoard show you which cheaper models beat them on your own prompts.</div>
             </div>
           </div>
         </div>

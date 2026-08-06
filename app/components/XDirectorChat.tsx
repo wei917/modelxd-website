@@ -67,6 +67,20 @@ export default function XDirectorChat() {
   const [bubbles,  setBubbles]  = useState<Bubble[]>([])
   const [protocol, setProtocol] = useState<any[]>([])   // verbatim Anthropic messages
   const [input,    setInput]    = useState('')
+
+  // Handed here by the omnibox's "Ask XDirector" row. Prefilled, NOT sent:
+  // the agent can start billable generations, so the keystroke that spends
+  // money stays the user's. Consumed and stripped so a refresh does not
+  // resurrect an old question. (CC, Aug 5)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    const seeded = url.searchParams.get('q')
+    if (!seeded) return
+    setInput(seeded)
+    url.searchParams.delete('q')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }, [])
   const [atts,     setAtts]     = useState<Attachment[]>([])
   const [busy,     setBusy]     = useState<'idle' | 'thinking' | 'generating'>('idle')
   // id -> { name, perSec }. Without this the transcript printed the raw
