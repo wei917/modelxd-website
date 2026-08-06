@@ -45,7 +45,8 @@ rating system (XDRating) surfaced on XBoard.
 
 ## The Surfaces
 
-Five items in the left nav, plus one mode that lives inside another surface.
+Six creation/consumption surfaces; beta ones (XDirect, XTalk) only appear in
+the nav for allowlisted accounts.
 
 | Surface | Route | Auth | Notes |
 |---|---|---|---|
@@ -54,7 +55,7 @@ Five items in the left nav, plus one mode that lives inside another surface.
 | **XTalk** | `/xtalk` | required | Beta — hidden unless `FEATURE_XTALK_EMAILS`. |
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
-| **XDirector** | `/xcreate?agent=1` | required | Agent mode *inside* XCreate. |
+| **XDirect** | `/xdirect` | required | The director + canvas stage. Beta — `FEATURE_XDIRECTOR_EMAILS`. |
 
 ### XDuel — `/xduel`
 One prompt, two anonymous models, 5-step flow: run → vote blind → reveal
@@ -77,18 +78,26 @@ videos, wired together. Multi-select nodes to feed several images into one
 generation — that's how a product-video pipeline gets built. Toggle between
 `strip` and `canvas` views.
 
-### XDirector — agent mode inside XCreate
-**Not a destination.** `/xdirector` exists only to redirect `?c=` conversation
-permalinks to `/xcreate?agent=1`. A director you talk to: describe what you
-want, it picks a model, writes the prompt, generates. Every run bills and lands
-in history like a normal generation.
+### XDirect — `/xdirect` (the director + canvas stage)
+A real page since Aug 5: the director chat (`XDirectorChat`) beside the live
+canvas board (`WorkflowCanvas`), two views of one entity — **the board id IS
+the conversation id**. Describe what you want; the director picks a model
+from live leaderboard scores, writes the prompt, generates through the normal
+XCreate pipeline (billing, jobs, gallery — it can't bypass any of it), and
+each output lands as a node on the board. `?q=<request>` prefills the
+composer (never auto-sends — it spends credits); `?c=<id>` resumes a
+conversation/board.
 
-**The Studio ⇄ Agent toggle is GONE** (Aug 5). The site agent is the way in
-now — ask on the landing page or in the omnibox and it routes you here with
-`?agent=1&q=<request>` and your request prefilled. A toggle would only ask the
-user to know, in advance, which of two surfaces their idea belongs to — which
-is the question the agent exists to answer for them. The **mode** is unchanged:
-`?agent=1` and `?c=` permalinks still resolve.
+This is **Phase 1 of the film surface**. The plan of record: Phase 2 adds a
+scene/storyboard lane (ordered shot cards referencing canvas nodes — sequence
+semantics, distinct from the DAG's derivation semantics) plus director
+storyboard actions; Phase 3 adds assembly (stitch/export, trim, audio). The
+differentiator to protect: per-shot model choice with real prices from votes,
+not editing chrome.
+
+Entrances: nav item (beta-gated), omnibox row, the site agent
+(`/xdirect?q=…`). Legacy `/xdirector` and `/xcreate?agent=1`/`?c=` all
+forward here with query intact.
 
 ### XTalk — `/xtalk`
 Multi-model rooms. Two templates:
@@ -112,7 +121,7 @@ for search-enabled runs and for Werewolf.
 what it is, where a feature lives, what it costs — and returns an optional
 route so the UI can offer to take you there.
 
-- **Claude Haiku**, no tools, never generates, never bills the user.
+- **Claude Sonnet 5** (Haiku fallback), no tools, never generates, never bills the user.
   **The owner pays** (no `debitCredits` call), using `ANTHROPIC_API_KEY`.
 - `content/site-guide.md` is its **only** knowledge of the product, read from
   disk per request (60s cache) so a product change ships by editing markdown
@@ -152,7 +161,7 @@ app/
 │   │                           #   auth, beta sticker, mobile overlay
 │   ├── Omnibox.tsx             # ⌘K palette + sticky search bar
 │   ├── LandingAgent.tsx        # Landing-page agent dialog
-│   ├── XDirectorChat.tsx       # Agent-mode chat surface
+│   ├── XDirectorChat.tsx       # The director chat (lives on /xdirect)
 │   ├── WorkflowCanvas.tsx      # Node-graph board editor (canvas beta)
 │   ├── ModelPickerDialog.tsx   # Model picker (takes feature= for blocks)
 │   ├── TemplatePicker.tsx      # XTalk / XCreate template chooser
@@ -170,7 +179,9 @@ app/
 ├── xtalk/[id]/page.tsx         # Werewolf game permalink
 ├── xvote/page.tsx              # Community voting
 ├── xboard/page.tsx             # Leaderboard
-├── xdirector/page.tsx          # Redirect-only → /xcreate?agent=1
+├── xdirect/page.tsx            # XDirect server shell (auth/feature gate)
+├── xdirect/client.tsx          # Chat rail + canvas stage (Phase 1)
+├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
 ├── profile/page.tsx            # Balance, activity ledger, history
 ├── admin/models/               # Admin catalog editor
 ├── methodology/page.tsx        # How XDRating works
@@ -204,6 +215,7 @@ lib/
 ├── model-features.ts           # Per-surface model blocks (DB-driven)
 ├── admin.ts                    # getAdminUser() / assertAdmin()
 ├── models.ts                   # getModelsByMode (queries output_modalities)
+├── board-nodes.ts              # useBoardNodes(boardId) — board → CanvasNode[]
 ├── skills.ts                   # Agent Skills loader (open spec)
 ├── i18n.tsx                    # 5-language string table + LangProvider
 ├── werewolf-engine.ts          # Game rules/state machine
@@ -231,7 +243,8 @@ supabase/                       # Numbered SQL migrations (01 → 70)
 - `/models` → `/xboard`
 - `/vote` → `/xvote`
 - `/duel/<id>` → `/xduel/<id>`
-- `/xdirector` → `/xcreate?agent=1` (preserves `?c=`)
+- `/xdirector` → `/xdirect` (preserves `?c=`/`?q=`)
+- `/xcreate?agent=1` / `/xcreate?c=…` → `/xdirect` (client-side, query intact)
 
 ## Providers
 
@@ -596,7 +609,10 @@ can sit at the table honestly. One act per request; the client loops.
   instructions (e.g. shallow DoF) more faithfully, while 1.1 optimises for
   scene detail and runs slower for the same price.
 - **Catalog stays hand-curated.** See "Why hand-curation".
-- **No Studio/Agent toggle in XCreate.** The site agent is the entrance.
+- **No Studio/Agent toggle in XCreate.** Superseded Aug 5: the director got
+  its own page (`/xdirect`) once it owned a stage — "a mode, not a
+  destination" was true only while it was a bare chat. XCreate remains the
+  single studio surface; the toggle itself stays gone.
 - **Landing savings figures** were re-derived Aug 5 from live `model_pricing`:
   developers ~$3,900/mo at 500M tokens; "FOR AI USERS" ~$176/mo on 100 video
   clips (Veo 3.1 $0.40/s vs HappyHorse 1.1 $0.18/s, 8s clips). Derivations are

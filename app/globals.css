@@ -1908,6 +1908,30 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .omni-answer-go:hover { background: var(--red); color: #fff; }
 .omni-row:disabled { opacity: .6; }
 
+/* ── XDirect ──
+   Chat rail + canvas stage, two views of one board. The rail keeps a
+   readable line length; the stage takes everything else. Below 1080px the
+   panes stack — desktop-first product, the stacked form just has to be
+   usable, not optimal. */
+.xdirect-split {
+  display: grid; grid-template-columns: minmax(380px, 460px) 1fr;
+  gap: 24px; align-items: start;
+}
+.xdirect-chat { min-width: 0; }
+.xdirect-stage { min-width: 0; position: sticky; top: 76px; }
+.xdirect-empty {
+  height: 640px; border-radius: 12px;
+  border: 1.5px dashed var(--border2); background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px; text-align: center;
+  color: var(--muted2); font-size: 14px; line-height: 1.7; max-width: none;
+}
+@media (max-width: 1080px) {
+  .xdirect-split { grid-template-columns: 1fr; }
+  .xdirect-stage { position: static; order: -1; }
+  .xdirect-empty { height: 220px; }
+}
+
 /* ── Landing agent ──
    A reserved answer panel with the field beneath it. The panel height is
    fixed so replying never reflows the page; long conversations scroll

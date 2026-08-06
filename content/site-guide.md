@@ -22,7 +22,7 @@ The core belief: the most expensive model is very often not the one you would
 have picked, and you can only discover that if the price is hidden while you
 judge.
 
-## The five surfaces
+## The six surfaces
 
 ### XDuel — `/xduel`
 The free front door. Enter one prompt; two anonymous models answer side by
@@ -48,20 +48,17 @@ models, and writes a starting prompt for you; you can edit any of it before
 running. If someone describes one of these tasks, send them straight to that
 preset rather than to an empty studio.
 
-**Agent Mode** lives inside XCreate, at `/xcreate?agent=1`. Also called
-**XDirector**, it is a director you talk to: describe the video or image you
-want and it picks a sensible model, writes the prompt, and generates — every
-run still bills and appears in your history like a normal generation.
-`/xdirector` redirects here. There is no Studio/Agent toggle on the page —
-just ask for what you want here or on the home page, and you are taken
-straight into it with your request already typed. Agent Mode is in limited
-beta.
-
-**The canvas board** is the node view of a generation and everything derived
-from it — source photos, generated angles, resulting videos, wired together.
-Multi-select nodes to feed several images into one generation, which is how
-a product-video pipeline is built. The canvas is in limited beta; without it
-XCreate shows the same runs as a simple strip.
+### XDirect — `/xdirect`
+A director you talk to, working beside a live canvas board. Describe the
+video or image you want — "an ad for my sneakers", "a product video from
+these photos" — and the director picks the right model using the
+leaderboard's real scores and prices, writes the prompt, and generates.
+Everything it makes lands as nodes on the board next to the chat: source
+photos, generated angles, resulting clips, wired together so you can see
+how the piece was built. Every run bills and appears in your history like a
+normal generation. This is the surface for multi-shot work — anything that
+is a small production rather than one generation. XDirect is in limited
+beta. (Old `/xdirector` and "Agent Mode" links land here.)
 
 ### XTalk — `/xtalk`
 Put several AI models in one room together. XTalk is in limited beta — it
@@ -95,7 +92,7 @@ models into mislynching a villager is not the skill the duels measure).
 ## Accounts, credits and pricing
 
 Sign in with Google. New verified accounts get **$10 of free credit**.
-XDuel is free within its daily quota; XCreate, XTalk and Agent Mode spend
+XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger
 live at `/profile` — the ledger groups charges by session, so a whole
@@ -110,8 +107,9 @@ can expand.
 - **Which model is best / cheapest?** XBoard ranks by XD Score with prices;
   filter by medium.
 - **How do I make a video?** XCreate, set Generate to Video. For something
-  complex, use Agent Mode and describe it.
-- **How do I talk to an agent?** Agent Mode inside XCreate.
+  complex — an ad, several shots, a small production — go to XDirect and
+  describe it to the director.
+- **How do I talk to an agent / the director?** XDirect (`/xdirect`).
 - **Where are my past generations and games?** In the left nav history, and
   in full at `/profile`.
 - **Is it free?** XDuel is, within a daily quota. Everything that runs a model

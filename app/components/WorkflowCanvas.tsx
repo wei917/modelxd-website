@@ -60,7 +60,7 @@ const KIND_BADGE: Record<NodeKind, { text: string; bg: string }> = {
 
 export default function WorkflowCanvas({
   nodes, selectedIds, onSelect, onClearSelection,
-  onDelete, busy = false,
+  onDelete, busy = false, height = 460,
 }: {
   nodes: CanvasNode[]
   selectedIds: string[]
@@ -69,6 +69,8 @@ export default function WorkflowCanvas({
   onClearSelection: () => void
   onDelete?: (nodes: CanvasNode[]) => void
   busy?: boolean
+  /** XCreate keeps the compact 460px board; /xdirect runs it as the stage. */
+  height?: number | string
 }) {
   const t = useT()
   const sel = useMemo(() => new Set(selectedIds), [selectedIds])
@@ -216,7 +218,7 @@ export default function WorkflowCanvas({
       onPointerDown={onPointerDown} onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       style={{
-        position: 'relative', height: 460, marginBottom: 24, borderRadius: 12,
+        position: 'relative', height, marginBottom: 24, borderRadius: 12,
         border: '1px solid var(--border2)', overflow: 'hidden',
         cursor: drag.current ? 'grabbing' : 'grab', touchAction: 'none',
         // ComfyUI-style dotted grid on a dark surface.

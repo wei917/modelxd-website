@@ -12,9 +12,9 @@
 // say — a confident wrong answer about your own product is worse than "I
 // don't know". (CC, Aug 5)
 //
-// Deliberately NOT the same thing as XDirector: this one never generates,
-// never spends the user's credits, and holds no conversation. It is the
-// front desk, not the studio.
+// Deliberately NOT the same thing as XDirect's director: this one never
+// generates, never spends the user's credits, and holds no conversation.
+// It is the front desk, not the studio.
 
 import { readFile } from 'fs/promises'
 import path from 'path'
@@ -45,7 +45,7 @@ let workingModel: string | null = null
 const ROUTES: Record<string, string> = {
   '/xduel':   'XDuel',
   '/xcreate': 'XCreate',
-  '/xcreate?agent=1': 'XDirector',
+  '/xdirect': 'XDirect',
   '/xtalk':   'XTalk',
   '/xvote':   'XVote',
   '/xboard':  'XBoard',
@@ -132,8 +132,8 @@ function resolveDestination(
   // A route into the director carries the original request, so the user does
   // not have to retype the thing they just asked for. Prefill, never
   // auto-send — that surface spends credits.
-  if (surface === '/xcreate?agent=1') {
-    return { route: `/xcreate?agent=1&q=${encodeURIComponent(question)}`, routeLabel: ROUTES[surface] }
+  if (surface === '/xdirect') {
+    return { route: `/xdirect?q=${encodeURIComponent(question)}`, routeLabel: ROUTES[surface] }
   }
 
   return { route: surface, routeLabel: ROUTES[surface] }
@@ -222,7 +222,7 @@ export async function POST(req: Request) {
     '3. They described something that takes several steps or several shots — an',
     '   ad, a commercial, a product video, a campaign, "a video of my product',
     '   from different angles", anything where the result is a small production',
-    '   rather than one generation → "/xcreate?agent=1". That is XDirector: it',
+    '   rather than one generation → "/xdirect". That is XDirect: it',
     '   plans the shots, builds a board of images and turns them into video,',
     '   which a single generation cannot do. Tell them you are opening the',
     '   director with their request.',

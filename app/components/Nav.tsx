@@ -13,6 +13,9 @@ import { XCREATE_TEMPLATES } from '../xcreate/templates'
 const NAV_LINKS = [
   { href: '/xduel',       i18n: 'nav.xduel',       protected: true,  icon: 'duel'   },
   { href: '/xcreate',     i18n: 'nav.xcreate',     protected: true,  icon: 'create' },
+  // XDirect — the director + canvas stage. Beta-gated like XTalk below; the
+  // clapperboard icon waited unused in NavIcon since July for exactly this.
+  { href: '/xdirect',     i18n: 'nav.xdirect',     protected: true,  icon: 'director', feature: 'xdirector' },
   // Beta. Hidden until /api/features says this user has it — the route
   // 404s for everyone else anyway, so advertising it would only confuse.
   { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk', feature: 'xtalk' },

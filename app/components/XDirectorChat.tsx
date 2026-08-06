@@ -1,8 +1,9 @@
 'use client'
 // app/components/XDirectorChat.tsx
-// XDirector — a personal video director you talk to (CC, July 26 2026).
-// Mounted inside /xcreate as "Agent Mode" (placement decision revised the
-// same day: an agent is a mode of creating, not a separate destination).
+// The director — a personal video director you talk to (CC, July 26 2026).
+// Lives on /xdirect as the chat rail beside the canvas (CC, Aug 5 — the
+// "agent is a mode, not a destination" call from July was right until the
+// agent owned a stage; now it owns one).
 //
 // The conversation loop lives here:
 //   user text (+ photos) → POST /api/xdirector → agent replies, possibly
@@ -61,7 +62,15 @@ function setConversationUrl(id: string | null) {
   window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
 }
 
-export default function XDirectorChat() {
+export default function XDirectorChat({ onConversationId, onActivity }: {
+  /** /xdirect listens here so its canvas can follow the conversation's
+   *  board (board id === conversation id). Fired on restore and on the
+   *  first message of a fresh chat. */
+  onConversationId?: (id: string) => void
+  /** Fired whenever the board may have changed (a generation settled, a
+   *  conversation restored) — the canvas refreshes on it. */
+  onActivity?: () => void
+} = {}) {
   const t = useT()
 
   const [bubbles,  setBubbles]  = useState<Bubble[]>([])
@@ -145,6 +154,7 @@ export default function XDirectorChat() {
     const id = new URLSearchParams(window.location.search).get('c')
     if (!id) return
     convIdRef.current = id
+    onConversationId?.(id)
     setLoading(true)
     ;(async () => {
       try {
@@ -157,6 +167,7 @@ export default function XDirectorChat() {
           setBubbles(Array.isArray(c.bubbles) ? c.bubbles : [])
           // Resume under the same skill the chat was produced with.
           if (typeof c.skill === 'string' && c.skill) setActiveSkill(c.skill)
+          onActivity?.()   // the restored board has nodes to draw
         }
       } catch {
         // A dead link shouldn't strand the user on a blank page — drop the
@@ -200,6 +211,7 @@ export default function XDirectorChat() {
     if (!convIdRef.current) {
       convIdRef.current = newId()
       setConversationUrl(convIdRef.current)
+      onConversationId?.(convIdRef.current)
     }
     return convIdRef.current
   }
@@ -207,7 +219,6 @@ export default function XDirectorChat() {
   // the canvas draws a lineage the user can follow instead of a scatter of
   // unconnected tiles.
   const lastGenIdRef = useRef<string | null>(null)
-  const [lastGenId, setLastGenId] = useState<string | null>(null)
 
   const committedRef = useRef<Attachment[]>([])          // last committed uploads, reused across shots
   const genCountRef  = useRef(0)                          // auto-gens this user turn
@@ -427,16 +438,18 @@ export default function XDirectorChat() {
         if (slot?.error || data.job?.status === 'failed') {
           const err = slot?.error ?? data.job?.error ?? 'generation failed'
           patchLastGen({ status: 'error', error: err })
+          onActivity?.()   // failed rows still get a board node
           return finish({ ok: false, error: err })
         }
         const url = typeof slot?.text === 'string' ? slot.text.split('\n')[0] : null
         const cost = slot?.cost ?? 0
         const xid = data.job?.xcreateId ?? null
-        if (xid) { lastGenIdRef.current = xid; setLastGenId(xid) }
+        if (xid) lastGenIdRef.current = xid
         patchLastGen({
           status: 'done', cost, modelName: slot?.name ?? inp.model_id,
           ...(medium === 'image' ? { imageUrl: url ?? undefined } : { videoUrl: url ?? undefined }),
         })
+        onActivity?.()   // new node on the board — let the canvas redraw
         return finish({ ok: true, url: url ? '(delivered to the user in the chat)' : null, medium, costUsd: cost, model: slot?.name ?? inp.model_id, xcreateId: xid })
       } catch { /* transient poll error — keep going */ }
     }, 2500)
@@ -550,21 +563,8 @@ export default function XDirectorChat() {
     <div>
       <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.6, marginTop: -8 }}>{t('xdirector.subtitle')}</p>
 
-      {/* Everything this conversation made is one board. Until the canvas
-          sits alongside the chat, this is the way through to it. */}
-      {lastGenId && (
-        <a
-          href={`/xcreate?id=${lastGenId}`}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18,
-            padding: '7px 14px', borderRadius: 999,
-            border: '1px solid var(--border2)', background: 'var(--surface)',
-            color: 'var(--muted)', textDecoration: 'none',
-            fontFamily: 'var(--font-mono), monospace', fontSize: 11, fontWeight: 700,
-            letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-          }}
-        >⬚ {t('xdirector.opencanvas')}</a>
-      )}
+      {/* The "open canvas" escape hatch that used to sit here is gone: on
+          /xdirect the canvas IS alongside the chat. (CC, Aug 5) */}
 
         {/* Transcript */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20, minHeight: 160 }}>

@@ -6,7 +6,7 @@
 // 3. Multi-turn chat with chosen model
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import { discountFor } from '../../lib/xcreate-discount'
@@ -19,7 +19,6 @@ import ModeIcon from '../components/ModeIcon'
 import TemplatePicker from '../components/TemplatePicker'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 import MatchResult, { type RatingDelta, type MatchResultEntry } from '../components/MatchResult'
-import XDirectorChat from '../components/XDirectorChat'
 import { computeMatchScores } from '../../lib/matchScore'
 import ProviderLogo from '../components/ProviderLogo'
 import ModelPickerDialog from '../components/ModelPickerDialog'
@@ -964,6 +963,7 @@ export default function CreateClient({ features }: { features: XCreateFeatures }
 function CreateStudio({ features }: { features: XCreateFeatures }) {
   useRequireAuth()
   const t = useT()
+  const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -2885,41 +2885,21 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
 
   // ── Surface: how you drive XCreate ────────────────────────────────────
   // XCreate is the PLACE you create things; the studio and XDirector are two
-  // ways to drive it, not two destinations. This used to be an <a> pointing
-  // at /xdirector, which made the agent a separate page — so anything it
-  // generated landed in a chat transcript instead of on this page's board.
-  // Now it is a mode of this page. (CC, July 31)
-  const [surface, setSurface] = useState<'studio' | 'agent'>('studio')
+  // ways to drive it, not two destinations — which was true until the agent
+  // owned a stage. Agent mode moved OUT to /xdirect (CC, Aug 5): the
+  // director now lives beside the canvas, so this page is purely the studio
+  // again. The old entrances stay live as redirects — ?agent=1 and ?c=
+  // permalinks forward with their query intact, so every link the site
+  // agent ever handed out keeps resolving.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
-    // ?c= is a conversation permalink — landing on one means agent mode.
-    if (p.get('agent') === '1' || p.get('c')) setSurface('agent')
+    if (p.get('agent') === '1' || p.get('c')) {
+      p.delete('agent')
+      const qs = p.toString()
+      router.replace(`/xdirect${qs ? `?${qs}` : ''}`)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // The Studio / Agent toggle is GONE (CC, Aug 5). The site agent is the way
-  // in now: ask for something on the landing page or in the omnibox and it
-  // routes you here with ?agent=1 and your request already typed. A toggle
-  // that duplicates that only asks the user to know, in advance, which of two
-  // surfaces their idea belongs to — which is the question the agent exists
-  // to answer for them.
-  //
-  // The MODE itself is unchanged: ?agent=1 (and ?c= permalinks) still resolve,
-  // so every route the agent hands out keeps working.
-
-  // Agent mode shares this page's header and chrome — only the working
-  // surface below it changes.
-  if (surface === 'agent') {
-    return (
-      <div className="xduel-page">
-        <div className="arena xcreate-arena">
-          <div className="prompt-label eyebrow">{t('xcreate.eyebrow')}</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
-            <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
-          </div>
-          <XDirectorChat />
-        </div>
-      </div>
-    )
-  }
 
   return (
     <>
