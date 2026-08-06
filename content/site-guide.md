@@ -50,15 +50,17 @@ preset rather than to an empty studio.
 
 ### XDirect — `/xdirect`
 A director you talk to, working beside a live canvas board. Describe the
-video or image you want — "an ad for my sneakers", "a product video from
-these photos" — and the director picks the right model using the
-leaderboard's real scores and prices, writes the prompt, and generates.
-Everything it makes lands as nodes on the board next to the chat: source
-photos, generated angles, resulting clips, wired together so you can see
-how the piece was built. Every run bills and appears in your history like a
-normal generation. This is the surface for multi-shot work — anything that
-is a small production rather than one generation. XDirect is in limited
-beta. (Old `/xdirector` and "Agent Mode" links land here.)
+video you want — "an ad for my sneakers", "a product video from these
+photos" — and the director first puts a **storyboard on the board**: scene
+cards with a script, a shot plan, a duration and a model pick with its real
+price, chosen from the leaderboard's actual scores. Drafting is free.
+You edit the scenes right on the cards — rewrite the script, change the
+length, reorder, add or delete — then generate scene by scene (each card
+shows its price) or all at once. Finished clips fill their cards and land
+as nodes on the board, wired together so you can see how the piece was
+built. Still images skip the storyboard and generate directly. Every
+generation bills and appears in your history like a normal run. XDirect is
+in limited beta. (Old `/xdirector` and "Agent Mode" links land here.)
 
 ### XTalk — `/xtalk`
 Put several AI models in one room together. XTalk is in limited beta — it

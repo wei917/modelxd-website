@@ -1,21 +1,22 @@
 'use client'
 // app/xdirect/client.tsx
-// XDirect — Phase 1 of the film surface (CC, Aug 5): the director chat and
-// the canvas board side by side for the first time. The board id IS the
-// conversation id, so the two panes are two views of one thing — the chat
-// tells the story, the canvas shows the work.
+// XDirect — the film surface: director chat beside the stage. The board id
+// IS the conversation id, so the panes are views of one thing — the chat
+// tells the story, the stage shows the work.
 //
-// The canvas here is a live view with selection + preview, NOT yet the full
-// editor XCreate has (no delete, no compose-from-selection toolbar). Those
-// arrive with the storyboard lane in Phase 2 — shipping a second toolbar
-// now would mean building the same actions twice, once per page, a week
-// before the interaction model changes under them.
+// Phase 2 (CC, Aug 6): the stage grew its second lane. Every VIDEO request
+// now lands as a STORYBOARD — scene cards the user edits in place — above
+// the canvas, which keeps showing derivation (what was made from what).
+// Sequence on the strip, lineage on the canvas: two grammars, one stage.
+// The storyboard state lives HERE and flows down to both the chat (which
+// sends it to the director and persists it) and the strip (which edits it).
 
 import { useCallback, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useBoardNodes } from '../../lib/board-nodes'
-import XDirectorChat from '../components/XDirectorChat'
+import XDirectorChat, { type SceneRunnerHandle } from '../components/XDirectorChat'
+import SceneStrip, { type Scene } from '../components/SceneStrip'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 
 export default function XDirectClient() {
@@ -26,6 +27,9 @@ export default function XDirectClient() {
   const { nodes, refresh } = useBoardNodes(boardId)
   const [sel, setSel] = useState<string[]>([])
   const [hero, setHero] = useState<{ url: string; isVideo: boolean } | null>(null)
+  const [storyboard, setStoryboard] = useState<Scene[]>([])
+  const [chatBusy, setChatBusy] = useState(false)
+  const runnerRef = useRef<SceneRunnerHandle | null>(null)
 
   // The chat's callbacks are module-stable so its effects, which run once,
   // never see a stale closure.
@@ -33,6 +37,8 @@ export default function XDirectClient() {
   refreshRef.current = refresh
   const onConversationId = useCallback((id: string) => setBoardId(id), [])
   const onActivity = useCallback(() => refreshRef.current(), [])
+  const onStoryboard = useCallback((scenes: any[]) => setStoryboard(scenes as Scene[]), [])
+  const onBusy = useCallback((b: boolean) => setChatBusy(b), [])
 
   return (
     <div className="xduel-page">
@@ -43,16 +49,37 @@ export default function XDirectClient() {
         <div className="xdirect-split">
           {/* Chat rail — the director. Provides its own subtitle/intro. */}
           <div className="xdirect-chat">
-            <XDirectorChat onConversationId={onConversationId} onActivity={onActivity} />
+            <XDirectorChat
+              onConversationId={onConversationId}
+              onActivity={onActivity}
+              storyboard={storyboard}
+              onStoryboard={onStoryboard}
+              runnerRef={runnerRef}
+              onBusy={onBusy}
+            />
           </div>
 
-          {/* Stage — the board this conversation is building. */}
+          {/* Stage — storyboard lane (sequence) over the canvas (lineage). */}
           <div className="xdirect-stage">
+            <SceneStrip
+              scenes={storyboard}
+              busy={chatBusy}
+              onChange={setStoryboard}
+              onGenerate={(id) => {
+                const i = storyboard.findIndex(s => s.id === id)
+                runnerRef.current?.generateScene(id, `${t('xd.sb.scene')} ${i + 1}: ${storyboard[i]?.title ?? id}`)
+              }}
+              onGenerateAll={() => {
+                const ids = storyboard.filter(s => !s.status || s.status === 'draft' || s.status === 'error').map(s => s.id)
+                runnerRef.current?.generateAll(ids)
+              }}
+              onPreview={(url, isVideo) => setHero({ url, isVideo })}
+            />
             {nodes.length > 0 ? (
               <WorkflowCanvas
                 nodes={nodes}
                 selectedIds={sel}
-                height={640}
+                height={storyboard.length > 0 ? 430 : 640}
                 onSelect={(n: CanvasNode, additive: boolean) => {
                   setSel(prev => additive
                     ? (prev.includes(n.id) ? prev.filter(x => x !== n.id) : [...prev, n.id])
@@ -61,12 +88,12 @@ export default function XDirectClient() {
                 }}
                 onClearSelection={() => setSel([])}
               />
-            ) : (
+            ) : storyboard.length === 0 ? (
               <div className="xdirect-empty">
                 <div style={{ fontSize: 26, marginBottom: 10 }} aria-hidden>⬚</div>
                 {t('xdirect.empty')}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

@@ -62,7 +62,14 @@ function setConversationUrl(id: string | null) {
   window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
 }
 
-export default function XDirectorChat({ onConversationId, onActivity }: {
+export type SceneRunnerHandle = {
+  /** Run one scene from its card. The click is the confirm step. */
+  generateScene: (sceneId: string, sceneLabel: string) => void
+  /** Run every draft scene, in order. One click authorizes the batch. */
+  generateAll: (sceneIds: string[]) => void
+}
+
+export default function XDirectorChat({ onConversationId, onActivity, storyboard, onStoryboard, runnerRef, onBusy }: {
   /** /xdirect listens here so its canvas can follow the conversation's
    *  board (board id === conversation id). Fired on restore and on the
    *  first message of a fresh chat. */
@@ -70,6 +77,15 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
   /** Fired whenever the board may have changed (a generation settled, a
    *  conversation restored) — the canvas refreshes on it. */
   onActivity?: () => void
+  /** The storyboard lives on the PAGE (the strip edits it there); the chat
+   *  reads it for context, merges the director's revisions into it, and
+   *  persists it with the conversation. */
+  storyboard?: any[]
+  onStoryboard?: (scenes: any[]) => void
+  /** The strip's generate buttons call through here. */
+  runnerRef?: React.MutableRefObject<SceneRunnerHandle | null>
+  /** Mirrors the chat's busy state up so the strip can pause its buttons. */
+  onBusy?: (busy: boolean) => void
 } = {}) {
   const t = useT()
 
@@ -167,6 +183,10 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
           setBubbles(Array.isArray(c.bubbles) ? c.bubbles : [])
           // Resume under the same skill the chat was produced with.
           if (typeof c.skill === 'string' && c.skill) setActiveSkill(c.skill)
+          if (Array.isArray(c.storyboard) && c.storyboard.length > 0) {
+            storyboardRef.current = c.storyboard
+            onStoryboard?.(c.storyboard)
+          }
           onActivity?.()   // the restored board has nodes to draw
         }
       } catch {
@@ -193,6 +213,8 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
           protocol: proto, bubbles: slim,
           // Stored so reopening the link resumes with the same skill.
           skill: activeSkillRef.current,
+          // The board rides with the conversation it belongs to.
+          storyboard: storyboardRef.current.length > 0 ? storyboardRef.current : null,
         }),
       })
     } catch { /* a failed save must never break the chat */ }
@@ -223,6 +245,39 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
   const committedRef = useRef<Attachment[]>([])          // last committed uploads, reused across shots
   const genCountRef  = useRef(0)                          // auto-gens this user turn
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => { onBusy?.(busy !== 'idle') }, [busy, onBusy])
+
+  // ── Storyboard plumbing (CC, Aug 6) ───────────────────────────────────
+  // State lives on the page (the strip edits it); this ref mirrors it so
+  // async paths (generation polling, agent turns) read the current value.
+  const storyboardRef = useRef<any[]>(storyboard ?? [])
+  useEffect(() => { storyboardRef.current = storyboard ?? [] }, [storyboard])
+
+  // Scene ids the USER armed by clicking ▶ on a card. A start_generation
+  // carrying an armed scene_id runs without the plan bubble — the card,
+  // with its price showing, was the confirm step. Anything unarmed still
+  // hits the gate, so the agent cannot spend spontaneously by tagging a
+  // scene id onto a generation nobody asked for.
+  const armedScenesRef = useRef<Set<string>>(new Set())
+
+  const patchScene = (sceneId: string, p: Record<string, any>) => {
+    const next = storyboardRef.current.map((s: any) => s.id === sceneId ? { ...s, ...p } : s)
+    storyboardRef.current = next
+    onStoryboard?.(next)
+  }
+
+  /** Merge the director's revised scene list into the board, preserving the
+   *  generation linkage of any scene id that survived the revision. */
+  const mergeStoryboard = (incoming: any[]) => {
+    const prev = new Map(storyboardRef.current.map((s: any) => [s.id, s]))
+    const next = incoming.map((s: any) => {
+      const old: any = prev.get(s.id)
+      return old ? { ...s, status: old.status ?? 'draft', row_id: old.row_id, url: old.url, cost: old.cost } : { ...s, status: 'draft' }
+    })
+    storyboardRef.current = next
+    onStoryboard?.(next)
+  }
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [bubbles])
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
@@ -272,6 +327,9 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
         body: JSON.stringify({
           messages: msgs,
           ...(activeSkillRef.current ? { skill: activeSkillRef.current } : {}),
+          // The live board state, edits included — the director revises the
+          // user's text, never its own stale draft.
+          ...(storyboardRef.current.length > 0 ? { storyboard: storyboardRef.current } : {}),
         }),
       })
       data = await res.json().catch(() => null)
@@ -284,6 +342,13 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
 
     const withNew = [...msgs, ...(data.newMessages ?? [])]
     setProtocol(withNew)
+
+    // The director redrew the board — merge, keeping generation linkage for
+    // scene ids that survived, and let the canvas know.
+    if (Array.isArray(data.storyboard) && data.storyboard.length > 0) {
+      mergeStoryboard(data.storyboard)
+      onActivity?.()
+    }
 
     // Render every text block from the new assistant messages.
     for (const m of data.newMessages ?? []) {
@@ -306,6 +371,16 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
     }
 
     if (data.action?.kind === 'generate' || (data.action && !data.action.kind)) {
+      // A generation for a scene the user ARMED (▶ on its card, price
+      // showing) skips the plan bubble — that click was the confirm. The id
+      // is consumed so it authorizes exactly one run, and unarmed scene ids
+      // fall through to the normal gate.
+      const sceneId = typeof data.action.input?.scene_id === 'string' ? data.action.input.scene_id : null
+      if (sceneId && armedScenesRef.current.has(sceneId)) {
+        armedScenesRef.current.delete(sceneId)
+        await runGeneration(withNew, data.action, data.pendingToolResults ?? [])
+        return
+      }
       if (genCountRef.current >= MAX_AUTO_GENS) {
         // Safety valve: acknowledge but don't run — the user can just say "go".
         pushBubble({ role: 'agent', text: '⚠ Generation limit for this turn reached — send another message to continue.' })
@@ -344,11 +419,58 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, protocol, bubbles])
 
+  // Strip edits change the storyboard without touching the transcript — give
+  // them their own debounced save so a rewrite on a card can't be lost to a
+  // reload. Timer-based because typing into a textarea has no "turn".
+  useEffect(() => {
+    if (!storyboard || storyboard.length === 0 || protocol.length === 0) return
+    const h = setTimeout(() => { void saveConversation(protocol, bubbles) }, 900)
+    return () => clearTimeout(h)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyboard])
+
+  // ── The strip's generate buttons come through here (CC, Aug 6) ─────────
+  // A card click arms its scene id (the card showed the price — that IS the
+  // confirm), then asks the director in a normal, visible user turn. The
+  // director answers with start_generation(scene_id=...), which the armed
+  // set lets straight through the gate. The transcript stays honest: every
+  // spend has a user message behind it.
+  useEffect(() => {
+    if (!runnerRef) return
+    runnerRef.current = {
+      generateScene: (sceneId: string, sceneLabel: string) => {
+        if (busy !== 'idle') return
+        genCountRef.current = 0
+        armedScenesRef.current.add(sceneId)
+        const text = `▶ ${sceneLabel}`
+        pushBubble({ role: 'user', text })
+        const msgs = [...protocol, { role: 'user', content: `Generate storyboard scene ${sceneId} now, exactly as it appears on the board. Use its current shot text, model, recipe and duration, pass scene_id="${sceneId}", and do not re-plan or re-confirm.` }]
+        setProtocol(msgs)
+        void agentTurn(msgs)
+      },
+      generateAll: (sceneIds: string[]) => {
+        if (busy !== 'idle' || sceneIds.length === 0) return
+        genCountRef.current = 0
+        for (const id of sceneIds) armedScenesRef.current.add(id)
+        pushBubble({ role: 'user', text: `▶▶ ${t('xd.sb.genall')}` })
+        const msgs = [...protocol, { role: 'user', content: `Generate every remaining draft storyboard scene now, one at a time in board order (${sceneIds.join(', ')}). Use each scene's current shot text, model, recipe and duration, pass its scene_id, and do not re-plan or re-confirm between scenes.` }]
+        setProtocol(msgs)
+        void agentTurn(msgs)
+      },
+    }
+    return () => { if (runnerRef) runnerRef.current = null }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, protocol, bubbles])
+
   // ── Execute a start_generation action via the normal XCreate pipeline ────
   const runGeneration = async (msgs: any[], action: any, pendingToolResults: any[]) => {
     const inp = action.input ?? {}
+    // When this generation IS a storyboard scene, its card mirrors the whole
+    // lifecycle: generating → done (thumb + real cost) or error.
+    const sceneId: string | null = typeof inp.scene_id === 'string' ? inp.scene_id : null
     setBusy('generating')
     pushBubble({ role: 'gen', status: 'generating', modelName: models[inp.model_id]?.name ?? inp.model_id, text: inp.prompt })
+    if (sceneId) patchScene(sceneId, { status: 'generating', error: undefined })
 
     const finish = async (result: any) => {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
@@ -406,6 +528,7 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
       })
     } catch {
       patchLastGen({ status: 'error', error: 'Network error' })
+      if (sceneId) patchScene(sceneId, { status: 'error', error: 'Network error' })
       return finish({ ok: false, error: 'network error starting the generation' })
     }
 
@@ -413,6 +536,7 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
       const detail = await postRes.json().catch(() => null)
       const msg = detail?.message ?? detail?.error ?? `HTTP ${postRes.status}`
       patchLastGen({ status: 'error', error: msg })
+      if (sceneId) patchScene(sceneId, { status: 'error', error: msg })
       return finish({
         ok: false,
         error: postRes.status === 402 ? `insufficient_credits: ${msg}` : msg,
@@ -426,6 +550,7 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
     pollRef.current = setInterval(async () => {
       if (Date.now() - startedAt > 10 * 60_000) {
         patchLastGen({ status: 'error', error: 'Timed out' })
+        if (sceneId) patchScene(sceneId, { status: 'error', error: 'Timed out' })
         return finish({ ok: false, error: 'generation timed out after 10 minutes' })
       }
       try {
@@ -438,6 +563,7 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
         if (slot?.error || data.job?.status === 'failed') {
           const err = slot?.error ?? data.job?.error ?? 'generation failed'
           patchLastGen({ status: 'error', error: err })
+          if (sceneId) patchScene(sceneId, { status: 'error', error: err })
           onActivity?.()   // failed rows still get a board node
           return finish({ ok: false, error: err })
         }
@@ -449,6 +575,7 @@ export default function XDirectorChat({ onConversationId, onActivity }: {
           status: 'done', cost, modelName: slot?.name ?? inp.model_id,
           ...(medium === 'image' ? { imageUrl: url ?? undefined } : { videoUrl: url ?? undefined }),
         })
+        if (sceneId) patchScene(sceneId, { status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined })
         onActivity?.()   // new node on the board — let the canvas redraw
         return finish({ ok: true, url: url ? '(delivered to the user in the chat)' : null, medium, costUsd: cost, model: slot?.name ?? inp.model_id, xcreateId: xid })
       } catch { /* transient poll error — keep going */ }

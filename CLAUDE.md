@@ -88,10 +88,20 @@ each output lands as a node on the board. `?q=<request>` prefills the
 composer (never auto-sends — it spends credits); `?c=<id>` resumes a
 conversation/board.
 
-This is **Phase 1 of the film surface**. The plan of record: Phase 2 adds a
-scene/storyboard lane (ordered shot cards referencing canvas nodes — sequence
-semantics, distinct from the DAG's derivation semantics) plus director
-storyboard actions; Phase 3 adds assembly (stitch/export, trim, audio). The
+**Phase 2 shipped Aug 6 — storyboard-first video.** Every video request gets
+a `set_storyboard` from the director before any generation: scene cards
+(`SceneStrip.tsx`) render above the canvas — script, shot prompt, duration,
+per-scene model + price — and the user edits them in place. Sequence lives
+on the strip, derivation on the canvas; same stage, two grammars. Generation
+stays explicit: ▶ on a card *arms* that scene id so the resulting
+`start_generation(scene_id)` skips the plan bubble (the card was the confirm);
+unarmed generations still hit the gate. The storyboard state lives on the
+page, flows to the chat (which sends it as CURRENT STORYBOARD context — user
+edits outrank the director's draft) and persists on
+`xdirector_conversations.storyboard` (**migration 71 — pending until the
+owner runs it; saves degrade gracefully to in-session until then**). Stills
+keep the direct flow. The director runs Sonnet 5 (`XDIRECTOR_MODEL`
+overrides). Phase 3 remains: assembly (stitch/export, trim, audio). The
 differentiator to protect: per-shot model choice with real prices from votes,
 not editing chrome.
 

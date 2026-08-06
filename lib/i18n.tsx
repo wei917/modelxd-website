@@ -137,6 +137,16 @@ export const STRINGS: Record<string, Entry> = {
   'omni.hero.hint':      { en: 'Try “where is Werewolf?” or “which video model is cheapest?”', 'zh-Hant': '試試「狼人殺在哪裡？」或「哪個影片模型最便宜？」', 'zh-Hans': '试试「狼人杀在哪里？」或「哪个视频模型最便宜？」', ja: '例：「人狼はどこ？」「一番安い動画モデルは？」', ko: '예: “마피아 게임은 어디 있나요?” 또는 “가장 저렴한 영상 모델은?”' },
   'la.intro':            { en: 'I am the ModelXD guide. ModelXD helps you find the AI model that gives you the best result for your money — compare models on your own prompt, and vote before the price is revealed.\n\nTell me what you want to do, and I will take you to the right place.', 'zh-Hant': '我是 ModelXD 導覽。ModelXD 幫你找出最划算的 AI 模型——用你自己的提示詞比較模型，在價格揭曉前先投票。\n\n告訴我你想做什麼，我帶你去對的地方。', 'zh-Hans': '我是 ModelXD 导览。ModelXD 帮你找出最划算的 AI 模型——用你自己的提示词比较模型，在价格揭晓前先投票。\n\n告诉我你想做什么，我带你去对的地方。', ja: 'ModelXD のガイドです。ModelXD は、支払った費用に対して最良の結果を出す AI モデルを見つけるお手伝いをします。自分のプロンプトでモデルを比べ、価格が明かされる前に投票します。\n\nやりたいことを教えてください。最適な場所へご案内します。', ko: 'ModelXD 가이드입니다. ModelXD는 지불한 만큼 가장 좋은 결과를 주는 AI 모델을 찾도록 도와줍니다. 직접 만든 프롬프트로 모델을 비교하고, 가격이 공개되기 전에 투표하세요.\n\n무엇을 하고 싶은지 알려주시면 알맞은 곳으로 안내해 드릴게요.' },
   'la.startover':        { en: 'Start over', 'zh-Hant': '重新開始', 'zh-Hans': '重新开始', ja: '最初から', ko: '새로 시작' },
+  // ── XDirect storyboard strip ──
+  'xd.sb.title':      { en: 'STORYBOARD', 'zh-Hant': '分鏡腳本', 'zh-Hans': '分镜脚本', ja: '絵コンテ', ko: '스토리보드' },
+  'xd.sb.scene':      { en: 'Scene', 'zh-Hant': '場景', 'zh-Hans': '场景', ja: 'シーン', ko: '씬' },
+  'xd.sb.script':     { en: 'Script', 'zh-Hant': '腳本', 'zh-Hans': '脚本', ja: 'スクリプト', ko: '스크립트' },
+  'xd.sb.shot':       { en: 'Shot prompt', 'zh-Hant': '鏡頭提示詞', 'zh-Hans': '镜头提示词', ja: 'ショット指示', ko: '숏 프롬프트' },
+  'xd.sb.gen':        { en: 'Generate', 'zh-Hant': '生成', 'zh-Hans': '生成', ja: '生成', ko: '생성' },
+  'xd.sb.genall':     { en: 'Generate all', 'zh-Hant': '全部生成', 'zh-Hans': '全部生成', ja: 'すべて生成', ko: '모두 생성' },
+  'xd.sb.add':        { en: 'Add scene', 'zh-Hant': '新增場景', 'zh-Hans': '新增场景', ja: 'シーン追加', ko: '씬 추가' },
+  'xd.sb.total':      { en: 'Total', 'zh-Hant': '總計', 'zh-Hans': '总计', ja: '合計', ko: '합계' },
+  'xd.sb.confirmdel': { en: 'Delete?', 'zh-Hant': '刪除？', 'zh-Hans': '删除？', ja: '削除？', ko: '삭제?' },
   'la.badge':            { en: 'ModelXD Guide', 'zh-Hant': 'ModelXD 導覽', 'zh-Hans': 'ModelXD 导览', ja: 'ModelXD ガイド', ko: 'ModelXD 가이드' },
   // Starter chips. Each one is sent verbatim as a question, and each is
   // chosen to exercise a different routing path — free duel, a template,

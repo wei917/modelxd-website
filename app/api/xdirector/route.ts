@@ -34,13 +34,58 @@ const serviceClient = () => createClient(
 // Model candidates, tried in order when Anthropic rejects the id — keeps
 // the route working across model deprecations without a deploy. Override
 // with XDIRECTOR_MODEL. The working id is cached for the process lifetime.
+//
+// Sonnet 5 first (CC, Aug 6): the director now writes multi-scene storyboards
+// — scripts and shot prompts in the user's language, mostly zh-Hant/ja — and
+// that is creative writing, not routing. Same reasoning as the site agent's
+// upgrade, but stronger: here the model's prose IS the product. (This also
+// retires claude-3-5-haiku-latest, which was pointing at a model retired in
+// Feb 2026 — a fallback that could never catch.)
 const MODEL_CANDIDATES = [
   process.env.XDIRECTOR_MODEL,
+  'claude-sonnet-5',
   'claude-haiku-4-5',
-  'claude-3-5-haiku-latest',
   'claude-sonnet-4-5',
 ].filter(Boolean) as string[]
 let workingModel: string | null = null
+
+// ── Storyboard validation ──────────────────────────────────────────────────
+// The scenes the model emits go straight to the user's board and back into
+// future prompts, so clamp everything: count, string lengths, duration.
+// Unknown fields are dropped, not passed through.
+const MAX_SCENES = 12
+export type StoryScene = {
+  id: string
+  title: string
+  script: string
+  shot: string
+  duration_s: number
+  model_id?: string
+  model_name?: string
+  recipe?: string
+  estimate?: number
+}
+function cleanScenes(raw: unknown): StoryScene[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  const s = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
+  const out: StoryScene[] = []
+  for (const [i, sc] of raw.slice(0, MAX_SCENES).entries()) {
+    if (!sc || typeof sc !== 'object') continue
+    const dur = Number((sc as any).duration_s)
+    out.push({
+      id:       s((sc as any).id, 24) || `s${i + 1}`,
+      title:    s((sc as any).title, 80),
+      script:   s((sc as any).script, 500),
+      shot:     s((sc as any).shot, 1200),
+      duration_s: Number.isFinite(dur) ? Math.min(Math.max(Math.round(dur), 2), 15) : 6,
+      ...(typeof (sc as any).model_id   === 'string' ? { model_id:   s((sc as any).model_id, 64) }    : {}),
+      ...(typeof (sc as any).model_name === 'string' ? { model_name: s((sc as any).model_name, 80) }  : {}),
+      ...(typeof (sc as any).recipe     === 'string' ? { recipe:     s((sc as any).recipe, 48) }      : {}),
+      ...(Number.isFinite(Number((sc as any).estimate)) ? { estimate: Number((sc as any).estimate) }  : {}),
+    })
+  }
+  return out.length > 0 ? out : null
+}
 
 const TOOLS: any[] = [
   {
@@ -83,8 +128,38 @@ const TOOLS: any[] = [
         use_attachments: { type: 'boolean', description: 'true to pass the user\'s attached photos as reference inputs' },
         medium:          { type: 'string', enum: ['image', 'video'], description: 'image for a still, video for motion. Must match the board you took model_id from.' },
         aspect_ratio:    { type: 'string', description: 'e.g. "9:16" for Threads/Reels, "1:1", "16:9". Always set this for social posts.' },
+        scene_id:        { type: 'string', description: 'when this generation IS one of the storyboard scenes, its scene id (e.g. "s2") — the result then fills that scene card on the board' },
       },
       required: ['model_id', 'recipe', 'prompt', 'medium'],
+    },
+  },
+  {
+    name: 'set_storyboard',
+    description: 'Put a scene-by-scene storyboard on the user\'s board — the FIRST move for every video request, before any generation. Each scene card shows your script and shot plan for the user to review and EDIT on the board; nothing generates and nothing is charged until they say so. Also use this to revise scenes after feedback: resend the full list, reusing the existing scene ids for scenes you keep (edited or not) and new ids only for new scenes. The user\'s own edits reach you in the CURRENT STORYBOARD context — treat their text as truth.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        scenes: {
+          type: 'array',
+          description: '1-8 scenes in play order',
+          items: {
+            type: 'object',
+            properties: {
+              id:         { type: 'string', description: 'stable id, "s1"..."s8"; REUSE ids from the current storyboard when revising' },
+              title:      { type: 'string', description: '2-4 words, e.g. "The Hook"' },
+              script:     { type: 'string', description: '1-2 sentences in the user\'s language: what this scene says/shows, written for the user to read and edit' },
+              shot:       { type: 'string', description: 'the full generation prompt paragraph for this scene — subject, camera, lighting, style — same craft rules as any prompt you write' },
+              duration_s: { type: 'number', description: 'seconds, 2-15' },
+              model_id:   { type: 'string', description: 'id from list_models for this scene' },
+              model_name: { type: 'string', description: 'display name of that model, shown on the card' },
+              recipe:     { type: 'string', description: 'mode string copied exactly from that model\'s modes' },
+              estimate:   { type: 'number', description: 'estimated $ for THIS scene at duration_s' },
+            },
+            required: ['id', 'title', 'script', 'shot', 'duration_s'],
+          },
+        },
+      },
+      required: ['scenes'],
     },
   },
 ]
@@ -175,7 +250,18 @@ async function callClaude(system: string, messages: any[], tools: any[] = TOOLS)
         'x-api-key':         key,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({ model, max_tokens: 1500, system, messages, tools }),
+      // max_tokens covers a full 8-scene storyboard (8 shot paragraphs of
+      // JSON); 1500 truncated one mid-object in testing. thinking is pinned
+      // off on the 4.6+ models: they run ADAPTIVE thinking when the field is
+      // omitted, and thinking spends from this same max_tokens budget — the
+      // storyboard would pay a reasoning tax and risk truncation for latency
+      // we don't want on a chat surface. Older fallbacks (haiku-4-5,
+      // sonnet-4-5) never think unless asked, and predate the field's
+      // "disabled" value, so they get no thinking field at all.
+      body: JSON.stringify({
+        model, max_tokens: 4000, system, messages, tools,
+        ...(/sonnet-5|opus-5|sonnet-4-6|opus-4-6|opus-4-7|opus-4-8/.test(model) ? { thinking: { type: 'disabled' } } : {}),
+      }),
     })
     if (res.ok) {
       workingModel = model
@@ -234,10 +320,24 @@ export async function POST(req: Request) {
     }
   }
 
+  // The user's current storyboard rides in with every request so the agent
+  // revises THEIR text, not its own last draft. Injected at the end of the
+  // system prompt: it changes every turn, and this route builds its prompt
+  // fresh each call anyway.
+  const clientBoard = cleanScenes(body?.storyboard)
+  if (clientBoard) {
+    system += '\n\n## CURRENT STORYBOARD (the user may have edited this — it is the truth)\n'
+      + JSON.stringify(clientBoard)
+  }
+
   // The loop. Every message appended here (assistant turns + server-side
   // tool results) is returned to the client, which owns conversation state.
+  // A set_storyboard call resolves inline — the board updates and the agent
+  // keeps talking in the same turn — and the validated scenes ride back to
+  // the client on whichever response ends the POST.
   const newMessages: any[] = []
   const convo = [...messages]
+  let storyboardOut: StoryScene[] | null = null
 
   try {
     for (let hop = 0; hop < 5; hop++) {
@@ -247,14 +347,29 @@ export async function POST(req: Request) {
       newMessages.push(assistantMsg)
 
       if (resp.stop_reason !== 'tool_use') {
-        return Response.json({ newMessages, action: null })
+        return Response.json({ newMessages, action: null, storyboard: storyboardOut })
       }
 
       const toolUses = (resp.content ?? []).filter((b: any) => b.type === 'tool_use')
       const results: any[] = []
       let action: any = null
       for (const tu of toolUses) {
-        if (tu.name === 'read_skill_file') {
+        if (tu.name === 'set_storyboard') {
+          const scenes = cleanScenes(tu.input?.scenes)
+          if (scenes) {
+            storyboardOut = scenes
+            results.push({
+              type: 'tool_result', tool_use_id: tu.id,
+              content: `Storyboard of ${scenes.length} scene(s) is now on the user's board for review. Do not generate anything until they ask.`,
+            })
+          } else {
+            results.push({
+              type: 'tool_result', tool_use_id: tu.id,
+              content: 'Invalid storyboard: scenes must be a non-empty array with id, title, script, shot and duration_s.',
+              is_error: true,
+            })
+          }
+        } else if (tu.name === 'read_skill_file') {
           const rel = typeof tu.input?.path === 'string' ? tu.input.path : ''
           const content = activeSkill ? await readSkillFile(activeSkill, rel) : null
           results.push({
@@ -285,7 +400,7 @@ export async function POST(req: Request) {
         // Any list_models results resolved in the same assistant turn ride
         // along; the client must include them (in order) in the tool_result
         // message it sends back, before the generation's own result.
-        return Response.json({ newMessages, action, pendingToolResults: results })
+        return Response.json({ newMessages, action, pendingToolResults: results, storyboard: storyboardOut })
       }
 
       const resultMsg = { role: 'user', content: results }
@@ -294,7 +409,7 @@ export async function POST(req: Request) {
     }
     // Loop cap hit — return what we have so the client isn't stranded.
     console.warn(`${LOG} hop cap reached for user ${user.id}`)
-    return Response.json({ newMessages, action: null })
+    return Response.json({ newMessages, action: null, storyboard: storyboardOut })
   } catch (err: any) {
     console.error(`${LOG} agent turn failed:`, err)
     return Response.json({ error: err?.message ?? 'Agent error' }, { status: 502 })
