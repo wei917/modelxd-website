@@ -1,6 +1,6 @@
 'use client'
-// app/leaderboard/page.tsx
-// Leaderboard — unified catalog + ranking. Every enabled model from
+// app/xboard/page.tsx
+// XBoard — unified catalog + ranking. Every enabled model from
 // ai_models is listed; XD scores from /api/xboard are merged in by
 // model id. Models with no votes show "—" for XD Score and sort to the
 // bottom regardless of direction.

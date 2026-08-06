@@ -29,7 +29,8 @@ model_ratings                    (mode, model) → quality_r, value_r, stickines
 1. **DB triggers** (`45_xdrating_pipeline.sql`) on `duels` and `xcreates`
    maintain the aggregates. Strategy: a row's whole contribution is one
    function; UPDATE = un-apply(OLD) + apply(NEW); DELETE = un-apply(OLD).
-   Exactly mirrors `/api/leaderboard`'s aggregation semantics:
+   Exactly mirrors the legacy `/api/leaderboard`'s aggregation semantics
+   (that route is now `/api/xboard`):
    - duel vote1 → quality signal, vote2 → value signal
    - tie ('T') or neither-of-pair-won → 0.5 wins each way
    - xcreate: chosen beats every other **distinct** model (ids deduped,
@@ -50,7 +51,7 @@ model_ratings                    (mode, model) → quality_r, value_r, stickines
 
 ## Read path
 
-`GET /api/leaderboard?mode=` now reads `model_ratings` joined with `ai_models`
+`GET /api/xboard?mode=` now reads `model_ratings` joined with `ai_models`
 (same response shape as before — XBoard unchanged). If the snapshot table is
 missing/empty it falls back to the legacy live computation
 (`computeLiveLeaderboard` in `lib/xdrating.ts`), so the site can't break on a

@@ -1,402 +1,439 @@
 # CLAUDE.md — ModelXD Project Guide
 
+> Last verified against the code on **2026-08-05** (branch `dev`).
+> Companion doc: `docs/STATE-2026-08-05.md` — a running snapshot of what
+> changed recently and what is still open. Read that second.
+
 ## What is ModelXD?
 
-ModelXD (modelxd.com) is an AI model comparison platform. Users run "duels" between AI models — they enter a prompt, two random models respond blindly, the user votes on which is better, then prices and model identities are revealed. The core thesis: you're probably overpaying for AI, and ModelXD proves it with community-validated blind tests.
+ModelXD (modelxd.com) is an AI model comparison platform. The core thesis:
+**you're probably overpaying for AI**, and you can only discover that if the
+price is hidden while you judge. Users run blind comparisons, vote on quality
+*before* seeing cost, then vote again knowing cost. Those votes feed a public
+rating system (XDRating) surfaced on XBoard.
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 App Router (React 18)
-- **Hosting**: Vercel
-- **Database + Auth**: Supabase (PostgreSQL + Google OAuth)
-- **AI Providers**: OpenAI API, Google Gemini API, Alibaba DashScope API
-- **Styling**: CSS variables in `app/globals.css`, inline styles. Light theme only (no dark mode).
-- **Fonts**: Barlow (body/UI), Barlow Condensed (display headings), JetBrains Mono (code/scores). CSS vars: `--font-body`, `--font-display`, `--font-mono`
+- **Framework**: Next.js 16 App Router (React 18)
+  - The Edge network gate is `proxy.ts` at the repo root — Next 16 renamed
+    `middleware.ts` to `proxy.ts`. Same behavior, canonical name.
+- **Hosting**: Vercel (2 cron jobs in `vercel.json`)
+- **Database + Auth**: Supabase (PostgreSQL + Google OAuth + anonymous sessions)
+- **Payments**: Stripe (credit top-ups)
+- **AI Providers**: 7 direct integrations — OpenAI, Google, Alibaba DashScope,
+  xAI, Anthropic, Runway, Moonshot
+- **Styling**: CSS variables in `app/globals.css`, inline styles.
+  **Light theme only** — see "Styling" for the dead-code caveat.
+- **Fonts**: Barlow (body + display), JetBrains Mono (code/scores),
+  Archivo Black (logo), Noto Sans TC (Chinese). CSS vars: `--font-body`,
+  `--font-display`, `--font-mono`, `--font-logo`, `--font-zh`
+- **i18n**: 5 languages via `lib/i18n.tsx` (en / zh-Hant / zh-Hans / ja / ko).
+  Target markets are Taiwan and Japan. The product is **desktop-first**.
 
 ## Environments
 
 - **Production**: `www.modelxd.com` (main branch)
-- **Preview**: `dev.modelxd.com` (dev branch)
-- Vercel deployment protection is on for dev — use production URL for testing endpoints directly, or access dev through Vercel dashboard.
+- **Beta**: `dev.modelxd.com` (dev branch) — wears a BETA sticker in the Nav
+  with an exit link to the official site. Detected by hostname at runtime
+  (`h.startsWith('dev.') || localhost`), not env vars, because SSR must render
+  identical markup on every host.
+- **Both environments share ONE Supabase project.** A migration applied for
+  dev is immediately live for production. Additive columns are safe;
+  destructive ones are not.
+- Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  Latest applied: `70_model_feature_blocks.sql`.
+
+## The Surfaces
+
+Five items in the left nav, plus one mode that lives inside another surface.
+
+| Surface | Route | Auth | Notes |
+|---|---|---|---|
+| **XDuel** | `/xduel` | required | Free front door. Daily quota per mode. |
+| **XCreate** | `/xcreate` | required | Paid studio, up to 4 models. |
+| **XTalk** | `/xtalk` | required | Beta — hidden unless `FEATURE_XTALK_EMAILS`. |
+| **XVote** | `/xvote` | required | Judge other people's duels. |
+| **XBoard** | `/xboard` | public | The leaderboard. |
+| **XDirector** | `/xcreate?agent=1` | required | Agent mode *inside* XCreate. |
+
+### XDuel — `/xduel`
+One prompt, two anonymous models, 5-step flow: run → vote blind → reveal
+price → vote again → unmask identities and show savings. Free within a daily
+per-mode quota (`lib/duel-quota.ts`). Text / image / video.
+**No web search here by design** — it's meant to be a clean like-for-like test.
+
+### XCreate — `/xcreate`
+The paid studio. Up to 4 models side by side on the same prompt, plus recipes
+(`image_to_video`, `reference_frames`, `start_end_frames`, `video_edit`).
+Per-seat thinking level and web search toggle. Spends real credits.
+
+Server shell (`page.tsx`) resolves feature flags before the client renders, so
+gated entrances are correct on first paint and never flash for a user who
+isn't entitled. All the actual UI is in `client.tsx`.
+
+**The canvas board** (`WorkflowCanvas.tsx`, gated by `FEATURE_CANVAS_EMAILS`)
+is a ComfyUI-style node editor: source photos, generated angles, resulting
+videos, wired together. Multi-select nodes to feed several images into one
+generation — that's how a product-video pipeline gets built. Toggle between
+`strip` and `canvas` views.
+
+### XDirector — agent mode inside XCreate
+**Not a destination.** `/xdirector` exists only to redirect `?c=` conversation
+permalinks to `/xcreate?agent=1`. A director you talk to: describe what you
+want, it picks a model, writes the prompt, generates. Every run bills and lands
+in history like a normal generation.
+
+**The Studio ⇄ Agent toggle is GONE** (Aug 5). The site agent is the way in
+now — ask on the landing page or in the omnibox and it routes you here with
+`?agent=1&q=<request>` and your request prefilled. A toggle would only ask the
+user to know, in advance, which of two surfaces their idea belongs to — which
+is the question the agent exists to answer for them. The **mode** is unchanged:
+`?agent=1` and `?c=` permalinks still resolve.
+
+### XTalk — `/xtalk`
+Multi-model rooms. Two templates:
+- **Discussion** — 2–8 models on a topic. Speaking order is in-order,
+  auto-bid, or manual pick. Per-seat character. Bid mode runs a speaking-credit
+  economy (`WALLET_START=6 / REGEN=2 / CAP=8`).
+- **Werewolf** — fixed 7-player board (2 wolves, 1 seer, 1 doctor, 3
+  villagers). Server-held state. Games get a permanent URL and appear in nav
+  history.
+
+### XVote — `/xvote`
+Judge archived duels. Feeds the same ratings.
+
+### XBoard — `/xboard`
+Models ranked by XD Score. Filter by mode and sub-type. Separate pools exist
+for search-enabled runs and for Werewolf.
+
+## The Site Agent
+
+`/api/agent/ask` + `content/site-guide.md`. Answers questions about the SITE —
+what it is, where a feature lives, what it costs — and returns an optional
+route so the UI can offer to take you there.
+
+- **Claude Haiku**, no tools, never generates, never bills the user.
+  **The owner pays** (no `debitCredits` call), using `ANTHROPIC_API_KEY`.
+- `content/site-guide.md` is its **only** knowledge of the product, read from
+  disk per request (60s cache) so a product change ships by editing markdown
+  rather than redeploying a prompt. **A stale line there becomes a confident
+  wrong answer — update it when features move.**
+- `route` is validated against a hardcoded allow-list (`ROUTES` in the route
+  file), so a hallucinated path can never become a dead link in the UI.
+- Answers in the reader's chosen site language, regardless of the question's
+  language.
+- Public + unauthenticated by necessity → in-memory rate limit (12/min/IP).
+  **This is a floor, not a wall** — per serverless instance. Move to a shared
+  store before real traffic.
+
+Two front ends, one API:
+- **`LandingAgent.tsx`** — the big dialog in the middle of the landing page.
+  Fixed-height panel *above* the input so answering never reflows the page
+  under a reader. The intro is the agent's real first turn, not a placeholder.
+  Multi-turn, persisted in `sessionStorage` (per-tab, so Back returns you to
+  your thread but a 3-day-old conversation doesn't reappear), with a
+  Start-over button.
+- **`Omnibox.tsx`** — ⌘K palette + sticky bar on app surfaces only (route
+  allow-list; NOT on landing/marketing pages). Searches pages, models, your
+  generations, your XTalk rooms. Never guesses search-vs-ask: the agent is an
+  explicit pinned last row, so an ambiguous keystroke cannot spend money.
 
 ## Project Structure
 
 ```
 app/
-├── page.tsx                    # Landing page (marketing)
-├── layout.tsx                  # Root layout (fonts, AuthModalProvider)
+├── page.tsx                    # Landing page (marketing + LandingAgent)
+├── layout.tsx                  # Root layout: fonts, LangProvider,
+│                               #   AuthModalProvider, PageTitleProvider,
+│                               #   Nav, Omnibox, GlobalCursor
 ├── globals.css                 # ALL styles — CSS variables, components
 ├── components/
-│   ├── Nav.tsx                 # Top nav bar — auth-gated links, login button
+│   ├── Nav.tsx                 # Left sidebar: links, XCreate/XTalk history,
+│   │                           #   auth, beta sticker, mobile overlay
+│   ├── Omnibox.tsx             # ⌘K palette + sticky search bar
+│   ├── LandingAgent.tsx        # Landing-page agent dialog
+│   ├── XDirectorChat.tsx       # Agent-mode chat surface
+│   ├── WorkflowCanvas.tsx      # Node-graph board editor (canvas beta)
+│   ├── ModelPickerDialog.tsx   # Model picker (takes feature= for blocks)
+│   ├── TemplatePicker.tsx      # XTalk / XCreate template chooser
+│   ├── LabeledSlotsPicker.tsx  # Recipe input slots
 │   ├── AuthModal.tsx           # Fullscreen login overlay (Google OAuth)
-│   └── AttachmentButton.tsx    # File upload for prompts
-├── xduel/page.tsx              # XDuel — the core 5-step blind comparison flow
-├── xvote/page.tsx              # XVote — vote on archived duels
-├── xcreate/page.tsx            # XCreate — multi-model prompt runner (text/image/video)
-├── leaderboard/page.tsx        # Unified Leaderboard — catalog + XD rankings
-├── feed/page.tsx               # Public duel feed
-├── profile/page.tsx            # User profile + duel history
-├── profile/[userId]/page.tsx   # Public profile view
-├── xduel/[id]/page.tsx         # Individual duel permalink
-├── duel/[id]/page.tsx          # 308 redirect to /xduel/[id] (legacy)
-├── vote/page.tsx               # 308 redirect to /xvote (legacy)
-├── models/page.tsx             # Redirect to /leaderboard (legacy URL)
-├── methodology/page.tsx        # How XD scoring works
-├── auth/callback/route.ts      # OAuth callback — exchanges code, reads auth_redirect cookie
-├── login/                      # Login page (legacy, AuthModal is primary)
-├── admin/models/               # Admin-only catalog editor — table + form for ai_models
+│   ├── AttachmentButton.tsx    # File upload for prompts
+│   ├── GlobalCursor.tsx        # Default custom cursor for every page
+│   └── ProviderLogo.tsx / ModeIcon.tsx / MatchResult.tsx
+├── xduel/page.tsx              # XDuel 5-step flow
+├── xduel/[id]/page.tsx         # Duel permalink
+├── xcreate/page.tsx            # Server shell — resolves feature flags
+├── xcreate/client.tsx          # The whole studio UI (large)
+├── xcreate/templates.ts        # XCREATE_TEMPLATES
+├── xtalk/page.tsx              # Room setup (Discussion / Werewolf)
+├── xtalk/[id]/page.tsx         # Werewolf game permalink
+├── xvote/page.tsx              # Community voting
+├── xboard/page.tsx             # Leaderboard
+├── xdirector/page.tsx          # Redirect-only → /xcreate?agent=1
+├── profile/page.tsx            # Balance, activity ledger, history
+├── admin/models/               # Admin catalog editor
+├── methodology/page.tsx        # How XDRating works
+├── coming-soon/page.tsx        # SITE_PASSWORD gate form
+├── terms/ privacy/ feed/ login/ auth/
+├── models/  vote/  duel/[id]/  # Legacy redirects (see below)
 └── api/
-    ├── xduel/route.ts          # POST — runs XDuel (picks random models, streams SSE)
-    ├── xduel/vote/route.ts     # POST — saves vote1/vote2 to DB
-    ├── xduel/quota/route.ts    # GET — today's per-mode XDuel quotas + usage
-    ├── xduel/community-vote/route.ts  # POST — community vote (from /xvote)
-    ├── leaderboard/route.ts    # GET — Bradley-Terry MLE ratings from duel/xcreate votes
-    ├── xcreate/route.ts        # POST — single-shot multi-model generation
-    ├── xcreate/chat/route.ts   # POST — chat continuation (SSE streaming)
-    ├── admin/models/route.ts          # POST — admin upsert ai_models row
-    ├── admin/models/[id]/route.ts     # DELETE — admin delete ai_models row
-    └── dev/grant-credits/route.ts     # Dev-only: top up a user's credit balance
+    ├── agent/ask/              # Site agent (Claude Haiku)
+    ├── xduel/{route,vote,quota,community-vote}
+    ├── xcreate/{route,chat,node,inputs,source,job/[id],jobs/active}
+    ├── xdirector/{route,conversation}
+    ├── xtalk/{route,game,werewolf}
+    ├── xboard/{route,werewolf}
+    ├── xdrating/refit/         # Rating refit (cron every 5 min)
+    ├── credits/ensure-daily/   # Locale/last-seen logging (see Credits)
+    ├── stripe/{checkout,webhook}
+    ├── features/               # Client-visible beta flags
+    ├── skills/                 # Agent Skills listing
+    ├── snapshot/  site-auth/
+    ├── profile/{delete,delete-account,xcreates}
+    ├── admin/{models,models/[id],test-model}
+    ├── cron/sweep-orphans/     # Daily orphan cleanup
+    └── dev/grant-credits/
 
 lib/
-├── admin.ts                    # getAdminUser() / assertAdmin() — email allowlist
-├── models.ts                   # DB queries: getModelsByMode (uses output_modalities)
-├── providers/
-│   ├── types.ts                # ModelInfo, TextResult, ImageResult, VideoResult interfaces
-│   ├── pricing.ts              # calcTextCost / calcImageCost / calcVideoCost / headlinePrice
-│   ├── index.ts                # Provider router: dispatches to correct provider
-│   ├── openai.ts               # OpenAI: text (Responses API streaming), image
-│   ├── google.ts               # Google: text (generateContentStream), image
-│   ├── alibaba.ts              # Alibaba DashScope: text, image, video
-│   └── log.ts                  # Logging helper (strips binary data)
-├── supabase-client.ts          # Browser Supabase client
-├── supabase-server.ts          # Server Supabase client
-├── AuthModalContext.tsx         # React context for auth modal (show/hide with nextPath)
-├── useRequireAuth.ts           # Hook: shows auth modal if not logged in
-└── attachment.ts               # Process uploaded files for AI providers
+├── providers/                  # 7 providers + router, pricing, call-log
+├── xdrating.ts                 # Bradley-Terry rating pipeline
+├── credits.ts                  # Wallet: grant/debit RPCs (server-only)
+├── stripe.ts                   # Checkout + webhook helpers
+├── features.ts                 # Per-user beta gating (email allowlist)
+├── model-features.ts           # Per-surface model blocks (DB-driven)
+├── admin.ts                    # getAdminUser() / assertAdmin()
+├── models.ts                   # getModelsByMode (queries output_modalities)
+├── skills.ts                   # Agent Skills loader (open spec)
+├── i18n.tsx                    # 5-language string table + LangProvider
+├── werewolf-engine.ts          # Game rules/state machine
+├── werewolf-lang.ts            # Werewolf per-language strings
+├── xdirector-prompt.ts         # Director system prompt
+├── site-token.ts               # HMAC cookie for SITE_PASSWORD gate
+├── duel-quota.ts               # Daily per-mode XDuel quotas
+├── xcreate-discount.ts         # Pricing discount logic
+├── pdf-extract.ts              # Server-side PDF text extraction
+├── provider-errors.ts          # Provider error → user message mapping
+├── attachment.ts  matchScore.ts  ime.ts
+├── supabase-client.ts / supabase-server.ts
+├── AuthModalContext.tsx  PageTitleContext.tsx  useRequireAuth.ts
+└── ThemeContext.tsx            # DEAD CODE — not mounted anywhere
 
-scripts/
-├── survey-models.ts            # Read-only DB survey: per-row flags for cleanup
-├── survey-columns.ts           # Read-only DB survey: per-column null/empty/distinct counts
-└── migrate-storage-paths.ts    # One-off storage-bucket reorg helper
-
-supabase/
-├── 01_models.sql               # SCHEMA ONLY — modality columns. No INSERTs.
-│                               # Models are managed via /admin/models.
-├── 02_duels.sql                # duels table
-├── 03_xcreates.sql             # xcreates table
-├── 04_attachments.sql          # attachments table
-├── 05_profiles.sql             # profiles + activity_logs tables
-├── 23_provider_calls.sql       # provider_calls table (telemetry for every AI call)
-├── 24..27_*.sql                # ai_models schema evolution: drop redundant cols,
-│                               # consolidate pricing jsonbs, rename name→display_name
-├── functions/log-provider-call # Supabase Edge Function — writes provider_calls rows
-└── storage.sql                 # Storage buckets (xduel-ai-images, xduel-ai-videos, etc.)
+content/site-guide.md           # The site agent's entire product knowledge
+proxy.ts                        # Edge gate (was middleware.ts pre-Next 16)
+vercel.json                     # Cron schedules
+docs/                           # Schema, API guides, state snapshots
+scripts/                        # Read-only surveys + one-off helpers
+supabase/                       # Numbered SQL migrations (01 → 70)
 ```
 
-## Key Flows
+### Legacy redirects
+- `/models` → `/xboard`
+- `/vote` → `/xvote`
+- `/duel/<id>` → `/xduel/<id>`
+- `/xdirector` → `/xcreate?agent=1` (preserves `?c=`)
 
-### XDuel Flow (app/xduel/page.tsx + app/api/duel/route.ts)
-1. User enters prompt, picks mode (text/image/video), picks model count (2-4)
-2. API picks N random models from `ai_models` where `output_modalities` contains the mode
-3. Models run in parallel, streaming results via SSE
-4. **Step 2 (Vote)**: User votes blind (doesn't know which model is which)
-5. **Step 3 (Reveal Price)**: Prices shown on each card — green for cheapest, red for expensive
-6. **Step 4 (Vote Again)**: User votes again knowing the prices
-7. **Step 5 (Reveal)**: Model identities unmasked, savings calculated
+## Providers
 
-### Auth Flow
-- Protected pages (XDuel, Vote, Create) require login
-- Nav links for protected pages show auth modal when clicked by logged-out users
-- Landing page "Start XDuel" button checks auth, shows modal if needed
-- Auth modal triggers Google OAuth → callback reads `auth_redirect` cookie → redirects to intended page
-- Cookie-based redirect because Supabase OAuth strips query params from redirectTo
+Seven, all direct (`lib/providers/index.ts` routes on `model.provider`):
 
-## Database: ai_models Table
+| Provider | File | Notes |
+|---|---|---|
+| `openai` | `openai.ts` | Responses API (streaming) for ALL text. Images API. Videos API (polling). |
+| `google` | `google.ts` | `generateContentStream` from `@google/genai`. Image via `responseModalities`. |
+| `alibaba` | `alibaba.ts` | DashScope. Text via `/compatible-mode/v1`, native API for image/video. |
+| `xai` | `xai.ts` | Grok models. |
+| `anthropic` | `anthropic.ts` | Messages API. Also powers the site agent + XDirector. |
+| `runway` | `runway.ts` | Video generation. |
+| `moonshot` | `moonshot.ts` | Kimi models. |
+
+### Native PDF handling
+`PROVIDERS_WITH_NATIVE_PDF = {openai, google}`. A model takes the native path
+only when it *also* declares `pdf_to_text` in its `modes`. Everything else
+falls back to server-side extraction (`lib/pdf-extract.ts`), so **every** text
+model handles PDFs — native is purely a fidelity upgrade. A PDF whose
+estimated tokens exceed the provider's context window fails fast with a clear
+message instead of a wasted upstream 400.
+
+### OpenAI notes
+- Text uses the **Responses API** (`/v1/responses`) with streaming, NOT Chat
+  Completions. Some models only work with Responses.
+- Stream events: `response.output_text.delta`, `response.completed`.
+
+### Google notes
+- `-preview` model IDs may change; check Google's deprecation page.
+- Some Flash-Lite models don't support streaming.
+
+### Alibaba / DashScope notes
+- Region: International (Singapore), `https://dashscope-intl.aliyuncs.com`
+- **Full API guide: `docs/DASHSCOPE-API-GUIDE.md`**
+- Image size format uses an asterisk: `1024*1024` (not `1024x1024`)
+- Image responses contain a temporary URL (expires 24h) — download immediately
+- Video is an async task pattern (create → poll) with `X-DashScope-Async: enable`
+
+## Database: ai_models
+
+Hand-curated. **The table is the single source of truth** — no sync scripts,
+no cron, no scraping. See `docs/ai_models-schema.md` for the canonical column
+list and jsonb shapes.
 
 Key columns:
-- `provider`: 'openai' | 'google' | 'alibaba' (xAI and OpenRouter removed — all models are direct-provider now)
-- `released_at`: timestamp — when the model was released. Hand-entered through `/admin/models`.
-- `model_name`: exact API string (e.g., 'gpt-5.4', 'gemini-3.1-pro-preview')
-- `name`: display name
-- `input_modalities`: what the model accepts ['text', 'image', 'video']
-- `output_modalities`: what the model generates ['text'] | ['image'] | ['video']
-- `input_price` / `output_price`: per 1M tokens (for text models)
-- `cached_input_price`: per 1M cached input tokens (OpenAI/Google)
-- `image_pricing`: jsonb `{ rates: {...} }` — per-quality prices (e.g. `{"medium": 0.034}`)
-- `video_pricing`: jsonb `{ rates: {...} }` — per-resolution per-second rates (e.g. `{"720p": 0.10}`)
-- `modes`: text[] — input-shape patterns this model supports (set, not single). e.g. `['text_to_video', 'image_to_video', 'video_to_video', 'start_end_frames']` for Veo 3. The XCreate UI shows a mode picker from this set; the user's choice determines slot rendering.
-- `input_config`: jsonb — per-modality count override + capability flags (only when `mode` doesn't fully imply them). Optional.
-- `output_config`: jsonb — per-modality output options (sizes, aspect ratios, durations, capability flags). Optional.
-- `tags`: small free-form set ('vision', 'reasoning', etc.)
-- `is_popular`: powers the POPULAR badge
-- `enabled`: only enabled models are picked for duels
+- `provider` — one of the seven above
+- `model_name` — exact API string; unique together with `provider`
+- `display_name`, `nickname`
+- `input_modalities` / `output_modalities` — `['text'|'image'|'video']`
+- `input_price` / `output_price` / `cached_input_price` — per 1M tokens
+- `image_pricing` / `video_pricing` — jsonb `{ rates: {...} }`
+- `modes` — text[] of input-shape patterns (`text_to_video`, `image_to_video`,
+  `start_end_frames`, `pdf_to_text`, …). A **set**, not a single value.
+- `input_config` / `output_config` — jsonb per-modality options
+- `blocked_features` — text[] of surfaces this model must NOT be offered for
+- `released_at`, `tags`, `is_popular`, `enabled`
 
-**IMPORTANT**: `getModelsByMode()` queries `output_modalities` to pick models for duels. A model with `input_modalities: ['text','image']` and `output_modalities: ['text']` is a text model that can see images — NOT an image generator.
+**IMPORTANT**: `getModelsByMode()` queries `output_modalities`. A model with
+`input_modalities: ['text','image']` and `output_modalities: ['text']` is a
+text model that can *see* images — NOT an image generator.
 
-**Schema reference**: see `docs/ai_models-schema.md` for the canonical column list, jsonb shapes, and example rows.
+### Per-feature model availability
 
-**Population**: rows are managed by hand through the admin UI at **`/admin/models`**. There are no automated sync scripts in the repo — the previous Playwright-scraping + API-discovery infrastructure was removed in May 2026 in favor of hand-curation. See the "Admin" section below.
+`ai_models.blocked_features` + `lib/model-features.ts`. Keys in use:
+`xtalk_werewolf`, `xtalk_discussion`, `xduel`, `xcreate`.
 
-## OpenAI Provider Notes
+Enforced in three places so a stale tab cannot slip past: the picker
+(`ModelPickerDialog` takes `feature=`), the surface's own model list
+(`allowedFor(models, FEATURE.x)`), and the API. **Werewolf's create route
+REFUSES rather than filtering** — silently seating 6 at a 7-seat table deals
+the wrong board.
 
-- **Text**: Uses Responses API (`/v1/responses`) with streaming for ALL models. NOT Chat Completions.
-- Stream events: `response.output_text.delta` for text chunks, `response.completed` for usage/tokens
-- Some models like `gpt-5.4-pro` ONLY work with Responses API (not Chat Completions)
-- **Image**: Uses Images API (`images.generate` / `images.edit`). Quality hardcoded to 'medium'.
-- **Video**: Uses Videos API (polling-based). Sora 2 models deprecated Sep 2026.
-- **Catalog management**: rows in `ai_models` are managed manually via `/admin/models`.
+Current rule: **Kimi K3 is blocked from Werewolf** (~26 tok/s with a large
+default reasoning budget, measured 75s+/turn against the 90s ceiling; its
+timeouts were changing who got lynched). Still available everywhere else.
 
-## Google Provider Notes
-
-- **Text**: Uses `generateContentStream` from `@google/genai` SDK
-- **Image**: Uses `generateContent` with `responseModalities: ['IMAGE', 'TEXT']`
-- `gemini-3-pro-image-preview` and `gemini-3.1-flash-image-preview` are the image models
-- Models ending in `-preview` may change. Check Google's deprecation page.
-- `gemini-2.5-flash-lite` does NOT support streaming — only basic text output
-- **Catalog management**: rows in `ai_models` are managed manually via `/admin/models`.
-
-## Styling
-
-- Light theme only. CSS variables defined in `:root` of `globals.css`.
-- Key variables: `--bg`, `--surface`, `--surface2`, `--border`, `--border2`, `--white`, `--muted`, `--muted2`, `--red`, `--green`
-- Nav: solid white `#ffffff` background
-- **DO NOT** use hardcoded dark colors (`#080808`, `#0d0d0d`, `#1a1a1a`, etc.) — always use CSS variables
-- No noise overlay, no scanlines, no decorative hero lines
-
-## Common Pitfalls
-
-1. **Image duel shows broken image**: If delta event has `isImage: true` but no `text`, don't render `<img src="">`. Show loading state instead.
-2. **Supabase `getPublicUrl` returns undefined**: Use `data?.publicUrl` with fallback URL construction.
-3. **OAuth redirect goes to wrong domain**: `redirectTo` must be clean (no query params). Use `auth_redirect` cookie for post-login destination.
-4. **Model picked for wrong mode**: Check `output_modalities`, not `modes` or `tags`. "Vision" = can see images, not generate them.
-5. **Scientific notation in prices**: Always use `toFixed()`, never `toExponential()`. Prices per 1M tokens.
-6. **Supabase OAuth strips query params**: Known limitation. Cookie-based redirect is the workaround.
-7. **New model not surfacing**: rows in `ai_models` are managed by hand at `/admin/models`. Add the new model there. The table is the single source of truth — no sync scripts, no cron, no scraping.
-
-## Alibaba / DashScope Provider Notes
-
-- **Region:** International (Singapore). Base URL: `https://dashscope-intl.aliyuncs.com`
-- **Full API guide:** `docs/DASHSCOPE-API-GUIDE.md`
-- **Text**: Direct via `/compatible-mode/v1/chat/completions` (OpenAI-compatible, streaming). Models: `qwen3-max`, `qwen3.5-plus`, `qwen-plus`, `qwen3.5-flash`, `qwen-flash`
-- **Image**: DashScope native API. Endpoint: `POST /api/v1/services/aigc/multimodal-generation/generation`
-- Size format uses asterisk: `1024*1024` (not `1024x1024`)
-- Response contains a temporary URL (expires 24hrs) — download immediately
-- Image models: `qwen-image-2.0-pro`, `qwen-image-2.0`, `qwen-image-max`, `qwen-image-plus`, `wan2.6-image`, `wan2.7-image-pro`
-- **Video**: Async task pattern (create → poll). Endpoint: `POST /api/v1/services/aigc/video-generation/video-synthesis` with `X-DashScope-Async: enable`
-- T2V models: `wan2.6-t2v`, `wan2.6-t2v-turbo`, `happyhorse-1.0-t2v`
-- I2V models: `wan2.7-i2v`, `wan2.6-i2v`, `wan2.6-i2v-flash`, `happyhorse-1.0-i2v`
-- Other: `wan2.2-kf2v-flash` (keyframe), `wan2.2-s2v` (speech/lip-sync), `wan2.6-vace` (video edit)
-- **HappyHorse 1.0**: Alibaba's top-ranked video model. 15B params, native 1080p, 3-15s, joint video+audio. Pricing: $0.14/sec (720p), $0.24/sec (1080p)
-- Catalog management: rows in `ai_models` are managed manually via `/admin/models`.
-
-## Admin
-
-There's a hidden admin catalog editor at **`/admin/models`** for hand-curating
-the `ai_models` table — no cron, no API discovery, no scraping. The
-deliberate end-state for keeping the table fresh.
-
-### Auth
-
-Email allowlist on top of the existing Supabase Google OAuth login. Anyone
-signed in whose email matches `ADMIN_EMAILS` (comma-separated env var)
-gets through; anyone else is redirected to `/`.
-
+Blocking a model is a **data change, not a deploy**:
+```sql
+update ai_models set blocked_features = blocked_features || '{xtalk_discussion}'
+ where model_name = 'some-model';
 ```
-ADMIN_EMAILS=wei917@gmail.com
-```
+NOTE: Discussion's picker does not yet pass a `feature` key — an
+`xtalk_discussion` block wouldn't be enforced until that one line is wired.
 
-The check lives in `lib/admin.ts` (`getAdminUser()` for server components,
-`assertAdmin()` for API routes). Both API routes (`POST /api/admin/models`
-and `DELETE /api/admin/models/[id]`) call `assertAdmin()` first; never
-trust client-side flags for admin gating.
+## XDRating (rating pipeline)
 
-### UI
+`lib/xdrating.ts` + `docs/xdrating-pipeline.md`. Bradley-Terry MLE,
+`BASE_RATING = 1000`, `PRIOR_MATCHES = 2`, 50 iterations,
+`rating = 1000 + 400·log10(strength)`.
 
-Single-file client component (`app/admin/models/AdminModelsClient.tsx`):
+**XD Score** = `quality × 0.4 + value × 0.4 + stickiness × 0.2`, where
+stickiness is mapped `600 + rate × 800`. Quality = blind vote (vote1),
+Value = price-aware vote (vote2), Stickiness = retention rate.
 
-- Filterable table of every row in `ai_models` (provider tab + search).
-- Inline enabled toggle per row (one click).
-- Edit / Delete buttons per row.
-- "+ Add model" opens the same form in create mode.
-- Form auto-shows the right pricing section based on the
-  `output_modalities` checkboxes — text models show input/output rate
-  inputs, image models show low/medium/high quality rates + sizes
-  textarea, video models show 720p/1080p/4k rates + sizes + durations.
-- All saves go through `POST /api/admin/models` which upserts via
-  `(provider, model_name)` and returns the canonical row, which the
-  client merges into local state.
+Pools partition `model_ratings` / `model_pairwise_wins` / `model_vote_stats`
+by mode:
+- `MODES = text | image | video`, plus aggregate `all`
+- `SEARCH_MODES = text_search` — search-on runs only (mixed-search runs
+  contribute to neither pool)
+- `GAME_MODES = werewolf` — quality-only (no value/stickiness), team outcome
+  decomposed into winner×loser pairwise events. **Excluded from `all`** —
+  social deduction is not the skill the duels measure.
 
-### Workflow
+Data flow: votes → DB triggers → aggregate tables → `/api/xdrating/refit`
+(cron every 5 min) → `model_ratings` snapshot → `/api/xboard` thin indexed
+read. If the snapshot is empty or the table doesn't exist, `/api/xboard` falls
+back to a full-scan live computation so XBoard never blanks.
 
-Edit a row in the form → Save → it's live. No deploy, no commit, no
-script. The `model_name` field is the unique key together with
-`provider`; the form locks it on edit so you don't accidentally rename
-into a different row's identity.
+## Credits & Payments
 
-If you want a backup copy of the catalog (e.g. before a big edit pass),
-run `npx tsx scripts/survey-models.ts` and save the output, or query the
-table directly.
+Wallet system in `supabase/11_credits.sql`, typed helpers in `lib/credits.ts`
+(**server-only** — uses the service-role key to call `grant_credits` /
+`debit_credits` RPCs). Client code reads `user_credits` /
+`credit_transactions` directly via the browser client; owner-read RLS
+guarantees users only see their own rows.
 
-## Environment Variables
+- **Welcome credit: $10** for new verified Google signups, written from the
+  `handle_new_user` trigger (`68_welcome_credit.sql`). Anonymous sessions get
+  $0. **Not backfilled** — only accounts created after the migration.
+- **The daily $1 grant was removed** (July 20). Free XDuels are the free tier.
+  `/api/credits/ensure-daily` survives for locale/last-seen analytics only —
+  it upserts the user's language and Vercel geo country onto `profiles`.
+- Top-ups via Stripe (`/api/stripe/checkout` + `/api/stripe/webhook`).
+- The Profile activity ledger groups charges **by session** — a whole Werewolf
+  game, or a generation plus its follow-ups, is one expandable row.
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
-SUPABASE_SECRET_KEY=sb_secret_xxx
-OPENAI_API_KEY=sk-xxx
-GOOGLE_AI_API_KEY=xxx
-DASHSCOPE_API_KEY=sk-xxx              # Alibaba DashScope — image/video generation
-DASHSCOPE_BASE_URL=                   # Optional; defaults to https://dashscope-intl.aliyuncs.com
+## Feature Gating
 
-ADMIN_EMAILS=wei917@gmail.com         # Comma-separated allowlist for /admin/models access
-```
+Three independent systems — don't confuse them.
 
-## Dev Commands
+**1. Per-user beta gates** (`lib/features.ts`) — email allowlists in env vars:
+`FEATURE_CANVAS_EMAILS`, `FEATURE_XDIRECTOR_EMAILS`, `FEATURE_XTALK_EMAILS`.
+Anyone on `ADMIN_EMAILS` passes every gate (so you can't lock yourself out); a
+single `*` opens the feature to everyone, which is how a beta ends without a
+code change. Adding a tester needs a redeploy — if that becomes annoying, swap
+`getFeatures()` for a `profiles` column read.
 
-```bash
-npm install
-npm run dev              # Local dev server on :3000
-npm run build            # Production build
-npx tsc --noEmit         # Type check (run before packaging)
-```
+> **Hiding a button is not access control.** Every gated API route calls
+> `assertFeature()` itself. The client flags from `/api/features` exist only so
+> the UI doesn't advertise something the server will refuse. Gated *pages*
+> `notFound()` rather than 403 so the page's existence isn't advertised.
 
-## Catalog Management
+**2. Per-surface model blocks** (`lib/model-features.ts`) — see the ai_models
+section above. Data-driven, no deploy.
 
-The `ai_models` table is hand-curated through the **`/admin/models`** UI.
-There are no automated sync scripts — the previous Playwright-scraping
-+ API-discovery infrastructure (`lib/sync-{openai,google,dashscope}.ts`,
-the matching CLI wrappers in `scripts/`, and the `app/api/cron/sync-models`
-Vercel cron) was removed in May 2026 in favor of hand-curation. Reasons:
+**3. Whole-site password gate** (`proxy.ts` + `lib/site-token.ts`) — if
+`SITE_PASSWORD` is set, `modelxd.com` / `www.modelxd.com` require an HMAC
+cookie or get redirected to `/coming-soon`. localhost, `dev.modelxd.com`, and
+Vercel preview URLs always pass through. Unset = gate disabled (the default
+locally). The cookie never contains the password; the password *is* the HMAC
+secret, so rotating it invalidates every cookie — which is correct.
 
-- **Pricing is small data, slow to change.** The full surfaced catalog is
-  ~50–60 rows across four providers, updated maybe a handful of times
-  per quarter. Manual entry is faster than maintaining scrapers.
-- **No major provider exposes a pricing API.** OpenAI, Google, and
-  Alibaba all publish prices as docs pages. Scrapers break when those
-  pages restructure, and silent breakage produced wrong prices on the
-  leaderboard.
-- **Hand-tuning matters.** Decisions like "which qwen variants to
-  surface" or "what to label the start vs end frame slot for kf2v" are
-  judgment calls a scraper can't make.
+## Agent Skills
 
-Workflow: open `/admin/models`, edit a row, save. Done. No deploy, no
-script. See the "Admin" section for the auth/UI details.
+`lib/skills.ts` reads the **open** Agent Skills format
+(agentskills.io/specification) — a directory containing `SKILL.md` with YAML
+frontmatter — rather than a bespoke format, so a director skill authored in
+Claude Code or Codex drops in unchanged, and ours travel back out. The
+frontmatter parser is hand-rolled on purpose: the spec's field set is tiny and
+the format's whole selling point is needing no runtime or build step.
 
-If you need a backup snapshot (e.g. before a big edit pass), run
-`scripts/survey-models.ts` and save the output, or query `ai_models`
-directly through the SQL editor.
+**SECURITY**: skill bodies are UNTRUSTED TEXT. A skill can shape style and
+craft; it must never override pricing honesty, model selection, or refusals.
+See `wrapSkillForPrompt()`. Nothing under `scripts/` is ever executed.
 
-## Leaderboard (unified catalog + ranking)
-
-`/leaderboard` is the single page for browsing models and their XD scores.
-The old separate `/models` catalog was merged into Leaderboard in May 2026;
-`/models` now server-redirects to `/leaderboard`.
-
-### Data flow
-- Page loads all enabled models from `ai_models` (Supabase) — every model appears, voted or not.
-- Page also calls `/api/xboard?mode=all` to fetch XD scores, merged in by `modelId`.
-- Models with no votes show an empty XD Score cell and sort to the bottom regardless of direction.
-
-### Scoring (unchanged)
-- Uses **Bradley-Terry MLE** to compute pairwise ratings from duel/xcreate votes.
-- **XD Score** = Quality BT × 0.4 + Value BT × 0.4 + Stickiness × 0.2.
-  - Quality = blind vote (vote1), Value = price-aware vote (vote2), Stickiness = retention rate.
-- Base rating is 1000 (like Elo). Above 1000 = green, below = red, blank cell if unscored.
-- Mode-aware scoring is implicit: text models only ever duel text models, etc., so calling the API once with `mode=all` gives correct per-model scores.
-- Leaderboard API filters historical duel slots through `validModelIds` to skip deleted/obsolete models.
-
-### UI
-- Search bar, provider filter tabs (with counts), mode filter (all/text/image/video).
-- **Seven columns**: Model · XD Score · Provider · Released · Input · Output · Price.
-- **Sortable** headers: Model / XD Score / Provider / Released / Price. Click to sort, click again to flip direction. Active column shows a green ▲ or ▼.
-- **Default sort**: XD Score DESC. Nulls always sort to the bottom regardless of direction. Switching to a new sort key picks DESC for score/price/released, ASC for alphabetical fields.
-- **Price column** shows industry-standard rates with slash-aligned formatting (fixed widths so slashes line up across rows): text → `$X / 1M`, image → `$X / image`, video → `$X / sec`.
-- Modality badges with color coding (text=gray, image=purple, video=amber, audio=cyan). Same badges in Input and Output columns — the column header is the discriminator.
-- POPULAR badge for flagship models.
-- "HOW SCORING WORKS →" link in the subhead → `/methodology`.
-- Linked from Nav and XCreate page ("BROWSE ALL MODELS →" — points to `/leaderboard`).
-
-## Recent Major Changes (May 2026)
-
-1. **Catalog management moved to admin UI** — All sync scripts (`lib/sync-{openai,google,dashscope}.ts`, CLI wrappers, the Vercel cron route, the legacy `populate-release-dates` route) deleted. `ai_models` is now hand-edited at `/admin/models`. Schema is fixed: see `docs/ai_models-schema.md`.
-2. **Models merged into Leaderboard** — The standalone `/models` catalog page was merged into `/leaderboard` so the latter is now the single destination for browsing models. The unified page lists every enabled model with an XD Score column (blank for unvoted), and inherits the catalog's search, provider filter, mode filter, and sortable headers. Default sort is XD Score DESC. Nav drops to 5 items (HOME · XDUEL · XCREATE · XVOTE · LEADERBOARD). `/models` server-redirects to `/leaderboard` to preserve old links. XCreate's "BROWSE ALL MODELS →" CTA now points to `/leaderboard`. See "Leaderboard" section.
-3. **Vote → XVote rebrand** — Nav label and page header read "XVote" to match the X-family (XDuel/XCreate). Route renamed `/vote` → `/xvote`; old URL 308-redirects. Permalink renamed `/duel/<id>` → `/xduel/<id>`; old URL 308-redirects. API paths renamed `/api/duel/*` → `/api/xduel/*` (internal-only callers updated in the same commit). Nav order: XDUEL · XCREATE · XVOTE · LEADERBOARD. Verb usage of "vote" in body copy stays unchanged.
-4. **Nav: removed dimming on protected links** — XDuel/XCreate/XVote render at full opacity for logged-out users. Clicking still triggers the auth modal.
-5. **OpenRouter removed entirely** — all Alibaba text models now go direct through DashScope's OpenAI-compatible endpoint. Files deleted: `lib/providers/openrouter.ts`, `lib/sync-openrouter.ts`, `scripts/sync-openrouter.ts`, `app/api/dev/sync-openrouter/route.ts`. SQL migration: `supabase/21_drop_openrouter.sql`
-6. **Release dates** — now hand-entered through `/admin/models` like everything else.
-7. **Leaderboard fixed** — filters out deleted models, shows release dates, uses canonical model info from ai_models table
-8. **Font fix** — leaderboard changed from Barlow Condensed to Barlow for better readability
-9. **Data reset** — `supabase/22_reset_all_data.sql` truncates duels, xcreates, activity_logs, attachments, provider_calls for fresh start
-10. **Provider call logging** — Every AI model invocation is now logged to a new `provider_calls` table via a Supabase Edge Function (`log-provider-call`). Captures provider, model, mode, status (success/failed), latency, error message, user_id, and tokens/cost where the provider surfaces them. See "Provider Call Logging" section.
-
-## Known UI Inconsistencies (open)
-
-- **"View XDRating →" CTA on `/methodology`** links to `/leaderboard`, but the leaderboard page is titled "Leaderboard" — so XDRating is the *system* name on methodology and Leaderboard is the *page* name. Either rebrand the destination as XDRating or rename the methodology CTA to "View Leaderboard". Not yet decided.
 ## Provider Call Logging
 
-Every AI model invocation produces **two rows** in the `provider_calls`
-table — one for the start event and one for the end event, paired by a
-shared `request_id`. Both rows are inserted by the
-`supabase/functions/log-provider-call/index.ts` Edge Function, called
-fire-and-forget from `lib/providers/index.ts`.
+Every AI invocation produces **two rows** in `provider_calls`, paired by
+`request_id`: a `start` event when the call goes out and an `end` event when
+it returns. Both are inserted by the `log-provider-call` Supabase Edge
+Function, called fire-and-forget from `lib/providers/index.ts` — zero added
+latency, and logging never blocks or fails the user-facing request.
 
-### Why two rows?
+**Why two rows?** Append-only event log: no UPDATE path means no race. If the
+end POST is dropped (Vercel freezing a non-streaming Lambda after the response
+closes), the start row survives as a breadcrumb that the request happened.
 
-Append-only event log. No UPDATE path means no race between insert and
-update. If the end POST is dropped (e.g. Vercel freezes a non-streaming
-Lambda after the response closes), the start row is still in the table
-as a debugging breadcrumb that the request happened. Pairing queries
-that find a start without a matching end surface those cases.
+`startCall(descriptor)` returns a `request_id` immediately; `endCall()` adds
+`status`, `latency_ms`, `error_message?`, tokens, and `cost_usd`. Descriptors
+are duplicated on the end row so analytics queries need no self-join.
 
-### Lifecycle
+Route handlers pass `{ userId }` explicitly to `streamText` / `generateImage` /
+`generateVideo`. Calls without context log `user_id: null`.
 
-Both helpers are **synchronous and fire-and-forget**. The Next.js side
-generates `request_id` with `crypto.randomUUID()` and returns it
-immediately; the HTTP POST to the Edge Function runs in the background.
-The provider call begins on the very next instruction.
+Tokens/cost: text pulls from `TextStreamCallbacks.onDone` (all providers
+populate these); image/video record `cost` only — token columns stay null
+because those providers don't surface usage uniformly.
 
-1. **Before** the request, `startCall(descriptor)` (in
-   `lib/providers/call-log.ts`) returns a `request_id` and fires
-   `{ action: 'start', request_id, provider, model_name, model_id, mode, user_id }`.
-   Edge Function INSERTs `event='start'`.
-2. **After** the request resolves, `endCall(requestId, descriptor, outcome)`
-   fires `{ action: 'end', request_id, ...descriptor, status,
-   latency_ms, error_message?, input_tokens?, output_tokens?, cost_usd? }`.
-   Edge Function INSERTs `event='end'` as a separate row.
-
-If the Edge Function is unreachable or rejects the body, the helper logs
-a stdout warning and drops the row. Logging never blocks or fails the
-user-facing request.
-
-### Schema (supabase/23_provider_calls.sql)
-
-`id` (PK), `request_id` (correlates start↔end), `event` (`start`/`end`),
-`created_at`, `provider`, `model_name`, `model_id` (FK to `ai_models`),
-`mode`, `user_id` (FK to `auth.users`, nullable), and end-only fields
-`status` (`success`/`failed`), `error_message`, `latency_ms`,
-`input_tokens`, `output_tokens`, `cost_usd`.
-
-Descriptors are duplicated on the end row so analytics queries don't
-need a self-join (`select count(*) from provider_calls where event='end'
-and provider='openai'` works directly).
-
-Indexes on `request_id`, `(provider, model_name)`, `created_at desc`,
-`user_id`, `(event, created_at desc)`. RLS enabled with no public
-policies — all reads/writes go through the service role.
-
-### Querying
+Deploy: `supabase functions deploy log-provider-call`. Run
+`supabase/23_provider_calls.sql` first.
 
 ```sql
--- Start↔end pairs in the last hour, with computed pairing status
-select s.request_id, s.provider, s.model_name, s.created_at as started,
-       e.created_at as ended, e.status, e.latency_ms, e.cost_usd
+-- Orphan starts (request began but no end recorded)
+select s.request_id, s.provider, s.model_name, s.created_at
 from provider_calls s
-left join provider_calls e
-  on e.request_id = s.request_id and e.event = 'end'
-where s.event = 'start' and s.created_at > now() - interval '1 hour'
-order by s.created_at desc;
+where s.event='start'
+  and not exists (select 1 from provider_calls e
+                  where e.request_id = s.request_id and e.event='end')
+  and s.created_at < now() - interval '10 minutes';
 
--- Calls per provider+model + success rate (uses end events only)
+-- Success rate per provider+model, last 24h
 select provider, model_name,
        count(*) filter (where status='success') as ok,
        count(*) filter (where status='failed')  as fail,
@@ -404,87 +441,187 @@ select provider, model_name,
 from provider_calls
 where event='end' and created_at > now() - interval '24 hours'
 group by 1,2 order by ok+fail desc;
-
--- Orphan starts (request started but no end recorded — usually means
--- Vercel killed the Lambda or the provider hung past maxDuration)
-select s.request_id, s.provider, s.model_name, s.created_at
-from provider_calls s
-where s.event='start'
-  and not exists (
-    select 1 from provider_calls e
-    where e.request_id = s.request_id and e.event='end'
-  )
-  and s.created_at < now() - interval '10 minutes';
 ```
 
-### Wiring
+## Admin
 
-The router (`lib/providers/index.ts`) accepts an optional `CallContext`
-param (`{ userId? }`) on `streamText`, `generateImage`, `generateVideo`. Route
-handlers pass it explicitly:
+Hidden catalog editor at **`/admin/models`**. Email allowlist (`ADMIN_EMAILS`)
+on top of the normal Google OAuth login; anyone else is redirected to `/`.
+`lib/admin.ts` provides `getAdminUser()` (server components) and
+`assertAdmin()` (API routes). Both admin API routes call `assertAdmin()` first
+— **never trust client-side flags for admin gating.**
 
-- `app/api/xduel/route.ts` — `runSlot()` takes `userId` and forwards it.
-- `app/api/xcreate/route.ts` — `runSlot()` already had `userId`; now forwards it.
-- `app/api/xcreate/chat/route.ts` — passes `{ userId: user.id }` directly.
+UI (`app/admin/models/AdminModelsClient.tsx`): filterable table of every
+`ai_models` row, inline `enabled` toggle, edit/delete per row, "+ Add model".
+The form auto-shows the right pricing section based on the `output_modalities`
+checkboxes. Saves go through `POST /api/admin/models`, which upserts by
+`(provider, model_name)` and returns the canonical row. `model_name` is locked
+on edit so you can't rename into another row's identity.
 
-Calls without a context (e.g. unauthenticated paths, if any) log `user_id: null`.
+`/api/admin/test-model` runs a live smoke test against a single model.
 
-### Tokens / cost
+Workflow: edit a row → Save → it's live. No deploy, no commit, no script.
 
-Captured automatically:
-- **Text** — pulled from `TextStreamCallbacks.onDone` (`inputTokens`,
-  `outputTokens`, `cost`). All four providers populate these.
-- **Image / Video** — `cost` from the result object. Token columns stay null
-  for now (image/video providers don't surface token usage uniformly).
+### Why hand-curation
 
-### Deployment
+The Playwright-scraping + API-discovery infrastructure was removed in May 2026.
+Pricing is small data (~50–60 rows, changing a handful of times per quarter);
+no major provider exposes a pricing API, so scrapers broke on doc-page
+restructures and produced *silently wrong prices on the leaderboard*; and
+decisions like "which qwen variants to surface" are judgment calls a scraper
+can't make.
 
-The Edge Function lives at `supabase/functions/log-provider-call/`. To deploy:
+For a backup snapshot before a big edit pass: `npx tsx scripts/survey-models.ts`.
+
+## Styling
+
+- **Light theme only.** CSS variables in `:root` of `globals.css`.
+- Core vars: `--bg`, `--surface`, `--surface2`, `--border`, `--border2`,
+  `--white`, `--muted`, `--muted2`, `--red`, `--blue`, `--green` (+ `-dim` /
+  `-glow` variants)
+- Provider identity colors: `--provider-openai`, `--provider-google`,
+  `--provider-anthropic`, `--provider-alibaba`, `--provider-xai`
+- XD Score heatmap: `--score-poor` → `--score-elite` (5 stops)
+- **DO NOT** hardcode dark colors (`#080808`, `#0d0d0d`, …) — always use vars.
+- `lib/ThemeContext.tsx` exists but is **dead code**: it is not mounted in
+  `layout.tsx`, and `globals.css` has no `[data-theme]` blocks. Either wire it
+  up properly or delete it — don't assume dark mode works because the file is
+  there.
+
+## Environment Variables
 
 ```
-supabase functions deploy log-provider-call
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+SUPABASE_SECRET_KEY=sb_secret_xxx
+
+# Providers
+OPENAI_API_KEY=sk-xxx
+GOOGLE_AI_API_KEY=xxx
+DASHSCOPE_API_KEY=sk-xxx
+DASHSCOPE_BASE_URL=                   # optional; defaults to dashscope-intl
+ANTHROPIC_API_KEY=sk-ant-xxx          # site agent + XDirector + Claude models
+XAI_API_KEY=xxx
+MOONSHOT_API_KEY=xxx
+RUNWAYML_API_SECRET=xxx
+
+# Payments
+STRIPE_SECRET_KEY=sk_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+
+# Access control
+ADMIN_EMAILS=wei917@gmail.com         # comma-separated; passes every gate
+FEATURE_CANVAS_EMAILS=
+FEATURE_XDIRECTOR_EMAILS=
+FEATURE_XTALK_EMAILS=                 # "*" opens a beta to everyone
+SITE_PASSWORD=                        # unset = site gate disabled
+
+# Ops / tuning
+CRON_SECRET=                          # guards /api/cron/* and refit
+SITE_AGENT_MODEL=                     # override the site agent's model
+XDIRECTOR_MODEL=                      # override the director's model
+XCREATE_MOCK=                         # dev: fake generations, no spend
 ```
 
-Required env on the Edge Function side: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-(Supabase injects both automatically). Required on the Next.js side:
-`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY` (already set).
+## Dev Commands
 
-Run `supabase/23_provider_calls.sql` in the SQL editor before first deploy.
+```bash
+npm install
+npm run dev              # local dev server on :3000
+npm run build            # production build
+npx tsc --noEmit         # type check — run before packaging
+```
 
-### Performance + caveats
+## Common Pitfalls
 
-Both calls are fire-and-forget so the provider request sees zero added
-latency on the hot path. The two HTTP POSTs run alongside the provider
-request and complete in the background.
+1. **Model picked for wrong mode** — check `output_modalities`, not `modes` or
+   `tags`. "Vision" = can *see* images, not generate them.
+2. **New model not surfacing** — `ai_models` is hand-edited at `/admin/models`.
+   Also check `enabled` and `blocked_features`.
+3. **Scientific notation in prices** — always `toFixed()`, never
+   `toExponential()`. Prices are per 1M tokens.
+4. **Image duel shows a broken image** — if a delta has `isImage: true` but no
+   `text`, show a loading state; don't render `<img src="">`.
+5. **Supabase `getPublicUrl` returns undefined** — use `data?.publicUrl` with a
+   fallback URL construction.
+6. **OAuth redirect goes to the wrong domain** — `redirectTo` must be clean (no
+   query params). Supabase OAuth strips query params; the `auth_redirect`
+   cookie is the workaround.
+7. **Editing `middleware.ts`** — it's `proxy.ts` now (Next.js 16).
+8. **A migration "just for dev"** — dev and prod share one Supabase project.
+   There is no such thing.
+9. **Supabase auth lock contention** — `supabase-js` serializes auth through a
+   `navigator.locks` lock shared across tabs. Background tabs polling every 5s
+   can steal the lock from a freshly loading tab hard enough to crash
+   hydration. Gate polling on `!document.hidden` (see `Nav.tsx`).
+10. **Hooks before early returns** — `Nav.tsx` returns `null` on
+    `/coming-soon`; that return must stay below every hook or React throws
+    "Rendered fewer hooks than expected".
+11. **Stale `.git/index.lock`** — git writes through the device bridge leave a
+    lock that can't be unlinked. Run git from a real terminal;
+    `rm .git/index.lock` if a commit fails with "Another git process seems to
+    be running."
 
-The one situation to watch is **Vercel freezing non-streaming Lambdas**
-after the response closes. SSE handlers (duel + initial xcreate) keep
-the response open across the provider call and the end POST, so the
-Lambda stays alive long enough for both inserts. Non-streaming handlers
-(`xcreate/chat` for image/video) close the response when the provider
-returns; the end POST may or may not finish before Vercel freezes the
-function. If those rows go missing in production, the fix is one line:
-wrap the endCall in `after()` from `next/server` so the platform keeps
-the Lambda alive until the background fetch completes.
+## XTalk Werewolf Specifics
 
-The deliberate non-fix is the start row's safety net — even if the end
-POST is killed, the start row is in the table.
+The server holds the game (`app/api/xtalk/werewolf/route.ts`); the client knows
+nothing and renders only what comes back — that is the **only** reason a human
+can sit at the table honestly. One act per request; the client loops.
 
-## Planned: Add Anthropic as Provider
+- Night order is wolf → seer → doctor → dawn, so the doctor acts **after** the
+  wolves have chosen; a correct protect produces a quiet morning.
+- Every living player speaks once per day in a rotating `turn_order`. There is
+  **no speaking-credit economy here** — that exists only in Discussion's bid
+  mode.
+- Per-model timeout is **90s** (`MODEL_TIMEOUT_MS`), one retry for an empty
+  reply, no retry after a timeout. Timeouts become visible ⚠ abstentions,
+  never silent skips.
+- **`askModel()` field extraction is a SECURITY boundary**: a reply that looks
+  structured but yields no clean field is DROPPED, never printed raw — the raw
+  text contains the model's private `reasoning`. (A human doctor once saw a
+  wolf's whole plan through this path.)
+- The same model may take several chairs; duplicates get "name (2)", "name (3)".
 
-User wants to add Anthropic/Claude models as a 5th provider. Needs:
-- Get Anthropic API key from console.anthropic.com
-- Create `lib/providers/anthropic.ts` — Messages API (`POST https://api.anthropic.com/v1/messages`)
-  - Auth: `x-api-key` header (not Bearer), `anthropic-version: 2023-06-01`
-  - Streaming: SSE with `content_block_delta`, `message_stop` events
-  - Models: claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001
-- Add `'anthropic'` to `SUPPORTED_PROVIDERS` in provider router
-- Seed models into `ai_models` table
-- Add `ANTHROPIC_API_KEY` env var
+## Decisions Taken (don't re-litigate without new information)
+
+- **Apple + LINE sign-in: dropped.** Desktop OS share in TW/JP is ~81%/76%
+  Windows, so the iPhone-majority argument doesn't apply to a desktop product.
+  Sign in with Apple on Windows is worse than Google and costs $99/yr plus a
+  6-month secret rotation. If a mobile push ever happens, LINE is the
+  higher-value one for these markets (~94% penetration in TW) and needs a
+  custom OAuth bridge — Supabase has no LINE provider.
+- **Werewolf ratings stay out of `all`.**
+- **HappyHorse 1.0 ranks above 1.1** and that is not a bug: 1.0 follows prompt
+  instructions (e.g. shallow DoF) more faithfully, while 1.1 optimises for
+  scene detail and runs slower for the same price.
+- **Catalog stays hand-curated.** See "Why hand-curation".
+- **No Studio/Agent toggle in XCreate.** The site agent is the entrance.
+- **Landing savings figures** were re-derived Aug 5 from live `model_pricing`:
+  developers ~$3,900/mo at 500M tokens; "FOR AI USERS" ~$176/mo on 100 video
+  clips (Veo 3.1 $0.40/s vs HappyHorse 1.1 $0.18/s, 8s clips). Derivations are
+  in comments in `app/page.tsx` — **re-derive before changing any number.**
+
+## Known Debt (open)
+
+1. **Site-agent rate limiting is per-instance.** Move to a shared store before
+   real public traffic.
+2. **Discussion's picker doesn't pass a `feature` key**, so
+   `xtalk_discussion` blocks aren't enforced there yet. One line.
+3. **XBoard is badly broken in mobile portrait** — the table has
+   `minWidth: 820/830`, ~640px of overflow at 390px. XCreate/Profile are fine;
+   XTalk and home are ~10–15px out. Desktop-first, so this is deliberate debt.
+4. **XTalk attachments** are still not accepted by `/api/xtalk`.
+5. **`lib/ThemeContext.tsx` is dead code** — wire it up or delete it.
+6. **Owner has TWO account ids observed in the wild** (`247efcdb…` and
+   `c9a73e58…`) — possible anonymous-auth id rotation orphaning games, history
+   and credits. Never investigated.
+7. **Naming**: `/methodology` calls the system **XDRating** and links to
+   `/xboard`, which is titled **XBoard**. The system/page split is intentional
+   but reads oddly; nobody has decided whether to unify them.
 
 ## Packaging Convention
 
-When creating a zip for deployment:
 ```bash
 cd /path/to/project
 rm -rf .next node_modules package-lock.json tsconfig.tsbuildinfo

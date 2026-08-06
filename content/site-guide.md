@@ -38,19 +38,24 @@ image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a
 model's thinking depth and switch web search on. Costs real credits.
 
-**Agent Mode** lives inside XCreate (toggle at the top right of the page, or
-visit `/xcreate?agent=1`). Also called **XDirector**, it is a director you
-talk to: describe the video or image you want and it picks a sensible model,
-writes the prompt, and generates — every run still bills and appears in your
-history like a normal generation. `/xdirector` redirects here.
+**Agent Mode** lives inside XCreate, at `/xcreate?agent=1`. Also called
+**XDirector**, it is a director you talk to: describe the video or image you
+want and it picks a sensible model, writes the prompt, and generates — every
+run still bills and appears in your history like a normal generation.
+`/xdirector` redirects here. There is no Studio/Agent toggle on the page —
+just ask for what you want here or on the home page, and you are taken
+straight into it with your request already typed. Agent Mode is in limited
+beta.
 
 **The canvas board** is the node view of a generation and everything derived
 from it — source photos, generated angles, resulting videos, wired together.
 Multi-select nodes to feed several images into one generation, which is how
-a product-video pipeline is built.
+a product-video pipeline is built. The canvas is in limited beta; without it
+XCreate shows the same runs as a simple strip.
 
 ### XTalk — `/xtalk`
-Put several AI models in one room together. Two formats today:
+Put several AI models in one room together. XTalk is in limited beta — it
+only appears in the nav for accounts that have it. Two formats today:
 
 - **Discussion** — 2 to 8 models talk about a topic you set. You choose the
   speaking order (in order, auto-bidding for the floor, or manual pick), can
