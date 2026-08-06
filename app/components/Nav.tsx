@@ -99,16 +99,17 @@ export default function Nav() {
   // `running` rows are in-flight xcreate_jobs; the rest are finished xcreates.
   // They share a list because to a user they are all just "my runs".
   const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string; running?: boolean; title?: string | null }>>([])
-  // Which history row is being renamed, across BOTH lists. One editor at a
+  // Which history row is being renamed, across the lists. One editor at a
   // time keyed by table + id (CC, Aug 3).
-  const [editing, setEditing] = useState<{ table: 'xcreates' | 'xtalk_sessions'; id: string } | null>(null)
+  const [editing, setEditing] = useState<{ table: 'xcreates' | 'xtalk_sessions' | 'xdirector_conversations'; id: string } | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
-  const renameRow = async (table: 'xcreates' | 'xtalk_sessions', id: string, raw: string) => {
+  const renameRow = async (table: 'xcreates' | 'xtalk_sessions' | 'xdirector_conversations', id: string, raw: string) => {
     const title = raw.trim().slice(0, 80) || null
     setEditing(null)
     if (table === 'xcreates') setRecent(prev => prev.map(r => r.id === id ? { ...r, title } : r))
-    else setRecentGames(prev => prev.map(g => g.id === id ? { ...g, title } : g))
+    else if (table === 'xtalk_sessions') setRecentGames(prev => prev.map(g => g.id === id ? { ...g, title } : g))
+    else setRecentConvs(prev => prev.map(c => c.id === id ? { ...c, title } : c))
     await supabase.from(table).update({ title }).eq('id', id)
   }
   const [recentCollapsed, setRecentCollapsed] = useState(false)
@@ -139,6 +140,21 @@ export default function Nav() {
   // stays but a re-nav elsewhere and back re-fetches; good enough v1).
   const onXcreate = pathname?.startsWith('/xcreate') ?? false
   const onXtalk   = pathname?.startsWith('/xtalk') ?? false
+  const onXdirect = pathname?.startsWith('/xdirect') ?? false
+  // Director conversations — same owner-read RLS pattern as the other two
+  // lists. Soft-delete only (deleted_at), matching the API's GET filter.
+  const [recentConvs, setRecentConvs] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([])
+  useEffect(() => {
+    if (!onXdirect || !user) { setRecentConvs([]); return }
+    let cancelled = false
+    supabase.from('xdirector_conversations')
+      .select('id, title, updated_at')
+      .eq('user_id', user.id).is('deleted_at', null)
+      .order('updated_at', { ascending: false }).limit(10)
+      .then(res => { if (!cancelled && !res.error) setRecentConvs((res.data ?? []) as any[]) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onXdirect, user?.id, pathname])
   // Werewolf games are server-held sessions with owner-read RLS, so the
   // browser client lists them the same way it lists xcreates. Discussions
   // aren't here: they live in client state and have no row to link to.
@@ -404,6 +420,69 @@ export default function Nav() {
                   aria-label="delete game"
                   title={t('ww.delete')}
                   onClick={() => { setConfirmDel(g.id); setTimeout(() => setConfirmDel(c => c === g.id ? null : c), 4000) }}
+                  style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
+                >×</button>
+              )}
+            </div>
+            )
+          ))}
+        </div>
+      )}
+
+      {/* XDirect history — the director's conversations. Board id === conv
+          id, so each row reopens both the chat AND its canvas/storyboard.
+          Delete is SOFT (deleted_at) to match the API's GET filter. */}
+      {onXdirect && recentConvs.length > 0 && (
+        <div className="nav-history">
+          <div className="nav-history-head" style={{ cursor: 'default' }}>
+            <span className="nav-history-cap">{t('xd.recent')}</span>
+          </div>
+          {recentConvs.map(c => (
+            editing && editing.table === 'xdirector_conversations' && editing.id === c.id ? (
+              <input
+                key={`edit-${c.id}`} autoFocus value={nameDraft}
+                onChange={e => setNameDraft(e.target.value)}
+                onBlur={() => renameRow('xdirector_conversations', c.id, nameDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') renameRow('xdirector_conversations', c.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
+                className="nav-history-item"
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
+              />
+            ) : (
+            <div key={c.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link
+                href={`/xdirect?c=${c.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+                title={`${c.title || t('nav.xdirect')} · ${new Date(c.updated_at).toLocaleString()}`}
+              >
+                <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>🎬</span>
+                <span className="nav-history-text">{c.title || '…'}</span>
+              </Link>
+              <button
+                aria-label="rename" title={t('ww.rename')}
+                onClick={() => { setNameDraft(c.title || ''); setEditing({ table: 'xdirector_conversations', id: c.id }) }}
+                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
+              >✏</button>
+              {confirmDel === c.id ? (
+                <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  <button
+                    aria-label="confirm delete" title={t('ww.delete.confirm')}
+                    onClick={async () => {
+                      setConfirmDel(null)
+                      await supabase.from('xdirector_conversations')
+                        .update({ deleted_at: new Date().toISOString() }).eq('id', c.id)
+                      setRecentConvs(prev => prev.filter(x => x.id !== c.id))
+                      if (typeof window !== 'undefined' && window.location.search.includes(c.id)) router.push('/xdirect')
+                    }}
+                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
+                  >{t('ww.delete.yes')}</button>
+                  <button aria-label="cancel" onClick={() => setConfirmDel(null)}
+                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
+                </span>
+              ) : (
+                <button
+                  aria-label="delete conversation"
+                  title={t('ww.delete')}
+                  onClick={() => { setConfirmDel(c.id); setTimeout(() => setConfirmDel(x => x === c.id ? null : x), 4000) }}
                   style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
                 >×</button>
               )}

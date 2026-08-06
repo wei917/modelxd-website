@@ -11,7 +11,8 @@
 // The storyboard state lives HERE and flows down to both the chat (which
 // sends it to the director and persists it) and the strip (which edits it).
 
-import { useCallback, useRef, useState } from 'react'
+import { Suspense, useCallback, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useBoardNodes } from '../../lib/board-nodes'
@@ -19,7 +20,26 @@ import XDirectorChat, { type SceneRunnerHandle } from '../components/XDirectorCh
 import SceneStrip, { type Scene } from '../components/SceneStrip'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 
+// useSearchParams needs a Suspense boundary (same pattern as XCreate), and
+// the ?c= param KEYS the whole body: a different conversation is a different
+// chat instance, so switching via the nav history remounts everything —
+// chat, storyboard, board — instead of leaking the previous conversation's
+// state into the next. The chat's own restore effect is mount-only by
+// design; the key is what makes that correct. (CC, Aug 6)
 export default function XDirectClient() {
+  return (
+    <Suspense fallback={null}>
+      <XDirectKeyed />
+    </Suspense>
+  )
+}
+
+function XDirectKeyed() {
+  const conv = useSearchParams()?.get('c') ?? 'new'
+  return <XDirectBody key={conv} />
+}
+
+function XDirectBody() {
   useRequireAuth()
   const t = useT()
 
