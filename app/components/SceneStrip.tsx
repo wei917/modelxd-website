@@ -34,7 +34,7 @@ export type Scene = {
 }
 
 const card: React.CSSProperties = {
-  width: 248, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8,
+  width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8,
   padding: '12px 12px 10px', borderRadius: 12,
   border: '1px solid var(--border2)', background: 'var(--surface)',
 }
@@ -45,7 +45,7 @@ const label: React.CSSProperties = {
 const area: React.CSSProperties = {
   width: '100%', resize: 'none', border: '1px solid transparent', borderRadius: 7,
   background: 'transparent', color: 'var(--white)', fontFamily: 'inherit',
-  fontSize: 12.5, lineHeight: 1.55, padding: '4px 6px', outline: 'none',
+  fontSize: 13, lineHeight: 1.6, padding: '6px 8px', outline: 'none',
 }
 const iconBtn: React.CSSProperties = {
   border: 'none', background: 'none', cursor: 'pointer', padding: '2px 4px',
@@ -135,7 +135,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
             {s.url && s.status === 'done' && (
               <button
                 onClick={() => onPreview(s.url!, true)}
-                style={{ border: 'none', padding: 0, cursor: 'pointer', borderRadius: 8, overflow: 'hidden', background: '#000', height: 96 }}
+                style={{ border: 'none', padding: 0, cursor: 'pointer', borderRadius: 8, overflow: 'hidden', background: '#000', height: 150 }}
               >
                 <video src={s.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
@@ -145,7 +145,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
             <div>
               <div style={label}>{t('xd.sb.script')}</div>
               <textarea
-                rows={2} value={s.script}
+                rows={5} value={s.script}
                 onChange={e => patch(s.id, { script: e.target.value.slice(0, 500) })}
                 style={{ ...area, border: '1px solid var(--border)' }}
               />
@@ -159,7 +159,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               >{openShot[s.id] ? '▾' : '▸'} {t('xd.sb.shot')}</button>
               {openShot[s.id] && (
                 <textarea
-                  rows={5} value={s.shot}
+                  rows={8} value={s.shot}
                   onChange={e => patch(s.id, { shot: e.target.value.slice(0, 1200) })}
                   style={{ ...area, border: '1px solid var(--border)', fontSize: 11.5, marginTop: 4 }}
                 />
@@ -203,7 +203,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
         <button
           onClick={addScene}
           style={{
-            ...card, width: 120, alignItems: 'center', justifyContent: 'center',
+            ...card, width: 140, alignItems: 'center', justifyContent: 'center',
             border: '1px dashed var(--border2)', background: 'transparent',
             color: 'var(--muted)', cursor: 'pointer', fontSize: 12, gap: 4,
           }}

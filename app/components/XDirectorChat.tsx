@@ -286,7 +286,9 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     onStoryboard?.(next)
   }
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [bubbles])
+  // block:'nearest' keeps the auto-scroll INSIDE the transcript's own
+  // overflow container — the page itself must never move on a new bubble.
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [bubbles])
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   // Shrink an attachment to something the agent can actually look at on
@@ -692,16 +694,20 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     cursor: enabled ? 'pointer' : 'default', fontFamily: 'inherit',
   })
 
-  // ── UI ── (no page shell: the XCreate page provides arena + header)
+  // ── UI ── (no page shell: the page provides arena + header)
+  // Flex column filling the parent rail: transcript takes the middle and
+  // scrolls INTERNALLY; the composer stays pinned at the bottom. The rail's
+  // height comes from .xdirect-chat — this component never grows the page.
+  // (CC, Aug 6)
   return (
-    <div>
-      <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.6, marginTop: -8 }}>{t('xdirector.subtitle')}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 18, lineHeight: 1.6, marginTop: -8, flexShrink: 0 }}>{t('xdirector.subtitle')}</p>
 
       {/* The "open canvas" escape hatch that used to sit here is gone: on
           /xdirect the canvas IS alongside the chat. (CC, Aug 5) */}
 
-        {/* Transcript */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20, minHeight: 160 }}>
+        {/* Transcript — the ONLY scrolling region in the rail. */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14, paddingRight: 6 }}>
           {loading && bubbles.length === 0 && (
             <div style={{ padding: '18px 20px', fontSize: 14, color: 'var(--muted)' }}>
               <span className="stream-cursor">▋</span>
@@ -846,8 +852,8 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           <div ref={endRef} />
         </div>
 
-        {/* Composer */}
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+        {/* Composer — pinned below the scrolling transcript. */}
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, flexShrink: 0 }}>
           <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple accept="image/jpeg,image/png,image/webp" />
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea

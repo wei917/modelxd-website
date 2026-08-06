@@ -1913,23 +1913,30 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    readable line length; the stage takes everything else. Below 1080px the
    panes stack — desktop-first product, the stacked form just has to be
    usable, not optimal. */
+/* Viewport-bound, both panes scroll INTERNALLY (CC, Aug 6). The chat used
+   to grow with the conversation and drag the whole page taller — the same
+   mistake the LandingAgent's reserved panel exists to prevent. The split
+   takes the remaining viewport once, and after that the page never moves:
+   the transcript scrolls inside the rail, the stage scrolls on its own. */
 .xdirect-split {
   display: grid; grid-template-columns: minmax(380px, 460px) 1fr;
-  gap: 24px; align-items: start;
+  gap: 24px; align-items: stretch;
+  height: calc(100vh - 268px); min-height: 500px;
 }
-.xdirect-chat { min-width: 0; }
-.xdirect-stage { min-width: 0; position: sticky; top: 76px; }
+.xdirect-chat  { min-width: 0; height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.xdirect-stage { min-width: 0; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .xdirect-empty {
-  height: 640px; border-radius: 12px;
+  min-height: 420px; height: 100%; border-radius: 12px;
   border: 1.5px dashed var(--border2); background: var(--surface);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 40px; text-align: center;
   color: var(--muted2); font-size: 14px; line-height: 1.7; max-width: none;
 }
 @media (max-width: 1080px) {
-  .xdirect-split { grid-template-columns: 1fr; }
-  .xdirect-stage { position: static; order: -1; }
-  .xdirect-empty { height: 220px; }
+  .xdirect-split { grid-template-columns: 1fr; height: auto; min-height: 0; }
+  .xdirect-chat  { height: 70vh; }
+  .xdirect-stage { height: auto; overflow-y: visible; order: -1; }
+  .xdirect-empty { min-height: 220px; height: 220px; }
 }
 
 /* ── Landing agent ──
