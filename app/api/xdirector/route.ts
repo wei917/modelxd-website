@@ -258,14 +258,26 @@ async function callClaude(system: string, messages: any[], tools: any[] = TOOLS)
       // we don't want on a chat surface. Older fallbacks (haiku-4-5,
       // sonnet-4-5) never think unless asked, and predate the field's
       // "disabled" value, so they get no thinking field at all.
+      //
+      // system carries breakpoint 1: tools render before system, so this one
+      // marker caches tools + director prompt + skill together. Sonnet 5's
+      // cache minimum is 1024 tokens (met); on a fallback below the minimum
+      // the marker is silently ignored — full price, never an error.
       body: JSON.stringify({
-        model, max_tokens: 4000, system, messages, tools,
+        model, max_tokens: 4000,
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages, tools,
         ...(/sonnet-5|opus-5|sonnet-4-6|opus-4-6|opus-4-7|opus-4-8/.test(model) ? { thinking: { type: 'disabled' } } : {}),
       }),
     })
     if (res.ok) {
       workingModel = model
-      return res.json()
+      const j = await res.json()
+      // Same signal the site agent logs: warm traffic with cache_read=0
+      // means something re-broke the prefix. The owner pays these tokens.
+      const u = j?.usage ?? {}
+      console.log(`${LOG} model=${j?.model} in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens} cache_read=${u.cache_read_input_tokens} out=${u.output_tokens}`)
+      return j
     }
     const body = await res.text()
     lastErr = `${res.status} ${body.slice(0, 300)}`
@@ -321,13 +333,39 @@ export async function POST(req: Request) {
   }
 
   // The user's current storyboard rides in with every request so the agent
-  // revises THEIR text, not its own last draft. Injected at the end of the
-  // system prompt: it changes every turn, and this route builds its prompt
-  // fresh each call anyway.
+  // revises THEIR text, not its own last draft. It is injected as an EXTRA
+  // user message after the client's last one — never into `system`, and
+  // never returned to the client, so it doesn't persist into the protocol.
+  // Placement is load-bearing for prompt caching: system renders before
+  // messages, so a storyboard in `system` would invalidate the entire
+  // cached conversation on every scene edit. As a trailing message it sits
+  // AFTER both breakpoints and invalidates nothing. (CC, Aug 6)
   const clientBoard = cleanScenes(body?.storyboard)
-  if (clientBoard) {
-    system += '\n\n## CURRENT STORYBOARD (the user may have edited this — it is the truth)\n'
-      + JSON.stringify(clientBoard)
+
+  // ── Prompt caching (CC, Aug 6) ─────────────────────────────────────────
+  // The client re-sends the whole conversation every turn, so without
+  // caching every turn re-bills the director prompt, the skill, every
+  // vision block and every prior tool result at full price. Two stable
+  // breakpoints fix that:
+  //   1. the system block (covers tools + prompt + skill — fixed per
+  //      conversation), set in callClaude;
+  //   2. the last block of the last CLIENT message — marked here, BEFORE
+  //      the storyboard context is appended, so the marker's position is
+  //      byte-identical when this same message returns as history next
+  //      turn. The storyboard message stays unmarked and last: it changes
+  //      on every edit, and back here it invalidates nothing.
+  const markLastBlock = (msgs: any[]): any[] => {
+    if (msgs.length === 0) return msgs
+    const out = msgs.slice()
+    const last = { ...out[out.length - 1] }
+    const content = typeof last.content === 'string'
+      ? [{ type: 'text', text: last.content }]
+      : (Array.isArray(last.content) ? last.content.map((b: any) => ({ ...b })) : [])
+    if (content.length === 0) return msgs
+    content[content.length - 1] = { ...content[content.length - 1], cache_control: { type: 'ephemeral' } }
+    last.content = content
+    out[out.length - 1] = last
+    return out
   }
 
   // The loop. Every message appended here (assistant turns + server-side
@@ -336,7 +374,17 @@ export async function POST(req: Request) {
   // keeps talking in the same turn — and the validated scenes ride back to
   // the client on whichever response ends the POST.
   const newMessages: any[] = []
-  const convo = [...messages]
+  const convo = markLastBlock(messages)
+  if (clientBoard) {
+    convo.push({
+      role: 'user',
+      content: [{
+        type: 'text',
+        text: 'CURRENT STORYBOARD (live board state; the user may have edited it and their text is the truth; reuse these scene ids when revising):\n'
+          + JSON.stringify(clientBoard),
+      }],
+    })
+  }
   let storyboardOut: StoryScene[] | null = null
 
   try {

@@ -110,6 +110,7 @@ export async function streamText(
     }), 'text generateContentStream')
 
     let inputTokens = 0
+    let cachedTokens = 0
     let outputTokens = 0
     let searchCount = 0
 
@@ -119,10 +120,16 @@ export async function streamText(
         callbacks.onDelta(text)
       }
 
-      // Usage metadata on the last chunk
+      // Usage metadata on the last chunk. cachedContentTokenCount is the
+      // subset of promptTokenCount Gemini served from its implicit cache and
+      // billed at a discount — passing 0 here billed users full price for
+      // tokens Google charged us less for (CC, Aug 6). calcTextCost only
+      // applies a discount when the model has a cached_input rate on file,
+      // so this stays a no-op until the catalog rows carry one.
       if (chunk.usageMetadata) {
         inputTokens  = chunk.usageMetadata.promptTokenCount ?? 0
         outputTokens = chunk.usageMetadata.candidatesTokenCount ?? 0
+        cachedTokens = (chunk.usageMetadata as any).cachedContentTokenCount ?? 0
       }
 
       // Grounding metadata arrives on whichever chunk carries the citations.
@@ -132,9 +139,9 @@ export async function streamText(
       if (gm) searchCount = Math.max(searchCount, gm.webSearchQueries?.length || 1)
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, 0, { thinkingLevel: thinking, searchCount })
-    console.log(`${TAG} done in=${inputTokens} out=${outputTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
-    callbacks.onDone({ inputTokens, outputTokens, cachedTokens: 0, cost, searchCount })
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
+    console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
   } catch (err: any) {
     callbacks.onError(`Google: ${err?.message ?? err}`)
   }
