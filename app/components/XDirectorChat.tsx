@@ -554,12 +554,15 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         return bail(`Could not read the final frame of scene ${inp.chain_from_scene} (the clip URL may have expired) — regenerate that scene or retry later.`)
       }
       try {
+        // commitAttachments uploads to att.bucket — real picks get theirs
+        // from getBucket() at pick time; this synthetic one must say where
+        // it goes or the upload targets bucket "" and fails (live, Aug 6).
         const committed = await commitAttachments([{
-          storagePath: '', bucket: '', mediaType: 'image/jpeg',
+          storagePath: '', bucket: 'xcreate-user-images', mediaType: 'image/jpeg',
           fileName: 'chain-frame.jpg', fileSize: frame.size, file: frame,
         } as Attachment])
         chainFrame = committed.find(a => a.storagePath) ?? null
-      } catch { /* fall through to bail below */ }
+      } catch (err) { console.warn('[xdirect] chain frame upload failed:', err) }
       if (!chainFrame) return bail('Uploading the continuation frame failed — retry in a moment.')
     }
 
