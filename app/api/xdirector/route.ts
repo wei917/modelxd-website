@@ -129,6 +129,7 @@ const TOOLS: any[] = [
         medium:          { type: 'string', enum: ['image', 'video'], description: 'image for a still, video for motion. Must match the board you took model_id from.' },
         aspect_ratio:    { type: 'string', description: 'e.g. "9:16" for Threads/Reels, "1:1", "16:9". Always set this for social posts.' },
         scene_id:        { type: 'string', description: 'when this generation IS one of the storyboard scenes, its scene id (e.g. "s2") — the result then fills that scene card on the board' },
+        chain_from_scene: { type: 'string', description: 'scene id whose FINISHED clip this scene continues from. Its final frame is extracted and fed as this generation\'s starting image, so the new scene opens exactly where that one ended. Requires a recipe that consumes a start image (e.g. image_to_video). The source scene must already be done.' },
       },
       required: ['model_id', 'recipe', 'prompt', 'medium'],
     },

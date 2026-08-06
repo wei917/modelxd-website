@@ -303,6 +303,36 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [bubbles])
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
+  // ── Frame chaining (CC, Aug 6) ────────────────────────────────────────
+  // Continuity between scenes is FRAME continuity: scene N+1 opens on the
+  // exact image scene N closed on, or the model reinvents the room. This
+  // grabs the last frame of a finished clip client-side — crossOrigin +
+  // canvas, no server ffmpeg needed — so it can be committed through the
+  // normal attachment pipeline and fed to an image_to_video recipe as the
+  // next scene's starting state.
+  const extractLastFrame = (url: string): Promise<File | null> => new Promise(resolve => {
+    const v = document.createElement('video')
+    let settled = false
+    const done = (f: File | null) => { if (!settled) { settled = true; resolve(f) } }
+    v.crossOrigin = 'anonymous'; v.muted = true; v.playsInline = true; v.preload = 'auto'
+    v.onloadedmetadata = () => {
+      // 50ms shy of the end: seeking to the exact duration can land on an
+      // empty frame in some containers.
+      v.currentTime = Math.max(0, v.duration - 0.05)
+    }
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas')
+        c.width = v.videoWidth; c.height = v.videoHeight
+        c.getContext('2d')!.drawImage(v, 0, 0)
+        c.toBlob(b => done(b ? new File([b], 'chain-frame.jpg', { type: 'image/jpeg' }) : null), 'image/jpeg', 0.92)
+      } catch { done(null) }   // tainted canvas = CORS said no
+    }
+    v.onerror = () => done(null)
+    setTimeout(() => done(null), 15_000)
+    v.src = url
+  })
+
   // Shrink an attachment to something the agent can actually look at on
   // every turn. 768px is enough to read colour, material, print and hardware
   // — the attributes it was previously inventing.
@@ -490,12 +520,10 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // lifecycle: generating → done (thumb + real cost) or error.
     const sceneId: string | null = typeof inp.scene_id === 'string' ? inp.scene_id : null
 
-    // Fail FAST when a reference recipe has nothing to reference — the
-    // provider round-trip for this is a guaranteed loss (Gemini burned a
-    // real attempt on images=0, Aug 6), and the director gets an error it
-    // can actually act on instead of "model failed to generate".
-    if (inp.use_attachments && committedRef.current.length === 0) {
-      const err = 'No reference photos are available in this session — ask the user to re-attach the photo, then retry.'
+    // Fail FAST with an error the director can act on, instead of burning a
+    // provider attempt that cannot succeed (Gemini charged us a real try on
+    // images=0, Aug 6).
+    const bail = async (err: string) => {
       pushBubble({ role: 'gen', status: 'error', modelName: models[inp.model_id]?.name ?? inp.model_id, error: err })
       if (sceneId) patchScene(sceneId, { status: 'error', error: err })
       const toolMsg = {
@@ -508,7 +536,31 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       const withResult = [...msgs, toolMsg]
       setProtocol(withResult)
       await agentTurn(withResult)
-      return
+    }
+
+    if (inp.use_attachments && committedRef.current.length === 0) {
+      return bail('No reference photos are available in this session — ask the user to re-attach the photo, then retry.')
+    }
+
+    // ── Frame chaining: this scene opens on another scene's closing frame ──
+    let chainFrame: Attachment | null = null
+    if (typeof inp.chain_from_scene === 'string' && inp.chain_from_scene) {
+      const src: any = storyboardRef.current.find((s: any) => s.id === inp.chain_from_scene)
+      if (!src || src.status !== 'done' || !src.url) {
+        return bail(`Scene ${inp.chain_from_scene} has no finished clip to continue from — generate it first, then retry this one.`)
+      }
+      const frame = await extractLastFrame(src.url)
+      if (!frame) {
+        return bail(`Could not read the final frame of scene ${inp.chain_from_scene} (the clip URL may have expired) — regenerate that scene or retry later.`)
+      }
+      try {
+        const committed = await commitAttachments([{
+          storagePath: '', bucket: '', mediaType: 'image/jpeg',
+          fileName: 'chain-frame.jpg', fileSize: frame.size, file: frame,
+        } as Attachment])
+        chainFrame = committed.find(a => a.storagePath) ?? null
+      } catch { /* fall through to bail below */ }
+      if (!chainFrame) return bail('Uploading the continuation frame failed — retry in a moment.')
     }
 
     setBusy('generating')
@@ -556,8 +608,13 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         ...(typeof inp.aspect_ratio === 'string' ? { aspect_ratio: inp.aspect_ratio } : {}),
       }],
     }
-    if (inp.use_attachments && committedRef.current.length > 0) {
-      payload.attachments = committedRef.current.map(a => ({
+    // Attachment ORDER is meaning: slot 0 is the start frame for recipes
+    // that consume one, so a chained scene leads with the continuation
+    // frame and the product references ride behind it.
+    const refAtts = (inp.use_attachments && committedRef.current.length > 0) ? committedRef.current : []
+    const allAtts = [...(chainFrame ? [chainFrame] : []), ...refAtts]
+    if (allAtts.length > 0) {
+      payload.attachments = allAtts.map(a => ({
         storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType,
         fileName: a.fileName, fileSize: a.fileSize,
       }))
