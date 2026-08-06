@@ -130,18 +130,50 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
       </div>
 
       {/* Node preview — plain click on a node opens its full output. */}
-      {hero && (
+      {hero && (() => {
+        // Supabase storage turns ?download=<name> into a Content-Disposition
+        // attachment, which is the only reliable cross-origin download —
+        // the <a download> attribute is ignored for cross-origin URLs and
+        // Chrome's built-in video-control download is flaky on signed URLs.
+        const dlName = (() => {
+          try { return new URL(hero.url).pathname.split('/').pop() || '' } catch { return '' }
+        })() || (hero.isVideo ? 'modelxd-video.mp4' : 'modelxd-image.png')
+        const dlHref = (() => {
+          try { const u = new URL(hero.url); u.searchParams.set('download', dlName); return u.toString() } catch { return hero.url }
+        })()
+        return (
         <div
           onClick={() => setHero(null)}
           style={{ position: 'fixed', inset: 0, zIndex: 99000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
         >
+          {/* Control bar — above the media, click-through-proof. */}
+          <div style={{ position: 'absolute', top: 16, right: 18, display: 'flex', gap: 10, zIndex: 1 }} onClick={e => e.stopPropagation()}>
+            <a
+              href={dlHref} download={dlName}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px',
+                borderRadius: 999, background: 'rgba(255,255,255,0.14)', color: '#fff',
+                textDecoration: 'none', fontSize: 13, fontWeight: 700,
+                border: '1px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(6px)',
+              }}
+            >⬇ {t('xd.download')}</a>
+            <button
+              onClick={() => setHero(null)} aria-label="close"
+              style={{
+                padding: '8px 14px', borderRadius: 999, background: 'rgba(255,255,255,0.14)',
+                color: '#fff', border: '1px solid rgba(255,255,255,0.25)', fontSize: 13,
+                cursor: 'pointer', backdropFilter: 'blur(6px)',
+              }}
+            >✕</button>
+          </div>
           {hero.isVideo ? (
             <video src={hero.url} controls autoPlay loop style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8 }} />
           ) : (
             <img src={hero.url} alt="" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 0 80px rgba(0,0,0,0.8)' }} />
           )}
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

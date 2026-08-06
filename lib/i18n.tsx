@@ -140,6 +140,7 @@ export const STRINGS: Record<string, Entry> = {
   'xd.recent':        { en: 'Recent conversations', 'zh-Hant': '最近對話', 'zh-Hans': '最近对话', ja: '最近の会話', ko: '최근 대화' },
   // ── XDirect storyboard strip ──
   'xd.sb.title':      { en: 'STORYBOARD', 'zh-Hant': '分鏡腳本', 'zh-Hans': '分镜脚本', ja: '絵コンテ', ko: '스토리보드' },
+  'xd.download':      { en: 'Download', 'zh-Hant': '下載', 'zh-Hans': '下载', ja: 'ダウンロード', ko: '다운로드' },
   'xd.sb.scene':      { en: 'Scene', 'zh-Hant': '場景', 'zh-Hans': '场景', ja: 'シーン', ko: '씬' },
   'xd.sb.script':     { en: 'Script', 'zh-Hant': '腳本', 'zh-Hans': '脚本', ja: 'スクリプト', ko: '스크립트' },
   'xd.sb.shot':       { en: 'Shot prompt', 'zh-Hant': '鏡頭提示詞', 'zh-Hans': '镜头提示词', ja: 'ショット指示', ko: '숏 프롬프트' },
