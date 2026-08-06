@@ -69,11 +69,14 @@ export type SceneRunnerHandle = {
   generateAll: (sceneIds: string[]) => void
 }
 
-export default function XDirectorChat({ onConversationId, onActivity, storyboard, onStoryboard, runnerRef, onBusy }: {
+export default function XDirectorChat({ onConversationId, onMintedConversation, onActivity, storyboard, onStoryboard, runnerRef, onBusy }: {
   /** /xdirect listens here so its canvas can follow the conversation's
    *  board (board id === conversation id). Fired on restore and on the
    *  first message of a fresh chat. */
   onConversationId?: (id: string) => void
+  /** Fired ONLY when this chat mints a brand-new id (never on restore) —
+   *  the page uses it to keep the minted id from remounting the surface. */
+  onMintedConversation?: (id: string) => void
   /** Fired whenever the board may have changed (a generation settled, a
    *  conversation restored) — the canvas refreshes on it. */
   onActivity?: () => void
@@ -232,6 +235,10 @@ export default function XDirectorChat({ onConversationId, onActivity, storyboard
   const ensureConvId = () => {
     if (!convIdRef.current) {
       convIdRef.current = newId()
+      // Order matters: the page must know this id is MINTED before the URL
+      // write reaches the router, or the searchParams sync remounts the
+      // surface out from under the send in progress.
+      onMintedConversation?.(convIdRef.current)
       setConversationUrl(convIdRef.current)
       onConversationId?.(convIdRef.current)
     }

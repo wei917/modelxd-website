@@ -35,11 +35,21 @@ export default function XDirectClient() {
 }
 
 function XDirectKeyed() {
-  const conv = useSearchParams()?.get('c') ?? 'new'
-  return <XDirectBody key={conv} />
+  const c = useSearchParams()?.get('c') ?? null
+  // The chat MINTS its conversation id mid-send and writes it to the URL
+  // with history.replaceState — which Next's router syncs into
+  // useSearchParams. If that id changed the key, the first message of every
+  // new conversation would remount (and wipe) the chat that was busy
+  // sending it. A minted id keeps the mount's original key; only navigating
+  // to a DIFFERENT conversation remounts. (CC, Aug 6 — found because it
+  // shipped without this and new conversations self-destructed on send.)
+  const minted = useRef<string | null>(null)
+  if (c && minted.current && c !== minted.current) minted.current = null
+  const key = c && c === minted.current ? 'new' : (c ?? 'new')
+  return <XDirectBody key={key} onMinted={(id) => { minted.current = id }} />
 }
 
-function XDirectBody() {
+function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   useRequireAuth()
   const t = useT()
 
@@ -71,6 +81,7 @@ function XDirectBody() {
           <div className="xdirect-chat">
             <XDirectorChat
               onConversationId={onConversationId}
+              onMintedConversation={onMinted}
               onActivity={onActivity}
               storyboard={storyboard}
               onStoryboard={onStoryboard}

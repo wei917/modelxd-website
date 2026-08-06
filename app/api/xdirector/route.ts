@@ -395,8 +395,14 @@ export async function POST(req: Request) {
           // this rejects. The model gets the error as a tool result and
           // self-corrects into set_storyboard in the same POST.
           const inp: any = tu.input ?? {}
+          // The RECIPE decides what this is, not the medium label: within an
+          // hour of the first guard shipping, a skill-guided turn slipped a
+          // video recipe through as medium:"image" (image_to_video on the
+          // clean-plate step). Every *_to_video / video_* recipe produces
+          // motion whatever the label says; image recipes (image_edit,
+          // text_to_image) contain no "video" substring.
           const isVideo = inp.medium === 'video'
-            || (inp.medium !== 'image' && typeof inp.recipe === 'string' && inp.recipe.includes('video'))
+            || (typeof inp.recipe === 'string' && inp.recipe.includes('video'))
           const knownScenes = new Set([...(clientBoard ?? []), ...(storyboardOut ?? [])].map(s => s.id))
           const sceneOk = typeof inp.scene_id === 'string' && knownScenes.has(inp.scene_id)
           if (isVideo && !sceneOk) {
