@@ -241,9 +241,49 @@ async function callClaude(system: string, messages: any[], tools: any[] = TOOLS)
   const key = process.env.ANTHROPIC_API_KEY
   if (!key) throw new Error('ANTHROPIC_API_KEY is not set')
   const candidates = workingModel ? [workingModel] : MODEL_CANDIDATES
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
   let lastErr = ''
-  for (const model of candidates) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+  // Transient failures get RETRIED, not surfaced: a single corrupted TLS
+  // record on a reused keep-alive socket ("SSL alert bad record mac", seen
+  // live Aug 6) was reaching the user as "⚠ fetch failed" and killing the
+  // turn. Three attempts per model with a short backoff — a thrown fetch
+  // gets a fresh socket, a 5xx/529 gets a moment to recover. Model-shaped
+  // 400/404s still fall through the candidate list; other client errors
+  // stop immediately (retrying a 401 helps nobody).
+  outer: for (const model of candidates) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let res: Response
+      try {
+        res = await callAnthropicOnce(key, model, system, messages, tools)
+      } catch (err: any) {
+        lastErr = `network: ${err?.cause?.code ?? err?.message ?? err}`
+        if (attempt < 2) { await sleep(500 + attempt * 900); continue }
+        continue outer
+      }
+      if (res.ok) {
+        workingModel = model
+        const j = await res.json()
+        // Same signal the site agent logs: warm traffic with cache_read=0
+        // means something re-broke the prefix. The owner pays these tokens.
+        const u = j?.usage ?? {}
+        console.log(`${LOG} model=${j?.model} in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens} cache_read=${u.cache_read_input_tokens} out=${u.output_tokens}`)
+        return j
+      }
+      const body = await res.text()
+      lastErr = `${res.status} ${body.slice(0, 300)}`
+      if (res.status === 404 || (res.status === 400 && body.includes('model'))) continue outer
+      if (res.status >= 500 || res.status === 429) {
+        if (attempt < 2) { await sleep(700 + attempt * 1200); continue }
+        continue outer
+      }
+      break outer
+    }
+  }
+  throw new Error(`Anthropic API error: ${lastErr}`)
+}
+
+function callAnthropicOnce(key: string, model: string, system: string, messages: any[], tools: any[]): Promise<Response> {
+  return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type':      'application/json',
@@ -269,22 +309,7 @@ async function callClaude(system: string, messages: any[], tools: any[] = TOOLS)
         messages, tools,
         ...(/sonnet-5|opus-5|sonnet-4-6|opus-4-6|opus-4-7|opus-4-8/.test(model) ? { thinking: { type: 'disabled' } } : {}),
       }),
-    })
-    if (res.ok) {
-      workingModel = model
-      const j = await res.json()
-      // Same signal the site agent logs: warm traffic with cache_read=0
-      // means something re-broke the prefix. The owner pays these tokens.
-      const u = j?.usage ?? {}
-      console.log(`${LOG} model=${j?.model} in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens} cache_read=${u.cache_read_input_tokens} out=${u.output_tokens}`)
-      return j
-    }
-    const body = await res.text()
-    lastErr = `${res.status} ${body.slice(0, 300)}`
-    // Only fall through the candidate list on "no such model"-shaped errors.
-    if (!(res.status === 404 || (res.status === 400 && body.includes('model')))) break
-  }
-  throw new Error(`Anthropic API error: ${lastErr}`)
+  })
 }
 
 // ── Route ──────────────────────────────────────────────────────────────────
