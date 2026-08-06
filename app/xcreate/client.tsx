@@ -1319,6 +1319,16 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
   // empty rather than erroring; the URL is a suggestion, not a contract.
   const searchModelParam = useSearchParams()?.get('model') ?? null
   const searchModeParam  = useSearchParams()?.get('mode')  ?? null
+  // ── ?template=<template id> deep link ──
+  //
+  // Opens the studio with a preset already applied — mode, recommended
+  // models, slot options and starter prompt. This is how the site agent
+  // routes a concrete request ("remove the background of this photo") to the
+  // tool that already does it, instead of dropping the visitor on an empty
+  // studio and hoping they find the right card. The effect itself lives
+  // below applyTemplate. (CC, Aug 5)
+  const searchTemplateParam = useSearchParams()?.get('template') ?? null
+  const templateLinkRef = useRef<string | null>(null)
   const modelLinkRef = useRef<string | null>(null)
   useEffect(() => {
     if (!searchModelParam) return
@@ -2548,6 +2558,49 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
       else setLoadError(`Couldn't load the sample file for "${t.title}". Attach your own document to run this template.`)
     }
   }
+
+  // ?template=<id> — apply the preset named in the URL, once. Declared here
+  // rather than beside the other deep-link effects because it calls
+  // applyTemplate, and reading it next to the thing it runs is worth more
+  // than grouping the params together.
+  //
+  // An unknown id is ignored rather than surfaced as an error: the URL is a
+  // suggestion, and a template that has since been renamed should leave the
+  // visitor in a working studio, not an error state. Same consume-and-strip
+  // as ?model=, for the same reason — once applied it is no longer true, and
+  // a refresh should not silently undo the user's edits.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // Read the URL directly rather than through useSearchParams(). The hook
+    // works, but it resolves a render later inside this Suspense boundary,
+    // and a one-shot deep link only ever wants the value that was in the
+    // address bar when the page opened. window.location is already correct
+    // by the time any effect runs, which makes this immune to the ordering.
+    // The hook stays in the dep list so an in-app navigation to a different
+    // ?template= still re-fires. (CC, Aug 5)
+    const id = new URLSearchParams(window.location.search).get('template')
+    if (!id) return
+    if (templateLinkRef.current === id) return
+    templateLinkRef.current = id
+    const strip = () => {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('template')
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+    }
+    const t = XCREATE_TEMPLATES.find(x => x.id === id)
+    if (!t) { strip(); return }
+    void (async () => {
+      await applyTemplate(t)
+      // Strip ONLY once we know the visitor is signed in. XCreate is gated,
+      // so an arriving stranger gets the auth modal — which falls back to the
+      // current URL for its post-login destination, and OAuth reloads the
+      // page. Stripping before that point signs them in to an empty studio
+      // and quietly loses the request that brought them here. (CC, Aug 5)
+      const { data } = await createSupabaseBrowser().auth.getUser()
+      if (data.user) strip()
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTemplateParam])
 
   const reset = () => {
     setPhase('setup'); setSlots([]); setChosenIdx(null)

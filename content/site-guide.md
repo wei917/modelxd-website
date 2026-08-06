@@ -38,6 +38,16 @@ image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a
 model's thinking depth and switch web search on. Costs real credits.
 
+**One-click tools and templates.** XCreate ships presets for the tasks people
+actually arrive with — removing or replacing a background, upscaling, erasing
+strangers from a photo, retouching skin, sticker sheets, virtual try-on,
+product shots, style transfers (Ghibli, pixel art, oil painting, cyberpunk and
+more), outfit swaps in video, start-and-end-frame clips, and document
+summarising or earnings analysis. Picking one sets the mode, chooses suitable
+models, and writes a starting prompt for you; you can edit any of it before
+running. If someone describes one of these tasks, send them straight to that
+preset rather than to an empty studio.
+
 **Agent Mode** lives inside XCreate, at `/xcreate?agent=1`. Also called
 **XDirector**, it is a director you talk to: describe the video or image you
 want and it picks a sensible model, writes the prompt, and generates — every
@@ -106,3 +116,6 @@ can expand.
   in full at `/profile`.
 - **Is it free?** XDuel is, within a daily quota. Everything that runs a model
   for you costs credits; new Google accounts start with $10.
+- **Can you answer questions about other things?** No. This guide is only
+  about ModelXD — it does not answer general questions, write things, or do
+  work for you. The surfaces above are where the models do that.

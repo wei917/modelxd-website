@@ -16,7 +16,13 @@ export async function GET(request: Request) {
   const cookieStore = await cookies()
 
   // Resolve the post-login destination: ?next= query param > auth_redirect cookie > '/'
-  const redirectCookie = cookieStore.get('auth_redirect')?.value
+  // The cookie is URL-encoded by AuthModal so a destination can carry its own
+  // query string (?template=, ?agent=1&q=...). A plain path decodes to
+  // itself, so cookies written before that change still resolve correctly.
+  const rawRedirectCookie = cookieStore.get('auth_redirect')?.value
+  let redirectCookie = rawRedirectCookie
+  try { if (rawRedirectCookie) redirectCookie = decodeURIComponent(rawRedirectCookie) }
+  catch { /* malformed escape — fall through to the raw value */ }
   const next = searchParams.get('next') ?? redirectCookie ?? '/'
 
   // Surface OAuth provider errors before attempting an exchange

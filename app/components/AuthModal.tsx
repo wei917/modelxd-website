@@ -33,8 +33,16 @@ export default function AuthModal() {
       return
     }
     const supabase = createBrowserClient(url, key)
-    const destination = nextPath ?? window.location.pathname
-    document.cookie = `auth_redirect=${destination}; path=/; max-age=600; SameSite=Lax`
+    // Keep the query string. The path alone used to be enough, but deep
+    // links now carry the whole intent — /xcreate?template=tool-upscale,
+    // /xcreate?agent=1&q=... — and dropping the search meant signing in
+    // threw away the thing the visitor had just asked for and landed them
+    // on a bare studio. (CC, Aug 5)
+    const destination = nextPath ?? (window.location.pathname + window.location.search)
+    // Cookie values cannot carry ';' or ',' raw, and a redirect target is
+    // attacker-influenceable in principle — encode it, and let the callback
+    // decode. Path-only values are unaffected.
+    document.cookie = `auth_redirect=${encodeURIComponent(destination)}; path=/; max-age=600; SameSite=Lax`
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },

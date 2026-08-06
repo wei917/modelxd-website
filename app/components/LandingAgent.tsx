@@ -16,6 +16,14 @@
 // the conversation has a beginning you can scroll back to rather than a
 // greeting that vanished the moment it became useful.
 //
+// Under the intro sit STARTER CHIPS. A blank box that answers anything is
+// the hardest kind to start using — the chips turn "what can I even ask"
+// into one click, and each one deliberately exercises a different
+// destination (free duel, a template, the director, the board) so the first
+// answer demonstrates that this thing routes you somewhere rather than just
+// talking. They come back after an off-topic decline, where "here is what I
+// can actually do" is exactly what the visitor needs. (CC, Aug 5)
+//
 // Field BELOW the panel on purpose: you read the answer, then reply, so the
 // reading order matches the conversation order.
 
@@ -31,9 +39,9 @@ type Msg = {
   /** The seeded greeting. Flagged so a language switch can re-render it
    *  while a conversation is still untouched. */
   intro?: boolean
-  /** The question that produced this answer, kept so a route into the
-   *  director can carry the request with it. */
-  askedQ?: string
+  /** Set when the agent declined an off-topic question. Brings the starter
+   *  chips back, so a refusal still leaves the visitor with somewhere to go. */
+  offtopic?: boolean
 }
 
 // Per-TAB, not per-browser: following a link and pressing Back should return
@@ -41,6 +49,8 @@ type Msg = {
 // reappearing on a fresh visit would be startling. sessionStorage is exactly
 // that lifetime. (CC, Aug 5)
 const STORE = 'modelxd.landing.chat'
+
+const CHIPS = ['la.chip.duel', 'la.chip.bg', 'la.chip.ad', 'la.chip.price'] as const
 
 export default function LandingAgent() {
   const t = useT()
@@ -97,8 +107,9 @@ export default function LandingAgent() {
     if (msgs.length) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [msgs.length, busy])
 
-  const send = async () => {
-    const question = q.trim()
+  /** `text` is passed by the starter chips; the field uses its own state. */
+  const send = async (text?: string) => {
+    const question = (text ?? q).trim()
     if (!question || busy) return
     setQ('')
     setBusy(true)
@@ -112,7 +123,13 @@ export default function LandingAgent() {
       })
       if (!res.ok) throw new Error(String(res.status))
       const d = await res.json()
-      setMsgs(m => [...m, { role: 'agent', text: d.answer, route: d.route, routeLabel: d.routeLabel, askedQ: question }])
+      // The destination arrives fully formed — the API composes the href from
+      // an allow-listed surface plus a validated template id, so there is
+      // nothing left here to assemble or to get wrong.
+      setMsgs(m => [...m, {
+        role: 'agent', text: d.answer,
+        route: d.route, routeLabel: d.routeLabel, offtopic: d.offtopic,
+      }])
     } catch {
       setMsgs(m => [...m, { role: 'agent', text: t('omni.askfail') }])
     } finally {
@@ -120,15 +137,12 @@ export default function LandingAgent() {
     }
   }
 
-  /** A route into the director carries the original request, so the user
-   *  does not have to retype the thing they just asked for. */
-  const hrefFor = (m: Msg) =>
-    m.route === '/xcreate?agent=1' && m.askedQ
-      ? `/xcreate?agent=1&q=${encodeURIComponent(m.askedQ)}`
-      : (m.route as string)
-
   // More than the greeting means there is something worth clearing.
   const hasChat = msgs.length > 1
+  const last = msgs[msgs.length - 1]
+  // Chips belong on the empty state and after a decline — never mid-answer,
+  // where they would compete with the destination button.
+  const showChips = !busy && !!last && last.role === 'agent' && (last.intro || last.offtopic)
 
   return (
     <div className="la-wrap">
@@ -136,21 +150,42 @@ export default function LandingAgent() {
       <div className="la-panel">
         {msgs.map((m, i) => (
           m.role === 'user' ? (
-            <div key={i} className="la-you">{m.text}</div>
+            <div key={i} className="la-row la-row-you">
+              <div className="la-you">{m.text}</div>
+            </div>
           ) : (
-            <div key={i} className={`la-agent${m.intro ? ' la-intro' : ''}`}>
-              <div className="la-agent-text">{m.text}</div>
-              {m.route && (
-                <button className="la-go" onClick={() => router.push(hrefFor(m))}>
-                  {t('omni.goto').replace('{n}', m.routeLabel ?? '')} →
-                </button>
-              )}
+            <div key={i} className="la-row">
+              <span className="la-mark" aria-hidden>XD</span>
+              <div className={`la-agent${m.intro ? ' la-intro' : ''}`}>
+                {m.intro && <div className="la-badge">{t('la.badge')}</div>}
+                <div className="la-agent-text">{m.text}</div>
+                {m.route && (
+                  <button className="la-go" onClick={() => router.push(m.route as string)}>
+                    {t('omni.goto').replace('{n}', m.routeLabel ?? '')}
+                    <span className="la-go-arrow" aria-hidden>→</span>
+                  </button>
+                )}
+              </div>
             </div>
           )
         ))}
         {busy && (
-          <div className="la-agent">
-            <div className="la-agent-text la-dim">{t('omni.asking')}</div>
+          <div className="la-row">
+            <span className="la-mark" aria-hidden>XD</span>
+            <div className="la-agent">
+              <div className="la-typing" aria-label={t('omni.asking')}>
+                <i /><i /><i />
+              </div>
+            </div>
+          </div>
+        )}
+        {showChips && (
+          <div className="la-chips">
+            {CHIPS.map(k => (
+              <button key={k} className="la-chip" onClick={() => void send(t(k))}>
+                {t(k)}
+              </button>
+            ))}
           </div>
         )}
         <div ref={endRef} />

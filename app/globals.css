@@ -1911,45 +1911,108 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 /* ── Landing agent ──
    A reserved answer panel with the field beneath it. The panel height is
    fixed so replying never reflows the page; long conversations scroll
-   inside it. */
+   inside it.
+
+   NOTE (CC, Aug 5): every font-size here was previously unitless
+   (`font-size: 13.5`), which is invalid CSS — the browser dropped the whole
+   declaration, so the panel rendered at inherited sizes and the careful
+   typographic scale did nothing. Keep the units. */
 .la-wrap { max-width: 760px; margin: 0 auto; padding: 34px 24px 6px; }
 
 .la-panel {
-  height: 310px; overflow-y: auto; overscroll-behavior: contain;
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 16px 16px 4px; margin-bottom: 14px;
-  border: 1px solid var(--border); border-radius: 14px;
-  background: var(--surface);
+  height: 320px; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 20px 18px 8px; margin-bottom: 16px;
+  border: 1px solid var(--border); border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 8px 30px rgba(0,0,0,0.04);
 }
 .la-panel::-webkit-scrollbar { width: 6px; }
 .la-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
+.la-panel::-webkit-scrollbar-track { background: transparent; }
+/* Sit the conversation on the BOTTOM of the reserved space, so a short
+   thread reads as resting on the input rather than stranded above a field
+   of white. Done with an auto margin on the first turn rather than
+   justify-content:flex-end, which clips the top of an overflowing column
+   in every browser. Once the thread is tall enough to scroll, the auto
+   margin resolves to zero and this stops applying. */
+.la-panel > .la-row:first-child { margin-top: auto; }
+
+/* One turn. The agent's avatar sits outside its bubble so successive
+   answers line up on a single optical column. */
+.la-row { display: flex; align-items: flex-start; gap: 10px; }
+.la-row-you { justify-content: flex-end; }
+
+.la-mark {
+  flex-shrink: 0; width: 26px; height: 26px; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: var(--red); color: #fff;
+  font-family: var(--font-mono), monospace; font-size: 10px;
+  font-weight: 700; letter-spacing: .02em;
+}
 
 .la-you {
-  align-self: flex-end; max-width: 85%;
-  padding: 8px 14px; border-radius: 13px 13px 3px 13px;
-  background: var(--surface2); color: var(--white);
-  font-size: 13px; line-height: 1.6;
+  max-width: 85%;
+  padding: 9px 14px; border-radius: 14px 14px 4px 14px;
+  background: var(--red-dim); color: var(--white);
+  font-size: 13.5px; line-height: 1.6;
 }
 .la-agent {
-  align-self: flex-start; max-width: 94%;
-  padding: 11px 14px; border-radius: 13px 13px 13px 3px;
-  border: 1px solid var(--border2); border-left: 2px solid var(--red);
-  background: #fff;
+  min-width: 0; max-width: 100%;
+  padding: 12px 15px; border-radius: 4px 14px 14px 14px;
+  border: 1px solid var(--border); background: var(--bg);
 }
-.la-intro { border-left-color: var(--red); }
-.la-agent-text { font-size: 13.5; line-height: 1.75; color: var(--white); white-space: pre-line; }
+.la-intro { background: #fff; border-color: var(--border2); }
+.la-badge {
+  margin-bottom: 7px;
+  font-family: var(--font-mono), monospace; font-size: 9.5px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--red);
+}
+.la-agent-text { font-size: 13.5px; line-height: 1.75; color: var(--white); white-space: pre-line; }
 .la-dim { color: var(--muted); }
+
 .la-go {
-  margin-top: 10px; padding: 5px 13px; border-radius: 999px;
-  border: 1px solid var(--red); background: var(--red-dim); color: var(--red);
-  font-family: var(--font-mono), monospace; font-size: 10.5; font-weight: 700;
-  letter-spacing: .08em; cursor: none;
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 12px; padding: 7px 15px; border-radius: 999px;
+  border: 1px solid var(--red); background: var(--red); color: #fff;
+  font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; cursor: none;
+  transition: box-shadow .15s, transform .15s;
 }
-.la-go:hover { background: var(--red); color: #fff; }
+.la-go:hover { box-shadow: 0 4px 16px var(--red-glow); transform: translateY(-1px); }
+.la-go-arrow { transition: transform .15s; }
+.la-go:hover .la-go-arrow { transform: translateX(3px); }
+
+/* Starter chips — the empty state's answer to "what do I even ask". */
+.la-chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 0 4px 36px; }
+.la-chip {
+  padding: 6px 13px; border-radius: 999px;
+  border: 1px dashed var(--border2); background: transparent; color: var(--muted2);
+  font-family: inherit; font-size: 12.5px; line-height: 1.4; cursor: none;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.la-chip:hover {
+  color: var(--red); border-color: var(--red); border-style: solid;
+  background: var(--red-dim);
+}
+
+/* Three dots, so waiting reads as "composing" rather than "stuck". */
+.la-typing { display: flex; align-items: center; gap: 4px; height: 20px; }
+.la-typing i {
+  width: 5px; height: 5px; border-radius: 999px; background: var(--muted);
+  animation: la-blink 1.3s infinite ease-in-out;
+}
+.la-typing i:nth-child(2) { animation-delay: .18s; }
+.la-typing i:nth-child(3) { animation-delay: .36s; }
+@keyframes la-blink { 0%, 75%, 100% { opacity: .22; } 35% { opacity: .95; } }
+@media (prefers-reduced-motion: reduce) {
+  .la-typing i { animation: none; opacity: .5; }
+  .la-go:hover { transform: none; }
+}
 
 .la-field {
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 16px 13px 20px; border-radius: 999px;
+  padding: 14px 16px 14px 20px; border-radius: 999px;
   border: 1px solid var(--border2); background: #fff;
   box-shadow: 0 2px 14px rgba(0,0,0,0.05);
   transition: border-color .15s, box-shadow .15s;
@@ -1958,10 +2021,11 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .la-icon { color: var(--muted2); flex-shrink: 0; }
 .la-input {
   flex: 1; min-width: 0; border: none; outline: none; background: transparent;
-  font-family: inherit; font-size: 15; color: var(--white);
+  font-family: inherit; font-size: 15px; color: var(--white);
 }
+.la-input::placeholder { color: var(--muted); }
 .la-send {
-  flex-shrink: 0; width: 31px; height: 31px; border-radius: 999px;
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 999px;
   border: none; background: var(--red); color: #fff;
   font-size: 14px; line-height: 1; cursor: none;
   transition: opacity .15s, transform .15s;
@@ -1969,18 +2033,19 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .la-send:disabled { opacity: .3; }
 .la-send:not(:disabled):hover { transform: scale(1.07); }
 .la-hint {
-  margin-top: 10px; text-align: center;
-  font-family: var(--font-mono), monospace; font-size: 10.5;
+  margin-top: 12px; text-align: center;
+  font-family: var(--font-mono), monospace; font-size: 10.5px;
   color: var(--muted2); letter-spacing: .06em;
 }
 @media (max-width: 760px) {
   .la-wrap { padding: 20px 16px 4px; }
-  .la-panel { height: 260px; }
-  .la-input { font-size: 14; }
+  .la-panel { height: 280px; padding: 16px 14px 8px; }
+  .la-input { font-size: 14px; }
+  .la-chips { padding-left: 0; }
 }
 .la-restart {
   background: none; border: none; padding: 0; cursor: none;
-  font-family: var(--font-mono), monospace; font-size: 10.5;
+  font-family: var(--font-mono), monospace; font-size: 10.5px;
   letter-spacing: .06em; color: var(--muted2);
   border-bottom: 1px solid transparent; transition: color .15s, border-color .15s;
 }
