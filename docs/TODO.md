@@ -88,10 +88,32 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       pending (with the harness extraction below).
 - [ ] Chess — chess.js for rules/legality; models pick from legal moves.
 - [ ] 中國象棋 — rules engine hand-rolled or lib; board renderer.
-- [ ] Draw Something (你畫我猜 / お絵かき当て / 그림 퀴즈) — different kind:
-      one model GENERATES an image of a secret word (through the normal
-      billed pipeline), others guess in text. XCreate-pipeline crossover;
-      per-drawing billing.
+- [x] Draw & Guess (你畫我猜 / お絵かき当て / 그림 퀴즈) — CODE SHIPPED
+      Aug 6; needs migration 73 + a fill run before it's playable.
+      FINAL DESIGN (owner, Aug 6 — supersedes the sketch below): every
+      round shows ONE secret term drawn by TWO anonymous image models,
+      side by side; the user guesses (45s, live host-agent hints, max 2),
+      then votes the better drawing; after 5 rounds the artists are
+      revealed with the vote tally. ZERO live image generation: rounds are
+      assembled only from pre-drawn art (draw_images), filled offline by
+      `npx tsx scripts/fill-draw-images.ts --model <name> [--lang xx]
+      [--tier easy] [--limit N] [--dry]`. Terms are SERVER DATA
+      (draw_terms — insert rows, no deploy). Model identity in image URLs
+      is hidden behind draw_model_keys secrets; the term is the opaque row
+      id. Host: XGAME_HOST_MODEL env (default Haiku), house-paid, with a
+      leak guard (a hint containing the answer is replaced by a canned
+      one). Matching is script-aware (lib/drawsomething-engine.ts):
+      Damerau-Levenshtein ≤1 for latin ≥5 chars, kana folding for ja, CJK
+      exact-or-alias. 10 games/day cap.
+      - [ ] OWNER RUNBOOK: (1) run supabase/73_draw_something.sql (tables
+            + bucket + ~250 seeded terms); (2) fill two models cheap:
+            `--tier easy --lang en --limit 40` first (~$0.5-1/model);
+            (3) play at /xgame → Draw & Guess.
+      - [ ] Native review of the seeded term banks (zh by owner; find
+            ja/ko reviewers). Terms are drafts until then.
+      - [ ] Votes → image rating pool (a 'draw' pool, like search pools).
+      - [ ] Old sketch (superseded): one model draws per round, others
+            guess in text, per-drawing billing.
       - WORD BANKS ARE CONTENT, NOT TRANSLATION (owner, Aug 6): each site
         language gets its own culturally-popular subject list — zh-Hant
         draws 珍珠奶茶, 101大樓, 夜市; ja draws 桜, 新幹線, おにぎり; ko

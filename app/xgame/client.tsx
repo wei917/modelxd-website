@@ -17,6 +17,7 @@ import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import { templateById, type Speaker } from '../xtalk/templates'
 import GomokuLive from './GomokuLive'
+import DrawLive from './DrawLive'
 import TemplateHelp from '../xtalk/TemplateHelp'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -36,14 +37,18 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   // with a gomoku id — it resumed the wrong row as a board (stones as
   // players, undefined seats → React key warnings) until the probe flipped
   // it. Render NOTHING until we know. (CC, Aug 6)
-  const [active, setActive] = useState<'werewolf' | 'gomoku' | null>(resumeId ? null : 'werewolf')
+  const [active, setActive] = useState<'werewolf' | 'gomoku' | 'draw' | null>(resumeId ? null : 'werewolf')
   // A resumed id names a row whose game we can't know client-side; probe
-  // gomoku's state action, fall back to werewolf on a 404.
+  // each game's state action in turn, fall back to werewolf on 404s.
   useEffect(() => {
     if (!resumeId) return
-    fetch('/api/xgame/gomoku', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'state', id: resumeId }) })
-      .then(r => setActive(r.ok ? 'gomoku' : 'werewolf'))
-      .catch(() => setActive('werewolf'))
+    const probe = (route: string) =>
+      fetch(`/api/xgame/${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'state', id: resumeId }) })
+    probe('gomoku').then(async r => {
+      if (r.ok) { setActive('gomoku'); return }
+      const d = await probe('draw').catch(() => null)
+      setActive(d?.ok ? 'draw' : 'werewolf')
+    }).catch(() => setActive('werewolf'))
   }, [resumeId])
   const [nonce, setNonce] = useState(0)
 
@@ -67,7 +72,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
         {/* The slogan sells the LOBBY; the table's headline is simply the
             game you are at. (owner, Aug 6) */}
         <h1 className="page-headline" style={{ marginBottom: 20 }}>
-          {resume ? (active ? t(active === 'gomoku' ? 'xg.game.gomoku' : 'xt.tpl.werewolf.name') : ' ') : t('xg.shell.title')}
+          {resume ? (active ? t(active === 'gomoku' ? 'xg.game.gomoku' : active === 'draw' ? 'xg.game.draw' : 'xt.tpl.werewolf.name') : ' ') : t('xg.shell.title')}
         </h1>
 
         {/* The picker is the LOBBY. A resumed game is the TABLE — it gets
@@ -109,9 +114,31 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             </button>
           </div>
 
+          <div className="xt-tpl-wrap">
+            <button className={`xt-tpl${active === 'draw' ? ' is-on' : ''}`} onClick={() => { setActive('draw'); setResume(null); setNonce(n => n + 1) }}>
+              <span className="xt-tpl-banner"><img src="/xgame/draw-banner.svg" alt="" loading="lazy" /></span>
+              <span className="xt-tpl-body">
+                <span className="xt-tpl-text">
+                  <span className="xt-tpl-head">
+                    <span className="xt-tpl-name">{t('xg.game.draw')}</span>
+                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2')}</span>
+                  </span>
+                  <span className="xt-tpl-tag">{t('xg.draw.tag')}</span>
+                  <span className="xt-tpl-blurb">{t('xg.draw.blurb')}</span>
+                </span>
+              </span>
+            </button>
+          </div>
+
         </div>)}
 
-        {active === 'gomoku' ? (
+        {active === 'draw' ? (
+          <DrawLive
+            key={`draw-${nonce}`}
+            resumeId={resume}
+            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
+          />
+        ) : active === 'gomoku' ? (
           <GomokuLive
             key={`gomoku-${nonce}`}
             models={models}
