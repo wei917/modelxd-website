@@ -63,7 +63,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xgames' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -85,6 +85,7 @@ const KIND_LABELS: Record<CreditTransaction['kind'], string> = {
 // reference_type. XCreate's reserve / charge / refund / chat all collapse to
 // one word so a generation and its follow-ups read as a single session.
 const REF_LABELS: Record<string, string> = {
+  xgame_gomoku: 'Gomoku game',
   xtalk_werewolf: 'Werewolf game',
   xtalk_turn: 'Discussion',
   xtalk_bid: 'Discussion',
@@ -154,12 +155,21 @@ export default function ProfilePage() {
   const [duels,       setDuels]       = useState<any[]>([])
   const [xcreates,    setXcreates]    = useState<any[]>([])
   const [votes,       setVotes]       = useState<any[]>([])
+  const [xdirects,    setXdirects]    = useState<any[]>([])
+  const [xgames,      setXgames]      = useState<any[]>([])
+  // Which beta surfaces this account can see — the XDirect/XGame tabs
+  // follow the same gate as their nav items, so a non-beta user's profile
+  // doesn't advertise doors the server would slam. (owner ask, Aug 6)
+  const [feats,       setFeats]       = useState<{ xdirector?: boolean; xtalk?: boolean }>({})
+  useEffect(() => {
+    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => { if (f) setFeats(f) }).catch(() => {})
+  }, [])
   // Per-tab "has fetched at least once" flags. Initial render of an empty
   // array would otherwise show "No X yet" before the first fetch resolved,
   // making it look like the user has nothing when really we just haven't
   // asked the server yet.
-  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean }>({
-    duels: false, xcreates: false, votes: false,
+  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xgames: boolean }>({
+    duels: false, xcreates: false, votes: false, xdirects: false, xgames: false,
   })
   // XCreate pagination — 12 cards per page, server-side `range` so we
   // don't load the entire history into the browser when a user has
@@ -311,7 +321,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    const markLoaded = (k: 'duels' | 'xcreates' | 'votes') =>
+    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
     if (tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
@@ -331,6 +341,31 @@ export default function ProfilePage() {
       // XCreates are fetched + re-signed server-side, one page at a time, by
       // the dedicated effect below (keyed on page/filter). Nothing to do in
       // this per-tab effect.
+    } else if (tab === 'xgames') {
+      // Games are server-held sessions with owner-read RLS — same query the
+      // Nav history uses, with a fallback for a pre-migration-72 `game`
+      // column. XTalk Discussions are NOT here: they live in client state
+      // and have no row to link to (see Nav.tsx).
+      const gsel = (cols: string) => client.from('xtalk_sessions')
+        .select(cols).eq('user_id', user.id)
+        .order('updated_at', { ascending: false }).limit(50)
+      gsel('id, status, day, winner, created_at, title, game').then(async (res: any) => {
+        const r = res.error ? await gsel('id, status, day, winner, created_at, title') : res
+        setXgames(((r.data ?? []) as any[]).map(g => ({ game: 'werewolf', ...g })))
+        markLoaded('xgames')
+      })
+    } else if (tab === 'xdirects') {
+      client.from('xdirector_conversations').select('id, title, created_at, updated_at')
+        .eq('user_id', user.id).is('deleted_at', null)
+        .order('updated_at', { ascending: false }).limit(50)
+        .then(({ data, error }: any) => {
+          if (error) {
+            client.from('xdirector_conversations').select('id, title, created_at, updated_at')
+              .eq('user_id', user.id)
+              .order('updated_at', { ascending: false }).limit(50)
+              .then(({ data: fb }: any) => { setXdirects(fb ?? []); markLoaded('xdirects') })
+          } else { setXdirects(data ?? []); markLoaded('xdirects') }
+        })
     } else if (tab === 'votes') {
       // Try duel_votes table; fall back to showing user's own duels that have votes.
       client.from('duel_votes').select('*, duels(id, prompt, mode, slots)').eq('user_id', user.id)
@@ -979,7 +1014,13 @@ export default function ProfilePage() {
             display: 'flex', gap: 0, marginBottom: 32,
             borderBottom: '1px solid var(--border)',
           }}>
-            {([['duels', '⚔ ' + t('nav.xduel')], ['xcreates', '✦ ' + t('nav.xcreate')], ['votes', '⊞ ' + t('nav.xvote')]] as [Tab, string][]).map(([tb, label]) => {
+            {([
+              ['duels', '⚔ ' + t('nav.xduel')],
+              ['xcreates', '✦ ' + t('nav.xcreate')],
+              ...(feats.xdirector ? [['xdirects', '▶ ' + t('nav.xdirect')]] : []),
+              ...(feats.xtalk ? [['xgames', '◉ ' + t('nav.xgame')]] : []),
+              ['votes', '⊞ ' + t('nav.xvote')],
+            ] as [Tab, string][]).map(([tb, label]) => {
               const active = tab === tb
               return (
                 <button
@@ -1346,6 +1387,86 @@ export default function ProfilePage() {
               </>
             )
           })()}
+
+          {/* ── XDirect tab — director conversations/boards, same rows the
+              Nav history shows, linked back into the stage. ── */}
+          {tab === 'xdirects' && (
+            !tabsLoaded.xdirects
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              : xdirects.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxdirects')}</div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {xdirects.map((c: any) => (
+                    <a key={c.id} href={`/xdirect?c=${c.id}`} style={{ textDecoration: 'none' }}>
+                      <div
+                        style={{
+                          background: 'var(--surface)', border: '1px solid var(--border2)',
+                          borderRadius: 8, padding: '14px 18px',
+                          display: 'flex', alignItems: 'center', gap: 16,
+                          transition: 'border-color 0.2s, background 0.2s',
+                        }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
+                            {c.title || t('profile.untitled')}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            {t('nav.xdirect')}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+          )}
+
+          {/* ── XGame tab — every game session (Werewolf, Gomoku, …); the
+              permalink is the row. LIVE badge for games still running. ── */}
+          {tab === 'xgames' && (
+            !tabsLoaded.xgames
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              : xgames.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.nogames')}</div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {xgames.map((g: any) => {
+                    const gameName = g.game === 'gomoku' ? t('xg.game.gomoku') : t('xt.tpl.werewolf.name')
+                    return (
+                      <a key={g.id} href={`/xgame/${g.id}`} style={{ textDecoration: 'none' }}>
+                        <div
+                          style={{
+                            background: 'var(--surface)', border: '1px solid var(--border2)',
+                            borderRadius: 8, padding: '14px 18px',
+                            display: 'flex', alignItems: 'center', gap: 16,
+                            transition: 'border-color 0.2s, background 0.2s',
+                          }}
+                          onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
+                          onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
+                              {g.title || gameName}
+                            </div>
+                            <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                              {gameName}  ·  {new Date(g.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          {g.status === 'active' && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, color: 'var(--red)',
+                              background: 'var(--red-dim)',
+                              padding: '4px 10px', borderRadius: 3, flexShrink: 0,
+                              fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em',
+                              textTransform: 'uppercase',
+                            }}>LIVE</span>
+                          )}
+                        </div>
+                      </a>
+                    )
+                  })}
+                </div>
+          )}
 
           {/* ── Credits tab ──
               Rendered as a proper striped ledger: one bordered container,
