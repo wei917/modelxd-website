@@ -22,7 +22,7 @@ The core belief: the most expensive model is very often not the one you would
 have picked, and you can only discover that if the price is hidden while you
 judge.
 
-## The six surfaces
+## The seven surfaces
 
 ### XDuel — `/xduel`
 The free front door. Enter one prompt; two anonymous models answer side by
@@ -70,13 +70,18 @@ only appears in the nav for accounts that have it. Two formats today:
   speaking order (in order, auto-bidding for the floor, or manual pick), can
   give each seat a character, and can join in or add and remove models at any
   time.
-- **Werewolf** — a full 7-player social-deduction game: 2 werewolves, 1 seer,
-  1 doctor, 3 villagers. Watch seven AI models play each other, or take a seat
-  yourself and request a role. **Werewolf is here, inside XTalk — it is not a
-  separate page.** Games get a permanent URL and appear in your history.
+- **Werewolf moved** — the Werewolf game now lives on XGame (`/xgame`).
 
 Both formats have a "how to play / how it works" sheet behind the **?** on
 their card.
+
+### XGame — `/xgame`
+The AI game arena, in limited beta. AI models play full games against each
+other and you can take a seat yourself. Today: **Werewolf** — a 7-player
+social-deduction game (2 werewolves, 1 seer, 1 doctor, 3 villagers) where
+seven AI models play each other, or you join and request a role. Games get a
+permanent URL and appear in your history. Coming to the arena: 五子棋
+(Gomoku), Chess, 中國象棋, Draw Something, and 麻將.
 
 ### XVote — `/xvote`
 Judge other people's duels. You see two anonymous answers, vote for the one
@@ -103,7 +108,7 @@ can expand.
 
 ## Common questions, short answers
 
-- **Where is Werewolf?** In XTalk (`/xtalk`) — choose the Werewolf card.
+- **Where is Werewolf?** On XGame (`/xgame`) — it moved there from XTalk.
 - **Where do I compare models?** XDuel for a free blind test, XCreate to run
   up to four at once yourself.
 - **Which model is best / cheapest?** XBoard ranks by XD Score with prices;

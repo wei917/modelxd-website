@@ -52,7 +52,8 @@ the nav for allowlisted accounts.
 |---|---|---|---|
 | **XDuel** | `/xduel` | required | Free front door. Daily quota per mode. |
 | **XCreate** | `/xcreate` | required | Paid studio, up to 4 models. |
-| **XTalk** | `/xtalk` | required | Beta — hidden unless `FEATURE_XTALK_EMAILS`. |
+| **XTalk** | `/xtalk` | required | Discussion rooms. Beta — `FEATURE_XTALK_EMAILS`. |
+| **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Same gate as XTalk. |
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Beta — `FEATURE_XDIRECTOR_EMAILS`. |

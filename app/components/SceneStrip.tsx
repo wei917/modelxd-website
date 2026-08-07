@@ -22,6 +22,9 @@ export type Scene = {
   script: string
   shot: string
   duration_s: number
+  /** This card is a CUT — it continues the previous card's action and is
+   *  chained from its final frame at generation. */
+  continues?: boolean
   model_id?: string
   model_name?: string
   recipe?: string
@@ -116,7 +119,10 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
           <div key={s.id} style={{ ...card, borderColor: s.status === 'generating' ? 'var(--red)' : 'var(--border2)' }}>
             {/* Header: number, editable title, reorder / delete */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ ...label, color: 'var(--red)', flexShrink: 0 }}>S{i + 1}</span>
+              {s.continues && i > 0 && (
+                <span title="continues the previous card (chained cut)" aria-label="cut" style={{ flexShrink: 0, fontSize: 11, color: 'var(--muted)' }}>🔗</span>
+              )}
+              <span style={{ ...label, color: 'var(--red)', flexShrink: 0 }}>{s.continues && i > 0 ? `C${i + 1}` : `S${i + 1}`}</span>
               <input
                 value={s.title}
                 onChange={e => patch(s.id, { title: e.target.value.slice(0, 80) })}

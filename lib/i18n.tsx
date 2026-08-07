@@ -49,6 +49,9 @@ export const STRINGS: Record<string, Entry> = {
   // "Direct" is the verb of director — the nav names what YOU do (duel,
   // create, direct, talk, vote), while the persona inside stays "the
   // director". 導演/导演 already read as verbs in zh, so only en changed.
+  'nav.xgame':        { en: 'XGame', 'zh-Hant': 'X遊戲', 'zh-Hans': 'X游戏', ja: 'Xゲーム', ko: 'X게임' },
+  'xg.shell.title':   { en: 'Watch AI Play. Take a Seat.', 'zh-Hant': '看 AI 對戰，或親自入座。', 'zh-Hans': '看 AI 对战，或亲自入座。', ja: 'AIの対戦を観る。席に着く。', ko: 'AI 대전을 보거나 직접 참여하세요.' },
+  'xg.soon':          { en: 'Coming soon', 'zh-Hant': '即將推出', 'zh-Hans': '即将推出', ja: '近日公開', ko: '출시 예정' },
   'nav.xdirect':      { en: 'XDirect', 'zh-Hant': 'X導演', 'zh-Hans': 'X导演', ja: 'Xディレクター', ko: 'X디렉터' },
   'xdirect.empty':    { en: 'The board is empty — everything the director makes lands here. Describe what you want on the left.', 'zh-Hant': '畫布還是空的——導演做出的每一步都會出現在這裡。在左邊說說你想做什麼。', 'zh-Hans': '画布还是空的——导演做出的每一步都会出现在这里。在左边说说你想做什么。', ja: 'ボードはまだ空です。ディレクターが作るものはすべてここに並びます。左側で作りたいものを教えてください。', ko: '보드가 아직 비어 있어요. 디렉터가 만드는 모든 것이 여기에 표시됩니다. 왼쪽에서 만들고 싶은 것을 알려주세요.' },
   'nav.xvote':        { en: 'XVote',   'zh-Hant': 'X投票',   'zh-Hans': 'X投票',   ja: 'X投票',       ko: 'X투표' },

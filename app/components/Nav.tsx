@@ -19,6 +19,8 @@ const NAV_LINKS = [
   // Beta. Hidden until /api/features says this user has it — the route
   // 404s for everyone else anyway, so advertising it would only confuse.
   { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk', feature: 'xtalk' },
+  // Same gate as XTalk: the arena inherited werewolf's beta audience.
+  { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game', feature: 'xtalk' },
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
 ]
@@ -32,6 +34,8 @@ function NavIcon({ name }: { name: string }) {
     case 'create': return (<svg {...p}><path d="M6 21l15-15l-3-3l-15 15l3 3z"/><path d="M15 6l3 3"/><path d="M9 3a2 2 0 0 0 2 2a2 2 0 0 0-2 2a2 2 0 0 0-2-2a2 2 0 0 0 2-2"/></svg>)
     case 'director': return (<svg {...p}><path d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z"/><path d="M4 11l-1-4l16-4l1 4z"/><path d="M8 10l2-4"/><path d="M13 9l2-4"/></svg>)
     case 'vote':   return (<svg {...p}><path d="M7 11v8a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3a4 4 0 0 0 4-4v-1a2 2 0 0 1 4 0v5h3a2 2 0 0 1 2 2l-1 5a2 3 0 0 1-2 2h-7a3 3 0 0 1-3-3"/></svg>)
+    // A die: the arena's mark.
+    case 'game':   return (<svg {...p}><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="0.8" fill="currentColor"/><circle cx="15" cy="15" r="0.8" fill="currentColor"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg>)
     case 'board':  return (<svg {...p}><path d="M4 20h16"/><path d="M5 12h2v7H5z"/><path d="M10.5 8h2v11h-2z"/><path d="M16 4h2v15h-2z"/></svg>)
     // Two bubbles, overlapping — one voice answering another, which is the
     // whole difference between this and every other page.
@@ -140,6 +144,8 @@ export default function Nav() {
   // stays but a re-nav elsewhere and back re-fetches; good enough v1).
   const onXcreate = pathname?.startsWith('/xcreate') ?? false
   const onXtalk   = pathname?.startsWith('/xtalk') ?? false
+  // Werewolf history follows the games to /xgame (CC, Aug 6).
+  const onXgame   = pathname?.startsWith('/xgame') ?? false
   const onXdirect = pathname?.startsWith('/xdirect') ?? false
   // Director conversations — same owner-read RLS pattern as the other two
   // lists. Soft-delete only (deleted_at), matching the API's GET filter.
@@ -160,7 +166,7 @@ export default function Nav() {
   // aren't here: they live in client state and have no row to link to.
   const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string; title: string | null }>>([])
   useEffect(() => {
-    if (!onXtalk || !user) { setRecentGames([]); return }
+    if (!onXgame || !user) { setRecentGames([]); return }
     let cancelled = false
     const gsel = (cols: string) => supabase.from('xtalk_sessions')
       .select(cols).eq('user_id', user.id)
@@ -171,7 +177,7 @@ export default function Nav() {
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onXtalk, user?.id, pathname])
+  }, [onXgame, user?.id, pathname])
   useEffect(() => {
     if (!onXcreate || !user) { setRecent([]); return }
     let cancelled = false
@@ -366,7 +372,7 @@ export default function Nav() {
 
       {/* XTalk history — same layer as XCreate's, one row per werewolf
           game. The glyph is the outcome: live, wolves won, village won. */}
-      {onXtalk && recentGames.length > 0 && (
+      {onXgame && recentGames.length > 0 && (
         <div className="nav-history">
           <div className="nav-history-head" style={{ cursor: 'default' }}>
             <span className="nav-history-cap">{t('xt.recent')}</span>
@@ -384,7 +390,7 @@ export default function Nav() {
             ) : (
             <div key={g.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
-                href={`/xtalk/${g.id}`}
+                href={`/xgame/${g.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
                 title={`${g.title || t('xt.tpl.werewolf.name')} · ${new Date(g.created_at).toLocaleString()}`}
               >
@@ -408,7 +414,7 @@ export default function Nav() {
                       setConfirmDel(null)
                       await supabase.from('xtalk_sessions').delete().eq('id', g.id)
                       setRecentGames(prev => prev.filter(x => x.id !== g.id))
-                      if (pathname === `/xtalk/${g.id}`) router.push('/xtalk')
+                      if (pathname === `/xgame/${g.id}`) router.push('/xgame')
                     }}
                     style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
                   >{t('ww.delete.yes')}</button>

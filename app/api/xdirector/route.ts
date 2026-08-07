@@ -56,6 +56,7 @@ let workingModel: string | null = null
 const MAX_SCENES = 12
 export type StoryScene = {
   id: string
+  continues?: boolean
   title: string
   script: string
   shot: string
@@ -78,6 +79,7 @@ function cleanScenes(raw: unknown): StoryScene[] | null {
       script:   s((sc as any).script, 500),
       shot:     s((sc as any).shot, 1200),
       duration_s: Number.isFinite(dur) ? Math.min(Math.max(Math.round(dur), 2), 15) : 6,
+      ...((sc as any).continues === true ? { continues: true } : {}),
       ...(typeof (sc as any).model_id   === 'string' ? { model_id:   s((sc as any).model_id, 64) }    : {}),
       ...(typeof (sc as any).model_name === 'string' ? { model_name: s((sc as any).model_name, 80) }  : {}),
       ...(typeof (sc as any).recipe     === 'string' ? { recipe:     s((sc as any).recipe, 48) }      : {}),
@@ -151,6 +153,7 @@ const TOOLS: any[] = [
               script:     { type: 'string', description: '1-2 sentences in the user\'s language: what this scene says/shows, written for the user to read and edit' },
               shot:       { type: 'string', description: 'the full generation prompt paragraph for this scene — subject, camera, lighting, style — same craft rules as any prompt you write' },
               duration_s: { type: 'number', description: 'seconds, 2-15' },
+              continues:  { type: 'boolean', description: 'true when this card is a CUT — it continues the PREVIOUS card\'s action in the same space and will be chained from its final frame at generation. false/omitted = a fresh scene (new location or time).' },
               model_id:   { type: 'string', description: 'id from list_models for this scene' },
               model_name: { type: 'string', description: 'display name of that model, shown on the card' },
               recipe:     { type: 'string', description: 'mode string copied exactly from that model\'s modes' },

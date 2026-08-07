@@ -13,6 +13,9 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import { XTALK_TEMPLATES, templateById, type Speaker } from './templates'
+
+// Werewolf lives at /xgame now (CC, Aug 6); this picker is conversations only.
+const TALK_TEMPLATES = XTALK_TEMPLATES.filter(x => x.id !== 'werewolf')
 import TemplateHelp from './TemplateHelp'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -27,7 +30,7 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
   const [models, setModels] = useState<Speaker[]>([])
   // /xtalk/<id> opens straight onto the werewolf table it names; picking a
   // template by hand drops the resume — you asked for something new.
-  const [active, setActive] = useState(resumeId ? 'werewolf' : XTALK_TEMPLATES[0].id)
+  const [active, setActive] = useState(TALK_TEMPLATES[0].id)
   const [resume, setResume] = useState<string | null>(resumeId)
   // Templates own their own state, so switching has to unmount the old one
   // rather than leave a half-finished game behind a chip.
@@ -66,7 +69,7 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
             smudges. Selection is the red frame plus a check on the banner. */}
         <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>
         <div className="xt-tpl-grid">
-          {XTALK_TEMPLATES.map(x => {
+          {TALK_TEMPLATES.map(x => {
             const on = active === x.id
             return (
               // The ? is a SIBLING of the card, never a child: a button
@@ -122,7 +125,7 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
             // out of sync. On the bare /xtalk this is a no-op push and the
             // local reset returns a discussion room to the picker.
             router.push('/xtalk')
-            setActive(XTALK_TEMPLATES[0].id); setResume(null); setNonce(n => n + 1)
+            setActive(TALK_TEMPLATES[0].id); setResume(null); setNonce(n => n + 1)
           }}
         />
       </div>
