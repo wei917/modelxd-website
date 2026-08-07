@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
 import { XCREATE_TEMPLATES } from '../xcreate/templates'
+import ContactEmail from './ContactEmail'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
@@ -580,7 +581,7 @@ export default function Nav() {
       <div className="nav-foot">
         <Link href="/terms" className={pathname === '/terms' ? 'active' : ''}>{t('nav.terms')}</Link>
         <Link href="/privacy" className={pathname === '/privacy' ? 'active' : ''}>{t('nav.privacy')}</Link>
-        <a href="mailto:founder@modelxd.com">{t('nav.contact')}</a>
+        <ContactEmail />
       </div>
 
       {/* Auth (profile + sign in/out) moved to the content-area TopBar on
@@ -614,7 +615,7 @@ export default function Nav() {
         <div className="nav-foot" style={{ marginTop: 8 }}>
           <Link href="/terms">{t('nav.terms')}</Link>
           <Link href="/privacy">{t('nav.privacy')}</Link>
-          <a href="mailto:founder@modelxd.com">{t('nav.contact')}</a>
+          <ContactEmail />
         </div>
         {/* Sign Out moved to the profile page (CC, July 19) — the
             Profile link above is the path to it. */}

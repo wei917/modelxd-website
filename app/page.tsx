@@ -2,26 +2,26 @@
 
 import { useEffect, useRef, useState } from 'react'
 import LandingAgent from './components/LandingAgent'
-import Image from 'next/image'
+import ContactEmail from './components/ContactEmail'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
 import { useLang } from '../lib/i18n'
 import type { Snapshot } from './api/snapshot/route'
 
-const STEPS = [
-  { num: '01', title: 'One prompt, see AI models responses side by side' },
-  { num: '02', title: 'Vote blindly' },
-  { num: '03', title: 'Reveal price' },
-  { num: '04', title: 'Vote again' },
-  { num: '05', title: 'Reveal the models' },
-]
-
-const XCREATE_STEPS = [
-  { num: '01', title: 'Select up to 4 models' },
-  { num: '02', title: 'Enter one prompt' },
-  { num: '03', title: 'View the results side by side' },
-  { num: '04', title: 'Pick your favorite to continue' },
+// The surface grid — the whole product, one honest line each. This is the
+// landing page's only remaining prose (owner, Aug 6: the July-era section
+// scroll told a two-surface story about a six-surface site, so it went).
+// Beta-gated surfaces only show their card to entitled accounts: a public
+// visitor must never click into a notFound().
+const SURFACES: Array<{ href: string; name: string; desc: string; feature?: 'xdirector' | 'xtalk'; public?: boolean }> = [
+  { href: '/xduel',   name: 'XDuel',   desc: 'Two anonymous models, one prompt. Vote before you see the price — free every day.' },
+  { href: '/xcreate', name: 'XCreate', desc: 'Up to four models side by side on your real work. Pay per run, not per month.' },
+  { href: '/xdirect', name: 'XDirect', desc: 'Tell the director what you want; it picks models by live scores, writes the shots, builds the storyboard.', feature: 'xdirector' },
+  { href: '/xtalk',   name: 'XTalk',   desc: 'Seat 2–8 models in one room, set the topic, jump in whenever you like.', feature: 'xtalk' },
+  { href: '/xgame',   name: 'XGame',   desc: 'Models play Gomoku, Werewolf, Draw & Guess — watch, or sit down against a mystery model.', feature: 'xtalk' },
+  { href: '/xvote',   name: 'XVote',   desc: 'Judge other people’s blind duels; every vote moves the board.' },
+  { href: '/xboard',  name: 'XBoard',  desc: 'The leaderboard: quality, price-aware value and stickiness, from real blind votes.', public: true },
 ]
 
 // Four price/quality tiers, cheapest first. Images are placeholders until
@@ -233,6 +233,12 @@ export default function Home() {
   // fetch fails) — the chips render a dash rather than disappearing, so
   // the bar never changes height under the hero.
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  // Beta flags for the surface grid — anonymous visitors get all-false and
+  // therefore only the public cards. Advisory only; the pages enforce.
+  const [feats, setFeats] = useState<{ xdirector?: boolean; xtalk?: boolean }>({})
+  useEffect(() => {
+    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => { if (f) setFeats(f) }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -350,50 +356,16 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Savings ── */}
-      <div className="home-section reveal">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">Same Result, <span>Pay Less</span></h1>
-          </div>
-          <div className="home-savings">
-            <div className="home-savings-left">
-              <div className="home-savings-amount">Up to 120×</div>
-              <div className="home-savings-period">price gap between models</div>
-              <div className="home-savings-detail">
-                Most users pick the expensive model out of habit. XDuel reveals when a <strong style={{ color: 'var(--green)' }}>cheaper model wins blind</strong> — so you only pay more when it actually matters.
-              </div>
-            </div>
-            <div className="home-savings-right">
-              <div className="home-compare-row loser">
-                <span className="home-compare-badge">POPULAR</span>
-                <span className="home-compare-name">Premium Model</span>
-                <span className="home-compare-price" style={{ color: 'var(--red)' }}>$$$</span>
-              </div>
-              <div className="home-compare-vs">VS</div>
-              <div className="home-compare-row winner">
-                <span className="home-compare-badge">UNDERDOG</span>
-                <span className="home-compare-name">You&apos;d Be Surprised</span>
-                <span className="home-compare-price" style={{ color: 'var(--green)' }}>$</span>
-              </div>
-              <div className="home-compare-result">
-                <span style={{ color: 'var(--green)', fontWeight: 700 }}>Blind-tested by the community</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Audience ──
-          Carries `surface` because the Modes section that used to sit between
-          this and Savings was removed (CC, July 25); without it two plain
-          sections would abut and read as one long block. */}
+      {/* ── The pitch, consolidated (owner, Aug 6) ──
+          Six July-era sections ("Same Result Pay Less", audience split, two
+          How-It-Works walkthroughs, XVote and XBoard teasers) became this
+          one: the two derived savings figures and the surface grid. The
+          agent above answers "how does it work" better than static copy
+          ever did, and in five languages. */}
       <div className="home-section surface reveal">
         <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">Users & <span>Developers</span></h1>
-          </div>
           <div className="home-audience">
+
             <div className="home-audience-card">
               <div className="home-audience-label">FOR DEVELOPERS</div>
               {/* $3,900/mo, and the un-rounded figure is the point — a round
@@ -432,94 +404,33 @@ export default function Home() {
               <div className="home-audience-desc">You don&apos;t need the priciest model for everything. XDuel and XBoard show you which cheaper models beat them on your own prompts.</div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── How XDuel Works ── */}
-      <div className="home-section surface reveal rule-top">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">How <span>XDuel</span> Works</h1>
-          </div>
-          <div className="home-steps">
-            {STEPS.map((s, i) => (
-              <div className="home-step" key={s.num}>
-                <div className="home-step-row">
-                  <div className="home-step-num">{s.num}</div>
-                  <div style={{ flex: 1 }}>
-                    <div className="home-step-title">{s.title}</div>
-                  </div>
+          {/* ── Surface grid — what's actually here, one line each ── */}
+          <div style={{
+            marginTop: 36, display: 'grid', gap: 14,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          }}>
+            {SURFACES.filter(s => !s.feature || feats[s.feature]).map(s => (
+              <div
+                key={s.href}
+                role="link" tabIndex={0}
+                onClick={() => s.public ? router.push(s.href) : handleNav(s.href)}
+                onKeyDown={e => { if (e.key === 'Enter') { s.public ? router.push(s.href) : void handleNav(s.href) } }}
+                style={{
+                  background: 'var(--surface)', border: '1px solid var(--border2)',
+                  borderRadius: 12, padding: '16px 18px', cursor: 'pointer',
+                  transition: 'border-color 0.2s, background 0.2s',
+                }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{s.name}</span>
+                  <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
                 </div>
-                {i < STEPS.length - 1 && <div className="home-step-line" />}
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{s.desc}</div>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── How XCreate Works ── */}
-      <div className="home-section reveal">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">How <span>XCreate</span> Works</h1>
-          </div>
-          <div className="home-xcreate-grid">
-            <div className="home-steps">
-              {XCREATE_STEPS.map((s, i) => (
-                <div className="home-step" key={s.num}>
-                  <div className="home-step-row">
-                    <div className="home-step-num">{s.num}</div>
-                    <div style={{ flex: 1 }}>
-                      <div className="home-step-title">{s.title}</div>
-                    </div>
-                  </div>
-                  {i < XCREATE_STEPS.length - 1 && <div className="home-step-line" />}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <img
-                src="/xcreate-preview.png"
-                alt="XCreate — four AI models generating the same prompt side by side"
-                style={{
-                  maxWidth: '100%',
-                  height: 'auto',
-                  borderRadius: 12,
-                  border: '1px solid var(--border)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── XVote ── */}
-      <div className="home-section surface reveal">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">Vote on <span>Duels</span></h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
-            <div className="prompt-sub" style={{ maxWidth: 640 }}>
-              Skip generation. Browse community duels, compare the results, and vote blind.
-            </div>
-            <button onClick={() => router.push('/xvote')} className="btn-primary">Browse XVote →</button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── XBoard ── */}
-      <div className="home-section reveal">
-        <div className="home-inner">
-          <div className="prompt-header">
-            <h1 className="prompt-title">Model <span>Leaderboard</span></h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
-            <div className="prompt-sub" style={{ maxWidth: 640 }}>
-              See which AI models deliver the best value — ranked by ModelXD community votes.
-            </div>
-            <button onClick={() => router.push('/xboard')} className="btn-primary">View XBoard →</button>
           </div>
         </div>
       </div>
@@ -530,7 +441,7 @@ export default function Home() {
           <div className="footer-copy">© 2026 MODELXD</div>
           <a href="/terms" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.terms')}</a>
           <a href="/privacy" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.privacy')}</a>
-          <a href="mailto:founder@modelxd.com" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.contact')}</a>
+          <ContactEmail className="footer-copy" style={{ textDecoration: 'none' }} />
         </div>
       </footer>
     </>
