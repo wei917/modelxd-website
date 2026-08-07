@@ -172,8 +172,14 @@ export default function GomokuLive({ models, resumeId, onExit }: {
         background: activeSeat ? 'var(--red-dim)' : 'var(--surface)',
       }}>
         <span style={{ fontSize: 18 }} aria-hidden>{i === 0 ? '⚫' : '⚪'}</span>
-        <span style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{p.name}</span>
-        {p.thinking && <span style={{ fontSize: 10, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', flexShrink: 0 }}>{p.thinking}</span>}
+        <span style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {p.name}
+          {p.thinking && (
+            <span title={t('xcreate.thinking')} style={{ marginLeft: 7, fontSize: 10.5, fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color: 'var(--red)', border: '1px solid var(--red-dim)', background: 'var(--red-dim)', borderRadius: 6, padding: '1px 6px', verticalAlign: 'middle' }}>
+              {p.thinking}
+            </span>
+          )}
+        </span>
         {activeSeat && <span className="nav-history-spin" aria-hidden style={{ flexShrink: 0 }} />}
       </div>
     )

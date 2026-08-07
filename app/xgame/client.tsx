@@ -58,7 +58,11 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
     <div className="xduel-page">
       <div className="arena xcreate-arena">
         <div className="prompt-label eyebrow">XGAME</div>
-        <h1 className="page-headline" style={{ marginBottom: 20 }}>{t('xg.shell.title')}</h1>
+        {/* The slogan sells the LOBBY; the table's headline is simply the
+            game you are at. (owner, Aug 6) */}
+        <h1 className="page-headline" style={{ marginBottom: 20 }}>
+          {resume ? t(active === 'gomoku' ? 'xg.game.gomoku' : 'xt.tpl.werewolf.name') : t('xg.shell.title')}
+        </h1>
 
         {/* The picker is the LOBBY. A resumed game is the TABLE — it gets
             the page to itself, no other game's card in sight. (owner, Aug 6) */}

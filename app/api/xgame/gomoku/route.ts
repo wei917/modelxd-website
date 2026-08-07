@@ -112,7 +112,9 @@ export async function POST(req: Request) {
       human_seat: black.isHuman ? 0 : (white.isHuman ? 1 : null),
       players: [black, white], phase: 'B', day: 0, turn_order: [],
       transcript: [], pending: { board: emptyBoard(), last: null },
-      title: `${black.name} ⚫ vs ⚪ ${white.name}`,
+      // The thinking level is part of a player's identity — it changes the
+      // player. "Terra (high)" and "Terra (low)" are different opponents.
+      title: `${black.name}${black.thinking ? ` (${black.thinking})` : ''} ⚫ vs ⚪ ${white.name}${white.thinking ? ` (${white.thinking})` : ''}`,
     }).select('id').single()
     if (error || !data) {
       console.warn(`${LOG} create failed:`, error?.message)
