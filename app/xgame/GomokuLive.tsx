@@ -155,9 +155,35 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   const winSet = new Set((g.winLine ?? []).map(([r, c]) => `${r}:${c}`))
   const turnP = g.turn ? g.players[g.turn === 'B' ? 0 : 1] : null
 
+  // Seat arrangement (owner, Aug 6): the table reads vertically like every
+  // board app — your opponent across the board (top), you at the bottom.
+  // Watching AI vs AI seats white across and black near.
+  const meIdx = g.players.findIndex((p: any) => p.isHuman)
+  const bottomIdx = (meIdx >= 0 ? meIdx : 0) as 0 | 1
+  const topIdx = (bottomIdx === 0 ? 1 : 0) as 0 | 1
+  const seatCard = (i: 0 | 1) => {
+    const p: any = g.players[i]
+    const activeSeat = g.status === 'active' && g.turn === (i === 0 ? 'B' : 'W')
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+        borderRadius: 10, width: '100%',
+        border: '1.5px solid ' + (activeSeat ? 'var(--red)' : 'var(--border)'),
+        background: activeSeat ? 'var(--red-dim)' : 'var(--surface)',
+      }}>
+        <span style={{ fontSize: 18 }} aria-hidden>{i === 0 ? '⚫' : '⚪'}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{p.name}</span>
+        {p.thinking && <span style={{ fontSize: 10, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', flexShrink: 0 }}>{p.thinking}</span>}
+        {activeSeat && <span className="nav-history-spin" aria-hidden style={{ flexShrink: 0 }} />}
+      </div>
+    )
+  }
+
   return (
-    <div style={{ marginTop: 16, display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <svg viewBox={`0 0 ${W} ${W}`} style={{ width: 'min(520px, 96vw)', height: 'auto', borderRadius: 12, boxShadow: '0 2px 18px rgba(0,0,0,0.12)' }}>
+    <div style={{ marginTop: 16, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(520px, 96vw)' }}>
+        {seatCard(topIdx)}
+      <svg viewBox={`0 0 ${W} ${W}`} style={{ width: '100%', height: 'auto', borderRadius: 12, boxShadow: '0 2px 18px rgba(0,0,0,0.12)' }}>
         <defs>
           <radialGradient id="gsB" cx="35%" cy="30%"><stop offset="0%" stopColor="#555"/><stop offset="100%" stopColor="#0a0a0a"/></radialGradient>
           <radialGradient id="gsW" cx="35%" cy="30%"><stop offset="0%" stopColor="#ffffff"/><stop offset="100%" stopColor="#cfcabe"/></radialGradient>
@@ -207,29 +233,10 @@ export default function GomokuLive({ models, resumeId, onExit }: {
           return <circle cx={XY(pc[1])} cy={XY(pc[0])} r="5" fill="none" stroke="var(--red)" strokeWidth="1.8" />
         })()}
       </svg>
+        {seatCard(bottomIdx)}
+      </div>
 
       <div style={{ flex: '1 1 260px', minWidth: 240, maxWidth: 380 }}>
-        {/* Players, arranged as a match card: the active seat glows. */}
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, marginBottom: 10 }}>
-          {([0, 1] as const).map(i => {
-            const p = g.players[i]
-            const activeSeat = g.status === 'active' && g.turn === (i === 0 ? 'B' : 'W')
-            return (
-              <div key={i} style={{
-                flex: 1, padding: '9px 11px', borderRadius: 10, minWidth: 0,
-                border: '1.5px solid ' + (activeSeat ? 'var(--red)' : 'var(--border)'),
-                background: activeSeat ? 'var(--red-dim)' : 'var(--surface)',
-              }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {i === 0 ? '⚫' : '⚪'} {p.name}
-                </div>
-                {(p as any).thinking && (
-                  <div style={{ fontSize: 9.5, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>{(p as any).thinking}</div>
-                )}
-              </div>
-            )
-          })}
-        </div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
           {g.status === 'over'
             ? (g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`)
