@@ -14,7 +14,7 @@ import SeatSlot, { type SeatAssign } from './SeatSlot'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 
-type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback?: boolean }
+type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback?: boolean; ms?: number }
 type GameView = {
   id: string; status: 'active' | 'over'; winner: 'black' | 'white' | 'draw' | null
   board: string[]; moves: Move[]; players: any[]; turn: 'B' | 'W' | null
@@ -43,6 +43,18 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   // (GlobalCursor), so without this preview the user aims at a 32px
   // intersection blind — the root of "I click and nothing happens".
   const [hover, setHover] = useState<[number, number] | null>(null)
+  // Live clock: ms since the current turn began, ticking every second while
+  // the game is active. Resets whenever the turn (move count) changes.
+  const [tick, setTick] = useState(0)
+  const turnStartRef = useRef(Date.now())
+  useEffect(() => {
+    turnStartRef.current = Date.now()
+    setTick(0)
+    if (!g || g.status !== 'active') return
+    const iv = setInterval(() => setTick(Date.now() - turnStartRef.current), 1000)
+    return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g?.moves.length, g?.status])
   const loopRef = useRef(false)
 
   // Every request carries a timeout: a dev-server reload (or any dropped
@@ -193,9 +205,16 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   const meIdx = g.players.findIndex((p: any) => p.isHuman)
   const bottomIdx = (meIdx >= 0 ? meIdx : 0) as 0 | 1
   const topIdx = (bottomIdx === 0 ? 1 : 0) as 0 | 1
+  const fmtClock = (ms: number) => {
+    const sTot = Math.floor(ms / 1000)
+    return `${Math.floor(sTot / 60)}:${String(sTot % 60).padStart(2, '0')}`
+  }
   const seatCard = (i: 0 | 1) => {
     const p: any = g.players[i]
-    const activeSeat = g.status === 'active' && g.turn === (i === 0 ? 'B' : 'W')
+    const stone = i === 0 ? 'B' : 'W'
+    const activeSeat = g.status === 'active' && g.turn === stone
+    const used = g.moves.filter(m => m.stone === stone).reduce((sum, m) => sum + (m.ms ?? 0), 0)
+      + (activeSeat ? tick : 0)
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
@@ -314,6 +333,11 @@ export default function GomokuLive({ models, resumeId, onExit }: {
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontWeight: 700 }}>
                 {m.n}. {m.stone === 'B' ? '⚫' : '⚪'} {m.coord}
               </span>
+              {m.ms != null && (
+                <span style={{ float: 'right', fontSize: 10.5, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>
+                  {(m.ms / 1000).toFixed(1)}s
+                </span>
+              )}
               {m.fallback && <span title="fallback move" style={{ marginLeft: 6, fontSize: 10, color: 'var(--red)' }}>⚠ auto</span>}
               {m.why && <span style={{ color: 'var(--muted2)' }}> — {m.why}</span>}
             </div>

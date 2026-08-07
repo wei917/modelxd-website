@@ -33,7 +33,7 @@ const svc = () => createClient(
 )
 
 type Player = { stone: Stone; modelId: string | null; name: string; isHuman: boolean; thinking?: string | null }
-type Move = { n: number; stone: Stone; coord: string; why?: string; fallback?: boolean; cost?: number }
+type Move = { n: number; stone: Stone; coord: string; why?: string; fallback?: boolean; cost?: number; ms?: number }
 
 async function getModelById(id: string) {
   const { data } = await svc().from('ai_models')
@@ -154,10 +154,10 @@ export async function POST(req: Request) {
     await svc().from('xtalk_sessions').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', s.id)
   }
 
-  const applyMove = async (r: number, c: number, why: string | undefined, fallback: boolean, cost: number) => {
+  const applyMove = async (r: number, c: number, why: string | undefined, fallback: boolean, cost: number, ms?: number) => {
     const stone = turn!.stone
     const nextBoard = place(board, r, c, stone)
-    const mv: Move = { n: s.day + 1, stone, coord: coordName(r, c), ...(why ? { why } : {}), ...(fallback ? { fallback: true } : {}), ...(cost ? { cost } : {}) }
+    const mv: Move = { n: s.day + 1, stone, coord: coordName(r, c), ...(why ? { why } : {}), ...(fallback ? { fallback: true } : {}), ...(cost ? { cost } : {}), ...(ms != null ? { ms: Math.max(0, Math.round(ms)) } : {}) }
     const line = winAt(nextBoard, r, c)
     const over = !!line || isFull(nextBoard)
     await save({
@@ -183,7 +183,10 @@ export async function POST(req: Request) {
     if (!pc || cellAt(board, pc[0], pc[1]) !== '.') {
       return Response.json({ error: 'illegal move' }, { status: 400 })
     }
-    await applyMove(pc[0], pc[1], undefined, false, 0)
+    // Think time = since the previous move was saved (that save is the
+    // moment this player's turn began). Good to within network jitter.
+    const humanMs = Date.now() - new Date(s.updated_at).getTime()
+    await applyMove(pc[0], pc[1], undefined, false, 0, humanMs)
     return view()
   }
 
@@ -193,6 +196,7 @@ export async function POST(req: Request) {
     const model = await getModelById(turn.modelId!)
     if (!model) { await save({ status: 'over', winner: 'draw' }); return view() }
 
+    const t0 = Date.now()
     let totalCost = 0
     let placed: [number, number] | null = null
     let why: string | undefined, usedFallback = false
@@ -212,7 +216,7 @@ export async function POST(req: Request) {
       usedFallback = true
       console.warn(`${LOG} ${model.display_name}: fallback move ${coordName(placed[0], placed[1])}`)
     }
-    await applyMove(placed[0], placed[1], why, usedFallback, totalCost)
+    await applyMove(placed[0], placed[1], why, usedFallback, totalCost, Date.now() - t0)
     return view()
   }
 
