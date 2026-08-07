@@ -73,7 +73,11 @@ async function main() {
     console.log(`minted secret for ${model.display_name}`)
   }
 
+  // Easy tier is RETIRED from the game (owner, Aug 6: "no easy tier,
+  // it's meaningless") — never spend generation money on it unless it's
+  // asked for by name with --tier easy.
   let q = sb.from('draw_terms').select('id, lang, term, tier').eq('enabled', true)
+  if (!tier) q = q.neq('tier', 'easy')
   if (lang) q = q.eq('lang', lang)
   if (tier) q = q.eq('tier', tier)
   const { data: terms } = await q.order('lang').order('tier')

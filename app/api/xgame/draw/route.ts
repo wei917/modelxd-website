@@ -129,9 +129,13 @@ export async function POST(req: Request) {
 
     // Coverage-driven casting: rounds are assembled ONLY from existing
     // drawings, so the eligible models and terms fall out of one query.
+    // Easy tier is RETIRED (owner, Aug 6): it never enters the pool, even
+    // where its drawings exist. A game that opens with "cat" is a game
+    // nobody remembers.
     const { data: cov } = await svc().from('draw_images')
       .select('term_id, model_id, variant, storage_path, draw_terms!inner(id, lang, term, aliases, tier, enabled)')
       .eq('draw_terms.lang', lang).eq('draw_terms.enabled', true)
+      .neq('draw_terms.tier', 'easy')
     const byModel = new Map<string, Map<string, any[]>>()   // model → term → image rows
     for (const r of (cov ?? []) as any[]) {
       if (!byModel.has(r.model_id)) byModel.set(r.model_id, new Map())
@@ -157,25 +161,22 @@ export async function POST(req: Request) {
     const pick = pairs[Math.floor(Math.random() * Math.min(3, pairs.length))]
     // A/B sides are shuffled so side position never encodes the model.
     const [sideA, sideB] = Math.random() < 0.5 ? [pick.a, pick.b] : [pick.b, pick.a]
-    // DIFFICULTY RAMP (owner, Aug 6 — "cat, dog, star? are you kidding
-    // me"): a match should warm up and then bite. Desired tiers per round:
-    // easy → medium → medium → hard → hard, each slot falling back to a
-    // neighbouring tier when the shared pool is thin (the pilot fill was
-    // easy-only, so early catalogs degrade gracefully to all-easy).
+    // DIFFICULTY RAMP (owner, Aug 6): medium opens, hard closes. There is
+    // no easy tier in this game — it was retired the same day it shipped.
     const tierOf = new Map<string, string>()
     for (const tid of pick.shared) {
       const row = byModel.get(pick.a)!.get(tid)![0]
-      tierOf.set(tid, row.draw_terms?.tier ?? 'easy')
+      tierOf.set(tid, row.draw_terms?.tier ?? 'medium')
     }
-    const pool: Record<string, string[]> = { easy: [], medium: [], hard: [] }
-    for (const tid of pick.shared) (pool[tierOf.get(tid)!] ?? pool.easy).push(tid)
+    const pool: Record<string, string[]> = { medium: [], hard: [] }
+    for (const tid of pick.shared) (pool[tierOf.get(tid)!] ?? pool.medium).push(tid)
     for (const k of Object.keys(pool)) pool[k].sort(() => Math.random() - 0.5)
     const RAMP: Array<string[]> = [
-      ['easy', 'medium', 'hard'],
-      ['medium', 'easy', 'hard'],
-      ['medium', 'hard', 'easy'],
-      ['hard', 'medium', 'easy'],
-      ['hard', 'medium', 'easy'],
+      ['medium', 'hard'],
+      ['medium', 'hard'],
+      ['medium', 'hard'],
+      ['hard', 'medium'],
+      ['hard', 'medium'],
     ]
     const termIds: string[] = []
     for (const prefs of RAMP.slice(0, ROUNDS)) {
