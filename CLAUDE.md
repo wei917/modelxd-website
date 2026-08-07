@@ -306,8 +306,10 @@ Key columns:
 - `model_name` — exact API string; unique together with `provider`
 - `display_name`, `nickname`
 - `input_modalities` / `output_modalities` — `['text'|'image'|'video']`
-- `input_price` / `output_price` / `cached_input_price` — per 1M tokens
-- `image_pricing` / `video_pricing` — jsonb `{ rates: {...} }`
+- `model_pricing` — jsonb; text rates live at `tokens.text_input` /
+  `tokens.text_output` / `tokens.cached_input` (per 1M; `text_output` may
+  be a `{ default, by_level }` object), media rates under their own keys.
+  There are NO flat `input_price`/`output_price` columns — verified Aug 6.
 - `modes` — text[] of input-shape patterns (`text_to_video`, `image_to_video`,
   `start_end_frames`, `pdf_to_text`, …). A **set**, not a single value.
 - `input_config` / `output_config` — jsonb per-modality options

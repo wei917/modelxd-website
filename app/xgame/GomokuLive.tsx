@@ -18,7 +18,10 @@ type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback
 type GameView = {
   id: string; status: 'active' | 'over'; winner: 'black' | 'white' | 'draw' | null
   board: string[]; moves: Move[]; players: any[]; turn: 'B' | 'W' | null
-  humanTurn: boolean; winLine: Array<[number, number]> | null; costUsd: number
+  humanTurn: boolean; winLine: Array<[number, number]> | null
+  // null while a blind duel is anonymous — price is identity's loudest hint.
+  costUsd: number | null
+  duel?: { anon: boolean; revealed: boolean; thumbs: Record<string, { up: boolean; blind?: boolean }> } | null
 }
 
 const CELL = 32, PAD = 30
@@ -137,6 +140,19 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     if (v) router.push(`/xgame/${v.id}`)
   }
 
+  // Blind-duel controls. Thumbs toggle (clicking the selected one clears
+  // it); the reveal is one-way. Both are plain posts — the server's view
+  // comes back unmasked after the reveal and setG does the rest.
+  const thumb = (seat: 0 | 1, up: boolean) => {
+    if (!g) return
+    const cur = g.duel?.thumbs?.[seat]?.up
+    void post({ action: 'duel_thumb', id: g.id, seat, up: cur === up ? null : up })
+  }
+  const reveal = () => { if (g) void post({ action: 'duel_reveal', id: g.id }) }
+  // A duel came from XDuel; hand the player back there. A lobby game goes
+  // back to the lobby.
+  const exit = () => { if (g?.duel) router.push('/xduel'); else onExit() }
+
   const clickCell = async (r: number, c: number) => {
     if (!g || !g.humanTurn || g.status !== 'active') return
     if (g.board[r][c] !== '.') return
@@ -231,6 +247,9 @@ export default function GomokuLive({ models, resumeId, onExit }: {
             </span>
           )}
         </span>
+        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono), monospace', color: activeSeat ? 'var(--red)' : 'var(--muted2)', fontWeight: 700, flexShrink: 0 }}>
+          {fmtClock(used)}
+        </span>
         {activeSeat && <span className="nav-history-spin" aria-hidden style={{ flexShrink: 0 }} />}
       </div>
     )
@@ -246,23 +265,54 @@ export default function GomokuLive({ models, resumeId, onExit }: {
             two iterations: whisper → curtain → banner) */}
         {g.status === 'over' && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+            display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 18px',
             borderRadius: 12, border: '1.5px solid var(--red)', background: 'var(--red-dim)',
           }}>
-            <span style={{ fontSize: 30 }} aria-hidden>
-              {g.winner === 'draw' ? '🤝' : g.winner === 'black' ? '⚫' : '⚪'}
-            </span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display), inherit' }}>
-                {g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ fontSize: 30 }} aria-hidden>
+                {g.winner === 'draw' ? '🤝' : g.winner === 'black' ? '⚫' : '⚪'}
               </span>
-              <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
-                {g.moves.length} moves · ${g.costUsd.toFixed(3)}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display), inherit' }}>
+                  {g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
+                  {g.moves.length} moves{g.costUsd != null ? ` · $${g.costUsd.toFixed(3)}` : ''}
+                </span>
               </span>
-            </span>
-            <button onClick={onExit} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
-              {t('gm.newgame')}
-            </button>
+              {g.duel && !g.duel.revealed ? (
+                <button onClick={reveal} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+                  🎭 {t('gd.reveal')}
+                </button>
+              ) : (
+                <button onClick={exit} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+                  {t('gm.newgame')}
+                </button>
+              )}
+            </div>
+            {/* Judging is a duel thing: the engine already named the winner,
+                the thumbs rate the PLAY — and thumbs cast before the reveal
+                are flagged blind server-side, the cleaner signal. */}
+            {g.duel && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 12 }}>
+                <span style={{ color: 'var(--muted)', fontWeight: 700 }}>{t('gd.rate')}</span>
+                {([0, 1] as const).map(seat => (
+                  <span key={seat} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span aria-hidden>{seat === 0 ? '⚫' : '⚪'}</span>
+                    {([true, false] as const).map(up => {
+                      const sel = g.duel?.thumbs?.[seat]?.up === up
+                      return (
+                        <button key={String(up)} onClick={() => thumb(seat, up)} style={{
+                          padding: '3px 9px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
+                          border: '1px solid ' + (sel ? 'var(--red)' : 'var(--border2)'),
+                          background: sel ? 'var(--red)' : 'var(--surface)',
+                        }}>{up ? '👍' : '👎'}</button>
+                      )
+                    })}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       <svg viewBox={`0 0 ${W} ${W}`} style={{ width: '100%', height: 'auto', borderRadius: 12, boxShadow: '0 2px 18px rgba(0,0,0,0.12)' }}>
@@ -325,7 +375,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
             : g.humanTurn ? t('gm.yourclick') : `${turnP?.name ?? ''} ${t('gm.turn')}`}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>
-          ${g.costUsd.toFixed(3)}
+          {g.costUsd != null ? `$${g.costUsd.toFixed(3)}` : '🎭'}
         </div>
         <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[...g.moves].reverse().map(m => (
@@ -344,7 +394,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
           ))}
         </div>
         {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 13 }}>⚠ {err}</div>}
-        <button onClick={onExit} style={{ marginTop: 14, background: 'none', border: '1px solid var(--border2)', borderRadius: 9, padding: '7px 16px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+        <button onClick={exit} style={{ marginTop: 14, background: 'none', border: '1px solid var(--border2)', borderRadius: 9, padding: '7px 16px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
           ← {t('gm.newgame')}
         </button>
       </div>

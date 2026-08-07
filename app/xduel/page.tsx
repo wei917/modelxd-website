@@ -11,6 +11,7 @@ import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import TemplatePicker from '../components/TemplatePicker'
 import { SAMPLES_BASE, type Template } from '../xcreate/templates'
 import MatchResult, { type RatingDelta } from '../components/MatchResult'
+import GameDuel from './GameDuel'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
 import { isSubmitEnter } from '../../lib/ime'
@@ -164,6 +165,15 @@ export default function XDuel() {
 
   const [step,       setStep]       = useState(1)
   const [mode,       setMode]       = useState<Mode>('image')  // visual wow, sustainable cost
+  // GAME task type (owner, Aug 6): blind game duels. Not a prompt mode —
+  // selecting it swaps the composer for the match launcher; the duel arc
+  // (watch → judge → reveal) plays out on the game's own page. The chip
+  // only shows for users who'd pass the /xgame gate anyway.
+  const [gameArena,  setGameArena] = useState(false)
+  const [canGame,    setCanGame]   = useState(false)
+  useEffect(() => {
+    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => setCanGame(!!f?.xtalk)).catch(() => {})
+  }, [])
   const [count,      setCount]      = useState(2)
   const [duelId,     setDuelId]     = useState<string | null>(null)
   const [prompt,     setPrompt]     = useState('')
@@ -648,8 +658,9 @@ export default function XDuel() {
             </h1>
           </div>
 
-          {/* Step progress bar */}
-          <div className="step-bar">
+          {/* Step progress bar — a prompt-duel thing; game duels have no
+              steps here (their arc lives on the game page). */}
+          {!gameArena && <div className="step-bar">
             {STEPS.map((s, i) => (
               <span key={s.n} style={{display:'contents'}}>
                 <div className={`step-item ${step===s.n?'active':''} ${step>s.n?'done':''}`}>
@@ -658,7 +669,7 @@ export default function XDuel() {
                 {i < STEPS.length-1 && <div className={`step-connector ${step>s.n?'done':''}`} />}
               </span>
             ))}
-          </div>
+          </div>}
 
           {/* ── STEP 1 ── */}
           {step === 1 && (
@@ -670,7 +681,8 @@ export default function XDuel() {
                   <div className="field-label">{t('xduel.tasktype')}</div>
                   <div className="mode-seg">
                     {(['text','image','video'] as Mode[]).map(m => (
-                      <button key={m} className={`mode-seg-btn ${mode===m?'active':''}`} onClick={() => {
+                      <button key={m} className={`mode-seg-btn ${mode===m && !gameArena?'active':''}`} onClick={() => {
+                        setGameArena(false)
                         setMode(m)
                         setChipNeedsImage(false)
                         setPopularId(null)
@@ -681,8 +693,14 @@ export default function XDuel() {
                         <ModeIcon m={m} />{t('mode.' + m)}
                       </button>
                     ))}
+                    {canGame && (
+                      <button className={`mode-seg-btn ${gameArena?'active':''}`} onClick={() => setGameArena(true)}>
+                        <ModeIcon m="game" />{t('mode.game')}
+                      </button>
+                    )}
                   </div>
                 </div>
+                {!gameArena && (
                 <div className="mode-col">
                   <div className="field-label">{t('xduel.howmany')}</div>
                   <div className="count-selector" style={{ paddingBottom: 0 }}>
@@ -706,9 +724,10 @@ export default function XDuel() {
                     </span>
                   </div>
                 </div>
+                )}
               </div>
 
-
+              {gameArena ? <GameDuel /> : (<>
               {/* XCreate-style framed composer (CC, July 20): upload slot
                   INSIDE the frame above the borderless textarea; the action
                   row (counter + battle button) sits below the box. Text mode
@@ -807,6 +826,7 @@ export default function XDuel() {
               {chipNeedsImage && attachments.length === 0 && (
                 <div className="prompt-chip-hint">{t('xduel.attachhint')}</div>
               )}
+              </>)}
             </div>
           )}
 

@@ -44,6 +44,14 @@ async function getModelById(id: string) {
 
 const MODEL_TIMEOUT_MS = 60_000
 
+// Blind game duels are on the house (no per-move debit), so cap them.
+// Enforced by counting today's duel rows — a soft floor that needs no
+// quota-table migration; the duel_quotas columns are per-prompt-mode.
+const GAME_DUELS_PER_DAY = 3
+// A duel that meanders past this many moves is adjudicated a draw —
+// unbounded AI-vs-AI games are unbounded house spend.
+const DUEL_MOVE_CAP = 60
+
 /** One ask: full state out, a coordinate back. Never throws. */
 async function askMove(model: any, stone: Stone, board: Board, moves: Move[], objection: string | null, userId: string, thinking: string | null) {
   const history = moves.map(m => `${m.n}. ${m.stone} ${m.coord}`).join('  ') || '(none — you open)'
@@ -102,26 +110,64 @@ export async function POST(req: Request) {
 
   // ── create ────────────────────────────────────────────────────────────
   if (body.action === 'create') {
-    const seats = body.seats ?? {}
-    const mk = async (stone: Stone, cfg: any): Promise<Player | null> => {
-      if (cfg?.human) return { stone, modelId: null, name: body.playerName?.slice(0, 40) || 'You', isHuman: true }
-      const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
-      return m ? {
-        stone, modelId: m.id, name: m.display_name, isHuman: false,
-        thinking: typeof cfg?.thinking === 'string' ? cfg.thinking : null,
-      } : null
+    let black: Player | null = null, white: Player | null = null
+    let title = ''
+    let isDuelGame = false
+    if (body.duel === true) {
+      // GAME DUEL (owner, Aug 6): the HOUSE seats two anonymous models —
+      // the client sends no seats, so the matchup can't be steered. The
+      // masking lives in view(): the client never receives the names.
+      isDuelGame = true
+      const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0)
+      const { count } = await svc().from('xtalk_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id).eq('game', 'gomoku')
+        .gte('created_at', dayStart.toISOString())
+        .not('pending->duel', 'is', null)
+      if ((count ?? 0) >= GAME_DUELS_PER_DAY) {
+        return Response.json({ error: 'No free blind matches left today — come back tomorrow.' }, { status: 429 })
+      }
+      const { data: pool } = await svc().from('ai_models')
+        .select('id, display_name, model_pricing, blocked_features')
+        .eq('enabled', true).contains('output_modalities', ['text'])
+      // Same block key as prompt duels, then prefer the cheap end of the
+      // catalog — 40 moves on a frontier model is real house money. Fall
+      // back to the full pool only if the cheap one can't seat a pair.
+      // text_output is a number or { default, by_level } (see admin rows).
+      const outPrice = (m: any) => {
+        const o = m.model_pricing?.tokens?.text_output
+        return typeof o === 'number' ? o : typeof o?.default === 'number' ? o.default : null
+      }
+      const eligible = (pool ?? []).filter((m: any) => !(m.blocked_features ?? []).includes('xduel'))
+      const cheap = eligible.filter((m: any) => { const p = outPrice(m); return p != null && p > 0 && p <= 8 })
+      const from = (cheap.length >= 2 ? cheap : eligible).sort(() => Math.random() - 0.5)
+      if (from.length < 2) return Response.json({ error: 'Not enough models available for a blind match' }, { status: 503 })
+      black = { stone: 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: null }
+      white = { stone: 'W', modelId: from[1].id, name: from[1].display_name, isHuman: false, thinking: null }
+      title = 'Gomoku — blind duel'
+    } else {
+      const seats = body.seats ?? {}
+      const mk = async (stone: Stone, cfg: any): Promise<Player | null> => {
+        if (cfg?.human) return { stone, modelId: null, name: body.playerName?.slice(0, 40) || 'You', isHuman: true }
+        const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
+        return m ? {
+          stone, modelId: m.id, name: m.display_name, isHuman: false,
+          thinking: typeof cfg?.thinking === 'string' ? cfg.thinking : null,
+        } : null
+      }
+      black = await mk('B', seats.black); white = await mk('W', seats.white)
+      if (!black || !white) return Response.json({ error: 'both seats need a model or a human' }, { status: 400 })
+      if (black.isHuman && white.isHuman) return Response.json({ error: 'at most one human seat' }, { status: 400 })
+      // The thinking level is part of a player's identity — it changes the
+      // player. "Terra (high)" and "Terra (low)" are different opponents.
+      title = `${black.name}${black.thinking ? ` (${black.thinking})` : ''} ⚫ vs ⚪ ${white.name}${white.thinking ? ` (${white.thinking})` : ''}`
     }
-    const black = await mk('B', seats.black), white = await mk('W', seats.white)
-    if (!black || !white) return Response.json({ error: 'both seats need a model or a human' }, { status: 400 })
-    if (black.isHuman && white.isHuman) return Response.json({ error: 'at most one human seat' }, { status: 400 })
     const { data, error } = await svc().from('xtalk_sessions').insert({
       user_id: user.id, game: 'gomoku', status: 'active',
       human_seat: black.isHuman ? 0 : (white.isHuman ? 1 : null),
       players: [black, white], phase: 'B', day: 0, turn_order: [],
-      transcript: [], pending: { board: emptyBoard(), last: null },
-      // The thinking level is part of a player's identity — it changes the
-      // player. "Terra (high)" and "Terra (low)" are different opponents.
-      title: `${black.name}${black.thinking ? ` (${black.thinking})` : ''} ⚫ vs ⚪ ${white.name}${white.thinking ? ` (${white.thinking})` : ''}`,
+      transcript: [], pending: { board: emptyBoard(), last: null, ...(isDuelGame ? { duel: { anon: true } } : {}) },
+      title,
     }).select('id').single()
     if (error || !data) {
       console.warn(`${LOG} create failed:`, error?.message)
@@ -143,11 +189,29 @@ export async function POST(req: Request) {
   const players: Player[] = s.players
   const turn: Player | null = s.status === 'over' ? null : players[s.phase === 'B' ? 0 : 1]
 
-  const view = () => Response.json({
-    id: s.id, status: s.status, winner: s.winner ?? null, board, moves,
-    players, turn: turn ? turn.stone : null, humanTurn: !!turn?.isHuman,
-    winLine: s.pending.winLine ?? null, costUsd: Number(s.cost_usd) || 0,
-  })
+  // view() reads from `s` LIVE, not from the load-time consts — after an
+  // applyMove/save the response must show the move it just applied. (The
+  // load-time consts above are the pre-action state, which is exactly what
+  // the action handlers should reason about.)
+  // Blind duels mask here, server-side: names, per-move cost and the total
+  // never leave the server while the duel is anonymous — a client can't
+  // leak what it never received.
+  const view = () => {
+    const d = s.pending.duel ?? null
+    const anon = !!d && !d.revealed
+    const pl: Player[] = s.players
+    const tp: Player | null = s.status === 'over' ? null : pl[s.phase === 'B' ? 0 : 1]
+    return Response.json({
+      id: s.id, status: s.status, winner: s.winner ?? null,
+      board: s.pending.board,
+      moves: anon ? (s.transcript as Move[]).map(m => { const r: any = { ...m }; delete r.cost; return r }) : s.transcript,
+      players: anon ? pl.map((p, i) => ({ stone: p.stone, name: i === 0 ? 'Player A' : 'Player B', isHuman: false })) : pl,
+      turn: tp ? tp.stone : null, humanTurn: !!tp?.isHuman,
+      winLine: s.pending.winLine ?? null,
+      costUsd: anon ? null : Number(s.cost_usd) || 0,
+      duel: d ? { anon, revealed: !!d.revealed, thumbs: d.thumbs ?? {} } : null,
+    })
+  }
 
   const save = async (patch: Record<string, any>) => {
     Object.assign(s, patch)
@@ -156,18 +220,23 @@ export async function POST(req: Request) {
 
   const applyMove = async (r: number, c: number, why: string | undefined, fallback: boolean, cost: number, ms?: number) => {
     const stone = turn!.stone
+    const isDuel = !!s.pending.duel
     const nextBoard = place(board, r, c, stone)
     const mv: Move = { n: s.day + 1, stone, coord: coordName(r, c), ...(why ? { why } : {}), ...(fallback ? { fallback: true } : {}), ...(cost ? { cost } : {}), ...(ms != null ? { ms: Math.max(0, Math.round(ms)) } : {}) }
     const line = winAt(nextBoard, r, c)
-    const over = !!line || isFull(nextBoard)
+    const over = !!line || isFull(nextBoard) || (isDuel && s.day + 1 >= DUEL_MOVE_CAP)
     await save({
-      pending: { board: nextBoard, last: [r, c], winLine: line ?? null },
+      // Spread the old pending: the duel marker (and anything future) must
+      // survive every move, not just the board fields.
+      pending: { ...s.pending, board: nextBoard, last: [r, c], winLine: line ?? null },
       transcript: [...moves, mv], day: s.day + 1,
       phase: stone === 'B' ? 'W' : 'B',
       ...(over ? { status: 'over', winner: line ? (stone === 'B' ? 'black' : 'white') : 'draw' } : {}),
       cost_usd: Number(s.cost_usd) + cost,
     })
-    if (cost > 0) {
+    // Blind duels are on the house — cost_usd still accumulates (it's
+    // shown at the reveal), but the user's wallet is never touched.
+    if (cost > 0 && !isDuel) {
       const cents = Math.round(cost * 100)
       if (cents > 0) debitCredits({
         userId: user.id, amountCents: cents, referenceType: 'xgame_gomoku',
@@ -217,6 +286,35 @@ export async function POST(req: Request) {
       console.warn(`${LOG} ${model.display_name}: fallback move ${coordName(placed[0], placed[1])}`)
     }
     await applyMove(placed[0], placed[1], why, usedFallback, totalCost, Date.now() - t0)
+    return view()
+  }
+
+  // ── duel: thumbs + the reveal ─────────────────────────────────────────
+  // The arc of a blind duel: the engine decides, you judge the play, THEN
+  // the unmasking. Both act only on finished duel games.
+  if (body.action === 'duel_thumb') {
+    const d = s.pending.duel
+    if (!d || s.status !== 'over') return view()
+    const seat = body.seat === 1 ? 1 : 0
+    const up = body.up === true ? true : body.up === false ? false : null
+    const thumbs = { ...(d.thumbs ?? {}) }
+    // `blind` records whether the judgment was made before the unmasking —
+    // a pre-reveal thumb is a cleaner signal and the flag keeps them apart.
+    if (up === null) delete thumbs[seat]
+    else thumbs[seat] = { up, blind: !d.revealed }
+    await save({ pending: { ...s.pending, duel: { ...d, thumbs } } })
+    return view()
+  }
+  if (body.action === 'duel_reveal') {
+    const d = s.pending.duel
+    if (!d || s.status !== 'over') return view()
+    if (!d.revealed) {
+      await save({
+        pending: { ...s.pending, duel: { ...d, revealed: true } },
+        // The nav-history row gets the real matchup once it's public.
+        title: `${players[0].name} ⚫ vs ⚪ ${players[1].name}`,
+      })
+    }
     return view()
   }
 
