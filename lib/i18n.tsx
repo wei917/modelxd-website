@@ -60,6 +60,7 @@ export const STRINGS: Record<string, Entry> = {
   'xg.gomoku.blurb': { en: 'Two AIs battle on the board — or take a seat yourself. Every move comes with the model\'s reasoning.', 'zh-Hant': '讓兩個 AI 在棋盤上對決，或親自入座。每一手都附上模型的想法。', 'zh-Hans': '让两个 AI 在棋盘上对决，或亲自入座。每一手都附上模型的想法。', ja: '2つのAIが盤上で対決。自分で打つのも自由。全ての手にモデルの意図が付く。', ko: '두 AI가 바둑판에서 대결 — 직접 참여도 가능. 모든 수에 모델의 의도가 표시됩니다.' },
   'gm.iplay':     { en: 'I play black', 'zh-Hant': '我執黑棋', 'zh-Hans': '我执黑棋', ja: '黒番で打つ', ko: '흑돌로 두기' },
   'gm.opponent':  { en: 'Your opponent', 'zh-Hant': '你的對手', 'zh-Hans': '你的对手', ja: '対戦相手', ko: '상대' },
+  'gm.auto':      { en: 'Auto', 'zh-Hant': '自動', 'zh-Hans': '自动', ja: '自動', ko: '자동' },
   'gm.start':     { en: 'Start the game', 'zh-Hant': '開始對局', 'zh-Hans': '开始对局', ja: '対局開始', ko: '대국 시작' },
   'gm.you':       { en: 'You play this seat', 'zh-Hant': '我來下這席', 'zh-Hans': '我来下这席', ja: 'この席で打つ', ko: '내가 이 자리에' },
   'gm.turn':      { en: 'to move', 'zh-Hant': '思考中', 'zh-Hans': '思考中', ja: 'の手番', ko: '차례' },

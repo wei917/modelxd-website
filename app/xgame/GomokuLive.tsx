@@ -122,6 +122,42 @@ export default function GomokuLive({ models, resumeId, onExit }: {
           seatOpts={seatOpts} onSeatOpts={setSeatOpts}
           allowSearch={false} count={need} fixed allowDuplicates
         />
+        {/* Thinking level, ALWAYS VISIBLE once a model is seated. The shared
+            slot row hides this behind a 24px gear, and the owner could not
+            find it twice — that is the design failing, not the user. The
+            gear still works; these pills are the front door. (CC, Aug 6) */}
+        {picked.filter(Boolean).map(id => {
+          const m: any = models.find((x: any) => x.id === id)
+          const levels: string[] = m?.output_config?.text?.thinking_levels ?? []
+          if (!m || levels.length === 0) return null
+          const cur = seatOpts[id]?.thinking ?? null
+          const setLv = (lv: string | null) =>
+            setSeatOpts({ ...seatOpts, [id]: { ...(seatOpts[id] ?? DEFAULT_SEAT_OPTS), thinking: lv } })
+          return (
+            <div key={id} style={{ marginTop: 12 }}>
+              <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 5 }}>
+                {m.display_name} · {t('xcreate.thinking')}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {[null, ...levels].map(lv => {
+                  const on = cur === lv
+                  return (
+                    <button
+                      key={lv ?? 'auto'} type="button" onClick={() => setLv(lv)}
+                      style={{
+                        padding: '3px 10px', borderRadius: 7, fontSize: 11, fontFamily: 'inherit',
+                        border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
+                        background: on ? 'var(--red-dim)' : 'var(--surface)',
+                        color: on ? 'var(--red)' : 'var(--muted2)', fontWeight: on ? 700 : 400,
+                        cursor: 'pointer',
+                      }}
+                    >{lv ?? t('gm.auto')}</button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
         <button
           onClick={start} disabled={busy || !ready}
           style={{ marginTop: 16, padding: '11px 26px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer', opacity: (!ready || busy) ? 0.5 : 1 }}
