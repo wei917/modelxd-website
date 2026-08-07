@@ -32,7 +32,7 @@ const svc = () => createClient(
   { auth: { persistSession: false } },
 )
 
-type Player = { stone: Stone; modelId: string | null; name: string; isHuman: boolean }
+type Player = { stone: Stone; modelId: string | null; name: string; isHuman: boolean; thinking?: string | null }
 type Move = { n: number; stone: Stone; coord: string; why?: string; fallback?: boolean; cost?: number }
 
 async function getModelById(id: string) {
@@ -45,7 +45,7 @@ async function getModelById(id: string) {
 const MODEL_TIMEOUT_MS = 60_000
 
 /** One ask: full state out, a coordinate back. Never throws. */
-async function askMove(model: any, stone: Stone, board: Board, moves: Move[], objection: string | null, userId: string) {
+async function askMove(model: any, stone: Stone, board: Board, moves: Move[], objection: string | null, userId: string, thinking: string | null) {
   const history = moves.map(m => `${m.n}. ${m.stone} ${m.coord}`).join('  ') || '(none — you open)'
   const prompt = [
     `You are playing gomoku (five in a row) on a 15x15 board as ${stone === 'B' ? 'B (black)' : 'W (white)'}.`,
@@ -64,7 +64,7 @@ async function askMove(model: any, stone: Stone, board: Board, moves: Move[], ob
         onDelta: (t: string) => { full += t },
         onDone:  (r: any) => { cost += r.cost ?? 0; resolve() },
         onError: (m: string) => { console.warn(`${LOG} ${model.display_name}:`, m); resolve() },
-      }, [], { userId, surface: 'xgame-gomoku' } as any).catch(() => resolve())
+      }, [], { userId, surface: 'xgame-gomoku' } as any, { thinking, search: false }).catch(() => resolve())
     }),
     new Promise<void>(resolve => { timer = setTimeout(() => { console.warn(`${LOG} timeout`); resolve() }, MODEL_TIMEOUT_MS) }),
   ])
@@ -99,7 +99,10 @@ export async function POST(req: Request) {
     const mk = async (stone: Stone, cfg: any): Promise<Player | null> => {
       if (cfg?.human) return { stone, modelId: null, name: body.playerName?.slice(0, 40) || 'You', isHuman: true }
       const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
-      return m ? { stone, modelId: m.id, name: m.display_name, isHuman: false } : null
+      return m ? {
+        stone, modelId: m.id, name: m.display_name, isHuman: false,
+        thinking: typeof cfg?.thinking === 'string' ? cfg.thinking : null,
+      } : null
     }
     const black = await mk('B', seats.black), white = await mk('W', seats.white)
     if (!black || !white) return Response.json({ error: 'both seats need a model or a human' }, { status: 400 })
@@ -186,7 +189,7 @@ export async function POST(req: Request) {
     let why: string | undefined, usedFallback = false
     let objection: string | null = null
     for (let attempt = 0; attempt < 2 && !placed; attempt++) {
-      const r = await askMove(model, turn.stone, board, moves, objection, user.id)
+      const r = await askMove(model, turn.stone, board, moves, objection, user.id, turn.thinking ?? null)
       totalCost += r.cost
       why = r.why ?? why
       const pc = r.move ? parseCoord(r.move) : null

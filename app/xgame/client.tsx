@@ -23,11 +23,6 @@ const createSupabaseBrowser = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
-// The build order from docs/TODO.md, shown as coming-soon cards so the
-// arena states its ambition. Game names are i18n keys like every other
-// label — 五子棋 is Gomoku in English, 五目並べ in Japanese, 오목 in
-// Korean; hardcoding one language's name was wrong on a 5-language site.
-const UPCOMING = ['xg.game.chess', 'xg.game.xiangqi', 'xg.game.draw', 'xg.game.mahjong']
 
 export default function XGameClient({ resumeId = null }: { resumeId?: string | null }) {
   useRequireAuth()
@@ -100,20 +95,6 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             </button>
           </div>
 
-          {UPCOMING.map(key => (
-            <div key={key} className="xt-tpl-wrap">
-              <div className="xt-tpl" style={{ opacity: 0.45, cursor: 'default' }} aria-disabled>
-                <span className="xt-tpl-body">
-                  <span className="xt-tpl-text">
-                    <span className="xt-tpl-head">
-                      <span className="xt-tpl-name">{t(key)}</span>
-                    </span>
-                    <span className="xt-tpl-tag">{t('xg.soon')}</span>
-                  </span>
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
 
         {active === 'gomoku' ? (

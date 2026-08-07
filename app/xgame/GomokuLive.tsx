@@ -8,6 +8,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import { SIZE, COLS } from '../../lib/gomoku-engine'
+import ModelSlots from '../xtalk/ModelSlots'
+import { DEFAULT_SEAT_OPTS, type SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 
 type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback?: boolean }
@@ -26,8 +28,11 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 }) {
   const t = useT()
   const [g, setG] = useState<GameView | null>(null)
-  const [blackSel, setBlackSel] = useState<string>('human')
-  const [whiteSel, setWhiteSel] = useState<string>('')
+  // The REAL seat machinery — same picker + per-seat thinking config the
+  // other tables use, not a bare <select> (owner's correction, Aug 6).
+  const [picked, setPicked] = useState<string[]>([])
+  const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
+  const [playing, setPlaying] = useState(true)   // human takes black
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const loopRef = useRef(false)
@@ -67,9 +72,16 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 
   const start = async () => {
     if (busy) return
+    const need = playing ? 1 : 2
+    if (picked.filter(Boolean).length < need) return
     setBusy(true)
-    const seat = (v: string) => v === 'human' ? { human: true } : { modelId: v }
-    const v = await post({ action: 'create', seats: { black: seat(blackSel), white: seat(whiteSel) } })
+    const ai = (id: string) => ({ modelId: id, thinking: seatOpts[id]?.thinking ?? null })
+    const v = await post({
+      action: 'create',
+      seats: playing
+        ? { black: { human: true }, white: ai(picked[0]) }
+        : { black: ai(picked[0]),   white: ai(picked[1]) },
+    })
     setBusy(false)
     // Deliberately NOT written into the URL mid-game: Next syncs native
     // history calls into the router, and a PATH change remounts the page —
@@ -87,33 +99,32 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     if (v) void runLoop(v)
   }
 
-  const textModels = models.filter(m => (m as any).enabled !== false)
-  const seatPick = (val: string, set: (v: string) => void, other: string) => (
-    <select
-      value={val} onChange={e => set(e.target.value)}
-      style={{ flex: 1, minWidth: 0, padding: '9px 10px', borderRadius: 9, border: '1px solid var(--border2)', background: '#fff', color: 'var(--white)', fontFamily: 'inherit', fontSize: 13 }}
-    >
-      {other !== 'human' && <option value="human">{t('gm.you')}</option>}
-      <option value="" disabled>{'— AI —'}</option>
-      {textModels.map((m: any) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-    </select>
-  )
-
   // ── setup ──────────────────────────────────────────────────────────────
   if (!g) {
+    const need = playing ? 1 : 2
+    const ready = picked.filter(Boolean).length >= need
     return (
-      <div style={{ marginTop: 18, maxWidth: 560 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }} aria-hidden>⚫</span>{seatPick(blackSel, setBlackSel, whiteSel)}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }} aria-hidden>⚪</span>{seatPick(whiteSel, setWhiteSel, blackSel)}
-          </div>
-        </div>
+      <div style={{ marginTop: 18, maxWidth: 720 }}>
         <button
-          onClick={start} disabled={busy || (!whiteSel && whiteSel !== 'human') || (blackSel !== 'human' && !blackSel)}
-          style={{ marginTop: 14, padding: '11px 26px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer', opacity: (!whiteSel || busy) ? 0.5 : 1 }}
+          onClick={() => { setPlaying(p => !p); setPicked([]) }}
+          style={{
+            padding: '8px 16px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
+            border: '1px solid ' + (playing ? 'var(--red)' : 'var(--border2)'),
+            background: playing ? 'var(--red-dim)' : 'transparent',
+            color: playing ? 'var(--red)' : 'var(--muted)', fontFamily: 'inherit', marginBottom: 14,
+          }}
+        >⚫ {t('gm.iplay')}</button>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 8, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.06em' }}>
+          {playing ? `⚪ ${t('gm.opponent')}` : '⚫ + ⚪'}
+        </div>
+        <ModelSlots
+          models={models} picked={picked} onPicked={setPicked}
+          seatOpts={seatOpts} onSeatOpts={setSeatOpts}
+          allowSearch={false} count={need} fixed allowDuplicates
+        />
+        <button
+          onClick={start} disabled={busy || !ready}
+          style={{ marginTop: 16, padding: '11px 26px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer', opacity: (!ready || busy) ? 0.5 : 1 }}
         >{busy ? '…' : t('gm.start')}</button>
         {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 13 }}>⚠ {err}</div>}
       </div>
