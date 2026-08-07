@@ -60,7 +60,11 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
         <div className="prompt-label eyebrow">XGAME</div>
         <h1 className="page-headline" style={{ marginBottom: 20 }}>{t('xg.shell.title')}</h1>
 
-        <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>
+        {/* The picker is the LOBBY. A resumed game is the TABLE — it gets
+            the page to itself, no other game's card in sight. (owner, Aug 6) */}
+        {!resume && (
+        <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>)}
+        {!resume && (
         <div className="xt-tpl-grid">
           <div className="xt-tpl-wrap">
             <button className={`xt-tpl${active === 'werewolf' ? ' is-on' : ''}`} onClick={() => { setActive('werewolf'); setResume(null); setNonce(n => n + 1) }}>
@@ -95,7 +99,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             </button>
           </div>
 
-        </div>
+        </div>)}
 
         {active === 'gomoku' ? (
           <GomokuLive

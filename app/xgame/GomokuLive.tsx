@@ -6,6 +6,7 @@
 // deserves to look like one, not like a data grid.
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useT } from '../../lib/i18n'
 import { SIZE, COLS } from '../../lib/gomoku-engine'
 import ModelPickerDialog from '../components/ModelPickerDialog'
@@ -28,6 +29,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   models: Speaker[]; resumeId?: string | null; onExit: () => void
 }) {
   const t = useT()
+  const router = useRouter()
   const [g, setG] = useState<GameView | null>(null)
   // Two seats ARE the interface (owner's layout, Aug 6): click a seat,
   // assign Me / a random model / a picked model. Play-vs-watch is emergent
@@ -84,13 +86,11 @@ export default function GomokuLive({ models, resumeId, onExit }: {
       : { modelId: (a as any).modelId, thinking: seatOpts[(a as any).modelId]?.thinking ?? null }
     const v = await post({ action: 'create', seats: { black: enc(seats.B), white: enc(seats.W) } })
     setBusy(false)
-    // Deliberately NOT written into the URL mid-game: Next syncs native
-    // history calls into the router, and a PATH change remounts the page —
-    // which killed the step loop and blanked the board on the first live
-    // game (the /xdirect minted-key lesson, relearned at /xgame). The game
-    // is saved regardless; the permalink chip below and the nav history
-    // carry the address.
-    if (v) void runLoop(v)
+    // Start = leave the lobby for the table. This is ROUTER navigation at a
+    // deliberate boundary, not a history rewrite mid-play (that earlier bug
+    // was a replaceState DURING the game): the game page mounts fresh with
+    // resumeId, restores state, and drives the loop itself.
+    if (v) router.push(`/xgame/${v.id}`)
   }
 
   const clickCell = async (r: number, c: number) => {
@@ -209,14 +209,34 @@ export default function GomokuLive({ models, resumeId, onExit }: {
       </svg>
 
       <div style={{ flex: '1 1 260px', minWidth: 240, maxWidth: 380 }}>
+        {/* Players, arranged as a match card: the active seat glows. */}
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, marginBottom: 10 }}>
+          {([0, 1] as const).map(i => {
+            const p = g.players[i]
+            const activeSeat = g.status === 'active' && g.turn === (i === 0 ? 'B' : 'W')
+            return (
+              <div key={i} style={{
+                flex: 1, padding: '9px 11px', borderRadius: 10, minWidth: 0,
+                border: '1.5px solid ' + (activeSeat ? 'var(--red)' : 'var(--border)'),
+                background: activeSeat ? 'var(--red-dim)' : 'var(--surface)',
+              }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {i === 0 ? '⚫' : '⚪'} {p.name}
+                </div>
+                {(p as any).thinking && (
+                  <div style={{ fontSize: 9.5, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>{(p as any).thinking}</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
           {g.status === 'over'
             ? (g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`)
             : g.humanTurn ? t('gm.yourclick') : `${turnP?.name ?? ''} ${t('gm.turn')}`}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>
-          ⚫ {g.players[0].name} · ⚪ {g.players[1].name} · ${g.costUsd.toFixed(3)}
-          {' · '}<a href={`/xgame/${g.id}`} style={{ color: 'var(--muted2)' }}>🔗</a>
+          ${g.costUsd.toFixed(3)}
         </div>
         <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[...g.moves].reverse().map(m => (
