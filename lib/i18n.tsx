@@ -67,6 +67,7 @@ export const STRINGS: Record<string, Entry> = {
   'dg.wordwas': { en: 'the word was', 'zh-Hant': '答案是', 'zh-Hans': '答案是', ja: '答えは', ko: '정답은' },
   'dg.correct': { en: 'Got it!', 'zh-Hant': '答對了！', 'zh-Hans': '答对了！', ja: '正解！', ko: '정답!' },
   'dg.timeup':  { en: "Time's up", 'zh-Hant': '時間到', 'zh-Hans': '时间到', ja: '時間切れ', ko: '시간 종료' },
+  'dg.nomore':  { en: 'Out of guesses', 'zh-Hant': '猜題次數用完了', 'zh-Hans': '猜题次数用完了', ja: '回答チャンス終了', ko: '기회를 모두 썼어요' },
   'dg.which':   { en: 'Which drawing was better?', 'zh-Hant': '哪一張畫得比較好？', 'zh-Hans': '哪一张画得比较好？', ja: 'どちらの絵が良かった？', ko: '어느 그림이 더 나았나요?' },
   'dg.skip':    { en: 'Skip', 'zh-Hant': '跳過', 'zh-Hans': '跳过', ja: 'スキップ', ko: '건너뛰기' },
   'dg.tie':     { en: "It's a tie", 'zh-Hant': '平手', 'zh-Hans': '平手', ja: '引き分け', ko: '무승부' },
@@ -306,6 +307,9 @@ export const STRINGS: Record<string, Entry> = {
   'home.hero':        { en: 'Overpaying for AI?!', 'zh-Hant': '為 AI 付太多了嗎？', 'zh-Hans': '为 AI 付太多了吗？', ja: 'AIに払いすぎていませんか？', ko: 'AI 요금, 너무 많이 내고 있나요?' },
   'home.sub':         { en: 'See AI results side by side and find the best model for your budget', 'zh-Hant': '並排比較 AI 結果，找出最適合你預算的模型', 'zh-Hans': '并排比较 AI 结果，找出最适合你预算的模型', ja: 'AIの結果を並べて比較して、予算に合う最適なモデルを見つけよう', ko: 'AI 결과를 나란히 비교하고 예산에 맞는 최적의 모델을 찾으세요' },
   // Consolidated pitch section (Aug 6) — stat cards + surface grid.
+  'home.aud.gap':         { en: 'PRICE GAP', 'zh-Hant': '價格差距', 'zh-Hans': '价格差距', ja: '価格差', ko: '가격 격차' },
+  'home.aud.gap.period':  { en: 'between models on the board', 'zh-Hant': '排行榜上模型之間的差距', 'zh-Hans': '排行榜上模型之间的差距', ja: 'ボード上のモデル間で', ko: '보드 위 모델 간 격차' },
+  'home.aud.gap.desc':    { en: 'Most people pay the top of that range out of habit. The blind votes tell you when the cheap end wins.', 'zh-Hant': '大多數人習慣性付最貴的那端。盲測投票告訴你便宜的那端什麼時候反而贏。', 'zh-Hans': '大多数人习惯性付最贵的那端。盲测投票告诉你便宜的那端什么时候反而赢。', ja: '多くの人は習慣で高い方を払い続けています。ブラインド投票が、安い方が勝つ場面を教えてくれます。', ko: '많은 사람이 습관적으로 가장 비싼 쪽에 돈을 냅니다. 블라인드 투표가 저렴한 쪽이 이기는 순간을 알려줍니다.' },
   'home.aud.dev':         { en: 'FOR DEVELOPERS', 'zh-Hant': '開發者', 'zh-Hans': '开发者', ja: '開発者向け', ko: '개발자용' },
   'home.aud.dev.period':  { en: 'monthly savings at 500M tokens', 'zh-Hant': '每月可省（以 5 億 tokens 計）', 'zh-Hans': '每月可省（以 5 亿 tokens 计）', ja: '月間節約額（5億トークン時）', ko: '월 절감액 (5억 토큰 기준)' },
   'home.aud.dev.desc':    { en: 'Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.', 'zh-Hant': 'Token 成本累積得很快。ModelXD 用社群盲測數據告訴你哪些模型真正划算。', 'zh-Hans': 'Token 成本累积得很快。ModelXD 用社群盲测数据告诉你哪些模型真正划算。', ja: 'トークンコストはすぐ膨らみます。ModelXDは、どのモデルが本当に価値を出すかをコミュニティ検証済みデータで示します。', ko: '토큰 비용은 빠르게 불어납니다. ModelXD는 어떤 모델이 진짜 가치를 내는지 커뮤니티 검증 데이터로 보여줍니다.' },

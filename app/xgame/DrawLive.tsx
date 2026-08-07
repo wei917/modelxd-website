@@ -15,7 +15,8 @@ type View = {
   id: string; status: string; phase: 'guess' | 'vote' | 'over'; lang: string
   round: number; rounds: number; imgA: string; imgB: string
   term: string | null; tier: string; chat: ChatLine[]; hints: number; maxHints: number
-  got: boolean | null; vote: string | null; remainingMs: number
+  attempts: number; maxAttempts: number
+  got: boolean | null; noMore: boolean; vote: string | null; remainingMs: number
   history: HistRound[]; tally: { A: number; B: number }
   players: Array<{ side: 'A' | 'B'; name: string }>; winner: string | null
 }
@@ -34,7 +35,7 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
   // can't freeze the round).
   const [left, setLeft] = useState(0)
   const deadlineRef = useRef(0)
-  const timeoutSentRef = useRef<number | null>(null)
+  const lastNudgeRef = useRef(0)
 
   const post = async (body: any): Promise<View | null> => {
     const ctl = new AbortController()
@@ -49,7 +50,12 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
       setErr(null); setG(d)
       deadlineRef.current = Date.now() + (d.remainingMs ?? 0)
       return d
-    } catch { return null }
+    } catch {
+      // NEVER silent (Aug 7, the wedged-round bug): a swallowed failure
+      // reads as "nothing happened" and hides a stuck game.
+      setErr('Network hiccup — retrying…')
+      return null
+    }
     finally { clearTimeout(tm) }
   }
 
@@ -59,14 +65,19 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeId])
 
-  // Tick the clock; at zero, nudge the server once per round.
+  // Tick the clock; at zero, nudge the server until the phase flips.
+  // The original fired ONCE at local zero — which always landed inside the
+  // server's 1.5s expiry grace, was ignored, and was never retried: every
+  // quietly-expired round wedged (owner's report, Aug 7). Retrying every
+  // 3s clears the grace window on the second nudge at the latest, and
+  // also survives a dropped request.
   useEffect(() => {
     if (!g || g.phase !== 'guess') return
     const iv = setInterval(() => {
       const ms = Math.max(0, deadlineRef.current - Date.now())
       setLeft(ms)
-      if (ms === 0 && timeoutSentRef.current !== g.round) {
-        timeoutSentRef.current = g.round
+      if (ms === 0 && Date.now() - lastNudgeRef.current > 3000) {
+        lastNudgeRef.current = Date.now()
         void post({ action: 'timeout', id: g.id })
       }
     }, 250)
@@ -92,7 +103,8 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
     const text = input.trim()
     if (!text || !g || g.phase !== 'guess' || busy) return
     setInput(''); setBusy(true)
-    await post({ action: 'guess', id: g.id, text })
+    const v = await post({ action: 'guess', id: g.id, text })
+    if (!v) setInput(text)   // failed send: give the words back
     setBusy(false)
   }
 
@@ -192,22 +204,34 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
         {imgFrame('A')}{imgFrame('B')}
       </div>
 
-      {/* ── guess phase: chat + input + host ── */}
+      {/* ── the round's conversation — stays up through the vote (owner,
+          Aug 7: "leave it there"); only the input retires when the clock
+          does. It resets when the NEXT round starts: new word, clean
+          slate — the host is stateless per round by design. ── */}
+      {(g.phase === 'guess' || g.phase === 'vote') && g.chat.length > 0 && (
+        <div style={{ marginTop: 14, maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {g.chat.map((c, i) => (
+            <div key={i} style={{
+              alignSelf: c.who === 'you' ? 'flex-end' : 'flex-start',
+              maxWidth: '85%', padding: '7px 12px', borderRadius: 11, fontSize: 13, lineHeight: 1.5,
+              background: c.who === 'you' ? (c.correct ? 'var(--green-dim)' : 'var(--surface2)') : 'var(--surface)',
+              // A wrong guess gets a VERDICT — the red edge and the ✗.
+              // Without it a miss looked like "nothing happened" (the
+              // owner literally typed "hello?" at a host who only answers
+              // the hint button — Aug 7).
+              border: '1px solid ' + (c.correct ? 'var(--green)' : c.who === 'you' ? 'var(--red)' : 'var(--border2)'),
+            }}>
+              {c.who === 'host' && <strong style={{ marginRight: 6 }}>🎤</strong>}
+              {c.text}{c.correct && ' ✓'}
+              {c.who === 'you' && !c.correct && <span style={{ color: 'var(--red)', marginLeft: 6 }}>✗</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── guess phase: the input row ── */}
       {g.phase === 'guess' && (
-        <div style={{ marginTop: 14, maxWidth: 640 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-            {g.chat.map((c, i) => (
-              <div key={i} style={{
-                alignSelf: c.who === 'you' ? 'flex-end' : 'flex-start',
-                maxWidth: '85%', padding: '7px 12px', borderRadius: 11, fontSize: 13, lineHeight: 1.5,
-                background: c.who === 'you' ? (c.correct ? 'var(--green-dim)' : 'var(--surface2)') : 'var(--surface)',
-                border: '1px solid ' + (c.correct ? 'var(--green)' : 'var(--border2)'),
-              }}>
-                {c.who === 'host' && <strong style={{ marginRight: 6 }}>🎤</strong>}
-                {c.text}{c.correct && ' ✓'}
-              </div>
-            ))}
-          </div>
+        <div style={{ marginTop: 10, maxWidth: 640 }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               value={input} onChange={e => setInput(e.target.value)}
@@ -217,7 +241,7 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
             />
             <button onClick={sendGuess} disabled={busy || !input.trim()}
               style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: busy || !input.trim() ? 0.5 : 1 }}>
-              {t('dg.guess')}
+              {t('dg.guess')} ({g.maxAttempts - g.attempts})
             </button>
             <button onClick={askHint} disabled={hintBusy || g.hints >= g.maxHints}
               title={`${g.maxHints - g.hints}`}
@@ -235,7 +259,7 @@ export default function DrawLive({ resumeId, onExit }: { resumeId?: string | nul
           border: '1.5px solid var(--red)', background: 'var(--red-dim)',
         }}>
           <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>
-            {g.got ? `🎉 ${t('dg.correct')}` : `⏰ ${t('dg.timeup')}`} — {t('dg.wordwas')} <span style={{ fontFamily: 'var(--font-display), inherit', fontWeight: 900 }}>{g.term}</span>
+            {g.got ? `🎉 ${t('dg.correct')}` : g.noMore ? `🚫 ${t('dg.nomore')}` : `⏰ ${t('dg.timeup')}`} — {t('dg.wordwas')} <span style={{ fontFamily: 'var(--font-display), inherit', fontWeight: 900 }}>{g.term}</span>
           </div>
           {!g.vote && (
             <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>{t('dg.which')}</div>

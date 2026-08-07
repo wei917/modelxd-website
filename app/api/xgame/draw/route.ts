@@ -28,7 +28,11 @@ const LOG = '[xgame:draw]'
 const ROUNDS = 5
 const ROUND_MS = 45_000
 const MAX_HINTS = 2
-const MAX_ATTEMPTS = 12
+// Five real tries per round (owner, Aug 7: "we should limit it") — with
+// two hints that's generous, and it keeps the term bank un-brute-forceable.
+// Burning the last one ENDS the round (reveal + vote), labeled honestly as
+// out-of-guesses, never left as a silent no-op or a fake "time's up".
+const MAX_ATTEMPTS = 5
 const GAMES_PER_DAY = 10
 
 const svc = () => createClient(
@@ -46,6 +50,7 @@ type Round = {
   chat: Array<{ who: 'you' | 'host'; text: string; correct?: boolean }>
   hints: number
   got: boolean | null          // null = still guessing
+  noMore?: boolean             // lost by running out of guesses (vs clock)
   ms?: number                  // time to the correct guess
   vote?: 'A' | 'B' | 'skip'
 }
@@ -280,7 +285,8 @@ export async function POST(req: Request) {
       term: revealTerm ? cur.term : null,
       tier: cur.tier,
       chat: cur.chat, hints: cur.hints, maxHints: MAX_HINTS,
-      got: cur.got, vote: cur.vote ?? null,
+      attempts: cur.chat.filter(c => c.who === 'you').length, maxAttempts: MAX_ATTEMPTS,
+      got: cur.got, noMore: cur.noMore ?? false, vote: cur.vote ?? null,
       remainingMs: s.phase === 'guess' && p.deadlineAt
         ? Math.max(0, new Date(p.deadlineAt).getTime() - Date.now()) : 0,
       // Past rounds for the recap strip (terms of finished rounds are public).
@@ -310,6 +316,11 @@ export async function POST(req: Request) {
     if (correct) {
       r.got = true
       r.ms = ROUND_MS - Math.max(0, new Date(p.deadlineAt).getTime() - Date.now())
+      await save({ phase: 'vote', pending: { ...p } })
+    } else if (r.chat.filter(c => c.who === 'you').length >= MAX_ATTEMPTS) {
+      // That was the last try — the round ends now, honestly labeled.
+      r.got = false
+      r.noMore = true
       await save({ phase: 'vote', pending: { ...p } })
     } else {
       await save({ pending: { ...p } })

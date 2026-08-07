@@ -365,7 +365,19 @@ export default function Home() {
       <div className="home-section surface reveal">
         <div className="home-inner">
           <div className="home-audience">
-
+            <div className="home-audience-card">
+              <div className="home-audience-label">{t('home.aud.gap')}</div>
+              {/* 120× — re-derived from live model_pricing Aug 7 2026:
+                  cheapest enabled text output is Gemini 3.1 Flash-Lite at
+                  $1.50/M, priciest is GPT-5.5 Pro at $180/M = exactly 120×.
+                  The ratio is the thesis in one number (owner: "more
+                  meaningful than actual $") — it's volume-free where the
+                  two savings figures each assume a workload. Re-derive
+                  before changing (same rule as the other two numbers). */}
+              <div className="home-audience-stat" style={{ color: 'var(--red)' }}>120×</div>
+              <div className="home-audience-period">{t('home.aud.gap.period')}</div>
+              <div className="home-audience-desc">{t('home.aud.gap.desc')}</div>
+            </div>
             <div className="home-audience-card">
               <div className="home-audience-label">{t('home.aud.dev')}</div>
               {/* $3,900/mo, and the un-rounded figure is the point — a round
