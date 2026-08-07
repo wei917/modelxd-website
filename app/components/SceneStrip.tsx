@@ -88,6 +88,18 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
     onChange([...scenes, { id, title: `${t('xd.sb.scene')} ${n}`, script: '', shot: '', duration_s: 6, status: 'draft' }])
   }
 
+  // Film numbering: fresh scenes count S1, S2...; cuts count WITHIN their
+  // scene, C1, C2..., resetting at each new scene. A cut with nothing
+  // before it is a scene opener whatever its flag says.
+  const labels: string[] = []
+  {
+    let sc = 0, cut = 0
+    for (const sn of scenes) {
+      if (sn.continues && sc > 0) { cut += 1; labels.push(`C${cut}`) }
+      else { sc += 1; cut = 0; labels.push(`S${sc}`) }
+    }
+  }
+
   const drafts = scenes.filter(s => !s.status || s.status === 'draft' || s.status === 'error')
   const totalEst = scenes.reduce((sum, s) => sum + (s.status === 'done' ? (s.cost ?? 0) : (s.estimate ?? 0)), 0)
   const totalDur = scenes.reduce((sum, s) => sum + (s.duration_s || 0), 0)
@@ -122,7 +134,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               {s.continues && i > 0 && (
                 <span title="continues the previous card (chained cut)" aria-label="cut" style={{ flexShrink: 0, fontSize: 11, color: 'var(--muted)' }}>🔗</span>
               )}
-              <span style={{ ...label, color: 'var(--red)', flexShrink: 0 }}>{s.continues && i > 0 ? `C${i + 1}` : `S${i + 1}`}</span>
+              <span style={{ ...label, color: 'var(--red)', flexShrink: 0 }}>{labels[i]}</span>
               <input
                 value={s.title}
                 onChange={e => patch(s.id, { title: e.target.value.slice(0, 80) })}
