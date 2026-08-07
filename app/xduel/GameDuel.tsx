@@ -13,22 +13,22 @@ import { useT } from '../../lib/i18n'
 export default function GameDuel() {
   const t = useT()
   const router = useRouter()
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<null | 'play' | 'watch'>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  const start = async () => {
+  const start = async (play: boolean) => {
     if (busy) return
-    setBusy(true); setErr(null)
+    setBusy(play ? 'play' : 'watch'); setErr(null)
     try {
       const res = await fetch('/api/xgame/gomoku', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', duel: true }),
+        body: JSON.stringify({ action: 'create', duel: true, play }),
       })
       const d = await res.json().catch(() => null)
-      if (!res.ok || !d?.id) { setErr(d?.error ?? `HTTP ${res.status}`); setBusy(false); return }
+      if (!res.ok || !d?.id) { setErr(d?.error ?? `HTTP ${res.status}`); setBusy(null); return }
       router.push(`/xgame/${d.id}`)   // busy stays on while navigating
     } catch {
-      setErr('Network error — try again.'); setBusy(false)
+      setErr('Network error — try again.'); setBusy(null)
     }
   }
 
@@ -39,8 +39,15 @@ export default function GameDuel() {
         <div style={{ padding: '16px 18px 18px' }}>
           <div style={{ fontSize: 17, fontWeight: 800, fontFamily: 'var(--font-display), inherit' }}>{t('xg.game.gomoku')}</div>
           <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55, margin: '6px 0 14px' }}>{t('gd.blurb')}</div>
-          <button className="btn-battle" onClick={start} disabled={busy} style={{ width: '100%' }}>
-            {busy ? '…' : `⚔️ ${t('gd.start')}`}
+          <button className="btn-battle" onClick={() => start(true)} disabled={!!busy} style={{ width: '100%' }}>
+            {busy === 'play' ? '…' : `⚔️ ${t('gd.play')}`}
+          </button>
+          <button onClick={() => start(false)} disabled={!!busy} style={{
+            width: '100%', marginTop: 8, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
+            border: '1px solid var(--border2)', background: 'none', color: 'var(--muted)',
+            fontWeight: 700, fontSize: 13,
+          }}>
+            {busy === 'watch' ? '…' : `👁 ${t('gd.watch')}`}
           </button>
           <div style={{ marginTop: 9, fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', textAlign: 'center' }}>
             {t('gd.free')}

@@ -111,7 +111,9 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       users watch and vote / thumb up-down; then the reveal (identities +
       what each move cost), same dramatic arc as a prompt duel.
       - [x] SHIPPED for Gomoku (Aug 6): task type GAME on /xduel → blind
-        match card → the house seats two anonymous models (cheap pool,
+        match card with TWO doors — PLAY (you vs one mystery model,
+        random color, only the AI seat masked) and WATCH (two mystery
+        models) → the house seats the models (cheap pool,
         text_output ≤ $8/1M, xduel block key honored), masking is
         server-side (names/costs never leave the server while anon), no
         user debit, 3/day cap by counting duel rows (no quota migration),

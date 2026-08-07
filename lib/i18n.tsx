@@ -69,8 +69,9 @@ export const STRINGS: Record<string, Entry> = {
   'gm.iplay':     { en: 'I play black', 'zh-Hant': '我執黑棋', 'zh-Hans': '我执黑棋', ja: '黒番で打つ', ko: '흑돌로 두기' },
   'gm.opponent':  { en: 'Your opponent', 'zh-Hant': '你的對手', 'zh-Hans': '你的对手', ja: '対戦相手', ko: '상대' },
   // Blind game duels (XDuel task type GAME)
-  'gd.blurb':  { en: 'Two anonymous models, one board. The engine decides the winner — you judge the play, then unmask who was who and what it cost.', 'zh-Hant': '兩個匿名模型，同一棋盤。引擎判定勝負——你評價表現，最後揭曉誰是誰、各花了多少錢。', 'zh-Hans': '两个匿名模型，同一棋盘。引擎判定胜负——你评价表现，最后揭晓谁是谁、各花了多少钱。', ja: '匿名モデル2体が同じ盤で対局。勝敗はエンジンが判定——あなたはプレイを評価し、最後に正体とコストが明かされます。', ko: '익명 모델 둘이 한 판에서 대국합니다. 승패는 엔진이 판정하고, 당신은 플레이를 평가한 뒤 정체와 비용을 확인합니다.' },
-  'gd.start':  { en: 'Start blind match', 'zh-Hant': '開始盲測對局', 'zh-Hans': '开始盲测对局', ja: 'ブラインド対局を開始', ko: '블라인드 대국 시작' },
+  'gd.blurb':  { en: 'Sit down against a mystery model — or watch two fight it out. The engine decides the winner; the reveal shows who it was and what it cost.', 'zh-Hant': '與神秘模型對弈——或看兩個模型交手。引擎判定勝負，最後揭曉對手是誰、花了多少錢。', 'zh-Hans': '与神秘模型对弈——或看两个模型交手。引擎判定胜负，最后揭晓对手是谁、花了多少钱。', ja: 'ミステリーモデルと対局するか、モデル同士の対局を観戦。勝敗はエンジンが判定し、最後に正体とコストが明かされます。', ko: '미스터리 모델과 직접 대국하거나, 모델끼리의 대국을 관전하세요. 승패는 엔진이 판정하고, 마지막에 정체와 비용이 공개됩니다.' },
+  'gd.play':   { en: 'Play a mystery model', 'zh-Hant': '對戰神秘模型', 'zh-Hans': '对战神秘模型', ja: 'ミステリーモデルと対局', ko: '미스터리 모델과 대국' },
+  'gd.watch':  { en: 'Watch two mystery models', 'zh-Hant': '觀看兩個神秘模型對戰', 'zh-Hans': '观看两个神秘模型对战', ja: 'モデル同士の対局を観る', ko: '모델 대국 관전' },
   'gd.free':   { en: 'Free — 3 blind matches a day, on the house', 'zh-Hant': '免費——每天 3 場盲測對局，由平台買單', 'zh-Hans': '免费——每天 3 场盲测对局，由平台买单', ja: '無料——1日3局まで、費用は当サイト持ち', ko: '무료 — 하루 3판, 비용은 플랫폼 부담' },
   'gd.reveal': { en: 'Reveal the models', 'zh-Hant': '揭曉模型', 'zh-Hans': '揭晓模型', ja: 'モデルを公開', ko: '모델 공개' },
   'gd.rate':   { en: 'Rate the play', 'zh-Hant': '評價表現', 'zh-Hans': '评价表现', ja: 'プレイを評価', ko: '플레이 평가' },

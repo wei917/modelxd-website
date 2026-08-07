@@ -141,9 +141,22 @@ export async function POST(req: Request) {
       const eligible = (pool ?? []).filter((m: any) => !(m.blocked_features ?? []).includes('xduel'))
       const cheap = eligible.filter((m: any) => { const p = outPrice(m); return p != null && p > 0 && p <= 8 })
       const from = (cheap.length >= 2 ? cheap : eligible).sort(() => Math.random() - 0.5)
-      if (from.length < 2) return Response.json({ error: 'Not enough models available for a blind match' }, { status: 503 })
-      black = { stone: 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: null }
-      white = { stone: 'W', modelId: from[1].id, name: from[1].display_name, isHuman: false, thinking: null }
+      const play = body.play === true
+      if (from.length < (play ? 1 : 2)) return Response.json({ error: 'Not enough models available for a blind match' }, { status: 503 })
+      if (play) {
+        // PLAY mode (owner, Aug 6): the user sits down against ONE mystery
+        // model — random color, so models get judged from both sides of
+        // the board. The reveal is the payoff either way: "you just beat
+        // GPT-5.6 Luna" or "you lost to a $0.03 model".
+        const humanStone: Stone = Math.random() < 0.5 ? 'B' : 'W'
+        const human: Player = { stone: humanStone, modelId: null, name: 'You', isHuman: true }
+        const rival: Player = { stone: humanStone === 'B' ? 'W' : 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: null }
+        black = humanStone === 'B' ? human : rival
+        white = humanStone === 'B' ? rival : human
+      } else {
+        black = { stone: 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: null }
+        white = { stone: 'W', modelId: from[1].id, name: from[1].display_name, isHuman: false, thinking: null }
+      }
       title = 'Gomoku — blind duel'
     } else {
       const seats = body.seats ?? {}
@@ -205,7 +218,12 @@ export async function POST(req: Request) {
       id: s.id, status: s.status, winner: s.winner ?? null,
       board: s.pending.board,
       moves: anon ? (s.transcript as Move[]).map(m => { const r: any = { ...m }; delete r.cost; return r }) : s.transcript,
-      players: anon ? pl.map((p, i) => ({ stone: p.stone, name: i === 0 ? 'Player A' : 'Player B', isHuman: false })) : pl,
+      // Play mode masks only the AI seat (the human knows who they are);
+      // watch mode masks both, A/B by stone so the banner stays unambiguous.
+      players: anon ? pl.map((p, i) => p.isHuman
+        ? { stone: p.stone, name: p.name, isHuman: true }
+        : { stone: p.stone, name: pl.some(q => q.isHuman) ? 'Mystery model' : (i === 0 ? 'Player A' : 'Player B'), isHuman: false })
+        : pl,
       turn: tp ? tp.stone : null, humanTurn: !!tp?.isHuman,
       winLine: s.pending.winLine ?? null,
       costUsd: anon ? null : Number(s.cost_usd) || 0,

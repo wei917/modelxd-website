@@ -14,7 +14,7 @@ import SeatSlot, { type SeatAssign } from './SeatSlot'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 
-type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback?: boolean; ms?: number }
+type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback?: boolean; ms?: number; cost?: number }
 type GameView = {
   id: string; status: 'active' | 'over'; winner: 'black' | 'white' | 'draw' | null
   board: string[]; moves: Move[]; players: any[]; turn: 'B' | 'W' | null
@@ -231,6 +231,10 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     const activeSeat = g.status === 'active' && g.turn === stone
     const used = g.moves.filter(m => m.stone === stone).reduce((sum, m) => sum + (m.ms ?? 0), 0)
       + (activeSeat ? tick : 0)
+    // What THIS seat has spent — the per-model price the reveal promises.
+    // Move costs are server-stripped while a duel is anonymous, so this is
+    // 0 (hidden) until the unmasking; in regular games it's live billing.
+    const spend = g.moves.filter(m => m.stone === stone).reduce((sum, m) => sum + (m.cost ?? 0), 0)
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
@@ -247,6 +251,11 @@ export default function GomokuLive({ models, resumeId, onExit }: {
             </span>
           )}
         </span>
+        {spend > 0 && (
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', flexShrink: 0 }}>
+            ${spend.toFixed(3)}
+          </span>
+        )}
         <span style={{ fontSize: 11, fontFamily: 'var(--font-mono), monospace', color: activeSeat ? 'var(--red)' : 'var(--muted2)', fontWeight: 700, flexShrink: 0 }}>
           {fmtClock(used)}
         </span>
@@ -290,29 +299,38 @@ export default function GomokuLive({ models, resumeId, onExit }: {
                 </button>
               )}
             </div>
-            {/* Judging is a duel thing: the engine already named the winner,
-                the thumbs rate the PLAY — and thumbs cast before the reveal
-                are flagged blind server-side, the cleaner signal. */}
-            {g.duel && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 12 }}>
-                <span style={{ color: 'var(--muted)', fontWeight: 700 }}>{t('gd.rate')}</span>
-                {([0, 1] as const).map(seat => (
-                  <span key={seat} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <span aria-hidden>{seat === 0 ? '⚫' : '⚪'}</span>
-                    {([true, false] as const).map(up => {
-                      const sel = g.duel?.thumbs?.[seat]?.up === up
-                      return (
-                        <button key={String(up)} onClick={() => thumb(seat, up)} style={{
-                          padding: '3px 9px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
-                          border: '1px solid ' + (sel ? 'var(--red)' : 'var(--border2)'),
-                          background: sel ? 'var(--red)' : 'var(--surface)',
-                        }}>{up ? '👍' : '👎'}</button>
-                      )
-                    })}
+          </div>
+        )}
+        {/* Judging is a duel thing, and its OWN box (owner, Aug 6): the
+            engine already named the winner — this rates the PLAY, so it
+            shouldn't share a card with the verdict. Thumbs cast before the
+            reveal are flagged blind server-side, the cleaner signal. */}
+        {g.status === 'over' && g.duel && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12,
+            padding: '11px 18px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface)',
+          }}>
+            <span style={{ color: 'var(--muted)', fontWeight: 700 }}>{t('gd.rate')}</span>
+            {([0, 1] as const).filter(seat => !g.players[seat]?.isHuman).map(seat => (
+              <span key={seat} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span aria-hidden>{seat === 0 ? '⚫' : '⚪'}</span>
+                {g.duel?.revealed && (
+                  <span style={{ fontWeight: 700, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {g.players[seat]?.name}
                   </span>
-                ))}
-              </div>
-            )}
+                )}
+                {([true, false] as const).map(up => {
+                  const sel = g.duel?.thumbs?.[seat]?.up === up
+                  return (
+                    <button key={String(up)} onClick={() => thumb(seat, up)} style={{
+                      padding: '3px 9px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
+                      border: '1px solid ' + (sel ? 'var(--red)' : 'var(--border2)'),
+                      background: sel ? 'var(--red)' : 'var(--surface2)',
+                    }}>{up ? '👍' : '👎'}</button>
+                  )
+                })}
+              </span>
+            ))}
           </div>
         )}
       <svg viewBox={`0 0 ${W} ${W}`} style={{ width: '100%', height: 'auto', borderRadius: 12, boxShadow: '0 2px 18px rgba(0,0,0,0.12)' }}>
