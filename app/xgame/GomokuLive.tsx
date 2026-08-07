@@ -60,14 +60,10 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     if (!resumeId) return
     ;(async () => {
       const v = await post({ action: 'state', id: resumeId })
-      if (v) { setConversationUrlSafe(v.id); void runLoop(v) }
+      if (v) void runLoop(v)   // also rescues a game whose loop was orphaned
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeId])
-
-  const setConversationUrlSafe = (id: string) => {
-    try { window.history.replaceState(null, '', `/xgame/${id}`) } catch { /* noop */ }
-  }
 
   const start = async () => {
     if (busy) return
@@ -75,7 +71,13 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     const seat = (v: string) => v === 'human' ? { human: true } : { modelId: v }
     const v = await post({ action: 'create', seats: { black: seat(blackSel), white: seat(whiteSel) } })
     setBusy(false)
-    if (v) { setConversationUrlSafe(v.id); void runLoop(v) }
+    // Deliberately NOT written into the URL mid-game: Next syncs native
+    // history calls into the router, and a PATH change remounts the page —
+    // which killed the step loop and blanked the board on the first live
+    // game (the /xdirect minted-key lesson, relearned at /xgame). The game
+    // is saved regardless; the permalink chip below and the nav history
+    // carry the address.
+    if (v) void runLoop(v)
   }
 
   const clickCell = async (r: number, c: number) => {
@@ -175,6 +177,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>
           ⚫ {g.players[0].name} · ⚪ {g.players[1].name} · ${g.costUsd.toFixed(3)}
+          {' · '}<a href={`/xgame/${g.id}`} style={{ color: 'var(--muted2)' }}>🔗</a>
         </div>
         <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[...g.moves].reverse().map(m => (
