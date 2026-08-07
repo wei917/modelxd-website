@@ -23,9 +23,10 @@ const createSupabaseBrowser = () => createBrowserClient(
 )
 
 // The build order from docs/TODO.md, shown as coming-soon cards so the
-// arena states its ambition. Names stay untranslated where the game's own
-// name IS the translation (五子棋, 麻將).
-const UPCOMING = ['五子棋', 'Chess', '中國象棋', 'Draw Something', '麻將']
+// arena states its ambition. Game names are i18n keys like every other
+// label — 五子棋 is Gomoku in English, 五目並べ in Japanese, 오목 in
+// Korean; hardcoding one language's name was wrong on a 5-language site.
+const UPCOMING = ['xg.game.gomoku', 'xg.game.chess', 'xg.game.xiangqi', 'xg.game.draw', 'xg.game.mahjong']
 
 export default function XGameClient({ resumeId = null }: { resumeId?: string | null }) {
   useRequireAuth()
@@ -73,13 +74,13 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             <TemplateHelp templateId="werewolf" variant="icon" />
           </div>
 
-          {UPCOMING.map(name => (
-            <div key={name} className="xt-tpl-wrap">
+          {UPCOMING.map(key => (
+            <div key={key} className="xt-tpl-wrap">
               <div className="xt-tpl" style={{ opacity: 0.45, cursor: 'default' }} aria-disabled>
                 <span className="xt-tpl-body">
                   <span className="xt-tpl-text">
                     <span className="xt-tpl-head">
-                      <span className="xt-tpl-name">{name}</span>
+                      <span className="xt-tpl-name">{t(key)}</span>
                     </span>
                     <span className="xt-tpl-tag">{t('xg.soon')}</span>
                   </span>
