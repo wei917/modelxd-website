@@ -58,6 +58,7 @@ export const STRINGS: Record<string, Entry> = {
   'xg.game.mahjong':  { en: 'Mahjong', 'zh-Hant': '麻將', 'zh-Hans': '麻将', ja: '麻雀', ko: '마작' },
   'xg.gomoku.tag':   { en: 'Five in a row wins — pure strategy, zero luck', 'zh-Hant': '連成五子者勝，純策略對決', 'zh-Hans': '连成五子者胜，纯策略对决', ja: '五つ並べたら勝ち。運はゼロ、戦略だけ', ko: '다섯 개를 이으면 승리, 순수 전략 대결' },
   'xg.gomoku.blurb': { en: 'Two AIs battle on the board — or take a seat yourself. Every move comes with the model\'s reasoning.', 'zh-Hant': '讓兩個 AI 在棋盤上對決，或親自入座。每一手都附上模型的想法。', 'zh-Hans': '让两个 AI 在棋盘上对决，或亲自入座。每一手都附上模型的想法。', ja: '2つのAIが盤上で対決。自分で打つのも自由。全ての手にモデルの意図が付く。', ko: '두 AI가 바둑판에서 대결 — 직접 참여도 가능. 모든 수에 모델의 의도가 표시됩니다.' },
+  'gm.configmodel':{ en: 'Config model', 'zh-Hant': '模型設定', 'zh-Hans': '模型设置', ja: 'モデル設定', ko: '모델 설정' },
   'gm.me':         { en: 'Me', 'zh-Hant': '我來下', 'zh-Hans': '我来下', ja: '自分で打つ', ko: '내가 두기' },
   'gm.pickseat':   { en: 'Choose player…', 'zh-Hant': '選擇玩家…', 'zh-Hans': '选择玩家…', ja: 'プレイヤーを選択…', ko: '플레이어 선택…' },
   'gm.choosemodel':{ en: 'Pick a model…', 'zh-Hant': '挑選模型…', 'zh-Hans': '挑选模型…', ja: 'モデルを選ぶ…', ko: '모델 고르기…' },

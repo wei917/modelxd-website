@@ -46,8 +46,9 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
     return { modelId: m.id, name: m.display_name }
   }
 
-  const option = (key: string, label: string, on: () => void) => (
+  const option = (key: string, label: React.ReactNode, on: () => void) => (
     <button key={key} onClick={on} style={{
+      display: 'flex', alignItems: 'center', gap: 9,
       textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none',
       background: 'transparent', fontFamily: 'inherit', fontSize: 13.5,
       color: 'var(--white)', cursor: 'pointer',
@@ -84,13 +85,16 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
           boxShadow: '0 8px 30px rgba(0,0,0,0.14)', padding: 6, minWidth: 230,
           display: 'flex', flexDirection: 'column', gap: 2,
         }}>
-          {option('me', `👤 ${t('gm.me')}`, () => { onAssign('me'); setOpen(false) })}
-          {option('random', `🎲 ${t('gm.random')}`, () => { onAssign(randomModel()); setOpen(false) })}
-          {option('pick', `☰ ${t('gm.choosemodel')}`, () => { setOpen(false); onOpenPicker() })}
+          {option('me', <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>{t('gm.me')}</>, () => { onAssign('me'); setOpen(false) })}
+          {/* Random KEEPS the popup open: the config for the model that just
+              landed appears right below — closing here is what made the
+              config "disappear" (owner, Aug 6). */}
+          {option('random', <>🎲 {t('gm.random')}</>, () => onAssign(randomModel()))}
+          {option('pick', <>☰ {t('gm.choosemodel')}</>, () => { setOpen(false); onOpenPicker() })}
           {model && levels.length > 0 && (
             <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, padding: '8px 10px 6px' }}>
               <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
-                {t('xcreate.thinking')}
+                {t('gm.configmodel')} · {t('xcreate.thinking')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {[null, ...levels].map(lv => {
