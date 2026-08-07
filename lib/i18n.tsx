@@ -81,6 +81,7 @@ export const STRINGS: Record<string, Entry> = {
   'gm.turn':      { en: 'to move', 'zh-Hant': '思考中', 'zh-Hans': '思考中', ja: 'の手番', ko: '차례' },
   'gm.yourclick': { en: 'click a point', 'zh-Hant': '點擊落子', 'zh-Hans': '点击落子', ja: '打つ場所をクリック', ko: '착점을 클릭' },
   'gm.win':       { en: 'wins!', 'zh-Hant': '獲勝！', 'zh-Hans': '获胜！', ja: 'の勝ち！', ko: '승리!' },
+  'gm.youwin':    { en: 'You win!', 'zh-Hant': '你贏了！', 'zh-Hans': '你赢了！', ja: 'あなたの勝ち！', ko: '당신의 승리!' },
   'gm.draw':      { en: 'Draw — board full', 'zh-Hant': '和局，棋盤已滿', 'zh-Hans': '和局，棋盘已满', ja: '引き分け', ko: '무승부' },
   'gm.newgame':   { en: 'New game', 'zh-Hant': '再來一局', 'zh-Hans': '再来一局', ja: '新しい対局', ko: '새 대국' },
   'xg.soon':          { en: 'Coming soon', 'zh-Hant': '即將推出', 'zh-Hans': '即将推出', ja: '近日公開', ko: '출시 예정' },

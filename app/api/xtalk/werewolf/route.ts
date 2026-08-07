@@ -352,8 +352,12 @@ export async function POST(req: Request) {
   }
 
   // ── load ──────────────────────────────────────────────────────────────
+  // game filter: xtalk_sessions hosts every XGame tenant now (migration
+  // 72); without it this route would happily resume a GOMOKU row as a
+  // werewolf board — undefined seats, stones as players. Seen in the wild
+  // via the XGame shell's resume probe (CC, Aug 6).
   const { data: row, error: loadErr } = await db.from('xtalk_sessions')
-    .select('*').eq('id', body.sessionId).eq('user_id', user.id).single()
+    .select('*').eq('id', body.sessionId).eq('user_id', user.id).eq('game', 'werewolf').single()
   if (loadErr || !row) return Response.json({ error: 'session not found' }, { status: 404 })
   const s = row as Session
 

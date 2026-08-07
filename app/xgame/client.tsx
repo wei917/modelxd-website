@@ -31,14 +31,19 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   const router = useRouter()
   const [models, setModels] = useState<Speaker[]>([])
   const [resume, setResume] = useState<string | null>(resumeId)
-  const [active, setActive] = useState<'werewolf' | 'gomoku'>('werewolf')
+  // null = resume probe still deciding which game this id is. Defaulting to
+  // werewolf here made every gomoku permalink phantom-mount WerewolfLive
+  // with a gomoku id — it resumed the wrong row as a board (stones as
+  // players, undefined seats → React key warnings) until the probe flipped
+  // it. Render NOTHING until we know. (CC, Aug 6)
+  const [active, setActive] = useState<'werewolf' | 'gomoku' | null>(resumeId ? null : 'werewolf')
   // A resumed id names a row whose game we can't know client-side; probe
   // gomoku's state action, fall back to werewolf on a 404.
   useEffect(() => {
     if (!resumeId) return
     fetch('/api/xgame/gomoku', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'state', id: resumeId }) })
-      .then(r => { if (r.ok) setActive('gomoku') })
-      .catch(() => {})
+      .then(r => setActive(r.ok ? 'gomoku' : 'werewolf'))
+      .catch(() => setActive('werewolf'))
   }, [resumeId])
   const [nonce, setNonce] = useState(0)
 
@@ -62,7 +67,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
         {/* The slogan sells the LOBBY; the table's headline is simply the
             game you are at. (owner, Aug 6) */}
         <h1 className="page-headline" style={{ marginBottom: 20 }}>
-          {resume ? t(active === 'gomoku' ? 'xg.game.gomoku' : 'xt.tpl.werewolf.name') : t('xg.shell.title')}
+          {resume ? (active ? t(active === 'gomoku' ? 'xg.game.gomoku' : 'xt.tpl.werewolf.name') : ' ') : t('xg.shell.title')}
         </h1>
 
         {/* The picker is the LOBBY. A resumed game is the TABLE — it gets
@@ -113,14 +118,14 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             resumeId={resume}
             onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
           />
-        ) : (
+        ) : active === 'werewolf' ? (
           <Room
             key={`werewolf-${nonce}`}
             models={models}
             resumeId={resume}
             onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
           />
-        )}
+        ) : null}
       </div>
     </div>
   )

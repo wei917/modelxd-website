@@ -224,6 +224,13 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     const sTot = Math.floor(ms / 1000)
     return `${Math.floor(sTot / 60)}:${String(sTot % 60).padStart(2, '0')}`
   }
+  // "You wins!" was the price of one template for every winner. Humans get
+  // their own sentence in every language.
+  const winnerLabel = () => {
+    if (g!.winner === 'draw') return t('gm.draw')
+    const p: any = g!.players[g!.winner === 'black' ? 0 : 1]
+    return p.isHuman ? t('gm.youwin') : `${p.name} ${t('gm.win')}`
+  }
   const seatCard = (i: 0 | 1) => {
     const p: any = g.players[i]
     const stone = i === 0 ? 'B' : 'W'
@@ -282,7 +289,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display), inherit' }}>
-                  {g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`}
+                  {winnerLabel()}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
                   {g.moves.length} moves{g.costUsd != null ? ` · $${g.costUsd.toFixed(3)}` : ''}
@@ -382,7 +389,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
       <div style={{ flex: '1 1 260px', minWidth: 240, maxWidth: 380 }}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
           {g.status === 'over'
-            ? (g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`)
+            ? winnerLabel()
             : g.humanTurn ? t('gm.yourclick') : `${turnP?.name ?? ''} ${t('gm.turn')}`}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>

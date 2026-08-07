@@ -133,7 +133,12 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
         pools, or a tighter daily quota than prompt duels.
 - [ ] Rating: one pool per game via GAME_MODES (werewolf precedent), all
       excluded from `all` — board-game strength is real but it is not what
-      the duels measure. KEY DIFFERENCE from LLM benchmarks: engine-scored
+      the duels measure. From the research survey (docs/research-gomoku-llm.md):
+      anchor the pool with fixed bots (random-legal, 1-ply greedy) and
+      control for color — 15x15 free-style gomoku is a proven Black win.
+- Decided against (owner, Aug 6): per-direction missed-block telemetry
+  (research survey Tier-2 item 7) — owner sees no product value. Do not
+  re-pitch without new information. KEY DIFFERENCE from LLM benchmarks: engine-scored
       legal-move games give OBJECTIVE win/loss — a genuinely novel axis
       for the leaderboard.
 - [ ] Note: board games need a rules engine because LLMs hallucinate
