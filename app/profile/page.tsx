@@ -63,7 +63,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xgames' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xtalks' | 'xgames' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -156,6 +156,7 @@ export default function ProfilePage() {
   const [xcreates,    setXcreates]    = useState<any[]>([])
   const [votes,       setVotes]       = useState<any[]>([])
   const [xdirects,    setXdirects]    = useState<any[]>([])
+  const [xtalks,      setXtalks]      = useState<any[]>([])
   const [xgames,      setXgames]      = useState<any[]>([])
   // Which beta surfaces this account can see — the XDirect/XGame tabs
   // follow the same gate as their nav items, so a non-beta user's profile
@@ -168,8 +169,8 @@ export default function ProfilePage() {
   // array would otherwise show "No X yet" before the first fetch resolved,
   // making it look like the user has nothing when really we just haven't
   // asked the server yet.
-  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xgames: boolean }>({
-    duels: false, xcreates: false, votes: false, xdirects: false, xgames: false,
+  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xtalks: boolean; xgames: boolean }>({
+    duels: false, xcreates: false, votes: false, xdirects: false, xtalks: false, xgames: false,
   })
   // XCreate pagination — 12 cards per page, server-side `range` so we
   // don't load the entire history into the browser when a user has
@@ -321,7 +322,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xgames') =>
+    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xtalks' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
     if (tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
@@ -347,13 +348,20 @@ export default function ProfilePage() {
       // column. XTalk Discussions are NOT here: they live in client state
       // and have no row to link to (see Nav.tsx).
       const gsel = (cols: string) => client.from('xtalk_sessions')
-        .select(cols).eq('user_id', user.id)
+        .select(cols).eq('user_id', user.id).neq('game', 'discussion')
         .order('updated_at', { ascending: false }).limit(50)
       gsel('id, status, day, winner, created_at, title, game').then(async (res: any) => {
         const r = res.error ? await gsel('id, status, day, winner, created_at, title') : res
         setXgames(((r.data ?? []) as any[]).map(g => ({ game: 'werewolf', ...g })))
         markLoaded('xgames')
       })
+    } else if (tab === 'xtalks') {
+      // Persisted discussion rooms (Aug 6) — the same rows the /xtalk nav
+      // history lists, linking back into the live room.
+      client.from('xtalk_sessions').select('id, title, created_at, updated_at')
+        .eq('user_id', user.id).eq('game', 'discussion')
+        .order('updated_at', { ascending: false }).limit(50)
+        .then(({ data }: any) => { setXtalks(data ?? []); markLoaded('xtalks') })
     } else if (tab === 'xdirects') {
       client.from('xdirector_conversations').select('id, title, created_at, updated_at')
         .eq('user_id', user.id).is('deleted_at', null)
@@ -1018,6 +1026,7 @@ export default function ProfilePage() {
               ['duels', '⚔ ' + t('nav.xduel')],
               ['xcreates', '✦ ' + t('nav.xcreate')],
               ...(feats.xdirector ? [['xdirects', '▶ ' + t('nav.xdirect')]] : []),
+              ...(feats.xtalk ? [['xtalks', '💬 ' + t('nav.xtalk')]] : []),
               ...(feats.xtalk ? [['xgames', '◉ ' + t('nav.xgame')]] : []),
               ['votes', '⊞ ' + t('nav.xvote')],
             ] as [Tab, string][]).map(([tb, label]) => {
@@ -1414,6 +1423,40 @@ export default function ProfilePage() {
                           </div>
                           <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                             {t('nav.xdirect')}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+          )}
+
+          {/* ── XTalk tab — persisted discussion rooms, linking back into
+              the live conversation. ── */}
+          {tab === 'xtalks' && (
+            !tabsLoaded.xtalks
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              : xtalks.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.notalks')}</div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {xtalks.map((c: any) => (
+                    <a key={c.id} href={`/xtalk/${c.id}`} style={{ textDecoration: 'none' }}>
+                      <div
+                        style={{
+                          background: 'var(--surface)', border: '1px solid var(--border2)',
+                          borderRadius: 8, padding: '14px 18px',
+                          display: 'flex', alignItems: 'center', gap: 16,
+                          transition: 'border-color 0.2s, background 0.2s',
+                        }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
+                            {c.title || t('xt.tpl.discussion.name')}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            {t('xt.tpl.discussion.name')}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       </div>

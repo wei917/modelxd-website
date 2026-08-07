@@ -112,7 +112,10 @@ export default function Nav() {
     const title = raw.trim().slice(0, 80) || null
     setEditing(null)
     if (table === 'xcreates') setRecent(prev => prev.map(r => r.id === id ? { ...r, title } : r))
-    else if (table === 'xtalk_sessions') setRecentGames(prev => prev.map(g => g.id === id ? { ...g, title } : g))
+    else if (table === 'xtalk_sessions') {
+      setRecentGames(prev => prev.map(g => g.id === id ? { ...g, title } : g))
+      setRecentTalks(prev => prev.map(g => g.id === id ? { ...g, title } : g))
+    }
     else setRecentConvs(prev => prev.map(c => c.id === id ? { ...c, title } : c))
     await supabase.from(table).update({ title }).eq('id', id)
   }
@@ -146,6 +149,20 @@ export default function Nav() {
   const onXtalk   = pathname?.startsWith('/xtalk') ?? false
   // Werewolf history follows the games to /xgame (CC, Aug 6).
   const onXgame   = pathname?.startsWith('/xgame') ?? false
+  // Discussion rooms persist since Aug 6 — same owner-read listing as the
+  // games, filtered to the discussion tenant.
+  const [recentTalks, setRecentTalks] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([])
+  useEffect(() => {
+    if (!onXtalk || !user) { setRecentTalks([]); return }
+    let cancelled = false
+    supabase.from('xtalk_sessions')
+      .select('id, title, updated_at')
+      .eq('user_id', user.id).eq('game', 'discussion')
+      .order('updated_at', { ascending: false }).limit(10)
+      .then(res => { if (!cancelled && !res.error) setRecentTalks((res.data ?? []) as any[]) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onXtalk, user?.id, pathname])
   const onXdirect = pathname?.startsWith('/xdirect') ?? false
   // Director conversations — same owner-read RLS pattern as the other two
   // lists. Soft-delete only (deleted_at), matching the API's GET filter.
@@ -168,8 +185,10 @@ export default function Nav() {
   useEffect(() => {
     if (!onXgame || !user) { setRecentGames([]); return }
     let cancelled = false
+    // Discussions share the table since Aug 6 — they are /xtalk rows, not
+    // games, so keep them out of this list.
     const gsel = (cols: string) => supabase.from('xtalk_sessions')
-      .select(cols).eq('user_id', user.id)
+      .select(cols).eq('user_id', user.id).neq('game', 'discussion')
       .order('updated_at', { ascending: false }).limit(10)
     gsel('id, status, day, winner, created_at, title').then(async res => {
       const r = res.error ? await gsel('id, status, day, winner, created_at') : res
@@ -429,6 +448,44 @@ export default function Nav() {
                   style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
                 >×</button>
               )}
+            </div>
+            )
+          ))}
+        </div>
+      )}
+
+      {/* XTalk history — persisted discussion rooms, one row per talk.
+          Each permalink reopens the room mid-conversation. (owner, Aug 6) */}
+      {onXtalk && recentTalks.length > 0 && (
+        <div className="nav-history">
+          <div className="nav-history-head" style={{ cursor: 'default' }}>
+            <span className="nav-history-cap">{t('xt.recent.talks')}</span>
+          </div>
+          {recentTalks.map(g => (
+            editing && editing.table === 'xtalk_sessions' && editing.id === g.id ? (
+              <input
+                key={`edit-${g.id}`} autoFocus value={nameDraft}
+                onChange={e => setNameDraft(e.target.value)}
+                onBlur={() => renameRow('xtalk_sessions', g.id, nameDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') renameRow('xtalk_sessions', g.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
+                className="nav-history-item"
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
+              />
+            ) : (
+            <div key={g.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link
+                href={`/xtalk/${g.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+                title={`${g.title || t('xt.tpl.discussion.name')} · ${new Date(g.updated_at).toLocaleString()}`}
+              >
+                <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>💬</span>
+                <span className="nav-history-text">{g.title || t('xt.tpl.discussion.name')}</span>
+              </Link>
+              <button
+                aria-label="rename" title={t('ww.rename')}
+                onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
+                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
+              >✏</button>
             </div>
             )
           ))}

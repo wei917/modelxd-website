@@ -74,7 +74,7 @@ const PERSONA_PRESETS = [
   'a beginner who asks the obvious question everyone skipped',
 ]
 
-export default function DiscussionRoom({ models }: TemplateProps) {
+export default function DiscussionRoom({ models, resumeId }: TemplateProps) {
   const t = useT()
   const [picked,   setPicked]   = useState<string[]>([])
   const [question, setQuestion] = useState('')
@@ -109,13 +109,69 @@ export default function DiscussionRoom({ models }: TemplateProps) {
   const turnsRef = useRef<Turn[]>([])
   // A stable id for THIS discussion so every turn + bid it bills shares one
   // ledger reference_id and collapses into a single session row. (CC, Aug 4)
-  const convId = useRef<string>(crypto.randomUUID())
+  // Since Aug 6 it is ALSO the xtalk_sessions row id — the persisted room
+  // and its ledger group are the same identity by construction.
+  const convId = useRef<string>(resumeId ?? crypto.randomUUID())
+  // Rooms persist (owner, Aug 6): a row is created when the room opens and
+  // the transcript writes through after every turn. False until the create
+  // succeeds (or a resume proves the row exists) so syncs never race it.
+  const persisted = useRef(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { turnsRef.current = turns }, [turns])
   const pickedRef = useRef<string[]>([])
   useEffect(() => { pickedRef.current = picked }, [picked])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [turns])
+
+  // Write-through: debounced full-transcript sync after turns land. Fire
+  // and forget — persistence must never slow or break the conversation.
+  useEffect(() => {
+    if (!persisted.current || turns.length === 0) return
+    const tm = setTimeout(() => {
+      void fetch('/api/xtalk/session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync', id: convId.current, round,
+          turns: turnsRef.current.map(x => ({
+            speaker: x.speaker, isUser: x.isUser, text: x.text,
+            ...(x.provider ? { provider: x.provider } : {}),
+            ...(typeof x.cost === 'number' ? { cost: x.cost } : {}),
+            ...(typeof x.bid === 'number' ? { bid: x.bid } : {}),
+            ...(typeof x.credits === 'number' ? { credits: x.credits } : {}),
+            ...(x.error ? { error: x.error } : {}),
+          })),
+        }),
+      }).catch(() => {})
+    }, 900)
+    return () => clearTimeout(tm)
+  }, [turns, round])
+
+  // Resume: /xtalk/<id> hydrates the whole room — seats, characters, seat
+  // config, flow, transcript — and the conversation simply continues.
+  useEffect(() => {
+    if (!resumeId) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/xtalk/session', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'load', id: resumeId }),
+        })
+        const d = await res.json().catch(() => null)
+        if (!res.ok || !d) return
+        persisted.current = true
+        const players = (d.players ?? []).filter((p: any) => p?.modelId)
+        setQuestion(d.title ?? '')
+        setPicked(players.map((p: any) => p.modelId))
+        setPersonas(Object.fromEntries(players.map((p: any) => [p.modelId, p.persona ?? ''])))
+        setSeatOpts(Object.fromEntries(players.map((p: any) => [p.modelId, { thinking: p.thinking ?? null, search: p.search === true }])))
+        if (['order', 'bid', 'manual'].includes(d.pending?.flow)) setFlow(d.pending.flow)
+        if (typeof d.pending?.rotate === 'boolean') setRotate(d.pending.rotate)
+        setRound(d.day ?? 0)
+        setTurns((d.transcript ?? []).map((x: any) => ({ ...x, id: nextTurnId() })))
+      } catch {}
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId])
 
 
   const chosen = picked.map(id => models.find(m => m.id === id)).filter(Boolean) as Speaker[]
@@ -325,6 +381,23 @@ export default function DiscussionRoom({ models }: TemplateProps) {
   const start = async () => {
     if (chosen.length < 2 || !question.trim() || running) return
     setTurns([{ id: nextTurnId(), speaker: 'You', isUser: true, text: question.trim() }])
+    // Persist the room the moment it opens — seats, characters, config —
+    // so the nav/profile row exists even if the first turn never lands.
+    // No URL rewrite here on purpose: a mid-room replaceState is the exact
+    // remount bug gomoku shipped and unshipped (see GomokuLive, Aug 6).
+    void fetch('/api/xtalk/session', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'create', id: convId.current,
+        title: question.trim().slice(0, 140), flow, rotate,
+        players: chosen.map(m => ({
+          modelId: m.id, name: m.display_name, provider: m.provider,
+          persona: personas[m.id] ?? '',
+          thinking: seatOpts[m.id]?.thinking ?? null,
+          search: seatOpts[m.id]?.search === true,
+        })),
+      }),
+    }).then(r => { if (r.ok) persisted.current = true }).catch(() => {})
     await new Promise(r => setTimeout(r, 30))
     // Manual mode opens the room and stops — the question is on the table
     // and nobody speaks until you call on them.

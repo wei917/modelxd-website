@@ -29,8 +29,9 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
   const t = useT()
   const router = useRouter()
   const [models, setModels] = useState<Speaker[]>([])
-  // /xtalk/<id> opens straight onto the werewolf table it names; picking a
-  // template by hand drops the resume — you asked for something new.
+  // /xtalk/<id> opens straight onto the discussion it names (werewolf ids
+  // are redirected to /xgame before this renders); picking a template by
+  // hand drops the resume — you asked for something new.
   const [active, setActive] = useState(TALK_TEMPLATES[0].id)
   const [resume, setResume] = useState<string | null>(resumeId)
   // Templates own their own state, so switching has to unmount the old one
@@ -68,6 +69,9 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
             words. The banner does the work the old 46px thumbnail could not
             — at that size a boardroom and a village at night were two grey
             smudges. Selection is the red frame plus a check on the banner. */}
+        {/* A resumed room is the TABLE — no other format's card in sight,
+            same rule as /xgame permalinks. */}
+        {!resume && (<>
         <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>
         <div className="xt-tpl-grid">
           {TALK_TEMPLATES.map(x => {
@@ -115,11 +119,12 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
             )
           })}
         </div>
+        </>)}
 
         <Room
           key={`${tpl.id}-${nonce}`}
           models={models}
-          resumeId={active === 'werewolf' ? resume : null}
+          resumeId={active === 'discussion' ? resume : null}
           onExit={() => {
             // Navigate for real when leaving a /xtalk/<id> game (remounts to
             // the picker); a plain reset kept the game URL and Next's router
