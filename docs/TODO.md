@@ -106,6 +106,20 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
         or near-exact; latin allows minor typos).
 - [ ] 麻將 — the heavyweight: 4 seats, big scoring engine, and a ruleset
       decision FIRST (Taiwanese 16-tile for the home market?). Do last.
+- [ ] GAME DUELS — XDuel mode for every game (owner, Aug 6): two randomly
+      picked ANONYMOUS models play each other; nobody knows which is which;
+      users watch and vote / thumb up-down; then the reveal (identities +
+      what each move cost), same dramatic arc as a prompt duel.
+      - Objective games (gomoku, chess, xiangqi) score themselves: the
+        ENGINE result feeds the game's Bradley-Terry pool directly — real
+        wins are cleaner pairwise events than votes. The user's thumb then
+        rates the performance (reasoning quality, watchability), a second
+        signal, not the winner.
+      - Subjective games (Werewolf, Draw Something) keep votes as the
+        primary signal, like prompt duels.
+      - Needs a free-tier design: a full game costs real tokens across
+        20-60 moves, so blind game duels want short formats, cheap-model
+        pools, or a tighter daily quota than prompt duels.
 - [ ] Rating: one pool per game via GAME_MODES (werewolf precedent), all
       excluded from `all` — board-game strength is real but it is not what
       the duels measure. KEY DIFFERENCE from LLM benchmarks: engine-scored
