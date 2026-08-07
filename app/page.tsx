@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import LandingAgent from './components/LandingAgent'
 import ContactEmail from './components/ContactEmail'
+import BugReportLink from './components/BugReport'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
@@ -454,6 +455,7 @@ export default function Home() {
           <a href="/terms" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.terms')}</a>
           <a href="/privacy" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.privacy')}</a>
           <ContactEmail className="footer-copy" style={{ textDecoration: 'none' }} />
+          <BugReportLink className="footer-copy" style={{ textDecoration: 'none' }} />
         </div>
       </footer>
     </>

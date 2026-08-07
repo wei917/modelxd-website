@@ -7,14 +7,17 @@
 // the address and it's already in your clipboard; best case your mail app
 // opens too.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 
 const EMAIL = 'founder@modelxd.com'
 
 export default function ContactEmail({ className, style }: { className?: string; style?: React.CSSProperties }) {
   const t = useT()
+  // The label STAYS "Contact Us" (owner, Aug 7) — the copy feedback is a
+  // transient flash of the address, then the label comes back.
   const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   return (
     <a
       href={`mailto:${EMAIL}`}
@@ -22,11 +25,13 @@ export default function ContactEmail({ className, style }: { className?: string;
       style={style}
       title={`${EMAIL} — click to copy`}
       onClick={() => {
-        try { void navigator.clipboard?.writeText(EMAIL) } catch { /* the revealed text is the fallback */ }
+        try { void navigator.clipboard?.writeText(EMAIL) } catch { /* the flashed text is the fallback */ }
         setCopied(true)
+        if (timer.current) clearTimeout(timer.current)
+        timer.current = setTimeout(() => setCopied(false), 2600)
       }}
     >
-      {copied ? `${EMAIL} ✓` : t('nav.contact')}
+      {copied ? `${EMAIL} ✓ ${t('contact.copied')}` : t('nav.contact')}
     </a>
   )
 }

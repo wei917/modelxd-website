@@ -9,6 +9,7 @@ import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
 import { XCREATE_TEMPLATES } from '../xcreate/templates'
 import ContactEmail from './ContactEmail'
+import BugReportLink from './BugReport'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
@@ -582,6 +583,7 @@ export default function Nav() {
         <Link href="/terms" className={pathname === '/terms' ? 'active' : ''}>{t('nav.terms')}</Link>
         <Link href="/privacy" className={pathname === '/privacy' ? 'active' : ''}>{t('nav.privacy')}</Link>
         <ContactEmail />
+        <BugReportLink />
       </div>
 
       {/* Auth (profile + sign in/out) moved to the content-area TopBar on
@@ -616,6 +618,7 @@ export default function Nav() {
           <Link href="/terms">{t('nav.terms')}</Link>
           <Link href="/privacy">{t('nav.privacy')}</Link>
           <ContactEmail />
+        <BugReportLink />
         </div>
         {/* Sign Out moved to the profile page (CC, July 19) — the
             Profile link above is the path to it. */}
