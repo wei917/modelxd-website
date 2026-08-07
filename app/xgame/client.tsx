@@ -86,13 +86,15 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
 
           <div className="xt-tpl-wrap">
             <button className={`xt-tpl${active === 'gomoku' ? ' is-on' : ''}`} onClick={() => { setActive('gomoku'); setResume(null); setNonce(n => n + 1) }}>
+              <span className="xt-tpl-banner"><img src="/xgame/gomoku-banner.svg" alt="" loading="lazy" /></span>
               <span className="xt-tpl-body">
                 <span className="xt-tpl-text">
                   <span className="xt-tpl-head">
                     <span className="xt-tpl-name">{t('xg.game.gomoku')}</span>
                     <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2')}</span>
                   </span>
-                  <span className="xt-tpl-tag">⚫⚪</span>
+                  <span className="xt-tpl-tag">{t('xg.gomoku.tag')}</span>
+                  <span className="xt-tpl-blurb">{t('xg.gomoku.blurb')}</span>
                 </span>
               </span>
             </button>

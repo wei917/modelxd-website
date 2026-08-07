@@ -56,6 +56,8 @@ export const STRINGS: Record<string, Entry> = {
   'xg.game.xiangqi':  { en: 'Chinese Chess', 'zh-Hant': '中國象棋', 'zh-Hans': '中国象棋', ja: 'シャンチー', ko: '샹치' },
   'xg.game.draw':     { en: 'Draw & Guess', 'zh-Hant': '你畫我猜', 'zh-Hans': '你画我猜', ja: 'お絵かき当て', ko: '그림 퀴즈' },
   'xg.game.mahjong':  { en: 'Mahjong', 'zh-Hant': '麻將', 'zh-Hans': '麻将', ja: '麻雀', ko: '마작' },
+  'xg.gomoku.tag':   { en: 'Five in a row wins — pure strategy, zero luck', 'zh-Hant': '連成五子者勝，純策略對決', 'zh-Hans': '连成五子者胜，纯策略对决', ja: '五つ並べたら勝ち。運はゼロ、戦略だけ', ko: '다섯 개를 이으면 승리, 순수 전략 대결' },
+  'xg.gomoku.blurb': { en: 'Two AIs battle on the board — or take a seat yourself. Every move comes with the model\'s reasoning.', 'zh-Hant': '讓兩個 AI 在棋盤上對決，或親自入座。每一手都附上模型的想法。', 'zh-Hans': '让两个 AI 在棋盘上对决，或亲自入座。每一手都附上模型的想法。', ja: '2つのAIが盤上で対決。自分で打つのも自由。全ての手にモデルの意図が付く。', ko: '두 AI가 바둑판에서 대결 — 직접 참여도 가능. 모든 수에 모델의 의도가 표시됩니다.' },
   'gm.start':     { en: 'Start the game', 'zh-Hant': '開始對局', 'zh-Hans': '开始对局', ja: '対局開始', ko: '대국 시작' },
   'gm.you':       { en: 'You play this seat', 'zh-Hant': '我來下這席', 'zh-Hans': '我来下这席', ja: 'この席で打つ', ko: '내가 이 자리에' },
   'gm.turn':      { en: 'to move', 'zh-Hant': '思考中', 'zh-Hans': '思考中', ja: 'の手番', ko: '차례' },

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eccf9d"/><stop offset="1" stop-color="#d9b478"/>
+    </linearGradient>
+    <radialGradient id="b" cx="35%" cy="30%"><stop offset="0" stop-color="#5a5a5a"/><stop offset="1" stop-color="#0b0b0b"/></radialGradient>
+    <radialGradient id="w" cx="35%" cy="30%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cec8ba"/></radialGradient>
+    <radialGradient id="vig" cx="50%" cy="45%" r="75%">
+      <stop offset="0.62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#4a2f14" stop-opacity="0.38"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="240" fill="url(#wood)"/>
+  <g stroke="#8a6a3d" stroke-width="1.6">
+    <!-- oversized grid, off-center crop: a table seen mid-game, not a diagram -->
+    <g id="v">
+      <line x1="60" y1="-10" x2="60" y2="250"/><line x1="130" y1="-10" x2="130" y2="250"/>
+      <line x1="200" y1="-10" x2="200" y2="250"/><line x1="270" y1="-10" x2="270" y2="250"/>
+      <line x1="340" y1="-10" x2="340" y2="250"/><line x1="410" y1="-10" x2="410" y2="250"/>
+      <line x1="480" y1="-10" x2="480" y2="250"/><line x1="550" y1="-10" x2="550" y2="250"/>
+      <line x1="620" y1="-10" x2="620" y2="250"/>
+    </g>
+    <g id="h">
+      <line x1="-10" y1="30" x2="650" y2="30"/><line x1="-10" y1="100" x2="650" y2="100"/>
+      <line x1="-10" y1="170" x2="650" y2="170"/><line x1="-10" y1="240" x2="650" y2="240"/>
+    </g>
+  </g>
+  <circle cx="270" cy="100" r="4.5" fill="#8a6a3d"/>
+  <!-- a diagonal black run of four, white fighting back -->
+  <circle cx="200" cy="170" r="26" fill="url(#b)"/>
+  <circle cx="270" cy="100" r="26" fill="url(#b)"/>
+  <circle cx="340" cy="30"  r="26" fill="url(#b)"/>
+  <circle cx="130" cy="240" r="26" fill="url(#b)"/>
+  <circle cx="340" cy="170" r="26" fill="url(#w)"/>
+  <circle cx="410" cy="100" r="26" fill="url(#w)"/>
+  <circle cx="200" cy="30"  r="26" fill="url(#w)"/>
+  <circle cx="410" cy="240" r="26" fill="url(#w)"/>
+  <!-- last move: the ring the live board uses -->
+  <circle cx="130" cy="240" r="9" fill="none" stroke="#d63b32" stroke-width="3"/>
+  <rect width="640" height="240" fill="url(#vig)"/>
+</svg>
