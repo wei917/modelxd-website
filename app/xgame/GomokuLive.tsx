@@ -35,6 +35,10 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   const [playing, setPlaying] = useState(true)   // human takes black
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Hover target for the ghost stone. The site hides the native cursor
+  // (GlobalCursor), so without this preview the user aims at a 32px
+  // intersection blind — the root of "I click and nothing happens".
+  const [hover, setHover] = useState<[number, number] | null>(null)
   const loopRef = useRef(false)
 
   const post = async (body: any): Promise<GameView | null> => {
@@ -95,8 +99,23 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   const clickCell = async (r: number, c: number) => {
     if (!g || !g.humanTurn || g.status !== 'active') return
     if (g.board[r][c] !== '.') return
-    const v = await post({ action: 'move', id: g.id, coord: `${COLS[c]}${r + 1}` })
-    if (v) void runLoop(v)
+    const stone = g.turn as 'B' | 'W'
+    const id = g.id
+    setHover(null)
+    // OPTIMISTIC: the stone lands the instant you click — the half-second
+    // server round-trip with zero feedback is what read as "nothing
+    // happened" and invited double clicks. The server stays the truth: its
+    // view replaces this one on response, and an error resyncs from state.
+    setG(prev => prev ? {
+      ...prev,
+      board: prev.board.map((row, ri) => ri === r ? row.slice(0, c) + stone + row.slice(c + 1) : row),
+      humanTurn: false,
+      moves: [...prev.moves, { n: prev.moves.length + 1, stone, coord: `${COLS[c]}${r + 1}` }],
+    } : prev)
+    const v = await post({ action: 'move', id, coord: `${COLS[c]}${r + 1}` })
+    if (v) { void runLoop(v); return }
+    const fresh = await post({ action: 'state', id })   // revert/resync
+    if (fresh) void runLoop(fresh)
   }
 
   // ── setup ──────────────────────────────────────────────────────────────
@@ -199,7 +218,10 @@ export default function GomokuLive({ models, resumeId, onExit }: {
           if (cell === '.') {
             return g.humanTurn && g.status === 'active' ? (
               <rect key={`h${r}${c}`} x={XY(c) - CELL / 2} y={XY(r) - CELL / 2} width={CELL} height={CELL}
-                fill="transparent" style={{ cursor: 'pointer' }} onClick={() => clickCell(r, c)} />
+                fill="transparent" style={{ cursor: 'pointer' }}
+                onClick={() => clickCell(r, c)}
+                onMouseEnter={() => setHover([r, c])}
+                onMouseLeave={() => setHover(h => h && h[0] === r && h[1] === c ? null : h)} />
             ) : null
           }
           const isWin = winSet.has(`${r}:${c}`)
@@ -210,6 +232,12 @@ export default function GomokuLive({ models, resumeId, onExit }: {
             </g>
           )
         }))}
+        {/* Ghost stone: where the click will snap. */}
+        {hover && g.humanTurn && g.status === 'active' && g.board[hover[0]][hover[1]] === '.' && (
+          <circle cx={XY(hover[1])} cy={XY(hover[0])} r={13.5}
+            fill={g.turn === 'B' ? 'url(#gsB)' : 'url(#gsW)'} opacity={0.45}
+            style={{ pointerEvents: 'none' }} />
+        )}
         {last && (() => {
           const pc = [parseInt(last.coord.slice(1), 10) - 1, COLS.indexOf(last.coord[0])]
           return <circle cx={XY(pc[1])} cy={XY(pc[0])} r="5" fill="none" stroke="var(--red)" strokeWidth="1.8" />
