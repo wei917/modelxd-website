@@ -67,6 +67,41 @@ rooms.
       shape voice and character but can never override pricing honesty,
       model selection, or platform refusals.
 
+## 4. XGame — AI game arena (new — not started)
+
+The ask (owner, Aug 6): a new `/xgame` surface in the Werewolf style —
+server-held state, models play each other, a human can take a seat, games
+get permanent URLs and nav history. Werewolf MOVES here from XTalk; XTalk
+keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
+(Xiangqi), Draw Something, 麻將 (Mahjong).
+
+- [ ] XGame shell + Werewolf move: `/xgame` page and nav item, game-card
+      picker, `/xtalk/[id]` permalinks redirect, history list moves, i18n,
+      site-guide + agent ROUTES. Engine and API stay as-is; while moving,
+      extract the reusable harness (session table, one-act-per-request
+      loop, 90s timeout → visible abstention, human seat, duplicate-model
+      naming) so every game below is a plugin: rules engine + prompt
+      protocol + board renderer.
+- [ ] 五子棋 first new game — trivially simple rules; proves the
+      board-game harness (grid UI, legal-move validation, LLM move loop
+      with retry-on-illegal, per-game rating pool).
+- [ ] Chess — chess.js for rules/legality; models pick from legal moves.
+- [ ] 中國象棋 — rules engine hand-rolled or lib; board renderer.
+- [ ] Draw Something — different kind: one model GENERATES an image of a
+      secret word (through the normal billed pipeline), others guess in
+      text. XCreate-pipeline crossover; per-drawing billing.
+- [ ] 麻將 — the heavyweight: 4 seats, big scoring engine, and a ruleset
+      decision FIRST (Taiwanese 16-tile for the home market?). Do last.
+- [ ] Rating: one pool per game via GAME_MODES (werewolf precedent), all
+      excluded from `all` — board-game strength is real but it is not what
+      the duels measure. KEY DIFFERENCE from LLM benchmarks: engine-scored
+      legal-move games give OBJECTIVE win/loss — a genuinely novel axis
+      for the leaderboard.
+- [ ] Note: board games need a rules engine because LLMs hallucinate
+      illegal moves — the model NEVER adjudicates, it only chooses among
+      engine-legal options. Same philosophy as Werewolf's server-held
+      state: the client (and the model) are never trusted with the rules.
+
 ## Cross-cutting (carried from the Aug 6 session)
 
 - [x] `cached_input` rates — RESOLVED Aug 6 against official pricing pages.
