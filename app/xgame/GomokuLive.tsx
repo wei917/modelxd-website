@@ -45,15 +45,30 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   const [hover, setHover] = useState<[number, number] | null>(null)
   const loopRef = useRef(false)
 
+  // Every request carries a timeout: a dev-server reload (or any dropped
+  // connection) can sever an in-flight fetch, and an await that never
+  // resolves left loopRef locked forever — the watchdog then refused to
+  // rescue ("a loop is running") and the game wedged. Steps get 90s (a
+  // deep-thinking model is slow); everything else 15s.
   const post = async (body: any): Promise<GameView | null> => {
+    const ctl = new AbortController()
+    const tm = setTimeout(() => ctl.abort(), body.action === 'step' ? 90_000 : 15_000)
     try {
       const res = await fetch('/api/xgame/gomoku', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body), signal: ctl.signal,
       })
       const d = await res.json().catch(() => null)
       if (!res.ok) { setErr(d?.error ?? `HTTP ${res.status}`); return null }
-      setErr(null); setG(d); return d
-    } catch { setErr('network'); return null }
+      setErr(null)
+      // MONOTONIC: a response may arrive out of order (a watchdog state
+      // fetch racing the move POST it was guarding). Never let an older
+      // snapshot erase newer moves — that was the "my stone appeared and
+      // then vanished" report, twice.
+      setG(prev => (!prev || prev.id !== d.id || (d.moves?.length ?? 0) >= (prev.moves?.length ?? 0)) ? d : prev)
+      return d
+    } catch { setErr(null); return null }   // timeout/abort: quiet — the watchdog takes it from here
+    finally { clearTimeout(tm) }
   }
 
   // Drive AI turns: one step at a time, strictly sequential, until it's a
