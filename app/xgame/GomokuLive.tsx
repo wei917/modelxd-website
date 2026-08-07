@@ -32,7 +32,9 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   // other tables use, not a bare <select> (owner's correction, Aug 6).
   const [picked, setPicked] = useState<string[]>([])
   const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
-  const [playing, setPlaying] = useState(true)   // human takes black
+  // 'black' | 'white' | 'watch' — black opens (gomoku rule, as in Go); a
+  // human on white answers the AI's opening. 'watch' is AI vs AI.
+  const [seat, setSeat] = useState<'black' | 'white' | 'watch'>('black')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   // Hover target for the ghost stone. The site hides the native cursor
@@ -76,16 +78,15 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 
   const start = async () => {
     if (busy) return
-    const need = playing ? 1 : 2
+    const need = seat === 'watch' ? 2 : 1
     if (picked.filter(Boolean).length < need) return
     setBusy(true)
     const ai = (id: string) => ({ modelId: id, thinking: seatOpts[id]?.thinking ?? null })
-    const v = await post({
-      action: 'create',
-      seats: playing
-        ? { black: { human: true }, white: ai(picked[0]) }
-        : { black: ai(picked[0]),   white: ai(picked[1]) },
-    })
+    const seats =
+      seat === 'black' ? { black: { human: true }, white: ai(picked[0]) } :
+      seat === 'white' ? { black: ai(picked[0]),   white: { human: true } } :
+                         { black: ai(picked[0]),   white: ai(picked[1]) }
+    const v = await post({ action: 'create', seats })
     setBusy(false)
     // Deliberately NOT written into the URL mid-game: Next syncs native
     // history calls into the router, and a PATH change remounts the page —
@@ -120,21 +121,42 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 
   // ── setup ──────────────────────────────────────────────────────────────
   if (!g) {
-    const need = playing ? 1 : 2
+    const need = seat === 'watch' ? 2 : 1
     const ready = picked.filter(Boolean).length >= need
+    const chip = (k: 'black' | 'white' | 'watch', label: string) => (
+      <button
+        key={k} onClick={() => { setSeat(k); setPicked([]) }}
+        style={{
+          padding: '8px 16px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
+          border: '1px solid ' + (seat === k ? 'var(--red)' : 'var(--border2)'),
+          background: seat === k ? 'var(--red-dim)' : 'transparent',
+          color: seat === k ? 'var(--red)' : 'var(--muted)', fontFamily: 'inherit',
+        }}
+      >{label}</button>
+    )
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
-        <button
-          onClick={() => { setPlaying(p => !p); setPicked([]) }}
-          style={{
-            padding: '8px 16px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
-            border: '1px solid ' + (playing ? 'var(--red)' : 'var(--border2)'),
-            background: playing ? 'var(--red-dim)' : 'transparent',
-            color: playing ? 'var(--red)' : 'var(--muted)', fontFamily: 'inherit', marginBottom: 14,
-          }}
-        >⚫ {t('gm.iplay')}</button>
-        <div style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 8, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.06em' }}>
-          {playing ? `⚪ ${t('gm.opponent')}` : '⚫ + ⚪'}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          {chip('black', `⚫ ${t('gm.playblack')}`)}
+          {chip('white', `⚪ ${t('gm.playwhite')}`)}
+          {chip('watch', `⚔ ${t('gm.watch')}`)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.06em' }}>
+            {seat === 'black' ? `⚪ ${t('gm.opponent')}` : seat === 'white' ? `⚫ ${t('gm.opponent')}` : '⚫ + ⚪'}
+          </span>
+          <button
+            onClick={() => {
+              const pool = models.filter((m: any) => m.id)
+              if (pool.length === 0) return
+              const empty = picked.filter(Boolean).length
+              if (empty >= need) return
+              const pick: any = pool[Math.floor(Math.random() * pool.length)]
+              setPicked([...picked.filter(Boolean), pick.id])
+            }}
+            title={t('gm.random')}
+            style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 999, padding: '4px 12px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >🎲 {t('gm.random')}</button>
         </div>
         <ModelSlots
           models={models} picked={picked} onPicked={setPicked}
