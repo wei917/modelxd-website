@@ -11,6 +11,7 @@
 // The storyboard state lives HERE and flows down to both the chat (which
 // sends it to the director and persists it) and the strip (which edits it).
 
+import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useT } from '../../lib/i18n'
@@ -91,7 +92,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   return (
     <div className="xduel-page">
       <div className="arena xcreate-arena" style={{ maxWidth: 1560 }}>
-        <div className="prompt-label eyebrow">{t('xdirector.eyebrow')}</div>
+        <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xdirector.eyebrow')}</Link>
         <h1 className="page-headline" style={{ marginBottom: 24 }}>{t('xdirector.title')}</h1>
 
         <div className="xdirect-split">

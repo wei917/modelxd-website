@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import ModeIcon from '../components/ModeIcon'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -637,7 +638,7 @@ export default function XDuel() {
           {/* ── In-page header: "// XDUEL" eyebrow + the step's guiding
               line as the big headline (CC, July 20). ── */}
           <div className="prompt-header">
-            <div className="prompt-label eyebrow">{t('xduel.eyebrow')}</div>
+            <Link href="/xduel" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xduel.eyebrow')}</Link>
             <h1 className="page-headline">
               {step === 1 ? t('xduel.subtitle') :
                step === 5 ? null :

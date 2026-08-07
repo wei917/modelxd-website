@@ -445,7 +445,7 @@ export default function LeaderboardPage() {
         <div className="arena">
 
           {/* In-page header: "// XBOARD" eyebrow + big headline (CC, July 20). */}
-          <div className="prompt-label eyebrow">{t('xboard.eyebrow')}</div>
+          <Link href="/xboard" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xboard.eyebrow')}</Link>
           <h1 className="page-headline">
             {t('xboard.subtitle')}
             <Link href="/methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 14, whiteSpace: 'nowrap' }}>

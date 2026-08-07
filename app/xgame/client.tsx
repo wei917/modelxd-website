@@ -9,6 +9,7 @@
 // Deliberately the same thin-shell pattern as XTalk's client: when 五子棋
 // lands it becomes another entry here, not another page.
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -57,7 +58,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   return (
     <div className="xduel-page">
       <div className="arena xcreate-arena">
-        <div className="prompt-label eyebrow">XGAME</div>
+        <Link href="/xgame" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>XGAME</Link>
         {/* The slogan sells the LOBBY; the table's headline is simply the
             game you are at. (owner, Aug 6) */}
         <h1 className="page-headline" style={{ marginBottom: 20 }}>

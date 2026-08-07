@@ -7,6 +7,7 @@
 // Kept deliberately thin: when the third and fourth templates arrive this
 // file should not have to change at all.
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -54,7 +55,7 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
   return (
     <div className="xduel-page">
       <div className="arena xcreate-arena">
-        <div className="prompt-label eyebrow">XTALK</div>
+        <Link href="/xtalk" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>XTALK</Link>
 
         <h1 className="page-headline" style={{ marginBottom: 20 }}>{t('xt.shell.title')}</h1>
 

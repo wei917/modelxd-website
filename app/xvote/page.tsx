@@ -3,6 +3,7 @@
 // Vote feed with paginated grid per mode (video / image / text).
 // Features: hides voted duels, popularity sorting, search, pagination.
 
+import Link from 'next/link'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import ModeIcon from '../components/ModeIcon'
 import { useRouter } from 'next/navigation'
@@ -100,7 +101,7 @@ export default function VotePage() {
 
           {/* In-page header: "// XVOTE" eyebrow + big headline (CC, July 20). */}
           <div className="prompt-header">
-            <div className="prompt-label eyebrow">{t('xvote.eyebrow')}</div>
+            <Link href="/xvote" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xvote.eyebrow')}</Link>
             <h1 className="page-headline">{t('xvote.subtitle')}</h1>
           </div>
 

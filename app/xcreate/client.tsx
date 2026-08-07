@@ -5,6 +5,7 @@
 // 2. Pick one to continue → this is the vote, others dismissed
 // 3. Multi-turn chat with chosen model
 
+import Link from 'next/link'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -2981,7 +2982,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
         <div className="arena xcreate-arena">
 
           {/* In-page header: "// XCREATE" eyebrow + big headline (CC, July 20). */}
-          <div className="prompt-label eyebrow">{t('xcreate.eyebrow')}</div>
+          <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
             <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
           </div>
