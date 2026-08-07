@@ -173,7 +173,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
           {g.status === 'over'
             ? (g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`)
-            : `${turnP?.name ?? ''} ${t('gm.turn')}${g.humanTurn ? ' — ' + t('gm.yourclick') : ''}`}
+            : g.humanTurn ? t('gm.yourclick') : `${turnP?.name ?? ''} ${t('gm.turn')}`}
         </div>
         <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>
           ⚫ {g.players[0].name} · ⚪ {g.players[1].name} · ${g.costUsd.toFixed(3)}
