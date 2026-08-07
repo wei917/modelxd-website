@@ -88,15 +88,17 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
     onChange([...scenes, { id, title: `${t('xd.sb.scene')} ${n}`, script: '', shot: '', duration_s: 6, status: 'draft' }])
   }
 
-  // Film numbering: fresh scenes count S1, S2...; cuts count WITHIN their
-  // scene, C1, C2..., resetting at each new scene. A cut with nothing
-  // before it is a scene opener whatever its flag says.
+  // Film numbering (owner's correction, Aug 6): EVERY card is a cut within
+  // its scene, the opener included — S1·C1, S1·C2, S2·C1... A fresh setup
+  // starts a new scene at cut 1; a continues card increments the cut. A
+  // continues card with nothing before it opens scene 1 regardless.
   const labels: string[] = []
   {
     let sc = 0, cut = 0
     for (const sn of scenes) {
-      if (sn.continues && sc > 0) { cut += 1; labels.push(`C${cut}`) }
-      else { sc += 1; cut = 0; labels.push(`S${sc}`) }
+      if (sn.continues && sc > 0) cut += 1
+      else { sc += 1; cut = 1 }
+      labels.push(`S${sc}\u00b7C${cut}`)
     }
   }
 
