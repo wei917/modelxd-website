@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import { SIZE, COLS } from '../../lib/gomoku-engine'
 import ModelPickerDialog from '../components/ModelPickerDialog'
-import { DEFAULT_SEAT_OPTS, type SeatOpts } from '../xtalk/SeatConfig'
+import SeatSlot, { type SeatAssign } from './SeatSlot'
+import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 
 type Move = { n: number; stone: 'B' | 'W'; coord: string; why?: string; fallback?: boolean }
@@ -31,9 +32,7 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   // Two seats ARE the interface (owner's layout, Aug 6): click a seat,
   // assign Me / a random model / a picked model. Play-vs-watch is emergent
   // from the assignments, and the same pattern scales to chess and mahjong.
-  type SeatAssign = 'me' | { modelId: string; name: string } | null
   const [seats, setSeats] = useState<{ B: SeatAssign; W: SeatAssign }>({ B: null, W: null })
-  const [popFor, setPopFor] = useState<'B' | 'W' | null>(null)
   const [pickerFor, setPickerFor] = useState<'B' | 'W' | null>(null)
   const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
   const [busy, setBusy] = useState(false)
@@ -119,112 +118,29 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   // ── setup ──────────────────────────────────────────────────────────────
   if (!g) {
     const ready = !!seats.B && !!seats.W
-    const assign = (side: 'B' | 'W', a: SeatAssign) => {
+    const assign = (side: 'B' | 'W') => (a: SeatAssign) => {
       setSeats(prev => {
         const other = side === 'B' ? 'W' : 'B'
-        // Only one human at the table: taking a seat vacates the other.
         const next = { ...prev, [side]: a }
+        // Only one human at the table: taking a seat vacates the other.
         if (a === 'me' && prev[other] === 'me') (next as any)[other] = null
         return next
       })
-      setPopFor(null)
-    }
-    const randomModel = (): SeatAssign => {
-      const pool: any[] = models.filter((m: any) => m.id)
-      if (pool.length === 0) return null
-      const m = pool[Math.floor(Math.random() * pool.length)]
-      return { modelId: m.id, name: m.display_name }
-    }
-    const seatCard = (side: 'B' | 'W') => {
-      const a = seats[side]
-      const label = a === 'me' ? t('gm.me') : a ? (a as any).name : t('gm.pickseat')
-      return (
-        <div key={side} style={{ position: 'relative', flex: '1 1 220px', maxWidth: 300 }}>
-          <button
-            onClick={() => setPopFor(p => p === side ? null : side)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              padding: '16px 16px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
-              border: '1.5px ' + (a ? 'solid var(--border2)' : 'dashed var(--border2)'),
-              background: 'var(--surface)', color: a ? 'var(--white)' : 'var(--muted)',
-              fontSize: 14, fontWeight: a ? 700 : 400,
-            }}
-          >
-            <span style={{ fontSize: 22 }} aria-hidden>{side === 'B' ? '⚫' : '⚪'}</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-          </button>
-          {popFor === side && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 30,
-              background: '#fff', border: '1px solid var(--border2)', borderRadius: 11,
-              boxShadow: '0 8px 30px rgba(0,0,0,0.14)', padding: 6, minWidth: 200,
-              display: 'flex', flexDirection: 'column', gap: 2,
-            }}>
-              {[
-                { k: 'me',     label: `👤 ${t('gm.me')}`,     on: () => assign(side, 'me') },
-                { k: 'random', label: `🎲 ${t('gm.random')}`, on: () => assign(side, randomModel()) },
-                { k: 'pick',   label: `☰ ${t('gm.choosemodel')}`, on: () => { setPopFor(null); setPickerFor(side) } },
-              ].map(o => (
-                <button key={o.k} onClick={o.on} style={{
-                  textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none',
-                  background: 'transparent', fontFamily: 'inherit', fontSize: 13.5,
-                  color: 'var(--white)', cursor: 'pointer',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--red-dim)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >{o.label}</button>
-              ))}
-            </div>
-          )}
-        </div>
-      )
     }
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {seatCard('B')}
-          {seatCard('W')}
+          <SeatSlot icon="⚫" assign={seats.B} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('B')} onOpenPicker={() => setPickerFor('B')} />
+          <SeatSlot icon="⚪" assign={seats.W} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('W')} onOpenPicker={() => setPickerFor('W')} />
         </div>
         {pickerFor && (
           <ModelPickerDialog
             mode="text" recipeMode="text_to_text"
             slotIds={[]}
             onClose={() => setPickerFor(null)}
-            onSelect={(m: any) => { assign(pickerFor, { modelId: m.id, name: m.display_name }); setPickerFor(null) }}
+            onSelect={(m: any) => { setSeats(prev => ({ ...prev, [pickerFor]: { modelId: m.id, name: m.display_name } })); setPickerFor(null) }}
           />
         )}
-        {(['B', 'W'] as const).map(side => {
-          const a = seats[side]
-          if (!a || a === 'me') return null
-          const m: any = models.find((x: any) => x.id === (a as any).modelId)
-          const levels: string[] = m?.output_config?.text?.thinking_levels ?? []
-          if (!m || levels.length === 0) return null
-          const id = m.id
-          const cur = seatOpts[id]?.thinking ?? null
-          const setLv = (lv: string | null) =>
-            setSeatOpts({ ...seatOpts, [id]: { ...(seatOpts[id] ?? DEFAULT_SEAT_OPTS), thinking: lv } })
-          return (
-            <div key={side} style={{ marginTop: 12 }}>
-              <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 5 }}>
-                {side === 'B' ? '⚫' : '⚪'} {m.display_name} · {t('xcreate.thinking')}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {[null, ...levels].map(lv => {
-                  const on = cur === lv
-                  return (
-                    <button key={lv ?? 'auto'} type="button" onClick={() => setLv(lv)} style={{
-                      padding: '3px 10px', borderRadius: 7, fontSize: 11, fontFamily: 'inherit',
-                      border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
-                      background: on ? 'var(--red-dim)' : 'var(--surface)',
-                      color: on ? 'var(--red)' : 'var(--muted2)', fontWeight: on ? 700 : 400,
-                      cursor: 'pointer',
-                    }}>{lv ?? t('gm.auto')}</button>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
         <button
           onClick={start} disabled={busy || !ready}
           style={{ marginTop: 16, padding: '11px 26px', borderRadius: 10, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer', opacity: (!ready || busy) ? 0.5 : 1 }}
