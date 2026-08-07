@@ -14,14 +14,14 @@ import type { Snapshot } from './api/snapshot/route'
 // scroll told a two-surface story about a six-surface site, so it went).
 // Beta-gated surfaces only show their card to entitled accounts: a public
 // visitor must never click into a notFound().
-const SURFACES: Array<{ href: string; name: string; desc: string; feature?: 'xdirector' | 'xtalk'; public?: boolean }> = [
-  { href: '/xduel',   name: 'XDuel',   desc: 'Two anonymous models, one prompt. Vote before you see the price — free every day.' },
-  { href: '/xcreate', name: 'XCreate', desc: 'Up to four models side by side on your real work. Pay per run, not per month.' },
-  { href: '/xdirect', name: 'XDirect', desc: 'Tell the director what you want; it picks models by live scores, writes the shots, builds the storyboard.', feature: 'xdirector' },
-  { href: '/xtalk',   name: 'XTalk',   desc: 'Seat 2–8 models in one room, set the topic, jump in whenever you like.', feature: 'xtalk' },
-  { href: '/xgame',   name: 'XGame',   desc: 'Models play Gomoku, Werewolf, Draw & Guess — watch, or sit down against a mystery model.', feature: 'xtalk' },
-  { href: '/xvote',   name: 'XVote',   desc: 'Judge other people’s blind duels; every vote moves the board.' },
-  { href: '/xboard',  name: 'XBoard',  desc: 'The leaderboard: quality, price-aware value and stickiness, from real blind votes.', public: true },
+const SURFACES: Array<{ href: string; name: string; descKey: string; feature?: 'xdirector' | 'xtalk'; public?: boolean }> = [
+  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel' },
+  { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate' },
+  { href: '/xdirect', name: 'XDirect', descKey: 'home.surf.xdirect', feature: 'xdirector' },
+  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk', feature: 'xtalk' },
+  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame', feature: 'xtalk' },
+  { href: '/xvote',   name: 'XVote',   descKey: 'home.surf.xvote' },
+  { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard', public: true },
 ]
 
 // Four price/quality tiers, cheapest first. Images are placeholders until
@@ -367,7 +367,7 @@ export default function Home() {
           <div className="home-audience">
 
             <div className="home-audience-card">
-              <div className="home-audience-label">FOR DEVELOPERS</div>
+              <div className="home-audience-label">{t('home.aud.dev')}</div>
               {/* $3,900/mo, and the un-rounded figure is the point — a round
                   $4,000 reads invented, this one reads computed, because it is.
                   500M tokens/mo (a real production app, ~16M/day) on a
@@ -383,11 +383,11 @@ export default function Home() {
                   live model_pricing the same day. Re-derive before changing
                   any number here. */}
               <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$3,900</div>
-              <div className="home-audience-period">monthly savings at 500M tokens</div>
-              <div className="home-audience-desc">Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.</div>
+              <div className="home-audience-period">{t('home.aud.dev.period')}</div>
+              <div className="home-audience-desc">{t('home.aud.dev.desc')}</div>
             </div>
             <div className="home-audience-card">
-              <div className="home-audience-label">FOR AI USERS</div>
+              <div className="home-audience-label">{t('home.aud.user')}</div>
               {/* $176/mo, derived the same way as the developer figure so the
                   two can be defended with one method. The old "~$17 avg.
                   monthly savings" was text-only and unattributed — it read as
@@ -400,8 +400,8 @@ export default function Home() {
                   ranks top for text-to-video, so this is the recommendation we
                   already make, priced out. Live model_pricing, Aug 5 2026. */}
               <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$176</div>
-              <div className="home-audience-period">monthly savings on 100 video clips</div>
-              <div className="home-audience-desc">You don&apos;t need the priciest model for everything. XDuel and XBoard show you which cheaper models beat them on your own prompts.</div>
+              <div className="home-audience-period">{t('home.aud.user.period')}</div>
+              <div className="home-audience-desc">{t('home.aud.user.desc')}</div>
             </div>
           </div>
 
@@ -428,7 +428,7 @@ export default function Home() {
                   <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{s.name}</span>
                   <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{s.desc}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(s.descKey)}</div>
               </div>
             ))}
           </div>
