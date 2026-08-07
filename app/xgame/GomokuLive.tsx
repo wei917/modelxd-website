@@ -78,6 +78,23 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeId])
 
+  // WATCHDOG (CC, Aug 6): the server said "AI's turn" while no client loop
+  // was running — a game wedged this way in the wild (an HMR remount raced
+  // a stale state fetch against an in-flight human move; a dropped network
+  // response does the same). Whatever kills the loop, this restarts it:
+  // every few seconds, if it's an AI's turn and nothing is stepping, fetch
+  // fresh state and drive on. No-ops entirely while the loop is alive.
+  useEffect(() => {
+    if (!g || g.status !== 'active' || g.humanTurn) return
+    const id = g.id
+    const iv = setInterval(() => {
+      if (loopRef.current) return
+      void post({ action: 'state', id }).then(v => { if (v) void runLoop(v) })
+    }, 4000)
+    return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g?.id, g?.status, g?.humanTurn])
+
   const start = async () => {
     if (busy || !seats.B || !seats.W) return
     setBusy(true)
