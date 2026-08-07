@@ -219,8 +219,30 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 
   return (
     <div style={{ marginTop: 16, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(520px, 96vw)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(520px, 96vw)', position: 'relative' }}>
         {seatCard(topIdx)}
+        {/* The win is an EVENT — a status-line whisper read as "nothing
+            changed" (owner, after beating Gemini, Aug 6). */}
+        {g.status === 'over' && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 5, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 14, borderRadius: 12,
+            background: 'rgba(253,253,251,0.82)', backdropFilter: 'blur(3px)',
+          }}>
+            <div style={{ fontSize: 44 }} aria-hidden>
+              {g.winner === 'draw' ? '🤝' : g.winner === 'black' ? '⚫' : '⚪'}
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 900, textAlign: 'center', padding: '0 20px', fontFamily: 'var(--font-display), inherit' }}>
+              {g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
+              {g.moves.length} moves · ${g.costUsd.toFixed(3)}
+            </div>
+            <button onClick={onExit} style={{ marginTop: 6, padding: '10px 24px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+              {t('gm.newgame')}
+            </button>
+          </div>
+        )}
       <svg viewBox={`0 0 ${W} ${W}`} style={{ width: '100%', height: 'auto', borderRadius: 12, boxShadow: '0 2px 18px rgba(0,0,0,0.12)' }}>
         <defs>
           <radialGradient id="gsB" cx="35%" cy="30%"><stop offset="0%" stopColor="#555"/><stop offset="100%" stopColor="#0a0a0a"/></radialGradient>

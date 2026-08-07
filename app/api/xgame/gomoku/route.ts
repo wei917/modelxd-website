@@ -50,6 +50,13 @@ async function askMove(model: any, stone: Stone, board: Board, moves: Move[], ob
   const prompt = [
     `You are playing gomoku (five in a row) on a 15x15 board as ${stone === 'B' ? 'B (black)' : 'W (white)'}.`,
     'Win by making 5 or more of your stones in a row: horizontal, vertical or diagonal. Columns are letters A-O, rows are numbers 1-15; a move is a letter+number like H8. You may only play on an EMPTY cell (shown as ".").',
+    '',
+    'Check IN THIS ORDER before answering:',
+    '1. Can you complete 5 in a row right now? Play that cell and win.',
+    "2. Can the opponent complete 5 on their next move (they have four in a line with an empty cell — including split patterns like XX.XX or XXX.X)? You MUST block that cell.",
+    '3. Does the opponent have an open three (three in a row with BOTH ends empty)? Block one end now — next turn it becomes an unstoppable four.',
+    '4. Otherwise extend your own strongest line, prefer moves that create TWO threats at once, and stay near the action.',
+    'Scan all four directions (row, column, both diagonals) around the last few moves — diagonal threats are the ones most often missed.',
     '', 'Board now:', boardText(board),
     '', `Moves so far: ${history}`,
     ...(objection ? ['', `Your previous answer was rejected: ${objection}`] : []),
