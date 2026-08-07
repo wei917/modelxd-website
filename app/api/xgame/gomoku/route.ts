@@ -21,7 +21,7 @@ import { debitCredits } from '@/lib/credits'
 import * as providers from '@/lib/providers'
 import {
   emptyBoard, place, winAt, isFull, parseCoord, coordName, boardText,
-  fallbackMove, cellAt, type Board, type Stone,
+  fallbackMove, cellAt, SIZE, type Board, type Stone,
 } from '@/lib/gomoku-engine'
 
 const LOG = '[xgame:gomoku]'
@@ -52,23 +52,48 @@ const GAME_DUELS_PER_DAY = 3
 // unbounded AI-vs-AI games are unbounded house spend.
 const DUEL_MOVE_CAP = 60
 
-/** One ask: full state out, a coordinate back. Never throws. */
+/** Occupied cells for one color as a compact coordinate list — research
+ *  says this is the representation models actually read (a grid must be
+ *  counted; a list is just read), so the prompt carries both. */
+function coordList(board: Board, stone: Stone): string {
+  const out: string[] = []
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    if (cellAt(board, r, c) === stone) out.push(coordName(r, c))
+  }
+  return out.join(', ') || '(none)'
+}
+
+/** One ask: full state out, a coordinate back. Never throws.
+ *  Prompt shape follows the LLM-board-game literature (see
+ *  docs/research-gomoku-llm.md): coordinate lists alongside the grid,
+ *  reasoning BEFORE the move in the reply JSON (move-first is
+ *  anti-chain-of-thought — the model commits, then rationalizes), a
+ *  forced restatement of live lines including diagonals, and one fixed
+ *  few-shot example showing a diagonal block (identical for every model,
+ *  so the comparison stays fair). */
 async function askMove(model: any, stone: Stone, board: Board, moves: Move[], objection: string | null, userId: string, thinking: string | null) {
   const history = moves.map(m => `${m.n}. ${m.stone} ${m.coord}`).join('  ') || '(none — you open)'
   const prompt = [
     `You are playing gomoku (five in a row) on a 15x15 board as ${stone === 'B' ? 'B (black)' : 'W (white)'}.`,
-    'Win by making 5 or more of your stones in a row: horizontal, vertical or diagonal. Columns are letters A-O, rows are numbers 1-15; a move is a letter+number like H8. You may only play on an EMPTY cell (shown as ".").',
+    'Win by making 5 or more of your stones in a row: horizontal, vertical or diagonal. Columns are letters A-O, rows are numbers 1-15; a move is a letter+number like H8. You may only play on an EMPTY cell (shown as "." on the board and listed under neither player).',
     '',
     'Check IN THIS ORDER before answering:',
     '1. Can you complete 5 in a row right now? Play that cell and win.',
     "2. Can the opponent complete 5 on their next move (they have four in a line with an empty cell — including split patterns like XX.XX or XXX.X)? You MUST block that cell.",
     '3. Does the opponent have an open three (three in a row with BOTH ends empty)? Block one end now — next turn it becomes an unstoppable four.',
     '4. Otherwise extend your own strongest line, prefer moves that create TWO threats at once, and stay near the action.',
-    'Scan all four directions (row, column, both diagonals) around the last few moves — diagonal threats are the ones most often missed.',
+    'Scan all four directions (row, column, both diagonals) around the last few moves — diagonal threats are the ones most often missed. A line only counts if the coordinates step uniformly (e.g. E5, F6, G7 is a diagonal; E5, F6, F7 is not) and no opposing stone sits between them.',
     '', 'Board now:', boardText(board),
-    '', `Moves so far: ${history}`,
+    '',
+    `Black stones: ${coordList(board, 'B')}`,
+    `White stones: ${coordList(board, 'W')}`,
+    `Moves so far: ${history}`,
     ...(objection ? ['', `Your previous answer was rejected: ${objection}`] : []),
-    '', 'Reply with ONLY this JSON, nothing else: {"move":"H8","why":"one short sentence of intent"}',
+    '',
+    'Example from a DIFFERENT game (you are B; White has C3, D4, F6 building a diagonal):',
+    '{"lines": "W: C3-D4-F6 diagonal with a gap at E5. B: none of 3+.", "why": "Fill the E5 gap before the diagonal becomes a four.", "move": "E5"}',
+    '',
+    'Reply with ONLY that JSON shape, in that field order: "lines" first — every line of 3 or more stones EITHER player has right now, checking rows, columns and both diagonals against the stone lists above (write "none" if there are none) — then "why" (one short sentence), then "move".',
   ].join('\n')
 
   let full = '', cost = 0
