@@ -221,24 +221,27 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     <div style={{ marginTop: 16, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(520px, 96vw)', position: 'relative' }}>
         {seatCard(topIdx)}
-        {/* The win is an EVENT — a status-line whisper read as "nothing
-            changed" (owner, after beating Gemini, Aug 6). */}
+        {/* The win is an EVENT — but never a curtain: the whole point of
+            winning is SEEING the final position and the highlighted five.
+            A banner above the board, the board untouched. (owner, Aug 6,
+            two iterations: whisper → curtain → banner) */}
         {g.status === 'over' && (
           <div style={{
-            position: 'absolute', inset: 0, zIndex: 5, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 14, borderRadius: 12,
-            background: 'rgba(253,253,251,0.82)', backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+            borderRadius: 12, border: '1.5px solid var(--red)', background: 'var(--red-dim)',
           }}>
-            <div style={{ fontSize: 44 }} aria-hidden>
+            <span style={{ fontSize: 30 }} aria-hidden>
               {g.winner === 'draw' ? '🤝' : g.winner === 'black' ? '⚫' : '⚪'}
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 900, textAlign: 'center', padding: '0 20px', fontFamily: 'var(--font-display), inherit' }}>
-              {g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
-              {g.moves.length} moves · ${g.costUsd.toFixed(3)}
-            </div>
-            <button onClick={onExit} style={{ marginTop: 6, padding: '10px 24px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display), inherit' }}>
+                {g.winner === 'draw' ? t('gm.draw') : `${g.players[g.winner === 'black' ? 0 : 1].name} ${t('gm.win')}`}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
+                {g.moves.length} moves · ${g.costUsd.toFixed(3)}
+              </span>
+            </span>
+            <button onClick={onExit} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
               {t('gm.newgame')}
             </button>
           </div>
