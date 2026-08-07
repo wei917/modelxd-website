@@ -82,9 +82,10 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       loop, 90s timeout → visible abstention, human seat, duplicate-model
       naming) so every game below is a plugin: rules engine + prompt
       protocol + board renderer.
-- [ ] 五子棋 first new game — trivially simple rules; proves the
-      board-game harness (grid UI, legal-move validation, LLM move loop
-      with retry-on-illegal, per-game rating pool).
+- [x] 五子棋 SHIPPED Aug 6 — SVG goban, human or AI per seat, engine-
+      validated moves with retry-on-illegal and marked fallbacks, per-move
+      billing, permanent URLs. Requires migration 72. Rating pool still
+      pending (with the harness extraction below).
 - [ ] Chess — chess.js for rules/legality; models pick from legal moves.
 - [ ] 中國象棋 — rules engine hand-rolled or lib; board renderer.
 - [ ] Draw Something — different kind: one model GENERATES an image of a

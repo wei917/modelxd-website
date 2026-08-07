@@ -15,6 +15,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import { templateById, type Speaker } from '../xtalk/templates'
+import GomokuLive from './GomokuLive'
 import TemplateHelp from '../xtalk/TemplateHelp'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -26,7 +27,7 @@ const createSupabaseBrowser = () => createBrowserClient(
 // arena states its ambition. Game names are i18n keys like every other
 // label — 五子棋 is Gomoku in English, 五目並べ in Japanese, 오목 in
 // Korean; hardcoding one language's name was wrong on a 5-language site.
-const UPCOMING = ['xg.game.gomoku', 'xg.game.chess', 'xg.game.xiangqi', 'xg.game.draw', 'xg.game.mahjong']
+const UPCOMING = ['xg.game.chess', 'xg.game.xiangqi', 'xg.game.draw', 'xg.game.mahjong']
 
 export default function XGameClient({ resumeId = null }: { resumeId?: string | null }) {
   useRequireAuth()
@@ -34,6 +35,15 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   const router = useRouter()
   const [models, setModels] = useState<Speaker[]>([])
   const [resume, setResume] = useState<string | null>(resumeId)
+  const [active, setActive] = useState<'werewolf' | 'gomoku'>('werewolf')
+  // A resumed id names a row whose game we can't know client-side; probe
+  // gomoku's state action, fall back to werewolf on a 404.
+  useEffect(() => {
+    if (!resumeId) return
+    fetch('/api/xgame/gomoku', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'state', id: resumeId }) })
+      .then(r => { if (r.ok) setActive('gomoku') })
+      .catch(() => {})
+  }, [resumeId])
   const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
@@ -58,7 +68,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
         <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>
         <div className="xt-tpl-grid">
           <div className="xt-tpl-wrap">
-            <button className="xt-tpl is-on" onClick={() => { setResume(null); setNonce(n => n + 1) }}>
+            <button className={`xt-tpl${active === 'werewolf' ? ' is-on' : ''}`} onClick={() => { setActive('werewolf'); setResume(null); setNonce(n => n + 1) }}>
               <span className="xt-tpl-banner"><img src={tpl.banner} alt="" loading="lazy" /></span>
               <span className="xt-tpl-body">
                 <span className="xt-tpl-text">
@@ -72,6 +82,20 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
               </span>
             </button>
             <TemplateHelp templateId="werewolf" variant="icon" />
+          </div>
+
+          <div className="xt-tpl-wrap">
+            <button className={`xt-tpl${active === 'gomoku' ? ' is-on' : ''}`} onClick={() => { setActive('gomoku'); setResume(null); setNonce(n => n + 1) }}>
+              <span className="xt-tpl-body">
+                <span className="xt-tpl-text">
+                  <span className="xt-tpl-head">
+                    <span className="xt-tpl-name">{t('xg.game.gomoku')}</span>
+                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2')}</span>
+                  </span>
+                  <span className="xt-tpl-tag">⚫⚪</span>
+                </span>
+              </span>
+            </button>
           </div>
 
           {UPCOMING.map(key => (
@@ -90,15 +114,21 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
           ))}
         </div>
 
-        <Room
-          key={`werewolf-${nonce}`}
-          models={models}
-          resumeId={resume}
-          onExit={() => {
-            router.push('/xgame')
-            setResume(null); setNonce(n => n + 1)
-          }}
-        />
+        {active === 'gomoku' ? (
+          <GomokuLive
+            key={`gomoku-${nonce}`}
+            models={models}
+            resumeId={resume}
+            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
+          />
+        ) : (
+          <Room
+            key={`werewolf-${nonce}`}
+            models={models}
+            resumeId={resume}
+            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
+          />
+        )}
       </div>
     </div>
   )
