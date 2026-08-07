@@ -150,10 +150,39 @@ export async function POST(req: Request) {
     if (pairs.length === 0) {
       return Response.json({ error: 'Not enough pre-drawn art in this language yet — run the fill tool for at least two models.' }, { status: 503 })
     }
-    const pick = pairs[Math.floor(Math.random() * pairs.length)]
+    // Prefer the pair with the RICHEST shared coverage (weighted random
+    // across the top) — a pair that only shares the 5 easiest terms would
+    // otherwise be picked as often as one sharing forty.
+    pairs.sort((x, y) => y.shared.length - x.shared.length)
+    const pick = pairs[Math.floor(Math.random() * Math.min(3, pairs.length))]
     // A/B sides are shuffled so side position never encodes the model.
     const [sideA, sideB] = Math.random() < 0.5 ? [pick.a, pick.b] : [pick.b, pick.a]
-    const termIds = [...pick.shared].sort(() => Math.random() - 0.5).slice(0, ROUNDS)
+    // DIFFICULTY RAMP (owner, Aug 6 — "cat, dog, star? are you kidding
+    // me"): a match should warm up and then bite. Desired tiers per round:
+    // easy → medium → medium → hard → hard, each slot falling back to a
+    // neighbouring tier when the shared pool is thin (the pilot fill was
+    // easy-only, so early catalogs degrade gracefully to all-easy).
+    const tierOf = new Map<string, string>()
+    for (const tid of pick.shared) {
+      const row = byModel.get(pick.a)!.get(tid)![0]
+      tierOf.set(tid, row.draw_terms?.tier ?? 'easy')
+    }
+    const pool: Record<string, string[]> = { easy: [], medium: [], hard: [] }
+    for (const tid of pick.shared) (pool[tierOf.get(tid)!] ?? pool.easy).push(tid)
+    for (const k of Object.keys(pool)) pool[k].sort(() => Math.random() - 0.5)
+    const RAMP: Array<string[]> = [
+      ['easy', 'medium', 'hard'],
+      ['medium', 'easy', 'hard'],
+      ['medium', 'hard', 'easy'],
+      ['hard', 'medium', 'easy'],
+      ['hard', 'medium', 'easy'],
+    ]
+    const termIds: string[] = []
+    for (const prefs of RAMP.slice(0, ROUNDS)) {
+      const tier = prefs.find(t2 => pool[t2].length > 0)
+      if (!tier) break
+      termIds.push(pool[tier].pop()!)
+    }
 
     const { data: models } = await svc().from('ai_models')
       .select('id, display_name').in('id', [sideA, sideB])
