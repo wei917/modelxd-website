@@ -88,9 +88,22 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       pending (with the harness extraction below).
 - [ ] Chess — chess.js for rules/legality; models pick from legal moves.
 - [ ] 中國象棋 — rules engine hand-rolled or lib; board renderer.
-- [ ] Draw Something — different kind: one model GENERATES an image of a
-      secret word (through the normal billed pipeline), others guess in
-      text. XCreate-pipeline crossover; per-drawing billing.
+- [ ] Draw Something (你畫我猜 / お絵かき当て / 그림 퀴즈) — different kind:
+      one model GENERATES an image of a secret word (through the normal
+      billed pipeline), others guess in text. XCreate-pipeline crossover;
+      per-drawing billing.
+      - WORD BANKS ARE CONTENT, NOT TRANSLATION (owner, Aug 6): each site
+        language gets its own culturally-popular subject list — zh-Hant
+        draws 珍珠奶茶, 101大樓, 夜市; ja draws 桜, 新幹線, おにぎり; ko
+        draws 김치, 한강, 지하철 — because "things everyone can draw AND
+        guess" is a cultural fact. Never machine-translate one list.
+      - Shape: one data file per language (easy/medium/hard tiers like the
+        original game), mixing universal subjects (cat, moon, guitar) with
+        culture-specific ones; draft lists can be model-generated but ship
+        hand-reviewed by a speaker — a wrong subject here is a dead round.
+      - Guessing must be language-aware too: accept the answer in the
+        round's language, with fuzzy matching tuned per script (CJK exact
+        or near-exact; latin allows minor typos).
 - [ ] 麻將 — the heavyweight: 4 seats, big scoring engine, and a ruleset
       decision FIRST (Taiwanese 16-tile for the home market?). Do last.
 - [ ] Rating: one pool per game via GAME_MODES (werewolf precedent), all
