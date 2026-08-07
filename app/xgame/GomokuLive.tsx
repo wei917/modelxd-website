@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import { SIZE, COLS } from '../../lib/gomoku-engine'
-import ModelSlots from '../xtalk/ModelSlots'
+import ModelPickerDialog from '../components/ModelPickerDialog'
 import { DEFAULT_SEAT_OPTS, type SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 
@@ -28,13 +28,14 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 }) {
   const t = useT()
   const [g, setG] = useState<GameView | null>(null)
-  // The REAL seat machinery — same picker + per-seat thinking config the
-  // other tables use, not a bare <select> (owner's correction, Aug 6).
-  const [picked, setPicked] = useState<string[]>([])
+  // Two seats ARE the interface (owner's layout, Aug 6): click a seat,
+  // assign Me / a random model / a picked model. Play-vs-watch is emergent
+  // from the assignments, and the same pattern scales to chess and mahjong.
+  type SeatAssign = 'me' | { modelId: string; name: string } | null
+  const [seats, setSeats] = useState<{ B: SeatAssign; W: SeatAssign }>({ B: null, W: null })
+  const [popFor, setPopFor] = useState<'B' | 'W' | null>(null)
+  const [pickerFor, setPickerFor] = useState<'B' | 'W' | null>(null)
   const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
-  // 'black' | 'white' | 'watch' — black opens (gomoku rule, as in Go); a
-  // human on white answers the AI's opening. 'watch' is AI vs AI.
-  const [seat, setSeat] = useState<'black' | 'white' | 'watch'>('black')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   // Hover target for the ghost stone. The site hides the native cursor
@@ -77,16 +78,12 @@ export default function GomokuLive({ models, resumeId, onExit }: {
   }, [resumeId])
 
   const start = async () => {
-    if (busy) return
-    const need = seat === 'watch' ? 2 : 1
-    if (picked.filter(Boolean).length < need) return
+    if (busy || !seats.B || !seats.W) return
     setBusy(true)
-    const ai = (id: string) => ({ modelId: id, thinking: seatOpts[id]?.thinking ?? null })
-    const seats =
-      seat === 'black' ? { black: { human: true }, white: ai(picked[0]) } :
-      seat === 'white' ? { black: ai(picked[0]),   white: { human: true } } :
-                         { black: ai(picked[0]),   white: ai(picked[1]) }
-    const v = await post({ action: 'create', seats })
+    const enc = (a: SeatAssign) => a === 'me'
+      ? { human: true }
+      : { modelId: (a as any).modelId, thinking: seatOpts[(a as any).modelId]?.thinking ?? null }
+    const v = await post({ action: 'create', seats: { black: enc(seats.B), white: enc(seats.W) } })
     setBusy(false)
     // Deliberately NOT written into the URL mid-game: Next syncs native
     // history calls into the router, and a PATH change remounts the page —
@@ -121,78 +118,107 @@ export default function GomokuLive({ models, resumeId, onExit }: {
 
   // ── setup ──────────────────────────────────────────────────────────────
   if (!g) {
-    const need = seat === 'watch' ? 2 : 1
-    const ready = picked.filter(Boolean).length >= need
-    const chip = (k: 'black' | 'white' | 'watch', label: string) => (
-      <button
-        key={k} onClick={() => { setSeat(k); setPicked([]) }}
-        style={{
-          padding: '8px 16px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
-          border: '1px solid ' + (seat === k ? 'var(--red)' : 'var(--border2)'),
-          background: seat === k ? 'var(--red-dim)' : 'transparent',
-          color: seat === k ? 'var(--red)' : 'var(--muted)', fontFamily: 'inherit',
-        }}
-      >{label}</button>
-    )
+    const ready = !!seats.B && !!seats.W
+    const assign = (side: 'B' | 'W', a: SeatAssign) => {
+      setSeats(prev => {
+        const other = side === 'B' ? 'W' : 'B'
+        // Only one human at the table: taking a seat vacates the other.
+        const next = { ...prev, [side]: a }
+        if (a === 'me' && prev[other] === 'me') (next as any)[other] = null
+        return next
+      })
+      setPopFor(null)
+    }
+    const randomModel = (): SeatAssign => {
+      const pool: any[] = models.filter((m: any) => m.id)
+      if (pool.length === 0) return null
+      const m = pool[Math.floor(Math.random() * pool.length)]
+      return { modelId: m.id, name: m.display_name }
+    }
+    const seatCard = (side: 'B' | 'W') => {
+      const a = seats[side]
+      const label = a === 'me' ? t('gm.me') : a ? (a as any).name : t('gm.pickseat')
+      return (
+        <div key={side} style={{ position: 'relative', flex: '1 1 220px', maxWidth: 300 }}>
+          <button
+            onClick={() => setPopFor(p => p === side ? null : side)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+              padding: '16px 16px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
+              border: '1.5px ' + (a ? 'solid var(--border2)' : 'dashed var(--border2)'),
+              background: 'var(--surface)', color: a ? 'var(--white)' : 'var(--muted)',
+              fontSize: 14, fontWeight: a ? 700 : 400,
+            }}
+          >
+            <span style={{ fontSize: 22 }} aria-hidden>{side === 'B' ? '⚫' : '⚪'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+          </button>
+          {popFor === side && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 30,
+              background: '#fff', border: '1px solid var(--border2)', borderRadius: 11,
+              boxShadow: '0 8px 30px rgba(0,0,0,0.14)', padding: 6, minWidth: 200,
+              display: 'flex', flexDirection: 'column', gap: 2,
+            }}>
+              {[
+                { k: 'me',     label: `👤 ${t('gm.me')}`,     on: () => assign(side, 'me') },
+                { k: 'random', label: `🎲 ${t('gm.random')}`, on: () => assign(side, randomModel()) },
+                { k: 'pick',   label: `☰ ${t('gm.choosemodel')}`, on: () => { setPopFor(null); setPickerFor(side) } },
+              ].map(o => (
+                <button key={o.k} onClick={o.on} style={{
+                  textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none',
+                  background: 'transparent', fontFamily: 'inherit', fontSize: 13.5,
+                  color: 'var(--white)', cursor: 'pointer',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--red-dim)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >{o.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          {chip('black', `⚫ ${t('gm.playblack')}`)}
-          {chip('white', `⚪ ${t('gm.playwhite')}`)}
-          {chip('watch', `⚔ ${t('gm.watch')}`)}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {seatCard('B')}
+          {seatCard('W')}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.06em' }}>
-            {seat === 'black' ? `⚪ ${t('gm.opponent')}` : seat === 'white' ? `⚫ ${t('gm.opponent')}` : '⚫ + ⚪'}
-          </span>
-          <button
-            onClick={() => {
-              const pool = models.filter((m: any) => m.id)
-              if (pool.length === 0) return
-              const empty = picked.filter(Boolean).length
-              if (empty >= need) return
-              const pick: any = pool[Math.floor(Math.random() * pool.length)]
-              setPicked([...picked.filter(Boolean), pick.id])
-            }}
-            title={t('gm.random')}
-            style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 999, padding: '4px 12px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer', fontFamily: 'inherit' }}
-          >🎲 {t('gm.random')}</button>
-        </div>
-        <ModelSlots
-          models={models} picked={picked} onPicked={setPicked}
-          seatOpts={seatOpts} onSeatOpts={setSeatOpts}
-          allowSearch={false} count={need} fixed allowDuplicates
-        />
-        {/* Thinking level, ALWAYS VISIBLE once a model is seated. The shared
-            slot row hides this behind a 24px gear, and the owner could not
-            find it twice — that is the design failing, not the user. The
-            gear still works; these pills are the front door. (CC, Aug 6) */}
-        {picked.filter(Boolean).map(id => {
-          const m: any = models.find((x: any) => x.id === id)
+        {pickerFor && (
+          <ModelPickerDialog
+            mode="text" recipeMode="text_to_text"
+            slotIds={[]}
+            onClose={() => setPickerFor(null)}
+            onSelect={(m: any) => { assign(pickerFor, { modelId: m.id, name: m.display_name }); setPickerFor(null) }}
+          />
+        )}
+        {(['B', 'W'] as const).map(side => {
+          const a = seats[side]
+          if (!a || a === 'me') return null
+          const m: any = models.find((x: any) => x.id === (a as any).modelId)
           const levels: string[] = m?.output_config?.text?.thinking_levels ?? []
           if (!m || levels.length === 0) return null
+          const id = m.id
           const cur = seatOpts[id]?.thinking ?? null
           const setLv = (lv: string | null) =>
             setSeatOpts({ ...seatOpts, [id]: { ...(seatOpts[id] ?? DEFAULT_SEAT_OPTS), thinking: lv } })
           return (
-            <div key={id} style={{ marginTop: 12 }}>
+            <div key={side} style={{ marginTop: 12 }}>
               <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 5 }}>
-                {m.display_name} · {t('xcreate.thinking')}
+                {side === 'B' ? '⚫' : '⚪'} {m.display_name} · {t('xcreate.thinking')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {[null, ...levels].map(lv => {
                   const on = cur === lv
                   return (
-                    <button
-                      key={lv ?? 'auto'} type="button" onClick={() => setLv(lv)}
-                      style={{
-                        padding: '3px 10px', borderRadius: 7, fontSize: 11, fontFamily: 'inherit',
-                        border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
-                        background: on ? 'var(--red-dim)' : 'var(--surface)',
-                        color: on ? 'var(--red)' : 'var(--muted2)', fontWeight: on ? 700 : 400,
-                        cursor: 'pointer',
-                      }}
-                    >{lv ?? t('gm.auto')}</button>
+                    <button key={lv ?? 'auto'} type="button" onClick={() => setLv(lv)} style={{
+                      padding: '3px 10px', borderRadius: 7, fontSize: 11, fontFamily: 'inherit',
+                      border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
+                      background: on ? 'var(--red-dim)' : 'var(--surface)',
+                      color: on ? 'var(--red)' : 'var(--muted2)', fontWeight: on ? 700 : 400,
+                      cursor: 'pointer',
+                    }}>{lv ?? t('gm.auto')}</button>
                   )
                 })}
               </div>
