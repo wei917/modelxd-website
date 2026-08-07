@@ -148,7 +148,6 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     const cur = g.duel?.thumbs?.[seat]?.up
     void post({ action: 'duel_thumb', id: g.id, seat, up: cur === up ? null : up })
   }
-  const reveal = () => { if (g) void post({ action: 'duel_reveal', id: g.id }) }
   // A duel came from XDuel; hand the player back there. A lobby game goes
   // back to the lobby.
   const exit = () => { if (g?.duel) router.push('/xduel'); else onExit() }
@@ -289,15 +288,9 @@ export default function GomokuLive({ models, resumeId, onExit }: {
                   {g.moves.length} moves{g.costUsd != null ? ` · $${g.costUsd.toFixed(3)}` : ''}
                 </span>
               </span>
-              {g.duel && !g.duel.revealed ? (
-                <button onClick={reveal} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
-                  🎭 {t('gd.reveal')}
-                </button>
-              ) : (
-                <button onClick={exit} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
-                  {t('gm.newgame')}
-                </button>
-              )}
+              <button onClick={exit} style={{ padding: '9px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+                {t('gm.newgame')}
+              </button>
             </div>
           </div>
         )}

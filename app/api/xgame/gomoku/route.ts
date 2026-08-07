@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         return Response.json({ error: 'No free blind matches left today — come back tomorrow.' }, { status: 429 })
       }
       const { data: pool } = await svc().from('ai_models')
-        .select('id, display_name, model_pricing, blocked_features')
+        .select('id, display_name, model_pricing, blocked_features, output_config')
         .eq('enabled', true).contains('output_modalities', ['text'])
       // Same block key as prompt duels, then prefer the cheap end of the
       // catalog — 40 moves on a frontier model is real house money. Fall
@@ -141,6 +141,15 @@ export async function POST(req: Request) {
       const eligible = (pool ?? []).filter((m: any) => !(m.blocked_features ?? []).includes('xduel'))
       const cheap = eligible.filter((m: any) => { const p = outPrice(m); return p != null && p > 0 && p <= 8 })
       const from = (cheap.length >= 2 ? cheap : eligible).sort(() => Math.random() - 0.5)
+      // Duel seats get a modest thinking level when the model has one:
+      // cheap models with thinking OFF play blind-drunk gomoku (verified
+      // on a live game — it "blocked" a four at the wrong cell), and the
+      // house is paying pennies either way. Lowest declared level wins.
+      const pickThinking = (m: any): string | null => {
+        const lv = m.output_config?.text?.thinking_levels
+        if (!Array.isArray(lv) || lv.length === 0) return null
+        return lv.includes('low') ? 'low' : lv[0]
+      }
       const play = body.play === true
       if (from.length < (play ? 1 : 2)) return Response.json({ error: 'Not enough models available for a blind match' }, { status: 503 })
       if (play) {
@@ -150,12 +159,12 @@ export async function POST(req: Request) {
         // GPT-5.6 Luna" or "you lost to a $0.03 model".
         const humanStone: Stone = Math.random() < 0.5 ? 'B' : 'W'
         const human: Player = { stone: humanStone, modelId: null, name: 'You', isHuman: true }
-        const rival: Player = { stone: humanStone === 'B' ? 'W' : 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: null }
+        const rival: Player = { stone: humanStone === 'B' ? 'W' : 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: pickThinking(from[0]) }
         black = humanStone === 'B' ? human : rival
         white = humanStone === 'B' ? rival : human
       } else {
-        black = { stone: 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: null }
-        white = { stone: 'W', modelId: from[1].id, name: from[1].display_name, isHuman: false, thinking: null }
+        black = { stone: 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: pickThinking(from[0]) }
+        white = { stone: 'W', modelId: from[1].id, name: from[1].display_name, isHuman: false, thinking: pickThinking(from[1]) }
       }
       title = 'Gomoku — blind duel'
     } else {
@@ -246,10 +255,16 @@ export async function POST(req: Request) {
     await save({
       // Spread the old pending: the duel marker (and anything future) must
       // survive every move, not just the board fields.
-      pending: { ...s.pending, board: nextBoard, last: [r, c], winLine: line ?? null },
+      pending: {
+        ...s.pending, board: nextBoard, last: [r, c], winLine: line ?? null,
+        // The reveal is the ENDGAME, not a button (owner, Aug 6): the
+        // moment the engine calls it, identities and prices unmask.
+        ...(over && isDuel ? { duel: { ...s.pending.duel, revealed: true } } : {}),
+      },
       transcript: [...moves, mv], day: s.day + 1,
       phase: stone === 'B' ? 'W' : 'B',
       ...(over ? { status: 'over', winner: line ? (stone === 'B' ? 'black' : 'white') : 'draw' } : {}),
+      ...(over && isDuel ? { title: `${players[0].name} ⚫ vs ⚪ ${players[1].name}` } : {}),
       cost_usd: Number(s.cost_usd) + cost,
     })
     // Blind duels are on the house — cost_usd still accumulates (it's
