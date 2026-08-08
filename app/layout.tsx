@@ -6,6 +6,7 @@ import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
 import Omnibox from './components/Omnibox'
 import GlobalCursor from './components/GlobalCursor'
+import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import './globals.css'
 
@@ -85,6 +86,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </PageTitleProvider>
           </AuthModalProvider>
         </LangProvider>
+        {/* Vercel Web Analytics — anonymous visitor stats (country, pages,
+            referrers). No-ops outside Vercel deployments, so localhost and
+            self-hosted runs cost nothing. Enable also requires the dashboard
+            toggle: project → Analytics → Enable. */}
+        <Analytics />
       </body>
     </html>
   )

@@ -227,7 +227,7 @@ export const STRINGS: Record<string, Entry> = {
   'nav.privacy':      { en: 'Privacy', 'zh-Hant': '隱私政策', 'zh-Hans': '隐私政策', ja: 'プライバシー', ko: '개인정보처리방침' },
   'nav.contact':      { en: 'Contact Us', 'zh-Hant': '聯絡我們', 'zh-Hans': '联系我们', ja: 'お問い合わせ', ko: '문의하기' },
   'nav.bug':          { en: 'Report a Bug', 'zh-Hant': '回報問題', 'zh-Hans': '报告问题', ja: 'バグを報告', ko: '버그 신고' },
-  'contact.copied':   { en: 'copied', 'zh-Hant': '已複製', 'zh-Hans': '已复制', ja: 'コピーしました', ko: '복사됨' },
+  'contact.copiedfmt': { en: 'email {e} copied', 'zh-Hant': '已複製 {e}', 'zh-Hans': '已复制 {e}', ja: '{e} をコピーしました', ko: '{e} 복사됨' },
   'fb.title':         { en: 'Report a bug', 'zh-Hant': '回報問題', 'zh-Hans': '报告问题', ja: 'バグを報告', ko: '버그 신고' },
   'fb.ph':            { en: 'What happened? What did you expect instead?', 'zh-Hant': '發生了什麼？你原本預期的是什麼？', 'zh-Hans': '发生了什么？你原本预期的是什么？', ja: '何が起きましたか？本来はどうなるはずでしたか？', ko: '무슨 일이 있었나요? 원래 어떻게 되어야 했나요?' },
   'fb.send':          { en: 'Send report', 'zh-Hant': '送出回報', 'zh-Hans': '发送报告', ja: '送信', ko: '보내기' },

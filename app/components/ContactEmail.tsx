@@ -31,7 +31,12 @@ export default function ContactEmail({ className, style }: { className?: string;
         timer.current = setTimeout(() => setCopied(false), 2600)
       }}
     >
-      {copied ? `${EMAIL} ✓ ${t('contact.copied')}` : t('nav.contact')}
+      {t('nav.contact')}
+      {copied && (
+        <span style={{ marginLeft: 6, color: 'var(--green)', fontWeight: 600 }}>
+          ✓ {t('contact.copiedfmt').replace('{e}', EMAIL)}
+        </span>
+      )}
     </a>
   )
 }

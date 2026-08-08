@@ -58,6 +58,16 @@ rooms.
 - [ ] Billing: 1:1 messages bill at the agent's model rate like Discussion
       turns; prompt caching from day one (persona + history is a textbook
       stable prefix — see the Aug 6 XDirector caching work for the pattern).
+- [ ] Media abilities — play a song from YouTube (owner, Aug 7): the agent
+      emits a structured action ({"action":"play_song","query":...} — the
+      Gomoku JSON-contract pattern, works on all 7 providers), server
+      searches YouTube Data API v3 (videoEmbeddable=true filter; 100
+      searches/day free quota), and the room renders the OFFICIAL IFrame
+      player as a "Now playing" card. LEGAL LINE: embed only, player stays
+      visible — never extract/proxy audio (ToS violation, revoked keys).
+      Autoplay: design for one ▶ tap; browser-permitted autoplay is a bonus.
+      Memory tie-in: the agent remembers musical taste ("you liked Norah
+      Jones") via the agent_memories loop.
 - [ ] Product decisions needed BEFORE building: naming (inside XTalk vs its
       own surface), content policy for romantic companions (age gating,
       boundaries — this is a real policy surface, decide it deliberately,
