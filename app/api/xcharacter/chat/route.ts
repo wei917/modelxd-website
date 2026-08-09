@@ -1,0 +1,261 @@
+// app/api/xcharacter/chat/route.ts — the character's turn (owner, Aug 7).
+//
+// MEMORY DESIGN OF RECORD: the model manages its own memory in two stores.
+//   critical — one doc (≤ ~10K tokens) of exact facts, rewritten WHOLE by
+//              the model at each consolidation, under a stated budget;
+//   chapters — an append-only conceptual memoir; each consolidation writes
+//              the next chapter. Unbounded at rest; only the tail travels.
+// Consolidation runs on the CHARACTER'S OWN model — curating memory is part
+// of the skill this platform measures — and the client triggers it as a
+// separate request (the werewolf lesson: never do slow work after the
+// response closed; serverless freezes it).
+//
+// Prompt layout is cache-shaped: [safety floor + persona + memory] ride in
+// the FIRST user message (providers read no system field — the /api/xtalk
+// lesson) and stay byte-stable between consolidations; the moving parts
+// (history window, time gap, new text) come after.
+
+export const runtime = 'nodejs'
+export const maxDuration = 120
+
+import { createClient } from '@supabase/supabase-js'
+import { getModelById } from '@/lib/models'
+import * as providers from '@/lib/providers'
+import { assertFeature } from '@/lib/features'
+import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
+import { stableHead } from '@/lib/xcharacter-prompt'
+
+const LOG = '[xcharacter]'
+
+const svc = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SECRET_KEY!,
+  { auth: { persistSession: false } },
+)
+
+const WINDOW_MSGS       = 30      // verbatim recent turns per prompt
+const CHAPTER_TAIL      = 3       // memoir chapters carried per prompt
+const CONSOLIDATE_EVERY = 80      // unconsolidated messages before memory work
+const CRITICAL_MAX_CH   = 32_000  // ≈ 8-10K tokens; hard server-side cap
+const CHAPTER_MAX_CH    = 6_000
+
+// Safety floor + abilities + stable head live in lib/xcharacter-prompt.ts,
+// shared with the live-call route — one source of truth for the floor.
+const sse = (event: string, data: object) =>
+  new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+
+const approxTokens = (s: string) => Math.ceil((s ?? '').length / 4)
+
+function timeGapNote(lastChatAt: string | null): string {
+  if (!lastChatAt) return ''
+  const ms = Date.now() - new Date(lastChatAt).getTime()
+  const h = ms / 3_600_000
+  if (h < 6) return ''
+  const human = h < 48 ? `${Math.round(h)} hours` : `${Math.round(h / 24)} days`
+  return `[Context: it has been ${human} since you last spoke.]`
+}
+
+export async function POST(req: Request) {
+  const gate = await assertFeature('xtalk')
+  if (gate) return gate
+  const { createSupabaseServer } = await import('@/lib/supabase-server')
+  const sb = await createSupabaseServer()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let body: any
+  try { body = await req.json() } catch { return Response.json({ error: 'Bad JSON' }, { status: 400 }) }
+
+  const { data: c } = await svc().from('x_characters')
+    .select('*').eq('id', String(body.characterId ?? '')).maybeSingle()
+  if (!c || c.user_id !== user.id) return Response.json({ error: 'Not found' }, { status: 404 })
+
+  const loadMemory = async () => {
+    const { data } = await svc().from('x_character_memory')
+      .select('kind, seq, content').eq('character_id', c.id)
+      .order('seq', { ascending: true })
+    const rows = data ?? []
+    return {
+      critical: rows.find(r => r.kind === 'critical')?.content ?? '',
+      chapters: rows.filter(r => r.kind === 'chapter'),
+    }
+  }
+
+  // ── history: open the room ────────────────────────────────────────────
+  if (body.action === 'history') {
+    const { data: msgs } = await svc().from('x_character_messages')
+      .select('id, role, text, cost_usd, created_at')
+      .eq('character_id', c.id).order('id', { ascending: false }).limit(100)
+    const mem = await loadMemory()
+    return Response.json({
+      character: { id: c.id, name: c.name, avatarPath: c.avatar_path, modelId: c.model_id, thinking: c.thinking, msgCount: c.msg_count },
+      messages: (msgs ?? []).reverse(),
+      memory: {
+        criticalTokens: approxTokens(mem.critical),
+        chapterCount: mem.chapters.length,
+      },
+    })
+  }
+
+  // ── consolidate: the model curates its own memory (client-triggered) ──
+  if (body.action === 'consolidate') {
+    const model = await getModelById(c.model_id)
+    if (!model) return Response.json({ error: 'Model unavailable' }, { status: 503 })
+    const { data: slice } = await svc().from('x_character_messages')
+      .select('id, role, text').eq('character_id', c.id)
+      .gt('id', c.consolidated_to).order('id', { ascending: true }).limit(400)
+    if (!slice || slice.length < 4) return Response.json({ ok: true, skipped: 'nothing new' })
+
+    const mem = await loadMemory()
+    const transcript = slice.map(m => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`).join('\n')
+    const lastChapter = mem.chapters[mem.chapters.length - 1]
+
+    const ask = async (prompt: string, maxCh: number): Promise<{ text: string; cost: number }> => {
+      let full = '', cost = 0
+      await new Promise<void>(resolve => {
+        providers.streamText(model, [{ role: 'user', content: prompt }], {
+          onDelta: (t: string) => { full += t },
+          onDone: (r: any) => { cost = r.cost ?? 0; resolve() },
+          onError: (m: string) => { console.warn(`${LOG} consolidation:`, m); resolve() },
+        }, [], { userId: user.id, surface: 'xcharacter' } as any, { thinking: c.thinking ?? null, search: false })
+          .catch(() => resolve())
+      })
+      return { text: full.trim().slice(0, maxCh), cost }
+    }
+
+    // Prompt A — the critical store, rewritten whole under budget.
+    const [crit, chap] = await Promise.all([
+      ask([
+        `You are ${c.name}, maintaining your own private CRITICAL MEMORY about your user.`,
+        'It holds EXACT durable facts only: names, dates, numbers, places, promises made, hard preferences, important events. No prose, no feelings — those belong in your memoir.',
+        'Below is your current memory file, then the conversation since you last updated it. Rewrite the COMPLETE file: merge new facts, correct anything that changed, drop what stopped mattering. Terse lines, grouped by topic.',
+        `HARD BUDGET: keep it under roughly ${Math.round(CRITICAL_MAX_CH / 4)} tokens — you decide what deserves the space.`,
+        '', '=== CURRENT FILE ===', mem.critical || '(empty)', '=== END FILE ===',
+        '', '=== NEW CONVERSATION ===', transcript, '=== END ===',
+        '', 'Reply with ONLY the new file content.',
+      ].join('\n'), CRITICAL_MAX_CH),
+      // Prompt B — the next memoir chapter.
+      ask([
+        `You are ${c.name}, writing the next chapter of your private memoir about life with your user.`,
+        'Capture the PERIOD below as you experienced it: themes, moods, jokes that stuck, disagreements and how they resolved, unresolved threads. Concepts and feelings — exact facts live in your critical memory instead.',
+        lastChapter ? `Your previous chapter, for continuity:\n${lastChapter.content}\n` : '',
+        '=== THE PERIOD ===', transcript, '=== END ===',
+        '', 'Reply with ONLY the chapter text (roughly 300-600 words).',
+      ].join('\n'), CHAPTER_MAX_CH),
+    ])
+
+    const lastId = slice[slice.length - 1].id
+    if (crit.text) {
+      await svc().from('x_character_memory').upsert({
+        character_id: c.id, kind: 'critical', seq: 0,
+        content: crit.text, tokens: approxTokens(crit.text), updated_at: new Date().toISOString(),
+      })
+    }
+    if (chap.text) {
+      await svc().from('x_character_memory').insert({
+        character_id: c.id, kind: 'chapter', seq: (lastChapter?.seq ?? 0) + 1,
+        content: chap.text, tokens: approxTokens(chap.text),
+      })
+    }
+    await svc().from('x_characters').update({ consolidated_to: lastId }).eq('id', c.id)
+
+    const totalCost = crit.cost + chap.cost
+    const cents = Math.round(totalCost * 100)
+    if (cents > 0) {
+      debitCredits({
+        userId: user.id, amountCents: cents, referenceType: 'xcharacter_chat',
+        referenceId: c.id, description: `Memory consolidation (${c.name})`, metadata: {},
+      }).catch(() => {})
+    }
+    return Response.json({ ok: true, cost: totalCost, chapters: (lastChapter?.seq ?? 0) + (chap.text ? 1 : 0) })
+  }
+
+  // ── default: one chat turn (SSE) ──────────────────────────────────────
+  const text = String(body.text ?? '').trim().slice(0, 4000)
+  if (!text) return Response.json({ error: 'Say something' }, { status: 400 })
+  const model = await getModelById(c.model_id)
+  if (!model) return Response.json({ error: 'This character\'s model is unavailable' }, { status: 503 })
+
+  const mem = await loadMemory()
+  const { data: recent } = await svc().from('x_character_messages')
+    .select('role, text').eq('character_id', c.id)
+    .order('id', { ascending: false }).limit(WINDOW_MSGS)
+  const window = (recent ?? []).reverse()
+
+  // Durable before generative: the user's line lands in the log even if the
+  // stream dies mid-reply.
+  await svc().from('x_character_messages').insert({ character_id: c.id, role: 'user', text })
+
+  const head = stableHead(c, mem.critical, mem.chapters.slice(-CHAPTER_TAIL))
+  const msgs: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'user', content: head },
+  ]
+  for (const m of window) {
+    msgs.push(m.role === 'character'
+      ? { role: 'assistant', content: m.text }
+      : { role: 'user', content: m.text })
+  }
+  const gap = timeGapNote(c.last_chat_at)
+  msgs.push({ role: 'user', content: gap ? `${gap}\n${text}` : text })
+
+  const levels = model.output_config?.text?.thinking_levels ?? []
+  const thinkLvl = typeof c.thinking === 'string' && levels.includes(c.thinking) ? c.thinking : null
+  const caps = model.output_config?.text?.capabilities ?? []
+  const useSearch = c.search === true && caps.includes('web_search')
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let full = ''
+      try {
+        await providers.streamText(model, msgs, {
+          onDelta: (t) => { full += t; controller.enqueue(sse('delta', { text: t })) },
+          onDone: async (result) => {
+            const cost = result.cost ?? 0
+            await svc().from('x_character_messages').insert({
+              character_id: c.id, role: 'character', text: full, cost_usd: cost,
+            })
+            const newCount = (c.msg_count ?? 0) + 2
+            await svc().from('x_characters').update({
+              msg_count: newCount, last_chat_at: new Date().toISOString(),
+            }).eq('id', c.id)
+            const cents = Math.round(cost * 100)
+            if (cents > 0) {
+              debitCredits({
+                userId: user.id, amountCents: cents, referenceType: 'xcharacter_chat',
+                referenceId: c.id, description: `Chat with ${c.name}`, metadata: { modelName: model.display_name },
+              }).catch(err => {
+                if (err instanceof InsufficientCreditsError) console.warn(`${LOG} insufficient credits`)
+                else console.warn(`${LOG} debit failed:`, err)
+              })
+            }
+            // The client fires the consolidate action when told — never
+            // after-close work on serverless.
+            const { count } = await svc().from('x_character_messages')
+              .select('id', { count: 'exact', head: true })
+              .eq('character_id', c.id).gt('id', c.consolidated_to)
+            controller.enqueue(sse('done', {
+              cost, consolidate: (count ?? 0) >= CONSOLIDATE_EVERY,
+            }))
+            controller.close()
+          },
+          onError: (message) => {
+            console.warn(`${LOG} ${model.display_name} failed:`, message)
+            controller.enqueue(sse('error', { message }))
+            controller.close()
+          },
+        }, [], { userId: user.id, surface: 'xcharacter' } as any, { thinking: thinkLvl, search: useSearch })
+      } catch (err: any) {
+        controller.enqueue(sse('error', { message: err?.message ?? 'turn failed' }))
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    },
+  })
+}

@@ -24,15 +24,23 @@ const createSupabaseBrowser = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
-export default function XTalkClient({ resumeId = null }: { resumeId?: string | null }) {
+export default function XTalkClient({ resumeId = null, charId = null }: { resumeId?: string | null; charId?: string | null }) {
   useRequireAuth()
   const t = useT()
   const router = useRouter()
   const [models, setModels] = useState<Speaker[]>([])
   // /xtalk/<id> opens straight onto the discussion it names (werewolf ids
   // are redirected to /xgame before this renders); picking a template by
-  // hand drops the resume — you asked for something new.
-  const [active, setActive] = useState(TALK_TEMPLATES[0].id)
+  // hand drops the resume — you asked for something new. ?char=<id> lands
+  // on the Characters template the same way.
+  const [active, setActive] = useState(charId ? 'characters' : TALK_TEMPLATES[0].id)
+  // A nav-row click updates ?char= via CLIENT-side navigation — the page
+  // re-renders with a new prop but this component does not remount, so the
+  // useState initializer above never re-runs. The effect is what makes a
+  // second character row work while already on /xtalk.
+  useEffect(() => {
+    if (charId) { setActive('characters'); setResume(null) }
+  }, [charId])
   const [resume, setResume] = useState<string | null>(resumeId)
   // Templates own their own state, so switching has to unmount the old one
   // rather than leave a half-finished game behind a chip.
@@ -125,6 +133,7 @@ export default function XTalkClient({ resumeId = null }: { resumeId?: string | n
           key={`${tpl.id}-${nonce}`}
           models={models}
           resumeId={active === 'discussion' ? resume : null}
+          charId={active === 'characters' ? charId : null}
           onExit={() => {
             // Navigate for real when leaving a /xtalk/<id> game (remounts to
             // the picker); a plain reset kept the game URL and Next's router

@@ -91,7 +91,9 @@ function companyLabel(id: string): string {
 }
 
 export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature }: {
-  mode: Mode; recipeMode: ModelMode; onSelect: (m: PickerModel) => void; onClose: () => void
+  /** One recipe, or a SET — a model qualifies by supporting ANY of them
+   *  (canvas re-generate wants image_to_video OR reference_frames). */
+  mode: Mode; recipeMode: ModelMode | ModelMode[]; onSelect: (m: PickerModel) => void; onClose: () => void
   /** model_name values this table cannot seat (see WEREWOLF_BANNED_MODELS).
    *  Hidden outright rather than shown-and-disabled: a greyed row invites
    *  "why not?", and the answer — our timeout budget — is not the user's
@@ -157,7 +159,8 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   // "why not?", and the reason — our per-call timeout budget — is not the
   // user's problem to reason about.
   const models = feature ? allowedFor(allModels, feature) : allModels
-  const eligible = models.filter(m => (m.modes ?? []).includes(recipeMode))
+  const recipes: ModelMode[] = Array.isArray(recipeMode) ? recipeMode : [recipeMode]
+  const eligible = models.filter(m => recipes.some(r => (m.modes ?? []).includes(r)))
 
   // Count models per company so we can show the top companies as chips.
   // We show at most ~10 chips to keep the row tidy.
@@ -212,7 +215,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   // Models in this mode that DON'T support the current sub-mode. Shown
   // dimmed below the eligible list (same company/search filters), so
   // users can see the rest of the catalog exists and why it's unpickable.
-  const hiddenAll = models.filter(m => !(m.modes ?? []).includes(recipeMode))
+  const hiddenAll = models.filter(m => !recipes.some(r => (m.modes ?? []).includes(r)))
   const hiddenFiltered = [...hiddenAll.filter(m => {
     if (company && companyOf(m) !== company) return false
     if (q) {
@@ -329,7 +332,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
             doesn't read as a smaller catalog. */}
         {!loading && hiddenAll.length > 0 && (
           <div style={{ margin: '0 16px 10px', padding: '8px 12px', flexShrink: 0, background: 'rgba(214,59,50,0.05)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.5 }}>
-            Showing models that support <b style={{ color: 'var(--white)', fontWeight: 600 }}>{t('recipe.' + recipeMode)}</b>
+            Showing models that support <b style={{ color: 'var(--white)', fontWeight: 600 }}>{recipes.map(r => t('recipe.' + r)).join(' / ')}</b>
           </div>
         )}
         <div style={{ overflowY: 'auto', flex: 1 }}>

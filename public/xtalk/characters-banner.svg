@@ -1,0 +1,38 @@
+<svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="xcb" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2b2140"/>
+      <stop offset="55%" stop-color="#4a2d52"/>
+      <stop offset="100%" stop-color="#7a3b52"/>
+    </linearGradient>
+    <radialGradient id="xcg" cx="70%" cy="20%" r="60%">
+      <stop offset="0%" stop-color="#ffd9a0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ffd9a0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#xcb)"/>
+  <rect width="1200" height="400" fill="url(#xcg)"/>
+  <g fill="#fff" opacity="0.5">
+    <circle cx="140" cy="70" r="2"/><circle cx="320" cy="40" r="1.5"/>
+    <circle cx="540" cy="90" r="2"/><circle cx="960" cy="60" r="1.6"/>
+    <circle cx="1100" cy="130" r="2"/><circle cx="760" cy="36" r="1.4"/>
+  </g>
+  <!-- her bubble -->
+  <g>
+    <rect x="180" y="130" width="380" height="120" rx="26" fill="#ffffff" opacity="0.95"/>
+    <path d="M240 250 l-26 44 l62 -30 z" fill="#ffffff" opacity="0.95"/>
+    <circle cx="250" cy="190" r="26" fill="#e8887a"/>
+    <path d="M239 184 a8 8 0 0 1 11 0 a8 8 0 0 1 11 0 q1 10 -11 18 q-12 -8 -11 -18" fill="#fff"/>
+    <rect x="300" y="168" width="200" height="12" rx="6" fill="#d8cfd8"/>
+    <rect x="300" y="196" width="150" height="12" rx="6" fill="#e5dee5"/>
+  </g>
+  <!-- your bubble -->
+  <g>
+    <rect x="640" y="190" width="360" height="110" rx="26" fill="#e8453c" opacity="0.92"/>
+    <path d="M940 300 l24 40 l-58 -26 z" fill="#e8453c" opacity="0.92"/>
+    <rect x="676" y="222" width="190" height="12" rx="6" fill="#ffffff" opacity="0.85"/>
+    <rect x="676" y="250" width="240" height="12" rx="6" fill="#ffffff" opacity="0.6"/>
+  </g>
+  <!-- small floating heart between -->
+  <path d="M586 150 a12 12 0 0 1 17 0 a12 12 0 0 1 17 0 q2 15 -17 27 q-19 -12 -17 -27" fill="#ffb3c1" opacity="0.9"/>
+</svg>

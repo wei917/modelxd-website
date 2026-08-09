@@ -16,6 +16,7 @@
 import type { ComponentType } from 'react'
 import DiscussionRoom from './DiscussionRoom'
 import WerewolfLive from './WerewolfLive'
+import CharactersRoom from './CharactersRoom'
 
 export type Speaker = {
   id: string
@@ -43,6 +44,8 @@ export interface TemplateProps {
   /** A server-held session to reopen (from /xtalk/<id>). Werewolf only —
    *  discussion rooms live in client state and have nothing to resume. */
   resumeId?: string | null
+  /** Characters only: /xtalk?char=<id> opens this character's chat. */
+  charId?: string | null
 }
 
 export interface XTalkTemplate {
@@ -96,6 +99,22 @@ export const XTALK_TEMPLATES: XTalkTemplate[] = [
     maxPlayers: 8,
     hiddenInfo: false,
     component: DiscussionRoom,
+  },
+  {
+    id: 'characters',
+    nameKey:  'xt.tpl.characters.name',
+    tagKey:   'xt.tpl.characters.tag',
+    blurbKey: 'xt.tpl.characters.blurb',
+    stripKey: 'xt.tpl.characters.strip',
+    // Hand-drawn SVG (same convention as /xgame/gomoku-banner.svg) — the
+    // PNG pair can be regenerated in XCreate later like the others.
+    art:      '/xtalk/characters-banner.svg',
+    banner:   '/xtalk/characters-banner.svg',
+    titleKey: 'xt.tpl.characters.title',
+    minPlayers: 1,
+    maxPlayers: 1,
+    hiddenInfo: false,
+    component: CharactersRoom,
   },
   {
     id: 'werewolf',

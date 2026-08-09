@@ -85,6 +85,7 @@ const KIND_LABELS: Record<CreditTransaction['kind'], string> = {
 // reference_type. XCreate's reserve / charge / refund / chat all collapse to
 // one word so a generation and its follow-ups read as a single session.
 const REF_LABELS: Record<string, string> = {
+  xcharacter_chat: 'Character chat',
   xgame_gomoku: 'Gomoku game',
   xtalk_werewolf: 'Werewolf game',
   xtalk_turn: 'Discussion',

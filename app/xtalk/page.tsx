@@ -12,7 +12,11 @@ export const metadata: Metadata = {
   description: 'Ask one question and let several AI models talk it out, each reading everything said before it. You are in the room too.',
 }
 
-export default async function XTalkPage() {
+export default async function XTalkPage({ searchParams }: { searchParams: Promise<{ char?: string }> }) {
   if (!(await hasFeature('xtalk'))) notFound()
-  return <XTalkClient />
+  // ?char=<id> deep-links into a character's chat (nav history rows).
+  // Read server-side and passed as a prop — no useSearchParams/Suspense
+  // dance in the client, and a nav click re-renders the page cleanly.
+  const { char } = await searchParams
+  return <XTalkClient charId={typeof char === 'string' ? char : null} />
 }
