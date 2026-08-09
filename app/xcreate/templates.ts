@@ -245,6 +245,28 @@ export const XCREATE_TEMPLATES: Template[] = [
     ],
   },
   {
+    id:                'video-extend',
+    emoji:             '⏩',
+    popular:           true,
+    title:             'Extend a Video',
+    subtitle:          'Continue an existing clip — motion carries through',
+    mode:              'video',
+    slotMode:          'extend_video',
+    // Native continuation — the model reads the WHOLE input clip, so
+    // motion and identity carry into the continuation (unlike the
+    // last-frame trick). Two engines, priced 4.5x apart — the choice IS
+    // the product: Wan 2.7 `first_clip` at $0.10/s (input ≤10s, total
+    // ≤15s) vs Seedance 2.5 via Runway `mode:"extend"` at ~$0.45/s
+    // combined (≤30s in+out, output matches input length).
+    starterPrompt:     'Continue this video: {{the camera keeps pulling back to reveal the whole scene}}. Same subject, same lighting, same motion energy — one continuous take, no cuts.',
+    duration:          8,
+    recommendedModels: ['wan2.7-i2v', 'seedance2_5'],
+    previewBgColor:    '#4a2d52',
+    attachmentSlots: [
+      { label: 'YOUR VIDEO', hint: 'The clip to continue (MP4, 2–10s best)' },
+    ],
+  },
+  {
     id:                'video-outfit-swap',
     emoji:             '🧥',
     popular:           true,

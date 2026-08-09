@@ -473,7 +473,7 @@ export async function generateVideo(
   seconds: number = 5,
   attachments: Attachment[] = [],
   onProgress?: (pct: number) => void,
-  options?: { watermark?: boolean | null; aspect_ratio?: string | null },
+  options?: { watermark?: boolean | null; aspect_ratio?: string | null; mode?: string | null },
 ): Promise<VideoResult> {
   const TAG = `[alibaba/${model.model_name}]`
 
@@ -496,13 +496,25 @@ export async function generateVideo(
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
   const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
   const imageAtt  = imageAtts[0]
-  const isVideoEdit = /-video-edit$/i.test(model.model_name)
-  const isR2V     = !isVideoEdit && /-r2v$/i.test(model.model_name)
-  const isKf2v    = !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
-  const isI2V     = !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
+  // Extend (wan2.7 `first_clip` continuation) is keyed off the RECIPE, not
+  // the model name — it rides the same wan2.7-i2v model as image_to_video.
+  const isExtend  = options?.mode === 'extend_video'
+  const isVideoEdit = !isExtend && /-video-edit$/i.test(model.model_name)
+  const isR2V     = !isExtend && !isVideoEdit && /-r2v$/i.test(model.model_name)
+  const isKf2v    = !isExtend && !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
+  const isI2V     = !isExtend && !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 
   const input: any = { prompt }
-  if (isVideoEdit) {
+  if (isExtend) {
+    // Video continuation: the source clip goes in as `first_clip` (input
+    // 2-10s per the DashScope i2v reference); `duration` below is the
+    // TOTAL output including the input portion, capped at 15s.
+    const videoAtt = videoAtts[0]
+    if (!videoAtt) throw new Error('Extend a Video needs a video attachment (MP4, 2–10s).')
+    if (!videoAtt.url) throw new Error('Video attachment has no signed URL — cannot send to DashScope.')
+    input.media = [{ type: 'first_clip', url: videoAtt.url }]
+    console.log(`${TAG} extend: first_clip continuation`)
+  } else if (isVideoEdit) {
     // Video editing (happyhorse-1.0-video-edit): exactly 1 video +
     // 0–5 reference_image elements. "Change the sofa to the one in the
     // image" / clothes-swap style edits (CC, July 19). The video MUST be
@@ -555,6 +567,16 @@ export async function generateVideo(
   // ratio come from the input video (output capped at 15s by the API).
   const parameters: Record<string, unknown> = isVideoEdit
     ? { resolution }
+    : isExtend
+    ? {
+        resolution,
+        // TOTAL output length (input + continuation). We can't measure the
+        // input clip server-side, so always ask for the 15s maximum — a 5s
+        // clip gets a 10s continuation, an 8s clip gets 7s. Billing is by
+        // output seconds, so the cost is honest either way.
+        duration: 15,
+        prompt_extend: true,
+      }
     : {
         resolution,
         duration: seconds,
@@ -565,7 +587,7 @@ export async function generateVideo(
   // ratio is T2V-only on HappyHorse. The I2V variant doesn't accept it —
   // output aspect always matches the first frame. Skip the param for I2V
   // and video-edit.
-  if (!isI2V && !isVideoEdit && options?.aspect_ratio) parameters.ratio = options.aspect_ratio
+  if (!isI2V && !isVideoEdit && !isExtend && options?.aspect_ratio) parameters.ratio = options.aspect_ratio
 
   const body = {
     model: model.model_name,
@@ -670,4 +692,89 @@ export async function generateVideo(
     cost,
     usageMetadata:   usage,
   }
+}
+
+// ── speech (Qwen-TTS, sync HTTP) ───────────────────────────────────────────
+//
+// Stage 2 of character voice (owner, Aug 8). Two model families, one shape:
+//   qwen3-tts-flash            speaks the PRESET voices (Cherry, Momo, …)
+//   qwen3-tts-vd-2026-01-26    speaks voices minted by qwen-voice-design
+// Same endpoint as image/VL (multimodal-generation). Response carries
+// output.audio.url (WAV, 24h expiry) and usage.characters — verified against
+// the live API Aug 8. The URL arrives as http:// but OSS serves the same
+// signature over https, and a https page can't play mixed content, so we
+// rewrite the scheme before anyone sees it.
+
+export const QWEN_TTS_PRESET_MODEL = 'qwen3-tts-flash'
+export const QWEN_TTS_DESIGN_MODEL = 'qwen3-tts-vd-2026-01-26'
+const VOICE_DESIGN_ENDPOINT = '/api/v1/services/audio/tts/customization'
+
+// ~$0.13 per 10K characters (flash synthesis, intl). Not in ai_models —
+// voice isn't a competing surface, it's plumbing; one flat rate.
+const TTS_USD_PER_CHAR = 0.13 / 10_000
+export const VOICE_DESIGN_USD = 0.20   // per minted voice, flat (provider list price)
+
+const httpsUrl = (u: string) => u.replace(/^http:\/\//, 'https://')
+
+export async function synthesizeSpeech(
+  text: string,
+  voice: string,
+  opts?: { designed?: boolean; languageType?: string | null },
+): Promise<{ url: string; cost: number; characters: number }> {
+  const TAG = '[alibaba/qwen-tts]'
+  const body: any = {
+    model: opts?.designed ? QWEN_TTS_DESIGN_MODEL : QWEN_TTS_PRESET_MODEL,
+    input: { text, voice },
+  }
+  if (opts?.languageType) body.input.language_type = opts.languageType
+
+  const res = await fetch(BASE_URL + IMAGE_ENDPOINT, {
+    method: 'POST', headers: defaultHeaders(), body: JSON.stringify(body),
+  })
+  const d = await res.json().catch(() => null)
+  if (!res.ok) {
+    console.warn(`${TAG} tts failed: ${res.status} ${d?.message ?? ''}`)
+    throw new Error(d?.message ?? `DashScope TTS HTTP ${res.status}`)
+  }
+  const url = d?.output?.audio?.url
+  if (!url || typeof url !== 'string') throw new Error('DashScope TTS returned no audio')
+  const characters = (typeof d?.usage?.characters === 'number' && d.usage.characters > 0)
+    ? d.usage.characters : text.length
+  const cost = characters * TTS_USD_PER_CHAR
+  console.log(`${TAG} tts ok chars=${characters} cost=$${cost.toFixed(5)}`)
+  return { url: httpsUrl(url), cost, characters }
+}
+
+/** Mint a novel voice from a text description (qwen-voice-design). The
+ *  result is a voice id usable with QWEN_TTS_DESIGN_MODEL forever after.
+ *  Deliberately NOT the cloning API: no human sample ever goes in. */
+export async function designVoice(
+  description: string,
+  opts?: { name?: string; previewText?: string },
+): Promise<{ voice: string; previewUrl: string | null }> {
+  const TAG = '[alibaba/qwen-voice-design]'
+  const body: any = {
+    model: 'qwen-voice-design',
+    input: {
+      action: 'create',
+      target_model: QWEN_TTS_DESIGN_MODEL,
+      voice_prompt: description,
+    },
+  }
+  if (opts?.name) body.input.preferred_name = opts.name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 16) || undefined
+  if (opts?.previewText) body.input.preview_text = opts.previewText
+
+  const res = await fetch(BASE_URL + VOICE_DESIGN_ENDPOINT, {
+    method: 'POST', headers: defaultHeaders(), body: JSON.stringify(body),
+  })
+  const d = await res.json().catch(() => null)
+  if (!res.ok) {
+    console.warn(`${TAG} voice design failed: ${res.status} ${d?.message ?? ''}`)
+    throw new Error(d?.message ?? `DashScope voice design HTTP ${res.status}`)
+  }
+  const voice = d?.output?.voice ?? d?.output?.voice_id
+  if (!voice || typeof voice !== 'string') throw new Error('Voice design returned no voice id')
+  const previewUrl = d?.output?.audio?.url ?? d?.output?.preview_audio?.url ?? null
+  console.log(`${TAG} voice designed id=${voice}`)
+  return { voice, previewUrl: previewUrl ? httpsUrl(previewUrl) : null }
 }

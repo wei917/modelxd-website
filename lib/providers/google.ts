@@ -736,15 +736,32 @@ async function generateOmniVideo(
     if (onProgress) onProgress(15)
   }
 
+  // Omni's image_to_video takes EXACTLY one image — live 400, Aug 9:
+  // "Image-to-video does not support more than 1 image." But its
+  // reference_to_video takes several, and the docs' own idiom anchors a
+  // first frame among the references (owner's correction, Aug 9 — see
+  // ai.google.dev/gemini-api/docs/omni). So a chained scene arriving as
+  // [chain frame, ...product refs] UPGRADES to reference_to_video with
+  // every image kept, and the prompt pins image 1 as the opening state.
+  // Nothing is dropped.
+  let effTask = task
+  let effPrompt = prompt
+  if (task === 'image_to_video' && imageAtts.length > 1) {
+    console.warn(`${TAG} image_to_video takes 1 image; ${imageAtts.length} attached — upgrading to reference_to_video, all images kept`)
+    effTask = 'reference_to_video'
+    effPrompt = 'Open the video exactly on the state shown in the FIRST input image — it is the previous shot\'s final frame. Use the remaining input images as subject references whose appearance must be preserved.\n'
+      + prompt
+  }
+
   const input: any = (imageAtts.length === 0 && !isEdit) ? prompt : [
     ...(videoUri ? [{ type: 'video', uri: videoUri }] : []),
     ...imageAtts.map(a => ({ type: 'image', data: a.buffer.toString('base64'), mime_type: a.mediaType })),
-    { type: 'text', text: prompt },
+    { type: 'text', text: effPrompt },
   ]
 
   // Duration is a "Ns" string, clamped to the API's 3-10s window.
   const duration = `${Math.max(3, Math.min(10, Math.round(seconds || 8)))}s`
-  console.log(`${TAG} interactions.create task=${task} aspect=${aspectRatio} dur=${duration} images=${imageAtts.length} videos=${videoAtts.length}`)
+  console.log(`${TAG} interactions.create task=${effTask} aspect=${aspectRatio} dur=${duration} images=${imageAtts.length} videos=${videoAtts.length}`)
   if (onProgress) onProgress(5)
 
   const interaction: any = await withRetry(() => (ai() as any).interactions.create({
@@ -753,7 +770,7 @@ async function generateOmniVideo(
     // aspect_ratio lives at generation_config level (the API rejects it
     // inside video_config — verified July 19). Omit for the 16:9 default.
     generation_config: {
-      video_config: { task },
+      video_config: { task: effTask },
       ...(aspectRatio === '9:16' ? { aspect_ratio: '9:16' } : {}),
     },
     // Duration lives in response_format (verified live July 20: 3s-10s).

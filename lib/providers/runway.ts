@@ -1,12 +1,21 @@
 // lib/providers/runway.ts
 //
 // Runway dev API — video generation (gen4.5 text/image-to-video,
-// gen4_turbo image-to-video). Task-create + poll pattern:
+// gen4_turbo image-to-video, and hosted seedance2_5 video EXTENSION).
+// Task-create + poll pattern:
 //   POST https://api.dev.runwayml.com/v1/text_to_video   → { id }
 //   POST https://api.dev.runwayml.com/v1/image_to_video  → { id }
-//   GET  https://api.dev.runwayml.com/v1/tasks/{id}      → { status, output: [url] }
+//   POST https://api.dev.runwayml.com/v1/video_to_video  → { id }   (extend)
 // Docs: docs.dev.runwayml.com. Credits are $0.01 each; per-second rates
 // live in the DB row's model_pricing.per_video_second.
+//
+// EXTEND (verified against the Aug 7 2026 API changelog): body is
+// { model, mode: 'extend', promptVideo, promptText } — promptText is
+// REQUIRED, and `ratio`/`duration` are omitted because the output matches
+// the input clip's duration and orientation. Billing at 720p is 30
+// credits/s of output PLUS 15 credits/s of input; with output ≈ input
+// that's ~$0.45 per input second, which is the combined rate stored on
+// the seedance2_5 catalog row.
 //
 // Requires RUNWAYML_API_SECRET.
 
@@ -43,6 +52,25 @@ function ratioForSize(size: string, aspect?: string | null): string {
   return portrait ? '720:1280' : '1280:720'
 }
 
+/** Duration in seconds from an MP4's mvhd atom; null if unparseable.
+ *  Needed because extend-mode output length follows the INPUT clip, so
+ *  the requested `seconds` is not what we should bill. */
+function mp4DurationSeconds(buf: Buffer): number | null {
+  const i = buf.indexOf('mvhd')
+  if (i < 0 || i + 40 > buf.length) return null
+  const version = buf[i + 4]
+  try {
+    if (version === 1) {
+      const timescale = buf.readUInt32BE(i + 28)
+      const duration = Number(buf.readBigUInt64BE(i + 32))
+      return timescale > 0 ? duration / timescale : null
+    }
+    const timescale = buf.readUInt32BE(i + 16)
+    const duration = buf.readUInt32BE(i + 20)
+    return timescale > 0 ? duration / timescale : null
+  } catch { return null }
+}
+
 export async function generateVideo(
   model:       ModelInfo,
   prompt:      string,
@@ -54,21 +82,37 @@ export async function generateVideo(
 ): Promise<VideoResult> {
   const TAG = `[runway/${model.model_name}]`
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
   const ratio = ratioForSize(size, options?.aspect_ratio)
   // Runway durations are 5 or 10 seconds.
   const duration = seconds > 7 ? 10 : 5
 
-  const i2v = imageAtts.length > 0
-  const body: any = { model: model.model_name, ratio, duration }
-  if (i2v) {
-    const a = imageAtts[0]
-    body.promptImage = a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
-    if (prompt) body.promptText = prompt
+  const extend = options?.mode === 'extend_video'
+  const i2v = !extend && imageAtts.length > 0
+  let body: any
+  let endpoint: string
+  if (extend) {
+    const v = videoAtts[0]
+    if (!v) throw new Error('Extend a Video needs a video attachment')
+    if (!prompt) throw new Error('Extend a Video needs a prompt describing what happens next')
+    // No ratio/duration: extend output matches the input clip.
+    body = {
+      model: model.model_name, mode: 'extend', promptText: prompt,
+      promptVideo: v.url ?? `data:${v.mediaType};base64,${v.buffer.toString('base64')}`,
+    }
+    endpoint = `${BASE}/video_to_video`
   } else {
-    body.promptText = prompt
+    body = { model: model.model_name, ratio, duration }
+    if (i2v) {
+      const a = imageAtts[0]
+      body.promptImage = a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
+      if (prompt) body.promptText = prompt
+    } else {
+      body.promptText = prompt
+    }
+    endpoint = i2v ? `${BASE}/image_to_video` : `${BASE}/text_to_video`
   }
-  const endpoint = i2v ? `${BASE}/image_to_video` : `${BASE}/text_to_video`
-  console.log(`${TAG} create ${i2v ? 'i2v' : 't2v'} ratio=${ratio} duration=${duration}s`)
+  console.log(`${TAG} create ${extend ? 'extend' : i2v ? 'i2v' : 't2v'}${extend ? '' : ` ratio=${ratio} duration=${duration}s`}`)
   if (onProgress) onProgress(3)
 
   const res = await fetch(endpoint, { method: 'POST', headers: headers(), body: JSON.stringify(body) })
@@ -102,9 +146,12 @@ export async function generateVideo(
   if (onProgress) onProgress(95)
 
   // Cost: seconds × per-second rate (resolution-keyed with a default).
+  // Extend bills by the MEASURED output length (which tracks the input
+  // clip) — the row's rate is the combined input+output per-second price.
   const per = (model.model_pricing?.per_video_second ?? {}) as Record<string, number>
   const rate = per['720p'] ?? per.default ?? Object.values(per)[0] ?? 0
-  const cost = duration * rate
-  console.log(`${TAG} done bytes=${buffer.length} cost=$${cost.toFixed(3)}`)
-  return { buffer, mediaType: 'video/mp4', cost, durationSeconds: duration }
+  const billedSeconds = extend ? (mp4DurationSeconds(buffer) ?? duration) : duration
+  const cost = billedSeconds * rate
+  console.log(`${TAG} done bytes=${buffer.length} billed=${billedSeconds.toFixed(1)}s cost=$${cost.toFixed(3)}`)
+  return { buffer, mediaType: 'video/mp4', cost, durationSeconds: billedSeconds }
 }
