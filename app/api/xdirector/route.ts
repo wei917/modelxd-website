@@ -65,6 +65,10 @@ export type StoryScene = {
   model_name?: string
   recipe?: string
   estimate?: number
+  /** Card-level reference uploads (owner, Aug 8). Board-owned: the user
+   *  puts them there, the director only ever READS them (as filenames in
+   *  the storyboard context) — generation for that scene consumes them. */
+  refs?: Array<{ storagePath: string; bucket: string; mediaType: string; fileName: string; fileSize: number }>
 }
 function cleanScenes(raw: unknown): StoryScene[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null
@@ -84,6 +88,15 @@ function cleanScenes(raw: unknown): StoryScene[] | null {
       ...(typeof (sc as any).model_name === 'string' ? { model_name: s((sc as any).model_name, 80) }  : {}),
       ...(typeof (sc as any).recipe     === 'string' ? { recipe:     s((sc as any).recipe, 48) }      : {}),
       ...(Number.isFinite(Number((sc as any).estimate)) ? { estimate: Number((sc as any).estimate) }  : {}),
+      ...(Array.isArray((sc as any).refs) && (sc as any).refs.length > 0 ? {
+        refs: (sc as any).refs.slice(0, 4)
+          .map((r: any) => ({
+            storagePath: s(r?.storagePath, 300), bucket: s(r?.bucket, 64),
+            mediaType: s(r?.mediaType, 64), fileName: s(r?.fileName, 120),
+            fileSize: Number(r?.fileSize) || 0,
+          }))
+          .filter((r: any) => r.storagePath && r.bucket),
+      } : {}),
     })
   }
   return out.length > 0 ? out : null
@@ -130,6 +143,7 @@ const TOOLS: any[] = [
         use_attachments: { type: 'boolean', description: 'true to pass the user\'s attached photos as reference inputs' },
         medium:          { type: 'string', enum: ['image', 'video'], description: 'image for a still, video for motion. Must match the board you took model_id from.' },
         aspect_ratio:    { type: 'string', description: 'e.g. "9:16" for Threads/Reels, "1:1", "16:9". Always set this for social posts.' },
+        resolution:      { type: 'string', description: 'video resolution key from that model\'s per_video_second pricing, e.g. "720p" or "1080p" — pass it when the user configured one; omit for the default' },
         scene_id:        { type: 'string', description: 'when this generation IS one of the storyboard scenes, its scene id (e.g. "s2") — the result then fills that scene card on the board' },
         chain_from_scene: { type: 'string', description: 'scene id whose FINISHED clip this scene continues from. Its final frame is extracted and fed as this generation\'s starting image, so the new scene opens exactly where that one ended. Requires a recipe that consumes a start image (e.g. image_to_video). The source scene must already be done.' },
       },
@@ -188,7 +202,7 @@ async function execListModels(medium: 'image' | 'video' = 'video'): Promise<stri
   const svc = serviceClient()
   const [{ data, error }, { data: ratings }] = await Promise.all([
     svc.from('ai_models')
-      .select('id, provider, model_name, display_name, modes, model_pricing, input_config')
+      .select('id, provider, model_name, display_name, modes, model_pricing, input_config, output_modalities')
       .eq('enabled', true),
     // THE LEADERBOARD (CC, July 28). Leaving this out was not a cosmetic
     // gap: without scores the agent recommended Grok Imagine Video as the
@@ -203,15 +217,13 @@ async function execListModels(medium: 'image' | 'video' = 'video'): Promise<stri
   ])
   if (error) return JSON.stringify({ error: error.message })
   const byId = new Map((ratings ?? []).map((r: any) => [r.model_id, r]))
-  // An image model is one with a non-video generating mode. Matching on
-  // "image" alone missed image_to_video and, worse, matched nothing for
-  // models whose still mode is just "text_to_image".
-  const vids = (data ?? []).filter((m: any) => {
-    const modes: string[] = m.modes ?? []
-    return medium === 'video'
-      ? modes.some(x => x.includes('video'))
-      : modes.some(x => x.includes('image') && !x.includes('to_video'))
-  })
+  // output_modalities is THE rule (CLAUDE.md: the table is the single
+  // source of truth). The old substring-on-modes heuristic silently hid
+  // every model whose only recipes lack the word "video" — the whole
+  // reference_frames family — until the director declared HappyHorse 1.1
+  // Reference to Video "not a real model" to the owner's face (Aug 9).
+  const vids = (data ?? []).filter((m: any) =>
+    ((m.output_modalities ?? []) as string[]).includes(medium))
   // Compact per-model summary — the agent needs prices, modes and scores,
   // not the whole row. per_video_second keys are resolutions ('720p'...).
   const out = vids.map((m: any) => {
@@ -410,11 +422,19 @@ export async function POST(req: Request) {
       content: [{
         type: 'text',
         text: 'CURRENT STORYBOARD (live board state; the user may have edited it and their text is the truth; reuse these scene ids when revising):\n'
-          + JSON.stringify(clientBoard),
+          // refs shrink to filenames here: the director needs to KNOW a
+          // scene has its own references, never their storage paths.
+          + JSON.stringify(clientBoard.map(sc => sc.refs && sc.refs.length > 0
+              ? { ...sc, refs: sc.refs.map(r => r.fileName || r.mediaType) }
+              : sc)),
       }],
     })
   }
   let storyboardOut: StoryScene[] | null = null
+
+  // Step-by-step turn log (owner ask, Aug 9): every hop, tool and hand-off
+  // prints to the dev terminal so "nothing happened" is never unexplained.
+  console.log(`${LOG} turn: ${messages.length} msgs in, board=${clientBoard?.length ?? 0} scenes, skill=${activeSkill ?? 'none'}`)
 
   try {
     for (let hop = 0; hop < 5; hop++) {
@@ -422,8 +442,10 @@ export async function POST(req: Request) {
       const assistantMsg = { role: 'assistant', content: resp.content }
       convo.push(assistantMsg)
       newMessages.push(assistantMsg)
+      console.log(`${LOG} hop ${hop}: stop=${resp.stop_reason} tools=[${(resp.content ?? []).filter((b: any) => b.type === 'tool_use').map((b: any) => b.name).join(',') || '-'}]`)
 
       if (resp.stop_reason !== 'tool_use') {
+        console.log(`${LOG} → done (text only)`)
         return Response.json({ newMessages, action: null, storyboard: storyboardOut })
       }
 
@@ -499,6 +521,7 @@ export async function POST(req: Request) {
       }
 
       if (action) {
+        console.log(`${LOG} → action ${action.kind}: model=${action.input?.model_id ?? '-'} scene=${action.input?.scene_id ?? '-'} recipe=${action.input?.recipe ?? '-'} res=${action.input?.resolution ?? '-'}`)
         // Any list_models results resolved in the same assistant turn ride
         // along; the client must include them (in order) in the tool_result
         // message it sends back, before the generation's own result.

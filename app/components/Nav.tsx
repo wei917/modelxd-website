@@ -144,6 +144,21 @@ export default function Nav() {
     try { setRecentCollapsed(localStorage.getItem('xcreate.history.collapsed') === '1') } catch { /* private mode */ }
   }, [])
 
+  // Whole-rail collapse (owner ask, Aug 9): icons only at 64px. Desktop
+  // only — mobile already collapses into the top bar + hamburger. Read
+  // after mount like isDev above: SSR must render the expanded rail so
+  // markup matches on every host, so the first paint is expanded.
+  const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => {
+    try { setCollapsed(localStorage.getItem('nav.collapsed') === '1') } catch { /* private mode */ }
+  }, [])
+  const toggleCollapsed = () => {
+    setCollapsed(c => {
+      try { localStorage.setItem('nav.collapsed', c ? '0' : '1') } catch { /* private mode */ }
+      return !c
+    })
+  }
+
   // Fetch the last 10 runs whenever the user lands on /xcreate (also
   // refreshes after a generation → the page URL gains ?id= → pathname
   // stays but a re-nav elsewhere and back re-fetches; good enough v1).
@@ -151,6 +166,20 @@ export default function Nav() {
   const onXtalk   = pathname?.startsWith('/xtalk') ?? false
   // Werewolf history follows the games to /xgame (CC, Aug 6).
   const onXgame   = pathname?.startsWith('/xgame') ?? false
+  // Your characters, most-recently-talked first (owner ask, Aug 8) —
+  // owner-read RLS, deep link via /xtalk?char=<id>.
+  const [recentChars, setRecentChars] = useState<Array<{ id: string; name: string; avatar_path: string | null; last_chat_at: string | null }>>([])
+  useEffect(() => {
+    if (!onXtalk || !user) { setRecentChars([]); return }
+    let cancelled = false
+    supabase.from('x_characters')
+      .select('id, name, avatar_path, last_chat_at')
+      .eq('user_id', user.id)
+      .order('last_chat_at', { ascending: false, nullsFirst: false }).limit(8)
+      .then(res => { if (!cancelled && !res.error) setRecentChars((res.data ?? []) as any[]) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onXtalk, user?.id, pathname])
   // Discussion rooms persist since Aug 6 — same owner-read listing as the
   // games, filtered to the discussion tenant.
   const [recentTalks, setRecentTalks] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([])
@@ -299,7 +328,16 @@ export default function Nav() {
   }
 
   return (
-    <nav className="nav">
+    <nav className={collapsed ? 'nav nav--collapsed' : 'nav'}>
+      {/* Collapse toggle — a pill straddling the rail's right border.
+          Desktop only (hidden ≤760px where the rail is a top bar). */}
+      <button
+        type="button"
+        className="nav-collapse-btn"
+        onClick={toggleCollapsed}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+      >{collapsed ? '»' : '«'}</button>
       {/* The "logo" is the whole lockup — mark + wordmark. The Beta sticker
           hangs off ITS bottom-right corner, overlapping the text slightly,
           and the official-site link tucks in right beneath the sticker so
@@ -319,7 +357,7 @@ export default function Nav() {
         )}
       </Link>
       {isDev && (
-        <a href="https://www.modelxd.com" style={{
+        <a href="https://www.modelxd.com" className="nav-beta-exit" style={{
           display: 'inline-block', margin: '-13px 2px 0 auto', alignSelf: 'flex-end',
           fontSize: 10.5, fontWeight: 700, color: 'var(--red)', textDecoration: 'none',
           fontFamily: 'var(--font-mono), monospace', letterSpacing: '.04em',
@@ -335,8 +373,9 @@ export default function Nav() {
             href={href}
             className={pathname === href ? 'active' : ''}
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
+            title={collapsed ? t(i18n) : undefined}
           >
-            <NavIcon name={icon} />{t(i18n)}
+            <NavIcon name={icon} /><span className="nav-label">{t(i18n)}</span>
           </Link>
         ))}
       </div>
@@ -452,6 +491,33 @@ export default function Nav() {
               )}
             </div>
             )
+          ))}
+        </div>
+      )}
+
+      {/* Your characters — one row each, straight into the chat. */}
+      {onXtalk && recentChars.length > 0 && (
+        <div className="nav-history">
+          <div className="nav-history-head" style={{ cursor: 'default' }}>
+            <span className="nav-history-cap">{t('xt.tpl.characters.name')}</span>
+          </div>
+          {recentChars.map(ch => (
+            <div key={ch.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link
+                href={`/xtalk?char=${ch.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+                title={ch.name}
+              >
+                {ch.avatar_path ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${ch.avatar_path}`}
+                    alt="" style={{ width: 16, height: 16, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                ) : (
+                  <span aria-hidden style={{ fontSize: 11, flexShrink: 0 }}>👤</span>
+                )}
+                <span className="nav-history-text">{ch.name}</span>
+              </Link>
+            </div>
           ))}
         </div>
       )}
@@ -611,7 +677,7 @@ export default function Nav() {
             className={pathname === href ? 'active' : ''}
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
           >
-            <NavIcon name={icon} />{t(i18n)}
+            <NavIcon name={icon} /><span className="nav-label">{t(i18n)}</span>
           </Link>
         ))}
         <div className="nav-foot" style={{ marginTop: 8 }}>

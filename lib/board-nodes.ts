@@ -41,7 +41,7 @@ export function useBoardNodes(boardId: string | null) {
       try {
         const sb = createSupabaseBrowser()
         const { data: rows, error } = await sb.from('xcreates')
-          .select('id, slots, created_at, parent_id, parent_ids, board_id, node_kind')
+          .select('id, slots, created_at, parent_id, parent_ids, board_id, node_kind, prompt')
           .eq('board_id', boardId).is('deleted_at', null)
           .order('created_at', { ascending: true })
         if (cancelled) return
@@ -73,6 +73,12 @@ export function useBoardNodes(boardId: string | null) {
               kind: (r.node_kind ?? null) as any,
               label: sl?.name ?? sl?.model_name ?? undefined,
               cost: Number(sl?.cost ?? 0) || undefined,
+              prompt: typeof r.prompt === 'string' ? r.prompt : undefined,
+              createdAt: r.created_at ?? undefined,
+              // A failed slot must SAY so — without these the node rendered
+              // as "expired", which reads as our storage rotting rather
+              // than the model erroring (owner confusion, Aug 9).
+              ...(sl?.error ? { status: 'error' as const, error: String(sl.error) } : {}),
             })
           }
         }
@@ -108,14 +114,53 @@ export function useBoardNodes(boardId: string | null) {
     }
     const inputNodes: CanvasNode[] = []
     const inputIdsByRow: Record<string, string[]> = {}
-    const seen = new Set<string>()
+    // Chain frames are DERIVATION, not reference (owner correction, Aug 9):
+    // "frame-of-s2.jpg" is the previous scene's closing image, so it keeps
+    // its own node and its own wire — folding it into the reference stack
+    // hid exactly the continuity the chain exists to show. Detected by the
+    // names the chat gives them at commit time.
+    const isChainFrame = (name: string) => /^(chain-frame|frame-of-)/.test(name || '')
+
+    // All distinct TRUE reference uploads on this board, first-seen order.
+    const uniq = new Map<string, InputAttachment>()
+    for (const atts of Object.values(inputs)) {
+      for (const a of atts) {
+        if (!isChainFrame(a.fileName) && !uniq.has(a.storagePath)) uniq.set(a.storagePath, a)
+      }
+    }
+    const grouped = uniq.size > 1
+    const groupId = 'refs::group'
+    if (grouped) {
+      // Several references collapse into ONE stacked block (owner, Aug 9) —
+      // a board with five refs was more wires than picture. Click opens the
+      // gallery; any generation that consumed ANY of them wires to the stack.
+      const all = [...uniq.values()]
+      inputNodes.push({
+        id: groupId, thumb: all[0]?.url ?? null, isVideo: false,
+        parentId: null, parentIds: [],
+        label: `${all.length} references`, kind: 'input',
+        stack: all.map(a => ({
+          url: a.url ?? null, fileName: a.fileName, mediaType: a.mediaType,
+        })),
+      })
+    }
     for (const [rowId, atts] of Object.entries(inputs)) {
       inputIdsByRow[rowId] = []
       for (const a of atts) {
+        // Chain frames never become nodes at all (owner, Aug 9: "where is
+        // this image from? why two?"). They are transport — the previous
+        // scene's last frame riding to the next generation — and the
+        // scene→scene row edge already draws that derivation directly.
+        // A block for the carrier file is noise with a mystery name.
+        if (isChainFrame(a.fileName)) continue
+        if (grouped) {
+          // one wire to the stack per row, however many refs it consumed
+          if (!inputIdsByRow[rowId].includes(groupId)) inputIdsByRow[rowId].push(groupId)
+          continue
+        }
         const id = `att::${a.storagePath}`
         inputIdsByRow[rowId].push(id)
-        if (seen.has(id)) continue
-        seen.add(id)
+        if (inputNodes.some(n => n.id === id)) continue
         inputNodes.push({
           id, thumb: a.url ?? null, isVideo: (a.mediaType || '').startsWith('video/'),
           parentId: null, parentIds: [], label: a.fileName,
@@ -128,7 +173,16 @@ export function useBoardNodes(boardId: string | null) {
         ...((n.parentRowIds ?? []) as string[]).map((p: string) => primary[p]).filter(Boolean),
         ...(inputIdsByRow[n.rowId] ?? []),
       ]
-      return { ...n, thumb: outUrls[n.id] ?? n.thumb, parentId: parents[0] ?? null, parentIds: parents }
+      // The ⓘ panel lists the EXACT files this run consumed (owner, Aug 9)
+      // — chain frames included: they are hidden from the board as nodes,
+      // but "what generated this" must name them.
+      const sources = (inputs[n.rowId] ?? []).map(a => ({
+        url: a.url ?? null, fileName: a.fileName, mediaType: a.mediaType,
+      }))
+      return {
+        ...n, thumb: outUrls[n.id] ?? n.thumb, parentId: parents[0] ?? null, parentIds: parents,
+        ...(sources.length > 0 ? { sources } : {}),
+      }
     })
     return [...inputNodes, ...outputNodes]
   }, [chain, inputs, outUrls])

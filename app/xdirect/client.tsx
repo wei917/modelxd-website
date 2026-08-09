@@ -78,15 +78,36 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   useEffect(() => {
     if (storyboard.length === 0 || nodes.length === 0) return
     let changed = false
+    const claimed = new Set(storyboard.map(s => s.row_id).filter(Boolean))
     const next = storyboard.map(s => {
-      if (s.status !== 'done' || !s.row_id) return s
-      const n: any = nodes.find((n: any) => n.rowId === s.row_id && n.thumb)
-      if (n?.thumb && n.thumb !== s.url) { changed = true; return { ...s, url: n.thumb } }
+      if (s.status === 'done' && s.row_id) {
+        const n: any = nodes.find((n: any) => n.rowId === s.row_id && n.thumb)
+        if (n?.thumb && n.thumb !== s.url) { changed = true; return { ...s, url: n.thumb } }
+        return s
+      }
+      // Heal a stuck card (owner board, Aug 9: "it gets stuck, no video
+      // showing up"). 'generating' cannot survive a reload — the poll dies
+      // with the page — but the card only learns its row id at completion,
+      // so it could never find the output that DID finish. While the chat
+      // is idle a generating card is stale by definition: claim the newest
+      // unclaimed finished video row (that run is this card's output), or
+      // return to draft so ▶ works again.
+      if (s.status === 'generating' && !chatBusy) {
+        changed = true
+        const cand: any = nodes
+          .filter((n: any) => n.rowId && !claimed.has(n.rowId) && n.thumb && n.isVideo)
+          .sort((a: any, b: any) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+        if (cand) {
+          claimed.add(cand.rowId)
+          return { ...s, status: 'done' as const, url: cand.thumb, row_id: cand.rowId, ...(typeof cand.cost === 'number' ? { cost: cand.cost } : {}) }
+        }
+        return { ...s, status: 'draft' as const }
+      }
       return s
     })
     if (changed) setStoryboard(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes])
+  }, [nodes, chatBusy])
   const onBusy = useCallback((b: boolean) => setChatBusy(b), [])
 
   return (
@@ -106,6 +127,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
               onStoryboard={onStoryboard}
               runnerRef={runnerRef}
               onBusy={onBusy}
+              boardNodes={nodes}
             />
           </div>
 
@@ -126,18 +148,49 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
               onPreview={(url, isVideo) => setHero({ url, isVideo })}
             />
             {nodes.length > 0 ? (
+              // The stage flows on the page now (owner, Aug 9), so the
+              // canvas owns its height: one viewport's worth, whatever the
+              // strip above it takes — the page just gets taller.
+              <div style={{ height: 'calc(100vh - 140px)', minHeight: 500, display: 'flex', flexDirection: 'column' }}>
+              {/* The stage's two lanes carry their names (owner, Aug 9):
+                  XStoryboard above, XCanvas below — same red eyebrow. */}
+              <div style={{ padding: '10px 2px 7px' }}>
+                <span style={{
+                  fontSize: 9, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.09em',
+                  textTransform: 'uppercase', color: 'var(--red)', fontWeight: 700,
+                }}>{t('xd.canvas.title')}</span>
+              </div>
               <WorkflowCanvas
                 nodes={nodes}
                 selectedIds={sel}
-                height={storyboard.length > 0 ? 430 : 640}
+                height="calc(100% - 50px)"
+                busy={chatBusy}
                 onSelect={(n: CanvasNode, additive: boolean) => {
+                  // Click only FOCUSES (owner, Aug 9) — playing is the ▶ on
+                  // the card or in the ⓘ panel, never a side effect.
                   setSel(prev => additive
                     ? (prev.includes(n.id) ? prev.filter(x => x !== n.id) : [...prev, n.id])
                     : [n.id])
-                  if (!additive && n.thumb) setHero({ url: n.thumb, isVideo: n.isVideo })
                 }}
                 onClearSelection={() => setSel([])}
+                onPlay={(n: CanvasNode) => { if (n.thumb) setHero({ url: n.thumb, isVideo: n.isVideo }) }}
+                nodeOrigin={(n: CanvasNode) => {
+                  if (!n.rowId) return null
+                  let sc = 0, cut = 0
+                  for (const s of storyboard) {
+                    if (s.continues && sc > 0) cut += 1
+                    else { sc += 1; cut = 1 }
+                    if (s.row_id === n.rowId) return `S${sc}·C${cut} · ${s.title}`
+                  }
+                  return null
+                }}
+                sceneOf={(n: CanvasNode) => (n.rowId && storyboard.find(s => s.row_id === n.rowId)) || null}
+                onRerun={(n, m, o) => {
+                  if (!runnerRef.current) { console.warn('[xdirect] rerun: runner not ready'); return }
+                  runnerRef.current.rerunNode(n as any, m, o)
+                }}
               />
+              </div>
             ) : storyboard.length === 0 ? (
               <div className="xdirect-empty">
                 <div style={{ fontSize: 26, marginBottom: 10 }} aria-hidden>⬚</div>

@@ -13,8 +13,24 @@
 // spend still goes through the one billing pipeline and the agent stays in
 // the loop on what happened.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
+import ModelPickerDialog from './ModelPickerDialog'
+import { pendingAttachment, commitAttachments } from './AttachmentButton'
+
+/** A committed reference on a scene card (owner ask, Aug 8): serializable
+ *  descriptor only — the storyboard jsonb persists it, and generation for
+ *  THAT scene uses these files instead of the conversation's attachments.
+ *  previewUrl is a session-local object URL; dead after reload (chip shows
+ *  the filename instead). */
+export type SceneRef = {
+  storagePath: string
+  bucket: string
+  mediaType: string
+  fileName: string
+  fileSize: number
+  previewUrl?: string
+}
 
 export type Scene = {
   id: string
@@ -29,12 +45,15 @@ export type Scene = {
   model_name?: string
   recipe?: string
   estimate?: number
+  refs?: SceneRef[]
   status?: 'draft' | 'generating' | 'done' | 'error'
   row_id?: string
   url?: string
   cost?: number
   error?: string
 }
+
+const MAX_SCENE_REFS = 4
 
 const card: React.CSSProperties = {
   width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8,
@@ -68,11 +87,56 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   // Shot prompts are long; cards stay scannable with them folded.
   const [openShot, setOpenShot] = useState<Record<string, boolean>>({})
+  // Per-scene reference upload + per-scene model picker (owner ask, Aug 8).
+  const refInputRef = useRef<HTMLInputElement>(null)
+  const refSceneId = useRef<string | null>(null)
+  const [uploadingRef, setUploadingRef] = useState<string | null>(null)
+  const [pickerFor, setPickerFor] = useState<string | null>(null)
 
   if (scenes.length === 0) return null
 
   const patch = (id: string, p: Partial<Scene>) =>
     onChange(scenes.map(s => s.id === id ? { ...s, ...p } : s))
+
+  const addRef = async (file: File) => {
+    const id = refSceneId.current
+    refSceneId.current = null
+    if (!id) return
+    setUploadingRef(id)
+    try {
+      const pending = pendingAttachment(file, 'xcreate')
+      const [committed] = await commitAttachments([pending])
+      if (!committed?.storagePath) return
+      const sc = scenes.find(s => s.id === id)
+      const refs: SceneRef[] = [...(sc?.refs ?? []), {
+        storagePath: committed.storagePath, bucket: committed.bucket,
+        mediaType: committed.mediaType, fileName: committed.fileName,
+        fileSize: committed.fileSize, previewUrl: pending.previewUrl,
+      }].slice(0, MAX_SCENE_REFS)
+      // First reference flips the scene to a reference-consuming recipe.
+      // The old model was picked for text-only, so it resets to '—' and the
+      // picker (now filtered to image_to_video models) chooses honestly.
+      const first = (sc?.refs ?? []).length === 0
+      patch(id, {
+        refs,
+        ...(first && (!sc?.recipe || sc.recipe === 'text_to_video')
+          ? { recipe: 'image_to_video', model_id: undefined, model_name: undefined, estimate: undefined }
+          : {}),
+      })
+    } catch { /* failed upload leaves the card unchanged */ }
+    finally { setUploadingRef(null) }
+  }
+
+  const removeRef = (id: string, storagePath: string) => {
+    const sc = scenes.find(s => s.id === id)
+    const rest = (sc?.refs ?? []).filter(r => r.storagePath !== storagePath)
+    patch(id, {
+      refs: rest,
+      // Last reference gone: an image_to_video recipe has no input any
+      // more — fall back to text_to_video (i2v models speak t2v too).
+      ...(rest.length === 0 && sc?.recipe === 'image_to_video' ? { recipe: 'text_to_video' } : {}),
+    })
+  }
   const move = (idx: number, dir: -1 | 1) => {
     const j = idx + dir
     if (j < 0 || j >= scenes.length) return
@@ -186,6 +250,35 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               )}
             </div>
 
+            {/* References — this scene's own visual anchors (Aug 8). */}
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+              {(s.refs ?? []).map(r => (
+                <span key={r.storagePath} title={r.fileName} style={{ position: 'relative', display: 'inline-flex' }}>
+                  {r.previewUrl && r.mediaType.startsWith('image/') ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.previewUrl} alt="" style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                  ) : (
+                    <span style={{ width: 34, height: 34, borderRadius: 6, border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: 'var(--surface2)' }}>
+                      {r.mediaType.startsWith('video/') ? '🎞' : '🖼'}
+                    </span>
+                  )}
+                  <button onClick={() => removeRef(s.id, r.storagePath)} aria-label="remove reference"
+                    style={{ position: 'absolute', top: -5, right: -5, width: 15, height: 15, borderRadius: 999, border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 8, cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
+                </span>
+              ))}
+              {(s.refs ?? []).length < MAX_SCENE_REFS && (
+                <button
+                  onClick={() => { refSceneId.current = s.id; refInputRef.current?.click() }}
+                  disabled={uploadingRef === s.id}
+                  title={t('xd.sb.addref')} aria-label={t('xd.sb.addref')}
+                  style={{ width: 34, height: 34, borderRadius: 6, border: '1px dashed var(--border2)', background: 'none', color: 'var(--muted)', fontSize: 13, cursor: 'pointer' }}
+                >{uploadingRef === s.id ? '…' : '📎'}</button>
+              )}
+              {(s.refs ?? []).length > 0 && (
+                <span style={{ ...label, color: 'var(--muted2)' }}>{s.recipe ?? 'image_to_video'}</span>
+              )}
+            </div>
+
             {/* Footer: duration · model · price · generate */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 'auto' }}>
               <input
@@ -194,9 +287,18 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                 style={{ ...area, border: '1px solid var(--border)', width: 44, textAlign: 'center', padding: '2px 2px', fontSize: 11.5, flexShrink: 0 }}
               />
               <span style={{ ...label, flexShrink: 0 }}>s</span>
-              <span style={{ fontSize: 10.5, color: 'var(--muted2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={s.model_name ?? ''}>
-                {s.model_name ?? '—'}
-              </span>
+              <button
+                onClick={() => setPickerFor(s.id)}
+                title={s.model_name ?? t('xd.sb.pickmodel')}
+                style={{
+                  fontSize: 10.5, color: s.model_name ? 'var(--muted2)' : 'var(--red)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                  border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
+                  textDecoration: 'underline dotted', textUnderlineOffset: 3, padding: 0,
+                }}
+              >
+                {s.model_name ?? `☰ ${t('xd.sb.pickmodel')}`}
+              </button>
               {s.status === 'generating' ? (
                 <span className="nav-history-spin" aria-label="generating" style={{ flexShrink: 0 }} />
               ) : s.status === 'done' ? (
@@ -232,6 +334,60 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
           <span>{t('xd.sb.add')}</span>
         </button>
       </div>
+
+      {/* One shared file input serves every card's 📎. */}
+      <input
+        ref={refInputRef} type="file" style={{ display: 'none' }}
+        accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm"
+        onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void addRef(f) }}
+      />
+
+      {/* Per-scene model picker: refs present → only models that can eat
+          them; none → text_to_video models. Same dialog as everywhere. */}
+      {pickerFor && (() => {
+        const sc = scenes.find(s => s.id === pickerFor)
+        if (!sc) return null
+        // Any scene that consumes images — card refs OR a chained cut —
+        // offers BOTH families (owner override, Aug 9: excluding reference
+        // models from 🔗 scenes read as a bug). The nuance lives in the
+        // recipe resolution below: a cut PREFERS image_to_video (locks the
+        // opening frame), a refs scene PREFERS reference recipes (keeps
+        // the subject); picking a model that only speaks the other family
+        // is allowed — the user's call outranks the doctrine.
+        const hasRefs = (sc.refs ?? []).length > 0
+        const recipeMode: any = (sc.continues || hasRefs)
+          ? ['image_to_video', 'reference_frames']
+          : 'text_to_video'
+        return (
+          <ModelPickerDialog
+            mode="video" recipeMode={recipeMode as any} slotIds={[]}
+            onClose={() => setPickerFor(null)}
+            onSelect={(m: any) => {
+              // Cheapest listed per-second rate — same estimate rule the
+              // director itself uses.
+              const ps = m.model_pricing?.per_video_second
+              const perSec = ps && typeof ps === 'object'
+                ? Math.min(...Object.values(ps).map(Number).filter((n: any) => Number.isFinite(n)))
+                : null
+              // The union resolves to whatever the picked model speaks:
+              // a cut prefers image_to_video (locks the opening frame), a
+              // refs scene prefers reference recipes (keeps the subject) —
+              // and either falls back to what the model actually supports.
+              const modes: string[] = m.modes ?? []
+              const recipe = Array.isArray(recipeMode)
+                ? (sc.continues
+                  ? (modes.includes('image_to_video') ? 'image_to_video' : 'reference_frames')
+                  : (modes.includes('reference_frames') ? 'reference_frames' : 'image_to_video'))
+                : recipeMode
+              patch(sc.id, {
+                model_id: m.id, model_name: m.display_name, recipe,
+                ...(Number.isFinite(perSec as number) ? { estimate: (perSec as number) * (sc.duration_s || 6) } : {}),
+              })
+              setPickerFor(null)
+            }}
+          />
+        )
+      })()}
     </div>
   )
 }

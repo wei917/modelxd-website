@@ -250,6 +250,38 @@ body {
 }
 .nav-links a:hover  { color: var(--white); background: rgba(214,59,50,0.06); }
 .nav-links a.active { color: var(--red);   background: var(--red-dim); }
+
+/* ── Rail collapse (owner, Aug 9): 64px, icons only ──────────────────────
+   Desktop-only — ≤760px the rail is already a top bar, so everything here
+   lives behind a min-width query and the toggle hides on mobile. */
+.nav-collapse-btn {
+  position: absolute; top: 30px; right: -13px; z-index: 10;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #ffffff; border: 1px solid var(--border2); color: var(--muted2);
+  font-size: 13px; line-height: 1; padding: 0 0 2px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-collapse-btn:hover { color: var(--red); border-color: var(--red); }
+@media (max-width: 760px) { .nav-collapse-btn { display: none; } }
+@media (min-width: 761px) {
+  .nav { transition: width 0.15s ease; }
+  .nav--collapsed { width: 64px; padding-left: 10px; padding-right: 10px; }
+  /* Labels, history lists, footer links and the beta trimmings all go —
+     the icons carry the map; titles carry the names. */
+  .nav--collapsed .nav-label,
+  .nav--collapsed .nav-history,
+  .nav--collapsed .nav-foot,
+  .nav--collapsed .nav-auth-name,
+  .nav--collapsed .nav-auth .nav-login,
+  .nav--collapsed .nav-logo-text span { display: none; }
+  /* !important: the link carries display:inline-block inline. */
+  .nav--collapsed .nav-beta-exit { display: none !important; }
+  .nav--collapsed .nav-logo-text { padding: 4px 0 14px; justify-content: center; }
+  .nav--collapsed .nav-links a { justify-content: center; gap: 0; padding: 10px 0; }
+  .nav--collapsed .nav-auth { justify-content: center; padding-left: 0; padding-right: 0; }
+  .nav--collapsed .nav-auth-profile { margin: 0; padding: 6px; }
+}
 .nav-auth {
   margin-top: auto;
   display: flex; align-items: center; gap: 12px;
@@ -1913,29 +1945,36 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    readable line length; the stage takes everything else. Below 1080px the
    panes stack — desktop-first product, the stacked form just has to be
    usable, not optimal. */
-/* Viewport-bound, both panes scroll INTERNALLY (CC, Aug 6). The chat used
-   to grow with the conversation and drag the whole page taller — the same
-   mistake the LandingAgent's reserved panel exists to prevent. The split
-   takes the remaining viewport once, and after that the page never moves:
-   the transcript scrolls inside the rail, the stage scrolls on its own. */
+/* The stage flows on the PAGE (owner, Aug 9 — supersedes the Aug 6
+   viewport-bound split): storyboard and canvas sit in normal flow and the
+   page grows to fit them, so the canvas can be genuinely tall. Only the
+   CHAT keeps its own viewport: sticky, viewport-high, transcript scrolling
+   internally — so the director stays beside you however far the stage
+   scrolls, and a new bubble still never moves the page. */
 .xdirect-split {
   display: grid; grid-template-columns: minmax(380px, 460px) 1fr;
-  gap: 24px; align-items: stretch;
-  height: calc(100vh - 268px); min-height: 500px;
+  gap: 24px; align-items: start;
 }
-.xdirect-chat  { min-width: 0; height: 100%; min-height: 0; display: flex; flex-direction: column; }
-.xdirect-stage { min-width: 0; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.xdirect-chat {
+  min-width: 0; display: flex; flex-direction: column;
+  /* top clears the sticky .omni-bar (~58px) the rail would otherwise
+     slide under once the page scrolls. */
+  position: sticky; top: 74px;
+  height: calc(100vh - 90px); min-height: 480px;
+}
+.xdirect-stage { min-width: 0; }
 .xdirect-empty {
-  min-height: 420px; height: 100%; border-radius: 12px;
+  min-height: 420px; border-radius: 12px;
   border: 1.5px dashed var(--border2); background: var(--surface);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 40px; text-align: center;
   color: var(--muted2); font-size: 14px; line-height: 1.7; max-width: none;
 }
 @media (max-width: 1080px) {
-  .xdirect-split { grid-template-columns: 1fr; height: auto; min-height: 0; }
-  .xdirect-chat  { height: 70vh; }
-  .xdirect-stage { height: auto; overflow-y: visible; order: -1; }
+  .xdirect-split { grid-template-columns: 1fr; }
+  /* Stacked: sticky would pin the chat over the stage — let it flow. */
+  .xdirect-chat  { position: static; height: 70vh; min-height: 0; }
+  .xdirect-stage { order: -1; }
   .xdirect-empty { min-height: 220px; height: 220px; }
 }
 

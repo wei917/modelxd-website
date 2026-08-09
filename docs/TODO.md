@@ -35,12 +35,55 @@
   director is the pipeline author; the user's wiring is selection + intent.
   Revisit only on demonstrated power-user demand.
 
-## 3. Custom AI companions & agents in XTalk (new — not started)
+## 3. Custom AI characters (SHIPPED Aug 7-8 — builder + chat + memory live)
 
-The ask (owner, Aug 6): users custom-build a persistent AI agent — a
-companion (AI girlfriend/boyfriend), a character, or an assistant — and keep
-talking to it across sessions. Their agents are also seatable in Discussion
-rooms.
+STATUS (Aug 8): builder/chat/memory/photos/search shipped (migrations 75-77).
+Voice: stage 1 (browser STT input) + stage 2 (TTS output) DONE — Qwen-TTS
+presets + qwen-voice-design custom voices ($0.20/mint, ~$0.13/10K chars,
+billed from usage.characters). Owner decision Aug 8: NO human-sample voice
+cloning, ever — text-designed voices only ("It belongs to no real person").
+- [x] Voice stage 3 BUILT (Aug 8, owner: "both"): call mode with two chips.
+      Voice chat = hands-free loop on the character's own model + TTS voice
+      (STT → chat turn → speak; billed per turn). Live call = Gemini Live
+      (gemini-3.1-flash-live-preview, ephemeral token locked to our
+      systemInstruction; transcripts saved as normal messages at call end;
+      flat $0.023/min). Wake lock; echo-guard; barge-in on live. NEEDS
+      OWNER VOICE TEST — automation can't grant mic or speak.
+- [ ] Live call follow-ups: session resumption past 10 min (v1 ends the
+      call at 9.5); per-character Gemini call-voice picker (v1 maps male
+      presets → Charon, else Aoede); usage-based live billing from
+      usageMetadata instead of flat minutes.
+- [ ] Voice hygiene: delete the DashScope designed voice when a character
+      is deleted / re-minted (orphan voices accumulate on the account;
+      test voice "mxdtest…" from Aug 8 can be cleaned up too).
+
+The ask (owner, Aug 6-7): users build persistent AI CHARACTERS — companion
+(AI girlfriend/boyfriend), personality, assistant — with persona, appearance,
+model + config, and imagery (uploaded or generated). SCOPE (owner, Aug 7):
+a character is a PLATFORM PRIMITIVE, not a chat feature — selectable
+anywhere a model picker appears (XTalk seats, XGame seats in v1; generation
+surfaces later), and the foundation for XSocial (future surface: agents
+post reels, write articles — agents as content creators).
+
+DESIGN OF RECORD (owner, Aug 7 session — details in chat, spec below):
+- Memory: model-managed two stores — critical (≤10K, exact facts, model
+  self-edits under budget) + concept (unbounded at rest in DB, model-authored
+  CHAPTERS; only relevant chapters carried per turn). Two consolidation
+  prompts fire when unconsolidated window > ~80 msgs, run on the CHARACTER'S
+  OWN model (memory curation is a benchmarkable skill — future XBoard
+  "memory" score). Retrieval: hybrid time-filter + vector (pgvector,
+  embedding column reserved from day one, backfill in phase 2).
+- Prompt layout: [safety floor]+[wrapped persona]+[critical]+[chapter tail]
+  = CACHED PREFIX; window + retrieved bits after the boundary.
+- Schema: x_characters (surface-neutral name; visibility column, private
+  enforced v1; appearance field separate from persona),
+  x_character_messages (append-only, per-msg cost), x_character_memory
+  (kind critical|chapter, seq, embedding nullable), photos bucket.
+- resolveSpeaker(): pickers accept characterId|modelId; blocked_features
+  resolve THROUGH the character to its model. Persona untrusted everywhere.
+- Policy (defaults accepted Aug 7): romantic-not-explicit, 18+ gate;
+  consolidation on own model; named "Characters", XTalk template card,
+  FEATURE_XTALK_EMAILS gate.
 
 - [ ] Agent builder: name, avatar, persona/system prompt, model choice with
       the real price shown — the ModelXD angle nobody else has: you know
@@ -178,6 +221,27 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       engine-legal options. Same philosophy as Werewolf's server-held
       state: the client (and the model) are never trusted with the rules.
 
+## XCreate
+
+- [ ] "Extend a video" template (owner, Aug 8): pick a video you already
+      generated (or upload one), continue it. NATIVE support verified
+      against provider docs Aug 8:
+      - Runway API `video_to_video` + `mode:"extend"` on hosted
+        `seedance2_5` (shipped Aug 7 2026!) — arbitrary input video,
+        4-30s outputs. Best path. (Aleph = restyle/edit only.)
+      - DashScope `wan2.7-i2v` `first_clip` continuation — GA intl, but
+        input ≤10s and TOTAL output ≤15s; short-clip stitcher.
+      - Veo 3.1 `video` param — preview, 720p-only, and ONLY Veo's own
+        outputs ≤2 days old; no uploads. Marginal for us.
+      - OpenAI `/videos/extensions` works but the ENTIRE Videos API shuts
+        down Sept 24 2026 — do not build on it.
+      Fallback for every other i2v model: extract last frame
+      (XDirectorChat's frame-chaining helper) → image_to_video with a
+      continuation prompt — loses motion continuity, works everywhere.
+      Recipe shape: new `extend_video` mode; picker shows native-capable
+      models first, fallback-capable after. Stitching stays in XDirect
+      Phase 3 (assembly), not here.
+
 ## Cross-cutting (carried from the Aug 6 session)
 
 - [x] `cached_input` rates — RESOLVED Aug 6 against official pricing pages.
@@ -192,3 +256,12 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       single user-cost win available.
 - [ ] xAI has no text-cost path in `lib/providers/xai.ts` — required before
       any Grok text model is re-enabled.
+- [ ] **DECIDED (owner, Aug 8): Sora is never used. Period.** Not in the
+      catalog, not in recipes, not proposed again. (The API shuts down
+      Sept 24, 2026 anyway.) Only remaining chore: delete the dormant
+      Videos code path in `lib/providers/openai.ts`.
+- [ ] Seedance may be REACHABLE now: Runway's API has become a
+      multi-vendor catalog and hosts Seedance 2.5 (plus Hailuo 3, Veo 3.1,
+      etc.) via our existing runway.ts integration and US billing. The old
+      "no official US path" blocker (see memory) may be moot — evaluate
+      adding Seedance 2.5 through Runway.
