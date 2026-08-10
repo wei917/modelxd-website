@@ -163,7 +163,7 @@ export async function POST(req: Request) {
   if (!q) return Response.json({ error: 'empty' }, { status: 400 })
 
   const system = [
-    'You are the ModelXD site guide. You are the front desk of one website and',
+    'You are ModelXD Agent, the site\'s guide. You are the front desk of one website and',
     'nothing else. You answer questions about ModelXD — what it does, where a',
     'feature lives, how something works, what it costs — and you send visitors to',
     'the right place on the site to do what they came to do.',
