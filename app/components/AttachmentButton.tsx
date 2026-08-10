@@ -50,27 +50,50 @@ const MAX_FILES = 5
 function getBucket(mediaType: string, context: 'xduel' | 'xcreate'): string {
   const isVideo = mediaType.startsWith('video/')
   if (context === 'xduel') return isVideo ? 'xduel-user-videos'  : 'xduel-user-images'
-  return isVideo ? 'xcreate-user-videos' : 'xcreate-user-images'
+  if (isVideo) return 'xcreate-user-videos'
+  if (mediaType.startsWith('image/')) return 'xcreate-user-images'
+  // Everything else — PDF, audio, text, future document types — is an
+  // opaque model input, not servable media: one bucket, no per-type
+  // sprawl (owner, Aug 10). Requires migration 79.
+  return 'xcreate-user-files'
 }
 
 function fileIcon(mediaType: string) {
   if (mediaType.startsWith('image/')) return '🖼'
   if (mediaType.startsWith('video/')) return '🎬'
+  if (mediaType.startsWith('audio/')) return '🎵'
   if (mediaType === 'application/pdf') return '📄'
   return '📎'
+}
+
+/** Some files arrive with an EMPTY type (macOS hands over whatever the
+ *  UTI database says, which for downloads is often nothing) — infer the
+ *  common ones from the extension so bucket routing and upload
+ *  content-type never see ''. */
+function inferMediaType(fileName: string, given: string): string {
+  if (given) return given
+  const ext = (fileName.split('.').pop() ?? '').toLowerCase()
+  const map: Record<string, string> = {
+    mp3: 'audio/mpeg', m4a: 'audio/x-m4a', aac: 'audio/aac', wav: 'audio/wav',
+    flac: 'audio/flac', ogg: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm',
+    mov: 'video/quicktime', pdf: 'application/pdf', txt: 'text/plain',
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+  }
+  return map[ext] ?? 'application/octet-stream'
 }
 
 /** Wrap a picked file as a pending attachment. No network. */
 export function pendingAttachment(
   file: File, context: 'xduel' | 'xcreate', slotIndex?: number,
 ): Attachment {
+  const mediaType = inferMediaType(file.name, file.type)
   return {
     storagePath: '',
-    bucket:      getBucket(file.type, context),
-    mediaType:   file.type,
+    bucket:      getBucket(mediaType, context),
+    mediaType,
     fileName:    file.name,
     fileSize:    file.size,
-    previewUrl:  file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+    previewUrl:  mediaType.startsWith('image/') ? URL.createObjectURL(file) : undefined,
     file,
     ...(slotIndex === undefined ? {} : { slotIndex }),
   }
@@ -168,7 +191,8 @@ export default function AttachmentButton({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = async (files: FileList) => {
-    const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','application/pdf','video/mp4','video/quicktime','video/webm']
+    const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','application/pdf','video/mp4','video/quicktime','video/webm',
+      'audio/mpeg','audio/mp3','audio/mp4','audio/x-m4a','audio/aac','audio/wav','audio/x-wav','audio/webm','audio/flac','audio/ogg']
     const toUpload = Array.from(files).filter(f => {
       if (!ALLOWED.includes(f.type)) { alert(`Unsupported file type: ${f.type || 'unknown'}`); return false }
       // Docs (PDF / txt) cap at 10MB — we only ever fold ≤200k chars of

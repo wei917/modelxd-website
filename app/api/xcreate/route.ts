@@ -193,6 +193,40 @@ async function runSlot(
   }
 
   try {
+    // Audio → timestamped transcript (owner, Aug 9). Its own path: no token
+    // streaming, one provider call, cost billed per audio minute. The user's
+    // prompt is the transcription BIAS (known lyrics snap timestamps).
+    if (mode === 'text' && options.mode === 'audio_to_text') {
+      // A model with no transcription path fails HERE with a plain sentence
+      // — not deep in the provider router with a misleading "no text
+      // implementation". openai (Whisper) and alibaba (Qwen3-ASR) qualify.
+      if (model.provider !== 'openai' && model.provider !== 'alibaba') {
+        throw new Error(`${model.display_name ?? model.model_name} cannot transcribe audio — pick a transcription model (Whisper 1 or Qwen3-ASR).`)
+      }
+      // Video rides too (owner, Aug 9): Whisper reads MP4/WebM containers
+      // directly and transcribes the audio track. MOV it cannot, and the
+      // API caps uploads at 25MB — fail with instructions, not a 400.
+      const audio = attachments.find(a => (a.mediaType ?? '').startsWith('audio/'))
+        ?? attachments.find(a => ['video/mp4', 'video/webm', 'video/mpeg'].includes(a.mediaType ?? ''))
+      if (!audio) {
+        const vid = attachments.find(a => (a.mediaType ?? '').startsWith('video/'))
+        throw new Error(vid
+          ? 'This video format cannot be transcribed directly — export it as MP4/WebM, or extract the audio (MP3/M4A) first.'
+          : 'Attach an audio file (MP3 / M4A / WAV) or an MP4 video to transcribe.')
+      }
+      // 25MB is OpenAI's inline-upload cap; DashScope fetches by URL and
+      // has no such limit, so only gate the Whisper path.
+      if (model.provider === 'openai' && audio.buffer.length > 25 * 1024 * 1024) {
+        throw new Error(`The file is ${(audio.buffer.length / 1048576).toFixed(0)}MB — Whisper caps uploads at 25MB. Use Qwen3-ASR for large files, or extract the audio track (MP3/M4A).`)
+      }
+      await patch({ streaming: true, progress: 15 })
+      const r = await providers.transcribeAudio(model, audio, prompt || null, callContext)
+      const rt = Date.now() - start
+      await patch({ text: r.text, streaming: false, done: true, cost: r.cost, response_time: rt, progress: 100 })
+      console.log(`${LOG} Slot[${index}] transcribed ${r.durationSeconds.toFixed(0)}s audio ($${r.cost.toFixed(4)})`)
+      return { text: r.text, isImage: false, isVideo: false, responseTime: rt, cost: r.cost }
+    }
+
     if (mode === 'text') {
       let fullText = ''
       let doneResult = { inputTokens: 0, outputTokens: 0, cachedTokens: 0, cost: 0 }
@@ -364,7 +398,8 @@ export async function POST(req: Request) {
     : (legacyAttachmentInput ? [legacyAttachmentInput] : [])
   const hasAttachmentInput = attachmentList.some(a => a?.storagePath)
   const promptTooShort = !prompt?.trim() || prompt.trim().length < 3
-  const promptIsOptional = (mode === 'video' || mode === 'image') && hasAttachmentInput
+  const promptIsOptional = (mode === 'video' || mode === 'image'
+    || (modelOptions ?? []).some((o: any) => o?.mode === 'audio_to_text')) && hasAttachmentInput
   if (promptTooShort && !promptIsOptional) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
   }
@@ -534,7 +569,9 @@ export async function POST(req: Request) {
       // capped at 1920px server-side, so a 4K upload never reaches the
       // model at full size (output tops out around 2K anyway). Videos
       // pass through unresized; their 'resized' copy is byte-identical.
-      if (result.mediaType.startsWith('image/') || result.mediaType.startsWith('video/')) {
+      // Audio joins image/video in carrying a signed URL: DashScope's ASR
+      // fetches the file by URL rather than accepting inline bytes.
+      if (result.mediaType.startsWith('image/') || result.mediaType.startsWith('video/') || result.mediaType.startsWith('audio/')) {
         attach.url = result.resizedUrl
       }
       attachments.push(attach)

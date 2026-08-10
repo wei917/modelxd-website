@@ -245,6 +245,47 @@ export const XCREATE_TEMPLATES: Template[] = [
     ],
   },
   {
+    id:                'video-understand',
+    emoji:             '👁️',
+    title:             'Ask about a Video',
+    subtitle:          'The model WATCHES it — describe, summarize, answer questions',
+    mode:              'text',
+    slotMode:          'video_to_text',
+    // The counterpart to audio-transcribe below: this one SEES frames and
+    // reasons about them; that one LISTENS and writes down the words. Same
+    // input file, opposite senses — the card copy is the differentiation.
+    starterPrompt:     '{{What do you want to know? e.g. "Describe every scene and camera move", "Summarize what happens", "Is the product logo visible throughout?"}}',
+    recommendedModels: ['gemini-3.1-flash-lite', 'qwen3.6-plus'],
+    previewBgColor:    '#2d3a52',
+    attachmentSlots: [
+      { label: 'VIDEO', hint: 'MP4 / WebM / MOV — the clip to analyze' },
+    ],
+  },
+  {
+    id:                'audio-transcribe',
+    emoji:             '🎵',
+    popular:           true,
+    title:             'Lyrics & Transcripts from Audio',
+    subtitle:          'The model LISTENS — verbatim words with exact timestamps',
+    mode:              'text',
+    slotMode:          'audio_to_text',
+    // The prompt doubles as Whisper's BIAS: pasting the known lyrics in
+    // snaps the timestamps to the real words — dramatically better on
+    // singing than a cold transcription pass.
+    starterPrompt:     '{{Optional: paste the known lyrics or expected text here — timestamps will snap to them. Leave empty for a plain transcription.}}',
+    // Two engines seated for a real comparison (owner, Aug 10): Whisper 1
+    // (OpenAI) vs Fun-ASR (Alibaba, Mandarin-strong). Fun-ASR replaced
+    // qwen3-asr-flash-filetrans, which returned "Beep boop beep" on a full
+    // music track — the flash-filetrans variant can't do songs; fun-asr
+    // transcribed the Mandarin lyrics cleanly. Same song, both transcripts,
+    // real prices — the ModelXD thesis in audio.
+    recommendedModels: ['whisper-1', 'fun-asr'],
+    previewBgColor:    '#2d4152',
+    attachmentSlots: [
+      { label: 'AUDIO', hint: 'MP3 / M4A / WAV — or an MP4 video (audio track is read, ≤25MB)' },
+    ],
+  },
+  {
     id:                'video-extend',
     emoji:             '⏩',
     popular:           true,

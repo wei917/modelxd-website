@@ -223,7 +223,55 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
 
 ## XCreate
 
-- [ ] "Extend a video" template (owner, Aug 8): pick a video you already
+- [x] Audio → Text mode SHIPPED (code Aug 9, uncommitted): `audio_to_text`
+      recipe end to end — template "Lyrics & Transcripts from Audio", audio
+      attachments, dedicated route branch, providers.transcribeAudio
+      (whisper-1, verbose_json → "[mm:ss.ss] line" output, billed
+      per_audio_minute), whisper-1 catalog row INSERTED LIVE (blocked from
+      xduel/xtalk seats — it cannot chat). Residuals: DashScope
+      Paraformer/SenseVoice + Gemini paths for comparison runs; LRC/SRT
+      download button on the output; CAUTION the /admin/models pricing form
+      does not know per_audio_minute — re-saving the row there may drop it.
+      - [x] Fun-ASR added as 2nd seat (Aug 10): alibaba.transcribeAudio on
+            the existing async task pattern, routed in providers/index.
+            Template seats Whisper 1 + Fun-ASR for a live Mandarin
+            comparison. FULL PROVIDER PATH VERIFIED against live DashScope
+            intl with the real 好像喜歡你 track: Supabase signed URL →
+            DashScope fetch+decode → poll → transcription_url →
+            transcripts[].sentences[] begin/end ms → correct Mandarin
+            lyrics, 17 sentences. audio gets attach.url now; 25MB cap is
+            Whisper-only (Fun-ASR is URL-fed).
+            - qwen3-asr-flash-filetrans was tried FIRST and DISABLED: it
+              returned "Beep boop beep" on a full music track (the
+              flash-filetrans variant can't do songs, despite Qwen3-ASR
+              marketing; base models may differ). Row left disabled in
+              catalog for record. paraformer-v2 is "Model not exist" on the
+              intl endpoint.
+      - [ ] Fun-ASR PRICE unverified: catalog row set to a PLACEHOLDER
+            per_audio_minute 0.002 — not publicly documented. Find the real
+            rate in the Model Studio console and fix at /admin/models (no
+            deploy). Do before real usage to avoid mischarging.
+      - [ ] Audio→Text: one live XCreate UI run still needed (attachment →
+            billing → the 2-model comparison view) — provider layer proven,
+            UI glue not yet exercised with live credits.
+      Original notes:
+      Proven end-to-end Aug 9 on the
+      好像喜歡你 MV: StreetVoice audio → whisper-1 (word timestamps, official
+      lyrics passed as prompt bias) → per-line alignment → LRC/SRT; 35/40
+      lines matched, ~$0.02/run. Build notes:
+      - Recipe `audio_to_text` in ai_models.modes; per-minute pricing key in
+        model_pricing (whisper-1 $0.006/min).
+      - Candidate models across EXISTING providers — openai whisper-1 /
+        gpt-4o-transcribe, DashScope Paraformer/SenseVoice (Mandarin-strong),
+        Gemini audio — which makes transcription a COMPARISON surface too:
+        same audio, models side by side, real prices. The ModelXD thesis in
+        a new modality.
+      - Attachment pipeline must accept audio mediaTypes; template with an
+        AUDIO slot ("Lyrics from a song" / "Transcribe a recording"),
+        options for output format (plain / LRC / SRT), optional known-text
+        bias field (forced-alignment-lite, dramatically better on singing).
+      - XDirect Phase 3 tie-in: lyric line timings are the natural sync grid
+        for MV cuts (scene durations from line spans).
       generated (or upload one), continue it. NATIVE support verified
       against provider docs Aug 8:
       - Runway API `video_to_video` + `mode:"extend"` on hosted
@@ -265,3 +313,9 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       etc.) via our existing runway.ts integration and US billing. The old
       "no official US path" blocker (see memory) may be moot — evaluate
       adding Seedance 2.5 through Runway.
+- [ ] Grok Imagine Image 2.0 (launched Aug 7 2026, app-only): add the
+      catalog row WHEN xAI's first-party API serves it — verified Aug 9 it
+      does not yet (docs list only grok-imagine-image and
+      grok-imagine-image-quality). Owner decision Aug 9: do NOT add
+      grok-imagine-image-quality ($0.05) in the meantime — wait for 2.0.
+      Vercel AI Gateway's 2.0-preview is an aggregator path; not our route.

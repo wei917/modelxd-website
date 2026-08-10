@@ -148,7 +148,8 @@ const RECIPES: Record<Mode, Recipe[]> = {
     { id: 'text_to_text',  title: 'Text to Text',  recipe: 'TEXT → TEXT',  provide: 'a prompt' },
     { id: 'image_to_text', title: 'Image to Text', recipe: 'IMAGE → TEXT', provide: '1 image + a prompt' },
     { id: 'pdf_to_text',   title: 'PDF to Text',   recipe: 'PDF → TEXT',   provide: '1 PDF + a prompt' },
-    { id: 'video_to_text', title: 'Video to Text', recipe: 'VIDEO → TEXT', provide: '1 video + a prompt' },
+    { id: 'video_to_text', title: 'Video to Text', recipe: 'VIDEO → TEXT', provide: '1 video + a question — the model watches it' },
+    { id: 'audio_to_text', title: 'Audio to Text', recipe: 'AUDIO → TEXT', provide: '1 audio/MP4 — verbatim transcript with timestamps' },
   ],
   image: [
     { id: 'text_to_image', title: 'Text to Image',  recipe: 'TEXT → IMAGE',  provide: 'a prompt' },
@@ -167,20 +168,22 @@ const RECIPES: Record<Mode, Recipe[]> = {
 
 // Input-type icon for the sub-mode menu (superset of ModeIcon: adds
 // pdf / frames / references). Same 16px stroke style as ModeIcon.
-function InputIcon({ kind }: { kind: 'text' | 'image' | 'video' | 'pdf' | 'frames' | 'references' }) {
+function InputIcon({ kind }: { kind: 'text' | 'image' | 'video' | 'pdf' | 'frames' | 'references' | 'audio' }) {
   const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
   if (kind === 'text' || kind === 'image' || kind === 'video') return <ModeIcon m={kind} />
+  if (kind === 'audio')  return (<svg {...p}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>)
   if (kind === 'pdf')    return (<svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>)
   if (kind === 'frames') return (<svg {...p}><rect x="2" y="6" width="9" height="12" rx="1"/><rect x="13" y="6" width="9" height="12" rx="1"/></svg>)
   return (<svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>)
 }
 
 // recipe id → [input icon, output icon] for the sub-mode menu entries.
-const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames' | 'references', Mode]> = {
+const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames' | 'references' | 'audio', Mode]> = {
   text_to_text:     ['text',       'text'],
   image_to_text:    ['image',      'text'],
   pdf_to_text:      ['pdf',        'text'],
   video_to_text:    ['video',      'text'],
+  audio_to_text:    ['audio',      'text'],
   text_to_image:    ['text',       'image'],
   image_edit:       ['image',      'image'],
   text_to_video:    ['text',       'video'],
@@ -1513,6 +1516,22 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
     setPhase('setup')
   }
 
+  // RESTRICTED recipes have no fallback path: a model that cannot listen
+  // cannot fake a transcription the way every text model can fake PDF
+  // reading via extraction. A seat that doesn't declare the recipe is a
+  // guaranteed failed slot — enforce continuously, not only at the moments
+  // we remember to clear (owner bug, Aug 9: Gemini Flash sat in an
+  // audio_to_text run as the "default"). Clearing the seat re-triggers the
+  // default-model effect below, which reseats from the RECIPE's own pool.
+  useEffect(() => {
+    if (phase !== 'setup') return
+    if (recipeMode !== 'audio_to_text') return
+    setSelectedModels(prev => prev.some(m => m && !(m.modes ?? []).includes(recipeMode))
+      ? prev.map(m => (m && !(m.modes ?? []).includes(recipeMode)) ? null : m)
+      : prev)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeMode, phase, selectedModels])
+
   // Default model — every mode starts usable. When the studio is blank
   // (fresh mode/recipe, no template, nothing picked), pre-fill slot A with
   // the model OUR OWN BOARD ranks highest for this recipe (CC, Aug 3: the
@@ -1558,8 +1577,13 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
           : v))
       })
     return () => { cancelled = true }
+    // selectedModels is a dep ON PURPOSE (owner bug, Aug 9: Gemini sat in
+    // an audio run): when the restricted-recipe guard above clears a seat,
+    // THIS effect must re-run to reseat from the recipe's own pool — with
+    // static deps it had already seen the old seats and returned. The
+    // some(Boolean) guard keeps the loop closed: filled seats no-op.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, recipeMode, phase, activeTemplateId])
+  }, [mode, recipeMode, phase, activeTemplateId, selectedModels])
 
   // Layer 2: choose the processing recipe for the whole run. Drops any selected
   // model that doesn't support the new recipe, re-validates the rest, and
@@ -1595,11 +1619,13 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
   // pattern: drop a photo → image-powered run, no menu required).
   // Respects an explicit multi-image choice (frames/references stay put).
   const inferRecipeFromUploads = (atts: Attachment[]): ModelMode | null => {
-    const kinds  = atts.map(a => a.mediaType?.startsWith('video/') ? 'video' : a.mediaType === 'application/pdf' ? 'pdf' : 'image')
+    const kinds  = atts.map(a => a.mediaType?.startsWith('video/') ? 'video' : a.mediaType?.startsWith('audio/') ? 'audio' : a.mediaType === 'application/pdf' ? 'pdf' : 'image')
     const nImg   = kinds.filter(k => k === 'image').length
     const hasVid = kinds.includes('video')
     const hasPdf = kinds.includes('pdf')
+    const hasAud = kinds.includes('audio')
     if (mode === 'text') {
+      if (hasAud) return 'audio_to_text'
       if (hasPdf) return 'pdf_to_text'
       if (hasVid) return 'video_to_text'
       return nImg > 0 ? 'image_to_text' : null
@@ -1783,7 +1809,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
     // text required).
     const hasAttachmentForGen = attachments.length > 0
     const promptOkForGen = prompt.trim().length >= 1 ||
-      ((mode === 'video' || mode === 'image') && hasAttachmentForGen)
+      ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachmentForGen)
     if (!promptOkForGen || activeModels.length === 0 || phase === 'generating') return
     setPhase('generating')
     setSlots(activeModels.map(() => ({ text: '', isImage: false, isVideo: false, streaming: true, done: false, cost: 0, responseTime: 0, error: null })))
@@ -2850,8 +2876,10 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
   // would otherwise force the user to invent a text caption they don't want.
   // Text mode still requires a prompt (no other input shape exists).
   const hasAttachment = attachments.length > 0
+  // audio_to_text is text mode's one attachment-driven shape (owner, Aug 9):
+  // the audio IS the input, and an empty prompt means plain transcription.
   const promptOk = prompt.trim().length >= 3 ||
-    ((mode === 'video' || mode === 'image') && hasAttachment)
+    ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachment)
   const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating' && !attachingSample
 
   // Once the user fires a generation, every setup control (mode tabs,
@@ -3896,10 +3924,17 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                     const IMG = 'image/jpeg,image/png,image/gif,image/webp'
                     const VID = 'video/mp4,video/quicktime,video/webm'
                     const accept =
-                      !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
+                      // Extensions + audio/*, not a bare MIME list: the
+                      // macOS picker maps MIME types unreliably and grays
+                      // out real MP3s (owner, Aug 10: "I can't select mp3").
+                      // Applies to the GENERIC slot too — the From-menu
+                      // path has no template, and its old text accept had
+                      // no audio at all, which was the actual lockout.
+                      recipeMode === 'audio_to_text' ? 'audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.webm'
+                      : !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
                       : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
                       : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
-                      : generic && mode === 'text' ? `${IMG},${VID},application/pdf`
+                      : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
                       : generic && mode === 'video' ? `${IMG},${VID}`
                       : undefined
                     const isFrames = recipeMode === 'start_end_frames'
@@ -4096,7 +4131,10 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                 {/* Results */}
                 {slots.length > 0 && (
                   <div style={{ marginTop: 24 }}>
-                    {phase === 'picking' && (
+                    {/* A single-model run has no contest — no vote header,
+                        no Select button (owner, Aug 10). The output simply
+                        stands; Start Over remains the way onward. */}
+                    {phase === 'picking' && slots.length > 1 && (
                       <div style={{ textAlign: 'center', marginBottom: 20 }}>
                         <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>Which result won?</div>
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>Pick it to record your vote and keep generating with that model</div>
@@ -4231,8 +4269,8 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                                 : <><div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
                               }
                             </div>
-                            {/* Pick button */}
-                            {phase === 'picking' && slot.done && !slot.error && (
+                            {/* Pick button — only when there was a contest. */}
+                            {phase === 'picking' && slots.length > 1 && slot.done && !slot.error && (
                               <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
                                 <button onClick={() => pickModel(i)} style={{
                                   width: '100%', padding: '10px 0', borderRadius: 8,

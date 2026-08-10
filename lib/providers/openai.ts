@@ -468,3 +468,50 @@ async function toUploadable(att: Attachment): Promise<any> {
   const ext = att.mediaType.split('/')[1] || 'png'
   return toFile(att.buffer, `image.${ext}`, { type: att.mediaType })
 }
+
+// ── audio → text (Whisper transcription with timestamps) ─────────────────────
+// The XCreate `audio_to_text` recipe (owner, Aug 9): one audio attachment in,
+// timestamped transcript out. The caller's prompt rides as Whisper's bias
+// prompt — pasting known lyrics in snaps the transcription to them, which is
+// dramatically more accurate on singing than a cold pass.
+
+export interface TranscriptionResult {
+  /** Display text: one "[mm:ss.ss] line" per segment. */
+  text: string
+  rawText: string
+  durationSeconds: number
+  cost: number
+  segments: Array<{ start: number; end: number; text: string }>
+}
+
+export async function transcribeAudio(
+  model: ModelInfo,
+  audio: Attachment,
+  biasPrompt?: string | null,
+): Promise<TranscriptionResult> {
+  // Container-faithful filename: whisper sniffs content but trusts the
+  // extension for ambiguous containers. Only audio/mpeg is really .mp3.
+  const sub = audio.mediaType.split('/')[1] ?? 'mp3'
+  const ext = audio.mediaType === 'audio/mpeg' ? 'mp3' : sub.replace('x-m4a', 'm4a').replace('x-wav', 'wav')
+  const file = await OpenAI.toFile(audio.buffer, `audio.${ext}`, { type: audio.mediaType })
+  const res: any = await client().audio.transcriptions.create({
+    file,
+    model: model.model_name,
+    response_format: 'verbose_json',
+    timestamp_granularities: ['segment'],
+    // Whisper reads roughly the last 224 tokens of the prompt — the tail of
+    // long lyrics still biases the chorus, which is where it matters most.
+    ...(biasPrompt ? { prompt: biasPrompt.slice(0, 1200) } : {}),
+  } as any)
+  const durationSeconds = Number(res.duration) || 0
+  const perMinute = Number((model.model_pricing as any)?.per_audio_minute) || 0.006
+  const cost = (durationSeconds / 60) * perMinute
+  const segments = ((res.segments ?? []) as any[]).map(s => ({
+    start: Number(s.start) || 0, end: Number(s.end) || 0, text: String(s.text ?? '').trim(),
+  })).filter(s => s.text)
+  const mm = (t: number) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${(t % 60).toFixed(2).padStart(5, '0')}`
+  const text = segments.length > 0
+    ? segments.map(s => `[${mm(s.start)}] ${s.text}`).join('\n')
+    : String(res.text ?? '')
+  return { text, rawText: String(res.text ?? ''), durationSeconds, cost, segments }
+}

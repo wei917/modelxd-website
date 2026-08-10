@@ -414,3 +414,43 @@ export async function generateVideo(
     throw err
   }
 }
+
+// ── audio → text (transcription) ─────────────────────────────────────────────
+// OpenAI-only today (whisper-1). Same start/end call-log discipline as every
+// other invocation; cost is per audio minute from model_pricing.
+
+export type { TranscriptionResult } from './openai'
+
+export async function transcribeAudio(
+  model:      ModelInfo,
+  audio:      Attachment,
+  biasPrompt: string | null,
+  context?:   CallContext,
+): Promise<openai.TranscriptionResult | alibaba.TranscriptionResult> {
+  assertSupported(model)
+  const desc = descriptor(model, 'text', context)
+  const t0 = Date.now()
+  const requestId = startCall(desc, {})
+  try {
+    const r = model.provider === 'alibaba'
+      ? await alibaba.transcribeAudio(model, audio, biasPrompt)
+      : model.provider === 'openai'
+        ? await openai.transcribeAudio(model, audio, biasPrompt)
+        : noImplementation(model, 'text', ['openai', 'alibaba'])
+    endCall(requestId, desc, {
+      status:     'success',
+      latency_ms: Date.now() - t0,
+      cost_usd:   r.cost,
+      usage_metadata: { audio_seconds: r.durationSeconds },
+    })
+    return r
+  } catch (err) {
+    endCall(requestId, desc, {
+      status:        'failed',
+      latency_ms:    Date.now() - t0,
+      error_message: (err as Error).message?.slice(0, 1000) ?? 'unknown error',
+    })
+    if (err instanceof Error) (err as any).requestId = requestId
+    throw err
+  }
+}

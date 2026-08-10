@@ -778,3 +778,80 @@ export async function designVoice(
   console.log(`${TAG} voice designed id=${voice}`)
   return { voice, previewUrl: previewUrl ? httpsUrl(previewUrl) : null }
 }
+
+// ── audio → text (DashScope file transcription, owner Aug 10) ────────────────
+// Qwen3-ASR / Fun-ASR / Paraformer, the Mandarin-strong counterpart to
+// Whisper. Async create → poll (same TASK_ENDPOINT as video) → download the
+// result JSON. The audio reaches DashScope as a URL, so callers must pass
+// audio.url (a signed storage link); there is no inline-bytes path here.
+//
+// Result shape mirrors openai.TranscriptionResult so providers/index and the
+// XCreate route treat both engines identically.
+export interface TranscriptionResult {
+  text: string
+  rawText: string
+  durationSeconds: number
+  cost: number
+  segments: Array<{ start: number; end: number; text: string }>
+}
+
+const ASR_ENDPOINT = '/api/v1/services/audio/asr/transcription'
+
+export async function transcribeAudio(
+  model: ModelInfo,
+  audio: Attachment,
+  biasPrompt?: string | null,
+): Promise<TranscriptionResult> {
+  const TAG = `[alibaba:asr:${model.model_name}]`
+  if (!audio.url) throw new Error('DashScope transcription needs a fetchable audio URL — none was provided.')
+
+  // Qwen3 takes a single file_url; Fun-ASR/Paraformer take file_urls[].
+  const isQwen = model.model_name.startsWith('qwen')
+  const input = isQwen ? { file_url: audio.url } : { file_urls: [audio.url] }
+  // fun-asr is the engine that actually transcribes SONGS (owner test,
+  // Aug 10: qwen3-asr-flash-filetrans returned "Beep boop beep" on a full
+  // music track; fun-asr nailed the Mandarin lyrics). language_hints steers
+  // it; enable_words (word timestamps) is Qwen-only — fun-asr gives
+  // sentence-level times, which is what lyric lines want anyway. The known
+  // lyrics ride as context bias only where the model accepts it (Qwen).
+  const parameters: any = isQwen
+    ? { enable_words: true, ...(biasPrompt ? { context: biasPrompt.slice(0, 2000) } : {}) }
+    : { language_hints: ['zh', 'en'] }
+
+  const createRes = await fetch(`${BASE_URL}${ASR_ENDPOINT}`, {
+    method: 'POST',
+    headers: { ...defaultHeaders(), 'X-DashScope-Async': 'enable' },
+    body: JSON.stringify({ model: model.model_name, input, parameters }),
+  })
+  if (!createRes.ok) throw new Error(`DashScope ASR ${createRes.status}: ${(await createRes.text().catch(() => '')).slice(0, 400)}`)
+  const createData = await createRes.json()
+  const taskId = createData.output?.task_id
+  if (!taskId) throw new Error(`DashScope ASR returned no task_id: ${JSON.stringify(createData).slice(0, 400)}`)
+  console.log(`${TAG} task ${taskId} created`)
+
+  const done = await pollTask(taskId, TAG)
+  // Result URL lives in output.results[].transcription_url (array form) or
+  // output.result.transcription_url (single) depending on model — accept both.
+  const resultUrl: string | undefined =
+    done.output?.results?.[0]?.transcription_url ?? done.output?.result?.transcription_url
+  if (!resultUrl) throw new Error(`DashScope ASR finished with no transcription_url: ${JSON.stringify(done.output).slice(0, 400)}`)
+
+  const rjson = await fetch(httpsUrl(resultUrl)).then(r => r.json())
+  // transcripts[].sentences[] carry begin_time/end_time in MILLISECONDS.
+  const sentences: any[] = (rjson.transcripts ?? []).flatMap((t: any) => t.sentences ?? [])
+  const segments = sentences
+    .map(s => ({ start: (Number(s.begin_time) || 0) / 1000, end: (Number(s.end_time) || 0) / 1000, text: String(s.text ?? '').trim() }))
+    .filter(s => s.text)
+  const rawText = (rjson.transcripts ?? []).map((t: any) => t.text ?? '').join('\n').trim()
+
+  const durMs = Number(rjson.properties?.original_duration_in_milliseconds)
+    || (segments.length ? segments[segments.length - 1].end * 1000 : 0)
+  const durationSeconds = durMs / 1000
+  const perMinute = Number((model.model_pricing as any)?.per_audio_minute) || 0
+  const cost = (durationSeconds / 60) * perMinute
+
+  const mm = (t: number) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${(t % 60).toFixed(2).padStart(5, '0')}`
+  const text = segments.length > 0 ? segments.map(s => `[${mm(s.start)}] ${s.text}`).join('\n') : rawText
+  console.log(`${TAG} transcribed ${durationSeconds.toFixed(0)}s, ${segments.length} segments, $${cost.toFixed(4)}`)
+  return { text, rawText, durationSeconds, cost, segments }
+}

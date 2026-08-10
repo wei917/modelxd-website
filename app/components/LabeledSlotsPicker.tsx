@@ -82,13 +82,26 @@ export default function LabeledSlotsPicker({
   const slotAt = (i: number): Attachment | null =>
     attachments.find(a => (a.slotIndex ?? -1) === i) ?? null
 
-  const allowedTypes = (accept ?? ACCEPT).split(',').map(s => s.trim())
+  // The accept string speaks THREE dialects — exact MIME ("audio/mpeg"),
+  // wildcard ("audio/*"), and extension (".mp3") — because the macOS
+  // picker only filters reliably on the latter two. Exact string
+  // comparison here rejected every wildcard/extension entry's files
+  // (owner, Aug 10: "Unsupported file type: audio/mpeg").
+  const allowedEntries = (accept ?? ACCEPT).split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+  const typeAllowed = (file: File) => {
+    const type = (file.type || '').toLowerCase()
+    const ext  = '.' + (file.name.split('.').pop() ?? '').toLowerCase()
+    return allowedEntries.some(e =>
+      e.startsWith('.') ? e === ext
+      : e.endsWith('/*') ? type.startsWith(e.slice(0, -1))
+      : e === type)
+  }
 
   // Validates and wraps — no network. The bytes stay in the browser until
   // the run is submitted (commitAttachments), so a slot the user fills and
   // then clears never reaches storage at all.
   const uploadOne = async (file: File, idx: number) => {
-    if (!allowedTypes.includes(file.type)) { alert(`Unsupported file type: ${file.type || 'unknown'}`); return null }
+    if (!typeAllowed(file)) { alert(`Unsupported file type: ${file.type || 'unknown'}`); return null }
     if (file.size > MAX_MB * 1024 * 1024) { alert(`${file.name} too large — max ${MAX_MB}MB`); return null }
 
     // Check dimensions up front (images only). HappyHorse R2V rejects
