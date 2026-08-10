@@ -1201,6 +1201,13 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
 
   // Post-pick state
   const [chosenIdx,      setChosenIdx]      = useState<number | null>(null)
+  // Which result card just had its text copied — drives the ✓ flash.
+  const [copiedSlot,     setCopiedSlot]     = useState<number | null>(null)
+  const copySlotText = (idx: number, text: string) => {
+    try { void navigator.clipboard.writeText(text) } catch { return }
+    setCopiedSlot(idx)
+    setTimeout(() => setCopiedSlot(c => (c === idx ? null : c)), 1800)
+  }
   // Post-pick match report (傳說對決 style). null = hidden. Delta is
   // fetched async after the vote+refit round-trip (undefined = loading).
   const [matchResult, setMatchResult] = useState<{ eyebrow: string; title: string; winnerName: string; winnerProvider: string; entries: MatchResultEntry[] } | null>(null)
@@ -4173,6 +4180,16 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                                 {stripModelVariant(model.display_name)}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {/* Copy the whole text output (owner, Aug 10)
+                                    — text mode only; images/videos have their
+                                    own download. */}
+                                {slot.done && !slot.error && mode === 'text' && !slot.isImage && !slot.isVideo && slot.text && (
+                                  <button
+                                    onClick={() => copySlotText(i, slot.text)}
+                                    title={t('xc.copyoutput')} aria-label={t('xc.copyoutput')}
+                                    style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontFamily: 'var(--mono)', color: copiedSlot === i ? 'var(--green)' : 'var(--muted2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  >{copiedSlot === i ? `✓ ${t('xc.copied')}` : `⧉ ${t('xc.copy')}`}</button>
+                                )}
                                 {slot.done && <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted2)' }}>⏱ {(slot.responseTime / 1000).toFixed(2)}s</span>}
                                 {slot.done && slot.cost > 0 && <span className="price-badge" style={{ color }}>{fmtDollars(slot.cost)}</span>}
                               </div>
