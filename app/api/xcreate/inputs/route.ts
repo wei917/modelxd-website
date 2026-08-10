@@ -40,20 +40,34 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { ids } = await req.json()
+  const { ids, boardId } = await req.json()
   // UUID-shape filter, not just typeof string. A malformed id makes the
   // .in() query fail outright, which 500'd the whole board instead of
   // dropping one node.
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  const idList: string[] = (Array.isArray(ids) ? ids : [])
-    .filter((x: any) => typeof x === 'string' && UUID.test(x))
-    .slice(0, 200)
-  if (idList.length === 0) return Response.json({ inputs: {} })
 
   const sb = serviceClient()
-  const { data: rows, error } = await sb.from('xcreates')
-    .select('id, user_id, input_attachments, slots')
-    .in('id', idList)
+  let rows: any[] | null = null
+  let error: any = null
+  if (typeof boardId === 'string' && UUID.test(boardId)) {
+    // Whole-board form (owner ask, Aug 9): the client no longer needs the
+    // row ids first, so the board query and this call run IN PARALLEL —
+    // the refs block used to pop in seconds after the nodes because this
+    // request had to wait for the other's ids. Scoped to the caller's own
+    // rows, same filter as the board loader.
+    ;({ data: rows, error } = await sb.from('xcreates')
+      .select('id, user_id, input_attachments, slots')
+      .eq('board_id', boardId).eq('user_id', user.id).is('deleted_at', null)
+      .limit(200))
+  } else {
+    const idList: string[] = (Array.isArray(ids) ? ids : [])
+      .filter((x: any) => typeof x === 'string' && UUID.test(x))
+      .slice(0, 200)
+    if (idList.length === 0) return Response.json({ inputs: {} })
+    ;({ data: rows, error } = await sb.from('xcreates')
+      .select('id, user_id, input_attachments, slots')
+      .in('id', idList))
+  }
   if (error) {
     console.error(`${LOG} read failed:`, error.message)
     return Response.json({ error: 'Lookup failed' }, { status: 500 })

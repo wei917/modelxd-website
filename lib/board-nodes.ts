@@ -40,12 +40,29 @@ export function useBoardNodes(boardId: string | null) {
     ;(async () => {
       try {
         const sb = createSupabaseBrowser()
-        const { data: rows, error } = await sb.from('xcreates')
-          .select('id, slots, created_at, parent_id, parent_ids, board_id, node_kind, prompt')
-          .eq('board_id', boardId).is('deleted_at', null)
-          .order('created_at', { ascending: true })
+        // BOTH halves of the board load together (owner ask, Aug 9): the
+        // inputs call used to wait for the row ids, so the reference block
+        // appeared seconds after the nodes — and every node that consumed a
+        // reference then jumped a column as it gained its parent. Passing
+        // boardId lets the server find the ids itself.
+        const [{ data: rows, error }, inputsRes] = await Promise.all([
+          sb.from('xcreates')
+            .select('id, slots, created_at, parent_id, parent_ids, board_id, node_kind, prompt')
+            .eq('board_id', boardId).is('deleted_at', null)
+            .order('created_at', { ascending: true }),
+          fetch('/api/xcreate/inputs', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boardId }),
+          }).then(r => (r.ok ? r.json() : null)).catch(() => null),
+        ])
         if (cancelled) return
         if (error || !rows || rows.length === 0) { setChain([]); setInputs({}); setOutUrls({}); return }
+        // On failure keep the previous inputs — a transient error must not
+        // strip the refs block off a board that already drew it.
+        if (inputsRes) {
+          setInputs(inputsRes.inputs ?? {})
+          setOutUrls(inputsRes.outputs ?? {})
+        }
 
         const flat: any[] = []
         for (const r of rows as any[]) {
@@ -83,22 +100,6 @@ export function useBoardNodes(boardId: string | null) {
           }
         }
         setChain(flat)
-
-        // Uploaded references + freshly re-signed output URLs (stored ones
-        // carry a 24h TTL).
-        try {
-          const ir = await fetch('/api/xcreate/inputs', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: (rows as any[]).map(r => r.id) }),
-          })
-          if (ir.ok) {
-            const d = await ir.json()
-            if (!cancelled) {
-              setInputs(d?.inputs ?? {})
-              setOutUrls(d?.outputs ?? {})
-            }
-          }
-        } catch { /* board still works without input nodes */ }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -176,8 +177,12 @@ export function useBoardNodes(boardId: string | null) {
       // The ⓘ panel lists the EXACT files this run consumed (owner, Aug 9)
       // — chain frames included: they are hidden from the board as nodes,
       // but "what generated this" must name them.
+      // Full generation-input descriptors (bucket/path/size ride along):
+      // the ⓘ panel views them, and the regen reference picker re-uses a
+      // chosen subset as the re-run's attachments without another upload.
       const sources = (inputs[n.rowId] ?? []).map(a => ({
         url: a.url ?? null, fileName: a.fileName, mediaType: a.mediaType,
+        bucket: a.bucket, storagePath: a.storagePath, fileSize: a.fileSize ?? 0,
       }))
       return {
         ...n, thumb: outUrls[n.id] ?? n.thumb, parentId: parents[0] ?? null, parentIds: parents,

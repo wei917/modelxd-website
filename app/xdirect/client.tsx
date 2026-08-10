@@ -12,7 +12,7 @@
 // sends it to the director and persists it) and the strip (which edits it).
 
 import Link from 'next/link'
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -55,7 +55,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   const t = useT()
 
   const [boardId, setBoardId] = useState<string | null>(null)
-  const { nodes, refresh } = useBoardNodes(boardId)
+  const { nodes, loading: boardLoading, refresh } = useBoardNodes(boardId)
   const [sel, setSel] = useState<string[]>([])
   const [hero, setHero] = useState<{ url: string; isVideo: boolean } | null>(null)
   const [storyboard, setStoryboard] = useState<Scene[]>([])
@@ -69,6 +69,28 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   const onConversationId = useCallback((id: string) => setBoardId(id), [])
   const onActivity = useCallback(() => refreshRef.current(), [])
   const onStoryboard = useCallback((scenes: any[]) => setStoryboard(scenes as Scene[]), [])
+  // The film's original brief (first user message) — the canvas's Prompt
+  // input node and its title both derive from it (owner, Aug 9).
+  const [brief, setBrief] = useState<string | null>(null)
+  const onBrief = useCallback((text: string) => setBrief(text), [])
+  const canvasNodes = useMemo<CanvasNode[]>(() => {
+    if (!brief || nodes.length === 0) return nodes
+    const briefNode: CanvasNode = {
+      id: 'brief::input', thumb: null, isVideo: false, parentId: null, parentIds: [],
+      // prompt carries the full text so the ⓘ panel shows it, copyable.
+      label: 'Prompt', kind: 'input', brief, prompt: brief,
+    }
+    // Every generated row descends from the brief — the director wrote all
+    // of their prompts from it. The refs stack keeps its own wires.
+    return [briefNode, ...nodes.map(n => n.rowId
+      ? { ...n, parentIds: [...(n.parentIds ?? []), 'brief::input'] }
+      : n)]
+  }, [nodes, brief])
+  const boardTitle = useMemo(() => {
+    if (!brief) return null
+    const line = brief.replace(/\s+/g, ' ').trim()
+    return line.length > 80 ? line.slice(0, 80) + '…' : line
+  }, [brief])
 
   // Scene URLs are signed for ~24h at generation time; the board loader
   // re-signs every output URL on load. Ride that: whenever fresh nodes
@@ -97,9 +119,16 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
         const cand: any = nodes
           .filter((n: any) => n.rowId && !claimed.has(n.rowId) && n.thumb && n.isVideo)
           .sort((a: any, b: any) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+        // A scene that ALREADY has a finished take keeps it (owner bug,
+        // Aug 9: a reload mid-rerun demoted a done scene to a blank draft
+        // card — the fallback threw away a clip the user had paid for).
+        // Claiming a newer row is only for a card whose own run vanished.
+        if (s.row_id && s.url) return { ...s, status: 'done' as const }
         if (cand) {
           claimed.add(cand.rowId)
-          return { ...s, status: 'done' as const, url: cand.thumb, row_id: cand.rowId, ...(typeof cand.cost === 'number' ? { cost: cand.cost } : {}) }
+          // The claimed node's label is its model name — without it the
+          // card kept saying the OLD model under the NEW clip.
+          return { ...s, status: 'done' as const, url: cand.thumb, row_id: cand.rowId, ...(cand.label ? { model_name: cand.label } : {}), ...(typeof cand.cost === 'number' ? { cost: cand.cost } : {}) }
         }
         return { ...s, status: 'draft' as const }
       }
@@ -109,6 +138,43 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, chatBusy])
   const onBusy = useCallback((b: boolean) => setChatBusy(b), [])
+
+  // Delete (owner bug, Aug 9: "delete doesn't work in canvas") — /xdirect
+  // never wired the canvas's onDelete, so the button no-opped silently.
+  // Same row-granular soft delete XCreate uses; a scene whose ACTIVE take
+  // was deleted reverts to an honest draft (other takes stay promotable).
+  // Deleting shows the loading screen until the refreshed board is back
+  // (owner, Aug 9) — never the stale canvas with the dead node still on it.
+  const [wiping, setWiping] = useState(false)
+  const wipeSawLoad = useRef(false)
+  const deleteNodes = useCallback(async (picked: CanvasNode[]) => {
+    const rowIds = [...new Set(picked.filter(n => !!n.rowId).map(n => n.rowId as string))]
+    if (rowIds.length === 0) return
+    setSel([])
+    setWiping(true)
+    try {
+      const res = await fetch('/api/xcreate/node', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: rowIds }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      console.info('[xdirect:canvas] deleted rows', rowIds)
+    } catch (err) {
+      console.warn('[xdirect:canvas] delete failed:', err)
+    }
+    setStoryboard(prev => prev.map(s => s.row_id && rowIds.includes(s.row_id)
+      ? { ...s, status: 'draft' as const, row_id: undefined, url: undefined, cost: undefined }
+      : s))
+    refreshRef.current()
+  }, [])
+  // The wipe ends when the refresh has gone through a full loading cycle —
+  // watching for the TRUE→FALSE edge, not just "not loading", because the
+  // refetch starts a beat after the delete.
+  useEffect(() => {
+    if (!wiping) return
+    if (boardLoading) { wipeSawLoad.current = true; return }
+    if (wipeSawLoad.current) { wipeSawLoad.current = false; setWiping(false) }
+  }, [boardLoading, wiping])
 
   return (
     <div className="xduel-page">
@@ -128,6 +194,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
               runnerRef={runnerRef}
               onBusy={onBusy}
               boardNodes={nodes}
+              onBrief={onBrief}
             />
           </div>
 
@@ -147,7 +214,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
               }}
               onPreview={(url, isVideo) => setHero({ url, isVideo })}
             />
-            {nodes.length > 0 ? (
+            {!wiping && nodes.length > 0 ? (
               // The stage flows on the page now (owner, Aug 9), so the
               // canvas owns its height: one viewport's worth, whatever the
               // strip above it takes — the page just gets taller.
@@ -161,7 +228,8 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                 }}>{t('xd.canvas.title')}</span>
               </div>
               <WorkflowCanvas
-                nodes={nodes}
+                nodes={canvasNodes}
+                title={boardTitle}
                 selectedIds={sel}
                 height="calc(100% - 50px)"
                 busy={chatBusy}
@@ -173,6 +241,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                     : [n.id])
                 }}
                 onClearSelection={() => setSel([])}
+                onDelete={deleteNodes}
                 onPlay={(n: CanvasNode) => { if (n.thumb) setHero({ url: n.thumb, isVideo: n.isVideo }) }}
                 nodeOrigin={(n: CanvasNode) => {
                   if (!n.rowId) return null
@@ -185,11 +254,59 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                   return null
                 }}
                 sceneOf={(n: CanvasNode) => (n.rowId && storyboard.find(s => s.row_id === n.rowId)) || null}
+                onUseTake={(n: CanvasNode, scene: any) => {
+                  // The user picked which take the film keeps — the card's
+                  // clip, model and cost switch to this node. Persisted by
+                  // the chat's storyboard save debounce.
+                  setStoryboard(prev => prev.map(s => s.id === scene.id
+                    ? {
+                        ...s, status: 'done' as const, row_id: n.rowId, url: n.thumb ?? s.url,
+                        ...(n.label ? { model_name: n.label } : {}),
+                        ...(typeof n.cost === 'number' ? { cost: n.cost } : {}),
+                      }
+                    : s))
+                  // And say so in the transcript (owner, Aug 9): a take
+                  // switch is a user edit the director should see on the
+                  // record, without burning a turn.
+                  let sc = 0, cut = 0, tag = scene.id
+                  for (const s of storyboard) {
+                    if (s.continues && sc > 0) cut += 1
+                    else { sc += 1; cut = 1 }
+                    if (s.id === scene.id) { tag = `S${sc}·C${cut}`; break }
+                  }
+                  runnerRef.current?.noteTake(scene.id, tag, n.label ?? 'the selected model')
+                }}
+                sceneSlot={(n: CanvasNode) => {
+                  if (!n.rowId) return null
+                  let sc = 0, cut = 0
+                  for (const s of storyboard) {
+                    if (s.continues && sc > 0) cut += 1
+                    else { sc += 1; cut = 1 }
+                    if (s.row_id === n.rowId) return { scene: sc, cut }
+                  }
+                  return null
+                }}
                 onRerun={(n, m, o) => {
                   if (!runnerRef.current) { console.warn('[xdirect] rerun: runner not ready'); return }
                   runnerRef.current.rerunNode(n as any, m, o)
                 }}
               />
+              </div>
+            ) : wiping || boardLoading ? (
+              // The board is coming (owner ask, Aug 9): a canvas-shaped
+              // loading screen — same dark dotted surface — instead of a
+              // blank gap that suddenly becomes a board.
+              <div style={{
+                flex: 1, minHeight: 500, borderRadius: 12, border: '1px solid var(--border2)',
+                background: '#141518',
+                backgroundImage: 'radial-gradient(circle, #2a2c31 1px, transparent 1px)',
+                backgroundSize: '22px 22px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+              }}>
+                <span className="nav-history-spin" style={{ width: 22, height: 22, borderWidth: 2 }} aria-hidden />
+                <span style={{ fontSize: 10.5, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.09em', textTransform: 'uppercase', color: '#6a6c73' }}>
+                  {t('wf.loading')}
+                </span>
               </div>
             ) : storyboard.length === 0 ? (
               <div className="xdirect-empty">

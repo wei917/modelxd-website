@@ -1960,7 +1960,15 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   /* top clears the sticky .omni-bar (~58px) the rail would otherwise
      slide under once the page scrolls. */
   position: sticky; top: 74px;
-  height: calc(100vh - 90px); min-height: 480px;
+  /* max-height, NOT height (owner, Aug 10: "the dialog box disappears").
+     A fixed 100vh rail starts ~190px down the page (under the headline),
+     so its pinned-at-the-bottom composer fell BELOW the fold on a short
+     board with nothing to scroll. Sizing to content caps it: a short
+     board ends right under the skills with the composer visible; a long
+     transcript hits the cap and scrolls internally, composer still
+     pinned. 200px ≈ the headline block above the split plus breathing
+     room, so it fits the viewport at rest too. */
+  max-height: calc(100vh - 200px); min-height: 420px;
 }
 .xdirect-stage { min-width: 0; }
 .xdirect-empty {

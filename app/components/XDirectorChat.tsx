@@ -76,10 +76,13 @@ export type SceneRunnerHandle = {
   /** Canvas rerun (owner, Aug 9): same prompt, different model — the new
    *  output lands as a SIBLING of the original so the two compare side by
    *  side. The plan bubble still gates the spend. */
-  rerunNode: (node: { rowId?: string; prompt?: string; isVideo: boolean; kind?: string | null; parentRowIds?: string[] }, model: { id: string; display_name: string }, opts?: { duration?: number; resolution?: string; aspect_ratio?: string }) => void
+  rerunNode: (node: { rowId?: string; prompt?: string; isVideo: boolean; kind?: string | null; parentRowIds?: string[] }, model: { id: string; display_name: string }, opts?: { duration?: number; resolution?: string; aspect_ratio?: string; refs?: Array<{ bucket: string; storagePath: string; mediaType: string; fileName: string; fileSize: number }> }) => void
+  /** A board-side take switch, recorded in the transcript (owner, Aug 9)
+   *  — a visible ★ line and a protocol note, no director turn spent. */
+  noteTake: (sceneId: string, sceneLabel: string, modelName: string) => void
 }
 
-export default function XDirectorChat({ onConversationId, onMintedConversation, onActivity, storyboard, onStoryboard, runnerRef, onBusy, boardNodes }: {
+export default function XDirectorChat({ onConversationId, onMintedConversation, onActivity, storyboard, onStoryboard, runnerRef, onBusy, boardNodes, onBrief }: {
   /** /xdirect listens here so its canvas can follow the conversation's
    *  board (board id === conversation id). Fired on restore and on the
    *  first message of a fresh chat. */
@@ -103,6 +106,10 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
    *  generation that finished while the page was closed (see the
    *  orphaned-completion effect). */
   boardNodes?: any[]
+  /** The conversation's ORIGINAL brief (first user message) — the canvas
+   *  shows it as the Prompt input node beside the references (owner,
+   *  Aug 9: "the overall original input is not just 3 references"). */
+  onBrief?: (text: string) => void
 } = {}) {
   const t = useT()
 
@@ -295,7 +302,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   const committedRef = useRef<Attachment[]>([])          // last committed uploads, reused across shots
   // Armed by a canvas ↻: the next generation inherits THESE parents so the
   // rerun lands beside the original instead of dangling off lastGen.
-  const pendingRerunRef = useRef<{ parentRowIds: string[] } | null>(null)
+  const pendingRerunRef = useRef<{ parentRowIds: string[]; refs?: Array<{ bucket: string; storagePath: string; mediaType: string; fileName: string; fileSize: number }> } | null>(null)
   // The ↻ config step showed the price and the click was the confirm —
   // same rule as scene cards. One-shot: authorizes exactly one generation,
   // so the plan bubble never strands a fullscreen-canvas user in a chat
@@ -340,6 +347,15 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     storyboardRef.current = next
     onStoryboard?.(next)
   }
+
+  // The first user message IS the film's brief — surface it to the page
+  // whenever it exists (restore or first send). Same-string updates bail
+  // in React, so re-firing is free.
+  useEffect(() => {
+    const fu = bubbles.find(b => b.role === 'user' && b.text)
+    if (fu?.text) onBrief?.(fu.text)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bubbles])
 
   // block:'nearest' keeps the auto-scroll INSIDE the transcript's own
   // overflow container — the page itself must never move on a new bubble.
@@ -673,9 +689,9 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           return
         }
         genCountRef.current = 0
-        pendingRerunRef.current = { parentRowIds: Array.isArray(node.parentRowIds) ? node.parentRowIds : [] }
+        pendingRerunRef.current = { parentRowIds: Array.isArray(node.parentRowIds) ? node.parentRowIds : [], ...(opts?.refs ? { refs: opts.refs } : {}) }
         armedRerunRef.current = true
-        console.info('[xdirect:rerun] armed — sending director turn')
+        console.info('[xdirect:rerun] armed — sending director turn', opts?.refs ? { refs: opts.refs.length } : {})
         pushBubble({ role: 'user', text: `↻ ${model.display_name}${opts?.duration ? ` · ${opts.duration}s` : ''}${opts?.resolution ? ` · ${opts.resolution}` : ''}${opts?.aspect_ratio ? ` · ${opts.aspect_ratio}` : ''}` })
         const msgs = [...protocol, { role: 'user', content:
           `GENERATE NOW: call start_generation in THIS turn. Do not discuss, do not ask, do not summarize — the user already picked everything on the board. This is a RE-RUN of an earlier generation for side-by-side comparison, changing ONLY the model.\n`
@@ -686,10 +702,24 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           + (opts?.duration ? `- duration_s: ${opts.duration}\n` : `- duration: same as the original generation of this prompt.\n`)
           + (opts?.resolution ? `- resolution: ${opts.resolution} (pass this exact value as start_generation's resolution)\n` : '')
           + (opts?.aspect_ratio ? `- aspect_ratio: ${opts.aspect_ratio}\n` : '')
-          + `- references: the same as the original generation of this prompt (set use_attachments accordingly).\n`
+          + (opts?.refs
+              ? (opts.refs.length > 0
+                ? `- references: I selected ${opts.refs.length} of the original's source files for this run (already staged on my side — set use_attachments=true and pick a recipe that consumes them).\n`
+                : `- references: NONE this time — I deselected them all. Use a text-only recipe and set use_attachments=false.\n`)
+              : `- references: the same as the original generation of this prompt (set use_attachments accordingly).\n`)
           + `- recipe: the same as the original if this model supports it; otherwise silently use the closest recipe this model DOES support for the same inputs (image_to_video ↔ reference_frames are acceptable substitutes).` }]
         setProtocol(msgs)
         void agentTurn(msgs)
+      },
+      noteTake: (sceneId, sceneLabel, modelName) => {
+        // Record only — no agentTurn, so it costs nothing. The director
+        // reads it (plus the updated CURRENT STORYBOARD) on its next turn.
+        // Skipped while busy: an in-flight turn snapshots the protocol and
+        // would silently drop a concurrent append when it settles.
+        if (busy !== 'idle') return
+        pushBubble({ role: 'user', text: `★ ${sceneLabel} → ${modelName}` })
+        setProtocol(prev => [...prev, { role: 'user', content:
+          `Board update: for scene ${sceneId} I picked the ${modelName} output as the take to use. The board already reflects this — no action needed, just keep it in mind.` }])
       },
       generateAll: (sceneIds: string[]) => {
         if (busy !== 'idle' || sceneIds.length === 0) return
@@ -711,6 +741,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // When this generation IS a storyboard scene, its card mirrors the whole
     // lifecycle: generating → done (thumb + real cost) or error.
     const sceneId: string | null = typeof inp.scene_id === 'string' ? inp.scene_id : null
+    // An armed ↻ rerun is a comparison TAKE: it lands on the canvas beside
+    // the original and must never touch the scene card's lifecycle (owner
+    // bug, Aug 9: the rerun marked s1 'generating', and a mid-run reload
+    // then demoted the card to a blank draft). The protocol keeps scene_id
+    // — the server's storyboard guard needs it — only the CARD binding is
+    // dropped. The card changes takes only when the user picks one.
+    const rerunCtx = pendingRerunRef.current
+    const cardScene: string | null = rerunCtx ? null : sceneId
 
     console.info('[xdirect:gen] start', { model_id: inp.model_id, recipe: inp.recipe, sceneId, duration: inp.duration, resolution: inp.resolution ?? null, use_attachments: !!inp.use_attachments, committed: committedRef.current.length })
 
@@ -720,7 +758,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     const bail = async (err: string) => {
       console.warn('[xdirect:gen] BAIL:', err)
       pushBubble({ role: 'gen', status: 'error', modelName: models[inp.model_id]?.name ?? inp.model_id, error: err })
-      if (sceneId) patchScene(sceneId, { status: 'error', error: err })
+      if (cardScene) patchScene(cardScene,{ status: 'error', error: err })
       const toolMsg = {
         role: 'user',
         content: [...pendingToolResults, {
@@ -740,7 +778,8 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     const sceneRefs: Attachment[] = (Array.isArray(genScene?.refs) ? genScene.refs : [])
       .filter((r: any) => r?.storagePath && r?.bucket)
 
-    if (inp.use_attachments && committedRef.current.length === 0 && sceneRefs.length === 0) {
+    if (inp.use_attachments && committedRef.current.length === 0 && sceneRefs.length === 0
+        && !(rerunCtx?.refs && rerunCtx.refs.length > 0)) {
       return bail('No reference photos are available in this session — ask the user to re-attach the photo, then retry.')
     }
 
@@ -772,7 +811,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
 
     setBusy('generating')
     pushBubble({ role: 'gen', status: 'generating', modelName: models[inp.model_id]?.name ?? inp.model_id, text: inp.prompt })
-    if (sceneId) patchScene(sceneId, { status: 'generating', error: undefined })
+    if (cardScene) patchScene(cardScene,{ status: 'generating', error: undefined })
 
     const finish = async (result: any) => {
       console.info('[xdirect:gen] finish', { ok: !!result.ok, error: result.error ?? null, cost: result.cost ?? null })
@@ -815,10 +854,9 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       // "whatever ran last" stacked reloaded boards into one parentless
       // column and drew derivations that never happened.
       ...((): Record<string, any> => {
-        const rerun = pendingRerunRef.current
-        if (rerun) {
+        if (rerunCtx) {
           pendingRerunRef.current = null
-          return rerun.parentRowIds.length > 0 ? { parentIds: rerun.parentRowIds } : {}
+          return rerunCtx.parentRowIds.length > 0 ? { parentIds: rerunCtx.parentRowIds } : {}
         }
         if (sceneId) {
           const srcRow = typeof inp.chain_from_scene === 'string'
@@ -839,9 +877,13 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // Attachment ORDER is meaning: slot 0 is the start frame for recipes
     // that consume one, so a chained scene leads with the continuation
     // frame and the product references ride behind it.
-    const refAtts = sceneRefs.length > 0
-      ? sceneRefs
-      : (inp.use_attachments && committedRef.current.length > 0) ? committedRef.current : []
+    // A rerun with an explicit reference selection uses EXACTLY those files
+    // (owner, Aug 9) — including [] for a deliberate text-only re-run.
+    const refAtts: any[] = rerunCtx?.refs
+      ? rerunCtx.refs
+      : sceneRefs.length > 0
+        ? sceneRefs
+        : (inp.use_attachments && committedRef.current.length > 0) ? committedRef.current : []
     const allAtts = [...(chainFrame ? [chainFrame] : []), ...refAtts]
     if (allAtts.length > 0) {
       payload.attachments = allAtts.map(a => ({
@@ -858,7 +900,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       })
     } catch {
       patchLastGen({ status: 'error', error: 'Network error' })
-      if (sceneId) patchScene(sceneId, { status: 'error', error: 'Network error' })
+      if (cardScene) patchScene(cardScene,{ status: 'error', error: 'Network error' })
       return finish({ ok: false, error: 'network error starting the generation' })
     }
 
@@ -867,7 +909,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       const detail = await postRes.json().catch(() => null)
       const msg = detail?.message ?? detail?.error ?? `HTTP ${postRes.status}`
       patchLastGen({ status: 'error', error: msg })
-      if (sceneId) patchScene(sceneId, { status: 'error', error: msg })
+      if (cardScene) patchScene(cardScene,{ status: 'error', error: msg })
       return finish({
         ok: false,
         error: postRes.status === 402 ? `insufficient_credits: ${msg}` : msg,
@@ -881,7 +923,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     pollRef.current = setInterval(async () => {
       if (Date.now() - startedAt > 10 * 60_000) {
         patchLastGen({ status: 'error', error: 'Timed out' })
-        if (sceneId) patchScene(sceneId, { status: 'error', error: 'Timed out' })
+        if (cardScene) patchScene(cardScene,{ status: 'error', error: 'Timed out' })
         return finish({ ok: false, error: 'generation timed out after 10 minutes' })
       }
       try {
@@ -894,7 +936,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         if (slot?.error || data.job?.status === 'failed') {
           const err = slot?.error ?? data.job?.error ?? 'generation failed'
           patchLastGen({ status: 'error', error: err })
-          if (sceneId) patchScene(sceneId, { status: 'error', error: err })
+          if (cardScene) patchScene(cardScene,{ status: 'error', error: err })
           onActivity?.()   // failed rows still get a board node
           return finish({ ok: false, error: err })
         }
@@ -906,7 +948,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           status: 'done', cost, modelName: slot?.name ?? inp.model_id,
           ...(medium === 'image' ? { imageUrl: url ?? undefined } : { videoUrl: url ?? undefined }),
         })
-        if (sceneId) patchScene(sceneId, { status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined })
+        if (cardScene) patchScene(cardScene,{ status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined })
         onActivity?.()   // new node on the board — let the canvas redraw
         return finish({ ok: true, url: url ? '(delivered to the user in the chat)' : null, medium, costUsd: cost, model: slot?.name ?? inp.model_id, xcreateId: xid })
       } catch { /* transient poll error — keep going */ }

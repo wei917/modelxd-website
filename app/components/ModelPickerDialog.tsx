@@ -109,10 +109,16 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   const [allModels,   setAllModels]   = useState<PickerModel[]>([])
   const [loading,     setLoading]     = useState(true)
   // Esc closes the picker (CC, July 19) — same as clicking the backdrop.
+  // CAPTURE phase, so no handler between the focused element and document
+  // can swallow the key first, and stopPropagation so closing the picker
+  // is ALL that Esc does — no other Esc behavior stacks on top of it
+  // (owner, Aug 9). Native fullscreen is the one thing we cannot shield:
+  // the browser reserves Esc for exiting it, which is why the footer's
+  // Cancel button exists.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // null = "All" (no company filter active).
@@ -230,7 +236,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxWidth: 'calc(100vw - 32px)', maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px' }}>
             <span style={{ color: 'var(--muted)' }}>⌕</span>
@@ -467,6 +473,15 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
               ))}
             </>
           )}
+        </div>
+        {/* An explicit way out at the bottom (owner, Aug 9) — Esc and the
+            backdrop click do the same, but a visible button always works,
+            fullscreen included. */}
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClose}
+            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--muted2)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
+          >{t('common.cancel')}</button>
         </div>
       </div>
     </div>
