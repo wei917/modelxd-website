@@ -519,16 +519,31 @@ export default function WorkflowCanvas({
   // at. Children of any collapsed take re-wire to the stack.
   const nodes = useMemo<CanvasNode[]>(() => {
     if (!sceneOf) return rawNodes
+    // Membership is SCENE IDENTITY, never prompt equality: the director
+    // rewrites shot text between runs, and a prompt-matched stack dropped
+    // the re-run out of its cut entirely (owner bug, Aug 11 — "there is a
+    // video not belonging to any scene"). sceneOf() resolves a row through
+    // the cut's full take list, so a rewritten prompt changes nothing.
     const stacks = new Map<string, { active: CanvasNode; members: CanvasNode[] }>()
     const memberOf = new Map<string, string>()
+    const bySceneId = new Map<string, CanvasNode[]>()
     for (const n of rawNodes) {
-      if (!n.rowId || !n.prompt || !n.thumb) continue
+      if (!n.rowId || !n.thumb) continue
+      // KEYFRAME mode's key still feeds the cut; it is not one of its takes.
+      if (!(n.isVideo || n.kind === 'video')) continue
       const scene = sceneOf(n)
-      if (!scene) continue
-      const members = rawNodes.filter(m => m.rowId && m.thumb && m.prompt === n.prompt)
+      if (!scene?.id) continue
+      if (!bySceneId.has(scene.id)) bySceneId.set(scene.id, [])
+      bySceneId.get(scene.id)!.push(n)
+    }
+    for (const [sceneId, members] of bySceneId) {
       if (members.length < 2) continue
-      const id = `takes::${scene.id}`
-      stacks.set(id, { active: n, members })
+      // The card's own row is the take in use; otherwise the newest.
+      const scene: any = members.map(m => sceneOf(m)).find(Boolean)
+      const active = members.find(m => m.rowId === scene?.row_id)
+        ?? [...members].sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+      const id = `takes::${sceneId}`
+      stacks.set(id, { active, members })
       for (const m of members) memberOf.set(m.id, id)
     }
     if (stacks.size === 0) return rawNodes
@@ -901,7 +916,10 @@ export default function WorkflowCanvas({
     const clusters = new Map<string, CanvasNode[]>()
     for (const n of nodes) {
       if (!n.rowId) continue
-      const key = n.prompt ? 'p:' + n.prompt : 'id:' + n.id
+      // Scene identity first (survives a rewritten prompt); prompt only as
+      // the fallback for nodes the storyboard doesn't claim.
+      const sid = sceneOf?.(n)?.id
+      const key = sid ? 'sc:' + sid : (n.prompt ? 'p:' + n.prompt : 'id:' + n.id)
       if (!clusters.has(key)) clusters.set(key, [])
       clusters.get(key)!.push(n)
     }

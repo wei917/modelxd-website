@@ -706,7 +706,15 @@ export async function POST(req: Request) {
     : searchFlags.some(Boolean)  ? 'mixed'
     : 'none'
 
-  const { data: xcreateRow } = await sb.from('xcreates').insert({
+  // THIS INSERT IS THE OUTPUT'S IDENTITY — and its error was silently
+  // discarded until Aug 12, which produced the worst failure this API has:
+  // the user debited, the picture delivered, and no row for anything to
+  // bind to (two music-video runs stalled on exactly this). The id is
+  // minted here so retries are idempotent: a duplicate-key error on retry
+  // means an earlier attempt actually committed, i.e. success.
+  const mintedRowId = globalThis.crypto.randomUUID()
+  const xcreateInsert = {
+    id: mintedRowId,
     user_id: user.id, mode, prompt, search_mode: searchMode,
     slots: slotsForXCreate, attachment_id: attachmentId,
     // Full input list (July 19) — lets the gallery restore the original
@@ -714,7 +722,18 @@ export async function POST(req: Request) {
     input_attachments: rawInputs
       .filter((i: any) => i?.storagePath)
       .map((i: any) => ({ storagePath: i.storagePath, bucket: i.bucket, mediaType: i.mediaType, fileName: i.fileName, fileSize: i.fileSize })),
-  }).select('id').single()
+  }
+  let xcreateRow: { id: string } | null = null
+  for (let attempt = 1; attempt <= 3 && !xcreateRow; attempt++) {
+    const { data, error } = await sb.from('xcreates').insert(xcreateInsert).select('id').single()
+    if (data?.id) { xcreateRow = data; break }
+    if (error?.code === '23505') { xcreateRow = { id: mintedRowId }; break }
+    console.error(`${LOG} xcreates insert failed (attempt ${attempt}/3):`, error?.message ?? error)
+    if (attempt < 3) await new Promise(r => setTimeout(r, 400 * attempt))
+  }
+  if (!xcreateRow) {
+    console.error(`${LOG} xcreates insert PERMANENTLY failed — outputs delivered without a row (user ${user.id}, mode ${mode})`)
+  }
 
   // Lineage stamp. A separate update (not part of the insert) so the API
   // keeps working before supabase/53_xcreate_workflow.sql has been run —

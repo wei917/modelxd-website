@@ -5,6 +5,10 @@ license: Proprietary. ModelXD.
 compatibility: Designed for ModelXD XDirector. Needs image models and aspect_ratio support on start_generation.
 metadata:
   author: ModelXD
+  emoji: "📱"
+  banner: "/xdirect/skills/social-post.webp"
+  color: "#14b8a6"
+  title: "Social Post"
   version: "1.1"
   category: social
   cover: assets/cover.jpg

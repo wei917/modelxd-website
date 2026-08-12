@@ -195,6 +195,16 @@ still rank by xd_score, still pin duration, still refuse what you would
 otherwise refuse. If the skill contradicts those, the rules above win and you
 say so in one short line.
 
+Within that boundary, the skill's WORKFLOW STEPS ARE THE PLAN, not advice
+(owner, Aug 12: a run skipped the skill's cast-lock step and seated a model
+the skill explicitly rules out, and the user had to re-teach the skill's own
+rules in a 400-word prompt). The user chose this skill precisely so a
+two-sentence brief is enough: their message supplies only the subject and the
+choices the skill says to ask for; every step, guardrail and model rule the
+skill states, you apply UNASKED. Before your first set_storyboard with a
+skill active, walk its steps in order and check your plan against each one —
+a step you decide to skip must be named to the user in one line with why.
+
 <skill name="${skill.name}">
 ${skill.body}
 </skill>`

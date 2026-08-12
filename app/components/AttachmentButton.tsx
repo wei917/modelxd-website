@@ -21,6 +21,19 @@ export type Attachment = {
   // first regardless of which slot it came from. Server-side code can
   // ignore this field; the provider router just sees the array order.
   slotIndex?:  number
+  /** 1-based position in the composer — the number shown on the chip
+   *  and sent to the director, so "use file 2" binds to these bytes. */
+  fileNo?:     number
+  /** What this file IS, set by a click on its chip (owner, Aug 11:
+   *  numbering was "too complicated"). The role travels with the bytes,
+   *  so it survives the director rewriting the brief — prose can be
+   *  reworded, a tag cannot. Images only; audio/lyrics detect themselves. */
+  role?:       'subject' | 'style'
+  /** WHICH subject, when there is more than one (owner, Aug 11: "what if I
+   *  have multiple subjects?"). A short name the user types on the chip —
+   *  "Mei", "the bag". Files sharing a name are the same subject, so a
+   *  scene can be fed exactly that person's photos and no one else's. */
+  label?:      string
   /** The bytes, held in the browser until the user actually submits.
    *  Present on a pending attachment, absent once uploaded.
    *
@@ -113,11 +126,19 @@ export function pendingAttachment(
 export async function commitAttachments(atts: Attachment[]): Promise<Attachment[]> {
   if (!atts.some(a => a.file)) return atts
   const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+  // Uploads are filed UNDER THE UPLOADER'S ID (owner, Aug 11). They used to
+  // land at a bare `originals/<uuid>`, which carries no owner — so the
+  // buckets' owner-read policy (which matches on a leading user-id folder)
+  // could never match, nothing but the service key could read an upload
+  // back, and there was no way to prove who an object belonged to. Prefixing
+  // the id makes ownership checkable from the path alone.
+  const { data: { user } } = await sb.auth.getUser()
+  const prefix = user?.id ? `${user.id}/` : ''
   const out: Attachment[] = []
   for (const att of atts) {
     if (!att.file) { out.push(att); continue }
     const ext  = att.fileName.split('.').pop() ?? 'bin'
-    const path = `originals/${crypto.randomUUID()}.${ext}`
+    const path = `${prefix}originals/${crypto.randomUUID()}.${ext}`
     const { error } = await sb.storage.from(att.bucket).upload(path, att.file, {
       contentType: att.mediaType, upsert: false,
     })
@@ -177,10 +198,15 @@ export default function AttachmentButton({
   multiple = false,
   accept,
   maxFiles,
+  roles = false,
 }: {
   attachments: Attachment[]
   onChange:    (a: Attachment[]) => void
   disabled?:   boolean
+  /** Show a SUBJECT/STYLE tag on each image chip, clickable to switch.
+   *  On where the distinction changes the pipeline (XDirect); off in
+   *  XCreate, where the recipe already says what each slot is for. */
+  roles?:      boolean
   context?:    'xduel' | 'xcreate'
   multiple?:   boolean
   /** Override the file picker filter. Falls back to the full ACCEPT string. */
@@ -226,6 +252,59 @@ export default function AttachmentButton({
       {/* Existing attachments */}
       {attachments.map((att, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', background: 'var(--surface, #f5f5f5)', border: '1px solid var(--border, #e0e0e0)', borderRadius: 8 }}>
+          {/* What this file IS — click to switch (owner, Aug 11: numbering
+              was "too complicated"). Tagging beats counting: the user never
+              says which file is which, and the tag rides with the bytes so
+              a rewritten brief can't lose it. Audio/lyrics tag themselves. */}
+          {roles && (() => {
+            const isImg = att.mediaType.startsWith('image/')
+            const isAud = att.mediaType.startsWith('audio/')
+            const isLyr = /\.(txt|lrc)$/i.test(att.fileName) || att.mediaType === 'text/plain'
+            const tag = (text: string, bg: string, onClick?: () => void) => (
+              <button
+                type="button"
+                onClick={onClick}
+                disabled={!onClick || disabled}
+                title={onClick ? 'Click to switch between SUBJECT and STYLE' : undefined}
+                style={{
+                  fontSize: 8, fontFamily: 'var(--mono)', fontWeight: 700, letterSpacing: '0.06em',
+                  padding: '2px 5px', borderRadius: 4, border: 'none', flexShrink: 0,
+                  background: bg, color: '#fff', cursor: onClick && !disabled ? 'pointer' : 'default',
+                }}
+              >{text}</button>
+            )
+            if (isAud) return tag('SONG', '#3c9ee8')
+            if (isLyr) return tag('LYRICS', '#5a6472')
+            if (!isImg) return null
+            const role = att.role ?? 'subject'
+            const badge = tag(
+              role === 'style' ? 'STYLE' : 'SUBJECT',
+              role === 'style' ? '#a35ce8' : 'var(--red)',
+              () => onChange(attachments.map((x, xi) =>
+                xi === i ? { ...x, role: role === 'style' ? 'subject' : 'style' } : x)),
+            )
+            // Only subjects need naming — style frames are one pool.
+            if (role === 'style') return badge
+            return (
+              <>
+                {badge}
+                <input
+                  value={att.label ?? ''}
+                  onChange={e => onChange(attachments.map((x, xi) =>
+                    xi === i ? { ...x, label: e.target.value.slice(0, 24) } : x))}
+                  disabled={disabled}
+                  placeholder="name"
+                  title="Name this subject — photos sharing a name are the same person or object"
+                  style={{
+                    width: 52, flexShrink: 0, background: 'transparent',
+                    border: 'none', borderBottom: '1px dashed var(--border2)',
+                    fontSize: 9.5, fontFamily: 'var(--mono)', color: 'var(--white)',
+                    padding: '1px 2px', outline: 'none',
+                  }}
+                />
+              </>
+            )
+          })()}
           {att.mediaType.startsWith('image/') && att.previewUrl
             ? <img src={att.previewUrl} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
             : <span style={{ fontSize: 14 }}>{fileIcon(att.mediaType)}</span>
@@ -241,6 +320,11 @@ export default function AttachmentButton({
       ))}
 
       {/* Add button (show if under max) */}
+      {attachments.length >= (maxFiles ?? MAX_FILES) && (
+        <span style={{ fontSize: 9.5, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
+          {`max ${maxFiles ?? MAX_FILES} files`}
+        </span>
+      )}
       {attachments.length < (maxFiles ?? MAX_FILES) && (
         <>
           <input ref={inputRef} type="file" accept={accept ?? ACCEPT} multiple={multiple} style={{ display: 'none' }}
@@ -248,7 +332,7 @@ export default function AttachmentButton({
           <button
             onClick={() => !disabled && inputRef.current?.click()}
             disabled={disabled}
-            title={`Attach file${multiple ? 's' : ''} — image, video, PDF or txt (max ${MAX_MB}MB${multiple ? `, up to ${MAX_FILES}` : ''})`}
+            title={`Attach file${multiple ? 's' : ''} — image, video, audio, PDF or txt (max ${MAX_MB}MB${multiple ? `, up to ${maxFiles ?? MAX_FILES} files` : ''})`}
             style={{
               background: 'none', border: '1px solid var(--border, #e0e0e0)', borderRadius: 8,
               color: 'var(--muted, #888)', cursor: disabled ? 'default' : 'pointer',

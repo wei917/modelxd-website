@@ -167,7 +167,7 @@ export async function generateVideo(
 export async function generateImage(
   model:       ModelInfo,
   prompt:      string,
-  _quality:    'low' | 'medium' | 'high' = 'medium',
+  quality:     'low' | 'medium' | 'high' = 'medium',
   size:        string = '1024x1024',
   attachments: Attachment[] = [],
   options?:    { count?: number | null; aspect_ratio?: string | null },
@@ -178,18 +178,31 @@ export async function generateImage(
   const editing = imageAtts.length > 0
   const n = Math.max(1, Math.min(4, options?.count ?? 1))
 
+  // Only grok-imagine-image-2.0 prices by quality tier; the older models take
+  // no `quality` at all. The row's output_config is the switch — a model that
+  // declares no qualities never gets the field, so adding a tiered model is a
+  // data change, not a deploy. An unsupported tier (e.g. 'high') falls back
+  // rather than being sent through and rejected upstream.
+  const tiers = (model.output_config as any)?.image?.qualities as string[] | undefined
+  const tier  = tiers?.length
+    ? (tiers.includes(quality) ? quality : (tiers.includes('medium') ? 'medium' : tiers[0]))
+    : null
+
   const body: any = { model: model.model_name, prompt, response_format: 'b64_json' }
   if (editing) {
+    // Edits derive resolution from the input and reject the generation-side
+    // fields, so the tier goes unsent here and billing falls to the bare keys.
     const a = imageAtts[0]
     body.image = { type: 'image_url', url: a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}` }
   } else {
     body.resolution = resolution
+    if (tier) body.quality = tier
     if (options?.aspect_ratio) body.aspect_ratio = options.aspect_ratio
     if (n > 1) body.n = n
   }
 
   const endpoint = `${BASE}/images/${editing ? 'edits' : 'generations'}`
-  console.log(`${TAG} generateImage ${editing ? 'edit' : 'generate'} resolution=${resolution} n=${n}`)
+  console.log(`${TAG} generateImage ${editing ? 'edit' : 'generate'} resolution=${resolution} quality=${tier ?? 'n/a'} n=${n}`)
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey()}` },
@@ -213,11 +226,16 @@ export async function generateImage(
   }
   const buffers = await Promise.all(items.map(decode))
 
+  // Rate keys, most specific first: "medium:2k" → "2k" → "1k" → default.
+  // The composite form matches the gpt-image-2 convention in model_pricing;
+  // the bare keys carry whatever tier the API bills when we send none, so an
+  // edit (which never sends one) still prices correctly.
   const per = (model.model_pricing?.per_image ?? {}) as Record<string, number>
-  const outRate   = per[resolution] ?? per['1k'] ?? per.default ?? 0.02
+  const tierRate  = tier && !editing ? per[`${tier}:${resolution}`] : undefined
+  const outRate   = tierRate ?? per[resolution] ?? per['1k'] ?? per.default ?? 0.02
   const inputRate = per.input_image ?? 0.002
   const cost = buffers.length * outRate + (editing ? imageAtts.length * inputRate : 0)
-  console.log(`${TAG} done images=${buffers.length} cost=$${cost.toFixed(4)}`)
+  console.log(`${TAG} done images=${buffers.length} rate=$${outRate}/img cost=$${cost.toFixed(4)}`)
 
   return {
     buffer:    buffers[0],

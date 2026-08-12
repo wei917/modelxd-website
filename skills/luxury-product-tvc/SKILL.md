@@ -5,6 +5,10 @@ license: Proprietary. ModelXD.
 compatibility: Designed for ModelXD XDirector (video generation with reference images)
 metadata:
   author: ModelXD
+  emoji: "💎"
+  banner: "/xdirect/skills/luxury-product-tvc.webp"
+  color: "#b8894a"
+  title: "Luxury Product TVC"
   version: "1.1"
   category: commercial
   aspect: "9:16"

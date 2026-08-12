@@ -1955,6 +1955,106 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   display: grid; grid-template-columns: minmax(380px, 460px) 1fr;
   gap: 24px; align-items: start;
 }
+/* Landing (no conversation yet): the director + templates are the whole
+   page — one centred column, no empty stage beside it (owner, Aug 10). */
+.xdirect-split.is-landing {
+  /* Align the director column under the headline (left), not centred —
+     a centred column left the headline orphaned to the side. */
+  grid-template-columns: minmax(0, 820px);
+  justify-content: start;
+}
+.xdirect-split.is-landing .xdirect-chat {
+  position: static;         /* no sticky pinning on the landing */
+  max-height: none;         /* size to content — intro, cards, composer */
+}
+/* ── XStoryboard scroll rail (owner, Aug 10: "make it cooler") ──────────
+   A film-strip track instead of the OS bar: a hairline rail the whole
+   width of the strip, a red thumb that only fully lights on hover, and a
+   slim 8px profile so it reads as part of the board rather than chrome.
+   Firefox gets the same colours through the standards property. */
+.xd-strip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--red-dim) transparent;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+}
+.xd-strip-scroll::-webkit-scrollbar { height: 8px; }
+.xd-strip-scroll::-webkit-scrollbar-track {
+  background: linear-gradient(var(--border) 0 0) center / 100% 2px no-repeat;
+  border-radius: 999px;
+}
+.xd-strip-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--red-dim), var(--red));
+  opacity: .55;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: opacity .18s ease;
+}
+.xd-strip-scroll:hover::-webkit-scrollbar-thumb { opacity: 1; }
+.xd-strip-scroll::-webkit-scrollbar-thumb:active {
+  background: var(--red);
+}
+
+/* One row of skills on the landing: the composer got taller (owner,
+   Aug 10) and a two-row card grid pushed it under the fold. Four across
+   keeps intro + skills + a 5-line composer inside one screen. */
+.xdirect-split.is-landing .xd-skills-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* ── XDirect skill/template cards — the XGame card language (owner, Aug 10):
+   emoji-on-gradient banner, name + category, two-line blurb, red glow when
+   picked. ─────────────────────────────────────────────────────────────── */
+.xd-skills-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.xd-skill {
+  display: flex; flex-direction: column; text-align: left;
+  padding: 0; overflow: hidden; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); font-family: inherit;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.xd-skill:hover { border-color: var(--border2); transform: translateY(-2px); }
+.xd-skill.is-on { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.xd-skill-banner {
+  /* 16/9, not the old 16/7: the art is rendered 3:2, and a 2.3:1 card threw
+     away a third of every frame — hero objects lost their tops (owner,
+     Aug 10). 16/9 also just reads as "video" on a video surface. */
+  position: relative; aspect-ratio: 16 / 9; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 34px; line-height: 1; overflow: hidden; background: #14161a;
+}
+.xd-skill-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(.9) brightness(.9); transition: filter .18s ease, transform .4s ease;
+}
+.xd-skill:hover .xd-skill-img, .xd-skill.is-on .xd-skill-img { filter: none; transform: scale(1.03); }
+.xd-skill-banner .xd-skill-check {
+  position: absolute; top: 8px; right: 9px; width: 20px; height: 20px;
+  border-radius: 999px; background: var(--red); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800;
+}
+.xd-skill-body { padding: 10px 13px 13px; display: flex; flex-direction: column; gap: 5px; }
+.xd-skill-head { display: flex; align-items: baseline; gap: 8px; }
+.xd-skill-name {
+  font-size: 13px; font-weight: 800; color: var(--white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+}
+.xd-skill.is-on .xd-skill-name { color: var(--red); }
+.xd-skill-tag {
+  font-family: var(--font-mono), monospace; font-size: 8.5px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--border2); border-radius: 4px; padding: 1px 5px;
+  flex-shrink: 0;
+}
+.xd-skill-blurb {
+  font-size: 11.5px; line-height: 1.5; color: var(--muted);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .xdirect-chat {
   min-width: 0; display: flex; flex-direction: column;
   /* top clears the sticky .omni-bar (~58px) the rail would otherwise

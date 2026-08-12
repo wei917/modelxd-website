@@ -13,10 +13,11 @@
 // spend still goes through the one billing pipeline and the agent stays in
 // the loop on what happened.
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import ModelPickerDialog from './ModelPickerDialog'
 import { pendingAttachment, commitAttachments } from './AttachmentButton'
+import { createSupabaseBrowser } from '../../lib/supabase-client'
 
 /** A committed reference on a scene card (owner ask, Aug 8): serializable
  *  descriptor only — the storyboard jsonb persists it, and generation for
@@ -51,9 +52,51 @@ export type Scene = {
   url?: string
   cost?: number
   error?: string
+  /** KEYFRAME mode (owner, Aug 11): the approved still this cut animates
+   *  from. Its own row, kept apart from row_id so the still never claims
+   *  the card's clip slot — and apart from takes[], because a source frame
+   *  is not an alternate take. */
+  still_row_id?: string
+  still_url?: string
+  /** The still is a SHOT with its own model choice and its own price
+   *  (owner, Aug 11: "separate the prices"). Per-shot model choice is the
+   *  differentiator; it applies to the keyframe as much as the clip. */
+  still_model_id?: string
+  still_model_name?: string
+  /** The user said "straight to video" for this cut — no still step. */
+  direct?: boolean
+  /** PERFORMANCE ONLY — the cast acts, never appears to sing or speak
+   *  (owner, Aug 11: "I don't need the model says anything. They just act.
+   *  I will mix audio later."). There is no lip-sync on this product, so
+   *  invented articulation is always wrong; this makes the absence a
+   *  deliberate direction instead of a defect. */
+  no_speech?: boolean
+  /** Every video row this cut has produced — the active take plus its
+   *  alternates. Binding is by row identity, never prompt text. */
+  takes?: string[]
 }
 
 const MAX_SCENE_REFS = 4
+
+/** Film numbering — EVERY card is a cut within its scene, the opener
+ *  included: S1·C1, S1·C2, S2·C1... A fresh setup starts a new scene at cut
+ *  1; a `continues` card increments the cut.
+ *
+ *  Exported because the chat must call a card what the CARD calls it (owner
+ *  bug, Aug 11: clicking the card marked S4·C1 announced "▶ Scene 5" — the
+ *  chat was numbering by array position, and one earlier cut had shifted
+ *  every card after it by one, so the click read as the wrong scene
+ *  starting). One numbering, one source. */
+export function sceneLabels(scenes: Array<{ continues?: boolean }>): string[] {
+  const out: string[] = []
+  let sc = 0, cut = 0
+  for (const sn of scenes) {
+    if (sn.continues && sc > 0) cut += 1
+    else { sc += 1; cut = 1 }
+    out.push(`S${sc}\u00b7C${cut}`)
+  }
+  return out
+}
 
 const card: React.CSSProperties = {
   width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8,
@@ -74,16 +117,106 @@ const iconBtn: React.CSSProperties = {
   color: 'var(--muted)', fontSize: 12, lineHeight: 1,
 }
 
-export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGenerateAll, onPreview }: {
+export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGenerateAll, onStop, onPreview }: {
   scenes: Scene[]
   /** true while the director is mid-turn — generation buttons pause. */
   busy: boolean
   onChange: (next: Scene[]) => void
-  onGenerate: (sceneId: string) => void
-  onGenerateAll: () => void
+  onGenerate: (sceneId: string, kind: 'still' | 'video') => void
+  onGenerateAll: (kind: 'still' | 'video') => void
+  /** The brake for a mis-clicked ▶▶ — visible whenever the director is
+   *  running a batch. */
+  onStop?: () => void
   onPreview: (url: string, isVideo: boolean) => void
 }) {
   const t = useT()
+  // PRICES ARE COMPUTED, NOT QUOTED (owner, Aug 11: "it will cost $2.66?").
+  // The director was writing the price into the scene itself, and its
+  // arithmetic was wrong — a 15s Veo 3.1 scene came back as $10.80 when the
+  // catalog rate ($0.40/s) makes it $6.00. On a product whose whole claim is
+  // price honesty, the number on the card has to come from the catalog, not
+  // from a model doing mental multiplication. The scene's own `estimate` is
+  // only a fallback for a model we cannot resolve.
+  const [catalog, setCatalog] = useState<any[]>([])
+  useEffect(() => {
+    let dead = false
+    createSupabaseBrowser().from('ai_models')
+      .select('id, display_name, model_pricing, modes')
+      .eq('enabled', true)
+      .then(({ data }) => { if (!dead) setCatalog(data ?? []) })
+    return () => { dead = true }
+  }, [])
+  const cheapest = (rate: any): number | null => {
+    if (typeof rate === 'number' && Number.isFinite(rate)) return rate
+    if (rate && typeof rate === 'object') {
+      const rates = Object.values(rate).map(Number).filter(n => Number.isFinite(n))
+      if (rates.length > 0) return Math.min(...rates)
+    }
+    return null
+  }
+  const priceOf = (sc: Scene): number | null => {
+    const m = catalog.find(x => x.id === sc.model_id)
+      ?? catalog.find(x => x.display_name === sc.model_name)
+    const perSec = cheapest(m?.model_pricing?.per_video_second)
+    if (perSec != null) return perSec * (sc.duration_s || 6)
+    return typeof sc.estimate === 'number' ? sc.estimate : null
+  }
+  // per_image is NOT a flat list of interchangeable rates (owner, Aug 11:
+  // "if I change the image generation model, the price becomes $0.00").
+  // Grok Imagine carries `input_image: 0.002` — a per-INPUT surcharge, not a
+  // generation price — and GPT Image 2 carries a whole quality x size
+  // matrix down to `low:1024x1536: 0.0047`. Taking the cheapest value
+  // quoted the surcharge or the smallest thumbnail, which then rounded to
+  // $0.00 and told the user an image was free.
+  const stillPriceOf = (sc: Scene): number | null => {
+    const m = catalog.find(x => x.id === sc.still_model_id)
+      ?? catalog.find(x => x.display_name === sc.still_model_name)
+    const pp = m?.model_pricing?.per_image
+    if (typeof pp === 'number') return Number.isFinite(pp) ? pp : null
+    if (!pp || typeof pp !== 'object') return null
+    // Surcharge keys are not prices for making a picture.
+    const rates = Object.entries(pp)
+      .filter(([k]) => !k.toLowerCase().includes('input'))
+      .map(([k, v]) => [k, Number(v)] as const)
+      .filter(([, v]) => Number.isFinite(v) && v > 0)
+    if (rates.length === 0) return null
+    // The rate this scene would actually be billed at: the model's stated
+    // default, else the standard 1024 tier, else mid quality — and only
+    // then the cheapest, for a catalog shape we have not seen.
+    const pick = (want: (k: string) => boolean) => rates.find(([k]) => want(k.toLowerCase()))?.[1]
+    return pick(k => k === 'default')
+      ?? pick(k => k === '1024' || k === '1k')
+      ?? pick(k => k === 'medium')
+      ?? Math.min(...rates.map(([, v]) => v))
+  }
+  // A price under a cent is still a price. Rounding 0.0047 to "$0.00" reads
+  // as free on the one product that sells honest pricing.
+  const money = (n: number): string => `$${n >= 0.01 ? n.toFixed(2) : n.toFixed(3)}`
+  // Switching mode must switch the RECIPE with it (owner bug, Aug 11: a
+  // DIRECT opener still carried image_to_video from its KEYFRAME plan, so
+  // the run went out asking a model to animate an image that did not
+  // exist). What feeds the clip differs per mode: the key still, the card's
+  // references, the previous cut's closing frame, or nothing at all.
+  const switchMode = (sc: Scene) => {
+    const toDirect = !sc.direct
+    const modes: string[] = videoModelOf(sc)?.modes ?? []
+    const hasRefs = (sc.refs ?? []).length > 0
+    const wants = !toDirect
+      ? 'image_to_video'                                   // opens on its key still
+      : hasRefs
+        ? (modes.includes('reference_frames') ? 'reference_frames' : 'image_to_video')
+        : sc.continues
+          ? 'image_to_video'                               // chains from the previous CLIP
+          : 'text_to_video'                                // nothing feeds it — words only
+    // A model that cannot speak the new recipe is no longer a valid pick;
+    // clear it so the picker chooses honestly rather than failing upstream.
+    const keeps = modes.length === 0 || modes.includes(wants)
+    patch(sc.id, {
+      direct: toDirect, recipe: wants,
+      ...(keeps ? {} : { model_id: undefined, model_name: undefined, estimate: undefined }),
+    })
+  }
+
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   // Shot prompts are long; cards stay scannable with them folded.
   const [openShot, setOpenShot] = useState<Record<string, boolean>>({})
@@ -92,6 +225,29 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
   const refSceneId = useRef<string | null>(null)
   const [uploadingRef, setUploadingRef] = useState<string | null>(null)
   const [pickerFor, setPickerFor] = useState<string | null>(null)
+  const [stillPickerFor, setStillPickerFor] = useState<string | null>(null)
+
+  // KEYFRAME made every non-direct cut an image_to_video shot: its own key
+  // still is the opening frame. The three recipe decisions below predate
+  // that and asked only "does this card carry refs, or is it a chained
+  // cut?" — so S1·C1 (no card refs, not a cut) was ruled text-only and its
+  // picker offered text_to_video models, for a shot that will in fact start
+  // from a still (owner, Aug 11: "why does scene 1 cut 1 become text to
+  // video only?").
+  const opensOnStill = (sc: Scene) => !!sc.still_row_id || sc.direct !== true
+  // A reference_frames-only model CANNOT open on the still (owner, Aug 11).
+  // It re-anchors from the picture as a subject reference — the likeness
+  // survives, the exact frame we locked does not. The picker still offers
+  // these (the Aug 9 override stands: the user's choice outranks the
+  // doctrine), but the card has to say what the choice costs.
+  const videoModelOf = (sc: Scene) =>
+    catalog.find(x => x.id === sc.model_id) ?? catalog.find(x => x.display_name === sc.model_name)
+  const losesTheFrame = (sc: Scene): boolean => {
+    if (!opensOnStill(sc)) return false
+    const m = videoModelOf(sc)
+    const modes: string[] = m?.modes ?? []
+    return modes.length > 0 && !modes.includes('image_to_video')
+  }
 
   if (scenes.length === 0) return null
 
@@ -132,9 +288,11 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
     const rest = (sc?.refs ?? []).filter(r => r.storagePath !== storagePath)
     patch(id, {
       refs: rest,
-      // Last reference gone: an image_to_video recipe has no input any
-      // more — fall back to text_to_video (i2v models speak t2v too).
-      ...(rest.length === 0 && sc?.recipe === 'image_to_video' ? { recipe: 'text_to_video' } : {}),
+      // Last reference gone: an image_to_video recipe has no input any more
+      // — UNLESS the cut opens on its own key still, which is an input the
+      // refs never were.
+      ...(rest.length === 0 && sc?.recipe === 'image_to_video' && !(sc && opensOnStill(sc))
+        ? { recipe: 'text_to_video' } : {}),
     })
   }
   const move = (idx: number, dir: -1 | 1) => {
@@ -156,18 +314,15 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
   // its scene, the opener included — S1·C1, S1·C2, S2·C1... A fresh setup
   // starts a new scene at cut 1; a continues card increments the cut. A
   // continues card with nothing before it opens scene 1 regardless.
-  const labels: string[] = []
-  {
-    let sc = 0, cut = 0
-    for (const sn of scenes) {
-      if (sn.continues && sc > 0) cut += 1
-      else { sc += 1; cut = 1 }
-      labels.push(`S${sc}\u00b7C${cut}`)
-    }
-  }
+  const labels = sceneLabels(scenes)
 
   const drafts = scenes.filter(s => !s.status || s.status === 'draft' || s.status === 'error')
-  const totalEst = scenes.reduce((sum, s) => sum + (s.status === 'done' ? (s.cost ?? 0) : (s.estimate ?? 0)), 0)
+  // Two totals, never one (owner, Aug 11). The stills total is what a full
+  // look test costs; the video total is what committing costs. Rolling them
+  // into a single number is exactly the number that scared the user.
+  const needStill = scenes.filter(s => !s.still_row_id && !s.direct && s.status !== 'done')
+  const stillsEst = needStill.reduce((sum, s) => sum + (stillPriceOf(s) ?? 0), 0)
+  const totalEst = scenes.reduce((sum, s) => sum + (s.status === 'done' ? (s.cost ?? 0) : (priceOf(s) ?? 0)), 0)
   const totalDur = scenes.reduce((sum, s) => sum + (s.duration_s || 0), 0)
 
   return (
@@ -176,23 +331,91 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
         <span style={{ ...label, color: 'var(--red)', fontWeight: 700 }}>{t('xd.sb.title')}</span>
         <span style={{ ...label }}>{scenes.length} · {totalDur}s</span>
         <span style={{ flex: 1 }} />
-        {totalEst > 0 && (
-          <span style={{ ...label, color: 'var(--muted2)' }}>{t('xd.sb.total')} ${totalEst.toFixed(2)}</span>
+        {(stillsEst > 0 || totalEst > 0) && (
+          <span style={{ ...label, color: 'var(--muted2)' }}>
+            {t('xd.sb.total')}{stillsEst > 0 ? ` ${t('xd.sb.genstill')} ${money(stillsEst)}` : ''}
+            {stillsEst > 0 && totalEst > 0 ? ' · ' : ' '}
+            {totalEst > 0 ? `${t('xd.sb.genvideo')} ${money(totalEst)}` : ''}
+          </span>
         )}
-        {drafts.length > 1 && (
+        {(() => {
+          const on = scenes.every(x => x.no_speech)
+          return (
+            <button
+              onClick={() => onChange(scenes.map(x => ({ ...x, no_speech: !on })))}
+              title={on ? t('xd.sb.nospeech.on') : t('xd.sb.nospeech.off')}
+              style={{
+                ...label, padding: '3px 9px', borderRadius: 999, cursor: 'pointer',
+                border: '1px solid ' + (on ? 'var(--red-dim)' : 'var(--border2)'),
+                background: on ? 'var(--red-dim)' : 'transparent',
+                color: on ? 'var(--red)' : 'var(--muted2)',
+              }}
+            >{on ? '🔇' : '🗣'} {t('xd.sb.nospeech')}</button>
+          )
+        })()}
+        {busy && onStop && (
           <button
-            onClick={onGenerateAll} disabled={busy}
+            onClick={onStop}
+            title={t('xd.stop.hint')}
             style={{
-              padding: '4px 12px', borderRadius: 999, border: '1px solid var(--red)',
-              background: 'var(--red-dim)', color: 'var(--red)', cursor: busy ? 'default' : 'pointer',
-              fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 700,
-              letterSpacing: '0.07em', opacity: busy ? 0.5 : 1,
+              ...label, padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
+              border: '1px solid var(--red)', background: 'var(--red-dim)',
+              color: 'var(--red)', fontWeight: 700,
             }}
-          >▶▶ {t('xd.sb.genall')}</button>
+          >⏹ {t('xd.stop')}</button>
         )}
+        {scenes.length > 1 && (() => {
+          const allDirect = scenes.every(x => x.direct)
+          return (
+            <button
+              onClick={() => onChange(scenes.map(x => {
+                const toDirect = !allDirect
+                const modes: string[] = (videoModelOf(x)?.modes ?? [])
+                const hasRefs = (x.refs ?? []).length > 0
+                const wants = !toDirect ? 'image_to_video'
+                  : hasRefs ? (modes.includes('reference_frames') ? 'reference_frames' : 'image_to_video')
+                  : x.continues ? 'image_to_video' : 'text_to_video'
+                const keeps = modes.length === 0 || modes.includes(wants)
+                return { ...x, direct: toDirect, recipe: wants, ...(keeps ? {} : { model_id: undefined, model_name: undefined, estimate: undefined }) }
+              }))}
+              title={allDirect ? t('xd.sb.mode.keyframe.hint') : t('xd.sb.mode.direct.hint')}
+              style={{
+                ...label, padding: '3px 9px', borderRadius: 999, cursor: 'pointer',
+                border: '1px solid var(--border2)', background: 'transparent', color: 'var(--muted2)',
+              }}
+            >{allDirect ? `▸ ${t('xd.sb.mode.keyframe')}` : `▸ ${t('xd.sb.mode.direct')}`}</button>
+          )
+        })()}
+        {drafts.length > 1 && (() => {
+          const anyStill = needStill.length > 1
+          const runAll = (kind: 'still' | 'video', primary: boolean, txt: string, hint: string) => (
+            <button
+              onClick={() => onGenerateAll(kind)} disabled={busy}
+              title={hint}
+              style={{
+                padding: '4px 12px', borderRadius: 999,
+                border: '1px solid ' + (primary ? 'var(--red)' : 'var(--border2)'),
+                background: primary ? 'var(--red-dim)' : 'transparent',
+                color: primary ? 'var(--red)' : 'var(--muted2)',
+                cursor: busy ? 'default' : 'pointer',
+                fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.07em', opacity: busy ? 0.5 : 1,
+              }}
+            >▶▶ {txt}</button>
+          )
+          // Stills lead while any cut still needs one: judging the whole look
+          // book at look-test prices is the cheap decision, and the videos
+          // are the one you only make once.
+          return (
+            <span style={{ display: 'flex', gap: 6 }}>
+              {anyStill && runAll('still', true, t('xd.sb.allstills'), t('xd.sb.genstillhint'))}
+              {runAll('video', !anyStill, t('xd.sb.allvideos'), t('xd.sb.genvideohint'))}
+            </span>
+          )
+        })()}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+      <div className="xd-strip-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
         {scenes.map((s, i) => (
           <div key={s.id} style={{ ...card, borderColor: s.status === 'generating' ? 'var(--red)' : 'var(--border2)' }}>
             {/* Header: number, editable title, reorder / delete */}
@@ -201,6 +424,19 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                 <span title="continues the previous card (chained cut)" aria-label="cut" style={{ flexShrink: 0, fontSize: 11, color: 'var(--muted)' }}>🔗</span>
               )}
               <span style={{ ...label, color: 'var(--red)', flexShrink: 0 }}>{labels[i]}</span>
+              {/* KEYFRAME vs DIRECT is a MODE the user chose to keep, one per
+                  cut (owner, Aug 11) — not a hidden fallback. It says which
+                  of the two this card is in, and switches on click. */}
+              <button
+                onClick={() => switchMode(s)}
+                title={s.direct ? t('xd.sb.mode.direct.hint') : t('xd.sb.mode.keyframe.hint')}
+                style={{
+                  ...label, flexShrink: 0, padding: '1px 6px', borderRadius: 999, cursor: 'pointer',
+                  border: '1px solid ' + (s.direct ? 'var(--border2)' : 'var(--red-dim)'),
+                  background: s.direct ? 'transparent' : 'var(--red-dim)',
+                  color: s.direct ? 'var(--muted2)' : 'var(--red)',
+                }}
+              >{s.direct ? t('xd.sb.mode.direct') : t('xd.sb.mode.keyframe')}</button>
               <input
                 value={s.title}
                 onChange={e => patch(s.id, { title: e.target.value.slice(0, 80) })}
@@ -222,6 +458,25 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                 style={{ border: 'none', padding: 0, cursor: 'pointer', borderRadius: 8, overflow: 'hidden', background: '#000', height: 150 }}
               >
                 <video src={s.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </button>
+            )}
+
+            {/* KEYFRAME mode (owner, Aug 11): the approved still that this
+                cut will animate from. Shown while there is no clip yet, so
+                the look gets judged at cents before spending on motion. */}
+            {s.still_url && !(s.url && s.status === 'done') && (
+              <button
+                onClick={() => onPreview(s.still_url!, false)}
+                title={t('xd.sb.stillhint')}
+                style={{ position: 'relative', border: '1px solid var(--red-dim)', padding: 0, cursor: 'pointer', borderRadius: 8, overflow: 'hidden', background: '#000', height: 150 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={s.still_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <span style={{
+                  position: 'absolute', left: 6, top: 6, background: 'var(--red)', color: '#fff',
+                  fontSize: 8.5, fontFamily: 'var(--mono)', letterSpacing: '0.08em',
+                  padding: '2px 6px', borderRadius: 4,
+                }}>{t('xd.sb.still')}</span>
               </button>
             )}
 
@@ -279,45 +534,100 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               )}
             </div>
 
-            {/* Footer: duration · model · price · generate */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 'auto' }}>
-              <input
-                type="number" min={2} max={15} value={s.duration_s}
-                onChange={e => patch(s.id, { duration_s: Math.min(Math.max(Math.round(Number(e.target.value) || 0), 2), 15) })}
-                style={{ ...area, border: '1px solid var(--border)', width: 44, textAlign: 'center', padding: '2px 2px', fontSize: 11.5, flexShrink: 0 }}
-              />
-              <span style={{ ...label, flexShrink: 0 }}>s</span>
-              <button
-                onClick={() => setPickerFor(s.id)}
-                title={s.model_name ?? t('xd.sb.pickmodel')}
-                style={{
-                  fontSize: 10.5, color: s.model_name ? 'var(--muted2)' : 'var(--red)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                  border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
-                  textDecoration: 'underline dotted', textUnderlineOffset: 3, padding: 0,
-                }}
-              >
-                {s.model_name ?? `☰ ${t('xd.sb.pickmodel')}`}
-              </button>
-              {s.status === 'generating' ? (
-                <span className="nav-history-spin" aria-label="generating" style={{ flexShrink: 0 }} />
-              ) : s.status === 'done' ? (
-                <span style={{ ...label, color: 'var(--green)', flexShrink: 0 }}>${(s.cost ?? 0).toFixed(2)}</span>
-              ) : (
-                <button
-                  onClick={() => onGenerate(s.id)} disabled={busy || !s.shot.trim()}
-                  title={s.error ? `${s.error} — ${t('xd.sb.gen')}` : t('xd.sb.gen')}
-                  style={{
-                    padding: '3px 10px', borderRadius: 999, flexShrink: 0,
-                    border: '1px solid ' + (s.status === 'error' ? 'var(--red)' : 'var(--border2)'),
-                    background: 'transparent', cursor: (busy || !s.shot.trim()) ? 'default' : 'pointer',
-                    color: s.status === 'error' ? 'var(--red)' : 'var(--white)',
-                    fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 700,
-                    opacity: (busy || !s.shot.trim()) ? 0.45 : 1,
-                  }}
-                >{s.status === 'error' ? '⚠ ' : '▶ '}{s.estimate != null ? `$${s.estimate.toFixed(2)}` : t('xd.sb.gen')}</button>
-              )}
-            </div>
+            {/* Footer: two steps, two models, two prices, two buttons
+                (owner, Aug 11). KEYFRAME is the default flow — the still is
+                the cheap look test, the video is the expensive commitment.
+                One button quoting one price hid which of the two you were
+                about to buy. */}
+            {(() => {
+              const stillDone = !!s.still_row_id
+              const videoDone = s.status === 'done'
+              const gen       = s.status === 'generating'
+              const blocked   = busy || !s.shot.trim()
+              // Only one step can be in flight, and which one is knowable:
+              // before the still exists, a running scene is shooting it.
+              const genStill  = gen && !stillDone && !s.direct
+              const sp = stillPriceOf(s), vp = priceOf(s)
+              const rowSty: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6 }
+              const priceSty = (c: string): React.CSSProperties => ({
+                ...label, color: c, flexShrink: 0, minWidth: 34, textAlign: 'right', letterSpacing: 0,
+              })
+              const pickSty = (named: boolean): React.CSSProperties => ({
+                fontSize: 10.5, color: named ? 'var(--muted2)' : 'var(--red)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0,
+                border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
+                textDecoration: 'underline dotted', textUnderlineOffset: 3, padding: 0,
+              })
+              const runSty = (on: boolean, off: boolean): React.CSSProperties => ({
+                padding: '3px 8px', borderRadius: 999, flexShrink: 0,
+                border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
+                background: on ? 'var(--red-dim)' : 'transparent',
+                color: on ? 'var(--red)' : 'var(--white)',
+                cursor: off ? 'default' : 'pointer', opacity: off ? 0.35 : 1,
+                fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 700,
+              })
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 'auto' }}>
+                  {/* STEP 1 — the key still. Hidden only when the user chose
+                      to go straight to video for this cut. */}
+                  {!s.direct && (
+                    <div style={rowSty}>
+                      <span style={{ ...label, width: 32, flexShrink: 0, color: stillDone ? 'var(--green)' : 'var(--muted)' }}>
+                        {stillDone ? '✓ ' : ''}{t('xd.sb.genstill')}
+                      </span>
+                      <button
+                        onClick={() => setStillPickerFor(s.id)}
+                        title={s.still_model_name ?? t('xd.sb.pickstillmodel')}
+                        style={pickSty(!!s.still_model_name)}
+                      >{s.still_model_name ?? `☰ ${t('xd.sb.pickmodel')}`}</button>
+                      <span style={priceSty('var(--muted2)')}>{sp != null ? money(sp) : ''}</span>
+                      {genStill ? (
+                        <span className="nav-history-spin" aria-label="generating" style={{ flexShrink: 0 }} />
+                      ) : (
+                        <button
+                          onClick={() => onGenerate(s.id, 'still')} disabled={blocked || gen}
+                          title={stillDone ? t('xd.sb.restill') : t('xd.sb.genstillhint')}
+                          style={runSty(!stillDone && !videoDone, blocked || gen)}
+                        >{stillDone ? '↻' : '▶'}</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* STEP 2 — the clip. Refused until a still exists, unless
+                      this cut is direct: the server rejects it either way,
+                      so the button must not pretend otherwise. */}
+                  <div style={rowSty}>
+                    <input
+                      type="number" min={2} max={15} value={s.duration_s}
+                      onChange={e => patch(s.id, { duration_s: Math.min(Math.max(Math.round(Number(e.target.value) || 0), 2), 15) })}
+                      style={{ ...area, border: '1px solid var(--border)', width: 38, textAlign: 'center', padding: '2px 2px', fontSize: 11.5, flexShrink: 0 }}
+                    />
+                    <span style={{ ...label, flexShrink: 0 }}>s</span>
+                    <button
+                      onClick={() => setPickerFor(s.id)}
+                      title={losesTheFrame(s) ? t('xd.sb.noframe') : (s.model_name ?? t('xd.sb.pickmodel'))}
+                      style={{ ...pickSty(!!s.model_name), ...(losesTheFrame(s) ? { color: 'var(--red)' } : {}) }}
+                    >{losesTheFrame(s) ? '⚠ ' : ''}{s.model_name ?? `☰ ${t('xd.sb.pickmodel')}`}</button>
+                    {videoDone ? (
+                      <span style={priceSty('var(--green)')}>${(s.cost ?? 0).toFixed(2)}</span>
+                    ) : (
+                      <span style={priceSty(s.status === 'error' ? 'var(--red)' : 'var(--muted2)')}>{vp != null ? money(vp) : ''}</span>
+                    )}
+                    {(gen && !genStill) ? (
+                      <span className="nav-history-spin" aria-label="generating" style={{ flexShrink: 0 }} />
+                    ) : (
+                      <button
+                        onClick={() => onGenerate(s.id, 'video')}
+                        disabled={blocked || gen || (!stillDone && !s.direct)}
+                        title={s.error ? `${s.error} — ${t('xd.sb.gen')}`
+                          : (!stillDone && !s.direct) ? t('xd.sb.needstill') : t('xd.sb.genvideohint')}
+                        style={runSty(stillDone || !!s.direct, blocked || gen || (!stillDone && !s.direct))}
+                      >{s.status === 'error' ? '⚠' : videoDone ? '↻' : '▶'}</button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         ))}
 
@@ -344,6 +654,24 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
 
       {/* Per-scene model picker: refs present → only models that can eat
           them; none → text_to_video models. Same dialog as everywhere. */}
+      {stillPickerFor && (() => {
+        const sc = scenes.find(x => x.id === stillPickerFor)
+        if (!sc) return null
+        // A cut with references is an EDIT of them (that is how likeness
+        // survives); a bare cut is a fresh frame.
+        const hasRefs = (sc.refs ?? []).length > 0
+        return (
+          <ModelPickerDialog
+            mode="image" recipeMode={(hasRefs ? 'image_edit' : 'text_to_image') as any} slotIds={[]}
+            onClose={() => setStillPickerFor(null)}
+            onSelect={(m: any) => {
+              patch(sc.id, { still_model_id: m.id, still_model_name: m.display_name })
+              setStillPickerFor(null)
+            }}
+          />
+        )
+      })()}
+
       {pickerFor && (() => {
         const sc = scenes.find(s => s.id === pickerFor)
         if (!sc) return null
@@ -355,7 +683,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
         // the subject); picking a model that only speaks the other family
         // is allowed — the user's call outranks the doctrine.
         const hasRefs = (sc.refs ?? []).length > 0
-        const recipeMode: any = (sc.continues || hasRefs)
+        const recipeMode: any = (sc.continues || hasRefs || opensOnStill(sc))
           ? ['image_to_video', 'reference_frames']
           : 'text_to_video'
         return (
@@ -375,7 +703,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               // and either falls back to what the model actually supports.
               const modes: string[] = m.modes ?? []
               const recipe = Array.isArray(recipeMode)
-                ? (sc.continues
+                ? ((sc.continues || opensOnStill(sc))
                   ? (modes.includes('image_to_video') ? 'image_to_video' : 'reference_frames')
                   : (modes.includes('reference_frames') ? 'reference_frames' : 'image_to_video'))
                 : recipeMode

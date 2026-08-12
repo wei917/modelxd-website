@@ -63,8 +63,18 @@ export type StoryScene = {
   duration_s: number
   model_id?: string
   model_name?: string
+  /** The KEY STILL is its own shot with its own model and its own price
+   *  (owner, Aug 11). Per-shot model choice is the differentiator — it
+   *  applies to the keyframe as much as to the clip. */
+  still_model_id?: string
+  still_model_name?: string
   recipe?: string
   estimate?: number
+  /** The scene's approved key still (KEYFRAME mode), set by the client. */
+  still_row_id?: string
+  /** The user asked for straight-to-video on this scene. */
+  direct?: boolean
+  no_speech?: boolean
   /** Card-level reference uploads (owner, Aug 8). Board-owned: the user
    *  puts them there, the director only ever READS them (as filenames in
    *  the storyboard context) — generation for that scene consumes them. */
@@ -86,8 +96,16 @@ function cleanScenes(raw: unknown): StoryScene[] | null {
       ...((sc as any).continues === true ? { continues: true } : {}),
       ...(typeof (sc as any).model_id   === 'string' ? { model_id:   s((sc as any).model_id, 64) }    : {}),
       ...(typeof (sc as any).model_name === 'string' ? { model_name: s((sc as any).model_name, 80) }  : {}),
+      ...(typeof (sc as any).still_model_id   === 'string' ? { still_model_id:   s((sc as any).still_model_id, 64) }   : {}),
+      ...(typeof (sc as any).still_model_name === 'string' ? { still_model_name: s((sc as any).still_model_name, 80) } : {}),
       ...(typeof (sc as any).recipe     === 'string' ? { recipe:     s((sc as any).recipe, 48) }      : {}),
       ...(Number.isFinite(Number((sc as any).estimate)) ? { estimate: Number((sc as any).estimate) }  : {}),
+      // KEYFRAME state, round-tripped so the video guard below can see it:
+      // still_row_id is set by the CLIENT when a key still finishes; direct
+      // is the user's explicit "straight to video" opt-out.
+      ...(typeof (sc as any).still_row_id === 'string' ? { still_row_id: s((sc as any).still_row_id, 64) } : {}),
+      ...((sc as any).direct === true ? { direct: true } : {}),
+      ...((sc as any).no_speech === true ? { no_speech: true } : {}),
       ...(Array.isArray((sc as any).refs) && (sc as any).refs.length > 0 ? {
         refs: (sc as any).refs.slice(0, 4)
           .map((r: any) => ({
@@ -141,11 +159,13 @@ const TOOLS: any[] = [
         prompt:          { type: 'string',  description: 'the full generation prompt you wrote' },
         duration:        { type: 'number',  description: 'seconds; omit unless the user asked for a specific length' },
         use_attachments: { type: 'boolean', description: 'true to pass the user\'s attached photos as reference inputs' },
+        use_files:       { type: 'array', items: { type: 'number' }, description: 'WHICH attached files to feed this generation, by the 1-based numbers shown to the user (e.g. [1,2] for the two character photos). Order matters: the first is slot 0, the opening frame for recipes that take one. Omit to use every attached image. Use it to keep STYLE frames out of a video generation — reference-to-video treats every input as a subject anchor, so a style frame there corrupts the character.' },
         medium:          { type: 'string', enum: ['image', 'video'], description: 'image for a still, video for motion. Must match the board you took model_id from.' },
         aspect_ratio:    { type: 'string', description: 'e.g. "9:16" for Threads/Reels, "1:1", "16:9". Always set this for social posts.' },
         resolution:      { type: 'string', description: 'video resolution key from that model\'s per_video_second pricing, e.g. "720p" or "1080p" — pass it when the user configured one; omit for the default' },
         scene_id:        { type: 'string', description: 'when this generation IS one of the storyboard scenes, its scene id (e.g. "s2") — the result then fills that scene card on the board' },
-        chain_from_scene: { type: 'string', description: 'scene id whose FINISHED clip this scene continues from. Its final frame is extracted and fed as this generation\'s starting image, so the new scene opens exactly where that one ended. Requires a recipe that consumes a start image (e.g. image_to_video). The source scene must already be done.' },
+        chain_from_scene: { type: 'string', description: 'scene id this scene CONTINUES from. Whatever that scene has is fed as this generation\'s starting image: its approved key still, or the final frame of its finished clip. Use it for the STILL of any cut marked continues (with image_edit — the new still is an edit of the previous one, so place, wardrobe and face carry over) and for a video that opens where the previous clip ended (with image_to_video). The source scene must already have a still or a clip.' },
+        from_still:      { type: 'boolean', description: 'true to open this scene\'s VIDEO on the key still already approved for the same scene_id. The still is fed as the opening frame, so the character likeness and the look baked into it carry into the motion. Use with an image_to_video recipe. Requires that scene to have a finished still.' },
       },
       required: ['model_id', 'recipe', 'prompt', 'medium'],
     },
@@ -170,6 +190,9 @@ const TOOLS: any[] = [
               continues:  { type: 'boolean', description: 'true when this card is a CUT — it continues the PREVIOUS card\'s action in the same space and will be chained from its final frame at generation. false/omitted = a fresh scene (new location or time).' },
               model_id:   { type: 'string', description: 'id from list_models for this scene' },
               model_name: { type: 'string', description: 'display name of that model, shown on the card' },
+              still_model_id:   { type: 'string', description: 'id from list_models of the IMAGE model that shoots this scene\'s key still. Set it on every scene unless the user asked to go straight to video.' },
+              still_model_name: { type: 'string', description: 'display name of that image model, shown on the card' },
+              no_speech:  { type: 'boolean', description: 'PERFORMANCE ONLY — the cast never sings, speaks or mouths words in this shot. Set true on EVERY scene of a music video unless the user explicitly asks for singing on camera: there is no lip-sync on this product, so invented mouth articulation follows the prompt\'s language rather than the song and always reads wrong.' },
               recipe:     { type: 'string', description: 'mode string copied exactly from that model\'s modes' },
               estimate:   { type: 'number', description: 'estimated $ for THIS scene at duration_s' },
             },
@@ -456,7 +479,26 @@ export async function POST(req: Request) {
         if (tu.name === 'set_storyboard') {
           const scenes = cleanScenes(tu.input?.scenes)
           if (scenes) {
-            storyboardOut = scenes
+            // A REVISION MUST NOT DESTROY WHAT WAS ALREADY SHOT (owner, Aug
+            // 11: rewriting two shot prompts wiped every approved key still
+            // on the board — three paid generations gone, and the director
+            // announced it had to re-shoot them). set_storyboard carries only
+            // the DIRECTING fields; the generation state (which still was
+            // approved, which clip filled the card, its takes, its cost, the
+            // user's own refs and mode) lives on the client's copy and is
+            // merged back here by scene id. The director revises words; it
+            // does not get to delete pictures.
+            const prior = new Map((clientBoard ?? []).map(sc => [sc.id, sc as any]))
+            const KEPT = ['still_row_id', 'still_url', 'row_id', 'url', 'cost', 'status', 'takes', 'refs', 'direct', 'error'] as const
+            storyboardOut = scenes.map(sc => {
+              const was = prior.get(sc.id)
+              if (!was) return sc
+              const carried: any = {}
+              for (const k of KEPT) if (was[k] !== undefined) carried[k] = was[k]
+              return { ...sc, ...carried }
+            })
+            const rescued = storyboardOut.filter(sc => (sc as any).still_row_id || (sc as any).row_id).length
+            if (rescued > 0) console.log(`${LOG} set_storyboard: carried generation state forward on ${rescued} scene(s)`)
             results.push({
               type: 'tool_result', tool_use_id: tu.id,
               content: `Storyboard of ${scenes.length} scene(s) is now on the user's board for review. Do not generate anything until they ask.`,
@@ -511,6 +553,67 @@ export async function POST(req: Request) {
             })
             continue
           }
+          // A RECIPE THAT EATS A PICTURE NEEDS A PICTURE (owner bug, Aug 11:
+          // a DIRECT opener went out as image_to_video with no still, no
+          // refs and nothing to chain from; the provider answered "the
+          // model failed to generate a response", which reads as a broken
+          // product rather than an impossible request). Catch it here,
+          // before it costs a call.
+          if (isVideo && sceneOk) {
+            const board: any[] = (storyboardOut ?? clientBoard ?? []) as any[]
+            const scene: any = board.find(sc => sc.id === inp.scene_id)
+            const eatsImage = typeof inp.recipe === 'string'
+              && ['image_to_video', 'reference_frames', 'start_end_frames', 'video_edit', 'extend_video'].includes(inp.recipe)
+            const fed = inp.from_still === true
+              || typeof inp.chain_from_scene === 'string'
+              || (Array.isArray(scene?.refs) && scene.refs.length > 0)
+              || (Array.isArray(inp.use_files) && inp.use_files.length > 0)
+              || inp.use_attachments === true
+            if (eatsImage && !fed) {
+              results.push({
+                type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                content: `Rejected: recipe "${inp.recipe}" consumes an input picture and scene ${inp.scene_id} has none — no key still, no references, and nothing to chain from. Either use a text_to_video recipe (and a model whose modes include it), or give it an input first: generate the scene's key still and pass from_still=true, or pass chain_from_scene=<the previous scene id>.`,
+              })
+              continue
+            }
+          }
+          // A CUT'S STILL CONTINUES THE PREVIOUS CUT'S STILL (owner bug,
+          // Aug 11: S1C2's still ignored S1C1's image). The director wrote
+          // "continuing from the provided frame" into the prompt and passed
+          // no frame — continuity described in words is not continuity. The
+          // same philosophy as the guard below: the prompt asks, this makes
+          // it true.
+          if (!isVideo && sceneOk && typeof inp.chain_from_scene !== 'string') {
+            const board: any[] = (storyboardOut ?? clientBoard ?? []) as any[]
+            const at = board.findIndex(sc => sc.id === inp.scene_id)
+            const scene: any = at >= 0 ? board[at] : null
+            const prev: any = at > 0 ? board[at - 1] : null
+            if (scene?.continues && (prev?.still_row_id || prev?.row_id)) {
+              results.push({
+                type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                content: `Rejected: scene ${inp.scene_id} is a CUT that continues ${prev.id}, so its key still must be generated FROM ${prev.id}'s frame, not described from scratch. Call start_generation again with the same scene_id, chain_from_scene="${prev.id}" and an image_edit recipe, and write the prompt as what CHANGES from that frame — the space, the wardrobe and the face carry over in the picture.`,
+              })
+              continue
+            }
+          }
+          // STILLS COME FIRST (owner, Aug 11: "the agent should generate the
+          // images first and let users decide to generate video or not").
+          // Same enforcement philosophy as the storyboard guard above: the
+          // prompt asks for it, this makes it true. A still costs cents and
+          // a video costs dollars, so the look gets settled on the cheap
+          // artifact and the user chooses whether to spend on motion. The
+          // one way past is the user's own "straight to video" (direct).
+          if (isVideo && sceneOk) {
+            const scene: any = [...(clientBoard ?? []), ...(storyboardOut ?? [])]
+              .find(sc => sc.id === inp.scene_id)
+            if (scene && !scene.still_row_id && scene.direct !== true) {
+              results.push({
+                type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                content: `Rejected: scene ${inp.scene_id} has no key still yet. Generate the still FIRST — start_generation with medium="image", the same scene_id, an image recipe (image_edit or text_to_image) and every reference — then show it to the user and let THEM decide whether to spend on the video. Only if the user explicitly says "straight to video" for this scene do you set direct:true on it via set_storyboard and skip the still.`,
+              })
+              continue
+            }
+          }
           // Hand off to the client. Loop pauses here; it resumes when the
           // client POSTs back with the matching tool_result appended.
           action = { kind: 'generate', toolUseId: tu.id, input: tu.input }
@@ -522,6 +625,24 @@ export async function POST(req: Request) {
 
       if (action) {
         console.log(`${LOG} → action ${action.kind}: model=${action.input?.model_id ?? '-'} scene=${action.input?.scene_id ?? '-'} recipe=${action.input?.recipe ?? '-'} res=${action.input?.resolution ?? '-'}`)
+        // A tool call AFTER the hand-off never ran — the loop broke here.
+        // Say so explicitly (owner bug, Aug 10: the director asked TWO
+        // questions in one turn, the user could only answer the first, and
+        // the second was healed as "user replied in chat instead" — so the
+        // director sailed on as though it had an answer it never got).
+        // Naming it as unasked makes the model re-ask after this reply.
+        const answered = new Set(results.map((r: any) => r.tool_use_id))
+        answered.add(action.toolUseId)
+        for (const tu of toolUses) {
+          if (answered.has(tu.id)) continue
+          results.push({
+            type: 'tool_result', tool_use_id: tu.id, is_error: true,
+            content: tu.name === 'ask_user'
+              ? 'NOT ASKED: only one question is shown to the user per turn, and another question in this same turn took that slot. This question was never seen and has NO answer. If you still need it, ask it again in a later turn — never assume an answer.'
+              : 'Not run: the turn handed off to the user before this call was reached. Re-issue it later if still needed.',
+          })
+          console.warn(`${LOG} dropped extra ${tu.name} in the same turn as ${action.kind}`)
+        }
         // Any list_models results resolved in the same assistant turn ride
         // along; the client must include them (in order) in the tool_result
         // message it sends back, before the generation's own result.

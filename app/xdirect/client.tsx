@@ -18,7 +18,7 @@ import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useBoardNodes } from '../../lib/board-nodes'
 import XDirectorChat, { type SceneRunnerHandle } from '../components/XDirectorChat'
-import SceneStrip, { type Scene } from '../components/SceneStrip'
+import SceneStrip, { sceneLabels, type Scene } from '../components/SceneStrip'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 
 // useSearchParams needs a Suspense boundary (same pattern as XCreate), and
@@ -73,6 +73,19 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   // input node and its title both derive from it (owner, Aug 9).
   const [brief, setBrief] = useState<string | null>(null)
   const onBrief = useCallback((text: string) => setBrief(text), [])
+  // A cut owns every row it has ever produced — active take plus recorded
+  // alternates. Matching on row identity (not prompt text) is what keeps a
+  // re-run attached to its scene after the director rewrites the shot
+  // (owner bug, Aug 11: a regenerated S1·C1 belonged to no scene).
+  const rowsOfScene = useCallback((s: any): string[] =>
+    [...new Set([
+      ...(Array.isArray(s?.takes) ? s.takes : []),
+      ...(s?.row_id ? [s.row_id] : []),
+      ...(s?.still_row_id ? [s.still_row_id] : []),   // KEYFRAME mode's key still
+    ])], [])
+  const sceneForRow = useCallback((rowId?: string | null) =>
+    (rowId ? storyboard.find(s => rowsOfScene(s).includes(rowId)) : undefined) ?? null, [storyboard, rowsOfScene])
+
   const canvasNodes = useMemo<CanvasNode[]>(() => {
     if (!brief || nodes.length === 0) return nodes
     const briefNode: CanvasNode = {
@@ -138,6 +151,9 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, chatBusy])
   const onBusy = useCallback((b: boolean) => setChatBusy(b), [])
+  // "Started" = a conversation exists: id minted on first send, restored
+  // from ?c=, or anything already on the board. Drives the landing layout.
+  const started = !!boardId || storyboard.length > 0 || nodes.length > 0
 
   // Delete (owner bug, Aug 9: "delete doesn't work in canvas") — /xdirect
   // never wired the canvas's onDelete, so the button no-opped silently.
@@ -182,7 +198,11 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
         <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xdirector.eyebrow')}</Link>
         <h1 className="page-headline" style={{ marginBottom: 24 }}>{t('xdirector.title')}</h1>
 
-        <div className="xdirect-split">
+        {/* Before the first turn the stage is empty noise — hide it and let
+            the director + templates be the whole landing (owner, Aug 10).
+            The stage appears the moment a conversation exists (id minted on
+            send, or restored from ?c=) or anything lands on the board. */}
+        <div className={started ? 'xdirect-split' : 'xdirect-split is-landing'}>
           {/* Chat rail — the director. Provides its own subtitle/intro. */}
           <div className="xdirect-chat">
             <XDirectorChat
@@ -198,19 +218,22 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
             />
           </div>
 
-          {/* Stage — storyboard lane (sequence) over the canvas (lineage). */}
+          {/* Stage — storyboard lane (sequence) over the canvas (lineage).
+              Hidden until a conversation exists (owner, Aug 10). */}
+          {started && (
           <div className="xdirect-stage">
             <SceneStrip
               scenes={storyboard}
               busy={chatBusy}
               onChange={setStoryboard}
-              onGenerate={(id) => {
+              onGenerate={(id, kind) => {
                 const i = storyboard.findIndex(s => s.id === id)
-                runnerRef.current?.generateScene(id, `${t('xd.sb.scene')} ${i + 1}: ${storyboard[i]?.title ?? id}`)
+                runnerRef.current?.generateScene(id, `${sceneLabels(storyboard)[i] ?? `${t('xd.sb.scene')} ${i + 1}`} · ${storyboard[i]?.title ?? id}`, kind)
               }}
-              onGenerateAll={() => {
+              onStop={() => runnerRef.current?.stopGeneration()}
+              onGenerateAll={(kind) => {
                 const ids = storyboard.filter(s => !s.status || s.status === 'draft' || s.status === 'error').map(s => s.id)
-                runnerRef.current?.generateAll(ids)
+                runnerRef.current?.generateAll(ids, kind)
               }}
               onPreview={(url, isVideo) => setHero({ url, isVideo })}
             />
@@ -249,11 +272,11 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                   for (const s of storyboard) {
                     if (s.continues && sc > 0) cut += 1
                     else { sc += 1; cut = 1 }
-                    if (s.row_id === n.rowId) return `S${sc}·C${cut} · ${s.title}`
+                    if (rowsOfScene(s).includes(n.rowId)) return `S${sc}·C${cut} · ${s.title}`
                   }
                   return null
                 }}
-                sceneOf={(n: CanvasNode) => (n.rowId && storyboard.find(s => s.row_id === n.rowId)) || null}
+                sceneOf={(n: CanvasNode) => sceneForRow(n.rowId)}
                 onUseTake={(n: CanvasNode, scene: any) => {
                   // The user picked which take the film keeps — the card's
                   // clip, model and cost switch to this node. Persisted by
@@ -282,7 +305,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                   for (const s of storyboard) {
                     if (s.continues && sc > 0) cut += 1
                     else { sc += 1; cut = 1 }
-                    if (s.row_id === n.rowId) return { scene: sc, cut }
+                    if (rowsOfScene(s).includes(n.rowId)) return { scene: sc, cut }
                   }
                   return null
                 }}
@@ -315,6 +338,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
               </div>
             ) : null}
           </div>
+          )}
         </div>
       </div>
 

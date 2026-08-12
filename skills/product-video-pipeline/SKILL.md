@@ -5,6 +5,10 @@ license: Proprietary. ModelXD.
 compatibility: Designed for ModelXD XDirector. Needs reference-capable video models and image_edit for clean plates.
 metadata:
   author: ModelXD
+  emoji: "📦"
+  banner: "/xdirect/skills/product-video-pipeline.webp"
+  color: "#3c6ee8"
+  title: "Product Video"
   version: "1.1"
   category: commercial
   cover: assets/cover.jpg

@@ -419,7 +419,7 @@ export default function Nav() {
               </Link>
               {!item.running && (
                 <button
-                  aria-label="rename" title={t('ww.rename')}
+                  aria-label="rename" title={t('hist.rename')}
                   onClick={(e) => { e.preventDefault(); setNameDraft(item.title || ''); setEditing({ table: 'xcreates', id: item.id }) }}
                   style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, flexShrink: 0, opacity: 0.5 }}
                 >✏</button>
@@ -462,14 +462,14 @@ export default function Nav() {
                 </span>
               </Link>
               <button
-                aria-label="rename" title={t('ww.rename')}
+                aria-label="rename" title={t('hist.rename')}
                 onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
               >✏</button>
               {confirmDel === g.id ? (
                 <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                   <button
-                    aria-label="confirm delete" title={t('ww.delete.confirm')}
+                    aria-label="confirm delete" title={t('hist.delete.confirm')}
                     onClick={async () => {
                       setConfirmDel(null)
                       await supabase.from('xtalk_sessions').delete().eq('id', g.id)
@@ -477,14 +477,14 @@ export default function Nav() {
                       if (pathname === `/xgame/${g.id}`) router.push('/xgame')
                     }}
                     style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
-                  >{t('ww.delete.yes')}</button>
+                  >{t('hist.delete')}</button>
                   <button aria-label="cancel" onClick={() => setConfirmDel(null)}
                     style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
                 </span>
               ) : (
                 <button
                   aria-label="delete game"
-                  title={t('ww.delete')}
+                  title={t('hist.delete')}
                   onClick={() => { setConfirmDel(g.id); setTimeout(() => setConfirmDel(c => c === g.id ? null : c), 4000) }}
                   style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
                 >×</button>
@@ -550,7 +550,7 @@ export default function Nav() {
                 <span className="nav-history-text">{g.title || t('xt.tpl.discussion.name')}</span>
               </Link>
               <button
-                aria-label="rename" title={t('ww.rename')}
+                aria-label="rename" title={t('hist.rename')}
                 onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
               >✏</button>
@@ -589,14 +589,14 @@ export default function Nav() {
                 <span className="nav-history-text">{c.title || '…'}</span>
               </Link>
               <button
-                aria-label="rename" title={t('ww.rename')}
+                aria-label="rename" title={t('hist.rename')}
                 onClick={() => { setNameDraft(c.title || ''); setEditing({ table: 'xdirector_conversations', id: c.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
               >✏</button>
               {confirmDel === c.id ? (
                 <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                   <button
-                    aria-label="confirm delete" title={t('ww.delete.confirm')}
+                    aria-label="confirm delete" title={t('hist.delete.confirm')}
                     onClick={async () => {
                       setConfirmDel(null)
                       await supabase.from('xdirector_conversations')
@@ -605,14 +605,14 @@ export default function Nav() {
                       if (typeof window !== 'undefined' && window.location.search.includes(c.id)) router.push('/xdirect')
                     }}
                     style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
-                  >{t('ww.delete.yes')}</button>
+                  >{t('hist.delete')}</button>
                   <button aria-label="cancel" onClick={() => setConfirmDel(null)}
                     style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
                 </span>
               ) : (
                 <button
                   aria-label="delete conversation"
-                  title={t('ww.delete')}
+                  title={t('hist.delete')}
                   onClick={() => { setConfirmDel(c.id); setTimeout(() => setConfirmDel(x => x === c.id ? null : x), 4000) }}
                   style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
                 >×</button>

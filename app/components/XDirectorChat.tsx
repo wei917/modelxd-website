@@ -70,9 +70,9 @@ function setConversationUrl(id: string | null) {
 
 export type SceneRunnerHandle = {
   /** Run one scene from its card. The click is the confirm step. */
-  generateScene: (sceneId: string, sceneLabel: string) => void
+  generateScene: (sceneId: string, sceneLabel: string, kind: 'still' | 'video') => void
   /** Run every draft scene, in order. One click authorizes the batch. */
-  generateAll: (sceneIds: string[]) => void
+  generateAll: (sceneIds: string[], kind: 'still' | 'video') => void
   /** Canvas rerun (owner, Aug 9): same prompt, different model — the new
    *  output lands as a SIBLING of the original so the two compare side by
    *  side. The plan bubble still gates the spend. */
@@ -80,6 +80,11 @@ export type SceneRunnerHandle = {
   /** A board-side take switch, recorded in the transcript (owner, Aug 9)
    *  — a visible ★ line and a protocol note, no director turn spent. */
   noteTake: (sceneId: string, sceneLabel: string, modelName: string) => void
+  /** THE BRAKE (owner, Aug 12: "is there a way to stop all the generation
+   *  if I accidentally clicked ▶▶ Videos?"). Disarms every pending scene:
+   *  the clip already at the provider finishes and is billed — providers
+   *  give us no cancel — but nothing further starts. */
+  stopGeneration: () => void
 }
 
 export default function XDirectorChat({ onConversationId, onMintedConversation, onActivity, storyboard, onStoryboard, runnerRef, onBusy, boardNodes, onBrief }: {
@@ -150,6 +155,10 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   }, [])
   const [atts,     setAtts]     = useState<Attachment[]>([])
   const [busy,     setBusy]     = useState<'idle' | 'thinking' | 'generating'>('idle')
+  // What the chat is doing between Enter and the first reply — uploading,
+  // transcribing, or waiting on the director. Shown as a live progress
+  // line so a long song upload never looks like a frozen page.
+  const [prep,     setPrep]     = useState<string | null>(null)
   // id -> { name, perSec }. Without this the transcript printed the raw
   // model UUID next to GENERATING, which read like an error code.
   const [models,   setModels]   = useState<Record<string, { name: string; perSec: number | null }>>({})
@@ -252,13 +261,16 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // `pending` carries a full copy of the message array per bubble — great
     // for resuming a click in-session, ruinous to store.
     const slim = bubs.map(({ pending, ...rest }) => rest)
+    // Base64 photos are session context, not conversation history — storing
+    // them made a single row half a megabyte and reloaded it on every open.
+    const lean = proto.map(stripImages)
     const firstUser = bubs.find(b => b.role === 'user')?.text ?? 'Untitled'
     try {
       await fetch('/api/xdirector/conversation', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: convIdRef.current, title: firstUser.slice(0, 120),
-          protocol: proto, bubbles: slim,
+          protocol: lean, bubbles: slim,
           // Stored so reopening the link resumes with the same skill.
           skill: activeSkillRef.current,
           // The board rides with the conversation it belongs to. previewUrl
@@ -302,7 +314,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   const committedRef = useRef<Attachment[]>([])          // last committed uploads, reused across shots
   // Armed by a canvas ↻: the next generation inherits THESE parents so the
   // rerun lands beside the original instead of dangling off lastGen.
-  const pendingRerunRef = useRef<{ parentRowIds: string[]; refs?: Array<{ bucket: string; storagePath: string; mediaType: string; fileName: string; fileSize: number }> } | null>(null)
+  const pendingRerunRef = useRef<{ parentRowIds: string[]; sceneId?: string; refs?: Array<{ bucket: string; storagePath: string; mediaType: string; fileName: string; fileSize: number }> } | null>(null)
   // The ↻ config step showed the price and the click was the confirm —
   // same rule as scene cards. One-shot: authorizes exactly one generation,
   // so the plan bubble never strands a fullscreen-canvas user in a chat
@@ -312,6 +324,8 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => { onBusy?.(busy !== 'idle') }, [busy, onBusy])
+  // The progress line belongs to an in-flight turn only.
+  useEffect(() => { if (busy === 'idle') setPrep(null) }, [busy])
 
   // ── Storyboard plumbing (CC, Aug 6) ───────────────────────────────────
   // State lives on the page (the strip edits it); this ref mirrors it so
@@ -325,9 +339,59 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // hits the gate, so the agent cannot spend spontaneously by tagging a
   // scene id onto a generation nobody asked for.
   const armedScenesRef = useRef<Set<string>>(new Set())
+  // Set by the strip's ⏹ while a batch is running; checked before every
+  // NEXT generation starts. Never aborts the one in flight — that money is
+  // already spent and killing its poll would only orphan the row.
+  const stopGenRef = useRef(false)
+  /** Scenes re-armed after a PROVIDER failure — once per scene per user
+   *  action. The ▶ click bought one generation; if that generation died
+   *  upstream (nothing billed), the director's immediate retry is still the
+   *  same purchase, and stalling it behind a plan card read as a hang three
+   *  times on Aug 12. Once only, so a systematically failing scene still
+   *  surfaces instead of looping. */
+  const reArmedRef = useRef<Set<string>>(new Set())
+  const reArmOnFailure = (sceneId: string | null) => {
+    if (!sceneId || reArmedRef.current.has(sceneId)) return
+    reArmedRef.current.add(sceneId)
+    armedScenesRef.current.add(sceneId)
+  }
+
+  /** Every row a scene has ever produced — its active take plus every
+   *  earlier/alternate one. THIS is what binds a take to its cut, not the
+   *  prompt text: the director rewrites shot text between runs (owner bug,
+   *  Aug 11 — a re-run of S1·C1 landed on the board belonging to no scene
+   *  because its prompt no longer matched the original's). */
+  const sceneTakes = (s: any): string[] =>
+    [...new Set([
+      ...(Array.isArray(s?.takes) ? s.takes : []),
+      ...(s?.row_id ? [s.row_id] : []),
+      ...(s?.still_row_id ? [s.still_row_id] : []),   // KEYFRAME mode's key still
+    ])]
+
+  /** The scene a row belongs to, by identity rather than prompt. */
+  const sceneOfRow = (rowId?: string | null) =>
+    rowId ? storyboardRef.current.find((s: any) => sceneTakes(s).includes(rowId)) : undefined
 
   const patchScene = (sceneId: string, p: Record<string, any>) => {
-    const next = storyboardRef.current.map((s: any) => s.id === sceneId ? { ...s, ...p } : s)
+    const next = storyboardRef.current.map((s: any) => {
+      if (s.id !== sceneId) return s
+      // A scene never forgets a row it made: when the active take moves,
+      // the outgoing one joins takes[] instead of being orphaned.
+      const takes = (p.row_id && s.row_id && p.row_id !== s.row_id)
+        ? [...new Set([...(s.takes ?? []), s.row_id])]
+        : s.takes
+      return { ...s, ...p, ...(takes ? { takes } : {}) }
+    })
+    storyboardRef.current = next
+    onStoryboard?.(next)
+  }
+
+  /** Record a take that must NOT become the card's active clip — the ↻
+   *  comparison path. The cut remembers it so the canvas can stack it. */
+  const recordTake = (sceneId: string, rowId: string) => {
+    const next = storyboardRef.current.map((s: any) => s.id === sceneId
+      ? { ...s, takes: [...new Set([...(s.takes ?? []), rowId])] }
+      : s)
     storyboardRef.current = next
     onStoryboard?.(next)
   }
@@ -392,30 +456,36 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     v.src = url
   })
 
-  // Shrink an attachment to something the agent can actually look at on
-  // every turn. 768px is enough to read colour, material, print and hardware
-  // — the attributes it was previously inventing.
-  const toVisionBlock = (file: File): Promise<any | null> => new Promise(resolve => {
+  // How big each reference photo is when the DIRECTOR looks at it, and how
+  // many may ride in one turn. These are context-budget numbers, not
+  // Reference photos reach the director as URLs, not bytes (owner, Aug 11:
+  // "can they just take url instead of photo bytes?"). The Messages API
+  // accepts source {type:"url"}, and a signed storage link is ~200 chars
+  // where an inline base64 copy was 15k-100k — which is exactly what
+  // overflowed the context cap. Two consequences worth having: the
+  // director now sees each photo at FULL resolution instead of a shrunken
+  // JPEG, and there is no longer any reason to ration how many ride along.
+  const VISION_URL_TTL = 60 * 60 * 24 * 7   // a week: outlives any session
+  const MAX_VISION = 12                     // token sanity, not size
+
+  /** Sign committed photos for Anthropic to fetch. Server-side: uploads land
+   *  at `originals/<uuid>`, which the bucket's owner-read policy does not
+   *  match, so a browser createSignedUrl is denied and returns null — that
+   *  silently sent the director text-only photos until it was caught live. */
+  const signVisionUrls = async (atts: Attachment[]): Promise<Record<string, string>> => {
+    const files = atts
+      .filter(a => a.storagePath && a.bucket)
+      .map(a => ({ bucket: a.bucket, storagePath: a.storagePath }))
+    if (files.length === 0) return {}
     try {
-      const url = URL.createObjectURL(file)
-      const img = new Image()
-      img.onload = () => {
-        const scale = Math.min(1, 768 / Math.max(img.width, img.height))
-        const cv = document.createElement('canvas')
-        cv.width = Math.max(1, Math.round(img.width * scale))
-        cv.height = Math.max(1, Math.round(img.height * scale))
-        cv.getContext('2d')!.drawImage(img, 0, 0, cv.width, cv.height)
-        URL.revokeObjectURL(url)
-        const dataUrl = cv.toDataURL('image/jpeg', 0.82)
-        resolve({
-          type: 'image',
-          source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] },
-        })
-      }
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
-      img.src = url
-    } catch { resolve(null) }
-  })
+      const res = await fetch('/api/xdirector/refs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files }),
+      })
+      const d = await res.json().catch(() => null)
+      return (res.ok && d?.urls) ? d.urls : {}
+    } catch { return {} }
+  }
 
   const pushBubble = (b: Bubble) => setBubbles(prev => [...prev, b])
   const patchLastGen = (patch: Partial<Bubble>) =>
@@ -466,9 +536,36 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     return out
   }
 
+  /** Replace image blocks with a one-line placeholder. The director keeps
+   *  the FILE's identity (name, role, subject) without carrying its bytes
+   *  a second time — it has already described what it saw, and the bytes
+   *  are what overflow the context. */
+  const stripImages = (m: any) => {
+    if (!Array.isArray(m?.content)) return m
+    if (!m.content.some((b: any) => b?.type === 'image')) return m
+    return {
+      ...m,
+      content: m.content.map((b: any) =>
+        b?.type === 'image' ? { type: 'text', text: '[reference photo shown earlier — see the file list above]' } : b),
+    }
+  }
+
+  /** Keep photo BYTES only in the most recent message that carries them.
+   *  Without this the protocol grows by a full image payload per upload
+   *  turn and eventually 413s the whole conversation, which is exactly
+   *  what happened (owner, Aug 11). */
+  const boundVision = (msgs: any[]): any[] => {
+    let last = -1
+    for (let i = 0; i < msgs.length; i++) {
+      if (Array.isArray(msgs[i]?.content) && msgs[i].content.some((b: any) => b?.type === 'image')) last = i
+    }
+    if (last < 0) return msgs
+    return msgs.map((m, i) => (i === last ? m : stripImages(m)))
+  }
+
   // ── Agent turn: POST the whole conversation, render what comes back ──────
   const agentTurn = async (rawMsgs: any[]) => {
-    const msgs = healProtocol(rawMsgs)
+    const msgs = boundVision(healProtocol(rawMsgs))
     setBusy('thinking')
     console.info('[xdirect:turn] POST /api/xdirector', { msgs: msgs.length, scenes: storyboardRef.current.length })
     let data: any
@@ -533,7 +630,23 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       // is consumed so it authorizes exactly one run, and unarmed scene ids
       // fall through to the normal gate.
       const sceneId = typeof data.action.input?.scene_id === 'string' ? data.action.input.scene_id : null
-      console.info('[xdirect:turn] generate gate', { sceneId, sceneArmed: !!(sceneId && armedScenesRef.current.has(sceneId)), rerunArmed: armedRerunRef.current, autoGens: genCountRef.current })
+      console.info('[xdirect:turn] generate gate', { sceneId, sceneArmed: !!(sceneId && armedScenesRef.current.has(sceneId)), rerunArmed: armedRerunRef.current, autoGens: genCountRef.current, stopped: stopGenRef.current })
+      if (stopGenRef.current) {
+        // Answer the tool call honestly and end the turn — a dropped
+        // tool_use 400s every later send.
+        const toolMsg = {
+          role: 'user',
+          content: [...(data.pendingToolResults ?? []), {
+            type: 'tool_result', tool_use_id: data.action.toolUseId,
+            content: JSON.stringify({ ok: false, note: 'STOPPED: the user pressed Stop. Do not start any further generations. Every remaining scene stays a draft until they press play again.' }),
+            is_error: true,
+          }],
+        }
+        setProtocol([...withNew, toolMsg])
+        pushBubble({ role: 'agent', text: t('xd.stopped') })
+        setBusy('idle')
+        return
+      }
       if (sceneId && armedScenesRef.current.has(sceneId)) {
         armedScenesRef.current.delete(sceneId)
         await runGeneration(withNew, data.action, data.pendingToolResults ?? [])
@@ -640,8 +753,26 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       if (!n) return b
       return { ...b, status: 'done' as const, ...(n.isVideo ? { videoUrl: n.thumb } : { imageUrl: n.thumb }), ...(typeof n.cost === 'number' ? { cost: n.cost } : {}) }
     }))
+    // Heal the CARD too, not just the transcript. Claiming the row for the
+    // bubble and stopping there left the storyboard believing nothing had
+    // happened.
+    let healedStill = false
+    for (const [i, n] of patches.entries()) {
+      const b: any = bubbles[i]
+      if (!b?.forScene || !n.rowId) continue
+      if (b.forKind === 'still') {
+        healedStill = true
+        patchScene(b.forScene, { still_row_id: n.rowId, still_url: n.thumb ?? undefined, status: 'draft' })
+      } else if (b.forKind === 'clip') {
+        patchScene(b.forScene, { status: 'done', url: n.thumb ?? undefined, row_id: n.rowId, ...(typeof n.cost === 'number' ? { cost: n.cost } : {}) })
+      } else if (b.forKind === 'take') {
+        recordTake(b.forScene, n.rowId)
+      }
+    }
     const first: any = [...patches.values()][0]
-    pushBubble({ role: 'agent', text: `✓ ${first.label ?? 'The generation'} finished while the page was away — the clip is on the canvas${typeof first.cost === 'number' ? ` ($${first.cost.toFixed(2)})` : ''}.` })
+    const firstBubble: any = bubbles[[...patches.keys()][0]]
+    const what = firstBubble?.forKind === 'still' || healedStill ? t('xd.heal.still') : t('xd.heal.clip')
+    pushBubble({ role: 'agent', text: `✓ ${first.label ?? 'The generation'} finished while the page was away — ${what}${typeof first.cost === 'number' ? ` ($${first.cost.toFixed(2)})` : ''}.` })
     // Close the dangling start_generation honestly. Without this, the next
     // send heals it as "declined" and the director tells the user the run
     // "didn't come through" — about a clip that is sitting on their board.
@@ -669,13 +800,69 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   useEffect(() => {
     if (!runnerRef) return
     runnerRef.current = {
-      generateScene: (sceneId: string, sceneLabel: string) => {
+      generateScene: (sceneId: string, sceneLabel: string, kind: 'still' | 'video') => {
+        stopGenRef.current = false
         if (busy !== 'idle') return
         genCountRef.current = 0
+        reArmedRef.current.clear()
         armedScenesRef.current.add(sceneId)
-        const text = `▶ ${sceneLabel}`
-        pushBubble({ role: 'user', text })
-        const msgs = [...protocol, { role: 'user', content: `Generate storyboard scene ${sceneId} now, exactly as it appears on the board. Use its current shot text, model, recipe and duration, pass scene_id="${sceneId}", and do not re-plan or re-confirm.` }]
+        // ARM THE WHOLE PREREQUISITE CHAIN (owner bug, Aug 11: "why can't I
+        // generate the video?"). Clicking ▶ Still on a CUT authorized that
+        // cut — but a cut cannot be shot without the frame it continues, so
+        // the director correctly went to make the predecessor's still and
+        // then stalled behind a confirm gate the click had already passed.
+        // A ▶ on a cut is consent for the frames it is built on; anything
+        // else is a dead button and an unread plan card.
+        const chain: string[] = []
+        if (kind === 'still') {
+          const sbNow: any[] = storyboardRef.current
+          let j = sbNow.findIndex((x: any) => x.id === sceneId)
+          while (j > 0 && sbNow[j]?.continues && !sbNow[j - 1]?.still_row_id) {
+            j -= 1
+            armedScenesRef.current.add(sbNow[j].id)
+            chain.unshift(sbNow[j].id)
+          }
+        }
+        // The CARD says which step it is running — two buttons, two prices
+        // (owner, Aug 11) — so the turn never has to guess, and the
+        // director never attempts a video only to bounce off the server's
+        // stills-first guard.
+        const sc: any = storyboardRef.current.find((s: any) => s.id === sceneId)
+        const hasStill = !!sc?.still_row_id
+        pushBubble({ role: 'user', text: `▶ ${sceneLabel} · ${kind === 'still' ? t('xd.sb.genstill') : t('xd.sb.genvideo')}${chain.length > 0 ? ` (+ ${chain.length} ${t('xd.sb.prereq')})` : ''}` })
+        // A 🔗 cut's still is an EDIT of the previous cut's still — same
+        // room, same wardrobe, same light — never a fresh frame described
+        // from scratch. Words cannot re-specify a face.
+        const idx = storyboardRef.current.findIndex((s: any) => s.id === sceneId)
+        const prev: any = idx > 0 ? storyboardRef.current[idx - 1] : null
+        const chainStill = (kind === 'still' && sc?.continues && (prev?.still_row_id || (prev?.status === 'done' && prev?.url)))
+          ? ` This cut CONTINUES ${prev.id}: pass chain_from_scene="${prev.id}" and an image_edit recipe so it is generated FROM that cut's frame — same place, same wardrobe, same light — and write the prompt as the CHANGE from it, not as a fresh description.`
+          : ''
+        // Say the prerequisite out loud so the run is one uninterrupted
+        // sequence instead of a stall.
+        const prereq = chain.length > 0
+          ? ` FIRST generate the key still for ${chain.join(', then ')} — this cut continues from ${chain[chain.length - 1]} and cannot be shot without that frame — then generate this one chained from it. Do them in order in this turn without stopping to confirm.`
+          : ''
+        // PERFORMANCE ONLY: with no lip-sync on this product, any mouth
+        // articulation the model invents is wrong — and follows the
+        // prompt's language, not the song's.
+        const silent = sc?.no_speech
+          ? ' PERFORMANCE ONLY: the cast must NOT sing, speak, mouth words or part their lips to talk — closed or naturally relaxed lips, no articulation. Carry the moment with eyes, expression, hands, body and camera instead. Do not write any speech, singing or lip-sync verb into the prompt.'
+          : ''
+        const stillModel = sc?.still_model_id
+          ? ` Use the still model the card names: model_id="${sc.still_model_id}"${sc.still_model_name ? ` (${sc.still_model_name})` : ''}.`
+          : ''
+        const msgs = [...protocol, { role: 'user', content: kind === 'still'
+          ? `Generate the KEY STILL for storyboard scene ${sceneId} now: call start_generation with medium="image", scene_id="${sceneId}", an image recipe (image_edit when this scene has references, else text_to_image), every reference this scene should use, and this scene's shot text as the prompt.${stillModel}${chainStill}${silent}${prereq} This is the cheap look test — do NOT generate the video, do not re-plan, and do not re-confirm.`
+          : hasStill
+            ? (sc?.recipe === 'reference_frames'
+              // The card's model cannot open on a still — it speaks only
+              // reference_frames. Ask for what it CAN do and make the
+              // trade visible, rather than demanding image_to_video from a
+              // model that does not have it.
+              ? `Generate storyboard scene ${sceneId} now: call start_generation with scene_id="${sceneId}", from_still=true and a reference_frames recipe, keeping the card's video model, duration and shot text.${silent} This model cannot open ON the still, so the still goes in as the reference — say in ONE short line that the likeness carries but the locked framing does not, and that an Image to Video model would keep it. Do not re-plan, do not re-confirm, and do not regenerate the still.`
+              : `Generate storyboard scene ${sceneId} now from its approved KEY STILL: call start_generation with scene_id="${sceneId}", from_still=true and an image_to_video recipe, keeping the card's video model, duration and shot text.${silent} Do not re-plan, do not re-confirm, and do not regenerate the still.`)
+            : `Generate storyboard scene ${sceneId} straight to video now, exactly as it appears on the board — the user chose direct mode for this cut. Use its current shot text, model, recipe and duration${silent ? ' — and ' + silent.trim() : ''}, pass scene_id="${sceneId}", set direct:true on it, and do not re-plan or re-confirm.` }]
         setProtocol(msgs)
         void agentTurn(msgs)
       },
@@ -689,9 +876,18 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           return
         }
         genCountRef.current = 0
-        pendingRerunRef.current = { parentRowIds: Array.isArray(node.parentRowIds) ? node.parentRowIds : [], ...(opts?.refs ? { refs: opts.refs } : {}) }
+        reArmedRef.current.clear()
+        // Which cut this take belongs to, resolved BEFORE the run so the
+        // result can be filed under it even though the prompt may have
+        // been rewritten since the original (owner bug, Aug 11).
+        const originScene = sceneOfRow(node.rowId)?.id
+        pendingRerunRef.current = {
+          parentRowIds: Array.isArray(node.parentRowIds) ? node.parentRowIds : [],
+          ...(opts?.refs ? { refs: opts.refs } : {}),
+          ...(originScene ? { sceneId: originScene } : {}),
+        }
         armedRerunRef.current = true
-        console.info('[xdirect:rerun] armed — sending director turn', opts?.refs ? { refs: opts.refs.length } : {})
+        console.info('[xdirect:rerun] armed — sending director turn', { scene: originScene ?? null, refs: opts?.refs?.length ?? 0 })
         pushBubble({ role: 'user', text: `↻ ${model.display_name}${opts?.duration ? ` · ${opts.duration}s` : ''}${opts?.resolution ? ` · ${opts.resolution}` : ''}${opts?.aspect_ratio ? ` · ${opts.aspect_ratio}` : ''}` })
         const msgs = [...protocol, { role: 'user', content:
           `GENERATE NOW: call start_generation in THIS turn. Do not discuss, do not ask, do not summarize — the user already picked everything on the board. This is a RE-RUN of an earlier generation for side-by-side comparison, changing ONLY the model.\n`
@@ -711,6 +907,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         setProtocol(msgs)
         void agentTurn(msgs)
       },
+      stopGeneration: () => {
+        if (stopGenRef.current) return
+        stopGenRef.current = true
+        const armed = armedScenesRef.current.size
+        armedScenesRef.current.clear()
+        console.info('[xdirect:stop] user brake — disarmed', armed, 'scene(s)')
+        pushBubble({ role: 'user', text: `⏹ ${t('xd.stop')}` })
+      },
       noteTake: (sceneId, sceneLabel, modelName) => {
         // Record only — no agentTurn, so it costs nothing. The director
         // reads it (plus the updated CURRENT STORYBOARD) on its next turn.
@@ -721,12 +925,16 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         setProtocol(prev => [...prev, { role: 'user', content:
           `Board update: for scene ${sceneId} I picked the ${modelName} output as the take to use. The board already reflects this — no action needed, just keep it in mind.` }])
       },
-      generateAll: (sceneIds: string[]) => {
+      generateAll: (sceneIds: string[], kind: 'still' | 'video') => {
+        stopGenRef.current = false
         if (busy !== 'idle' || sceneIds.length === 0) return
         genCountRef.current = 0
+        reArmedRef.current.clear()
         for (const id of sceneIds) armedScenesRef.current.add(id)
-        pushBubble({ role: 'user', text: `▶▶ ${t('xd.sb.genall')}` })
-        const msgs = [...protocol, { role: 'user', content: `Generate every remaining draft storyboard scene now, one at a time in board order (${sceneIds.join(', ')}). Use each scene's current shot text, model, recipe and duration, pass its scene_id, and do not re-plan or re-confirm between scenes.` }]
+        pushBubble({ role: 'user', text: `▶▶ ${kind === 'still' ? t('xd.sb.allstills') : t('xd.sb.allvideos')}` })
+        const msgs = [...protocol, { role: 'user', content: kind === 'still'
+          ? `Generate the KEY STILL for each of these storyboard scenes now, one at a time in board order (${sceneIds.join(', ')}): start_generation with medium="image", that scene_id, an image recipe (image_edit when the scene has references, else text_to_image), the scene's references and its shot text as the prompt, and the still model its card names when it names one. A scene marked as a CUT (continues) must pass chain_from_scene=<the previous scene id> with an image_edit recipe, so its still is generated FROM the previous cut's still and the place, wardrobe and face carry over — generate them in order so each has its predecessor to work from. These are the cheap look test — generate NO video, do not re-plan, and do not re-confirm between scenes.`
+          : `Generate the VIDEO for every remaining draft storyboard scene now, one at a time in board order (${sceneIds.join(', ')}). Each scene that has an approved key still animates from it (from_still=true, image_to_video); a scene marked direct goes straight to video. Use each scene's current shot text, video model, recipe and duration, pass its scene_id, and do not re-plan or re-confirm between scenes.` }]
         setProtocol(msgs)
         void agentTurn(msgs)
       },
@@ -748,7 +956,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // — the server's storyboard guard needs it — only the CARD binding is
     // dropped. The card changes takes only when the user picks one.
     const rerunCtx = pendingRerunRef.current
-    const cardScene: string | null = rerunCtx ? null : sceneId
+    let cardScene: string | null = rerunCtx ? null : sceneId
 
     console.info('[xdirect:gen] start', { model_id: inp.model_id, recipe: inp.recipe, sceneId, duration: inp.duration, resolution: inp.resolution ?? null, use_attachments: !!inp.use_attachments, committed: committedRef.current.length })
 
@@ -759,6 +967,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       console.warn('[xdirect:gen] BAIL:', err)
       pushBubble({ role: 'gen', status: 'error', modelName: models[inp.model_id]?.name ?? inp.model_id, error: err })
       if (cardScene) patchScene(cardScene,{ status: 'error', error: err })
+      reArmOnFailure(cardScene)
       const toolMsg = {
         role: 'user',
         content: [...pendingToolResults, {
@@ -778,17 +987,35 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     const sceneRefs: Attachment[] = (Array.isArray(genScene?.refs) ? genScene.refs : [])
       .filter((r: any) => r?.storagePath && r?.bucket)
 
-    if (inp.use_attachments && committedRef.current.length === 0 && sceneRefs.length === 0
+    if ((inp.use_attachments || Array.isArray(inp.use_files)) && committedRef.current.length === 0 && sceneRefs.length === 0
         && !(rerunCtx?.refs && rerunCtx.refs.length > 0)) {
       return bail('No reference photos are available in this session — ask the user to re-attach the photo, then retry.')
     }
 
     // ── Frame chaining: this scene opens on another scene's closing frame ──
     let chainFrame: Attachment | null = null
-    if (typeof inp.chain_from_scene === 'string' && inp.chain_from_scene) {
-      const src: any = storyboardRef.current.find((s: any) => s.id === inp.chain_from_scene)
+    // A 🔗 cut continues the previous cut, and in stills-first there is no
+    // clip yet to continue FROM — the previous cut's approved KEY STILL is
+    // the frame (owner bug, Aug 11: "why does scene 1 cut 2's still not use
+    // the image from cut 1?" — the director wrote "continuing from the
+    // provided frame" and no frame was provided, because this branch only
+    // knew how to read a finished video).
+    //
+    // The still case needs no extraction at all: /api/xcreate downloads a
+    // parent row's output and inserts it AHEAD of fresh uploads, so naming
+    // the still row as the parent puts that exact image in slot 0. Only a
+    // video source needs a frame pulled out of it and re-uploaded.
+    const chainSrc: any = typeof inp.chain_from_scene === 'string' && inp.chain_from_scene
+      ? storyboardRef.current.find((s: any) => s.id === inp.chain_from_scene)
+      : null
+    const chainFromStillRow: string | null =
+      (inp.chain_from_scene && chainSrc && !(chainSrc.status === 'done' && chainSrc.url))
+        ? (chainSrc.still_row_id ?? null)
+        : null
+    if (typeof inp.chain_from_scene === 'string' && inp.chain_from_scene && !chainFromStillRow) {
+      const src: any = chainSrc
       if (!src || src.status !== 'done' || !src.url) {
-        return bail(`Scene ${inp.chain_from_scene} has no finished clip to continue from — generate it first, then retry this one.`)
+        return bail(`Scene ${inp.chain_from_scene} has nothing to continue from yet — it has neither an approved key still nor a finished clip. Generate its key still first, then retry this one.`)
       }
       const frame = await extractLastFrame(src.url)
       if (!frame) {
@@ -809,8 +1036,35 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       if (!chainFrame) return bail('Uploading the continuation frame failed — retry in a moment.')
     }
 
+    // The agent now directs stills as well as motion. Trust the declared
+    // medium but fall back to reading the recipe, because a recipe and a
+    // medium that disagree would bill against the wrong pipeline.
+    const medium: 'image' | 'video' =
+      inp.medium === 'image' || inp.medium === 'video'
+        ? inp.medium
+        : (typeof inp.recipe === 'string' && inp.recipe.includes('video') ? 'video' : 'image')
+
+    // A STILL made for a scene is that scene's key frame, not its clip —
+    // it must not claim the card's video slot (owner design, Aug 11:
+    // KEYFRAME mode — image first, then animate it).
+    const isSceneStill = medium === 'image' && !!sceneId
+    if (isSceneStill) cardScene = null
+
     setBusy('generating')
-    pushBubble({ role: 'gen', status: 'generating', modelName: models[inp.model_id]?.name ?? inp.model_id, text: inp.prompt })
+    // The bubble carries its scene binding, because reconciliation is the
+    // only thing that will know it later (owner bug, Aug 11: "why can't I
+    // generate video at S1·C1?"). A still that finished while the tab was
+    // away got claimed for the transcript but never written back to the
+    // card, so still_row_id stayed null and the VIDEO button — gated on
+    // exactly that — was locked forever, with the still sitting on the
+    // board in plain sight.
+    pushBubble({
+      role: 'gen', status: 'generating', text: inp.prompt,
+      modelName: models[inp.model_id]?.name ?? inp.model_id,
+      ...(isSceneStill && sceneId ? { forScene: sceneId, forKind: 'still' as const }
+        : cardScene ? { forScene: cardScene, forKind: 'clip' as const }
+        : rerunCtx?.sceneId ? { forScene: rerunCtx.sceneId, forKind: 'take' as const } : {}),
+    })
     if (cardScene) patchScene(cardScene,{ status: 'generating', error: undefined })
 
     const finish = async (result: any) => {
@@ -830,14 +1084,6 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
 
     const jobId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
       ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
-
-    // The agent now directs stills as well as motion. Trust the declared
-    // medium but fall back to reading the recipe, because a recipe and a
-    // medium that disagree would bill against the wrong pipeline.
-    const medium: 'image' | 'video' =
-      inp.medium === 'image' || inp.medium === 'video'
-        ? inp.medium
-        : (typeof inp.recipe === 'string' && inp.recipe.includes('video') ? 'video' : 'image')
 
     const board = ensureConvId()
 
@@ -859,6 +1105,18 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           return rerunCtx.parentRowIds.length > 0 ? { parentIds: rerunCtx.parentRowIds } : {}
         }
         if (sceneId) {
+          // KEY-STILL FIRST (owner, Aug 11): the scene's approved still
+          // becomes this video's opening frame. /api/xcreate resolves a
+          // parent row's output into the run's input attachments at slot
+          // 0 — so the likeness AND the look baked into the still travel
+          // into the motion, instead of being re-argued in words.
+          if (inp.from_still) {
+            const still = (storyboardRef.current.find((s: any) => s.id === sceneId) as any)?.still_row_id
+            if (still) return { parentIds: [still] }
+          }
+          // Chaining from a still: that row is both the honest lineage and
+          // the input image — one parentIds does both jobs.
+          if (chainFromStillRow) return { parentIds: [chainFromStillRow] }
           const srcRow = typeof inp.chain_from_scene === 'string'
             ? (storyboardRef.current.find((s: any) => s.id === inp.chain_from_scene) as any)?.row_id
             : null
@@ -879,11 +1137,25 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // frame and the product references ride behind it.
     // A rerun with an explicit reference selection uses EXACTLY those files
     // (owner, Aug 9) — including [] for a deliberate text-only re-run.
+    // use_files picks WHICH attachments feed this run, by the numbers the
+    // user sees — and in the order given, because slot 0 is the opening
+    // frame. This is what keeps style frames out of a video generation
+    // while the same upload set still feeds the KEYFRAME still.
+    const pickByNumber = (nums: unknown): any[] | null => {
+      if (!Array.isArray(nums) || nums.length === 0) return null
+      const picked = nums
+        .map((n: any) => committedRef.current.find(a => (a as any).fileNo === Number(n)))
+        .filter(Boolean)
+      return picked.length > 0 ? picked : null
+    }
+    const chosenFiles = pickByNumber(inp.use_files)
     const refAtts: any[] = rerunCtx?.refs
       ? rerunCtx.refs
       : sceneRefs.length > 0
         ? sceneRefs
-        : (inp.use_attachments && committedRef.current.length > 0) ? committedRef.current : []
+        : chosenFiles
+          ? chosenFiles
+          : (inp.use_attachments && committedRef.current.length > 0) ? committedRef.current : []
     const allAtts = [...(chainFrame ? [chainFrame] : []), ...refAtts]
     if (allAtts.length > 0) {
       payload.attachments = allAtts.map(a => ({
@@ -901,6 +1173,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     } catch {
       patchLastGen({ status: 'error', error: 'Network error' })
       if (cardScene) patchScene(cardScene,{ status: 'error', error: 'Network error' })
+      reArmOnFailure(cardScene)
       return finish({ ok: false, error: 'network error starting the generation' })
     }
 
@@ -910,6 +1183,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       const msg = detail?.message ?? detail?.error ?? `HTTP ${postRes.status}`
       patchLastGen({ status: 'error', error: msg })
       if (cardScene) patchScene(cardScene,{ status: 'error', error: msg })
+      reArmOnFailure(cardScene)
       return finish({
         ok: false,
         error: postRes.status === 402 ? `insufficient_credits: ${msg}` : msg,
@@ -924,6 +1198,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       if (Date.now() - startedAt > 10 * 60_000) {
         patchLastGen({ status: 'error', error: 'Timed out' })
         if (cardScene) patchScene(cardScene,{ status: 'error', error: 'Timed out' })
+        reArmOnFailure(cardScene)
         return finish({ ok: false, error: 'generation timed out after 10 minutes' })
       }
       try {
@@ -937,6 +1212,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           const err = slot?.error ?? data.job?.error ?? 'generation failed'
           patchLastGen({ status: 'error', error: err })
           if (cardScene) patchScene(cardScene,{ status: 'error', error: err })
+          reArmOnFailure(cardScene)
           onActivity?.()   // failed rows still get a board node
           return finish({ ok: false, error: err })
         }
@@ -949,6 +1225,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           ...(medium === 'image' ? { imageUrl: url ?? undefined } : { videoUrl: url ?? undefined }),
         })
         if (cardScene) patchScene(cardScene,{ status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined })
+        // The scene's key still: remembered on the card (so ▶ can open the
+        // video on it) without becoming the card's clip.
+        else if (isSceneStill && sceneId) patchScene(sceneId, { still_row_id: xid ?? undefined, still_url: url ?? undefined, status: 'draft' })
+        // A ↻ comparison take keeps the card as-is but must still be FILED
+        // under its cut, or it lands on the board owned by nothing.
+        else if (rerunCtx?.sceneId && xid) recordTake(rerunCtx.sceneId, xid)
         onActivity?.()   // new node on the board — let the canvas redraw
         return finish({ ok: true, url: url ? '(delivered to the user in the chat)' : null, medium, costUsd: cost, model: slot?.name ?? inp.model_id, xcreateId: xid })
       } catch { /* transient poll error — keep going */ }
@@ -958,41 +1240,169 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // ── Send ──────────────────────────────────────────────────────────────────
   const send = async () => {
     const text = input.trim()
-    if (!text || busy !== 'idle') return
+    // A file alone is a valid send now (owner, Aug 10): dropping in a song
+    // or a lyric sheet with no words typed still starts an MV.
+    if ((!text && atts.length === 0) || busy !== 'idle') return
     genCountRef.current = 0
+    reArmedRef.current.clear()
 
-    // Build vision blocks BEFORE committing — commitAttachments strips the
-    // File object once the bytes are in storage.
-    const visionBlocks: any[] = []
-    for (const a of atts) {
-      if (a.file && a.mediaType.startsWith('image/')) {
-        const blk = await toVisionBlock(a.file)
-        if (blk) visionBlocks.push(blk)
+    // ── SHOW THE WORK IMMEDIATELY (owner, Aug 10) ──────────────────────
+    // Uploading a 4MB song and transcribing it takes tens of seconds, and
+    // all of it used to happen BEFORE the first pixel changed: the typed
+    // text sat in the box, the file chip sat there, and the page looked
+    // frozen. Claim the turn first — bubble up, composer cleared, busy on,
+    // and the conversation id minted so the URL becomes this chat's own
+    // page right away — then do the slow work behind a progress line.
+    const sending = atts
+    setBusy('thinking')
+    setPrep(sending.length > 0 ? t('xd.prep.upload') : t('xd.prep.think'))
+    pushBubble({ role: 'user', text, files: sending.map(a => a.fileName) })
+    setInput(''); setAtts([])
+    ensureConvId()
+
+    // Lyric sheets (.txt/.lrc) are read client-side; songs (audio/*) are
+    // transcribed server-side. Both become text the director storyboards
+    // from — Claude can't hear audio, so an untranscribed mp3 is useless.
+    const isLyricFile = (a: Attachment) => /\.(txt|lrc)$/i.test(a.fileName) || a.mediaType === 'text/plain'
+    const isAudio     = (a: Attachment) => (a.mediaType || '').startsWith('audio/')
+    let lyricText = ''
+    for (const a of sending) {
+      if (isLyricFile(a) && a.file) {
+        try {
+          const body = (await a.file.text()).slice(0, 8000)
+          // A .lrc (or any sheet with [mm:ss] line stamps) already carries
+          // the timings — those are the user's own and outrank anything we
+          // could transcribe, so say so rather than re-deriving them.
+          const timed = /^\s*\[\d{1,2}:\d{2}(?:[.:]\d{1,2})?\]/m.test(body)
+          lyricText += timed
+            ? `\n\n[lyrics WITH TIMESTAMPS from ${a.fileName} — the user's own timings. Treat them as correct, use them verbatim for scene durations, and do NOT transcribe the audio again]\n${body}`
+            : `\n\n[lyrics from ${a.fileName} — no timings; if a song is also attached, transcribe it for timings and use THESE words]\n${body}`
+        } catch { /* skip */ }
       }
     }
 
-    let committed = atts
-    if (atts.length > 0) {
-      try { committed = await commitAttachments(atts) } catch { /* keep going without */ }
-      committedRef.current = committed.filter(a => a.storagePath)
+    // Build vision blocks BEFORE committing — commitAttachments strips the
+    // File object once the bytes are in storage.
+    //
+    // Each image is PRECEDED by its number and filename (owner, Aug 11:
+    // "you should mark which file is 1, which file is 2"). Without a label
+    // the model sees an unordered pile and "photos 1-3 are the artist,
+    // 4-7 are style" is guesswork on both sides. The number is 1-BASED and
+    // is the file's position in the composer, so it matches the badge on
+    // the chip exactly.
+    // Upload FIRST — the director now sees photos by signed URL, and a URL
+    // only exists once the bytes are in storage.
+    let committed = sending
+    if (sending.length > 0) {
+      try { committed = await commitAttachments(sending) } catch { /* keep going without */ }
+      // Stamp each file with the number the user sees on its chip, so a
+      // later "use file 2" resolves to these exact bytes. Numbering counts
+      // ALL attachments (a song occupies its number too) — the badge is
+      // the single source of truth on both ends.
+      committed = committed.map((a, i) => ({ ...a, fileNo: i + 1 }))
+      committedRef.current = committed.filter(a => a.storagePath && !isAudio(a) && !isLyricFile(a))
+      // Attach the committed refs to the bubble already on screen, so a
+      // restored session can still generate against these photos.
+      if (committedRef.current.length > 0) {
+        const saved = committedRef.current.map(a => ({
+          storagePath: a.storagePath!, bucket: a.bucket, mediaType: a.mediaType,
+          fileName: a.fileName, fileSize: a.fileSize, fileNo: a.fileNo,
+          role: (a as any).role, label: (a as any).label,
+        }))
+        setBubbles(prev => {
+          const i = prev.map(b => b.role).lastIndexOf('user')
+          if (i < 0) return prev
+          const next = [...prev]; next[i] = { ...next[i], atts: saved as any }
+          return next
+        })
+      }
     }
 
-    pushBubble({
-      role: 'user', text, files: atts.map(a => a.fileName),
-      // Persisted with the conversation — this is what lets a restored
-      // session keep generating against the same reference photos.
-      ...(committedRef.current.length > 0 ? {
-        atts: committedRef.current.map(a => ({
-          storagePath: a.storagePath!, bucket: a.bucket, mediaType: a.mediaType,
-          fileName: a.fileName, fileSize: a.fileSize,
-        })),
-      } : {}),
-    })
-    setInput(''); setAtts([])
+    // Each image is PRECEDED by its number, filename and role, so "file 2 is
+    // the artist" binds to actual bytes rather than to a position in a pile
+    // (owner, Aug 11). The number is 1-BASED and matches the chip's badge.
+    const visionBlocks: any[] = []
+    const photos = committed.filter(a => a.mediaType.startsWith('image/'))
+    const signedUrls = photos.length > 0 ? await signVisionUrls(photos) : {}
+    let shown = 0
+    for (const a of photos) {
+      const no = (a as any).fileNo ?? 0
+      const url = a.storagePath ? signedUrls[a.storagePath] : undefined
+      if (!url || shown >= MAX_VISION) {
+        visionBlocks.push({ type: 'text', text: `File ${no} — ${a.fileName} — attached (not shown inline; still available to generations via use_files)` })
+        continue
+      }
+      const blk = { type: 'image', source: { type: 'url', url } }
+      shown++
+      const nm = (((a as any).label ?? '').trim())
+      const role = (a as any).role === 'style'
+        ? 'STYLE REFERENCE (look only — palette, light, grade; NOT the subject)'
+        : `SUBJECT${nm ? ` "${nm}"` : ''} (keep this likeness)`
+      visionBlocks.push({ type: 'text', text: `File ${no} — ${a.fileName} — ${role}` })
+      visionBlocks.push(blk)
+    }
 
-    const noteParts: string[] = [text]
+    // Transcribe any attached song → timestamped lyrics (house-paid).
+    const audioAtts = committed.filter(a => isAudio(a) && a.storagePath)
+    if (audioAtts.length > 0) {
+      setPrep(t('xd.prep.listen'))
+      for (const a of audioAtts) {
+        try {
+          const res = await fetch('/api/xdirector/transcribe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: a.bucket, storagePath: a.storagePath, mediaType: a.mediaType }),
+          })
+          const d = await res.json().catch(() => null)
+          if (res.ok && d?.text) {
+            lyricText += `\n\n[transcribed lyrics from ${a.fileName} — ${d.model}, [mm:ss] per line; use these timings for scene durations. MACHINE TRANSCRIPTION: it can mishear. If the user corrects a line, that correction is the truth — use their wording verbatim from then on and never revert to this version.]\n${d.text}`
+            // Put it on screen too (owner, Aug 11: "the lyrics parsing might
+            // have error, user should be able to correct that"). Until now
+            // the transcript only ever reached the director, so a mishearing
+            // was invisible and uncorrectable.
+            pushBubble({ role: 'agent', text: `${t('xd.lyrics.heard')} — ${d.model}\n\n${d.text}\n\n${t('xd.lyrics.fix')}` })
+          }
+          else lyricText += `\n\n[could not transcribe ${a.fileName}: ${d?.error ?? 'error'} — ask the user to paste the lyrics]`
+        } catch { lyricText += `\n\n[could not reach the transcriber for ${a.fileName}]` }
+      }
+    }
+    setPrep(t('xd.prep.think'))
+
+    const noteParts: string[] = []
+    if (text) noteParts.push(text)
     if (committedRef.current.length > 0) {
-      noteParts.push(`[attached ${committedRef.current.length} file(s): ${committedRef.current.map(a => `${a.fileName} (${a.mediaType})`).join(', ')} — available as reference inputs via use_attachments]`)
+      // Numbered the same way the user sees them, so a brief that says
+      // "file 2 is the artist" binds to the right bytes.
+      // Subjects group BY NAME so a board can hold several people or
+      // products at once (owner, Aug 11): each named group is its own
+      // identity, and a scene is fed only the subjects that appear in it.
+      const fmt = (list: any[]) => list.map(a => `${a.fileNo}. ${a.fileName}`).join(', ')
+      const sty = committedRef.current.filter(a => (a as any).role === 'style')
+      const byName = new Map<string, any[]>()
+      for (const a of committedRef.current) {
+        if ((a as any).role === 'style') continue
+        const k = (((a as any).label ?? '').trim()) || '(unnamed)'
+        if (!byName.has(k)) byName.set(k, [])
+        byName.get(k)!.push(a)
+      }
+      const lines = [...byName.entries()].map(([nm, list]) =>
+        nm === '(unnamed)'
+          ? `SUBJECT (keep this likeness): ${fmt(list)}`
+          : `SUBJECT "${nm}" (keep this likeness; these files are all the same one): ${fmt(list)}`)
+      noteParts.push([
+        '[attached files — the ROLE TAGS BELOW ARE THE USER\'S OWN, set on each file. They are authoritative: never re-assign a role from a filename or from anything written in the brief.',
+        ...lines,
+        sty.length ? `STYLE REFERENCE (look only — palette, light, grade; never the subject): ${fmt(sty)}` : '',
+        byName.size > 1
+          ? `There are ${byName.size} DIFFERENT subjects. Name them in each scene's script and shot text, and pass use_files with ONLY the subjects that appear in that scene — mixing two people's photos into one generation blends their faces.`
+          : '',
+        'Address them with use_files by these numbers. Typical split: a key still takes SUBJECT + STYLE together; a video takes SUBJECT only.]',
+      ].filter(Boolean).join('\n'))
+    }
+    // Lyrics (typed-file or transcribed song) go to the director as text —
+    // an empty brief + a song is a valid "make an MV from this" request.
+    if (lyricText) {
+      noteParts.push(lyricText.trim())
+      if (!text) noteParts.push('Make a music video from these lyrics. Confirm orientation first, then storyboard scene by scene timed to the lyric lines.')
     }
     // THE FIX (CC, July 29): the agent used to receive only this filename
     // note, so when asked to describe the product it invented one. A real
@@ -1125,32 +1535,40 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               <div style={{ fontSize: 11, fontFamily: 'var(--mono)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--muted)', marginBottom: 10 }}>
                 {t('xdirector.skills')}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+              <div className="xd-skills-grid">
                 {skills.map(sk => {
                   const on = activeSkill === sk.name
+                  // Banner from the skill's own metadata, with graceful
+                  // fallbacks so a dropped-in SKILL.md still looks right.
+                  const emoji = sk.metadata?.emoji || '🎬'
+                  const color = sk.metadata?.color || '#4a4c52'
+                  const banner = sk.metadata?.banner
+                  const title = sk.metadata?.title || sk.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                   return (
                     <button
                       key={sk.name}
+                      className={on ? 'xd-skill is-on' : 'xd-skill'}
                       onClick={() => setActiveSkill(on ? null : sk.name)}
-                      style={{
-                        textAlign: 'left', padding: '12px 14px', borderRadius: 11, cursor: 'pointer',
-                        border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
-                        background: on ? 'rgba(232,69,60,0.06)' : 'var(--surface)',
-                        boxShadow: on ? '0 0 0 3px rgba(232,69,60,0.15)' : 'none',
-                        fontFamily: 'inherit',
-                      }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: on ? 'var(--red)' : 'var(--white)' }}>{sk.name}</span>
-                        {sk.metadata?.category && (
-                          <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--muted)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>
-                            {sk.metadata.category}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 11.5, lineHeight: 1.55, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>
-                        {sk.description}
-                      </div>
+                      {/* Generated art banner when the skill ships one;
+                          emoji-on-gradient is the fallback for any skill
+                          without one (e.g. a dropped-in SKILL.md). */}
+                      <span className="xd-skill-banner" style={banner ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)` }}>
+                        {banner
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={banner} alt="" loading="lazy" className="xd-skill-img" />
+                          : <span aria-hidden>{emoji}</span>}
+                        {on && <span className="xd-skill-check" aria-hidden>✓</span>}
+                      </span>
+                      <span className="xd-skill-body">
+                        {/* Category tag removed (owner, Aug 11) — the
+                            banner already says what the skill is, and the
+                            chip was crowding the name. */}
+                        <span className="xd-skill-head">
+                          <span className="xd-skill-name">{title}</span>
+                        </span>
+                        <span className="xd-skill-blurb">{sk.description}</span>
+                      </span>
                     </button>
                   )
                 })}
@@ -1257,8 +1675,13 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             </div>
           ))}
           {busy === 'thinking' && (
-            <div style={{ alignSelf: 'flex-start', padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '12px 12px 12px 4px', fontSize: 14, color: 'var(--muted)' }}>
-              <span className="stream-cursor">▋</span>
+            <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '12px 12px 12px 4px', fontSize: 14, color: 'var(--muted)' }}>
+              {prep
+                ? <>
+                    <span className="nav-history-spin" style={{ width: 13, height: 13 }} aria-hidden />
+                    <span style={{ fontSize: 13 }}>{prep}</span>
+                  </>
+                : <span className="stream-cursor">▋</span>}
             </div>
           )}
           <div ref={endRef} />
@@ -1266,20 +1689,25 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
 
         {/* Composer — pinned below the scrolling transcript. */}
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, flexShrink: 0 }}>
-          <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple accept="image/jpeg,image/png,image/webp" />
+          <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple maxFiles={15} accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.m4a,.wav,.flac,.ogg,.txt,.lrc,text/plain" roles />
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               ref={taRef}
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (isSubmitEnter(e)) { e.preventDefault(); send() } }}
               placeholder={t('xdirector.placeholder')}
-              rows={2}
-              style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none', maxHeight: 240, overflowY: 'auto' }}
+              /* rows is the ONLY base-height source — a minHeight alongside
+                 it fought the auto-grow and left a dead extra line
+                 (owner, Aug 10). */
+              rows={4}
+              style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none', maxHeight: 320, overflowY: 'auto', lineHeight: 1.6 }}
             />
-            <button onClick={send} disabled={busy !== 'idle' || !input.trim()} style={{
+            {/* A song or lyric sheet alone is a valid send — don't gate on
+                typed text (owner, Aug 10). */}
+            <button onClick={send} disabled={busy !== 'idle' || (!input.trim() && atts.length === 0)} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy !== 'idle' ? 'wait' : 'pointer', flexShrink: 0,
-              opacity: busy !== 'idle' || !input.trim() ? 0.5 : 1,
+              opacity: busy !== 'idle' || (!input.trim() && atts.length === 0) ? 0.5 : 1,
             }}>
               {busy === 'idle' ? '→' : '…'}
             </button>
