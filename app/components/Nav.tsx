@@ -520,7 +520,7 @@ export default function Nav() {
           {recentChars.map(ch => (
             <div key={ch.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
-                href={`/xtalk?char=${ch.id}`}
+                href={`/xtalk/c/${ch.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
                 title={ch.name}
               >

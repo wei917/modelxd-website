@@ -740,7 +740,12 @@ function Avatar({ path, name, size }: { path: string | null; name: string; size:
   )
 }
 
-export default function CharactersRoom({ models, charId }: TemplateProps) {
+export default function CharactersRoom({ models, charId, standalone }: TemplateProps & {
+  /** Mounted on /xtalk/c/[id] — chat only, no roster/builder, the page IS
+   *  the character (owner, Aug 13). The landing mounts without it and
+   *  redirects any ?char= deep link to the dedicated page. */
+  standalone?: boolean
+}) {
   const t = useT()
   const { lang } = useLang()
   const [view, setView] = useState<'list' | 'build' | 'chat'>('list')
@@ -975,7 +980,16 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
   // the user straight back into the chat they just left.
   const openedCharRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!charId || !chars || openedCharRef.current === charId) return
+    if (!charId || openedCharRef.current === charId) return
+    // Old deep links (/xtalk?char=…) live in nav history and bookmarks —
+    // forward them to the character's own page instead of opening in the
+    // landing's cramped frame.
+    if (!standalone) {
+      openedCharRef.current = charId
+      try { window.location.replace(`/xtalk/c/${charId}`) } catch {}
+      return
+    }
+    if (!chars) return
     const c = chars.find(x => x.id === charId)
     if (c) { openedCharRef.current = charId; void openChat(c) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -993,11 +1007,13 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
     // The chat owns its URL (owner ask, Aug 8): same shape the nav history
     // deep-links use, so it's shareable and the back button leaves cleanly.
     openedCharRef.current = c.id
-    try {
-      if (new URLSearchParams(window.location.search).get('char') !== c.id) {
-        window.history.pushState({}, '', `/xtalk?char=${c.id}`)
-      }
-    } catch {}
+    if (!standalone) {
+      try {
+        if (new URLSearchParams(window.location.search).get('char') !== c.id) {
+          window.history.pushState({}, '', `/xtalk?char=${c.id}`)
+        }
+      } catch {}
+    }
     const res = await fetch('/api/xcharacter/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'history', characterId: c.id, ...(wantThread ? { threadId: wantThread } : {}) }),
@@ -1066,6 +1082,7 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
 
   // Browser back/forward: the URL is the state, the view follows it.
   useEffect(() => {
+    if (standalone) return
     const onPop = () => {
       let id: string | null = null
       try { id = new URLSearchParams(window.location.search).get('char') } catch {}
@@ -1369,9 +1386,14 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
   if (view === 'chat' && active) {
     const m = modelOf(active.model_id)
     return (
-      <div style={{ maxWidth: 720 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', marginBottom: 12 }}>
+      /* The page frame (owner, Aug 13): header, thread strip and composer
+         are PINNED; the transcript is the only thing that scrolls. Height
+         is viewport-bounded (the XDirect rail lesson: max, not fixed, so
+         short pages don't stretch). */
+      <div style={{ maxWidth: 860, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 170px)', minHeight: 420 }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', marginBottom: 10 }}>
           <button onClick={() => {
+            if (standalone) { window.location.href = '/xtalk'; return }
             setView('list'); void refresh()
             openedCharRef.current = null
             try { window.history.replaceState({}, '', '/xtalk') } catch {}
@@ -1413,10 +1435,10 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 260, maxHeight: '52vh', overflowY: 'auto', padding: '4px 2px', marginBottom: 12 }}>
-          {/* Episodes of one relationship — the strip is the proof the
-              memory design works: switch threads, she still knows you. */}
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '2px 0 10px', alignItems: 'center' }}>
+        {/* Episodes of one relationship — pinned above the transcript so
+            switching never fights the scroll (owner, Aug 13: the chips were
+            inside the scroller, drifting away and getting overlapped). */}
+        <div style={{ flexShrink: 0, display: 'flex', gap: 6, overflowX: 'auto', alignItems: 'center', padding: '2px 2px 8px' }}>
             <button onClick={() => void newThread()} title={t('xc.thread.new')}
               style={{ padding: '3px 10px', borderRadius: 999, flexShrink: 0, border: '1px dashed var(--border2)', background: 'none', color: 'var(--muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
             >+ {t('xc.thread.new')}</button>
@@ -1439,7 +1461,9 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
                 )}
               </span>
             ))}
-          </div>
+        </div>
+
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', padding: '4px 2px', marginBottom: 12 }}>
           {msgs.length === 0 && (
             <div style={{ color: 'var(--muted2)', fontSize: 13, textAlign: 'center', padding: 40 }}>{t('xc.firstline')}</div>
           )}
@@ -1476,7 +1500,7 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
           <div ref={bottomRef} />
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flexShrink: 0, display: 'flex', gap: 8 }}>
           <input
             value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) void send() }}
@@ -1509,6 +1533,16 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
     )
   }
 
+  // Standalone page still resolving its character: a quiet beat, never
+  // the roster — this page is one relationship, not the shelf.
+  if (standalone) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
+        <span className="nav-history-spin" aria-label="loading" />
+      </div>
+    )
+  }
+
   // ── list ────────────────────────────────────────────────────────────
   return (
     <div>
@@ -1518,7 +1552,7 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
             width: 200, border: '1.5px solid var(--border)', borderRadius: 14,
             background: 'var(--surface)', padding: '18px 16px 14px', position: 'relative',
           }}>
-            <button onClick={() => openChat(c)} style={{ border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'center', padding: 0 }}>
+            <button onClick={() => { window.location.href = `/xtalk/c/${c.id}` }} style={{ border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'center', padding: 0 }}>
               <Avatar path={c.avatar_path} name={c.name} size={64} />
               <span style={{ display: 'block', fontWeight: 800, fontSize: 15, marginTop: 10, color: 'var(--white)' }}>{c.name}</span>
               <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginTop: 3 }}>
