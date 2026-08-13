@@ -287,6 +287,7 @@ export const STRINGS: Record<string, Entry> = {
   'ww.role.wolf':   { en: 'Wolf', 'zh-Hant': '狼人', 'zh-Hans': '狼人', ja: '人狼', ko: '늑대인간' },
   'ww.packmate':    { en: 'Your fellow wolf: {w}', 'zh-Hant': '你的狼人同伴：{w}', 'zh-Hans': '你的狼人同伴：{w}', ja: '仲間の人狼：{w}', ko: '동료 늑대: {w}' },
   'xt.recent':      { en: 'Recent games', 'zh-Hant': '最近對局', 'zh-Hans': '最近对局', ja: '最近の対局', ko: '최근 게임' },
+  'xt.recent.all': { en: 'Recent', 'zh-Hant': '最近', 'zh-Hans': '最近', ja: '最近', ko: '최근' },
   'xt.recent.talks': { en: 'Recent talks', 'zh-Hant': '最近討論', 'zh-Hans': '最近讨论', ja: '最近のトーク', ko: '최근 토론' },
   'ww.autofill':    { en: 'Auto-fill seats', 'zh-Hant': '自動補滿', 'zh-Hans': '自动补满', ja: '自動で埋める', ko: '자동 채우기' },
   'ww.thinking.show':  { en: 'Reveal AI thinking', 'zh-Hant': '顯示 AI 思考', 'zh-Hans': '显示 AI 思考', ja: 'AI の思考を表示', ko: 'AI 사고 표시' },

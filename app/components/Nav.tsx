@@ -512,62 +512,57 @@ export default function Nav() {
       )}
 
       {/* Your characters — one row each, straight into the chat. */}
-      {onXtalk && recentChars.length > 0 && (
+      {/* XTalk history — ONE 'Recent' layer like every other page
+          (owner, Aug 13: characters and talks were two stacked caps).
+          Character chats and discussion rooms interleave by recency. */}
+      {onXtalk && (recentChars.length > 0 || recentTalks.length > 0) && (
         <div className="nav-history">
           <div className="nav-history-head" style={{ cursor: 'default' }}>
-            <span className="nav-history-cap">{t('xt.tpl.characters.name')}</span>
+            <span className="nav-history-cap">{t('xt.recent.all')}</span>
           </div>
-          {recentChars.map(ch => (
-            <div key={ch.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {[
+            ...recentChars.map(ch => ({ kind: 'char' as const, ts: ch.last_chat_at ?? '', ch, g: null as any })),
+            ...recentTalks.map(g => ({ kind: 'talk' as const, ts: g.updated_at ?? '', ch: null as any, g })),
+          ].sort((a, b) => String(b.ts).localeCompare(String(a.ts))).map(row => row.kind === 'char' ? (
+            <div key={`c-${row.ch.id}`} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
-                href={`/xtalk/c/${ch.id}`}
+                href={`/xtalk/c/${row.ch.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
-                title={ch.name}
+                title={row.ch.name}
               >
-                {ch.avatar_path ? (
+                {row.ch.avatar_path ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${ch.avatar_path}`}
+                  <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${row.ch.avatar_path}`}
                     alt="" style={{ width: 16, height: 16, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                 ) : (
                   <span aria-hidden style={{ fontSize: 11, flexShrink: 0 }}>👤</span>
                 )}
-                <span className="nav-history-text">{ch.name}</span>
+                <span className="nav-history-text">{row.ch.name}</span>
               </Link>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* XTalk history — persisted discussion rooms, one row per talk.
-          Each permalink reopens the room mid-conversation. (owner, Aug 6) */}
-      {onXtalk && recentTalks.length > 0 && (
-        <div className="nav-history">
-          <div className="nav-history-head" style={{ cursor: 'default' }}>
-            <span className="nav-history-cap">{t('xt.recent.talks')}</span>
-          </div>
-          {recentTalks.map(g => (
-            editing && editing.table === 'xtalk_sessions' && editing.id === g.id ? (
+          ) : (
+            editing && editing.table === 'xtalk_sessions' && editing.id === row.g.id ? (
               <input
-                key={`edit-${g.id}`} autoFocus value={nameDraft}
+                key={`edit-${row.g.id}`} autoFocus value={nameDraft}
                 onChange={e => setNameDraft(e.target.value)}
-                onBlur={() => renameRow('xtalk_sessions', g.id, nameDraft)}
-                onKeyDown={e => { if (e.key === 'Enter') renameRow('xtalk_sessions', g.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
+                onBlur={() => renameRow('xtalk_sessions', row.g.id, nameDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') renameRow('xtalk_sessions', row.g.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
                 className="nav-history-item"
                 style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
               />
             ) : (
-            <div key={g.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div key={row.g.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
-                href={`/xtalk/${g.id}`}
+                href={`/xtalk/${row.g.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
-                title={`${g.title || t('xt.tpl.discussion.name')} · ${new Date(g.updated_at).toLocaleString()}`}
+                title={`${row.g.title || t('xt.tpl.discussion.name')} · ${new Date(row.g.updated_at).toLocaleString()}`}
               >
                 <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>💬</span>
-                <span className="nav-history-text">{g.title || t('xt.tpl.discussion.name')}</span>
+                <span className="nav-history-text">{row.g.title || t('xt.tpl.discussion.name')}</span>
               </Link>
               <button
                 aria-label="rename" title={t('hist.rename')}
-                onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
+                onClick={() => { setNameDraft(row.g.title || ''); setEditing({ table: 'xtalk_sessions', id: row.g.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
               >✏</button>
             </div>

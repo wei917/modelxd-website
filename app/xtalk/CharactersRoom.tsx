@@ -1066,6 +1066,19 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
     }
   }
 
+  const [renamingThread, setRenamingThread] = useState<string | null>(null)
+  const [threadDraft, setThreadDraft] = useState('')
+  const renameThread = async (id: string) => {
+    const title = threadDraft.trim().slice(0, 60)
+    setRenamingThread(null)
+    if (!active || !title) return
+    setThreads(prev => prev.map(x => x.id === id ? { ...x, title } : x))
+    await fetch('/api/xcharacter/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'rename_thread', characterId: active.id, threadId: id, title }),
+    }).catch(() => {})
+  }
+
   const dropThread = async (id: string) => {
     if (!active) return
     await fetch('/api/xcharacter/chat', {
@@ -1444,6 +1457,15 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
             >+ {t('xc.thread.new')}</button>
             {threads.map(th => (
               <span key={th.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                {renamingThread === th.id ? (
+                  <input
+                    autoFocus value={threadDraft}
+                    onChange={e => setThreadDraft(e.target.value)}
+                    onBlur={() => void renameThread(th.id)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) void renameThread(th.id); if (e.key === 'Escape') setRenamingThread(null) }}
+                    style={{ width: 150, padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, border: '1px solid var(--red)', background: 'var(--surface)', color: 'var(--white)', outline: 'none' }}
+                  />
+                ) : (
                 <button
                   onClick={() => { if (threadId !== th.id && active) { consolidateOnLeave(); void openChat(active, th.id) } }}
                   style={{
@@ -1454,7 +1476,13 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
                     color: threadId === th.id ? 'var(--red)' : 'var(--muted)',
                   }}
                 >{th.title === 'New chat' ? t('xc.thread.fresh') : th.title}</button>
-                {threadId === th.id && threads.length > 1 && (
+                )}
+                {threadId === th.id && renamingThread !== th.id && (
+                  <button onClick={() => { setThreadDraft(th.title === 'New chat' ? '' : th.title); setRenamingThread(th.id) }} title={t('hist.rename')}
+                    style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 10, padding: 0, opacity: 0.7 }}
+                  >✏</button>
+                )}
+                {threadId === th.id && renamingThread !== th.id && threads.length > 1 && (
                   <button onClick={() => void dropThread(th.id)} title={t('hist.delete')}
                     style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}
                   >✕</button>

@@ -108,6 +108,15 @@ export async function POST(req: Request) {
     return Response.json({ thread: made })
   }
 
+  // ── rename_thread: first words name it, the user can rename it ───────
+  if (body.action === 'rename_thread') {
+    const title = String(body.title ?? '').trim().slice(0, 60)
+    if (!title) return Response.json({ error: 'Give it a name' }, { status: 400 })
+    await svc().from('x_character_threads').update({ title })
+      .eq('id', String(body.threadId ?? '')).eq('character_id', c.id)
+    return Response.json({ ok: true, title })
+  }
+
   // ── delete_thread: soft, like every other history surface here ───────
   if (body.action === 'delete_thread') {
     await svc().from('x_character_threads')
