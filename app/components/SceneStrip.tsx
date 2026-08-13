@@ -227,6 +227,18 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
   }
 
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  // A locked video ▶ must TEACH, not play dead (owner hit the wall twice,
+  // Aug 13: "the characters are generated already, why is the video still
+  // locked?" — cast assets were shot, scene stills weren't, and the
+  // disabled button gave no path forward). Clicking the 🔒 pulses the
+  // STILL row above it and names the step.
+  const [nudge, setNudge] = useState<string | null>(null)
+  const nudgeTimer = useRef<any>(null)
+  const nudgeStill = (id: string) => {
+    setNudge(id)
+    clearTimeout(nudgeTimer.current)
+    nudgeTimer.current = setTimeout(() => setNudge(null), 2400)
+  }
   // Shot prompts are long; cards stay scannable with them folded.
   const [openShot, setOpenShot] = useState<Record<string, boolean>>({})
   // Per-scene reference upload + per-scene model picker (owner ask, Aug 8).
@@ -639,13 +651,17 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                         style={pickSty(!!s.still_model_name)}
                       >{s.still_model_name ?? `☰ ${t('xd.sb.pickmodel')}`}</button>
                       <span style={priceSty('var(--muted2)')}>{sp != null ? money(sp) : ''}</span>
+                      {nudge === s.id && (
+                        <span style={{ ...label, color: 'var(--red)', letterSpacing: 0, flexShrink: 0 }}>{t('xd.sb.stillfirst')}</span>
+                      )}
                       {genStill ? (
                         <span className="nav-history-spin" aria-label="generating" style={{ flexShrink: 0 }} />
                       ) : (
                         <button
                           onClick={() => onGenerate(s.id, 'still')} disabled={blocked || gen}
                           title={stillDone ? t('xd.sb.restill') : t('xd.sb.genstillhint')}
-                          style={runSty(!stillDone && !videoDone, blocked || gen)}
+                          style={{ ...runSty(!stillDone && !videoDone, blocked || gen),
+                            ...(nudge === s.id ? { boxShadow: '0 0 0 4px var(--red-dim)', transform: 'scale(1.2)', transition: 'transform 0.15s' } : {}) }}
                         >{stillDone ? '↻' : '▶'}</button>
                       )}
                     </div>
@@ -677,8 +693,8 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                       <span className="nav-history-spin" aria-label="generating" style={{ flexShrink: 0 }} />
                     ) : (
                       <button
-                        onClick={() => onGenerate(s.id, 'video')}
-                        disabled={blocked || gen || (!stillDone && !s.direct)}
+                        onClick={() => (!stillDone && !s.direct) ? nudgeStill(s.id) : onGenerate(s.id, 'video')}
+                        disabled={blocked || gen}
                         title={s.error ? `${s.error} — ${t('xd.sb.gen')}`
                           : (!stillDone && !s.direct) ? t('xd.sb.needstill') : t('xd.sb.genvideohint')}
                         style={runSty(stillDone || !!s.direct, blocked || gen || (!stillDone && !s.direct))}

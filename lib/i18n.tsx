@@ -224,6 +224,7 @@ export const STRINGS: Record<string, Entry> = {
   'xd.sb.genvideohint': { en: 'Generate the video from the approved still', 'zh-Hant': '用核可的關鍵幀生成影片', 'zh-Hans': '用核准的关键帧生成视频', ja: '承認済みキーフレームから動画を生成', ko: '승인된 스틸에서 영상 생성' },
   'xd.sb.needstill':  { en: 'Generate the key still first — or tell the director "straight to video" for this cut', 'zh-Hant': '請先生成關鍵幀 — 或告訴導演這顆鏡頭「直接出影片」', 'zh-Hans': '请先生成关键帧 — 或告诉导演这颗镜头"直接出视频"', ja: '先にキーフレームを生成 — またはこのカットは「直接動画へ」と伝える', ko: '키 스틸을 먼저 생성 — 또는 이 컷은 "바로 영상으로"라고 알리세요' },
   'xd.sb.assets': { en: 'ASSETS', 'zh-Hant': '素材庫', 'zh-Hans': '素材库', ja: 'アセット', ko: '에셋' },
+  'xd.sb.stillfirst': { en: '① this first!', 'zh-Hant': '① 先拍這個！', 'zh-Hans': '① 先拍这个！', ja: '① まずこれ！', ko: '① 이것 먼저!' },
   'xd.sb.genstill':  { en: 'Still', 'zh-Hant': '生成靜幀', 'zh-Hans': '生成静帧', ja: '静止画', ko: '스틸' },
   'xd.sb.genvideo':  { en: 'Video', 'zh-Hant': '生成影片', 'zh-Hans': '生成视频', ja: '動画', ko: '영상' },
   'xd.lyrics.heard': { en: 'Here are the lyrics I heard, with timings', 'zh-Hant': '以下是我聽到的歌詞與時間軸', 'zh-Hans': '以下是我听到的歌词与时间轴', ja: '聞き取った歌詞とタイムコードです', ko: '들은 가사와 타임코드입니다' },
