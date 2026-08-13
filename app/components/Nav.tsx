@@ -93,9 +93,25 @@ export default function Nav() {
   const [features, setFeatures] = useState<Record<string, boolean>>({})
   useEffect(() => {
     let dead = false
+    // Last-known flags first (owner, Aug 13: the nav painted 4 items, then
+    // the gated ones popped in when /api/features answered — a visible
+    // reflow on every load). The cache collapses that to one paint for
+    // every repeat visit; the fetch then reconciles, so revoked access
+    // still disappears within the round-trip. DISPLAY ONLY — every gated
+    // route asserts server-side; a stale or forged cache shows a link that
+    // 404s, nothing more. Not keyed by user: an account switch on one
+    // browser wears the old flags for ~300ms, then corrects.
+    try {
+      const cached = JSON.parse(localStorage.getItem('nav_features') ?? 'null')
+      if (cached && typeof cached === 'object') setFeatures(cached)
+    } catch {}
     fetch('/api/features', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : {})
-      .then(d => { if (!dead) setFeatures(d ?? {}) })
+      .then(d => {
+        if (dead) return
+        setFeatures(d ?? {})
+        try { localStorage.setItem('nav_features', JSON.stringify(d ?? {})) } catch {}
+      })
       .catch(() => {})
     return () => { dead = true }
   }, [user])
