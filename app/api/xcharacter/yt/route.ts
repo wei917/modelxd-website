@@ -10,13 +10,7 @@
 export const runtime = 'nodejs'
 
 import { assertFeature } from '@/lib/features'
-
-// Per-instance cache: same song asked twice shouldn't cost quota twice.
-// (Serverless instances each keep their own — a floor, not a wall, and
-// that's fine for a quota saver.)
-const cache = new Map<string, { videoId: string | null; at: number }>()
-const CACHE_MS = 60 * 60 * 1000
-const CACHE_MAX = 500
+import { resolveVideoId } from '@/lib/youtube'
 
 export async function POST(req: Request) {
   const gate = await assertFeature('xtalk')
@@ -31,22 +25,5 @@ export async function POST(req: Request) {
   const q = String(body.q ?? '').trim().slice(0, 120)
   if (!q) return Response.json({ error: 'No query' }, { status: 400 })
 
-  const key = process.env.YOUTUBE_API_KEY
-  if (!key) return Response.json({ videoId: null })
-
-  const hit = cache.get(q)
-  if (hit && Date.now() - hit.at < CACHE_MS) return Response.json({ videoId: hit.videoId })
-
-  try {
-    const url = 'https://www.googleapis.com/youtube/v3/search'
-      + `?part=snippet&type=video&videoEmbeddable=true&maxResults=1&q=${encodeURIComponent(q)}&key=${key}`
-    const res = await fetch(url)
-    const d = await res.json().catch(() => null)
-    const videoId: string | null = d?.items?.[0]?.id?.videoId ?? null
-    if (cache.size >= CACHE_MAX) cache.clear()
-    cache.set(q, { videoId, at: Date.now() })
-    return Response.json({ videoId })
-  } catch {
-    return Response.json({ videoId: null })
-  }
+  return Response.json({ videoId: await resolveVideoId(q) })
 }

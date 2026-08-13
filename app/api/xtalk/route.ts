@@ -22,6 +22,7 @@ import { getModelById } from '@/lib/models'
 import * as providers   from '@/lib/providers'
 import { assertFeature } from '@/lib/features'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
+import { resolveVideoId } from '@/lib/youtube'
 
 const LOG = '[xtalk]'
 
@@ -52,7 +53,13 @@ export interface XTalkTurn {
 // while the transcript held nothing but the question. (Release test, Aug 2)
 function roomPrompt(me: string, others: string[], opener: string, persona: string): string {
   const cast = others.length ? `The others in the room are: ${others.join(', ')}.` : 'You are the only model in the room so far.'
-  return `You are ${me}, in a room called XTalk with other AI models. ${cast} A human is in the room too, reading along and free to speak whenever they like.
+  // The room player rides YouTube (owner, Aug 13): full songs for every
+  // visitor, no per-user OAuth, no listener subscription — the walls that
+  // killed the Spotify version. Without YOUTUBE_API_KEY the card degrades
+  // to a link-out, so the door is safe to offer unconditionally.
+  // leads nowhere teaches agents to stop trusting doors.
+  const player = `\nThe room has a music player. To put a song on, end your message with a line of exactly this form:\nPLAY_SONG: <artist> - <title>\nUse it when the human asks for music, or when one specific track genuinely serves the moment — never more than one per turn, and never as a substitute for saying something. Real songs only; if you are not confident the song exists, do not play one.\n`
+  return `You are ${me}, in a room called XTalk with other AI models. ${cast} A human is in the room too, reading along and free to speak whenever they like.${player}
 
 This is a conversation, not a Q&A. It opened with: "${opener}" — but that was only the way in. Follow the conversation to wherever it has actually gone, the way you would in a real one. Do NOT keep re-answering the opening line.
 ${persona ? `\nWho you are in this room: ${persona}\nStay in that character. It is the reason you were invited.\n` : ''}
@@ -202,7 +209,20 @@ export async function POST(req: Request) {
               full += text
               controller.enqueue(sse('delta', { text }))
             },
-            onDone: (result) => {
+            onDone: async (result) => {
+              // The speaker asked for music (PLAY_SONG marker on its last
+              // lines): resolve it HERE, server-side, and ship the track in
+              // the done event. The client strips the marker and renders the
+              // YouTube embed — full song, ads and playback rights stay
+              // between YouTube and the listener's browser.
+              let song: any = undefined
+              const mPlay = /^PLAY_SONG:\s*(.+)$/m.exec(full)
+              if (mPlay && mPlay[1].trim()) {
+                const query = mPlay[1].trim().slice(0, 120)
+                const videoId = await resolveVideoId(query).catch(() => null)
+                song = { query, videoId }
+                console.log(`${LOG} ${me} played: "${query}" → ${videoId ?? 'link-out'}`)
+              }
               const cents = Math.round((result.cost ?? 0) * 100)
               if (cents > 0) {
                 debitCredits({
@@ -224,6 +244,7 @@ export async function POST(req: Request) {
                 inputTokens: result.inputTokens,
                 outputTokens: result.outputTokens,
                 speaker: me,
+                ...(song ? { song } : {}),
               }))
               controller.close()
             },

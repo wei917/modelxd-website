@@ -232,7 +232,12 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
               }}
               onStop={() => runnerRef.current?.stopGeneration()}
               onGenerateAll={(kind) => {
-                const ids = storyboard.filter(s => !s.status || s.status === 'draft' || s.status === 'error').map(s => s.id)
+                // Stills run covers the shelf too (assets ARE stills);
+                // the video run never touches assets — they have no clip.
+                const ids = storyboard
+                  .filter(s => !s.status || s.status === 'draft' || s.status === 'error')
+                  .filter(s => kind === 'still' ? true : !s.asset)
+                  .map(s => s.id)
                 runnerRef.current?.generateAll(ids, kind)
               }}
               onPreview={(url, isVideo) => setHero({ url, isVideo })}

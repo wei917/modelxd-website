@@ -46,8 +46,17 @@ Ask, in ONE ask_user turn if possible, only what the skill cannot know:
   past your knowledge cutoff by definition, and a look you "remember" for one
   is a hallucination that mis-styles every shot downstream. NEVER describe a
   named reference from memory — either the user gives you frames/words, or you
-  say plainly you can't know it and offer your own direction instead. If they
-  attach frames, don't ask.
+  state plainly you can't know that specific piece, STATE your own direction
+  in one line, and proceed; the user can redirect. If they attach frames,
+  don't ask.
+- **A GENRE IS NOT A REFERENCE.** "K-pop", "city-pop", "neon-noir", "90s
+  anime", "live-session" are FORMS — their grammar is in this skill and in
+  your own craft. Commit: pick the form, write the look bible yourself, and
+  state it in one line inside the plan. Asking for frames on a genre word is
+  asking the user to do your job (owner, Aug 12: told "K-pop style", the
+  director asked for reference frames instead of using the K-pop grammar
+  section this very file carries). The ask is only for a SPECIFIC named
+  video or an artist's particular piece.
 - **Title card text** — exact characters, only if a title card is wanted and
   the text isn't obvious from the song.
 - **The cast, as an OFFER, never a blocker** — one line in the same turn: "if
@@ -55,7 +64,7 @@ Ask, in ONE ask_user turn if possible, only what the skill cannot know:
   I'll create an original cast to fit the song." Without this line the user
   only learns photos were possible AFTER an invented stranger has been shot
   and paid for. Do not wait on it: no photos in their answer means original
-  cast, locked on s0 as always.
+  cast, locked as a shelf asset as always.
 
 Infer without asking: POV and story from the lyrics; section grammar from the
 structure; durations from the timestamps; cast ethnicity/age from the song's
@@ -80,9 +89,8 @@ mind later, re-frame all scenes — one video, one aspect.
 
 This is the step that separates a directed MV from a pile of clips, and it is
 the one most often skipped. Do not storyboard a performer you have not locked.
-(The cast sheet card `s0` is never animated, so its 2s duration is fine — but
-any card that WILL be animated needs the video model's minimum, 3s on
-HappyHorse.)
+(Assets are never animated, so no duration applies to them — but any card
+that WILL be animated needs the video model's minimum, 3s on HappyHorse.)
 
 A locked character is **one approved master image per person** — face and
 wardrobe fused into a single frame that every later shot is built from. Build
@@ -105,17 +113,23 @@ it in this order:
    shots. A face they don't like, multiplied by eight scenes, is the single
    most expensive mistake available here.
 
-**How to hold it on this product.** Make the master asset the FIRST storyboard
-card — id `s0`, title `CAST · <name>`, duration 2s, and say in your chat line
-that this card is the cast sheet and is not part of the edit. Then every other
-scene's KEY STILL is generated with `chain_from_scene: "s0"` and an
-`image_edit` recipe, so the approved face and wardrobe are fed in as the
-starting picture instead of being re-argued in adjectives on every shot. Never
-generate a video for `s0`.
+**How to hold it on this product: the ASSETS shelf** (owner, Aug 12 — a cast
+sheet is not a scene; the film starts at S1). Put the master asset on the
+shelf: a set_storyboard entry with `asset: true`, id `cast_her` (any stable
+slug), title `CAST · <name>`, the fused character-sheet prompt in `shot`, and
+a still model — nothing else: no duration, no video model, no place in the
+sequence. It renders in the strip's ASSETS shelf with its name, and the
+numbering never sees it. Then every scene's KEY STILL is generated with
+`chain_from_scene: "<asset id>"` and an `image_edit` recipe, so the approved
+face and wardrobe are fed in as the starting picture instead of being
+re-argued in adjectives on every shot. Assets never become clips — the server
+refuses it.
 
-**More than one performer?** One master asset each (`s0`, `s0b`, …), each
+**More than one performer?** One asset each (`cast_her`, `cast_him`, …), each
 approved on its own. When two share a frame, chain from the one whose face is
-closest to camera and describe the other by their itemised invariants.
+closest to camera and describe the other by their itemised invariants. The
+shelf holds non-cast assets the same way: a look frame (`LOOK · golden alley`)
+or a key prop (`PROP · red phone`) any scene can chain from.
 
 **Group shots and formations** are where identity collapses fastest. Keep the
 group wide and the faces small, or shoot the formation and the faces in

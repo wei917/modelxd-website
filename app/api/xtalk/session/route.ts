@@ -36,6 +36,19 @@ const sanitizeTurns = (raw: any): any[] => (Array.isArray(raw) ? raw : []).slice
   ...(typeof t?.bid === 'number' ? { bid: t.bid } : {}),
   ...(typeof t?.credits === 'number' ? { credits: t.credits } : {}),
   ...(t?.error ? { error: String(t.error).slice(0, 200) } : {}),
+  // The room player (owner, Aug 13 — YouTube now). videoId feeds an iframe
+  // src, so it is coerced to YouTube's exact 11-char id shape or dropped — a
+  // hostile client must not be able to store a novel OR an embed of
+  // anything that isn't a Spotify track.
+  ...(t?.song && typeof t.song === 'object' ? {
+    song: {
+      videoId: typeof t.song.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(t.song.videoId) ? t.song.videoId : null,
+      query: String(t.song.query ?? '').slice(0, 120),
+      ...(t.song.name ? { name: String(t.song.name).slice(0, 120) } : {}),
+      ...(t.song.artists ? { artists: String(t.song.artists).slice(0, 160) } : {}),
+
+    },
+  } : {}),
 }))
 
 export async function POST(req: Request) {

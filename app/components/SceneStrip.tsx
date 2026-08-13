@@ -65,6 +65,11 @@ export type Scene = {
   still_model_name?: string
   /** The user said "straight to video" for this cut — no still step. */
   direct?: boolean
+  /** ASSET (owner, Aug 12): a named reusable picture — cast sheet, look
+   *  frame, key prop — living on the ASSETS shelf, not in the sequence.
+   *  Assets have a still and a name; they never have duration, a video
+   *  model, or a place in the film numbering. Scenes chain from them. */
+  asset?: boolean
   /** PERFORMANCE ONLY — the cast acts, never appears to sing or speak
    *  (owner, Aug 11: "I don't need the model says anything. They just act.
    *  I will mix audio later."). There is no lip-sync on this product, so
@@ -87,10 +92,14 @@ const MAX_SCENE_REFS = 4
  *  chat was numbering by array position, and one earlier cut had shifted
  *  every card after it by one, so the click read as the wrong scene
  *  starting). One numbering, one source. */
-export function sceneLabels(scenes: Array<{ continues?: boolean }>): string[] {
+export function sceneLabels(scenes: Array<{ continues?: boolean; asset?: boolean; title?: string }>): string[] {
   const out: string[] = []
   let sc = 0, cut = 0
   for (const sn of scenes) {
+    // Assets live on the shelf, not in the film — they carry their NAME and
+    // are transparent to the numbering (owner, Aug 12: the cast sheet
+    // rendered as S1·C1 while the director called it s0).
+    if (sn.asset) { out.push(sn.title ?? 'ASSET'); continue }
     if (sn.continues && sc > 0) cut += 1
     else { sc += 1; cut = 1 }
     out.push(`S${sc}\u00b7C${cut}`)
@@ -242,11 +251,17 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
   // doctrine), but the card has to say what the choice costs.
   const videoModelOf = (sc: Scene) =>
     catalog.find(x => x.id === sc.model_id) ?? catalog.find(x => x.display_name === sc.model_name)
-  const losesTheFrame = (sc: Scene): boolean => {
-    if (!opensOnStill(sc)) return false
+  // Two distinct severities (owner ask, Aug 12: "what is this flagging
+  // thing?" — the tooltip claimed likeness carries, untrue for a text-only
+  // model): a reference model keeps the SUBJECT but drops the framing; a
+  // text-only model takes no picture at all — the approved still is simply
+  // ignored.
+  const losesTheFrame = (sc: Scene): 'partial' | 'total' | null => {
+    if (!opensOnStill(sc)) return null
     const m = videoModelOf(sc)
     const modes: string[] = m?.modes ?? []
-    return modes.length > 0 && !modes.includes('image_to_video')
+    if (modes.length === 0 || modes.includes('image_to_video')) return null
+    return (modes.includes('reference_frames') || modes.includes('start_end_frames')) ? 'partial' : 'total'
   }
 
   if (scenes.length === 0) return null
@@ -316,20 +331,22 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
   // continues card with nothing before it opens scene 1 regardless.
   const labels = sceneLabels(scenes)
 
-  const drafts = scenes.filter(s => !s.status || s.status === 'draft' || s.status === 'error')
+  const assets = scenes.filter(s => s.asset)
+  const shots  = scenes.filter(s => !s.asset)
+  const drafts = shots.filter(s => !s.status || s.status === 'draft' || s.status === 'error')
   // Two totals, never one (owner, Aug 11). The stills total is what a full
   // look test costs; the video total is what committing costs. Rolling them
   // into a single number is exactly the number that scared the user.
-  const needStill = scenes.filter(s => !s.still_row_id && !s.direct && s.status !== 'done')
+  const needStill = scenes.filter(s => !s.still_row_id && !s.direct && s.status !== 'done')   // assets included: their still IS the asset
   const stillsEst = needStill.reduce((sum, s) => sum + (stillPriceOf(s) ?? 0), 0)
-  const totalEst = scenes.reduce((sum, s) => sum + (s.status === 'done' ? (s.cost ?? 0) : (priceOf(s) ?? 0)), 0)
-  const totalDur = scenes.reduce((sum, s) => sum + (s.duration_s || 0), 0)
+  const totalEst = shots.reduce((sum, s) => sum + (s.status === 'done' ? (s.cost ?? 0) : (priceOf(s) ?? 0)), 0)
+  const totalDur = shots.reduce((sum, s) => sum + (s.duration_s || 0), 0)
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)', padding: '10px 14px 12px', background: 'var(--bg)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
         <span style={{ ...label, color: 'var(--red)', fontWeight: 700 }}>{t('xd.sb.title')}</span>
-        <span style={{ ...label }}>{scenes.length} · {totalDur}s</span>
+        <span style={{ ...label }}>{shots.length} · {totalDur}s</span>
         <span style={{ flex: 1 }} />
         {(stillsEst > 0 || totalEst > 0) && (
           <span style={{ ...label, color: 'var(--muted2)' }}>
@@ -339,10 +356,10 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
           </span>
         )}
         {(() => {
-          const on = scenes.every(x => x.no_speech)
+          const on = shots.every(x => x.no_speech)
           return (
             <button
-              onClick={() => onChange(scenes.map(x => ({ ...x, no_speech: !on })))}
+              onClick={() => onChange(scenes.map(x => (x.asset ? x : { ...x, no_speech: !on })))}
               title={on ? t('xd.sb.nospeech.on') : t('xd.sb.nospeech.off')}
               style={{
                 ...label, padding: '3px 9px', borderRadius: 999, cursor: 'pointer',
@@ -365,10 +382,11 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
           >⏹ {t('xd.stop')}</button>
         )}
         {scenes.length > 1 && (() => {
-          const allDirect = scenes.every(x => x.direct)
+          const allDirect = shots.every(x => x.direct)
           return (
             <button
               onClick={() => onChange(scenes.map(x => {
+                if (x.asset) return x
                 const toDirect = !allDirect
                 const modes: string[] = (videoModelOf(x)?.modes ?? [])
                 const hasRefs = (x.refs ?? []).length > 0
@@ -415,8 +433,48 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
         })()}
       </div>
 
+      {/* ── ASSETS shelf (owner, Aug 12): named reusable pictures — cast,
+          look, props — OUTSIDE the sequence. The film starts at S1. */}
+      {assets.length > 0 && (
+        <div className="xd-strip-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, alignItems: 'stretch' }}>
+          <span style={{ ...label, alignSelf: 'center', flexShrink: 0, color: 'var(--muted2)' }}>{t('xd.sb.assets')}</span>
+          {assets.map(a => (
+            <div key={a.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+              border: '1px solid var(--border2)', borderRadius: 10, padding: '6px 8px', background: 'var(--surface)',
+            }}>
+              {a.still_url
+                ? <img src={a.still_url} alt="" onClick={() => a.still_url && onPreview(a.still_url, false)}
+                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 7, cursor: 'zoom-in', border: '1px solid var(--border)' }} />
+                : <span style={{ width: 44, height: 44, borderRadius: 7, border: '1px dashed var(--border2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 15 }}>▦</span>}
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <input
+                  value={a.title}
+                  onChange={e => patch(a.id, { title: e.target.value })}
+                  style={{ ...area, border: '1px solid transparent', width: 130, padding: '1px 4px', fontSize: 11.5, fontWeight: 700 }}
+                />
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={() => setStillPickerFor(a.id)} title={a.still_model_name ?? t('xd.sb.pickstillmodel')}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 10, color: 'var(--muted2)', textDecoration: 'underline dotted', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >{a.still_model_name ?? `☰ ${t('xd.sb.pickmodel')}`}</button>
+                  <span style={{ ...label, letterSpacing: 0 }}>{(() => { const p = stillPriceOf(a); return p != null ? money(p) : '' })()}</span>
+                  {a.status === 'generating'
+                    ? <span className="nav-history-spin" aria-label="generating" />
+                    : <button onClick={() => onGenerate(a.id, 'still')} disabled={busy || !a.shot?.trim()}
+                        title={a.still_row_id ? t('xd.sb.restill') : t('xd.sb.genstillhint')}
+                        style={{ border: '1px solid ' + (a.still_row_id ? 'var(--border2)' : 'var(--red)'), background: a.still_row_id ? 'transparent' : 'var(--red-dim)', color: a.still_row_id ? 'var(--white)' : 'var(--red)', borderRadius: 999, padding: '1px 8px', fontSize: 10, fontWeight: 700, cursor: (busy || !a.shot?.trim()) ? 'default' : 'pointer', opacity: (busy || !a.shot?.trim()) ? 0.4 : 1 }}
+                      >{a.still_row_id ? '↻' : '▶'}</button>}
+                  <button onClick={() => remove(a.id)} title={t('hist.delete')}
+                    style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}>✕</button>
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="xd-strip-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-        {scenes.map((s, i) => (
+        {shots.map(s => (() => { const i = scenes.indexOf(s); return (
           <div key={s.id} style={{ ...card, borderColor: s.status === 'generating' ? 'var(--red)' : 'var(--border2)' }}>
             {/* Header: number, editable title, reorder / delete */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -605,7 +663,9 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                     <span style={{ ...label, flexShrink: 0 }}>s</span>
                     <button
                       onClick={() => setPickerFor(s.id)}
-                      title={losesTheFrame(s) ? t('xd.sb.noframe') : (s.model_name ?? t('xd.sb.pickmodel'))}
+                      title={losesTheFrame(s) === 'total' ? t('xd.sb.noframe.total')
+                        : losesTheFrame(s) === 'partial' ? t('xd.sb.noframe')
+                        : (s.model_name ?? t('xd.sb.pickmodel'))}
                       style={{ ...pickSty(!!s.model_name), ...(losesTheFrame(s) ? { color: 'var(--red)' } : {}) }}
                     >{losesTheFrame(s) ? '⚠ ' : ''}{s.model_name ?? `☰ ${t('xd.sb.pickmodel')}`}</button>
                     {videoDone ? (
@@ -629,7 +689,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               )
             })()}
           </div>
-        ))}
+        ) })())}
 
         {/* Ghost card: add a scene by hand. */}
         <button

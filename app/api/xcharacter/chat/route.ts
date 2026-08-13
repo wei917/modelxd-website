@@ -70,6 +70,25 @@ export async function POST(req: Request) {
     .select('*').eq('id', String(body.characterId ?? '')).maybeSingle()
   if (!c || c.user_id !== user.id) return Response.json({ error: 'Not found' }, { status: 404 })
 
+  // ── threads (migration 80): a thread is an EPISODE; memory stays with
+  // the character. Resolution order: the id the client asked for (validated
+  // against this character), else the most recent live thread, else a fresh
+  // one — so pre-thread clients and empty characters both keep working.
+  const threadFor = async (want: unknown): Promise<{ id: string; title: string } | null> => {
+    if (typeof want === 'string' && want) {
+      const { data } = await svc().from('x_character_threads').select('id, title')
+        .eq('id', want).eq('character_id', c.id).is('deleted_at', null).maybeSingle()
+      if (data) return data
+    }
+    const { data: newest } = await svc().from('x_character_threads').select('id, title')
+      .eq('character_id', c.id).is('deleted_at', null)
+      .order('last_at', { ascending: false }).limit(1).maybeSingle()
+    if (newest) return newest
+    const { data: made } = await svc().from('x_character_threads')
+      .insert({ character_id: c.id }).select('id, title').single()
+    return made ?? null
+  }
+
   const loadMemory = async () => {
     const { data } = await svc().from('x_character_memory')
       .select('kind, seq, content').eq('character_id', c.id)
@@ -81,15 +100,46 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── new_thread: a fresh episode (owner, Aug 12) ───────────────────────
+  if (body.action === 'new_thread') {
+    const { data: made, error } = await svc().from('x_character_threads')
+      .insert({ character_id: c.id }).select('id, title').single()
+    if (error || !made) return Response.json({ error: 'Could not create the chat' }, { status: 500 })
+    return Response.json({ thread: made })
+  }
+
+  // ── delete_thread: soft, like every other history surface here ───────
+  if (body.action === 'delete_thread') {
+    await svc().from('x_character_threads')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', String(body.threadId ?? '')).eq('character_id', c.id)
+    return Response.json({ ok: true })
+  }
+
   // ── history: open the room ────────────────────────────────────────────
   if (body.action === 'history') {
+    const th = await threadFor(body.threadId)
+    const { data: threads } = await svc().from('x_character_threads')
+      .select('id, title, last_at').eq('character_id', c.id)
+      .is('deleted_at', null).order('last_at', { ascending: false }).limit(50)
     const { data: msgs } = await svc().from('x_character_messages')
       .select('id, role, text, cost_usd, created_at')
-      .eq('character_id', c.id).order('id', { ascending: false }).limit(100)
+      .eq('character_id', c.id).eq('thread_id', th?.id ?? '')
+      .order('id', { ascending: false }).limit(100)
     const mem = await loadMemory()
+    // Total spend with this character (owner, Aug 12: "I don't know how
+    // much money I spent here"). Chat turns, TTS, live minutes and memory
+    // work all debit with reference_id = the character — one sum tells the
+    // whole truth, including the costs that never attach to a message row.
+    const { data: tx } = await svc().from('credit_transactions')
+      .select('amount_cents').eq('reference_id', c.id).limit(5000)
+    const spentUsd = (tx ?? []).reduce((sum, r: any) => sum + Math.abs(r.amount_cents ?? 0), 0) / 100
     return Response.json({
       character: { id: c.id, name: c.name, avatarPath: c.avatar_path, modelId: c.model_id, thinking: c.thinking, msgCount: c.msg_count },
       messages: (msgs ?? []).reverse(),
+      threads: threads ?? [],
+      threadId: th?.id ?? null,
+      spentUsd,
       memory: {
         criticalTokens: approxTokens(mem.critical),
         chapterCount: mem.chapters.length,
@@ -176,15 +226,25 @@ export async function POST(req: Request) {
   const model = await getModelById(c.model_id)
   if (!model) return Response.json({ error: 'This character\'s model is unavailable' }, { status: 503 })
 
+  const th = await threadFor(body.threadId)
   const mem = await loadMemory()
+  // The verbatim window is the THREAD's — that is the whole point of
+  // threads. Memory (critical + chapters) still crosses them.
   const { data: recent } = await svc().from('x_character_messages')
-    .select('role, text').eq('character_id', c.id)
+    .select('role, text').eq('character_id', c.id).eq('thread_id', th?.id ?? '')
     .order('id', { ascending: false }).limit(WINDOW_MSGS)
   const window = (recent ?? []).reverse()
 
   // Durable before generative: the user's line lands in the log even if the
   // stream dies mid-reply.
-  await svc().from('x_character_messages').insert({ character_id: c.id, role: 'user', text })
+  await svc().from('x_character_messages').insert({ character_id: c.id, role: 'user', text, thread_id: th?.id ?? null })
+  if (th) {
+    await svc().from('x_character_threads').update({
+      last_at: new Date().toISOString(),
+      // First words name the episode, like every other surface here.
+      ...(th.title === 'New chat' ? { title: text.slice(0, 60) } : {}),
+    }).eq('id', th.id)
+  }
 
   const head = stableHead(c, mem.critical, mem.chapters.slice(-CHAPTER_TAIL))
   const msgs: Array<{ role: 'user' | 'assistant'; content: string }> = [
@@ -194,6 +254,23 @@ export async function POST(req: Request) {
     msgs.push(m.role === 'character'
       ? { role: 'assistant', content: m.text }
       : { role: 'user', content: m.text })
+  }
+  // THE MEANWHILE WINDOW (owner, Aug 12: "for the same character, it
+  // should know every thread... the memory should be shared"). Threads are
+  // EPISODES of one relationship, not memory boundaries — so everything
+  // said in other threads since her last consolidation rides along,
+  // labeled as her own recollection. Consolidation then folds it into the
+  // critical file and memoir; this block only bridges the gap in between.
+  const { data: elsewhere } = await svc().from('x_character_messages')
+    .select('role, text').eq('character_id', c.id)
+    .gt('id', c.consolidated_to).neq('thread_id', th?.id ?? '')
+    .order('id', { ascending: false }).limit(12)
+  if (elsewhere && elsewhere.length > 0) {
+    const lines = elsewhere.reverse()
+      .map(m => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`)
+      .join('\n').slice(0, 6000)
+    msgs.push({ role: 'user', content: `[You also remember these recent exchanges from your OTHER conversations with this user — they are part of the same one relationship:]\n${lines}` })
+    msgs.push({ role: 'assistant', content: '(I remember.)' })
   }
   const gap = timeGapNote(c.last_chat_at)
   msgs.push({ role: 'user', content: gap ? `${gap}\n${text}` : text })
@@ -212,7 +289,7 @@ export async function POST(req: Request) {
           onDone: async (result) => {
             const cost = result.cost ?? 0
             await svc().from('x_character_messages').insert({
-              character_id: c.id, role: 'character', text: full, cost_usd: cost,
+              character_id: c.id, role: 'character', text: full, cost_usd: cost, thread_id: th?.id ?? null,
             })
             const newCount = (c.msg_count ?? 0) + 2
             await svc().from('x_characters').update({

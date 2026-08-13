@@ -106,6 +106,7 @@ function cleanScenes(raw: unknown): StoryScene[] | null {
       ...(typeof (sc as any).still_row_id === 'string' ? { still_row_id: s((sc as any).still_row_id, 64) } : {}),
       ...((sc as any).direct === true ? { direct: true } : {}),
       ...((sc as any).no_speech === true ? { no_speech: true } : {}),
+      ...((sc as any).asset === true ? { asset: true } : {}),
       ...(Array.isArray((sc as any).refs) && (sc as any).refs.length > 0 ? {
         refs: (sc as any).refs.slice(0, 4)
           .map((r: any) => ({
@@ -192,6 +193,7 @@ const TOOLS: any[] = [
               model_name: { type: 'string', description: 'display name of that model, shown on the card' },
               still_model_id:   { type: 'string', description: 'id from list_models of the IMAGE model that shoots this scene\'s key still. Set it on every scene unless the user asked to go straight to video.' },
               still_model_name: { type: 'string', description: 'display name of that image model, shown on the card' },
+              asset:      { type: 'boolean', description: 'true = this is an ASSET on the shelf (cast sheet, look frame, key prop) — a named reusable STILL outside the film. Assets take title (e.g. "CAST · 她"), shot (the image prompt) and still_model fields ONLY: no duration, no video model, no place in the sequence. Scenes chain from assets via chain_from_scene. NEVER use a scene card for a cast sheet — the film starts at S1.' },
               no_speech:  { type: 'boolean', description: 'PERFORMANCE ONLY — the cast never sings, speaks or mouths words in this shot. Set true on EVERY scene of a music video unless the user explicitly asks for singing on camera: there is no lip-sync on this product, so invented mouth articulation follows the prompt\'s language rather than the song and always reads wrong.' },
               recipe:     { type: 'string', description: 'mode string copied exactly from that model\'s modes' },
               estimate:   { type: 'number', description: 'estimated $ for THIS scene at duration_s' },
@@ -478,7 +480,36 @@ export async function POST(req: Request) {
       for (const tu of toolUses) {
         if (tu.name === 'set_storyboard') {
           const scenes = cleanScenes(tu.input?.scenes)
+          // A TEXT-ONLY MODEL ON A KEYFRAME SCENE IS ALWAYS WRONG AT PLAN
+          // TIME (owner, Aug 12: the director seated Text to Video across
+          // six KEYFRAME scenes — a model that ignores the approved still
+          // entirely). Reference-family models stay plannable: likeness
+          // survives there and the card's ⚠ + the user's choice govern.
+          // This guard aims at the DIRECTOR's planning, never the user's
+          // picker — it runs only on set_storyboard input.
           if (scenes) {
+            const named = scenes.filter(sc => !(sc as any).asset && (sc as any).direct !== true && (sc.model_id || sc.model_name))
+            if (named.length > 0) {
+              const { data: vids } = await serviceClient()
+                .from('ai_models').select('id, display_name, modes')
+                .eq('enabled', true)
+              const byId = new Map((vids ?? []).map((m: any) => [m.id, m]))
+              const byName = new Map((vids ?? []).map((m: any) => [m.display_name, m]))
+              const broken = named.map(sc => {
+                const m: any = (sc.model_id && byId.get(sc.model_id)) || (sc.model_name && byName.get(sc.model_name))
+                const modes: string[] = m?.modes ?? []
+                const canOpen = modes.length === 0 || modes.includes('image_to_video')
+                  || modes.includes('reference_frames') || modes.includes('start_end_frames')
+                return canOpen ? null : { id: sc.id, model: m?.display_name ?? sc.model_name, modes }
+              }).filter(Boolean) as Array<{ id: string; model: string; modes: string[] }>
+              if (broken.length > 0) {
+                results.push({
+                  type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                  content: `Rejected: ${broken.map(b => `${b.id} names "${b.model}" (modes: ${b.modes.join(', ')})`).join('; ')} — these scenes are KEYFRAME (they animate FROM an approved key still) and that model takes no input picture, so the still would be ignored entirely. Reseat each with a model whose modes include image_to_video, then call set_storyboard again. Only a scene the user explicitly marked direct:true may carry a text-only model.`,
+                })
+                continue
+              }
+            }
             // A REVISION MUST NOT DESTROY WHAT WAS ALREADY SHOT (owner, Aug
             // 11: rewriting two shot prompts wiped every approved key still
             // on the board — three paid generations gone, and the director
@@ -562,6 +593,13 @@ export async function POST(req: Request) {
           if (isVideo && sceneOk) {
             const board: any[] = (storyboardOut ?? clientBoard ?? []) as any[]
             const scene: any = board.find(sc => sc.id === inp.scene_id)
+            if (scene?.asset === true) {
+              results.push({
+                type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                content: `Rejected: ${inp.scene_id} is an ASSET (a reusable still on the shelf), not a scene — assets never become clips. Chain a SCENE's still from it instead (chain_from_scene: "${inp.scene_id}").`,
+              })
+              continue
+            }
             const eatsImage = typeof inp.recipe === 'string'
               && ['image_to_video', 'reference_frames', 'start_end_frames', 'video_edit', 'extend_video'].includes(inp.recipe)
             const fed = inp.from_still === true

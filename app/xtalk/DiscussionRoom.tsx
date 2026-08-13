@@ -12,6 +12,7 @@
 // inside. A fixed order would bake that advantage into the product and the
 // user would read it as "that model is better". (CC, July 31)
 
+import YTCard from './YTCard'
 import { useEffect, useRef, useState } from 'react'
 import ProviderLogo from '../components/ProviderLogo'
 import TemplateHelp from './TemplateHelp'
@@ -40,7 +41,16 @@ type Turn = {
   bid?:    number
   /** Speaking credits left after paying for this turn (Auto order only). */
   credits?: number
+  /** A track this speaker put on (owner, Aug 12; YouTube since Aug 13). videoId null = the
+   *  search couldn't find it; the card degrades to a one-line note. */
+  song?: { videoId: string | null; query: string; name?: string; artists?: string; live?: boolean }
 }
+
+/** The PLAY_SONG marker is protocol, not prose — the server reads it, the
+ *  bubble must not show it. Stripped at render (not in state) so the saved
+ *  transcript keeps it and later speakers can see a song was played. */
+const stripPlayMarker = (text: string) =>
+  text.split('\n').filter(l => !l.trimStart().startsWith('PLAY_SONG')).join('\n').trimEnd()
 
 let turnSeq = 0
 const nextTurnId = () => ++turnSeq
@@ -76,6 +86,7 @@ const PERSONA_PRESETS = [
 
 export default function DiscussionRoom({ models, resumeId }: TemplateProps) {
   const t = useT()
+  // Captured OUTSIDE the turn map, where `t` is shadowed by the turn.
   const [picked,   setPicked]   = useState<string[]>([])
   const [question, setQuestion] = useState('')
   // Per-speaker character. This is the real diversity lever: without it the
@@ -139,6 +150,7 @@ export default function DiscussionRoom({ models, resumeId }: TemplateProps) {
             ...(typeof x.bid === 'number' ? { bid: x.bid } : {}),
             ...(typeof x.credits === 'number' ? { credits: x.credits } : {}),
             ...(x.error ? { error: x.error } : {}),
+            ...(x.song ? { song: x.song } : {}),
           })),
         }),
       }).catch(() => {})
@@ -241,7 +253,7 @@ export default function DiscussionRoom({ models, resumeId }: TemplateProps) {
         if (ev === 'delta') {
           patch(t => ({ ...t, text: t.text + d.text }))
         } else if (ev === 'done') {
-          patch(t => ({ ...t, cost: d.cost }))
+          patch(t => ({ ...t, cost: d.cost, ...(d.song ? { song: { ...d.song, live: true } } : {}) }))
         } else if (ev === 'error') {
           patch(t => ({ ...t, error: d.message }))
         }
@@ -634,8 +646,16 @@ export default function DiscussionRoom({ models, resumeId }: TemplateProps) {
                   <div style={{ padding: '12px 14px', fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                     {t.error
                       ? <span style={{ color: 'var(--red)' }}>⚠ {t.error}</span>
-                      : t.text || <span className="stream-cursor">▋</span>}
+                      : stripPlayMarker(t.text) || <span className="stream-cursor">▋</span>}
                   </div>
+                  {t.song && (
+                    /* Shared player card: inline FULL-song embed (late-
+                       resolving old cards too); autoplay only when the song
+                       arrived live in THIS session. */
+                    <div style={{ padding: '0 14px 12px' }}>
+                      <YTCard query={t.song.query} fixedId={t.song.videoId} autoplay={t.song.live === true} />
+                    </div>
+                  )}
                 </div>
               ))}
               <div ref={bottomRef} />

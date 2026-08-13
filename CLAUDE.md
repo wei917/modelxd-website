@@ -536,6 +536,14 @@ RUNWAYML_API_SECRET=xxx
 STRIPE_SECRET_KEY=sk_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 
+# Music (XTalk/Characters room player — YouTube embeds, full songs)
+YOUTUBE_API_KEY=                      # Google Cloud → enable YouTube Data API v3
+                                      #   → API key; unset = link-out cards only.
+                                      # Spotify was tried and dropped (Aug 13):
+                                      # their policy walls (owner+listener
+                                      # Premium, 5-user dev cap, 250K-MAU quota
+                                      # review) block agent-played full songs.
+
 # Access control
 ADMIN_EMAILS=wei917@gmail.com         # comma-separated; passes every gate
 FEATURE_CANVAS_EMAILS=

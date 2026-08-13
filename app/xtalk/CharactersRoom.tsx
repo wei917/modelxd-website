@@ -12,6 +12,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useLang, useT } from '../../lib/i18n'
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import ProviderLogo from '../components/ProviderLogo'
+import YTCard from './YTCard'
 import type { TemplateProps, Speaker } from './templates'
 
 type CharRow = {
@@ -80,51 +81,6 @@ const splitPlay = (text: string): { clean: string; play: string | null; vid: str
   return { clean, play: m ? m[1].trim() : null, vid: u ? (u[1] ?? u[2] ?? null) : null }
 }
 
-/** Inline player for a [[play: …]] directive or a bare YouTube URL.
- *  With YOUTUBE_API_KEY on the server it embeds the top search hit;
- *  without, it links out. `autoplay` is granted only to songs that arrive
- *  live in this session — history must never start a choir on reopen. */
-function YTCard({ query, fixedId, autoplay }: { query: string; fixedId?: string | null; autoplay?: boolean }) {
-  const [videoId, setVideoId] = useState<string | null | 'loading'>(fixedId ?? 'loading')
-  useEffect(() => {
-    if (fixedId) return
-    let dead = false
-    fetch('/api/xcharacter/yt', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: query }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (!dead) setVideoId(d?.videoId ?? null) })
-      .catch(() => { if (!dead) setVideoId(null) })
-    return () => { dead = true }
-  }, [query, fixedId])
-
-  if (videoId && videoId !== 'loading') {
-    return (
-      <span style={{ display: 'block', marginTop: 8, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border2)' }}>
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${videoId}${autoplay ? '?autoplay=1' : ''}`}
-          title={query} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
-          style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', border: 'none' }}
-        />
-      </span>
-    )
-  }
-  return (
-    <a
-      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`}
-      target="_blank" rel="noopener noreferrer"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 12px',
-        borderRadius: 10, border: '1px solid var(--border2)', background: 'var(--surface2)',
-        color: 'var(--white)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none',
-      }}>
-      <span aria-hidden>🎵</span>
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{query}</span>
-      <span style={{ color: 'var(--red)', flexShrink: 0 }}>{videoId === 'loading' ? '…' : '▶ YouTube'}</span>
-    </a>
-  )
-}
 
 /** Zoom-and-crop for the avatar (owner ask, Aug 8) — hand-rolled, no
  *  dependency: drag to position, slider to zoom, render to a 512px square
@@ -265,8 +221,8 @@ const b64ToF32 = (b64: string): Float32Array => {
   return f
 }
 
-function CallOverlay({ char, lang, onEnd }: {
-  char: CharRow; lang: string; onEnd: () => void
+function CallOverlay({ char, lang, threadId, onEnd }: {
+  char: CharRow; lang: string; threadId: string | null; onEnd: () => void
 }) {
   const t = useT()
   type Phase = 'connecting' | 'listening' | 'thinking' | 'speaking'
@@ -302,6 +258,12 @@ function CallOverlay({ char, lang, onEnd }: {
   const liveEnterRef = useRef(0)                    // live-mode stopwatch
   const liveAccumRef = useRef(0)
   const liveCapRef = useRef<any>(null)
+  // One id per live SEGMENT, refreshed on every (re)connect: the server
+  // dedupes 'end' by it (a single 8-min call was debited 3x when
+  // concurrent end paths raced — owner ledger, Aug 12).
+  const callIdRef = useRef('')
+  const savingRef = useRef(false)
+  const redialsRef = useRef(0)
 
   const setPh = (p: Phase) => { phaseRef.current = p; setPhase(p) }
 
@@ -317,6 +279,24 @@ function CallOverlay({ char, lang, onEnd }: {
     void lock()
     const onVis = () => { if (!document.hidden && !endedRef.current) void lock() }
     document.addEventListener('visibilitychange', onVis)
+    // iPhone kills the page without ceremony (app switch, swipe-away): a
+    // beacon survives page dismissal where fetch may not. The server's
+    // callId dedupe makes this safe to race with a normal end.
+    const onHide = () => {
+      if (modeRef.current !== 'live' || endedRef.current) return
+      const seconds = Math.round((liveAccumRef.current + (liveEnterRef.current ? Date.now() - liveEnterRef.current : 0)) / 1000)
+      const turns = [...turnsRef.current]
+      if (inTxtRef.current.trim()) turns.push({ role: 'user', text: inTxtRef.current.trim() })
+      if (outTxtRef.current.trim()) turns.push({ role: 'character', text: outTxtRef.current.trim() })
+      if (!turns.length && seconds < 5) return
+      try {
+        navigator.sendBeacon?.('/api/xcharacter/live', new Blob(
+          [JSON.stringify({ action: 'end', characterId: char.id, turns, seconds, callId: callIdRef.current, ...(threadId ? { threadId } : {}) })],
+          { type: 'application/json' },
+        ))
+      } catch {}
+    }
+    window.addEventListener('pagehide', onHide)
     // resume the caller's last-used mode
     let m: 'voice' | 'live' = 'voice'
     try { if (localStorage.getItem('xc_call_mode') === 'live') m = 'live' } catch {}
@@ -327,6 +307,7 @@ function CallOverlay({ char, lang, onEnd }: {
       endedRef.current = true
       clearInterval(iv); clearTimeout(pauseRef.current); clearTimeout(liveCapRef.current)
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('pagehide', onHide)
       try { recRef.current?.abort ? recRef.current.abort() : recRef.current?.stop() } catch {}
       try { audioRef.current?.pause() } catch {}
       stopLive()
@@ -384,7 +365,7 @@ function CallOverlay({ char, lang, onEnd }: {
     try {
       const res = await fetch('/api/xcharacter/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ characterId: char.id, text }),
+        body: JSON.stringify({ characterId: char.id, text, ...(threadId ? { threadId } : {}) }),
       })
       if (!res.ok || !res.body) {
         const d = await res.json().catch(() => null)
@@ -492,9 +473,29 @@ function CallOverlay({ char, lang, onEnd }: {
       setPh('listening')
     }
     if (sc?.turnComplete) {
-      if (inTxtRef.current.trim()) turnsRef.current.push({ role: 'user', text: inTxtRef.current.trim() })
-      if (outTxtRef.current.trim()) turnsRef.current.push({ role: 'character', text: outTxtRef.current.trim() })
+      const pair: Array<{ role: 'user' | 'character'; text: string }> = []
+      if (inTxtRef.current.trim()) pair.push({ role: 'user', text: inTxtRef.current.trim() })
+      if (outTxtRef.current.trim()) pair.push({ role: 'character', text: outTxtRef.current.trim() })
       inTxtRef.current = ''; outTxtRef.current = ''
+      // Persist each finished turn DURING the call — a drop now loses at
+      // most the sentence in flight, not the conversation (owner, Aug 12:
+      // "why doesn't she remember what we chat about after a call?").
+      if (pair.length) {
+        void fetch('/api/xcharacter/live', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'append', characterId: char.id, turns: pair, ...(threadId ? { threadId } : {}) }),
+        }).then(async r => {
+          if (!r.ok) throw new Error(String(r.status))
+          const d = await r.json().catch(() => null)
+          // calls trigger memory work too, exactly like typed chat
+          if (d?.consolidate) {
+            void fetch('/api/xcharacter/chat', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'consolidate', characterId: char.id }),
+            }).catch(() => {})
+          }
+        }).catch(() => { turnsRef.current.push(...pair) })   // end-of-call sweep gets it
+      }
       setPh('listening')
     }
   }
@@ -528,7 +529,13 @@ function CallOverlay({ char, lang, onEnd }: {
           },
           onclose: (e: any) => {
             console.warn('[call] live closed:', e?.code, e?.reason)
-            if (!endedRef.current && modeRef.current === 'live' && e?.reason) setErr(`Live ended: ${e.reason}`)
+            // Gemini closed the socket (session limit, network, GoAway).
+            // Only re-dial if THIS session is still the live one — endCall
+            // and switchMode close it deliberately.
+            if (!endedRef.current && modeRef.current === 'live' && liveRef.current === session) {
+              liveRef.current = null
+              void redial(t('xc.call.reconnect'))
+            }
           },
         },
       })
@@ -554,9 +561,11 @@ function CallOverlay({ char, lang, onEnd }: {
       const silent = ctx.createGain(); silent.gain.value = 0
       src.connect(proc); proc.connect(silent); silent.connect(ctx.destination)
       liveEnterRef.current = Date.now()
-      // Ephemeral sessions need resumption past ~10 min — v1 ends the call
-      // gracefully just before the boundary instead.
-      liveCapRef.current = setTimeout(() => { if (modeRef.current === 'live') void endCall() }, LIVE_MAX_MS)
+      callIdRef.current = crypto.randomUUID()
+      // Ephemeral sessions can't cross the ~10-min boundary — save the
+      // segment and re-dial seamlessly instead of hanging up (the silent
+      // hang-up here was most of "the call just dropped", Aug 12).
+      liveCapRef.current = setTimeout(() => { void redial(t('xc.call.redial')) }, LIVE_MAX_MS)
       setPh('listening')
     } catch (e: any) {
       console.warn('[call] live start failed:', e?.message)
@@ -584,19 +593,46 @@ function CallOverlay({ char, lang, onEnd }: {
   }
 
   const saveLiveTranscript = async () => {
-    if (inTxtRef.current.trim()) turnsRef.current.push({ role: 'user', text: inTxtRef.current.trim() })
-    if (outTxtRef.current.trim()) turnsRef.current.push({ role: 'character', text: outTxtRef.current.trim() })
-    inTxtRef.current = ''; outTxtRef.current = ''
-    const seconds = Math.round(liveAccumRef.current / 1000)
-    if (!turnsRef.current.length && seconds < 5) return
+    // LOCKED, and the stopwatch/turns are captured-and-zeroed BEFORE the
+    // request goes out: three concurrent callers of the old version all
+    // read the same 8 minutes and the user paid for 24 (ledger, Aug 12).
+    if (savingRef.current) return
+    savingRef.current = true
     try {
+      if (inTxtRef.current.trim()) turnsRef.current.push({ role: 'user', text: inTxtRef.current.trim() })
+      if (outTxtRef.current.trim()) turnsRef.current.push({ role: 'character', text: outTxtRef.current.trim() })
+      inTxtRef.current = ''; outTxtRef.current = ''
+      const turns = turnsRef.current; turnsRef.current = []
+      const seconds = Math.round(liveAccumRef.current / 1000); liveAccumRef.current = 0
+      const callId = callIdRef.current
+      if (!turns.length && seconds < 5) return
+      // fold the settled segment into the visible total — the running
+      // stopwatch it came from was just zeroed
+      setCost(c => c + (seconds / 60) * LIVE_USD_PER_MIN)
       await fetch('/api/xcharacter/live', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'end', characterId: char.id, turns: turnsRef.current, seconds }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+        body: JSON.stringify({ action: 'end', characterId: char.id, turns, seconds, callId, ...(threadId ? { threadId } : {}) }),
       })
     } catch {}
-    turnsRef.current = []
-    liveAccumRef.current = 0
+    finally { savingRef.current = false }
+  }
+
+  /** The call survives its session (owner, Aug 12: "the call sometimes
+   *  just dropped"): the 10-minute session boundary and a dropped Gemini
+   *  socket now SAVE the segment and re-dial in place, instead of ending
+   *  the call silently. The overlay stays up; the caller hears a beat of
+   *  quiet, not a hang-up. */
+  const redial = async (why: string) => {
+    if (endedRef.current || modeRef.current !== 'live') return
+    if (redialsRef.current >= 6) { void endCall(); return }   // runaway guard
+    redialsRef.current += 1
+    setErr(why)
+    stopLive()
+    await saveLiveTranscript()   // debit THIS segment honestly, then reconnect
+    if (!endedRef.current && modeRef.current === 'live') {
+      await startLive()
+      setErr(null)
+    }
   }
 
   const switchMode = async (m: 'voice' | 'live') => {
@@ -612,10 +648,8 @@ function CallOverlay({ char, lang, onEnd }: {
 
   const endCall = async () => {
     if (modeRef.current === 'live') {
-      const seconds = liveAccumRef.current + (liveEnterRef.current ? Date.now() - liveEnterRef.current : 0)
       stopLive()
-      setCost(c => c + (seconds / 1000 / 60) * LIVE_USD_PER_MIN)
-      await saveLiveTranscript()
+      await saveLiveTranscript()   // folds the last segment into cost itself
     }
     onEnd()
   }
@@ -891,6 +925,16 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
     rec.start()
   }
   const [memory, setMemory] = useState<{ criticalTokens: number; chapterCount: number } | null>(null)
+  // Lifetime spend with this character — every debit that references her:
+  // chat turns, TTS, live minutes, memory consolidation (owner, Aug 12:
+  // "I don't know how much money I spent here").
+  const [spent, setSpent] = useState<number | null>(null)
+  // Threads (migration 80): episodes of one relationship. The character's
+  // memory crosses them; only the verbatim window is per-thread.
+  const [threads, setThreads] = useState<Array<{ id: string; title: string }>>([])
+  const [threadId, setThreadId] = useState<string | null>(null)
+  const threadIdRef = useRef<string | null>(null)
+  useEffect(() => { threadIdRef.current = threadId }, [threadId])
   const bottomRef = useRef<HTMLDivElement>(null)
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
 
@@ -941,8 +985,8 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
   // may autoplay their song card; reopening history stays quiet.
   const liveFromRef = useRef(Number.MAX_SAFE_INTEGER)
 
-  const openChat = async (c: CharRow) => {
-    setActive(c); setMsgs([]); setMemory(null); setView('chat')
+  const openChat = async (c: CharRow, wantThread?: string) => {
+    setActive(c); setMsgs([]); setMemory(null); setSpent(null); setView('chat')
     liveFromRef.current = Number.MAX_SAFE_INTEGER
     const r = Number(c.voice_rate)
     rateRef.current = VOICE_RATES.includes(r) ? r : 1
@@ -956,13 +1000,67 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
     } catch {}
     const res = await fetch('/api/xcharacter/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'history', characterId: c.id }),
+      body: JSON.stringify({ action: 'history', characterId: c.id, ...(wantThread ? { threadId: wantThread } : {}) }),
     })
     const d = await res.json().catch(() => null)
     if (res.ok && d) {
       setMsgs(d.messages.map((m: any) => ({ role: m.role, text: m.text, cost_usd: Number(m.cost_usd) || 0 })))
       setMemory(d.memory)
+      if (typeof d.spentUsd === 'number') setSpent(d.spentUsd)
+      setThreads(d.threads ?? [])
+      setThreadId(d.threadId ?? null)
       liveFromRef.current = d.messages.length
+    }
+  }
+
+  // Episode boundary = memory moment (owner, Aug 12): leaving a thread
+  // consolidates what was said in it, so the NEXT episode starts with her
+  // already knowing. The server skips when there's nothing meaningful, so
+  // firing eagerly is free.
+  const consolidateOnLeave = () => {
+    if (active) void fetch('/api/xcharacter/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'consolidate', characterId: active.id }),
+    }).then(() => { void refreshMemoryChip() }).catch(() => {})
+  }
+  const refreshMemoryChip = async () => {
+    if (!active) return
+    try {
+      const res = await fetch('/api/xcharacter/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'history', characterId: active.id, ...(threadIdRef.current ? { threadId: threadIdRef.current } : {}) }),
+      })
+      const d = await res.json().catch(() => null)
+      if (res.ok && d?.memory) setMemory(d.memory)
+    } catch {}
+  }
+
+  const newThread = async () => {
+    if (!active) return
+    consolidateOnLeave()
+    const res = await fetch('/api/xcharacter/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'new_thread', characterId: active.id }),
+    })
+    const d = await res.json().catch(() => null)
+    if (res.ok && d?.thread) {
+      setThreads(prev => [{ id: d.thread.id, title: d.thread.title }, ...prev])
+      setThreadId(d.thread.id)
+      setMsgs([])
+    }
+  }
+
+  const dropThread = async (id: string) => {
+    if (!active) return
+    await fetch('/api/xcharacter/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_thread', characterId: active.id, threadId: id }),
+    }).catch(() => {})
+    const rest = threads.filter(x => x.id !== id)
+    setThreads(rest)
+    if (threadId === id) {
+      if (rest[0]) void openChat(active, rest[0].id)
+      else void newThread()
     }
   }
 
@@ -1011,7 +1109,7 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
     try {
       const res = await fetch('/api/xcharacter/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ characterId: active.id, text }),
+        body: JSON.stringify({ characterId: active.id, text, ...(threadId ? { threadId } : {}) }),
       })
       if (!res.ok || !res.body) {
         const d = await res.json().catch(() => null)
@@ -1019,6 +1117,8 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
         setMsgs(prev => prev.slice(0, -1))
         return
       }
+      // first words name the episode — mirror the server's auto-title
+      setThreads(prev => prev.map(x => x.id === threadId && x.title === 'New chat' ? { ...x, title: text.slice(0, 60) } : x))
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buf = ''
@@ -1283,6 +1383,7 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
             <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
               {m?.display_name ?? '—'}{active.thinking ? ` (${active.thinking})` : ''}
               {memory ? ` · 🧠 ${memory.chapterCount}` : ''}
+              {spent != null ? ` · Σ $${spent.toFixed(2)}` : ''}
             </span>
           </span>
           {memorizing && (
@@ -1313,6 +1414,32 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 260, maxHeight: '52vh', overflowY: 'auto', padding: '4px 2px', marginBottom: 12 }}>
+          {/* Episodes of one relationship — the strip is the proof the
+              memory design works: switch threads, she still knows you. */}
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '2px 0 10px', alignItems: 'center' }}>
+            <button onClick={() => void newThread()} title={t('xc.thread.new')}
+              style={{ padding: '3px 10px', borderRadius: 999, flexShrink: 0, border: '1px dashed var(--border2)', background: 'none', color: 'var(--muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+            >+ {t('xc.thread.new')}</button>
+            {threads.map(th => (
+              <span key={th.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <button
+                  onClick={() => { if (threadId !== th.id && active) { consolidateOnLeave(); void openChat(active, th.id) } }}
+                  style={{
+                    padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    border: '1px solid ' + (threadId === th.id ? 'var(--red)' : 'var(--border2)'),
+                    background: threadId === th.id ? 'var(--red-dim)' : 'none',
+                    color: threadId === th.id ? 'var(--red)' : 'var(--muted)',
+                  }}
+                >{th.title === 'New chat' ? t('xc.thread.fresh') : th.title}</button>
+                {threadId === th.id && threads.length > 1 && (
+                  <button onClick={() => void dropThread(th.id)} title={t('hist.delete')}
+                    style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}
+                  >✕</button>
+                )}
+              </span>
+            ))}
+          </div>
           {msgs.length === 0 && (
             <div style={{ color: 'var(--muted2)', fontSize: 13, textAlign: 'center', padding: 40 }}>{t('xc.firstline')}</div>
           )}
@@ -1374,8 +1501,8 @@ export default function CharactersRoom({ models, charId }: TemplateProps) {
         {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 13 }}>⚠ {err}</div>}
         {calling && (
           <CallOverlay
-            char={active} lang={lang}
-            onEnd={() => { setCalling(false); void openChat(active) }}
+            char={active} lang={lang} threadId={threadIdRef.current}
+            onEnd={() => { setCalling(false); consolidateOnLeave(); void openChat(active, threadIdRef.current ?? undefined) }}
           />
         )}
       </div>

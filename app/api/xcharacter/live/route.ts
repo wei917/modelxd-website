@@ -34,6 +34,8 @@ const CHAPTER_TAIL = 3             // same tail the chat route carries
 
 // Gemini prebuilt call voices. The character's Qwen TTS voice can't speak
 // here, so we pick a Gemini voice by the rough register of their chosen one.
+const SEEN_CALL_IDS = new Set<string>()
+
 const MALE_PRESETS = ['Ethan', 'Vincent', 'Neil', 'Dylan', 'Rocky']
 const callVoice = (voice: string | null) =>
   voice && MALE_PRESETS.includes(voice) ? 'Charon' : 'Aoede'
@@ -94,23 +96,88 @@ export async function POST(req: Request) {
     }
   }
 
+  // Calls land in a thread too (migration 80): validated id, else newest.
+  const threadFor = async (want: unknown): Promise<string | null> => {
+    if (typeof want === 'string' && want) {
+      const { data } = await svc().from('x_character_threads').select('id')
+        .eq('id', want).eq('character_id', c.id).is('deleted_at', null).maybeSingle()
+      if (data) return data.id
+    }
+    const { data: newest } = await svc().from('x_character_threads').select('id')
+      .eq('character_id', c.id).is('deleted_at', null)
+      .order('last_at', { ascending: false }).limit(1).maybeSingle()
+    if (newest) return newest.id
+    const { data: made } = await svc().from('x_character_threads')
+      .insert({ character_id: c.id }).select('id').single()
+    return made?.id ?? null
+  }
+
+  const cleanTurns = (raw: any) => (Array.isArray(raw) ? raw : [])
+    .map((t: any) => ({
+      role: t?.role === 'character' ? 'character' : 'user',
+      text: String(t?.text ?? '').trim().slice(0, 4000),
+    }))
+    .filter((t: any) => t.text)
+
+  const unconsolidated = async () => {
+    const { count } = await svc().from('x_character_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('character_id', c.id).gt('id', c.consolidated_to)
+    return (count ?? 0) >= 80
+  }
+
+  // ── append: persist finished turns DURING the call (owner bug, Aug 12:
+  // a dropped call lost its whole transcript, so the character "forgot"
+  // the conversation — persistence only happened at graceful end). Called
+  // per completed turn pair; no billing here, minutes are debited at end.
+  if (body.action === 'append') {
+    const turns = cleanTurns(body.turns).slice(0, 20)
+    if (turns.length === 0) return Response.json({ ok: true, saved: 0 })
+    const tid = await threadFor(body.threadId)
+    for (const t of turns) {
+      await svc().from('x_character_messages').insert({
+        character_id: c.id, role: t.role, text: t.text, thread_id: tid,
+      })
+    }
+    if (tid) await svc().from('x_character_threads').update({ last_at: new Date().toISOString() }).eq('id', tid)
+    await svc().from('x_characters').update({
+      last_chat_at: new Date().toISOString(),
+      msg_count: (c.msg_count ?? 0) + turns.length,
+    }).eq('id', c.id)
+    // Calls must trigger memory work too — before this, a user who mostly
+    // TALKED never crossed the consolidation trigger, which only the typed
+    // chat path checked. That is the deeper half of "she forgets".
+    return Response.json({ ok: true, saved: turns.length, consolidate: await unconsolidated() })
+  }
+
   // ── end: persist the transcript, debit the minutes ──────────────────
   if (body.action === 'end') {
     const seconds = Math.min(Math.max(0, Number(body.seconds) || 0), MAX_CALL_SECONDS)
-    const turns = (Array.isArray(body.turns) ? body.turns : [])
-      .map((t: any) => ({
-        role: t?.role === 'character' ? 'character' : 'user',
-        text: String(t?.text ?? '').trim().slice(0, 4000),
-      }))
-      .filter((t: any) => t.text)
-      .slice(0, 200)
+    // Idempotency (owner ledger, Aug 12: ONE 8-minute call debited three
+    // times — concurrent end paths on the client all read the same
+    // stopwatch before any of them reset it). The client now sends a
+    // per-segment callId; a repeat is acknowledged and ignored. Per-
+    // instance memory: the triple came from one client in one second, so
+    // instance-local is exactly where the guard must live.
+    const callId = typeof body.callId === 'string' ? body.callId.slice(0, 64) : null
+    if (callId) {
+      if (SEEN_CALL_IDS.has(callId)) return Response.json({ ok: true, duplicate: true })
+      SEEN_CALL_IDS.add(callId)
+      if (SEEN_CALL_IDS.size > 500) SEEN_CALL_IDS.clear()
+    }
+    const turns = cleanTurns(body.turns).slice(0, 200)
 
+    const tid = await threadFor(body.threadId)
     for (const t of turns) {
       await svc().from('x_character_messages').insert({
-        character_id: c.id, role: t.role, text: t.text,
+        character_id: c.id, role: t.role, text: t.text, thread_id: tid,
       })
     }
-    await svc().from('x_characters').update({ last_chat_at: new Date().toISOString() }).eq('id', c.id)
+    if (tid && turns.length) await svc().from('x_character_threads').update({ last_at: new Date().toISOString() }).eq('id', tid)
+    await svc().from('x_characters').update({
+      last_chat_at: new Date().toISOString(),
+      msg_count: (c.msg_count ?? 0) + turns.length,
+    }).eq('id', c.id)
 
     const cost = (seconds / 60) * LIVE_USD_PER_MIN
     const cents = Math.round(cost * 100)
@@ -120,7 +187,7 @@ export async function POST(req: Request) {
         referenceId: c.id, description: `Live call (${c.name}, ${Math.round(seconds / 60)}m)`, metadata: {},
       }).catch(() => {})
     }
-    return Response.json({ ok: true, cost, saved: turns.length })
+    return Response.json({ ok: true, cost, saved: turns.length, consolidate: await unconsolidated() })
   }
 
   return Response.json({ error: 'unknown action' }, { status: 400 })
