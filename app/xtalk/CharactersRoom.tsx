@@ -1079,6 +1079,9 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
     }).catch(() => {})
   }
 
+  // Deleting a chat now genuinely forgets (policy B) — so it earns a
+  // confirm step that states the contract: what stops, what stays.
+  const [confirmDropId, setConfirmDropId] = useState<string | null>(null)
   const dropThread = async (id: string) => {
     if (!active) return
     await fetch('/api/xcharacter/chat', {
@@ -1483,13 +1486,34 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
                   >✏</button>
                 )}
                 {threadId === th.id && renamingThread !== th.id && threads.length > 1 && (
-                  <button onClick={() => void dropThread(th.id)} title={t('hist.delete')}
+                  <button onClick={() => setConfirmDropId(th.id)} title={t('hist.delete')}
                     style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}
                   >✕</button>
                 )}
               </span>
             ))}
         </div>
+
+        {confirmDropId && (() => {
+          const th = threads.find(x => x.id === confirmDropId)
+          if (!th) return null
+          return (
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 12px', marginBottom: 8, borderRadius: 10, border: '1px solid var(--red-dim)', background: 'var(--surface)' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--red)', flexShrink: 0 }}>
+                {t('xc.thread.del.title').replace('{title}', th.title === 'New chat' ? t('xc.thread.fresh') : th.title.slice(0, 24))}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>
+                {t('xc.thread.del.body').replace(/\{name\}/g, active.name)}
+              </span>
+              <button onClick={() => { const id = confirmDropId; setConfirmDropId(null); void dropThread(id) }}
+                style={{ flexShrink: 0, padding: '4px 14px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+              >{t('hist.delete')}</button>
+              <button onClick={() => setConfirmDropId(null)}
+                style={{ flexShrink: 0, padding: '4px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: 'none', color: 'var(--muted)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+              >{t('xc.thread.del.keep')}</button>
+            </div>
+          )
+        })()}
 
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', padding: '4px 2px', marginBottom: 12 }}>
           {msgs.length === 0 && (
