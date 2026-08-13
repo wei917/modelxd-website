@@ -89,6 +89,20 @@ export async function POST(req: Request) {
     return made ?? null
   }
 
+  // FORGET-FORWARD (owner, Aug 13, policy B): a deleted thread stops
+  // feeding memory from the moment of deletion — out of the meanwhile
+  // window, out of every future consolidation slice and trigger count.
+  // What an earlier consolidation already wrote stays written, like a
+  // person who can't unhear something. NULL thread_ids (rows written by
+  // pre-thread code) belong to no deleted thread and stay included.
+  const deadThreadIds = async (): Promise<string[]> => {
+    const { data } = await svc().from('x_character_threads')
+      .select('id').eq('character_id', c.id).not('deleted_at', 'is', null)
+    return (data ?? []).map((r: any) => r.id)
+  }
+  const excludeDead = (q: any, dead: string[]) =>
+    dead.length ? q.or(`thread_id.is.null,thread_id.not.in.(${dead.join(',')})`) : q
+
   const loadMemory = async () => {
     const { data } = await svc().from('x_character_memory')
       .select('kind, seq, content').eq('character_id', c.id)
@@ -160,13 +174,16 @@ export async function POST(req: Request) {
   if (body.action === 'consolidate') {
     const model = await getModelById(c.model_id)
     if (!model) return Response.json({ error: 'Model unavailable' }, { status: 503 })
-    const { data: slice } = await svc().from('x_character_messages')
-      .select('id, role, text').eq('character_id', c.id)
-      .gt('id', c.consolidated_to).order('id', { ascending: true }).limit(400)
+    const dead = await deadThreadIds()
+    const { data: slice } = await excludeDead(
+      svc().from('x_character_messages')
+        .select('id, role, text').eq('character_id', c.id)
+        .gt('id', c.consolidated_to), dead)
+      .order('id', { ascending: true }).limit(400)
     if (!slice || slice.length < 4) return Response.json({ ok: true, skipped: 'nothing new' })
 
     const mem = await loadMemory()
-    const transcript = slice.map(m => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`).join('\n')
+    const transcript = slice.map((m: any) => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`).join('\n')
     const lastChapter = mem.chapters[mem.chapters.length - 1]
 
     const ask = async (prompt: string, maxCh: number): Promise<{ text: string; cost: number }> => {
@@ -270,13 +287,15 @@ export async function POST(req: Request) {
   // said in other threads since her last consolidation rides along,
   // labeled as her own recollection. Consolidation then folds it into the
   // critical file and memoir; this block only bridges the gap in between.
-  const { data: elsewhere } = await svc().from('x_character_messages')
-    .select('role, text').eq('character_id', c.id)
-    .gt('id', c.consolidated_to).neq('thread_id', th?.id ?? '')
+  const deadForWindow = await deadThreadIds()
+  const { data: elsewhere } = await excludeDead(
+    svc().from('x_character_messages')
+      .select('role, text').eq('character_id', c.id)
+      .gt('id', c.consolidated_to).neq('thread_id', th?.id ?? ''), deadForWindow)
     .order('id', { ascending: false }).limit(12)
   if (elsewhere && elsewhere.length > 0) {
     const lines = elsewhere.reverse()
-      .map(m => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`)
+      .map((m: any) => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`)
       .join('\n').slice(0, 6000)
     msgs.push({ role: 'user', content: `[You also remember these recent exchanges from your OTHER conversations with this user — they are part of the same one relationship:]\n${lines}` })
     msgs.push({ role: 'assistant', content: '(I remember.)' })
@@ -316,9 +335,10 @@ export async function POST(req: Request) {
             }
             // The client fires the consolidate action when told — never
             // after-close work on serverless.
-            const { count } = await svc().from('x_character_messages')
-              .select('id', { count: 'exact', head: true })
-              .eq('character_id', c.id).gt('id', c.consolidated_to)
+            const { count } = await excludeDead(
+              svc().from('x_character_messages')
+                .select('id', { count: 'exact', head: true })
+                .eq('character_id', c.id).gt('id', c.consolidated_to), deadForWindow)
             controller.enqueue(sse('done', {
               cost, consolidate: (count ?? 0) >= CONSOLIDATE_EVERY,
             }))

@@ -120,9 +120,16 @@ export async function POST(req: Request) {
     .filter((t: any) => t.text)
 
   const unconsolidated = async () => {
-    const { count } = await svc().from('x_character_messages')
+    // Same forget-forward view as the chat route: deleted threads never
+    // count toward the consolidation trigger.
+    const { data: dead } = await svc().from('x_character_threads')
+      .select('id').eq('character_id', c.id).not('deleted_at', 'is', null)
+    let q: any = svc().from('x_character_messages')
       .select('id', { count: 'exact', head: true })
       .eq('character_id', c.id).gt('id', c.consolidated_to)
+    const ids = (dead ?? []).map((r: any) => r.id)
+    if (ids.length) q = q.or(`thread_id.is.null,thread_id.not.in.(${ids.join(',')})`)
+    const { count } = await q
     return (count ?? 0) >= 80
   }
 
