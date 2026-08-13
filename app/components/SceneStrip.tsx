@@ -682,7 +682,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                         title={s.error ? `${s.error} — ${t('xd.sb.gen')}`
                           : (!stillDone && !s.direct) ? t('xd.sb.needstill') : t('xd.sb.genvideohint')}
                         style={runSty(stillDone || !!s.direct, blocked || gen || (!stillDone && !s.direct))}
-                      >{s.status === 'error' ? '⚠' : videoDone ? '↻' : '▶'}</button>
+                      >{s.status === 'error' ? '⚠' : videoDone ? '↻' : (!stillDone && !s.direct) ? '🔒' : '▶'}</button>
                     )}
                   </div>
                 </div>
