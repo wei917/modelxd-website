@@ -53,28 +53,42 @@ export async function generateVideo(
 ): Promise<VideoResult> {
   const TAG = `[minimax/${model.model_name}]`
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  // H3 is omni-modal: reference audio drives lip-sync and rhythm (free as
+  // input per the official pricing page). ≤3 clips, 2-15s each.
+  const audioAtts = attachments.filter(a => a.mediaType.startsWith('audio/')).slice(0, 3)
   const duration = Math.min(15, Math.max(4, Math.round(seconds)))
   const resolution = resolutionForSize(size)
 
   const asUrl = (a: Attachment) =>
     a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
 
-  // First image anchors the opening frame; the rest ride as references.
+  // H3's modes are EXCLUSIVE (probed live, Aug 14: "reference mode cannot
+  // be mixed with first_frame/middle_frame/last_frame; choose one"). With
+  // audio present we must be in reference mode, so every image rides as a
+  // reference — likeness carries, the exact opening frame does not. That
+  // is the price of lip-sync, and the UI's partial-frame ⚠ language
+  // already describes it. Without audio, the first image pins the frame.
   const content: any[] = [{ type: 'text', text: prompt }]
+  const referenceMode = audioAtts.length > 0
   imageAtts.forEach((a, i) => {
     content.push({
       type: 'image_url',
       image_url: { url: asUrl(a) },
-      role: i === 0 ? 'first_frame' : 'reference_image',
+      role: (referenceMode || i > 0) ? 'reference_image' : 'first_frame',
     })
   })
+  for (const a of audioAtts) {
+    // role IS required for audio too — probed live, Aug 14: omitting it is
+    // "content[2].role must not be empty (2013)".
+    content.push({ type: 'audio_url', audio_url: { url: asUrl(a) }, role: 'reference_audio' })
+  }
 
   const ratio = imageAtts.length > 0
     ? 'adaptive'
     : (options?.aspect_ratio && RATIOS.has(options.aspect_ratio) ? options.aspect_ratio : '16:9')
 
   const body = { model: model.model_name, content, duration, resolution, ratio }
-  console.log(`${TAG} create ${imageAtts.length > 0 ? 'i2v' : 't2v'} duration=${duration}s resolution=${resolution} ratio=${ratio} images=${imageAtts.length}`)
+  console.log(`${TAG} create ${imageAtts.length > 0 ? 'i2v' : 't2v'} duration=${duration}s resolution=${resolution} ratio=${ratio} images=${imageAtts.length} audio=${audioAtts.length}`)
   if (onProgress) onProgress(3)
 
   const res = await fetch(`${BASE}/video_generation`, {
