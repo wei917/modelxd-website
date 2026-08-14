@@ -88,12 +88,38 @@ export async function POST(req: Request) {
     // missing was the last stretch of the active thread. Minted per call,
     // so freshness is free.
     const tid = await threadFor(body.threadId)
+    // A heavy chat day leaves up to 79 messages not yet consolidated; the
+    // call must see that tail or it opens mid-amnesia (owner, Aug 13:
+    // "what if I use other models to talk for 1 day?"). Window widened to
+    // 40 + the cross-thread meanwhile block chat turns already get, all
+    // under a hard char budget so the mint stays one instant request.
+    const line = (m: any) => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`
+    const clip = (rows: any[], budget: number) => {
+      const out: string[] = []
+      let used = 0
+      for (const m of rows) {
+        const l = line(m)
+        if (used + l.length > budget) break
+        out.push(l); used += l.length + 1
+      }
+      return out.reverse().join('\n')
+    }
     const { data: recent } = await svc().from('x_character_messages')
       .select('role, text').eq('character_id', c.id).eq('thread_id', tid ?? '')
-      .order('id', { ascending: false }).limit(20)
-    const windowTxt = (recent ?? []).reverse()
-      .map((m: any) => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`).join('\n')
+      .order('id', { ascending: false }).limit(40)
+    const windowTxt = clip(recent ?? [], 12_000)
+    const { data: dead } = await svc().from('x_character_threads')
+      .select('id').eq('character_id', c.id).not('deleted_at', 'is', null)
+    let mq: any = svc().from('x_character_messages')
+      .select('role, text').eq('character_id', c.id)
+      .gt('id', c.consolidated_to).neq('thread_id', tid ?? '')
+      .order('id', { ascending: false }).limit(12)
+    const deadIds = (dead ?? []).map((r: any) => r.id)
+    if (deadIds.length) mq = mq.or(`thread_id.is.null,thread_id.not.in.(${deadIds.join(',')})`)
+    const { data: meanwhile } = await mq
+    const meanwhileTxt = clip(meanwhile ?? [], 4_000)
     const systemInstruction = stableHead(c, critical, chapters, 'call')
+      + (meanwhileTxt ? `\n\n=== Meanwhile, in your other chats with them (not yet in your memory file) ===\n${meanwhileTxt}` : '')
       + (windowTxt ? `\n\n=== The conversation so far (continue from here — the user just switched to a live call) ===\n${windowTxt}` : '')
 
     try {
