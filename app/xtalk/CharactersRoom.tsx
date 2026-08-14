@@ -672,10 +672,27 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
   }
 
   const endCall = async () => {
-    if (modeRef.current === 'live') {
-      stopLive()
-      await saveLiveTranscript()   // folds the last segment into cost itself
-    }
+    // HANG UP MEANS HANG UP (owner, Aug 14: after ending a call the car's
+    // Bluetooth stayed in call mode). The mic is what holds the phone's
+    // HFP audio session — and voice mode's recognizer was only released
+    // by the unmount cleanup, a tick later, which mobile browsers punish
+    // by keeping the OS audio session alive. Release EVERYTHING here,
+    // synchronously, both modes; the unmount cleanup stays as backstop.
+    endedRef.current = true                       // kills every restart loop
+    clearTimeout(pauseRef.current)
+    try { recRef.current?.abort ? recRef.current.abort() : recRef.current?.stop() } catch {}
+    recRef.current = null
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''                 // force the element to
+        audioRef.current.load()                   // release its session
+      }
+    } catch {}
+    const wasLive = modeRef.current === 'live'
+    stopLive()                                    // mic tracks + both AudioContexts
+    try { wakeRef.current?.release() } catch {}
+    if (wasLive) await saveLiveTranscript()       // folds the last segment into cost itself
     onEnd()
   }
 
