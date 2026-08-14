@@ -58,12 +58,29 @@ export async function streamText(
   const TAG = `[anthropic/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
 
-  const chatMessages = messages.map((m, i) => ({
-    role: m.role,
-    content: i === messages.length - 1 && m.role === 'user'
-      ? buildContent(String(m.content), attachments)
-      : String(m.content),
-  }))
+  // PROMPT CACHING (owner bill, Aug 13: $4.72 to chat with one character —
+  // her prompt head is deliberately byte-stable "cache-shaped", but no
+  // breakpoint was ever set, so every turn re-billed it at full input rate;
+  // on Fable 5 that is $10/M for text the cache serves at $1/M). Mark the
+  // FIRST message with cache_control when it is heavy: XCharacter's stable
+  // head, XTalk's room prompt and any fat opening context all ride there.
+  // 5-min TTL fits a conversation's cadence; a consolidation rewrites the
+  // head and simply pays one fresh write (25% premium on that turn only).
+  const CACHE_MIN_CH = 4000   // ~1K tokens — Anthropic's minimum cacheable
+  const chatMessages = messages.map((m, i) => {
+    const last = i === messages.length - 1 && m.role === 'user'
+    const text = String(m.content)
+    if (i === 0 && !last && text.length >= CACHE_MIN_CH) {
+      return {
+        role: m.role,
+        content: [{ type: 'text', text, cache_control: { type: 'ephemeral' } }],
+      }
+    }
+    return {
+      role: m.role,
+      content: last ? buildContent(text, attachments) : text,
+    }
+  })
 
   let res: Response
   try {
@@ -124,6 +141,14 @@ export async function streamText(
           case 'message_start':
             inputTokens  = event.message?.usage?.input_tokens ?? 0
             cachedTokens = event.message?.usage?.cache_read_input_tokens ?? 0
+            // Cache WRITES bill at 1.25x the input rate and arrive in their
+            // own counter — fold them into inputTokens at the premium so
+            // calcTextCost stays provider-agnostic. Without this the write
+            // turn billed 18 tokens for a 4K-token head (seen live, Aug 13).
+            {
+              const w = event.message?.usage?.cache_creation_input_tokens ?? 0
+              if (w > 0) inputTokens += Math.ceil(w * 1.25)
+            }
             if (typeof event.message?.usage?.server_tool_use?.web_search_requests === 'number') {
               searchCount = Math.max(searchCount, event.message.usage.server_tool_use.web_search_requests)
             }
