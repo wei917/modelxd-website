@@ -1,33 +1,39 @@
 <!doctype html>
-<!-- Throwaway probe (owner, Aug 14): does the KKBOX widget autoplay WITH
-     SOUND on mobile Chrome inside a delegated iframe, under our song card's
-     real conditions (user tapped earlier; the card arrives seconds later)?
-     Desktop already proven. Delete after the verdict. -->
+<!-- Autoplay probe v2 (owner, Aug 14). The iframe route is DEAD on mobile
+     (KKBOX widget: proven silent on the real phone). This isolates the last
+     variable: may OUR OWN <audio> play late-with-sound after a tap?
+     Verdicts print on screen — no careful listening required.
+     Delete after the verdict. -->
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KKBOX autoplay probe</title>
+<title>Mobile autoplay probe v2</title>
 <style>
   body { font-family: system-ui; background: #111; color: #eee; padding: 24px; }
   button { font-size: 18px; padding: 14px 22px; border-radius: 12px; border: 0; background: #09cef6; color: #000; font-weight: 700; }
-  .slot { margin-top: 18px; min-height: 100px; }
-  p { font-size: 14px; color: #aaa; }
+  .v { font-size: 16px; margin-top: 14px; font-weight: 700; }
+  p { font-size: 13.5px; color: #aaa; }
 </style></head><body>
-  <h2>KKBOX 手機自動播放測試</h2>
-  <p>按一下按鈕（模擬「送出訊息」的那一下）。<b>8 秒後</b>播放器才會出現 —
-     跟 DJ 卡片抵達的時間差一樣。如果它出現時<b>有聲音自動播放</b>，就成功了。</p>
-  <button id="go">👆 tap（然後等 8 秒）</button>
-  <div class="slot" id="slot"></div>
-  <p id="log"></p>
+  <h2>手機自動播放測試 v2</h2>
+  <p>按一下按鈕，然後<b>把手放開，等 8 秒</b>。兩個測試會自動跑，結果會直接顯示在畫面上。</p>
+  <button id="go">👆 tap 一下，然後等</button>
+  <div class="v" id="vA">A · 自有 &lt;audio&gt;（iTunes 預覽方案）：—</div>
+  <div class="v" id="vB">B · KKBOX widget iframe：—（要用耳朵聽）</div>
+  <div id="slot"></div>
 <script>
-  const log = m => document.getElementById('log').textContent += m + ' · '
   document.getElementById('go').onclick = () => {
-    log('tapped, waiting 8s')
+    document.getElementById('vA').textContent = 'A · 自有 <audio>：等 8 秒…'
     setTimeout(() => {
+      // A — our own element, raw file, played with sound, LATE.
+      const a = new Audio('/probe-tone.mp3')
+      a.play().then(
+        () => { document.getElementById('vA').textContent = 'A · 自有 <audio>：✅ 有聲自動播放成功（你應該聽到嗶聲）' },
+        e  => { document.getElementById('vA').textContent = 'A · 自有 <audio>：❌ 被擋（' + e.name + '）' },
+      )
+      // B — the third-party widget, for the record.
       const f = document.createElement('iframe')
       f.src = 'https://widget.kkbox.com/v1/?id=Kn9Aw92cKmKv6tCogT&type=song&autoplay=1'
       f.allow = 'autoplay; encrypted-media'
-      f.style.cssText = 'width:100%;height:100px;border:0;border-radius:10px'
+      f.style.cssText = 'width:100%;height:100px;border:0;border-radius:10px;margin-top:12px'
       document.getElementById('slot').appendChild(f)
-      log('widget injected — listen')
     }, 8000)
   }
 </script></body></html>
