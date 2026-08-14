@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- Throwaway probe (owner, Aug 14): does the KKBOX widget autoplay WITH
+     SOUND on mobile Chrome inside a delegated iframe, under our song card's
+     real conditions (user tapped earlier; the card arrives seconds later)?
+     Desktop already proven. Delete after the verdict. -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KKBOX autoplay probe</title>
+<style>
+  body { font-family: system-ui; background: #111; color: #eee; padding: 24px; }
+  button { font-size: 18px; padding: 14px 22px; border-radius: 12px; border: 0; background: #09cef6; color: #000; font-weight: 700; }
+  .slot { margin-top: 18px; min-height: 100px; }
+  p { font-size: 14px; color: #aaa; }
+</style></head><body>
+  <h2>KKBOX 手機自動播放測試</h2>
+  <p>按一下按鈕（模擬「送出訊息」的那一下）。<b>8 秒後</b>播放器才會出現 —
+     跟 DJ 卡片抵達的時間差一樣。如果它出現時<b>有聲音自動播放</b>，就成功了。</p>
+  <button id="go">👆 tap（然後等 8 秒）</button>
+  <div class="slot" id="slot"></div>
+  <p id="log"></p>
+<script>
+  const log = m => document.getElementById('log').textContent += m + ' · '
+  document.getElementById('go').onclick = () => {
+    log('tapped, waiting 8s')
+    setTimeout(() => {
+      const f = document.createElement('iframe')
+      f.src = 'https://widget.kkbox.com/v1/?id=Kn9Aw92cKmKv6tCogT&type=song&autoplay=1'
+      f.allow = 'autoplay; encrypted-media'
+      f.style.cssText = 'width:100%;height:100px;border:0;border-radius:10px'
+      document.getElementById('slot').appendChild(f)
+      log('widget injected — listen')
+    }, 8000)
+  }
+</script></body></html>
