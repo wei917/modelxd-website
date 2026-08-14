@@ -514,11 +514,26 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
     if (endedRef.current) return
     setPh('connecting')
     try {
-      const res = await fetch('/api/xcharacter/live', {
+      let res = await fetch('/api/xcharacter/live', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'token', characterId: char.id, ...(threadId ? { threadId } : {}) }),
       })
-      const d = await res.json().catch(() => null)
+      let d = await res.json().catch(() => null)
+      if (res.ok && d?.consolidateFirst) {
+        // Heavy tail: she files the backlog into memory before picking up,
+        // on her own model — the wait is shown, not hidden.
+        setCaptionRole('her'); setCaption(t('xc.call.organizing'))
+        await fetch('/api/xcharacter/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'consolidate', characterId: char.id }),
+        }).catch(() => {})
+        setCaption('')
+        res = await fetch('/api/xcharacter/live', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'token', characterId: char.id, skipConsolidate: true, ...(threadId ? { threadId } : {}) }),
+        })
+        d = await res.json().catch(() => null)
+      }
       if (!res.ok || !d?.token) {
         setErr(d?.error ?? 'Live is unavailable — falling back to voice chat.')
         void switchMode('voice')

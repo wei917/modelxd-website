@@ -71,10 +71,34 @@ export async function POST(req: Request) {
     return made?.id ?? null
   }
 
+  const unconsolidatedCount = async (): Promise<number> => {
+    const { data: dead } = await svc().from('x_character_threads')
+      .select('id').eq('character_id', c.id).not('deleted_at', 'is', null)
+    let q: any = svc().from('x_character_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('character_id', c.id).gt('id', c.consolidated_to)
+    const ids = (dead ?? []).map((r: any) => r.id)
+    if (ids.length) q = q.or(`thread_id.is.null,thread_id.not.in.(${ids.join(',')})`)
+    const { count } = await q
+    return count ?? 0
+  }
+
   // ── token: mint the locked ephemeral session ────────────────────────
   if (body.action === 'token') {
     const key = process.env.GOOGLE_AI_API_KEY
     if (!key) return Response.json({ error: 'Live calls are not configured' }, { status: 503 })
+
+    // CONSOLIDATE-ON-DIAL (owner, Aug 13: "compress right after the user
+    // hits live call, then set up everything updated"). Only when the
+    // unconsolidated tail exceeds what the context windows can carry —
+    // consolidation is 10-30s on the character's own model, and a light
+    // day must still ring instantly. The client shows the wait, runs the
+    // chat route's consolidate action, and re-asks with skipConsolidate
+    // so a failed consolidation can never dead-loop the dial.
+    if (body.skipConsolidate !== true) {
+      const tail = await unconsolidatedCount()
+      if (tail > 40) return Response.json({ consolidateFirst: true, unconsolidated: tail })
+    }
 
     const { data: memRows } = await svc().from('x_character_memory')
       .select('kind, seq, content').eq('character_id', c.id)
@@ -160,6 +184,7 @@ export async function POST(req: Request) {
       text: String(t?.text ?? '').trim().slice(0, 4000),
     }))
     .filter((t: any) => t.text)
+
 
   const unconsolidated = async () => {
     // Same forget-forward view as the chat route: deleted threads never

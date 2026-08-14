@@ -151,6 +151,7 @@ export const STRINGS: Record<string, Entry> = {
   'xc.autoplay':   { en: 'Auto-play', 'zh-Hant': '自動播放', 'zh-Hans': '自动播放', ja: '自動再生', ko: '자동 재생' },
   'xc.speed':      { en: 'Voice speed', 'zh-Hant': '語速', 'zh-Hans': '语速', ja: '再生速度', ko: '재생 속도' },
   'xc.call':           { en: 'Call', 'zh-Hant': '通話', 'zh-Hans': '通话', ja: '通話', ko: '통화' },
+  'xc.call.organizing': { en: '💭 filing our recent chats into memory before picking up…', 'zh-Hant': '💭 接起來之前，先把最近的對話整理進記憶…', 'zh-Hans': '💭 接起来之前，先把最近的对话整理进记忆…', ja: '💭 電話に出る前に、最近の会話を記憶に整理しています…', ko: '💭 전화를 받기 전에 최근 대화를 기억에 정리하는 중…' },
   'xc.call.playing': { en: '♪ playing — mic off', 'zh-Hant': '♪ 播放中 — 麥克風已關', 'zh-Hans': '♪ 播放中 — 麦克风已关', ja: '♪ 再生中 — マイクはオフ', ko: '♪ 재생 중 — 마이크 꺼짐' },
   'xc.call.resume':  { en: 'resume the call', 'zh-Hant': '繼續通話', 'zh-Hans': '继续通话', ja: '通話に戻る', ko: '통화로 돌아가기' },
   'xc.call.voice':     { en: 'Voice · her model', 'zh-Hant': '語音 · 本人模型', 'zh-Hans': '语音 · 本人模型', ja: 'ボイス · 本人モデル', ko: '음성 · 본인 모델' },
