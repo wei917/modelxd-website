@@ -762,7 +762,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       if (!b?.forScene || !n.rowId) continue
       if (b.forKind === 'still') {
         healedStill = true
-        patchScene(b.forScene, { still_row_id: n.rowId, still_url: n.thumb ?? undefined, status: 'draft' })
+        patchScene(b.forScene, { still_row_id: n.rowId, still_url: n.thumb ?? undefined, status: 'draft', error: undefined })
       } else if (b.forKind === 'clip') {
         patchScene(b.forScene, { status: 'done', url: n.thumb ?? undefined, row_id: n.rowId, ...(typeof n.cost === 'number' ? { cost: n.cost } : {}) })
       } else if (b.forKind === 'take') {
@@ -1227,7 +1227,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         if (cardScene) patchScene(cardScene,{ status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined })
         // The scene's key still: remembered on the card (so ▶ can open the
         // video on it) without becoming the card's clip.
-        else if (isSceneStill && sceneId) patchScene(sceneId, { still_row_id: xid ?? undefined, still_url: url ?? undefined, status: 'draft' })
+        else if (isSceneStill && sceneId) patchScene(sceneId, { still_row_id: xid ?? undefined, still_url: url ?? undefined, status: 'draft', error: undefined })
         // A ↻ comparison take keeps the card as-is but must still be FILED
         // under its cut, or it lands on the board owned by nothing.
         else if (rerunCtx?.sceneId && xid) recordTake(rerunCtx.sceneId, xid)
