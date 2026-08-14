@@ -270,6 +270,7 @@ Seven, all direct (`lib/providers/index.ts` routes on `model.provider`):
 | `anthropic` | `anthropic.ts` | Messages API. Also powers the site agent + XDirector. |
 | `runway` | `runway.ts` | Video generation. |
 | `moonshot` | `moonshot.ts` | Kimi models. |
+| `minimax` | `minimax.ts` | MiniMax H3 / Hailuo video (Global endpoint, async task pattern). |
 
 ### Native PDF handling
 `PROVIDERS_WITH_NATIVE_PDF = {openai, google}`. A model takes the native path
@@ -531,6 +532,7 @@ ANTHROPIC_API_KEY=sk-ant-xxx          # site agent + XDirector + Claude models
 XAI_API_KEY=xxx
 MOONSHOT_API_KEY=xxx
 RUNWAYML_API_SECRET=xxx
+MINIMAX_API_KEY=                      # api.minimax.io (Global) — H3 video; unset = MiniMax rows stay unusable
 
 # Payments
 STRIPE_SECRET_KEY=sk_xxx

@@ -16,6 +16,7 @@ import * as alibaba    from './alibaba'
 import * as xai        from './xai'
 import * as anthropic  from './anthropic'
 import * as runway     from './runway'
+import * as minimax    from './minimax'
 import * as moonshot   from './moonshot'
 import { startCall, endCall, logMediaUrl } from './call-log'
 import { estimateCost, supportsWebSearch } from './pricing'
@@ -48,7 +49,7 @@ export interface CallContext {
   userId?: string | null
 }
 
-const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot']
+const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot', 'minimax']
 
 // Providers whose text path can ingest a raw PDF natively (full fidelity:
 // text + page images). A model only takes the native path when it ALSO
@@ -373,7 +374,7 @@ export async function generateVideo(
   assertSupported(model)
 
   // Alibaba/DashScope, Google/Veo, xAI/Grok Imagine and Runway support native video.
-  if (model.provider !== 'alibaba' && model.provider !== 'google' && model.provider !== 'xai' && model.provider !== 'runway') {
+  if (model.provider !== 'alibaba' && model.provider !== 'google' && model.provider !== 'xai' && model.provider !== 'runway' && model.provider !== 'minimax') {
     throw new Error(`Video generation not supported for provider: ${model.provider}`)
   }
 
@@ -393,8 +394,9 @@ export async function generateVideo(
       model.provider === 'google'  ? await google.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     : model.provider === 'xai'     ? await xai.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     : model.provider === 'runway'  ? await runway.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    : model.provider === 'minimax' ? await minimax.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     : model.provider === 'alibaba' ? await alibaba.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
-    : noImplementation(model, 'video', ['google', 'xai', 'runway', 'alibaba'])
+    : noImplementation(model, 'video', ['google', 'xai', 'runway', 'alibaba', 'minimax'])
     endCall(requestId, desc, {
       status:         'success',
       latency_ms:     Date.now() - t0,
