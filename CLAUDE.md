@@ -305,7 +305,7 @@ list and jsonb shapes.
 Key columns:
 - `provider` — one of the seven above
 - `model_name` — exact API string; unique together with `provider`
-- `display_name`, `nickname`
+- `display_name` (no nickname column — verified Aug 13)
 - `input_modalities` / `output_modalities` — `['text'|'image'|'video']`
 - `model_pricing` — jsonb; text rates live at `tokens.text_input` /
   `tokens.text_output` / `tokens.cached_input` (per 1M; `text_output` may
