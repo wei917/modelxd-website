@@ -107,6 +107,22 @@ export function useBoardNodes(boardId: string | null) {
     return () => { cancelled = true }
   }, [boardId, tick])
 
+  // SIGNATURES AGE; BOARDS SIT OPEN (owner, Aug 14: full-screen play gave
+  // 0:00 after the tab had been open past the signing TTL). Re-sign by
+  // re-querying on a slow clock — visibility-gated, so a background tab
+  // neither burns requests nor fights the auth lock (pitfall 9) — and
+  // immediately when the user returns to a tab that sat hidden too long.
+  useEffect(() => {
+    if (!boardId) return
+    const REFRESH_MS = 30 * 60_000
+    let last = Date.now()
+    const beat = () => { last = Date.now(); setTick(v => v + 1) }
+    const iv = setInterval(() => { if (!document.hidden) beat() }, REFRESH_MS)
+    const onVis = () => { if (!document.hidden && Date.now() - last > REFRESH_MS) beat() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', onVis) }
+  }, [boardId])
+
   const nodes = useMemo<CanvasNode[]>(() => {
     const primary: Record<string, string> = {}
     for (const n of chain) {
