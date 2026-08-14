@@ -55,6 +55,22 @@ export async function POST(req: Request) {
     .select('*').eq('id', String(body.characterId ?? '')).eq('user_id', user.id).maybeSingle()
   if (!c) return Response.json({ error: 'Character not found' }, { status: 404 })
 
+  // Calls land in a thread too (migration 80): validated id, else newest.
+  const threadFor = async (want: unknown): Promise<string | null> => {
+    if (typeof want === 'string' && want) {
+      const { data } = await svc().from('x_character_threads').select('id')
+        .eq('id', want).eq('character_id', c.id).is('deleted_at', null).maybeSingle()
+      if (data) return data.id
+    }
+    const { data: newest } = await svc().from('x_character_threads').select('id')
+      .eq('character_id', c.id).is('deleted_at', null)
+      .order('last_at', { ascending: false }).limit(1).maybeSingle()
+    if (newest) return newest.id
+    const { data: made } = await svc().from('x_character_threads')
+      .insert({ character_id: c.id }).select('id').single()
+    return made?.id ?? null
+  }
+
   // ── token: mint the locked ephemeral session ────────────────────────
   if (body.action === 'token') {
     const key = process.env.GOOGLE_AI_API_KEY
@@ -66,7 +82,19 @@ export async function POST(req: Request) {
     const critical = (memRows ?? []).find(m => m.kind === 'critical')?.content ?? ''
     const chapters = (memRows ?? []).filter(m => m.kind === 'chapter').slice(-CHAPTER_TAIL)
 
+    // THE CALL PICKS UP WHERE THE CHAT LEFT OFF (owner, Aug 13: "Gemini
+    // Live doesn't have the existing conversation context so it's not
+    // useful"). The head always carried her long-term memory; what was
+    // missing was the last stretch of the active thread. Minted per call,
+    // so freshness is free.
+    const tid = await threadFor(body.threadId)
+    const { data: recent } = await svc().from('x_character_messages')
+      .select('role, text').eq('character_id', c.id).eq('thread_id', tid ?? '')
+      .order('id', { ascending: false }).limit(20)
+    const windowTxt = (recent ?? []).reverse()
+      .map((m: any) => `${m.role === 'user' ? 'User' : c.name}: ${m.text}`).join('\n')
     const systemInstruction = stableHead(c, critical, chapters, 'call')
+      + (windowTxt ? `\n\n=== The conversation so far (continue from here — the user just switched to a live call) ===\n${windowTxt}` : '')
 
     try {
       const ai = new GoogleGenAI({ apiKey: key })
@@ -80,6 +108,9 @@ export async function POST(req: Request) {
             config: {
               responseModalities: ['AUDIO' as any],
               systemInstruction,
+              // Live sessions can ground on Google Search; offered only
+              // when the character has search switched on, like chat.
+              ...(c.search === true ? { tools: [{ googleSearch: {} }] as any } : {}),
               inputAudioTranscription: {},
               outputAudioTranscription: {},
               speechConfig: {
@@ -96,21 +127,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Calls land in a thread too (migration 80): validated id, else newest.
-  const threadFor = async (want: unknown): Promise<string | null> => {
-    if (typeof want === 'string' && want) {
-      const { data } = await svc().from('x_character_threads').select('id')
-        .eq('id', want).eq('character_id', c.id).is('deleted_at', null).maybeSingle()
-      if (data) return data.id
-    }
-    const { data: newest } = await svc().from('x_character_threads').select('id')
-      .eq('character_id', c.id).is('deleted_at', null)
-      .order('last_at', { ascending: false }).limit(1).maybeSingle()
-    if (newest) return newest.id
-    const { data: made } = await svc().from('x_character_threads')
-      .insert({ character_id: c.id }).select('id').single()
-    return made?.id ?? null
-  }
 
   const cleanTurns = (raw: any) => (Array.isArray(raw) ? raw : [])
     .map((t: any) => ({

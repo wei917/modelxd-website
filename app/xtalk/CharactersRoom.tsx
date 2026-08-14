@@ -516,7 +516,7 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
     try {
       const res = await fetch('/api/xcharacter/live', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'token', characterId: char.id }),
+        body: JSON.stringify({ action: 'token', characterId: char.id, ...(threadId ? { threadId } : {}) }),
       })
       const d = await res.json().catch(() => null)
       if (!res.ok || !d?.token) {
