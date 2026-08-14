@@ -190,6 +190,7 @@ export const STRINGS: Record<string, Entry> = {
     ja: 'このモデルは参照フレームのみ対応で、承認済みキーフレームから開始できません。キーフレームは被写体参照として使われ、似姿は残りますが固定した構図は失われます。構図を保つには Image to Video モデルを選んでください。',
     ko: '이 모델은 참조 프레임만 지원하므로 승인된 스틸로 시작할 수 없습니다. 스틸은 피사체 참조로만 쓰여 인물은 유지되지만 잠근 구도는 사라집니다. 구도를 유지하려면 Image to Video 모델을 선택하세요.',
   },
+  'yt.sound': { en: 'play with sound', 'zh-Hant': '有聲播放', 'zh-Hans': '有声播放', ja: '音ありで再生', ko: '소리로 재생' },
   'xc.thread.del.title': { en: 'Delete 「{title}」?', 'zh-Hant': '刪除「{title}」？', 'zh-Hans': '删除「{title}」？', ja: '「{title}」を削除？', ko: '「{title}」 삭제할까요?' },
   'xc.thread.del.body': {
     en: '{name} will stop referencing this chat, and nothing more from it will enter long-term memory. What {name} has already memorized stays.',
