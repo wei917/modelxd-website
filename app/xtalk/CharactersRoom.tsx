@@ -225,7 +225,7 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
   char: CharRow; lang: string; threadId: string | null; onEnd: () => void
 }) {
   const t = useT()
-  type Phase = 'connecting' | 'listening' | 'thinking' | 'speaking'
+  type Phase = 'connecting' | 'listening' | 'thinking' | 'speaking' | 'playing'
   const [phase, setPhase] = useState<Phase>('listening')
   const [mode, setMode] = useState<'voice' | 'live'>('voice')
   const [caption, setCaption] = useState('')
@@ -233,6 +233,11 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
   const [cost, setCost] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const [muted, setMuted] = useState(false)
+  // A song requested BY VOICE plays in the call (owner, Aug 13: "can we
+  // use voice to play a video?"). Mic stays hard-off while it plays — the
+  // speaker feed would transcribe itself — and 🎙 resume hands the floor
+  // back. Voice mode only; live-Gemini keeps deferring music to after.
+  const [song, setSong] = useState<{ q: string; vid: string | null } | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   const endedRef = useRef(false)
@@ -317,7 +322,7 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
   }, [])
 
   const startListening = () => {
-    if (endedRef.current || mutedRef.current || modeRef.current !== 'voice') return
+    if (endedRef.current || mutedRef.current || modeRef.current !== 'voice' || phaseRef.current === 'playing') return
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) { setErr('Speech recognition is unavailable in this browser.'); return }
     try { recRef.current?.abort?.() } catch {}
@@ -398,8 +403,13 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
           body: JSON.stringify({ action: 'consolidate', characterId: char.id }),
         }).catch(() => {})
       }
-      const say = splitPlay(reply).clean
-      if (!endedRef.current && say && char.voice) await speakAloud(say)
+      const media = splitPlay(reply)
+      if (!endedRef.current && media.clean && char.voice) await speakAloud(media.clean)
+      if (!endedRef.current && (media.play || media.vid)) {
+        setSong({ q: media.play ?? 'YouTube', vid: media.vid })
+        setPh('playing')
+        return
+      }
       if (!endedRef.current) startListening()
     } catch {
       if (!endedRef.current) { setErr('Network hiccup — still listening.'); startListening() }
@@ -669,6 +679,7 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
     : phase === 'connecting' ? t('xc.call.connecting')
     : phase === 'listening' ? t('xc.call.listening')
     : phase === 'thinking' ? t('xc.call.thinking')
+    : phase === 'playing' ? t('xc.call.playing')
     : t('xc.call.speaking')
   const glow = phase === 'listening' ? 'var(--green)'
     : phase === 'speaking' ? 'var(--red)' : 'var(--muted2)'
@@ -703,6 +714,15 @@ function CallOverlay({ char, lang, threadId, onEnd }: {
         </span>
         <div style={{ fontWeight: 800, fontSize: 19, marginTop: 12, fontFamily: 'var(--font-display), inherit' }}>{char.name}</div>
         <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 4 }}>{status}</div>
+        {song && (
+          <div style={{ margin: '12px 0 2px', textAlign: 'left' }}>
+            <YTCard query={song.q} fixedId={song.vid} autoplay />
+            <button
+              onClick={() => { setSong(null); setPh('listening'); startListening() }}
+              style={{ marginTop: 8, width: '100%', padding: '7px 0', borderRadius: 999, border: '1px solid var(--green)', background: 'none', color: 'var(--green)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            >🎙 {t('xc.call.resume')}</button>
+          </div>
+        )}
         <div style={{ minHeight: 58, margin: '14px 0 6px', fontSize: 13.5, lineHeight: 1.5, color: captionRole === 'her' ? 'var(--white)' : 'var(--muted)', whiteSpace: 'pre-wrap' }}>
           {caption && <>{captionRole === 'you' ? '🗣 ' : ''}{caption.length > 220 ? '…' + caption.slice(-220) : caption}</>}
         </div>
