@@ -319,3 +319,25 @@ keeps Discussion. Launch list: Werewolf, 五子棋 (Gomoku), Chess, 中國象棋
       grok-imagine-image-quality). Owner decision Aug 9: do NOT add
       grok-imagine-image-quality ($0.05) in the meantime — wait for 2.0.
       Vercel AI Gateway's 2.0-preview is an aggregator path; not our route.
+
+- **Qwen-Image-Layered — layered image editing (waiting on first-party).**
+  Alibaba's Dec release decomposes an image into N RGBA layers (recursive,
+  clean alpha, occlusion-ordered). Verified Aug 14: NOT on Model Studio
+  international yet (image list = wan2.7-image-pro, qwen-image-2.0-pro
+  only); exists as open weights + resellers (fal ~$0.03-0.05/run).
+  Owner decision Aug 14: WAIT for first-party — re-check the Model Studio
+  model list periodically. When it lands, the feature is scoped:
+  photo → one run → N layers as named shelf assets (`LAYER · 產品` …),
+  per-layer image_edit, recompose; slots[] already supports multi-output,
+  the shelf fan-out is the day's work. Social Post's "beautify, never
+  fabricate" becomes mechanical (product layer never regenerated).
+
+- **SAM-2 segmentation — same tier, same wait.** Open weights, no
+  first-party API; would ride the same utility provider. Click/prompt
+  masks feeding image_edit for surgical edits.
+
+- **Policy line adopted Aug 14 (owner + CC): RATED models are first-party
+  only; UTILITY tools (layer split, segmentation, background removal) may
+  be reseller-hosted, provenance-labeled ("via fal"), and blocked from
+  every rating surface via blocked_features.** If waiting drags, this line
+  permits a fal.ts utility provider without touching leaderboard honesty.
