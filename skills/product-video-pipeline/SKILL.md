@@ -86,6 +86,15 @@ chained scenes cannot run before their source is done.
 Write the final prompt with the anchoring rules in references/PROMPTS.md. The
 product must be correct in the first frame and stay in frame throughout.
 
+## The luxury register (absorbed from the retired Luxury Product TVC template, Aug 14)
+
+When the user asks for premium / editorial / "TVC" feel — or the product is
+a bag, watch, fragrance, jewellery — shift the whole set: slow deliberate
+camera moves only (a push, an orbit, never a whip), controlled specular
+light with real falloff, seamless or architectural backdrops, and copy that
+sells craft over specs. One hero material texture per shot (leather grain,
+brushed metal, glass) — luxury reads in the close-up.
+
 ## After the result
 
 React in one line. Offer exactly one next step: a different scene, a longer
