@@ -9,7 +9,7 @@ metadata:
   banner: "/xdirect/skills/music-video.webp"
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.0"
+  version: "3.1"
   category: music
   aspect: "ask"
   default_duration: "6"
@@ -372,6 +372,24 @@ and they cost cents.
 - The title card is the cheapest place the whole look is stated once — grade,
   grain, typography, restraint. Make it first if the user wants one; it doubles
   as a look test.
+
+## The beat is the edit grid (absorbed from the ComfyUI MV community, Aug 14)
+
+The strongest habit of audio-reactive MV workflows: every cut lands ON a
+beat — downbeats for scene changes, bar boundaries for phrase cuts. Lyric
+timestamps say WHAT is sung; the beat grid says WHEN to cut. Rules:
+
+- When a lyric stamp and the nearest downbeat disagree by less than ~300ms,
+  **the beat wins** — snap the cut to it. A cut that lands mid-beat reads
+  as a mistake even to viewers who can't say why.
+- Energy maps to shot grammar: rising sections tighten framing or start a
+  move that RESOLVES on the downbeat; the chorus's loudest bar takes the
+  widest, most kinetic shot. Write the intensity into the prompt ("the
+  camera push lands as the beat drops").
+- SYNC slices should start and end on beat boundaries, never mid-note —
+  H3 syncs to what it hears, so a clean musical edge in = a clean edge out.
+- Until the platform hands you a measured beat map, derive the grid from
+  the lyric stamps (phrase lengths imply the bar) and say the assumption.
 
 ## SYNC mode — when the song itself drives the shot (H3)
 
