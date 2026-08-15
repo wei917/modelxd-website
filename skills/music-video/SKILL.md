@@ -114,9 +114,13 @@ it in this order:
    Anything you leave unstated WILL change between shots. "A red top" drifts.
    "A red-and-white gingham halter top with a tie at the back of the neck"
    holds.
-3. **Fuse into the master asset.** One frame, medium shot, even light, plain
-   or simple background, neutral confident expression, hands visible. This is
-   a *character sheet*, not a shot from the film — it exists to be referenced.
+3. **Fuse into the master asset — as a TURNAROUND.** One frame containing
+   THREE views of the same person side by side: front, three-quarter, and
+   profile, identical wardrobe and light, plain background, neutral
+   confident expression. Reference models anchor likeness far better from
+   multiple angles than from one frontal portrait (single-view sheets
+   drifted in reference-mode generations, Aug 14). This is a *character
+   sheet*, not a shot from the film — it exists to be referenced.
 4. **Show it and get a yes.** The user approves the cast before you spend on
    shots. A face they don't like, multiplied by eight scenes, is the single
    most expensive mistake available here.
