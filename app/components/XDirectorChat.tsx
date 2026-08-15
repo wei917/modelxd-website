@@ -1527,12 +1527,6 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               <span className="stream-cursor">▋</span>
             </div>
           )}
-          {!loading && bubbles.length === 0 && (
-            <div style={{ padding: '18px 20px', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, fontSize: 14, color: 'var(--muted2)', lineHeight: 1.7 }}>
-              {t('xdirector.intro')}
-            </div>
-          )}
-
           {/* Skill gallery. Only offered before the first message — switching
               skills mid-conversation would silently rewrite the rules the
               earlier turns were produced under. */}
@@ -1570,10 +1564,9 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                         {/* Category tag removed (owner, Aug 11) — the
                             banner already says what the skill is, and the
                             chip was crowding the name. */}
-                        <span className="xd-skill-head">
+                        <span className="xd-skill-head" title={sk.description}>
                           <span className="xd-skill-name">{title}</span>
                         </span>
-                        <span className="xd-skill-blurb">{sk.description}</span>
                       </span>
                     </button>
                   )
