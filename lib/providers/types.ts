@@ -230,6 +230,14 @@ export interface Attachment {
   wireSource?:
     | { kind: 'row'; row_id: string; slot?: number }
     | { kind: 'file'; bucket: string; path: string; name?: string }
+  /**
+   * Storage object holding a byte-identical copy of `buffer` (uploads point
+   * at their resized copy, parent outputs at the output object). Lets the
+   * route persist Google conversation history as storage markers instead of
+   * inline base64 — see lib/providers/history-storage.ts. Never sent to
+   * providers.
+   */
+  storageRef?: { bucket: string; path: string }
 }
 
 export interface TextStreamCallbacks {

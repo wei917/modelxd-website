@@ -20,6 +20,7 @@ import * as minimax    from './minimax'
 import * as moonshot   from './moonshot'
 import { startCall, endCall, logMediaUrl } from './call-log'
 import { estimateCost, supportsWebSearch } from './pricing'
+import { historyHasMarkers, rehydrateHistory } from './history-storage'
 import { extractPdfText, estimatePdfTokens } from '../pdf-extract'
 
 // Native-PDF context guard: a PDF whose estimated tokens exceed the
@@ -40,6 +41,8 @@ import type {
 
 export type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment }
 export { logMediaUrl }
+export { dehydrateHistory, rehydrateHistory, historyHasMarkers, historyHasInlineData } from './history-storage'
+export type { HistoryImageCandidate, StorageImageRef, DehydrateFallback } from './history-storage'
 
 /**
  * Optional per-call context. Pass from route handlers so the log row
@@ -305,7 +308,18 @@ export async function generateImage(
     if (model.provider === 'openai') {
       result = await openai.generateImage(model, prompt, quality, size, attachments, previousResponseId ?? null, options)
     } else if (model.provider === 'google') {
-      result = await google.generateImage(model, prompt, quality, size, attachments, conversationHistory ?? null, options)
+      // Persisted histories carry storage markers instead of inline base64
+      // (lib/providers/history-storage.ts). Rehydrate for the API call, then
+      // splice the caller's marker entries back over the echoed prefix so
+      // the dehydrated form is what flows onward to whoever persists it.
+      const givenHistory = conversationHistory ?? null
+      const liveHistory  = givenHistory && historyHasMarkers(givenHistory)
+        ? await rehydrateHistory(givenHistory)
+        : givenHistory
+      result = await google.generateImage(model, prompt, quality, size, attachments, liveHistory, options)
+      if (givenHistory && Array.isArray(result.conversationHistory) && result.conversationHistory.length >= givenHistory.length) {
+        result.conversationHistory = [...givenHistory, ...result.conversationHistory.slice(givenHistory.length)]
+      }
     } else if (model.provider === 'xai') {
       result = await xai.generateImage(model, prompt, quality, size, attachments, options)
     } else if (model.provider === 'alibaba') {

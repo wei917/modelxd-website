@@ -168,11 +168,59 @@ export async function POST(req: Request) {
           const b64 = result.buffer.toString('base64')
           const dataUrl = `data:${result.mediaType};base64,${b64}`
           debitChatTurn({ userId: user.id, cost: result.cost ?? 0, modelId: model.id, modelName: model.model_name, mode: 'image', refId: xcreateId })
+
+          // Google multi-turn: the history round-trips through the client on
+          // every turn, so it must carry storage markers, not inline base64
+          // (lib/providers/history-storage.ts). Upload this turn's output so
+          // its marker has something to point at; prior turns already arrive
+          // as markers and pass through untouched. A pre-migration fat
+          // history gets its images uploaded here once and comes out
+          // dehydrated too.
+          let historyForClient: any[] | null = result.conversationHistory ?? null
+          if (historyForClient) {
+            try {
+              const { createClient } = await import('@supabase/supabase-js')
+              const admin = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SECRET_KEY!,
+                { auth: { persistSession: false } },
+              )
+              const candidates: providers.HistoryImageCandidate[] = []
+              const outImages = [{ buffer: result.buffer, mediaType: result.mediaType }, ...(result.extras ?? [])]
+              for (const im of outImages) {
+                const ext  = (im.mediaType.split('/')[1] ?? 'png').replace('jpeg', 'jpg')
+                const path = `${user.id}/chat/${globalThis.crypto.randomUUID()}.${ext}`
+                const { error: upErr } = await admin.storage.from('xcreate-ai-images')
+                  .upload(path, im.buffer, { contentType: im.mediaType, upsert: false })
+                if (upErr) { console.warn(`${LOG} chat image upload failed (${upErr.message})`); continue }
+                candidates.push({ bucket: 'xcreate-ai-images', path, buffer: im.buffer, mimeType: im.mediaType })
+                providers.logMediaUrl(result.requestId, {
+                  provider: model.provider, model_name: model.model_name, model_id: model.id ?? null,
+                  mode: 'image', user_id: user.id,
+                }, `xcreate-ai-images/${path}`)
+              }
+              if (attachment?.storagePath && attachment?.bucket && resolvedAttachments[0]) {
+                candidates.push({
+                  bucket: attachment.bucket, path: attachment.storagePath,
+                  buffer: resolvedAttachments[0].buffer, mimeType: resolvedAttachments[0].mediaType,
+                })
+              }
+              historyForClient = await providers.dehydrateHistory(historyForClient, candidates, {
+                sb: admin, bucket: 'xcreate-ai-images', pathPrefix: `${user.id}/chat/hist/`,
+              })
+            } catch (err) {
+              // Bookkeeping must never cost the user a paid image — fall back
+              // to returning the fat history rather than erroring the turn.
+              console.warn(`${LOG} history dehydration failed, returning inline:`, err instanceof Error ? err.message : err)
+              historyForClient = result.conversationHistory ?? null
+            }
+          }
+
           controller.enqueue(sse('image', {
             url: dataUrl,
             cost: result.cost,
             responseId: result.responseId ?? null,
-            conversationHistory: result.conversationHistory ?? null,
+            conversationHistory: historyForClient,
           }))
         } catch (err) {
           controller.enqueue(sse('error', { message: err instanceof Error ? err.message : String(err) }))

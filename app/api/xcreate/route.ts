@@ -289,12 +289,14 @@ async function runSlot(
       console.log(`${LOG} Slot[${index}] uploading ${allImages.length} image(s) (${allImages.map(im => im.buffer.length).join('+')} bytes)`)
 
       const signedUrls: string[] = []
+      const uploadedRefs: providers.HistoryImageCandidate[] = []
       for (let imgIdx = 0; imgIdx < allImages.length; imgIdx++) {
         const im   = allImages[imgIdx]
         const ext  = im.mediaType.split('/')[1] ?? 'png'
         const suffix = allImages.length > 1 ? `_${imgIdx}` : ''
         const path = `${userId}/${jobId}_slot${index}${suffix}.${ext}`
         await uploadWithRetry(sb, 'xcreate-ai-images', path, im.buffer, im.mediaType)
+        uploadedRefs.push({ bucket: 'xcreate-ai-images', path, buffer: im.buffer, mimeType: im.mediaType })
         // Short 24h TTL — XCreate is private, so we don't want leaked
         // signed URLs to work forever. The profile gallery page re-signs
         // on load (parses bucket+path out of the stored URL), so a
@@ -313,11 +315,37 @@ async function runSlot(
 
       const joinedUrls = signedUrls.join('\n')
       const rt = Date.now() - start
+
+      // Persist POINTERS, not bytes: swap each inline image in the Google
+      // multi-turn history for a marker referencing its storage object.
+      // The outputs were just uploaded and every attachment carries its
+      // stored copy, so this is pure byte-matching. Persisting the inline
+      // form is what made slots weigh 11-12MB and the board query take 15s.
+      let storedHistory: any[] | undefined = undefined
+      if (result.conversationHistory) {
+        try {
+          const candidates: providers.HistoryImageCandidate[] = [
+            ...uploadedRefs,
+            ...attachments.flatMap(a => (a.storageRef && a.mediaType.startsWith('image/'))
+              ? [{ bucket: a.storageRef.bucket, path: a.storageRef.path, buffer: a.buffer, mimeType: a.mediaType }]
+              : []),
+          ]
+          storedHistory = await providers.dehydrateHistory(result.conversationHistory, candidates, {
+            sb, bucket: 'xcreate-ai-images', pathPrefix: `${userId}/hist/`,
+          }) ?? undefined
+        } catch (err) {
+          // Bookkeeping must never fail a paid generation — fall back to the
+          // fat form rather than erroring the slot.
+          console.warn(`${LOG} Slot[${index}] history dehydration failed, storing inline:`, err instanceof Error ? err.message : err)
+          storedHistory = result.conversationHistory
+        }
+      }
+
       await patch({ text: joinedUrls, is_image: true, streaming: false, done: true, cost: result.cost, response_time: rt })
       return {
         text: joinedUrls, isImage: true, isVideo: false, responseTime: rt, cost: result.cost,
-        responseId: result.responseId,                    // OpenAI multi-turn
-        conversationHistory: result.conversationHistory,  // Google multi-turn
+        responseId: result.responseId,          // OpenAI multi-turn
+        conversationHistory: storedHistory,     // Google multi-turn (storage markers)
       }
     }
 
@@ -578,6 +606,9 @@ export async function POST(req: Request) {
         // anything unset is filled from the model's schema at call time.
         port: typeof inp.port === 'string' ? inp.port : undefined,
         wireSource: { kind: 'file', bucket: inp.bucket, path: inp.storagePath, name: inp.fileName },
+        // The resized copy is what `buffer` holds byte-for-byte — it's what
+        // conversation-history dehydration points its marker at.
+        storageRef: { bucket: inp.bucket, path: result.resizedPath },
       }
       // Providers get the RESIZED copy's signed URL (1h) — images are
       // capped at 1920px server-side, so a 4K upload never reaches the
@@ -631,6 +662,7 @@ export async function POST(req: Request) {
           parentAtts.push({
             buffer: pBuffer, mediaType: pMedia, url: pSigned?.signedUrl,
             wireSource: { kind: 'row', row_id: pRow.id, slot: Math.max(0, pslots.indexOf(pick)) },
+            storageRef: { bucket: pBucket, path: pPath },
           } as providers.Attachment)
           console.log(`${LOG} step input ${pi + 1}/${parentRows.length} from parent ${pRow.id} (${pBucket}/${pPath}, ${pBuffer.length}b)`)
         } else {

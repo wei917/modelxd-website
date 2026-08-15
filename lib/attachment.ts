@@ -20,6 +20,8 @@ export interface ProcessedAttachment {
   mediaType:    string
   originalUrl:  string
   resizedUrl:   string
+  /** Storage path of the resized copy — the object `buffer` was uploaded as. */
+  resizedPath:  string
   thumbnailUrl: string | null
 }
 
@@ -132,6 +134,7 @@ export async function processAttachment(
     mediaType:    isImage ? 'image/jpeg' : mediaType,
     originalUrl,
     resizedUrl,
+    resizedPath:  resizedStoragePath,
     thumbnailUrl: thumbnailUrl ?? null,
   }
 }

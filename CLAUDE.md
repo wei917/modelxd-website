@@ -288,6 +288,19 @@ message instead of a wasted upstream 400.
 ### Google notes
 - `-preview` model IDs may change; check Google's deprecation page.
 - Some Flash-Lite models don't support streaming.
+- **Image multi-turn history is persisted as storage markers, not base64**
+  (Aug 15). Gemini image editing replays a history whose parts inline every
+  image (~1.5MB each) plus a ~700KB `thoughtSignature` per model turn;
+  persisting that verbatim made `xcreates.slots` rows weigh 11-12MB and the
+  board query run 15.6s. `lib/providers/history-storage.ts` swaps
+  `inlineData` ↔ `{ storageImage: { bucket, path, mimeType } }` and big
+  signatures ↔ `{ thoughtSignatureRef }` (signature objects live in
+  `xcreate-user-images` — the ai-images bucket's mime allowlist rejects
+  `text/plain`). The provider router rehydrates markers transparently before
+  `google.generateImage`, so routes, DB, and the client only ever carry
+  markers. Backfill for pre-Aug-15 fat rows:
+  `npx tsx scripts/dehydrate-conversation-history.ts` (dry-run; `--apply`
+  to write — owner runs it by hand, dev+prod share one Supabase project).
 
 ### Alibaba / DashScope notes
 - Region: International (Singapore), `https://dashscope-intl.aliyuncs.com`
