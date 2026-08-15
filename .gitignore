@@ -29,3 +29,6 @@ supabase/.temp/
 _to_delete/
 public/templates/_raw/
 商標申請資料包.md
+
+# Working notes — local only (owner, Aug 14): TODO edits shouldn't trigger deploys
+docs/TODO.md
