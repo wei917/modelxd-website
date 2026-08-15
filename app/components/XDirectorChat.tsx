@@ -20,6 +20,7 @@ import { useT } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
 import MusicVideoSetup from '../components/MusicVideoSetup'
+import SocialPostSetup from '../components/SocialPostSetup'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import { isSubmitEnter } from '../../lib/ime'
 
@@ -1574,6 +1575,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               brief with the files in one shot. */}
           {activeSkill === 'music-video' && bubbles.length === 0 && !setupDismissed && (
             <MusicVideoSetup
+              busy={busy !== 'idle'}
+              onStart={(brief, formAtts) => { void send(brief, formAtts) }}
+              onSkip={() => setSetupDismissed(true)}
+            />
+          )}
+
+          {activeSkill === 'social-post' && bubbles.length === 0 && !setupDismissed && (
+            <SocialPostSetup
               busy={busy !== 'idle'}
               onStart={(brief, formAtts) => { void send(brief, formAtts) }}
               onSkip={() => setSetupDismissed(true)}

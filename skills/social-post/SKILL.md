@@ -1,100 +1,93 @@
 ---
 name: social-post
-description: Turn a piece of content — an article, a news story, a thread draft, a product launch, a personal take — into the images or video a post needs, sized and framed for a specific platform. Asks which platform first because that decides the crop, then plans the whole set at once and generates it. Use when the user is writing a post for X, Threads, Instagram or LinkedIn and needs the visuals to go with it.
+description: Turn the user's photos, videos and message into a beautified, platform-sized post set — Instagram, Threads, X, 小紅書, LinkedIn, TikTok — organized on the canvas as assets, enhanced with image editing, and generated one card per output. Use when the user is posting to social media and brings media to polish or a message that needs visuals.
 license: Proprietary. ModelXD.
-compatibility: Designed for ModelXD XDirector. Needs image models and aspect_ratio support on start_generation.
+compatibility: Designed for ModelXD XDirector. Needs image models with image_edit and aspect_ratio support.
 metadata:
   author: ModelXD
   emoji: "📱"
   banner: "/xdirect/skills/social-post.webp"
   color: "#14b8a6"
   title: "Social Post"
-  version: "1.1"
+  version: "2.0"
   category: social
   cover: assets/cover.jpg
 ---
 
 # Social post visuals
 
-The user has something to say and needs pictures that carry it. Your job is
-to decide what those pictures should BE. Generating them is the easy part.
+The user has something to say and often brings their own photos or clips.
+Your job: organize what they brought, decide what each platform's version
+should BE, and enhance — never replace — their material.
 
-## 1. Platform first — before anything else
+## The setup form answers first
 
-Ask this ONCE, with chips, and nothing else in the same turn:
+The template opens with a form: platforms (multi-select), the message,
+their media, a tone. ANSWERED IN THE BRIEF = CLOSED — when the form has
+spoken, your first turn is the plan. Ask only when the brief is silent on
+something you genuinely cannot decide (rare: the form covers everything).
 
-> Where is this going? — Threads · X · Instagram · LinkedIn
+## Their media becomes ASSETS, then gets beautified
 
-Ask it even if you think you can guess, and skip it only when the user has
-already named the platform. This is the one question worth spending, because
-the answer sets the crop, and a crop cannot be fixed afterwards: a 16:9 image
-cannot be cut down to 9:16 without destroying the framing you composed. Read
-`references/PLATFORMS.md` once you have the answer and follow that row.
+- Every uploaded photo/video lands on the ASSETS shelf as a named source
+  (`SOURCE · <short name>`, asset: true, no duration, no video model).
+  The shelf is the organizer the user asked for — sources visible, named,
+  reusable across every output.
+- **Beautify, never fabricate.** An output made from the user's photo is an
+  `image_edit` chained from that asset: cleaner light, tidier backdrop,
+  platform crop, graded color. The product/person/scene stays THEIRS —
+  do not invent product features, change faces, or replace their subject
+  with a generated lookalike. If their photo is unusable for a format,
+  say so and propose a plate AROUND it, not a replacement OF it.
+- Outputs with no source photo (a pure announcement card, a background
+  plate) are honest text_to_image generations — never disguised as the
+  user's material.
 
-Everything else — how many images, which model, what they depict, how they
-are worded — you decide. Do not ask.
+## One card per output, sized by its platform
 
-## 2. Find the spine of the content
+Each planned output is a storyboard card in KEYFRAME spirit — the STILL is
+the deliverable; only Reel/TikTok cards ever get a video step (mark others
+direct-irrelevant: never offer motion for a static post). Put the platform
+and aspect in the card TITLE (`IG · 4:5`, `小紅書 · 3:4`) and pass the
+aspect explicitly on every generation:
 
-Read what the user gave you and find the two or three beats a reader has to
-understand. Not a summary — the beats. A story about a fund blowing up has a
-who, a mechanism and a consequence; a product launch has a before, an after
-and a proof.
+| Platform | Aspect | Notes |
+|---|---|---|
+| Instagram feed | 4:5 | 1:1 acceptable; 4:5 owns more screen |
+| IG Story / Reel | 9:16 | Reel may be a short video card |
+| TikTok | 9:16 | video-first; a still is the cover |
+| Threads | 4:5 | 1:1 acceptable |
+| X | 16:9 | text-forward platform; one strong image |
+| 小紅書 | 3:4 | cover image carries the click; title text ON image |
+| LinkedIn | 1.91:1 | editorial restraint; no meme energy |
+| Facebook | 4:5 | feed; 1.91:1 for link posts |
 
-One image per beat, and no more images than beats. Three strong pictures beat
-six that repeat each other. If the content only has one beat, make one image
-and say so.
+Plan the SET at once: same subject, same grade, each platform's crop and
+register. A set that shares one look reads as a campaign; six unrelated
+crops read as spam.
 
-## 3. Plan the whole set in one reply
+## Platform register, not just platform size
 
-State the set before you generate any of it — one short line per image saying
-what that picture carries, then the model and total cost in one line. The user
-confirms once, not once per image.
+- **Instagram / Threads**: mood and craft — the image IS the post.
+- **小紅書**: cover with短 title text rendered ON the image (pick a model
+  that renders CJK type cleanly; treat text as a spelling test).
+- **X**: one sharp image that survives small; no fine text.
+- **LinkedIn**: clean, editorial, zero gimmick.
+- **TikTok / Reel**: motion if the user wants it; otherwise the cover still.
 
-They are a SET, not a gallery. Fix the treatment before you write the first
-prompt and hold it across every image: same medium (editorial photo, oil
-illustration, 3D render — pick one), same palette, same light, same crop.
-Without this you get three unrelated stock photos and the post looks assembled
-rather than authored.
+## Copy and text overlays
 
-## 4. Write prompts that render
+- Text ON images only where the platform expects it (小紅書 covers, quote
+  cards). Exact strings in quotes in the prompt; verify spelling on the
+  still before anything else.
+- The post's CAPTION is the user's voice: offer one tight draft per
+  platform in chat if they ask — never watermark captions into images.
 
-One paragraph each. Subject and arrangement, composition and crop, lighting,
-palette, medium, mood. Then:
+## Craft rules
 
-- Open with the aspect — "9:16 vertical composition" — and also pass
-  aspect_ratio on start_generation. Some models weight the text over the flag.
-- Always end with "no text, no logos, no watermarks". Image models add
-  gibberish type unless told not to, and text baked into a social image cannot
-  be edited, translated or corrected after it is posted.
-- Name objects and their arrangement, never the abstract idea. "A whale
-  tangled in four steel cables being winched into black water while three
-  sleek shapes circle below" renders. "A hedge fund being hunted by Wall
-  Street" does not.
-- Leave room for the caption if the platform overlays one — see the safe-area
-  column in `references/PLATFORMS.md`.
-
-Generate one at a time, in order, and react in one line between them.
-
-## 5. Real people
-
-Never depict a real, named living person's likeness. This restricts the
-LIKENESS, not the subject: illustrate the story with anonymous figures seen
-from behind or silhouetted, with objects, charts or metaphor. For editorial
-work that is the stronger picture anyway, and a post about a real event
-carrying an obviously fake portrait of its subject loses the reader's trust
-in the first second. Offer that framing rather than refusing.
-
-## 6. Hand it over ready to post
-
-When the set is done, give the user the caption text to go with it — matched
-to the platform's length in `references/PLATFORMS.md`, in the user's own
-language, in their voice if you have a sample of it. A bare image is not a
-post. Read `references/CAPTIONS.md` before writing it.
-
-## If the post wants motion
-
-Stills generate directly, as ever. The moment a post needs VIDEO — a looping
-product beat, a clip for Reels — that video goes through the storyboard like
-any other: set_storyboard first (usually one scene), the card is the confirm,
-generation waits for the user.
+- Grade the set together: one palette, one light story across every output.
+- Respect the platform's safe areas: 9:16 keeps faces/subject center-top
+  (UI covers the bottom), 4:5 breathes at the edges.
+- Model choice is per-card, from the live boards, price shown — the same
+  honest casting as every surface.
+- Iterate one variable at a time on a re-run: crop OR grade OR backdrop.
