@@ -214,6 +214,22 @@ export interface Attachment {
    * `url` when present and fall back to base64 from `buffer` otherwise.
    */
   url?: string
+  /**
+   * Typed-port role for this input (lib/ports.ts): first_frame,
+   * reference_image, reference_audio, source_image, … Assigned by the
+   * route from the model's port schema; providers map it to their API
+   * field instead of inferring from order. Absent on legacy callers —
+   * providers keep their old inference as the fallback.
+   */
+  port?: string
+  /**
+   * Where this input came from — a board row's output or an uploaded
+   * file. Persisted to xcreates.input_ports (migration 81) as the
+   * canonical wiring record; never sent to providers.
+   */
+  wireSource?:
+    | { kind: 'row'; row_id: string; slot?: number }
+    | { kind: 'file'; bucket: string; path: string; name?: string }
 }
 
 export interface TextStreamCallbacks {

@@ -63,20 +63,23 @@ export async function generateVideo(
     a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
 
   // H3's modes are EXCLUSIVE (probed live, Aug 14: "reference mode cannot
-  // be mixed with first_frame/middle_frame/last_frame; choose one"). With
-  // audio present we must be in reference mode, so every image rides as a
-  // reference — likeness carries, the exact opening frame does not. That
-  // is the price of lip-sync, and the UI's partial-frame ⚠ language
-  // already describes it. Without audio, the first image pins the frame.
+  // be mixed with first_frame/middle_frame/last_frame; choose one").
+  // Roles come from the caller's typed ports (lib/ports.ts) when present —
+  // the port assigner enforces the exclusivity, so this file no longer
+  // decides. Un-ported callers keep the old inference: audio present ⇒
+  // reference mode for every image (the price of lip-sync); otherwise the
+  // first image pins the frame.
+  const H3_IMAGE_ROLES = new Set(['first_frame', 'last_frame', 'middle_frame', 'reference_image'])
+  const inferredRefMode = audioAtts.length > 0
+  const roles = imageAtts.map((a, i) =>
+    (a.port && H3_IMAGE_ROLES.has(a.port))
+      ? a.port
+      : (inferredRefMode || i > 0) ? 'reference_image' : 'first_frame')
   const content: any[] = [{ type: 'text', text: prompt }]
-  const referenceMode = audioAtts.length > 0
   imageAtts.forEach((a, i) => {
-    content.push({
-      type: 'image_url',
-      image_url: { url: asUrl(a) },
-      role: (referenceMode || i > 0) ? 'reference_image' : 'first_frame',
-    })
+    content.push({ type: 'image_url', image_url: { url: asUrl(a) }, role: roles[i] })
   })
+  const referenceMode = !roles.some(r => r.endsWith('_frame'))
   for (const a of audioAtts) {
     // role IS required for audio too — probed live, Aug 14: omitting it is
     // "content[2].role must not be empty (2013)".
@@ -124,7 +127,11 @@ export async function generateVideo(
       break
     }
     if (status === 'failed' || status === 'cancelled') {
-      throw new Error(`MiniMax task ${status}: ${String(task?.error ?? q?.base_resp?.status_msg ?? 'unknown').slice(0, 300)}`)
+      // task.error arrives as an OBJECT — String() printed "[object
+      // Object]" and hid a real failure reason (probed Aug 15).
+      const raw = task?.error ?? q?.base_resp?.status_msg ?? 'unknown'
+      const msg = typeof raw === 'string' ? raw : JSON.stringify(raw)
+      throw new Error(`MiniMax task ${status}: ${msg.slice(0, 300)}`)
     }
   }
   if (!url) throw new Error('MiniMax task timed out after 12 minutes')

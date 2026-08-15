@@ -47,7 +47,8 @@ export function useBoardNodes(boardId: string | null) {
         // boardId lets the server find the ids itself.
         const [{ data: rows, error }, inputsRes] = await Promise.all([
           sb.from('xcreates')
-            .select('id, slots, created_at, parent_id, parent_ids, board_id, node_kind, prompt')
+            // input_ports (migration 81): the typed wiring — REQUIRED.
+            .select('id, slots, created_at, parent_id, parent_ids, board_id, node_kind, prompt, input_ports')
             .eq('board_id', boardId).is('deleted_at', null)
             .order('created_at', { ascending: true }),
           fetch('/api/xcreate/inputs', {
@@ -84,6 +85,7 @@ export function useBoardNodes(boardId: string | null) {
               chosen: !!sl?.chosen,
               thumb: typeof sl?.text === 'string' ? sl.text.split('\n')[0] : null,
               isVideo: !!sl?.isVideo,
+              inputPorts: Array.isArray(r.input_ports) ? r.input_ports : null,
               parentRowIds,
               parentId: null,
               parentIds: [],
@@ -185,11 +187,35 @@ export function useBoardNodes(boardId: string | null) {
         })
       }
     }
+    // Nodes a typed wire may land FROM — anything else (e.g. a chain-frame
+    // carrier file that never became a node) drops its wire; the row edge
+    // already draws that derivation.
+    const validFrom = new Set<string>([
+      ...inputNodes.map(n => n.id),
+      ...Object.values(primary),
+    ])
     const outputNodes: CanvasNode[] = chain.map(n => {
       const parents = [
         ...((n.parentRowIds ?? []) as string[]).map((p: string) => primary[p]).filter(Boolean),
         ...(inputIdsByRow[n.rowId] ?? []),
       ]
+      // Typed wires (migration 81): resolve each recorded port wire to the
+      // node that represents its source — a parent row's primary output, an
+      // upload's own block, or the reference stack when uploads grouped.
+      const wires = ((n.inputPorts ?? []) as any[])
+        .map(w => {
+          const src = w?.source
+          const from = src?.kind === 'row'
+            ? primary[src.row_id]
+            : src?.kind === 'file'
+              ? (grouped && uniq.has(src.path) ? groupId : `att::${src.path}`)
+              : null
+          return (from && validFrom.has(from) && typeof w?.port === 'string')
+            ? { from, port: w.port, type: (w.type ?? 'image') as 'image' | 'audio' | 'video' }
+            : null
+        })
+        .filter((w, i, arr): w is NonNullable<typeof w> =>
+          !!w && arr.findIndex(x => x && x.from === w.from && x.port === w.port) === i)
       // The ⓘ panel lists the EXACT files this run consumed (owner, Aug 9)
       // — chain frames included: they are hidden from the board as nodes,
       // but "what generated this" must name them.
@@ -203,6 +229,7 @@ export function useBoardNodes(boardId: string | null) {
       return {
         ...n, thumb: outUrls[n.id] ?? n.thumb, parentId: parents[0] ?? null, parentIds: parents,
         ...(sources.length > 0 ? { sources } : {}),
+        ...(wires.length > 0 ? { wires } : {}),
       }
     })
     return [...inputNodes, ...outputNodes]

@@ -23,6 +23,7 @@ import { createClient }                 from '@supabase/supabase-js'
 import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
 import { estimateCost, searchRate, supportsWebSearch, resolveTokenRate } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
+import { portSchemaFor, assignPorts, toWires } from '@/lib/ports'
 
 const LOG = '[xcreate]'
 
@@ -267,8 +268,11 @@ async function runSlot(
       // caller asking for 9:16 got a 1024x1024 back with no error anywhere.
       // Derive size from the ratio whenever an explicit size wasn't given.
       const size    = options.size ?? sizeForAspect(options.aspect_ratio) ?? '1024x1024'
+      // Typed ports: each model sees the attachments through ITS OWN port
+      // schema (shallow copies — the shared array serves every slot).
+      const wired   = assignPorts(portSchemaFor(model), attachments)
       const result  = await providers.generateImage(
-        model, prompt, quality, size, attachments, null, null, callContext,
+        model, prompt, quality, size, wired, null, null, callContext,
         {
           watermark:    options.watermark ?? null,
           aspect_ratio: options.aspect_ratio ?? null,
@@ -328,8 +332,12 @@ async function runSlot(
       const videoWatermark:   boolean | null = options.watermark ?? null
       const videoAspectRatio: string  | null = options.aspect_ratio ?? null
       console.log(`${LOG} Slot[${index}] video options received: watermark=${JSON.stringify(options.watermark)} aspect_ratio=${JSON.stringify(options.aspect_ratio)} → forwarding watermark=${videoWatermark}`)
+      const wired = assignPorts(portSchemaFor(model), attachments)
+      if (wired.some(a => a.port)) {
+        console.log(`${LOG} Slot[${index}] ports: ${wired.map(a => a.port ?? '·').join(', ')}`)
+      }
       const result = await providers.generateVideo(
-        model, prompt, videoSize, videoDuration, attachments,
+        model, prompt, videoSize, videoDuration, wired,
         (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
         callContext,
         { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null },
@@ -564,7 +572,13 @@ export async function POST(req: Request) {
     if (!inp?.storagePath) continue
     try {
       const result = await processAttachment(user.id, inp.bucket, inp.storagePath, inp.mediaType, inp.fileName, inp.fileSize)
-      const attach: providers.Attachment = { buffer: result.buffer, mediaType: result.mediaType }
+      const attach: providers.Attachment = {
+        buffer: result.buffer, mediaType: result.mediaType,
+        // Callers may pre-declare the port (SYNC audio, explicit refs);
+        // anything unset is filled from the model's schema at call time.
+        port: typeof inp.port === 'string' ? inp.port : undefined,
+        wireSource: { kind: 'file', bucket: inp.bucket, path: inp.storagePath, name: inp.fileName },
+      }
       // Providers get the RESIZED copy's signed URL (1h) — images are
       // capped at 1920px server-side, so a 4K upload never reaches the
       // model at full size (output tops out around 2K anyway). Videos
@@ -614,7 +628,10 @@ export async function POST(req: Request) {
           // Fresh 1h signed URL for providers that take URLs (Alibaba video
           // edit, Grok) rather than inline bytes.
           const { data: pSigned } = await sb.storage.from(pBucket).createSignedUrl(pPath, 60 * 60)
-          parentAtts.push({ buffer: pBuffer, mediaType: pMedia, url: pSigned?.signedUrl } as providers.Attachment)
+          parentAtts.push({
+            buffer: pBuffer, mediaType: pMedia, url: pSigned?.signedUrl,
+            wireSource: { kind: 'row', row_id: pRow.id, slot: Math.max(0, pslots.indexOf(pick)) },
+          } as providers.Attachment)
           console.log(`${LOG} step input ${pi + 1}/${parentRows.length} from parent ${pRow.id} (${pBucket}/${pPath}, ${pBuffer.length}b)`)
         } else {
           console.warn(`${LOG} parent ${pRow.id} has no parseable output URL — skipped as an input`)
@@ -752,9 +769,22 @@ export async function POST(req: Request) {
       board_id:   boardIdForRun ?? rootIdForRun ?? xcreateRow.id,
       node_kind:  typeof nodeKind === 'string' && nodeKind ? nodeKind : null,
     }
-    const { error: linErr } = await sb.from('xcreates')
-      .update({ ...lineage, ...board })
+    // Typed wiring (migration 81) — the canonical record of what fed this
+    // run, port-named per the model's schema. Multi-model runs share one
+    // attachment set; wires are recorded through the FIRST model's schema
+    // (XDirect always runs exactly one model, so there it is exact).
+    // Its own retry tier: a database missing 81 must not cost the run its
+    // board lineage, only its wires.
+    const wires = (mode === 'text' || models.length === 0)
+      ? null
+      : toWires(assignPorts(portSchemaFor(models[0]), attachments))
+    let { error: linErr } = await sb.from('xcreates')
+      .update({ ...lineage, ...board, input_ports: wires && wires.length > 0 ? wires : null })
       .eq('id', xcreateRow.id)
+    if (linErr) {
+      console.warn(`${LOG} wiring update failed, retrying without input_ports (migration 81 run?):`, linErr.message)
+      ;({ error: linErr } = await sb.from('xcreates').update({ ...lineage, ...board }).eq('id', xcreateRow.id))
+    }
     if (linErr) {
       console.warn(`${LOG} board lineage update failed, retrying without board columns:`, linErr.message)
       const { error: linErr2 } = await sb.from('xcreates').update(lineage).eq('id', xcreateRow.id)

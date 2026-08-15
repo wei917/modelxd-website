@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
+import { PORT_COLORS } from '../../lib/ports'
 import ModelPickerDialog from './ModelPickerDialog'
 
 export type NodeKind = 'source' | 'input' | 'video' | 'shot'
@@ -63,6 +64,13 @@ export type CanvasNode = {
    *  behind like the reference pile. Click expands all takes to play side
    *  by side and pick one. The node's own fields are the ACTIVE take's. */
   takes?: CanvasNode[]
+  /** Typed inbound wires (migration 81, owner Aug 15: ComfyUI-style
+   *  ports): which PORT of this node's model each source fed —
+   *  first_frame, reference_image, reference_audio, … `from` is a node id
+   *  already resolved by board-nodes. Wired edges take the port type's
+   *  color and land on a port dot; plain parentIds edges remain for
+   *  anything unwired. */
+  wires?: Array<{ from: string; port: string; type: 'image' | 'audio' | 'video' }>
   /** The PROMPT INPUT node (owner, Aug 9: "the original input is not just
    *  references — we also provide prompts"): the film's brief, rendered
    *  as text instead of a thumbnail. */
@@ -550,17 +558,24 @@ export default function WorkflowCanvas({
     const out: CanvasNode[] = []
     for (const n of rawNodes) {
       const sid = memberOf.get(n.id)
+      // Typed wires follow their edges through the stack rebase.
+      const remapWires = (ws?: CanvasNode['wires']) =>
+        ws?.map(w => ({ ...w, from: memberOf.get(w.from) ?? w.from }))
       if (!sid) {
         const pids = [...new Set((n.parentIds ?? []).map(p => memberOf.get(p) ?? p))]
-        out.push({ ...n, parentIds: pids, parentId: pids[0] ?? null })
+        out.push({ ...n, parentIds: pids, parentId: pids[0] ?? null, wires: remapWires(n.wires) })
         continue
       }
       const st = stacks.get(sid)!
       if (st.active.id !== n.id) continue   // only the active take emits the stack
       const union = [...new Set(st.members.flatMap(m => m.parentIds ?? []).map(p => memberOf.get(p) ?? p))]
         .filter(p => p !== sid)
+      const wireUnion = (remapWires(st.members.flatMap(m => m.wires ?? [])) ?? [])
+        .filter(w => w.from !== sid)
+        .filter((w, i, arr) => arr.findIndex(x => x.from === w.from && x.port === w.port) === i)
       out.push({
         ...st.active, id: sid, parentIds: union, parentId: union[0] ?? null,
+        wires: wireUnion.length > 0 ? wireUnion : undefined,
         takes: [...st.members].sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? ''))),
       })
     }
@@ -574,7 +589,7 @@ export default function WorkflowCanvas({
   const [takesView, setTakesView] = useState<CanvasNode | null>(null)
   const [subSel, setSubSel] = useState<string[]>([])
   const subNodes = useMemo<CanvasNode[]>(() => (takesView?.takes ?? []).map(tk => ({
-    ...tk, parentIds: [], parentId: null, takes: undefined,
+    ...tk, parentIds: [], parentId: null, takes: undefined, wires: undefined,
   })), [takesView])
   // ── Native fullscreen for the whole board (owner, Aug 9) ─────────────
   const [isFs, setIsFs] = useState(false)
@@ -868,17 +883,26 @@ export default function WorkflowCanvas({
   const wires = nodes.flatMap(n => {
     const c = posOf(n.id)
     if (!c) return []
+    // Typed ports stagger their landings down the node's left edge, so
+    // first_frame / reference_image / reference_audio wires arrive at
+    // distinct, labeled dots instead of one anonymous midpoint.
+    const typed = (n.wires ?? []).filter(w => posOf(w.from))
+    const portNames = [...new Set(typed.map(w => w.port))]
+    const portY = new Map(portNames.map((name, i) =>
+      [name, NODE_H / 2 + (i - (portNames.length - 1) / 2) * 16] as const))
     return layout.parentsOf(n).flatMap(pid => {
       const p = posOf(pid)
       if (!p) return []
       const lane = laneOf(pid)
+      const tw = typed.find(w => w.from === pid)
       const x1 = p.x + NODE_W, y1 = p.y + NODE_H / 2
-      const x2 = c.x,          y2 = c.y + NODE_H / 2
+      const x2 = c.x,          y2 = c.y + (tw ? portY.get(tw.port)! : NODE_H / 2)
       const yB = corridorY + lane * 8
       const xd = x1 + 16 + lane * 7          // drop column, inside the gap
       const xu = x2 - 16 - lane * 7          // rise column, inside the gap
       const r  = 10
       const lit = sel.has(n.id) || sel.has(pid)
+      const color = tw ? PORT_COLORS[tw.type] : wireColor(pid)
       // Same column (the story grid stacks a chained cut under its source):
       // a short loop out the right side instead of the corridor detour.
       if (Math.abs(p.x - c.x) < 1) {
@@ -886,8 +910,8 @@ export default function WorkflowCanvas({
         return [{
           key: `${pid}->${n.id}`,
           d: `M ${x1} ${y1} C ${x1 + 44 + lane * 6} ${y1}, ${x2r + 44 + lane * 6} ${y2}, ${x2r} ${y2}`,
-          lit,
-          color: wireColor(pid),
+          lit, color,
+          px: x2r, py: y2, port: tw?.port, right: true,
         }]
       }
       return [{
@@ -900,8 +924,8 @@ export default function WorkflowCanvas({
           `L ${xu} ${y2 + r}`, `Q ${xu} ${y2} ${xu + r} ${y2}`,
           `L ${x2} ${y2}`,
         ].join(' '),
-        lit,
-        color: wireColor(pid),
+        lit, color,
+        px: x2, py: y2, port: tw?.port, right: false,
       }]
     })
   })
@@ -990,6 +1014,21 @@ export default function WorkflowCanvas({
               key={w.key} d={w.d} fill="none" stroke={w.color}
               strokeWidth={w.lit ? 2.5 : 2} strokeOpacity={w.lit ? 0.95 : 0.55}
             />
+          ))}
+          {/* Typed wires land on PORT DOTS with their role named — the
+              ComfyUI grammar (owner, Aug 15): the wire says WHAT it feeds
+              (first_frame, reference_image, reference_audio), not just
+              that a connection exists. */}
+          {wires.filter(w => w.port).map(w => (
+            <g key={`${w.key}::port`} opacity={w.lit ? 0.95 : 0.7}>
+              <circle cx={w.px} cy={w.py} r={3.5} fill={w.color} stroke="rgba(0,0,0,0.55)" strokeWidth={1.25} />
+              <text
+                x={w.right ? w.px + 7 : w.px - 7} y={w.py + 3}
+                textAnchor={w.right ? 'start' : 'end'}
+                style={{ fontSize: 8.5, fontFamily: 'var(--mono)', letterSpacing: '0.04em' }}
+                fill={w.color}
+              >{w.port}</text>
+            </g>
           ))}
         </svg>
         {/* Scene boxes render under the nodes, so node clicks/drags still
