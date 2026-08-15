@@ -1958,10 +1958,9 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 /* Landing (no conversation yet): the director + templates are the whole
    page — one centred column, no empty stage beside it (owner, Aug 10). */
 .xdirect-split.is-landing {
-  /* Standard 1200 arena now (owner, Aug 14) — centring no longer orphans
-     the headline, so the landing column sits centred like every page. */
-  grid-template-columns: minmax(0, 820px);
-  justify-content: center;
+  /* XGame's page language (owner, Aug 14: "check XGame") — full-width
+     arena, big art cards, setup below. One column spanning the arena. */
+  grid-template-columns: 1fr;
 }
 .xdirect-split.is-landing .xdirect-chat {
   position: static;         /* no sticky pinning on the landing */

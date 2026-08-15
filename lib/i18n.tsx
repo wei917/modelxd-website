@@ -678,7 +678,7 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.estcost':     { en: 'Estimated Cost ~', 'zh-Hant': '預估費用 ~', 'zh-Hans': '预估费用 ~', ja: '推定コスト ~', ko: '예상 비용 ~' },
   'xcreate.addcredits':  { en: 'Add credits', 'zh-Hant': '加值', 'zh-Hans': '充值', ja: 'クレジット追加', ko: '크레딧 충전' },
   'xcreate.lowbalance':  { en: 'Not enough credits. Balance:', 'zh-Hant': '點數不足。餘額：', 'zh-Hans': '点数不足。余额：', ja: 'クレジット不足。残高：', ko: '크레딧 부족. 잔액:' },
-  'xdirector.skills':      { en: 'Templates', 'zh-Hant': '模板', 'zh-Hans': '模板', ja: 'テンプレート', ko: '템플릿' },
+  'xdirector.skills':      { en: 'Choose a template', 'zh-Hant': '選擇模板', 'zh-Hans': '选择模板', ja: 'テンプレートを選ぶ', ko: '템플릿 선택' },
   'xdirector.skillactive': { en: 'skill', 'zh-Hant': '技能', 'zh-Hans': '技能', ja: 'スキル', ko: '스킬' },
   'xdirector.plan':      { en: 'PLAN', 'zh-Hant': '方案', 'zh-Hans': '方案', ja: 'プラン', ko: '플랜' },
   'xdirector.generate':  { en: 'Generate', 'zh-Hant': '開始生成', 'zh-Hans': '开始生成', ja: '生成する', ko: '생성하기' },
