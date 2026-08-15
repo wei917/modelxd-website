@@ -83,9 +83,12 @@ export async function generateVideo(
     content.push({ type: 'audio_url', audio_url: { url: asUrl(a) }, role: 'reference_audio' })
   }
 
-  const ratio = imageAtts.length > 0
-    ? 'adaptive'
-    : (options?.aspect_ratio && RATIOS.has(options.aspect_ratio) ? options.aspect_ratio : '16:9')
+  // 'adaptive' follows the FIRST FRAME's orientation — correct when a frame
+  // is pinned, an accident in reference mode (Aug 14: a portrait reference
+  // photo produced a portrait MV shot that pillarboxed the 16:9 edit).
+  // Reference mode pins nothing, so the requested aspect governs.
+  const wantRatio = options?.aspect_ratio && RATIOS.has(options.aspect_ratio) ? options.aspect_ratio : '16:9'
+  const ratio = (imageAtts.length > 0 && !referenceMode) ? 'adaptive' : wantRatio
 
   const body = { model: model.model_name, content, duration, resolution, ratio }
   console.log(`${TAG} create ${imageAtts.length > 0 ? 'i2v' : 't2v'} duration=${duration}s resolution=${resolution} ratio=${ratio} images=${imageAtts.length} audio=${audioAtts.length}`)

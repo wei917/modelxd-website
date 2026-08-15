@@ -9,7 +9,7 @@ metadata:
   banner: "/xdirect/skills/music-video.webp"
   color: "#7c3aed"
   title: "Music Video"
-  version: "2.1"
+  version: "3.0"
   category: music
   aspect: "ask"
   default_duration: "6"
@@ -360,6 +360,38 @@ and they cost cents.
 - The title card is the cheapest place the whole look is stated once — grade,
   grain, typography, restraint. Make it first if the user wants one; it doubles
   as a look test.
+
+## SYNC mode — when the song itself drives the shot (H3)
+
+A model whose input_modalities include audio (MiniMax H3 today) can take the
+SONG SEGMENT as a generation input: the clip comes back already performed to
+that exact stretch of track — lips, rhythm and emotional beats follow the
+audio natively. For sung/performance scenes this replaces the mute-and-mix
+workaround entirely. The rules, all probed live (Aug 14):
+
+- **The scene's audio slice is the input.** Slice the user's song by the
+  scene's timestamps and attach it (reference audio is FREE as input on H3).
+  The prompt still ends with: "She sings the exact words heard in the audio."
+- **SYNC costs the pinned frame.** H3's frame mode and reference mode are
+  exclusive: with audio present, the cast images ride as reference_image —
+  LIKENESS carries, the approved still's exact framing does not (the card's
+  partial-frame ⚠ trade). Chain the look through wardrobe invariants and
+  setting description instead.
+- **State the aspect explicitly** — adaptive ratio follows the reference
+  photo's orientation (a portrait reference silently produced a portrait
+  shot inside a 16:9 edit).
+- **Sung takes ≤ 9-12s.** Lip-sync drifts near clip ends; 15s is the hard
+  cap. An 18s chorus is two takes split at a musical boundary, never one.
+- **Sung melody over double-time rap** — syllable density breaks sync.
+- **no_speech inverts for SYNC scenes only.** The cast sings on camera in a
+  SYNC scene; every non-SYNC scene keeps performance-only. Same board, both
+  modes — the sung chorus on H3, the narrative B-roll on KEYFRAME.
+- **The story spine still governs.** A synced mouth on a storyless shot is
+  a lookbook with lip-sync (proven the expensive way): the phone, the
+  glance, the 你, the turn — story beats go IN the SYNC prompt.
+- **Assembly**: H3 clips embed their own audio; the final edit still lays
+  the ORIGINAL track over the stitch — sync survives because generation
+  followed the same timeline, and the master recording always sounds better.
 
 ## Modes — KEYFRAME by default
 
