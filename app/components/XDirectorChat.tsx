@@ -1533,37 +1533,33 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               <div style={{ fontSize: 11, fontFamily: 'var(--mono)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--muted)', marginBottom: 10 }}>
                 {t('xdirector.skills')}
               </div>
-              <div className="xd-skills-grid">
+              <div className="xt-tpl-grid">
                 {skills.map(sk => {
                   const on = activeSkill === sk.name
-                  // Banner from the skill's own metadata, with graceful
-                  // fallbacks so a dropped-in SKILL.md still looks right.
                   const emoji = sk.metadata?.emoji || '🎬'
                   const color = sk.metadata?.color || '#4a4c52'
                   const banner = sk.metadata?.banner
                   const title = sk.metadata?.title || sk.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                  const category = sk.metadata?.category
                   return (
                     <button
                       key={sk.name}
-                      className={on ? 'xd-skill is-on' : 'xd-skill'}
+                      className={on ? 'xt-tpl xd-tpl is-on' : 'xt-tpl xd-tpl'}
                       onClick={() => setActiveSkill(on ? null : sk.name)}
                     >
-                      {/* Generated art banner when the skill ships one;
-                          emoji-on-gradient is the fallback for any skill
-                          without one (e.g. a dropped-in SKILL.md). */}
-                      <span className="xd-skill-banner" style={banner ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)` }}>
+                      <span className="xt-tpl-banner" style={banner ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
                         {banner
                           // eslint-disable-next-line @next/next/no-img-element
-                          ? <img src={banner} alt="" loading="lazy" className="xd-skill-img" />
+                          ? <img src={banner} alt="" loading="lazy" />
                           : <span aria-hidden>{emoji}</span>}
-                        {on && <span className="xd-skill-check" aria-hidden>✓</span>}
                       </span>
-                      <span className="xd-skill-body">
-                        {/* Category tag removed (owner, Aug 11) — the
-                            banner already says what the skill is, and the
-                            chip was crowding the name. */}
-                        <span className="xd-skill-head" title={sk.description}>
-                          <span className="xd-skill-name">{title}</span>
+                      <span className="xt-tpl-body">
+                        <span className="xt-tpl-text">
+                          <span className="xt-tpl-head">
+                            <span className="xt-tpl-name">{title}</span>
+                            {category && <span className="xt-tpl-seats">{category}</span>}
+                          </span>
+                          <span className="xt-tpl-blurb" title={sk.description}>{sk.description}</span>
                         </span>
                       </span>
                     </button>

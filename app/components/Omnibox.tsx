@@ -37,7 +37,7 @@ type Row = {
  * yet. A block-list would quietly leak onto the next marketing page someone
  * adds; this way a new route has to opt in. (CC, Aug 5)
  */
-const SURFACES = ['/xduel', '/xcreate', '/xdirect', '/xtalk', '/xvote', '/xboard', '/profile', '/xdirector']
+const SURFACES = ['/xduel', '/xcreate', '/xdirect', '/xtalk', '/xgame', '/xvote', '/xboard', '/profile', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const PAGES: { key: string; i18n: string; href: string }[] = [
