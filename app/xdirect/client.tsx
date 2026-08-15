@@ -194,9 +194,13 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
 
   return (
     <div className="xduel-page">
-      <div className="arena xcreate-arena" style={{ maxWidth: 1560 }}>
-        <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xdirector.eyebrow')}</Link>
-        <h1 className="page-headline" style={{ marginBottom: 24 }}>{t('xdirector.title')}</h1>
+      {/* Landing wears the site-standard centred 1200 arena like every
+          other page; only the working stage (chat + canvas) earns 1560. */}
+      <div className="arena xcreate-arena" style={{ maxWidth: started ? 1560 : undefined }}>
+        <div style={!started ? { maxWidth: 820, margin: '0 auto' } : undefined}>
+          <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xdirector.eyebrow')}</Link>
+          <h1 className="page-headline" style={{ marginBottom: 24 }}>{t('xdirector.title')}</h1>
+        </div>
 
         {/* Before the first turn the stage is empty noise — hide it and let
             the director + templates be the whole landing (owner, Aug 10).

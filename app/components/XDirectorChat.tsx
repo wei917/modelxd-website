@@ -1515,8 +1515,6 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // (CC, Aug 6)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 18, lineHeight: 1.6, marginTop: -8, flexShrink: 0 }}>{t('xdirector.subtitle')}</p>
-
       {/* The "open canvas" escape hatch that used to sit here is gone: on
           /xdirect the canvas IS alongside the chat. (CC, Aug 5) */}
 

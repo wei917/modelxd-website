@@ -1958,10 +1958,10 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 /* Landing (no conversation yet): the director + templates are the whole
    page — one centred column, no empty stage beside it (owner, Aug 10). */
 .xdirect-split.is-landing {
-  /* Align the director column under the headline (left), not centred —
-     a centred column left the headline orphaned to the side. */
+  /* Standard 1200 arena now (owner, Aug 14) — centring no longer orphans
+     the headline, so the landing column sits centred like every page. */
   grid-template-columns: minmax(0, 820px);
-  justify-content: start;
+  justify-content: center;
 }
 .xdirect-split.is-landing .xdirect-chat {
   position: static;         /* no sticky pinning on the landing */
