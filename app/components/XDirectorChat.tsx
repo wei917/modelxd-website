@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
+import MusicVideoSetup from '../components/MusicVideoSetup'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import { isSubmitEnter } from '../../lib/ime'
 
@@ -154,6 +155,10 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }, [])
   const [atts,     setAtts]     = useState<Attachment[]>([])
+  // The template setup form (owner, Aug 14): shown when the music-video
+  // skill is armed on an EMPTY conversation. Its fields pre-answer the
+  // skill's one permitted ask turn, so the first director turn is the plan.
+  const [setupDismissed, setSetupDismissed] = useState(false)
   const [busy,     setBusy]     = useState<'idle' | 'thinking' | 'generating'>('idle')
   // What the chat is doing between Enter and the first reply — uploading,
   // transcribing, or waiting on the director. Shown as a live progress
@@ -1238,11 +1243,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   }
 
   // ── Send ──────────────────────────────────────────────────────────────────
-  const send = async () => {
-    const text = input.trim()
+  const send = async (overrideText?: string, overrideAtts?: Attachment[]) => {
+    const text = (overrideText ?? input).trim()
+    const outgoing = overrideAtts ?? atts
     // A file alone is a valid send now (owner, Aug 10): dropping in a song
     // or a lyric sheet with no words typed still starts an MV.
-    if ((!text && atts.length === 0) || busy !== 'idle') return
+    if ((!text && outgoing.length === 0) || busy !== 'idle') return
     genCountRef.current = 0
     reArmedRef.current.clear()
 
@@ -1253,7 +1259,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // frozen. Claim the turn first — bubble up, composer cleared, busy on,
     // and the conversation id minted so the URL becomes this chat's own
     // page right away — then do the slow work behind a progress line.
-    const sending = atts
+    const sending = outgoing
     setBusy('thinking')
     setPrep(sending.length > 0 ? t('xd.prep.upload') : t('xd.prep.think'))
     pushBubble({ role: 'user', text, files: sending.map(a => a.fileName) })
@@ -1576,6 +1582,17 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             </div>
           )}
 
+          {/* Template setup form: music-video armed + fresh chat. Fields
+              pre-answer the skill's ask turn; Start sends the structured
+              brief with the files in one shot. */}
+          {activeSkill === 'music-video' && bubbles.length === 0 && !setupDismissed && (
+            <MusicVideoSetup
+              busy={busy !== 'idle'}
+              onStart={(brief, formAtts) => { void send(brief, formAtts) }}
+              onSkip={() => setSetupDismissed(true)}
+            />
+          )}
+
           {/* Once the chat is running the skill is locked in — show it. */}
           {activeSkill && bubbles.length > 0 && (
             <div style={{ alignSelf: 'flex-start', fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--muted)', letterSpacing: '0.06em' }}>
@@ -1704,7 +1721,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             />
             {/* A song or lyric sheet alone is a valid send — don't gate on
                 typed text (owner, Aug 10). */}
-            <button onClick={send} disabled={busy !== 'idle' || (!input.trim() && atts.length === 0)} style={{
+            <button onClick={() => void send()} disabled={busy !== 'idle' || (!input.trim() && atts.length === 0)} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy !== 'idle' ? 'wait' : 'pointer', flexShrink: 0,
               opacity: busy !== 'idle' || (!input.trim() && atts.length === 0) ? 0.5 : 1,

@@ -59,6 +59,14 @@ Ask, in ONE ask_user turn if possible, only what the skill cannot know:
   video or an artist's particular piece.
 - **Title card text** — exact characters, only if a title card is wanted and
   the text isn't obvious from the song.
+- **ANSWERED IN THE BRIEF = CLOSED.** The setup form (and any thorough
+  first message) states orientation, style, duration, title and cast choice
+  up front. If the message contains the answer — "create original leads",
+  "16:9", "no title card" — that question no longer exists; asking it again
+  is a contract violation (live, Aug 14: the brief said "create original
+  leads to fit the song" and the director asked "your photos or an original
+  pair?" anyway). When every ask-item is answered, your first turn IS the
+  storyboard.
 - **The cast, as an OFFER, never a blocker** — one line in the same turn: "if
   you want a specific person as the lead, attach 1-3 photos now — otherwise
   I'll create an original cast to fit the song." Without this line the user
