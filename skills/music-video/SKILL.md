@@ -9,7 +9,7 @@ metadata:
   banner: "/xdirect/skills/music-video.webp"
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.1"
+  version: "3.2"
   category: music
   aspect: "ask"
   default_duration: "6"
@@ -422,6 +422,30 @@ workaround entirely. The rules, all probed live (Aug 14):
 - **Assembly**: H3 clips embed their own audio; the final edit still lays
   the ORIGINAL track over the stitch — sync survives because generation
   followed the same timeline, and the master recording always sounds better.
+
+### H3 attachment tags and in-take cuts (probed live, Aug 15)
+
+H3's prompt can ADDRESS its attachments by position — `<Picture 1>`,
+`<Picture 2>`, `<Audio 1>`, numbered in attachment order (images first,
+then audio, matching how we send them). All three verified on one take:
+
+- **Bind identities to tags.** "Use <Picture 1> to lock the young woman's
+  identity exactly — face, hair, green collared shirt." Likeness held from
+  a single frontal reference.
+- **Containment works.** "Use <Picture 2> ONLY for the young man appearing
+  in CUT 2" kept him out of the first shot entirely — something prose
+  reference prompting cannot guarantee. Cast a member into a specific cut
+  by saying exactly this.
+- **`CUT n:` / `TRANSITION:` build a real edit inside ONE generation.**
+  Two distinct shot setups (solo close-medium → wider two-shot) joined by
+  a literal motion-streaked whip pan, exactly where the prompt put it.
+  A 12s SYNC take can therefore carry TWO cuts — fewer stitches, and
+  lip-sync survives across the internal cut because the audio timeline
+  never breaks. Scripted business inside a cut executes too ("he looks up
+  from his glowing phone" — he does, mid-cut).
+- Plan SYNC scenes as 1-2 cuts per take, splitting at musical boundaries;
+  write each cut's framing and business on its own `CUT n:` line and name
+  the transition explicitly.
 
 ## Modes — KEYFRAME by default
 
