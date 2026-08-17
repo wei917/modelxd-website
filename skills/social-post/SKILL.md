@@ -7,6 +7,7 @@ metadata:
   author: ModelXD
   emoji: "📱"
   banner: "/xdirect/skills/social-post.webp"
+  tagline: "Your photos, one look, sized for every platform you post."
   color: "#14b8a6"
   title: "Social Post"
   version: "2.0"

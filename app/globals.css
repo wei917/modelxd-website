@@ -1745,17 +1745,24 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   overflow: hidden;
   background: #14161a;
 }
-.xt-tpl-banner img {
+.xt-tpl-banner img,
+.xt-tpl-banner video {
   width: 100%; height: 100%;
   object-fit: cover;
   display: block;
   /* Unselected banners sit back a step so the chosen card is the only one
      at full strength — the check alone is too small to carry that on its own. */
   filter: saturate(.85) brightness(.86);
-  transition: filter .18s ease, transform .4s ease;
+  transition: filter .18s ease, transform .6s ease;
 }
 .xt-tpl:hover .xt-tpl-banner img,
-.xt-tpl.is-on .xt-tpl-banner img { filter: none; }
+.xt-tpl:hover .xt-tpl-banner video,
+.xt-tpl.is-on .xt-tpl-banner img,
+.xt-tpl.is-on .xt-tpl-banner video { filter: none; }
+/* The banner leans in under the cursor — and where a card carries a result
+   loop (banner_video), hover also plays it: the card IS the demo. */
+.xt-tpl:hover .xt-tpl-banner img,
+.xt-tpl:hover .xt-tpl-banner video { transform: scale(1.045); }
 
 /* ── body ── */
 .xt-tpl-body {

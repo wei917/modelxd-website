@@ -7,6 +7,7 @@ metadata:
   author: ModelXD
   emoji: "📦"
   banner: "/xdirect/skills/product-video-pipeline.webp"
+  tagline: "One photo becomes the sales film — angles built, scene designed, motion earned."
   color: "#3c6ee8"
   title: "Product Video"
   version: "1.1"

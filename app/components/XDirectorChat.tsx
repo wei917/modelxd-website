@@ -1540,19 +1540,30 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                   const emoji = sk.metadata?.emoji || '🎬'
                   const color = sk.metadata?.color || '#4a4c52'
                   const banner = sk.metadata?.banner
+                  // A short result LOOP beats a poster (ComfyUI study, Aug 17:
+                  // the card is the demo). Poster frame at rest; hover plays.
+                  const bannerVideo = sk.metadata?.banner_video
                   const title = sk.metadata?.title || sk.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                   const category = sk.metadata?.category
+                  // Card copy is the TAGLINE — one written line, not the
+                  // skill's operational description dumped on a customer.
+                  // No model names on cards: the platform is trying them all.
+                  const tagline = sk.metadata?.tagline || sk.description
                   return (
                     <button
                       key={sk.name}
                       className={on ? 'xt-tpl xd-tpl is-on' : 'xt-tpl xd-tpl'}
                       onClick={() => setActiveSkill(on ? null : sk.name)}
+                      onMouseEnter={e => { e.currentTarget.querySelector('video')?.play().catch(() => {}) }}
+                      onMouseLeave={e => { const v = e.currentTarget.querySelector('video'); if (v) { v.pause(); v.currentTime = 0 } }}
                     >
-                      <span className="xt-tpl-banner" style={banner ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
-                        {banner
-                          // eslint-disable-next-line @next/next/no-img-element
-                          ? <img src={banner} alt="" loading="lazy" />
-                          : <span aria-hidden>{emoji}</span>}
+                      <span className="xt-tpl-banner" style={banner || bannerVideo ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
+                        {bannerVideo
+                          ? <video src={bannerVideo} poster={banner || undefined} muted loop playsInline preload="metadata" />
+                          : banner
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={banner} alt="" loading="lazy" />
+                            : <span aria-hidden>{emoji}</span>}
                       </span>
                       <span className="xt-tpl-body">
                         <span className="xt-tpl-text">
@@ -1560,7 +1571,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                             <span className="xt-tpl-name">{title}</span>
                             {category && <span className="xt-tpl-seats">{category}</span>}
                           </span>
-                          <span className="xt-tpl-blurb" title={sk.description}>{sk.description}</span>
+                          <span className="xt-tpl-blurb" title={sk.description}>{tagline}</span>
                         </span>
                       </span>
                     </button>
