@@ -25,6 +25,8 @@ const NAV_LINKS = [
   { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game', feature: 'xtalk' },
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
+  // XDev — API keys + MCP for external agents. Own beta gate.
+  { href: '/xdev',        i18n: 'nav.xdev',        protected: true,  icon: 'dev', feature: 'xdev' },
 ]
 
 // Inline SVG icons (no icon-font dependency). 18px, inherit color via
@@ -42,6 +44,8 @@ function NavIcon({ name }: { name: string }) {
     // Two bubbles, overlapping — one voice answering another, which is the
     // whole difference between this and every other page.
     case 'talk':   return (<svg {...p}><path d="M8 13H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="M6 13v3l3-3"/><path d="M19 20h-9a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2z"/><path d="M18 20v3l-3-3"/></svg>)
+    // Angle brackets around a key stem: agents plug in here.
+    case 'dev':    return (<svg {...p}><path d="M8 6l-5 6l5 6"/><path d="M16 6l5 6l-5 6"/><path d="M12 9v6"/><circle cx="12" cy="9" r="0.8" fill="currentColor"/></svg>)
     default:       return null
   }
 }

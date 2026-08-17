@@ -407,14 +407,27 @@ async function runSlot(
 }
 
 export async function POST(req: Request) {
-  // Auth
+  // Auth — a browser session OR an API key (the MCP / external-agent path,
+  // Aug 17). A bearer token resolves to the same user id and bills the same
+  // wallet; nothing downstream knows the difference except the spend-cap
+  // gate and the per-token spend record at settle.
   const { createSupabaseServer } = await import('@/lib/supabase-server')
+  const { resolveApiToken, tokenCapReached, recordTokenSpend } = await import('@/lib/api-token')
   const supabaseUser = await createSupabaseServer()
-  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-  if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user: sessionUser } } = await supabaseUser.auth.getUser()
+  const apiToken = sessionUser ? null : await resolveApiToken(req.headers.get('authorization'))
+  const user = sessionUser ?? (apiToken ? { id: apiToken.userId, email_confirmed_at: 'via-token' } as any : null)
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (apiToken && tokenCapReached(apiToken)) {
+    return Response.json(
+      { error: 'spend_cap_reached', message: `This API key has reached its spend cap ($${apiToken.spendCapUsd!.toFixed(2)}). Raise the cap on the XDev page.` },
+      { status: 402 },
+    )
+  }
 
   // Verified-user gate. Google OAuth auto-confirms email at sign-up, so
-  // this is a no-op today; protects future email/password flows.
+  // this is a no-op today; protects future email/password flows. Token
+  // users passed it when they signed in to mint the key.
   if (!user.email_confirmed_at) {
     return Response.json(
       { error: 'email_not_verified', message: 'Please verify your email before using XCreate.' },
@@ -839,6 +852,8 @@ export async function POST(req: Request) {
   // comes back automatically.
   const deltaCents = totalCostCents - reservedCents
   const settleMeta = { mode, modelCount: models.length, jobId: job.id, discount, preDiscountCents, reservedCents, actualCents: totalCostCents }
+  // Per-key spend record (MCP path) — fire-and-forget, actual settled cost.
+  if (apiToken) recordTokenSpend(apiToken.tokenId, totalCostCents / 100)
   if (deltaCents > 0) {
     try {
       await debitCredits({

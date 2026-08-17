@@ -5,12 +5,24 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
+import { resolveApiToken } from '@/lib/api-token'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const sb = await createSupabaseServer()
-  const { data: { user } } = await sb.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  // Session cookie OR API key (MCP check_job, Aug 17). The token path uses
+  // the service client — RLS has no auth context there — with the explicit
+  // job.user_id ownership check below doing the guarding for both paths.
+  let sb: any = await createSupabaseServer()
+  let userId: string | null = (await sb.auth.getUser()).data.user?.id ?? null
+  if (!userId) {
+    const tok = await resolveApiToken(req.headers.get('authorization'))
+    if (tok) {
+      userId = tok.userId
+      sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } })
+    }
+  }
+  if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: job, error: jobErr } = await sb
     .from('xcreate_jobs')
@@ -19,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .single()
 
   if (jobErr || !job) return Response.json({ error: 'Not found' }, { status: 404 })
-  if (job.user_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
+  if (job.user_id !== userId) return Response.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data: slots } = await sb
     .from('xcreate_job_slots')
@@ -39,7 +51,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       updatedAt: job.updated_at,
       completedAt: job.completed_at,
     },
-    slots: (slots ?? []).map(s => ({
+    slots: (slots ?? []).map((s: any) => ({
       slotIndex:    s.slot_index,
       modelId:      s.model_id,
       provider:     s.provider,
