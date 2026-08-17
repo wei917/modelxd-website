@@ -2008,7 +2008,13 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .xd-tpl .xt-tpl-blurb {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
+  /* Tighter multi-line copy (owner, Aug 17: too much air between lines). */
+  line-height: 1.32;
+  padding-top: 2px;
 }
+/* The picture leads (owner, Aug 17: "make the image higher") — XDirect
+   banners run near-16:9 while XGame keeps its wide strip. */
+.xd-tpl .xt-tpl-banner { aspect-ratio: 16 / 9; }
 
 /* One row of skills on the landing: the composer got taller (owner,
    Aug 10) and a two-row card grid pushed it under the fold. Four across

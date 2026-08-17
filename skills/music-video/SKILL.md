@@ -6,7 +6,7 @@ compatibility: Designed for ModelXD XDirect (storyboard video with reference ima
 metadata:
   author: ModelXD
   emoji: "🎬"
-  banner: "/xdirect/skills/music-video.webp"
+  banner: "/xdirect/skills/music-video-cover.webp"
   banner_video: "/xdirect/skills/music-video-loop.mp4"
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"

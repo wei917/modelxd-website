@@ -1554,12 +1554,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                       key={sk.name}
                       className={on ? 'xt-tpl xd-tpl is-on' : 'xt-tpl xd-tpl'}
                       onClick={() => setActiveSkill(on ? null : sk.name)}
-                      onMouseEnter={e => { e.currentTarget.querySelector('video')?.play().catch(() => {}) }}
-                      onMouseLeave={e => { const v = e.currentTarget.querySelector('video'); if (v) { v.pause(); v.currentTime = 0 } }}
                     >
                       <span className="xt-tpl-banner" style={banner || bannerVideo ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
                         {bannerVideo
-                          ? <video src={bannerVideo} poster={banner || undefined} muted loop playsInline preload="metadata" />
+                          // The loop IS the banner — always playing (owner,
+                          // Aug 17: the static thumbnail before hover read as
+                          // a bait-and-switch). Poster is the loop's own
+                          // first frame, so load-in is seamless, not a swap.
+                          ? <video src={bannerVideo} poster={banner || undefined} autoPlay muted loop playsInline preload="auto" />
                           : banner
                             // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={banner} alt="" loading="lazy" />
