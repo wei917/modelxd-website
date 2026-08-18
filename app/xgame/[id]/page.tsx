@@ -4,7 +4,6 @@
 // return), so a guessed URL gets a 404-shaped error, not a game.
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { hasFeature } from '@/lib/features'
 import XGameClient from '../client'
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 }
 
 export default async function XGameSessionPage({ params }: { params: Promise<{ id: string }> }) {
-  if (!(await hasFeature('xtalk'))) notFound()
   const { id } = await params
   return <XGameClient resumeId={id} />
 }

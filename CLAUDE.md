@@ -45,19 +45,19 @@ rating system (XDRating) surfaced on XBoard.
 
 ## The Surfaces
 
-Seven creation/consumption surfaces. The former betas (XDirect, XTalk,
-XGame, canvas) were opened to every signed-in account on Aug 18 (`*` in the
-FEATURE_ vars); XDev is the only email-gated surface left.
+Seven creation/consumption surfaces. The beta gates on XDirect, XTalk,
+XGame and the canvas were REMOVED outright on Aug 18 (code and env vars,
+not just `*`) — XDev is the only email-gated surface left.
 
 | Surface | Route | Auth | Notes |
 |---|---|---|---|
 | **XDuel** | `/xduel` | required | Free front door. Daily quota per mode. |
 | **XCreate** | `/xcreate` | required | Paid studio, up to 4 models. |
-| **XTalk** | `/xtalk` | required | Discussion rooms. Open (`FEATURE_XTALK_EMAILS=*`). |
-| **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Same flag as XTalk — open. |
+| **XTalk** | `/xtalk` | required | Discussion rooms. Open. |
+| **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Open. |
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
-| **XDirect** | `/xdirect` | required | The director + canvas stage. Open (`FEATURE_XDIRECTOR_EMAILS=*`). |
+| **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Beta — `FEATURE_XDEV_EMAILS`. |
 
 ### XDuel — `/xduel`
@@ -75,7 +75,7 @@ Server shell (`page.tsx`) resolves feature flags before the client renders, so
 gated entrances are correct on first paint and never flash for a user who
 isn't entitled. All the actual UI is in `client.tsx`.
 
-**The canvas board** (`WorkflowCanvas.tsx`, gated by `FEATURE_CANVAS_EMAILS`)
+**The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting
 videos, wired together. Multi-select nodes to feed several images into one
 generation — that's how a product-video pipeline gets built. Toggle between
@@ -405,9 +405,10 @@ guarantees users only see their own rows.
 
 Three independent systems — don't confuse them.
 
-**1. Per-user beta gates** (`lib/features.ts`) — email allowlists in env vars:
-`FEATURE_CANVAS_EMAILS`, `FEATURE_XDIRECTOR_EMAILS`, `FEATURE_XTALK_EMAILS`,
-`FEATURE_XDEV_EMAILS`. All but xdev are `*` (open) since Aug 18.
+**1. Per-user beta gates** (`lib/features.ts`) — email allowlists in env vars.
+ONE gate remains: `FEATURE_XDEV_EMAILS` (XDev page, key minting). The
+canvas/xdirector/xtalk gates were deleted from code Aug 18 — those surfaces
+are auth-only now. New betas add a key to `Feature` + an env var.
 Anyone on `ADMIN_EMAILS` passes every gate (so you can't lock yourself out); a
 single `*` opens the feature to everyone, which is how a beta ends without a
 code change. Adding a tester needs a redeploy — if that becomes annoying, swap
@@ -564,10 +565,7 @@ YOUTUBE_API_KEY=                      # Google Cloud → enable YouTube Data API
 
 # Access control
 ADMIN_EMAILS=wei917@gmail.com         # comma-separated; passes every gate
-FEATURE_CANVAS_EMAILS=*               # open since Aug 18
-FEATURE_XDIRECTOR_EMAILS=*            # open since Aug 18
-FEATURE_XTALK_EMAILS=*                # "*" opens a beta to everyone (also XGame)
-FEATURE_XDEV_EMAILS=                  # the one remaining beta gate
+FEATURE_XDEV_EMAILS=                  # the one remaining beta gate ("*" = everyone)
 SITE_PASSWORD=                        # unset = site gate disabled
 
 # Ops / tuning

@@ -18,7 +18,6 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 
 const LOG = '[xcreate:inputs]'
 const TTL = 60 * 60 * 24   // 24h: a working session must outlive its links (owner, Aug 14: play showed 0:00 after a long-open tab — the 1h signatures had expired under it)
@@ -32,9 +31,6 @@ function serviceClient() {
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('canvas')
-  if (gate) return gate
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()

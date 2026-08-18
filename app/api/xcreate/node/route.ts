@@ -21,7 +21,6 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 
 const LOG = '[xcreate:node]'
 
@@ -34,9 +33,6 @@ function serviceClient() {
 }
 
 export async function DELETE(req: Request) {
-  const gate = await assertFeature('canvas')
-  if (gate) return gate
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()

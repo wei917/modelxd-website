@@ -20,7 +20,6 @@ export const maxDuration = 120
 
 import { getModelById } from '@/lib/models'
 import * as providers   from '@/lib/providers'
-import { assertFeature } from '@/lib/features'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { resolveVideoId } from '@/lib/youtube'
 
@@ -116,9 +115,6 @@ function sse(event: string, data: object) {
 }
 
 export async function POST(req: Request) {
-  const guard = await assertFeature('xtalk')
-  if (guard) return guard
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabase = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabase.auth.getUser()

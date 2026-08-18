@@ -19,7 +19,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 import { buildDirectorSystemPrompt } from '@/lib/xdirector-prompt'
 import { loadSkill, wrapSkillForPrompt, listSkillFiles, describeSkillFiles, readSkillFile } from '@/lib/skills'
 
@@ -356,9 +355,6 @@ function callAnthropicOnce(key: string, model: string, system: string, messages:
 // ── Route ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xdirector')
-  if (gate) return gate
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()

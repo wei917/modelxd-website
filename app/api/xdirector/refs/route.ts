@@ -20,7 +20,6 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 
 const LOG = '[xdirector:refs]'
 const TTL = 60 * 60 * 24   // a day: comfortably longer than a session
@@ -32,9 +31,6 @@ const serviceClient = () => createClient(
 )
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xdirector')
-  if (gate) return gate
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = await createSupabaseServer()
   const { data: { user } } = await supabaseUser.auth.getUser()

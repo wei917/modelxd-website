@@ -5,8 +5,6 @@
 // the arena outgrows it. 404 rather than 403: don't advertise what you
 // can't open.
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { hasFeature } from '@/lib/features'
 import XGameClient from './client'
 
 export const metadata: Metadata = {
@@ -15,6 +13,5 @@ export const metadata: Metadata = {
 }
 
 export default async function XGamePage() {
-  if (!(await hasFeature('xtalk'))) notFound()
   return <XGameClient />
 }

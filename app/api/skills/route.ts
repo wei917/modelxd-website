@@ -6,12 +6,8 @@
 export const runtime = 'nodejs'
 
 import { listSkills } from '@/lib/skills'
-import { assertFeature } from '@/lib/features'
 
 export async function GET() {
-  const gate = await assertFeature('xdirector')
-  if (gate) return gate
-
   const skills = await listSkills()
   return Response.json({ skills })
 }

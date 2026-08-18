@@ -6,11 +6,9 @@
 // in front: an ungated visitor sees a 404, not a redirect that advertises.
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
-import { hasFeature } from '@/lib/features'
 import XTalkClient from '../client'
 
 export default async function XTalkSessionPage({ params }: { params: Promise<{ id: string }> }) {
-  if (!(await hasFeature('xtalk'))) notFound()
   const { id } = await params
   // Type lookup only — ownership is enforced by the session API's load
   // action, so a guessed URL renders an empty room, not someone's talk.

@@ -17,7 +17,6 @@ export const maxDuration = 60
 
 import { createClient } from '@supabase/supabase-js'
 import { GoogleGenAI } from '@google/genai'
-import { assertFeature } from '@/lib/features'
 import { debitCredits } from '@/lib/credits'
 import { stableHead } from '@/lib/xcharacter-prompt'
 
@@ -41,8 +40,6 @@ const callVoice = (voice: string | null) =>
   voice && MALE_PRESETS.includes(voice) ? 'Charon' : 'Aoede'
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

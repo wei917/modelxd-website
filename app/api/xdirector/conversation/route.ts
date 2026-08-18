@@ -9,7 +9,6 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 
 const LOG = '[xdirector:convo]'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -29,9 +28,6 @@ async function requireUser() {
 }
 
 export async function GET(req: Request) {
-  const gate = await assertFeature('xdirector')
-  if (gate) return gate
-
   const user = await requireUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -71,9 +67,6 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xdirector')
-  if (gate) return gate
-
   const user = await requireUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 

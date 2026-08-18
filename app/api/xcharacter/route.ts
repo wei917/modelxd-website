@@ -5,7 +5,6 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 
 const svc = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,8 +17,6 @@ const MAX_CHARACTERS = 20   // per user — a roster, not a farm
 const clean = (v: any, max: number) => String(v ?? '').trim().slice(0, max)
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

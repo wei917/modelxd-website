@@ -4,7 +4,6 @@
 // flag server-side, 404 rather than 403.
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { hasFeature } from '@/lib/features'
 import CharacterPageClient from './client'
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 }
 
 export default async function CharacterPage({ params }: { params: Promise<{ id: string }> }) {
-  if (!(await hasFeature('xtalk'))) notFound()
   const { id } = await params
   return <CharacterPageClient charId={id} />
 }

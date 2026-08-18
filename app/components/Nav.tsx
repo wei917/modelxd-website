@@ -15,14 +15,9 @@ import BugReportLink from './BugReport'
 const NAV_LINKS = [
   { href: '/xduel',       i18n: 'nav.xduel',       protected: true,  icon: 'duel'   },
   { href: '/xcreate',     i18n: 'nav.xcreate',     protected: true,  icon: 'create' },
-  // XDirect — the director + canvas stage. Beta-gated like XTalk below; the
-  // clapperboard icon waited unused in NavIcon since July for exactly this.
-  { href: '/xdirect',     i18n: 'nav.xdirect',     protected: true,  icon: 'director', feature: 'xdirector' },
-  // Beta. Hidden until /api/features says this user has it — the route
-  // 404s for everyone else anyway, so advertising it would only confuse.
-  { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk', feature: 'xtalk' },
-  // Same gate as XTalk: the arena inherited werewolf's beta audience.
-  { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game', feature: 'xtalk' },
+  { href: '/xdirect',     i18n: 'nav.xdirect',     protected: true,  icon: 'director' },
+  { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk'   },
+  { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game'   },
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
   // XDev — API keys + MCP for external agents. Own beta gate.

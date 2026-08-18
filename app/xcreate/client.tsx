@@ -954,17 +954,16 @@ function OptGroup({ label, children, last }: {
   )
 }
 
-export type XCreateFeatures = { canvas: boolean; xdirector: boolean }
 
-export default function CreateClient({ features }: { features: XCreateFeatures }) {
+export default function CreateClient() {
   return (
     <Suspense fallback={null}>
-      <CreateStudio features={features} />
+      <CreateStudio />
     </Suspense>
   )
 }
 
-function CreateStudio({ features }: { features: XCreateFeatures }) {
+function CreateStudio() {
   useRequireAuth()
   const t = useT()
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
@@ -3077,7 +3076,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
             <div>
               {/* Strip ⇄ canvas toggle. The canvas is the ComfyUI-style
                   board: nodes + wires + click-to-branch (CC, July 27). */}
-              {features.canvas && (
+              {(
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
                 <button
                   onClick={() => setWfView(v => v === 'strip' ? 'canvas' : 'strip')}
@@ -4063,7 +4062,7 @@ function CreateStudio({ features }: { features: XCreateFeatures }) {
                     anything — the photos become source nodes on a fresh
                     board, and everything after that happens on the canvas.
                     Image mode only. ── */}
-                {phase === 'setup' && mode === 'image' && features.canvas && (
+                {phase === 'setup' && mode === 'image' && (
                   <div style={{ marginTop: 22, borderTop: '1px dashed var(--border2)', paddingTop: 16 }}>
                     <button
                       onClick={() => setPbOpen(o => !o)}

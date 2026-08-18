@@ -9,12 +9,9 @@
 
 export const runtime = 'nodejs'
 
-import { assertFeature } from '@/lib/features'
 import { resolveVideoId } from '@/lib/youtube'
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

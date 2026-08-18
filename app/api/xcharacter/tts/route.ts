@@ -17,7 +17,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { synthesizeSpeech, designVoice, VOICE_DESIGN_USD } from '@/lib/providers/alibaba'
 
@@ -45,8 +44,6 @@ const LANG_TYPE: Record<string, string> = {
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

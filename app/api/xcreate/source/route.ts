@@ -20,7 +20,6 @@ export const runtime     = 'nodejs'
 export const maxDuration = 120
 
 import { processAttachment } from '@/lib/attachment'
-import { assertFeature } from '@/lib/features'
 import { createClient }      from '@supabase/supabase-js'
 
 const LOG = '[xcreate:source]'
@@ -35,9 +34,6 @@ function serviceClient() {
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('canvas')
-  if (gate) return gate
-
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()

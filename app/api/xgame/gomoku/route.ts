@@ -16,7 +16,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 120
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 import { debitCredits } from '@/lib/credits'
 import * as providers from '@/lib/providers'
 import {
@@ -123,8 +122,6 @@ async function askMove(model: any, stone: Stone, board: Board, moves: Move[], ob
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

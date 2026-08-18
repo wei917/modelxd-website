@@ -21,7 +21,6 @@ export const maxDuration = 120
 import { createClient } from '@supabase/supabase-js'
 import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
-import { assertFeature } from '@/lib/features'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { stableHead } from '@/lib/xcharacter-prompt'
 
@@ -56,8 +55,6 @@ function timeGapNote(lastChatAt: string | null): string {
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

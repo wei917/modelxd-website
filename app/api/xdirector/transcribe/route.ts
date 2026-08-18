@@ -12,7 +12,6 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 import * as providers from '@/lib/providers'
 
 const LOG = '[xdirector:transcribe]'
@@ -31,9 +30,6 @@ async function requireUser() {
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xdirector')
-  if (gate) return gate
-
   const user = await requireUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 

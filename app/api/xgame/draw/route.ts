@@ -21,7 +21,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 import { matchAnswer, normalizeAnswer, DRAW_LANGS, type DrawLang } from '@/lib/drawsomething-engine'
 
 const LOG = '[xgame:draw]'
@@ -110,8 +109,6 @@ async function hostHint(lang: DrawLang, term: string, aliases: string[], wrongGu
 }
 
 export async function POST(req: Request) {
-  const gate = await assertFeature('xtalk')
-  if (gate) return gate
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()

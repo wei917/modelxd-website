@@ -3,8 +3,6 @@
 // without access never sees the room flash into existence. 404 rather than
 // 403, same as /xdirector: don't advertise what you can't open.
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { hasFeature } from '@/lib/features'
 import XTalkClient from './client'
 
 export const metadata: Metadata = {
@@ -13,7 +11,6 @@ export const metadata: Metadata = {
 }
 
 export default async function XTalkPage({ searchParams }: { searchParams: Promise<{ char?: string }> }) {
-  if (!(await hasFeature('xtalk'))) notFound()
   // ?char=<id> deep-links into a character's chat (nav history rows).
   // Read server-side and passed as a prop — no useSearchParams/Suspense
   // dance in the client, and a nav click re-renders the page cleanly.
