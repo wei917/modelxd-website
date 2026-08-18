@@ -31,7 +31,7 @@ type Entry = { en: string } & Partial<Record<Lang, string>>
 export const STRINGS: Record<string, Entry> = {
   // ── Brand + nav ──
   // Landing: value snapshot bar + tier comparator (CC, July 25).
-  'home.picks':       { en: "Today's Best Value Picks", 'zh-Hant': '今日最超值精選', 'zh-Hans': '今日最超值精选', ja: '本日のベストバリュー', ko: '오늘의 최고 가성비' },
+  'home.picks':       { en: "Today's best-value models", 'zh-Hant': '今日最超值模型', 'zh-Hans': '今日最超值模型', ja: '今日の高コスパモデル', ko: '오늘의 가성비 모델' },
   'home.vc.save':     { en: 'Save More', 'zh-Hant': '更省錢', 'zh-Hans': '更省钱', ja: 'コスト重視', ko: '절약 우선' },
   'home.vc.push':     { en: 'Better Quality', 'zh-Hant': '更好品質', 'zh-Hans': '更好质量', ja: 'より高品質', ko: '더 나은 품질' },
   'home.vc.left':     { en: 'Left', 'zh-Hant': '左', 'zh-Hans': '左', ja: '左', ko: '왼쪽' },
@@ -392,9 +392,9 @@ export const STRINGS: Record<string, Entry> = {
   'omni.asking':         { en: 'Thinking…', 'zh-Hant': '思考中…', 'zh-Hans': '思考中…', ja: '考え中…', ko: '생각 중…' },
   'omni.goto':           { en: 'Go to {n}', 'zh-Hant': '前往 {n}', 'zh-Hans': '前往 {n}', ja: '{n} へ移動', ko: '{n}(으)로 이동' },
   'omni.askfail':        { en: 'Could not reach ModelXD Agent just now. Try again in a moment.', 'zh-Hant': '目前無法連上 ModelXD 智慧體，請稍後再試。', 'zh-Hans': '目前无法连上 ModelXD 智能体，请稍后再试。', ja: 'ModelXD エージェントに接続できませんでした。少し時間をおいてお試しください。', ko: '지금은 ModelXD 에이전트에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.' },
-  'omni.hero':           { en: 'Ask anything, or search ModelXD', 'zh-Hant': '有問題儘管問，或搜尋 ModelXD', 'zh-Hans': '有问题尽管问，或搜索 ModelXD', ja: '何でも質問、または ModelXD を検索', ko: '무엇이든 물어보거나 ModelXD를 검색하세요' },
-  'omni.hero.hint':      { en: 'Try “where is Werewolf?” or “which video model is cheapest?”', 'zh-Hant': '試試「狼人殺在哪裡？」或「哪個影片模型最便宜？」', 'zh-Hans': '试试「狼人杀在哪里？」或「哪个视频模型最便宜？」', ja: '例：「人狼はどこ？」「一番安い動画モデルは？」', ko: '예: “마피아 게임은 어디 있나요?” 또는 “가장 저렴한 영상 모델은?”' },
-  'la.intro':            { en: 'I am ModelXD Agent. ModelXD helps you find the AI model that gives you the best result for your money — compare models blind on your own prompt, and vote before the price is revealed.\n\nAnd it goes beyond duels: direct AI films scene by scene, build AI characters you can chat with — even call, or watch models battle each other at Werewolf and Gomoku.\n\nTell me what you want to do, and I will take you to the right place.', 'zh-Hant': '我是 ModelXD 智慧體。ModelXD 幫你找出最划算的 AI 模型——用你自己的提示詞盲測比較模型，在價格揭曉前先投票。\n\n不只對決：你還可以讓 AI 導演逐鏡頭拍出你的影片、打造能聊天甚至通話的 AI 角色，或看模型在競技場對戰狼人殺與五子棋。\n\n告訴我你想做什麼，我帶你去對的地方。', 'zh-Hans': '我是 ModelXD 智能体。ModelXD 帮你找出最划算的 AI 模型——用你自己的提示词盲测比较模型，在价格揭晓前先投票。\n\n不只对决：你还可以让 AI 导演逐镜头拍出你的视频、打造能聊天甚至通话的 AI 角色，或看模型在竞技场对战狼人杀与五子棋。\n\n告诉我你想做什么，我带你去对的地方。', ja: 'ModelXD エージェントです。ModelXD は、支払った費用に対して最良の結果を出す AI モデルを見つけるお手伝いをします。自分のプロンプトでモデルをブラインド比較し、価格が明かされる前に投票します。\n\n対決だけではありません。AI ディレクターとシーンごとに動画を作る、会話も通話もできる AI キャラクターを育てる、モデル同士の人狼や五目並べの対戦を観戦する——そんなこともできます。\n\nやりたいことを教えてください。最適な場所へご案内します。', ko: 'ModelXD 에이전트입니다. ModelXD는 지불한 만큼 가장 좋은 결과를 주는 AI 모델을 찾도록 도와줍니다. 직접 만든 프롬프트로 모델을 블라인드 비교하고, 가격이 공개되기 전에 투표하세요.\n\n대결만이 아닙니다. AI 감독과 장면별로 영상을 만들고, 대화하고 통화까지 되는 AI 캐릭터를 만들고, 모델들이 마피아와 오목으로 겨루는 모습을 관전할 수도 있습니다.\n\n무엇을 하고 싶은지 알려주시면 알맞은 곳으로 안내해 드릴게요.' },
+  'omni.hero':           { en: 'What do you want to make or compare?', 'zh-Hant': '你想製作或比較什麼？', 'zh-Hans': '你想制作或比较什么？', ja: '何を作る、または比較したいですか？', ko: '무엇을 만들거나 비교하고 싶나요?' },
+  'omni.hero.hint':      { en: 'Try “compare image models” or “video under $1”', 'zh-Hant': '試試「比較圖片模型」或「$1 以下的影片」', 'zh-Hans': '试试“比较图片模型”或“$1 以下的视频”', ja: '例：「画像モデルを比較」「1ドル未満の動画」', ko: '예: “이미지 모델 비교” 또는 “1달러 미만 영상”' },
+  'la.intro':            { en: 'Not sure where to start? Tell me what you want to make or compare. I’ll point you to the right ModelXD tool — and the models worth testing.', 'zh-Hant': '不知道從哪裡開始？告訴我你想製作或比較什麼。我會帶你前往合適的 ModelXD 工具，並推薦值得測試的模型。', 'zh-Hans': '不知道从哪里开始？告诉我你想制作或比较什么。我会带你前往合适的 ModelXD 工具，并推荐值得测试的模型。', ja: '何から始めればよいか迷っていますか？作りたいもの、比べたいものを教えてください。最適な ModelXD ツールと試すべきモデルをご案内します。', ko: '어디서 시작할지 모르겠나요? 만들거나 비교하고 싶은 것을 알려 주세요. 알맞은 ModelXD 도구와 테스트할 만한 모델을 안내해 드릴게요.' },
   'la.startover':        { en: 'Start over', 'zh-Hant': '重新開始', 'zh-Hans': '重新开始', ja: '最初から', ko: '새로 시작' },
   'xd.recent':        { en: 'Recent conversations', 'zh-Hant': '最近對話', 'zh-Hans': '最近对话', ja: '最近の会話', ko: '최근 대화' },
   // ── XDirect storyboard strip ──
@@ -441,7 +441,7 @@ export const STRINGS: Record<string, Entry> = {
   'fb.sent':          { en: 'Thanks — got it!', 'zh-Hant': '收到了，謝謝！', 'zh-Hans': '收到了，谢谢！', ja: '受け取りました。ありがとうございます！', ko: '접수됐습니다. 감사합니다!' },
   'fb.noshot':        { en: 'Remove screenshot', 'zh-Hant': '移除截圖', 'zh-Hans': '移除截图', ja: 'スクリーンショットを削除', ko: '스크린샷 제거' },
   'fb.or':            { en: 'Or write to us:', 'zh-Hant': '或直接寫信給我們：', 'zh-Hans': '或直接写信给我们：', ja: 'またはメールで：', ko: '또는 메일로:' },
-  'home.eyebrow':     { en: 'ModelXD', 'zh-Hant': 'ModelXD', 'zh-Hans': 'ModelXD', ja: 'ModelXD', ko: 'ModelXD' },
+  'home.eyebrow':     { en: 'One platform, every AI model', 'zh-Hant': '一個平台，所有 AI 模型', 'zh-Hans': '一个平台，所有 AI 模型', ja: 'ひとつのプラットフォームに、すべてのAIモデル', ko: '하나의 플랫폼, 모든 AI 모델' },
   'auth.signin':      { en: 'Sign In',  'zh-Hant': '登入', 'zh-Hans': '登录', ja: 'ログイン',  ko: '로그인' },
   'auth.signout':     { en: 'Sign Out', 'zh-Hant': '登出', 'zh-Hans': '退出', ja: 'ログアウト', ko: '로그아웃' },
 
@@ -522,18 +522,29 @@ export const STRINGS: Record<string, Entry> = {
   'xduel.publichint': { en: 'Duels are public. Yours will appear in XVote for others to vote on.', 'zh-Hant': '對決是公開的。你的結果會出現在 XVote 供其他人投票。', 'zh-Hans': '对决是公开的。你的结果会出现在 XVote 供其他人投票。', ja: '対決は公開されます。結果は XVote に表示され、他のユーザーが投票できます。', ko: '대결은 공개됩니다. 결과는 XVote에 표시되어 다른 사용자가 투표할 수 있습니다.' },
 
   // ── Home (hero + CTAs) ──
-  'home.hero':        { en: 'Overpaying for AI?!', 'zh-Hant': '為 AI 付太多了嗎？', 'zh-Hans': '为 AI 付太多了吗？', ja: 'AIに払いすぎていませんか？', ko: 'AI 요금, 너무 많이 내고 있나요?' },
-  'home.sub':         { en: 'See AI results side by side and find the best model for your budget', 'zh-Hant': '並排比較 AI 結果，找出最適合你預算的模型', 'zh-Hans': '并排比较 AI 结果，找出最适合你预算的模型', ja: 'AIの結果を並べて比較して、予算に合う最適なモデルを見つけよう', ko: 'AI 결과를 나란히 비교하고 예산에 맞는 최적의 모델을 찾으세요' },
+  'home.hero':        { en: 'Make real things with every AI model.', 'zh-Hant': '用所有 AI 模型，做出真正的作品。', 'zh-Hans': '用所有 AI 模型，做出真正的作品。', ja: 'すべてのAIモデルで、本物の作品をつくろう。', ko: '모든 AI 모델로 진짜 작품을 만드세요.' },
+  'home.sub':         { en: 'Direct music videos, animate stories, film products, talk with characters — one studio across 20+ leading models, every choice backed by real blind votes and honest prices.', 'zh-Hant': '執導 MV、製作動畫、拍產品片、和角色聊天——一個工作室用遍 20+ 個主流模型，每個選擇都有真實盲測投票與誠實價格背書。', 'zh-Hans': '执导 MV、制作动画、拍产品片、和角色聊天——一个工作室用遍 20+ 个主流模型，每个选择都有真实盲测投票与诚实价格背书。', ja: 'MVを監督し、物語をアニメ化し、商品を撮り、キャラクターと話す——20以上の主要モデルをひとつのスタジオで。すべての選択にブラインド投票と正直な価格の裏付け。', ko: '뮤직비디오 연출, 스토리 애니메이션, 제품 영상, 캐릭터와 대화 — 20개+ 주요 모델을 하나의 스튜디오에서. 모든 선택은 실제 블라인드 투표와 정직한 가격이 뒷받침합니다.' },
+  'home.cta.primary': { en: 'Start creating', 'zh-Hant': '開始創作', 'zh-Hans': '开始创作', ja: '創作をはじめる', ko: '창작 시작하기' },
+  'home.cta.secondary': { en: 'Blind-test models free', 'zh-Hant': '免費盲測模型', 'zh-Hans': '免费盲测模型', ja: '無料でモデルをブラインドテスト', ko: '모델 무료 블라인드 테스트' },
+  'home.compare.eyebrow': { en: 'Why model choice matters', 'zh-Hant': '為什麼模型選擇很重要', 'zh-Hans': '为什么模型选择很重要', ja: 'モデル選びが重要な理由', ko: '모델 선택이 중요한 이유' },
+  'home.compare.title': { en: 'Same prompt. Different price tags.', 'zh-Hant': '同一個提示詞，不同的價格。', 'zh-Hans': '同一个提示词，不同的价格。', ja: '同じプロンプト。違う価格。', ko: '같은 프롬프트. 다른 가격.' },
+  'home.compare.sub': { en: 'Slide between savings and quality to see how much the model changes the result.', 'zh-Hant': '在省錢與品質之間滑動，看看模型選擇如何改變結果。', 'zh-Hans': '在省钱与质量之间滑动，看看模型选择如何改变结果。', ja: '節約と品質の間を動かして、モデル選びで結果がどれだけ変わるか確かめてください。', ko: '절약과 품질 사이를 움직여 모델 선택이 결과를 얼마나 바꾸는지 확인하세요.' },
   // Consolidated pitch section (Aug 6) — stat cards + surface grid.
   'home.aud.gap':         { en: 'PRICE GAP', 'zh-Hant': '價格差距', 'zh-Hans': '价格差距', ja: '価格差', ko: '가격 격차' },
   'home.aud.gap.period':  { en: 'between models on the board', 'zh-Hant': '排行榜上模型之間的差距', 'zh-Hans': '排行榜上模型之间的差距', ja: 'ボード上のモデル間で', ko: '보드 위 모델 간 격차' },
   'home.aud.gap.desc':    { en: 'Most people pay the top of that range out of habit. The blind votes tell you when the cheap end wins.', 'zh-Hant': '大多數人習慣性付最貴的那端。盲測投票告訴你便宜的那端什麼時候反而贏。', 'zh-Hans': '大多数人习惯性付最贵的那端。盲测投票告诉你便宜的那端什么时候反而赢。', ja: '多くの人は習慣で高い方を払い続けています。ブラインド投票が、安い方が勝つ場面を教えてくれます。', ko: '많은 사람이 습관적으로 가장 비싼 쪽에 돈을 냅니다. 블라인드 투표가 저렴한 쪽이 이기는 순간을 알려줍니다.' },
   'home.aud.dev':         { en: 'FOR DEVELOPERS', 'zh-Hant': '開發者', 'zh-Hans': '开发者', ja: '開発者向け', ko: '개발자용' },
-  'home.aud.dev.period':  { en: 'monthly savings at 500M tokens', 'zh-Hant': '每月可省（以 5 億 tokens 計）', 'zh-Hans': '每月可省（以 5 亿 tokens 计）', ja: '月間節約額（5億トークン時）', ko: '월 절감액 (5억 토큰 기준)' },
+  'home.aud.dev.period':  { en: 'monthly savings at 1B tokens', 'zh-Hant': '每月可省（以 10 億 tokens 計）', 'zh-Hans': '每月可省（以 10 亿 tokens 计）', ja: '月間節約額（10億トークン時）', ko: '월 절감액 (10억 토큰 기준)' },
   'home.aud.dev.desc':    { en: 'Token costs compound fast. ModelXD gives you community-validated data on which models deliver value.', 'zh-Hant': 'Token 成本累積得很快。ModelXD 用社群盲測數據告訴你哪些模型真正划算。', 'zh-Hans': 'Token 成本累积得很快。ModelXD 用社群盲测数据告诉你哪些模型真正划算。', ja: 'トークンコストはすぐ膨らみます。ModelXDは、どのモデルが本当に価値を出すかをコミュニティ検証済みデータで示します。', ko: '토큰 비용은 빠르게 불어납니다. ModelXD는 어떤 모델이 진짜 가치를 내는지 커뮤니티 검증 데이터로 보여줍니다.' },
   'home.aud.user':        { en: 'FOR AI USERS', 'zh-Hant': '個人使用者', 'zh-Hans': '个人用户', ja: 'AIユーザー向け', ko: 'AI 사용자용' },
   'home.aud.user.period': { en: 'monthly savings on 100 video clips', 'zh-Hant': '每月可省（以 100 支影片計）', 'zh-Hans': '每月可省（以 100 支视频计）', ja: '月間節約額（動画クリップ100本時）', ko: '월 절감액 (동영상 100개 기준)' },
   'home.aud.user.desc':   { en: 'You don’t need the priciest model for everything. XDuel and XBoard show you which cheaper models beat them on your own prompts.', 'zh-Hant': '不是每件事都需要最貴的模型。XDuel 和 XBoard 告訴你哪些更便宜的模型在你的提示詞上反而勝出。', 'zh-Hans': '不是每件事都需要最贵的模型。XDuel 和 XBoard 告诉你哪些更便宜的模型在你的提示词上反而胜出。', ja: '何でも最高値のモデルを使う必要はありません。XDuelとXBoardが、あなたのプロンプトで安いモデルが勝つ場面を教えてくれます。', ko: '모든 일에 가장 비싼 모델이 필요한 건 아닙니다. XDuel과 XBoard가 내 프롬프트에서 더 싼 모델이 이기는 순간을 보여줍니다.' },
+  'home.apps.eyebrow': { en: 'The apps', 'zh-Hant': '應用', 'zh-Hans': '应用', ja: 'アプリ', ko: '앱' },
+  'home.apps.title':   { en: 'Pick a job. The models are already here.', 'zh-Hant': '選一個任務，模型都到齊了。', 'zh-Hans': '选一个任务，模型都到齐了。', ja: '仕事を選ぶだけ。モデルは揃っています。', ko: '작업만 고르세요. 모델은 준비되어 있습니다.' },
+  'home.app.mv':   { en: 'Your song goes in, a film comes out — cast locked, cut on the beat, sung on camera.', 'zh-Hant': '一首歌進去，一支 MV 出來——角色鎖定、卡點剪輯、鏡頭前開口唱。', 'zh-Hans': '一首歌进去，一支 MV 出来——角色锁定、卡点剪辑、镜头前开口唱。', ja: '歌を入れればMVが出てくる——キャスト固定、ビートに合わせてカット、カメラの前で歌う。', ko: '노래가 들어가면 뮤직비디오가 나옵니다 — 캐스트 고정, 비트에 맞춘 컷, 카메라 앞에서 노래.' },
+  'home.app.anim': { en: 'One art style, your characters, a story that moves — animated shot by shot.', 'zh-Hant': '一種畫風、你的角色、會動的故事——逐鏡完成動畫。', 'zh-Hans': '一种画风、你的角色、会动的故事——逐镜完成动画。', ja: 'ひとつの画風、あなたのキャラクター、動き出す物語——ショットごとにアニメへ。', ko: '하나의 화풍, 나의 캐릭터, 움직이는 이야기 — 숏 단위로 애니메이션.' },
+  'home.app.pv':   { en: 'One product photo becomes the sales film — angles built, scene designed, motion earned.', 'zh-Hant': '一張產品照變成銷售影片——建角度、設場景、賦動態。', 'zh-Hans': '一张产品照变成销售影片——建角度、设场景、赋动态。', ja: '商品写真1枚がセールス動画に——アングルを起こし、シーンを設計し、動きを与える。', ko: '제품 사진 한 장이 판매 영상으로 — 앵글 구성, 장면 설계, 모션까지.' },
+  'home.app.sp':   { en: 'Your photos, one look, sized for every platform you post.', 'zh-Hant': '你的照片、統一調性，各平台尺寸一次出齊。', 'zh-Hans': '你的照片、统一调性，各平台尺寸一次出齐。', ja: 'あなたの写真をひとつのルックで、投稿先ごとのサイズに。', ko: '내 사진을 하나의 룩으로, 올리는 플랫폼마다 맞는 사이즈로.' },
   'home.surf.xduel':   { en: 'Two anonymous models, one prompt. Vote before you see the price — free every day.', 'zh-Hant': '兩個匿名模型，同一提示詞。先投票再看價格——每天免費。', 'zh-Hans': '两个匿名模型，同一提示词。先投票再看价格——每天免费。', ja: '匿名モデル2つ、同じプロンプト。価格を見る前に投票——毎日無料。', ko: '익명 모델 둘, 같은 프롬프트. 가격 공개 전에 투표 — 매일 무료.' },
   'home.surf.xcreate': { en: 'Up to four models side by side on your real work. Pay per run, not per month.', 'zh-Hant': '最多四個模型並排處理你的真實工作。按次計費，不用月費。', 'zh-Hans': '最多四个模型并排处理你的真实工作。按次计费，不用月费。', ja: '実作業で最大4モデルを並べて比較。月額ではなく実行ごとの支払い。', ko: '실제 작업에 최대 4개 모델을 나란히. 월정액이 아닌 실행당 결제.' },
   'home.surf.xdirect': { en: 'Tell the director what you want; it picks models by live scores, writes the shots, builds the storyboard.', 'zh-Hant': '告訴導演你要什麼：它依即時排行選模型、寫分鏡、搭故事板。', 'zh-Hans': '告诉导演你要什么：它依实时排行选模型、写分镜、搭故事板。', ja: 'ディレクターに要望を伝えるだけ。ライブスコアでモデルを選び、ショットを書き、絵コンテを組みます。', ko: '디렉터에게 원하는 걸 말하면, 실시간 점수로 모델을 고르고 숏을 쓰고 스토리보드를 만듭니다.' },

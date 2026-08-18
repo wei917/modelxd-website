@@ -10,19 +10,31 @@ import { useAuthModal } from '../lib/AuthModalContext'
 import { useLang } from '../lib/i18n'
 import type { Snapshot } from './api/snapshot/route'
 
-// The surface grid — the whole product, one honest line each. This is the
-// landing page's only remaining prose (owner, Aug 6: the July-era section
-// scroll told a two-surface story about a six-surface site, so it went).
-// Beta-gated surfaces only show their card to entitled accounts: a public
-// visitor must never click into a notFound().
-const SURFACES: Array<{ href: string; name: string; descKey: string; feature?: 'xdirector' | 'xtalk'; public?: boolean }> = [
-  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel' },
-  { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate' },
-  { href: '/xdirect', name: 'XDirect', descKey: 'home.surf.xdirect', feature: 'xdirector' },
-  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk', feature: 'xtalk' },
-  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame', feature: 'xtalk' },
-  { href: '/xvote',   name: 'XVote',   descKey: 'home.surf.xvote' },
-  { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard', public: true },
+// The apps grid — the landing's star section since the repositioning
+// (owner, Aug 18: "we have built a lot of applications... not a blind test
+// website anymore"). Template apps lead with REAL generated result loops
+// (the same assets the in-app cards wear); surfaces follow. All gates are
+// gone (Aug 18), so every card shows to everyone — signed-out clicks land
+// in the auth modal with the destination preserved.
+type LandingApp = {
+  href: string; name: string; descKey: string
+  video?: string; img?: string; emoji?: string; color?: string
+  public?: boolean
+}
+const APPS: LandingApp[] = [
+  { href: '/xdirect', name: 'Music Video',  descKey: 'home.app.mv',
+    video: '/xdirect/skills/music-video-loop.mp4', img: '/xdirect/skills/music-video-cover.webp' },
+  { href: '/xdirect', name: 'Animation',    descKey: 'home.app.anim',
+    video: '/xdirect/skills/ai-animation-loop.mp4', img: '/xdirect/skills/ai-animation-cover.webp' },
+  { href: '/xdirect', name: 'Product Video', descKey: 'home.app.pv',
+    img: '/xdirect/skills/product-video-pipeline.webp' },
+  { href: '/xdirect', name: 'Social Post',  descKey: 'home.app.sp',
+    img: '/xdirect/skills/social-post.webp' },
+  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   emoji: '💬', color: '#0ea5e9' },
+  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   emoji: '🎲', color: '#f59e0b' },
+  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   emoji: '⚔️', color: '#ef4444' },
+  { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', emoji: '🪄', color: '#8b5cf6' },
+  { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard',  emoji: '📊', color: '#10b981', public: true },
 ]
 
 // Four price/quality tiers, cheapest first. Images are placeholders until
@@ -234,12 +246,6 @@ export default function Home() {
   // fetch fails) — the chips render a dash rather than disappearing, so
   // the bar never changes height under the hero.
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
-  // Beta flags for the surface grid — anonymous visitors get all-false and
-  // therefore only the public cards. Advisory only; the pages enforce.
-  const [feats, setFeats] = useState<{ xdirector?: boolean; xtalk?: boolean }>({})
-  useEffect(() => {
-    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => { if (f) setFeats(f) }).catch(() => {})
-  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -322,35 +328,78 @@ export default function Home() {
         })}
       </div>
 
-      {/* ── Ask bar ──
-          Google-shaped on purpose (CC, Aug 5): today's picks stay on top,
-          then one centred field, then everything else moves down. A visitor
-          who already knows what they want types it; a visitor who does not
-          scrolls into the pitch. The same palette the app surfaces open with
-          ⌘K, so there is one search on the site, not two. Deliberately NOT
-          the palette: a modal over the page you just landed on hides the
-          thing the visitor came to look at. */}
-      <LandingAgent />
+      {/* ── Hero ──
+          Lead with the decision ModelXD helps visitors make. The agent sits
+          beside the pitch as a useful next step instead of pushing the value
+          proposition below a full screen of chat chrome. */}
+      <section className="home-hero">
+        <div className="home-hero-copy">
+          <div className="home-hero-eyebrow">{t('home.eyebrow')}</div>
+          <h1 className="home-hero-title">{t('home.hero')}</h1>
+          <p className="home-hero-sub">{t('home.sub')}</p>
+          <div className="home-hero-actions">
+            <button type="button" className="home-hero-cta is-primary" onClick={() => void handleNav('/xdirect')}>
+              {t('home.cta.primary')} <span aria-hidden>→</span>
+            </button>
+            <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
+              {t('home.cta.secondary')}
+            </button>
+          </div>
+        </div>
+        <div className="home-hero-agent">
+          <LandingAgent />
+        </div>
+      </section>
 
-      {/* ── Hero ── */}
-      <div className="xduel-page" style={{ minHeight: 'auto' }}>
+      {/* ── The apps (owner, Aug 18): the product is a shelf of working
+          applications — template films with REAL generated result loops on
+          their cards, plus the surfaces. Blind testing moved from identity
+          to trust layer; here is where the repositioning lives. ── */}
+      <div className="home-section reveal">
+        <div className="home-inner">
+          <div className="home-compare-eyebrow" style={{ marginBottom: 6 }}>{t('home.apps.eyebrow')}</div>
+          <h2 className="prompt-title" style={{ marginBottom: 22 }}>{t('home.apps.title')}</h2>
+          <div className="xt-tpl-grid">
+            {APPS.map(a => (
+              <button
+                key={a.name}
+                className="xt-tpl xd-tpl"
+                onClick={() => a.public ? router.push(a.href) : void handleNav(a.href)}
+              >
+                <span className="xt-tpl-banner" style={a.video || a.img ? undefined : { background: `linear-gradient(135deg, ${a.color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
+                  {a.video
+                    ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" />
+                    : a.img
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={a.img} alt="" loading="lazy" />
+                      : <span aria-hidden>{a.emoji}</span>}
+                </span>
+                <span className="xt-tpl-body">
+                  <span className="xt-tpl-text">
+                    <span className="xt-tpl-head">
+                      <span className="xt-tpl-name">{a.name}</span>
+                      <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
+                    </span>
+                    <span className="xt-tpl-blurb">{t(a.descKey)}</span>
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Interactive proof ── */}
+      <div className="xduel-page home-compare" style={{ minHeight: 'auto' }}>
         {/* paddingBottom was 0 back when the CTA buttons ended the hero and
             the next section's own 60px top padding carried the gap. With the
             subtitle now last, the rule above "How XDuel Works" sat right on
             top of it — this restores the breathing room (CC, July 25). */}
         <div className="arena" style={{ paddingBottom: 72 }}>
-          <div className="prompt-header">
-            <h1 className="prompt-title">
-              {t('home.hero')} <span>XD</span>
-            </h1>
-            {/* Reads before the comparator, not after it — it's the value
-                proposition, so it has to land before someone tries to
-                interpret four tiles and a slider. maxWidth is measured: the
-                English line renders 784px, so 860 keeps every language on a
-                single line while still wrapping on small screens. */}
-            <div className="prompt-sub" style={{ maxWidth: 860, marginTop: 16, fontSize: 18 }}>
-              {t('home.sub')}
-            </div>
+          <div className="prompt-header home-compare-header">
+            <div className="home-compare-eyebrow">{t('home.compare.eyebrow')}</div>
+            <h2 className="prompt-title">{t('home.compare.title')}</h2>
+            <div className="prompt-sub home-compare-sub">{t('home.compare.sub')}</div>
           </div>
 
           <TierComparator />
@@ -381,21 +430,20 @@ export default function Home() {
             </div>
             <div className="home-audience-card">
               <div className="home-audience-label">{t('home.aud.dev')}</div>
-              {/* $3,900/mo, and the un-rounded figure is the point — a round
-                  $4,000 reads invented, this one reads computed, because it is.
-                  500M tokens/mo (a real production app, ~16M/day) on a
+              {/* $7,800/mo, and the un-rounded figure is the point — a round
+                  $8,000 reads invented, this one reads computed, because it is.
+                  1B tokens/mo (a scaling production app, ~33M/day) on a
                   mainstream flagship (GPT-5.5, $5/$30 = $17.50 per M blended
-                  50/50 = $8,750/mo) with 60% of that traffic moved to
+                  50/50 = $17,500/mo) with 60% of that traffic moved to
                   Gemini 3.6 Flash ($1.50/$7.50 = $4.50/M):
-                  300M × $13.00 = $3,900. Deliberately targets the capable mid
-                  model, not Flash-Lite at $0.875/M — Flash-Lite would give
-                  $4,988 but "the cheapest model wins 60% of the time" is not a
-                  claim we can back. Only the VOLUME changed from the earlier
-                  $780-at-100M version (CC, Aug 5); the per-token logic and
-                  both model prices are identical and were re-checked against
-                  live model_pricing the same day. Re-derive before changing
-                  any number here. */}
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$3,900</div>
+                  600M × $13.00 = $7,800. Deliberately targets the capable mid
+                  model, not Flash-Lite at $0.875/M — "the cheapest model wins
+                  60% of the time" is not a claim we can back. Volume history:
+                  100M ($780, July) → 500M ($3,900, Aug 5) → 1B (owner call,
+                  Aug 18); the per-token logic and both model prices are
+                  unchanged and were last re-checked against live
+                  model_pricing Aug 5. Re-derive before changing any number. */}
+              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$7,800</div>
               <div className="home-audience-period">{t('home.aud.dev.period')}</div>
               <div className="home-audience-desc">{t('home.aud.dev.desc')}</div>
             </div>
@@ -418,33 +466,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ── Surface grid — what's actually here, one line each ── */}
-          <div style={{
-            marginTop: 36, display: 'grid', gap: 14,
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          }}>
-            {SURFACES.filter(s => !s.feature || feats[s.feature]).map(s => (
-              <div
-                key={s.href}
-                role="link" tabIndex={0}
-                onClick={() => s.public ? router.push(s.href) : handleNav(s.href)}
-                onKeyDown={e => { if (e.key === 'Enter') { s.public ? router.push(s.href) : void handleNav(s.href) } }}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--border2)',
-                  borderRadius: 12, padding: '16px 18px', cursor: 'pointer',
-                  transition: 'border-color 0.2s, background 0.2s',
-                }}
-                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
-                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{s.name}</span>
-                  <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(s.descKey)}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 

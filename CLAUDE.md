@@ -651,10 +651,16 @@ can sit at the table honestly. One act per request; the client loops.
   its own page (`/xdirect`) once it owned a stage — "a mode, not a
   destination" was true only while it was a bare chat. XCreate remains the
   single studio surface; the toggle itself stays gone.
-- **Landing savings figures** were re-derived Aug 5 from live `model_pricing`:
-  developers ~$3,900/mo at 500M tokens; "FOR AI USERS" ~$176/mo on 100 video
-  clips (Veo 3.1 $0.40/s vs HappyHorse 1.1 $0.18/s, 8s clips). Derivations are
-  in comments in `app/page.tsx` — **re-derive before changing any number.**
+- **Landing savings figures** — developers ~$7,800/mo at 1B tokens (volume
+  raised 500M → 1B on owner call, Aug 18; per-token logic unchanged from the
+  Aug 5 re-derivation); "FOR AI USERS" ~$176/mo on 100 video clips (Veo 3.1
+  $0.40/s vs HappyHorse 1.1 $0.18/s, 8s clips). Derivations are in comments
+  in `app/page.tsx` — **re-derive before changing any number.**
+- **Landing repositioned Aug 18** (owner: "not a blind test website
+  anymore"): hero sells the APPS ("Make real things with every AI model"),
+  the apps grid is the star section (template cards wear real generated
+  loops), primary CTA → /xdirect, blind testing demoted to secondary CTA
+  and trust layer.
 
 ## Known Debt (open)
 
