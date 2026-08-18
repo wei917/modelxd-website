@@ -21,6 +21,7 @@ import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
 import MusicVideoSetup from '../components/MusicVideoSetup'
 import SocialPostSetup from '../components/SocialPostSetup'
+import AnimationSetup from '../components/AnimationSetup'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import { isSubmitEnter } from '../../lib/ime'
 
@@ -1535,7 +1536,9 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                 {t('xdirector.skills')}
               </div>
               <div className="xt-tpl-grid">
-                {skills.map(sk => {
+                {[...skills].sort((a, b) =>
+                  Number(a.metadata?.order ?? 99) - Number(b.metadata?.order ?? 99)
+                ).map(sk => {
                   const on = activeSkill === sk.name
                   const emoji = sk.metadata?.emoji || '🎬'
                   const color = sk.metadata?.color || '#4a4c52'
@@ -1596,6 +1599,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
 
           {activeSkill === 'social-post' && bubbles.length === 0 && !setupDismissed && (
             <SocialPostSetup
+              busy={busy !== 'idle'}
+              onStart={(brief, formAtts) => { void send(brief, formAtts) }}
+              onSkip={() => setSetupDismissed(true)}
+            />
+          )}
+
+          {activeSkill === 'ai-animation' && bubbles.length === 0 && !setupDismissed && (
+            <AnimationSetup
               busy={busy !== 'idle'}
               onStart={(brief, formAtts) => { void send(brief, formAtts) }}
               onSkip={() => setSetupDismissed(true)}

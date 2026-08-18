@@ -12,6 +12,7 @@ metadata:
   title: "Social Post"
   version: "2.0"
   category: social
+  order: "4"
   cover: assets/cover.jpg
 ---
 

@@ -12,6 +12,7 @@ metadata:
   title: "Product Video"
   version: "1.1"
   category: commercial
+  order: "3"
   cover: assets/cover.jpg
   aspect: "9:16"
   default_duration: "6"

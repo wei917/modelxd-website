@@ -13,6 +13,7 @@ metadata:
   title: "Music Video"
   version: "3.2"
   category: music
+  order: "1"
   aspect: "ask"
   default_duration: "6"
 ---
