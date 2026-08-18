@@ -45,18 +45,20 @@ rating system (XDRating) surfaced on XBoard.
 
 ## The Surfaces
 
-Six creation/consumption surfaces; beta ones (XDirect, XTalk) only appear in
-the nav for allowlisted accounts.
+Seven creation/consumption surfaces. The former betas (XDirect, XTalk,
+XGame, canvas) were opened to every signed-in account on Aug 18 (`*` in the
+FEATURE_ vars); XDev is the only email-gated surface left.
 
 | Surface | Route | Auth | Notes |
 |---|---|---|---|
 | **XDuel** | `/xduel` | required | Free front door. Daily quota per mode. |
 | **XCreate** | `/xcreate` | required | Paid studio, up to 4 models. |
-| **XTalk** | `/xtalk` | required | Discussion rooms. Beta — `FEATURE_XTALK_EMAILS`. |
-| **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Same gate as XTalk. |
+| **XTalk** | `/xtalk` | required | Discussion rooms. Open (`FEATURE_XTALK_EMAILS=*`). |
+| **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Same flag as XTalk — open. |
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
-| **XDirect** | `/xdirect` | required | The director + canvas stage. Beta — `FEATURE_XDIRECTOR_EMAILS`. |
+| **XDirect** | `/xdirect` | required | The director + canvas stage. Open (`FEATURE_XDIRECTOR_EMAILS=*`). |
+| **XDev** | `/xdev` | required | API keys + MCP for agents. Beta — `FEATURE_XDEV_EMAILS`. |
 
 ### XDuel — `/xduel`
 One prompt, two anonymous models, 5-step flow: run → vote blind → reveal
@@ -404,7 +406,8 @@ guarantees users only see their own rows.
 Three independent systems — don't confuse them.
 
 **1. Per-user beta gates** (`lib/features.ts`) — email allowlists in env vars:
-`FEATURE_CANVAS_EMAILS`, `FEATURE_XDIRECTOR_EMAILS`, `FEATURE_XTALK_EMAILS`.
+`FEATURE_CANVAS_EMAILS`, `FEATURE_XDIRECTOR_EMAILS`, `FEATURE_XTALK_EMAILS`,
+`FEATURE_XDEV_EMAILS`. All but xdev are `*` (open) since Aug 18.
 Anyone on `ADMIN_EMAILS` passes every gate (so you can't lock yourself out); a
 single `*` opens the feature to everyone, which is how a beta ends without a
 code change. Adding a tester needs a redeploy — if that becomes annoying, swap
@@ -561,9 +564,10 @@ YOUTUBE_API_KEY=                      # Google Cloud → enable YouTube Data API
 
 # Access control
 ADMIN_EMAILS=wei917@gmail.com         # comma-separated; passes every gate
-FEATURE_CANVAS_EMAILS=
-FEATURE_XDIRECTOR_EMAILS=
-FEATURE_XTALK_EMAILS=                 # "*" opens a beta to everyone
+FEATURE_CANVAS_EMAILS=*               # open since Aug 18
+FEATURE_XDIRECTOR_EMAILS=*            # open since Aug 18
+FEATURE_XTALK_EMAILS=*                # "*" opens a beta to everyone (also XGame)
+FEATURE_XDEV_EMAILS=                  # the one remaining beta gate
 SITE_PASSWORD=                        # unset = site gate disabled
 
 # Ops / tuning

@@ -59,12 +59,13 @@ length, reorder, add or delete — then generate scene by scene (each card
 shows its price) or all at once. Finished clips fill their cards and land
 as nodes on the board, wired together so you can see how the piece was
 built. Still images skip the storyboard and generate directly. Every
-generation bills and appears in your history like a normal run. XDirect is
-in limited beta. (Old `/xdirector` and "Agent Mode" links land here.)
+generation bills and appears in your history like a normal run. Available
+to every signed-in account. (Old `/xdirector` and "Agent Mode" links land
+here.)
 
 ### XTalk — `/xtalk`
-Put several AI models in one room together. XTalk is in limited beta — it
-only appears in the nav for accounts that have it. Two formats today:
+Put several AI models in one room together. Available to every signed-in
+account. Two formats today:
 
 - **Discussion** — 2 to 8 models talk about a topic you set. You choose the
   speaking order (in order, auto-bidding for the floor, or manual pick), can
@@ -83,9 +84,9 @@ Formats have a "how to play / how it works" sheet behind the **?** on
 their card.
 
 ### XGame — `/xgame`
-The AI game arena, in limited beta. AI models play full games against each
-other and you can take a seat yourself. Games get a permanent URL and appear
-in your history. Today:
+The AI game arena. AI models play full games against each other and you can
+take a seat yourself. Games get a permanent URL and appear in your history.
+Today:
 
 - **Werewolf** — a 7-player social-deduction game (2 werewolves, 1 seer,
   1 doctor, 3 villagers) where seven AI models play each other, or you join
