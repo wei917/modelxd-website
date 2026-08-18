@@ -1,14 +1,10 @@
 'use client'
 // app/components/LandingAgent.tsx
-// The middle of the landing page: a fixed answer panel, with the field
-// under it.
+// The landing-page guide: a compact answer panel with the field under it.
 //
-// The panel's height is RESERVED, not grown. An answer box that expands when
-// it replies shoves the hero down the page mid-read, so the first thing a
-// visitor experiences is the layout moving under them. Holding the space
-// from first paint costs one screenful and makes asking feel like the page
-// was always going to answer. The panel scrolls internally once a
-// conversation outgrows it; the page itself never reflows. (CC, Aug 5)
+// The panel keeps a stable height so answers never move the page underneath
+// the reader. It now shares the hero with the value proposition, so that
+// reserved space earns its keep without delaying the reason to use ModelXD.
 //
 // The introduction is the agent's FIRST TURN, not a placeholder that gets
 // swept away when you type. It says what ModelXD is to someone who has just
@@ -104,7 +100,9 @@ export default function LandingAgent() {
   // Keep the newest turn in view INSIDE the panel. block:'nearest' so the
   // page itself is never scrolled by this.
   useEffect(() => {
-    if (msgs.length) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    // The seeded intro belongs at the top of its card. Only follow the end
+    // once a real conversation has started (or a reply is being composed).
+    if (msgs.length > 1 || busy) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [msgs.length, busy])
 
   /** `text` is passed by the starter chips; the field uses its own state. */
@@ -145,9 +143,9 @@ export default function LandingAgent() {
   const showChips = !busy && !!last && last.role === 'agent' && (last.intro || last.offtopic)
 
   return (
-    <div className="la-wrap">
+    <div className={`la-wrap${hasChat ? ' has-chat' : ''}`}>
       {/* Reserved. Same height empty, introducing, or mid-conversation. */}
-      <div className="la-panel">
+      <div className="la-panel" aria-live="polite">
         {msgs.map((m, i) => (
           m.role === 'user' ? (
             <div key={i} className="la-row la-row-you">

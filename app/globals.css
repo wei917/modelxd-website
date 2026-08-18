@@ -1332,6 +1332,108 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .vb-go     { display: none; }
 }
 
+/* ── Landing hero ───────────────────────────────────────────────────────
+   One clear promise, one primary action, and the agent as an optional guide.
+   Keeping the two side by side puts the entire first decision in one view. */
+.home-hero {
+  width: 100%; max-width: 1240px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(480px, 1.1fr) minmax(420px, .9fr);
+  gap: clamp(38px, 4vw, 56px); align-items: center;
+  padding: clamp(44px, 4.6vw, 68px) 40px clamp(54px, 5vw, 74px);
+}
+.home-hero-copy { min-width: 0; }
+.home-hero-eyebrow,
+.home-compare-eyebrow {
+  font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--red);
+}
+.home-hero-title {
+  max-width: 690px; margin: 18px 0 22px;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(42px, 4.3vw, 64px); font-weight: 850;
+  letter-spacing: -.035em; line-height: .98; color: var(--white);
+  text-wrap: balance;
+}
+.home-hero-sub {
+  max-width: 620px; margin: 0;
+  font-size: clamp(16px, 1.5vw, 19px); line-height: 1.62; color: var(--muted2);
+}
+.home-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+.home-hero-cta {
+  min-height: 46px; padding: 0 19px; border-radius: 9px;
+  font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 750;
+  letter-spacing: .09em; text-transform: uppercase; cursor: none;
+  transition: transform .16s, box-shadow .16s, border-color .16s, background .16s;
+}
+.home-hero-cta:hover { transform: translateY(-2px); }
+.home-hero-cta:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.home-hero-cta.is-primary {
+  border: 1px solid var(--red); background: var(--red); color: #fff;
+  box-shadow: 0 8px 22px rgba(229, 57, 53, .18);
+}
+.home-hero-cta.is-primary:hover { box-shadow: 0 12px 28px rgba(229, 57, 53, .28); }
+.home-hero-cta.is-primary span { display: inline-block; margin-left: 8px; transition: transform .16s; }
+.home-hero-cta.is-primary:hover span { transform: translateX(3px); }
+.home-hero-cta.is-secondary {
+  border: 1px solid var(--border2); background: #fff; color: var(--muted2);
+}
+.home-hero-cta.is-secondary:hover { border-color: var(--white); color: var(--white); }
+
+.home-hero-agent {
+  min-width: 0; padding: 12px; border: 1px solid var(--border);
+  border-radius: 24px; background: #f7f7f5;
+  box-shadow: 0 22px 60px rgba(0,0,0,.08);
+}
+.home-hero-agent .la-wrap { max-width: none; margin: 0; padding: 0; }
+.home-hero-agent .la-panel {
+  height: 270px; margin-bottom: 10px; padding: 20px 18px 12px;
+  border: 0; border-radius: 16px; box-shadow: none;
+}
+.home-hero-agent .la-panel > .la-row:first-child { margin-top: 0; }
+.home-hero-agent .la-agent { padding: 5px 2px 3px; border: 0; background: transparent; }
+.home-hero-agent .la-intro { background: transparent; }
+.home-hero-agent .la-agent-text { line-height: 1.65; }
+.home-hero-agent .la-chips {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-left: 38px;
+}
+.home-hero-agent .la-chip { min-width: 0; text-align: left; }
+.home-hero-agent .la-field { padding-block: 12px; box-shadow: none; }
+.home-hero-agent .la-hint {
+  margin: 10px 6px 2px; text-align: left; font-size: 9.5px; letter-spacing: .04em;
+}
+
+.home-compare { border-top: 1px solid var(--border); }
+.home-compare .arena { padding-top: clamp(56px, 7vw, 84px) !important; }
+.home-compare-header { max-width: 760px; margin-bottom: 0; }
+.home-compare-header .prompt-title {
+  margin-top: 12px; font-size: clamp(30px, 4vw, 48px);
+  letter-spacing: -.02em; text-transform: none;
+}
+.home-compare-sub {
+  max-width: 720px; margin-top: 12px; font-size: 16px;
+  line-height: 1.6; letter-spacing: 0;
+}
+.home-compare .vc { margin-top: 38px; }
+
+@media (max-width: 1050px) {
+  .home-hero { grid-template-columns: 1fr; gap: 44px; max-width: 820px; }
+  .home-hero-title { max-width: 760px; }
+  .home-hero-sub { max-width: 700px; }
+}
+@media (max-width: 760px) {
+  .home-hero { padding: 42px 18px 56px; gap: 34px; }
+  .home-hero-title { margin: 14px 0 18px; font-size: clamp(38px, 12vw, 54px); }
+  .home-hero-sub { font-size: 16px; }
+  .home-hero-actions { align-items: stretch; flex-direction: column; margin-top: 24px; }
+  .home-hero-cta { width: 100%; }
+  .home-hero-agent { padding: 8px; border-radius: 20px; }
+  .home-hero-agent .la-panel { height: 270px; padding: 16px 12px 10px; }
+  .home-hero-agent .la-chips { padding-left: 0; }
+  .home-hero-agent .la-hint { text-align: center; }
+  .home-compare .arena { padding: 50px 18px 64px !important; }
+}
+
 /* ── Tier comparator ── */
 /* The comparator is the hero's whole visual, so it breaks out of .arena's
    1200px text column when the viewport can spare it — the value-snapshot bar
