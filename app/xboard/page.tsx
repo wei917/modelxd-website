@@ -201,6 +201,7 @@ type SortDir = 'asc' | 'desc'
 interface MergedRow extends AIModel {
   qualityScore: number | null
   xdScore: number | null
+  votes: number | null
 }
 
 function sortValue(m: MergedRow, key: SortKey): string | number | null {
@@ -339,8 +340,8 @@ export default function LeaderboardPage() {
   }, [wolfBoard, ww])
 
   const merged: MergedRow[] = useMemo(
-    () => models.map(m => ({ ...m, qualityScore: qualityScores[m.id] ?? null, xdScore: scores[m.id] ?? null })),
-    [models, scores, qualityScores],
+    () => models.map(m => ({ ...m, qualityScore: qualityScores[m.id] ?? null, xdScore: scores[m.id] ?? null, votes: votes[m.id] ?? null })),
+    [models, scores, qualityScores, votes],
   )
 
   const filtered = useMemo(() => {
@@ -700,8 +701,23 @@ function ModelRow({ model: m }: { model: MergedRow }) {
           here rather than on surrounding chrome. */}
       <div style={{ textAlign: 'right', paddingRight: 32 }}>
         {m.xdScore != null ? (
-          <span className={`xd-chip ${scoreTier(m.xdScore)}`}>
-            {m.xdScore}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            {/* Low-sample honesty (owner, Aug 18): a thin rating must not
+                read as a verdict. Under 10 blind votes, say so right where
+                the score is. */}
+            {m.votes != null && m.votes < 10 && (
+              <span
+                title={`Early rating — only ${m.votes} blind vote${m.votes === 1 ? '' : 's'} so far`}
+                style={{
+                  fontSize: 10, fontFamily: 'var(--font-mono), monospace', fontWeight: 600,
+                  color: 'var(--muted)', border: '1px dashed var(--border2)',
+                  borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap',
+                }}
+              >{m.votes} vote{m.votes === 1 ? '' : 's'}</span>
+            )}
+            <span className={`xd-chip ${scoreTier(m.xdScore)}`}>
+              {m.xdScore}
+            </span>
           </span>
         ) : (
           <span style={{
