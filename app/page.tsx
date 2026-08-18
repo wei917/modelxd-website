@@ -357,33 +357,47 @@ export default function Home() {
           to trust layer; here is where the repositioning lives. ── */}
       <div className="home-section reveal">
         <div className="home-inner">
-          <div className="home-compare-eyebrow" style={{ marginBottom: 6 }}>{t('home.apps.eyebrow')}</div>
-          <h2 className="prompt-title" style={{ marginBottom: 22 }}>{t('home.apps.title')}</h2>
-          <div className="xt-tpl-grid">
+          <div className="home-compare-eyebrow" style={{ marginBottom: 6, textAlign: 'center' }}>{t('home.apps.eyebrow')}</div>
+          <h2 style={{ fontFamily: 'var(--font-display), inherit', fontWeight: 800, fontSize: 'clamp(24px, 3vw, 34px)', textAlign: 'center', margin: '0 0 26px' }}>{t('home.apps.title')}</h2>
+          {/* Landing-native cards — light surfaces, small accent tints. The
+              first cut borrowed the app pages' xt-tpl system and its dark
+              #14161a banner slabs, which read broken on the light landing
+              (owner, Aug 18). Template cards carry real result media;
+              surface cards get a soft brand-tinted plate, never a dark one. */}
+          <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {APPS.map(a => (
-              <button
+              <div
                 key={a.name}
-                className="xt-tpl xd-tpl"
+                role="link" tabIndex={0}
                 onClick={() => a.public ? router.push(a.href) : void handleNav(a.href)}
+                onKeyDown={e => { if (e.key === 'Enter') { a.public ? router.push(a.href) : void handleNav(a.href) } }}
+                style={{
+                  background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12,
+                  overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)'
+                  el.querySelector('video')?.play().catch(() => {})
+                }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}
               >
-                <span className="xt-tpl-banner" style={a.video || a.img ? undefined : { background: `linear-gradient(135deg, ${a.color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
+                <div style={{ aspectRatio: '16 / 9', background: a.color ? `linear-gradient(135deg, ${a.color}1f, var(--surface2))` : 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {a.video
-                    ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" />
+                    ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     : a.img
                       // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={a.img} alt="" loading="lazy" />
-                      : <span aria-hidden>{a.emoji}</span>}
-                </span>
-                <span className="xt-tpl-body">
-                  <span className="xt-tpl-text">
-                    <span className="xt-tpl-head">
-                      <span className="xt-tpl-name">{a.name}</span>
-                      <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
-                    </span>
-                    <span className="xt-tpl-blurb">{t(a.descKey)}</span>
-                  </span>
-                </span>
-              </button>
+                      ? <img src={a.img} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      : <span aria-hidden style={{ fontSize: 40, filter: 'saturate(.9)' }}>{a.emoji}</span>}
+                </div>
+                <div style={{ padding: '12px 16px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{a.name}</span>
+                    <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>{t(a.descKey)}</div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
