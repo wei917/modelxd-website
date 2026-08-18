@@ -1,6 +1,6 @@
 ---
 name: ai-animation
-description: Direct an original animated short — anime, 3D, watercolor, pixel or clay — from a story idea or the user's own characters. Locks ONE style with a style bible, builds character model sheets first, keyframes every shot in the locked look, then animates. Use when the user wants 動畫 / アニメ / animation, an animated story or character, a cartoon short, or asks to turn themselves or their drawing into an animated scene.
+description: Direct an original animated short — anime, 3D, watercolor, pixel or clay — from a story idea, the user's own characters, or their manga/comic panels. Locks ONE style with a style bible, builds character model sheets first, keyframes every shot in the locked look, then animates (including first/last-frame inbetweening). Use when the user wants 動畫 / アニメ / animation, an animated story or character, a cartoon short, a manga or comic brought to life, a VTuber clip or anime PV, or asks to turn themselves or their drawing into an animated scene.
 license: Proprietary. ModelXD.
 compatibility: Designed for ModelXD XDirect (storyboard video with reference images)
 metadata:
@@ -11,7 +11,7 @@ metadata:
   tagline: "One style, your characters, a story that moves — animated shot by shot."
   color: "#f472b6"
   title: "Animation"
-  version: "1.0"
+  version: "1.1"
   category: animation
   order: "2"
   aspect: "ask"
@@ -63,6 +63,12 @@ Animation studios draw model sheets before animating; so do we.
   into generated frames.
 - Shots that feature a character chain from the model sheet the same way
   music-video shots chain from cast stills: sheet → keyframe → motion.
+- **Cheaper turnaround (one video instead of three stills)**: animate the
+  approved FRONT view with "she turns a slow full circle in place,
+  neutral pose, plain background, constant framing" (~4s i2v), then pull
+  the front / three-quarter / profile frames out of it as the sheet. One
+  generation, and the angles agree by construction — the anime-model
+  ecosystem uses exactly this trick for multi-angle character modeling.
 
 ## Still-first, always (KEYFRAME by default)
 
@@ -78,6 +84,32 @@ invent it, and stills iterate at cents. Every story shot:
 
 DIRECT (no still) is for style-safe inserts only: rain on a window,
 drifting petals, an abstract transition.
+
+## Inbetweening — the animator's move for precise motion
+
+Real animation is drawn as keyframes first, inbetweens second (原画 →
+動画) — and the model ecosystem ships this as a first-class mode
+(first/last-frame → video; ToonCrafter's cartoon interpolation, the
+FLF2V template family). We have it in the catalog as `start_end_frames`.
+
+Use it whenever a shot's MOTION must land exactly — a turn to camera, a
+reach for a hand, a door opening on a reveal, a look-back:
+
+1. Generate keyframe A (the shot's opening) and keyframe B (where it
+   must END), both in the bible style, both chained from the model
+   sheets. Iterate them at still prices until both are right.
+2. Cast a `start_end_frames` model and let it draw the inbetweens. The
+   motion is now CHOSEN — both endpoints approved — instead of hoped for
+   from a prompt.
+3. The prompt describes only the path and timing between the frames
+   ("she turns smoothly, hair follows late, held beat at the end").
+
+When the user brings MANGA OR COMIC PANELS, the panels ARE keyframes:
+adjacent panels become A→B pairs and the page animates scene by scene —
+treat panel order as the storyboard and keep the panels' own framing.
+
+Plain i2v (one still, motion prompt) remains right for ambient shots,
+loops, and single-action holds where the endpoint doesn't matter.
 
 ## Animation-native motion grammar
 
@@ -95,6 +127,12 @@ for by name:
   Ask for "seamless loop, ends where it begins" when the shot is ambient.
 - **Timing words work**: "sudden stop", "held beat, then quick turn",
   "gentle constant drift". Name the rhythm; do not hope for it.
+- **Keep motion strength LOW.** Anime-specialized models publish low
+  motion-score recommendations (AniSora: 2-4 out of 10) because default
+  video-model dynamics are too much for the medium. Where our models
+  expose no such knob, say it in words: "limited animation, calm motion,
+  small movement range" — and let the camera, not the character, carry
+  the energy.
 
 ## The story spine still governs
 
