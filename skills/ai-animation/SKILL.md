@@ -11,7 +11,7 @@ metadata:
   tagline: "One style, your characters, a story that moves — animated shot by shot."
   color: "#f472b6"
   title: "Animation"
-  version: "1.1"
+  version: "1.2"
   category: animation
   order: "2"
   aspect: "ask"
@@ -65,10 +65,11 @@ Animation studios draw model sheets before animating; so do we.
   music-video shots chain from cast stills: sheet → keyframe → motion.
 - **Cheaper turnaround (one video instead of three stills)**: animate the
   approved FRONT view with "she turns a slow full circle in place,
-  neutral pose, plain background, constant framing" (~4s i2v), then pull
-  the front / three-quarter / profile frames out of it as the sheet. One
-  generation, and the angles agree by construction — the anime-model
-  ecosystem uses exactly this trick for multi-angle character modeling.
+  neutral pose, constant framing, camera locked" (~5s i2v), then pull
+  the profile / frontal / back frames out of it as the sheet. Probed
+  live (Aug 18): one 5s clip delivered all three views with hair,
+  uniform and style consistent through the rotation. One generation,
+  and the angles agree by construction.
 
 ## Still-first, always (KEYFRAME by default)
 
@@ -90,14 +91,22 @@ drifting petals, an abstract transition.
 Real animation is drawn as keyframes first, inbetweens second (原画 →
 動画) — and the model ecosystem ships this as a first-class mode
 (first/last-frame → video; ToonCrafter's cartoon interpolation, the
-FLF2V template family). We have it in the catalog as `start_end_frames`.
+FLF2V template family). Probed live on this product (Aug 18): a 4s take
+opened exactly on keyframe A, closed exactly on keyframe B, and the
+mid-frames drew the turn between them — style unbroken throughout.
+Casters with `start_end_frames` today: MiniMax H3 (cheapest), Wan 2.7,
+Seedance 2.5, Veo 3.1.
 
 Use it whenever a shot's MOTION must land exactly — a turn to camera, a
 reach for a hand, a door opening on a reveal, a look-back:
 
 1. Generate keyframe A (the shot's opening) and keyframe B (where it
    must END), both in the bible style, both chained from the model
-   sheets. Iterate them at still prices until both are right.
+   sheets. Build B as an image_edit FROM A — "the SAME everything,
+   except <the change>" — so the world carries over by construction.
+   Iterate at still prices until both are right, and CHECK B's
+   invariants: edits invent small accessories uninvited (a probe's B
+   grew a hair ribbon nobody asked for).
 2. Cast a `start_end_frames` model and let it draw the inbetweens. The
    motion is now CHOSEN — both endpoints approved — instead of hoped for
    from a prompt.

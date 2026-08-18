@@ -104,11 +104,34 @@ export async function generateVideo(
   } else {
     body = { model: model.model_name, ratio, duration }
     if (i2v) {
-      const a = imageAtts[0]
-      body.promptImage = a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
+      const asUri = (a: typeof imageAtts[0]) =>
+        a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`
+      // Typed ports (Aug 18, verified against runwayml/sdk-node types):
+      // seedance / hailuo / veo3.1 on Runway take promptImage as an ARRAY —
+      // position 'first'/'last' for keyframe mode, position omitted for
+      // reference images; the two modes cannot be mixed (the port
+      // assigner's conflict groups enforce that upstream). Ported callers
+      // get the array; the legacy single-string path stays for un-ported
+      // ones and for first-only models (gen4, happyhorse).
+      const ported = imageAtts.filter(a => a.port)
+      if (ported.some(a => a.port === 'last_frame' || a.port === 'reference_image')) {
+        body.promptImage = ported.map(a =>
+          a.port === 'first_frame' ? { uri: asUri(a), position: 'first' }
+          : a.port === 'last_frame' ? { uri: asUri(a), position: 'last' }
+          : { uri: asUri(a) })
+      } else {
+        body.promptImage = asUri(imageAtts[0])
+      }
       if (prompt) body.promptText = prompt
     } else {
       body.promptText = prompt
+    }
+    // Reference audio (seedance2_5 per the SDK types) — rides only when the
+    // caller declared the port, so audio can never leak to models whose
+    // schema (catalog modes) doesn't grant an audio port.
+    const audioRefs = attachments.filter(a => a.mediaType.startsWith('audio/') && a.port === 'reference_audio')
+    if (!extend && audioRefs.length > 0) {
+      body.referenceAudio = audioRefs.map(a => ({ uri: a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}` }))
     }
     endpoint = i2v ? `${BASE}/image_to_video` : `${BASE}/text_to_video`
   }
