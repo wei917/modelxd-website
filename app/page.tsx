@@ -364,7 +364,7 @@ export default function Home() {
               #14161a banner slabs, which read broken on the light landing
               (owner, Aug 18). Template cards carry real result media;
               surface cards get a soft brand-tinted plate, never a dark one. */}
-          <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+          <div className="home-apps-desktop">
             {APPS.map(a => (
               <div
                 key={a.name}
@@ -399,6 +399,49 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ── Mobile apps layout (owner's mock, Aug 18 — layout only, all
+              copy is the existing i18n): XDirect leads as the FEATURED card
+              wearing a film strip of the real template clips; the other
+              surfaces follow as compact two-column text cards. Hidden on
+              desktop; the media grid above hides on mobile. ── */}
+          <div className="home-apps-mobile">
+            <div
+              className="ham-featured"
+              role="link" tabIndex={0}
+              onClick={() => void handleNav('/xdirect')}
+              onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xdirect') }}
+            >
+              <div className="ham-name">XDirect</div>
+              <div className="ham-desc">{t('home.surf.xdirect')}</div>
+              <div className="ham-strip">
+                <video src="/xdirect/skills/music-video-loop.mp4" poster="/xdirect/skills/music-video-cover.webp" autoPlay muted loop playsInline preload="metadata" />
+                <video src="/xdirect/skills/ai-animation-loop.mp4" poster="/xdirect/skills/ai-animation-cover.webp" autoPlay muted loop playsInline preload="metadata" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/xdirect/skills/product-video-pipeline.webp" alt="" loading="lazy" />
+              </div>
+            </div>
+            <div className="ham-grid">
+              {([
+                ['/xduel',   'XDuel',   'home.surf.xduel',   false],
+                ['/xcreate', 'XCreate', 'home.surf.xcreate', false],
+                ['/xtalk',   'XTalk',   'home.surf.xtalk',   false],
+                ['/xgame',   'XGame',   'home.surf.xgame',   false],
+                ['/xvote',   'XVote',   'home.surf.xvote',   false],
+                ['/xboard',  'XBoard',  'home.surf.xboard',  true],
+              ] as Array<[string, string, string, boolean]>).map(([href, name, key, pub]) => (
+                <div
+                  key={href} className="ham-card"
+                  role="link" tabIndex={0}
+                  onClick={() => pub ? router.push(href) : void handleNav(href)}
+                  onKeyDown={e => { if (e.key === 'Enter') { pub ? router.push(href) : void handleNav(href) } }}
+                >
+                  <div className="ham-name">{name}</div>
+                  <div className="ham-desc">{t(key)}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
