@@ -20,6 +20,8 @@ type LandingApp = {
   href: string; name: string; descKey: string
   video?: string; img?: string; emoji?: string; color?: string
   public?: boolean
+  /** Renders only when /api/features grants it (XDev). */
+  gated?: boolean
 }
 const APPS: LandingApp[] = [
   { href: '/xdirect', name: 'Music Video',  descKey: 'home.app.mv',
@@ -35,6 +37,10 @@ const APPS: LandingApp[] = [
   { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   emoji: '⚔️', color: '#ef4444' },
   { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', emoji: '🪄', color: '#8b5cf6' },
   { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard',  emoji: '📊', color: '#10b981', public: true },
+  // Agents channel. XDev is the one surface still email-gated, so its card
+  // renders only for entitled accounts — a public visitor must never click
+  // into a notFound() (same rule the old surface grid lived by).
+  { href: '/xdev',    name: 'XDev',    descKey: 'home.surf.xdev',    emoji: '🤖', color: '#475569', gated: true },
 ]
 
 // Four price/quality tiers, cheapest first. Images are placeholders until
@@ -246,6 +252,11 @@ export default function Home() {
   // fetch fails) — the chips render a dash rather than disappearing, so
   // the bar never changes height under the hero.
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  // The one gate left: XDev. Advisory — the page enforces server-side.
+  const [xdevOk, setXdevOk] = useState(false)
+  useEffect(() => {
+    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => { if (f?.xdev) setXdevOk(true) }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -365,7 +376,7 @@ export default function Home() {
               (owner, Aug 18). Template cards carry real result media;
               surface cards get a soft brand-tinted plate, never a dark one. */}
           <div className="home-apps-desktop">
-            {APPS.map(a => (
+            {APPS.filter(a => !a.gated || xdevOk).map(a => (
               <div
                 key={a.name}
                 role="link" tabIndex={0}
@@ -430,6 +441,7 @@ export default function Home() {
                 ['/xgame',   'XGame',   'home.surf.xgame',   false],
                 ['/xvote',   'XVote',   'home.surf.xvote',   false],
                 ['/xboard',  'XBoard',  'home.surf.xboard',  true],
+                ...(xdevOk ? [['/xdev', 'XDev', 'home.surf.xdev', false] as [string, string, string, boolean]] : []),
               ] as Array<[string, string, string, boolean]>).map(([href, name, key, pub]) => (
                 <div
                   key={href} className="ham-card"
