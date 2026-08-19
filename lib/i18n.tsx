@@ -522,7 +522,7 @@ export const STRINGS: Record<string, Entry> = {
   'xduel.publichint': { en: 'Duels are public. Yours will appear in XVote for others to vote on.', 'zh-Hant': '對決是公開的。你的結果會出現在 XVote 供其他人投票。', 'zh-Hans': '对决是公开的。你的结果会出现在 XVote 供其他人投票。', ja: '対決は公開されます。結果は XVote に表示され、他のユーザーが投票できます。', ko: '대결은 공개됩니다. 결과는 XVote에 표시되어 다른 사용자가 투표할 수 있습니다.' },
 
   // ── Home (hero + CTAs) ──
-  'home.hero':        { en: 'Make real things with every AI model.', 'zh-Hant': '用所有 AI 模型，做出真正的作品。', 'zh-Hans': '用所有 AI 模型，做出真正的作品。', ja: 'すべてのAIモデルで、本物の作品をつくろう。', ko: '모든 AI 모델로 진짜 작품을 만드세요.' },
+  'home.hero':        { en: 'Put every AI model to work.', 'zh-Hant': '讓所有 AI 模型為你工作。', 'zh-Hans': '让所有 AI 模型为你工作。', ja: 'すべてのAIモデルを、あなたの仕事に。', ko: '모든 AI 모델을 일하게 하세요.' },
   'home.sub':         { en: 'Direct music videos, animate stories, film products, talk with characters — or plug your own AI agents in. One studio across 20+ leading models, every choice backed by real blind votes and honest prices.', 'zh-Hant': '執導 MV、製作動畫、拍產品片、和角色聊天——也能接上你自己的 AI Agent。一個工作室用遍 20+ 個主流模型，每個選擇都有真實盲測投票與誠實價格背書。', 'zh-Hans': '执导 MV、制作动画、拍产品片、和角色聊天——也能接上你自己的 AI Agent。一个工作室用遍 20+ 个主流模型，每个选择都有真实盲测投票与诚实价格背书。', ja: 'MVを監督し、物語をアニメ化し、商品を撮り、キャラクターと話す——自分のAIエージェントの接続も。20以上の主要モデルをひとつのスタジオで、すべての選択にブラインド投票と正直な価格の裏付け。', ko: '뮤직비디오 연출, 스토리 애니메이션, 제품 영상, 캐릭터와 대화 — 나만의 AI 에이전트 연결까지. 20개+ 주요 모델을 하나의 스튜디오에서, 모든 선택은 실제 블라인드 투표와 정직한 가격이 뒷받침합니다.' },
   'home.cta.primary': { en: 'Start creating', 'zh-Hant': '開始創作', 'zh-Hans': '开始创作', ja: '創作をはじめる', ko: '창작 시작하기' },
   'home.cta.secondary': { en: 'Blind-test models free', 'zh-Hant': '免費盲測模型', 'zh-Hans': '免费盲测模型', ja: '無料でモデルをブラインドテスト', ko: '모델 무료 블라인드 테스트' },
