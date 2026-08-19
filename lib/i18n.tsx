@@ -441,7 +441,7 @@ export const STRINGS: Record<string, Entry> = {
   'fb.sent':          { en: 'Thanks — got it!', 'zh-Hant': '收到了，謝謝！', 'zh-Hans': '收到了，谢谢！', ja: '受け取りました。ありがとうございます！', ko: '접수됐습니다. 감사합니다!' },
   'fb.noshot':        { en: 'Remove screenshot', 'zh-Hant': '移除截圖', 'zh-Hans': '移除截图', ja: 'スクリーンショットを削除', ko: '스크린샷 제거' },
   'fb.or':            { en: 'Or write to us:', 'zh-Hant': '或直接寫信給我們：', 'zh-Hans': '或直接写信给我们：', ja: 'またはメールで：', ko: '또는 메일로:' },
-  'home.eyebrow':     { en: 'One platform, every AI model', 'zh-Hant': '一個平台，所有 AI 模型', 'zh-Hans': '一个平台，所有 AI 模型', ja: 'ひとつのプラットフォームに、すべてのAIモデル', ko: '하나의 플랫폼, 모든 AI 모델' },
+  'home.eyebrow':     { en: 'The AI application platform', 'zh-Hant': 'AI 應用平台', 'zh-Hans': 'AI 应用平台', ja: 'AIアプリケーション・プラットフォーム', ko: 'AI 애플리케이션 플랫폼' },
   'auth.signin':      { en: 'Sign In',  'zh-Hant': '登入', 'zh-Hans': '登录', ja: 'ログイン',  ko: '로그인' },
   'auth.signout':     { en: 'Sign Out', 'zh-Hant': '登出', 'zh-Hans': '退出', ja: 'ログアウト', ko: '로그아웃' },
 
