@@ -1,8 +1,9 @@
 # CLAUDE.md — ModelXD Project Guide
 
 > Last verified against the code on **2026-08-05** (branch `dev`).
-> Companion doc: `docs/STATE-2026-08-05.md` — a running snapshot of what
-> changed recently and what is still open. Read that second.
+> Companion doc: `docs/STATE-2026-08-19.md` — a running snapshot of what
+> changed recently and what is still open (incl. the UNPUSHED commit queue
+> and the in-flight headline task). Read that second.
 
 ## What is ModelXD?
 
