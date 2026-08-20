@@ -22,7 +22,8 @@
 //   per_video_second lives in the DB row; input surcharges are read from
 //   the row's extra keys so pricing stays data-driven.
 
-import type { ModelInfo, Attachment, VideoResult, ImageResult } from './types'
+import type { ModelInfo, Attachment, VideoResult, ImageResult, TextStreamCallbacks } from './types'
+import { calcTextCost } from './pricing'
 
 const BASE = 'https://api.x.ai/v1'
 
@@ -30,6 +31,137 @@ function apiKey(): string {
   const k = process.env.XAI_API_KEY
   if (!k) throw new Error('XAI_API_KEY is not set')
   return k
+}
+
+// ── text (streaming, OpenAI-compatible chat completions) ───────────────────
+//
+// Grok text models (grok-4.6+). Same SSE envelope as OpenAI chat
+// completions: delta.content chunks, final usage block requested via
+// stream_options.include_usage, cached tokens in prompt_tokens_details.
+// A thinking level maps straight to `reasoning_effort`. reasoning_content
+// is deliberately never surfaced — XTalk prints a speaker's turn verbatim,
+// so a seer's chain of thought must not render as public speech (same rule
+// as moonshot.ts).
+
+export async function streamText(
+  model:       ModelInfo,
+  messages:    { role: 'user' | 'assistant'; content: any }[],
+  callbacks:   TextStreamCallbacks,
+  attachments: Attachment[] = [],
+  thinking:    string | null = null,
+): Promise<void> {
+  const TAG = `[xai/${model.model_name}]`
+  console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} thinking=${thinking ?? 'auto'}`)
+
+  const chatMessages = messages.map((m, i) => ({
+    role: m.role,
+    content: i === messages.length - 1 && m.role === 'user'
+      ? buildTextContent(String(m.content), attachments)
+      : String(m.content),
+  }))
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey()}` },
+      body: JSON.stringify({
+        model: model.model_name,
+        stream: true,
+        messages: chatMessages,
+        stream_options: { include_usage: true },
+        ...(thinking ? { reasoning_effort: thinking } : {}),
+      }),
+    })
+  } catch (err: any) {
+    callbacks.onError(`xAI request failed: ${err?.message ?? err}`)
+    return
+  }
+
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => '')
+    callbacks.onError(`xAI ${res.status}: ${errText.slice(0, 500)}`)
+    return
+  }
+
+  // "Thought but never answered" must be distinguishable from "returned
+  // nothing at all" — see moonshot.ts for the incident that taught this.
+  let answered = false
+  let thought  = false
+
+  const reader  = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let inputTokens = 0
+  let outputTokens = 0
+  let cachedTokens = 0
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      let sep
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const rawEvent = buffer.slice(0, sep)
+        buffer = buffer.slice(sep + 2)
+        for (const line of rawEvent.split('\n')) {
+          if (!line.startsWith('data:')) continue
+          const data = line.slice(5).trim()
+          if (data === '[DONE]' || data === '') continue
+          let json: any
+          try { json = JSON.parse(data) } catch { continue }
+
+          if (json?.error) {
+            const msg = typeof json.error === 'string'
+              ? json.error
+              : (json.error.message ?? JSON.stringify(json.error))
+            callbacks.onError(`xAI: ${msg}`)
+            return
+          }
+
+          const delta = json?.choices?.[0]?.delta?.content
+          if (delta) { answered = true; callbacks.onDelta(String(delta)) }
+          if (json?.choices?.[0]?.delta?.reasoning_content) thought = true
+
+          if (json?.usage) {
+            inputTokens  = json.usage.prompt_tokens ?? inputTokens
+            outputTokens = json.usage.completion_tokens ?? outputTokens
+            cachedTokens = json.usage.prompt_tokens_details?.cached_tokens ?? cachedTokens
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    callbacks.onError(`Stream read failed: ${err?.message ?? err}`)
+    return
+  }
+
+  // An empty completion is NOT a success — report it so the call logs as
+  // failed and the caller can retry (same rule as moonshot.ts).
+  if (!answered) {
+    callbacks.onError(thought
+      ? 'xAI: the model produced reasoning but no answer (empty completion)'
+      : 'xAI: empty completion — no content returned')
+    return
+  }
+
+  const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking })
+  console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} cost=$${cost.toFixed(6)}`)
+  callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+}
+
+function buildTextContent(text: string, attachments: Attachment[]): any {
+  const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
+  if (imageAtts.length === 0) return text
+  return [
+    ...imageAtts.map(a => ({
+      type: 'image_url',
+      image_url: { url: `data:${a.mediaType};base64,${a.buffer.toString('base64')}` },
+    })),
+    { type: 'text', text },
+  ]
 }
 
 export async function generateVideo(

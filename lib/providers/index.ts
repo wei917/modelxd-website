@@ -254,10 +254,10 @@ export async function streamText(
       await moonshot.streamText(model, messages, wrappedCallbacks, attachments, thinking)
     } else if (model.provider === 'alibaba') {
       await alibaba.streamText(model, messages, wrappedCallbacks, attachments, search, thinking)
+    } else if (model.provider === 'xai') {
+      await xai.streamText(model, messages, wrappedCallbacks, attachments, thinking)
     } else {
-      // xai ships generateImage/generateVideo only — it has no streamText,
-      // and used to land here. (CC, Aug 2)
-      noImplementation(model, 'text', ['openai', 'google', 'anthropic', 'moonshot', 'alibaba'])
+      noImplementation(model, 'text', ['openai', 'google', 'anthropic', 'moonshot', 'alibaba', 'xai'])
     }
     endCall(requestId, desc, {
       status:               'success',
