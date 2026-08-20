@@ -85,6 +85,17 @@ export default function XEvalPage() {
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
   const judge = ratings[0]?.judge_filter ?? ''
 
+  // View filter. 'best' collapses each model to its highest-rated effort —
+  // a pure display filter: BT ratings are global, so hiding rows changes
+  // nothing about the numbers shown.
+  const [view, setView] = useState<'all' | 'best'>('all')
+  const visible = useMemo(() => {
+    const sorted = [...ratings].sort((a, b) => b.rating - a.rating)
+    if (view === 'all') return sorted
+    const seen = new Set<string>()
+    return sorted.filter(r => (seen.has(r.model_name) ? false : (seen.add(r.model_name), true)))
+  }, [ratings, view])
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '32px 24px' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, marginBottom: 4 }}>
@@ -98,6 +109,23 @@ export default function XEvalPage() {
         <p style={{ color: 'var(--muted)' }}>{t('xeval.empty')}</p>
       ) : (
         <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {(['all', 'best'] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                style={{
+                  padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)', letterSpacing: '0.04em',
+                  border: `1px solid ${view === v ? 'var(--red)' : 'var(--border)'}`,
+                  background: view === v ? 'var(--red-dim)' : 'transparent',
+                  color: view === v ? 'var(--red)' : 'var(--muted)',
+                }}
+              >
+                {t(v === 'all' ? 'xeval.filter.all' : 'xeval.filter.best')}
+              </button>
+            ))}
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
               <thead>
@@ -112,9 +140,7 @@ export default function XEvalPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...ratings]
-                  .sort((a, b) => b.rating - a.rating)
-                  .map((row, i) => {
+                {visible.map((row, i) => {
                     const e = perEntry.get(`${row.model_name}|${row.effort ?? ''}`)
                     const cost = e ? avg(e.costs) : null
                     const time = e ? avg(e.times) : null
