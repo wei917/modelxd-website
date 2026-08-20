@@ -511,7 +511,10 @@ export default function Home() {
                   100M ($780, July) → 500M ($3,900, Aug 5) → 1B (owner call,
                   Aug 18); the per-token logic and both model prices are
                   unchanged and were last re-checked against live
-                  model_pricing Aug 5. Re-derive before changing any number. */}
+                  model_pricing Aug 19 (catalog carries LIST prices only —
+                  owner rule; Gemini 3.7 Flash has the same list price, so
+                  its launch changes nothing here). Re-derive before
+                  changing any number. */}
               <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$7,800</div>
               <div className="home-audience-period">{t('home.aud.dev.period')}</div>
               <div className="home-audience-desc">{t('home.aud.dev.desc')}</div>

@@ -14,9 +14,16 @@
    unverified. Check the page.
 2. **`ai_models` is what the site believes.** After the audit, the table
    must equal the official page. Prices are **per 1M tokens** everywhere.
-3. Audit **only rows with `enabled = true`** first; disabled rows are
+3. **LIST (original) prices ONLY — never discounts** (owner rule,
+   2026-08-19, emphatic). Limited-time promos ("40% off"), dated intro
+   prices ("$0.75 through Dec 31, 2026"), and launch discounts are all
+   skipped: record the permanent/list price the page states or reverts to.
+   A price cut only counts when it IS the new list price with no
+   expiration attached (e.g. Sonnet 5's $2/$10 became permanent —
+   that one is real).
+4. Audit **only rows with `enabled = true`** first; disabled rows are
    lower priority.
-4. **Log the date** you verified each provider (bottom of this file).
+5. **Log the date** you verified each provider (bottom of this file).
 
 ## Step 1 — read the catalog
 
@@ -45,7 +52,7 @@ these are the pages that actually load, not the historical ones):
 |---|---|---|
 | openai | platform.openai.com/docs/pricing → redirects to developers.openai.com; per-model pages at `/docs/models/<id>` | openai.com itself is Cloudflare-walled — use the platform docs. Use the **Standard / short-context** column, NOT Batch/Flex/Fast-mode or long-context. |
 | anthropic | docs.anthropic.com/en/docs/about-claude/pricing (renders at platform.claude.com) | Whole table in one page load, easiest audit. Cache **writes** cost more than reads; catalog's `cached_input` = cache **read** rate (0.1× input). Sonnet 5's $2/$10 intro price became permanent (Sep 2026 increase cancelled). |
-| google | ai.google.dev/gemini-api/docs/pricing | **Tables live in Standard/Batch/Flex/Priority tab panels that `get_page_text` misses** — extract with JS over `document.querySelectorAll('table')` mapping each to its nearest h2/h3 (see Method). Bill from the **Standard** tab. Watch for dated intro prices ("$X through Dec 31, 2026") — record the revert date in the log. |
+| google | ai.google.dev/gemini-api/docs/pricing | **Tables live in Standard/Batch/Flex/Priority tab panels that `get_page_text` misses** — extract with JS over `document.querySelectorAll('table')` mapping each to its nearest h2/h3 (see Method). Bill from the **Standard** tab. Dated intro prices ("$X through Dec 31, 2026") are promos — per rule 3, carry the permanent price and log the promo. Per-model capability pages at `/gemini-api/docs/models/<id>` (thinking levels differ between siblings — 3.7 Flash rejects `minimal`). |
 | alibaba | alibabacloud.com/help/en/model-studio/model-pricing; web-search fee at `/help/en/model-studio/web-search` | Use the **Singapore** tab (intl endpoint) — Beijing prices differ. Page is huge (~50k chars): pull remainder via JS `innerText.indexOf(...)` slices. "List price $X **Limited-time N% off**" rows: catalog carries **list** (their doc: "This document only lists standard prices"); log the promo. Search fee: agent policy, Singapore = $10/1k = $0.01. |
 | xai | **docs.x.ai/developers/pricing** (full tables incl. Imagine); docs.x.ai/docs/models is summary-only, old /docs/… paths 404 | Imagine rows bill per image/second + a **media input** charge per reference image — 2.0's input price (0.01) differs from 1.0's (0.002). Text = short-context column. |
 | moonshot | **platform.kimi.ai/docs/pricing/chat-k3** (moonshot.ai redirects to kimi.ai; per-model pages linked from `/docs/pricing/chat`) | Table has cache-HIT and cache-MISS input columns — `text_input` = miss, `cached_input` = hit. |
@@ -133,19 +140,14 @@ EOF
   those votes can't be honestly retro-edited; the rating refit will
   slowly re-weight as new votes arrive.
 
-## Scheduled changes to re-check (calendar, not optional)
+## Promos observed (NOT listed, per rule 3 — recheck that they ended)
 
-- **gemini-3.6-flash reverts to 1.5 / 7.5 / 0.15 on Jan 1, 2027** — the
-  0.75 / 3.75 / 0.075 written on 2026-08-19 is Google's dated standard
-  price "through December 31, 2026". Audit in late December.
-- HappyHorse limited-time promos (1.1: 40% off, 1.0: 20% off list, seen
-  2026-08-19) — catalog carries list; if the promo becomes the list price,
-  update then.
+- Gemini 3.6 + 3.7 Flash: $0.75/$3.75 dated intro through Dec 31, 2026
+  (list 1.5/7.5/0.15 — that's what we carry).
+- HappyHorse 1.1: 40% off list; HappyHorse 1.0: 20% off list.
 
 ## Open items for the owner (not price errors)
 
-- **Gemini 3.7 Flash is new** (same 0.75/3.75 intro pricing as 3.6) —
-  catalog addition candidate.
 - HappyHorse 1.1 has a **480P tier ($0.07 list)** the catalog doesn't carry.
 - Unmodeled input-side charges (we bill output only): MiniMax H3 images
   beyond 5 ($0.04 ea) and input video; Runway seedance2_5 input/reference
@@ -158,7 +160,7 @@ EOF
 |---|---|---|---|
 | 2026-08-19 | openai | Claude | 6 rows checked; 4 correct; fixed gpt-5.6-luna (1/6/0.1 → 0.2/1.2/0.02) and gpt-5.6-terra (2.5/15/0.25 → 2/12/0.2) |
 | 2026-08-19 | anthropic | Claude | 4 rows, all correct (Fable 5 10/50/1, Opus 5 + 4.8 5/25/0.5, Sonnet 5 2/10/0.2; $0.01/search). Sonnet 5 intro price now permanent. |
-| 2026-08-19 | google | Claude | 10 enabled rows; fixed **gemini-3.6-flash** (1.5/7.5/0.15 → 0.75/3.75/0.075, dated price thru 2026-12-31) and **gemini-2.5-flash-image** text_output (3 → 2.5). All per-image maps, veo-3.1 tiers, omni-flash, flash-lites correct. |
+| 2026-08-19 | google | Claude | 10 enabled rows; fixed **gemini-2.5-flash-image** text_output (3 → 2.5). gemini-3.6-flash was briefly set to the 0.75/3.75 dated intro price, then **reverted to list 1.5/7.5/0.15 same day when the owner set rule 3** (list only). **Added gemini-3.7-flash** at list 1.5/7.5/0.15 (thinking levels low/med/high only — `minimal` errors). All per-image maps, veo-3.1 tiers, omni-flash, flash-lites correct. |
 | 2026-08-19 | xai | Claude | 4 rows; fixed **grok-imagine-image-2.0** input_image (0.002 → 0.01). All output rates correct. |
 | 2026-08-19 | moonshot | Claude | kimi-k3 correct (3/15/0.3). |
 | 2026-08-19 | minimax | Claude | MiniMax-H3 correct (768P 0.08, 2K 0.13). |
