@@ -451,7 +451,7 @@ export async function generateVideo(
   seconds:     number = 8,
   attachments: Attachment[] = [],
   onProgress?: (pct: number) => void,
-  options?:    { mode?: string | null },
+  options?:    { mode?: string | null; extend_video_ref?: string | null },
 ): Promise<VideoResult> {
   const TAG = `[google/${model.model_name}]`
 
@@ -495,7 +495,27 @@ export async function generateVideo(
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
   const recipe = options?.mode ?? null
 
-  if (recipe === 'reference_frames' && imageAtts.length >= 1) {
+  if (recipe === 'extend_video') {
+    // Veo extension (docs → "Extending Veo videos"): input is a PRIOR VEO
+    // OUTPUT referenced by URI (top-level `video`), never our stored MP4.
+    // +7s per pass, chainable to 148s total; 720p only; durationSeconds
+    // must be 8. The route resolves the ref from the source slot and
+    // enforces the ~2-day validity window before we get here.
+    const ref = options?.extend_video_ref
+    if (!ref) {
+      throw new Error('Veo can only extend videos it generated in the last 2 days — wire a Veo output as the source video.')
+    }
+    request.video = { uri: ref }
+    if (request.config.resolution !== '720p') {
+      console.log(`${TAG} extension is 720p-only (was ${request.config.resolution}); overriding`)
+      request.config.resolution = '720p'
+    }
+    if (request.config.durationSeconds !== 8) {
+      console.log(`${TAG} extension requires durationSeconds=8 (was ${request.config.durationSeconds}); overriding`)
+      request.config.durationSeconds = 8
+    }
+    console.log(`${TAG} extending prior Veo video ref=${String(ref).slice(0, 90)}…`)
+  } else if (recipe === 'reference_frames' && imageAtts.length >= 1) {
     // Reference images: preserve these subjects/products in a NEW scene
     // described by the prompt. Docs: up to 3 images, referenceType
     // 'asset', durationSeconds must be 8.
@@ -610,7 +630,9 @@ export async function generateVideo(
       const n = typeof v === 'number' ? v : (typeof v === 'string' ? parseFloat(v) : NaN)
       if (Number.isFinite(n) && n > 0) return n
     }
-    return seconds
+    // Extension generates +7s regardless of the requested duration — bill
+    // the new content, not the combined output, when metadata is silent.
+    return recipe === 'extend_video' ? 7 : seconds
   })()
   if (billedSeconds !== seconds) {
     console.log(`${TAG} billed duration ${billedSeconds}s differs from requested ${seconds}s (using billed for cost)`)
@@ -669,6 +691,8 @@ export async function generateVideo(
     durationSeconds: billedSeconds,
     cost,
     usageMetadata:   meta && Object.keys(meta).length > 0 ? meta : null,
+    // Handle for future extension calls — valid on Google's side ~2 days.
+    providerVideoRef: video.uri ?? null,
   }
 }
 

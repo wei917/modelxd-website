@@ -201,6 +201,10 @@ export interface VideoResult {
   durationSeconds: number
   cost:            number
   usageMetadata?:  any
+  /** Provider-side handle for the generated video (Veo: the file URI).
+   *  Required to extend the video later — Veo extension only accepts its
+   *  own prior outputs, referenced by URI, for ~2 days after generation. */
+  providerVideoRef?: string | null
 }
 
 export interface Attachment {

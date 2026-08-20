@@ -362,6 +362,10 @@ export interface VideoOptions {
    *  image_to_video ...). Google/Veo needs it to decide whether image
    *  attachments are referenceImages or start/end interpolation frames. */
   mode?: string | null
+  /** Veo extension (mode 'extend_video'): the source video's
+   *  providerVideoRef from a prior Veo generation. Veo cannot extend
+   *  arbitrary videos — only its own outputs, within ~2 days. */
+  extend_video_ref?: string | null
 }
 
 /** Optional generation-time parameters for image models. */

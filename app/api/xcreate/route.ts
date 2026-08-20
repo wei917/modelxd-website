@@ -364,11 +364,36 @@ async function runSlot(
       if (wired.some(a => a.port)) {
         console.log(`${LOG} Slot[${index}] ports: ${wired.map(a => a.port ?? '·').join(', ')}`)
       }
+
+      // Veo extension: the provider needs Google's own video reference —
+      // Veo cannot extend our stored MP4, only its own prior outputs, and
+      // only for ~2 days. Resolve the ref from the source row's persisted
+      // slot metadata; refuse uploads and stale refs with a message that
+      // says what to do instead.
+      let extendVideoRef: string | null = null
+      if (model.provider === 'google' && options.mode === 'extend_video') {
+        const srcWire = wired.find(a => a.mediaType.startsWith('video/'))?.wireSource
+        if (!srcWire || srcWire.kind !== 'row') {
+          throw new Error('Veo can only extend videos it generated on this board — wire a Veo video node as the source (uploads cannot be extended).')
+        }
+        const { data: srcRow } = await sb.from('xcreates').select('slots').eq('id', srcWire.row_id).single()
+        const srcSlot: any = Array.isArray(srcRow?.slots) ? srcRow.slots[srcWire.slot ?? 0] : null
+        const ref = srcSlot?.providerVideoRef ?? null
+        if (!ref) {
+          throw new Error('This video has no Veo reference to extend from — only Veo 3.1 outputs generated after extension shipped can be extended. Re-generate the source with Veo, then extend.')
+        }
+        const madeAt = srcSlot?.providerVideoRefAt ? Date.parse(srcSlot.providerVideoRefAt) : NaN
+        if (!Number.isFinite(madeAt) || Date.now() - madeAt > 46 * 60 * 60 * 1000) {
+          throw new Error('Veo references expire about 2 days after generation — this source is too old to extend. Re-generate it with Veo, then extend.')
+        }
+        extendVideoRef = ref
+      }
+
       const result = await providers.generateVideo(
         model, prompt, videoSize, videoDuration, wired,
         (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
         callContext,
-        { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null },
+        { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null, extend_video_ref: extendVideoRef },
       )
 
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
@@ -387,7 +412,14 @@ async function runSlot(
 
       const rt = Date.now() - start
       await patch({ text: signed.signedUrl, is_video: true, streaming: false, done: true, cost: result.cost, response_time: rt, progress: 100 })
-      return { text: signed.signedUrl, isImage: false, isVideo: true, responseTime: rt, cost: result.cost }
+      // providerVideoRef persists into xcreates.slots so a later
+      // extend_video run can hand Veo its own reference (2-day validity).
+      return {
+        text: signed.signedUrl, isImage: false, isVideo: true, responseTime: rt, cost: result.cost,
+        ...(result.providerVideoRef
+          ? { providerVideoRef: result.providerVideoRef, providerVideoRefAt: new Date().toISOString() }
+          : {}),
+      }
     }
 
     throw new Error(`Unknown mode: ${mode}`)
