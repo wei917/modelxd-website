@@ -1326,6 +1326,12 @@ function CreateStudio() {
   // and end up back where they were. `galleryLoadedRef` keeps the load
   // from re-firing within the same component lifetime.
   const galleryLoadedRef = useRef<string | null>(null)
+  // Set by OUR OWN code right before it strips ?id= via replaceState (402
+  // rollback, error-banner dismiss, reset itself). The clean-studio effect
+  // below consumes it so only a real navigation to bare /xcreate — the nav
+  // link, the Back button — resets the page; our own URL bookkeeping keeps
+  // whatever state it deliberately left in place.
+  const urlClearedByCodeRef = useRef(false)
   const searchIdParam = useSearchParams()?.get('id') ?? null
   // ?job=<uuid> — open a run that is still in flight. Distinct from ?id=,
   // which opens a FINISHED xcreate. The sidebar links to whichever applies.
@@ -1775,6 +1781,10 @@ function CreateStudio() {
         return
       }
       const data = await res.json()
+      // A reset (nav to bare /xcreate, Start Over) may have detached this
+      // tab while the fetch was in flight — applying the stale result
+      // would drag the fresh studio back to the abandoned run.
+      if (activeJobRef.current !== id) return
       applyJobData(data)
     } catch (err) {
       console.error('[xcreate] poll error', err)
@@ -1999,6 +2009,7 @@ function CreateStudio() {
         // ?id=: that row exists and still resolves.) The optimistic history
         // entry corrects itself on Nav's next refresh.
         if (!retryOfId && newRowId && typeof window !== 'undefined' && window.location.search === `?id=${newRowId}`) {
+          urlClearedByCodeRef.current = true  // keep the refused run's state for editing
           const url = new URL(window.location.href)
           url.search = ''
           window.history.replaceState({}, '', url.toString())
@@ -2740,6 +2751,13 @@ function CreateStudio() {
   }, [searchTemplateParam])
 
   const reset = () => {
+    // Detach from any run still polling — otherwise the next poll drags the
+    // fresh studio straight back to the old run (URL re-sync + slot
+    // repopulation). The generation itself continues server-side and lands
+    // in the sidebar history; only this tab lets go.
+    stopPolling()
+    activeJobRef.current = null
+    galleryLoadedRef.current = null
     setPhase('setup'); setSlots([]); setChosenIdx(null)
     setChatHistory([]); setChatInput(''); setXcreateId(null)
     setRetryOfId(null)
@@ -2750,14 +2768,30 @@ function CreateStudio() {
     setImageResponseId(null); setImageConvHistory(null)
     // Strip ?id=... from the URL so refreshing doesn't re-load the
     // run we just abandoned, and so the address bar matches the fresh
-    // setup state. galleryLoadedRef stays true so the open-from-URL
-    // effect doesn't fire again in this session.
+    // setup state.
     if (typeof window !== 'undefined' && window.location.search) {
+      urlClearedByCodeRef.current = true
       const url = new URL(window.location.href)
       url.search = ''
       window.history.replaceState({}, '', url.toString())
     }
   }
+
+  // Clicking XCREATE in the nav (or pressing Back) navigates to bare
+  // /xcreate — a searchParams-only navigation, so this component instance
+  // SURVIVES and the previous run's view kept squatting what should be a
+  // clean studio (owner, Aug 20). When ?id= transitions to nothing and the
+  // clear didn't come from our own replaceState bookkeeping, reset to a
+  // fresh composer.
+  const prevIdParamRef = useRef<string | null>(searchIdParam)
+  useEffect(() => {
+    const prev = prevIdParamRef.current
+    prevIdParamRef.current = searchIdParam
+    if (searchIdParam || !prev) return
+    if (urlClearedByCodeRef.current) { urlClearedByCodeRef.current = false; return }
+    reset()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchIdParam])
 
   // Load a saved creation back into the Create tab so the user can continue
   // chatting with any model from that run. `continueIdx` is the index into the
@@ -3014,18 +3048,19 @@ function CreateStudio() {
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
         return
       }
-      // Reopened image/video runs with a recorded winner (or a single
-      // model — nothing to compare) land straight on the workflow board;
-      // that's where continuation lives (CC, July 27). Undecided
-      // multi-model runs still open in picking so the vote can happen.
+      // Reopening a finished run shows THE RUN (owner, Aug 20): prompt in
+      // the locked composer, each model's card with its output, cost and
+      // speed — the exact view live completion leaves behind. (July 27
+      // routed single/decided image+video runs straight to the workflow
+      // board instead, which shows the output node and none of that.)
+      // A recorded winner carries into chosenIdx so a decided run reads
+      // as a record, not a re-vote — the pick affordances gate on
+      // chosenIdx === null — and the board stays reachable through the
+      // per-card "Continue on canvas" button.
       const chosenStored = rawSlots.findIndex((sl: any) => sl?.chosen)
-      if (itemMode !== 'text' && (chosenStored >= 0 || rawSlots.length === 1)) {
-        setChosenIdx(chosenStored >= 0 ? chosenStored : 0)
-        setChatHistory([])
-        setPhase('workflow')
-      } else {
-        setChosenIdx(null); setChatHistory([]); setPhase('picking')
-      }
+      setChosenIdx(chosenStored >= 0 ? chosenStored : null)
+      setChatHistory([])
+      setPhase('picking')
     }
 
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -3210,7 +3245,10 @@ function CreateStudio() {
                   setLoadError(null)
                   setNeedsTopUp(false)
                   // Strip ?id=… so a refresh doesn't re-show the same error.
+                  // Flag the clear as ours: dismissing the banner must not
+                  // reset a resurrected run's restored prompt/attachments.
                   if (typeof window !== 'undefined' && window.location.search) {
+                    urlClearedByCodeRef.current = true
                     const url = new URL(window.location.href)
                     url.search = ''
                     window.history.replaceState({}, '', url.toString())
@@ -4111,6 +4149,7 @@ function CreateStudio() {
                           swappable={isFrames}
                           compact
                           accept={accept}
+                          onPreview={a => { if (a.previewUrl) setLightbox(a.previewUrl) }}
                         />
                         {/* ("up to N images" capacity note removed July 2026
                             per CC — slots just keep appearing until the cap;
@@ -4295,7 +4334,7 @@ function CreateStudio() {
                     {/* A single-model run has no contest — no vote header,
                         no Select button (owner, Aug 10). The output simply
                         stands; Start Over remains the way onward. */}
-                    {phase === 'picking' && slots.length > 1 && (
+                    {phase === 'picking' && slots.length > 1 && chosenIdx === null && (
                       <div style={{ textAlign: 'center', marginBottom: 20 }}>
                         <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>Which result won?</div>
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>Pick it to record your vote and keep generating with that model</div>
@@ -4440,8 +4479,10 @@ function CreateStudio() {
                                 : <><div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
                               }
                             </div>
-                            {/* Pick button — only when there was a contest. */}
-                            {phase === 'picking' && slots.length > 1 && slot.done && !slot.error && (
+                            {/* Pick button — only when there was a contest
+                                AND no winner is recorded yet (a reopened
+                                decided run is a record, not a re-vote). */}
+                            {phase === 'picking' && slots.length > 1 && chosenIdx === null && slot.done && !slot.error && (
                               <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
                                 <button onClick={() => pickModel(i)} style={{
                                   width: '100%', padding: '10px 0', borderRadius: 8,
@@ -4453,6 +4494,28 @@ function CreateStudio() {
                                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent' }}
                                 >
                                   {mode === 'image' || mode === 'video' ? `Generate more with ${stripModelVariant(model.display_name)} →` : `Select ${stripModelVariant(model.display_name)} →`}
+                                </button>
+                              </div>
+                            )}
+                            {/* Continuation for runs with nothing left to
+                                vote on — a single model, or a winner already
+                                recorded. Routes to the workflow board (the
+                                July 27 continuation surface) WITHOUT the
+                                vote machinery, so reopening can never
+                                double-count. Image/video only: text
+                                continuation is the chat. */}
+                            {phase === 'picking' && mode !== 'text' && xcreateId && slot.done && !slot.error && (slots.length === 1 || chosenIdx !== null) && (
+                              <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
+                                <button onClick={() => { setChosenIdx(i); setWfView('canvas'); setPhase('workflow'); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{
+                                  width: '100%', padding: '10px 0', borderRadius: 8,
+                                  background: 'transparent', border: '1px solid var(--border2)',
+                                  color: 'var(--white)', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                }}
+                                  onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)' }}
+                                  onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)' }}
+                                >
+                                  Continue on canvas →
                                 </button>
                               </div>
                             )}

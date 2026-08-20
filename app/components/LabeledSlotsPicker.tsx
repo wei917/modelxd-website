@@ -54,6 +54,7 @@ export default function LabeledSlotsPicker({
   swappable = false,
   compact = false,
   accept,
+  onPreview,
 }: {
   slots:       SlotLabel[]
   attachments: Attachment[]
@@ -71,6 +72,10 @@ export default function LabeledSlotsPicker({
   /** Comma-separated mime types the slots accept. Defaults to images.
    *  Non-image mimes skip the min-dimension check. */
   accept?:     string
+  /** Clicking a FILLED slot calls this with its attachment — the caller
+   *  opens a lightbox. Works even when `disabled`: a locked, reopened run
+   *  still owes the user a full-size look at its inputs (owner, Aug 20). */
+  onPreview?:  (a: Attachment) => void
 }) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
@@ -192,6 +197,7 @@ export default function LabeledSlotsPicker({
             inputRef={(el) => { inputRefs.current[idx] = el }}
             onPick={files => setSlot(idx, files)}
             onClear={() => clearSlot(idx)}
+            onPreview={onPreview}
           />
           {idx < slots.length - 1 && arrows && <ArrowDivider compact={compact} />}
         </div>
@@ -220,7 +226,7 @@ export default function LabeledSlotsPicker({
 }
 
 function FrameSlot({
-  label, hint, attachment, uploading, disabled, compact, accept, inputRef, onPick, onClear,
+  label, hint, attachment, uploading, disabled, compact, accept, inputRef, onPick, onClear, onPreview,
 }: {
   label:      string
   hint?:      string
@@ -232,11 +238,16 @@ function FrameSlot({
   inputRef:   (el: HTMLInputElement | null) => void
   onPick:     (files: FileList | null) => void
   onClear:    () => void
+  onPreview?: (a: Attachment) => void
 }) {
   const localInputRef = useRef<HTMLInputElement | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const empty = !attachment
   const size = compact ? 52 : 84
+  // A filled slot with a preview URL opens full-size on click — including
+  // when the picker is disabled: a locked, reopened run's inputs are a
+  // record the user should be able to inspect (owner, Aug 20).
+  const canPreview = !empty && !!onPreview && !!attachment?.previewUrl
   return (
     <div
       title={compact ? (hint ?? label) : undefined}
@@ -257,7 +268,11 @@ function FrameSlot({
       />
 
       <div
-        onClick={() => !disabled && !uploading && empty && localInputRef.current?.click()}
+        onClick={() => {
+          if (uploading) return
+          if (canPreview) { onPreview!(attachment!); return }
+          if (!disabled && empty) localInputRef.current?.click()
+        }}
         // Drag & drop: dropping a file on a slot uploads into THAT slot
         // (replacing whatever was there). dragOver preventDefault is what
         // makes the tile a valid drop target.
@@ -278,12 +293,17 @@ function FrameSlot({
               ? `1px dashed ${disabled ? 'var(--border)' : 'var(--border2)'}`
               : `1px solid var(--border)`,
           background: dragOver ? 'rgba(214,59,50,0.06)' : empty ? 'transparent' : '#000',
-          cursor: disabled || uploading ? 'default' : empty ? 'pointer' : 'default',
+          cursor: uploading ? 'default'
+            : canPreview ? 'zoom-in'
+            : (!disabled && empty) ? 'pointer'
+            : 'default',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           position: 'relative' as const,
           overflow: 'hidden',
           transition: 'border-color 0.15s',
-          opacity: disabled ? 0.4 : 1,
+          // A locked FILLED slot is a record of the run's input — dimming it
+          // to 0.4 read as broken. Only locked EMPTY slots fade right down.
+          opacity: disabled ? (empty ? 0.4 : 0.85) : 1,
         }}
       >
         {uploading ? (
