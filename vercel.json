@@ -1,9 +1,4 @@
 {
-  "git": {
-    "deploymentEnabled": {
-      "dev": false
-    }
-  },
   "crons": [
     {
       "path": "/api/xdrating/refit?source=cron&force=1",
