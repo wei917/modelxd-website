@@ -183,3 +183,5 @@ Stale-audit check:
 | 2026-08-19 | minimax | Claude | MiniMax-H3 correct (768P 0.08, 2K 0.13). |
 | 2026-08-19 | runway | Claude | 3 rows; fixed **seedance2_5** (flat 0.45 → 480p 0.2 / 720p 0.3 / 1080p 0.68, default 0.3). gen4_turbo 0.05 and gen4.5 0.12 correct. |
 | 2026-08-19 | alibaba | Claude | 11 enabled rows; fixed **fun-asr** (0.002 → 0.0021/min). qwen3.6-plus, qwen-image-2.0-pro, all HappyHorse (list), wan2.7-i2v, $0.01/search correct. Disabled qwen3-asr row already correct. |
+| 2026-08-20 | openai (gpt-image-2, whisper-1) | Claude | Re-verified the 2 rows the Aug-19 "6 rows" log left ambiguous: gpt-image-2 token rates correct (text 5/1.25, image in 8, image out 30); whisper-1 correct at $0.006/min — **dropped from the pricing index page but its per-model page is live** (not deprecated). |
+| 2026-08-20 | — (migration 83 backfill) | Claude | All 46 rows stamped `pricing_audited_at` at their real audit times; 9 `source='backfill'` history events inserted for the pre-trigger Aug-19 changes (7 fixes + 3.6-flash promo flip/revert + 3.7-flash creation). History is complete from Aug 19 onward. |
