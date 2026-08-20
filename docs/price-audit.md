@@ -126,10 +126,27 @@ EOF
 ## Step 5 — verify + record
 
 1. Re-select the rows (MCP read) and eyeball against the official page.
-2. Append a line to the audit log below.
-3. If XEval's runner (`~/Documents/Claude/Projects/XEval/gdpval-xd/`)
+2. **Stamp `pricing_audited_at` on EVERY row you checked** — the fixed
+   ones AND the verified-correct ones (migration 83; the stamp is the only
+   DB trace that a correct row was ever audited):
+
+```ts
+await sb.from('ai_models')
+  .update({ pricing_audited_at: new Date().toISOString() })
+  .in('model_name', checkedNames)   // every row compared, not just fixes
+```
+
+3. Append a line to the audit log below.
+4. If XEval's runner (`~/Documents/Claude/Projects/XEval/gdpval-xd/`)
    has the model in its `PRICES` dict, update it there too and recompute
    stored `cost_usd` from the stored token counts.
+
+Price CHANGES need no manual record beyond the log line: migration 83's
+trigger writes old→new into `ai_model_price_history` on every
+`model_pricing` write, whatever the write path (audit script, admin UI).
+Price at a past date = latest history row with `changed_at <= date`.
+Stale-audit check:
+`select model_name, pricing_audited_at from ai_models where enabled order by pricing_audited_at nulls first;`
 
 ## Downstream effects of a fix (know, don't skip)
 
