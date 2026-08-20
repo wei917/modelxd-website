@@ -197,7 +197,11 @@ const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames
 // Upload slots a recipe needs (label + hint). [] = no upload (text_to_*).
 function recipeInputSlots(r: ModelMode | null): { label: string; hint?: string }[] {
   switch (r) {
-    case 'start_end_frames': return [{ label: 'START FRAME', hint: 'Start of the video' }, { label: 'END FRAME', hint: 'End of the video' }]
+    // END FRAME is genuinely optional (owner, Aug 20): providers accept a
+    // first-frame-only run — verified live, Runway/Seedance rendered one.
+    // The label says so because the composer renders the picker compact,
+    // where hints are only hover tooltips.
+    case 'start_end_frames': return [{ label: 'START FRAME', hint: 'Start of the video' }, { label: 'END FRAME (OPTIONAL)', hint: 'Optional — end of the video' }]
     case 'reference_frames': return [{ label: 'REFERENCE 1', hint: 'A person or subject' }, { label: 'REFERENCE 2', hint: 'Optional second subject' }]
     case 'image_edit':
     case 'image_to_video':
@@ -1263,6 +1267,12 @@ function CreateStudio() {
   const [chatInput,      setChatInput]      = useState('')
   const [chatStreaming,  setChatStreaming]  = useState(false)
   const [xcreateId,       setXcreateId]       = useState<string | null>(null)
+  // Set when the composer state was resurrected from an all-failed run:
+  // generate() sends it as retryOf so the server UPDATES that row instead
+  // of minting a sibling — the retry keeps the same ?id= link, history
+  // entry and board identity (owner, Aug 20). Cleared on success, reset,
+  // and mode change.
+  const [retryOfId,       setRetryOfId]       = useState<string | null>(null)
   // Multi-turn image editing context
   const [imageResponseId, setImageResponseId] = useState<string | null>(null)           // OpenAI
   const [imageConvHistory, setImageConvHistory] = useState<any[] | null>(null)           // Google
@@ -1270,6 +1280,10 @@ function CreateStudio() {
   // Job polling — persists generation across navigation.
   const [jobId,          setJobId]          = useState<string | null>(null)
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // The job THIS tab is already polling. The ?job= resume effect checks it
+  // so that generate() moving the address bar to ?job=<id> (below) doesn't
+  // make the effect re-restore state for a run that is already live here.
+  const activeJobRef = useRef<string | null>(null)
   const modeClearedRef = useRef(false)  // skip the mode-change reset on initial resume
   const jobIdRef = useRef<string | null>(null)
   useEffect(() => { jobIdRef.current = jobId }, [jobId])
@@ -1423,6 +1437,21 @@ function CreateStudio() {
           setLoadError("This XCreate doesn't exist or you don't have access. It may belong to another account.")
           return
         }
+        // Rows are born at run start, so this ?id= may name a run that is
+        // still generating — resume its job (live cards + polling) instead
+        // of restoring a half-written snapshot. Owner-read RLS on
+        // xcreate_jobs makes the browser query enough. The 15-min cutoff
+        // skips zombies: past maxDuration (800s) a still-'running' row is a
+        // killed function, and resuming it would poll a dead job forever —
+        // fall through to the row restore (stub recovery) instead.
+        const { data: liveJob } = await sb.from('xcreate_jobs')
+          .select('id').eq('xcreate_id', idParam).eq('status', 'running')
+          .gt('created_at', new Date(Date.now() - 15 * 60_000).toISOString())
+          .order('created_at', { ascending: false }).limit(1).maybeSingle()
+        if (liveJob?.id && liveJob.id !== activeJobRef.current) {
+          await resumeJob(liveJob.id)
+          return
+        }
         await loadFromGallery(data as any)
       } catch (err) {
         console.warn('[xcreate] open-from-url failed:', err instanceof Error ? err.message : err)
@@ -1440,6 +1469,7 @@ function CreateStudio() {
     if (modeClearedRef.current) { modeClearedRef.current = false; return }
     setSelectedModels([null, null, null, null]); setSlots([]); setPhase('setup')
     setChosenIdx(null); setChatHistory([]); setXcreateId(null); setAttachments([])
+    setRetryOfId(null)  // switching modes is a new creation, not a retry
     setSlotOptions([null, null, null, null])
     setRecipeMode(RECIPES[mode][0].id)  // reset Layer 2 to the first recipe
   }, [mode])
@@ -1686,9 +1716,45 @@ function CreateStudio() {
     }))
     setSlots(nextSlots)
 
+    // The address bar follows the run's row from the FIRST poll that knows
+    // it (rows are born at run start): ?id=<row> is the one durable link —
+    // refresh mid-run resumes via the running-job lookup in the ?id=
+    // loader, refresh after settle opens the finished run. galleryLoadedRef
+    // is stamped so the ?id= open-from-URL effect doesn't re-restore a run
+    // already live on screen. Guarded against churn: replaceState only
+    // when the bar doesn't already say so.
+    if (data.job.xcreateId && typeof window !== 'undefined') {
+      galleryLoadedRef.current = data.job.xcreateId
+      const want = `?id=${data.job.xcreateId}`
+      if (window.location.search !== want) {
+        const url = new URL(window.location.href)
+        url.search = want
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
     if (data.job.status === 'completed') {
+      // Every seat failed → nothing to pick, nothing to continue. 'picking'
+      // would freeze the composer with Start Over — which WIPES prompt and
+      // attachments — as the only exit, killing a run the user could fix by
+      // editing two characters (owner, Aug 20: a Runway moderation refusal
+      // left the studio dead). Prompt, attachments, models and options are
+      // all still in state, so return to setup and carry the failure into
+      // the banner (the error cards clear with the slots).
+      if (nextSlots.length > 0 && nextSlots.every(s => s.error)) {
+        const first = nextSlots.find(s => s.error)
+        setLoadError(`${first?.error ?? 'Generation failed.'}${first?.errorRef ? ` (Ref: ${first.errorRef.slice(0, 8)})` : ''}`)
+        // The next Generate retries THIS row in place. If this run was
+        // itself a retry, job.xcreateId is already the original row's id.
+        setRetryOfId(data.job.xcreateId ?? null)
+        setPhase('setup')
+        setSlots([])
+        setJobId(null)
+        stopPolling()
+        return
+      }
       setPhase('picking')
       if (data.job.xcreateId) setXcreateId(data.job.xcreateId)
+      setRetryOfId(null)
       setJobId(null)
       stopPolling()
     } else if (data.job.status === 'failed') {
@@ -1717,6 +1783,7 @@ function CreateStudio() {
 
   const startPolling = (id: string) => {
     stopPolling()
+    activeJobRef.current = id
     setJobId(id)
     // Poll immediately, then every 1s
     pollOnce(id)
@@ -1726,72 +1793,77 @@ function CreateStudio() {
   // Stop polling on unmount
   useEffect(() => () => stopPolling(), [])
 
-  // On mount: if user has an in-progress job, restore state and resume polling.
+  // Restore a job's state (prompt, mode, models, options, live slots) and
+  // resume polling it. Shared by the legacy ?job= deep link below and by
+  // the ?id= loader, which resumes the running job behind a row that is
+  // still generating (rows are born at run start).
+  const resumeJob = async (activeId: string) => {
+    try {
+      const res = await fetch(`/api/xcreate/job/${activeId}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+
+      // Restore prompt + mode + selectedModels + slotOptions
+      const jobMode = data.job.mode as Mode
+      modeClearedRef.current = true  // prevent the mode-change useEffect from wiping state
+      setMode(jobMode)
+      setPrompt(data.job.prompt ?? '')
+
+      // Look up SlotModel details for each slot (for the picker / options UI)
+      const sb = createSupabaseBrowser()
+      const modelIds = data.slots.map((s: any) => s.modelId)
+      const { data: modelRows } = await sb.from('ai_models').select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config').in('id', modelIds)
+      const byId: Record<string, SlotModel> = {}
+      ;(modelRows ?? []).forEach((m: any) => {
+        byId[m.id] = {
+          id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name,
+          modes:         (m.modes ?? []) as ModelMode[],
+          model_pricing: m.model_pricing,
+          output_config: m.output_config,
+          input_config:  m.input_config ?? null,
+        }
+      })
+      const restoredModels: (SlotModel | null)[] = [null, null, null, null]
+      const restoredOptions: (SlotOptions | null)[] = [null, null, null, null]
+      data.slots.forEach((s: any, i: number) => {
+        const m = byId[s.modelId]
+        if (m) restoredModels[i] = m
+        const opts = s.options ?? {}
+        restoredOptions[i] = {
+          mode:         opts.mode ?? null,
+          quality:      opts.quality ?? null,
+          size:         opts.size ?? null,
+          duration:     opts.duration ?? null,
+          aspect_ratio: opts.aspect_ratio ?? null,
+          watermark:    opts.watermark === true ? true : false,
+          count:        opts.count ?? null,
+        }
+      })
+      setSelectedModels(restoredModels)
+      setSlotOptions(restoredOptions)
+      setPhase('generating')
+
+      applyJobData(data)
+      if (data.job.status === 'running') startPolling(activeId)
+    } catch (err) {
+      console.error('[xcreate] resume failed', err)
+    }
+  }
+
+  // Legacy ?job= deep link — old bookmarks and history entries only; the
+  // app no longer writes ?job= anywhere (rows carry the durable ?id= from
+  // birth — owner, Aug 20). Only opens the run the URL names: bare
+  // /xcreate is a fresh canvas, and runs are concurrent server-side
+  // (CC, July 26).
   useEffect(() => {
     if (!userId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        // Only open the run the URL names. This used to fetch the newest
-        // RUNNING job and force phase='generating' — the exact state
-        // generate() bails out of — so navigating away and back mid-run
-        // locked the user out of starting anything new (CC, July 26).
-        // Bare /xcreate is a fresh canvas now; the sidebar is how you get
-        // back to something in flight, and runs are concurrent server-side.
-        const activeId = searchJobParam
-        if (!activeId || cancelled) return
-
-        const res = await fetch(`/api/xcreate/job/${activeId}`, { cache: 'no-store' })
-        if (!res.ok || cancelled) return
-        const data = await res.json()
-
-        // Restore prompt + mode + selectedModels + slotOptions
-        const jobMode = data.job.mode as Mode
-        modeClearedRef.current = true  // prevent the mode-change useEffect from wiping state
-        setMode(jobMode)
-        setPrompt(data.job.prompt ?? '')
-
-        // Look up SlotModel details for each slot (for the picker / options UI)
-        const sb = createSupabaseBrowser()
-        const modelIds = data.slots.map((s: any) => s.modelId)
-        const { data: modelRows } = await sb.from('ai_models').select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config').in('id', modelIds)
-        const byId: Record<string, SlotModel> = {}
-        ;(modelRows ?? []).forEach((m: any) => {
-          byId[m.id] = {
-            id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name,
-            modes:         (m.modes ?? []) as ModelMode[],
-            model_pricing: m.model_pricing,
-            output_config: m.output_config,
-            input_config:  m.input_config ?? null,
-          }
-        })
-        const restoredModels: (SlotModel | null)[] = [null, null, null, null]
-        const restoredOptions: (SlotOptions | null)[] = [null, null, null, null]
-        data.slots.forEach((s: any, i: number) => {
-          const m = byId[s.modelId]
-          if (m) restoredModels[i] = m
-          const opts = s.options ?? {}
-          restoredOptions[i] = {
-            mode:         opts.mode ?? null,
-            quality:      opts.quality ?? null,
-            size:         opts.size ?? null,
-            duration:     opts.duration ?? null,
-            aspect_ratio: opts.aspect_ratio ?? null,
-            watermark:    opts.watermark === true ? true : false,
-            count:        opts.count ?? null,
-          }
-        })
-        setSelectedModels(restoredModels)
-        setSlotOptions(restoredOptions)
-        setPhase('generating')
-
-        applyJobData(data)
-        if (data.job.status === 'running') startPolling(activeId)
-      } catch (err) {
-        console.error('[xcreate] resume failed', err)
-      }
-    })()
-    return () => { cancelled = true }
+    const activeId = searchJobParam
+    if (!activeId) return
+    // generate() is already polling this job in this tab — re-restoring
+    // from the job row would clobber the live state.
+    if (activeId === activeJobRef.current) return
+    void resumeJob(activeId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, searchJobParam])
 
   // Current balance, so the estimate line can warn BEFORE the user commits
@@ -1817,6 +1889,9 @@ function CreateStudio() {
     const promptOkForGen = prompt.trim().length >= 1 ||
       ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachmentForGen)
     if (!promptOkForGen || activeModels.length === 0 || phase === 'generating') return
+    // A previous failure's banner (moderation refusal, upload error, 402)
+    // must not sit above the fresh run it prompted the user to fire.
+    setLoadError(null); setNeedsTopUp(false)
     setPhase('generating')
     setSlots(activeModels.map(() => ({ text: '', isImage: false, isVideo: false, streaming: true, done: false, cost: 0, responseTime: 0, error: null })))
     setChosenIdx(null); setChatHistory([]); setXcreateId(null)
@@ -1867,12 +1942,31 @@ function CreateStudio() {
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }
+    // The ?id= link exists the instant Generate is clicked (owner, Aug 20):
+    // the row id is minted HERE, sent to the server (which births the row
+    // under it), the address bar redirects to ?id=<row> synchronously, and
+    // the sidebar history learns about it via the run-started event — no
+    // waiting on a poll round-trip. A retry keeps its existing row id. If
+    // the server ever rejects the minted id (collision), applyJobData's
+    // poll-sync self-corrects the URL to the authoritative one.
+    activeJobRef.current = newJobId
+    const newRowId: string | null = retryOfId ??
+      ((typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : null)
+    if (newRowId && typeof window !== 'undefined') {
+      galleryLoadedRef.current = newRowId  // don't let the ?id= loader re-open a run already live here
+      const url = new URL(window.location.href)
+      url.search = `?id=${newRowId}`
+      window.history.replaceState({}, '', url.toString())
+      window.dispatchEvent(new CustomEvent('xcreate:run-started', { detail: { id: newRowId, prompt, mode } }))
+    }
     fetch('/api/xcreate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jobId: newJobId,
+        rowId: newRowId,
         prompt, mode,
+        retryOf: retryOfId,
         modelIds: ids,
         modelOptions: optsList,
         attachments: committed.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
@@ -1900,6 +1994,16 @@ function CreateStudio() {
         // Clear the optimistic streaming slots too — without this the cards
         // keep spinning behind the error bar and the run looks stuck.
         setSlots([])
+        // The refusal came before the stub row was born, so the optimistic
+        // ?id= points at nothing — put the URL back. (A RETRY keeps its
+        // ?id=: that row exists and still resolves.) The optimistic history
+        // entry corrects itself on Nav's next refresh.
+        if (!retryOfId && newRowId && typeof window !== 'undefined' && window.location.search === `?id=${newRowId}`) {
+          const url = new URL(window.location.href)
+          url.search = ''
+          window.history.replaceState({}, '', url.toString())
+          galleryLoadedRef.current = null
+        }
         if (res.status === 402) {
           setNeedsTopUp(true)
           // The refusal carries the authoritative balance; adopt it so the
@@ -2638,6 +2742,7 @@ function CreateStudio() {
   const reset = () => {
     setPhase('setup'); setSlots([]); setChosenIdx(null)
     setChatHistory([]); setChatInput(''); setXcreateId(null)
+    setRetryOfId(null)
     setPrompt(''); setAttachments([])
     setSelectedModels([null, null, null, null])
     setSlotOptions([null, null, null, null])
@@ -2662,13 +2767,61 @@ function CreateStudio() {
   // is restored; further conversation starts fresh.
   const loadFromGallery = async (item: GalleryItem, continueIdx?: number) => {
     const rawSlots = (item.slots ?? []).filter(Boolean)
-    if (rawSlots.length === 0) return
     const itemMode = item.mode as Mode
+    const sb = createSupabaseBrowser()
+
+    // Block the mode-change useEffect from wiping the state we're about to set.
+    modeClearedRef.current = true
+    setMode(itemMode)
+    setPrompt(item.prompt)
+    // Restore the original uploads (rows created July 19+ persist them).
+    // Signed URLs give images their previews — owner-read storage policy
+    // lets the browser client sign its own objects.
+    const savedInputs = (item.input_attachments ?? []).filter(a => a?.storagePath)
+    if (savedInputs.length > 0) {
+      const restored: Attachment[] = await Promise.all(savedInputs.map(async (a, idx) => {
+        let previewUrl: string | undefined
+        if (a.mediaType?.startsWith('image/')) {
+          try {
+            const { data: signed } = await sb.storage.from(a.bucket).createSignedUrl(a.storagePath, 60 * 60)
+            previewUrl = signed?.signedUrl ?? undefined
+          } catch { /* preview is optional */ }
+        }
+        // slotIndex is stripped when the run is persisted (the POST keeps
+        // only storage/meta fields), and LabeledSlotsPicker matches slots by
+        // `slotIndex ?? -1` — without re-tagging, a restored attachment
+        // matches NO slot and is invisible in the composer even though it's
+        // in state (owner, Aug 20). The persisted array is slot-sorted, so
+        // array position is the best surviving record of slot placement.
+        return { ...a, previewUrl, slotIndex: idx }
+      }))
+      setAttachments(restored)
+    } else {
+      setAttachments([])
+    }
+
+    // A row with NO slots is a birth-stub whose run died before writing any
+    // outputs (rows are born at run start). Its inputs are restored above —
+    // land in a live composer, re-runnable in place, instead of a blank
+    // studio. Slot options died with the job, so the recipe resets to the
+    // mode's default.
+    if (rawSlots.length === 0) {
+      setLoadError('This run never finished. Your prompt and files are restored — hit Generate to run it again.')
+      setRecipeMode(RECIPES[itemMode][0].id)
+      setSlots([]); setXcreateId(null); setRetryOfId(item.id)
+      setChosenIdx(null); setChatHistory([]); setPhase('setup')
+      return
+    }
 
     // Fetch current model details for each slot (pricing/options have to be
     // pulled from the live table — the stored slot only keeps id/name/text).
-    const sb = createSupabaseBrowser()
-    const modelIds = rawSlots.map((s: any) => s.id).filter(Boolean)
+    // Persisted slots carry the model UUID as `model_id` (route.ts writes
+    // model_id, never id) — older/other shapes used `id`. Accept both, or
+    // every lookup below misses and the synthetic fallback seats a model
+    // with an INVENTED UUID that the retry POST can't resolve ("No valid
+    // models found" — owner, Aug 20).
+    const slotModelId = (s: any): string | null => s.id ?? s.model_id ?? null
+    const modelIds = rawSlots.map((s: any) => slotModelId(s)).filter(Boolean)
     const { data: modelRows } = await sb.from('ai_models')
       .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
       .in('id', modelIds)
@@ -2691,7 +2844,7 @@ function CreateStudio() {
     })
 
     // If UUID lookup missed some slots, try a secondary lookup by (provider, model_name)
-    const missingSlots = rawSlots.filter((s: any) => s.id && !byId[s.id] && s.provider && s.model_name)
+    const missingSlots = rawSlots.filter((s: any) => slotModelId(s) && !byId[slotModelId(s)!] && s.provider && s.model_name)
     if (missingSlots.length > 0) {
       // Fetch by provider+model_name pairs
       const orFilters = missingSlots.map((s: any) => `and(provider.eq.${s.provider},model_name.eq.${s.model_name})`).join(',')
@@ -2710,32 +2863,8 @@ function CreateStudio() {
         byProviderModel[key] = slot
         // Map old UUID → new model
         missingSlots.filter((s: any) => s.provider === m.provider && s.model_name === m.model_name)
-          .forEach((s: any) => { byId[s.id] = slot })
+          .forEach((s: any) => { byId[slotModelId(s)!] = slot })
       })
-    }
-
-    // Block the mode-change useEffect from wiping the state we're about to set.
-    modeClearedRef.current = true
-    setMode(itemMode)
-    setPrompt(item.prompt)
-    // Restore the original uploads (rows created July 19+ persist them).
-    // Signed URLs give images their previews — owner-read storage policy
-    // lets the browser client sign its own objects.
-    const savedInputs = (item.input_attachments ?? []).filter(a => a?.storagePath)
-    if (savedInputs.length > 0) {
-      const restored: Attachment[] = await Promise.all(savedInputs.map(async a => {
-        let previewUrl: string | undefined
-        if (a.mediaType?.startsWith('image/')) {
-          try {
-            const { data: signed } = await sb.storage.from(a.bucket).createSignedUrl(a.storagePath, 60 * 60)
-            previewUrl = signed?.signedUrl ?? undefined
-          } catch { /* preview is optional */ }
-        }
-        return { ...a, previewUrl }
-      }))
-      setAttachments(restored)
-    } else {
-      setAttachments([])
     }
 
     const restoredModels:  (SlotModel | null)[]   = [null, null, null, null]
@@ -2746,14 +2875,15 @@ function CreateStudio() {
       // Try UUID first, then fall back to (provider, model_name), then
       // build a minimal SlotModel from the stored slot data so Continue
       // still works even if the model was removed from the DB entirely.
-      let m: SlotModel | null = s.id ? byId[s.id] : null
+      const mid = slotModelId(s)
+      let m: SlotModel | null = mid ? byId[mid] : null
       if (!m && s.provider && s.model_name) {
         m = byProviderModel[`${s.provider}/${s.model_name}`] ?? null
       }
-      if (!m && (s.id || s.model_name)) {
+      if (!m && (mid || s.model_name)) {
         // Synthetic fallback — enough to render the card and call the API
         m = {
-          id: s.id ?? crypto.randomUUID(),
+          id: mid ?? crypto.randomUUID(),
           provider: s.provider ?? 'openai',
           model_name: s.model_name ?? 'unknown',
           display_name: s.name ?? s.model_name ?? 'Unknown Model',
@@ -2859,6 +2989,31 @@ function CreateStudio() {
       // the workflow view (CC, July 26).
       setPhase(itemMode === 'text' ? 'chatting' : 'workflow')
     } else {
+      // Every slot failed → the workflow board would show one dead node,
+      // and picking would freeze a composer whose only exit (Start Over)
+      // wipes the prompt + attachments this function just restored. Land in
+      // setup instead, with the failure in the banner: the dead run reopens
+      // as an instantly editable one (owner, Aug 20). xcreateId goes back to
+      // null so the retry writes a fresh row; the failed row stays in the
+      // gallery as the record of what happened.
+      if (restoredSlots.length > 0 && restoredSlots.every(s => s.error)) {
+        const first = restoredSlots.find(s => s.error)
+        setLoadError(`${first?.error ?? 'Generation failed.'}${first?.errorRef ? ` (Ref: ${first.errorRef.slice(0, 8)})` : ''}`)
+        // The [mode] effect's recipe reset was skipped via modeClearedRef,
+        // so recipeMode still belongs to the PREVIOUS mode. Restore the
+        // recipe the run actually used — otherwise the composer renders the
+        // wrong slot layout and the re-tagged attachments stay hidden.
+        const savedRecipe = restoredOptions.find(Boolean)?.mode
+        if (savedRecipe && RECIPES[itemMode].some(r => r.id === savedRecipe)) {
+          setRecipeMode(savedRecipe)
+        }
+        setSlots([])
+        setXcreateId(null)
+        setRetryOfId(item.id)  // Generate retries this row in place
+        setChosenIdx(null); setChatHistory([]); setPhase('setup')
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
       // Reopened image/video runs with a recorded winner (or a single
       // model — nothing to compare) land straight on the workflow board;
       // that's where continuation lives (CC, July 27). Undecided

@@ -118,9 +118,9 @@ export default function Nav() {
   // XCreate history (chat-history pattern): shown under the menu — with a
   // divider so it reads as a separate layer, not more menu items — only
   // while the user is in XCreate. Collapsible, persisted.
-  // `running` rows are in-flight xcreate_jobs; the rest are finished xcreates.
-  // They share a list because to a user they are all just "my runs".
-  const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string; running?: boolean; title?: string | null }>>([])
+  // Finished xcreates rows only — in-flight jobs are not listed (owner,
+  // Aug 20); the active tab's own URL carries ?job= while a run is in flight.
+  const [recent, setRecent] = useState<Array<{ id: string; prompt: string; mode: string; created_at: string; title?: string | null }>>([])
   // Which history row is being renamed, across the lists. One editor at a
   // time keyed by table + id (CC, Aug 3).
   const [editing, setEditing] = useState<{ table: 'xcreates' | 'xtalk_sessions' | 'xdirector_conversations'; id: string } | null>(null)
@@ -247,34 +247,39 @@ export default function Nav() {
   useEffect(() => {
     if (!onXcreate || !user) { setRecent([]); return }
     let cancelled = false
-    // Two sources: runs still generating (xcreate_jobs) and finished ones
-    // (xcreates). In-flight runs were invisible here before, which is why the
-    // page had to hijack itself to show one (CC, July 26). RLS gives an owner
-    // read on both tables, so the browser client is enough.
+    // FINISHED runs only (xcreates). In-flight xcreate_jobs used to be
+    // listed here as ?job= links, but a transient job URL wearing a
+    // durable-looking history entry read as noise (owner, Aug 20) — and the
+    // active tab's address bar now carries ?job= itself while a run is in
+    // flight, swapping to ?id= when it settles, so the entry was redundant.
+    // The 5s refresh below is what makes a just-finished run appear.
     const load = async () => {
-      const [jobsRes, doneRes] = await Promise.all([
-        supabase.from('xcreate_jobs')
-          .select('id, prompt, mode, created_at')
-          .eq('user_id', user.id).eq('status', 'running')
-          // Same 10-minute cutoff the jobs/active route uses: past maxDuration
-          // (300s) a still-'running' row means a killed function, and nothing
-          // closes those any more.
-          .gt('created_at', new Date(Date.now() - 10 * 60_000).toISOString())
-          .order('created_at', { ascending: false }).limit(10),
-        supabase.from('xcreates')
-          .select('id, prompt, mode, created_at, title')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }).limit(10)
-          .then(res => res.error
-            ? supabase.from('xcreates').select('id, prompt, mode, created_at')
-                .eq('user_id', user.id).order('created_at', { ascending: false }).limit(10)
-            : res),
-      ])
+      const doneRes = await supabase.from('xcreates')
+        .select('id, prompt, mode, created_at, title')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }).limit(10)
+        .then(res => res.error
+          ? supabase.from('xcreates').select('id, prompt, mode, created_at')
+              .eq('user_id', user.id).order('created_at', { ascending: false }).limit(10)
+          : res)
       if (cancelled) return
-      const running = (jobsRes.data ?? []).map((j: any) => ({ ...j, running: true }))
-      setRecent([...running, ...((doneRes.data ?? []) as any[])].slice(0, 12))
+      setRecent(((doneRes.data ?? []) as any[]).slice(0, 12))
     }
     load()
+    // Generate-click shows up here INSTANTLY (owner, Aug 20): the composer
+    // dispatches run-started with the row id it just minted, and we prepend
+    // an optimistic entry — the next load() replaces it with the server's
+    // birth-stub row (born ~0.2s after the job), so the two can never
+    // disagree for long.
+    const onRunStarted = (e: Event) => {
+      const d = (e as CustomEvent).detail as { id?: string; prompt?: string; mode?: string } | undefined
+      if (!d?.id) return
+      setRecent(prev => [
+        { id: d.id!, prompt: d.prompt ?? '', mode: d.mode ?? 'text', created_at: new Date().toISOString(), title: null },
+        ...prev.filter(r => r.id !== d.id),
+      ].slice(0, 12))
+    }
+    window.addEventListener('xcreate:run-started', onRunStarted)
     // While anything is generating, refresh so a finished run stops spinning
     // and moves into the completed list on its own. HIDDEN tabs skip the
     // tick entirely (CC, July 27): supabase-js serializes auth operations
@@ -285,7 +290,7 @@ export default function Nav() {
     const iv = setInterval(() => {
       if (typeof document === 'undefined' || !document.hidden) load()
     }, 5000)
-    return () => { cancelled = true; clearInterval(iv) }
+    return () => { cancelled = true; clearInterval(iv); window.removeEventListener('xcreate:run-started', onRunStarted) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onXcreate, user?.id])
 
@@ -422,24 +427,20 @@ export default function Nav() {
                 style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
               />
             ) : (
-            <div key={item.running ? `job-${item.id}` : item.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div key={item.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
-                href={item.running ? `/xcreate?job=${item.id}` : `/xcreate?id=${item.id}`}
+                href={`/xcreate?id=${item.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
-                title={item.running ? `Generating — ${item.prompt}` : (item.title || item.prompt)}
+                title={item.title || item.prompt}
               >
-                {item.running
-                  ? <span className="nav-history-spin" aria-label="Generating" />
-                  : <HistoryModeIcon m={item.mode} />}
+                <HistoryModeIcon m={item.mode} />
                 <span className="nav-history-text">{item.title || (item.prompt ? historyTitle(item.prompt) : '(no prompt)')}</span>
               </Link>
-              {!item.running && (
-                <button
-                  aria-label="rename" title={t('hist.rename')}
-                  onClick={(e) => { e.preventDefault(); setNameDraft(item.title || ''); setEditing({ table: 'xcreates', id: item.id }) }}
-                  style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, flexShrink: 0, opacity: 0.5 }}
-                >✏</button>
-              )}
+              <button
+                aria-label="rename" title={t('hist.rename')}
+                onClick={(e) => { e.preventDefault(); setNameDraft(item.title || ''); setEditing({ table: 'xcreates', id: item.id }) }}
+                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, flexShrink: 0, opacity: 0.5 }}
+              >✏</button>
             </div>
             )
           ))}

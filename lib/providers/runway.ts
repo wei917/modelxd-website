@@ -145,9 +145,13 @@ export async function generateVideo(
   const { id } = await res.json() as { id: string }
   console.log(`${TAG} task ${id}`)
 
-  // Poll (5s interval per Runway's guidance; ~5 min budget).
+  // Poll (5s interval per Runway's guidance; ~10 min budget). The old 5-min
+  // budget fit gen4-class tasks but killed Seedance 2.5 keyframe runs, which
+  // routinely need longer (owner's run died at 5:07, Aug 20). The xcreate
+  // route allows maxDuration=800s, so 600s of polling leaves headroom for
+  // task creation and the video download.
   let output: string | null = null
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     await new Promise(r => setTimeout(r, 5000))
     const tr = await fetch(`${BASE}/tasks/${id}`, { headers: headers() })
     if (!tr.ok) continue
@@ -158,10 +162,23 @@ export async function generateVideo(
       break
     }
     if (task.status === 'FAILED' || task.status === 'CANCELED') {
-      throw new Error(`Runway task ${task.status}: ${String(task.failure ?? task.failureCode ?? 'unknown').slice(0, 300)}`)
+      // Keep BOTH the prose failure and the machine failureCode. Runway's
+      // prose alone can be uselessly generic ("Invalid input" — owner,
+      // Aug 20, with no way to tell WHAT was invalid); the code names the
+      // failing stage. The sanitizer strips the bracket for users.
+      const code = task.failureCode && task.failureCode !== task.failure ? ` [${task.failureCode}]` : ''
+      throw new Error(`Runway task ${task.status}: ${String(task.failure ?? task.failureCode ?? 'unknown').slice(0, 300)}${code}`)
     }
   }
-  if (!output) throw new Error('Runway task timed out after 5 minutes')
+  if (!output) {
+    // Cancel the abandoned task. Without this, Runway keeps rendering a
+    // video nobody will collect — and bills for it if it succeeds. Best
+    // effort: a failed cancel changes nothing about the user-facing outcome.
+    try { await fetch(`${BASE}/tasks/${id}`, { method: 'DELETE', headers: headers() }) } catch { /* best effort */ }
+    // The task id lands in provider_calls.error_message so a timeout Ref is
+    // traceable to a concrete Runway task; the sanitizer never shows it.
+    throw new Error(`Runway task timed out after 10 minutes (task ${id}, canceled)`)
+  }
 
   const vr = await fetch(output)
   if (!vr.ok) throw new Error(`Runway video download failed (${vr.status})`)

@@ -121,6 +121,25 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ swept: false, error: msg }, { status: 200 })
   }
 
+  // Close zombie jobs first: an xcreate_jobs row still 'running' an hour
+  // after creation is a killed function (route maxDuration is 800s), and
+  // nothing else closes those. They are not just clutter — the ?id= loader
+  // resumes running jobs, so a zombie left open reads as a run that never
+  // ends. The client guards with its own 15-min staleness cutoff; this
+  // sweep is what keeps the table honest. (Owner, Aug 20.)
+  let zombieJobs = 0
+  {
+    const stale = new Date(Date.now() - 3600_000).toISOString()
+    const { data: closed, error: zErr } = dry
+      ? await sb.from('xcreate_jobs').select('id').eq('status', 'running').lt('created_at', stale)
+      : await sb.from('xcreate_jobs')
+          .update({ status: 'failed', error: 'Function died before completion (closed by sweep)', completed_at: new Date().toISOString() })
+          .eq('status', 'running').lt('created_at', stale)
+          .select('id')
+    if (zErr) console.warn(`${LOG} zombie job sweep failed:`, zErr.message)
+    else zombieJobs = (closed ?? []).length
+  }
+
   const cutoff = Date.now() - MIN_AGE_HOURS * 3600_000
   const report: Record<string, { scanned: number; referenced: number; tooNew: number; orphans: number; deleted: number }> = {}
   const samples: string[] = []
@@ -165,9 +184,9 @@ async function handle(req: NextRequest) {
     (a, s) => ({ scanned: a.scanned + s.scanned, orphans: a.orphans + s.orphans, deleted: a.deleted + s.deleted }),
     { scanned: 0, orphans: 0, deleted: 0 },
   )
-  console.log(`${LOG} scanned=${totals.scanned} orphans=${totals.orphans} deleted=${totals.deleted}`)
+  console.log(`${LOG} scanned=${totals.scanned} orphans=${totals.orphans} deleted=${totals.deleted} zombieJobs=${zombieJobs}`)
 
-  return NextResponse.json({ swept: true, dry, minAgeHours: MIN_AGE_HOURS, totals, report, samples })
+  return NextResponse.json({ swept: true, dry, minAgeHours: MIN_AGE_HOURS, totals, report, samples, zombieJobs })
 }
 
 export async function GET(req: NextRequest)  { return handle(req) }

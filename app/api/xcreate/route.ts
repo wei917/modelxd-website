@@ -435,7 +435,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null, parentIds: parentIdsInput = null, nodeKind = null, boardId: boardIdInput = null } = await req.json()
+  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null, parentIds: parentIdsInput = null, nodeKind = null, boardId: boardIdInput = null, retryOf = null, rowId: clientRowId = null } = await req.json()
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)} jobId=${clientJobId ?? 'server-generated'}`)
 
   // In video/image mode an attached file (image_to_video, image_to_image,
@@ -727,6 +727,76 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Failed to initialize slots' }, { status: 500 })
   }
 
+  // ── The row is born HERE, at run start (owner, Aug 20) ─────────────────
+  // The xcreates row used to be inserted only after generation, which meant
+  // an in-flight run had no ?id= — the ?job= URL was the only handle, and
+  // it leaked into the address bar and history as a transient link users
+  // had no reason to understand. Creating the row up front (empty slots)
+  // and pointing the job at it gives every run one durable id from birth;
+  // completion becomes an UPDATE. A retry of an all-failed run reuses that
+  // row (retry-in-place); anything ineligible falls through to a fresh row.
+  const persistedInputs = rawInputs
+    .filter((i: any) => i?.storagePath)
+    .map((i: any) => ({ storagePath: i.storagePath, bucket: i.bucket, mediaType: i.mediaType, fileName: i.fileName, fileSize: i.fileSize }))
+  let rowIdForJob: string | null = null
+  if (typeof retryOf === 'string' && retryOf) {
+    const { data: prior } = await sb.from('xcreates')
+      .select('id, user_id, slots, deleted_at')
+      .eq('id', retryOf).eq('user_id', user.id).maybeSingle()
+    const priorSlots: any[] = Array.isArray(prior?.slots) ? prior.slots : []
+    // Eligible: every slot failed, OR the row is a birth-stub whose run
+    // died before writing outputs (empty slots, no job still running on
+    // it). A row with any delivered output is history someone paid for
+    // and never gets overwritten.
+    let eligible = !!prior && !prior.deleted_at &&
+      (priorSlots.length > 0
+        ? priorSlots.every((s: any) => s?.error)
+        : true)
+    if (eligible && priorSlots.length === 0) {
+      const { data: rj } = await sb.from('xcreate_jobs')
+        .select('id').eq('xcreate_id', retryOf).eq('status', 'running').limit(1)
+      if ((rj ?? []).length > 0) eligible = false
+    }
+    if (eligible) {
+      rowIdForJob = retryOf
+      // Reflect the retry's inputs on the row immediately, so a mid-run
+      // reload restores what THIS run is using, not the failed attempt's.
+      await sb.from('xcreates')
+        .update({ mode, prompt, input_attachments: persistedInputs, attachment_id: attachmentId })
+        .eq('id', retryOf).eq('user_id', user.id)
+    } else {
+      console.warn(`${LOG} retryOf ${retryOf} not eligible (missing, deleted, mid-run, or has delivered output) — starting a fresh row`)
+    }
+  }
+  if (!rowIdForJob) {
+    // The client mints the row id at Generate-click so the ?id= link is in
+    // the address bar and history before this POST even lands; honor it
+    // when it's a well-formed UUID. A collision (reused or forged id — an
+    // INSERT can never overwrite, so a forged id is harmless) falls back
+    // to a server mint, and the client's poll-sync corrects its URL.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const insertStub = (id: string) => sb.from('xcreates').insert({
+      id, user_id: user.id, mode, prompt,
+      slots: [], attachment_id: attachmentId,
+      input_attachments: persistedInputs,
+    })
+    let stubId = (typeof clientRowId === 'string' && UUID_RE.test(clientRowId))
+      ? clientRowId.toLowerCase()
+      : globalThis.crypto.randomUUID()
+    let { error: stubErr } = await insertStub(stubId)
+    if (stubErr?.code === '23505') {
+      stubId = globalThis.crypto.randomUUID()
+      ;({ error: stubErr } = await insertStub(stubId))
+    }
+    if (!stubErr) rowIdForJob = stubId
+    else console.warn(`${LOG} birth-stub insert failed — falling back to insert-at-completion:`, stubErr.message)
+  }
+  if (rowIdForJob) {
+    const { error: linkErr } = await sb.from('xcreate_jobs')
+      .update({ xcreate_id: rowIdForJob }).eq('id', job.id)
+    if (linkErr) console.warn(`${LOG} job→row link failed (polling will carry the id only at completion):`, linkErr.message)
+  }
+
   // Run all slots in parallel. Vercel Node.js serverless keeps the function
   // alive after client disconnect up to maxDuration, so we just await.
   const results = await Promise.all(
@@ -786,15 +856,39 @@ export async function POST(req: Request) {
       .map((i: any) => ({ storagePath: i.storagePath, bucket: i.bucket, mediaType: i.mediaType, fileName: i.fileName, fileSize: i.fileSize })),
   }
   let xcreateRow: { id: string } | null = null
+  // Rows are born at run start (rowIdForJob above), so completion is
+  // normally an UPDATE of that row — which also makes a retry of a failed
+  // run land on the SAME row, link and history entry. The insert path
+  // survives only as the fallback for a failed birth-stub.
   for (let attempt = 1; attempt <= 3 && !xcreateRow; attempt++) {
-    const { data, error } = await sb.from('xcreates').insert(xcreateInsert).select('id').single()
-    if (data?.id) { xcreateRow = data; break }
-    if (error?.code === '23505') { xcreateRow = { id: mintedRowId }; break }
-    console.error(`${LOG} xcreates insert failed (attempt ${attempt}/3):`, error?.message ?? error)
+    if (rowIdForJob) {
+      const { error } = await sb.from('xcreates')
+        .update({
+          mode, prompt, search_mode: searchMode,
+          slots: slotsForXCreate, attachment_id: attachmentId,
+          input_attachments: xcreateInsert.input_attachments,
+          chosen_model_id: null,
+        })
+        .eq('id', rowIdForJob).eq('user_id', user.id)
+      if (!error) { xcreateRow = { id: rowIdForJob }; break }
+      console.error(`${LOG} xcreates completion update failed (attempt ${attempt}/3):`, error.message)
+    } else {
+      const { data, error } = await sb.from('xcreates').insert(xcreateInsert).select('id').single()
+      if (data?.id) { xcreateRow = data; break }
+      if (error?.code === '23505') { xcreateRow = { id: mintedRowId }; break }
+      console.error(`${LOG} xcreates insert failed (attempt ${attempt}/3):`, error?.message ?? error)
+    }
     if (attempt < 3) await new Promise(r => setTimeout(r, 400 * attempt))
   }
   if (!xcreateRow) {
-    console.error(`${LOG} xcreates insert PERMANENTLY failed — outputs delivered without a row (user ${user.id}, mode ${mode})`)
+    if (rowIdForJob) {
+      // The stub exists — bind the job to it even though the outputs never
+      // landed; the stub-recovery path on the client makes it re-runnable.
+      console.error(`${LOG} completion update PERMANENTLY failed — job bound to stale stub ${rowIdForJob} (user ${user.id}, mode ${mode})`)
+      xcreateRow = { id: rowIdForJob }
+    } else {
+      console.error(`${LOG} xcreates insert PERMANENTLY failed — outputs delivered without a row (user ${user.id}, mode ${mode})`)
+    }
   }
 
   // Lineage stamp. A separate update (not part of the insert) so the API

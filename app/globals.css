@@ -1700,8 +1700,12 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .vote-row.is-revote .btn-vote.is-save:hover { background: rgba(52,211,153,0.10); }
 
 /* A real text duel is paragraphs, not one word — cap the response area so
-   the stat rows below it don't get pushed off screen. */
-.battle-card .battle-response { max-height: 320px; overflow-y: auto; }
+   the stat rows below it don't get pushed off screen. TEXT ONLY: this
+   selector ties .battle-response.image-response on specificity and used to
+   win on cascade order, re-capping image cards to 320px — which, with the
+   flex centering and the card's overflow:hidden, cropped the top and
+   bottom off every tall image until the lightbox (owner, Aug 20). */
+.battle-card .battle-response:not(.image-response) { max-height: 320px; overflow-y: auto; }
 
 @media (max-width: 760px) {
   .xd-vs { flex-direction: column; gap: 8px; padding: 10px 12px; }

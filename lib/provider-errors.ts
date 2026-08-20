@@ -36,6 +36,19 @@ export function sanitizeProviderError(raw: unknown): string {
     // detail this module exists to strip.
     const clean = msg.split('{')[0].trim()
     if (clean.length > 10 && !WRAPPED.test(clean)) return clean.slice(0, 200)
+    // Our own task-failure wrapper ("Runway task FAILED: <reason>") often
+    // wraps prose that IS meant for users — "Text prompt did not pass
+    // moderation check" tells them to fix the text, not the frames. Strip
+    // the wrapper and echo the reason when it reads like a sentence; bare
+    // enums (SAFETY.INPUT) have no spaces or lowercase and stay squashed.
+    const reason = clean.replace(/^.*?task (?:FAILED|CANCELED):\s*/i, '')
+      // Trailing machine code appended for the call log ("… [SAFETY.INPUT]")
+      // is diagnostics, not prose — never show it to the user.
+      .replace(/\s*\[[A-Z0-9._\- ]+\]\s*$/, '')
+      .trim()
+    if (reason.length > 10 && reason.includes(' ') && !WRAPPED.test(reason) && !/^[A-Z0-9._\- ]+$/.test(reason)) {
+      return `${reason.replace(/\.\s*$/, '')}. Try rephrasing it.`.slice(0, 220)
+    }
     return 'The model declined this prompt for safety reasons. Try rephrasing it.'
   }
   if (TOOBIG.test(msg))   return 'The attached file or prompt is too large for this model. Try a smaller file or a model with a larger context window.'
