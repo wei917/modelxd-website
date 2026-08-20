@@ -39,10 +39,37 @@ function headers() {
   }
 }
 
-// Runway ratios are exact pixel pairs like '1280:720'. Map our size
-// strings (WxH or '720p' style) onto the nearest supported landscape/
-// portrait/square ratio.
-function ratioForSize(size: string, aspect?: string | null): string {
+// Runway ratios are exact pixel pairs like '1280:720'. gen4-family accepts
+// exactly 1280:720 | 720:1280 (probed live July 22). seedance2_5 has three
+// resolution tiers × six aspects (API reference, read 2026-08-20) — map our
+// size string ('480p/720p/1080p' or WxH) + aspect onto its tier table.
+const SEEDANCE25_RATIOS: Record<string, Record<string, string>> = {
+  '480p':  { '16:9': '854:480',   '9:16': '480:854',   '1:1': '640:640',   '4:3': '752:560',   '3:4': '560:752',   '21:9': '992:432' },
+  '720p':  { '16:9': '1280:720',  '9:16': '720:1280',  '1:1': '960:960',   '4:3': '1112:834',  '3:4': '834:1112',  '21:9': '1470:630' },
+  '1080p': { '16:9': '1920:1080', '9:16': '1080:1920', '1:1': '1440:1440', '4:3': '1664:1248', '3:4': '1248:1664', '21:9': '2206:946' },
+}
+
+function tierForSize(size: string): '480p' | '720p' | '1080p' {
+  const s = String(size).toLowerCase()
+  if (s.includes('1080') || s.includes('1920')) return '1080p'
+  if (s.includes('480') || s.includes('854')) return '480p'
+  const m = s.match(/(\d+)\s*[x×*]\s*(\d+)/i)
+  if (m) {
+    const minDim = Math.min(parseInt(m[1], 10), parseInt(m[2], 10))
+    if (minDim >= 1080) return '1080p'
+    if (minDim < 700)   return '480p'
+  }
+  return '720p'
+}
+
+function ratioForSize(model: ModelInfo, size: string, aspect?: string | null): string {
+  if (model.model_name === 'seedance2_5') {
+    const tier = SEEDANCE25_RATIOS[tierForSize(size)]
+    if (aspect && tier[aspect]) return tier[aspect]
+    const m = String(size).match(/(\d+)\s*[x×*]\s*(\d+)/i)
+    const portrait = m ? parseInt(m[2], 10) > parseInt(m[1], 10) : false
+    return tier[portrait ? '9:16' : '16:9']
+  }
   const s = String(size)
   const m = s.match(/(\d+)\s*[x×*]\s*(\d+)/i)
   const w = m ? parseInt(m[1], 10) : 1280
@@ -83,9 +110,14 @@ export async function generateVideo(
   const TAG = `[runway/${model.model_name}]`
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
   const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
-  const ratio = ratioForSize(size, options?.aspect_ratio)
-  // Runway durations are 5 or 10 seconds.
-  const duration = seconds > 7 ? 10 : 5
+  const ratio = ratioForSize(model, size, options?.aspect_ratio)
+  // gen4-family durations are exactly 5 or 10 seconds; seedance2_5 takes
+  // any integer 5–30. The API reference says 4–30, but duration=4 fails
+  // upstream with THIRD_PARTY.INPUT_VALIDATION while 5 succeeds (probed
+  // live 2026-08-20) — the schema floor and the real floor disagree.
+  const duration = model.model_name === 'seedance2_5'
+    ? Math.max(5, Math.min(30, Math.round(seconds)))
+    : (seconds > 7 ? 10 : 5)
 
   const extend = options?.mode === 'extend_video'
   const i2v = !extend && imageAtts.length > 0
@@ -189,7 +221,10 @@ export async function generateVideo(
   // Extend bills by the MEASURED output length (which tracks the input
   // clip) — the row's rate is the combined input+output per-second price.
   const per = (model.model_pricing?.per_video_second ?? {}) as Record<string, number>
-  const rate = per['720p'] ?? per.default ?? Object.values(per)[0] ?? 0
+  // Bill the tier that was actually requested — seedance2_5 prices 480p,
+  // 720p and 1080p differently (20/30/68 credits per second).
+  const tierKey = model.model_name === 'seedance2_5' ? tierForSize(size) : '720p'
+  const rate = per[tierKey] ?? per['720p'] ?? per.default ?? Object.values(per)[0] ?? 0
   const billedSeconds = extend ? (mp4DurationSeconds(buffer) ?? duration) : duration
   const cost = billedSeconds * rate
   console.log(`${TAG} done bytes=${buffer.length} billed=${billedSeconds.toFixed(1)}s cost=$${cost.toFixed(3)}`)
