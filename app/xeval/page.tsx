@@ -89,12 +89,66 @@ export default function XEvalPage() {
   // a pure display filter: BT ratings are global, so hiding rows changes
   // nothing about the numbers shown.
   const [view, setView] = useState<'all' | 'best'>('all')
+
+  // Column sorting — XBoard's pattern: click a header to sort, click again
+  // to flip. Numeric columns default desc (rating/wins) or asc (cost/time).
+  type SortKey = 'model' | 'effort' | 'rating' | 'wins' | 'cost' | 'time'
+  const [sortBy, setSortBy] = useState<SortKey>('rating')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const onSort = (k: SortKey) => {
+    if (k === sortBy) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortBy(k)
+      setSortDir(k === 'rating' || k === 'wins' ? 'desc' : 'asc')
+    }
+  }
+  const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+
   const visible = useMemo(() => {
-    const sorted = [...ratings].sort((a, b) => b.rating - a.rating)
-    if (view === 'all') return sorted
-    const seen = new Set<string>()
-    return sorted.filter(r => (seen.has(r.model_name) ? false : (seen.add(r.model_name), true)))
-  }, [ratings, view])
+    let list = [...ratings].sort((a, b) => b.rating - a.rating)
+    if (view === 'best') {
+      const seen = new Set<string>()
+      list = list.filter(r => (seen.has(r.model_name) ? false : (seen.add(r.model_name), true)))
+    }
+    const dir = sortDir === 'asc' ? 1 : -1
+    const entryOf = (r: RatingRow) => perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
+    const val = (r: RatingRow): string | number => {
+      switch (sortBy) {
+        case 'model': return (entryOf(r)?.display ?? r.model_name).toLowerCase()
+        case 'effort': return EFFORT_ORDER.indexOf(r.effort ?? '')
+        case 'rating': return r.rating
+        case 'wins': return r.wins
+        case 'cost': return avg(entryOf(r)?.costs ?? []) ?? Number.MAX_VALUE
+        case 'time': return avg(entryOf(r)?.times ?? []) ?? Number.MAX_VALUE
+      }
+    }
+    return list.sort((a, b) => {
+      const va = val(a), vb = val(b)
+      return (va < vb ? -1 : va > vb ? 1 : 0) * dir
+    })
+  }, [ratings, view, sortBy, sortDir, perEntry])
+
+  function SortHeader({ label, k, align = 'left' }: { label: string; k: SortKey; align?: 'left' | 'right' }) {
+    const isActive = sortBy === k
+    return (
+      <th style={{ padding: '8px 12px', textAlign: align }}>
+        <button
+          onClick={() => onSort(k)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+            fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit',
+            color: isActive ? 'var(--white)' : 'var(--muted)', transition: 'color 0.12s',
+          }}
+        >
+          <span>{label}</span>
+          <span style={{ fontSize: 8, opacity: isActive ? 1 : 0.3, color: isActive ? 'var(--green)' : 'inherit' }}>
+            {isActive ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+          </span>
+        </button>
+      </th>
+    )
+  }
 
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '32px 24px' }}>
@@ -131,12 +185,12 @@ export default function XEvalPage() {
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '8px 12px' }}>#</th>
-                  <th style={{ padding: '8px 12px' }}>{t('xeval.col.model')}</th>
-                  <th style={{ padding: '8px 12px' }}>{t('xeval.col.effort')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.rating')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'right' }}>W / G</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.time')}</th>
+                  <SortHeader label={t('xeval.col.model')} k="model" />
+                  <SortHeader label={t('xeval.col.effort')} k="effort" />
+                  <SortHeader label={t('xeval.col.rating')} k="rating" align="right" />
+                  <SortHeader label="W / G" k="wins" align="right" />
+                  <SortHeader label={t('xeval.col.cost')} k="cost" align="right" />
+                  <SortHeader label={t('xeval.col.time')} k="time" align="right" />
                 </tr>
               </thead>
               <tbody>
