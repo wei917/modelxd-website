@@ -23,6 +23,29 @@ export async function downloadFile(url: string, filename: string) {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const blob = await res.blob()
+    // Mobile: route through the OS SHARE SHEET instead of a download. A
+    // web page cannot write into the photo library — sandboxing, not a
+    // bug — and a mobile download strands media in Files/Downloads where
+    // users don't look for it (owner, Aug 21: "why can't I save it to my
+    // Photos app?"). The share sheet is the one sanctioned bridge: "Save
+    // Video"/"Save Image" (iOS) and "Photos" (Android) live there.
+    // Desktop keeps the plain download — a share sheet there is noise.
+    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isMobile && typeof navigator.canShare === 'function') {
+      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' })
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] })
+          return
+        } catch (err) {
+          // AbortError = the user closed the sheet; that's a decision,
+          // not a failure — don't dump a download on them as a consolation.
+          if ((err as DOMException)?.name === 'AbortError') return
+          // Anything else (share blocked, gesture expired): fall through
+          // to the download path below.
+        }
+      }
+    }
     const obj  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href = obj
