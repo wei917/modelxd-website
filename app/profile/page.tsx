@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import ReactMarkdown from 'react-markdown'
 import type { UserCredits, CreditTransaction } from '../../lib/credits'
 import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
+import { downloadFile, downloadName } from '../../lib/download'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -560,9 +561,13 @@ export default function ProfilePage() {
         <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
           <div onClick={e => e.stopPropagation()} style={{position:'fixed',top:20,right:24,zIndex:99100,display:'flex',gap:10}}>
-            <a href={lightbox} download target="_blank" rel="noreferrer" title="Download"
-              style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,textDecoration:'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
-            >↓</a>
+            {/* downloadFile, not <a download>: the attribute is ignored on
+                cross-origin (supabase.co) hrefs, so this button just opened
+                a tab — with no way to save at all on mobile Chrome
+                (owner, Aug 21). */}
+            <button onClick={() => void downloadFile(lightbox, downloadName(lightbox, 'image'))} title="Download"
+              style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
+            >↓</button>
             <button onClick={() => setLightbox(null)} title="Close"
               style={{display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,width:36,height:36,color:'#fff',fontSize:16,cursor:'pointer',boxShadow:'0 2px 12px rgba(0,0,0,0.4)'}}
             >✕</button>
@@ -613,9 +618,10 @@ export default function ProfilePage() {
                 </>)}
                 <span style={{marginLeft:'auto', display:'flex', gap:8}}>
                   {(isImage || isVideo) && chosen.text && (
-                    <a href={chosen.text} download target="_blank" rel="noreferrer"
-                      style={{padding:'6px 12px',borderRadius:6,background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.25)',color:'#fff',textDecoration:'none',fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}
-                    >↓ Download</a>
+                    <button
+                      onClick={() => { const u = chosen.text.split('\n')[0]; void downloadFile(u, downloadName(u, isVideo ? 'video' : 'image')) }}
+                      style={{padding:'6px 12px',borderRadius:6,background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.25)',color:'#fff',cursor:'pointer',fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}
+                    >↓ Download</button>
                   )}
                   <button
                     onClick={() => { window.open(`/xcreate?id=${previewItem.id}`, '_blank', 'noopener') }}
