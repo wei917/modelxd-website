@@ -1094,7 +1094,11 @@ export default function ProfilePage() {
                         {preview && (
                           <a href={`/xduel/${item.id}`} style={{ textDecoration: 'none' }}>
                             {preview.isVideo
-                              ? <video src={preview.text} muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+                              // preload + #t=0.1: mobile Chrome skips preloading video data entirely
+// (data-saver heuristics), so a non-playing <video> painted NOTHING —
+// every thumbnail blank on phones (owner, Aug 21). The media fragment
+// makes the browser decode a frame near the start as the display frame.
+? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
                               : preview.isImage
                               ? <img src={preview.text} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
                               : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
@@ -1249,7 +1253,11 @@ export default function ProfilePage() {
                       >
                         {preview && (
                           preview.isVideo
-                            ? <video src={preview.text} muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+                            // preload + #t=0.1: mobile Chrome skips preloading video data entirely
+// (data-saver heuristics), so a non-playing <video> painted NOTHING —
+// every thumbnail blank on phones (owner, Aug 21). The media fragment
+// makes the browser decode a frame near the start as the display frame.
+? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
                             : preview.isImage
                             ? <img src={preview.text} alt="" onClick={e => { e.stopPropagation(); setLightbox(preview.text) }} style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }} />
                             : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
