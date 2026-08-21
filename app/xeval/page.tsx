@@ -42,6 +42,7 @@ interface RunRow {
 export default function XEvalPage() {
   const t = useT()
   const [ratings, setRatings] = useState<RatingRow[]>([])
+  const [verdicts, setVerdicts] = useState(0)
   const [runs, setRuns] = useState<RunRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -58,7 +59,10 @@ export default function XEvalPage() {
         .order('ts', { ascending: false })
         .limit(50)
       const latestFit = r?.[0]?.fit_id
-      setRatings((r ?? []).filter(row => row.fit_id === latestFit))
+      // retired entries keep their games in the fit but leave the display
+      setRatings((r ?? []).filter(row => row.fit_id === latestFit && !(row as any).retired))
+      const { count } = await sb.from('xeval_judgments').select('id', { count: 'exact', head: true })
+      setVerdicts(count ?? 0)
       const { data: rr } = await sb
         .from('xeval_runs')
         .select('run_id, task_id, occupation, model_name, display_name, provider, effort, cost_usd, model_s')
@@ -150,6 +154,11 @@ export default function XEvalPage() {
     )
   }
 
+  // XBoard's five-tier heatmap buckets — one house language for "how good".
+  const tier = (x: number) => (x < 950 ? 'poor' : x < 1000 ? 'fair' : x < 1050 ? 'mid' : x < 1100 ? 'good' : 'elite')
+  const judgeCount = (judge.match(/panel\((\d+)/)?.[1]) ?? '1'
+  const updated = ratings[0]?.ts?.slice(0, 10) ?? ''
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '32px 24px' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, marginBottom: 4 }}>
@@ -163,6 +172,16 @@ export default function XEvalPage() {
         <p style={{ color: 'var(--muted)' }}>{t('xeval.empty')}</p>
       ) : (
         <>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
+            <span><strong style={{ color: 'var(--white)' }}>{ratings.length}</strong> {t('xeval.stat.entries')}</span>
+            <span><strong style={{ color: 'var(--white)' }}>{taskCount}</strong> {t('xeval.stat.tasks')}</span>
+            <span><strong style={{ color: 'var(--white)' }}>{judgeCount}</strong> {t('xeval.stat.judges')}</span>
+            <span><strong style={{ color: 'var(--white)' }}>{verdicts}</strong> {t('xeval.stat.verdicts')}</span>
+            {updated && <span>{t('xeval.stat.updated')} {updated}</span>}
+          </div>
+
+          <FrontierChart rows={visible} perEntry={perEntry} avg={avg} />
+
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['all', 'best'] as const).map(v => (
               <button
@@ -208,7 +227,9 @@ export default function XEvalPage() {
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>{row.rating}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                          <span className={`xd-chip ${tier(row.rating)}`}>{row.rating}</span>
+                        </td>
                         <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>
                           {row.wins} / {row.games}
                         </td>
@@ -237,5 +258,71 @@ export default function XEvalPage() {
         </>
       )}
     </main>
+  )
+}
+
+/** Cost-vs-rating frontier — the page's signature: price on a log axis,
+ *  rating on linear, one dot per entry. The story the table can't show at
+ *  a glance: how much rating each dollar actually buys. Inline SVG, no deps. */
+function FrontierChart({ rows, perEntry, avg }: {
+  rows: { model_name: string; effort: string | null; rating: number }[]
+  perEntry: Map<string, { display: string; provider: string; costs: number[]; times: number[] }>
+  avg: (xs: number[]) => number | null
+}) {
+  const t = useT()
+  const pts = rows
+    .map(r => {
+      const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
+      const c = e ? avg(e.costs) : null
+      return c != null && c > 0 ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}` } : null
+    })
+    .filter(Boolean) as { x: number; y: number; label: string }[]
+  if (pts.length < 3) return null
+  const W = 940, H = 240, PL = 46, PR = 16, PT = 14, PB = 30
+  const lx = (c: number) => Math.log10(c)
+  const xs = pts.map(p => lx(p.x)), ys = pts.map(p => p.y)
+  const x0 = Math.min(...xs) - 0.15, x1 = Math.max(...xs) + 0.15
+  const y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40
+  const X = (c: number) => PL + ((lx(c) - x0) / (x1 - x0)) * (W - PL - PR)
+  const Y = (v: number) => H - PB - ((v - y0) / (y1 - y0)) * (H - PT - PB)
+  const xticks = [0.01, 0.03, 0.1, 0.3, 1].filter(v => lx(v) >= x0 && lx(v) <= x1)
+  // Label de-collision: near-coincident points get their labels fanned
+  // vertically so entries at similar (cost, rating) stay readable.
+  const labelY = new Map<string, number>()
+  const sorted = [...pts].sort((a, b) => Y(a.y) - Y(b.y))
+  for (const p of sorted) {
+    let y = Y(p.y) + 3
+    while ([...labelY.entries()].some(([l, ly]) => Math.abs(ly - y) < 11 && Math.abs(X(pts.find(q => q.label === l)!.x) - X(p.x)) < 170)) y += 12
+    labelY.set(p.label, y)
+  }
+  return (
+    <div style={{ margin: '0 0 20px', overflowX: 'auto' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 4 }}>
+        {t('xeval.chart.title')}
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block' }}>
+        {xticks.map(v => (
+          <g key={v}>
+            <line x1={X(v)} y1={PT} x2={X(v)} y2={H - PB} stroke="var(--border)" strokeWidth={1} />
+            <text x={X(v)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{'$' + v}</text>
+          </g>
+        ))}
+        {[900, 1000, 1100, 1200, 1300].filter(v => v > y0 && v < y1).map(v => (
+          <g key={v}>
+            <line x1={PL} y1={Y(v)} x2={W - PR} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />
+            <text x={PL - 6} y={Y(v) + 3} textAnchor="end" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{v}</text>
+          </g>
+        ))}
+        {pts.map(p => {
+          const rightHalf = X(p.x) > W * 0.72
+          return (
+            <g key={p.label}>
+              <circle cx={X(p.x)} cy={Y(p.y)} r={5} fill="var(--red)" opacity={0.85} />
+              <text x={X(p.x) + (rightHalf ? -8 : 8)} y={labelY.get(p.label) ?? Y(p.y) + 3} textAnchor={rightHalf ? 'end' : 'start'} fontSize={10} fill="var(--muted2)" fontFamily="var(--font-mono)">{p.label}</text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
   )
 }
