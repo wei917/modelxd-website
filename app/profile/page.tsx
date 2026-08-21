@@ -1104,7 +1104,10 @@ export default function ProfilePage() {
 // (data-saver heuristics), so a non-playing <video> painted NOTHING —
 // every thumbnail blank on phones (owner, Aug 21). The media fragment
 // makes the browser decode a frame near the start as the display frame.
-? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+// contain on a fixed black stage, not cover: cover in a wide box
+// crops a 9:16 portrait video to a thin mid-slice — the shape read
+// as wrong the moment portrait runs existed (owner, Aug 21).
+? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', height: 160, objectFit: 'contain', display: 'block', background: '#000' }} />
                               : preview.isImage
                               ? <img src={preview.text} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
                               : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
@@ -1263,7 +1266,10 @@ export default function ProfilePage() {
 // (data-saver heuristics), so a non-playing <video> painted NOTHING —
 // every thumbnail blank on phones (owner, Aug 21). The media fragment
 // makes the browser decode a frame near the start as the display frame.
-? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+// contain on a fixed black stage, not cover: cover in a wide box
+// crops a 9:16 portrait video to a thin mid-slice — the shape read
+// as wrong the moment portrait runs existed (owner, Aug 21).
+? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', height: 160, objectFit: 'contain', display: 'block', background: '#000' }} />
                             : preview.isImage
                             ? <img src={preview.text} alt="" onClick={e => { e.stopPropagation(); setLightbox(preview.text) }} style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }} />
                             : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
