@@ -281,10 +281,18 @@ function FrontierChart({ rows, perEntry, avg }: {
     .map(r => {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
       const c = e ? avg(e.costs) : null
-      return c != null && c > 0 ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}` } : null
+      return c != null && c > 0 ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider } : null
     })
-    .filter(Boolean) as { x: number; y: number; label: string }[]
+    .filter(Boolean) as { x: number; y: number; label: string; provider: string }[]
   if (pts.length < 3) return null
+  const rankOf = new Map([...pts].sort((a, b) => b.y - a.y).map((p, i) => [p.label, i + 1]))
+  // Provider identity colors (globals.css) — same hues as the rest of the site.
+  const PROVIDER_COLOR: Record<string, string> = {
+    openai: 'var(--provider-openai)', google: 'var(--provider-google)', anthropic: 'var(--provider-anthropic)',
+    alibaba: 'var(--provider-alibaba)', xai: 'var(--provider-xai)', moonshot: '#6b4fbb', minimax: '#c2185b',
+  }
+  const colorOf = (prov: string) => PROVIDER_COLOR[prov] ?? 'var(--red)'
+  const providers = [...new Set(pts.map(p => p.provider))]
   const W = 940, H = 240, PL = 46, PR = 16, PT = 14, PB = 30
   const lx = (c: number) => Math.log10(c)
   const xs = pts.map(p => lx(p.x)), ys = pts.map(p => p.y)
@@ -293,19 +301,17 @@ function FrontierChart({ rows, perEntry, avg }: {
   const X = (c: number) => PL + ((lx(c) - x0) / (x1 - x0)) * (W - PL - PR)
   const Y = (v: number) => H - PB - ((v - y0) / (y1 - y0)) * (H - PT - PB)
   const xticks = [0.01, 0.03, 0.1, 0.3, 1].filter(v => lx(v) >= x0 && lx(v) <= x1)
-  // Label de-collision: near-coincident points get their labels fanned
-  // vertically so entries at similar (cost, rating) stay readable.
-  const labelY = new Map<string, number>()
-  const sorted = [...pts].sort((a, b) => Y(a.y) - Y(b.y))
-  for (const p of sorted) {
-    let y = Y(p.y) + 3
-    while ([...labelY.entries()].some(([l, ly]) => Math.abs(ly - y) < 11 && Math.abs(X(pts.find(q => q.label === l)!.x) - X(p.x)) < 170)) y += 12
-    labelY.set(p.label, y)
-  }
   return (
     <div style={{ margin: '0 0 20px', overflowX: 'auto' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 4 }}>
-        {t('xeval.chart.title')}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
+        <span>{t('xeval.chart.title')}</span>
+        <span style={{ display: 'inline-flex', gap: 12, flexWrap: 'wrap' }}>
+          {providers.map(pv => (
+            <span key={pv} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: 0, textTransform: 'capitalize' }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: colorOf(pv), display: 'inline-block' }} />{pv}
+            </span>
+          ))}
+        </span>
       </div>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block' }}>
         {xticks.map(v => (
@@ -320,15 +326,13 @@ function FrontierChart({ rows, perEntry, avg }: {
             <text x={PL - 6} y={Y(v) + 3} textAnchor="end" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{v}</text>
           </g>
         ))}
-        {pts.map(p => {
-          const rightHalf = X(p.x) > W * 0.72
-          return (
-            <g key={p.label}>
-              <circle cx={X(p.x)} cy={Y(p.y)} r={5} fill="var(--red)" opacity={0.85} />
-              <text x={X(p.x) + (rightHalf ? -8 : 8)} y={labelY.get(p.label) ?? Y(p.y) + 3} textAnchor={rightHalf ? 'end' : 'start'} fontSize={10} fill="var(--muted2)" fontFamily="var(--font-mono)">{p.label}</text>
-            </g>
-          )
-        })}
+        {pts.map(p => (
+          <g key={p.label}>
+            <title>{`#${rankOf.get(p.label)} ${p.label} — ${p.y} · $${p.x.toFixed(3)}/task`}</title>
+            <circle cx={X(p.x)} cy={Y(p.y)} r={9} fill={colorOf(p.provider)} stroke="var(--bg)" strokeWidth={1.5} />
+            <text x={X(p.x)} y={Y(p.y) + 3.5} textAnchor="middle" fontSize={10} fontWeight={700} fill="#fff" fontFamily="var(--font-mono)">{rankOf.get(p.label)}</text>
+          </g>
+        ))}
       </svg>
     </div>
   )
