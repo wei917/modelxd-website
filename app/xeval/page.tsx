@@ -109,8 +109,40 @@ export default function XEvalPage() {
   }
   const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
+  // Page-level filters (provider / effort / family) drive BOTH the chart and
+  // the table. Empty selection = no filter. Family is derived from the model
+  // name by pattern — ai_models has no family column; if one is added this
+  // becomes a plain read.
+  const familyOf = (modelName: string, display: string): string => {
+    const m = modelName
+    let r: RegExpMatchArray | null
+    if ((r = m.match(/^gpt-(\d+(?:\.\d+)?)/))) return `GPT-${r[1]}`
+    if ((r = m.match(/^claude-[a-z]+-(\d+(?:\.\d+)?)/))) return `Claude ${r[1]}`
+    if ((r = m.match(/^gemini-(\d+(?:\.\d+)?)/))) return `Gemini ${r[1]}`
+    if ((r = m.match(/^grok-(\d+(?:\.\d+)?)/))) return `Grok ${r[1]}`
+    if ((r = m.match(/^kimi-k(\d+)/))) return `Kimi K${r[1]}`
+    if ((r = m.match(/^qwen(\d+(?:\.\d+)?)/))) return `Qwen ${r[1]}`
+    return display.split(' ')[0]
+  }
+  const [selProv, setSelProv] = useState<Set<string>>(new Set())
+  const [selEffort, setSelEffort] = useState<Set<string>>(new Set())
+  const [selFamily, setSelFamily] = useState<Set<string>>(new Set())
+  const flip = (set: Set<string>, setter: (s: Set<string>) => void, k: string) => {
+    const n = new Set(set); n.has(k) ? n.delete(k) : n.add(k); setter(n)
+  }
+  const provOf = (r: RatingRow) => perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.provider ?? ''
+  const famOf = (r: RatingRow) => familyOf(r.model_name, perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.display ?? r.model_name)
+  const allProviders = useMemo(() => [...new Set(ratings.map(provOf).filter(Boolean))].sort(), [ratings, perEntry])
+  const allEfforts = useMemo(() => [...new Set(ratings.map(r => r.effort ?? ''))].sort((a, b) => EFFORT_ORDER.indexOf(a) - EFFORT_ORDER.indexOf(b)), [ratings])
+  const allFamilies = useMemo(() => [...new Set(ratings.map(famOf))].sort(), [ratings, perEntry])
+  const filtered = useMemo(() => ratings.filter(r =>
+    (selProv.size === 0 || selProv.has(provOf(r))) &&
+    (selEffort.size === 0 || selEffort.has(r.effort ?? '')) &&
+    (selFamily.size === 0 || selFamily.has(famOf(r)))
+  ), [ratings, selProv, selEffort, selFamily, perEntry])
+
   const visible = useMemo(() => {
-    let list = [...ratings].sort((a, b) => b.rating - a.rating)
+    let list = [...filtered].sort((a, b) => b.rating - a.rating)
     if (view === 'best') {
       const seen = new Set<string>()
       list = list.filter(r => (seen.has(r.model_name) ? false : (seen.add(r.model_name), true)))
@@ -131,7 +163,28 @@ export default function XEvalPage() {
       const va = val(a), vb = val(b)
       return (va < vb ? -1 : va > vb ? 1 : 0) * dir
     })
-  }, [ratings, view, sortBy, sortDir, perEntry])
+  }, [filtered, view, sortBy, sortDir, perEntry])
+
+  const FilterGroup = ({ label, items, sel, setter, cap }: { label: string; items: string[]; sel: Set<string>; setter: (s: Set<string>) => void; cap?: boolean }) => (
+    items.length > 1 ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginRight: 2 }}>{label.toUpperCase()}</span>
+        {items.map(it => {
+          const on = sel.size === 0 || sel.has(it)
+          return (
+            <button key={it} onClick={() => flip(sel, setter, it)} style={{
+              padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-mono)',
+              textTransform: cap ? 'capitalize' : 'none',
+              border: `1px solid ${sel.has(it) ? 'var(--red)' : 'var(--border)'}`,
+              background: sel.has(it) ? 'var(--red-dim)' : 'transparent',
+              color: on ? (sel.has(it) ? 'var(--red)' : 'var(--white)') : 'var(--muted)',
+              opacity: on ? 1 : 0.55,
+            }}>{it || '—'}</button>
+          )
+        })}
+      </div>
+    ) : null
+  )
 
   function SortHeader({ label, k, align = 'left' }: { label: string; k: SortKey; align?: 'left' | 'right' }) {
     const isActive = sortBy === k
@@ -184,6 +237,12 @@ export default function XEvalPage() {
             <span><strong style={{ color: 'var(--white)' }}>{judgeCount}</strong> {t('xeval.stat.judges')}</span>
             <span><strong style={{ color: 'var(--white)' }}>{verdicts}</strong> {t('xeval.stat.verdicts')}</span>
             {updated && <span>{t('xeval.stat.updated')} {updated}</span>}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+            <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap />
+            <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort} />
+            <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
           </div>
 
           <FrontierChart rows={visible} perEntry={perEntry} avg={avg} />
