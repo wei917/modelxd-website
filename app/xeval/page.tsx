@@ -9,6 +9,7 @@
 // owner-triggered publish script fills from the local pilot store.
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import ProviderLogo from '../components/ProviderLogo'
 import { useT } from '../../lib/i18n'
@@ -160,11 +161,16 @@ export default function XEvalPage() {
   const updated = ratings[0]?.ts?.slice(0, 10) ?? ''
 
   return (
-    <main style={{ maxWidth: 980, margin: '0 auto', padding: '32px 24px' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, marginBottom: 4 }}>
-        {t('xeval.title')}
-      </h1>
-      <p style={{ color: 'var(--muted)', marginBottom: 24, maxWidth: 700 }}>{t('xeval.sub')}</p>
+    <div className="xduel-page">
+      <div className="arena">
+        {/* In-page header — XBoard's pattern: eyebrow + big headline + method link. */}
+        <Link href="/xeval" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xeval.eyebrow')}</Link>
+        <h1 className="page-headline">
+          {t('xeval.subtitle')}
+          <a href="#xeval-methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 14, whiteSpace: 'nowrap' }}>
+            {t('xeval.how').toUpperCase()} →
+          </a>
+        </h1>
 
       {loading ? (
         <p style={{ color: 'var(--muted)' }}>…</p>
@@ -247,7 +253,7 @@ export default function XEvalPage() {
           </div>
 
           {/* Methodology — the disclosure IS the differentiator. */}
-          <section style={{ marginTop: 32, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>
+          <section id="xeval-methodology" style={{ marginTop: 32, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>
             <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
             <p style={{ margin: '8px 0 0' }}>
               {t('xeval.method.body')
@@ -257,7 +263,8 @@ export default function XEvalPage() {
           </section>
         </>
       )}
-    </main>
+      </div>
+    </div>
   )
 }
 
