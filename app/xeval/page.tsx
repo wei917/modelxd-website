@@ -88,7 +88,13 @@ export default function XEvalPage() {
 
   const taskCount = useMemo(() => new Set(runs.map(r => r.task_id)).size, [runs])
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
-  const judge = ratings[0]?.judge_filter ?? ''
+  // judge_filter is the fit's machine label, e.g. "panel(3 judges)@high+rules+tasks:enabled".
+  // Render the panel form as prose; anything else falls back to the raw label.
+  const judge = useMemo(() => {
+    const raw = ratings[0]?.judge_filter ?? ''
+    const m = raw.match(/^panel\((\d+) judges?\)@(\w+)/)
+    return m ? t('xeval.judge.panel').replace('{n}', m[1]).replace('{effort}', m[2]) : raw
+  }, [ratings, t])
 
   // View filter. 'best' collapses each model to its highest-rated effort —
   // a pure display filter: BT ratings are global, so hiding rows changes
