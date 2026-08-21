@@ -245,7 +245,7 @@ export default function XEvalPage() {
             <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
           </div>
 
-          <FrontierChart rows={visible} perEntry={perEntry} avg={avg} />
+          <FrontierChart rows={visible} domainRows={ratings} perEntry={perEntry} avg={avg} />
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['all', 'best'] as const).map(v => (
@@ -332,8 +332,9 @@ export default function XEvalPage() {
  *  an entry lifts it to the top layer (SVG z-order = render order) and dims
  *  the rest. Legend chips toggle whole provider series; entry chips toggle
  *  single dots. Inline SVG, no deps. */
-function FrontierChart({ rows, perEntry, avg }: {
+function FrontierChart({ rows, domainRows, perEntry, avg }: {
   rows: { model_name: string; effort: string | null; rating: number }[]
+  domainRows: { model_name: string; effort: string | null; rating: number }[]
   perEntry: Map<string, { display: string; provider: string; costs: number[]; times: number[] }>
   avg: (xs: number[]) => number | null
 }) {
@@ -347,14 +348,16 @@ function FrontierChart({ rows, perEntry, avg }: {
     setter(n)
   }
 
-  const all = rows
+  const toPts = (src: { model_name: string; effort: string | null; rating: number }[]) => src
     .map(r => {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
       const c = e ? avg(e.costs) : null
       return c != null && c > 0 ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider } : null
     })
     .filter(Boolean) as { x: number; y: number; label: string; provider: string }[]
-  if (all.length < 3) return null
+  const all = toPts(rows)          // what the page filters let through
+  const domain = toPts(domainRows) // everything — axes stay put while filtering
+  if (domain.length === 0) return null
 
   const PROVIDER_COLOR: Record<string, string> = {
     openai: 'var(--provider-openai)', google: 'var(--provider-google)', anthropic: 'var(--provider-anthropic)',
@@ -365,10 +368,10 @@ function FrontierChart({ rows, perEntry, avg }: {
   const pts = all.filter(p => !hiddenProv.has(p.provider) && !hiddenEntry.has(p.label))
   const anyHidden = hiddenProv.size > 0 || hiddenEntry.size > 0
 
-  // Axes fit ALL entries so toggling doesn't rescale the picture.
+  // Axes fit the FULL dataset so neither page filters nor chart toggles rescale the picture.
   const W = 940, H = 260, PL = 46, PR = 16, PT = 14, PB = 30
   const lx = (c: number) => Math.log10(c)
-  const xs = all.map(p => lx(p.x)), ys = all.map(p => p.y)
+  const xs = domain.map(p => lx(p.x)), ys = domain.map(p => p.y)
   const x0 = Math.min(...xs) - 0.15, x1 = Math.max(...xs) + 0.25
   const y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40
   const X = (c: number) => PL + ((lx(c) - x0) / (x1 - x0)) * (W - PL - PR)
