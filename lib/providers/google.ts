@@ -451,19 +451,25 @@ export async function generateVideo(
   seconds:     number = 8,
   attachments: Attachment[] = [],
   onProgress?: (pct: number) => void,
-  options?:    { mode?: string | null; extend_video_ref?: string | null },
+  options?:    { mode?: string | null; extend_video_ref?: string | null; aspect_ratio?: string | null },
 ): Promise<VideoResult> {
   const TAG = `[google/${model.model_name}]`
 
   // Map our flat size string → Veo's resolution + aspect ratio inputs.
   // Veo currently accepts '720p' / '1080p' / '4k' for resolution and a small
   // set of aspectRatio strings ('16:9', '9:16', etc.).
+  // The user's explicit ⚙ choice WINS over the size-derived guess: XCreate
+  // sends size as a bare tier ("720p", no dimensions), which parsed to
+  // 1280×720 → 16:9 unconditionally, making the aspect option a placebo
+  // for every Google video model (owner, Aug 20: square input cropped to
+  // widescreen). The catalog's output_config gates which ratios the UI
+  // offers per model, so what arrives here is already model-appropriate.
   const [wStr, hStr] = size.includes('x') ? size.split('x') : ['1280', '720']
   const w = parseInt(wStr, 10) || 1280
   const h = parseInt(hStr, 10) || 720
   const minDim = Math.min(w, h)
   const resolution = minDim >= 2160 ? '4k' : minDim >= 1080 ? '1080p' : '720p'
-  const aspectRatio = w === h ? '1:1' : (w >= h ? '16:9' : '9:16')
+  const aspectRatio = options?.aspect_ratio ?? (w === h ? '1:1' : (w >= h ? '16:9' : '9:16'))
 
   // ── Gemini Omni Flash (July 19) — the Interactions API, not Veo's
   // generateVideos. Synchronous call; video comes back as inline base64
@@ -791,18 +797,23 @@ async function generateOmniVideo(
   const interaction: any = await withRetry(() => (ai() as any).interactions.create({
     model: model.model_name,
     input,
-    // aspect_ratio lives at generation_config level (the API rejects it
-    // inside video_config — verified July 19). Omit for the 16:9 default.
     generation_config: {
       video_config: { task: effTask },
-      ...(aspectRatio === '9:16' ? { aspect_ratio: '9:16' } : {}),
     },
+    // aspect_ratio moved INTO response_format: the July 19 placement at
+    // generation_config level now 400s with "Unknown parameter
+    // 'aspect_ratio'" (owner's run, Aug 21), and the current SDK types
+    // (VideoResponseFormat: { type:'video', aspect_ratio?, duration? })
+    // put it beside duration. Omit for the 16:9 default; the catalog's
+    // output_config gates what the UI can pick for this model.
     // Duration lives in response_format (verified live July 20: 3s-10s).
     // 'resolution' is rejected by flash-preview - 720p only, don't send it.
     // The edit task rejects duration outright ("Duration cannot be set in
     // response format for edit task", live-probed July 25) — an edit keeps
-    // the input clip's length, same as xAI's /videos/edits.
-    response_format: isEdit ? { type: 'video' } : { type: 'video', duration },
+    // the input clip's geometry, so aspect_ratio stays out of edit too.
+    response_format: isEdit
+      ? { type: 'video' }
+      : { type: 'video', duration, ...(aspectRatio && aspectRatio !== '16:9' ? { aspect_ratio: aspectRatio } : {}) },
   }), 'omni interactions.create')
 
   if (onProgress) onProgress(70)

@@ -128,6 +128,20 @@ export interface OutputModalityConfig {
   max_count?: number
   /** Free-form capability flags, e.g. ['extension', 'frame_specific']. */
   capabilities?:  string[]
+  /**
+   * Set when the model accepts ARBITRARY WxH sizes beyond `sizes` (image
+   * only today; gpt-image-2: multiples of 16, max edge 3840, aspect ≤3:1,
+   * 655,360–8,294,400 total pixels). Presence of the object is the feature
+   * flag — the UI shows a free WxH input and validates against these
+   * bounds; unset fields fall back to gpt-image-2's published limits.
+   */
+  custom_size?: {
+    multiple?:   number
+    max_edge?:   number
+    max_ratio?:  number
+    min_pixels?: number
+    max_pixels?: number
+  }
 }
 
 export interface OutputConfig {

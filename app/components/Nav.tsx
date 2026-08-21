@@ -254,13 +254,16 @@ export default function Nav() {
     // flight, swapping to ?id= when it settles, so the entry was redundant.
     // The 5s refresh below is what makes a just-finished run appear.
     const load = async () => {
+      // deleted_at filter on BOTH rungs — without it, soft-deleted runs
+      // (node deletes, the sidebar's own × below) kept haunting the list.
       const doneRes = await supabase.from('xcreates')
         .select('id, prompt, mode, created_at, title')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id).is('deleted_at', null)
         .order('created_at', { ascending: false }).limit(10)
         .then(res => res.error
           ? supabase.from('xcreates').select('id, prompt, mode, created_at')
-              .eq('user_id', user.id).order('created_at', { ascending: false }).limit(10)
+              .eq('user_id', user.id).is('deleted_at', null)
+              .order('created_at', { ascending: false }).limit(10)
           : res)
       if (cancelled) return
       setRecent(((doneRes.data ?? []) as any[]).slice(0, 12))
@@ -441,6 +444,35 @@ export default function Nav() {
                 onClick={(e) => { e.preventDefault(); setNameDraft(item.title || ''); setEditing({ table: 'xcreates', id: item.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, flexShrink: 0, opacity: 0.5 }}
               >✏</button>
+              {/* Delete — two-step confirm, same pattern as the XDirector
+                  list. SOFT delete (deleted_at): boards, the ?id= loader
+                  and this list all filter on it, and a hard delete would
+                  orphan lineage rows that point here. XCreates never had
+                  this button — only rename (owner, Aug 21). */}
+              {confirmDel === item.id ? (
+                <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                  <button
+                    aria-label="confirm delete" title={t('hist.delete.confirm')}
+                    onClick={async () => {
+                      setConfirmDel(null)
+                      await supabase.from('xcreates')
+                        .update({ deleted_at: new Date().toISOString() }).eq('id', item.id)
+                      setRecent(prev => prev.filter(x => x.id !== item.id))
+                      if (typeof window !== 'undefined' && window.location.search.includes(item.id)) router.push('/xcreate')
+                    }}
+                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
+                  >{t('hist.delete')}</button>
+                  <button aria-label="cancel" onClick={() => setConfirmDel(null)}
+                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
+                </span>
+              ) : (
+                <button
+                  aria-label="delete run"
+                  title={t('hist.delete')}
+                  onClick={() => { setConfirmDel(item.id); setTimeout(() => setConfirmDel(x => x === item.id ? null : x), 4000) }}
+                  style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
+                >×</button>
+              )}
             </div>
             )
           ))}

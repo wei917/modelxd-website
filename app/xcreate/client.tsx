@@ -66,6 +66,10 @@ interface OutputModalityConfig {
   /** Free-form capability flags. On the TEXT modality, 'web_search' means the
    *  provider's built-in search tool is wired up for this model. */
   capabilities?:            string[]
+  /** Set when the model accepts ARBITRARY WxH sizes beyond `sizes` (image
+   *  only; gpt-image-2). Presence is the feature flag — the ⚙ panel shows a
+   *  free WxH input validated by customSizeError against these bounds. */
+  custom_size?:             CustomSizeSpec
 }
 
 /** Expand a duration spec to the explicit integer list for runtime use. */
@@ -252,6 +256,41 @@ function aspectFromSize(size: string | null | undefined): string | null {
   }
   // 5% tolerance — generous enough that 1536×672 → 21:9 still matches.
   return best && bestDiff / best[1] < 0.06 ? best[0] : null
+}
+
+/** Human shape for a size pill — '3:2 landscape', '9:16 portrait', 'square'.
+ *  Raw WxH pills alone made the picker a guessing game ("which one is
+ *  16:9?" — owner, Aug 20). Null for tier-style sizes with no shape. */
+function sizeShapeLabel(size: string): string | null {
+  const m = size.match(/(\d+)\s*[x×*]\s*(\d+)/i)
+  if (!m) return null
+  const w = parseInt(m[1], 10), h = parseInt(m[2], 10)
+  if (!w || !h) return null
+  const name = w === h ? 'square' : w > h ? 'landscape' : 'portrait'
+  const ar = aspectFromSize(size)
+  return ar && ar !== '1:1' ? `${ar} ${name}` : name
+}
+
+/** Constraints for models that accept ARBITRARY WxH image sizes, declared
+ *  per model in output_config.image.custom_size (data change, no deploy).
+ *  gpt-image-2's published rules: multiples of 16, max edge 3840, aspect
+ *  ≤3:1, 655,360–8,294,400 total pixels. Returns null when `s` is valid,
+ *  else a short human reason. */
+type CustomSizeSpec = { multiple?: number; max_edge?: number; max_ratio?: number; min_pixels?: number; max_pixels?: number }
+function customSizeError(s: string, spec: CustomSizeSpec): string | null {
+  const m = s.match(/^(\d+)x(\d+)$/)
+  if (!m) return 'Use WIDTHxHEIGHT, e.g. 1920x1080'
+  const w = parseInt(m[1], 10), h = parseInt(m[2], 10)
+  const mult = spec.multiple ?? 16
+  if (w % mult !== 0 || h % mult !== 0) return `Each side must be a multiple of ${mult}`
+  const edge = spec.max_edge ?? 3840
+  if (Math.max(w, h) > edge) return `Max edge is ${edge}px`
+  const maxRatio = spec.max_ratio ?? 3
+  if (Math.max(w, h) / Math.min(w, h) > maxRatio) return `Aspect ratio must be at most ${maxRatio}:1`
+  const px = w * h
+  if (spec.min_pixels && px < spec.min_pixels) return `At least ${spec.min_pixels.toLocaleString()} total pixels`
+  if (spec.max_pixels && px > spec.max_pixels) return `At most ${spec.max_pixels.toLocaleString()} total pixels`
+  return null
 }
 
 /** Returns sizes whose inferred aspect ratio matches `aspect`. */
@@ -1103,7 +1142,12 @@ function CreateStudio() {
         quality: opts.quality && qualities.includes(opts.quality)
           ? opts.quality
           : (qualities.includes('medium') ? 'medium' : (qualities[0] ?? null)),
-        size: opts.size && sizes.includes(opts.size)
+        // A size outside the preset list survives when the model declares
+        // custom_size support and the value passes its constraints —
+        // otherwise restoring or re-validating a run stripped the custom
+        // size straight back to a preset.
+        size: opts.size && (sizes.includes(opts.size)
+            || (model.output_config?.image?.custom_size && !customSizeError(opts.size, model.output_config.image.custom_size)))
           ? opts.size
           : (sizes[0] ?? null),
         duration: null,
@@ -1136,11 +1180,14 @@ function CreateStudio() {
       const duration = opts.duration != null && validDurations.includes(opts.duration)
         ? opts.duration
         : (validDurations[0] ?? null)
-      const aspect_ratio = !isTextOnlyInput
-        ? null
-        : opts.aspect_ratio && ars.includes(opts.aspect_ratio)
-          ? opts.aspect_ratio
-          : (ars[0] ?? null)
+      // Text-driven recipes default to the model's first declared ratio;
+      // image-driven ones default to null (AUTO — send nothing, the
+      // provider decides) but KEEP an explicit user pick: Omni Flash
+      // ignores the input image's shape, so overriding must be possible
+      // for image_to_video too (owner, Aug 20).
+      const aspect_ratio = opts.aspect_ratio && ars.includes(opts.aspect_ratio)
+        ? opts.aspect_ratio
+        : (isTextOnlyInput ? (ars[0] ?? null) : null)
       // Watermark default = Off. Only ever true/false now.
       return { mode, quality: null, size, duration, aspect_ratio, watermark: opts.watermark === true ? true : false, count: null }
     }
@@ -1201,6 +1248,11 @@ function CreateStudio() {
       return validateOpts(model, mode, next)
     }))
   }
+
+  // Per-slot draft for the custom image-size input (models declaring
+  // output_config.image.custom_size). Draft ≠ applied: only a value that
+  // passes customSizeError lands in slotOptions.
+  const [customSizeDraft, setCustomSizeDraft] = useState<Record<number, string>>({})
 
   // Post-pick state
   const [chosenIdx,      setChosenIdx]      = useState<number | null>(null)
@@ -3824,7 +3876,15 @@ function CreateStudio() {
                           const showSizeV = mode === 'video' && vidSizes.length > 0
                           const showDur   = mode === 'video' && vidDurations.length > 0
                           const showArI   = mode === 'image' && imgArs.length > 0 && isTextOnlyInput
-                          const showArV   = mode === 'video' && vidArs.length > 0 && isTextOnlyInput
+                          // NOT gated on isTextOnlyInput (owner, Aug 20): the
+                          // July assumption was that image-driven runs inherit
+                          // the input image's shape, so the picker was hidden
+                          // for them — but Omni Flash ignores the input and
+                          // crops to 16:9. The picker now always shows with an
+                          // AUTO default (null = send nothing, provider
+                          // decides), so input-following models keep their
+                          // behavior unless the user explicitly overrides.
+                          const showArV   = mode === 'video' && vidArs.length > 0
                           const showQual  = mode === 'image' && imgQualities.length > 1
                           const showThink = mode === 'text' && thinkLevels.length > 0
                           const showSearch = mode === 'text' && canSearch
@@ -3955,6 +4015,14 @@ function CreateStudio() {
                               {/* Video: Aspect Ratio */}
                               {showArV && (
                                 <Group label="Aspect ratio" last={isLast('ar_v')}>
+                                  {/* AUTO = null = nothing sent; the provider
+                                      follows its default (input shape for
+                                      models that honor it, 16:9 for Omni). */}
+                                  {!isTextOnlyInput && (
+                                    <Pill active={opts.aspect_ratio == null} onClick={() => updateSlotOpts(i, { aspect_ratio: null })}>
+                                      AUTO
+                                    </Pill>
+                                  )}
                                   {vidArs.map(ar => (
                                     <Pill key={ar} active={opts.aspect_ratio === ar} onClick={() => updateSlotOpts(i, { aspect_ratio: ar })}>
                                       {ar}
@@ -3966,19 +4034,54 @@ function CreateStudio() {
                               {showSizeI && (
                                 <Group label="Size" last={isLast('size_i')}>
                                   {imgSizes.map(s => {
-                                    // No shape icon — aspect ratio has its own picker,
-                                    // and tier-style sizes ("1024" / "2048" / "4096")
-                                    // have no shape at all. Bare tiers read best in
-                                    // Google's K notation (1K / 2K / 4K).
+                                    // WxH pills carry a small shape line ("3:2
+                                    // landscape") — the bare numbers made the
+                                    // picker a guessing game (owner, Aug 20).
+                                    // Tier-style sizes ("1024" / "2048") have no
+                                    // shape; they read best in K notation.
                                     const label = /^\d+$/.test(s)
                                       ? (parseInt(s) >= 1024 ? `${Math.round(parseInt(s) / 1024)}K` : `${s}px`)
                                       : s
+                                    const shape = /^\d+$/.test(s) ? null : sizeShapeLabel(s)
                                     return (
-                                      <Pill key={s} active={opts.size === s} onClick={() => updateSlotOpts(i, { size: s })}>
+                                      <Pill key={s} active={opts.size === s} onClick={() => { setCustomSizeDraft(prev => ({ ...prev, [i]: '' })); updateSlotOpts(i, { size: s }) }}>
                                         <div style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{label}</div>
+                                        {shape && <div style={{ fontSize: 9, color: 'var(--muted2)', letterSpacing: '0.03em' }}>{shape}</div>}
                                       </Pill>
                                     )
                                   })}
+                                  {(() => {
+                                    // Free WxH entry for models that declare
+                                    // custom_size (gpt-image-2). A valid value
+                                    // applies as it's typed; invalid drafts show
+                                    // the constraint they broke and change nothing.
+                                    const spec = model.output_config?.image?.custom_size as CustomSizeSpec | undefined
+                                    if (!spec) return null
+                                    const isCustom = !!opts.size && !imgSizes.includes(opts.size)
+                                    const draft = customSizeDraft[i] || (isCustom ? (opts.size ?? '') : '')
+                                    const err = draft ? customSizeError(draft, spec) : null
+                                    return (
+                                      <span style={{ display: 'inline-flex', flexDirection: 'column' as const, gap: 2 }}>
+                                        <input
+                                          value={draft}
+                                          onChange={e => {
+                                            const v = e.target.value.trim().replace(/[×*]/g, 'x')
+                                            setCustomSizeDraft(prev => ({ ...prev, [i]: v }))
+                                            if (v && !customSizeError(v, spec)) updateSlotOpts(i, { size: v })
+                                          }}
+                                          placeholder="custom WxH"
+                                          spellCheck={false}
+                                          style={{
+                                            width: 110, padding: '6px 8px', borderRadius: 8, fontSize: 12,
+                                            fontFamily: 'var(--mono)', outline: 'none',
+                                            border: `1px solid ${err ? 'var(--red)' : (isCustom && !customSizeDraft[i]) || (draft && !err) ? 'var(--red)' : 'var(--border2)'}`,
+                                            background: 'var(--surface)', color: 'var(--white)',
+                                          }}
+                                        />
+                                        {err && <span style={{ fontSize: 9, color: 'var(--red)', maxWidth: 160, lineHeight: 1.3 }}>{err}</span>}
+                                      </span>
+                                    )
+                                  })()}
                                 </Group>
                               )}
                               {/* Image: Aspect Ratio */}
