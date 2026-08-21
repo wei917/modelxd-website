@@ -170,7 +170,7 @@ export default function XEvalPage() {
     })
   }, [filtered, view, sortBy, sortDir, perEntry])
 
-  const FilterGroup = ({ label, items, sel, setter, cap }: { label: string; items: string[]; sel: Set<string>; setter: (s: Set<string>) => void; cap?: boolean }) => (
+  const FilterGroup = ({ label, items, sel, setter, cap, swatch }: { label: string; items: string[]; sel: Set<string>; setter: (s: Set<string>) => void; cap?: boolean; swatch?: (item: string) => React.ReactNode }) => (
     items.length > 1 ? (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginRight: 2 }}>{label.toUpperCase()}</span>
@@ -178,13 +178,14 @@ export default function XEvalPage() {
           const on = sel.size === 0 || sel.has(it)
           return (
             <button key={it} onClick={() => flip(sel, setter, it)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-mono)',
               textTransform: cap ? 'capitalize' : 'none',
               border: `1px solid ${sel.has(it) ? 'var(--red)' : 'var(--border)'}`,
               background: sel.has(it) ? 'var(--red-dim)' : 'transparent',
               color: on ? (sel.has(it) ? 'var(--red)' : 'var(--white)') : 'var(--muted)',
               opacity: on ? 1 : 0.55,
-            }}>{it || '—'}</button>
+            }}>{swatch?.(it)}{it || '—'}</button>
           )
         })}
       </div>
@@ -245,8 +246,10 @@ export default function XEvalPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-            <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap />
-            <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort} />
+            <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap
+              swatch={pv => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(pv), display: 'inline-block' }} />} />
+            <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
+              swatch={ef => <svg width={12} height={12} viewBox="0 0 14 14"><Mark shape={EFFORT_SHAPE[ef] ?? 'circle'} cx={7} cy={7} r={4.2} fill="currentColor" /></svg>} />
             <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
           </div>
 
@@ -383,8 +386,6 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
   const domain = toPts(domainRows)
   if (domain.length === 0) return null
 
-  const providers = [...new Set(domain.map(p => p.provider))]
-  const efforts = [...new Set(domain.map(p => p.effort))]
 
   const W = 940, H = 260, PL = 46, PR = 16, PT = 14, PB = 30
   const lx = (c: number) => Math.log10(c)
@@ -396,26 +397,10 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
   const xticks = [0.01, 0.03, 0.1, 0.3, 1, 3].filter(v => lx(v) >= x0 && lx(v) <= x1)
   const ordered = [...pts.filter(p => p.label !== hover), ...pts.filter(p => p.label === hover)]
 
-  const key = { display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: 0 } as const
   return (
     <div style={{ margin: '0 0 20px' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
-        <span>{t('xeval.chart.title')}</span>
-        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
-          {providers.map(pv => (
-            <span key={pv} style={{ ...key, textTransform: 'capitalize' }}>
-              <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(pv), display: 'inline-block' }} />{pv}
-            </span>
-          ))}
-        </span>
-        <span style={{ color: 'var(--border2)' }}>|</span>
-        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
-          {efforts.map(ef => (
-            <span key={ef} style={key}>
-              <svg width={14} height={14} viewBox="0 0 14 14"><Mark shape={EFFORT_SHAPE[ef] ?? 'circle'} cx={7} cy={7} r={4.2} fill="var(--muted2)" /></svg>{ef || '—'}
-            </span>
-          ))}
-        </span>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
+        {t('xeval.chart.title')}
       </div>
       <div style={{ overflowX: 'auto' }}>
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block' }} onMouseLeave={() => setHover(null)}>
