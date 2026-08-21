@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import { useRequireAuth } from '../../lib/useRequireAuth'
+import { useT } from '../../lib/i18n'
 
 type TokenRow = {
   id: string
@@ -32,6 +33,7 @@ const TOOLS: Array<[string, string]> = [
 ]
 
 export default function XDevClient() {
+  const t = useT()
   useRequireAuth()
   const [rows, setRows] = useState<TokenRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -129,7 +131,7 @@ export default function XDevClient() {
     <div className="xduel-page">
       <div className="arena xcreate-arena">
         <span className="prompt-label eyebrow">XDEV</span>
-        <h1 className="page-headline" style={{ marginBottom: 8 }}>Your agents. Our models.</h1>
+        <h1 className="page-headline" style={{ marginBottom: 8 }}>{t('xdev.subtitle')}</h1>
         <p style={{ color: 'var(--muted)', fontSize: 14, maxWidth: 640, marginBottom: 26 }}>
           Mint an API key, plug ModelXD into any MCP client — Claude Code, Cursor, n8n — and your
           agent generates through the same pipeline, prices and wallet as the site. Every output is

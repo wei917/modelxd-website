@@ -427,6 +427,7 @@ export const STRINGS: Record<string, Entry> = {
   'nav.xboard':       { en: 'XBoard',  'zh-Hant': 'X排行榜', 'zh-Hans': 'X排行榜', ja: 'Xランキング', ko: 'X랭킹' },
   'nav.xdev':         { en: 'XDev',    'zh-Hant': 'X開發者', 'zh-Hans': 'X开发者', ja: 'Xデベロッパー', ko: 'X개발자' },
   'nav.xeval':        { en: 'XEval',   'zh-Hant': 'X評測',   'zh-Hans': 'X评测',   ja: 'X評価',       ko: 'X평가' },
+  'xdev.subtitle':    { en: 'Your Agents, Plugged In. Every Major Model, One Bill.', 'zh-Hant': '接上你的 Agent。所有主流模型，一張帳單。', 'zh-Hans': '接上你的 Agent。所有主流模型，一张账单。', ja: 'エージェントを接続。主要モデルすべて、請求はひとつ。', ko: '에이전트를 연결하세요. 모든 주요 모델, 청구서는 하나.' },
   'xeval.eyebrow':    { en: 'XEval',          'zh-Hant': 'X評測',    'zh-Hans': 'X评测',    ja: 'X評価',      ko: 'X평가' },
   'xeval.subtitle':   { en: 'Real Work. Open Scores. Every Cost on the Table.', 'zh-Hant': '真實工作。公開評分。成本全公開。', 'zh-Hans': '真实工作。公开评分。成本全公开。', ja: '本物の仕事。オープンな採点。コストも全公開。', ko: '진짜 작업. 공개 채점. 비용까지 전부 공개.' },
   'xeval.how':        { en: 'How XEval works', 'zh-Hant': 'XEval 運作方式', 'zh-Hans': 'XEval 运作方式', ja: 'XEvalの仕組み', ko: 'XEval 작동 방식' },
