@@ -176,6 +176,8 @@ export default function XEvalPage() {
     })
   }, [filtered, view, sortBy, sortDir, perEntry])
 
+  // Brand casing for provider chips (slugs are lowercase in the DB).
+  const PROVIDER_LABEL: Record<string, string> = { openai: 'OpenAI', xai: 'xAI', google: 'Google', anthropic: 'Anthropic', moonshot: 'Moonshot', alibaba: 'Alibaba', minimax: 'MiniMax', runway: 'Runway' }
   const FilterGroup = ({ label, items, sel, setter, cap, swatch }: { label: string; items: string[]; sel: Set<string>; setter: (s: Set<string>) => void; cap?: boolean; swatch?: (item: string) => React.ReactNode }) => (
     items.length > 1 ? (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -186,12 +188,11 @@ export default function XEvalPage() {
             <button key={it} onClick={() => flip(sel, setter, it)} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '3px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-mono)',
-              textTransform: cap ? 'capitalize' : 'none',
               border: `1px solid ${sel.has(it) ? 'var(--red)' : 'var(--border)'}`,
               background: sel.has(it) ? 'var(--red-dim)' : 'transparent',
               color: on ? (sel.has(it) ? 'var(--red)' : 'var(--white)') : 'var(--muted)',
               opacity: on ? 1 : 0.55,
-            }}>{swatch?.(it)}{it || '—'}</button>
+            }}>{swatch?.(it)}{(cap ? PROVIDER_LABEL[it] ?? it : it) || '—'}</button>
           )
         })}
       </div>
@@ -222,7 +223,7 @@ export default function XEvalPage() {
 
   // XBoard's five-tier heatmap buckets — one house language for "how good".
   const tier = (x: number) => (x < 950 ? 'poor' : x < 1000 ? 'fair' : x < 1050 ? 'mid' : x < 1100 ? 'good' : 'elite')
-  const judgeCount = (judge.match(/panel\((\d+)/)?.[1]) ?? '1'
+  const judgeCount = ((ratings[0]?.judge_filter ?? '').match(/panel\((\d+)/)?.[1]) ?? '1'
   const updated = ratings[0]?.ts?.slice(0, 10) ?? ''
 
   return (
