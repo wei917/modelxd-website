@@ -114,14 +114,19 @@ export default function XEvalPage() {
   // name by pattern — ai_models has no family column; if one is added this
   // becomes a plain read.
   const familyOf = (modelName: string, display: string): string => {
+    // Family = the product line that persists across versions/variants
+    // (owner's taxonomy, Aug 21): "Claude Opus" spans 4.8 → 5; "GPT-5.6"
+    // spans Sol/Luna/Terra; "Gemini Flash" spans 3.x.
     const m = modelName
     let r: RegExpMatchArray | null
+    if ((r = m.match(/^claude-(opus|sonnet|fable|haiku)/))) return `Claude ${r[1][0].toUpperCase()}${r[1].slice(1)}`
     if ((r = m.match(/^gpt-(\d+(?:\.\d+)?)/))) return `GPT-${r[1]}`
-    if ((r = m.match(/^claude-[a-z]+-(\d+(?:\.\d+)?)/))) return `Claude ${r[1]}`
-    if ((r = m.match(/^gemini-(\d+(?:\.\d+)?)/))) return `Gemini ${r[1]}`
-    if ((r = m.match(/^grok-(\d+(?:\.\d+)?)/))) return `Grok ${r[1]}`
-    if ((r = m.match(/^kimi-k(\d+)/))) return `Kimi K${r[1]}`
-    if ((r = m.match(/^qwen(\d+(?:\.\d+)?)/))) return `Qwen ${r[1]}`
+    if (/^gemini-.*flash-lite/.test(m)) return 'Gemini Flash-Lite'
+    if (/^gemini-.*flash/.test(m)) return 'Gemini Flash'
+    if (/^gemini-.*pro/.test(m)) return 'Gemini Pro'
+    if (/^grok-/.test(m)) return 'Grok'
+    if (/^kimi-/.test(m)) return 'Kimi'
+    if ((r = m.match(/^qwen[\d.]*-(max|plus|flash|turbo)/))) return `Qwen ${r[1][0].toUpperCase()}${r[1].slice(1)}`
     return display.split(' ')[0]
   }
   const [selProv, setSelProv] = useState<Set<string>>(new Set())
