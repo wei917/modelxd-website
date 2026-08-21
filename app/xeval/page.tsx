@@ -332,11 +332,35 @@ export default function XEvalPage() {
   )
 }
 
-/** Cost-vs-rating frontier — the page's signature: price on a log axis,
- *  rating on linear, one labeled dot per entry. Labels may crowd; hovering
- *  an entry lifts it to the top layer (SVG z-order = render order) and dims
- *  the rest. Legend chips toggle whole provider series; entry chips toggle
- *  single dots. Inline SVG, no deps. */
+/** Cost-vs-rating frontier — price on a log axis, rating linear, one
+ *  labeled mark per entry. Encoding: COLOR = provider, SHAPE = effort, so
+ *  the legend is just those two keys; hiding/showing is the page filters'
+ *  job. Hovering an entry lifts it to the top layer (SVG z-order = render
+ *  order), enlarges it, and dims the rest. Inline SVG, no deps. */
+const EFFORT_SHAPE: Record<string, string> = { none: 'square', low: 'circle', medium: 'diamond', high: 'triangle', xhigh: 'star', max: 'star' }
+const PROVIDER_COLOR: Record<string, string> = {
+  openai: 'var(--provider-openai)', google: 'var(--provider-google)', anthropic: 'var(--provider-anthropic)',
+  alibaba: 'var(--provider-alibaba)', xai: 'var(--provider-xai)', moonshot: '#6b4fbb', minimax: '#c2185b',
+}
+const colorOf = (prov: string) => PROVIDER_COLOR[prov] ?? 'var(--red)'
+
+function Mark({ shape, cx, cy, r, fill }: { shape: string; cx: number; cy: number; r: number; fill: string }) {
+  const common = { fill, stroke: 'var(--bg)', strokeWidth: 1.5 }
+  switch (shape) {
+    case 'square':   return <rect x={cx - r} y={cy - r} width={2 * r} height={2 * r} {...common} />
+    case 'diamond':  return <polygon points={`${cx},${cy - r * 1.2} ${cx + r * 1.2},${cy} ${cx},${cy + r * 1.2} ${cx - r * 1.2},${cy}`} {...common} />
+    case 'triangle': return <polygon points={`${cx},${cy - r * 1.25} ${cx + r * 1.15},${cy + r * 0.9} ${cx - r * 1.15},${cy + r * 0.9}`} {...common} />
+    case 'star': {
+      const pts = Array.from({ length: 10 }, (_, i) => {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.55 : r * 1.3
+        return `${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`
+      }).join(' ')
+      return <polygon points={pts} {...common} />
+    }
+    default:         return <circle cx={cx} cy={cy} r={r} {...common} />
+  }
+}
+
 function FrontierChart({ rows, domainRows, perEntry, avg }: {
   rows: { model_name: string; effort: string | null; rating: number }[]
   domainRows: { model_name: string; effort: string | null; rating: number }[]
@@ -345,35 +369,23 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
 }) {
   const t = useT()
   const [hover, setHover] = useState<string | null>(null)
-  const [hiddenProv, setHiddenProv] = useState<Set<string>>(new Set())
-  const [hiddenEntry, setHiddenEntry] = useState<Set<string>>(new Set())
-  const toggle = (set: Set<string>, setter: (s: Set<string>) => void, k: string) => {
-    const n = new Set(set)
-    n.has(k) ? n.delete(k) : n.add(k)
-    setter(n)
-  }
 
   const toPts = (src: { model_name: string; effort: string | null; rating: number }[]) => src
     .map(r => {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
       const c = e ? avg(e.costs) : null
-      return c != null && c > 0 ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider } : null
+      return c != null && c > 0
+        ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider, effort: r.effort ?? '' }
+        : null
     })
-    .filter(Boolean) as { x: number; y: number; label: string; provider: string }[]
-  const all = toPts(rows)          // what the page filters let through
-  const domain = toPts(domainRows) // everything — axes stay put while filtering
+    .filter(Boolean) as { x: number; y: number; label: string; provider: string; effort: string }[]
+  const pts = toPts(rows)
+  const domain = toPts(domainRows)
   if (domain.length === 0) return null
 
-  const PROVIDER_COLOR: Record<string, string> = {
-    openai: 'var(--provider-openai)', google: 'var(--provider-google)', anthropic: 'var(--provider-anthropic)',
-    alibaba: 'var(--provider-alibaba)', xai: 'var(--provider-xai)', moonshot: '#6b4fbb', minimax: '#c2185b',
-  }
-  const colorOf = (prov: string) => PROVIDER_COLOR[prov] ?? 'var(--red)'
-  const providers = [...new Set(all.map(p => p.provider))]
-  const pts = all.filter(p => !hiddenProv.has(p.provider) && !hiddenEntry.has(p.label))
-  const anyHidden = hiddenProv.size > 0 || hiddenEntry.size > 0
+  const providers = [...new Set(domain.map(p => p.provider))]
+  const efforts = [...new Set(domain.map(p => p.effort))]
 
-  // Axes fit the FULL dataset so neither page filters nor chart toggles rescale the picture.
   const W = 940, H = 260, PL = 46, PR = 16, PT = 14, PB = 30
   const lx = (c: number) => Math.log10(c)
   const xs = domain.map(p => lx(p.x)), ys = domain.map(p => p.y)
@@ -382,43 +394,28 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
   const X = (c: number) => PL + ((lx(c) - x0) / (x1 - x0)) * (W - PL - PR)
   const Y = (v: number) => H - PB - ((v - y0) / (y1 - y0)) * (H - PT - PB)
   const xticks = [0.01, 0.03, 0.1, 0.3, 1, 3].filter(v => lx(v) >= x0 && lx(v) <= x1)
-  // Hovered entry renders last = on top.
   const ordered = [...pts.filter(p => p.label !== hover), ...pts.filter(p => p.label === hover)]
 
-  const chip = (active: boolean, color?: string): React.CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
-    border: `1px solid ${active ? (color ?? 'var(--border2)') : 'var(--border)'}`,
-    color: active ? 'var(--white)' : 'var(--muted)', opacity: active ? 1 : 0.5,
-    textDecoration: active ? 'none' : 'line-through', letterSpacing: 0, userSelect: 'none',
-  })
-
+  const key = { display: 'inline-flex', alignItems: 'center', gap: 5, letterSpacing: 0 } as const
   return (
     <div style={{ margin: '0 0 20px' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
         <span>{t('xeval.chart.title')}</span>
-        {providers.map(pv => (
-          <span key={pv} onClick={() => toggle(hiddenProv, setHiddenProv, pv)} style={{ ...chip(!hiddenProv.has(pv), colorOf(pv)), textTransform: 'capitalize' }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(pv), display: 'inline-block' }} />{pv}
-          </span>
-        ))}
-        {anyHidden && (
-          <span onClick={() => { setHiddenProv(new Set()); setHiddenEntry(new Set()) }} style={{ cursor: 'pointer', color: 'var(--red)', letterSpacing: '0.08em' }}>
-            {t('xeval.chart.reset').toUpperCase()}
-          </span>
-        )}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 11, marginBottom: 8 }}>
-        {all.map(p => (
-          <span
-            key={p.label}
-            onClick={() => toggle(hiddenEntry, setHiddenEntry, p.label)}
-            onMouseEnter={() => setHover(p.label)}
-            onMouseLeave={() => setHover(null)}
-            style={chip(!hiddenEntry.has(p.label) && !hiddenProv.has(p.provider), colorOf(p.provider))}
-          >
-            {p.label}
-          </span>
-        ))}
+        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+          {providers.map(pv => (
+            <span key={pv} style={{ ...key, textTransform: 'capitalize' }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(pv), display: 'inline-block' }} />{pv}
+            </span>
+          ))}
+        </span>
+        <span style={{ color: 'var(--border2)' }}>|</span>
+        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+          {efforts.map(ef => (
+            <span key={ef} style={key}>
+              <svg width={14} height={14} viewBox="0 0 14 14"><Mark shape={EFFORT_SHAPE[ef] ?? 'circle'} cx={7} cy={7} r={4.2} fill="var(--muted2)" /></svg>{ef || '—'}
+            </span>
+          ))}
+        </span>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block' }} onMouseLeave={() => setHover(null)}>
@@ -439,12 +436,11 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
             const dim = hover != null && !isHover
             const rightHalf = X(p.x) > W * 0.72
             return (
-              <g key={p.label} opacity={dim ? 0.25 : 1} style={{ cursor: 'pointer', transition: 'opacity 0.12s' }}
-                 onMouseEnter={() => setHover(p.label)} onMouseLeave={() => setHover(null)}
-                 onClick={() => toggle(hiddenEntry, setHiddenEntry, p.label)}>
-                <circle cx={X(p.x)} cy={Y(p.y)} r={isHover ? 8 : 5.5} fill={colorOf(p.provider)} stroke="var(--bg)" strokeWidth={1.5} />
+              <g key={p.label} opacity={dim ? 0.25 : 1} style={{ cursor: 'default', transition: 'opacity 0.12s' }}
+                 onMouseEnter={() => setHover(p.label)} onMouseLeave={() => setHover(null)}>
+                <Mark shape={EFFORT_SHAPE[p.effort] ?? 'circle'} cx={X(p.x)} cy={Y(p.y)} r={isHover ? 8 : 5.5} fill={colorOf(p.provider)} />
                 <text
-                  x={X(p.x) + (rightHalf ? -11 : 11)} y={Y(p.y) + 4}
+                  x={X(p.x) + (rightHalf ? -12 : 12)} y={Y(p.y) + 4}
                   textAnchor={rightHalf ? 'end' : 'start'}
                   fontSize={isHover ? 12 : 10.5} fontWeight={isHover ? 700 : 400}
                   fill={isHover ? 'var(--white)' : 'var(--muted2)'}
