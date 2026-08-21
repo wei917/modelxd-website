@@ -1480,6 +1480,11 @@ function CreateStudio() {
     // query, so RLS works without us waiting; if there's truly no session,
     // the row comes back null and the neutral error banner shows.
     galleryLoadedRef.current = idParam
+    // Opening a run clears the PREVIOUS run's banner — a failed run's
+    // resurrection message was outliving history clicks onto perfectly
+    // fine runs (owner, Aug 21). Whatever this load finds sets its own.
+    setLoadError(null)
+    setNeedsTopUp(false)
     ;(async () => {
       try {
         const sb = createSupabaseBrowser()
@@ -2810,6 +2815,9 @@ function CreateStudio() {
     stopPolling()
     activeJobRef.current = null
     galleryLoadedRef.current = null
+    // A clean studio has no leftover error bar (same staleness family as
+    // the history-click case: the banner only ever cleared on dismiss).
+    setLoadError(null); setNeedsTopUp(false)
     setPhase('setup'); setSlots([]); setChosenIdx(null)
     setChatHistory([]); setChatInput(''); setXcreateId(null)
     setRetryOfId(null)
