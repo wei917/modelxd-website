@@ -247,9 +247,9 @@ export default function XEvalPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
             <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap
-              swatch={pv => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(pv), display: 'inline-block' }} />} />
+              swatch={pv => <svg width={12} height={12} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={4.2} fill="currentColor" /></svg>} />
             <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
-              swatch={ef => <svg width={12} height={12} viewBox="0 0 14 14"><Mark shape={EFFORT_SHAPE[ef] ?? 'circle'} cx={7} cy={7} r={4.2} fill="currentColor" /></svg>} />
+              swatch={ef => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(ef), display: 'inline-block' }} />} />
             <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
           </div>
 
@@ -340,12 +340,16 @@ export default function XEvalPage() {
  *  the legend is just those two keys; hiding/showing is the page filters'
  *  job. Hovering an entry lifts it to the top layer (SVG z-order = render
  *  order), enlarges it, and dims the rest. Inline SVG, no deps. */
-const EFFORT_SHAPE: Record<string, string> = { none: 'square', low: 'circle', medium: 'diamond', high: 'triangle', xhigh: 'star', max: 'star' }
-const PROVIDER_COLOR: Record<string, string> = {
-  openai: 'var(--provider-openai)', google: 'var(--provider-google)', anthropic: 'var(--provider-anthropic)',
-  alibaba: 'var(--provider-alibaba)', xai: 'var(--provider-xai)', moonshot: '#6b4fbb', minimax: '#c2185b',
+// Encoding (owner, Aug 21): SHAPE = provider, COLOR = effort. Effort colors
+// run cool → warm so "more thinking" reads hotter at a glance.
+const PROVIDER_SHAPE: Record<string, string> = {
+  anthropic: 'circle', openai: 'square', google: 'diamond', xai: 'triangle', moonshot: 'star', alibaba: 'hexagon', minimax: 'cross',
 }
-const colorOf = (prov: string) => PROVIDER_COLOR[prov] ?? 'var(--red)'
+const EFFORT_COLOR: Record<string, string> = {
+  none: '#888780', minimal: '#5b9bd5', low: '#2a78d6', medium: '#1baf7a', high: '#eda100', xhigh: '#eb6834', max: '#d03b3b',
+}
+const shapeOf = (prov: string) => PROVIDER_SHAPE[prov] ?? 'circle'
+const colorOf = (effort: string) => EFFORT_COLOR[effort] ?? 'var(--red)'
 
 function Mark({ shape, cx, cy, r, fill }: { shape: string; cx: number; cy: number; r: number; fill: string }) {
   const common = { fill, stroke: 'var(--bg)', strokeWidth: 1.5 }
@@ -359,6 +363,17 @@ function Mark({ shape, cx, cy, r, fill }: { shape: string; cx: number; cy: numbe
         return `${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`
       }).join(' ')
       return <polygon points={pts} {...common} />
+    }
+    case 'hexagon': {
+      const pts = Array.from({ length: 6 }, (_, i) => {
+        const a = -Math.PI / 2 + (i * Math.PI) / 3, rr = r * 1.15
+        return `${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`
+      }).join(' ')
+      return <polygon points={pts} {...common} />
+    }
+    case 'cross': {
+      const w = r * 0.45, R = r * 1.2
+      return <polygon points={`${cx - w},${cy - R} ${cx + w},${cy - R} ${cx + w},${cy - w} ${cx + R},${cy - w} ${cx + R},${cy + w} ${cx + w},${cy + w} ${cx + w},${cy + R} ${cx - w},${cy + R} ${cx - w},${cy + w} ${cx - R},${cy + w} ${cx - R},${cy - w} ${cx - w},${cy - w}`} {...common} />
     }
     default:         return <circle cx={cx} cy={cy} r={r} {...common} />
   }
@@ -423,7 +438,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
             return (
               <g key={p.label} opacity={dim ? 0.25 : 1} style={{ cursor: 'default', transition: 'opacity 0.12s' }}
                  onMouseEnter={() => setHover(p.label)} onMouseLeave={() => setHover(null)}>
-                <Mark shape={EFFORT_SHAPE[p.effort] ?? 'circle'} cx={X(p.x)} cy={Y(p.y)} r={isHover ? 8 : 5.5} fill={colorOf(p.provider)} />
+                <Mark shape={shapeOf(p.provider)} cx={X(p.x)} cy={Y(p.y)} r={isHover ? 8 : 5.5} fill={colorOf(p.effort)} />
                 <text
                   x={X(p.x) + (rightHalf ? -12 : 12)} y={Y(p.y) + 4}
                   textAnchor={rightHalf ? 'end' : 'start'}
