@@ -9,6 +9,8 @@
 // owner-triggered publish script fills from the local pilot store.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+
+const TOP_N = 10
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import ProviderLogo from '../components/ProviderLogo'
@@ -100,6 +102,9 @@ export default function XEvalPage() {
   // a pure display filter: BT ratings are global, so hiding rows changes
   // nothing about the numbers shown.
   const [view, setView] = useState<'all' | 'best'>('all')
+  // Display cap: whatever the filters + sort produce, show the top TOP_N rows
+  // (and the same rows on the chart) until the reader asks for the rest.
+  const [showAll, setShowAll] = useState(false)
 
   // Column sorting — XBoard's pattern: click a header to sort, click again
   // to flip. Numeric columns default desc (rating/wins) or asc (cost/time).
@@ -182,6 +187,7 @@ export default function XEvalPage() {
       return (va < vb ? -1 : va > vb ? 1 : 0) * dir
     })
   }, [filtered, view, sortBy, sortDir, perEntry])
+  const shown = useMemo(() => (showAll ? visible : visible.slice(0, TOP_N)), [visible, showAll])
 
   // Brand casing for provider chips (slugs are lowercase in the DB).
   const PROVIDER_LABEL: Record<string, string> = { openai: 'OpenAI', xai: 'xAI', google: 'Google', anthropic: 'Anthropic', moonshot: 'Moonshot', alibaba: 'Alibaba', minimax: 'MiniMax', runway: 'Runway' }
@@ -267,7 +273,7 @@ export default function XEvalPage() {
             <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
           </div>
 
-          <FrontierChart rows={visible} domainRows={ratings} perEntry={perEntry} avg={avg} />
+          <FrontierChart rows={shown} domainRows={ratings} perEntry={perEntry} avg={avg} />
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['all', 'best'] as const).map(v => (
@@ -300,7 +306,7 @@ export default function XEvalPage() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((row, i) => {
+                {shown.map((row, i) => {
                     const e = perEntry.get(`${row.model_name}|${row.effort ?? ''}`)
                     const cost = e ? avg(e.costs) : null
                     const time = e ? avg(e.times) : null
@@ -331,6 +337,13 @@ export default function XEvalPage() {
                   })}
               </tbody>
             </table>
+            {visible.length > TOP_N && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                <button onClick={() => setShowAll(s => !s)} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--muted2)', cursor: 'pointer' }}>
+                  {showAll ? t('xeval.showtop').replace('{n}', String(TOP_N)) : t('xeval.showall').replace('{n}', String(visible.length))}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Methodology — the disclosure IS the differentiator. */}
