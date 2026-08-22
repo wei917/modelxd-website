@@ -54,6 +54,10 @@ export async function streamText(
   attachments: Attachment[] = [],
   thinking:    string | null = null,
   search:      boolean = false,
+  /** Output cap. 4096 suits chat; a caller producing a long structured
+   *  reply (XDirect's story digest — one JSON bible from ~50k tokens of
+   *  summaries, which hit the cap and truncated, Aug 22) passes its own. */
+  maxTokens?:  number,
 ): Promise<void> {
   const TAG = `[anthropic/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
@@ -93,7 +97,7 @@ export async function streamText(
       },
       body: JSON.stringify({
         model: model.model_name,
-        max_tokens: 4096,
+        max_tokens: maxTokens ?? 4096,
         stream: true,
         messages: chatMessages,
         // Adaptive thinking + effort (probed live July 23: low/medium/

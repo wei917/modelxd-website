@@ -192,7 +192,7 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   context?:    CallContext,
-  genOptions?: { thinking?: string | null; search?: boolean },
+  genOptions?: { thinking?: string | null; search?: boolean; maxTokens?: number },
 ): Promise<{ requestId: string | null }> {
   assertSupported(model)
   const thinking = genOptions?.thinking ?? null
@@ -249,7 +249,7 @@ export async function streamText(
     } else if (model.provider === 'google') {
       await google.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
     } else if (model.provider === 'anthropic') {
-      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
+      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking, search, genOptions?.maxTokens)
     } else if (model.provider === 'moonshot') {
       await moonshot.streamText(model, messages, wrappedCallbacks, attachments, thinking)
     } else if (model.provider === 'alibaba') {

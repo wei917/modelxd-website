@@ -20,7 +20,7 @@ import {
 const LOG = '[xdirector:digest]'
 const MAP_TIMEOUT_MS    = 150_000
 const REDUCE_TIMEOUT_MS = 200_000
-const CONCURRENCY       = 6
+const CONCURRENCY       = 8   // a 21-window novel = 3 waves; well inside every provider's concurrency
 
 export type DigestModels = { map: ModelInfo; reduce: ModelInfo }
 
@@ -50,7 +50,7 @@ export function pickDigestModels(rows: ModelInfo[]): DigestModels | null {
 }
 
 /** One non-streamed text call: collect the deltas, resolve on done/error/timeout. */
-async function runText(model: ModelInfo, prompt: string, userId: string | null, timeoutMs: number):
+async function runText(model: ModelInfo, prompt: string, userId: string | null, timeoutMs: number, maxTokens?: number):
   Promise<{ text: string; cost: number; ok: boolean; error?: string }> {
   let full = '', cost = 0, error: string | undefined
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -60,7 +60,7 @@ async function runText(model: ModelInfo, prompt: string, userId: string | null, 
         onDelta: (t: string) => { full += t },
         onDone:  (r: any) => { cost += r?.cost ?? 0; resolve() },
         onError: (m: string) => { error = m; resolve() },
-      }, [], { userId, surface: 'xdirector-digest' } as any, { thinking: null, search: false })
+      }, [], { userId, surface: 'xdirector-digest' } as any, { thinking: null, search: false, maxTokens })
         .catch((e: any) => { error = e?.message ?? String(e); resolve() })
     }),
     new Promise<void>(resolve => { timer = setTimeout(() => { error = 'timeout'; resolve() }, timeoutMs) }),
@@ -112,7 +112,10 @@ export async function digestDocument(raw: string, opts: {
   let bible: StoryBible | null = null
   let prompt = reducePrompt(kept, opts.lang, opts.focus)
   for (let attempt = 0; attempt < 2 && !bible; attempt++) {
-    const r = await runText(reduce, prompt, opts.userId, REDUCE_TIMEOUT_MS)
+    // 16k: the bible is ~3k tokens of JSON, but Sonnet 5 runs adaptive
+    // thinking from the same budget and the provider's 4096 default cut the
+    // first live 西遊記 reduce mid-array (Aug 22).
+    const r = await runText(reduce, prompt, opts.userId, REDUCE_TIMEOUT_MS, 16_000)
     cost += r.cost
     if (!r.ok) { console.warn(`${LOG} reduce failed on ${reduce.display_name}: ${r.error}`); continue }
     bible = parseBible(r.text)

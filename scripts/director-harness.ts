@@ -12,7 +12,7 @@
 import fs from 'node:fs/promises'
 import { buildDirectorSystemPrompt } from '../lib/xdirector-prompt'
 import { loadSkill, wrapSkillForPrompt, listSkillFiles, describeSkillFiles, readSkillFile } from '../lib/skills'
-import { TOOLS, READ_SKILL_FILE_TOOL, execListModels, cleanScenes, type StoryScene } from '../lib/xdirector-tools'
+import { TOOLS, READ_SKILL_FILE_TOOL, execListModels, cleanScenes, countCards, MAX_SCENES, MAX_ASSETS, type StoryScene } from '../lib/xdirector-tools'
 import { singleViewCastSheets, isThreeView, isCastAsset, THREE_VIEW_RULE } from '../lib/cast-sheet'
 
 const arg = (n: string) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : undefined }
@@ -80,6 +80,12 @@ async function main() {
         console.log(`🔧 list_models(${medium})`)
         results.push(ok(await execListModels(medium)))
       } else if (tu.name === 'set_storyboard') {
+        const cards = countCards(tu.input?.scenes)
+        if (cards.scenes > MAX_SCENES || cards.assets > MAX_ASSETS) {
+          console.log(`⛔ over cap: ${cards.scenes} scenes / ${cards.assets} assets`)
+          results.push(err(`Rejected: ${cards.scenes} scene(s) and ${cards.assets} asset(s) — the board holds at most ${MAX_SCENES} scenes and ${MAX_ASSETS} assets (assets do not count as scenes). Merge or cut on purpose so the ending survives, then call set_storyboard again with the FULL list.`))
+          continue
+        }
         const scenes = cleanScenes(tu.input?.scenes)
         if (!scenes) {
           console.log(`❌ set_storyboard with ${truncated ? 'a TRUNCATED' : 'an invalid'} payload (keys: ${Object.keys(tu.input ?? {}).join(',') || 'none'})`)

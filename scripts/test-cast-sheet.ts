@@ -43,5 +43,18 @@ check('unchanged user text is skipped', singleViewCastSheets(scenes, prior).leng
 const prior2 = new Map([['cast_her', { shot: 'older text' }]])
 check('director-rewritten single view is flagged', singleViewCastSheets(scenes, prior2).length === 1)
 
+// Board caps count scenes and assets separately (the 西遊記 ending bug).
+import { cleanScenes, countCards, capCards } from '../lib/xdirector-tools'
+const big: any[] = [
+  ...Array.from({ length: 5 }, (_, i) => ({ id: `cast_${i}`, asset: true, title: `CAST · ${i}`, shot: 'three views side by side — front, three-quarter, profile', duration_s: 6 })),
+  ...Array.from({ length: 10 }, (_, i) => ({ id: `s${i + 1}`, title: `S${i + 1}`, script: 'x', shot: 'y', duration_s: 6 })),
+]
+const cleaned = cleanScenes(big)!
+check('5 assets + 10 scenes all kept', cleaned.length === 15 && cleaned.filter(s => (s as any).asset).length === 5)
+check('last scene survives', cleaned[cleaned.length - 1].id === 's10')
+check('countCards splits kinds', countCards(big).scenes === 10 && countCards(big).assets === 5)
+check('capCards keeps 5 sheets + 10 scenes (save path)', capCards(big).length === 15)
+check('capCards trims only the overflow kind', capCards([...big, { id: 's11', title: 'S11', script: 'x', shot: 'y', duration_s: 6 }, { id: 's12', title: 'S12', script: 'x', shot: 'y', duration_s: 6 }, { id: 's13', title: 'S13', script: 'x', shot: 'y', duration_s: 6 }]).length === 17)
+
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
 process.exit(fails === 0 ? 0 : 1)

@@ -2,10 +2,11 @@
 // terminal, no UI, no auth. Same pipeline as /api/xdirector/digest
 // (lib/story-digest-run.ts): real catalog, real models, house-paid.
 //
-//   node --env-file=.env.local --import tsx scripts/story-digest.ts <file.pdf|file.txt> [--lang zh-Hant] [--focus "第七回"]
+//   node --env-file=.env.local --import tsx scripts/story-digest.ts <file.pdf|file.txt> [--lang zh-Hant] [--focus "第七回"] [--extract-only]
 //
 // With no file it digests a short built-in fable — a pipeline smoke test
-// that costs about a cent.
+// that costs about a cent. --extract-only prints the size, the window plan
+// and a preview of the extracted text, and calls no model.
 
 import fs from 'node:fs/promises'
 import { createClient } from '@supabase/supabase-js'
@@ -54,6 +55,14 @@ async function main() {
     label = file
   }
   console.log(`source: ${label} — ${text.length.toLocaleString()} chars${focus ? `, focus "${focus}"` : ''}, lang ${lang}`)
+  if (process.argv.includes('--extract-only')) {
+    const { splitIntoWindows } = await import('../lib/story-digest')
+    const w = splitIntoWindows(text)
+    console.log(`windows: ${w.length} (≤ 40k chars each) · headings found: ${w.flatMap(x => x.headings).length}`)
+    console.log(`first headings: ${w.flatMap(x => x.headings).slice(0, 6).join(' | ') || '(none)'}`)
+    console.log(`preview: ${JSON.stringify(text.slice(0, 160))}`)
+    return
+  }
 
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } })
   const { data: rows, error } = await sb.from('ai_models').select('*').eq('enabled', true)

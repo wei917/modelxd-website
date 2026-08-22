@@ -24,7 +24,7 @@ import { createClient } from '@supabase/supabase-js'
 import { buildDirectorSystemPrompt } from '@/lib/xdirector-prompt'
 import { loadSkill, wrapSkillForPrompt, listSkillFiles, describeSkillFiles, readSkillFile } from '@/lib/skills'
 import { singleViewCastSheets, THREE_VIEW_RULE } from '@/lib/cast-sheet'
-import { cleanScenes, TOOLS, READ_SKILL_FILE_TOOL, execListModels, type StoryScene } from '@/lib/xdirector-tools'
+import { cleanScenes, countCards, MAX_SCENES, MAX_ASSETS, TOOLS, READ_SKILL_FILE_TOOL, execListModels, type StoryScene } from '@/lib/xdirector-tools'
 export type { StoryScene }
 
 const LOG = '[xdirector]'
@@ -266,6 +266,17 @@ export async function POST(req: Request) {
       let action: any = null
       for (const tu of toolUses) {
         if (tu.name === 'set_storyboard') {
+          // NO SILENT CAPS. An oversize board is refused with the numbers, so
+          // the director cuts or merges on purpose — never a slice that drops
+          // the ending (the 西遊記 board's last three beats, Aug 22).
+          const cards = countCards(tu.input?.scenes)
+          if (cards.scenes > MAX_SCENES || cards.assets > MAX_ASSETS) {
+            results.push({
+              type: 'tool_result', tool_use_id: tu.id, is_error: true,
+              content: `Rejected: ${cards.scenes} scene(s) and ${cards.assets} asset(s) — the board holds at most ${MAX_SCENES} scenes and ${MAX_ASSETS} assets (assets do not count as scenes). Merge or cut on purpose so the ending survives, then call set_storyboard again with the FULL list.`,
+            })
+            continue
+          }
           const scenes = cleanScenes(tu.input?.scenes)
           // A TEXT-ONLY MODEL ON A KEYFRAME SCENE IS ALWAYS WRONG AT PLAN
           // TIME (owner, Aug 12: the director seated Text to Video across

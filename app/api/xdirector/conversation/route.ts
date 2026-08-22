@@ -9,6 +9,7 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
+import { capCards } from '@/lib/xdirector-tools'
 
 const LOG = '[xdirector:convo]'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -94,7 +95,10 @@ export async function POST(req: Request) {
   // assembled by our own client); this route only keeps the column from
   // becoming a dumping ground.
   if (Array.isArray(storyboard) && storyboard.length > 0 && JSON.stringify(storyboard).length <= 100_000) {
-    row.storyboard = storyboard.slice(0, 12)
+    // Per-kind cap (scenes and shelf assets counted separately) — the same
+    // rule as the director's set_storyboard. A flat slice(0, 12) here used
+    // to drop the last scenes of a 5-sheet + 10-scene board on save (Aug 22).
+    row.storyboard = capCards(storyboard.filter((sc: any) => sc && typeof sc === 'object'))
   } else if (storyboard === null) {
     row.storyboard = null   // explicit clear
   }

@@ -29,13 +29,45 @@ export type StoryBible = {
 export type Window = { index: number; text: string; headings: string[] }
 
 // Chapter-style headings across the markets we serve: 第一回 / 第1章 / 第三話 /
-// Chapter 7 / CHAPTER IV / Prologue / 序章 / 제3장. Multiline + case-insensitive.
-const HEADING_RE = /^[ \t]*(?:第[ \t]*[0-9０-９一二三四五六七八九十百千零〇两兩]+[ \t]*[回章节節卷折幕话話]|chapter[ \t]+(?:\d+|[ivxlc]+)\b|prologue\b|epilogue\b|序章|終章|终章|最終回|最终回|제[ \t]*\d+[ \t]*[장화])[^\n]*/gim
+// Chapter 7 / CHAPTER IV / Prologue / 序章 / 제3장. NOT anchored to a line
+// start: PDF text extraction runs headings into the surrounding prose (the
+// Gutenberg 西遊記 came out as 821k chars with every 第X回 mid-line, Aug
+// 22), so a heading is "preceded by whitespace or the start of the text".
+// A rare false hit inside prose only splits a window — harmless.
+const HEADING_RE = /(?:^|(?<=[\s。」』）！？]))(?:第[ \t]*[0-9０-９一二三四五六七八九十百千零〇两兩]+[ \t]*[回章节節卷折幕话話]|chapter[ \t]+(?:\d+|[ivxlc]+)\b|prologue\b|epilogue\b|序章|終章|终章|最終回|最终回|제[ \t]*\d+[ \t]*[장화])[^\n]{0,80}/gim
+
+/** Normalise what PDF/text extraction hands us before anything reads it:
+ *  NFKC folds Kangxi-radical and full-width codepoints onto the ordinary
+ *  ideographs and digits (the Gutenberg 西遊記 PDF spells 西 as U+2F9F ⻄),
+ *  and Project Gutenberg's licence header/footer — the most common wrapper
+ *  on a public-domain classic — is dropped so the first window is the
+ *  story, not the licence. */
+// CJK Radicals Supplement (U+2E80–U+2EF3) has no NFKC decomposition; these
+// are the ones that showed up in a real PDF text layer (the Gutenberg 西遊記
+// spells 西 as ⻄ 906 times, 母 as ⺟, 民 as ⺠), plus the usual suspects.
+const RADICAL_SUPPLEMENT: Record<string, string> = {
+  '⻄': '西', '⺟': '母', '⺠': '民', '⺒': '巳', '⺎': '兀', '⻑': '長', '⻝': '食', '⻘': '青',
+  '⻁': '虎', '⻣': '骨', '⻤': '鬼', '⻯': '竜', '⻨': '麦', '⻩': '黄', '⻫': '斉', '⻭': '歯',
+  '⺝': '月', '⺡': '水', '⺤': '爪', '⺨': '犬', '⺩': '王', '⺫': '网', '⺭': '示', '⺮': '竹',
+  '⺯': '糸', '⺱': '网', '⺲': '网', '⺶': '羊', '⺹': '老', '⺻': '聿', '⺼': '肉', '⻂': '衣',
+  '⻃': '覀', '⻊': '足', '⻍': '辵', '⻏': '邑', '⻖': '阜', '⻗': '雨', '⻙': '韋', '⻚': '頁',
+  '⻛': '風', '⻜': '飛', '⻢': '馬', '⻥': '魚', '⻦': '鳥', '⻬': '齊', '⻰': '龍', '⻳': '龜',
+}
+const RADICAL_SUPPLEMENT_RE = new RegExp(`[${Object.keys(RADICAL_SUPPLEMENT).join('')}]`, 'g')
+
+export function prepareText(raw: string): string {
+  let text = raw.normalize('NFKC').replace(RADICAL_SUPPLEMENT_RE, ch => RADICAL_SUPPLEMENT[ch] ?? ch).replace(/\r\n?/g, '\n')
+  const start = text.search(/\*\*\*\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[^\n]*\*\*\*/i)
+  if (start >= 0) text = text.slice(text.indexOf('***', start + 3) + 3)
+  const end = text.search(/\*\*\*\s*END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK/i)
+  if (end >= 0) text = text.slice(0, end)
+  return text.trim()
+}
 
 /** Split on chapter headings when the text has them (≥ 2), else on paragraph
  *  boundaries, then pack consecutive pieces into windows of ≤ WINDOW_CHARS. */
 export function splitIntoWindows(raw: string, windowChars = WINDOW_CHARS): Window[] {
-  const text = raw.replace(/\r\n?/g, '\n').trim()
+  const text = prepareText(raw)
   if (!text) return []
 
   const pieces: Array<{ text: string; heading?: string }> = []
@@ -160,20 +192,22 @@ export function parseBible(reply: string): StoryBible | null {
  *  the message — one rendering, so what the user corrects is what the
  *  director saw. */
 export function renderBible(b: StoryBible): string {
-  const lines: string[] = []
-  lines.push(`📖 ${b.title || '—'}`)
-  if (b.logline) lines.push(`Logline: ${b.logline}`)
+  // Markdown-friendly on purpose: the chat renders agent bubbles through
+  // ReactMarkdown, which folds single newlines into one paragraph (the first
+  // live bible read "📖 西遊記 … Logline: … Setting: … Cast:" as one run-on
+  // line). Blocks are separated by blank lines; cast and beats are lists.
+  const blocks: string[] = []
+  blocks.push(`📖 **${b.title || '—'}**`)
+  if (b.logline) blocks.push(`**Logline:** ${b.logline}`)
   const s = [b.setting.era, b.setting.world, b.setting.tone].filter(Boolean).join(' · ')
-  if (s) lines.push(`Setting: ${s}`)
+  if (s) blocks.push(`**Setting:** ${s}`)
   if (b.cast.length) {
-    lines.push('Cast:')
-    for (const c of b.cast) lines.push(`- ${c.name}${c.role ? ` — ${c.role}` : ''}${c.look ? ` — ${c.look}` : ''}`)
+    blocks.push('**Cast:**\n' + b.cast.map(c => `- ${c.name}${c.role ? ` — ${c.role}` : ''}${c.look ? ` — ${c.look}` : ''}`).join('\n'))
   }
-  lines.push(`Beats (${b.beats.length}):`)
-  for (const t of b.beats) {
+  blocks.push(`**Beats (${b.beats.length}):**\n` + b.beats.map(t => {
     const tail = [t.who.length ? t.who.join(', ') : '', t.where].filter(Boolean).join(' · ')
-    lines.push(`${t.n}. ${t.title} — ${t.what_happens}${t.change ? ` → ${t.change}` : ''}${tail ? ` (${tail})` : ''}`)
-  }
-  if (b.omitted) lines.push(`Left out: ${b.omitted}`)
-  return lines.join('\n')
+    return `${t.n}. ${t.title} — ${t.what_happens}${t.change ? ` → ${t.change}` : ''}${tail ? ` (${tail})` : ''}`
+  }).join('\n'))
+  if (b.omitted) blocks.push(`**Left out:** ${b.omitted}`)
+  return blocks.join('\n\n')
 }

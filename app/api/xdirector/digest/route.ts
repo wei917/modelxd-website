@@ -15,7 +15,7 @@
 // HOUSE-PAID, like transcription and the director's own turns.
 
 export const runtime = 'nodejs'
-export const maxDuration = 300   // a novel is ~20 windows; 6 in flight → a couple of minutes
+export const maxDuration = 300   // a novel is ~20 windows; 8 in flight → ~2-3 minutes incl. the reduce
 
 import { createClient } from '@supabase/supabase-js'
 import { extractPdfText } from '@/lib/pdf-extract'

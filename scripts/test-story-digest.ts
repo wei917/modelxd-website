@@ -1,6 +1,6 @@
 // scripts/test-story-digest.ts — unit test for the story digest pure functions (lib/story-digest.ts).
 //   npx tsx scripts/test-story-digest.ts
-import { splitIntoWindows, parseBible, renderBible, mapPrompt, reducePrompt } from '../lib/story-digest'
+import { splitIntoWindows, parseBible, renderBible, mapPrompt, reducePrompt, prepareText } from '../lib/story-digest'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name, extra) }
@@ -46,7 +46,16 @@ check('beats clamped to 10 and renumbered', b.beats.length === 10 && b.beats[9].
 check('garbage → null', parseBible('no json here') === null)
 check('no beats → null', parseBible('{"title":"x","beats":[]}') === null)
 const r = renderBible(b)
-check('render has title/cast/beats', r.includes('📖 西遊記') && r.includes('Cast:') && r.includes('Beats (10):'))
+check('render has title/cast/beats', r.includes('📖 **西遊記**') && r.includes('**Cast:**') && r.includes('**Beats (10):**'))
+check('render separates blocks with blank lines (Markdown)', r.split('\n\n').length >= 5)
+
+// 7. PDF-style text: headings mid-line, Kangxi radicals, Gutenberg wrapper
+const pdfish = 'The Project Gutenberg eBook of ⻄遊記 … *** START OF THE PROJECT GUTENBERG EBOOK ⻄遊記 *** 卷一 第一回 靈根育孕源流出 心性修持大道生 詩曰：混沌未分天地亂… ' + '話說美猴王。'.repeat(40) + ' 第二回 悟徹菩提真妙理 斷魔歸本合元神 ' + '話說悟空。'.repeat(40) + ' 第三回 四海千山皆拱伏 ' + '話說龍宮。'.repeat(40) + ' *** END OF THE PROJECT GUTENBERG EBOOK ⻄遊記 *** licence text licence text'
+const wp = splitIntoWindows(pdfish)
+check('mid-line 第X回 headings found', wp.flatMap(x => x.headings).length === 3, `→ ${wp.flatMap(x => x.headings).length}`)
+check('Kangxi radical folded to 西', prepareText('⻄遊記').includes('西遊記'))
+check('Gutenberg header stripped', !wp[0].text.includes('Project Gutenberg') && wp[0].text.startsWith('卷一'))
+check('Gutenberg footer stripped', !wp[wp.length - 1].text.includes('licence text'))
 
 // 6. prompts carry focus + language + part index
 check('map prompt', mapPrompt(w[0], w.length, 'zh-Hant', '大鬧天宮').includes('FOCUS on: "大鬧天宮"') && mapPrompt(w[0], w.length, 'zh-Hant').includes('Traditional Chinese'))

@@ -18,7 +18,8 @@ const serviceClient = () => createClient(
 // The scenes the model emits go straight to the user's board and back into
 // future prompts, so clamp everything: count, string lengths, duration.
 // Unknown fields are dropped, not passed through.
-export const MAX_SCENES = 12
+export const MAX_SCENES = 12   // SCENES only — assets on the shelf are counted separately
+export const MAX_ASSETS = 8
 export type StoryScene = {
   id: string
   continues?: boolean
@@ -45,12 +46,36 @@ export type StoryScene = {
    *  the storyboard context) — generation for that scene consumes them. */
   refs?: Array<{ storagePath: string; bucket: string; mediaType: string; fileName: string; fileSize: number }>
 }
+/** How many scene cards and shelf assets a raw set_storyboard payload holds —
+ *  the route rejects an oversize board OUT LOUD instead of cleanScenes
+ *  trimming it (Aug 22: a 5-sheet + 10-scene 西遊記 board lost its last
+ *  three beats — the ending — to a silent slice at 12). */
+export function countCards(raw: unknown): { scenes: number; assets: number } {
+  if (!Array.isArray(raw)) return { scenes: 0, assets: 0 }
+  let scenes = 0, assets = 0
+  for (const sc of raw) { if (sc && typeof sc === 'object') { if ((sc as any).asset === true) assets++; else scenes++ } }
+  return { scenes, assets }
+}
+
+/** Keep at most MAX_SCENES scenes and MAX_ASSETS assets, in order — the one
+ *  cap every path shares (the director's set_storyboard, the conversation
+ *  save). A flat slice at 12 was cutting a 5-sheet + 10-scene board down to
+ *  7 scenes on SAVE too, so a reload lost the ending (Aug 22). */
+export function capCards<T extends { asset?: boolean }>(list: T[]): T[] {
+  let nScenes = 0, nAssets = 0
+  return list.filter(sc => (sc && (sc as any).asset === true) ? ++nAssets <= MAX_ASSETS : ++nScenes <= MAX_SCENES)
+}
+
 export function cleanScenes(raw: unknown): StoryScene[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null
   const s = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
   const out: StoryScene[] = []
-  for (const [i, sc] of raw.slice(0, MAX_SCENES).entries()) {
+  // Caps apply per kind: up to MAX_SCENES scenes AND up to MAX_ASSETS assets,
+  // in the order given (the route has already refused a payload over either).
+  let nScenes = 0, nAssets = 0
+  for (const [i, sc] of raw.entries()) {
     if (!sc || typeof sc !== 'object') continue
+    if ((sc as any).asset === true) { if (++nAssets > MAX_ASSETS) continue } else { if (++nScenes > MAX_SCENES) continue }
     const dur = Number((sc as any).duration_s)
     out.push({
       id:       s((sc as any).id, 24) || `s${i + 1}`,
