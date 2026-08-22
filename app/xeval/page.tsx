@@ -267,7 +267,7 @@ export default function XEvalPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
             <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap
-              swatch={pv => <svg width={18} height={18} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={6} fill="currentColor" /></svg>} />
+              swatch={pv => <svg width={15} height={15} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={5.2} fill="currentColor" /></svg>} />
             <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
               swatch={ef => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(ef), display: 'inline-block' }} />} />
             <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
