@@ -38,6 +38,7 @@ interface Duel {
 }
 
 const PAGE_SIZE = 12
+const MAX_PER_TAB = 100
 
 export default function VotePage() {
   const t = useT()
@@ -245,7 +246,6 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
   const [duels, setDuels] = useState<Duel[]>([])
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
 
   // Fetch duels for this mode. We fetch a bigger batch and paginate
   // client-side after filtering voted + search. This avoids complex
@@ -256,16 +256,26 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
 
     // Try with new columns first; fall back to old schema if migration
     // hasn't been run yet (community_vote_count / deleted_at missing).
-    const baseQuery = () => sb
-      .from('duels')
-      .select('id, mode, prompt, slots, vote2, community_vote_count, created_at', { count: 'exact' })
-      .eq('mode', mode)
-      .is('deleted_at', null)
+    // Exclude duels this user already voted on at the source when the id
+    // list fits comfortably in a query string (~37 chars per id); beyond
+    // that the client-side filter below does the job. Either way the
+    // page never shows a duel twice, and the DB does an indexed id lookup
+    // — no scan, no count.
+    const exclude = votedIds.size > 0 && votedIds.size <= 300 ? Array.from(votedIds) : null
+    const baseQuery = () => {
+      let q = sb
+        .from('duels')
+        .select('id, mode, prompt, slots, vote2, community_vote_count, created_at')
+        .eq('mode', mode)
+        .is('deleted_at', null)
+      if (exclude) q = q.not('id', 'in', `(${exclude.join(',')})`)
+      return q
       // Hide duels where any slot failed or came back empty (CC, July 19)
       // — broken duels aren't worth voting on, and a safety-blocked run
       // (e.g. a bad upload) never surfaces publicly at all.
-      .not('slots', 'cs', JSON.stringify([{ text: null }]))
-      .not('slots', 'cs', JSON.stringify([{ text: '' }]))
+        .not('slots', 'cs', JSON.stringify([{ text: null }]))
+        .not('slots', 'cs', JSON.stringify([{ text: '' }]))
+    }
 
     // Two windows, merged. blendedOrder weighs recency against popularity,
     // but it can only rank what it is handed — a single created_at window
@@ -278,7 +288,6 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
     ])
 
     const error = recentRes.error
-    const count = recentRes.count
     const merged = new Map<string, any>()
     for (const row of [...(recentRes.data ?? []), ...(popularRes.data ?? [])]) merged.set(row.id, row)
     const data = error ? null : Array.from(merged.values())
@@ -287,7 +296,7 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
     if (error) {
       let q2 = sb
         .from('duels')
-        .select('id, mode, prompt, slots, vote2, created_at', { count: 'exact' })
+        .select('id, mode, prompt, slots, vote2, created_at')
         .eq('mode', mode)
         .not('slots', 'cs', JSON.stringify([{ text: null }]))
         .not('slots', 'cs', JSON.stringify([{ text: '' }]))
@@ -295,21 +304,19 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
         .limit(200)
 
       const fallback = await q2
-      if (fallback.error || !fallback.data) { setDuels([]); setTotal(0); setLoading(false); return }
+      if (fallback.error || !fallback.data) { setDuels([]); setLoading(false); return }
       const normalized = (fallback.data as any[]).map(d => ({ ...d, community_vote_count: 0 })) as Duel[]
       setDuels(blendedOrder(normalized))
-      setTotal(fallback.count ?? fallback.data.length)
       setLoading(false)
       return
     }
 
-    if (!data) { setDuels([]); setTotal(0); setLoading(false); return }
+    if (!data) { setDuels([]); setLoading(false); return }
     // Ensure community_vote_count defaults to 0 for old rows
     const normalized = (data as any[]).map(d => ({ ...d, community_vote_count: d.community_vote_count ?? 0 })) as Duel[]
     setDuels(blendedOrder(normalized))
-    setTotal(count ?? data.length)
     setLoading(false)
-  }, [mode, userId])
+  }, [mode, userId, votedIds])
 
   useEffect(() => { fetchDuels() }, [fetchDuels])
 
@@ -326,17 +333,15 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
     )
   }
 
+  // A visit shows at most MAX_PER_TAB duels per tab (owner, Aug 22): enough
+  // to vote for a while, never a scrollable census of the archive.
+  filtered = filtered.slice(0, MAX_PER_TAB)
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
   const pageDuels = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
 
   return (
     <div style={{ marginBottom: 48 }}>
-      {/* Duel count */}
-      <div style={{ marginBottom: 16, color: 'var(--muted)', fontSize: 13 }}>
-        {t('xvote.duelcount').replace('{n}', String(filtered.length))}
-      </div>
-
       {loading ? (
         <div style={{ color: 'var(--muted)', fontSize: 13, padding: '40px 0' }}>Loading…</div>
       ) : filtered.length === 0 ? (
