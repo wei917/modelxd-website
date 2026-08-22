@@ -6,6 +6,8 @@ compatibility: Designed for ModelXD XDirect (storyboard video with reference ima
 metadata:
   author: ModelXD
   emoji: "📖"
+  banner: "/xdirect/skills/story-to-video-cover.jpg"
+  banner_video: "/xdirect/skills/story-to-video-loop.mp4"
   tagline: "A whole book goes in. Ten scenes come out — the ones that matter, cast locked, one style."
   color: "#0ea5e9"
   title: "Story to Video"

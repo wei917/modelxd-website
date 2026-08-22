@@ -31,6 +31,9 @@ import { isSubmitEnter } from '../../lib/ime'
 type Bubble = {
   role: 'user' | 'agent' | 'gen' | 'ask' | 'plan'
   text?: string
+  /** The STORY BIBLE bubble (Story to Video) — gets the "open as a page ·
+   *  save as PDF" link to /xdirect/bible/<id>. */
+  bible?: boolean
   files?: string[]          // attachment names shown under a user bubble
   /** Committed attachment descriptors (storagePath etc.), persisted with the
    *  bubble so a RESTORED conversation can still generate with its reference
@@ -1404,7 +1407,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           if (res.ok && d?.text) {
             if (storyMode) {
               bibleText += `\n\n[STORY BIBLE — digested from ${name} by ${d.model} (${d.chars} characters read in ${d.windows} part(s)). This is the ONLY script for the film: the beats are the scenes, the cast list is who gets a three-view sheet. The user can see this bible and may correct it — their correction is the truth from then on.]\n${d.text}`
-              pushBubble({ role: 'agent', text: `${t('xd.bible.heard')} — ${d.model}\n\n${d.text}\n\n${t('xd.bible.fix')}` })
+              pushBubble({ role: 'agent', bible: true, text: `${t('xd.bible.heard')} — ${d.model}\n\n${d.text}\n\n${t('xd.bible.fix')}` })
             } else {
               bibleText += `\n\n[text from ${name} — the first ${d.chars} characters]\n${d.text}`
             }
@@ -1747,6 +1750,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                 color: b.role === 'user' ? 'var(--muted2)' : 'var(--white)',
               }}>
                 <div className="markdown-body"><ReactMarkdown skipHtml>{b.text ?? ''}</ReactMarkdown></div>
+                {(b.bible || /📖/.test(b.text ?? '')) && convIdRef.current && (
+                  <a href={`/xdirect/bible/${convIdRef.current}`} target="_blank" rel="noreferrer"
+                     style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontFamily: 'var(--font-mono), monospace', color: 'var(--red)', textDecoration: 'none', letterSpacing: '0.04em' }}>
+                    📄 {t('xd.bible.open')} ↗
+                  </a>
+                )}
                 {b.files && b.files.length > 0 && (
                   <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>📎 {b.files.join(', ')}</div>
                 )}
