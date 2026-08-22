@@ -473,10 +473,13 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>{t('xeval.chart.title')}</span>
         <span style={{ flex: 1 }} />
-        <button style={btn} onClick={() => zoomAt(0.6)} title="zoom in">+</button>
-        <button style={btn} onClick={() => zoomAt(1.6)} title="zoom out">−</button>
-        <button style={{ ...btn, opacity: zoomed ? 1 : 0.45 }} onClick={() => setWin(null)} disabled={!zoomed}>{t('xeval.chart.reset')}</button>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)' }}>{fmt(view.x0)} – {fmt(view.x1)} · {visible.length}/{pts.length}</span>
+        {/* fixed-width readout so the buttons never move when the range text changes length */}
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', minWidth: 190, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+          {fmt(view.x0)} – {fmt(view.x1)} · {visible.length}/{pts.length}
+        </span>
+        <button style={{ ...btn, minWidth: 28 }} onClick={() => zoomAt(0.6)} title="zoom in">+</button>
+        <button style={{ ...btn, minWidth: 28 }} onClick={() => zoomAt(1.6)} title="zoom out">−</button>
+        <button style={{ ...btn, opacity: zoomed ? 1 : 0.45, minWidth: 58 }} onClick={() => setWin(null)} disabled={!zoomed}>{t('xeval.chart.reset')}</button>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block', cursor: drag.current ? 'grabbing' : 'grab', userSelect: 'none' }}
