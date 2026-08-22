@@ -267,7 +267,7 @@ export default function XEvalPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
             <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap
-              swatch={pv => <svg width={12} height={12} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={4.2} fill="currentColor" /></svg>} />
+              swatch={pv => <svg width={18} height={18} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={6} fill="currentColor" /></svg>} />
             <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
               swatch={ef => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(ef), display: 'inline-block' }} />} />
             <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
@@ -435,7 +435,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
   const pts = toPts(rows)
   const domain = toPts(domainRows)
 
-  const W = 940, H = 260, PL = 46, PR = 16, PT = 14, PB = 30
+  const W = 940, H = 420, PL = 46, PR = 16, PT = 14, PB = 30
   const PW = W - PL - PR, PH = H - PT - PB
   const xmax = domain.length ? Math.max(...domain.map(p => p.x)) : 1
   const ys = domain.length ? domain.map(p => p.y) : [1000]
@@ -538,10 +538,9 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
           <g clipPath="url(#xeval-plot)">
           {ordered.map(p => {
             const isHover = hover === p.label
-            const dim = hover != null && !isHover
             const rightHalf = X(p.x) > W * 0.72
             return (
-              <g key={p.label} opacity={dim ? 0.25 : 1} style={{ cursor: 'default', transition: 'opacity 0.12s' }}
+              <g key={p.label} style={{ cursor: 'default' }}
                  onMouseEnter={() => setHover(p.label)} onMouseLeave={() => setHover(null)}>
                 <Mark shape={shapeOf(p.provider)} cx={X(p.x)} cy={Y(p.y)} r={isHover ? 8 : 5.5} fill={colorOf(p.effort)} />
                 <text
