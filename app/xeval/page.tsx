@@ -8,7 +8,7 @@
 // leaderboard publishes. Reads the xeval_* tables (migration 83), which the
 // owner-triggered publish script fills from the local pilot store.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import ProviderLogo from '../components/ProviderLogo'
@@ -394,6 +394,12 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
 }) {
   const t = useT()
   const [hover, setHover] = useState<string | null>(null)
+  // Visible cost window (linear $). null = fit the whole dataset. Zoom
+  // (buttons / wheel) and pan (drag / horizontal wheel) only change this
+  // window — the data, colors and labels are untouched.
+  const [win, setWin] = useState<{ x0: number; x1: number } | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const drag = useRef<{ startX: number; x0: number; x1: number } | null>(null)
 
   const toPts = (src: { model_name: string; effort: string | null; rating: number }[]) => src
     .map(r => {
@@ -406,38 +412,99 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
     .filter(Boolean) as { x: number; y: number; label: string; provider: string; effort: string }[]
   const pts = toPts(rows)
   const domain = toPts(domainRows)
-  if (domain.length === 0) return null
-
 
   const W = 940, H = 260, PL = 46, PR = 16, PT = 14, PB = 30
-  const lx = (c: number) => Math.log10(c)
-  const xs = domain.map(p => lx(p.x)), ys = domain.map(p => p.y)
-  const x0 = Math.min(...xs) - 0.15, x1 = Math.max(...xs) + 0.25
+  const xmax = domain.length ? Math.max(...domain.map(p => p.x)) : 1
+  const full = { x0: 0, x1: xmax * 1.12 }
+  const view = win ?? full
+  const minSpan = full.x1 / 200
+  const clampWin = (x0: number, x1: number) => {
+    let span = Math.max(minSpan, Math.min(full.x1, x1 - x0))
+    x0 = Math.max(0, Math.min(x0, full.x1 - span))
+    return { x0, x1: x0 + span }
+  }
+  const zoomAt = (factor: number, focus?: number) => {
+    const f = focus ?? (view.x0 + view.x1) / 2
+    const span = (view.x1 - view.x0) * factor
+    const frac = (f - view.x0) / (view.x1 - view.x0)
+    const next = clampWin(f - span * frac, f - span * frac + span)
+    setWin(next.x1 - next.x0 >= full.x1 - 1e-9 ? null : next)
+  }
+  const panBy = (dx: number) => {
+    const span = view.x1 - view.x0
+    const next = clampWin(view.x0 + dx, view.x0 + dx + span)
+    setWin(next.x1 - next.x0 >= full.x1 - 1e-9 ? null : next)
+  }
+  // Wheel must be non-passive to stop the page from scrolling under the chart.
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    const onWheel = (ev: WheelEvent) => {
+      ev.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const px = ((ev.clientX - rect.left) / rect.width) * W
+      const focus = view.x0 + ((px - PL) / (W - PL - PR)) * (view.x1 - view.x0)
+      if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) panBy((ev.deltaX / (W - PL - PR)) * (view.x1 - view.x0))
+      else zoomAt(ev.deltaY > 0 ? 1.25 : 0.8, focus)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  })
+  if (domain.length === 0) return null
+
+  const ys = domain.map(p => p.y)
   const y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40
-  const X = (c: number) => PL + ((lx(c) - x0) / (x1 - x0)) * (W - PL - PR)
+  const X = (c: number) => PL + ((c - view.x0) / (view.x1 - view.x0)) * (W - PL - PR)
   const Y = (v: number) => H - PB - ((v - y0) / (y1 - y0)) * (H - PT - PB)
-  const xticks = [0.01, 0.03, 0.1, 0.3, 1, 3].filter(v => lx(v) >= x0 && lx(v) <= x1)
-  const ordered = [...pts.filter(p => p.label !== hover), ...pts.filter(p => p.label === hover)]
+  // "Nice" linear ticks for the current window
+  const span = view.x1 - view.x0
+  const raw = span / 6, mag = Math.pow(10, Math.floor(Math.log10(raw)))
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) ?? mag * 10
+  const xticks: number[] = []
+  for (let v = Math.ceil(view.x0 / step) * step; v <= view.x1 + 1e-9; v += step) xticks.push(+v.toFixed(6))
+  const fmt = (v: number) => '$' + (v >= 1 ? v.toFixed(v >= 10 ? 0 : 1) : v.toFixed(step < 0.01 ? 3 : 2))
+  const visible = pts.filter(p => p.x >= view.x0 && p.x <= view.x1)
+  const ordered = [...visible.filter(p => p.label !== hover), ...visible.filter(p => p.label === hover)]
+  const zoomed = win != null
+  const btn: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 5, background: 'transparent', color: 'var(--muted2)', cursor: 'pointer' }
 
   return (
     <div style={{ margin: '0 0 20px' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
-        {t('xeval.chart.title')}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>{t('xeval.chart.title')}</span>
+        <span style={{ flex: 1 }} />
+        <button style={btn} onClick={() => zoomAt(0.6)} title="zoom in">+</button>
+        <button style={btn} onClick={() => zoomAt(1.6)} title="zoom out">−</button>
+        <button style={{ ...btn, opacity: zoomed ? 1 : 0.45 }} onClick={() => setWin(null)} disabled={!zoomed}>{t('xeval.chart.reset')}</button>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)' }}>{fmt(view.x0)} – {fmt(view.x1)} · {visible.length}/{pts.length}</span>
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block' }} onMouseLeave={() => setHover(null)}>
+        <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block', cursor: drag.current ? 'grabbing' : 'grab', userSelect: 'none' }}
+             onMouseLeave={() => { setHover(null); drag.current = null }}
+             onMouseDown={ev => { drag.current = { startX: ev.clientX, x0: view.x0, x1: view.x1 } }}
+             onMouseUp={() => { drag.current = null }}
+             onMouseMove={ev => {
+               const d = drag.current
+               if (!d || !svgRef.current) return
+               const rect = svgRef.current.getBoundingClientRect()
+               const dxCost = ((ev.clientX - d.startX) / rect.width) * W / (W - PL - PR) * (d.x1 - d.x0)
+               const next = clampWin(d.x0 - dxCost, d.x1 - dxCost)
+               setWin(next.x1 - next.x0 >= full.x1 - 1e-9 ? null : next)
+             }}>
+          <defs><clipPath id="xeval-plot"><rect x={PL} y={0} width={W - PL - PR} height={H} /></clipPath></defs>
           {xticks.map(v => (
             <g key={v}>
               <line x1={X(v)} y1={PT} x2={X(v)} y2={H - PB} stroke="var(--border)" strokeWidth={1} />
-              <text x={X(v)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{'$' + v}</text>
+              <text x={X(v)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{fmt(v)}</text>
             </g>
           ))}
-          {[800, 900, 1000, 1100, 1200, 1300].filter(v => v > y0 && v < y1).map(v => (
+          {[700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500].filter(v => v > y0 && v < y1).map(v => (
             <g key={v}>
               <line x1={PL} y1={Y(v)} x2={W - PR} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />
               <text x={PL - 6} y={Y(v) + 3} textAnchor="end" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{v}</text>
             </g>
           ))}
+          <g clipPath="url(#xeval-plot)">
           {ordered.map(p => {
             const isHover = hover === p.label
             const dim = hover != null && !isHover
@@ -459,6 +526,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
               </g>
             )
           })}
+          </g>
         </svg>
       </div>
     </div>

@@ -445,7 +445,7 @@ export const STRINGS: Record<string, Entry> = {
   'xeval.stat.judges':   { en: 'judges', 'zh-Hant': '評審', 'zh-Hans': '评审', ja: '審査', ko: '심사' },
   'xeval.stat.verdicts': { en: 'verdicts', 'zh-Hant': '判定', 'zh-Hans': '判定', ja: '判定', ko: '판정' },
   'xeval.stat.updated':  { en: 'updated', 'zh-Hant': '更新於', 'zh-Hans': '更新于', ja: '更新', ko: '업데이트' },
-  'xeval.chart.title':   { en: 'RATING VS AVG $/TASK (LOG)', 'zh-Hant': '評分 vs 平均每題成本（對數）', 'zh-Hans': '评分 vs 平均每题成本（对数）', ja: 'レーティング vs 平均$/タスク（対数）', ko: '레이팅 vs 평균 $/과제 (로그)' },
+  'xeval.chart.title':   { en: 'RATING VS AVG $/TASK', 'zh-Hant': '評分 vs 平均每題成本', 'zh-Hans': '评分 vs 平均每题成本', ja: 'レーティング vs 平均$/タスク', ko: '레이팅 vs 평균 $/과제' },
   'xeval.chart.reset':   { en: 'Show all', 'zh-Hant': '全部顯示', 'zh-Hans': '全部显示', ja: 'すべて表示', ko: '모두 표시' },
   'xeval.filter.provider': { en: 'Provider', 'zh-Hant': '供應商', 'zh-Hans': '供应商', ja: 'プロバイダ', ko: '제공사' },
   'xeval.filter.effort':   { en: 'Effort', 'zh-Hant': '推理強度', 'zh-Hans': '推理强度', ja: 'エフォート', ko: '추론 강도' },
