@@ -12,13 +12,19 @@
 
 const MAX_CHARS = 200_000 // ~50k tokens — guardrail against pathological PDFs
 
-export async function extractPdfText(buffer: Buffer): Promise<string> {
+/**
+ * The default cap suits a PDF riding INSIDE a model prompt. A caller that
+ * digests the document in chunks (XDirect's story digest — a whole novel)
+ * passes its own, larger `maxChars`.
+ */
+export async function extractPdfText(buffer: Buffer, opts?: { maxChars?: number }): Promise<string> {
+  const cap = opts?.maxChars ?? MAX_CHARS
   // Lazy import so the pdf.js bundle never loads on requests without a PDF.
   const { getDocumentProxy, extractText } = await import('unpdf')
   const pdf = await getDocumentProxy(new Uint8Array(buffer))
   const { text } = await extractText(pdf, { mergePages: true })
   const merged = (Array.isArray(text) ? text.join('\n\n') : text).trim()
-  return merged.length > MAX_CHARS ? merged.slice(0, MAX_CHARS) + '\n\n[…truncated]' : merged
+  return merged.length > cap ? merged.slice(0, cap) + '\n\n[…truncated]' : merged
 }
 
 /**

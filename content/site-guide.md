@@ -60,7 +60,17 @@ shows its price) or all at once. Finished clips fill their cards and land
 as nodes on the board, wired together so you can see how the piece was
 built. Still images skip the storyboard and generate directly. Every
 generation bills and appears in your history like a normal run. Available
-to every signed-in account. (Old `/xdirector` and "Agent Mode" links land
+to every signed-in account.
+
+Templates on the XDirect start screen set up a whole production: **Music
+Video** (a song or lyrics in; cast locked, cut to the music), **Animation**
+(one art style, character model sheets, still-first), **Story to Video** (a
+novel, a chapter or any story — PDF, .txt or pasted text, any length — is
+summarized into at most ten scenes that matter, every recurring character
+cast as a three-view sheet first, then storyboarded in one style), **Social
+Post** and a product-video pipeline. In every template the recurring
+characters are locked as three-view character sheets (front, three-quarter,
+profile) before a scene is shot, so the same face carries through the film. (Old `/xdirector` and "Agent Mode" links land
 here.)
 
 ### XTalk — `/xtalk`

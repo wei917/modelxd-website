@@ -11,7 +11,7 @@ metadata:
   tagline: "One style, your characters, a story that moves — animated shot by shot."
   color: "#f472b6"
   title: "Animation"
-  version: "1.2"
+  version: "1.3"
   category: animation
   order: "2"
   aspect: "ask"
@@ -63,13 +63,16 @@ Animation studios draw model sheets before animating; so do we.
   into generated frames.
 - Shots that feature a character chain from the model sheet the same way
   music-video shots chain from cast stills: sheet → keyframe → motion.
-- **Cheaper turnaround (one video instead of three stills)**: animate the
-  approved FRONT view with "she turns a slow full circle in place,
-  neutral pose, constant framing, camera locked" (~5s i2v), then pull
-  the profile / frontal / back frames out of it as the sheet. Probed
-  live (Aug 18): one 5s clip delivered all three views with hair,
-  uniform and style consistent through the rotation. One generation,
-  and the angles agree by construction.
+- **The sheet is always the three-view frame** — front, three-quarter
+  and profile side by side in ONE still. The server rejects a CAST asset
+  written as a single view (all templates, Aug 22). When a shot needs an
+  angle the sheet lacks (the back, a low three-quarter), the cheap way
+  to get it is ONE video rather than more stills: a scene chained from
+  the sheet with "turns a slow full circle in place, neutral pose,
+  constant framing, camera locked" (~5s i2v), then pull the frames you
+  need. Probed live (Aug 18): one 5s clip delivered every angle with
+  hair, uniform and style consistent through the rotation — the angles
+  agree by construction.
 
 ## Still-first, always (KEYFRAME by default)
 

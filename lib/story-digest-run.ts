@@ -1,0 +1,125 @@
+// lib/story-digest-run.ts — SERVER-ONLY orchestration of the story digest:
+// pick the models from the catalog, MAP every window of the text to a part
+// summary, REDUCE the summaries into one STORY BIBLE. The pure pieces
+// (chunking, prompts, parsing) live in lib/story-digest.ts; the HTTP shell
+// is app/api/xdirector/digest/route.ts. Kept apart so a script can run the
+// pipeline on a file directly, without auth or storage.
+//
+// House-paid, like the director's own turns and the song transcription: a
+// whole novel on the cheapest catalog text model is well under a dollar,
+// and a story brief shouldn't nickel-and-dime. Every call still goes
+// through the provider router, so provider_calls logs it with the user id
+// and its cost.
+
+import * as providers from './providers'
+import type { ModelInfo } from './providers/types'
+import {
+  splitIntoWindows, mapPrompt, reducePrompt, parseBible, renderBible, type StoryBible,
+} from './story-digest'
+
+const LOG = '[xdirector:digest]'
+const MAP_TIMEOUT_MS    = 150_000
+const REDUCE_TIMEOUT_MS = 200_000
+const CONCURRENCY       = 6
+
+export type DigestModels = { map: ModelInfo; reduce: ModelInfo }
+
+/**
+ * Map step: the cheapest enabled text model (it reads a lot and decides
+ * little). Reduce step: the director's own model, Sonnet 5 — choosing the
+ * ten beats that matter IS the judgment, and the only part worth paying
+ * for. `XDIRECTOR_DIGEST_MODEL` ("provider/model_name" or "model_name")
+ * overrides the map pick.
+ */
+export function pickDigestModels(rows: ModelInfo[]): DigestModels | null {
+  const text = rows.filter(m =>
+    m.enabled
+    && (m.output_modalities ?? []).includes('text')
+    && ((m.modes ?? []) as string[]).includes('text_to_text'))
+  if (text.length === 0) return null
+  const price = (m: ModelInfo) => {
+    const v = Number((m.model_pricing as any)?.tokens?.text_input)
+    return Number.isFinite(v) ? v : Number.POSITIVE_INFINITY
+  }
+  const sorted = [...text].sort((a, b) => price(a) - price(b))
+  const want = process.env.XDIRECTOR_DIGEST_MODEL?.trim()
+  const override = want ? text.find(m => `${m.provider}/${m.model_name}` === want || m.model_name === want) : undefined
+  const map = override ?? sorted[0]
+  const reduce = text.find(m => m.provider === 'anthropic' && m.model_name === 'claude-sonnet-5') ?? map
+  return { map, reduce }
+}
+
+/** One non-streamed text call: collect the deltas, resolve on done/error/timeout. */
+async function runText(model: ModelInfo, prompt: string, userId: string | null, timeoutMs: number):
+  Promise<{ text: string; cost: number; ok: boolean; error?: string }> {
+  let full = '', cost = 0, error: string | undefined
+  let timer: ReturnType<typeof setTimeout> | null = null
+  await Promise.race([
+    new Promise<void>(resolve => {
+      providers.streamText(model, [{ role: 'user', content: prompt }], {
+        onDelta: (t: string) => { full += t },
+        onDone:  (r: any) => { cost += r?.cost ?? 0; resolve() },
+        onError: (m: string) => { error = m; resolve() },
+      }, [], { userId, surface: 'xdirector-digest' } as any, { thinking: null, search: false })
+        .catch((e: any) => { error = e?.message ?? String(e); resolve() })
+    }),
+    new Promise<void>(resolve => { timer = setTimeout(() => { error = 'timeout'; resolve() }, timeoutMs) }),
+  ])
+  if (timer) clearTimeout(timer)
+  return { text: full.trim(), cost, ok: !error && full.trim().length > 0, error }
+}
+
+async function pool<T, R>(items: T[], n: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) { const i = next++; out[i] = await fn(items[i], i) }
+  }
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker))
+  return out
+}
+
+export type DigestResult = {
+  bible: StoryBible
+  text: string       // renderBible(bible) — what the user and the director both read
+  windows: number
+  chars: number
+  cost: number
+  model: string      // display name of the reduce model (the one that chose the beats)
+}
+
+export async function digestDocument(raw: string, opts: {
+  lang?: string; focus?: string; userId: string | null; models: DigestModels
+}): Promise<DigestResult> {
+  const windows = splitIntoWindows(raw)
+  if (windows.length === 0) throw new Error('The document has no readable text.')
+  const { map, reduce } = opts.models
+  let cost = 0
+
+  // MAP — every window, a few at a time.
+  const parts = await pool(windows, CONCURRENCY, async w => {
+    const r = await runText(map, mapPrompt(w, windows.length, opts.lang, opts.focus), opts.userId, MAP_TIMEOUT_MS)
+    cost += r.cost
+    if (!r.ok) console.warn(`${LOG} map ${w.index + 1}/${windows.length} failed on ${map.display_name}: ${r.error}`)
+    return r.ok ? r.text : null
+  })
+  const kept = parts.map((p, i) => p ? `[part ${i + 1}]\n${p}` : null).filter((p): p is string => !!p)
+  if (kept.length === 0 || kept.length < windows.length / 2) {
+    throw new Error(`Could not read the document (${windows.length - kept.length} of ${windows.length} parts failed).`)
+  }
+
+  // REDUCE — the judgment call, with one retry if the JSON doesn't parse.
+  let bible: StoryBible | null = null
+  let prompt = reducePrompt(kept, opts.lang, opts.focus)
+  for (let attempt = 0; attempt < 2 && !bible; attempt++) {
+    const r = await runText(reduce, prompt, opts.userId, REDUCE_TIMEOUT_MS)
+    cost += r.cost
+    if (!r.ok) { console.warn(`${LOG} reduce failed on ${reduce.display_name}: ${r.error}`); continue }
+    bible = parseBible(r.text)
+    if (!bible) prompt += '\n\nYour previous reply was not a single valid JSON object. Return ONLY the JSON object described above — no prose, no code fence.'
+  }
+  if (!bible) throw new Error('Could not summarize the story into a bible.')
+
+  console.log(`${LOG} ${raw.length} chars → ${windows.length} window(s) on ${map.display_name} → ${bible.beats.length} beat(s), ${bible.cast.length} cast on ${reduce.display_name} (house-paid $${cost.toFixed(4)})`)
+  return { bible, text: renderBible(bible), windows: windows.length, chars: raw.length, cost, model: reduce.display_name }
+}

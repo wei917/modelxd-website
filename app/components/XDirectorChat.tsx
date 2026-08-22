@@ -16,12 +16,13 @@
 // run and shows up in Recent / the gallery like any other.
 
 import { useEffect, useRef, useState } from 'react'
-import { useT } from '../../lib/i18n'
+import { useT, useLang } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
 import MusicVideoSetup from '../components/MusicVideoSetup'
 import SocialPostSetup from '../components/SocialPostSetup'
 import AnimationSetup from '../components/AnimationSetup'
+import StorySetup, { type StoryExtra } from '../components/StorySetup'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import { isSubmitEnter } from '../../lib/ime'
 
@@ -120,6 +121,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   onBrief?: (text: string) => void
 } = {}) {
   const t = useT()
+  const { lang } = useLang()   // the digest writes the story bible in the reader's language
 
   const [bubbles,  setBubbles]  = useState<Bubble[]>([])
   const [protocol, setProtocol] = useState<any[]>([])   // verbatim Anthropic messages
@@ -1245,7 +1247,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   }
 
   // ── Send ──────────────────────────────────────────────────────────────────
-  const send = async (overrideText?: string, overrideAtts?: Attachment[]) => {
+  const send = async (overrideText?: string, overrideAtts?: Attachment[], extra?: StoryExtra) => {
     const text = (overrideText ?? input).trim()
     const outgoing = overrideAtts ?? atts
     // A file alone is a valid send now (owner, Aug 10): dropping in a song
@@ -1273,9 +1275,13 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // from — Claude can't hear audio, so an untranscribed mp3 is useless.
     const isLyricFile = (a: Attachment) => /\.(txt|lrc)$/i.test(a.fileName) || a.mediaType === 'text/plain'
     const isAudio     = (a: Attachment) => (a.mediaType || '').startsWith('audio/')
+    // Documents (PDF; and .txt under the Story template) never reach the
+    // director as files — /api/xdirector/digest turns them into text first.
+    const isDoc       = (a: Attachment) => a.mediaType === 'application/pdf' || /\.pdf$/i.test(a.fileName)
+    const storyMode   = activeSkillRef.current === 'story-to-video'
     let lyricText = ''
     for (const a of sending) {
-      if (isLyricFile(a) && a.file) {
+      if (isLyricFile(a) && a.file && !storyMode) {
         try {
           const body = (await a.file.text()).slice(0, 8000)
           // A .lrc (or any sheet with [mm:ss] line stamps) already carries
@@ -1308,7 +1314,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       // ALL attachments (a song occupies its number too) — the badge is
       // the single source of truth on both ends.
       committed = committed.map((a, i) => ({ ...a, fileNo: i + 1 }))
-      committedRef.current = committed.filter(a => a.storagePath && !isAudio(a) && !isLyricFile(a))
+      committedRef.current = committed.filter(a => a.storagePath && !isAudio(a) && !isLyricFile(a) && !isDoc(a))
       // Attach the committed refs to the bubble already on screen, so a
       // restored session can still generate against these photos.
       if (committedRef.current.length > 0) {
@@ -1373,6 +1379,39 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         } catch { lyricText += `\n\n[could not reach the transcriber for ${a.fileName}]` }
       }
     }
+    // Story documents → STORY BIBLE (owner, Aug 22: "no matter how long the
+    // story is, we should always summarize it and use the summary as
+    // input"). A PDF (any template) or a .txt (Story template) is uploaded,
+    // then /api/xdirector/digest reads it server-side: under the Story
+    // template it comes back as a bible (cast + at most ten beats) and is
+    // shown to the user for correction, like a transcript; under any other
+    // template it comes back as plain text, like a lyric sheet. Pasted
+    // story text from the setup form takes the same road.
+    let bibleText = ''
+    const docAtts = committed.filter(a => a.storagePath && (isDoc(a) || (storyMode && isLyricFile(a))))
+    const docJobs: Array<Record<string, unknown>> = docAtts.map(a => ({ bucket: a.bucket, storagePath: a.storagePath, mediaType: a.mediaType, fileName: a.fileName }))
+    if (docJobs.length === 0 && extra?.storyText) docJobs.push({ text: extra.storyText, fileName: 'pasted story' })
+    if (docJobs.length > 0) {
+      setPrep(t('xd.prep.read'))
+      for (const job of docJobs) {
+        const name = String(job.fileName ?? 'document')
+        try {
+          const res = await fetch('/api/xdirector/digest', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...job, mode: storyMode ? 'bible' : 'extract', focus: extra?.focus, lang }),
+          })
+          const d = await res.json().catch(() => null)
+          if (res.ok && d?.text) {
+            if (storyMode) {
+              bibleText += `\n\n[STORY BIBLE — digested from ${name} by ${d.model} (${d.chars} characters read in ${d.windows} part(s)). This is the ONLY script for the film: the beats are the scenes, the cast list is who gets a three-view sheet. The user can see this bible and may correct it — their correction is the truth from then on.]\n${d.text}`
+              pushBubble({ role: 'agent', text: `${t('xd.bible.heard')} — ${d.model}\n\n${d.text}\n\n${t('xd.bible.fix')}` })
+            } else {
+              bibleText += `\n\n[text from ${name} — the first ${d.chars} characters]\n${d.text}`
+            }
+          } else bibleText += `\n\n[could not read ${name}: ${d?.error ?? 'error'} — ask the user for a three-to-five-sentence summary of the story and work from that]`
+        } catch { bibleText += `\n\n[could not reach the reader for ${name} — ask the user for a short summary of the story and work from that]` }
+      }
+    }
     setPrep(t('xd.prep.think'))
 
     const noteParts: string[] = []
@@ -1411,6 +1450,10 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     if (lyricText) {
       noteParts.push(lyricText.trim())
       if (!text) noteParts.push('Make a music video from these lyrics. Confirm orientation first, then storyboard scene by scene timed to the lyric lines.')
+    }
+    if (bibleText) {
+      noteParts.push(bibleText.trim())
+      if (!text && storyMode) noteParts.push('Make a short film from this story: three-view CAST sheets for the recurring characters first, then at most 10 scenes — only the beats that change the story. Ask for the style in one question if none is given.')
     }
     // THE FIX (CC, July 29): the agent used to receive only this filename
     // note, so when asked to describe the product it invented one. A real
@@ -1613,6 +1656,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             />
           )}
 
+          {activeSkill === 'story-to-video' && bubbles.length === 0 && !setupDismissed && (
+            <StorySetup
+              busy={busy !== 'idle'}
+              onStart={(brief, formAtts, extra) => { void send(brief, formAtts, extra) }}
+              onSkip={() => setSetupDismissed(true)}
+            />
+          )}
+
           {/* Once the chat is running the skill is locked in — show it. */}
           {activeSkill && bubbles.length > 0 && (
             <div style={{ alignSelf: 'flex-start', fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--muted)', letterSpacing: '0.06em' }}>
@@ -1726,7 +1777,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
 
         {/* Composer — pinned below the scrolling transcript. */}
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, flexShrink: 0 }}>
-          <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple maxFiles={15} accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.m4a,.wav,.flac,.ogg,.txt,.lrc,text/plain" roles />
+          <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple maxFiles={15} accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.m4a,.wav,.flac,.ogg,.txt,.lrc,text/plain,.pdf,application/pdf" roles />
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               ref={taRef}
