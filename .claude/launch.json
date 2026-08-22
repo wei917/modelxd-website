@@ -2,15 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "modelxd-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
-    },
-    {
-      "name": "modelxd-attach",
-      "url": "http://localhost:3000",
-      "port": 3000
+      "name": "xeval-ops",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "cd /Users/cwei/Documents/Claude/Projects/XEval/gdpval-xd && .venv/bin/python -m xeval.dashboard --port 8787"],
+      "port": 8787
     }
   ]
 }
