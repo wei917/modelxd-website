@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "xeval-ops",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": ["-lc", "cd /Users/cwei/Documents/Claude/Projects/XEval/gdpval-xd && .venv/bin/python -m xeval.dashboard --port 8787"],
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["/Users/cwei/Documents/Claude/Projects/XEval/gdpval-xd/scripts/dashboard.sh", "8787"],
       "port": 8787
     }
   ]
