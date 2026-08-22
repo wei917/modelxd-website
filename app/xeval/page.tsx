@@ -394,12 +394,14 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
 }) {
   const t = useT()
   const [hover, setHover] = useState<string | null>(null)
-  // Visible cost window (linear $). null = fit the whole dataset. Zoom
-  // (buttons / wheel) and pan (drag / horizontal wheel) only change this
-  // window — the data, colors and labels are untouched.
-  const [win, setWin] = useState<{ x0: number; x1: number } | null>(null)
+  // Visible window in data units (x = avg $/task, linear; y = rating).
+  // null = fit everything. Zoom (buttons / wheel around the cursor) and
+  // pan (drag / trackpad scroll) move this window on BOTH axes; data,
+  // colors and labels are untouched.
+  type Win = { x0: number; x1: number; y0: number; y1: number }
+  const [win, setWin] = useState<Win | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const drag = useRef<{ startX: number; x0: number; x1: number } | null>(null)
+  const drag = useRef<{ startX: number; startY: number; w: Win } | null>(null)
 
   const toPts = (src: { model_name: string; effort: string | null; rating: number }[]) => src
     .map(r => {
@@ -414,56 +416,62 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
   const domain = toPts(domainRows)
 
   const W = 940, H = 260, PL = 46, PR = 16, PT = 14, PB = 30
+  const PW = W - PL - PR, PH = H - PT - PB
   const xmax = domain.length ? Math.max(...domain.map(p => p.x)) : 1
-  const full = { x0: 0, x1: xmax * 1.12 }
+  const ys = domain.length ? domain.map(p => p.y) : [1000]
+  const full: Win = { x0: 0, x1: xmax * 1.12, y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 }
   const view = win ?? full
-  const minSpan = full.x1 / 200
-  const clampWin = (x0: number, x1: number) => {
-    let span = Math.max(minSpan, Math.min(full.x1, x1 - x0))
-    x0 = Math.max(0, Math.min(x0, full.x1 - span))
-    return { x0, x1: x0 + span }
+  const minX = (full.x1 - full.x0) / 200, minY = (full.y1 - full.y0) / 50
+  const clampWin = (w: Win): Win => {
+    const sx = Math.max(minX, Math.min(full.x1 - full.x0, w.x1 - w.x0))
+    const sy = Math.max(minY, Math.min(full.y1 - full.y0, w.y1 - w.y0))
+    const x0 = Math.max(full.x0, Math.min(w.x0, full.x1 - sx))
+    const y0 = Math.max(full.y0, Math.min(w.y0, full.y1 - sy))
+    return { x0, x1: x0 + sx, y0, y1: y0 + sy }
   }
-  const zoomAt = (factor: number, focus?: number) => {
-    const f = focus ?? (view.x0 + view.x1) / 2
-    const span = (view.x1 - view.x0) * factor
-    const frac = (f - view.x0) / (view.x1 - view.x0)
-    const next = clampWin(f - span * frac, f - span * frac + span)
-    setWin(next.x1 - next.x0 >= full.x1 - 1e-9 ? null : next)
+  const isFull = (w: Win) => w.x1 - w.x0 >= full.x1 - full.x0 - 1e-9 && w.y1 - w.y0 >= full.y1 - full.y0 - 1e-9
+  const commit = (w: Win) => { const c = clampWin(w); setWin(isFull(c) ? null : c) }
+  const zoomAt = (factor: number, fx?: number, fy?: number) => {
+    const cx = fx ?? (view.x0 + view.x1) / 2, cy = fy ?? (view.y0 + view.y1) / 2
+    const sx = (view.x1 - view.x0) * factor, sy = (view.y1 - view.y0) * factor
+    const rx = (cx - view.x0) / (view.x1 - view.x0), ry = (cy - view.y0) / (view.y1 - view.y0)
+    commit({ x0: cx - sx * rx, x1: cx - sx * rx + sx, y0: cy - sy * ry, y1: cy - sy * ry + sy })
   }
-  const panBy = (dx: number) => {
-    const span = view.x1 - view.x0
-    const next = clampWin(view.x0 + dx, view.x0 + dx + span)
-    setWin(next.x1 - next.x0 >= full.x1 - 1e-9 ? null : next)
+  const panBy = (dx: number, dy: number) => commit({ x0: view.x0 + dx, x1: view.x1 + dx, y0: view.y0 + dy, y1: view.y1 + dy })
+  const dataAt = (clientX: number, clientY: number) => {
+    const rect = svgRef.current!.getBoundingClientRect()
+    const px = ((clientX - rect.left) / rect.width) * W, py = ((clientY - rect.top) / rect.height) * H
+    return { x: view.x0 + ((px - PL) / PW) * (view.x1 - view.x0), y: view.y0 + ((H - PB - py) / PH) * (view.y1 - view.y0) }
   }
-  // Wheel must be non-passive to stop the page from scrolling under the chart.
+  // Wheel must be non-passive so the page doesn't scroll under the chart.
   useEffect(() => {
     const el = svgRef.current
     if (!el) return
     const onWheel = (ev: WheelEvent) => {
       ev.preventDefault()
-      const rect = el.getBoundingClientRect()
-      const px = ((ev.clientX - rect.left) / rect.width) * W
-      const focus = view.x0 + ((px - PL) / (W - PL - PR)) * (view.x1 - view.x0)
-      if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) panBy((ev.deltaX / (W - PL - PR)) * (view.x1 - view.x0))
-      else zoomAt(ev.deltaY > 0 ? 1.25 : 0.8, focus)
+      if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) panBy((ev.deltaX / PW) * (view.x1 - view.x0), 0)
+      else { const f = dataAt(ev.clientX, ev.clientY); zoomAt(ev.deltaY > 0 ? 1.25 : 0.8, f.x, f.y) }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   })
   if (domain.length === 0) return null
 
-  const ys = domain.map(p => p.y)
-  const y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40
-  const X = (c: number) => PL + ((c - view.x0) / (view.x1 - view.x0)) * (W - PL - PR)
-  const Y = (v: number) => H - PB - ((v - y0) / (y1 - y0)) * (H - PT - PB)
-  // "Nice" linear ticks for the current window
-  const span = view.x1 - view.x0
-  const raw = span / 6, mag = Math.pow(10, Math.floor(Math.log10(raw)))
-  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) ?? mag * 10
-  const xticks: number[] = []
-  for (let v = Math.ceil(view.x0 / step) * step; v <= view.x1 + 1e-9; v += step) xticks.push(+v.toFixed(6))
-  const fmt = (v: number) => '$' + (v >= 1 ? v.toFixed(v >= 10 ? 0 : 1) : v.toFixed(step < 0.01 ? 3 : 2))
-  const visible = pts.filter(p => p.x >= view.x0 && p.x <= view.x1)
+  const X = (c: number) => PL + ((c - view.x0) / (view.x1 - view.x0)) * PW
+  const Y = (v: number) => H - PB - ((v - view.y0) / (view.y1 - view.y0)) * PH
+  const niceStep = (span: number, n: number) => {
+    const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)))
+    return [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) ?? mag * 10
+  }
+  const ticks = (a: number, b: number, step: number) => {
+    const out: number[] = []
+    for (let v = Math.ceil(a / step - 1e-9) * step; v <= b + 1e-9; v += step) out.push(+v.toFixed(6))
+    return out
+  }
+  const xstep = niceStep(view.x1 - view.x0, 6), ystep = niceStep(view.y1 - view.y0, 5)
+  const xticks = ticks(view.x0, view.x1, xstep), yticks = ticks(view.y0, view.y1, ystep)
+  const fmt = (v: number) => '$' + (v >= 1 ? v.toFixed(v >= 10 ? 0 : 1) : v.toFixed(xstep < 0.01 ? 3 : 2))
+  const visible = pts.filter(p => p.x >= view.x0 && p.x <= view.x1 && p.y >= view.y0 && p.y <= view.y1)
   const ordered = [...visible.filter(p => p.label !== hover), ...visible.filter(p => p.label === hover)]
   const zoomed = win != null
   const btn: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 5, background: 'transparent', color: 'var(--muted2)', cursor: 'pointer' }
@@ -474,8 +482,8 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>{t('xeval.chart.title')}</span>
         <span style={{ flex: 1 }} />
         {/* fixed-width readout so the buttons never move when the range text changes length */}
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', minWidth: 190, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-          {fmt(view.x0)} – {fmt(view.x1)} · {visible.length}/{pts.length}
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', minWidth: 250, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+          {fmt(view.x0)} – {fmt(view.x1)} · {Math.round(view.y0)} – {Math.round(view.y1)} · {visible.length}/{pts.length}
         </span>
         <button style={{ ...btn, minWidth: 28 }} onClick={() => zoomAt(0.6)} title="zoom in">+</button>
         <button style={{ ...btn, minWidth: 28 }} onClick={() => zoomAt(1.6)} title="zoom out">−</button>
@@ -484,27 +492,27 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
       <div style={{ overflowX: 'auto' }}>
         <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 640, display: 'block', cursor: drag.current ? 'grabbing' : 'grab', userSelect: 'none' }}
              onMouseLeave={() => { setHover(null); drag.current = null }}
-             onMouseDown={ev => { drag.current = { startX: ev.clientX, x0: view.x0, x1: view.x1 } }}
+             onMouseDown={ev => { drag.current = { startX: ev.clientX, startY: ev.clientY, w: view } }}
              onMouseUp={() => { drag.current = null }}
              onMouseMove={ev => {
                const d = drag.current
                if (!d || !svgRef.current) return
                const rect = svgRef.current.getBoundingClientRect()
-               const dxCost = ((ev.clientX - d.startX) / rect.width) * W / (W - PL - PR) * (d.x1 - d.x0)
-               const next = clampWin(d.x0 - dxCost, d.x1 - dxCost)
-               setWin(next.x1 - next.x0 >= full.x1 - 1e-9 ? null : next)
+               const dx = ((ev.clientX - d.startX) / rect.width) * W / PW * (d.w.x1 - d.w.x0)
+               const dy = ((ev.clientY - d.startY) / rect.height) * H / PH * (d.w.y1 - d.w.y0)
+               commit({ x0: d.w.x0 - dx, x1: d.w.x1 - dx, y0: d.w.y0 + dy, y1: d.w.y1 + dy })
              }}>
-          <defs><clipPath id="xeval-plot"><rect x={PL} y={0} width={W - PL - PR} height={H} /></clipPath></defs>
+          <defs><clipPath id="xeval-plot"><rect x={PL} y={PT} width={PW} height={PH} /></clipPath></defs>
           {xticks.map(v => (
-            <g key={v}>
+            <g key={'x' + v}>
               <line x1={X(v)} y1={PT} x2={X(v)} y2={H - PB} stroke="var(--border)" strokeWidth={1} />
               <text x={X(v)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{fmt(v)}</text>
             </g>
           ))}
-          {[700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500].filter(v => v > y0 && v < y1).map(v => (
-            <g key={v}>
+          {yticks.map(v => (
+            <g key={'y' + v}>
               <line x1={PL} y1={Y(v)} x2={W - PR} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />
-              <text x={PL - 6} y={Y(v) + 3} textAnchor="end" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{v}</text>
+              <text x={PL - 6} y={Y(v) + 3} textAnchor="end" fontSize={10} fill="var(--muted)" fontFamily="var(--font-mono)">{Math.round(v)}</text>
             </g>
           ))}
           <g clipPath="url(#xeval-plot)">
