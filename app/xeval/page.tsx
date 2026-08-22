@@ -96,7 +96,7 @@ export default function XEvalPage() {
     return m ? t('xeval.judge.panel').replace('{n}', m[1]).replace('{effort}', m[2]) : raw
   }, [ratings, t])
 
-  // View filter. 'best' collapses each model to its highest-rated effort —
+  // View filter. 'best' collapses each model to its highest reasoning effort —
   // a pure display filter: BT ratings are global, so hiding rows changes
   // nothing about the numbers shown.
   const [view, setView] = useState<'all' | 'best'>('all')
@@ -155,8 +155,15 @@ export default function XEvalPage() {
   const visible = useMemo(() => {
     let list = [...filtered].sort((a, b) => b.rating - a.rating)
     if (view === 'best') {
-      const seen = new Set<string>()
-      list = list.filter(r => (seen.has(r.model_name) ? false : (seen.add(r.model_name), true)))
+      // One row per model: its HIGHEST reasoning effort (the owner's "best
+      // effort" reading), not its highest rating. Ties on effort → higher rating.
+      const best = new Map<string, RatingRow>()
+      for (const r of list) {
+        const cur = best.get(r.model_name)
+        const e = EFFORT_ORDER.indexOf(r.effort ?? ''), ce = cur ? EFFORT_ORDER.indexOf(cur.effort ?? '') : -1
+        if (!cur || e > ce || (e === ce && r.rating > cur.rating)) best.set(r.model_name, r)
+      }
+      list = list.filter(r => best.get(r.model_name) === r)
     }
     const dir = sortDir === 'asc' ? 1 : -1
     const entryOf = (r: RatingRow) => perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
