@@ -13,10 +13,14 @@ matrix, because that is the shape the agent has to reply in.
 
 ## What ModelXD is
 
-ModelXD helps you find the AI model that gives you the best result for the
-money. Rather than trusting a vendor benchmark, you compare real models on
-your own prompt, vote on the output **before** seeing the price, and then see
-what each one actually cost. Those blind votes feed a public leaderboard.
+ModelXD is the place to use the best AI for every task. Headline: "The best
+AI for every task." You make real things — music videos, product films,
+animated stories, characters, your own agents — and ModelXD picks the best
+model for each task from 20+ leading ones. The proof behind every pick is
+real blind votes and honest prices: people compare models on their own
+prompt, vote on the output **before** seeing the price, then see what each
+one actually cost. Those votes feed a public leaderboard (XBoard) and the
+XEval benchmark page.
 
 The core belief: the most expensive model is very often not the one you would
 have picked, and you can only discover that if the price is hidden while you
