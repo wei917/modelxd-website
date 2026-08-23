@@ -32,7 +32,8 @@ export async function GET(req: Request) {
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const url = new URL(req.url)
-  const source = (url.searchParams.get('source') ?? 'xdirect') as AssetItem['source'] | 'boards'
+  const source = (url.searchParams.get('source') ?? 'xdirect') as AssetItem['source'] | 'boards' | 'all'
+  const search = (url.searchParams.get('q') ?? '').trim().slice(0, 80)
   const kindFilter = url.searchParams.get('kind')   // video | image | audio | null
   const page = Math.max(0, parseInt(url.searchParams.get('page') ?? '0', 10) || 0)
   const from = page * PAGE, to = from + PAGE - 1
@@ -63,11 +64,24 @@ export async function GET(req: Request) {
     return Response.json({ boards: (convs ?? []).map((c: any) => ({ id: c.id, title: c.title ?? '', updatedAt: c.updated_at, scenes: Array.isArray(c.storyboard) ? c.storyboard.filter((x: any) => !x?.asset).length : 0 })) })
   }
 
-  if (source === 'xdirect' || source === 'xcreate') {
+  if (source === 'xdirect' || source === 'xcreate' || source === 'all') {
     const board = url.searchParams.get('board')
-    let q = sb.from('xcreates').select('id, prompt, title, mode, node_kind, slots, board_id, created_at', { count: 'exact' })
-      .eq('user_id', user.id).in('mode', ['image', 'video']).is('deleted_at', null)
-    if (source === 'xdirect') {
+    let q2 = sb.from('xcreates').select('id, prompt, title, mode, node_kind, slots, board_id, created_at', { count: 'exact' })
+      .eq('user_id', user.id).in(kindFilter === 'video' ? 'mode' : kindFilter === 'image' ? 'mode' : 'mode', kindFilter === 'video' ? ['video'] : kindFilter === 'image' ? ['image'] : ['image', 'video']).is('deleted_at', null)
+    // Search: the prompt, the board title, or the scene card a row filled.
+    if (search) {
+      const needle = search.toLowerCase()
+      const rowHits = [...sceneOfRow.entries()].filter(([, tag]) => tag.toLowerCase().includes(needle)).map(([rid]) => rid)
+      const boardHits = [...convTitle.entries()].filter(([, t]) => t.toLowerCase().includes(needle)).map(([id]) => id)
+      const ors = [`prompt.ilike.%${search.replace(/[%,()]/g, ' ')}%`]
+      if (rowHits.length > 0) ors.push(`id.in.(${rowHits.slice(0, 200).join(',')})`)
+      if (boardHits.length > 0) ors.push(`board_id.in.(${boardHits.slice(0, 100).join(',')})`)
+      q2 = q2.or(ors.join(','))
+    }
+    let q = q2
+    if (source === 'all') {
+      if (board) q = q.eq('board_id', board)
+    } else if (source === 'xdirect') {
       if (board && convIds.includes(board)) q = q.eq('board_id', board)
       else if (convIds.length > 0) q = q.in('board_id', convIds)
       else q = q.eq('board_id', '00000000-0000-0000-0000-000000000000')
@@ -79,16 +93,19 @@ export async function GET(req: Request) {
     total = count ?? 0
     for (const row of data ?? []) {
       const scene = row.node_kind === 'film' ? 'FINAL CUT' : sceneOfRow.get(row.id)
+      const src: AssetItem['source'] = row.board_id && convIds.includes(row.board_id) ? 'xdirect' : 'xcreate'
       const boardTitle = row.board_id ? convTitle.get(row.board_id) : undefined
       mediaFromSlots(row.slots).forEach((m, i) => items.push({
         id: `${row.id}:${i}`, kind: m.kind, src: { bucket: m.bucket, path: m.path, mediaType: m.mediaType, rowId: row.id }, url: null,
-        label: (scene ?? row.title ?? row.prompt ?? '').slice(0, 80), model: m.model, cost: m.cost, createdAt: row.created_at, source, boardId: row.board_id ?? undefined,
+        label: (scene ?? row.title ?? row.prompt ?? '').slice(0, 80), model: m.model, cost: m.cost, createdAt: row.created_at, source: src, boardId: row.board_id ?? undefined,
         ...(boardTitle ? { boardTitle: boardTitle.slice(0, 60) } : {}),
       }))
     }
   } else if (source === 'xduel') {
-    const { data, count, error } = await sb.from('duels').select('id, prompt, mode, slots, created_at', { count: 'exact' })
-      .eq('user_id', user.id).in('mode', ['image', 'video']).order('created_at', { ascending: false }).range(from, to)
+    let qd = sb.from('duels').select('id, prompt, mode, slots, created_at', { count: 'exact' })
+      .eq('user_id', user.id).in('mode', kindFilter === 'video' ? ['video'] : kindFilter === 'image' ? ['image'] : ['image', 'video'])
+    if (search) qd = qd.ilike('prompt', `%${search.replace(/[%,()]/g, ' ')}%`)
+    const { data, count, error } = await qd.order('created_at', { ascending: false }).range(from, to)
     if (error) return Response.json({ error: error.message }, { status: 503 })
     total = count ?? 0
     for (const row of data ?? []) {
@@ -115,9 +132,10 @@ export async function GET(req: Request) {
         all.push({ id: `${bucket}:${path}`, kind: k, src: { bucket, path, mediaType: mime || (k === 'video' ? 'video/mp4' : k === 'audio' ? 'audio/mpeg' : 'image/jpeg'), fileName: f.name }, url: null, label: f.name, createdAt: f.created_at ?? '', source })
       }
     }))
-    all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-    total = all.length
-    items = all.slice(from, to + 1)
+    const filtered = search ? all.filter(i => i.label.toLowerCase().includes(search.toLowerCase())) : all
+    filtered.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    total = filtered.length
+    items = filtered.slice(from, to + 1)
   } else return Response.json({ error: 'Unknown source' }, { status: 400 })
 
   if (kindFilter) items = items.filter(i => i.kind === kindFilter)

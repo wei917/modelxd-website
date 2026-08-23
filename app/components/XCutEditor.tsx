@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import AttachmentButton, { commitAttachments, type Attachment } from './AttachmentButton'
+import XCutLibrary, { type LibraryItem } from './XCutLibrary'
 import {
   type Timeline, type VideoClip, type AudioClip, type Subtitle, type MediaSrc,
   clipStarts, clipLength, totalDuration, locate, trimClip, splitAt, moveClip, removeClip, insertClip, newId, cleanTimeline,
@@ -71,6 +72,7 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
   const [boards, setBoards] = useState<BoardRow[]>([])
   const [board, setBoard] = useState<string>(project.source_board_id ?? '')
   const [uploads, setUploads] = useState<Attachment[]>([])
+  const [libOpen, setLibOpen] = useState(false)
 
   const starts = useMemo(() => clipStarts(tl), [tl])
   const total = useMemo(() => totalDuration(tl), [tl])
@@ -327,7 +329,9 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
   for (let s = 0; s <= total + 4; s += step) ticks.push(s)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 96px)', minHeight: 620, background: BG, color: TEXT, borderRadius: 12, border: `1px solid ${LINE}`, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 96px)', minHeight: 620, background: BG, color: TEXT, borderRadius: 12, border: `1px solid ${LINE}`, overflow: 'hidden', position: 'relative' }}>
+      <XCutLibrary open={libOpen} onClose={() => setLibOpen(false)} defaultBoard={project.source_board_id}
+        onAdd={async (picked: LibraryItem[]) => { for (const a of picked) await addAsset(a as any) }} />
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: `1px solid ${LINE}` }}>
         <button onClick={onExit} style={{ ...btn(), padding: '4px 10px' }}>←</button>
@@ -346,6 +350,8 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
         <div style={{ width: 280, borderRight: `1px solid ${LINE}`, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '10px 12px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={mono}>{t('xcut.assets')}</span>
+            <span style={{ flex: 1 }} />
+            <button onClick={() => setLibOpen(true)} style={{ ...btn(true), padding: '4px 10px', fontSize: 11 }}>🗂 {t('xcut.browse')}</button>
           </div>
           <div style={{ display: 'flex', gap: 4, padding: '0 12px 8px', flexWrap: 'wrap' }}>
             {(['xdirect', 'xcreate', 'xduel', 'uploads'] as const).map(s => (
