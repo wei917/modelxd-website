@@ -19,8 +19,6 @@ import type { Snapshot } from './api/snapshot/route'
 type LandingApp = {
   href: string; name: string; descKey: string
   video?: string; img?: string; emoji?: string; color?: string
-  /** Media-less job: render img inside a CSS phone mock (no clip-art). */
-  phone?: boolean
   public?: boolean
   /** Renders only when /api/features grants it (XDev). */
   gated?: boolean
@@ -34,19 +32,17 @@ const APPS: LandingApp[] = [
   { href: '/xdirect', name: 'Story to Video', descKey: 'home.app.story',
     video: '/xdirect/skills/story-to-video-loop.mp4', img: '/xdirect/skills/story-to-video-cover.jpg' },
   { href: '/xdirect', name: 'Product Video', descKey: 'home.app.pv',
-    img: '/xdirect/skills/product-video-pipeline.webp' },
-  // The one job with no generated loop yet. Clip-art next to real renders read
-  // as a placeholder (owner, Aug 23), so the card composes a real render into
-  // a phone mock in CSS instead — swap in a true loop when one exists.
-  // Its render comes from the landing bucket (same host as the tier images)
-  // so the shelf never shows one image twice.
-  { href: '/xdirect', name: 'Social Post',  descKey: 'home.app.sp', phone: true,
-    img: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/landing/tiers/level-b.jpg` },
-  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   emoji: '💬', color: '#0ea5e9' },
-  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   emoji: '🎲', color: '#f59e0b' },
-  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   emoji: '⚔️', color: '#ef4444' },
-  { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', emoji: '🪄', color: '#8b5cf6' },
-  { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard',  emoji: '📊', color: '#10b981', public: true },
+    img: '/xdirect/skills/product-video-cover.jpg' },
+  { href: '/xdirect', name: 'Social Post',  descKey: 'home.app.sp',
+    img: '/xdirect/skills/social-post-cover.jpg' },
+  // The surfaces wear generated covers of the same ambition as the template
+  // loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
+  // Generated with GPT Image 2; originals in the session scratchpad.
+  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   img: '/landing/apps/xtalk.jpg' },
+  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   img: '/landing/apps/xgame.jpg' },
+  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   img: '/landing/apps/xduel.jpg' },
+  { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', img: '/landing/apps/xcreate.jpg' },
+  { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard',  img: '/landing/apps/xboard.jpg', public: true },
   // Agents channel. XDev is the one surface still email-gated, so its card
   // renders only for entitled accounts — a public visitor must never click
   // into a notFound() (same rule the old surface grid lived by).
@@ -385,12 +381,8 @@ export default function Home() {
               #14161a banner slabs, which read broken on the light landing
               (owner, Aug 18). Template cards carry real result media;
               surface cards get a soft brand-tinted plate, never a dark one. */}
-          {/* Two shelves (owner, Aug 23: "not all are well designed"): jobs are
-              media cards; surfaces were the same size with one small emoji in
-              an empty plate — placeholder-looking. They are compact tool tiles
-              now, so only cards with real media get media-card space. */}
           <div className="home-apps-desktop">
-            {APPS.filter(a => !a.gated || xdevOk).filter(a => !a.emoji).map(a => (
+            {APPS.filter(a => !a.gated || xdevOk).map(a => (
               <div
                 key={a.name}
                 role="link" tabIndex={0}
@@ -410,22 +402,10 @@ export default function Home() {
                 <div style={{ aspectRatio: '16 / 9', background: a.color ? `linear-gradient(135deg, ${a.color}1f, var(--surface2))` : 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {a.video
                     ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    : a.phone
-                      ? (
-                        /* A real render inside a phone mock: the job is "post
-                           everywhere", so the card shows a post, not clip-art. */
-                        <div aria-hidden className="home-app-phone-stage">
-                          <div className="home-app-phone">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={a.img} alt="" loading="lazy" />
-                            <div className="home-app-phone-bar"><span>♥ 1.2k</span><span>💬 88</span><span>↗</span></div>
-                          </div>
-                          <span className="home-app-size-chip is-square">1:1</span>
-                          <span className="home-app-size-chip is-tall">9:16</span>
-                        </div>
-                      )
+                    : a.img
                       // eslint-disable-next-line @next/next/no-img-element
-                      : <img src={a.img} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+                      ? <img src={a.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      : <span aria-hidden style={{ fontSize: 40, filter: 'saturate(.9)' }}>{a.emoji}</span>}
                 </div>
                 <div style={{ padding: '12px 16px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -437,26 +417,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <div className="home-apps-tools">
-            {APPS.filter(a => !a.gated || xdevOk).filter(a => a.emoji).map(a => (
-              <div
-                key={a.name}
-                role="link" tabIndex={0} className="home-tool-tile"
-                onClick={() => a.public ? router.push(a.href) : void handleNav(a.href)}
-                onKeyDown={e => { if (e.key === 'Enter') { a.public ? router.push(a.href) : void handleNav(a.href) } }}
-              >
-                <span aria-hidden className="home-tool-chip" style={{ background: `${a.color}14`, borderColor: `${a.color}33` }}>{a.emoji}</span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 800, fontSize: 14, fontFamily: 'var(--font-display), inherit' }}>{a.name}</span>
-                    <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
-                  </div>
-                  <div className="home-tool-desc">{t(a.descKey)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* ── Mobile apps layout (owner's mock, Aug 18 — layout only, all
               copy is the existing i18n): XDirect leads as the FEATURED card
               wearing a film strip of the real template clips; the other
