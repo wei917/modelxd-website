@@ -24,6 +24,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { cleanTimeline, renderPlan, toSrt, type MediaSrc, type RenderPlan } from '@/lib/xcut-timeline'
 import { mediaFromSlots } from '@/lib/xcut-media'
 import { ffmpegPath, run, probe, buildFfmpegArgs, bundledFont, type Local } from '@/lib/xcut-render'
+import { uploadFilm } from '@/lib/xcut-upload'
 
 const LOG = '[xcut:render]'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -128,8 +129,9 @@ export async function POST(req: Request) {
 
     // 4. Store like a generation.
     const outPath = `${user.id}/xcut-${id}-${Date.now()}.mp4`
-    const up = await svc.storage.from(OUT_BUCKET).upload(outPath, buf, { contentType: 'video/mp4', upsert: false })
-    if (up.error) throw new Error(`Upload failed: ${up.error.message}`)
+    // Resumable (TUS, 6 MB chunks, per-chunk retries) — see lib/xcut-upload.ts.
+    try { await uploadFilm({ bucket: OUT_BUCKET, path: outPath, buffer: buf, contentType: 'video/mp4' }) }
+    catch (e: any) { throw new Error(`Upload failed: ${e?.message ?? e}`) }
     const { data: signed } = await svc.storage.from(OUT_BUCKET).createSignedUrl(outPath, 60 * 60 * 24)
     const url = signed?.signedUrl ?? null
 

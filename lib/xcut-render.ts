@@ -120,7 +120,8 @@ export function buildFfmpegArgs(plan: RenderPlan, locals: Local[], music: Array<
   }
 
   args.push('-filter_complex', f.join(';'), '-map', vFinal, '-map', aFinal,
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', String(fps),
+    // crf 22 + a rate ceiling keeps a 1080p minute around 35-45 MB (the ai-videos bucket allows 500 MB).
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-maxrate', H >= 1080 ? '6M' : '3M', '-bufsize', H >= 1080 ? '12M' : '6M', '-pix_fmt', 'yuv420p', '-r', String(fps),
     '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-movflags', '+faststart', '-t', videoLen.toFixed(3), '-y', out)
   return args
 }
