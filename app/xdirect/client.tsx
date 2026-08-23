@@ -86,6 +86,31 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
   const sceneForRow = useCallback((rowId?: string | null) =>
     (rowId ? storyboard.find(s => rowsOfScene(s).includes(rowId)) : undefined) ?? null, [storyboard, rowsOfScene])
 
+  // ONE numbering for the canvas, the strip and the chat (owner, Aug 22:
+  // "why is the S1·C1 video far away from the S1·C1 cast image?" — the
+  // canvas counted cast sheets as scenes, so five sheets took five scene
+  // columns and the real S1 landed as "S6", six columns from the sheet it
+  // chains from). Assets are transparent to the numbering, exactly as
+  // sceneLabels() does for the strip; on the canvas they share ONE column
+  // right after the inputs (slot scene 0), one box per sheet, by name.
+  const sceneSlots = useMemo(() => {
+    const labels = sceneLabels(storyboard)
+    const out = new Map<string, { scene: number; cut: number; label: string; asset: boolean }>()
+    let sc = 0, cut = 0, assetNo = 0
+    storyboard.forEach((sn: any, i: number) => {
+      if (sn.asset) { out.set(sn.id, { scene: 0, cut: ++assetNo, label: labels[i] ?? sn.title ?? 'ASSET', asset: true }); return }
+      if (sn.continues && sc > 0) cut += 1
+      else { sc += 1; cut = 1 }
+      out.set(sn.id, { scene: sc, cut, label: labels[i] ?? `S${sc}\u00b7C${cut}`, asset: false })
+    })
+    return out
+  }, [storyboard])
+  const slotForRow = useCallback((rowId?: string | null) => {
+    const scene = sceneForRow(rowId)
+    const slot = scene ? sceneSlots.get(scene.id) ?? null : null
+    return scene && slot ? { scene, slot } : null
+  }, [sceneForRow, sceneSlots])
+
   const canvasNodes = useMemo<CanvasNode[]>(() => {
     if (!brief || nodes.length === 0) return nodes
     const briefNode: CanvasNode = {
@@ -274,14 +299,10 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                 onDelete={deleteNodes}
                 onPlay={(n: CanvasNode) => { if (n.thumb) setHero({ url: n.thumb, isVideo: n.isVideo }) }}
                 nodeOrigin={(n: CanvasNode) => {
-                  if (!n.rowId) return null
-                  let sc = 0, cut = 0
-                  for (const s of storyboard) {
-                    if (s.continues && sc > 0) cut += 1
-                    else { sc += 1; cut = 1 }
-                    if (rowsOfScene(s).includes(n.rowId)) return `S${sc}·C${cut} · ${s.title}`
-                  }
-                  return null
+                  const hit = slotForRow(n.rowId)
+                  if (!hit) return null
+                  // A sheet is named, never numbered: "CAST · 孫悟空", not "S1·C1 · CAST · 孫悟空".
+                  return hit.slot.asset ? hit.slot.label : `${hit.slot.label} · ${hit.scene.title}`
                 }}
                 sceneOf={(n: CanvasNode) => sceneForRow(n.rowId)}
                 onUseTake={(n: CanvasNode, scene: any) => {
@@ -298,23 +319,12 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                   // And say so in the transcript (owner, Aug 9): a take
                   // switch is a user edit the director should see on the
                   // record, without burning a turn.
-                  let sc = 0, cut = 0, tag = scene.id
-                  for (const s of storyboard) {
-                    if (s.continues && sc > 0) cut += 1
-                    else { sc += 1; cut = 1 }
-                    if (s.id === scene.id) { tag = `S${sc}·C${cut}`; break }
-                  }
+                  const tag = sceneSlots.get(scene.id)?.label ?? scene.id
                   runnerRef.current?.noteTake(scene.id, tag, n.label ?? 'the selected model')
                 }}
                 sceneSlot={(n: CanvasNode) => {
-                  if (!n.rowId) return null
-                  let sc = 0, cut = 0
-                  for (const s of storyboard) {
-                    if (s.continues && sc > 0) cut += 1
-                    else { sc += 1; cut = 1 }
-                    if (rowsOfScene(s).includes(n.rowId)) return { scene: sc, cut }
-                  }
-                  return null
+                  const hit = slotForRow(n.rowId)
+                  return hit ? { scene: hit.slot.scene, cut: hit.slot.cut } : null
                 }}
                 onRerun={(n, m, o) => {
                   if (!runnerRef.current) { console.warn('[xdirect] rerun: runner not ready'); return }
