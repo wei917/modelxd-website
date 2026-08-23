@@ -331,6 +331,8 @@ export const STRINGS: Record<string, Entry> = {
   'xcut.saving':     { en: 'Saving…', 'zh-Hant': '儲存中…', 'zh-Hans': '保存中…', ja: '保存中…', ko: '저장 중…' },
   'xcut.emptytl':    { en: 'The timeline is empty — add clips from Assets on the left.', 'zh-Hant': '時間軸是空的——從左側的素材加入片段。', 'zh-Hans': '时间轴是空的——从左侧的素材加入片段。', ja: 'タイムラインが空です — 左の素材からクリップを追加してください。', ko: '타임라인이 비어 있습니다 — 왼쪽 에셋에서 클립을 추가하세요.' },
   'xcut.keys':       { en: 'Space play · S split · ⌫ delete · drag edges to trim · drag to reorder', 'zh-Hant': '空白鍵播放・S 分割・⌫ 刪除・拖曳邊緣修剪・拖曳排序', 'zh-Hans': '空格播放・S 分割・⌫ 删除・拖拽边缘修剪・拖拽排序', ja: 'スペース再生・S分割・⌫削除・端をドラッグでトリム・ドラッグで並べ替え', ko: '스페이스 재생 · S 분할 · ⌫ 삭제 · 가장자리 드래그로 트림 · 드래그로 순서 변경' },
+  'xcut.allboards':  { en: 'All boards', 'zh-Hant': '全部看板', 'zh-Hans': '全部看板', ja: 'すべてのボード', ko: '모든 보드' },
+  'xcut.more':       { en: 'More', 'zh-Hant': '更多', 'zh-Hans': '更多', ja: 'もっと見る', ko: '더 보기' },
   'xd.mv.setup':     { en: 'Set up your music video', 'zh-Hant': '設定你的音樂 MV', 'zh-Hans': '设置你的音乐 MV', ja: 'ミュージックビデオを設定', ko: '뮤직비디오 설정' },
   'xd.mv.skip':      { en: 'skip — just type instead', 'zh-Hant': '跳過，直接打字', 'zh-Hans': '跳过，直接打字', ja: 'スキップして直接入力', ko: '건너뛰고 직접 입력' },
   'xd.mv.formpick':  { en: 'Style', 'zh-Hant': '風格', 'zh-Hans': '风格', ja: 'スタイル', ko: '스타일' },

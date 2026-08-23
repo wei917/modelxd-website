@@ -26,7 +26,9 @@ type AssetItem = {
   id: string; kind: 'video' | 'image' | 'audio'
   src: MediaSrc; url: string | null; label: string; model?: string; cost?: number; createdAt: string
   source: 'xdirect' | 'xcreate' | 'xduel' | 'uploads'
+  boardId?: string; boardTitle?: string
 }
+type BoardRow = { id: string; title: string; updatedAt: string; scenes: number }
 type Sel = { kind: 'video' | 'audio' | 'sub'; id: string } | null
 
 // Workspace palette — the same dark ground as XCanvas (an editor is a dark room).
@@ -64,6 +66,10 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
   const [source, setSource] = useState<AssetItem['source']>(project.source_board_id ? 'xdirect' : 'xcreate')
   const [items, setItems] = useState<AssetItem[]>([])
   const [binLoading, setBinLoading] = useState(false)
+  const [binTotal, setBinTotal] = useState(0)
+  const [binPage, setBinPage] = useState(0)
+  const [boards, setBoards] = useState<BoardRow[]>([])
+  const [board, setBoard] = useState<string>(project.source_board_id ?? '')
   const [uploads, setUploads] = useState<Attachment[]>([])
 
   const starts = useMemo(() => clipStarts(tl), [tl])
@@ -171,12 +177,28 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
   }, [sel])
 
   // ── Asset bin ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false
+  // The bin pages (24 per page, "more" appends) and the XDirect tab can
+  // narrow to one board — the owner's history is 29 boards / 260+ rows,
+  // and a single page of the newest rows read as "the list is short".
+  const loadBin = useCallback(async (page: number, append: boolean) => {
     setBinLoading(true)
-    fetch(`/api/xcut/assets?source=${source}`).then(r => r.json()).then(d => { if (!cancelled) setItems(Array.isArray(d?.items) ? d.items : []) }).catch(() => { if (!cancelled) setItems([]) }).finally(() => { if (!cancelled) setBinLoading(false) })
-    return () => { cancelled = true }
-  }, [source])
+    try {
+      const q = new URLSearchParams({ source, page: String(page) })
+      if (source === 'xdirect' && board) q.set('board', board)
+      const d = await fetch(`/api/xcut/assets?${q}`).then(r => r.json())
+      const list: AssetItem[] = Array.isArray(d?.items) ? d.items : []
+      setItems(prev => append ? [...prev, ...list] : list)
+      setBinTotal(Number(d?.total) || 0)
+      setBinPage(page)
+    } catch { if (!append) setItems([]) }
+    finally { setBinLoading(false) }
+  }, [source, board])
+  useEffect(() => { void loadBin(0, false) }, [loadBin])
+  useEffect(() => {
+    if (source !== 'xdirect' || boards.length > 0) return
+    fetch('/api/xcut/assets?source=boards').then(r => r.json()).then(d => setBoards(Array.isArray(d?.boards) ? d.boards : [])).catch(() => {})
+  }, [source, boards.length])
+  const binRowsSeen = (binPage + 1) * 24
 
   const addAsset = useCallback(async (a: AssetItem) => {
     if (!a.url) return
@@ -330,6 +352,14 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
               <button key={s} onClick={() => setSource(s)} style={{ ...btn(source === s), padding: '4px 9px', fontSize: 11 }}>{t(`xcut.src.${s}`)}</button>
             ))}
           </div>
+          {source === 'xdirect' && (
+            <div style={{ padding: '0 12px 8px' }}>
+              <select value={board} onChange={e => setBoard(e.target.value)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: `1px solid ${LINE}`, background: BG, color: TEXT, fontSize: 11.5 }}>
+                <option value="">{t('xcut.allboards')} ({boards.length})</option>
+                {boards.map(b => <option key={b.id} value={b.id}>{(b.title || t('xcut.untitled')).slice(0, 48)}{b.scenes ? ` · ${b.scenes}` : ''}</option>)}
+              </select>
+            </div>
+          )}
           <div style={{ padding: '0 12px 8px' }}>
             <AttachmentButton attachments={uploads} onChange={a => { void onUpload(a) }} context="xcreate" multiple maxFiles={10} accept="video/mp4,video/quicktime,video/webm,audio/*,.mp3,.m4a,.wav,image/jpeg,image/png,image/webp" />
             <div style={{ ...mono, textTransform: 'none', marginTop: 4 }}>{t('xcut.upload')}</div>
@@ -344,10 +374,13 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
                   {a.kind === 'video' && a.url && <video src={a.url} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   {a.kind === 'audio' && <span style={{ fontSize: 22 }}>🎵</span>}
                 </div>
-                <div style={{ fontSize: 10.5, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.label || a.kind}</div>
-                <div style={{ ...mono, textTransform: 'none', fontSize: 9.5 }}>{a.model ?? a.kind}{typeof a.cost === 'number' ? ` · $${a.cost.toFixed(2)}` : ''}</div>
+                <div style={{ fontSize: 10.5, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.boardTitle ? `${a.boardTitle} — ${a.label}` : a.label}>{a.label || a.kind}</div>
+                <div style={{ ...mono, textTransform: 'none', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.model ?? a.kind}{typeof a.cost === 'number' ? ` · $${a.cost.toFixed(2)}` : ''}{!board && a.boardTitle ? ` · ${a.boardTitle}` : ''}</div>
               </button>
             ))}
+            {!binLoading && binRowsSeen < binTotal && (
+              <button onClick={() => { void loadBin(binPage + 1, true) }} style={{ ...btn(), gridColumn: '1 / -1', marginTop: 4 }}>{t('xcut.more')} ({Math.max(0, binTotal - binRowsSeen)})</button>
+            )}
           </div>
         </div>
 
