@@ -101,6 +101,8 @@ export const STRINGS: Record<string, Entry> = {
   'profile.nogames':    { en: 'No games yet — take a seat at XGame', 'zh-Hant': '還沒有對局——去 XGame 坐上一席', 'zh-Hans': '还没有对局——去 XGame 坐上一席', ja: 'まだ対局がありません — XGameで席へ', ko: '아직 대국이 없습니다 — XGame에서 자리에 앉아보세요' },
   'profile.untitled':   { en: 'Untitled', 'zh-Hant': '未命名', 'zh-Hans': '未命名', ja: '無題', ko: '제목 없음' },
   'profile.notalks':    { en: 'No discussions yet — open a room at XTalk', 'zh-Hant': '還沒有討論——到 XTalk 開一場', 'zh-Hans': '还没有讨论——到 XTalk 开一场', ja: 'まだディスカッションがありません — XTalkで開始', ko: '아직 토론이 없습니다 — XTalk에서 시작하세요' },
+  'profile.noxcuts':  { en: 'No cuts yet — open XCut to edit your generations into a film.', 'zh-Hant': '還沒有剪輯作品——到 XCut 把你的生成內容剪成影片。', 'zh-Hans': '还没有剪辑作品——到 XCut 把你的生成内容剪成影片。', ja: 'まだカットがありません——XCutで生成物を映像に編集しましょう。', ko: '아직 편집본이 없습니다 — XCut에서 생성물을 영상으로 편집해 보세요.' },
+  'profile.xcut.rendered': { en: 'exported', 'zh-Hant': '已輸出', 'zh-Hans': '已输出', ja: '書き出し済み', ko: '내보내기 완료' },
   'gm.draw':      { en: 'Draw — board full', 'zh-Hant': '和局，棋盤已滿', 'zh-Hans': '和局，棋盘已满', ja: '引き分け', ko: '무승부' },
   'gm.newgame':   { en: 'New game', 'zh-Hant': '再來一局', 'zh-Hans': '再来一局', ja: '新しい対局', ko: '새 대국' },
   'xg.soon':          { en: 'Coming soon', 'zh-Hant': '即將推出', 'zh-Hans': '即将推出', ja: '近日公開', ko: '출시 예정' },

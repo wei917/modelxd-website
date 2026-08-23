@@ -64,7 +64,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xtalks' | 'xgames' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xtalks' | 'xgames' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -159,20 +159,19 @@ export default function ProfilePage() {
   const [votes,       setVotes]       = useState<any[]>([])
   const [xdirects,    setXdirects]    = useState<any[]>([])
   const [xtalks,      setXtalks]      = useState<any[]>([])
+  const [xcuts,       setXcuts]       = useState<any[]>([])
   const [xgames,      setXgames]      = useState<any[]>([])
   // Which beta surfaces this account can see — the XDirect/XGame tabs
   // follow the same gate as their nav items, so a non-beta user's profile
   // doesn't advertise doors the server would slam. (owner ask, Aug 6)
-  const [feats,       setFeats]       = useState<{ xdirector?: boolean; xtalk?: boolean }>({})
   useEffect(() => {
-    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => { if (f) setFeats(f) }).catch(() => {})
   }, [])
   // Per-tab "has fetched at least once" flags. Initial render of an empty
   // array would otherwise show "No X yet" before the first fetch resolved,
   // making it look like the user has nothing when really we just haven't
   // asked the server yet.
-  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xtalks: boolean; xgames: boolean }>({
-    duels: false, xcreates: false, votes: false, xdirects: false, xtalks: false, xgames: false,
+  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xcuts: boolean; xtalks: boolean; xgames: boolean }>({
+    duels: false, xcreates: false, votes: false, xdirects: false, xcuts: false, xtalks: false, xgames: false,
   })
   // XCreate pagination — 12 cards per page, server-side `range` so we
   // don't load the entire history into the browser when a user has
@@ -324,7 +323,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xtalks' | 'xgames') =>
+    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xtalks' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
     if (tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
@@ -357,6 +356,12 @@ export default function ProfilePage() {
         setXgames(((r.data ?? []) as any[]).map(g => ({ game: 'werewolf', ...g })))
         markLoaded('xgames')
       })
+    } else if (tab === 'xcuts') {
+      // The cutting room's own list API (owner-scoped): profile is where
+      // people look for their existing work, so every X-app lists here.
+      fetch('/api/xcut/projects').then(r => r.ok ? r.json() : { projects: [] })
+        .then(d => { setXcuts(d.projects ?? []); markLoaded('xcuts') })
+        .catch(() => markLoaded('xcuts'))
     } else if (tab === 'xtalks') {
       // Persisted discussion rooms (Aug 6) — the same rows the /xtalk nav
       // history lists, linking back into the live room.
@@ -1032,9 +1037,10 @@ export default function ProfilePage() {
             {([
               ['duels', '⚔ ' + t('nav.xduel')],
               ['xcreates', '✦ ' + t('nav.xcreate')],
-              ...(feats.xdirector ? [['xdirects', '▶ ' + t('nav.xdirect')]] : []),
-              ...(feats.xtalk ? [['xtalks', '💬 ' + t('nav.xtalk')]] : []),
-              ...(feats.xtalk ? [['xgames', '◉ ' + t('nav.xgame')]] : []),
+              ['xdirects', '▶ ' + t('nav.xdirect')],
+              ['xcuts', '✂ ' + t('nav.xcut')],
+              ['xtalks', '💬 ' + t('nav.xtalk')],
+              ['xgames', '◉ ' + t('nav.xgame')],
               ['votes', '⊞ ' + t('nav.xvote')],
             ] as [Tab, string][]).map(([tb, label]) => {
               const active = tab === tb
@@ -1454,6 +1460,38 @@ export default function ProfilePage() {
 
           {/* ── XTalk tab — persisted discussion rooms, linking back into
               the live conversation. ── */}
+          {tab === 'xcuts' && (
+            !tabsLoaded.xcuts
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              : xcuts.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxcuts')}</div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {xcuts.map((c: any) => (
+                    <a key={c.id} href={`/xcut?p=${c.id}`} style={{ textDecoration: 'none' }}>
+                      <div
+                        style={{
+                          background: 'var(--surface)', border: '1px solid var(--border2)',
+                          borderRadius: 8, padding: '14px 18px',
+                          display: 'flex', alignItems: 'center', gap: 16,
+                          transition: 'border-color 0.2s, background 0.2s',
+                        }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
+                            {c.title || t('nav.xcut')}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            {Math.round(c.duration_s ?? 0)}s{c.render?.url ? '  ·  ' + t('profile.xcut.rendered') : ''}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        {c.render?.url && <span style={{ fontSize: 10, color: 'var(--green)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em' }}>MP4</span>}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+          )}
           {tab === 'xtalks' && (
             !tabsLoaded.xtalks
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
