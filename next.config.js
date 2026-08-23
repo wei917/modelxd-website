@@ -16,7 +16,7 @@ const nextConfig = {
   // bundle and trace the binary into the one function that spawns it.
   serverExternalPackages: ['ffmpeg-static'],
   outputFileTracingIncludes: {
-    '/api/xcut/render': ['./node_modules/ffmpeg-static/ffmpeg'],
+    '/api/xcut/render': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
   },
   webpack: (config) => {
     config.watchOptions = {

@@ -14,7 +14,7 @@ async function main() {
   const bin = ffmpegPath()
   const src = (p: string, mt: string) => ({ bucket: 'local', path: p, mediaType: mt })
   const tl = emptyTimeline('16:9')
-  tl.settings = { resolution: '720p', muteClips: false, dissolve: 0.5 }
+  tl.settings = { resolution: '720p', muteClips: false, dissolve: 0.5, burnSubtitles: true }
   tl.video = [
     { id: 'c1', kind: 'video', src: src(video, 'video/mp4'), in: 0, out: 4, transition: 'cut', label: 'S1 open' },
     { id: 'c2', kind: 'image', src: src(image, 'image/png'), in: 0, out: 3, transition: 'dissolve', label: 'still' },

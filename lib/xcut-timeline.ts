@@ -61,6 +61,7 @@ export type Timeline = {
     resolution: '720p' | '1080p'
     muteClips: boolean   // mute every clip's own sound (music-only films)
     dissolve: number     // seconds, for clips marked transition:'dissolve'
+    burnSubtitles: boolean   // burn the subtitle track into the export (and show it in the preview)
   }
 }
 
@@ -71,7 +72,7 @@ export const MAX_TOTAL_S = 30 * 60   // a 30-minute cap on what one render will 
 export const MIN_CLIP_S  = 0.2
 
 export function emptyTimeline(aspect: Timeline['aspect'] = '16:9'): Timeline {
-  return { version: 1, aspect, fps: 24, video: [], audio: [], subtitles: [], settings: { resolution: '1080p', muteClips: false, dissolve: 0.35 } }
+  return { version: 1, aspect, fps: 24, video: [], audio: [], subtitles: [], settings: { resolution: '1080p', muteClips: false, dissolve: 0.35, burnSubtitles: true } }
 }
 
 export const clipLength = (c: { in: number; out: number }) => Math.max(0, c.out - c.in)
@@ -236,6 +237,7 @@ export function cleanTimeline(raw: unknown): Timeline | null {
     resolution: r.settings?.resolution === '720p' ? '720p' : '1080p',
     muteClips: r.settings?.muteClips === true,
     dissolve: Math.max(0, Math.min(2, num(r.settings?.dissolve, 0.35))),
+    burnSubtitles: r.settings?.burnSubtitles !== false,   // on unless switched off
   }
   for (const c of (Array.isArray(r.video) ? r.video : []).slice(0, MAX_CLIPS)) {
     const src = cleanSrc(c?.src); if (!src) continue
@@ -301,7 +303,7 @@ export function renderPlan(tl: Timeline): RenderPlan {
   const videoLen = segments.reduce((n, s) => n + s.length, 0) - segments.reduce((n, s) => n + s.dissolveIn, 0)
   const audio = tl.audio.map(a => ({ src: a.src, start: a.start, in: a.in, out: a.out, gain: a.gain, fadeIn: a.fadeIn ?? 0, fadeOut: a.fadeOut ?? 0 }))
   const duration = Math.max(videoLen, ...audio.map(a => a.start + (a.out - a.in)), 0)
-  return { width: w, height: h, fps: tl.fps, duration, segments, audio, subtitles: tl.subtitles.filter(s => s.start < duration), muteClips: tl.settings.muteClips }
+  return { width: w, height: h, fps: tl.fps, duration, segments, audio, subtitles: tl.settings.burnSubtitles ? tl.subtitles.filter(s => s.start < duration) : [], muteClips: tl.settings.muteClips }
 }
 
 /** Subtitles as an SRT file (burned in by the render). */

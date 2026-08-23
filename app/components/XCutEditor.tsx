@@ -53,7 +53,7 @@ function mediaDuration(url: string, kind: 'video' | 'audio'): Promise<number | n
 
 export default function XCutEditor({ project, onExit }: { project: XCutProject; onExit: () => void }) {
   const t = useT()
-  const [tl, setTl] = useState<Timeline>(() => cleanTimeline(project.timeline) ?? { version: 1, aspect: '16:9', fps: 24, video: [], audio: [], subtitles: [], settings: { resolution: '1080p', muteClips: false, dissolve: 0.35 } })
+  const [tl, setTl] = useState<Timeline>(() => cleanTimeline(project.timeline) ?? { version: 1, aspect: '16:9', fps: 24, video: [], audio: [], subtitles: [], settings: { resolution: '1080p', muteClips: false, dissolve: 0.35, burnSubtitles: true } })
   const [title, setTitle] = useState(project.title ?? '')
   const [sel, setSel] = useState<Sel>(null)
   const [playhead, setPlayhead] = useState(0)
@@ -317,7 +317,8 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
   const selVideo = sel?.kind === 'video' ? tl.video.find(c => c.id === sel.id) ?? null : null
   const selAudio = sel?.kind === 'audio' ? tl.audio.find(c => c.id === sel.id) ?? null : null
   const selSub = sel?.kind === 'sub' ? tl.subtitles.find(s => s.id === sel.id) ?? null : null
-  const cues = tl.subtitles.filter(s => playhead >= s.start && playhead < s.end)
+  const cues = tl.settings.burnSubtitles ? tl.subtitles.filter(s => playhead >= s.start && playhead < s.end) : []
+  const toggleBurn = () => setTl(cur => ({ ...cur, settings: { ...cur.settings, burnSubtitles: !cur.settings.burnSubtitles } }))
   const aspectNum = tl.aspect === '9:16' ? 9 / 16 : tl.aspect === '1:1' ? 1 : 16 / 9
   const width = Math.max(800, (total + 4) * pps + LABEL_W)
   const mono: React.CSSProperties = { fontFamily: 'var(--font-mono), monospace', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED }
@@ -409,6 +410,7 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
             <button onClick={() => setTl(cur => splitAt(cur, playheadRef.current))} style={btn()}>✂ {t('xcut.split')}</button>
             <button onClick={() => { if (sel) { setTl(cur => removeClip(cur, sel.id)); setSel(null) } }} disabled={!sel} style={{ ...btn(), opacity: sel ? 1 : 0.4 }}>🗑 {t('xcut.delete')}</button>
             <button onClick={addSubtitle} style={btn()}>{t('xcut.addsub')}</button>
+            <button onClick={toggleBurn} title={t('xcut.burnsubs')} style={{ ...btn(tl.settings.burnSubtitles), fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.06em' }}>CC {tl.settings.burnSubtitles ? 'ON' : 'OFF'}</button>
             <span style={{ ...mono, marginLeft: 8 }}>{t('xcut.zoom')}</span>
             <input type="range" min={12} max={160} value={pps} onChange={e => setPps(Number(e.target.value))} style={{ width: 110 }} />
           </div>
@@ -489,6 +491,7 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
                 <select value={tl.settings.resolution} onChange={e => setTl(cur => ({ ...cur, settings: { ...cur.settings, resolution: e.target.value as any } }))} style={input}><option value="1080p">1080p</option><option value="720p">720p</option></select></label>
               <label style={small}><div style={mono}>{t('xcut.dissolvelen')} · {tl.settings.dissolve.toFixed(2)}s</div><input type="range" min={0} max={200} value={Math.round(tl.settings.dissolve * 100)} onChange={e => setTl(cur => ({ ...cur, settings: { ...cur.settings, dissolve: Number(e.target.value) / 100 } }))} style={{ width: '100%' }} /></label>
               <label style={{ ...small, display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={tl.settings.muteClips} onChange={e => setTl(cur => ({ ...cur, settings: { ...cur.settings, muteClips: e.target.checked } }))} />{t('xcut.muteall')}</label>
+              <label style={{ ...small, display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={tl.settings.burnSubtitles} onChange={e => setTl(cur => ({ ...cur, settings: { ...cur.settings, burnSubtitles: e.target.checked } }))} />{t('xcut.burnsubs')}</label>
               <div style={{ ...mono, textTransform: 'none', lineHeight: 1.6, marginTop: 8 }}>{t('xcut.keys')}</div>
             </>
           )}

@@ -344,6 +344,7 @@ export const STRINGS: Record<string, Entry> = {
   'xcut.addsel':     { en: 'Add {n} to timeline', 'zh-Hant': '加入 {n} 個到時間軸', 'zh-Hans': '加入 {n} 个到时间轴', ja: '{n}件をタイムラインに追加', ko: '{n}개를 타임라인에 추가' },
   'xcut.clearsel':   { en: 'Clear', 'zh-Hant': '清除選取', 'zh-Hans': '清除选取', ja: '選択解除', ko: '선택 해제' },
   'xcut.libhint':    { en: 'Click to select · double-click to add one · scroll for more', 'zh-Hant': '點一下選取・點兩下直接加入・捲動載入更多', 'zh-Hans': '点一下选取・点两下直接加入・滚动加载更多', ja: 'クリックで選択・ダブルクリックで追加・スクロールでさらに表示', ko: '클릭으로 선택 · 더블클릭으로 추가 · 스크롤로 더 보기' },
+  'xcut.burnsubs':   { en: 'Burn subtitles into the export', 'zh-Hant': '把字幕燒進輸出影片', 'zh-Hans': '把字幕烧进导出视频', ja: '字幕を映像に焼き込む', ko: '자막을 영상에 굽기' },
   'xd.mv.setup':     { en: 'Set up your music video', 'zh-Hant': '設定你的音樂 MV', 'zh-Hans': '设置你的音乐 MV', ja: 'ミュージックビデオを設定', ko: '뮤직비디오 설정' },
   'xd.mv.skip':      { en: 'skip — just type instead', 'zh-Hant': '跳過，直接打字', 'zh-Hans': '跳过，直接打字', ja: 'スキップして直接入力', ko: '건너뛰고 직접 입력' },
   'xd.mv.formpick':  { en: 'Style', 'zh-Hant': '風格', 'zh-Hans': '风格', ja: 'スタイル', ko: '스타일' },
