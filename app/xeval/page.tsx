@@ -94,7 +94,7 @@ export default function XEvalPage() {
   // Render the panel form as prose; anything else falls back to the raw label.
   const judge = useMemo(() => {
     const raw = ratings[0]?.judge_filter ?? ''
-    const m = raw.match(/^panel\((\d+) judges?\)@(\w+)/)
+    const m = raw.match(/^panel\((\d+) judges?[^)]*\)@(\w+)/)
     return m ? t('xeval.judge.panel').replace('{n}', m[1]).replace('{effort}', m[2]) : raw
   }, [ratings, t])
 
