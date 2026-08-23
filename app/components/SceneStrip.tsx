@@ -126,13 +126,15 @@ const iconBtn: React.CSSProperties = {
   color: 'var(--muted)', fontSize: 12, lineHeight: 1,
 }
 
-export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGenerateAll, onStop, onPreview }: {
+export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGenerateAll, onStop, onPreview, onCut }: {
   scenes: Scene[]
   /** true while the director is mid-turn — generation buttons pause. */
   busy: boolean
   onChange: (next: Scene[]) => void
   onGenerate: (sceneId: string, kind: 'still' | 'video') => void
   onGenerateAll: (kind: 'still' | 'video') => void
+  /** Open this board as a rough cut in XCut (owner, Aug 22). */
+  onCut?: () => void
   /** The brake for a mis-clicked ▶▶ — visible whenever the director is
    *  running a batch. */
   onStop?: () => void
@@ -443,6 +445,16 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
             </span>
           )
         })()}
+        {onCut && (
+          <button
+            onClick={onCut} title="XCut"
+            style={{
+              padding: '4px 12px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent',
+              color: 'var(--muted2)', cursor: 'pointer', fontFamily: 'var(--font-mono), monospace', fontSize: 10,
+              fontWeight: 700, letterSpacing: '0.07em',
+            }}
+          >✂ {t('xcut.fromboard')}</button>
+        )}
       </div>
 
       {/* ── ASSETS shelf (owner, Aug 12): named reusable pictures — cast,

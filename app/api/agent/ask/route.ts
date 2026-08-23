@@ -46,6 +46,7 @@ const ROUTES: Record<string, string> = {
   '/xduel':   'XDuel',
   '/xcreate': 'XCreate',
   '/xdirect': 'XDirect',
+  '/xcut': 'XCut',
   '/xtalk':   'XTalk',
   '/xgame':   'XGame',
   '/xvote':   'XVote',

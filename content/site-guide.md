@@ -73,6 +73,22 @@ characters are locked as three-view character sheets (front, three-quarter,
 profile) before a scene is shot, so the same face carries through the film. (Old `/xdirector` and "Agent Mode" links land
 here.)
 
+### XCut — `/xcut`
+The cutting room. A video editor with three tracks — video, audio,
+subtitles — where every shot knows which model made it and what it cost.
+Open an XDirect board's storyboard as a **rough cut** with one click
+(▶▶ Cut on the storyboard), or start blank and drop in clips, stills and
+audio from your own generations (XDirect, XCreate, XDuel) or upload your
+own video, music and images. Trim clips by dragging their edges, split at
+the playhead, reorder by dragging, choose a hard cut or a dissolve between
+clips, lay a music track with fades over the clips' own sound (or mute
+them), and write subtitles — a board's scene scripts arrive as subtitles
+already. Play the whole film in the browser, then **Export** renders one
+MP4 (720p or 1080p, 16:9 / 9:16 / 1:1) on ModelXD's servers: it lands as a
+FINAL CUT node on the source board, in your history, and as a download.
+Exporting is free — it is compute, not a model. Available to every
+signed-in account.
+
 ### XTalk — `/xtalk`
 Put several AI models in one room together. Available to every signed-in
 account. Two formats today:

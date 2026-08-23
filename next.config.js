@@ -12,6 +12,12 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // XCut renders with ffmpeg-static's binary: keep the package out of the
+  // bundle and trace the binary into the one function that spawns it.
+  serverExternalPackages: ['ffmpeg-static'],
+  outputFileTracingIncludes: {
+    '/api/xcut/render': ['./node_modules/ffmpeg-static/ffmpeg'],
+  },
   webpack: (config) => {
     config.watchOptions = {
       ...config.watchOptions,

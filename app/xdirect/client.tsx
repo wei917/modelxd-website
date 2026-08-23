@@ -258,6 +258,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
                 runnerRef.current?.generateScene(id, `${sceneLabels(storyboard)[i] ?? `${t('xd.sb.scene')} ${i + 1}`} · ${storyboard[i]?.title ?? id}`, kind)
               }}
               onStop={() => runnerRef.current?.stopGeneration()}
+              onCut={boardId ? () => { window.location.assign(`/xcut?from=${boardId}`) } : undefined}
               onGenerateAll={(kind) => {
                 // Stills run covers the shelf too (assets ARE stills);
                 // the video run never touches assets — they have no clip.
