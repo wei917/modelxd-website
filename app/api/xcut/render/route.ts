@@ -21,7 +21,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { cleanTimeline, renderPlan, toSrt, type MediaSrc, type RenderPlan } from '@/lib/xcut-timeline'
+import { cleanTimeline, renderPlan, toAss, type MediaSrc, type RenderPlan } from '@/lib/xcut-timeline'
 import { mediaFromSlots } from '@/lib/xcut-media'
 import { ffmpegPath, run, probe, buildFfmpegArgs, bundledFont, type Local } from '@/lib/xcut-render'
 import { uploadFilm } from '@/lib/xcut-upload'
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     // 2. Subtitles file + font.
     const font = await bundledFont()
     let srt: string | null = null
-    if (plan.subtitles.length > 0 && font) { srt = path.join(work, 'subs.srt'); await fs.writeFile(srt, toSrt(plan.subtitles)) }
+    if (plan.subtitles.length > 0 && font) { srt = path.join(work, 'subs.ass'); await fs.writeFile(srt, toAss(plan.subtitles, plan.width, plan.height, font)) }
     const warnings: string[] = []
     if (plan.subtitles.length > 0 && !font) warnings.push('Subtitles were not burned in: no CJK font is bundled on the server yet.')
 

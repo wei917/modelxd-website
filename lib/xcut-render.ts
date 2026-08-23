@@ -111,11 +111,11 @@ export function buildFfmpegArgs(plan: RenderPlan, locals: Local[], music: Array<
     aFinal = '[amix]'
   }
 
-  // Subtitles, burned in (only with a bundled font — see FONT_DIR).
+  // Subtitles, burned in from a pre-wrapped ASS file (only with a bundled
+  // font — see FONT_DIR and lib/xcut-timeline.ts toAss()).
   let vFinal = vCur
   if (srt && fontName) {
-    const size = Math.round(H / 22), margin = Math.round(H / 18)
-    f.push(`${vCur}subtitles='${srt.replace(/'/g, "\\'")}':fontsdir='${FONT_DIR}':force_style='FontName=${fontName},FontSize=${size},PrimaryColour=&H00FFFFFF,OutlineColour=&HA0000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=${margin}'[vsub]`)
+    f.push(`${vCur}subtitles='${srt.replace(/'/g, "\\'")}':fontsdir='${FONT_DIR}'[vsub]`)
     vFinal = '[vsub]'
   }
 

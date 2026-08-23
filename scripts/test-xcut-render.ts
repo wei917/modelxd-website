@@ -5,7 +5,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { emptyTimeline, renderPlan, toSrt } from '../lib/xcut-timeline'
+import { emptyTimeline, renderPlan, toAss } from '../lib/xcut-timeline'
 import { ffmpegPath, run, probe, buildFfmpegArgs, bundledFont, type Local } from '../lib/xcut-render'
 
 async function main() {
@@ -21,7 +21,7 @@ async function main() {
     { id: 'c3', kind: 'video', src: src(video, 'video/mp4'), in: 2, out: 6, transition: 'cut', label: 'S1 tail', gain: 0.8 },
   ]
   if (music) tl.audio = [{ id: 'm1', src: src(music, 'audio/mp4'), start: 1, in: 0, out: 5, gain: 0.6, fadeIn: 0.5, fadeOut: 1 }]
-  tl.subtitles = [{ id: 's1', start: 0.5, end: 3.5, text: '石猴稱王，自稱齊天大聖。' }]
+  tl.subtitles = [{ id: 's1', start: 0.5, end: 3.5, text: '石猴悟空稱王，習得長生變化之術，最終大鬧天宮，自稱齊天大聖，驚動了凌霄寶殿上的玉皇大帝。' }]
   const plan = renderPlan(tl)
   const expected = 4 + 3 + 4 - 0.5
   console.log(`plan: ${plan.segments.length} segments, ${plan.width}x${plan.height}@${plan.fps}, duration ${plan.duration} (expected ${expected})`)
@@ -36,7 +36,7 @@ async function main() {
   const work = await fs.mkdtemp(path.join(os.tmpdir(), 'xcut-test-'))
   const font = await bundledFont()
   let srt: string | null = null
-  if (font) { srt = path.join(work, 'subs.srt'); await fs.writeFile(srt, toSrt(plan.subtitles)) }
+  if (font) { srt = path.join(work, 'subs.ass'); await fs.writeFile(srt, toAss(plan.subtitles, plan.width, plan.height, font)) }
   console.log('font:', font ?? '(none — subtitles skipped)')
   const out = path.join(work, 'film.mp4')
   const args = buildFfmpegArgs(plan, locals, music ? [{ a: plan.audio[0], file: music }] : [], srt, font, out)

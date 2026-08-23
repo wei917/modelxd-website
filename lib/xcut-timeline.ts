@@ -306,7 +306,82 @@ export function renderPlan(tl: Timeline): RenderPlan {
   return { width: w, height: h, fps: tl.fps, duration, segments, audio, subtitles: tl.settings.burnSubtitles ? tl.subtitles.filter(s => s.start < duration) : [], muteClips: tl.settings.muteClips }
 }
 
-/** Subtitles as an SRT file (burned in by the render). */
+// ── Subtitle layout ────────────────────────────────────────────────────────
+// libass wraps only at spaces, so a Chinese cue is one line however long —
+// a 28-character script ran off both edges of a 1080p frame (Aug 23). The
+// render writes ASS and wraps here: at most two lines per cue, broken after
+// punctuation where possible, and a cue that still will not fit is shrunk
+// (down to a floor) rather than clipped.
+
+/** Display width of a character in font-size units: CJK ≈ 1 em, Latin ≈ 0.55, space 0.3. */
+const charUnits = (ch: string) => /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u3000-\u303F]/.test(ch) ? 1 : ch === ' ' ? 0.3 : 0.55
+const BREAK_AFTER = /[，。、；：！？,.;:!?)\]）」』\s—–]/
+
+/** Greedy wrap to lines of ≤ maxUnits, preferring a break right after punctuation or a space. */
+export function wrapCue(text: string, maxUnits: number): string[] {
+  const out: string[] = []
+  for (const para of text.replace(/\r/g, '').split('\n')) {
+    const chars = [...para.trim()]
+    if (chars.length === 0) continue
+    let line: string[] = [], width = 0, lastBreak = -1, widthAtBreak = 0
+    for (const ch of chars) {
+      const w = charUnits(ch)
+      if (width + w > maxUnits && line.length > 0) {
+        // Break at the last punctuation if it is not too far back; else here.
+        if (lastBreak > 0 && width - widthAtBreak < maxUnits * 0.45) {
+          out.push(line.slice(0, lastBreak).join('').trim())
+          line = line.slice(lastBreak); width -= widthAtBreak
+        } else { out.push(line.join('').trim()); line = []; width = 0 }
+        lastBreak = -1; widthAtBreak = 0
+      }
+      line.push(ch); width += w
+      if (BREAK_AFTER.test(ch)) { lastBreak = line.length; widthAtBreak = width }
+    }
+    if (line.length > 0) out.push(line.join('').trim())
+  }
+  return out.filter(Boolean)
+}
+
+/** Fit a cue into ≤ 2 lines: wrap at the base size, shrink (×0.85 steps, floor 0.6) until it fits, else 3 lines at the floor. */
+export function fitCue(text: string, frameWidth: number, baseSize: number): { lines: string[]; size: number } {
+  const usable = frameWidth * 0.88
+  let size = baseSize
+  for (let i = 0; i < 4; i++) {
+    const lines = wrapCue(text, usable / size)
+    if (lines.length <= 2) return { lines, size }
+    size = Math.max(baseSize * 0.6, Math.round(size * 0.85))
+    if (size === baseSize * 0.6) break
+  }
+  return { lines: wrapCue(text, usable / size).slice(0, 3), size }
+}
+
+const assTime = (t: number) => {
+  const cs = Math.max(0, Math.round(t * 100))
+  const h = Math.floor(cs / 360000), m = Math.floor((cs % 360000) / 6000), s = Math.floor((cs % 6000) / 100), c = cs % 100
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(c).padStart(2, '0')}`
+}
+const assText = (t: string) => t.replace(/[{}]/g, ch => (ch === '{' ? '｛' : '｝')).replace(/\\/g, '＼')
+
+/** Subtitles as an ASS file sized to the frame (burned in by the render). */
+export function toAss(subs: Subtitle[], width: number, height: number, fontName = 'Noto Sans TC'): string {
+  const base = Math.round(height / 24)           // ~4% of the frame, the subtitling convention
+  const marginV = Math.round(height / 20), marginH = Math.round(width * 0.06)
+  const head = [
+    '[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${width}`, `PlayResY: ${height}`, 'WrapStyle: 2', 'ScaledBorderAndShadow: yes', '',
+    '[V4+ Styles]',
+    'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
+    `Style: Default,${fontName},${base},&H00FFFFFF,&H000000FF,&HA0000000,&H80000000,0,0,0,0,100,100,0,0,1,${Math.max(2, Math.round(base / 18))},0,2,${marginH},${marginH},${marginV},1`, '',
+    '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+  ]
+  const lines = [...subs].sort((a, b) => a.start - b.start).map(s => {
+    const { lines: wrapped, size } = fitCue(s.text, width, base)
+    const tag = size !== base ? `{\\fs${size}}` : ''
+    return `Dialogue: 0,${assTime(s.start)},${assTime(s.end)},Default,,0,0,0,,${tag}${wrapped.map(assText).join('\\N')}`
+  })
+  return head.concat(lines).join('\n') + '\n'
+}
+
+/** Subtitles as an SRT file (for download). */
 export function toSrt(subs: Subtitle[]): string {
   const ts = (t: number) => {
     const ms = Math.round(t * 1000)

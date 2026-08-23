@@ -1,7 +1,7 @@
 // scripts/test-xcut-timeline.ts — unit test for lib/xcut-timeline.ts.   npx tsx scripts/test-xcut-timeline.ts
 import {
   timelineFromStoryboard, clipStarts, totalDuration, locate, trimClip, splitAt, moveClip, removeClip,
-  cleanTimeline, renderPlan, toSrt, subtitlesFromScenes, emptyTimeline, type StoryboardScene,
+  cleanTimeline, renderPlan, toSrt, toAss, wrapCue, fitCue, subtitlesFromScenes, emptyTimeline, type StoryboardScene,
 } from '../lib/xcut-timeline'
 
 let fails = 0
@@ -66,6 +66,17 @@ check('burnSubtitles off empties the plan subtitles', renderPlan({ ...tl, settin
 check('cleanTimeline defaults burnSubtitles on, keeps off', cleanTimeline({ ...tl, settings: { ...tl.settings, burnSubtitles: false } })!.settings.burnSubtitles === false && cleanTimeline(tl)!.settings.burnSubtitles === true && cleanTimeline({ video: [] })!.settings.burnSubtitles === true)
 check('plan 720p 9:16', vert.width === 720 && vert.height === 1280)
 
+const longCue = '石猴悟空稱王，習得長生變化之術，最終大鬧天宮，自稱齊天大聖，驚動了凌霄寶殿上的玉皇大帝。'
+const w1 = wrapCue(longCue, 20)
+check('wrapCue keeps every character', w1.join('') === longCue.replace(/\s/g, ''), `→ ${w1.length} lines`)
+check('wrapCue breaks after punctuation', w1.every(l => l.length <= 20) && w1[0].endsWith('，'))
+check('wrapCue Latin words wider than CJK', wrapCue('The quick brown fox jumps over the lazy dog near the old river bank', 20).length === 2)
+const fit = fitCue(longCue, 1920, 45)
+check('fitCue ≤ 2 lines (shrinks if needed)', fit.lines.length <= 2 && fit.size <= 45 && fit.size >= 27, `→ ${fit.lines.length} lines @ ${fit.size}`)
+const ass = toAss([{ id: 'x', start: 0.5, end: 3.25, text: longCue }, { id: 'y', start: 4, end: 5, text: 'a {tag} \\ test' }], 1920, 1080)
+check('ASS header sized to frame', ass.includes('PlayResX: 1920') && ass.includes('Style: Default,Noto Sans TC,45,'))
+check('ASS dialogue times + \\N wrap', /Dialogue: 0,0:00:00\.50,0:00:03\.25,Default,,0,0,0,,(\{\\fs\d+\})?.+\\N.+/.test(ass))
+check('ASS escapes braces and backslashes', ass.includes('a ｛tag｝ ＼ test'))
 const srt = toSrt(tl.subtitles)
 check('SRT format', /^1\n00:00:00,000 --> 00:00:06,000\n石猴稱王。\n/.test(srt))
 
