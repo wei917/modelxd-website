@@ -162,6 +162,9 @@ Stale-audit check:
 - Gemini 3.6 + 3.7 Flash: $0.75/$3.75 dated intro through Dec 31, 2026
   (list 1.5/7.5/0.15 — that's what we carry).
 - HappyHorse 1.1: 40% off list; HappyHorse 1.0: 20% off list.
+- **gpt-5.6-sol: promo 4/20/0.4 "at least through Nov 21, 2026"** (seen
+  2026-08-20; list 5/30/0.5 — that's what we carry). If OpenAI later drops
+  the expiry (Sonnet-5-style), adopt the new number then.
 
 ## Open items for the owner (not price errors)
 
@@ -185,3 +188,4 @@ Stale-audit check:
 | 2026-08-19 | alibaba | Claude | 11 enabled rows; fixed **fun-asr** (0.002 → 0.0021/min). qwen3.6-plus, qwen-image-2.0-pro, all HappyHorse (list), wan2.7-i2v, $0.01/search correct. Disabled qwen3-asr row already correct. |
 | 2026-08-20 | openai (gpt-image-2, whisper-1) | Claude | Re-verified the 2 rows the Aug-19 "6 rows" log left ambiguous: gpt-image-2 token rates correct (text 5/1.25, image in 8, image out 30); whisper-1 correct at $0.006/min — **dropped from the pricing index page but its per-model page is live** (not deprecated). |
 | 2026-08-20 | — (migration 83 backfill) | Claude | All 46 rows stamped `pricing_audited_at` at their real audit times; 9 `source='backfill'` history events inserted for the pre-trigger Aug-19 changes (7 fixes + 3.6-flash promo flip/revert + 3.7-flash creation). History is complete from Aug 19 onward. |
+| 2026-08-20 | openai (owner-triggered recheck) | Claude | 7 rows re-audited after OpenAI's adjustment. Only **gpt-5.6-sol** moved — promo 4/20/0.4 thru ≥Nov 21 2026; per rule 3 catalog keeps list 5/30/0.5, **no writes**. gpt-5.5 (5/30) and gpt-5.5-pro (30/180) unchanged → landing $7,800 + 120× derivations stand. New on page, not added: gpt-5.3-codex ($1.75/$14, coding specialist), chat-latest, gpt-5.4 family (older gen). |
