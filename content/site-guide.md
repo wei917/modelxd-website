@@ -13,13 +13,16 @@ matrix, because that is the shape the agent has to reply in.
 
 ## What ModelXD is
 
-ModelXD is the place to use the best AI for every task. Headline: "The best
-AI for every task." You make real things — music videos, product films,
-animated stories, characters, your own agents — and ModelXD picks the best
-model for each task from 20+ leading ones. The proof behind every pick is
-real blind votes and honest prices: people compare models on their own
-prompt, vote on the output **before** seeing the price, then see what each
-one actually cost. Those votes feed a public leaderboard (XBoard) and the
+ModelXD is an AI application platform with model routing underneath.
+Eyebrow: "AI apps that run winning models." Headline: "The best AI
+for every task." You come here to make and do things — films, stories,
+analysis, chats, gaming, benchmarks, or your own agents — and ModelXD sends each job to
+whichever model earns it, decided by two independent kinds of evidence:
+real blind votes, and XEval runs on public benchmark datasets (GDPval).
+Prices are always in the open. Developers get the same routing inside their own agents through
+XDev (API keys + MCP: `get_leaderboard`, `pick_model`, then generate).
+The votes come from people comparing models on their own prompt and
+voting **before** the price is revealed; those votes feed XBoard and the
 XEval benchmark page.
 
 The core belief: the most expensive model is very often not the one you would

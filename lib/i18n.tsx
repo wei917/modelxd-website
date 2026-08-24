@@ -564,7 +564,7 @@ export const STRINGS: Record<string, Entry> = {
   'fb.sent':          { en: 'Thanks — got it!', 'zh-Hant': '收到了，謝謝！', 'zh-Hans': '收到了，谢谢！', ja: '受け取りました。ありがとうございます！', ko: '접수됐습니다. 감사합니다!' },
   'fb.noshot':        { en: 'Remove screenshot', 'zh-Hant': '移除截圖', 'zh-Hans': '移除截图', ja: 'スクリーンショットを削除', ko: '스크린샷 제거' },
   'fb.or':            { en: 'Or write to us:', 'zh-Hant': '或直接寫信給我們：', 'zh-Hans': '或直接写信给我们：', ja: 'またはメールで：', ko: '또는 메일로:' },
-  'home.eyebrow':     { en: 'The AI application platform', 'zh-Hant': 'AI 應用平台', 'zh-Hans': 'AI 应用平台', ja: 'AIアプリケーション・プラットフォーム', ko: 'AI 애플리케이션 플랫폼' },
+  'home.eyebrow':     { en: 'AI apps that run winning models', 'zh-Hant': '跑勝出模型的 AI 應用', 'zh-Hans': '跑胜出模型的 AI 应用', ja: '勝ったモデルで動くAIアプリ', ko: '승리한 모델로 작동하는 AI 앱' },
   'auth.signin':      { en: 'Sign In',  'zh-Hant': '登入', 'zh-Hans': '登录', ja: 'ログイン',  ko: '로그인' },
   'auth.signout':     { en: 'Sign Out', 'zh-Hant': '登出', 'zh-Hans': '退出', ja: 'ログアウト', ko: '로그아웃' },
 
@@ -646,7 +646,7 @@ export const STRINGS: Record<string, Entry> = {
 
   // ── Home (hero + CTAs) ──
   'home.hero':        { en: 'The best AI for every task.', 'zh-Hant': '每個任務，都用最好的 AI。', 'zh-Hans': '每个任务，都用最好的 AI。', ja: 'すべてのタスクに、最高のAIを。', ko: '모든 작업에 최고의 AI를.' },
-  'home.sub':         { en: 'Music videos, product films, animated stories, characters, your own agents — ModelXD picks the best model for each task from 20+ leading ones, proven by real blind votes and honest prices.', 'zh-Hant': 'MV、產品影片、動畫故事、角色對話、你自己的 AI Agent——ModelXD 從 20+ 個主流模型中為每個任務挑出最好的那個，由真實盲測投票與誠實價格驗證。', 'zh-Hans': 'MV、产品视频、动画故事、角色对话、你自己的 AI Agent——ModelXD 从 20+ 个主流模型中为每个任务挑出最好的那个，由真实盲测投票与诚实价格验证。', ja: 'MV、商品動画、アニメ、キャラクター、自分のAIエージェント——ModelXDは20以上の主要モデルから各タスクに最適な1つを選びます。根拠はブラインド投票と正直な価格。', ko: '뮤직비디오, 제품 영상, 애니메이션, 캐릭터, 나만의 AI 에이전트 — ModelXD는 20개+ 주요 모델 중 각 작업에 가장 좋은 모델을 고릅니다. 실제 블라인드 투표와 정직한 가격이 증명합니다.' },
+  'home.sub':         { en: 'Films, stories, analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends each job to whichever model earns it, decided by real blind votes and public benchmark data, with the prices in the open.', 'zh-Hant': '影片、故事、分析、聊天、遊戲、評測，或接上你自己的 Agent。ModelXD 讓每項任務交給勝出的模型，由真實盲測投票與公開資料集評測決定，價格公開透明。', 'zh-Hans': '视频、故事、分析、聊天、游戏、评测，或接上你自己的 Agent。ModelXD 让每项任务交给胜出的模型，由真实盲测投票与公开数据集评测决定，价格公开透明。', ja: '映像、物語、分析、チャット、ゲーム、ベンチマーク、あるいは自分のエージェントを接続。ModelXDは各タスクを勝ち抜いたモデルに任せます。決めるのは実際のブラインド投票と公開データセットでの評価、価格は公開。', ko: '영상, 스토리, 분석, 채팅, 게임, 벤치마크, 또는 나만의 에이전트 연결. ModelXD는 각 작업을 이긴 모델에 맡깁니다. 실제 블라인드 투표와 공개 데이터셋 평가로 결정되고, 가격은 공개됩니다.' },
   'home.cta.primary': { en: 'Start creating', 'zh-Hant': '開始創作', 'zh-Hans': '开始创作', ja: '創作をはじめる', ko: '창작 시작하기' },
   'home.cta.secondary': { en: 'Blind-test models free', 'zh-Hant': '免費盲測模型', 'zh-Hans': '免费盲测模型', ja: '無料でモデルをブラインドテスト', ko: '모델 무료 블라인드 테스트' },
   'home.compare.eyebrow': { en: 'Why model choice matters', 'zh-Hant': '為什麼模型選擇很重要', 'zh-Hans': '为什么模型选择很重要', ja: 'モデル選びが重要な理由', ko: '모델 선택이 중요한 이유' },
