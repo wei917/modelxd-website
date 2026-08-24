@@ -414,12 +414,16 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
 }) {
   const t = useT()
   const [hover, setHover] = useState<string | null>(null)
-  // Visible window in data units (x = avg $/task, linear; y = rating).
+  // Visible window in data units (x = avg $/task — LOG by default, the
+  // frontier-chart convention (cf. OpenAI's GPT-5.6 frontier post), with a
+  // LIN toggle; y = rating). In log mode the window coordinates are
+  // log10($), so the zoom/pan machinery needs no changes.
   // null = fit everything. Zoom (buttons / wheel around the cursor) and
   // pan (drag / trackpad scroll) move this window on BOTH axes; data,
   // colors and labels are untouched.
   type Win = { x0: number; x1: number; y0: number; y1: number }
   const [win, setWin] = useState<Win | null>(null)
+  const [logX, setLogX] = useState(true)
   const svgRef = useRef<SVGSVGElement | null>(null)
   const drag = useRef<{ startX: number; startY: number; w: Win } | null>(null)
 
@@ -428,18 +432,21 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
       const c = e ? avg(e.costs) : null
       return c != null && c > 0
-        ? { x: c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider, effort: r.effort ?? '' }
+        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider, effort: r.effort ?? '' }
         : null
     })
-    .filter(Boolean) as { x: number; y: number; label: string; provider: string; effort: string }[]
+    .filter(Boolean) as { x: number; c: number; y: number; label: string; provider: string; effort: string }[]
   const pts = toPts(rows)
   const domain = toPts(domainRows)
 
   const W = 940, H = 420, PL = 46, PR = 16, PT = 14, PB = 30
   const PW = W - PL - PR, PH = H - PT - PB
   const xmax = domain.length ? Math.max(...domain.map(p => p.x)) : 1
+  const xmin = domain.length ? Math.min(...domain.map(p => p.x)) : 0
   const ys = domain.length ? domain.map(p => p.y) : [1000]
-  const full: Win = { x0: 0, x1: xmax * 1.12, y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 }
+  const full: Win = logX
+    ? { x0: xmin - 0.12, x1: xmax + 0.12, y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 }
+    : { x0: 0, x1: xmax * 1.12, y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 }
   const view = win ?? full
   const minX = (full.x1 - full.x0) / 200, minY = (full.y1 - full.y0) / 50
   const clampWin = (w: Win): Win => {
@@ -489,8 +496,21 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
     return out
   }
   const xstep = niceStep(view.x1 - view.x0, 6), ystep = niceStep(view.y1 - view.y0, 5)
-  const xticks = ticks(view.x0, view.x1, xstep), yticks = ticks(view.y0, view.y1, ystep)
-  const fmt = (v: number) => '$' + (v >= 1 ? v.toFixed(v >= 10 ? 0 : 1) : v.toFixed(xstep < 0.01 ? 3 : 2))
+  // Log mode: ticks at {1,2,5}x10^k mantissas, thinned as the window widens.
+  const logTicks = () => {
+    const span = view.x1 - view.x0
+    const mant = span > 2.5 ? [1] : span > 1.2 ? [1, 3] : span > 0.6 ? [1, 2, 5] : [1, 1.5, 2, 3, 5, 7]
+    const out: number[] = []
+    for (let k = Math.floor(view.x0) - 1; k <= Math.ceil(view.x1); k++)
+      for (const m of mant) {
+        const u = k + Math.log10(m)
+        if (u >= view.x0 - 1e-9 && u <= view.x1 + 1e-9) out.push(u)
+      }
+    return out
+  }
+  const xticks = logX ? logTicks() : ticks(view.x0, view.x1, xstep), yticks = ticks(view.y0, view.y1, ystep)
+  const fmtReal = (c: number) => '$' + (c >= 10 ? c.toFixed(0) : c >= 1 ? c.toFixed(1) : c >= 0.095 ? c.toFixed(2) : c.toFixed(3))
+  const fmt = (v: number) => (logX ? fmtReal(Math.pow(10, v)) : '$' + (v >= 1 ? v.toFixed(v >= 10 ? 0 : 1) : v.toFixed(xstep < 0.01 ? 3 : 2)))
   const visible = pts.filter(p => p.x >= view.x0 && p.x <= view.x1 && p.y >= view.y0 && p.y <= view.y1)
   const ordered = [...visible.filter(p => p.label !== hover), ...visible.filter(p => p.label === hover)]
   const zoomed = win != null
@@ -507,6 +527,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
         </span>
         <button style={{ ...btn, minWidth: 28 }} onClick={() => zoomAt(0.6)} title="zoom in">+</button>
         <button style={{ ...btn, minWidth: 28 }} onClick={() => zoomAt(1.6)} title="zoom out">−</button>
+        <button style={{ ...btn, minWidth: 40 }} onClick={() => { setWin(null); setLogX(v => !v) }} title="cost axis scale">{logX ? 'LOG' : 'LIN'}</button>
         <button style={{ ...btn, opacity: zoomed ? 1 : 0.45, minWidth: 58 }} onClick={() => setWin(null)} disabled={!zoomed}>{t('xeval.chart.reset')}</button>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -551,7 +572,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
                   stroke="var(--bg)" strokeWidth={isHover ? 4 : 3} paintOrder="stroke"
                   fontFamily="var(--font-mono)"
                 >
-                  {p.label}{isHover ? `  ·  ${p.y}  ·  $${p.x.toFixed(3)}` : ''}
+                  {p.label}{isHover ? `  ·  ${p.y}  ·  ${fmtReal(p.c)}` : ''}
                 </text>
               </g>
             )
