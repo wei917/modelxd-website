@@ -38,9 +38,9 @@ const APPS: LandingApp[] = [
   // The surfaces wear generated covers of the same ambition as the template
   // loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
   // Generated with GPT Image 2; originals in the session scratchpad.
-  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   img: '/landing/apps/xtalk.jpg' },
-  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   img: '/landing/apps/xgame.jpg' },
-  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   img: '/landing/apps/xduel.jpg' },
+  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   video: '/landing/apps/xtalk-loop.mp4', img: '/landing/apps/xtalk.jpg' },
+  { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   video: '/landing/apps/xgame-loop.mp4', img: '/landing/apps/xgame.jpg' },
+  { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   video: '/landing/apps/xduel-loop.mp4', img: '/landing/apps/xduel.jpg' },
   { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', img: '/landing/apps/xcreate.jpg' },
 ]
 
