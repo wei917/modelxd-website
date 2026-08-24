@@ -170,10 +170,11 @@ export default function XDuel() {
   // (watch → judge → reveal) plays out on the game's own page. The chip
   // only shows for users who'd pass the /xgame gate anyway.
   const [gameArena,  setGameArena] = useState(false)
-  const [canGame,    setCanGame]   = useState(false)
-  useEffect(() => {
-    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => setCanGame(!!f?.xtalk)).catch(() => {})
-  }, [])
+  // Was gated on a feature flag ('xtalk') that stopped existing when those
+  // betas ended — /api/features never returned it again, so the Game chip
+  // was invisible to EVERYONE from Aug 18 to Aug 24. XGame is open; so is
+  // the chip. (Same class of bug as the vanished profile tabs.)
+  const canGame = true
   const [count,      setCount]      = useState(2)
   const [duelId,     setDuelId]     = useState<string | null>(null)
   const [prompt,     setPrompt]     = useState('')

@@ -20,8 +20,6 @@ type LandingApp = {
   href: string; name: string; descKey: string
   video?: string; img?: string; emoji?: string; color?: string
   public?: boolean
-  /** Renders only when /api/features grants it (XDev). */
-  gated?: boolean
 }
 const APPS: LandingApp[] = [
   { href: '/xdirect', name: 'Music Video',  descKey: 'home.app.mv',
@@ -253,12 +251,6 @@ export default function Home() {
   // fetch fails) — the chips render a dash rather than disappearing, so
   // the bar never changes height under the hero.
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
-  // The one gate left: XDev. Advisory — the page enforces server-side.
-  const [xdevOk, setXdevOk] = useState(false)
-  useEffect(() => {
-    fetch('/api/features').then(r => r.ok ? r.json() : null).then(f => { if (f?.xdev) setXdevOk(true) }).catch(() => {})
-  }, [])
-
   useEffect(() => {
     let cancelled = false
     fetch('/api/snapshot')
@@ -377,7 +369,7 @@ export default function Home() {
               (owner, Aug 18). Template cards carry real result media;
               surface cards get a soft brand-tinted plate, never a dark one. */}
           <div className="home-apps-desktop">
-            {APPS.filter(a => !a.gated || xdevOk).map(a => (
+            {APPS.map(a => (
               <div
                 key={a.name}
                 role="link" tabIndex={0}
@@ -541,9 +533,7 @@ export default function Home() {
               <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$7,800</div>
               <div className="home-audience-period">{t('home.aud.dev.period')}</div>
               <div className="home-audience-desc">{t('home.aud.dev.desc')}</div>
-              {xdevOk && (
-                <a href="/xdev" className="home-proof-devlink">→ XDev · {t('home.surf.xdev')}</a>
-              )}
+              <a href="/xdev" className="home-proof-devlink">→ XDev · {t('home.surf.xdev')}</a>
             </div>
             <div className="home-audience-card">
               <div className="home-audience-label">{t('home.aud.user')}</div>

@@ -22,8 +22,8 @@ const NAV_LINKS = [
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
-  // XDev — API keys + MCP for external agents. Own beta gate.
-  { href: '/xdev',        i18n: 'nav.xdev',        protected: true,  icon: 'dev', feature: 'xdev' },
+  // XDev — API keys + MCP for external agents. Open since Aug 24.
+  { href: '/xdev',        i18n: 'nav.xdev',        protected: true,  icon: 'dev' },
 ]
 
 // Inline SVG icons (no icon-font dependency). 18px, inherit color via
@@ -92,31 +92,10 @@ export default function Nav() {
   const [user, setUser] = useState<User | null>(null)
   // Beta flags for nav items that carry a `feature` key. Fetched rather
   // than passed down because Nav renders on every route, gated or not.
-  const [features, setFeatures] = useState<Record<string, boolean>>({})
-  useEffect(() => {
-    let dead = false
-    // Last-known flags first (owner, Aug 13: the nav painted 4 items, then
-    // the gated ones popped in when /api/features answered — a visible
-    // reflow on every load). The cache collapses that to one paint for
-    // every repeat visit; the fetch then reconciles, so revoked access
-    // still disappears within the round-trip. DISPLAY ONLY — every gated
-    // route asserts server-side; a stale or forged cache shows a link that
-    // 404s, nothing more. Not keyed by user: an account switch on one
-    // browser wears the old flags for ~300ms, then corrects.
-    try {
-      const cached = JSON.parse(localStorage.getItem('nav_features') ?? 'null')
-      if (cached && typeof cached === 'object') setFeatures(cached)
-    } catch {}
-    fetch('/api/features', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : {})
-      .then(d => {
-        if (dead) return
-        setFeatures(d ?? {})
-        try { localStorage.setItem('nav_features', JSON.stringify(d ?? {})) } catch {}
-      })
-      .catch(() => {})
-    return () => { dead = true }
-  }, [user])
+  // No feature fetch any more: every surface in NAV_LINKS is either public
+  // or auth-only since XDev opened (Aug 24). The old flags-with-localStorage
+  // dance existed purely to stop the nav reflowing when /api/features
+  // answered — with nothing left to gate, the links paint once.
   // XCreate history (chat-history pattern): shown under the menu — with a
   // divider so it reads as a separate layer, not more menu items — only
   // while the user is in XCreate. Collapsible, persisted.
@@ -393,7 +372,7 @@ export default function Nav() {
         </a>
       )}
       <div className="nav-links">
-        {NAV_LINKS.filter(l => !l.feature || features[l.feature]).map(({ href, i18n, protected: isProtected, icon }) => (
+        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
             href={href}
@@ -716,7 +695,7 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {NAV_LINKS.filter(l => !l.feature || features[l.feature]).map(({ href, i18n, protected: isProtected, icon }) => (
+        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
             href={href}

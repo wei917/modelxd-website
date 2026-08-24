@@ -48,7 +48,8 @@ rating system (XDRating) surfaced on XBoard.
 
 Seven creation/consumption surfaces. The beta gates on XDirect, XTalk,
 XGame and the canvas were REMOVED outright on Aug 18 (code and env vars,
-not just `*`) — XDev is the only email-gated surface left.
+not just `*`). XDev followed on Aug 24 — **no surface is email-gated any
+more**, and the per-user feature system is gone with it.
 
 | Surface | Route | Auth | Notes |
 |---|---|---|---|
@@ -59,7 +60,7 @@ not just `*`) — XDev is the only email-gated surface left.
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
-| **XDev** | `/xdev` | required | API keys + MCP for agents. Beta — `FEATURE_XDEV_EMAILS`. |
+| **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 
 ### XDuel — `/xduel`
 One prompt, two anonymous models, 5-step flow: run → vote blind → reveal
@@ -406,19 +407,18 @@ guarantees users only see their own rows.
 
 Three independent systems — don't confuse them.
 
-**1. Per-user beta gates** (`lib/features.ts`) — email allowlists in env vars.
-ONE gate remains: `FEATURE_XDEV_EMAILS` (XDev page, key minting). The
-canvas/xdirector/xtalk gates were deleted from code Aug 18 — those surfaces
-are auth-only now. New betas add a key to `Feature` + an env var.
-Anyone on `ADMIN_EMAILS` passes every gate (so you can't lock yourself out); a
-single `*` opens the feature to everyone, which is how a beta ends without a
-code change. Adding a tester needs a redeploy — if that becomes annoying, swap
-`getFeatures()` for a `profiles` column read.
+**1. Per-user beta gates — GONE (Aug 24).** `lib/features.ts` and
+`/api/features` were deleted when XDev opened; the canvas/xdirector/xtalk
+gates had already gone on Aug 18. Every surface is now public or auth-only.
+`ADMIN_EMAILS` still exists, but only for `/admin/*` (see Admin).
 
-> **Hiding a button is not access control.** Every gated API route calls
-> `assertFeature()` itself. The client flags from `/api/features` exist only so
-> the UI doesn't advertise something the server will refuse. Gated *pages*
-> `notFound()` rather than 403 so the page's existence isn't advertised.
+> If a new beta ever needs a gate, do NOT resurrect a client flag that pages
+> read to decide whether to render. Twice now a flag outlived the API that
+> supplied it and silently hid working features from everyone: the profile's
+> XDirect/XTalk/XGame tabs and XDuel's Game chip both vanished for six days
+> in August because they were gated on keys `/api/features` had stopped
+> returning. Gate server-side, fail loudly, and delete the gate the day the
+> beta ends.
 
 **2. Per-surface model blocks** (`lib/model-features.ts`) — see the ai_models
 section above. Data-driven, no deploy.
@@ -566,7 +566,7 @@ YOUTUBE_API_KEY=                      # Google Cloud → enable YouTube Data API
 
 # Access control
 ADMIN_EMAILS=wei917@gmail.com         # comma-separated; passes every gate
-FEATURE_XDEV_EMAILS=                  # the one remaining beta gate ("*" = everyone)
+# (no FEATURE_* vars any more — the last beta gate, XDev, opened Aug 24)
 SITE_PASSWORD=                        # unset = site gate disabled
 
 # Ops / tuning

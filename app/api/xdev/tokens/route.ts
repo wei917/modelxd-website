@@ -6,7 +6,6 @@ export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createClient } from '@supabase/supabase-js'
-import { assertFeature } from '@/lib/features'
 import { mintApiToken } from '@/lib/api-token'
 
 function service() {
@@ -20,8 +19,6 @@ async function sessionUser(): Promise<{ id: string } | null> {
 }
 
 export async function POST(req: Request) {
-  const guard = await assertFeature('xdev')
-  if (guard) return guard
   const user = await sessionUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
