@@ -677,6 +677,7 @@ export const STRINGS: Record<string, Entry> = {
   'home.surf.xvote':   { en: 'Judge other people’s blind duels; every vote moves the board.', 'zh-Hant': '評審別人的盲測對決，每一票都會影響排行榜。', 'zh-Hans': '评审别人的盲测对决，每一票都会影响排行榜。', ja: '他の人のブラインド対決を判定。1票ごとにボードが動きます。', ko: '다른 사람의 블라인드 대결을 심사하세요. 한 표 한 표가 보드를 움직입니다.' },
   'home.surf.xdev':    { en: 'API keys + MCP: your agents generate through ModelXD — vote-backed model picks, one bill.', 'zh-Hant': 'API 金鑰 + MCP：你的 Agent 直接透過 ModelXD 生成——投票背書的選模，一張帳單。', 'zh-Hans': 'API 密钥 + MCP：你的 Agent 直接通过 ModelXD 生成——投票背书的选模，一张账单。', ja: 'APIキー + MCP：あなたのエージェントがModelXD経由で生成——投票に裏付けられたモデル選定を、ひとつの請求で。', ko: 'API 키 + MCP: 내 에이전트가 ModelXD로 생성 — 투표가 뒷받침하는 모델 선택, 하나의 청구서.' },
   'home.surf.xboard':  { en: 'The leaderboard: quality, price-aware value and stickiness, from real blind votes.', 'zh-Hant': '排行榜：品質、性價比與黏著度，全部來自真實盲測投票。', 'zh-Hans': '排行榜：质量、性价比与黏着度，全部来自真实盲测投票。', ja: 'リーダーボード：品質・価格対効果・継続率を実際のブラインド投票から。', ko: '리더보드: 품질·가성비·유지율, 모두 실제 블라인드 투표에서.' },
+  'home.surf.xeval':  { en: 'Public benchmarks — GDPval professional tasks, judged blind: quality per dollar, measured.', 'zh-Hant': '公開評測——GDPval 專業任務盲測評比：每一塊錢的品質，量出來。', 'zh-Hans': '公开评测——GDPval 专业任务盲测评比：每一块钱的质量，量出来。', ja: '公開ベンチマーク——GDPval実務タスクをブラインド評価。1ドルあたりの品質を測る。', ko: '공개 벤치마크 — GDPval 실무 과제를 블라인드 평가. 달러당 품질을 측정합니다.' },
 
   // ── Full-coverage pass (CC, July 19): page-body strings ──
   // Templates use {n}/{mode}/{l} placeholders — callers .replace() them.

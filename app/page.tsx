@@ -32,9 +32,9 @@ const APPS: LandingApp[] = [
   { href: '/xdirect', name: 'Story to Video', descKey: 'home.app.story',
     video: '/xdirect/skills/story-to-video-loop.mp4', img: '/xdirect/skills/story-to-video-cover.jpg' },
   { href: '/xdirect', name: 'Product Video', descKey: 'home.app.pv',
-    img: '/xdirect/skills/product-video-cover.jpg' },
+    video: '/xdirect/skills/product-video-loop.mp4', img: '/xdirect/skills/product-video-cover.jpg' },
   { href: '/xdirect', name: 'Social Post',  descKey: 'home.app.sp',
-    img: '/xdirect/skills/social-post-cover.jpg' },
+    video: '/xdirect/skills/social-post-loop.mp4', img: '/xdirect/skills/social-post-cover.jpg' },
   // The surfaces wear generated covers of the same ambition as the template
   // loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
   // Generated with GPT Image 2; originals in the session scratchpad.
@@ -42,11 +42,6 @@ const APPS: LandingApp[] = [
   { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   img: '/landing/apps/xgame.jpg' },
   { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   img: '/landing/apps/xduel.jpg' },
   { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', img: '/landing/apps/xcreate.jpg' },
-  { href: '/xboard',  name: 'XBoard',  descKey: 'home.surf.xboard',  img: '/landing/apps/xboard.jpg', public: true },
-  // Agents channel. XDev is the one surface still email-gated, so its card
-  // renders only for entitled accounts — a public visitor must never click
-  // into a notFound() (same rule the old surface grid lived by).
-  { href: '/xdev',    name: 'XDev',    descKey: 'home.surf.xdev',    emoji: '🤖', color: '#475569', gated: true },
 ]
 
 // Four price/quality tiers, cheapest first. Images are placeholders until
@@ -417,6 +412,31 @@ export default function Home() {
               </div>
             ))}
           </div>
+          {/* ── The proof strip (owner, Aug 24): XBoard and XEval are not
+              apps — they are the EVIDENCE behind "the best AI for every
+              task", so they sit under the shelf as two wide receipts, not
+              among the things you make with. XDev (agents) moved to the
+              developers card below for the same reason. ── */}
+          <div className="home-proof-strip">
+            {([
+              ['/xboard', 'XBoard', 'home.surf.xboard', '/landing/apps/xboard.jpg', true],
+              ['/xeval',  'XEval',  'home.surf.xeval',  '/landing/apps/xeval.jpg',  true],
+            ] as Array<[string, string, string, string, boolean]>).map(([href, name, key, img, pub]) => (
+              <div
+                key={href} className="home-proof-card"
+                role="link" tabIndex={0}
+                onClick={() => pub ? router.push(href) : void handleNav(href)}
+                onKeyDown={e => { if (e.key === 'Enter') { pub ? router.push(href) : void handleNav(href) } }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt="" loading="lazy" />
+                <div className="home-proof-copy">
+                  <div className="home-proof-name">{name} <span aria-hidden>→</span></div>
+                  <div className="home-proof-desc">{t(key)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
           {/* ── Mobile apps layout (owner's mock, Aug 18 — layout only, all
               copy is the existing i18n): XDirect leads as the FEATURED card
               wearing a film strip of the real template clips; the other
@@ -435,7 +455,7 @@ export default function Home() {
                 <video src="/xdirect/skills/music-video-loop.mp4" poster="/xdirect/skills/music-video-cover.webp" autoPlay muted loop playsInline preload="metadata" />
                 <video src="/xdirect/skills/ai-animation-loop.mp4" poster="/xdirect/skills/ai-animation-cover.webp" autoPlay muted loop playsInline preload="metadata" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/xdirect/skills/product-video-pipeline.webp" alt="" loading="lazy" />
+                <img src="/xdirect/skills/product-video-cover.jpg" alt="" loading="lazy" />
               </div>
             </div>
             <div className="ham-grid">
@@ -445,8 +465,6 @@ export default function Home() {
                 ['/xtalk',   'XTalk',   'home.surf.xtalk',   false],
                 ['/xgame',   'XGame',   'home.surf.xgame',   false],
                 ['/xvote',   'XVote',   'home.surf.xvote',   false],
-                ['/xboard',  'XBoard',  'home.surf.xboard',  true],
-                ...(xdevOk ? [['/xdev', 'XDev', 'home.surf.xdev', false] as [string, string, string, boolean]] : []),
               ] as Array<[string, string, string, boolean]>).map(([href, name, key, pub]) => (
                 <div
                   key={href} className="ham-card"
@@ -523,6 +541,9 @@ export default function Home() {
               <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$7,800</div>
               <div className="home-audience-period">{t('home.aud.dev.period')}</div>
               <div className="home-audience-desc">{t('home.aud.dev.desc')}</div>
+              {xdevOk && (
+                <a href="/xdev" className="home-proof-devlink">→ XDev · {t('home.surf.xdev')}</a>
+              )}
             </div>
             <div className="home-audience-card">
               <div className="home-audience-label">{t('home.aud.user')}</div>

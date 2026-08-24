@@ -2405,3 +2405,28 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   border-bottom: 1px solid transparent; transition: color .15s, border-color .15s;
 }
 .la-restart:hover { color: var(--red); border-bottom-color: var(--red); }
+
+/* ── Landing proof strip: XBoard + XEval as wide evidence cards under the
+   apps shelf (they are proof, not apps — owner, Aug 24). ── */
+.home-proof-strip {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px;
+}
+.home-proof-card {
+  display: flex; align-items: stretch; gap: 0; overflow: hidden; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 12px;
+  transition: border-color .2s, transform .2s;
+}
+.home-proof-card:hover { border-color: var(--red); transform: translateY(-2px); }
+.home-proof-card img { width: 34%; min-width: 130px; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.home-proof-copy { padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.home-proof-name { font-weight: 800; font-size: 15px; font-family: var(--font-display), inherit; margin-bottom: 4px; }
+.home-proof-name span { color: var(--muted2); font-weight: 400; }
+.home-proof-desc { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.home-proof-devlink {
+  display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--blue);
+  text-decoration: none; font-family: var(--font-mono), monospace;
+}
+.home-proof-devlink:hover { text-decoration: underline; }
+@media (max-width: 760px) {
+  .home-proof-strip { grid-template-columns: 1fr; }
+}
