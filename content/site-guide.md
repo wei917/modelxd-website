@@ -178,11 +178,15 @@ can expand.
   work for you. The surfaces above are where the models do that.
 
 ### XEval — `/xeval`
-ModelXD's benchmark replication lab. We run public benchmark task sets —
-starting with OpenAI's GDPval gold tasks (real professional work: memos,
-spreadsheets, analyses) — through an open-source agent harness, and score
-the outputs by anonymized pairwise comparison with a fully disclosed LLM
-judge. Two things make it different from other leaderboards: every entry
+ModelXD's benchmark replication lab, now multi-benchmark: a switcher at the
+top selects the task set. (1) OpenAI's GDPval gold tasks (real professional
+work: memos, spreadsheets, analyses) run through an open-source agent
+harness and scored by anonymized pairwise comparison with a fully disclosed
+LLM judge panel — this ladder also carries the ModelXD Router @ auto row,
+ModelXD's own service measured: for every task in the library it serves the
+entry that measured best there. (2) Terminal-Bench 2.1 (real terminal/agent
+tasks in Docker), scored by each task's own verifier tests — binary pass
+rate and $-per-solved-task, no judges. Two things make it different from other leaderboards: every entry
 is a (model × reasoning-effort) pair with its real measured cost per task,
 and the whole protocol (judge identity, effort, verdict counts) is public.
 XEval is separate from XBoard: XBoard ranks models by real human blind

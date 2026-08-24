@@ -34,6 +34,9 @@ interface RatingRow {
 interface RunRow {
   run_id: string
   task_id: string
+  task_set?: string | null
+  score?: number | null
+  harness?: string | null
   occupation: string | null
   model_name: string
   display_name: string
@@ -69,17 +72,30 @@ export default function XEvalPage() {
       setVerdicts(count ?? 0)
       const { data: rr } = await sb
         .from('xeval_runs')
-        .select('run_id, task_id, occupation, model_name, display_name, provider, effort, cost_usd, model_s')
+        .select('run_id, task_id, task_set, score, harness, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
         .eq('status', 'finished')
       setRuns(rr ?? [])
       setLoading(false)
     })()
   }, [])
 
-  // Per-entry aggregates from the runs behind the ratings.
+  // Multi-benchmark: GDPval (BT ladder) plus verifier-scored sets like
+  // Terminal-Bench 2.1. Tabs come from the data, so a new benchmark appears
+  // the moment its runs are published. Aggregates are scoped per benchmark —
+  // TB costs must never blend into a GDPval entry's average.
+  const BENCH_LABEL: Record<string, string> = { gdpval: 'GDPval', 'terminal-bench-2-1': 'Terminal-Bench 2.1' }
+  const benches = useMemo(() => {
+    const bs = [...new Set(runs.map(r => r.task_set ?? 'gdpval'))]
+    return bs.sort((a, b) => (a === 'gdpval' ? -1 : b === 'gdpval' ? 1 : a.localeCompare(b)))
+  }, [runs])
+  const [bench, setBench] = useState('gdpval')
+  const gdpvalRuns = useMemo(() => runs.filter(r => (r.task_set ?? 'gdpval') === 'gdpval'), [runs])
+  const tbRuns = useMemo(() => runs.filter(r => r.task_set === bench), [runs, bench])
+
+  // Per-entry aggregates from the runs behind the ratings (GDPval only).
   const perEntry = useMemo(() => {
     const m = new Map<string, { display: string; provider: string; costs: number[]; times: number[] }>()
-    for (const r of runs) {
+    for (const r of gdpvalRuns) {
       const key = `${r.model_name}|${r.effort ?? ''}`
       if (!m.has(key)) m.set(key, { display: r.display_name, provider: r.provider, costs: [], times: [] })
       const e = m.get(key)!
@@ -87,9 +103,9 @@ export default function XEvalPage() {
       if (r.model_s != null) e.times.push(Number(r.model_s))
     }
     return m
-  }, [runs])
+  }, [gdpvalRuns])
 
-  const taskCount = useMemo(() => new Set(runs.map(r => r.task_id)).size, [runs])
+  const taskCount = useMemo(() => new Set(gdpvalRuns.map(r => r.task_id)).size, [gdpvalRuns])
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
   // judge_filter is the fit's machine label, e.g. "panel(3 judges)@high+rules+tasks:enabled".
   // Render the panel form as prose; anything else falls back to the raw label.
@@ -258,6 +274,23 @@ export default function XEvalPage() {
         <p style={{ color: 'var(--muted)' }}>{t('xeval.empty')}</p>
       ) : (
         <>
+          {benches.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '0 0 16px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginRight: 2 }}>{t('xeval.bench').toUpperCase()}</span>
+              {benches.map(b => (
+                <button key={b} onClick={() => setBench(b)} style={{
+                  padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                  border: `1px solid ${bench === b ? 'var(--red)' : 'var(--border)'}`,
+                  background: bench === b ? 'var(--red-dim)' : 'transparent',
+                  color: bench === b ? 'var(--red)' : 'var(--white)',
+                }}>{BENCH_LABEL[b] ?? b}</button>
+              ))}
+            </div>
+          )}
+          {bench !== 'gdpval' ? (
+            <TBSection runs={tbRuns} label={BENCH_LABEL[bench] ?? bench} />
+          ) : (
+          <>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
             <span><strong style={{ color: 'var(--white)' }}>{ratings.length}</strong> {t('xeval.stat.entries')}</span>
             <span><strong style={{ color: 'var(--white)' }}>{taskCount}</strong> {t('xeval.stat.tasks')}</span>
@@ -356,10 +389,86 @@ export default function XEvalPage() {
                 .replace('{judge}', judge)}
             </p>
           </section>
+          </>
+          )}
         </>
       )}
       </div>
     </div>
+  )
+}
+
+/** Verifier-scored benchmark section (Terminal-Bench 2.1 …): pass rate and
+ *  $/solved per (model × effort) — the tasks' own tests decide, no judges.
+ *  Latest finished run per (task, entry) counts, mirroring the ladder rule. */
+function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
+  const t = useT()
+  const latest = new Map<string, RunRow>()
+  for (const r of [...runs].sort((a, b) => String((a as any).started_at ?? '').localeCompare(String((b as any).started_at ?? '')))) {
+    latest.set(`${r.task_id}|${r.model_name}|${r.effort ?? ''}`, r)
+  }
+  const by = new Map<string, { display: string; provider: string; effort: string; n: number; solved: number; cost: number; secs: number[] }>()
+  for (const r of latest.values()) {
+    const k = `${r.model_name}|${r.effort ?? ''}`
+    if (!by.has(k)) by.set(k, { display: r.display_name, provider: r.provider, effort: r.effort ?? '', n: 0, solved: 0, cost: 0, secs: [] })
+    const e = by.get(k)!
+    e.n += 1
+    e.solved += (r.score ?? 0) >= 1 ? 1 : 0
+    e.cost += r.cost_usd ?? 0
+    if (r.model_s != null) e.secs.push(Number(r.model_s))
+  }
+  const rows = [...by.values()].sort((a, b) => b.solved / b.n - a.solved / a.n || a.cost - b.cost)
+  const taskN = new Set([...latest.values()].map(r => r.task_id)).size
+  const harness = [...latest.values()].map(r => r.harness).find(Boolean) ?? 'terminus-2'
+  const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
+        <span><strong style={{ color: 'var(--white)' }}>{rows.length}</strong> {t('xeval.stat.entries')}</span>
+        <span><strong style={{ color: 'var(--white)' }}>{taskN}</strong> {t('xeval.stat.tasks')}</span>
+        <span>{t('xeval.tb.verifier')}</span>
+      </div>
+      <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640, fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border2)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', textAlign: 'left' }}>
+              <th style={{ padding: '8px 12px' }}>#</th>
+              <th style={{ padding: '8px 12px' }}>{t('xeval.col.model')}</th>
+              <th style={{ padding: '8px 12px' }}>{t('xeval.col.effort')}</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.solved')}</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.passrate')}</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.persolved')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.display + r.effort} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <ProviderLogo provider={r.provider} size={16} />{r.display}
+                  </span>
+                </td>
+                <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{r.effort || '—'}</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved} / {r.n}</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                  <span className={`xd-chip ${r.solved / r.n >= 0.7 ? 'elite' : r.solved / r.n >= 0.6 ? 'good' : r.solved / r.n >= 0.5 ? 'mid' : r.solved / r.n >= 0.4 ? 'fair' : 'poor'}`}>{Math.round((r.solved / r.n) * 100)}%</span>
+                </td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{money(r.cost / r.n)}</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved ? money(r.cost / r.solved) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <section style={{ fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.65, borderTop: '1px solid var(--border)', paddingTop: 14, maxWidth: 860 }}>
+        <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
+        <p style={{ margin: '8px 0 0' }}>
+          {t('xeval.tb.method.body').replace('{n}', String(taskN)).replace('{set}', label).replace('{harness}', String(harness))}
+        </p>
+      </section>
+    </>
   )
 }
 
