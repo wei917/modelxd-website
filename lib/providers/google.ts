@@ -294,9 +294,77 @@ export async function generateImage(
       : c)
     return { ...requestPayload, contents: varied }
   }
-  const responses = await Promise.all(
+  let responses = await Promise.all(
     Array.from({ length: n }, (_, vi) => withRetry(() => ai().models.generateContent(payloadFor(vi)), `image generateContent[${vi}]`))
   )
+
+  // Extract EVERY image from EVERY response. Two multi-image sources:
+  // n > 1 parallel calls, and a single response containing multiple image
+  // parts (storytelling-style prompts). First image = primary, the rest
+  // ride in `extras` (same contract as qwen / gpt-image-2 multi-output).
+  // responseParts (→ conversation history) come from the FIRST response
+  // only, so multi-turn edits continue from the primary image.
+  const collect = (resps: typeof responses) => {
+    const found: Array<{ buffer: Buffer; mediaType: string }> = []
+    const responseParts: Part[] = []
+    for (let ri = 0; ri < resps.length; ri++) {
+      const candidates = resps[ri].candidates
+      if (!candidates || candidates.length === 0) continue
+      const parts = candidates[0].content?.parts ?? []
+      for (const part of parts) {
+        if (ri === 0) responseParts.push(part as Part)
+        if ((part as any).inlineData) {
+          const data = (part as any).inlineData
+          found.push({
+            buffer:    Buffer.from(data.data, 'base64'),
+            mediaType: data.mimeType ?? 'image/png',
+          })
+        }
+      }
+    }
+    return { found, responseParts }
+  }
+
+  let { found, responseParts } = collect(responses)
+
+  // These models are multimodal, so a question-shaped prompt ("Explain why
+  // the sky is blue in two sentences") gets ANSWERED IN TEXT instead of
+  // drawn, and the slot comes back empty — an XDuel image duel then has one
+  // dead side and can't be voted on. The surface asked for a picture, so ask
+  // again and say so. Fires only when nothing was drawn AND nothing was
+  // blocked, so ordinary prompts never pay for the extra call.
+  //
+  // Measured against all three Nano Banana models (Aug 24), same prompt:
+  //   responseModalities ['IMAGE','TEXT'] → 0 images + the essay
+  //   responseModalities ['IMAGE']        → 0 images, finishReason NO_IMAGE
+  //   either + the directive below        → 1 image
+  // So restricting the output type only gags the essay; rewriting the
+  // prompt is what actually produces a picture. We keep TEXT on the first
+  // call because that text is how we explain refusals to the user, and
+  // treat NO_IMAGE as retryable rather than blocked in case Google starts
+  // returning it here too.
+  if (found.length === 0) {
+    const cand0        = (responses[0] as any)?.candidates?.[0]
+    const answeredText = (cand0?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join(' ').trim()
+    const finish       = cand0?.finishReason
+    const blocked      = (finish && finish !== 'STOP' && finish !== 'NO_IMAGE')
+                      || (responses[0] as any)?.promptFeedback?.blockReason
+    if ((answeredText || finish === 'NO_IMAGE') && !blocked) {
+      console.warn(`${TAG} model answered in text instead of drawing — retrying with an explicit image directive`)
+      const draw = (t: string) => `Draw this as an image. Output only the image, never a written answer. If it reads like a question, illustrate the answer.\n\n${t}`
+      const retryContents = contents.map((c, ci) => ci === contents.length - 1
+        ? { ...c, parts: (c.parts ?? []).map(p => (p as any).text ? { text: draw((p as any).text) } : p) }
+        : c)
+      responses = await Promise.all(
+        Array.from({ length: n }, (_, vi) => withRetry(
+          () => ai().models.generateContent({ ...payloadFor(vi), contents: retryContents }),
+          `image retry-as-image[${vi}]`)),
+      )
+      ;({ found, responseParts } = collect(responses))
+      console.log(`${TAG} retry produced ${found.length} image(s)`)
+    }
+  }
+
   const response = responses[0]
 
   // ── debug: dump everything Google sent back so we can map usage → cost ──
@@ -314,30 +382,6 @@ export async function generateImage(
     console.log(`${TAG} response (stringify failed): ${(e as Error).message}`)
   }
 
-  // Extract EVERY image from EVERY response. Two multi-image sources:
-  // n > 1 parallel calls, and a single response containing multiple image
-  // parts (storytelling-style prompts). First image = primary, the rest
-  // ride in `extras` (same contract as qwen / gpt-image-2 multi-output).
-  // responseParts (→ conversation history) come from the FIRST response
-  // only, so multi-turn edits continue from the primary image.
-  const found: Array<{ buffer: Buffer; mediaType: string }> = []
-  const responseParts: Part[] = []
-
-  for (let ri = 0; ri < responses.length; ri++) {
-    const candidates = responses[ri].candidates
-    if (!candidates || candidates.length === 0) continue
-    const parts = candidates[0].content?.parts ?? []
-    for (const part of parts) {
-      if (ri === 0) responseParts.push(part as Part)
-      if ((part as any).inlineData) {
-        const data = (part as any).inlineData
-        found.push({
-          buffer:    Buffer.from(data.data, 'base64'),
-          mediaType: data.mimeType ?? 'image/png',
-        })
-      }
-    }
-  }
 
   const imageBuffer = found[0]?.buffer ?? null
   const mimeType    = found[0]?.mediaType ?? 'image/png'
@@ -357,7 +401,10 @@ export async function generateImage(
       blockReason ? `blockReason=${blockReason}` : null,
       textPart ? `model said: "${textPart.slice(0, 300)}"` : null,
     ].filter(Boolean).join(' — ')
-    throw new Error(`Gemini returned no image${why ? ` (${why})` : ''}. Try again, rephrase the prompt, or switch models.`)
+    const hint = (textPart || finishReason === 'NO_IMAGE') && finishReason !== 'IMAGE_SAFETY'
+      ? ' This prompt reads like a question — describe a picture instead (e.g. "a diagram of sunlight scattering in the sky").'
+      : ' Try again, rephrase the prompt, or switch models.'
+    throw new Error(`Gemini returned no image${why ? ` (${why})` : ''}.${hint}`)
   }
 
   // Build updated conversation history for multi-turn
