@@ -27,6 +27,7 @@ interface RatingRow {
   games: number
   wins: number
   judge_filter: string
+  avg_cost_usd?: number | null
   params: string
 }
 
@@ -146,8 +147,8 @@ export default function XEvalPage() {
   const flip = (set: Set<string>, setter: (s: Set<string>) => void, k: string) => {
     const n = new Set(set); n.has(k) ? n.delete(k) : n.add(k); setter(n)
   }
-  const provOf = (r: RatingRow) => perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.provider ?? ''
-  const famOf = (r: RatingRow) => familyOf(r.model_name, perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.display ?? r.model_name)
+  const provOf = (r: RatingRow) => r.model_name === 'modelxd-router' ? 'modelxd' : (perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.provider ?? '')
+  const famOf = (r: RatingRow) => r.model_name === 'modelxd-router' ? 'ModelXD' : familyOf(r.model_name, perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.display ?? r.model_name)
   const allProviders = useMemo(() => [...new Set(ratings.map(provOf).filter(Boolean))].sort(), [ratings, perEntry])
   const allEfforts = useMemo(() => [...new Set(ratings.map(r => r.effort ?? ''))].sort((a, b) => EFFORT_ORDER.indexOf(a) - EFFORT_ORDER.indexOf(b)), [ratings])
   const allFamilies = useMemo(() => [...new Set(ratings.map(famOf))].sort(), [ratings, perEntry])
@@ -308,7 +309,7 @@ export default function XEvalPage() {
               <tbody>
                 {shown.map((row, i) => {
                     const e = perEntry.get(`${row.model_name}|${row.effort ?? ''}`)
-                    const cost = e ? avg(e.costs) : null
+                    const cost = (e ? avg(e.costs) : null) ?? row.avg_cost_usd ?? null
                     const time = e ? avg(e.times) : null
                     return (
                       <tr key={row.entry} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -316,7 +317,7 @@ export default function XEvalPage() {
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             {e && <ProviderLogo provider={e.provider} size={16} />}
-                            {e?.display ?? row.model_name}
+                            {e?.display ?? (row.model_name === 'modelxd-router' ? 'ModelXD Router' : row.model_name)}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
@@ -430,9 +431,9 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
   const toPts = (src: { model_name: string; effort: string | null; rating: number }[]) => src
     .map(r => {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
-      const c = e ? avg(e.costs) : null
+      const c = (e ? avg(e.costs) : null) ?? (r as any).avg_cost_usd ?? null
       return c != null && c > 0
-        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e!.display} @ ${r.effort ?? ''}`, provider: e!.provider, effort: r.effort ?? '' }
+        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e?.display ?? (r.model_name === 'modelxd-router' ? 'ModelXD Router' : r.model_name)} @ ${r.effort ?? ''}`, provider: e?.provider ?? (r.model_name === 'modelxd-router' ? 'modelxd' : ''), effort: r.effort ?? '' }
         : null
     })
     .filter(Boolean) as { x: number; c: number; y: number; label: string; provider: string; effort: string }[]
