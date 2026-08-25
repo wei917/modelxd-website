@@ -126,12 +126,55 @@ export function buildFfmpegArgs(plan: RenderPlan, locals: Local[], music: Array<
   return args
 }
 
+/**
+ * The family name libass will actually match, read from the font's own name
+ * table rather than guessed from the filename.
+ *
+ * This used to return a hardcoded 'Noto Sans TC' whenever a NotoSansTC* file
+ * was present. The file we shipped was a VARIABLE font whose legacy family
+ * (name ID 1) is "Noto Sans TC Thin" — "Noto Sans TC" lives only in the
+ * typographic family (ID 16), which libass does not match on. So the burn
+ * silently produced nothing on Vercel, where there are no system fonts to
+ * fall back to, while looking perfect on a Mac because CoreText substituted
+ * a system CJK font (owner report, Aug 25; reproduced in a fontless Linux
+ * container). Reading the real name means a future font swap cannot
+ * reintroduce this without the mismatch being visible.
+ */
 export async function bundledFont(): Promise<string | null> {
   try {
     const files = (await fs.readdir(FONT_DIR)).filter(n => /\.(ttf|otf)$/i.test(n))
-    // The family name ffmpeg/libass resolves: we ship Noto Sans TC first.
-    if (files.some(n => /NotoSansTC|NotoSansCJK/i.test(n))) return 'Noto Sans TC'
-    return files.length > 0 ? files[0].replace(/\.(ttf|otf)$/i, '').replace(/[-_]/g, ' ') : null
+    for (const n of files) {
+      const fam = await familyName(path.join(FONT_DIR, n))
+      if (fam) return fam
+    }
+    return null
+  } catch { return null }
+}
+
+/** sfnt `name` table, nameID 1 (family) — preferring the Windows/English record. */
+async function familyName(file: string): Promise<string | null> {
+  try {
+    const b = await fs.readFile(file)
+    const numTables = b.readUInt16BE(4)
+    let nameOff = 0
+    for (let i = 0; i < numTables; i++) {
+      const p = 12 + 16 * i
+      if (b.toString('latin1', p, p + 4) === 'name') { nameOff = b.readUInt32BE(p + 8); break }
+    }
+    if (!nameOff) return null
+    const count = b.readUInt16BE(nameOff + 2)
+    const storage = nameOff + b.readUInt16BE(nameOff + 4)
+    let mac: string | null = null
+    for (let i = 0; i < count; i++) {
+      const p = nameOff + 6 + 12 * i
+      const platform = b.readUInt16BE(p), nameId = b.readUInt16BE(p + 6)
+      if (nameId !== 1) continue
+      const len = b.readUInt16BE(p + 8), off = storage + b.readUInt16BE(p + 10)
+      const raw = b.subarray(off, off + len)
+      if (platform === 3) return Buffer.from(raw).swap16().toString('utf16le').trim() || null
+      if (platform === 1 && !mac) mac = raw.toString('latin1').trim()
+    }
+    return mac
   } catch { return null }
 }
 
