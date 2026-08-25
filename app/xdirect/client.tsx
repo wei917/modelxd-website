@@ -139,12 +139,27 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
     if (storyboard.length === 0 || nodes.length === 0) return
     let changed = false
     const claimed = new Set(storyboard.map(s => s.row_id).filter(Boolean))
+    // still_url is signed like every other output and goes stale the same
+    // way, but it hangs off still_row_id — a DIFFERENT row from row_id. It
+    // was never re-signed here, so cast/prop thumbnails on the ASSETS shelf
+    // went blank exactly 24h after they were shot while the scene keyframes
+    // beside them stayed fine (owner board 7ac8aec3, Aug 24: signatures had
+    // expired 30h earlier and the storage 400'd). Refresh both.
+    const freshStill = (sc: any) => {
+      if (!sc.still_row_id) return null
+      const n: any = nodes.find((n: any) => n.rowId === sc.still_row_id && n.thumb && !n.isVideo)
+      return n?.thumb && n.thumb !== sc.still_url ? n.thumb : null
+    }
     const next = storyboard.map(s => {
-      if (s.status === 'done' && s.row_id) {
-        const n: any = nodes.find((n: any) => n.rowId === s.row_id && n.thumb)
-        if (n?.thumb && n.thumb !== s.url) { changed = true; return { ...s, url: n.thumb } }
-        return s
+      const still = freshStill(s)
+      if (still) changed = true
+      const withStill = still ? { ...s, still_url: still } : s
+      if (withStill.status === 'done' && withStill.row_id) {
+        const n: any = nodes.find((n: any) => n.rowId === withStill.row_id && n.thumb)
+        if (n?.thumb && n.thumb !== withStill.url) { changed = true; return { ...withStill, url: n.thumb } }
+        return withStill
       }
+      if (still) return withStill
       // Heal a stuck card (owner board, Aug 9: "it gets stuck, no video
       // showing up"). 'generating' cannot survive a reload — the poll dies
       // with the page — but the card only learns its row id at completion,
