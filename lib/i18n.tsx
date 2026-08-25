@@ -545,7 +545,7 @@ export const STRINGS: Record<string, Entry> = {
   'xeval.chart.reset':   { en: 'Reset view', 'zh-Hant': '重設視圖', 'zh-Hans': '重置视图', ja: '表示をリセット', ko: '보기 초기화' },
   'xeval.filter.provider': { en: 'Provider', 'zh-Hant': '供應商', 'zh-Hans': '供应商', ja: 'プロバイダ', ko: '제공사' },
   'xeval.filter.effort':   { en: 'Effort', 'zh-Hant': '推理強度', 'zh-Hans': '推理强度', ja: 'エフォート', ko: '추론 강도' },
-  'xeval.filter.family':   { en: 'Family', 'zh-Hant': '模型系列', 'zh-Hans': '模型系列', ja: 'モデル系列', ko: '모델 계열' },
+  'xeval.filter.tier': { en: 'Tier', 'zh-Hant': '層級', 'zh-Hans': '层级', ja: 'ティア', ko: '티어' },
   'xeval.bench':      { en: 'Benchmark', 'zh-Hant': '基準', 'zh-Hans': '基准', ja: 'ベンチマーク', ko: '벤치마크' },
   'xeval.tb.verifier': { en: 'verifier-scored — each task’s own tests decide, no judges', 'zh-Hant': '驗證器評分——由各任務自帶的測試判定，無評審', 'zh-Hans': '验证器评分——由各任务自带的测试判定，无评审', ja: '検証器採点——各タスク自身のテストが判定、審査なし', ko: '검증기 채점 — 각 과제 자체 테스트로 판정, 심사 없음' },
   'xeval.tb.solved':  { en: 'Solved', 'zh-Hant': '解決', 'zh-Hans': '解决', ja: '解決', ko: '해결' },

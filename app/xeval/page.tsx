@@ -139,21 +139,22 @@ export default function XEvalPage() {
   }
   const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
-  // Page-level filters (provider / effort / family) drive BOTH the chart and
-  // the table. Empty selection = no filter. Family is derived from the model
-  // name by pattern — ai_models has no family column; if one is added this
-  // becomes a plain read.
-  const familyOf = (modelName: string, display: string): string => {
-    // Family = the product line that persists across versions/variants
-    // (owner's taxonomy, Aug 21): "Claude Opus" spans 4.8 → 5; "GPT-5.6"
-    // spans Sol/Luna/Terra; "Gemini Flash" spans 3.x.
+  // Page-level filters (provider / effort / tier) drive BOTH the chart and
+  // the table. Empty selection = no filter. TIER is the official vocabulary
+  // (owner check, Aug 25): OpenAI — "the number identifies a model's
+  // generation, while Sol, Terra, and Luna identify durable capability
+  // tiers"; Anthropic uses "Opus-tier" the same way. One level everywhere:
+  // Sol/Terra/Luna ↔ Opus/Sonnet/Fable ↔ Flash; single-line vendors keep
+  // their line name. Derived by pattern — ai_models has no tier column.
+  const tierOf = (modelName: string, display: string): string => {
     const m = modelName
     let r: RegExpMatchArray | null
-    if ((r = m.match(/^claude-(opus|sonnet|fable|haiku)/))) return `Claude ${r[1][0].toUpperCase()}${r[1].slice(1)}`
-    if ((r = m.match(/^gpt-(\d+(?:\.\d+)?)/))) return `GPT-${r[1]}`
-    if (/^gemini-.*flash-lite/.test(m)) return 'Gemini Flash-Lite'
-    if (/^gemini-.*flash/.test(m)) return 'Gemini Flash'
-    if (/^gemini-.*pro/.test(m)) return 'Gemini Pro'
+    if (m === 'modelxd-router') return 'ModelXD'
+    if ((r = m.match(/^claude-(opus|sonnet|fable|haiku)/))) return `${r[1][0].toUpperCase()}${r[1].slice(1)}`
+    if ((r = m.match(/^gpt-[\d.]+-(sol|luna|terra)/))) return `${r[1][0].toUpperCase()}${r[1].slice(1)}`
+    if (/^gemini-.*flash-lite/.test(m)) return 'Flash-Lite'
+    if (/^gemini-.*flash/.test(m)) return 'Flash'
+    if (/^gemini-.*pro/.test(m)) return 'Pro'
     if (/^grok-/.test(m)) return 'Grok'
     if (/^kimi-/.test(m)) return 'Kimi'
     if ((r = m.match(/^qwen[\d.]*-(max|plus|flash|turbo)/))) return `Qwen ${r[1][0].toUpperCase()}${r[1].slice(1)}`
@@ -161,20 +162,20 @@ export default function XEvalPage() {
   }
   const [selProv, setSelProv] = useState<Set<string>>(new Set())
   const [selEffort, setSelEffort] = useState<Set<string>>(new Set())
-  const [selFamily, setSelFamily] = useState<Set<string>>(new Set())
+  const [selTier, setSelTier] = useState<Set<string>>(new Set())
   const flip = (set: Set<string>, setter: (s: Set<string>) => void, k: string) => {
     const n = new Set(set); n.has(k) ? n.delete(k) : n.add(k); setter(n)
   }
   const provOf = (r: RatingRow) => r.model_name === 'modelxd-router' ? 'modelxd' : (perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.provider ?? '')
-  const famOf = (r: RatingRow) => r.model_name === 'modelxd-router' ? 'ModelXD' : familyOf(r.model_name, perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.display ?? r.model_name)
+  const tierChip = (r: RatingRow) => tierOf(r.model_name, perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.display ?? r.model_name)
   const allProviders = useMemo(() => [...new Set(ratings.map(provOf).filter(Boolean))].sort(), [ratings, perEntry])
   const allEfforts = useMemo(() => [...new Set(ratings.map(r => r.effort ?? ''))].sort((a, b) => EFFORT_ORDER.indexOf(a) - EFFORT_ORDER.indexOf(b)), [ratings])
-  const allFamilies = useMemo(() => [...new Set(ratings.map(famOf))].sort(), [ratings, perEntry])
+  const allTiers = useMemo(() => [...new Set(ratings.map(tierChip))].sort(), [ratings, perEntry])
   const filtered = useMemo(() => ratings.filter(r =>
     (selProv.size === 0 || selProv.has(provOf(r))) &&
     (selEffort.size === 0 || selEffort.has(r.effort ?? '')) &&
-    (selFamily.size === 0 || selFamily.has(famOf(r)))
-  ), [ratings, selProv, selEffort, selFamily, perEntry])
+    (selTier.size === 0 || selTier.has(tierChip(r)))
+  ), [ratings, selProv, selEffort, selTier, perEntry])
 
   const visible = useMemo(() => {
     let list = [...filtered].sort((a, b) => b.rating - a.rating)
@@ -306,7 +307,7 @@ export default function XEvalPage() {
               swatch={pv => <svg width={15} height={15} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={5.2} fill="currentColor" /></svg>} />
             <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
               swatch={ef => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(ef), display: 'inline-block' }} />} />
-            <FilterGroup label={t('xeval.filter.family')} items={allFamilies} sel={selFamily} setter={setSelFamily} />
+            <FilterGroup label={t('xeval.filter.tier')} items={allTiers} sel={selTier} setter={setSelTier} />
           </div>
 
           <FrontierChart rows={shown} domainRows={ratings} perEntry={perEntry} avg={avg} />
