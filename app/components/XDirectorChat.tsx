@@ -1382,6 +1382,56 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         } catch { lyricText += `\n\n[could not reach the transcriber for ${a.fileName}]` }
       }
     }
+
+    // Reference video → style frames + cut rhythm (house-paid).
+    //
+    // The frames are the point. They arrive already in storage, so they join
+    // committedRef as ordinary role:'style' attachments and the director
+    // addresses them with use_files exactly like an uploaded reference — no
+    // second code path, no special case downstream of here.
+    //
+    // The rhythm notes go in as TEXT because no still can carry them, and
+    // they are shown to the user for the same reason a transcript is: a
+    // machine reading that nobody can see is a machine reading nobody can
+    // correct.
+    let refText = ''
+    if (extra?.referenceUrl) {
+      setPrep(t('xd.prep.watch'))
+      try {
+        const res = await fetch('/api/xdirector/reference', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: extra.referenceUrl, aspect: extra.aspect ?? '16:9', frames: 2 }),
+        })
+        const d = await res.json().catch(() => null)
+        if (res.ok && d) {
+          const frames: any[] = Array.isArray(d.frames) ? d.frames : []
+          if (frames.length > 0) {
+            let nextNo = Math.max(0, ...committedRef.current.map(a => (a as any).fileNo ?? 0))
+            const asAtts = frames.map((f, i) => ({
+              storagePath: f.path, bucket: f.bucket, mediaType: f.mediaType ?? 'image/jpeg',
+              fileName: `reference-look-${i + 1}.jpg`, fileSize: 0,
+              fileNo: ++nextNo, role: 'style' as const,
+            }))
+            committedRef.current = [...committedRef.current, ...(asAtts as any)]
+            pushBubble({
+              role: 'agent',
+              text: `${t('xd.ref.heard')}${d.look ? `\n\n${d.look}` : ''}\n\n${t('xd.ref.fix')}`,
+              atts: asAtts.map(a => ({ ...a, role: 'style' })) as any,
+            })
+          }
+          if (d.look) {
+            refText += `\n\n[REFERENCE VIDEO — read for you by ${d.models?.watcher ?? 'a vision model'}. These are notes on CRAFT, not a script.`
+              + (frames.length > 0 ? ` The style frames among the attached files (marked STYLE REFERENCE) came from this same video and are the look to shoot to.` : '')
+              + `\nBorrow the grade, the light, the lens and the cutting rhythm. Do NOT recreate its shots, its performers or any on-screen text — that is not ours to copy, and the user was told so before they pasted the link.]\n${d.look}`
+          }
+          if (d.partial) refText += `\n[Only part of the reference could be read — say so plainly rather than pretending to a fuller reading.]`
+        } else {
+          refText += `\n\n[the reference video could not be read: ${d?.error ?? 'error'} — ask the user for the look in one sentence, or to attach a style frame]`
+        }
+      } catch {
+        refText += `\n\n[could not reach the reference reader — ask the user to describe the look in one sentence instead]`
+      }
+    }
     // Story documents → STORY BIBLE (owner, Aug 22: "no matter how long the
     // story is, we should always summarize it and use the summary as
     // input"). A PDF (any template) or a .txt (Story template) is uploaded,
@@ -1450,9 +1500,15 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     }
     // Lyrics (typed-file or transcribed song) go to the director as text —
     // an empty brief + a song is a valid "make an MV from this" request.
+    if (refText) noteParts.push(refText.trim())
     if (lyricText) {
       noteParts.push(lyricText.trim())
-      if (!text) noteParts.push('Make a music video from these lyrics. Confirm orientation first, then storyboard scene by scene timed to the lyric lines.')
+      // With a reference in hand the orientation question is already answered
+      // — the frames were generated at the aspect the user picked — so asking
+      // again would spend a turn re-deciding something that is settled.
+      if (!text) noteParts.push(refText
+        ? 'Make a music video from these lyrics in the reference video\'s look. Storyboard scene by scene, timed to the lyric lines, cut at the rhythm the reference notes describe.'
+        : 'Make a music video from these lyrics. Confirm orientation first, then storyboard scene by scene timed to the lyric lines.')
     }
     if (bibleText) {
       noteParts.push(bibleText.trim())
@@ -1638,7 +1694,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           {activeSkill === 'music-video' && bubbles.length === 0 && !setupDismissed && (
             <MusicVideoSetup
               busy={busy !== 'idle'}
-              onStart={(brief, formAtts) => { void send(brief, formAtts) }}
+              onStart={(brief, formAtts, extra) => { void send(brief, formAtts, extra) }}
               onSkip={() => setSetupDismissed(true)}
             />
           )}

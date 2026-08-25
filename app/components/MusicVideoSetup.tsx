@@ -12,6 +12,19 @@
 import { useState } from 'react'
 import { useT } from '../../lib/i18n'
 import AttachmentButton, { type Attachment } from './AttachmentButton'
+import type { StoryExtra } from './StorySetup'
+
+/** Client-side twin of isSupportedVideoUrl() in lib/providers/google.ts.
+ *  Kept deliberately dumb — it only decides whether to collapse the style
+ *  cards. The server validates for real before spending anything. */
+function isYouTube(url: string): boolean {
+  try {
+    const u = new URL(url.trim())
+    const h = u.hostname.replace(/^www\./, '').toLowerCase()
+    return (u.protocol === 'https:' || u.protocol === 'http:')
+      && (h === 'youtube.com' || h === 'm.youtube.com' || h === 'youtu.be')
+  } catch { return false }
+}
 
 const FORMS = [
   { id: 'kpop',      emoji: '🎤', i18n: 'xd.mv.form.kpop' },
@@ -36,10 +49,11 @@ const DURATIONS = [15, 18, 30, 60]
 export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   busy: boolean
   /** Build the first message from the form and send it with the files. */
-  onStart: (brief: string, atts: Attachment[]) => void
+  onStart: (brief: string, atts: Attachment[], extra: StoryExtra) => void
   onSkip: () => void
 }) {
   const t = useT()
+  const [reference, setRef]   = useState('')
   const [form, setForm]       = useState('kpop')
   const [aspect, setAspect]   = useState<'16:9' | '9:16'>('16:9')
   const [duration, setDur]    = useState<number>(18)
@@ -51,10 +65,16 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   const [castAtts, setCast]   = useState<Attachment[]>([])
 
   const ready = lyrics.trim().length > 0 || songAtts.length > 0
+  // A valid link answers palette, grade, lens, light, location and cutting
+  // rhythm better than any preset card can, so the cards step aside rather
+  // than fight it. They come back the moment the link is cleared.
+  const hasRef = isYouTube(reference)
 
   const start = () => {
     const parts: string[] = []
-    parts.push(`${duration}-second music video${section.trim() ? ` of the ${section.trim()}` : ''}, ${FORM_BRIEF[form]}, ${aspect}.`)
+    parts.push(hasRef
+      ? `${duration}-second music video${section.trim() ? ` of the ${section.trim()}` : ''}, ${aspect}. The look comes from the reference video that has been read for you — follow the style frames and the rhythm notes, not a preset.`
+      : `${duration}-second music video${section.trim() ? ` of the ${section.trim()}` : ''}, ${FORM_BRIEF[form]}, ${aspect}.`)
     parts.push(title.trim()
       ? `Title card first: 「${title.trim()}」 — it lives INSIDE the ${duration}s runtime.`
       : 'No title card — the full runtime is the film.')
@@ -64,7 +84,10 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     if (styleAtts.length > 0) parts.push('Style: match the attached style frames — build the look bible from them.')
     if (songAtts.length > 0) parts.push('The song file is attached — transcribe it for timing, and use its segments as SYNC reference audio for sung scenes.')
     if (lyrics.trim()) parts.push(`Lyrics: ${lyrics.trim()}`)
-    onStart(parts.join(' '), [...songAtts, ...castAtts, ...styleAtts])
+    onStart(parts.join(' '), [...songAtts, ...castAtts, ...styleAtts], {
+      referenceUrl: hasRef ? reference.trim() : undefined,
+      aspect,
+    })
   }
 
   const label: React.CSSProperties = {
@@ -86,15 +109,31 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
       </div>
 
       <div>
-        <span style={label}>{t('xd.mv.formpick')}</span>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {FORMS.map(f => (
-            <button key={f.id} onClick={() => setForm(f.id)} style={chip(form === f.id)}>
-              {f.emoji} {t(f.i18n)}
-            </button>
-          ))}
-        </div>
+        <span style={label}>🔗 {t('xd.mv.reference')}</span>
+        <input
+          value={reference} onChange={e => setRef(e.target.value)} placeholder={t('xd.mv.referenceph')}
+          style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1.5px solid ' + (hasRef ? 'var(--red)' : 'var(--border2)'), background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5 }}
+        />
+        <span style={{ fontSize: 10.5, color: hasRef ? 'var(--red)' : 'var(--muted2)', display: 'block', marginTop: 4 }}>
+          {reference.trim() && !hasRef ? t('xd.mv.referencebad') : hasRef ? t('xd.mv.referenceon') : t('xd.mv.referencehint')}
+        </span>
       </div>
+
+      {/* Preset cards are a way of DESCRIBING a look. A reference video IS
+          one — so when a link is present the cards would only compete with
+          it, and they stand down. */}
+      {!hasRef && (
+        <div>
+          <span style={label}>{t('xd.mv.formpick')}</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {FORMS.map(f => (
+              <button key={f.id} onClick={() => setForm(f.id)} style={chip(form === f.id)}>
+                {f.emoji} {t(f.i18n)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
         <div>

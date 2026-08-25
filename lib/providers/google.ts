@@ -924,3 +924,173 @@ async function generateOmniVideo(
   console.log(`${TAG} omni video ok bytes=${buffer.length} task=${task}`)
   return { buffer, mediaType: videoPart.mime_type ?? 'video/mp4', durationSeconds: Math.round(secondsOut), cost }
 }
+
+// ── reference video: watch a link, don't download it ──────────────────────
+//
+// Gemini is the only provider in the stack that can WATCH a URL. The video
+// is passed as a `fileData` part and Google fetches it themselves — we never
+// touch the bytes, which is what keeps this on the right side of YouTube's
+// terms. Anything that ripped the file locally would not be.
+//
+// Two directions, because a look bible and a look are different things:
+//   • analyzeVideoUrl()          → prose: grade, lens, lighting, cut rhythm
+//   • generateImageFromVideoUrl() → PIXELS: a style frame the video models
+//                                  can actually consume as reference_frames
+//
+// The second one is the whole feature. Text describing a palette is just a
+// longer prompt; a frame carrying the palette is a reference image, and the
+// generation pipeline already knows what to do with those.
+//
+// Verified live Aug 25 against a YouTube MV: the analyse call billed 22,752
+// VIDEO prompt tokens and the image call 65,750 — the modality breakdown in
+// usageMetadata is the proof it really ingested the video rather than
+// pattern-matching the title.
+//
+// LIMITS (Google, Aug 2026): public videos only — private and unlisted are
+// rejected; ONE video URL per request; the feature is still preview, so the
+// free allowance and rate limits are expected to change.
+
+/** Anything Gemini can be pointed at by URL. Kept narrow on purpose. */
+export function isSupportedVideoUrl(url: string): boolean {
+  try {
+    const u = new URL(url.trim())
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false
+    const h = u.hostname.replace(/^www\./, '').toLowerCase()
+    return h === 'youtube.com' || h === 'm.youtube.com' || h === 'youtu.be'
+  } catch { return false }
+}
+
+function videoPart(videoUrl: string): Part {
+  if (!isSupportedVideoUrl(videoUrl)) {
+    throw new Error('Only public YouTube links can be used as a reference video.')
+  }
+  // mimeType is required alongside fileUri for non-Files-API URIs.
+  return { fileData: { fileUri: videoUrl.trim(), mimeType: 'video/mp4' } } as unknown as Part
+}
+
+/** Per-modality token split out of usageMetadata, for honest costing. */
+function modalityTokens(usage: any, which: 'VIDEO' | 'AUDIO' | 'IMAGE' | 'TEXT'): number {
+  const list = usage?.promptTokensDetails ?? usage?.prompt_tokens_details ?? []
+  const hit = (Array.isArray(list) ? list : []).find(
+    (d: any) => String(d?.modality ?? '').toUpperCase() === which,
+  )
+  return hit?.tokenCount ?? hit?.token_count ?? 0
+}
+
+/**
+ * Watch a video and answer in text. Used for the parts of a reference that
+ * only exist in TIME — cutting rhythm, shot length, how the edit escalates
+ * between sections. A still frame cannot encode any of that.
+ */
+export async function analyzeVideoUrl(
+  model:    ModelInfo,
+  prompt:   string,
+  videoUrl: string,
+): Promise<{ text: string; cost: number; usageMetadata: any }> {
+  const TAG = `[google/${model.model_name}]`
+  console.log(`${TAG} analyzeVideoUrl ${videoUrl.slice(0, 60)}`)
+
+  const res = await withRetry(() => ai().models.generateContent({
+    model: model.model_name,
+    contents: [{ role: 'user', parts: [videoPart(videoUrl), { text: prompt }] }],
+  }), 'analyzeVideoUrl')
+
+  const usage: any = (res as any).usageMetadata ?? null
+  const text = (res as any).text
+    ?? ((res as any).candidates?.[0]?.content?.parts ?? [])
+         .map((p: any) => p?.text ?? '').join('').trim()
+
+  if (!text) throw new Error('The reference video returned no description.')
+
+  // Video dominates the bill here — 22k+ tokens for a 3-minute clip — so it
+  // gets its own term rather than being folded into plain input tokens.
+  const videoTokens = modalityTokens(usage, 'VIDEO')
+  const audioTokens = modalityTokens(usage, 'AUDIO')
+  const textTokens  = modalityTokens(usage, 'TEXT')
+  const cost = calcTextCost(
+    model,
+    textTokens || (usage?.promptTokenCount ?? 0),
+    usage?.candidatesTokenCount ?? 0,
+    usage?.cachedContentTokenCount ?? 0,
+    { videoInputTokens: videoTokens, audioInputTokens: audioTokens },
+  )
+  console.log(`${TAG} analyzeVideoUrl ok video=${videoTokens} audio=${audioTokens} out=${usage?.candidatesTokenCount ?? 0} $${cost.toFixed(4)}`)
+  logResponse(model.model_name, 'analyzeVideoUrl', { chars: text.length, videoTokens, cost })
+
+  return { text, cost, usageMetadata: usage }
+}
+
+/**
+ * Watch a video and answer in PIXELS — one or more style frames carrying the
+ * reference's grade, palette, lens and light.
+ *
+ * aspectRatio is NOT optional in practice. HappyHorse/Wan I2V take their
+ * output shape from the first frame (see alibaba.ts), so an unpinned frame
+ * silently decides the video's aspect: the first end-to-end run came back
+ * 1950x1064 (1.83:1) because nothing here asked for 16:9.
+ */
+export async function generateImageFromVideoUrl(
+  model:    ModelInfo,
+  prompt:   string,
+  videoUrl: string,
+  options?: { aspect_ratio?: string | null; count?: number | null },
+): Promise<ImageResult> {
+  const TAG = `[google/${model.model_name}]`
+  const aspectRatio = options?.aspect_ratio ?? '16:9'
+  const n = Math.min(Math.max(options?.count ?? 1, 1), 4)
+  console.log(`${TAG} generateImageFromVideoUrl aspect=${aspectRatio} count=${n} ${videoUrl.slice(0, 60)}`)
+
+  // No candidateCount for image output — N frames means N requests, same as
+  // generateImage() above. Each bills its own tokens, so cost stays exact.
+  const runs = await Promise.all(Array.from({ length: n }, (_, i) => withRetry(() =>
+    ai().models.generateContent({
+      model: model.model_name,
+      contents: [{
+        role: 'user',
+        parts: [
+          videoPart(videoUrl),
+          { text: i === 0 ? prompt : `${prompt}\n\n${VARIATION_DIRECTIVES[i % VARIATION_DIRECTIVES.length] ?? ''}`.trim() },
+        ],
+      }],
+      config: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio } },
+    } as any), `generateImageFromVideoUrl[${i}]`),
+  ))
+
+  const images: Array<{ buffer: Buffer; mediaType: string }> = []
+  let cost = 0
+  for (const res of runs) {
+    for (const p of ((res as any).candidates?.[0]?.content?.parts ?? [])) {
+      const inline = p?.inlineData ?? p?.inline_data
+      if (!inline?.data) continue
+      images.push({
+        buffer: Buffer.from(inline.data, 'base64'),
+        mediaType: inline.mimeType ?? inline.mime_type ?? 'image/jpeg',
+      })
+    }
+    const usage: any = (res as any).usageMetadata ?? null
+    const outImage = (usage?.candidatesTokensDetails ?? [])
+      .find((d: any) => String(d?.modality ?? '').toUpperCase() === 'IMAGE')?.tokenCount ?? 0
+    // NOTE: the image rows carry no `video_input` rate yet, so the video
+    // term below resolves to 0 and this UNDER-reports. Add video_input to
+    // the model_pricing.tokens of the image rows at /admin/models.
+    cost += calcTextCost(
+      model,
+      modalityTokens(usage, 'TEXT'),
+      usage?.candidatesTokenCount ?? 0,
+      usage?.cachedContentTokenCount ?? 0,
+      { videoInputTokens: modalityTokens(usage, 'VIDEO'), audioInputTokens: modalityTokens(usage, 'AUDIO') },
+    ) + calcImageCost(model, 'medium', undefined, { outputImageTokens: outImage })
+  }
+
+  if (images.length === 0) {
+    throw new Error('The reference video produced no style frame. It may be private, age-restricted or region-locked — only public YouTube videos can be read.')
+  }
+
+  console.log(`${TAG} generateImageFromVideoUrl ok frames=${images.length} $${cost.toFixed(4)}`)
+  return {
+    buffer:    images[0].buffer,
+    mediaType: images[0].mediaType,
+    cost,
+    extras:    images.slice(1),
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: music-video
-description: Direct a music video from a song's lyrics — lock the cast first, segment the track into verse / chorus / bridge, give each section its own visual world, and time the cuts to the music. Use when the user wants an MV, a lyric video, a K-pop style performance video, or a visual for a song, especially when they paste lyrics or bring a transcript with timestamps.
+description: Direct a music video from a song's lyrics — lock the cast first, segment the track into verse / chorus / bridge, give each section its own visual world, and time the cuts to the music. Can take a public YouTube link as a reference and shoot in that video's look. Use when the user wants an MV, a lyric video, a K-pop style performance video, a visual for a song, or a video "in the same style as" one they link, especially when they paste lyrics or bring a transcript with timestamps.
 license: Proprietary. ModelXD.
 compatibility: Designed for ModelXD XDirect (storyboard video with reference images)
 metadata:
@@ -11,7 +11,7 @@ metadata:
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.2"
+  version: "3.3"
   category: music
   order: "1"
   aspect: "ask"
@@ -222,16 +222,43 @@ cap, a light leak, a picture frame), everything else held down.** Same idea:
 never crush". If a bible line cannot be verified by looking at the still, it
 is a vibe — rewrite it until it can.
 
-If they only named a video you cannot watch, ask for 2-4 frames they love, or
-for their answer in words. **Restate the bible in every shot prompt** — these
-models have no memory between generations; a look lives only in the words you
-repeat. Say it back once in chat so they can correct it before you spend.
+If they only named a video and gave you no link, ask for 2-4 frames they love,
+or for their answer in words. **Restate the bible in every shot prompt** —
+these models have no memory between generations; a look lives only in the
+words you repeat. Say it back once in chat so they can correct it before you
+spend.
 
-**Style yes, copy no.** An aesthetic — neon-noir, bleached daylight, handheld
-16mm — is fair game and is what they are really asking for. Do not reproduce an
-existing video shot for shot, recreate its distinctive set pieces, or put a
+### When a reference LINK is present
+
+A public YouTube link in the setup form is read before you ever see the brief
+(`/api/xdirector/reference`), and it arrives as two different things. Treat
+them differently, because they are not interchangeable:
+
+- **Style frames** — real images, tagged STYLE REFERENCE among the attached
+  files. These ARE the look. Pass them with `use_files` on key stills the way
+  you would any style reference. A frame carries a grade in a way no sentence
+  does; do not paraphrase it into adjectives and then throw the frame away.
+- **Rhythm notes** — text, because cutting and camera live in time and no
+  still can hold them. Use them for scene DURATIONS and move vocabulary.
+
+With a link present, the look bible is already answered — do not re-ask the
+user for palette, light, lens or texture. Write the six lines from what came
+back, say them once in chat, and go. The questions still worth asking are the
+ones the reference cannot answer: **who is in it**, and how much to borrow.
+
+**Style yes, copy no — and with a link in hand this stops being theoretical.**
+An aesthetic — neon-noir, bleached daylight, handheld 16mm — is fair game and
+is what they are really asking for. The reference's performers, its specific
+shots and compositions, and any text on screen in it are not. Do not reproduce
+an existing video shot for shot, recreate its distinctive set pieces, or put a
 real artist's likeness in frame. If asked for a real performer's face, say
 plainly you will build an original subject in that style, and carry on.
+
+**Lyrics on screen belong to whoever wrote them.** The lyric-video form renders
+words as typography. That is fine for a song the user made or owns. For a
+commercial track it reproduces the lyrics verbatim on screen, so do not put
+them up unless the user has said the song is theirs — offer a typographic
+treatment that uses a title or a single phrase they wrote instead.
 
 ## Section-to-image grammar
 

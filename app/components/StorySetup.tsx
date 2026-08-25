@@ -28,7 +28,21 @@ const STYLES = [
 
 const ASPECTS = ['16:9', '9:16'] as const
 
-export type StoryExtra = { storyText?: string; focus?: string }
+/** The shared "extras" bag every setup form can hand to send() alongside the
+ *  brief and the files — things the prep pipeline acts on before the director
+ *  ever sees them, rather than prose for the director to interpret. Story
+ *  contributes the pasted text and focus; Music Video contributes a reference
+ *  link for /api/xdirector/reference to read. */
+export type StoryExtra = {
+  storyText?:   string
+  focus?:       string
+  /** A public YouTube link whose LOOK the film should borrow. */
+  referenceUrl?: string
+  /** Orientation the reference frames must be generated at — I2V takes its
+   *  output shape from the first frame, so an unpinned aspect silently
+   *  decides the video's. */
+  aspect?:      '16:9' | '9:16'
+}
 
 export default function StorySetup({ busy, onStart, onSkip }: {
   busy: boolean
