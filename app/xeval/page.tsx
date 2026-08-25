@@ -353,7 +353,7 @@ export default function XEvalPage() {
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             {e && <ProviderLogo provider={e.provider} size={16} />}
-                            {e?.display ?? (row.model_name === 'modelxd-router' ? 'ModelXD Router' : row.model_name)}
+                            {e?.display ?? (row.model_name === 'modelxd-router' ? 'ModelXD Autopilot' : row.model_name)}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
@@ -553,7 +553,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
       const c = (e ? avg(e.costs) : null) ?? (r as any).avg_cost_usd ?? null
       return c != null && c > 0
-        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e?.display ?? (r.model_name === 'modelxd-router' ? 'ModelXD Router' : r.model_name)} @ ${r.effort ?? ''}`, provider: e?.provider ?? (r.model_name === 'modelxd-router' ? 'modelxd' : ''), effort: r.effort ?? '' }
+        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e?.display ?? (r.model_name === 'modelxd-router' ? 'ModelXD Autopilot' : r.model_name)} @ ${r.effort ?? ''}`, provider: e?.provider ?? (r.model_name === 'modelxd-router' ? 'modelxd' : ''), effort: r.effort ?? '' }
         : null
     })
     .filter(Boolean) as { x: number; c: number; y: number; label: string; provider: string; effort: string }[]
