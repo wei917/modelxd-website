@@ -22,10 +22,36 @@ export async function GET() {
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { data, error } = await sb.from('xcut_projects')
-    .select('id, title, source_board_id, duration_s, render, created_at, updated_at')
+    .select('id, title, source_board_id, duration_s, render, timeline, created_at, updated_at')
     .is('deleted_at', null).order('updated_at', { ascending: false }).limit(100)
   if (error) return Response.json({ error: notSetUp(error.message) }, { status: 503 })
-  return Response.json({ projects: data ?? [] })
+
+  // Poster for each card: the first clip on the video track. Signed HERE,
+  // per request, and never written back to the row — a stored signed URL is
+  // dead in 24h, which is exactly how the XDirect thumbnails and the XCut
+  // download link broke (Aug 24). The timeline itself stays server-side; the
+  // list only ships the one URL it needs.
+  const first = new Map<string, { bucket: string; path: string; mediaType: string }>()
+  for (const p of data ?? []) {
+    const tl = cleanTimeline((p as any).timeline)
+    const src = tl?.video?.[0]?.src
+    if (src?.bucket && src?.path) first.set(p.id, { bucket: src.bucket, path: src.path, mediaType: src.mediaType ?? '' })
+  }
+  const posters = new Map<string, string>()
+  const byBucket = new Map<string, string[]>()
+  for (const { bucket, path } of first.values()) byBucket.set(bucket, [...(byBucket.get(bucket) ?? []), path])
+  const svc = serviceClient()
+  await Promise.all([...byBucket].map(async ([bucket, paths]) => {
+    const { data: signed } = await svc.storage.from(bucket).createSignedUrls([...new Set(paths)], 60 * 60)
+    for (const row of signed ?? []) if (row.path && row.signedUrl) posters.set(`${bucket}\n${row.path}`, row.signedUrl)
+  }))
+  const projects = (data ?? []).map((p: any) => {
+    const { timeline: _drop, ...rest } = p
+    const f = first.get(p.id)
+    const url = f ? posters.get(`${f.bucket}\n${f.path}`) : undefined
+    return url ? { ...rest, poster: { url, mediaType: f!.mediaType } } : rest
+  })
+  return Response.json({ projects })
 }
 
 export async function POST(req: Request) {

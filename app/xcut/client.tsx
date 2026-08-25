@@ -8,7 +8,9 @@ import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import XCutEditor, { type XCutProject } from '../components/XCutEditor'
 
-type ProjectRow = { id: string; title: string | null; source_board_id: string | null; duration_s: number | null; render: any; updated_at: string }
+type ProjectRow = { id: string; title: string | null; source_board_id: string | null; duration_s: number | null; render: any; updated_at: string
+  /** First clip of the video track, signed per request by the list API. */
+  poster?: { url: string; mediaType: string } }
 
 export default function XCutClient() {
   const t = useT()
@@ -104,6 +106,21 @@ export default function XCutClient() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {(projects ?? []).map(p => (
               <button key={p.id} onClick={() => router.push(`/xcut?p=${p.id}`)} style={{ textAlign: 'left', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', background: 'var(--surface)', cursor: 'pointer' }}>
+                {/* A cut is a picture, so the card leads with one. Video
+                    posters draw their own first frame via preload=metadata —
+                    no separate poster file to generate or store. */}
+                <div style={{
+                  aspectRatio: '16 / 9', marginBottom: 8, borderRadius: 8, overflow: 'hidden',
+                  background: 'var(--surface2)', border: '1px solid var(--border2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {p.poster
+                    ? (p.poster.mediaType.startsWith('image/')
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={p.poster.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <video src={p.poster.url} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
+                    : <span aria-hidden style={{ color: 'var(--muted2)', fontSize: 22 }}>✂</span>}
+                </div>
                 <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>{p.title || t('xcut.untitled')}</div>
                 <div style={{ ...mono, textTransform: 'none' }}>
                   {typeof p.duration_s === 'number' ? `${p.duration_s.toFixed(1)}s · ` : ''}{new Date(p.updated_at).toLocaleString()}
