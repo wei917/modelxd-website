@@ -40,7 +40,12 @@ type Bubble = {
    *  photos. Before this, committedRef lived only in memory: a reload +
    *  scene ▶ fired a reference recipe with zero images and the provider
    *  failed (IMG_3776, Aug 6). */
-  atts?: Array<{ storagePath: string; bucket?: string; mediaType: string; fileName: string; fileSize?: number }>
+  atts?: Array<{ storagePath: string; bucket?: string; mediaType: string; fileName: string; fileSize?: number
+    /** Signed URL, set only for images the bubble should SHOW — the
+     *  reference-video style frames. A look the user cannot see is a look
+     *  they cannot correct, which is the same reason the lyric transcript
+     *  goes on screen rather than straight to the director. */
+    previewUrl?: string }>
   // gen bubbles:
   status?: 'generating' | 'done' | 'error'
   modelName?: string
@@ -1416,7 +1421,9 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             pushBubble({
               role: 'agent',
               text: `${t('xd.ref.heard')}${d.look ? `\n\n${d.look}` : ''}\n\n${t('xd.ref.fix')}`,
-              atts: asAtts.map(a => ({ ...a, role: 'style' })) as any,
+              // previewUrl is what makes them VISIBLE. Without it the bubble
+              // says "the style frames below" and shows nothing.
+              atts: asAtts.map((a, i) => ({ ...a, previewUrl: frames[i]?.url ?? undefined })) as any,
             })
           }
           if (d.look) {
@@ -1814,6 +1821,20 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                 )}
                 {b.files && b.files.length > 0 && (
                   <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>📎 {b.files.join(', ')}</div>
+                )}
+                {/* Style frames read off a reference video. Shown, not just
+                    stored: the bubble's own copy calls them "the look I will
+                    shoot to", and the user can only push back on a look they
+                    can actually see. */}
+                {b.atts && b.atts.some(a => a.previewUrl) && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {b.atts.filter(a => a.previewUrl).map((a, k) => (
+                      <a key={k} href={a.previewUrl} target="_blank" rel="noreferrer" style={{ display: 'block', lineHeight: 0 }}>
+                        <img src={a.previewUrl} alt={a.fileName}
+                             style={{ width: 148, aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)' }} />
+                      </a>
+                    ))}
+                  </div>
                 )}
                 {(b.text ?? '').trim().length > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
