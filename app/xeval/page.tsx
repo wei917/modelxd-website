@@ -484,7 +484,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
 // run cool → warm so "more thinking" reads hotter at a glance.
 const PROVIDER_SHAPE: Record<string, string> = {
   anthropic: 'circle', openai: 'square', google: 'diamond', xai: 'triangle', moonshot: 'star', alibaba: 'hexagon', minimax: 'cross',
-  modelxd: 'cross',  // the X — MiniMax has no XEval entries, so no collision on this page
+  modelxd: 'sparkle',  // the ✦ — ModelXD's own row gets the one shape nobody else has
 }
 const EFFORT_COLOR: Record<string, string> = {
   none: '#888780', minimal: '#5b9bd5', low: '#2a78d6', medium: '#1baf7a', high: '#eda100', xhigh: '#eb6834', max: '#d03b3b',
@@ -498,6 +498,13 @@ function Mark({ shape, cx, cy, r, fill }: { shape: string; cx: number; cy: numbe
     case 'square':   return <rect x={cx - r} y={cy - r} width={2 * r} height={2 * r} {...common} />
     case 'diamond':  return <polygon points={`${cx},${cy - r * 1.2} ${cx + r * 1.2},${cy} ${cx},${cy + r * 1.2} ${cx - r * 1.2},${cy}`} {...common} />
     case 'triangle': return <polygon points={`${cx},${cy - r * 1.25} ${cx + r * 1.15},${cy + r * 0.9} ${cx - r * 1.15},${cy + r * 0.9}`} {...common} />
+    case 'sparkle': {
+      // Four-point concave star (the AI sparkle). Concave shapes read small,
+      // so it draws at 1.45x the nominal radius.
+      const R = r * 1.45, i = R * 0.26
+      const d = `M ${cx} ${cy - R} Q ${cx + i} ${cy - i} ${cx + R} ${cy} Q ${cx + i} ${cy + i} ${cx} ${cy + R} Q ${cx - i} ${cy + i} ${cx - R} ${cy} Q ${cx - i} ${cy - i} ${cx} ${cy - R} Z`
+      return <path d={d} {...common} />
+    }
     case 'star': {
       const pts = Array.from({ length: 10 }, (_, i) => {
         const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.55 : r * 1.3
