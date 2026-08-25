@@ -72,8 +72,10 @@ export default function XEvalPage() {
       setVerdicts(count ?? 0)
       const { data: rr } = await sb
         .from('xeval_runs')
+        // No status filter: verifier benchmarks publish failed trials too (a
+        // timeout IS the cell's result). GDPval aggregates stay finished-only
+        // because only finished GDPval runs are published.
         .select('run_id, task_id, task_set, score, harness, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
-        .eq('status', 'finished')
       setRuns(rr ?? [])
       setLoading(false)
     })()
