@@ -25,6 +25,7 @@ import { cleanTimeline, renderPlan, toAss, type MediaSrc, type RenderPlan } from
 import { mediaFromSlots } from '@/lib/xcut-media'
 import { ffmpegPath, run, probe, buildFfmpegArgs, bundledFont, type Local } from '@/lib/xcut-render'
 import { uploadFilm } from '@/lib/xcut-upload'
+import { safeFilename } from '@/lib/download-url'
 
 const LOG = '[xcut:render]'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -60,9 +61,29 @@ export async function GET(req: Request) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const id = new URL(req.url).searchParams.get('projectId') ?? ''
   if (!UUID.test(id)) return Response.json({ error: 'Bad id' }, { status: 400 })
-  const { data } = await sb.from('xcut_projects').select('id, render').eq('id', id).maybeSingle()
+  const { data } = await sb.from('xcut_projects').select('id, title, render').eq('id', id).maybeSingle()
   if (!data) return Response.json({ error: 'Not found' }, { status: 404 })
-  return Response.json({ render: data.render ?? null })
+
+  // render.url was signed for 24h at export time and then PERSISTED, so any
+  // click the next day died on '"exp" claim timestamp check failed' — on
+  // desktop too, where the cross-origin download fix could not help because
+  // the link itself was dead. render keeps bucket+path, so sign on demand:
+  //   ?download=1  → 302 to a fresh attachment URL (the button's href never
+  //                  expires however long the tab has been open)
+  //   otherwise    → the same JSON with a freshly signed url
+  const r: any = data.render ?? null
+  if (r?.bucket && r?.path) {
+    const wantsFile = new URL(req.url).searchParams.get('download') === '1'
+    const name = safeFilename(data.title ?? '', 'final-cut', 'mp4')
+    const svc = serviceClient()
+    const { data: signed } = await svc.storage.from(r.bucket).createSignedUrl(
+      r.path, 60 * 60 * 24, wantsFile ? { download: name } : undefined)
+    if (signed?.signedUrl) {
+      if (wantsFile) return Response.redirect(signed.signedUrl, 302)
+      return Response.json({ render: { ...r, url: signed.signedUrl } })
+    }
+  }
+  return Response.json({ render: r })
 }
 
 export async function POST(req: Request) {
