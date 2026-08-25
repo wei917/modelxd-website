@@ -84,7 +84,11 @@ function fileIcon(mediaType: string) {
  *  common ones from the extension so bucket routing and upload
  *  content-type never see ''. */
 function inferMediaType(fileName: string, given: string): string {
-  if (given) return given
+  // 'application/octet-stream' is the OS saying "no idea", not a real type —
+  // macOS reports it for .m4a and .flac routinely. Treating it as an answer
+  // meant a perfectly good audio file was rejected as an unsupported type
+  // while its extension said exactly what it was.
+  if (given && given !== 'application/octet-stream') return given
   const ext = (fileName.split('.').pop() ?? '').toLowerCase()
   const map: Record<string, string> = {
     mp3: 'audio/mpeg', m4a: 'audio/x-m4a', aac: 'audio/aac', wav: 'audio/wav',
@@ -220,10 +224,16 @@ export default function AttachmentButton({
     const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','application/pdf','video/mp4','video/quicktime','video/webm',
       'audio/mpeg','audio/mp3','audio/mp4','audio/x-m4a','audio/aac','audio/wav','audio/x-wav','audio/webm','audio/flac','audio/ogg']
     const toUpload = Array.from(files).filter(f => {
-      if (!ALLOWED.includes(f.type)) { alert(`Unsupported file type: ${f.type || 'unknown'}`); return false }
+      // Validate the INFERRED type, not the browser's guess. A file the OS
+      // hands over as application/octet-stream (or as nothing at all) still
+      // has an extension that says what it is, and inferMediaType already
+      // knows how to read it — this check just never asked. Same complaint
+      // LabeledSlotsPicker fixed on Aug 10, one component over.
+      const type = inferMediaType(f.name, f.type)
+      if (!ALLOWED.includes(type)) { alert(`Unsupported file type: ${f.type || 'unknown'}`); return false }
       // Docs (PDF / txt) cap at 10MB — we only ever fold ≤200k chars of
       // text anyway, so bigger uploads are pure waste. Media keeps MAX_MB.
-      const isDoc = f.type === 'application/pdf' || f.type.startsWith('text/')
+      const isDoc = type === 'application/pdf' || type.startsWith('text/')
       const capMb = isDoc ? 10 : MAX_MB
       if (f.size > capMb * 1024 * 1024) { alert(`${f.name} too large — max ${capMb}MB${isDoc ? ' for documents' : ''}`); return false }
       return true
