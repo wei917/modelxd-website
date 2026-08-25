@@ -209,7 +209,7 @@ export default function XEvalPage() {
   const shown = useMemo(() => (showAll ? visible : visible.slice(0, TOP_N)), [visible, showAll])
 
   // Brand casing for provider chips (slugs are lowercase in the DB).
-  const PROVIDER_LABEL: Record<string, string> = { openai: 'OpenAI', xai: 'xAI', google: 'Google', anthropic: 'Anthropic', moonshot: 'Moonshot', alibaba: 'Alibaba', minimax: 'MiniMax', runway: 'Runway' }
+  const PROVIDER_LABEL: Record<string, string> = { openai: 'OpenAI', xai: 'xAI', google: 'Google', anthropic: 'Anthropic', moonshot: 'Moonshot', alibaba: 'Alibaba', minimax: 'MiniMax', runway: 'Runway', modelxd: 'ModelXD' }
   const FilterGroup = ({ label, items, sel, setter, cap, swatch }: { label: string; items: string[]; sel: Set<string>; setter: (s: Set<string>) => void; cap?: boolean; swatch?: (item: string) => React.ReactNode }) => (
     items.length > 1 ? (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -483,6 +483,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
 // run cool → warm so "more thinking" reads hotter at a glance.
 const PROVIDER_SHAPE: Record<string, string> = {
   anthropic: 'circle', openai: 'square', google: 'diamond', xai: 'triangle', moonshot: 'star', alibaba: 'hexagon', minimax: 'cross',
+  modelxd: 'cross',  // the X — MiniMax has no XEval entries, so no collision on this page
 }
 const EFFORT_COLOR: Record<string, string> = {
   none: '#888780', minimal: '#5b9bd5', low: '#2a78d6', medium: '#1baf7a', high: '#eda100', xhigh: '#eb6834', max: '#d03b3b',
