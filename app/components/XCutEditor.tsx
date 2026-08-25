@@ -17,6 +17,7 @@ import {
   type Timeline, type VideoClip, type AudioClip, type Subtitle, type MediaSrc,
   clipStarts, clipLength, totalDuration, locate, trimClip, splitAt, moveClip, removeClip, insertClip, newId, cleanTimeline,
 } from '../../lib/xcut-timeline'
+import { downloadUrl, safeFilename } from '../../lib/download-url'
 
 export type XCutProject = {
   id: string; title: string | null; source_board_id: string | null
@@ -422,7 +423,16 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ ...mono, color: ACCENT }}>{t('xcut.finalcut')}</span>
                   <span>{typeof render.duration === 'number' ? `${render.duration.toFixed(1)}s` : ''} · {render.width}×{render.height}{typeof render.bytes === 'number' ? ` · ${(render.bytes / 1e6).toFixed(1)} MB` : ''}</span>
-                  {render.url && <a href={render.url} download style={{ ...btn(true), textDecoration: 'none', background: ACCENT }}>⬇ {t('xcut.download')}</a>}
+                  {render.url && (() => {
+                    // Supabase storage turns ?download=<name> into a
+                    // Content-Disposition attachment, which is the only
+                    // reliable cross-origin download: the bare `download`
+                    // attribute is IGNORED for cross-origin URLs, so mobile
+                    // Chrome just opened the MP4 inline (owner, Aug 24) —
+                    // the same bug the XDirect fullscreen player had.
+                    const name = safeFilename(title, 'final-cut', 'mp4')
+                    return <a href={downloadUrl(render.url, name)} download={name} style={{ ...btn(true), textDecoration: 'none', background: ACCENT }}>⬇ {t('xcut.download')}</a>
+                  })()}
                   {render.url && <a href={render.url} target="_blank" rel="noreferrer" style={{ ...btn(), textDecoration: 'none' }}>▶</a>}
                   {Array.isArray(render.warnings) && render.warnings.map((w: string, i: number) => <span key={i} style={{ color: MUTED, width: '100%' }}>· {w}</span>)}
                 </div>
