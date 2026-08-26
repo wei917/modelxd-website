@@ -422,6 +422,25 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   }
   const rows = [...by.values()].sort((a, b) => b.solved / b.n - a.solved / a.n || a.cost - b.cost)
   const taskN = new Set([...latest.values()].map(r => r.task_id)).size
+  // ModelXD Autopilot: the library serving each task's cheapest SOLVER
+  // (cheapest attempt where nobody solves). Derived from the same runs —
+  // a measured selection, disclosed in the methodology like the GDPval row.
+  if (by.size > 1) {
+    const byTask = new Map<string, RunRow[]>()
+    for (const r of latest.values()) {
+      if (!byTask.has(r.task_id)) byTask.set(r.task_id, [])
+      byTask.get(r.task_id)!.push(r)
+    }
+    let apSolved = 0, apCost = 0
+    for (const runs_ of byTask.values()) {
+      const solvers = runs_.filter(r => (r.score ?? 0) >= 1)
+      const pool = solvers.length ? solvers : runs_
+      const pick = pool.reduce((m, r) => ((r.cost_usd ?? 9e9) < (m.cost_usd ?? 9e9) ? r : m))
+      if (solvers.length) apSolved += 1
+      apCost += pick.cost_usd ?? 0
+    }
+    rows.unshift({ display: 'ModelXD Autopilot', provider: 'modelxd', effort: 'auto', n: byTask.size, solved: apSolved, cost: apCost, secs: [] })
+  }
   const harness = [...latest.values()].map(r => r.harness).find(Boolean) ?? 'terminus-2'
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
   return (
