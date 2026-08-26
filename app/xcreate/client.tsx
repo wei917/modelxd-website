@@ -1440,6 +1440,17 @@ function CreateStudio() {
     const idParam = searchIdParam
     if (!idParam) return
     if (galleryLoadedRef.current === idParam) return  // same run already loaded
+    // Navigating to a DIFFERENT run while a job is polling: release the
+    // poller BEFORE loading the target. The generation itself continues
+    // server-side (functions outlive the client by design), and coming
+    // back to its ?id= resumes it through the liveJob lookup below.
+    // Without this, the old job's next poll tick repainted its slots AND
+    // replaceState'd its ?id= back into the bar — clicking any other run
+    // yanked the user straight back to the generating one (owner, Aug 26).
+    if (activeJobRef.current) {
+      stopPolling()
+      activeJobRef.current = null
+    }
     // NOTE (CC, July 27): this used to wait for the userId STATE before
     // querying, but that state comes from an async getUser() call that can
     // resolve slowly (or not at all) on a fresh load — and when it lost the
