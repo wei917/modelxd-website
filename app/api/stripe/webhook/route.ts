@@ -64,6 +64,36 @@ export async function POST(req: Request) {
     return Response.json({ received: true, handled: false })
   }
 
+  // Card verification (mode:'setup') pays no money and buys no credits — it
+  // exists to prove one real person via the card's fingerprint, which is what
+  // releases a referral to BOTH sides. Handled here, and only here: a client
+  // route that could pay a referral could pay itself. See lib/referral.ts.
+  if ((event.data?.object as any)?.mode === 'setup') {
+    const setup = event.data.object as any
+    const userId = setup?.metadata?.user_id
+    const setupIntentId = typeof setup?.setup_intent === 'string' ? setup.setup_intent : setup?.setup_intent?.id
+    if (!userId || !setupIntentId) {
+      console.warn(`${LOG} setup session without user_id/setup_intent`)
+      return Response.json({ received: true, handled: false })
+    }
+    try {
+      const { fetchSetupCard } = await import('@/lib/stripe')
+      const { onCardBound } = await import('@/lib/referral')
+      const card = await fetchSetupCard(setupIntentId)
+      if (!card.fingerprint) {
+        console.warn(`${LOG} setup ${setupIntentId} produced no card fingerprint`)
+        return Response.json({ received: true, handled: false })
+      }
+      const res = await onCardBound(userId, card.fingerprint)
+      console.log(`${LOG} card verified for ${userId}: ${res.paid ? 'referral paid' : res.reason}`)
+      return Response.json({ received: true, handled: true, referral: res })
+    } catch (err: any) {
+      // Non-2xx makes Stripe retry, which is what we want for a transient fault.
+      console.error(`${LOG} card verification failed:`, err?.message ?? err)
+      return Response.json({ error: 'card verification failed' }, { status: 500 })
+    }
+  }
+
   const session = event.data?.object
   if (!session) {
     console.warn(`${LOG} event has no data.object`)

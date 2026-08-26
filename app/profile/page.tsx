@@ -226,6 +226,14 @@ export default function ProfilePage() {
   const [openGroups,  setOpenGroups]  = useState<Record<string, boolean>>({})
   // Checkout UI: picker modal + in-flight flag + post-redirect banner
   const [checkoutOpen,     setCheckoutOpen]     = useState(false)
+  // Referral panel. Loads once; a 503 means migration 87 has not run yet and
+  // the panel simply stays hidden rather than showing an error to the user.
+  const [referral, setReferral] = useState<null | {
+    code: string; link: string; pending: number; paid: number; earnedCents: number
+    verified: boolean; refereeStatus: string | null
+  }>(null)
+  const [refBusy, setRefBusy] = useState(false)
+  const [refCopied, setRefCopied] = useState(false)
   const [checkoutTier,     setCheckoutTier]     = useState<string | null>(null)
   const [checkoutBanner,   setCheckoutBanner]   = useState<'success' | 'cancel' | null>(null)
 
@@ -510,6 +518,25 @@ export default function ProfilePage() {
     window.addEventListener('pageshow', onPageShow)
     return () => window.removeEventListener('pageshow', onPageShow)
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    fetch('/api/referral').then(r => (r.ok ? r.json() : null)).then(d => { if (d && !d.error) setReferral(d) }).catch(() => {})
+  }, [user])
+
+  // Card verification is a Stripe Checkout session in setup mode: it validates
+  // the card and charges nothing. The webhook — never the client — releases the
+  // credits, so nothing here can pay anybody.
+  const verifyCard = async () => {
+    setRefBusy(true)
+    try {
+      const res = await fetch('/api/referral', { method: 'POST' })
+      const d = await res.json()
+      if (d?.url) { window.location.href = d.url; return }
+      alert(d?.error ?? 'Could not start verification')
+    } catch { alert('Could not start verification') }
+    setRefBusy(false)
+  }
 
   // Post-redirect banner + balance refresh. When Stripe sends the user
   // back with ?checkout=success we poll user_credits for ~15s so the
@@ -1574,6 +1601,61 @@ export default function ProfilePage() {
               Rendered as a proper striped ledger: one bordered container,
               row dividers instead of per-row borders, alternating row
               background for legibility, mono numerics pinned to the right. */}
+
+          {/* ── Referral ──
+              $10 welcome for everyone; a referred friend gets $5 more and the
+              referrer $5, both released when the friend verifies a card. The
+              card is the point: it is the only signal that proves one real
+              person (see supabase/87_referrals.sql). Hidden entirely until
+              migration 87 has run. */}
+          {referral && (
+            <div style={{ marginTop: 48, border: '1px solid var(--border)', borderRadius: 10, padding: '18px 20px' }}>
+              <div style={{ ...{ fontSize: 10, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.12em', textTransform: 'uppercase' as const }, color: 'var(--muted2)', marginBottom: 10 }}>{t('profile.ref.title')}</div>
+
+              {/* A referee who has not verified sees the offer to unlock. */}
+              {referral.refereeStatus === 'pending' && !referral.verified && (
+                <div style={{ fontSize: 13, color: 'var(--white)', marginBottom: 14, lineHeight: 1.6 }}>
+                  {t('profile.ref.unlock')}
+                  <button onClick={verifyCard} disabled={refBusy} style={{
+                    marginLeft: 10, padding: '6px 14px', borderRadius: 999, border: 'none',
+                    background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700,
+                    cursor: refBusy ? 'default' : 'pointer', opacity: refBusy ? 0.6 : 1,
+                  }}>{refBusy ? '…' : t('profile.ref.verify')}</button>
+                </div>
+              )}
+
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
+                {t('profile.ref.blurb')}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+                <code style={{
+                  flex: '1 1 260px', minWidth: 0, padding: '10px 12px', borderRadius: 8,
+                  background: 'var(--surface2)', border: '1px solid var(--border2)',
+                  fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--white)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{referral.link}</code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(referral.link).then(() => {
+                      setRefCopied(true); setTimeout(() => setRefCopied(false), 1800)
+                    }).catch(() => {})
+                  }}
+                  style={{
+                    padding: '9px 18px', borderRadius: 999, border: '1px solid var(--border2)',
+                    background: refCopied ? 'var(--green)' : 'transparent',
+                    color: refCopied ? '#fff' : 'var(--white)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >{refCopied ? t('profile.ref.copied') : t('profile.ref.copy')}</button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', ...{ fontSize: 10, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.12em', textTransform: 'uppercase' as const }, color: 'var(--muted2)' }}>
+                <span>{t('profile.ref.joined')} <b style={{ color: 'var(--white)' }}>{referral.paid}</b></span>
+                <span>{t('profile.ref.pending')} <b style={{ color: 'var(--white)' }}>{referral.pending}</b></span>
+                <span>{t('profile.ref.earned')} <b style={{ color: 'var(--green)' }}>{formatCents(referral.earnedCents)}</b></span>
+              </div>
+            </div>
+          )}
 
           {/* ── Danger zone — delete account (Privacy Policy §5) ── */}
           <div style={{ marginTop: 56, border: '1px solid rgba(232,69,60,0.35)', borderRadius: 10, padding: '18px 20px' }}>

@@ -128,6 +128,43 @@ export interface CreateCheckoutOpts {
  * is where we actually grant credits (the success redirect is cosmetic —
  * never grant on redirect, always on the webhook).
  */
+/**
+ * A Checkout Session in `setup` mode: Stripe collects and validates a card and
+ * charges NOTHING (a $0 authorization, released immediately, no Stripe fee).
+ * We want it purely for the card's `fingerprint`, which is the same string for
+ * the same physical card across every account — the only uniqueness signal we
+ * can actually obtain. See supabase/87_referrals.sql.
+ */
+export async function createSetupSession(opts: {
+  userId: string
+  email?: string | null
+  successUrl: string
+  cancelUrl: string
+}): Promise<CheckoutSession> {
+  const session = await stripeRequest<CheckoutSession>('/v1/checkout/sessions', {
+    mode: 'setup',
+    'payment_method_types[0]': 'card',
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    ...(opts.email ? { customer_email: opts.email } : {}),
+    // The webhook trusts metadata, exactly as the payment path does.
+    'metadata[user_id]': opts.userId,
+    'metadata[purpose]': 'referral_card_verify',
+  })
+  return { id: session.id, url: session.url }
+}
+
+/** The card behind a completed setup session, for its fingerprint. */
+export async function fetchSetupCard(setupIntentId: string): Promise<{ fingerprint: string | null; last4?: string; brand?: string }> {
+  const res = await fetch(`https://api.stripe.com/v1/setup_intents/${setupIntentId}?expand[]=payment_method`, {
+    headers: { Authorization: `Bearer ${secretKey()}` },
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(`stripe: ${json?.error?.message ?? res.status}`)
+  const card = json?.payment_method?.card
+  return { fingerprint: card?.fingerprint ?? null, last4: card?.last4, brand: card?.brand }
+}
+
 export async function createCheckoutSession(opts: CreateCheckoutOpts): Promise<CheckoutSession> {
   const body: Record<string, unknown> = {
     mode:                 'payment',

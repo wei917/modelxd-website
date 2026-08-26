@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../lib/AuthModalContext'
@@ -129,12 +129,43 @@ export default function Nav() {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
       setAuthLoaded(true)
+      if (data.user) void claimReferral()
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       setAuthLoaded(true)
+      if (session?.user) void claimReferral()
     })
     return () => subscription.unsubscribe()
+  }, [])
+
+  // ?ref=CODE lands on any page, but sign-in happens later and Google's OAuth
+  // round-trip drops query params — so the code is parked in localStorage and
+  // spent on the first authenticated render. Nav is the one component mounted
+  // on every route, which is why this lives here. Cleared whatever the answer:
+  // a code that was refused (already referred, self-referral, unknown) must not
+  // be retried on every page load forever.
+  const claimReferral = useCallback(async () => {
+    let code: string | null = null
+    try {
+      code = localStorage.getItem('referral_code')
+      if (!code) return
+    } catch { return }
+    try {
+      await fetch('/api/referral/claim', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+    } catch { /* offline: keep the code and try again next load */ return }
+    try { localStorage.removeItem('referral_code') } catch { /* private mode */ }
+  }, [])
+
+  // Park an arriving ?ref= before anything else can navigate away.
+  useEffect(() => {
+    try {
+      const code = new URLSearchParams(window.location.search).get('ref')
+      if (code && /^[A-Za-z0-9]{6,16}$/.test(code)) localStorage.setItem('referral_code', code.toUpperCase())
+    } catch { /* private mode */ }
   }, [])
 
   useEffect(() => {
