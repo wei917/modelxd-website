@@ -67,6 +67,14 @@ export function portSchemaFor(m: CatalogModel): PortSpec[] {
         max: m.provider === 'minimax' ? 9 : 4,
         conflict: 'reference',
       })
+      // Reference VIDEO is a reference material (keep this subject/motion,
+      // new scene) — deliberately a different port from video_in, which is
+      // the extend/edit source ("continue/transform THIS clip"). Only
+      // models that declare video input alongside reference_frames get it
+      // (wan3.0-video today).
+      if (inputs.includes('video')) {
+        ports.push({ name: 'reference_video', type: 'video', max: 1, conflict: 'reference' })
+      }
     }
     if (inputs.includes('audio')) {
       ports.push({ name: 'reference_audio', type: 'audio', max: 3, conflict: 'reference' })

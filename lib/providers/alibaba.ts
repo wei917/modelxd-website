@@ -477,9 +477,12 @@ export async function generateVideo(
 ): Promise<VideoResult> {
   const TAG = `[alibaba/${model.model_name}]`
 
-  // Parse size to resolution string: "1280x720" → "720P", "1920x1080" → "1080P"
+  // Parse size to resolution string: "1280x720" → "720P", "1920x1080" →
+  // "1080P", "854x480" → "480P". The 480P tier exists only on wan3.0-video
+  // today — without this case a 480p pick was silently coerced to 720P and
+  // billed at double the expected rate (caught in the wan3.0 smokes).
   const height = parseInt(size.split('x')[1] || '720', 10)
-  const resolution = height >= 1080 ? '1080P' : '720P'
+  const resolution = height >= 1080 ? '1080P' : height < 700 ? '480P' : '720P'
 
   console.log(`${TAG} generateVideo resolution=${resolution} duration=${seconds}s aspect=${options?.aspect_ratio ?? 'default'} attachments=${attachments.length} watermark=${options?.watermark ?? 'default'}`)
 
@@ -495,12 +498,18 @@ export async function generateVideo(
   //   • T2V  → no media, prompt-only.
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
   const videoAtts = attachments.filter(a => a.mediaType.startsWith('video/'))
+  const audioAtts = attachments.filter(a => a.mediaType.startsWith('audio/'))
   const imageAtt  = imageAtts[0]
   // Extend (wan2.7 `first_clip` continuation) is keyed off the RECIPE, not
   // the model name — it rides the same wan2.7-i2v model as image_to_video.
   const isExtend  = options?.mode === 'extend_video'
   const isVideoEdit = !isExtend && /-video-edit$/i.test(model.model_name)
-  const isR2V     = !isExtend && !isVideoEdit && /-r2v$/i.test(model.model_name)
+  // Reference mode: by name suffix (HappyHorse r2v family) OR by recipe —
+  // unified models like wan3.0-video have no -r2v suffix but take typed
+  // reference_image / reference_video / reference_audio media entries
+  // (input vocabulary probed live 2026-08-26).
+  const isR2V     = !isExtend && !isVideoEdit &&
+    (/-r2v$/i.test(model.model_name) || options?.mode === 'reference_frames')
   const isKf2v    = !isExtend && !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
   const isI2V     = !isExtend && !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 
@@ -530,16 +539,28 @@ export async function generateVideo(
       })),
     ]
     console.log(`${TAG} video-edit: 1 video + ${Math.min(imageAtts.length, 5)} reference_image(s)`)
-  } else if (isR2V && imageAtts.length > 0) {
-    // Reference-to-Video: every image is a reference, all typed
-    // 'reference_image'. HappyHorse R2V supports up to 14 references —
-    // we just forward whatever the user uploaded, in slot order.
-    input.media = imageAtts.map(a => ({
+  } else if (isR2V && (imageAtts.length > 0 || videoAtts.length > 0 || audioAtts.length > 0)) {
+    // Reference-to-Video: every attachment is reference MATERIAL for a new
+    // scene — images typed 'reference_image' (HappyHorse R2V takes up to
+    // 14; we forward in slot order), plus, on models that accept them
+    // (wan3.0-video), 'reference_video' and 'reference_audio' entries.
+    // Video/audio refs must be HTTP URLs — DashScope rejects base64 for
+    // large media, and the route signs these attachments.
+    const media: any[] = imageAtts.map(a => ({
       type: 'reference_image',
       url:  a.url ?? `data:${a.mediaType};base64,${a.buffer.toString('base64')}`,
     }))
+    for (const v of videoAtts) {
+      if (!v.url) throw new Error('Reference video has no signed URL — cannot send to DashScope.')
+      media.push({ type: 'reference_video', url: v.url })
+    }
+    for (const a of audioAtts) {
+      if (!a.url) throw new Error('Reference audio has no signed URL — cannot send to DashScope.')
+      media.push({ type: 'reference_audio', url: a.url })
+    }
+    input.media = media
     const signedCount = imageAtts.filter(a => !!a.url).length
-    console.log(`${TAG} R2V: ${imageAtts.length} reference_image(s) (${signedCount} signed)`)
+    console.log(`${TAG} R2V: ${imageAtts.length} reference_image(s) (${signedCount} signed), ${videoAtts.length} reference_video, ${audioAtts.length} reference_audio`)
   } else if (imageAtt) {
     // I2V / kf2v path: first image = start frame, optional second = end frame.
     // URL must be HTTP/HTTPS — prefer a signed Supabase Storage URL populated
@@ -674,10 +695,12 @@ export async function generateVideo(
   const billedSeconds: number = (typeof usage?.duration === 'number' && usage.duration > 0)
     ? usage.duration
     : seconds
-  // Resolution for cost lookup: prefer `usage.SR` (e.g. 720, 1080) when the
-  // API returns it, otherwise the requested resolution string.
+  // Resolution for cost lookup: prefer `usage.SR` (e.g. 480, 720, 1080)
+  // when the API returns it, otherwise the requested resolution string.
+  // The 480 case matters: without it a wan3.0 480p run billed at the 720p
+  // rate — double the real price (caught in the Aug-26 smokes).
   const billedResolution = usage?.SR
-    ? (usage.SR >= 2160 ? '4k' : usage.SR >= 1080 ? '1080p' : '720p')
+    ? (usage.SR >= 2160 ? '4k' : usage.SR >= 1080 ? '1080p' : usage.SR >= 700 ? '720p' : '480p')
     : resolution.toLowerCase()
 
   const cost = calcVideoCost(model, billedResolution, billedSeconds)
