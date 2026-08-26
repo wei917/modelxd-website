@@ -504,12 +504,16 @@ export async function generateVideo(
   // the model name — it rides the same wan2.7-i2v model as image_to_video.
   const isExtend  = options?.mode === 'extend_video'
   const isVideoEdit = !isExtend && /-video-edit$/i.test(model.model_name)
-  // Reference mode: by name suffix (HappyHorse r2v family) OR by recipe —
+  // Reference mode: by name suffix (HappyHorse r2v family), by recipe —
   // unified models like wan3.0-video have no -r2v suffix but take typed
   // reference_image / reference_video / reference_audio media entries
-  // (input vocabulary probed live 2026-08-26).
+  // (input vocabulary probed live 2026-08-26) — or by an audio attachment:
+  // on the generic no-template path there is no recipe, and audio has
+  // exactly one meaning here (reference material), so infer it the same
+  // way isI2V infers from a lone image. Without this the generic path
+  // silently DROPPED the audio and billed a plain t2v.
   const isR2V     = !isExtend && !isVideoEdit &&
-    (/-r2v$/i.test(model.model_name) || options?.mode === 'reference_frames')
+    (/-r2v$/i.test(model.model_name) || options?.mode === 'reference_frames' || audioAtts.length > 0)
   const isKf2v    = !isExtend && !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
   const isI2V     = !isExtend && !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 

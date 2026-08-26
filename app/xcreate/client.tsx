@@ -4212,7 +4212,11 @@ function CreateStudio() {
                       : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/mpeg,audio/wav,.mp3,.wav`
                       : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
                       : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
-                      : generic && mode === 'video' ? `${IMG},${VID}`
+                      // Generic video slot takes audio too (Wan 3.0
+                      // reference_audio — mp3/wav only, m4a refused
+                      // upstream). Models without audio input reject the
+                      // attachment with a named error in alibaba.ts.
+                      : generic && mode === 'video' ? `${IMG},${VID},audio/mpeg,audio/wav,.mp3,.wav`
                       : undefined
                     const isFrames = recipeMode === 'start_end_frames'
                     return (
@@ -4383,8 +4387,11 @@ function CreateStudio() {
                   // screen over Netflix rows). Items may appear in more
                   // than one section — that's fine.
                   const forMode = XCREATE_TEMPLATES.filter(x => x.mode === mode)
+                  // Popular row removed (owner, Aug 26): it duplicated cards
+                  // that already sit in Tools/Templates below. `popular` on
+                  // templates still orders/badges elsewhere — don't delete
+                  // the flag.
                   const rows: { key: string; caption: string; items: Template[] }[] = [
-                    { key: 'popular',   caption: t('xcreate.popular'),      items: forMode.filter(x => x.popular) },
                     { key: 'tools',     caption: t('xcreate.alltools'),     items: forMode.filter(x => x.kind === 'tool') },
                     { key: 'templates', caption: t('xcreate.alltemplates'), items: forMode.filter(x => x.kind !== 'tool') },
                   ]
