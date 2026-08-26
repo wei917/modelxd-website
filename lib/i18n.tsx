@@ -655,6 +655,7 @@ export const STRINGS: Record<string, Entry> = {
   'recipefrom.extend_video':     { en: 'Existing Video', 'zh-Hant': '既有影片', 'zh-Hans': '已有视频', ja: '既存の動画', ko: '기존 동영상' },
   'recipefrom.start_end_frames': { en: 'Start + End Frames', 'zh-Hant': '頭尾幀',  'zh-Hans': '首尾帧',   ja: '最初+最後のフレーム', ko: '시작+끝 프레임' },
   'recipefrom.reference_frames': { en: 'Reference Images',   'zh-Hant': '參考圖片', 'zh-Hans': '参考图片', ja: '参照画像',          ko: '참조 이미지' },
+  'recipefrom.audio_to_video':   { en: 'Audio / Music',      'zh-Hant': '音訊／音樂', 'zh-Hans': '音频／音乐', ja: '音声・音楽',      ko: '오디오/음악' },
 
   // ── XDuel ──
   'xduel.eyebrow':    { en: 'XDuel',            'zh-Hant': 'X對決',       'zh-Hans': 'X对决',       ja: 'X対決',          ko: 'X대결' },

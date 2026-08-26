@@ -167,6 +167,7 @@ const RECIPES: Record<Mode, Recipe[]> = {
     { id: 'video_edit',       title: 'Edit a Video',       recipe: 'VIDEO + REFS → VIDEO', provide: '1 video + reference images + a prompt' },
     { id: 'start_end_frames', title: 'Frames to Video',    recipe: '2 FRAMES → VIDEO', provide: '2 images: first + last' },
     { id: 'reference_frames', title: 'Reference to Video', recipe: 'REFS → VIDEO',     provide: '1–2 portraits + a prompt' },
+    { id: 'audio_to_video',   title: 'Audio to Video',     recipe: 'AUDIO → VIDEO',    provide: '1 song (MP3/WAV, up to 15s) + a prompt — the music drives the performance' },
   ],
 }
 
@@ -197,6 +198,7 @@ const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames
   video_edit:       ['video',      'video'],
   start_end_frames: ['frames',     'video'],
   reference_frames: ['references', 'video'],
+  audio_to_video:   ['audio',      'video'],
 }
 
 // Upload slots a recipe needs (label + hint). [] = no upload (text_to_*).
@@ -358,6 +360,7 @@ type ModelMode =
   | 'image_to_video'
   | 'video_to_video'
   | 'video_edit'
+  | 'audio_to_video'
   | 'start_end_frames'
   | 'reference_frames'
 
@@ -1695,6 +1698,10 @@ function CreateStudio() {
     if (mode === 'image') return nImg > 0 ? 'image_edit' : null
     // video
     if (hasVid) return nImg > 0 ? 'video_edit' : (recipeMode === 'video_edit' ? 'video_edit' : 'video_to_video')
+    // Audio alone means audio-driven video (Wan 3.0) — auto-switch like
+    // every other upload type. Audio + images stays on the image logic
+    // below; the provider carries the audio as an extra reference.
+    if (hasAud && nImg === 0) return 'audio_to_video'
     if (nImg === 0) return null
     if (nImg === 1) {
       // A single image fits image_to_video — but don't fight an explicit
@@ -4204,6 +4211,9 @@ function CreateStudio() {
                       // path has no template, and its old text accept had
                       // no audio at all, which was the actual lockout.
                       recipeMode === 'audio_to_text' ? 'audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.webm'
+                      // Wan 3.0 refuses m4a and >15s upstream — offer only
+                      // what survives.
+                      : recipeMode === 'audio_to_video' ? 'audio/mpeg,audio/wav,.mp3,.wav'
                       : !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
                       : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
                       // Reference video templates: images + audio (Wan 3.0

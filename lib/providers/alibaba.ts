@@ -513,7 +513,8 @@ export async function generateVideo(
   // way isI2V infers from a lone image. Without this the generic path
   // silently DROPPED the audio and billed a plain t2v.
   const isR2V     = !isExtend && !isVideoEdit &&
-    (/-r2v$/i.test(model.model_name) || options?.mode === 'reference_frames' || audioAtts.length > 0)
+    (/-r2v$/i.test(model.model_name) || options?.mode === 'reference_frames' ||
+     options?.mode === 'audio_to_video' || audioAtts.length > 0)
   const isKf2v    = !isExtend && !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
   const isI2V     = !isExtend && !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 

@@ -84,6 +84,7 @@ export type ModelMode =
   | 'image_to_video'
   | 'video_to_video'
   | 'video_edit'        // video + reference images → edited video (HappyHorse Video Edit)
+  | 'audio_to_video'    // song/audio drives the performance (Wan 3.0 reference_audio; mp3/wav ≤15s)
   | 'start_end_frames'
   // shared (image / video)
   | 'reference_frames'
