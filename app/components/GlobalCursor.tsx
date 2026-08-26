@@ -55,7 +55,10 @@ export default function GlobalCursor() {
       if (cursorRef.current) { cursorRef.current.style.left = mx + 'px'; cursorRef.current.style.top = my + 'px' }
     }
     const tick = () => {
-      rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12
+      // 0.35 matches profile/duel-permalink. 0.12 was the original feel and
+      // users reported the ring as laggy (owner, Aug 26) — at 60Hz it
+      // trailed ~130ms; 0.35 trails ~40ms and still reads as a trail.
+      rx += (mx - rx) * 0.35; ry += (my - ry) * 0.35
       if (ringRef.current) { ringRef.current.style.left = rx + 'px'; ringRef.current.style.top = ry + 'px' }
       rafId = requestAnimationFrame(tick)
     }

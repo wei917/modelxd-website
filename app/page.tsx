@@ -275,7 +275,7 @@ export default function Home() {
       if (cursorRef.current) { cursorRef.current.style.left = mx + 'px'; cursorRef.current.style.top = my + 'px' }
     }
     const animRing = () => {
-      rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12
+      rx += (mx - rx) * 0.35; ry += (my - ry) * 0.35
       if (ringRef.current) { ringRef.current.style.left = rx + 'px'; ringRef.current.style.top = ry + 'px' }
       animId = requestAnimationFrame(animRing)
     }
