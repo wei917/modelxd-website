@@ -18,6 +18,7 @@
 
 import { useRef, useState } from 'react'
 import { pendingAttachment, type Attachment } from './AttachmentButton'
+import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 
 const MAX_MB    = 100
 const MIN_DIM   = 300  // HappyHorse R2V rejects anything under 300px on either axis;
@@ -54,6 +55,7 @@ export default function LabeledSlotsPicker({
   swappable = false,
   compact = false,
   accept,
+  audioMaxSeconds,
   onPreview,
 }: {
   slots:       SlotLabel[]
@@ -72,6 +74,11 @@ export default function LabeledSlotsPicker({
   /** Comma-separated mime types the slots accept. Defaults to images.
    *  Non-image mimes skip the min-dimension check. */
   accept?:     string
+  /** When set, audio uploads are decoded and re-encoded to wav (trimmed to
+   *  this many seconds) via lib/audio-normalize — for VIDEO recipes whose
+   *  models only take wav/mp3 ≤15s (Wan 3.0). Leave unset for
+   *  transcription slots, which must keep the full-length original. */
+  audioMaxSeconds?: number
   /** Clicking a FILLED slot calls this with its attachment — the caller
    *  opens a lightbox. Works even when `disabled`: a locked, reopened run
    *  still owes the user a full-size look at its inputs (owner, Aug 20). */
@@ -126,6 +133,20 @@ export default function LabeledSlotsPicker({
         )
         return null
       }
+    }
+
+    // Audio bound for a video model: convert m4a/mp4/aac/… to wav and trim
+    // to the model's cap (spinner while decoding — same UX as the image
+    // dimension check above).
+    if (audioMaxSeconds && file.type.startsWith('audio/')) {
+      setUploadingIdx(idx)
+      try {
+        const norm = await normalizeAudioForVideo(file, audioMaxSeconds)
+        if (norm) {
+          if (norm.trimmed) alert(`${file.name}: using the first ${audioMaxSeconds} seconds (the model's audio limit).`)
+          file = norm.file
+        }
+      } finally { setUploadingIdx(null) }
     }
 
     return pendingAttachment(file, context, idx)

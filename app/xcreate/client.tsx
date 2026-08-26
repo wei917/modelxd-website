@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import { discountFor } from '../../lib/xcreate-discount'
+import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
@@ -1717,8 +1718,23 @@ function CreateStudio() {
   // Composer attachment handler: store, then auto-switch the sub-mode if
   // an upload implies one. Only on ADD (removals never switch), and never
   // while a template drives the slots.
-  const handleComposerAttachments = (next: Attachment[]) => {
+  const handleComposerAttachments = async (next: Attachment[]) => {
     const grew = next.length > attachments.length
+    // Video-mode audio: convert whatever the browser can decode (m4a/mp4/
+    // aac/…) into what the models accept — wav/mp3, ≤15s (Wan 3.0 hard
+    // limits). Runs before the state lands so the chip shows the real file.
+    if (grew && mode === 'video') {
+      for (const att of next) {
+        if (!att.file || !att.mediaType.startsWith('audio/')) continue
+        const norm = await normalizeAudioForVideo(att.file, 15)
+        if (!norm) continue                    // undecodable — let the provider report
+        if (norm.trimmed) alert(`${att.fileName}: using the first 15 seconds (the model's audio limit).`)
+        if (norm.file !== att.file) {
+          att.file = norm.file; att.mediaType = 'audio/wav'
+          att.fileName = norm.file.name; att.fileSize = norm.file.size
+        }
+      }
+    }
     setAttachments(next)
     if (!grew || activeTemplateId) return
     const r = inferRecipeFromUploads(next)
@@ -4211,22 +4227,21 @@ function CreateStudio() {
                       // path has no template, and its old text accept had
                       // no audio at all, which was the actual lockout.
                       recipeMode === 'audio_to_text' ? 'audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.webm'
-                      // Wan 3.0 refuses m4a and >15s upstream — offer only
-                      // what survives.
-                      : recipeMode === 'audio_to_video' ? 'audio/mpeg,audio/wav,.mp3,.wav'
+                      // Any decodable audio is fine — lib/audio-normalize
+                      // converts to wav/mp3 ≤15s in the browser before
+                      // upload (Wan 3.0's hard limits).
+                      : recipeMode === 'audio_to_video' ? 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.mp4'
                       : !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
                       : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
-                      // Reference video templates: images + audio (Wan 3.0
-                      // reference_audio — mp3/wav only; m4a is refused
-                      // upstream, so don't offer it in the picker).
-                      : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/mpeg,audio/wav,.mp3,.wav`
+                      // Reference video templates: images + any audio
+                      // (normalized to wav ≤15s client-side).
+                      : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/*,.mp3,.m4a,.aac,.wav`
                       : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
                       : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
-                      // Generic video slot takes audio too (Wan 3.0
-                      // reference_audio — mp3/wav only, m4a refused
-                      // upstream). Models without audio input reject the
+                      // Generic video slot takes audio too — normalized
+                      // client-side; models without audio input reject the
                       // attachment with a named error in alibaba.ts.
-                      : generic && mode === 'video' ? `${IMG},${VID},audio/mpeg,audio/wav,.mp3,.wav`
+                      : generic && mode === 'video' ? `${IMG},${VID},audio/*,.mp3,.m4a,.aac,.wav`
                       : undefined
                     const isFrames = recipeMode === 'start_end_frames'
                     return (
@@ -4241,6 +4256,7 @@ function CreateStudio() {
                           swappable={isFrames}
                           compact
                           accept={accept}
+                          audioMaxSeconds={mode === 'video' ? 15 : undefined}
                           onPreview={a => { if (a.previewUrl) setLightbox(a.previewUrl) }}
                         />
                         {/* ("up to N images" capacity note removed July 2026

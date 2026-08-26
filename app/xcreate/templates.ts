@@ -327,7 +327,7 @@ export const XCREATE_TEMPLATES: Template[] = [
     recommendedModels: ['wan3.0-video'],
     previewUrl:        '/templates/video-music-sync.jpg',
     attachmentSlots: [
-      { label: 'AUDIO',   hint: 'MP3 or WAV, up to 15 seconds — drives the performance' },
+      { label: 'AUDIO',   hint: 'Any audio file — we use the first 15 seconds to drive the performance' },
       { label: 'IMAGE 1', hint: 'Optional — who performs / the scene' },
       { label: 'IMAGE 2', hint: 'Optional — another reference' },
     ],
