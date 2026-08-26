@@ -297,7 +297,12 @@ export const STRINGS: Record<string, Entry> = {
   'xcut.tagline':    { en: 'The cutting room — every shot knows its model and its price.', 'zh-Hant': '剪輯室——每一個鏡頭都知道自己的模型與價格。', 'zh-Hans': '剪辑室——每一个镜头都知道自己的模型与价格。', ja: '編集室 — すべてのショットがモデルと価格を知っている。', ko: '편집실 — 모든 샷이 자신의 모델과 가격을 알고 있습니다.' },
   'xcut.projects':   { en: 'Your cuts', 'zh-Hant': '你的剪輯', 'zh-Hans': '你的剪辑', ja: 'あなたのカット', ko: '내 컷' },
   'xcut.new':        { en: 'New cut', 'zh-Hant': '新剪輯', 'zh-Hans': '新剪辑', ja: '新しいカット', ko: '새 컷' },
-  'xcut.fromboard':  { en: 'Cut this board', 'zh-Hant': '剪輯這個看板', 'zh-Hans': '剪辑这个看板', ja: 'このボードをカット', ko: '이 보드 컷하기' },
+  // "Cut this board" was two pieces of jargon stacked: to anyone who is not an
+  // editor "cut" reads as DELETE, and "board" is our word rather than theirs.
+  // The button should say what happens; XCut is a name you learn on arrival,
+  // so it lives in the tooltip instead of the label.
+  'xcut.fromboard':  { en: 'Assemble film', 'zh-Hant': '合成影片', 'zh-Hans': '合成影片', ja: '映像を仕上げる', ko: '영상 완성하기' },
+  'xcut.fromboard.hint': { en: 'Open this board in XCut — clips in order, ready to add music and export', 'zh-Hant': '在 XCut 開啟這個看板 — 片段依序排好，可加音樂並匯出', 'zh-Hans': '在 XCut 打开这个看板 — 片段依序排好，可加音乐并导出', ja: 'このボードを XCut で開く — クリップが順に並び、音楽を足して書き出せます', ko: '이 보드를 XCut에서 열기 — 클립이 순서대로 배치되어 음악 추가 후 내보낼 수 있습니다' },
   'xcut.untitled':   { en: 'Untitled cut', 'zh-Hant': '未命名剪輯', 'zh-Hans': '未命名剪辑', ja: '無題のカット', ko: '제목 없는 컷' },
   'xcut.empty':      { en: 'No cuts yet. Start from an XDirect board (▶▶ Cut on the storyboard) or begin blank and add clips from your assets.', 'zh-Hant': '還沒有剪輯。從 XDirect 看板開始（分鏡上的 ▶▶ 剪輯），或從空白開始加入素材。', 'zh-Hans': '还没有剪辑。从 XDirect 看板开始（分镜上的 ▶▶ 剪辑），或从空白开始加入素材。', ja: 'まだカットがありません。XDirectのボード（ストーリーボードの ▶▶ カット）から始めるか、空から素材を追加してください。', ko: '아직 컷이 없습니다. XDirect 보드(스토리보드의 ▶▶ 컷)에서 시작하거나 빈 상태에서 에셋을 추가하세요.' },
   'xcut.notsetup':   { en: 'XCut storage is not set up on this server yet.', 'zh-Hant': '這台伺服器尚未設定 XCut 儲存。', 'zh-Hans': '这台服务器尚未设置 XCut 存储。', ja: 'このサーバーではXCutのストレージがまだ設定されていません。', ko: '이 서버에는 아직 XCut 저장소가 설정되지 않았습니다.' },

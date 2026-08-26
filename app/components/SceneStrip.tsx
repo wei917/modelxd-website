@@ -425,12 +425,14 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
               onClick={() => onGenerateAll(kind)} disabled={busy}
               title={hint}
               style={{
-                padding: '4px 12px', borderRadius: 999,
+                padding: '5px 14px', borderRadius: 999,
                 border: '1px solid ' + (primary ? 'var(--red)' : 'var(--border2)'),
                 background: primary ? 'var(--red-dim)' : 'transparent',
                 color: primary ? 'var(--red)' : 'var(--muted2)',
                 cursor: busy ? 'default' : 'pointer',
-                fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 700,
+                // Actions read at 11.5; the readouts and flags around them stay
+                // at label size (10). Same row, two different jobs.
+                fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, fontWeight: 700,
                 letterSpacing: '0.07em', opacity: busy ? 0.5 : 1,
               }}
             >▶▶ {txt}</button>
@@ -445,16 +447,35 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
             </span>
           )
         })()}
-        {onCut && (
-          <button
-            onClick={onCut} title="XCut"
-            style={{
-              padding: '4px 12px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent',
-              color: 'var(--muted2)', cursor: 'pointer', fontFamily: 'var(--font-mono), monospace', fontSize: 10,
-              fontWeight: 700, letterSpacing: '0.07em',
-            }}
-          >✂ {t('xcut.fromboard')}</button>
-        )}
+        {onCut && (() => {
+          // The row used to be five things at the same weight: a readout, a
+          // flag, a mode toggle and two actions, all 10px mono. The most
+          // consequential control on the board looked exactly like the label
+          // that reports a number.
+          //
+          // The pipeline is stills → videos → assemble, and the run-all
+          // buttons already lead with whichever step is next. This carries
+          // that one step further: once every cut has its clip, ASSEMBLE is
+          // the next move and says so. Before then it stays quiet.
+          const shot = shots.filter(x => !x.asset)
+          const ready = shot.length > 0 && shot.every(x => !!x.url)
+          return (
+            <>
+              <span style={{ flex: 1 }} />
+              <button
+                onClick={onCut} title={t('xcut.fromboard.hint')}
+                style={{
+                  padding: '5px 14px', borderRadius: 999,
+                  border: '1px solid ' + (ready ? 'var(--red)' : 'var(--border2)'),
+                  background: ready ? 'var(--red-dim)' : 'transparent',
+                  color: ready ? 'var(--red)' : 'var(--muted2)',
+                  cursor: 'pointer', fontFamily: 'var(--font-mono), monospace', fontSize: 11.5,
+                  fontWeight: 700, letterSpacing: '0.07em',
+                }}
+              >🎬 {t('xcut.fromboard')} →</button>
+            </>
+          )
+        })()}
       </div>
 
       {/* ── ASSETS shelf (owner, Aug 12): named reusable pictures — cast,
