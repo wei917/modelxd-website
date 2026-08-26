@@ -46,6 +46,37 @@ const FORM_BRIEF: Record<string, string> = {
 
 const DURATIONS = [15, 18, 30, 60]
 
+// The song's MOOD is a different axis from the visual style, and the form had
+// no way to say it (owner, Aug 25: "we also want users to enter the style of
+// the song? 輕快 鄉村 搖滾 深情"). A reference video answers what the film
+// LOOKS like; the mood answers how it MOVES — cutting energy, section
+// grammar, how hard the chorus lands. 深情 against a bright coastal reference
+// is a different film from 輕快 against the same one, and until now nothing
+// in the pipeline knew which was meant.
+const MOODS = [
+  { id: 'upbeat',     i18n: 'xd.mv.mood.upbeat' },
+  { id: 'ballad',     i18n: 'xd.mv.mood.ballad' },
+  { id: 'rock',       i18n: 'xd.mv.mood.rock' },
+  { id: 'country',    i18n: 'xd.mv.mood.country' },
+  { id: 'electronic', i18n: 'xd.mv.mood.electronic' },
+  { id: 'hiphop',     i18n: 'xd.mv.mood.hiphop' },
+  { id: 'folk',       i18n: 'xd.mv.mood.folk' },
+  { id: 'rnb',        i18n: 'xd.mv.mood.rnb' },
+] as const
+
+/** Written for the DIRECTOR, in craft terms — a genre word alone would just
+ *  invite the clichés the skill spends a whole section warning against. */
+const MOOD_BRIEF: Record<string, string> = {
+  upbeat:     'bright and light-footed — quick cuts, motion in frame, the chorus lifts',
+  ballad:     'deep and unhurried — long takes, stillness, the emotion carried by the face and the light',
+  rock:       'hard and physical — heavier contrast, handheld energy, cuts landing on the beat',
+  country:    'warm and open — daylight, landscape, unhurried camera, lived-in texture',
+  electronic: 'synthetic and rhythmic — graphic framing, repetition, cuts locked to the pulse',
+  hiphop:     'confident and grounded — strong poses, low angles, hard cuts, attitude over prettiness',
+  folk:       'intimate and acoustic — soft natural light, close and human, minimal camera movement',
+  rnb:        'smooth and sensual — slow moves, rich shadow, texture and skin, restraint',
+}
+
 export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   busy: boolean
   /** Build the first message from the form and send it with the files. */
@@ -54,6 +85,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
 }) {
   const t = useT()
   const [reference, setRef]   = useState('')
+  const [mood, setMood]       = useState<string | null>(null)
   const [form, setForm]       = useState('kpop')
   const [aspect, setAspect]   = useState<'16:9' | '9:16'>('16:9')
   const [duration, setDur]    = useState<number>(18)
@@ -81,6 +113,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     parts.push(castAtts.length > 0
       ? 'Cast: lock the leads from the attached subject photos.'
       : 'Cast: create original leads to fit the song.')
+    if (mood) parts.push(`Song mood: ${MOOD_BRIEF[mood]}. That governs PACING and energy — cut rhythm, section grammar, how hard the chorus lands. It is a separate axis from the look; do not let it override the visual reference.`)
     if (styleAtts.length > 0) parts.push('Style: match the attached style frames — build the look bible from them.')
     if (songAtts.length > 0) parts.push('The song file is attached — transcribe it for timing, and use its segments as SYNC reference audio for sung scenes.')
     if (lyrics.trim()) parts.push(`Lyrics: ${lyrics.trim()}`)
@@ -134,6 +167,19 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           </div>
         </div>
       )}
+
+      {/* Mood survives a reference link, unlike the style presets — the link
+          says what the film looks like, this says how it moves. */}
+      <div>
+        <span style={label}>🎚 {t('xd.mv.mood')}</span>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {MOODS.map(m => (
+            <button key={m.id} onClick={() => setMood(mood === m.id ? null : m.id)} style={chip(mood === m.id)}>
+              {t(m.i18n)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
         <div>
