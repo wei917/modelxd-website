@@ -46,6 +46,13 @@ type Bubble = {
      *  they cannot correct, which is the same reason the lyric transcript
      *  goes on screen rather than straight to the director. */
     previewUrl?: string }>
+  /** The SONG, kept apart from `atts` on purpose. committedRef filters audio
+   *  out — it means "reference photos for generation", and a song passed as a
+   *  visual reference is nonsense. But the song is what the finished film is
+   *  FOR, and XCut had no way to find it: the board stored no link to it at
+   *  all, so every music video ended with the user hunting their own upload
+   *  in the library. Recorded here so the rough cut can lay it down itself. */
+  songs?: Array<{ storagePath: string; bucket?: string; mediaType: string; fileName: string }>
   // gen bubbles:
   status?: 'generating' | 'done' | 'error'
   modelName?: string
@@ -1241,10 +1248,16 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           status: 'done', cost, modelName: slot?.name ?? inp.model_id,
           ...(medium === 'image' ? { imageUrl: url ?? undefined } : { videoUrl: url ?? undefined }),
         })
-        if (cardScene) patchScene(cardScene,{ status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined })
+        // model_name / still_model_name are written back from the FINISHED
+        // job, not left as whatever set_storyboard planned. Both are optional
+        // in the tool schema, so the director may omit them — and when it
+        // did, the card went on offering "☰ Pick model" next to a picture
+        // that had already been generated and paid for (owner, Aug 25: "why
+        // the Assets card shows Pick model?"). A card should report what ran.
+        if (cardScene) patchScene(cardScene,{ status: 'done', url: url ?? undefined, cost, row_id: xid ?? undefined, ...(slot?.name ? { model_name: slot.name } : {}) })
         // The scene's key still: remembered on the card (so ▶ can open the
         // video on it) without becoming the card's clip.
-        else if (isSceneStill && sceneId) patchScene(sceneId, { still_row_id: xid ?? undefined, still_url: url ?? undefined, status: 'draft', error: undefined })
+        else if (isSceneStill && sceneId) patchScene(sceneId, { still_row_id: xid ?? undefined, still_url: url ?? undefined, status: 'draft', error: undefined, ...(slot?.name ? { still_model_name: slot.name } : {}) })
         // A ↻ comparison take keeps the card as-is but must still be FILED
         // under its cut, or it lands on the board owned by nothing.
         else if (rerunCtx?.sceneId && xid) recordTake(rerunCtx.sceneId, xid)
@@ -1325,7 +1338,11 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       committedRef.current = committed.filter(a => a.storagePath && !isAudio(a) && !isLyricFile(a) && !isDoc(a))
       // Attach the committed refs to the bubble already on screen, so a
       // restored session can still generate against these photos.
-      if (committedRef.current.length > 0) {
+      // The song rides alongside, never inside, `atts` — see the Bubble type.
+      const savedSongs = committed
+        .filter(a => a.storagePath && (a.mediaType || '').startsWith('audio/'))
+        .map(a => ({ storagePath: a.storagePath!, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName }))
+      if (committedRef.current.length > 0 || savedSongs.length > 0) {
         const saved = committedRef.current.map(a => ({
           storagePath: a.storagePath!, bucket: a.bucket, mediaType: a.mediaType,
           fileName: a.fileName, fileSize: a.fileSize, fileNo: a.fileNo,
@@ -1334,7 +1351,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         setBubbles(prev => {
           const i = prev.map(b => b.role).lastIndexOf('user')
           if (i < 0) return prev
-          const next = [...prev]; next[i] = { ...next[i], atts: saved as any }
+          const next = [...prev]
+          next[i] = {
+            ...next[i],
+            ...(saved.length > 0 ? { atts: saved as any } : {}),
+            ...(savedSongs.length > 0 ? { songs: savedSongs } : {}),
+          }
           return next
         })
       }

@@ -173,7 +173,15 @@ export type SceneSource = { video?: MediaSrc & { duration?: number }; still?: Me
 export function timelineFromStoryboard(
   scenes: StoryboardScene[],
   sources: Record<string, SceneSource>,
-  opts?: { aspect?: Timeline['aspect']; dissolve?: number },
+  opts?: {
+    aspect?: Timeline['aspect']
+    dissolve?: number
+    /** The board's song. Its presence means this is a MUSIC VIDEO, and a
+     *  music video wants three things a generic rough cut gets wrong: the
+     *  track laid down, the clips muted under it, and the scripts kept off
+     *  the picture. See below. */
+    song?: MediaSrc
+  },
 ): Timeline {
   const tl = emptyTimeline(opts?.aspect ?? '16:9')
   if (opts?.dissolve !== undefined) tl.settings.dissolve = opts.dissolve
@@ -193,6 +201,35 @@ export function timelineFromStoryboard(
     }
   }
   tl.subtitles = subtitlesFromScenes(scenes, tl)
+
+  // ── Music video ────────────────────────────────────────────────────────
+  // A song turns three generic defaults into wrong ones:
+  //
+  //  • The track was never laid down, so the user had to go and find their
+  //    own upload in the library — the one file the whole film exists for.
+  //  • muteClips:false let the video model's invented ambience (HappyHorse
+  //    generates its own audio) play UNDER the song.
+  //  • burnSubtitles:true printed each scene's `script` across the picture.
+  //    That field is the director's note to the USER — "the world before the
+  //    feeling is named" — not a caption. It has no business on the frame of
+  //    a music video, and it was burned in by default.
+  //
+  // The cues are still built, just not burned: the user can switch them on.
+  if (opts?.song) {
+    const picture = tl.video.reduce((n, c) => n + clipLength(c), 0)
+    if (picture > 0) {
+      tl.settings.muteClips = true
+      tl.settings.burnSubtitles = false
+      // Trimmed to the picture so the film cannot outlast its own images —
+      // totalDuration() takes the MAX of the two tracks, so an untrimmed
+      // long song would pad the export with black.
+      tl.audio.push({
+        id: newId('a'), src: opts.song, start: 0, in: 0, out: picture,
+        gain: 1, fadeIn: 0, fadeOut: Math.min(1, picture / 4),
+        label: opts.song.fileName,
+      })
+    }
+  }
   return tl
 }
 

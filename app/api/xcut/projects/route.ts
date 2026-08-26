@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   if (board) {
     if (!UUID.test(board)) return Response.json({ error: 'Bad board id' }, { status: 400 })
     const { data: conv } = await serviceClient().from('xdirector_conversations')
-      .select('id, user_id, title, storyboard, deleted_at').eq('id', board).maybeSingle()
+      .select('id, user_id, title, storyboard, deleted_at, skill, bubbles').eq('id', board).maybeSingle()
     if (!conv || conv.user_id !== user.id || conv.deleted_at) return Response.json({ error: 'Board not found' }, { status: 404 })
     const scenes: StoryboardScene[] = Array.isArray(conv.storyboard) ? conv.storyboard : []
     // Resolve each scene's clip / key still from the signed URLs the board
@@ -82,7 +82,21 @@ export async function POST(req: Request) {
       if (st) src.still = { ...st, mediaType: /\.jpe?g$/i.test(st.path) ? 'image/jpeg' : 'image/png', rowId: s.still_row_id }
       if (src.video || src.still) sources[s.id] = src
     }
-    timeline = timelineFromStoryboard(scenes, sources, { aspect })
+    // The board's song, if it has one. XDirect records it on the user bubble
+    // (`songs`) rather than in `atts`, because atts means "reference photos
+    // for generation" and audio is filtered out of those on purpose. Last one
+    // wins: if the user swapped the track mid-conversation, the film should
+    // use the track they ended up with.
+    const bubbles: any[] = Array.isArray(conv.bubbles) ? conv.bubbles : []
+    const songRow = [...bubbles].reverse()
+      .flatMap(b => Array.isArray(b?.songs) ? b.songs : [])
+      .find(s => typeof s?.storagePath === 'string' && typeof s?.bucket === 'string')
+    const song = songRow
+      ? { bucket: songRow.bucket, path: songRow.storagePath, mediaType: songRow.mediaType || 'audio/mpeg', fileName: songRow.fileName }
+      : undefined
+
+    timeline = timelineFromStoryboard(scenes, sources, { aspect, song })
+    if (song) console.log(`${LOG} music-video rough cut: song ${song.fileName ?? song.path} laid down, clips muted, subtitles off`)
     title = title ?? (typeof conv.title === 'string' && conv.title ? conv.title.slice(0, 120) : null)
     sourceBoard = conv.id
   } else if (body?.timeline) {
