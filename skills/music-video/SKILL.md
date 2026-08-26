@@ -11,7 +11,7 @@ metadata:
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.3"
+  version: "3.4"
   category: music
   order: "1"
   aspect: "ask"
@@ -421,13 +421,32 @@ timestamps say WHAT is sung; the beat grid says WHEN to cut. Rules:
 - Until the platform hands you a measured beat map, derive the grid from
   the lyric stamps (phrase lengths imply the bar) and say the assumption.
 
-## SYNC mode — when the song itself drives the shot (H3)
+## SYNC mode — when the song itself drives the shot
 
-A model whose input_modalities include audio (MiniMax H3 today) can take the
-SONG SEGMENT as a generation input: the clip comes back already performed to
-that exact stretch of track — lips, rhythm and emotional beats follow the
-audio natively. For sung/performance scenes this replaces the mute-and-mix
-workaround entirely. The rules, all probed live (Aug 14):
+A model whose input_modalities include audio can take the SONG SEGMENT as a
+generation input: the clip comes back already performed to that exact stretch
+of track — lips, rhythm and emotional beats follow the audio natively. For
+sung/performance scenes this replaces the mute-and-mix workaround entirely.
+
+**Two models can do this. Check the catalog rather than trusting this list —
+but as of Aug 26 they are:**
+
+| | MiniMax H3 | Wan 3.0 |
+|---|---|---|
+| Sung-take ceiling | 15s hard (4s min) | 30s hard (2s min) |
+| Price | $0.08/s 768p · $0.13/s 2K | $0.10/s 720p · $0.20/s 1080p |
+| Other inputs | text, image | text, image, **video** |
+| Proven for sync | yes — probed live Aug 14-15 | **NOT YET PROBED** |
+
+**H3 is the known quantity; prefer it for a sung take until Wan 3.0 has been
+tested.** Wan 3.0's advantage is on paper only so far: its 30s ceiling would
+put a whole chorus in ONE take instead of two, and every stitch removed is a
+place sync cannot slip. Whether its lip-sync actually holds past ~12s is
+unknown — do not promise a 30s sung take to a user before someone has made
+one. The rules below were probed on H3; treat them as the starting assumption
+for Wan 3.0, not as verified fact.
+
+The rules, all probed live on H3 (Aug 14):
 
 - **The scene's audio slice is the input.** Slice the user's song by the
   scene's timestamps and attach it (reference audio is FREE as input on H3).
@@ -440,8 +459,11 @@ workaround entirely. The rules, all probed live (Aug 14):
 - **State the aspect explicitly** — adaptive ratio follows the reference
   photo's orientation (a portrait reference silently produced a portrait
   shot inside a 16:9 edit).
-- **Sung takes ≤ 9-12s.** Lip-sync drifts near clip ends; 15s is the hard
-  cap. An 18s chorus is two takes split at a musical boundary, never one.
+- **Sung takes ≤ 9-12s on H3.** Lip-sync drifts near clip ends; 15s is H3's
+  hard cap. An 18s chorus is two takes split at a musical boundary, never one.
+  Wan 3.0's cap is 30s, but the DRIFT ceiling is a property of the model, not
+  of the cap — until someone has watched a long Wan take, plan it at the same
+  9-12s and split at musical boundaries exactly as on H3.
 - **Sung melody over double-time rap** — syllable density breaks sync.
 - **no_speech inverts for SYNC scenes only.** The cast sings on camera in a
   SYNC scene; every non-SYNC scene keeps performance-only. Same board, both
@@ -453,7 +475,13 @@ workaround entirely. The rules, all probed live (Aug 14):
   the ORIGINAL track over the stitch — sync survives because generation
   followed the same timeline, and the master recording always sounds better.
 
-### H3 attachment tags and in-take cuts (probed live, Aug 15)
+### H3 attachment tags and in-take cuts (probed live, Aug 15) — H3 ONLY
+
+This whole subsection is H3 prompt vocabulary. It is NOT portable: nothing
+here has been shown to work on Wan 3.0, and a `<Picture 1>` tag a model does
+not understand becomes literal text in the prompt rather than a reference.
+On Wan 3.0, bind identity in prose and keep one shot setup per take until
+someone probes otherwise.
 
 H3's prompt can ADDRESS its attachments by position — `<Picture 1>`,
 `<Picture 2>`, `<Audio 1>`, numbered in attachment order (images first,
@@ -503,16 +531,18 @@ verse B-roll and transitions. Say so in one chat line — "chorus on <top model>
 verses on <value pick>" — using the prices the board computes. Never invent a
 price, and never put two model names in one field.
 
-**PERFORMANCE ONLY IS THE DEFAULT.** Set `no_speech: true` on every scene you
-plan. The user mixes their own audio afterwards, so the cast should ACT — eyes,
+**PERFORMANCE ONLY IS THE DEFAULT — with one exception.** Set
+`no_speech: true` on every KEYFRAME scene you plan: the cast should ACT — eyes,
 expression, hands, body, camera — and never sing, speak or mouth words. The
 storyboard header carries a 🔇 NO SPEECH toggle if they ever want to turn it
-off. Only write a speaking or singing shot when the user explicitly asks for
-one, and if they do, read the rule below before you write it.
+off. The exception is a **SYNC scene** (see SYNC mode above): a shot generated
+by an audio-capable model with the song's own segment attached, where
+`no_speech` is FALSE and the cast really does sing. Everything below is the
+rule for scenes that are NOT sync — which is still most of the board.
 
-**There is no lip-sync on this product — so do not shoot singing.** No model
-in the catalog is audio-driven; the song's audio and its phonemes never reach
-the video model. A prompt that says "singing", "lips parting as if to speak"
+**On a model that cannot hear, there is no lip-sync — so do not shoot singing
+there.** A keyframe model never receives the song's audio or its phonemes. A
+prompt that says "singing", "lips parting as if to speak"
 or "mouthing the line" makes the model invent articulation, and invented
 articulation follows the language the PROMPT is written in — which is why a
 Mandarin song came back with an English-looking mouth (owner, Aug 11: "why
@@ -530,8 +560,10 @@ Direct around it, the way a real MV does when the playback take is unusable:
   prompt IN ITS OWN LANGUAGE and script (`想對你說出喜歡你`, not a translation
   or a romanisation), and frame it wide enough that exact sync is not legible.
   Phoneme shapes follow the characters you give the model.
-- Say once in chat that lip-sync is not available, so the user knows the
-  performance shots are gestural by design rather than broken.
+- Say once in chat that these shots are gestural BY DESIGN rather than broken —
+  and, if the board has no SYNC scene, that real singing is available on an
+  audio-capable model if they want it. Never tell a user lip-sync is
+  impossible here: it stopped being true on Aug 14.
 
 **Never put a proper name in a generation prompt.** Give the character a name
 in the card TITLE if it helps the user, but write the prompt as "the young
