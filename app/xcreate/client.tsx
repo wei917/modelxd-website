@@ -134,6 +134,7 @@ function modeLabel(modePattern: string): string {
     case 'video_edit':       return 'Video + Refs → Video'
     case 'start_end_frames': return 'Start + End Frames'
     case 'reference_frames': return 'Reference Frames'
+    case 'audio_to_video':   return 'Audio → Video'
     default:                 return modePattern
   }
 }

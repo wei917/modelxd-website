@@ -69,6 +69,13 @@ export async function generateVideo(
   // decides. Un-ported callers keep the old inference: audio present ⇒
   // reference mode for every image (the price of lip-sync); otherwise the
   // first image pins the frame.
+  // H3 rejects an empty text part outright ("content[0].text is empty",
+  // code 2013, seen live Aug 26 on an audio-only run) — fail with the fix
+  // instead of the upstream 400.
+  if (!prompt || !prompt.trim()) {
+    throw new Error('USERMSG: MiniMax H3 needs a prompt — the audio drives rhythm and lip-sync, but the prompt says what happens on screen.')
+  }
+
   const H3_IMAGE_ROLES = new Set(['first_frame', 'last_frame', 'middle_frame', 'reference_image'])
   const inferredRefMode = audioAtts.length > 0
   const roles = imageAtts.map((a, i) =>

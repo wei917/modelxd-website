@@ -374,17 +374,17 @@ async function runSlot(
       if (model.provider === 'google' && options.mode === 'extend_video') {
         const srcWire = wired.find(a => a.mediaType.startsWith('video/'))?.wireSource
         if (!srcWire || srcWire.kind !== 'row') {
-          throw new Error('Veo can only extend videos it generated on this board — wire a Veo video node as the source (uploads cannot be extended).')
+          throw new Error('USERMSG: Veo can only extend videos it generated on this board — wire a Veo video node as the source (uploads cannot be extended).')
         }
         const { data: srcRow } = await sb.from('xcreates').select('slots').eq('id', srcWire.row_id).single()
         const srcSlot: any = Array.isArray(srcRow?.slots) ? srcRow.slots[srcWire.slot ?? 0] : null
         const ref = srcSlot?.providerVideoRef ?? null
         if (!ref) {
-          throw new Error('This video has no Veo reference to extend from — only Veo 3.1 outputs generated after extension shipped can be extended. Re-generate the source with Veo, then extend.')
+          throw new Error('USERMSG: This video has no Veo reference to extend from — only Veo 3.1 outputs generated after extension shipped can be extended. Re-generate the source with Veo, then extend.')
         }
         const madeAt = srcSlot?.providerVideoRefAt ? Date.parse(srcSlot.providerVideoRefAt) : NaN
         if (!Number.isFinite(madeAt) || Date.now() - madeAt > 46 * 60 * 60 * 1000) {
-          throw new Error('Veo references expire about 2 days after generation — this source is too old to extend. Re-generate it with Veo, then extend.')
+          throw new Error('USERMSG: Veo references expire about 2 days after generation — this source is too old to extend. Re-generate it with Veo, then extend.')
         }
         extendVideoRef = ref
       }

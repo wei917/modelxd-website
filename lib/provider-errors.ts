@@ -27,6 +27,13 @@ const NOTFOUND = /not found|NOT_FOUND|does not exist|deprecated/i
 
 export function sanitizeProviderError(raw: unknown): string {
   const msg = raw instanceof Error ? raw.message : String(raw ?? '')
+  // Guard errors we authored FOR users ("pick a model with audio input",
+  // "H3 needs a prompt") — everything else here strips provider internals,
+  // which was also squashing our own guidance into the generic fallback.
+  // Prefix such messages with USERMSG: at the throw site; the marker is
+  // stripped and the message shown verbatim.
+  const um = msg.indexOf('USERMSG:')
+  if (um !== -1) return msg.slice(um + 'USERMSG:'.length).trim().slice(0, 220)
   // Safety refusals are already written for end users — keep them, but
   // strip anything that looks like a JSON dump.
   if (SAFETY.test(msg)) {

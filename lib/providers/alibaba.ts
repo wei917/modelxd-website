@@ -562,7 +562,7 @@ export async function generateVideo(
     if (audioAtts.length > 0 && !(model.input_modalities ?? []).includes('audio')) {
       // Fail HERE with a message that names the fix — sending
       // reference_audio to HappyHorse etc. yields an opaque upstream error.
-      throw new Error(`${model.model_name} can't read reference audio — pick a model with audio input (e.g. Wan 3.0) or remove the audio file.`)
+      throw new Error(`USERMSG: ${model.model_name} can't read reference audio — pick a model with audio input (e.g. Wan 3.0) or remove the audio file.`)
     }
     for (const a of audioAtts) {
       if (!a.url) throw new Error('Reference audio has no signed URL — cannot send to DashScope.')
