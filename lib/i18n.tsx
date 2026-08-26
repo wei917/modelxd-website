@@ -656,6 +656,7 @@ export const STRINGS: Record<string, Entry> = {
   'recipefrom.start_end_frames': { en: 'Start + End Frames', 'zh-Hant': '頭尾幀',  'zh-Hans': '首尾帧',   ja: '最初+最後のフレーム', ko: '시작+끝 프레임' },
   'recipefrom.reference_frames': { en: 'Reference Images',   'zh-Hant': '參考圖片', 'zh-Hans': '参考图片', ja: '参照画像',          ko: '참조 이미지' },
   'recipefrom.audio_to_video':   { en: 'Audio / Music',      'zh-Hant': '音訊／音樂', 'zh-Hans': '音频／音乐', ja: '音声・音楽',      ko: '오디오/음악' },
+  'xcreate.promptneed':          { en: 'needs a prompt: describe what happens on screen', 'zh-Hant': '需要提示詞：描述畫面中發生的事', 'zh-Hans': '需要提示词：描述画面中发生的事', ja: 'プロンプトが必要：画面で起こることを記述してください', ko: '프롬프트 필요: 화면에서 일어나는 일을 설명하세요' },
 
   // ── XDuel ──
   'xduel.eyebrow':    { en: 'XDuel',            'zh-Hant': 'X對決',       'zh-Hans': 'X对决',       ja: 'X対決',          ko: 'X대결' },

@@ -3121,8 +3121,16 @@ function CreateStudio() {
   const hasAttachment = attachments.length > 0
   // audio_to_text is text mode's one attachment-driven shape (owner, Aug 9):
   // the audio IS the input, and an empty prompt means plain transcription.
-  const promptOk = prompt.trim().length >= 3 ||
-    ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachment)
+  // Models that hard-require prompt text declare
+  // output_config.<mode>.prompt_required (H3 400s upstream on an empty
+  // text part, code 2013) — block at the composer with a named reason
+  // instead of letting the provider refuse after the run starts.
+  const promptRequiredBy = prompt.trim().length === 0
+    ? activeModels.filter((m: any) => m?.output_config?.[mode]?.prompt_required)
+    : []
+  const promptOk = (prompt.trim().length >= 3 ||
+    ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachment)) &&
+    promptRequiredBy.length === 0
   const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating' && !attachingSample
 
   // Once the user fires a generation, every setup control (mode tabs,
@@ -4348,6 +4356,11 @@ function CreateStudio() {
                       Generating phase: disabled "⏳ Generating…" indicator.
                       Picking / chatting phase: nothing — Start Over is the
                       only path back to a new generation. */}
+                  {phase === 'setup' && promptRequiredBy.length > 0 && (
+                    <span style={{ fontSize: 11, color: 'var(--red)', fontFamily: 'var(--font-mono), monospace' }}>
+                      {promptRequiredBy.map((m: any) => m.display_name).join(', ')} — {t('xcreate.promptneed')}
+                    </span>
+                  )}
                   {phase === 'setup' && (
                     <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
                       {t('xcreate.generatebtn')}
