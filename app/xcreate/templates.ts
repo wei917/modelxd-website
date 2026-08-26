@@ -302,9 +302,34 @@ export const XCREATE_TEMPLATES: Template[] = [
     starterPrompt:     'Continue this video: {{the camera keeps pulling back to reveal the whole scene}}. Same subject, same lighting, same motion energy — one continuous take, no cuts.',
     duration:          8,
     recommendedModels: ['wan2.7-i2v', 'seedance2_5'],
+    previewUrl:        '/templates/video-extend.jpg',
     previewBgColor:    '#4a2d52',
     attachmentSlots: [
       { label: 'YOUR VIDEO', hint: 'The clip to continue (MP4, 2–10s best)' },
+    ],
+  },
+  {
+    id:                'video-music-sync',
+    emoji:             '🎤',
+    popular:           true,
+    title:             'Sync to Music',
+    subtitle:          'Your song drives the performance',
+    mode:              'video',
+    slotMode:          'reference_frames',
+    // Wan 3.0's reference_audio: the uploaded track drives pacing and
+    // performance (probed live 2026-08-26). Upstream constraints carried
+    // into the hint because they are hard rejections, not preferences:
+    // wav/mp3 ONLY (m4a refused) and ≤15s of audio. Optional image refs
+    // set the performer/scene; they ride the same reference media array.
+    starterPrompt:     'A singer performs this song on a moody neon-lit stage, camera slowly circling, expressive close-ups on the beat, shallow depth of field, cinematic concert lighting. The performance follows the music\'s rhythm and energy.',
+    aspectRatio:       '16:9',
+    duration:          10,
+    recommendedModels: ['wan3.0-video'],
+    previewUrl:        '/templates/video-music-sync.jpg',
+    attachmentSlots: [
+      { label: 'AUDIO',   hint: 'MP3 or WAV, up to 15 seconds — drives the performance' },
+      { label: 'IMAGE 1', hint: 'Optional — who performs / the scene' },
+      { label: 'IMAGE 2', hint: 'Optional — another reference' },
     ],
   },
   {
@@ -358,6 +383,7 @@ export const XCREATE_TEMPLATES: Template[] = [
     aspectRatio:       '16:9',
     duration:          8,
     recommendedModels: ['veo-3.1-generate-preview', 'happyhorse-1.0-t2v'],
+    previewUrl:        '/templates/video-asmr-glass-fruit.jpg',
     attachmentSlots: [],
   },
   {

@@ -4206,6 +4206,10 @@ function CreateStudio() {
                       recipeMode === 'audio_to_text' ? 'audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.webm'
                       : !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
                       : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
+                      // Reference video templates: images + audio (Wan 3.0
+                      // reference_audio — mp3/wav only; m4a is refused
+                      // upstream, so don't offer it in the picker).
+                      : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/mpeg,audio/wav,.mp3,.wav`
                       : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
                       : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
                       : generic && mode === 'video' ? `${IMG},${VID}`
