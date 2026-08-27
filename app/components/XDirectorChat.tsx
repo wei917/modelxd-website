@@ -195,6 +195,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // agentTurn is re-entered from chip clicks and generation results, so the
   // selection is read from a ref rather than a stale closure.
   const activeSkillRef = useRef<string | null>(null)
+
+  // True while ANY template's setup form is on screen, so the composer can
+  // hide behind it and leave exactly one place to type.
+  const setupOpen = !setupDismissed && bubbles.length === 0
+    && ['music-video', 'social-post', 'ai-animation', 'story-to-video'].includes(activeSkill ?? '')
+
   useEffect(() => { activeSkillRef.current = activeSkill }, [activeSkill])
 
   useEffect(() => {
@@ -1888,7 +1894,13 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           <div ref={endRef} />
         </div>
 
-        {/* Composer — pinned below the scrolling transcript. */}
+        {/* Composer — pinned below the scrolling transcript.
+            HIDDEN while a template's setup form is up (owner, Aug 26: "why does
+            XDirect have two prompt boxes if I click template?"). The form and this
+            box are two entrances to the same send, and showing both left no way to
+            tell which one was real. The form's Skip link is the way out — it sets
+            setupDismissed, which brings this back. */}
+        {!setupOpen && (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, flexShrink: 0 }}>
           <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple maxFiles={15} accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.m4a,.wav,.flac,.ogg,.txt,.lrc,text/plain,.pdf,application/pdf" roles />
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -1914,6 +1926,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             </button>
           </div>
       </div>
+        )}
     </div>
   )
 }
