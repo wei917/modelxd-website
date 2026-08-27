@@ -373,7 +373,7 @@ export default function XEvalPage() {
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            {e && <ProviderLogo provider={e.provider} size={16} />}
+                            {e ? <ProviderLogo provider={e.provider} size={16} /> : row.model_name === 'modelxd-router' ? <Sparkle /> : null}
                             {e?.display ?? SPECIAL_DISPLAY[row.model_name] ?? row.model_name}
                           </span>
                         </td>
@@ -439,6 +439,12 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
     if (r.model_s != null) e.secs.push(Number(r.model_s))
   }
   const rows = [...by.values()].sort((a, b) => b.solved / b.n - a.solved / a.n || a.cost - b.cost)
+  // Pass rate is ABSOLUTE (unlike Elo, which is scale-relative), so these
+  // cutoffs are fixed — normalising to the field painted the lowest of four
+  // close entries 'poor' at 67%, which is a strong score on hard terminal
+  // tasks. Calibrated to Terminal-Bench, where frontier agents land 50-70%.
+  const rateTier = (x: number) =>
+    x >= 0.8 ? 'elite' : x >= 0.7 ? 'good' : x >= 0.55 ? 'mid' : x >= 0.4 ? 'fair' : 'poor'
   const taskN = new Set([...latest.values()].map(r => r.task_id)).size
   // ModelXD Autopilot: the library serving each task's cheapest SOLVER
   // (cheapest attempt where nobody solves). Derived from the same runs —
@@ -496,13 +502,13 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                 <td style={{ padding: '8px 12px' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <ProviderLogo provider={r.provider} size={16} />{r.display}
+                    {r.provider === 'modelxd' ? <Sparkle /> : <ProviderLogo provider={r.provider} size={16} />}{r.display}
                   </span>
                 </td>
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{r.effort || '—'}</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved} / {r.n}</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                  <span className={`xd-chip ${r.solved / r.n >= 0.7 ? 'elite' : r.solved / r.n >= 0.6 ? 'good' : r.solved / r.n >= 0.5 ? 'mid' : r.solved / r.n >= 0.4 ? 'fair' : 'poor'}`}>{Math.round((r.solved / r.n) * 100)}%</span>
+                  <span className={`xd-chip ${rateTier(r.solved / r.n)}`}>{Math.round((r.solved / r.n) * 100)}%</span>
                 </td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{money(r.cost / r.n)}</td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved ? money(r.cost / r.solved) : '—'}</td>
@@ -538,6 +544,11 @@ const EFFORT_COLOR: Record<string, string> = {
 // Entries with no catalog run behind them (ModelXD's own row, the human
 // anchor) have no display_name in xeval_runs — name them here.
 const SPECIAL_DISPLAY: Record<string, string> = { 'modelxd-router': 'ModelXD Autopilot', 'human-expert': 'Human expert' }
+/** ModelXD's own rows carry the sparkle in tables too — ProviderLogo has no
+ *  mark for us, so without this our row is the only one with a blank gutter. */
+const Sparkle = () => (
+  <svg width={16} height={16} viewBox="0 0 14 14" aria-hidden><Mark shape="sparkle" cx={7} cy={7} r={4.2} fill="var(--red)" /></svg>
+)
 const shapeOf = (prov: string) => PROVIDER_SHAPE[prov] ?? 'circle'
 const colorOf = (effort: string) => EFFORT_COLOR[effort] ?? 'var(--red)'
 
