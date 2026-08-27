@@ -945,7 +945,10 @@ function WerewolfBoard({
   }
 
   const pct = (w: number, g: number) => g === 0 ? '—' : `${Math.round(100 * w / g)}%`
-  const frac = (w: number, g: number) => g === 0 ? '—' : `${w} / ${g}`
+  // Was `${w} / ${g}` — which restated the sample size we removed from the
+  // games column (owner, Aug 26). A percentage answers the same question
+  // without publishing how many games it rests on.
+  const frac = (w: number, g: number) => g === 0 ? '—' : `${Math.round(100 * w / g)}%`
 
   return (
     <>
@@ -954,9 +957,11 @@ function WerewolfBoard({
         marginBottom: 16, fontSize: 12, lineHeight: 1.5, color: 'var(--muted2)',
         background: 'var(--surface)',
       }}>
+        {/* Sample size is ours, not the public's (owner, Aug 26) — say the
+            standings are provisional, never how many games that rests on. */}
         {ww.totalGames < WW_PROVISIONAL_BELOW && (
           <strong style={{ color: 'var(--red)', marginRight: 6 }}>
-            {t('xboard.ww.provisional').replace('{n}', String(ww.totalGames))}
+            {t('xboard.ww.provisional')}
           </strong>
         )}
         {t('xboard.ww.note')}
@@ -971,7 +976,7 @@ function WerewolfBoard({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)', minWidth: 830 }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '2fr 110px 90px 110px 130px 130px 110px',
+              gridTemplateColumns: '2fr 110px 110px 130px 130px 110px',
               gap: 0, padding: '10px 20px',
               fontSize: 10, color: 'var(--muted)', fontWeight: 700,
               letterSpacing: '0.12em', textTransform: 'uppercase',
@@ -980,7 +985,6 @@ function WerewolfBoard({
             }}>
               <span>{t('xboard.col.model')}</span>
               <span style={{ textAlign: 'right' }}>XD Score</span>
-              <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.games')}</span>
               <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.winrate')}</span>
               <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.wolf')}</span>
               <span style={{ textAlign: 'right' }}>{t('xboard.ww.col.village')}</span>
@@ -989,7 +993,7 @@ function WerewolfBoard({
             {rows.map(({ r, m, score }) => (
               <div key={r.modelId} style={{
                 display: 'grid',
-                gridTemplateColumns: '2fr 110px 90px 110px 130px 130px 110px',
+                gridTemplateColumns: '2fr 110px 110px 130px 130px 110px',
                 gap: 0, padding: '12px 20px',
                 background: 'var(--bg)', alignItems: 'center',
                 transition: 'background 0.12s',
@@ -1007,9 +1011,6 @@ function WerewolfBoard({
                   ) : (
                     <span style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', fontWeight: 600 }}>—</span>
                   )}
-                </div>
-                <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 600, color: 'var(--muted2)' }}>
-                  {r.games}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{
