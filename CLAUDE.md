@@ -1,7 +1,9 @@
 # CLAUDE.md — ModelXD Project Guide
 
 > Last verified against the code on **2026-08-05** (branch `dev`).
-> Companion doc: `docs/STATE-2026-08-19.md` — a running snapshot of what
+> Companion docs: `docs/XEVAL-PAGE.md` — everything about the `/xeval`
+> page and the eval pipeline behind it (read before touching XEval).
+> `docs/STATE-2026-08-19.md` — a running snapshot of what
 > changed recently and what is still open (incl. the UNPUSHED commit queue
 > and the in-flight headline task). Read that second.
 
@@ -61,6 +63,7 @@ more**, and the per-user feature system is gone with it.
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
+| **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
 ### XDuel — `/xduel`
 One prompt, two anonymous models, 5-step flow: run → vote blind → reveal
