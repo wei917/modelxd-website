@@ -784,11 +784,16 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     for (const [i, n] of patches.entries()) {
       const b: any = bubbles[i]
       if (!b?.forScene || !n.rowId) continue
+      // n.label is the slot's model name — the same value the live completion
+      // path writes. Healing the row and the picture but NOT the model left
+      // the card offering "☰ Pick model" beside a finished image the user had
+      // already paid for: a choice presented after it was spent. The card has
+      // to report what RAN, and after a reload this is the only path that can.
       if (b.forKind === 'still') {
         healedStill = true
-        patchScene(b.forScene, { still_row_id: n.rowId, still_url: n.thumb ?? undefined, status: 'draft', error: undefined })
+        patchScene(b.forScene, { still_row_id: n.rowId, still_url: n.thumb ?? undefined, status: 'draft', error: undefined, ...(n.label ? { still_model_name: n.label } : {}) })
       } else if (b.forKind === 'clip') {
-        patchScene(b.forScene, { status: 'done', url: n.thumb ?? undefined, row_id: n.rowId, ...(typeof n.cost === 'number' ? { cost: n.cost } : {}) })
+        patchScene(b.forScene, { status: 'done', url: n.thumb ?? undefined, row_id: n.rowId, ...(typeof n.cost === 'number' ? { cost: n.cost } : {}), ...(n.label ? { model_name: n.label } : {}) })
       } else if (b.forKind === 'take') {
         recordTake(b.forScene, n.rowId)
       }
