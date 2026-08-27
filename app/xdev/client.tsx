@@ -44,12 +44,14 @@ export default function XDevClient() {
   const [err, setErr] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
-  // SSR-stable origin, swapped after mount — the server must render the
-  // same bytes the client's first paint does (same rule as Nav's BETA
-  // sticker), or React regenerates the whole tree. Caught live: the curl
-  // snippet hydrated www.modelxd.com against localhost.
-  const [origin, setOrigin] = useState('https://www.modelxd.com')
-  useEffect(() => { setOrigin(window.location.origin) }, [])
+  // The CANONICAL endpoint, not the host being browsed. These snippets get
+  // pasted into game configs and CI — someone reading this page on
+  // dev.modelxd.com (or localhost) must not ship the beta host into their
+  // game. The constant also ends the SSR/client hydration dance a
+  // window.location read here caused (caught live, Aug 27). One Supabase
+  // behind every host, so a key works on www regardless of where it was
+  // minted.
+  const origin = 'https://www.modelxd.com'
   const keyShown = fresh?.key ?? '<YOUR_KEY>'
 
   const load = async () => {
