@@ -1070,9 +1070,15 @@ export async function generateImageFromVideoUrl(
     const usage: any = (res as any).usageMetadata ?? null
     const outImage = (usage?.candidatesTokensDetails ?? [])
       .find((d: any) => String(d?.modality ?? '').toUpperCase() === 'IMAGE')?.tokenCount ?? 0
-    // NOTE: the image rows carry no `video_input` rate yet, so the video
-    // term below resolves to 0 and this UNDER-reports. Add video_input to
-    // the model_pricing.tokens of the image rows at /admin/models.
+    // The video term below resolves to 0, and that is CORRECT for now:
+    // Google's YouTube-URL input is in preview and billed at no charge, so
+    // the VIDEO tokens usageMetadata reports are counted but not charged.
+    // Do NOT "fix" this by copying the model's text/image rate onto
+    // video_input — that would over-report a free feature.
+    // Google says preview pricing and rate limits will change. When a real
+    // video-input rate is published, add it to model_pricing.tokens on the
+    // image rows and this maths starts costing it with no code change.
+    // See docs/price-audit.md.
     cost += calcTextCost(
       model,
       modalityTokens(usage, 'TEXT'),
