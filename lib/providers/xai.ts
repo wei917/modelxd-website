@@ -22,7 +22,7 @@
 //   per_video_second lives in the DB row; input surcharges are read from
 //   the row's extra keys so pricing stays data-driven.
 
-import type { ModelInfo, Attachment, VideoResult, ImageResult, TextStreamCallbacks } from './types'
+import type { ModelInfo, Attachment, VideoResult, ImageResult, TextStreamCallbacks, TextGenExtras } from './types'
 import { calcTextCost } from './pricing'
 
 const BASE = 'https://api.x.ai/v1'
@@ -49,16 +49,20 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   thinking:    string | null = null,
+  extras:      TextGenExtras = {},
 ): Promise<void> {
   const TAG = `[xai/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} thinking=${thinking ?? 'auto'}`)
 
-  const chatMessages = messages.map((m, i) => ({
+  const chatMessages: any[] = messages.map((m, i) => ({
     role: m.role,
     content: i === messages.length - 1 && m.role === 'user'
       ? buildTextContent(String(m.content), attachments)
       : String(m.content),
   }))
+  // OpenAI-compatible surface: the system prompt IS a message here, and it
+  // has to be the first one.
+  if (extras.system) chatMessages.unshift({ role: 'system', content: extras.system })
 
   let res: Response
   try {
@@ -71,6 +75,9 @@ export async function streamText(
         messages: chatMessages,
         stream_options: { include_usage: true },
         ...(thinking ? { reasoning_effort: thinking } : {}),
+        ...(extras.jsonSchema
+          ? { response_format: { type: 'json_schema', json_schema: { name: extras.jsonSchema.name, schema: extras.jsonSchema.schema, strict: extras.jsonSchema.strict !== false } } }
+          : extras.jsonMode ? { response_format: { type: 'json_object' } } : {}),
       }),
     })
   } catch (err: any) {

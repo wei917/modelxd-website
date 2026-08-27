@@ -12,6 +12,7 @@ import type {
   TextStreamCallbacks,
   ImageResult,
   Attachment,
+  TextGenExtras,
 } from './types'
 import { calcTextCost, calcImageCost } from './pricing'
 import { VARIATION_DIRECTIVES } from './types'
@@ -44,6 +45,7 @@ export async function streamText(
   attachments: Attachment[] = [],
   thinking: string | null = null,
   search: boolean = false,
+  extras: TextGenExtras = {},
 ): Promise<void> {
   const TAG = `[openai/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
@@ -58,7 +60,7 @@ export async function streamText(
 
   // Pro models: background + poll path
   if (isProModel(model.model_name)) {
-    return streamTextBackground(model, input, callbacks, TAG, thinking, search)
+    return streamTextBackground(model, input, callbacks, TAG, thinking, search, extras)
   }
 
   try {
@@ -66,6 +68,14 @@ export async function streamText(
       model: model.model_name,
       input,
       stream: true,
+      // The Responses API carries the system prompt as `instructions`, a
+      // sibling of `input` rather than a message in it.
+      ...(extras.system ? { instructions: extras.system } : {}),
+      // Structured output. On the Responses API the format lives under
+      // `text`, not at the top level (that's Chat Completions).
+      ...(extras.jsonSchema
+        ? { text: { format: { type: 'json_schema', name: extras.jsonSchema.name, schema: extras.jsonSchema.schema, strict: extras.jsonSchema.strict !== false } } }
+        : extras.jsonMode ? { text: { format: { type: 'json_object' } } } : {}),
       // Reasoning effort (thinking level) - validated live July 22:
       // none / minimal / low / medium / high / xhigh / max.
       ...(thinking ? { reasoning: { effort: thinking } } : {}),
@@ -135,6 +145,7 @@ async function streamTextBackground(
   TAG: string,
   thinking: string | null = null,
   search: boolean = false,
+  extras: TextGenExtras = {},
 ): Promise<void> {
   console.log(`${TAG} background mode (pro model detected)`)
   try {
@@ -143,6 +154,7 @@ async function streamTextBackground(
       model: model.model_name,
       input,
       background: true,
+      ...(extras.system ? { instructions: extras.system } : {}),
       ...(search ? { tools: [{ type: 'web_search' }] } : {}),
     } as any)
     const responseId = initial.id

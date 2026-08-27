@@ -259,6 +259,35 @@ export interface Attachment {
   storageRef?: { bucket: string; path: string }
 }
 
+/** Structured-output request. `schema` is standard JSON Schema. */
+export interface JsonSchemaSpec {
+  name:    string
+  schema:  any
+  strict?: boolean
+}
+
+/**
+ * Everything a text call needs that isn't a message, a callback or an
+ * attachment. Passed as a trailing bag rather than more positional args:
+ * the six text providers already disagree about the order of `thinking`
+ * and `search` (alibaba has them swapped), and adding a seventh position
+ * to that would be asking for a silent mix-up.
+ */
+export interface TextGenExtras {
+  /**
+   * The operator instruction. NOT a message — every provider has a native
+   * slot for it (OpenAI `instructions`, Gemini `systemInstruction`,
+   * Anthropic top-level `system`, and a `role:'system'` first message on
+   * the OpenAI-compatible ones), and putting it in the array instead
+   * costs both the provider's own handling of it and the cache prefix.
+   */
+  system?: string | null
+  /** Force valid JSON out. Ignored by providers that cannot do it. */
+  jsonMode?: boolean
+  /** Force JSON matching this schema, where the provider supports it. */
+  jsonSchema?: JsonSchemaSpec | null
+}
+
 export interface TextStreamCallbacks {
   onDelta: (text: string) => void
   onDone:  (result: {

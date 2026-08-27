@@ -10,7 +10,7 @@
 // Auth: Bearer token via DASHSCOPE_API_KEY env var
 // Full API guide: docs/DASHSCOPE-API-GUIDE.md
 
-import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment } from './types'
+import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras } from './types'
 import { calcTextCost, calcImageCost, calcVideoCost } from './pricing'
 
 // Singapore international endpoint. Override via DASHSCOPE_BASE_URL for other regions:
@@ -71,11 +71,12 @@ export async function streamText(
   attachments: Attachment[] = [],
   search: boolean = false,
   thinking: string | null = null,
+  extras: TextGenExtras = {},
 ): Promise<void> {
   const TAG = `[alibaba/${model.model_name}]`
 
   if ((model.output_config as any)?.text?.api === 'compatible') {
-    return streamCompatible(model, messages, callbacks, thinking, TAG)
+    return streamCompatible(model, messages, callbacks, thinking, TAG, extras)
   }
 
   // Which endpoint is a property of the MODEL, not of this request. A
@@ -102,7 +103,7 @@ export async function streamText(
 
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} multimodal=${multimodal} search=${searchOn} thinking=${thinking ?? 'default'}`)
 
-  const nativeMessages = messages.map((m, i) => ({
+  const nativeMessages: any[] = messages.map((m, i) => ({
     role: m.role,
     content: i === messages.length - 1 && m.role === 'user' && multimodal
       ? mediaParts(String(m.content), media)
@@ -110,6 +111,15 @@ export async function streamText(
       ? [{ text: String(m.content) }]
       : String(m.content),
   }))
+  // DashScope's native endpoint takes the system prompt as a first message,
+  // shaped like the turn beside it: a string on the text endpoint, a parts
+  // array on the multimodal one.
+  if (extras.system) {
+    nativeMessages.unshift({
+      role: 'system',
+      content: multimodal ? [{ text: extras.system }] : extras.system,
+    })
+  }
 
   const parameters: any = {
     result_format:      'message',
@@ -127,6 +137,7 @@ export async function streamText(
   // own default rather than guessing.
   if (thinking === 'thinking_true')  parameters.enable_thinking = true
   if (thinking === 'thinking_false') parameters.enable_thinking = false
+  if (extras.jsonMode || extras.jsonSchema) parameters.response_format = { type: 'json_object' }
 
   let res: Response
   try {
@@ -219,6 +230,7 @@ async function streamCompatible(
   callbacks: TextStreamCallbacks,
   thinking:  string | null,
   TAG:       string,
+  extras:    TextGenExtras = {},
 ): Promise<void> {
   console.log(`${TAG} streamText start (compatible-mode) messages=${messages.length} thinking=${thinking ?? 'default'}`)
 
@@ -226,10 +238,16 @@ async function streamCompatible(
     model:          model.model_name,
     stream:         true,
     stream_options: { include_usage: true },
-    messages:       messages.map(m => ({ role: m.role, content: String(m.content) })),
+    messages:       [
+      ...(extras.system ? [{ role: 'system', content: extras.system }] : []),
+      ...messages.map(m => ({ role: m.role, content: String(m.content) })),
+    ],
   }
   if (thinking === 'thinking_true')  body.enable_thinking = true
   if (thinking === 'thinking_false') body.enable_thinking = false
+  // DashScope's compatible mode takes json_object only; the schema itself
+  // travels in the prompt and we validate what comes back.
+  if (extras.jsonMode || extras.jsonSchema) body.response_format = { type: 'json_object' }
 
   let res: Response
   try {

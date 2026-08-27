@@ -9,7 +9,7 @@
 // present in the deploy env — a drawn-but-keyless model would fail every
 // duel slot.
 
-import type { ModelInfo, Attachment, TextStreamCallbacks } from './types'
+import type { ModelInfo, Attachment, TextStreamCallbacks, TextGenExtras } from './types'
 import { calcTextCost } from './pricing'
 
 const BASE = 'https://api.anthropic.com/v1'
@@ -58,6 +58,7 @@ export async function streamText(
    *  reply (XDirect's story digest — one JSON bible from ~50k tokens of
    *  summaries, which hit the cap and truncated, Aug 22) passes its own. */
   maxTokens?:  number,
+  extras:      TextGenExtras = {},
 ): Promise<void> {
   const TAG = `[anthropic/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length}`)
@@ -100,9 +101,23 @@ export async function streamText(
         max_tokens: maxTokens ?? 4096,
         stream: true,
         messages: chatMessages,
+        // Top-level `system`, never a message — the Messages API has no
+        // system role in the array and rejects one.
+        ...(extras.system ? { system: extras.system } : {}),
         // Adaptive thinking + effort (probed live July 23: low/medium/
         // high/xhigh/max on Fable 5 / Sonnet 5 / Opus 4.8).
-        ...(thinking ? { thinking: { type: 'adaptive' }, output_config: { effort: thinking } } : {}),
+        ...(thinking ? { thinking: { type: 'adaptive' } } : {}),
+        // effort and format are BOTH children of output_config, so they are
+        // built as one object — two conditional spreads would have the
+        // second silently delete the first.
+        ...((thinking || extras.jsonSchema) ? {
+          output_config: {
+            ...(thinking ? { effort: thinking } : {}),
+            // No `name` field here and no beta header (verified against the
+            // structured-outputs doc, Aug 2026) — unlike OpenAI's shape.
+            ...(extras.jsonSchema ? { format: { type: 'json_schema', schema: extras.jsonSchema.schema } } : {}),
+          },
+        } : {}),
         // Server-side web search. Billed per search ($10/1k) on top of the
         // tokens the results add to the prompt, hence max_uses: a runaway
         // research loop is a real bill, not just a slow answer.

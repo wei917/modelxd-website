@@ -16,8 +16,8 @@ export const maxDuration = 120
 
 import { createClient } from '@supabase/supabase-js'
 import { getModelById } from '@/lib/models'
-import * as providers from '@/lib/providers'
 import { debitCredits } from '@/lib/credits'
+import { runInference } from '@/lib/inference'
 import {
   dealRoles, alive, wolves, winner, redact, forModel, dayOrder, tally, resolveSeat,
   type Seat, type Turn, type Phase,
@@ -155,14 +155,29 @@ async function askModel(seat: Seat, s: Session, prompt: string, field: string) {
     let chunk = ''
     let timer: ReturnType<typeof setTimeout> | null = null
     await Promise.race([
+      // Inference goes through the shared core (lib/inference.ts) — the same
+      // path /api/v1/chat/completions uses — but in process, with no HTTP hop
+      // to our own lambda. The core does NOT get this seat's policy: the
+      // retry rule, the 90s ceiling and the field extraction below all stay
+      // here, because they are game rules, not transport.
+      //
+      // bill:false because Werewolf debits ONCE per act further down; letting
+      // the core bill per call would double-charge and shatter the one
+      // expandable ledger row a whole game is meant to be.
       new Promise<void>(resolve => {
-        providers.streamText(model, msgs, {
-          onDelta: (t) => { chunk += t },
-          onDone:  (r) => { cost += r.cost ?? 0; resolve() },
-          onError: (m) => { lastError = m; console.warn(`${LOG} ${seat.name}:`, m); resolve() },
-        }, [], { userId: s.user_id, surface: 'xtalk-werewolf' } as any,
-           { thinking: seat.thinking ?? null, search: seat.search === true }).catch((e) => {
+        runInference({
+          userId:   s.user_id,
+          models:   [seat.modelId!],
+          messages: msgs.map(m => ({ role: m.role, content: String(m.content) })),
+          effort:   seat.thinking ?? null,
+          search:   seat.search === true,
+          surface:  'xtalk-werewolf',
+          bill:     false,
+          onUsage:  (u) => { cost += u.costUsd },
+          onDelta:  (t) => { chunk += t },
+        }).then(() => resolve()).catch((e) => {
           lastError = String(e?.message ?? e)
+          console.warn(`${LOG} ${seat.name}:`, lastError)
           resolve()
         })
       }),

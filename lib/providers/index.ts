@@ -37,9 +37,11 @@ import type {
   ImageResult,
   VideoResult,
   Attachment,
+  TextGenExtras,
+  JsonSchemaSpec,
 } from './types'
 
-export type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment }
+export type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras, JsonSchemaSpec }
 export { logMediaUrl }
 export { dehydrateHistory, rehydrateHistory, historyHasMarkers, historyHasInlineData } from './history-storage'
 export type { HistoryImageCandidate, StorageImageRef, DehydrateFallback } from './history-storage'
@@ -192,7 +194,16 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   context?:    CallContext,
-  genOptions?: { thinking?: string | null; search?: boolean; maxTokens?: number },
+  genOptions?: {
+    thinking?: string | null
+    search?: boolean
+    maxTokens?: number
+    /** Operator instruction. Goes to each provider's native system slot —
+     *  never into `messages`, which has no system role here. */
+    system?: string | null
+    jsonMode?: boolean
+    jsonSchema?: JsonSchemaSpec | null
+  },
 ): Promise<{ requestId: string | null }> {
   assertSupported(model)
   const thinking = genOptions?.thinking ?? null
@@ -243,19 +254,25 @@ export async function streamText(
     onError: (message) => callbacks.onError(message),
   }
 
+  const extras: TextGenExtras = {
+    system:     genOptions?.system ?? null,
+    jsonMode:   genOptions?.jsonMode ?? false,
+    jsonSchema: genOptions?.jsonSchema ?? null,
+  }
+
   try {
     if (model.provider === 'openai') {
-      await openai.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
+      await openai.streamText(model, messages, wrappedCallbacks, attachments, thinking, search, extras)
     } else if (model.provider === 'google') {
-      await google.streamText(model, messages, wrappedCallbacks, attachments, thinking, search)
+      await google.streamText(model, messages, wrappedCallbacks, attachments, thinking, search, extras)
     } else if (model.provider === 'anthropic') {
-      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking, search, genOptions?.maxTokens)
+      await anthropic.streamText(model, messages, wrappedCallbacks, attachments, thinking, search, genOptions?.maxTokens, extras)
     } else if (model.provider === 'moonshot') {
-      await moonshot.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+      await moonshot.streamText(model, messages, wrappedCallbacks, attachments, thinking, extras)
     } else if (model.provider === 'alibaba') {
-      await alibaba.streamText(model, messages, wrappedCallbacks, attachments, search, thinking)
+      await alibaba.streamText(model, messages, wrappedCallbacks, attachments, search, thinking, extras)
     } else if (model.provider === 'xai') {
-      await xai.streamText(model, messages, wrappedCallbacks, attachments, thinking)
+      await xai.streamText(model, messages, wrappedCallbacks, attachments, thinking, extras)
     } else {
       noImplementation(model, 'text', ['openai', 'google', 'anthropic', 'moonshot', 'alibaba', 'xai'])
     }

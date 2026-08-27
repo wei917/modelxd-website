@@ -13,6 +13,7 @@ import type {
   ImageResult,
   VideoResult,
   Attachment,
+  TextGenExtras,
 } from './types'
 import { calcTextCost, calcImageCost, calcVideoCost } from './pricing'
 import { logResponse } from './log'
@@ -61,6 +62,7 @@ export async function streamText(
   attachments: Attachment[] = [],
   thinking: string | null = null,
   search: boolean = false,
+  extras: TextGenExtras = {},
 ): Promise<void> {
   const TAG = `[google/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} thinking=${thinking ?? 'auto'}`)
@@ -102,6 +104,17 @@ export async function streamText(
     if (thinking) config.thinkingConfig = { thinkingLevel: thinking.toUpperCase() as any }
     // Grounding with Google Search.
     if (search) config.tools = [{ googleSearch: {} }]
+    // Gemini takes the system prompt as its own field, not a `contents` turn
+    // (there is no 'system' role in the Content union).
+    if (extras.system) config.systemInstruction = extras.system
+    // Gemini needs the mime type set as well as the schema; a schema with
+    // the default text/plain mime is silently ignored.
+    if (extras.jsonSchema) {
+      config.responseMimeType   = 'application/json'
+      config.responseJsonSchema = extras.jsonSchema.schema
+    } else if (extras.jsonMode) {
+      config.responseMimeType = 'application/json'
+    }
 
     const stream = await withRetry(() => ai().models.generateContentStream({
       model: model.model_name,

@@ -1,7 +1,9 @@
 # CLAUDE.md — ModelXD Project Guide
 
 > Last verified against the code on **2026-08-26** (branch `dev`).
-> Companion docs: `docs/XEVAL-PAGE.md` — everything about the `/xeval`
+> Companion docs: `docs/API-V1.md` — the public inference API
+> (`/api/v1/chat/completions`), its structured-output tiers and the shared
+> core Werewolf now runs on. `docs/XEVAL-PAGE.md` — everything about the `/xeval`
 > page and the eval pipeline behind it (read before touching XEval).
 > `docs/STATE-2026-08-19.md` — a running snapshot of what
 > changed recently and what is still open (incl. the UNPUSHED commit queue
@@ -64,6 +66,7 @@ more**, and the per-user feature system is gone with it.
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
 | **XCut** | `/xcut` | required | The cutting room: rough-cut an XDirect board, trim, add music, burn subtitles, export an MP4. Open. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
+| **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
 | **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
 ### XDuel — `/xduel`
@@ -264,6 +267,7 @@ app/
 ├── terms/ privacy/ feed/ login/ auth/
 ├── models/  vote/  duel/[id]/  # Legacy redirects (see below)
 └── api/
+    ├── v1/chat/completions/    # Public inference API (OpenAI-shaped)
     ├── agent/ask/              # Site agent (Claude Haiku)
     ├── xduel/{route,vote,quota,community-vote}
     ├── xcreate/{route,chat,node,inputs,source,job/[id],jobs/active}
@@ -297,6 +301,9 @@ lib/
 ├── i18n.tsx                    # 5-language string table + LangProvider
 ├── werewolf-engine.ts          # Game rules/state machine
 ├── werewolf-lang.ts            # Werewolf per-language strings
+├── inference.ts                # Shared text-inference core (API v1 + Werewolf)
+├── json-schema.ts              # Small JSON Schema validator + tolerant extractor
+├── schema-adapt.ts             # Per-provider JSON Schema dialect adapter
 ├── xdirector-prompt.ts         # Director system prompt
 ├── site-token.ts               # HMAC cookie for SITE_PASSWORD gate
 ├── duel-quota.ts               # Daily per-mode XDuel quotas
@@ -407,7 +414,7 @@ text model that can *see* images — NOT an image generator.
 ### Per-feature model availability
 
 `ai_models.blocked_features` + `lib/model-features.ts`. Keys in use:
-`xtalk_werewolf`, `xtalk_discussion`, `xduel`, `xcreate`.
+`xtalk_werewolf`, `xtalk_discussion`, `xduel`, `xcreate`, `api`.
 
 Enforced in three places so a stale tab cannot slip past: the picker
 (`ModelPickerDialog` takes `feature=`), the surface's own model list
@@ -784,12 +791,25 @@ can sit at the table honestly. One act per request; the client loops.
   loops), primary CTA → /xdirect, blind testing demoted to secondary CTA
   and trust layer.
 
+- **The public API is `chat/completions`, not Responses or Messages.**
+  Those are OpenAI-only and Anthropic-only respectively; a game pointing at
+  either would need a ModelXD-specific client, which defeats the point.
+  Structured output — not tool calling — is the headline feature, because
+  both reference games (Werewolf, the Gauntlet farm loop) want a filled-in
+  form rather than a function call. `tools` returns an explicit 400.
+- **API calls bill list price; margin goes on the credit top-up.** XBoard
+  publishes a price label per model, so billing over it would make the
+  leaderboard false. Decided Aug 27 — the top-up markup itself is NOT yet
+  implemented (credits still sell 1:1).
+
 ## Known Debt (open)
 
 1. **Site-agent rate limiting is per-instance.** Move to a shared store before
    real public traffic.
 2. **Discussion's picker doesn't pass a `feature` key**, so
    `xtalk_discussion` blocks aren't enforced there yet. One line.
+   (`/api/v1` DOES enforce its own `api` key — `lib/inference.ts`. The
+   `xcreate` block is still unenforced on `/api/xcreate` itself.)
 3. **XBoard is badly broken in mobile portrait** — the table has
    `minWidth: 820/830`, ~640px of overflow at 390px. XCreate/Profile are fine;
    XTalk and home are ~10–15px out. Desktop-first, so this is deliberate debt.
@@ -800,7 +820,12 @@ can sit at the table honestly. One act per request; the client loops.
    (`c9a73e58…`), signed into different browsers. Not anonymous-auth
    rotation. Consequence stands: history, boards and credits don't cross
    between them — decide whether to consolidate or live with it.
-7. **Naming**: `/methodology` calls the system **XDRating** and links to
+7. **`xd/fast` is built but not exposed.** `provider_calls` holds ~128 rows
+   over 7 days; only one text-board model clears 3 samples, so the route
+   would have silently equalled `xd/auto`. Turn it on when there is traffic.
+8. **A full Werewolf game has not been played** since `askModel` moved onto
+   `lib/inference.ts` (Aug 27). It typechecks and builds; play one.
+9. **Naming**: `/methodology` calls the system **XDRating** and links to
    `/xboard`, which is titled **XBoard**. The system/page split is intentional
    but reads oddly; nobody has decided whether to unify them.
 

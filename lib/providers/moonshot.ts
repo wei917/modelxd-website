@@ -11,7 +11,7 @@
 //
 // Requires MOONSHOT_API_KEY.
 
-import type { ModelInfo, Attachment, TextStreamCallbacks } from './types'
+import type { ModelInfo, Attachment, TextStreamCallbacks, TextGenExtras } from './types'
 import { calcTextCost } from './pricing'
 
 const BASE = 'https://api.moonshot.ai/v1'
@@ -40,16 +40,18 @@ export async function streamText(
   callbacks:   TextStreamCallbacks,
   attachments: Attachment[] = [],
   thinking:    string | null = null,
+  extras:      TextGenExtras = {},
 ): Promise<void> {
   const TAG = `[moonshot/${model.model_name}]`
   console.log(`${TAG} streamText start messages=${messages.length} attachments=${attachments.length} thinking=${thinking ?? 'auto'}`)
 
-  const chatMessages = messages.map((m, i) => ({
+  const chatMessages: any[] = messages.map((m, i) => ({
     role: m.role,
     content: i === messages.length - 1 && m.role === 'user'
       ? buildContent(String(m.content), attachments)
       : String(m.content),
   }))
+  if (extras.system) chatMessages.unshift({ role: 'system', content: extras.system })
 
   let res: Response
   try {
@@ -62,6 +64,9 @@ export async function streamText(
         messages: chatMessages,
         stream_options: { include_usage: true },
         ...(thinking ? { thinking: { effort: thinking } } : {}),
+        // Moonshot honours json_object but not json_schema — the schema
+        // still reaches the model in the prompt, and we validate the result.
+        ...((extras.jsonMode || extras.jsonSchema) ? { response_format: { type: 'json_object' } } : {}),
       }),
     })
   } catch (err: any) {
