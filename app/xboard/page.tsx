@@ -50,7 +50,8 @@ interface LeaderboardEntry {
   modelId: string
   qualityScore: number
   xdScore: number
-  totalVotes: number
+  early: boolean
+  provisional: boolean
 }
 
 type FilterMode = 'text' | 'image' | 'video'
@@ -201,7 +202,8 @@ type SortDir = 'asc' | 'desc'
 interface MergedRow extends AIModel {
   qualityScore: number | null
   xdScore: number | null
-  votes: number | null
+  /** Rating rests on very few votes. The count itself stays server-side. */
+  early: boolean
 }
 
 function sortValue(m: MergedRow, key: SortKey): string | number | null {
@@ -270,7 +272,8 @@ export default function LeaderboardPage() {
   const [filterMode, setFilterMode] = useState<FilterMode>('text')
   const [subtype, setSubtype] = useState<Subtype>('all')
   const [ww, setWw] = useState<{ totalGames: number; rows: WWRow[] } | null>(null)
-  const [votes, setVotes] = useState<Record<string, number>>({})
+  const [early, setEarly] = useState<Record<string, boolean>>({})
+  const [poolProvisional, setPoolProvisional] = useState(false)
   const [search, setSearch] = useState('')
   // Default: highest XD score first.
   const [qualityScores, setQualityScores] = useState<Record<string, number>>({})
@@ -317,15 +320,16 @@ export default function LeaderboardPage() {
         if (stale) return
         const map: Record<string, number> = {}
         const qmap: Record<string, number> = {}
-        const vmap: Record<string, number> = {}
+        const vmap: Record<string, boolean> = {}
         for (const e of ss) {
           map[e.modelId] = e.xdScore
-          vmap[e.modelId] = e.totalVotes
+          vmap[e.modelId] = e.early
           if (e.qualityScore != null) qmap[e.modelId] = e.qualityScore
         }
         setScores(map)
         setQualityScores(qmap)
-        setVotes(vmap)
+        setEarly(vmap)
+        setPoolProvisional(ss.some(e => e.provisional))
       })
     return () => { stale = true }
   }, [searchPool, filterMode])
@@ -340,8 +344,8 @@ export default function LeaderboardPage() {
   }, [wolfBoard, ww])
 
   const merged: MergedRow[] = useMemo(
-    () => models.map(m => ({ ...m, qualityScore: qualityScores[m.id] ?? null, xdScore: scores[m.id] ?? null, votes: votes[m.id] ?? null })),
-    [models, scores, qualityScores, votes],
+    () => models.map(m => ({ ...m, qualityScore: qualityScores[m.id] ?? null, xdScore: scores[m.id] ?? null, early: early[m.id] ?? false })),
+    [models, scores, qualityScores, early],
   )
 
   const filtered = useMemo(() => {
@@ -587,18 +591,18 @@ export default function LeaderboardPage() {
           </div>
 
           {searchPool && (() => {
-            // The busiest seat's signal count, not a sum: summing across
-            // models would multiply one duel by the number of players in it.
-            const signals = Math.max(0, ...Object.values(votes).map(v => Number(v) || 0))
+            // Whether the pool is still thin. The API decides this and sends a
+            // boolean — the counts themselves never reach the browser
+            // (owner, Aug 26: "that's our secret").
             return (
               <div style={{
                 border: '1px solid var(--border2)', borderRadius: 9, padding: '10px 13px',
                 marginBottom: 16, fontSize: 12, lineHeight: 1.5, color: 'var(--muted2)',
                 background: 'var(--surface)',
               }}>
-                {signals < PROVISIONAL_BELOW && (
+                {poolProvisional && (
                   <strong style={{ color: 'var(--red)', marginRight: 6 }}>
-                    {t('xboard.provisional').replace('{n}', String(signals))}
+                    {t('xboard.provisional')}
                   </strong>
                 )}
                 {t('xboard.board.search.note')}
@@ -671,6 +675,7 @@ function NameCell({ name }: { name: string }) {
 // ── Row ──────────────────────────────────────────────────────────────────────
 
 function ModelRow({ model: m }: { model: MergedRow }) {
+  const t = useT()
   return (
     <div
       style={{
@@ -704,16 +709,18 @@ function ModelRow({ model: m }: { model: MergedRow }) {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             {/* Low-sample honesty (owner, Aug 18): a thin rating must not
                 read as a verdict. Under 10 blind votes, say so right where
-                the score is. */}
-            {m.votes != null && m.votes < 10 && (
+                the score is — but NOT how many (owner, Aug 26: the vote
+                counts are ours, not the public's). "Early" carries the
+                caveat; the number carried our sample size. */}
+            {m.early && (
               <span
-                title={`Early rating — only ${m.votes} blind vote${m.votes === 1 ? '' : 's'} so far`}
+                title={t('xboard.early.title')}
                 style={{
                   fontSize: 10, fontFamily: 'var(--font-mono), monospace', fontWeight: 600,
                   color: 'var(--muted)', border: '1px dashed var(--border2)',
                   borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap',
                 }}
-              >{m.votes} vote{m.votes === 1 ? '' : 's'}</span>
+              >{t('xboard.early')}</span>
             )}
             <span className={`xd-chip ${scoreTier(m.xdScore)}`}>
               {m.xdScore}
