@@ -134,7 +134,13 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   })
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14,
+      // The chat pane is a flex column that scrolls. A flex child shrinks by
+      // default, so a tall form is COMPRESSED instead of overflowing: the pane
+      // thinks everything fits, no scrollbar appears, and the lower fields are
+      // unreachable (owner, Aug 26 — Music Video is the tallest form, so it hit
+      // this first). flexShrink: 0 keeps the natural height and lets the pane scroll.
+      flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <span style={{ fontWeight: 800, fontSize: 14 }}>🎬 {t('xd.mv.setup')}</span>
         <span style={{ flex: 1 }} />

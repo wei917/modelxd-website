@@ -59,7 +59,7 @@ export default function AnimationSetup({ busy, onStart, onSkip }: {
   })
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14, flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <span style={{ fontWeight: 800, fontSize: 14 }}>🎞 {t('xd.an.setup')}</span>
         <span style={{ flex: 1 }} />
