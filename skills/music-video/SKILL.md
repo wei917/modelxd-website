@@ -11,7 +11,7 @@ metadata:
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.5"
+  version: "3.6"
   category: music
   order: "1"
   aspect: "ask"
@@ -132,7 +132,13 @@ it in this order:
 sheet is not a scene; the film starts at S1). Put the master asset on the
 shelf: a set_storyboard entry with `asset: true`, id `cast_her` (any stable
 slug), title `CAST · <name>`, the fused character-sheet prompt in `shot`, and
-a still model — nothing else: no duration, no video model, no place in the
+a still model — and `cast_source: "ask"` on any person you are inventing. That
+last field turns the shelf card into the question rather than a fait accompli:
+it offers "👤 My photos" beside "✨ Create one", so the user chooses before a
+face exists instead of finding out photos were possible after an invented
+stranger has been shot and paid for. Set `"upload"` instead when their photos
+already define this person, and `"ai"` only when they have said outright to
+invent one. Nothing else: no duration, no video model, no place in the
 sequence. It renders in the strip's ASSETS shelf with its name, and the
 numbering never sees it. Then every scene's KEY STILL is generated with
 `chain_from_scene: "<asset id>"` and an `image_edit` recipe, so the approved

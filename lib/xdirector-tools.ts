@@ -97,6 +97,10 @@ export function cleanScenes(raw: unknown): StoryScene[] | null {
       ...((sc as any).direct === true ? { direct: true } : {}),
       ...((sc as any).no_speech === true ? { no_speech: true } : {}),
       ...((sc as any).asset === true ? { asset: true } : {}),
+      // Round-tripped like still_row_id: the CLIENT writes this when the user
+      // answers the cast question on the card, so a later set_storyboard must
+      // not strip their answer and put the question back.
+      ...(['ask', 'upload', 'ai'].includes((sc as any).cast_source) ? { cast_source: (sc as any).cast_source } : {}),
       ...(Array.isArray((sc as any).refs) && (sc as any).refs.length > 0 ? {
         refs: (sc as any).refs.slice(0, 4)
           .map((r: any) => ({
@@ -184,6 +188,7 @@ export const TOOLS: any[] = [
               still_model_id:   { type: 'string', description: 'id from list_models of the IMAGE model that shoots this scene\'s key still. Set it on every scene unless the user asked to go straight to video, and ALWAYS on an asset:true card — an asset is a still and nothing else, so a shelf card without this has no model at all and shows the user "Pick model" where a price should be.' },
               still_model_name: { type: 'string', description: 'display name of that image model, shown on the card' },
               asset:      { type: 'boolean', description: 'true = this is an ASSET on the shelf (cast sheet, look frame, key prop) — a named reusable STILL outside the film. Assets take title (e.g. "CAST · 她"), shot (the image prompt) and still_model fields ONLY: no duration, no video model, no place in the sequence. Scenes chain from assets via chain_from_scene. NEVER use a scene card for a cast sheet — the film starts at S1. ' + THREE_VIEW_RULE },
+              cast_source: { type: 'string', enum: ['ask', 'upload', 'ai'], description: 'ASSET CARDS ONLY, and only for a cast sheet of a PERSON. Set "ask" whenever you are inventing a lead the user has not given you photos of — the card then offers them both roads before a face is generated, instead of you quietly choosing one. Set "upload" when their photos already define this person, and "ai" only when they have explicitly said to invent one. Default to "ask": an original cast is a fine outcome, but it should be a decision the user made rather than one they discover after an invented stranger has been shot and paid for. This never blocks the board — "create one" stays a single click.' },
               no_speech:  { type: 'boolean', description: 'PERFORMANCE ONLY — the cast never sings, speaks or mouths words in this shot. DEFAULT TRUE on a music video scene: a model with no audio input has never heard the song, so it invents mouth articulation from the language the PROMPT is written in and it always reads wrong. Set FALSE only on a SYNC scene — one shot by an audio-capable model (Wan 3.0, MiniMax H3) with that scene\'s slice of the actual song attached, where the lips follow the real track. One board can hold both: the sung chorus on an audio model, the narrative B-roll on a keyframe model.' },
               recipe:     { type: 'string', description: 'mode string copied exactly from that model\'s modes' },
               estimate:   { type: 'number', description: 'estimated $ for THIS scene at duration_s' },

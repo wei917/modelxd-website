@@ -70,6 +70,15 @@ export type Scene = {
    *  Assets have a still and a name; they never have duration, a video
    *  model, or a place in the film numbering. Scenes chain from them. */
   asset?: boolean
+  /** ASSET CARDS ONLY — where this cast member's face is supposed to come
+   *  from. 'ask' means the question has not been put to the user yet, so the
+   *  card offers both roads instead of quietly taking one: an invented
+   *  stranger got shot and paid for before the user learned that attaching
+   *  their own photos was ever an option. Resolving is either answer — a
+   *  photo attached, or AI chosen — and the card goes back to normal after.
+   *  This is an OFFER, never a gate: AI stays one click away, because the
+   *  skill's standing rule is that cast never blocks the board. */
+  cast_source?: 'ask' | 'upload' | 'ai'
   /** PERFORMANCE ONLY — the cast acts, never appears to sing or speak
    *  (owner, Aug 11: "I don't need the model says anything. They just act.
    *  I will mix audio later."). There is no lip-sync on this product, so
@@ -298,13 +307,19 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
         mediaType: committed.mediaType, fileName: committed.fileName,
         fileSize: committed.fileSize, previewUrl: pending.previewUrl,
       }].slice(0, MAX_SCENE_REFS)
-      // First reference flips the scene to a reference-consuming recipe.
+      // First reference flips the SCENE to a reference-consuming recipe.
       // The old model was picked for text-only, so it resets to '—' and the
       // picker (now filtered to image_to_video models) chooses honestly.
+      // An ASSET is a still and owns no video model, so it is exempt: giving
+      // a cast sheet an image_to_video recipe would put a clip model on a
+      // card that never animates.
       const first = (sc?.refs ?? []).length === 0
       patch(id, {
         refs,
-        ...(first && (!sc?.recipe || sc.recipe === 'text_to_video')
+        // A photo IS the answer to the cast question — record it so the card
+        // stops asking.
+        ...(sc?.asset ? { cast_source: 'upload' as const } : {}),
+        ...(!sc?.asset && first && (!sc?.recipe || sc.recipe === 'text_to_video')
           ? { recipe: 'image_to_video', model_id: undefined, model_name: undefined, estimate: undefined }
           : {}),
       })
@@ -505,6 +520,23 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                   <span style={{ ...label, letterSpacing: 0 }}>{(() => { const p = stillPriceOf(a); return p != null ? money(p) : '' })()}</span>
                   {a.status === 'generating'
                     ? <span className="nav-history-spin" aria-label="generating" />
+                    /* The cast question, asked on the card instead of assumed.
+                       Both roads are one click; neither blocks the board. */
+                    : (a.cast_source === 'ask' && !a.still_row_id && (a.refs ?? []).length === 0)
+                    ? <>
+                        <button
+                          onClick={() => { refSceneId.current = a.id; refInputRef.current?.click() }}
+                          disabled={uploadingRef === a.id}
+                          title={t('xd.sb.cast.uploadhint')}
+                          style={{ border: '1px solid var(--border2)', background: 'transparent', color: 'var(--white)', borderRadius: 999, padding: '1px 8px', fontSize: 10, fontWeight: 700, cursor: uploadingRef === a.id ? 'default' : 'pointer', opacity: uploadingRef === a.id ? 0.4 : 1, whiteSpace: 'nowrap' }}
+                        >{uploadingRef === a.id ? '…' : `👤 ${t('xd.sb.cast.upload')}`}</button>
+                        <button
+                          onClick={() => { patch(a.id, { cast_source: 'ai' }); onGenerate(a.id, 'still') }}
+                          disabled={busy || !a.shot?.trim()}
+                          title={t('xd.sb.cast.aihint')}
+                          style={{ border: '1px solid var(--red)', background: 'var(--red-dim)', color: 'var(--red)', borderRadius: 999, padding: '1px 8px', fontSize: 10, fontWeight: 700, cursor: (busy || !a.shot?.trim()) ? 'default' : 'pointer', opacity: (busy || !a.shot?.trim()) ? 0.4 : 1, whiteSpace: 'nowrap' }}
+                        >{`✨ ${t('xd.sb.cast.ai')}`}</button>
+                      </>
                     : <button onClick={() => onGenerate(a.id, 'still')} disabled={busy || !a.shot?.trim()}
                         title={a.still_row_id ? t('xd.sb.restill') : t('xd.sb.genstillhint')}
                         style={{ border: '1px solid ' + (a.still_row_id ? 'var(--border2)' : 'var(--red)'), background: a.still_row_id ? 'transparent' : 'var(--red-dim)', color: a.still_row_id ? 'var(--white)' : 'var(--red)', borderRadius: 999, padding: '1px 8px', fontSize: 10, fontWeight: 700, cursor: (busy || !a.shot?.trim()) ? 'default' : 'pointer', opacity: (busy || !a.shot?.trim()) ? 0.4 : 1 }}
