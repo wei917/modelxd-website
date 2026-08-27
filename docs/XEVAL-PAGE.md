@@ -203,7 +203,37 @@ the metric to watch as tasks are added.
 - Parked: TB 3.0 (74 tasks; only 12 fit this Mac, 4 need H100s — awaits
   funding), JobBench (no vendor citations).
 
-## 9. Command cheat-sheet (from `gdpval-xd/`)
+## 9. Backups — the data exists in one place
+
+`gdpval-xd` is a **local-only git repo with no remote**, by design (eval data
+stays out of the ModelXD repo). Everything the eval operation has produced
+lives on one Mac, so it is backed up to a **private Supabase Storage bucket
+`xeval-backup`** by `gdpval-xd/scripts/backup.sh`.
+
+Two tiers, because they differ 30x in size and in what losing them costs:
+
+| tier | what | size | why it matters |
+|---|---|---|---|
+| `db` (default) | `xeval.db` gzipped | ~11 MB | 930 runs, 14,558 verdicts, 23,145 rubric marks, every cost. Without it no ladder can be rebuilt. |
+| `--deliverables` | `work/runs` tarred + split into 40 MB parts | ~300 MB | The documents the models actually produced — **~$1,900 of runs**. Keeping them is what lets a NEW judge re-score old work without re-running a single model. |
+
+`work/docker-tmp` (1.5 GB) is scratch and is never backed up.
+
+```bash
+scripts/backup.sh                 # db only — fast, safe, run it often
+scripts/backup.sh --deliverables  # + the 300 MB tier
+scripts/backup.sh --list          # what is already in the bucket
+# restore deliverables:
+cat runs-<stamp>.tar.gz.part-* | tar xzf -
+```
+
+Notes: the db is copied with sqlite `.backup` (not `cp`) because run/judge
+lanes may be mid-write; uploads are `x-upsert` and date-stamped, so nothing is
+ever overwritten; the bucket is **private** — it holds model deliverables and
+the full verdict history. If the Supabase plan gets tight, move the
+deliverables tier to R2/B2 and keep only the db here.
+
+## 10. Command cheat-sheet (from `gdpval-xd/`)
 
 ```bash
 # run one cell
