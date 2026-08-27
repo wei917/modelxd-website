@@ -174,6 +174,10 @@ export async function refitFromAggregates(sb: SupabaseClient): Promise<{ rows: n
 export interface LeaderboardRow {
   modelId: string
   name: string
+  /** Exact API model string — with `provider` it forms the public slug
+   *  (`provider/model_name`) that /api/v1 and MCP accept. Optional because
+   *  historical snapshot rows may predate it. */
+  modelName?: string
   provider: string
   priceLabel: string
   releasedAt: string | null
@@ -188,13 +192,13 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
     .from('ai_models')
     .select('id, provider, model_name, display_name, released_at')
 
-  const canonicalById = new Map<string, { name: string; provider: string; releasedAt: string | null }>()
+  const canonicalById = new Map<string, { name: string; modelName?: string; provider: string; releasedAt: string | null }>()
   for (const m of aiModels ?? []) {
-    canonicalById.set(m.id, { name: m.display_name, provider: m.provider, releasedAt: m.released_at })
+    canonicalById.set(m.id, { name: m.display_name, modelName: m.model_name, provider: m.provider, releasedAt: m.released_at })
   }
   const validModelIds = new Set([...canonicalById.keys()])
 
-  interface ModelInfo { name: string; provider: string; priceLabel: string; releasedAt: string | null }
+  interface ModelInfo { name: string; modelName?: string; provider: string; priceLabel: string; releasedAt: string | null }
   const qWins: Record<string, Record<string, number>> = {}
   const vWins: Record<string, Record<string, number>> = {}
   const info: Record<string, ModelInfo> = {}
@@ -206,7 +210,7 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
     if (!(id in info)) {
       const canonical = canonicalById.get(id)
       info[id] = canonical
-        ? { name: canonical.name, provider: canonical.provider, priceLabel: m.priceLabel, releasedAt: canonical.releasedAt }
+        ? { name: canonical.name, modelName: canonical.modelName, provider: canonical.provider, priceLabel: m.priceLabel, releasedAt: canonical.releasedAt }
         : m
       votes[id] = 0
       qWins[id] = {}
@@ -332,6 +336,7 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
       return {
         modelId,
         name: info[modelId].name,
+        modelName: info[modelId].modelName,
         provider: info[modelId].provider,
         priceLabel: info[modelId].priceLabel,
         releasedAt: info[modelId].releasedAt,

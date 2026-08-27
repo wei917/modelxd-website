@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     // Join canonical model info (same source the legacy path used).
     const { data: aiModels } = await sb
       .from('ai_models')
-      .select('id, provider, display_name, released_at')
+      .select('id, provider, model_name, display_name, released_at')
       // Disabled models keep their historical ratings in the snapshot,
       // but a model users can't pick (e.g. one the provider retired —
       // Veo 3, July 19) shouldn't rank on the public board.
@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
         return {
           modelId:    r.model_id,
           name:       m.display_name,
+          modelName:  m.model_name,
           provider:   m.provider,
           priceLabel: r.price_label ?? '',
           releasedAt: m.released_at,

@@ -72,19 +72,34 @@ export async function streamText(
   // 5-min TTL fits a conversation's cadence; a consolidation rewrites the
   // head and simply pays one fresh write (25% premium on that turn only).
   const CACHE_MIN_CH = 4000   // ~1K tokens — Anthropic's minimum cacheable
+  // Incremental conversation caching (Aug 27, for the API/agent path): a
+  // second breakpoint rides on the LAST message whenever the transcript is
+  // heavy. Anthropic looks up the longest previously-cached prefix behind a
+  // breakpoint, so turn N+1 — same transcript plus one new exchange — reads
+  // turn N's write instead of re-billing the whole history at full rate.
+  // That is the difference between a 10-agent game's token bill growing
+  // linearly and growing quadratically. Below the minimum a marker caches
+  // nothing and costs nothing, but it does burn one of the four breakpoint
+  // slots, so it stays gated on size.
+  const totalCh   = messages.reduce((n, m) => n + String(m.content ?? '').length, 0)
+  const cacheTail = totalCh >= CACHE_MIN_CH && messages.length > 1
   const chatMessages = messages.map((m, i) => {
-    const last = i === messages.length - 1 && m.role === 'user'
+    const isLast = i === messages.length - 1
+    const last = isLast && m.role === 'user'
     const text = String(m.content)
-    if (i === 0 && !last && text.length >= CACHE_MIN_CH) {
+    if (i === 0 && !isLast && text.length >= CACHE_MIN_CH) {
       return {
         role: m.role,
         content: [{ type: 'text', text, cache_control: { type: 'ephemeral' } }],
       }
     }
-    return {
-      role: m.role,
-      content: last ? buildContent(text, attachments) : text,
+    let content: any = last ? buildContent(text, attachments) : text
+    if (isLast && cacheTail) {
+      const blocks: any[] = typeof content === 'string' ? [{ type: 'text', text: content }] : [...content]
+      blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: { type: 'ephemeral' } }
+      content = blocks
     }
+    return { role: m.role, content }
   })
 
   let res: Response
@@ -102,8 +117,10 @@ export async function streamText(
         stream: true,
         messages: chatMessages,
         // Top-level `system`, never a message — the Messages API has no
-        // system role in the array and rejects one.
-        ...(extras.system ? { system: extras.system } : {}),
+        // system role in the array and rejects one. Always a marked block:
+        // the system prompt is the stable head of every agent's requests
+        // (persona, rules, schema), which is exactly what a cache is for.
+        ...(extras.system ? { system: [{ type: 'text', text: extras.system, cache_control: { type: 'ephemeral' } }] } : {}),
         // Adaptive thinking + effort (probed live July 23: low/medium/
         // high/xhigh/max on Fable 5 / Sonnet 5 / Opus 4.8).
         ...(thinking ? { thinking: { type: 'adaptive' } } : {}),
@@ -139,6 +156,7 @@ export async function streamText(
   const decoder = new TextDecoder()
   let buffer = ''
   let inputTokens = 0
+  let cacheWriteTokens = 0
   let outputTokens = 0
   let cachedTokens = 0
   let searchCount = 0
@@ -158,16 +176,9 @@ export async function streamText(
         try { event = JSON.parse(payload) } catch { continue }
         switch (event.type) {
           case 'message_start':
-            inputTokens  = event.message?.usage?.input_tokens ?? 0
-            cachedTokens = event.message?.usage?.cache_read_input_tokens ?? 0
-            // Cache WRITES bill at 1.25x the input rate and arrive in their
-            // own counter — fold them into inputTokens at the premium so
-            // calcTextCost stays provider-agnostic. Without this the write
-            // turn billed 18 tokens for a 4K-token head (seen live, Aug 13).
-            {
-              const w = event.message?.usage?.cache_creation_input_tokens ?? 0
-              if (w > 0) inputTokens += Math.ceil(w * 1.25)
-            }
+            inputTokens      = event.message?.usage?.input_tokens ?? 0
+            cachedTokens     = event.message?.usage?.cache_read_input_tokens ?? 0
+            cacheWriteTokens = event.message?.usage?.cache_creation_input_tokens ?? 0
             if (typeof event.message?.usage?.server_tool_use?.web_search_requests === 'number') {
               searchCount = Math.max(searchCount, event.message.usage.server_tool_use.web_search_requests)
             }
@@ -180,6 +191,8 @@ export async function streamText(
           case 'message_delta':
             outputTokens = event.usage?.output_tokens ?? outputTokens
             if (event.usage?.input_tokens) inputTokens = event.usage.input_tokens
+            if (event.usage?.cache_read_input_tokens)     cachedTokens     = event.usage.cache_read_input_tokens
+            if (event.usage?.cache_creation_input_tokens) cacheWriteTokens = event.usage.cache_creation_input_tokens
             // Anthropic reports the tally itself; take the largest seen
             // rather than the last, since only some events carry usage.
             if (typeof event.usage?.server_tool_use?.web_search_requests === 'number') {
@@ -191,6 +204,14 @@ export async function streamText(
         }
       }
     }
+    // Cache WRITES bill at 1.25x the input rate and arrive in their own
+    // counter — fold them into inputTokens at the premium so calcTextCost
+    // stays provider-agnostic. The fold happens HERE, after the stream: it
+    // used to live in message_start, where message_delta's final usage tally
+    // (which excludes cache traffic) silently overwrote it — a 2800-token
+    // write billed as 20 tokens (seen live, Aug 27; same bug class as the
+    // 18-token head of Aug 13).
+    if (cacheWriteTokens > 0) inputTokens += Math.ceil(cacheWriteTokens * 1.25)
     const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
     console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })

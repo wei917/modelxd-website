@@ -67,7 +67,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'What to generate.' },
-        model_id: { type: 'string', description: 'ai model id from get_leaderboard / pick_model.' },
+        model_id: { type: 'string', description: 'Model from get_leaderboard / pick_model — provider/model_name (or a legacy uuid).' },
         aspect_ratio: { type: 'string', description: 'e.g. 16:9, 9:16, 1:1, 4:5, 3:4. Optional.' },
         quality: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Optional, default medium.' },
       },
@@ -82,7 +82,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'What to generate.' },
-        model_id: { type: 'string', description: 'ai model id from get_leaderboard / pick_model.' },
+        model_id: { type: 'string', description: 'Model from get_leaderboard / pick_model — provider/model_name (or a legacy uuid).' },
         duration: { type: 'number', description: 'Seconds (integer). Model-dependent range, commonly 4-15. Optional.' },
         aspect_ratio: { type: 'string', description: 'e.g. 16:9, 9:16. Optional.' },
       },
@@ -108,6 +108,34 @@ const TOOLS = [
 // ── Tool implementations ─────────────────────────────────────────────────
 
 type Ctx = { tok: ApiTokenContext; origin: string; bearer: string }
+
+/** Board row → tool result. model_id is the public slug now, same string
+ *  /api/v1 takes — one identifier across both surfaces. Legacy rows without
+ *  modelName fall back to the uuid, which every tool still accepts. Vote
+ *  COUNTS left the public board on Aug 26 (owner: "that's our secret"), so
+ *  this surfaces the two booleans that replaced them — the old `votes`
+ *  field had been silently undefined since then. */
+function shapeRow(r: any) {
+  return {
+    model_id: r.modelName ? `${r.provider}/${r.modelName}` : r.modelId,
+    name: r.name, provider: r.provider,
+    xd_score: r.xdScore, price: r.priceLabel,
+    early_rating: r.early === true,
+    board_provisional: r.provisional === true,
+  }
+}
+
+/** Accept `provider/model_name` OR the legacy uuid for generation tools.
+ *  /api/xcreate keys on uuids, so a slug resolves here first. */
+async function toModelUuid(spec: string): Promise<string> {
+  const raw = String(spec ?? '').trim()
+  if (!raw.includes('/')) return raw
+  const { getModelByProviderName } = await import('@/lib/models')
+  const slash = raw.indexOf('/')
+  const m = await getModelByProviderName(raw.slice(0, slash), raw.slice(slash + 1))
+  if (!m) throw new Error(`unknown model: ${raw} — use a model_id from get_leaderboard / pick_model`)
+  return m.id
+}
 
 async function fetchBoard(origin: string, mode: string): Promise<any[]> {
   const res = await fetch(`${origin}/api/xboard?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' })
@@ -144,7 +172,7 @@ async function startGeneration(ctx: Ctx, mode: 'image' | 'video', args: any, gra
     body: JSON.stringify({
       prompt: String(args.prompt ?? ''),
       mode,
-      modelIds: [String(args.model_id)],
+      modelIds: [await toModelUuid(String(args.model_id))],
       modelOptions: [options],
       jobId,
     }),
@@ -181,18 +209,12 @@ async function callTool(name: string, args: any, ctx: Ctx): Promise<any> {
   switch (name) {
     case 'get_leaderboard': {
       const rows = await fetchBoard(ctx.origin, args?.mode ?? 'all')
-      return rows.map((r: any) => ({
-        model_id: r.modelId, name: r.name, provider: r.provider,
-        xd_score: r.xdScore, votes: r.totalVotes, price: r.priceLabel,
-      }))
+      return rows.map(shapeRow)
     }
     case 'pick_model': {
       const rows = await fetchBoard(ctx.origin, String(args.mode))
       if (rows.length === 0) throw new Error(`no rated models for mode ${args.mode}`)
-      const shaped = rows.slice(0, 5).map((r: any) => ({
-        model_id: r.modelId, name: r.name, provider: r.provider,
-        xd_score: r.xdScore, votes: r.totalVotes, price: r.priceLabel,
-      }))
+      const shaped = rows.slice(0, 5).map(shapeRow)
       return {
         pick: shaped[0],
         runners_up: shaped.slice(1),
@@ -254,6 +276,8 @@ export async function POST(req: Request) {
           instructions:
             'ModelXD compares AI models with blind human votes and generates through 8 providers with honest pricing. ' +
             'Flow: pick_model (or get_leaderboard) → generate_image / generate_video → check_job until done. ' +
+            'Model ids are provider/model_name slugs. For TEXT generation use the OpenAI-compatible POST /api/v1/chat/completions with this same API key. ' +
+            'Output URLs from check_job are signed and expire in ~24h — download promptly. ' +
             'Generations bill the key owner\'s ModelXD credits; check get_balance first. All outputs are AI-generated — label them as such when publishing.',
         })
       }
