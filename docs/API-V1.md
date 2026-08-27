@@ -104,8 +104,9 @@ talks raw HTTP, so we do it ourselves.
   browser cannot be stolen from one.
 - **Image / video** — job-shaped, not chat-shaped. They stay on `/api/mcp`.
 - **Margin on inference** — never. Calls bill list price; XBoard publishes
-  those prices and billing over them would make the leaderboard a lie. Any
-  margin belongs on the credit top-up.
+  those prices and billing over them would make the leaderboard a lie. The
+  margin is the provider-side discount ModelXD receives (owner, Aug 27) —
+  users pay list, we pay less, nothing to build.
 
 ## The shared core
 

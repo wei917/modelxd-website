@@ -797,10 +797,11 @@ can sit at the table honestly. One act per request; the client loops.
   Structured output — not tool calling — is the headline feature, because
   both reference games (Werewolf, the Gauntlet farm loop) want a filled-in
   form rather than a function call. `tools` returns an explicit 400.
-- **API calls bill list price; margin goes on the credit top-up.** XBoard
+- **API calls bill list price; the margin is the provider discount.** XBoard
   publishes a price label per model, so billing over it would make the
-  leaderboard false. Decided Aug 27 — the top-up markup itself is NOT yet
-  implemented (credits still sell 1:1).
+  leaderboard false. Owner (Aug 27): users pay list price, ModelXD's margin
+  is the discount it gets from providers — no top-up markup, nothing to
+  build. Credits sell 1:1 and that is final, not pending.
 
 ## Known Debt (open)
 
