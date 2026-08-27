@@ -11,7 +11,7 @@ metadata:
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.4"
+  version: "3.5"
   category: music
   order: "1"
   aspect: "ask"
@@ -436,7 +436,7 @@ but as of Aug 26 they are:**
 | Sung-take ceiling | 15s hard (4s min) | 30s hard (2s min) |
 | Price | $0.08/s 768p · $0.13/s 2K | $0.10/s 720p · $0.20/s 1080p |
 | Other inputs | text, image | text, image, **video** |
-| Proven for sync | yes — probed live Aug 14-15 | **NOT YET PROBED** |
+| Proven for sync | yes — probed live Aug 14-15 | partly — see below |
 
 **H3 is the known quantity; prefer it for a sung take until Wan 3.0 has been
 tested.** Wan 3.0's advantage is on paper only so far: its 30s ceiling would
@@ -446,16 +446,30 @@ unknown — do not promise a 30s sung take to a user before someone has made
 one. The rules below were probed on H3; treat them as the starting assumption
 for Wan 3.0, not as verified fact.
 
+**The frame trade is NOT an H3 quirk — Wan 3.0 refuses the same combination.**
+Probed live Aug 26, sending `first_frame` and `reference_audio` together to
+`wan3.0-video`: the task is accepted at submit and then fails with
+`InvalidParameter: first_frame cannot be combined with other media types
+except last_frame`. So on BOTH sync models the choice is the same one, and it
+is the API's, not ours: a pinned opening frame OR audio-driven performance,
+never both. Do not design a board that assumes a future model will lift this,
+and do not read our router's behaviour (audio present ⇒ reference path) as a
+limitation we invented — it matches what the provider enforces. A failed task
+bills nothing, so this costs one wasted submit to re-check when a new model
+lands.
+
 The rules, all probed live on H3 (Aug 14):
 
 - **The scene's audio slice is the input.** Slice the user's song by the
   scene's timestamps and attach it (reference audio is FREE as input on H3).
   The prompt still ends with: "She sings the exact words heard in the audio."
-- **SYNC costs the pinned frame.** H3's frame mode and reference mode are
-  exclusive: with audio present, the cast images ride as reference_image —
-  LIKENESS carries, the approved still's exact framing does not (the card's
-  partial-frame ⚠ trade). Chain the look through wardrobe invariants and
-  setting description instead.
+- **SYNC costs the pinned frame — on every sync model, confirmed.** Frame mode
+  and reference mode are exclusive: with audio present, the cast images ride
+  as reference_image — LIKENESS carries, the approved still's exact framing
+  does not (the card's partial-frame ⚠ trade). Chain the look through wardrobe
+  invariants and setting description instead. Say this to the user BEFORE a
+  sung take, because it is the one place the board stops honouring a still
+  they already approved, and finding that out after the spend reads as a bug.
 - **State the aspect explicitly** — adaptive ratio follows the reference
   photo's orientation (a portrait reference silently produced a portrait
   shot inside a 16:9 edit).
