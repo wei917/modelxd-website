@@ -108,6 +108,10 @@ export default function XEvalPage() {
   }, [gdpvalRuns])
 
   const taskCount = useMemo(() => new Set(gdpvalRuns.map(r => r.task_id)).size, [gdpvalRuns])
+  // The lead line quotes the ladder itself — top entry and the human anchor —
+  // so a republish updates the prose with the numbers.
+  const topRow = useMemo(() => [...ratings].sort((a, b) => b.rating - a.rating)[0], [ratings])
+  const anchorRow = useMemo(() => ratings.find(r => r.model_name === 'human-expert'), [ratings])
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
   // judge_filter is the fit's machine label, e.g. "panel(3 judges)@high+rules+tasks:enabled".
   // Render the panel form as prose; anything else falls back to the raw label.
@@ -306,6 +310,12 @@ export default function XEvalPage() {
             <TBSection runs={tbRuns} label={BENCH_LABEL[bench] ?? bench} />
           ) : (
           <>
+          <p style={{ fontSize: 13.5, color: 'var(--muted2)', lineHeight: 1.6, maxWidth: 760, margin: '0 0 16px' }}>
+            {t('xeval.lead.gdpval')
+              .replace('{top}', topRow ? (perEntry.get(`${topRow.model_name}|${topRow.effort ?? ''}`)?.display ?? SPECIAL_DISPLAY[topRow.model_name] ?? topRow.model_name) : '')
+              .replace('{rating}', String(topRow?.rating ?? ''))
+              .replace('{anchor}', String(anchorRow?.rating ?? 1000))}
+          </p>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
             <span><strong style={{ color: 'var(--white)' }}>{ratings.length}</strong> {t('xeval.stat.entries')}</span>
             <span><strong style={{ color: 'var(--white)' }}>{taskCount}</strong> {t('xeval.stat.tasks')}</span>
@@ -453,6 +463,15 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
   return (
     <>
+      <p style={{ fontSize: 13.5, color: 'var(--muted2)', lineHeight: 1.6, maxWidth: 760, margin: '0 0 16px' }}>
+        {t('xeval.lead.tb')
+          .replace('{set}', label)
+          .replace('{harness}', String(harness))
+          .replace('{top}', rows[0]?.display ?? '')
+          .replace('{solved}', String(rows[0]?.solved ?? ''))
+          .replace('{n}', String(rows[0]?.n ?? ''))
+          .replace('{cost}', rows[0] ? money(rows[0].cost / rows[0].n) : '')}
+      </p>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
         <span><strong style={{ color: 'var(--white)' }}>{rows.length}</strong> {t('xeval.stat.entries')}</span>
         <span><strong style={{ color: 'var(--white)' }}>{taskN}</strong> {t('xeval.stat.tasks')}</span>
