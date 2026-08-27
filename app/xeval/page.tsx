@@ -150,6 +150,7 @@ export default function XEvalPage() {
     const m = modelName
     let r: RegExpMatchArray | null
     if (m === 'modelxd-router') return 'ModelXD'
+    if (m === 'human-expert') return 'Human'
     if ((r = m.match(/^claude-(opus|sonnet|fable|haiku)/))) return `${r[1][0].toUpperCase()}${r[1].slice(1)}`
     if ((r = m.match(/^gpt-[\d.]+-(sol|luna|terra)/))) return `${r[1][0].toUpperCase()}${r[1].slice(1)}`
     if (/^gemini-.*flash-lite/.test(m)) return 'Flash-Lite'
@@ -255,7 +256,19 @@ export default function XEvalPage() {
   }
 
   // XBoard's five-tier heatmap buckets — one house language for "how good".
-  const tier = (x: number) => (x < 950 ? 'poor' : x < 1000 ? 'fair' : x < 1050 ? 'mid' : x < 1100 ? 'good' : 'elite')
+  // Heatmap buckets are RELATIVE to this fit's own spread. The ladder is
+  // anchored (1000 = the human professional), so every model sits in the
+  // 1100-2000 band and the old absolute cutoffs painted the whole table
+  // 'elite'. Quintiles of the live range keep the five-tier house language
+  // meaningful whatever the scale.
+  const band = useMemo(() => {
+    const rs = ratings.map(r => r.rating)
+    return rs.length ? { lo: Math.min(...rs), hi: Math.max(...rs) } : { lo: 0, hi: 1 }
+  }, [ratings])
+  const tier = (x: number) => {
+    const t = (x - band.lo) / Math.max(1, band.hi - band.lo)
+    return t < 0.2 ? 'poor' : t < 0.4 ? 'fair' : t < 0.6 ? 'mid' : t < 0.8 ? 'good' : 'elite'
+  }
   const judgeCount = ((ratings[0]?.judge_filter ?? '').match(/panel\((\d+)/)?.[1]) ?? '1'
   const updated = ratings[0]?.ts?.slice(0, 10) ?? ''
 
@@ -353,7 +366,7 @@ export default function XEvalPage() {
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             {e && <ProviderLogo provider={e.provider} size={16} />}
-                            {e?.display ?? (row.model_name === 'modelxd-router' ? 'ModelXD Autopilot' : row.model_name)}
+                            {e?.display ?? SPECIAL_DISPLAY[row.model_name] ?? row.model_name}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
@@ -508,6 +521,9 @@ const PROVIDER_SHAPE: Record<string, string> = {
 const EFFORT_COLOR: Record<string, string> = {
   none: '#888780', minimal: '#5b9bd5', low: '#2a78d6', medium: '#1baf7a', high: '#eda100', xhigh: '#eb6834', max: '#d03b3b',
 }
+// Entries with no catalog run behind them (ModelXD's own row, the human
+// anchor) have no display_name in xeval_runs — name them here.
+const SPECIAL_DISPLAY: Record<string, string> = { 'modelxd-router': 'ModelXD Autopilot', 'human-expert': 'Human expert' }
 const shapeOf = (prov: string) => PROVIDER_SHAPE[prov] ?? 'circle'
 const colorOf = (effort: string) => EFFORT_COLOR[effort] ?? 'var(--red)'
 
@@ -572,7 +588,7 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
       const e = perEntry.get(`${r.model_name}|${r.effort ?? ''}`)
       const c = (e ? avg(e.costs) : null) ?? (r as any).avg_cost_usd ?? null
       return c != null && c > 0
-        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e?.display ?? (r.model_name === 'modelxd-router' ? 'ModelXD Autopilot' : r.model_name)} @ ${r.effort ?? ''}`, provider: e?.provider ?? (r.model_name === 'modelxd-router' ? 'modelxd' : ''), effort: r.effort ?? '' }
+        ? { x: logX ? Math.log10(c) : c, c, y: r.rating, label: `${e?.display ?? SPECIAL_DISPLAY[r.model_name] ?? r.model_name}${r.effort ? ` @ ${r.effort}` : ''}`, provider: e?.provider ?? (r.model_name === 'modelxd-router' ? 'modelxd' : ''), effort: r.effort ?? '' }
         : null
     })
     .filter(Boolean) as { x: number; c: number; y: number; label: string; provider: string; effort: string }[]
