@@ -110,9 +110,37 @@ edits outrank the director's draft) and persists on
 `xdirector_conversations.storyboard` (**migration 71 — pending until the
 owner runs it; saves degrade gracefully to in-session until then**). Stills
 keep the direct flow. The director runs Sonnet 5 (`XDIRECTOR_MODEL`
-overrides). Phase 3 remains: assembly (stitch/export, trim, audio). The
-differentiator to protect: per-shot model choice with real prices from votes,
-not editing chrome.
+overrides). **Phase 3 (assembly) shipped as XCut** — `/xcut?from=<board>` is
+the rough cut; the storyboard header's **Assemble film** button goes there.
+The differentiator to protect: per-shot model choice with real prices from
+votes, not editing chrome.
+
+**Reference video (Aug 26).** The Music Video setup takes a public YouTube
+link. `/api/xdirector/reference` is house-paid and runs two passes on it:
+`gemini-3.1-flash-image` returns real **style frames** (pixels — they join
+`committedRef` as ordinary `role:'style'` attachments, so `use_files` handles
+them with no second code path), and `gemini-3.1-flash-lite` returns the
+**cut rhythm** as text, because no still can carry time. Gemini is the only
+provider that can be pointed at a URL — **Google fetches the video, we never
+download it**, which is what keeps this inside YouTube's terms. Frames are
+pinned to the chosen aspect: HappyHorse/Wan I2V take their output shape from
+the first frame, so an unpinned still silently decides the video's ratio.
+YouTube-URL input is **free in preview**, so the $0 video term in
+`calcTextCost` is correct — see `docs/price-audit.md` before "fixing" it.
+Style is borrowed; the reference's shots, performers and on-screen text are
+not (enforced in the frame prompt and restated to the director).
+
+**Cast placeholders.** A cast asset with `cast_source: 'ask'` renders
+"👤 My photos" beside "✨ Create one" on the shelf instead of a bare ▶, so
+the user picks before a face exists. It stays an OFFER — AI is one click,
+nothing is gated. `cast_source` round-trips through the storyboard sanitiser
+like `still_row_id`, so a later `set_storyboard` can't re-ask.
+
+**Lip-sync exists** (H3 and Wan 3.0 `audio_to_video`) — the MV skill's SYNC
+mode covers it. On BOTH models `first_frame` and `reference_audio` are
+mutually exclusive (probed Aug 26: *"first_frame cannot be combined with
+other media types except last_frame"*), so a sung take costs the pinned
+frame. That is the provider's rule, not ours.
 
 Entrances: nav item (beta-gated), omnibox row, the site agent
 (`/xdirect?q=…`). Legacy `/xdirector` and `/xcreate?agent=1`/`?c=` all
@@ -239,7 +267,7 @@ app/
     ├── agent/ask/              # Site agent (Claude Haiku)
     ├── xduel/{route,vote,quota,community-vote}
     ├── xcreate/{route,chat,node,inputs,source,job/[id],jobs/active}
-    ├── xdirector/{route,conversation}
+    ├── xdirector/{route,conversation,transcribe,digest,reference,refs}
     ├── xtalk/{route,game,werewolf}
     ├── xboard/{route,werewolf}
     ├── xdrating/refit/         # Rating refit (cron every 5 min)

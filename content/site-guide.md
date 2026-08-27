@@ -80,17 +80,34 @@ characters are locked as three-view character sheets (front, three-quarter,
 profile) before a scene is shot, so the same face carries through the film. (Old `/xdirector` and "Agent Mode" links land
 here.)
 
+The **Music Video** setup can also take a **reference video**: paste a public
+YouTube link and ModelXD watches it, pulls its look — palette, grade, lens,
+lighting, location — into real style frames, and reads its cutting rhythm so
+the scenes are timed the way that video cuts. Reading the link is free. It
+borrows the look, not the video: it will not recreate its shots, its
+performers or any text on screen. With a link there is no need to pick a
+style preset. Attach the song itself and the lyrics are transcribed with
+timings automatically, so you don't have to type them — correct any line it
+mishears and your wording is used from then on. You can also say how the song
+FEELS (upbeat, ballad, rock, country and so on), which drives cutting energy
+rather than the look. For the cast, the shelf card asks rather than assumes:
+attach 1-3 photos of the person you want as the lead, or have an original one
+created — either is one click.
+
 ### XCut — `/xcut`
 The cutting room. A video editor with three tracks — video, audio,
 subtitles — where every shot knows which model made it and what it cost.
 Open an XDirect board's storyboard as a **rough cut** with one click
-(▶▶ Cut on the storyboard), or start blank and drop in clips, stills and
+(**Assemble film** on the storyboard), or start blank and drop in clips, stills and
 audio from your own generations (XDirect, XCreate, XDuel) or upload your
 own video, music and images. Trim clips by dragging their edges, split at
 the playhead, reorder by dragging, choose a hard cut or a dissolve between
 clips, lay a music track with fades over the clips' own sound (or mute
 them), and write subtitles — a board's scene scripts arrive as subtitles
-already. Play the whole film in the browser, then **Export** renders one
+already. A rough cut made from a **Music Video** board arrives ready: the song
+is already laid on the audio track, the clips' own generated sound is muted so
+only the track plays, and subtitles are left off (a scene's script is the
+director's note, not a caption). Play the whole film in the browser, then **Export** renders one
 MP4 (720p or 1080p, 16:9 / 9:16 / 1:1) on ModelXD's servers: it lands as a
 FINAL CUT node on the source board, in your history, and as a download.
 Exporting is free — it is compute, not a model. Available to every
