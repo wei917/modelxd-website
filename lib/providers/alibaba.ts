@@ -57,6 +57,13 @@ const NATIVE_TEXT_ENDPOINT = '/api/v1/services/aigc/text-generation/generation'
 // here media goes IN and text comes out.
 const MULTIMODAL_ENDPOINT = IMAGE_ENDPOINT
 
+// DashScope's OpenAI-compatible endpoint. Some Qwen models are served ONLY
+// here — qwen3.8-max answers on this path and returns "url error, please
+// check url" on the native one (probed live, Aug 26). The catalog says
+// which, via output_config.text.api === 'compatible', because it is a
+// property of the MODEL like the multimodal split below.
+const COMPATIBLE_TEXT_ENDPOINT = '/compatible-mode/v1/chat/completions'
+
 export async function streamText(
   model: ModelInfo,
   messages: { role: 'user' | 'assistant'; content: any }[],
@@ -66,6 +73,10 @@ export async function streamText(
   thinking: string | null = null,
 ): Promise<void> {
   const TAG = `[alibaba/${model.model_name}]`
+
+  if ((model.output_config as any)?.text?.api === 'compatible') {
+    return streamCompatible(model, messages, callbacks, thinking, TAG)
+  }
 
   // Which endpoint is a property of the MODEL, not of this request. A
   // VL/omni model lives on multimodal-generation and is rejected outright by
@@ -194,6 +205,112 @@ export async function streamText(
 }
 
 /**
+ * OpenAI-compatible streaming for Qwen models the native endpoint refuses.
+ *
+ * Deliberately NO web search here: the shim carries no
+ * `usage.plugins.search.count`, and a search we cannot count is a search we
+ * cannot bill — the exact fidelity loss that moved this file to native-only
+ * on Aug 2. Models on this path must not declare the `web_search`
+ * capability, so the router never asks for one.
+ */
+async function streamCompatible(
+  model:     ModelInfo,
+  messages:  { role: 'user' | 'assistant'; content: any }[],
+  callbacks: TextStreamCallbacks,
+  thinking:  string | null,
+  TAG:       string,
+): Promise<void> {
+  console.log(`${TAG} streamText start (compatible-mode) messages=${messages.length} thinking=${thinking ?? 'default'}`)
+
+  const body: any = {
+    model:          model.model_name,
+    stream:         true,
+    stream_options: { include_usage: true },
+    messages:       messages.map(m => ({ role: m.role, content: String(m.content) })),
+  }
+  if (thinking === 'thinking_true')  body.enable_thinking = true
+  if (thinking === 'thinking_false') body.enable_thinking = false
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${COMPATIBLE_TEXT_ENDPOINT}`, {
+      method: 'POST',
+      headers: { ...defaultHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch (err: any) {
+    callbacks.onError(`DashScope request failed: ${err?.message ?? err}`)
+    return
+  }
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => '')
+    callbacks.onError(`DashScope ${res.status}: ${errText.slice(0, 500)}`)
+    return
+  }
+
+  const reader  = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let inputTokens = 0, outputTokens = 0, cachedTokens = 0
+  // Same rule as moonshot/xai: reasoning_content is never surfaced (XTalk
+  // prints a turn verbatim), and "thought but never answered" must be
+  // distinguishable from "returned nothing".
+  let answered = false, thought = false
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      let sep
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const rawEvent = buffer.slice(0, sep)
+        buffer = buffer.slice(sep + 2)
+        for (const line of rawEvent.split('\n')) {
+          if (!line.startsWith('data:')) continue
+          const data = line.slice(5).trim()
+          if (data === '[DONE]' || data === '') continue
+          let json: any
+          try { json = JSON.parse(data) } catch { continue }
+
+          if (json?.error) {
+            const msg = typeof json.error === 'string' ? json.error : (json.error.message ?? JSON.stringify(json.error))
+            callbacks.onError(`DashScope: ${msg}`)
+            return
+          }
+
+          const delta = json?.choices?.[0]?.delta
+          if (delta?.content) { answered = true; callbacks.onDelta(String(delta.content)) }
+          if (delta?.reasoning_content) thought = true
+
+          const u = json?.usage
+          if (u) {
+            inputTokens  = u.prompt_tokens     ?? inputTokens
+            outputTokens = u.completion_tokens ?? outputTokens
+            cachedTokens = u.prompt_tokens_details?.cached_tokens ?? cachedTokens
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    callbacks.onError(`Stream read failed: ${err?.message ?? err}`)
+    return
+  }
+
+  if (!answered) {
+    callbacks.onError(thought
+      ? 'DashScope: the model produced reasoning but no answer (empty completion)'
+      : 'DashScope: empty completion — no content returned')
+    return
+  }
+
+  const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking })
+  console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} cost=$${cost.toFixed(6)}`)
+  callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost })
+}
+
+/**
  * Message content for the multimodal endpoint: typed parts, media first.
  *
  * `url` is preferred over inline base64 — the router fills it with a signed
@@ -269,6 +386,15 @@ async function pollTask(
 
 // ── image generation ────────────────────────────────────────────────────────
 
+/** Price tier for a requested output size — '1k' up to ~1.5MP, '2k' above.
+ *  Only meaningful for models whose per_image map is keyed by tier
+ *  (qwen-image-3.0-pro); flat maps ignore it via pickRate's fallbacks. */
+function imageTierForSize(size: string): string {
+  const m = String(size).match(/(\d+)\s*[x×*]\s*(\d+)/i)
+  if (!m) return '1k'
+  return parseInt(m[1], 10) * parseInt(m[2], 10) > 1_500_000 ? '2k' : '1k'
+}
+
 export async function generateImage(
   model: ModelInfo,
   prompt: string,
@@ -281,7 +407,17 @@ export async function generateImage(
   // DashScope native API uses asterisk separator: 1024*1024
   const dashSize = size.replace('x', '*')
   const imageAtts = attachments.filter(a => a.mediaType.startsWith('image/'))
-  console.log(`${TAG} generateImage size=${dashSize} attachments=${imageAtts.length}`)
+  // Per-image price TIER from the requested size. qwen-image-3.0-pro is
+  // $0.04 at 1K and $0.075 at 2K; passing the tier as calcImageCost's size
+  // key picks the right one. Flat-priced models have no 1k/2k keys and fall
+  // through to 'default' exactly as before. Without this every image billed
+  // the default (2K) rate — an 87% overcharge on a 1K image.
+  const priceTier = imageTierForSize(size)
+  // Input images are billed separately by DashScope on some models
+  // (qwen-image-3.0-pro: $0.003 each). Pass it through rather than absorb it.
+  const perImageRates = (model.model_pricing?.per_image ?? {}) as Record<string, number>
+  const inputImageCost = (perImageRates.input_image ?? 0) * imageAtts.length
+  console.log(`${TAG} generateImage size=${dashSize} tier=${priceTier} attachments=${imageAtts.length}`)
 
   // qwen-image-plus uses the async text2image endpoint (different API shape)
   const isAsyncModel = model.model_name === 'qwen-image-plus' || model.model_name === 'qwen-image'
@@ -346,7 +482,7 @@ export async function generateImage(
     const arrayBuffer = await imgRes.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     const contentType = imgRes.headers.get('content-type') ?? 'image/png'
-    const cost = calcImageCost(model)
+    const cost = calcImageCost(model, _quality, priceTier) + inputImageCost
 
     console.log(`${TAG} image ok bytes=${buffer.length} cost=$${cost.toFixed(6)}`)
     return { buffer, mediaType: contentType, cost }
@@ -452,8 +588,9 @@ export async function generateImage(
     }
   }))
 
-  // Total cost: per-image rate × image_count.
-  const cost = calcImageCost(model) * downloads.length
+  // Total cost: per-image rate (size tier) × image_count, plus any
+  // per-input-image charge.
+  const cost = calcImageCost(model, _quality, priceTier) * downloads.length + inputImageCost
 
   console.log(`${TAG} image ok count=${downloads.length} bytes=[${downloads.map(d => d.buffer.length).join(',')}] cost=$${cost.toFixed(6)}`)
   return {
