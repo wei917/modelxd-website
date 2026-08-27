@@ -203,7 +203,35 @@ the metric to watch as tasks are added.
 - Parked: TB 3.0 (74 tasks; only 12 fit this Mac, 4 need H100s — awaits
   funding), JobBench (no vendor citations).
 
-## 9. Backups — the data exists in one place
+## 9. Cost-accounting audit (2026-08-27) — long-context tiers do NOT apply
+
+The page advertises measured cost, so the catalog's flat per-model rates were
+checked against every vendor's long-context schedule. Result: **all published
+costs are correct**; no correction needed.
+
+| vendor | long-context tier | our exposure |
+|---|---|---|
+| OpenAI (Sol/Terra/Luna) | >272K input tokens → **2x input, 1.5x output, applied to the WHOLE request** (not just the excess, and cached input too) | **Never triggered.** Largest single turn measured: Sol 202,907 · Terra 115,114 · Luna 115,560 |
+| Anthropic (Opus/Fable/Sonnet) | **None.** Docs: *"the full 1M token context window at standard pricing — a 900k-token request is billed at the same per-token rate as a 9k-token request"* | Opus@max had 20 turns >272K; no surcharge exists |
+| Google (Gemini Flash) | **None** — flat regardless of context; only Gemini *Pro* has the >200K jump | Gemini@high had 14 turns >272K; no surcharge exists |
+
+Method: `work/runs/*/transcript.jsonl` records `token_usage.input` per assistant
+turn (per REQUEST, which is what vendors bill on — not the run total). Re-run
+that scan if a new provider or a much longer task set is added; the OpenAI
+cliff is the one that would actually cost money.
+
+**Known and deliberate**: Gemini 3.7 Flash bills $0.75/$3.75 today (promo
+through 2026-12-31) but the catalog carries the $1.50/$7.50 list price, per the
+owner's list-prices-only rule — so the page overstates Gemini's *current* real
+cost ~2x. Sonnet 5 is the opposite case and is fine: its $2/$10 introductory
+price became permanent, and that is what the catalog holds.
+
+Spot-checked at the same time: GPT-5.6 Luna is genuinely $0.20/$1.20 (an 80%
+cut on 2026-07-30, from $1/$6) — it is the cheapest judge available by ~8x,
+but under all-pass rubric scoring one bad verdict zeroes a whole task, so it
+belongs in a cross-check role, not as a primary judge.
+
+## 10. Backups — the data exists in one place
 
 `gdpval-xd` is a **local-only git repo with no remote**, by design (eval data
 stays out of the ModelXD repo). Everything the eval operation has produced
@@ -233,7 +261,7 @@ ever overwritten; the bucket is **private** — it holds model deliverables and
 the full verdict history. If the Supabase plan gets tight, move the
 deliverables tier to R2/B2 and keep only the db here.
 
-## 10. Command cheat-sheet (from `gdpval-xd/`)
+## 11. Command cheat-sheet (from `gdpval-xd/`)
 
 ```bash
 # run one cell
