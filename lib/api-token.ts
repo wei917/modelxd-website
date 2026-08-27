@@ -62,16 +62,29 @@ export async function resolveApiToken(authorization: string | null | undefined):
   }
 }
 
-/** True when the key has hit its lifetime cap. The check is a floor at
- *  request time — the generation that crosses the line still completes and
- *  is recorded, so a key can overshoot by at most one generation's cost. */
-export function tokenCapReached(tok: ApiTokenContext): boolean {
-  return tok.spendCapUsd !== null && tok.spentUsd >= tok.spendCapUsd
+/** Reserve `usd` against the key's lifetime cap BEFORE generating, the way
+ *  the wallet reserves credits. Atomic check-and-increment in one statement
+ *  (see supabase/88_token_spend_cap.sql): concurrent callers serialize on the
+ *  row, so ten parallel agent calls cannot all pass the same stale reading.
+ *  Returns false when the reservation would cross the cap. */
+export async function reserveTokenSpend(tok: ApiTokenContext, usd: number): Promise<boolean> {
+  if (!(usd > 0)) return true
+  const { data, error } = await service().rpc('reserve_token_spend', { p_token_id: tok.tokenId, p_usd: usd })
+  if (!error) return data !== null && data !== undefined
+  // Migrations are run by hand, so this code can be live before function 88
+  // exists. Degrade to the PRE-88 check (read spent_usd, compare) rather than
+  // failing open — a cap that is merely racy beats a cap that silently isn't
+  // there, and this branch disappears the moment the migration lands.
+  console.warn(`[api-token] reserve_token_spend unavailable (${error.message}) — falling back to the non-atomic check; run supabase/88_token_spend_cap.sql`)
+  if (tok.spendCapUsd === null) return true
+  return tok.spentUsd + usd <= tok.spendCapUsd
 }
 
-/** Fire-and-forget spend accumulation after a run settles. */
-export function recordTokenSpend(tokenId: string, usd: number): void {
-  if (!(usd > 0)) return
-  service().rpc('increment_token_spend', { p_token_id: tokenId, p_usd: usd })
-    .then(({ error }) => { if (error) console.warn('[api-token] spend record failed:', error.message) })
+/** Settle the reservation: a SIGNED delta (negative when the run came in under
+ *  estimate or produced nothing). Fire-and-forget — the wallet already has the
+ *  authoritative record of the money. */
+export function adjustTokenSpend(tokenId: string, deltaUsd: number): void {
+  if (!Number.isFinite(deltaUsd) || deltaUsd === 0) return
+  service().rpc('adjust_token_spend', { p_token_id: tokenId, p_usd: deltaUsd })
+    .then(({ error }) => { if (error) console.warn('[api-token] spend adjust failed:', error.message) })
 }

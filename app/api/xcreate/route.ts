@@ -444,18 +444,12 @@ export async function POST(req: Request) {
   // wallet; nothing downstream knows the difference except the spend-cap
   // gate and the per-token spend record at settle.
   const { createSupabaseServer } = await import('@/lib/supabase-server')
-  const { resolveApiToken, tokenCapReached, recordTokenSpend } = await import('@/lib/api-token')
+  const { resolveApiToken, reserveTokenSpend, adjustTokenSpend } = await import('@/lib/api-token')
   const supabaseUser = await createSupabaseServer()
   const { data: { user: sessionUser } } = await supabaseUser.auth.getUser()
   const apiToken = sessionUser ? null : await resolveApiToken(req.headers.get('authorization'))
   const user = sessionUser ?? (apiToken ? { id: apiToken.userId, email_confirmed_at: 'via-token' } as any : null)
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  if (apiToken && tokenCapReached(apiToken)) {
-    return Response.json(
-      { error: 'spend_cap_reached', message: `This API key has reached its spend cap ($${apiToken.spendCapUsd!.toFixed(2)}). Raise the cap on the XDev page.` },
-      { status: 402 },
-    )
-  }
 
   // Verified-user gate. Google OAuth auto-confirms email at sign-up, so
   // this is a no-op today; protects future email/password flows. Token
@@ -603,6 +597,19 @@ export async function POST(req: Request) {
       // healthy balance and all pass before the first debit lands. Debiting
       // the estimate here makes the balance authoritative; the real cost is
       // settled against this reserve once generation finishes.
+      // Per-key cap FIRST: it moves no money, so a refusal here needs no
+      // unwind, whereas a wallet reserve taken before a capped key is refused
+      // would have to be handed back.
+      if (apiToken && !(await reserveTokenSpend(apiToken, estCents / 100))) {
+        const cap = apiToken.spendCapUsd ?? 0
+        console.warn(`${LOG} blocked: key ${apiToken.name} at cap $${cap.toFixed(2)} (spent $${apiToken.spentUsd.toFixed(2)}, needs ~$${(estCents / 100).toFixed(2)})`)
+        return Response.json({
+          error:   'spend_cap_reached',
+          message: `This API key has reached its spend cap ($${cap.toFixed(2)}). Raise the cap on the XDev page.`,
+          capUsd:  cap,
+          spentUsd: apiToken.spentUsd,
+        }, { status: 402 })
+      }
       try {
         await debitCredits({
           userId:        user.id,
@@ -618,6 +625,8 @@ export async function POST(req: Request) {
           const credits = await getUserCredits(user.id)
           const balanceCents = credits?.balance_cents ?? 0
           console.warn(`${LOG} blocked: needs ~${estCents}c, balance ${balanceCents}c (user ${user.id})`)
+          // Nothing generated, so the key must not carry the reservation.
+          if (apiToken) adjustTokenSpend(apiToken.tokenId, -estCents / 100)
           return Response.json({
             error:   'insufficient_credits',
             message: `This run costs about ${formatCents(estCents)} and your balance is ${formatCents(balanceCents)}.`,
@@ -625,6 +634,7 @@ export async function POST(req: Request) {
             balanceCents,
           }, { status: 402 })
         }
+        if (apiToken) adjustTokenSpend(apiToken.tokenId, -estCents / 100)
         throw err
       }
     }
@@ -978,8 +988,10 @@ export async function POST(req: Request) {
   // comes back automatically.
   const deltaCents = totalCostCents - reservedCents
   const settleMeta = { mode, modelCount: models.length, jobId: job.id, discount, preDiscountCents, reservedCents, actualCents: totalCostCents }
-  // Per-key spend record (MCP path) — fire-and-forget, actual settled cost.
-  if (apiToken) recordTokenSpend(apiToken.tokenId, totalCostCents / 100)
+  // Per-key settle (MCP path): the reservation above already charged the key
+  // the ESTIMATE, so this is the same signed delta the wallet settles by — a
+  // run that produced nothing hands the whole reservation back.
+  if (apiToken) adjustTokenSpend(apiToken.tokenId, deltaCents / 100)
   if (deltaCents > 0) {
     try {
       await debitCredits({
