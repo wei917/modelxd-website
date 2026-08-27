@@ -25,7 +25,7 @@ type TokenRow = {
 
 const TOOLS: Array<[string, string]> = [
   ['get_leaderboard', 'models ranked by XD Score from real blind votes, with prices'],
-  ['pick_model', 'vote-backed recommendation for a text / image / video generation'],
+  ['pick_model', 'vote-backed recommendation for an image / video generation (for text, call the chat API with xd/auto)'],
   ['generate_image', 'generate a still — returns outputs or a job_id'],
   ['generate_video', 'generate a video — returns a job_id to poll'],
   ['check_job', 'poll a generation until its outputs and actual cost land'],
@@ -44,7 +44,12 @@ export default function XDevClient() {
   const [err, setErr] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.modelxd.com'
+  // SSR-stable origin, swapped after mount — the server must render the
+  // same bytes the client's first paint does (same rule as Nav's BETA
+  // sticker), or React regenerates the whole tree. Caught live: the curl
+  // snippet hydrated www.modelxd.com against localhost.
+  const [origin, setOrigin] = useState('https://www.modelxd.com')
+  useEffect(() => { setOrigin(window.location.origin) }, [])
   const keyShown = fresh?.key ?? '<YOUR_KEY>'
 
   const load = async () => {
@@ -94,6 +99,12 @@ export default function XDevClient() {
     setTimeout(() => setCopied(c => (c === tag ? null : c)), 1600)
   }
 
+  const chatCurl = useMemo(() =>
+    `curl -s ${origin}/api/v1/chat/completions \\\n  -H "Authorization: Bearer ${keyShown}" -H "Content-Type: application/json" \\\n  -d '{"model":"xd/cheap","messages":[{"role":"user","content":"One sentence: why blind votes?"}]}'`,
+    [origin, keyShown])
+  const chatPy = useMemo(() =>
+    `from openai import OpenAI\nclient = OpenAI(base_url="${origin}/api/v1", api_key="${keyShown}")\nr = client.chat.completions.create(model="xd/auto", messages=[{"role": "user", "content": "hi"}])\nprint(r.choices[0].message.content, r.usage)`,
+    [origin, keyShown])
   const claudeCmd = useMemo(() =>
     `claude mcp add --transport http modelxd ${origin}/api/mcp --header "Authorization: Bearer ${keyShown}"`,
     [origin, keyShown])
@@ -133,9 +144,10 @@ export default function XDevClient() {
         <span className="prompt-label eyebrow">XDEV</span>
         <h1 className="page-headline" style={{ marginBottom: 8 }}>{t('xdev.subtitle')}</h1>
         <p style={{ color: 'var(--muted)', fontSize: 14, maxWidth: 640, marginBottom: 26 }}>
-          Mint an API key, plug ModelXD into any MCP client — Claude Code, Cursor, n8n — and your
-          agent generates through the same pipeline, prices and wallet as the site. Every output is
-          AI-generated content: label it as such wherever it gets published.
+          Mint an API key and use it two ways: an OpenAI-compatible text API for your code and
+          game servers, and an MCP server for agents — Claude Code, Cursor, n8n. Both run through
+          the same pipeline, prices and wallet as the site. Every output is AI-generated content:
+          label it as such wherever it gets published.
         </p>
 
         {/* ── Keys ─────────────────────────────────────────────────────── */}
@@ -200,9 +212,38 @@ export default function XDevClient() {
           )}
         </div>
 
+        {/* ── Text API ─────────────────────────────────────────────────── */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+            <span style={{ fontWeight: 800, fontSize: 15 }}>💬 Text API — OpenAI-compatible</span>
+            <span style={{ ...label }}>chat completions · streaming · structured output</span>
+            <a href="/xdev/docs" style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>📖 Full API docs →</a>
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
+            Point any OpenAI SDK at this base URL and keep your code. <code>model</code> takes{' '}
+            <code>provider/model_name</code> from the leaderboard, or let the votes decide:{' '}
+            <code>xd/auto</code> (best XD Score) / <code>xd/cheap</code> (good enough, cheapest).
+            The model that answered comes back in <code>response.model</code>, the real price in{' '}
+            <code>usage.cost_usd</code> — on every response, streams included.
+          </p>
+
+          <div style={label}>curl</div>
+          {codeBox(chatCurl, 'chatcurl')}
+
+          <div style={{ ...label, marginTop: 14 }}>Python · any OpenAI SDK</div>
+          {codeBox(chatPy, 'chatpy')}
+
+          <p style={{ color: 'var(--muted2)', fontSize: 11.5, marginTop: 12, marginBottom: 0 }}>
+            For agents in games: <code>response_format</code> with a <code>json_schema</code> is
+            enforced server-side — a reply either matches your schema or you get a 422, never
+            malformed text. <code>{'models: [a, b]'}</code> is an ordered fallback chain. Server-side
+            keys only: there is no browser CORS, by design.
+          </p>
+        </div>
+
         {/* ── Connect ──────────────────────────────────────────────────── */}
         <div style={card}>
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>🔌 Connect an MCP client</div>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>🔌 MCP — images & video for agents</div>
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
             {fresh ? 'Commands below carry your new key — paste and go.' : 'Create a key above and these fill in automatically; or replace <YOUR_KEY> by hand.'}
           </p>
@@ -232,7 +273,8 @@ export default function XDevClient() {
           </table>
           <p style={{ color: 'var(--muted2)', fontSize: 11.5, marginTop: 12, marginBottom: 0 }}>
             Generations land in your XCreate gallery and Profile ledger like any other run. The spend
-            cap is per key and lifetime; the generation that crosses it completes, then the key refuses.
+            cap is per key and lifetime, enforced up front: a call that would cross it is refused
+            before it spends.
           </p>
         </div>
       </div>

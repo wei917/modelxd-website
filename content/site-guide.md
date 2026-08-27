@@ -20,7 +20,14 @@ analysis, chats, gaming, benchmarks, or your own agents — and ModelXD sends ea
 whichever model earns it, decided by two independent kinds of evidence:
 real blind votes, and XEval runs on public benchmark datasets (GDPval).
 Prices are always in the open. Developers get the same routing inside their own agents through
-XDev (API keys + MCP: `get_leaderboard`, `pick_model`, then generate).
+XDev (API keys; docs at /xdev/docs). Two surfaces on one key: an
+OpenAI-compatible text API — POST /api/v1/chat/completions, point any OpenAI
+SDK at the base URL; `model` takes `provider/model_name` or the routing verbs
+`xd/auto` (best by blind votes) / `xd/cheap` (good enough, cheapest); JSON
+schema output is enforced server-side; every response reports its real
+`cost_usd` — and an MCP server (/api/mcp: `get_leaderboard`, `pick_model`,
+`generate_image`, `generate_video`, `check_job`, `get_balance`) for image and
+video generation from agents. Keys are server-side only and spend-capped.
 The votes come from people comparing models on their own prompt and
 voting **before** the price is revealed; those votes feed XBoard and the
 XEval benchmark page.
