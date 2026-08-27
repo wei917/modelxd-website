@@ -1,6 +1,6 @@
 # CLAUDE.md — ModelXD Project Guide
 
-> Last verified against the code on **2026-08-05** (branch `dev`).
+> Last verified against the code on **2026-08-26** (branch `dev`).
 > Companion docs: `docs/XEVAL-PAGE.md` — everything about the `/xeval`
 > page and the eval pipeline behind it (read before touching XEval).
 > `docs/STATE-2026-08-19.md` — a running snapshot of what
@@ -44,7 +44,7 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `70_model_feature_blocks.sql`.
+  Latest applied: `87_referrals.sql`.
 
 ## The Surfaces
 
@@ -62,6 +62,7 @@ more**, and the per-user feature system is gone with it.
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
+| **XCut** | `/xcut` | required | The cutting room: rough-cut an XDirect board, trim, add music, burn subtitles, export an MP4. Open. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 | **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
@@ -116,6 +117,26 @@ not editing chrome.
 Entrances: nav item (beta-gated), omnibox row, the site agent
 (`/xdirect?q=…`). Legacy `/xdirector` and `/xcreate?agent=1`/`?c=` all
 forward here with query intact.
+
+### XCut — `/xcut` (the cutting room)
+Turns a board into a film. `?from=<board>` builds the ROUGH CUT of an XDirect
+board (scenes in strip order, each shot scene trimmed to its card, unshot
+scenes held on their key still, subtitles from the scripts); `?p=<project>`
+opens a saved cut. Projects live in `xcut_projects` (migration 83).
+
+- **Render** (`/api/xcut/render`) runs ffmpeg-static inside the function:
+  every clip is scaled/padded to one size, concatenated, subtitles burned from
+  a generated ASS file, audio mixed, encoded `libx264 -preset veryfast -crf 22`.
+  Measured Aug 25: **71s of wall clock for a 59s film** (10 clips, 720p) — one
+  vCPU, and the clips download one at a time.
+- **Subtitles** need a CJK font on the server (`public/fonts/`); the ASS
+  `Fontname` must match the font's real family name or libass silently draws
+  nothing.
+- **`maxDuration` is 800s but the route accepts 30-minute films** — anything
+  past ~10 minutes is killed mid-render. Known, unfixed.
+- Download and preview go through `GET /api/xcut/render?projectId=…&download=1`,
+  which signs on demand and 302s. Never link `render.url` directly: it is a 24h
+  signed URL and dies the next day (see Common Pitfalls).
 
 ### XTalk — `/xtalk`
 Multi-model rooms. Two templates:
@@ -181,6 +202,8 @@ app/
 │   ├── LandingAgent.tsx        # Landing-page agent dialog
 │   ├── XDirectorChat.tsx       # The director chat (lives on /xdirect)
 │   ├── WorkflowCanvas.tsx      # Node-graph board editor (canvas beta)
+│   ├── SceneStrip.tsx          # Storyboard scene cards + ASSETS shelf
+│   ├── XCutEditor.tsx / XCutLibrary.tsx   # The cutting room and its asset bin
 │   ├── ModelPickerDialog.tsx   # Model picker (takes feature= for blocks)
 │   ├── TemplatePicker.tsx      # XTalk / XCreate template chooser
 │   ├── LabeledSlotsPicker.tsx  # Recipe input slots
@@ -199,8 +222,14 @@ app/
 ├── xboard/page.tsx             # Leaderboard
 ├── xdirect/page.tsx            # XDirect server shell (auth/feature gate)
 ├── xdirect/client.tsx          # Chat rail + canvas stage (Phase 1)
+├── xcut/page.tsx  xcut/client.tsx   # XCut: project list; ?p= / ?from= open a cut
+├── xeval/page.tsx              # Benchmark ladders (see docs/XEVAL-PAGE.md)
 ├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
-├── profile/page.tsx            # Balance, activity ledger, history
+├── profile/page.tsx            # Balance, ledger, referral panel, and a tab
+│                               #   per surface (XDuel/XCreate/XDirect/XCut/
+│                               #   XTalk/XGame/XVote) — this is where users
+│                               #   look for their own work, so every surface
+│                               #   that makes something belongs here
 ├── admin/models/               # Admin catalog editor
 ├── methodology/page.tsx        # How XDRating works
 ├── coming-soon/page.tsx        # SITE_PASSWORD gate form
@@ -220,6 +249,8 @@ app/
     ├── skills/                 # Agent Skills listing
     ├── snapshot/  site-auth/
     ├── profile/{delete,delete-account,xcreates}
+    ├── xcut/{projects,projects/[id],render,assets}
+    ├── referral/{route,claim}  # code + status; claim attaches a signup
     ├── admin/{models,models/[id],test-model}
     ├── cron/sweep-orphans/     # Daily orphan cleanup
     └── dev/grant-credits/
@@ -242,6 +273,10 @@ lib/
 ├── site-token.ts               # HMAC cookie for SITE_PASSWORD gate
 ├── duel-quota.ts               # Daily per-mode XDuel quotas
 ├── xcreate-discount.ts         # Pricing discount logic
+├── referral.ts                 # Referral credits (server-only; see Referrals)
+├── xcut-timeline.ts            # Timeline model, rough cut, ASS/SRT subtitles
+├── xcut-render.ts              # ffmpeg arg builder + bundled-font lookup
+├── xcut-media.ts / xcut-upload.ts   # Signing timeline media; resumable upload
 ├── pdf-extract.ts              # Server-side PDF text extraction
 ├── provider-errors.ts          # Provider error → user message mapping
 ├── attachment.ts  matchScore.ts  ime.ts
@@ -405,6 +440,39 @@ guarantees users only see their own rows.
 - Top-ups via Stripe (`/api/stripe/checkout` + `/api/stripe/webhook`).
 - The Profile activity ledger groups charges **by session** — a whole Werewolf
   game, or a generation plus its follow-ups, is one expandable row.
+
+### Referrals (migration 87, Aug 25)
+
+`lib/referral.ts` + `/api/referral` + the panel on `/profile`.
+
+- Any new user gets **$10** (the existing welcome credit, no card).
+- A **referred** user gets **+$5** and the **referrer $5**, both released when
+  the referred user verifies a payment card.
+- Verification is a Stripe Checkout session in **`mode: 'setup'`** — the card is
+  validated and **never charged**, no Stripe fee.
+
+**The card is the point.** Google's `email_verified` proves someone controls a
+Google account, not that they are a distinct person (Gmail is free; a domain
+owner gets ~50 free Cloud Identity accounts), and phone verification never
+appears in the OAuth token. A Stripe `card.fingerprint` is the same string for
+the same physical card across every account, so *one card, one referral* is
+enforceable — by a partial unique index on paid rows plus `payment_fingerprints`,
+so a card first seen on an ordinary account still counts as used.
+
+The $10 stays card-free deliberately: a referral link must always be an
+upgrade, never a demand for a card. Gating the whole $15 would make the link
+worse than signing up directly.
+
+- **Credits are granted only in the Stripe webhook**, never from a
+  client-callable route — a route that can pay a referral can pay its caller.
+  The webhook branches on `session.mode === 'setup'`.
+- **No cap** on referrals (a celebrity bringing 1,000 real users is the win);
+  a weekly threshold logs an alert instead.
+- `?ref=CODE` is parked in localStorage by `Nav.tsx` and spent after sign-in —
+  Google's OAuth round-trip drops query params.
+- Accepted: one person with one card and two Google accounts collects the pair
+  ONCE ($30, not $10). Not repeatable, and stopping it would mean asking every
+  referrer for a card.
 
 ## Feature Gating
 
@@ -613,7 +681,22 @@ npx tsc --noEmit         # type check — run before packaging
 10. **Hooks before early returns** — `Nav.tsx` returns `null` on
     `/coming-soon`; that return must stay below every hook or React throws
     "Rendered fewer hooks than expected".
-11. **Stale `.git/index.lock`** — git writes through the device bridge leave a
+11. **A stored signed URL is dead in 24 hours.** Every generated file lives
+    behind a Supabase signed URL with a 24h TTL, and we persist those URLs into
+    long-lived rows. Three bugs came from this in one day (Aug 24): XDirect
+    asset thumbnails (`still_url` was never re-signed), and XCut's download and
+    preview links (`render.url` persisted at export). Symptom on the wire is
+    `"exp" claim timestamp check failed`. Fix by signing on demand behind our
+    own route, not by re-signing at every read site — the read sites that
+    forget fail silently.
+12. **`download` on a cross-origin link does nothing on mobile Chrome.** The
+    attribute is ignored cross-origin, so the browser opens the file instead of
+    saving it. Supabase turns `?download=<name>` into a Content-Disposition
+    attachment — that is the only reliable path (XCut export, XDuel lightboxes).
+13. **A judge/rating query joining on `effort` must use `is`, not `=`.** The
+    human-baseline entry has `effort = NULL`, and `NULL = NULL` is false in SQL,
+    so it was silently dropped from every fit.
+14. **Stale `.git/index.lock`** — git writes through the device bridge leave a
     lock that can't be unlinked. Run git from a real terminal;
     `rm .git/index.lock` if a commit fails with "Another git process seems to
     be running."
@@ -660,6 +743,13 @@ can sit at the table honestly. One act per request; the client loops.
   Aug 5 re-derivation); "FOR AI USERS" ~$176/mo on 100 video clips (Veo 3.1
   $0.40/s vs HappyHorse 1.1 $0.18/s, 8s clips). Derivations are in comments
   in `app/page.tsx` — **re-derive before changing any number.**
+- **Landing hero, Aug 25** (current): eyebrow "AI apps that run winning
+  models", headline "The best AI for every task.", sub "Films, stories,
+  analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends
+  each job to whichever model earns it, decided by real blind votes and public
+  benchmark data, with the prices in the open." No model count in the copy so
+  it cannot go stale, and **no em dashes** — they read as machine-written
+  (owner, Aug 25; the 9 landing-visible i18n keys were swept too).
 - **Landing repositioned Aug 18** (owner: "not a blind test website
   anymore"): hero sells the APPS ("Make real things with every AI model"),
   the apps grid is the star section (template cards wear real generated
