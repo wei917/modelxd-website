@@ -25,6 +25,12 @@
 //   - /coming-soon              — the form itself
 //   - /api/site-auth            — the form's POST target
 //   - /api/stripe/webhook       — Stripe's webhook calls won't have the cookie
+//   - /api/v1/*, /api/mcp       — machine endpoints with their OWN auth (an
+//                                 xd_ bearer key). A game server's SDK call
+//                                 cannot follow a redirect to a password
+//                                 form, and gating a bearer-authed route
+//                                 behind a browser cookie adds no security:
+//                                 without a key the route answers 401 anyway.
 //   - /_next/*                  — Next.js static assets
 //   - /favicon, /robots, /logo  — public static files
 
@@ -37,6 +43,8 @@ function isBypassed(pathname: string): boolean {
   if (pathname === '/coming-soon')          return true
   if (pathname === '/api/site-auth')        return true
   if (pathname === '/api/stripe/webhook')   return true
+  if (pathname.startsWith('/api/v1/'))      return true
+  if (pathname === '/api/mcp')              return true
   if (pathname.startsWith('/_next/'))       return true
   if (pathname === '/favicon.ico')          return true
   if (pathname === '/robots.txt')           return true
