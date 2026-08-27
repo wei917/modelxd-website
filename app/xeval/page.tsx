@@ -127,14 +127,14 @@ export default function XEvalPage() {
 
   // Column sorting — XBoard's pattern: click a header to sort, click again
   // to flip. Numeric columns default desc (rating/wins) or asc (cost/time).
-  type SortKey = 'model' | 'effort' | 'rating' | 'games' | 'cost' | 'time'
+  type SortKey = 'model' | 'effort' | 'rating' | 'cost' | 'time'
   const [sortBy, setSortBy] = useState<SortKey>('rating')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const onSort = (k: SortKey) => {
     if (k === sortBy) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else {
       setSortBy(k)
-      setSortDir(k === 'rating' || k === 'games' ? 'desc' : 'asc')
+      setSortDir(k === 'rating' ? 'desc' : 'asc')
     }
   }
   const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
@@ -198,7 +198,6 @@ export default function XEvalPage() {
         case 'model': return (entryOf(r)?.display ?? r.model_name).toLowerCase()
         case 'effort': return EFFORT_ORDER.indexOf(r.effort ?? '')
         case 'rating': return r.rating
-        case 'games': return r.games
         case 'cost': return avg(entryOf(r)?.costs ?? []) ?? Number.MAX_VALUE
         case 'time': return avg(entryOf(r)?.times ?? []) ?? Number.MAX_VALUE
       }
@@ -350,7 +349,6 @@ export default function XEvalPage() {
                   <SortHeader label={t('xeval.col.model')} k="model" />
                   <SortHeader label={t('xeval.col.effort')} k="effort" />
                   <SortHeader label={t('xeval.col.rating')} k="rating" align="right" />
-                  <SortHeader label={t('xeval.col.games')} k="games" align="right" />
                   <SortHeader label={t('xeval.col.cost')} k="cost" align="right" />
                   <SortHeader label={t('xeval.col.time')} k="time" align="right" />
                 </tr>
@@ -371,10 +369,7 @@ export default function XEvalPage() {
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
                         <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                          <span className={`xd-chip ${tier(row.rating)}`}>{row.rating}</span>
-                        </td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>
-                          <span title={`${row.wins}W / ${row.games - row.wins}L`}>{row.games}</span>
+                          <span className={`xd-chip ${tier(row.rating)}`} title={`${row.wins}W / ${row.games - row.wins}L of ${row.games} verdicts`}>{row.rating}</span>
                         </td>
                         <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                           {cost != null ? `$${cost.toFixed(3)}` : '—'}

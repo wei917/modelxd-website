@@ -565,10 +565,6 @@ export const STRINGS: Record<string, Entry> = {
   'xeval.col.model':  { en: 'Model', 'zh-Hant': '模型', 'zh-Hans': '模型', ja: 'モデル', ko: '모델' },
   'xeval.col.effort': { en: 'Effort', 'zh-Hant': '推理強度', 'zh-Hans': '推理强度', ja: 'エフォート', ko: '추론 강도' },
   'xeval.col.rating': { en: 'Rating', 'zh-Hant': '評分', 'zh-Hans': '评分', ja: 'レーティング', ko: '레이팅' },
-  // Same unit the stats strip counts ('verdicts') — one judge's ruling on one
-  // pair. Bradley-Terry calls these 'games'; the page should not use two words
-  // for one thing, and nothing here is a game.
-  'xeval.col.games':  { en: 'Verdicts', 'zh-Hant': '判定數', 'zh-Hans': '判定数', ja: '判定数', ko: '판정 수' },
   'xeval.col.cost':   { en: 'Avg $/task', 'zh-Hant': '平均每題成本', 'zh-Hans': '平均每题成本', ja: '平均$/タスク', ko: '평균 $/과제' },
   'xeval.col.time':   { en: 'Avg time', 'zh-Hant': '平均耗時', 'zh-Hans': '平均耗时', ja: '平均時間', ko: '평균 시간' },
   'xeval.filter.all':  { en: 'Top 10', 'zh-Hant': '前 10 名', 'zh-Hans': '前 10 名', ja: '上位10件', ko: '상위 10개' },
