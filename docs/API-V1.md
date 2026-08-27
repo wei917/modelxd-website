@@ -137,5 +137,7 @@ Live, against a capped throwaway key (total spend $0.0157):
 - 401 / tools-400 / unknown-model-404 / bad-response_format-400.
 - 18/18 unit cases on the validator and JSON extractor.
 
-**Not yet verified:** a full Werewolf game through the migrated `askModel`.
-It typechecks and builds; it has not been played end-to-end.
+**Werewolf verified same day:** a full cycle played through the migrated
+`askModel` — 3 night acts, 6 day speeches across 5 providers, a 3–3 tied
+vote correctly resolved, Night 2 self-starting. $0.18, per-act costs on
+every card, no reasoning leaks.
