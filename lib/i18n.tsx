@@ -568,6 +568,11 @@ export const STRINGS: Record<string, Entry> = {
   // (xAI: 'Grok 4.6 scores 1753 Elo'); same Bradley-Terry math, same
   // human-anchored convention as GDPval-AA.
   'xeval.col.rating': { en: 'Elo', 'zh-Hant': 'Elo 評分', 'zh-Hans': 'Elo 评分', ja: 'Elo', ko: 'Elo' },
+  // Absolute completion: the weighted share of the task's human-authored
+  // GDPval rubric the run satisfied. NOT the same as Terminal-Bench's binary
+  // pass rate — hence a different label, so the two are not read as one metric.
+  'xeval.col.spec': { en: 'Spec met', 'zh-Hant': '規格達成', 'zh-Hans': '规格达成', ja: '仕様達成', ko: '사양 충족' },
+  'xeval.col.spec.tip': { en: 'Weighted share of the task’s human-written rubric criteria satisfied, averaged over tasks — an absolute score, judged without an opponent.', 'zh-Hant': '任務人工評分標準中已滿足項目的加權比例（跨任務平均）——絕對分數，無需對手即可評定。', 'zh-Hans': '任务人工评分标准中已满足项目的加权比例（跨任务平均）——绝对分数，无需对手即可评定。', ja: 'タスクの人手作成ルーブリック項目のうち満たした割合（重み付き・タスク平均）——対戦相手なしで評価される絶対スコア。', ko: '과제의 사람이 작성한 루브릭 기준 중 충족한 가중 비율(과제 평균) — 상대 없이 매기는 절대 점수.' },
   'xeval.col.cost':   { en: 'Avg $/task', 'zh-Hant': '平均每題成本', 'zh-Hans': '平均每题成本', ja: '平均$/タスク', ko: '평균 $/과제' },
   'xeval.col.time':   { en: 'Avg time', 'zh-Hant': '平均耗時', 'zh-Hans': '平均耗时', ja: '平均時間', ko: '평균 시간' },
   'xeval.filter.all':  { en: 'Top 10', 'zh-Hant': '前 10 名', 'zh-Hans': '前 10 名', ja: '上位10件', ko: '상위 10개' },

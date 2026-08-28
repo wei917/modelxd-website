@@ -36,6 +36,7 @@ interface RunRow {
   task_id: string
   task_set?: string | null
   score?: number | null
+  spec_pct?: number | null
   harness?: string | null
   occupation: string | null
   model_name: string
@@ -75,7 +76,7 @@ export default function XEvalPage() {
         // No status filter: verifier benchmarks publish failed trials too (a
         // timeout IS the cell's result). GDPval aggregates stay finished-only
         // because only finished GDPval runs are published.
-        .select('run_id, task_id, task_set, score, harness, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
+        .select('run_id, task_id, task_set, score, spec_pct, harness, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
       setRuns(rr ?? [])
       setLoading(false)
     })()
@@ -96,13 +97,14 @@ export default function XEvalPage() {
 
   // Per-entry aggregates from the runs behind the ratings (GDPval only).
   const perEntry = useMemo(() => {
-    const m = new Map<string, { display: string; provider: string; costs: number[]; times: number[] }>()
+    const m = new Map<string, { display: string; provider: string; costs: number[]; times: number[]; specs: number[] }>()
     for (const r of gdpvalRuns) {
       const key = `${r.model_name}|${r.effort ?? ''}`
-      if (!m.has(key)) m.set(key, { display: r.display_name, provider: r.provider, costs: [], times: [] })
+      if (!m.has(key)) m.set(key, { display: r.display_name, provider: r.provider, costs: [], times: [], specs: [] })
       const e = m.get(key)!
       if (r.cost_usd != null) e.costs.push(Number(r.cost_usd))
       if (r.model_s != null) e.times.push(Number(r.model_s))
+      if (r.spec_pct != null) e.specs.push(Number(r.spec_pct))
     }
     return m
   }, [gdpvalRuns])
@@ -131,14 +133,14 @@ export default function XEvalPage() {
 
   // Column sorting — XBoard's pattern: click a header to sort, click again
   // to flip. Numeric columns default desc (rating/wins) or asc (cost/time).
-  type SortKey = 'model' | 'effort' | 'rating' | 'cost' | 'time'
+  type SortKey = 'model' | 'effort' | 'rating' | 'spec' | 'cost' | 'time'
   const [sortBy, setSortBy] = useState<SortKey>('rating')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const onSort = (k: SortKey) => {
     if (k === sortBy) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else {
       setSortBy(k)
-      setSortDir(k === 'rating' ? 'desc' : 'asc')
+      setSortDir(k === 'rating' || k === 'spec' ? 'desc' : 'asc')
     }
   }
   const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
@@ -202,6 +204,7 @@ export default function XEvalPage() {
         case 'model': return (entryOf(r)?.display ?? r.model_name).toLowerCase()
         case 'effort': return EFFORT_ORDER.indexOf(r.effort ?? '')
         case 'rating': return r.rating
+        case 'spec': return avg(entryOf(r)?.specs ?? []) ?? -1
         case 'cost': return avg(entryOf(r)?.costs ?? []) ?? Number.MAX_VALUE
         case 'time': return avg(entryOf(r)?.times ?? []) ?? Number.MAX_VALUE
       }
@@ -359,6 +362,7 @@ export default function XEvalPage() {
                   <SortHeader label={t('xeval.col.model')} k="model" />
                   <SortHeader label={t('xeval.col.effort')} k="effort" />
                   <SortHeader label={t('xeval.col.rating')} k="rating" align="right" />
+                  <SortHeader label={t('xeval.col.spec')} k="spec" align="right" />
                   <SortHeader label={t('xeval.col.cost')} k="cost" align="right" />
                   <SortHeader label={t('xeval.col.time')} k="time" align="right" />
                 </tr>
@@ -367,6 +371,7 @@ export default function XEvalPage() {
                 {shown.map((row, i) => {
                     const e = perEntry.get(`${row.model_name}|${row.effort ?? ''}`)
                     const cost = (e ? avg(e.costs) : null) ?? row.avg_cost_usd ?? null
+                    const spec = e && e.specs.length ? avg(e.specs) : null
                     const time = e ? avg(e.times) : null
                     return (
                       <tr key={row.entry} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -380,6 +385,9 @@ export default function XEvalPage() {
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
                         <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                           <span className={`xd-chip ${tier(row.rating)}`} title={`${row.wins}W / ${row.games - row.wins}L of ${row.games} verdicts`}>{row.rating}</span>
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }} title={t('xeval.col.spec.tip')}>
+                          {spec != null ? `${Math.round(spec * 100)}%` : '—'}
                         </td>
                         <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                           {cost != null ? `$${cost.toFixed(3)}` : '—'}
