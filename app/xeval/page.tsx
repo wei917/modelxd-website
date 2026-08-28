@@ -500,7 +500,6 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
               <th style={{ padding: '8px 12px' }}>#</th>
               <th style={{ padding: '8px 12px' }}>{t('xeval.col.model')}</th>
               <th style={{ padding: '8px 12px' }}>{t('xeval.col.effort')}</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.solved')}</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.passrate')}</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.persolved')}</th>
@@ -516,8 +515,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
                   </span>
                 </td>
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{r.effort || '—'}</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved} / {r.n}</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                <td style={{ padding: '8px 12px', textAlign: 'right' }} title={`${r.solved} of ${r.n} tasks solved`}>
                   <span className={`xd-chip ${rateTier(r.solved / r.n)}`}>{Math.round((r.solved / r.n) * 100)}%</span>
                 </td>
                 <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{money(r.cost / r.n)}</td>
