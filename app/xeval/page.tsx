@@ -29,6 +29,7 @@ interface RatingRow {
   judge_filter: string
   avg_cost_usd?: number | null
   avg_time_s?: number | null
+  avg_spec_pct?: number | null
   params: string
 }
 
@@ -372,14 +373,14 @@ export default function XEvalPage() {
                 {shown.map((row, i) => {
                     const e = perEntry.get(`${row.model_name}|${row.effort ?? ''}`)
                     const cost = (e ? avg(e.costs) : null) ?? row.avg_cost_usd ?? null
-                    const spec = e && e.specs.length ? avg(e.specs) : null
+                    const spec = (e && e.specs.length ? avg(e.specs) : null) ?? row.avg_spec_pct ?? null
                     const time = (e ? avg(e.times) : null) ?? row.avg_time_s ?? null
                     return (
                       <tr key={row.entry} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            <ProviderLogo provider={e?.provider ?? (row.model_name === 'modelxd-router' ? 'modelxd' : null)} size={16} />
+                            <ProviderLogo provider={e?.provider ?? (row.model_name === 'modelxd-router' ? 'modelxd' : null)} size={row.model_name === 'modelxd-router' ? 22 : 16} />
                             {e?.display ?? SPECIAL_DISPLAY[row.model_name] ?? row.model_name}
                           </span>
                         </td>
@@ -511,7 +512,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                 <td style={{ padding: '8px 12px' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <ProviderLogo provider={r.provider} size={16} />{r.display}
+                    <ProviderLogo provider={r.provider} size={r.provider === 'modelxd' ? 22 : 16} />{r.display}
                   </span>
                 </td>
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{r.effort || '—'}</td>
