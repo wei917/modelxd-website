@@ -168,9 +168,9 @@ const RECIPES: Record<Mode, Recipe[]> = {
   video: [
     { id: 'text_to_video',    title: 'Text to Video',      recipe: 'TEXT → VIDEO',     provide: 'a prompt' },
     { id: 'image_to_video',   title: 'Image to Video',     recipe: 'IMAGE → VIDEO',    provide: '1 image + a prompt' },
-    { id: 'video_to_video',   title: 'Transform a Video',  recipe: 'VIDEO → VIDEO',    provide: '1 video + a prompt — restyles the whole clip' },
+    { id: 'video_to_video',   title: 'Edit with a Prompt', recipe: 'VIDEO → VIDEO',    provide: '1 video + a prompt — change it with words alone, no reference images' },
     { id: 'extend_video',     title: 'Continue a Video',   recipe: 'VIDEO → LONGER',   provide: '1 video + a prompt — the model carries the motion on past the end' },
-    { id: 'video_edit',       title: 'Edit a Video',       recipe: 'VIDEO + REFS → VIDEO', provide: '1 video + reference images + a prompt — changes one thing, keeps the rest' },
+    { id: 'video_edit',       title: 'Edit with References', recipe: 'VIDEO + REFS → VIDEO', provide: '1 video + reference images + a prompt — SHOW the model what to put in' },
     { id: 'start_end_frames', title: 'Frames to Video',    recipe: '2 FRAMES → VIDEO', provide: '2 images: first + last' },
     { id: 'reference_frames', title: 'Reference to Video', recipe: 'REFS → VIDEO',     provide: '1–2 portraits + a prompt' },
     { id: 'audio_to_video',   title: 'Audio to Video',     recipe: 'AUDIO → VIDEO',    provide: '1 song (MP3/WAV, up to 15s) + a prompt — the music drives the performance' },

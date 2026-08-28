@@ -687,7 +687,7 @@ export const STRINGS: Record<string, Entry> = {
   'recipefrom.image_edit':       { en: 'Image', 'zh-Hant': '圖片', 'zh-Hans': '图片', ja: '画像',    ko: '이미지' },
   'recipefrom.text_to_video':    { en: 'Text',  'zh-Hant': '文字', 'zh-Hans': '文字', ja: 'テキスト', ko: '텍스트' },
   'recipefrom.image_to_video':   { en: 'Image', 'zh-Hant': '圖片', 'zh-Hans': '图片', ja: '画像',    ko: '이미지' },
-  'recipefrom.video_to_video':   { en: 'Transform a video', 'zh-Hant': '改造影片', 'zh-Hans': '改造视频', ja: '動画を作り替える', ko: '동영상 변환' },
+  'recipefrom.video_to_video':   { en: 'Edit with a prompt', 'zh-Hant': '用提示詞編輯', 'zh-Hans': '用提示词编辑', ja: 'プロンプトで編集', ko: '프롬프트로 편집' },
   'recipefrom.video_edit':       { en: 'Edit with references', 'zh-Hant': '用參考圖編輯', 'zh-Hans': '用参考图编辑', ja: '参照画像で編集', ko: '참조 이미지로 편집' },
   'recipefrom.extend_video':     { en: 'Continue a video', 'zh-Hant': '延長影片', 'zh-Hans': '延长视频', ja: '動画を続ける', ko: '동영상 이어가기' },
   'recipefrom.start_end_frames': { en: 'Start + End Frames', 'zh-Hant': '頭尾幀',  'zh-Hans': '首尾帧',   ja: '最初+最後のフレーム', ko: '시작+끝 프레임' },
