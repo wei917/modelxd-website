@@ -1183,6 +1183,13 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         ...(typeof inp.duration === 'number' ? { duration: inp.duration } : {}),
         ...(typeof inp.aspect_ratio === 'string' ? { aspect_ratio: inp.aspect_ratio } : {}),
         ...(typeof inp.resolution === 'string' ? { resolution: inp.resolution } : {}),
+        // A PERFORMANCE-ONLY scene is one whose sound gets replaced: the MV
+        // path lays the real track over the cut and XCut mutes the clips.
+        // Wan 3.0 scores its own clip by default, so without this the model
+        // spends effort on ambience nobody will ever hear. Providers that
+        // take no such flag ignore it.
+        ...(sceneId && (storyboardRef.current.find((x: any) => x.id === sceneId) as any)?.no_speech
+          ? { generate_audio: false } : {}),
       }],
     }
     // Attachment ORDER is meaning: slot 0 is the start frame for recipes

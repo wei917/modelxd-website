@@ -628,7 +628,7 @@ export async function generateVideo(
   seconds: number = 5,
   attachments: Attachment[] = [],
   onProgress?: (pct: number) => void,
-  options?: { watermark?: boolean | null; aspect_ratio?: string | null; mode?: string | null },
+  options?: { watermark?: boolean | null; aspect_ratio?: string | null; mode?: string | null; generate_audio?: boolean | null; seed?: number | null },
 ): Promise<VideoResult> {
   const TAG = `[alibaba/${model.model_name}]`
 
@@ -770,6 +770,24 @@ export async function generateVideo(
       }
   if (options?.watermark === true)  parameters.watermark = true
   if (options?.watermark === false) parameters.watermark = false
+
+  // Wan 3.0 only — verified against its API reference (Aug 27). Two params
+  // the older families don't take, so they are gated by model name rather
+  // than sent hopefully to everything:
+  //   • audio (default true upstream) — the model scores its own clip. Off
+  //     when the caller is going to replace the sound anyway.
+  //   • seed  — reproducibility.
+  // `prompt_extend` is NOT a Wan 3.0 parameter and is dropped here; it was
+  // being sent on every call and quietly ignored.
+  if (/^wan3\./i.test(model.model_name)) {
+    delete parameters.prompt_extend
+    if (options?.generate_audio === false) parameters.audio = false
+    if (options?.generate_audio === true)  parameters.audio = true
+    const seed = options?.seed
+    if (typeof seed === 'number' && Number.isFinite(seed) && seed >= 0 && seed <= 2147483647) {
+      parameters.seed = Math.floor(seed)
+    }
+  }
   // ratio is T2V-only on HappyHorse. The I2V variant doesn't accept it —
   // output aspect always matches the first frame. Skip the param for I2V
   // and video-edit.

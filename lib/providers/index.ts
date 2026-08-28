@@ -383,6 +383,16 @@ export interface VideoOptions {
    *  providerVideoRef from a prior Veo generation. Veo cannot extend
    *  arbitrary videos — only its own outputs, within ~2 days. */
   extend_video_ref?: string | null
+  /** Wan 3.0 generates its own audio track (`audio`, default true upstream).
+   *  false asks for a silent clip — the right call whenever the sound is
+   *  going to be replaced anyway, which on this product is every music video:
+   *  XCut mutes the clips and lays the real track over them, so the model's
+   *  invented ambience was only ever throwaway. null = provider default. */
+  generate_audio?: boolean | null
+  /** Wan 3.0 `seed`, [0, 2147483647]. Same seed + same inputs reproduces a
+   *  take — the only way to change ONE thing about a shot and see just that
+   *  change, instead of a whole new roll of the dice. */
+  seed?: number | null
 }
 
 /** Optional generation-time parameters for image models. */

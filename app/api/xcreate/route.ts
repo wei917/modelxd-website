@@ -90,6 +90,12 @@ type SlotOpts = {
   watermark?:      boolean | null
   /** Number of outputs (image gen). Mainly for qwen-image-2.0 series 1..6. */
   count?:          number | null
+  /** Wan 3.0: ask for a silent clip. The MV path sets this false — the
+   *  song is laid over the cut afterwards, so a generated soundtrack is
+   *  discarded either way. */
+  generate_audio?: boolean | null
+  /** Wan 3.0: reproducible take, [0, 2147483647]. */
+  seed?:           number | null
   mode?:           string
   thinking_level?: string
   /** Let this slot's model use the provider's built-in web search. The
@@ -393,7 +399,8 @@ async function runSlot(
         model, prompt, videoSize, videoDuration, wired,
         (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
         callContext,
-        { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null, extend_video_ref: extendVideoRef },
+        { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null, extend_video_ref: extendVideoRef,
+          generate_audio: options.generate_audio ?? null, seed: options.seed ?? null },
       )
 
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
