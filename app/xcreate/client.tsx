@@ -551,7 +551,15 @@ function estimateSlotDollars(
     const size = opts?.size ?? null
     const key  = size ? resolutionKeyForSize(size) : null
     let perSecond: number | null = null
+    // Falling back to 720p was a silent 2x on any model whose default tier is
+    // cheaper: Wan 3.0 opens at 480p ($0.05/s), so an unmapped size quoted
+    // $0.10/s — double, for a run that would never bill that. Fall back to the
+    // model's OWN first declared size, which is what validateOpts selects.
+    const firstSize = model.output_config?.video?.sizes?.[0] ?? null
+    const firstKey  = firstSize ? resolutionKeyForSize(firstSize) : null
     if (key && r[key] != null)                          perSecond = r[key]
+    else if (firstKey && r[firstKey] != null)           perSecond = r[firstKey]
+    else if (r['default'] != null)                      perSecond = r['default']
     else if (r['720p'] != null)                         perSecond = r['720p']
     else if (Object.values(r).length > 0)               perSecond = Object.values(r)[0] as number
     if (perSecond == null) return null

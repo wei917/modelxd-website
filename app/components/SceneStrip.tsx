@@ -166,18 +166,40 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
       .then(({ data }) => { if (!dead) setCatalog(data ?? []) })
     return () => { dead = true }
   }, [])
-  const cheapest = (rate: any): number | null => {
+  // The rate a run will ACTUALLY bill at, given the resolution it will run
+  // at. This used to take Math.min over every declared tier and call it the
+  // estimate, which on a model with a wide spread is not an estimate at all:
+  // Wan 3.0 lists 480p $0.05 / 720p $0.10 / 1080p $0.20, so "cheapest" quoted
+  // a quarter of a 1080p run. Under-quoting is the worst direction to be
+  // wrong in on a product whose argument is price honesty.
+  //
+  // `resolution` is the key the card carries (the director sets it, and it
+  // matches the model's per_video_second keys). Missing, we fall back to the
+  // model's own default tier — the FIRST size it declares, which is what
+  // validateOpts picks in XCreate — and only then to the cheapest listed.
+  const rateAt = (rate: any, resolution?: string | null, sizes?: string[]): number | null => {
     if (typeof rate === 'number' && Number.isFinite(rate)) return rate
-    if (rate && typeof rate === 'object') {
-      const rates = Object.values(rate).map(Number).filter(n => Number.isFinite(n))
-      if (rates.length > 0) return Math.min(...rates)
+    if (!rate || typeof rate !== 'object') return null
+    const pick = (k?: string | null) => {
+      if (!k) return null
+      const hit = Object.keys(rate).find(x => x.toLowerCase() === String(k).toLowerCase())
+      const n = hit != null ? Number(rate[hit]) : NaN
+      return Number.isFinite(n) ? n : null
     }
-    return null
+    const byRes = pick(resolution) ?? pick(sizes?.[0]) ?? pick('default')
+    if (byRes != null) return byRes
+    const rates = Object.values(rate).map(Number).filter(n => Number.isFinite(n))
+    return rates.length > 0 ? Math.min(...rates) : null
   }
+  const cheapest = (rate: any): number | null => rateAt(rate, null, undefined)
   const priceOf = (sc: Scene): number | null => {
     const m = catalog.find(x => x.id === sc.model_id)
       ?? catalog.find(x => x.display_name === sc.model_name)
-    const perSec = cheapest(m?.model_pricing?.per_video_second)
+    const perSec = rateAt(
+      m?.model_pricing?.per_video_second,
+      (sc as any).resolution ?? null,
+      m?.output_config?.video?.sizes,
+    )
     if (perSec != null) return perSec * (sc.duration_s || 6)
     return typeof sc.estimate === 'number' ? sc.estimate : null
   }
