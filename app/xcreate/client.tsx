@@ -134,6 +134,7 @@ function modeLabel(modePattern: string): string {
     case 'image_to_video':   return 'Image → Video'
     case 'video_to_video':   return 'Video → Video'
     case 'video_edit':       return 'Video + Refs → Video'
+    case 'extend_video':     return 'Video → Longer Video'
     case 'start_end_frames': return 'Start + End Frames'
     case 'reference_frames': return 'Reference Frames'
     case 'audio_to_video':   return 'Audio → Video'
@@ -167,8 +168,9 @@ const RECIPES: Record<Mode, Recipe[]> = {
   video: [
     { id: 'text_to_video',    title: 'Text to Video',      recipe: 'TEXT → VIDEO',     provide: 'a prompt' },
     { id: 'image_to_video',   title: 'Image to Video',     recipe: 'IMAGE → VIDEO',    provide: '1 image + a prompt' },
-    { id: 'video_to_video',   title: 'Video to Video',     recipe: 'VIDEO → VIDEO',    provide: '1 video + a prompt' },
-    { id: 'video_edit',       title: 'Edit a Video',       recipe: 'VIDEO + REFS → VIDEO', provide: '1 video + reference images + a prompt' },
+    { id: 'video_to_video',   title: 'Transform a Video',  recipe: 'VIDEO → VIDEO',    provide: '1 video + a prompt — restyles the whole clip' },
+    { id: 'extend_video',     title: 'Continue a Video',   recipe: 'VIDEO → LONGER',   provide: '1 video + a prompt — the model carries the motion on past the end' },
+    { id: 'video_edit',       title: 'Edit a Video',       recipe: 'VIDEO + REFS → VIDEO', provide: '1 video + reference images + a prompt — changes one thing, keeps the rest' },
     { id: 'start_end_frames', title: 'Frames to Video',    recipe: '2 FRAMES → VIDEO', provide: '2 images: first + last' },
     { id: 'reference_frames', title: 'Reference to Video', recipe: 'REFS → VIDEO',     provide: '1–2 portraits + a prompt' },
     { id: 'audio_to_video',   title: 'Audio to Video',     recipe: 'AUDIO → VIDEO',    provide: '1 song (MP3/WAV, up to 15s) + a prompt — the music drives the performance' },
@@ -200,6 +202,7 @@ const RECIPE_ICONS: Record<string, ['text' | 'image' | 'video' | 'pdf' | 'frames
   image_to_video:   ['image',      'video'],
   video_to_video:   ['video',      'video'],
   video_edit:       ['video',      'video'],
+  extend_video:     ['video',      'video'],
   start_end_frames: ['frames',     'video'],
   reference_frames: ['references', 'video'],
   audio_to_video:   ['audio',      'video'],
@@ -364,6 +367,7 @@ type ModelMode =
   | 'image_to_video'
   | 'video_to_video'
   | 'video_edit'
+  | 'extend_video'
   | 'audio_to_video'
   | 'start_end_frames'
   | 'reference_frames'
@@ -1724,7 +1728,9 @@ function CreateStudio() {
     }
     if (mode === 'image') return nImg > 0 ? 'image_edit' : null
     // video
-    if (hasVid) return nImg > 0 ? 'video_edit' : (recipeMode === 'video_edit' ? 'video_edit' : 'video_to_video')
+    if (hasVid) return nImg > 0 ? 'video_edit'
+      : (recipeMode === 'video_edit' || recipeMode === 'extend_video') ? recipeMode
+      : 'video_to_video'
     // Audio alone means audio-driven video (Wan 3.0) — auto-switch like
     // every other upload type. Audio + images stays on the image logic
     // below; the provider carries the audio as an extra reference.
@@ -4287,7 +4293,7 @@ function CreateStudio() {
                       // Reference video templates: images + any audio
                       // (normalized to wav ≤15s client-side).
                       : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/*,.mp3,.m4a,.aac,.wav`
-                      : !generic && (recipeMode === 'video_to_video' || recipeMode === 'video_to_text') ? VID
+                      : !generic && (recipeMode === 'video_to_video' || recipeMode === 'extend_video' || recipeMode === 'video_to_text') ? VID
                       : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
                       // Generic video slot takes audio too — normalized
                       // client-side; models without audio input reject the

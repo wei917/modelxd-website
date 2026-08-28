@@ -84,6 +84,7 @@ export type ModelMode =
   | 'image_to_video'
   | 'video_to_video'
   | 'video_edit'        // video + reference images → edited video (HappyHorse Video Edit)
+  | 'extend_video'      // video → longer video, model continues the clip (Wan 2.7, Seedance 2.5, Veo 3.1)
   | 'audio_to_video'    // song/audio drives the performance (Wan 3.0 reference_audio; mp3/wav ≤15s)
   | 'start_end_frames'
   // shared (image / video)
