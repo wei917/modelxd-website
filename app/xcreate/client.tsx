@@ -4018,6 +4018,7 @@ function CreateStudio() {
                                           />
                                           <input
                                             type="number"
+                                            className="no-spin"
                                             min={r.min} max={r.max} step={1}
                                             value={cur}
                                             onChange={e => {

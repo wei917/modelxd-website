@@ -636,7 +636,19 @@ export async function generateVideo(
   // "1080P", "854x480" → "480P". The 480P tier exists only on wan3.0-video
   // today — without this case a 480p pick was silently coerced to 720P and
   // billed at double the expected rate (caught in the wan3.0 smokes).
-  const height = parseInt(size.split('x')[1] || '720', 10)
+  // `size` arrives in TWO shapes and only one was handled:
+  //   • '1280x720'  — most catalogue rows
+  //   • '480p'      — Wan 3.0 and any row declaring plain resolution keys
+  // The bare form has no 'x', so split('x')[1] was undefined and the default
+  // '720' took over — which meant EVERY plain key ('480p', '720p', '1080p')
+  // resolved to 720P. The picker was inert: a 480p pick rendered at 720P and
+  // billed at the 720P rate, and a 1080p pick was silently downgraded while
+  // still being asked for. Live proof (Aug 28): a 6s run submitted as '480p'
+  // came back SR 720 and cost $0.60 instead of $0.30.
+  const bare = /^(\d+)\s*p$/i.exec(size.trim())
+  const height = bare
+    ? parseInt(bare[1], 10)
+    : parseInt(size.split('x')[1] || '720', 10)
   const resolution = height >= 1080 ? '1080P' : height < 700 ? '480P' : '720P'
 
   console.log(`${TAG} generateVideo resolution=${resolution} duration=${seconds}s aspect=${options?.aspect_ratio ?? 'default'} attachments=${attachments.length} watermark=${options?.watermark ?? 'default'}`)
