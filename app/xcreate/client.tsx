@@ -54,6 +54,8 @@ interface ModelPricing {
 type DurationSpec = number[] | { min: number; max: number }
 
 interface OutputModalityConfig {
+  /** Video only: this model generates its own audio track. */
+  audio?:                   boolean
   sizes?:                   string[]
   aspect_ratios?:           string[]
   /** Per-resolution durations: discrete list OR { min, max } range (video only). */
@@ -388,6 +390,10 @@ interface SlotOptions {
   aspect_ratio: string | null // e.g. '16:9' for video, '1:1' for image
   /** Watermark for video. null = unset (provider's default, don't send); true = on; false = off. */
   watermark: boolean | null
+  /** Let the model score its own clip. Only offered when the model declares
+   *  `output_config.video.audio`. null = provider default (Wan 3.0's own
+   *  default is ON); false asks for a silent clip. */
+  generate_audio?: boolean | null
   /** Number of outputs to generate. Only meaningful for image models that
    *  declare `output_config.image.max_count > 1`. Defaults to 1. */
   count: number | null
@@ -2004,6 +2010,9 @@ function CreateStudio() {
         // run answered "I don't have web access". (CC, Aug 2)
         thinking_level: opts.thinking_level,
         web_search:     opts.web_search,
+        // Same allow-list, same trap as the two above: a toggle that never
+        // reaches the POST is a placebo.
+        generate_audio: opts.generate_audio ?? null,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }
@@ -3760,6 +3769,13 @@ function CreateStudio() {
                     // Watermark is Alibaba-only — applies to both video (HappyHorse, Wan)
                     // and image (Qwen Image). Hidden for OpenAI / Google / Anthropic.
                     const showWatermark = (mode === 'video' || mode === 'image') && model.provider === 'alibaba'
+                    // Some video models score their own clip (Wan 3.0 does it
+                    // by default). Worth a switch, because the sound is dead
+                    // weight whenever the plan is to lay a real track over the
+                    // cut — which is every music video. Declared per model in
+                    // output_config.video.audio, so adding a model is a data
+                    // change.
+                    const showAudio = mode === 'video' && model.output_config?.video?.audio === true
                     // Image count slider — shown when the model declares
                     // output_config.image.max_count > 1 (gpt-image-2: n up
                     // to 10 independent samples; qwen 2.0: up to 6, though
@@ -3781,7 +3797,7 @@ function CreateStudio() {
                       availableModes.length > 1 ||
                       imgQualities.length > 0 || imgSizes.length > 0 || imgArs.length > 0 ||
                       vidSizes.length > 0 || vidDurations.length > 0 || vidArs.length > 0 ||
-                      showWatermark || showCount
+                      showWatermark || showCount || showAudio
                     )
 
                     // Upfront USD estimate for this slot given its current
@@ -4154,6 +4170,12 @@ function CreateStudio() {
                                 </Group>
                               )}
                               {/* Video: Watermark (Alibaba only). Two-state On/Off, defaults Off. */}
+                              {showAudio && (
+                                <Group label="Model audio" last={false}>
+                                  <Pill active={opts.generate_audio !== false} onClick={() => updateSlotOpts(i, { generate_audio: true })}>On</Pill>
+                                  <Pill active={opts.generate_audio === false} onClick={() => updateSlotOpts(i, { generate_audio: false })}>Off</Pill>
+                                </Group>
+                              )}
                               {showWatermark && (
                                 <Group label="Watermark" last={isLast('wm')}>
                                   <Pill active={opts.watermark === true}  onClick={() => updateSlotOpts(i, { watermark: true  })}>On</Pill>
