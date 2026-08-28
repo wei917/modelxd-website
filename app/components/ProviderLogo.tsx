@@ -14,7 +14,12 @@
 // usage. Nominative use: it labels OpenAI's models as theirs.
 // Unknown providers (or a missing file) render nothing.
 
-const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot']
+const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'modelxd']
+
+// Ours is the brand mark itself (the same PNG the Nav lockup uses), not a
+// simple-icons SVG — XEval lists ModelXD Autopilot alongside the vendors and
+// it should wear our logo there, not a stand-in glyph.
+const SRC: Record<string, string> = { modelxd: '/logo.png' }
 
 export default function ProviderLogo({
   provider,
@@ -30,14 +35,14 @@ export default function ProviderLogo({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/logos/${p}.svg`}
+      src={SRC[p] ?? `/logos/${p}.svg`}
       alt={p}
       title={p}
       width={size}
       height={size}
       loading="lazy"
       onError={e => { (e.currentTarget as HTMLElement).style.display = 'none' }}
-      style={{ flexShrink: 0, display: 'inline-block', verticalAlign: '-2px', ...style }}
+      style={{ flexShrink: 0, display: 'inline-block', verticalAlign: '-2px', ...(p === 'modelxd' ? { borderRadius: 4 } : null), ...style }}
     />
   )
 }

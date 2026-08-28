@@ -28,6 +28,7 @@ interface RatingRow {
   wins: number
   judge_filter: string
   avg_cost_usd?: number | null
+  avg_time_s?: number | null
   params: string
 }
 
@@ -372,13 +373,13 @@ export default function XEvalPage() {
                     const e = perEntry.get(`${row.model_name}|${row.effort ?? ''}`)
                     const cost = (e ? avg(e.costs) : null) ?? row.avg_cost_usd ?? null
                     const spec = e && e.specs.length ? avg(e.specs) : null
-                    const time = e ? avg(e.times) : null
+                    const time = (e ? avg(e.times) : null) ?? row.avg_time_s ?? null
                     return (
                       <tr key={row.entry} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            {e ? <ProviderLogo provider={e.provider} size={16} /> : row.model_name === 'modelxd-router' ? <Sparkle /> : null}
+                            <ProviderLogo provider={e?.provider ?? (row.model_name === 'modelxd-router' ? 'modelxd' : null)} size={16} />
                             {e?.display ?? SPECIAL_DISPLAY[row.model_name] ?? row.model_name}
                           </span>
                         </td>
@@ -510,7 +511,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                 <td style={{ padding: '8px 12px' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    {r.provider === 'modelxd' ? <Sparkle /> : <ProviderLogo provider={r.provider} size={16} />}{r.display}
+                    <ProviderLogo provider={r.provider} size={16} />{r.display}
                   </span>
                 </td>
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{r.effort || '—'}</td>
@@ -552,11 +553,6 @@ const EFFORT_COLOR: Record<string, string> = {
 // Entries with no catalog run behind them (ModelXD's own row, the human
 // anchor) have no display_name in xeval_runs — name them here.
 const SPECIAL_DISPLAY: Record<string, string> = { 'modelxd-router': 'ModelXD Autopilot', 'human-expert': 'Human expert' }
-/** ModelXD's own rows carry the sparkle in tables too — ProviderLogo has no
- *  mark for us, so without this our row is the only one with a blank gutter. */
-const Sparkle = () => (
-  <svg width={16} height={16} viewBox="0 0 14 14" aria-hidden><Mark shape="sparkle" cx={7} cy={7} r={4.2} fill="var(--red)" /></svg>
-)
 const shapeOf = (prov: string) => PROVIDER_SHAPE[prov] ?? 'circle'
 const colorOf = (effort: string) => EFFORT_COLOR[effort] ?? 'var(--red)'
 
