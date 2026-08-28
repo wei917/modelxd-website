@@ -4585,6 +4585,17 @@ function CreateStudio() {
                               const summaryShowsWatermark = (mode === 'video' || mode === 'image') && model.provider === 'alibaba'
                               if (summaryShowsWatermark && used.watermark === true)  parts.push('watermark on')
                               if (summaryShowsWatermark && used.watermark === false) parts.push('watermark off')
+                              if (mode === 'video' && used.generate_audio === false) parts.push('audio off')
+                              // THIS MODEL'S share of the bill. The per-slot cost
+                              // row was removed once for clutter, leaving the
+                              // composer's total as the only price signal — but
+                              // XCreate exists to run models SIDE BY SIDE, and
+                              // price is half of what is being compared. Hiding
+                              // it here argues against the whole product. Back as
+                              // one term on a line that already exists, so the
+                              // total stays the single headline.
+                              const slotEst = estimateSlotDollars(model, mode, used, prompt.length, docTokens)
+                              if (slotEst != null && slotEst > 0) parts.push(`~$${slotEst < 0.01 ? slotEst.toFixed(4) : slotEst.toFixed(2)}`)
                               if (parts.length === 0) return null
                               return (
                                 <div style={{

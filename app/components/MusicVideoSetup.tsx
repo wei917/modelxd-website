@@ -206,7 +206,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
                  HappyHorse, 2s on Wan 3.0), not a round number. The old min
                  of 10 was arbitrary and refused runtimes we had already shot
                  — a 6-second single-scene MV is a normal thing to want. */
-              type="number" min={3} max={180} value={duration}
+              type="number" className="no-spin" min={3} max={180} value={duration}
               onChange={e => setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 18))))}
               style={{ width: 58, padding: '5px 6px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5, textAlign: 'center' }}
             />

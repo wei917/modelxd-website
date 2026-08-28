@@ -2430,3 +2430,12 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 @media (max-width: 760px) {
   .home-proof-strip { grid-template-columns: 1fr; }
 }
+
+/* Number inputs without the spin buttons (owner, Aug 28: "remove the up and
+   down button for duration? it's not easy to click, just let user to type").
+   The arrows are ~8px tall on a 24px field — a target nobody hits on purpose,
+   and one stray scroll over the field silently changes the value. Typing is
+   the real interaction here, so the field is just a field. */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spin { -moz-appearance: textfield; appearance: textfield; }

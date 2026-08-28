@@ -737,7 +737,7 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                       so the button must not pretend otherwise. */}
                   <div style={rowSty}>
                     <input
-                      type="number" min={2} max={15} value={s.duration_s}
+                      type="number" className="no-spin" min={2} max={15} value={s.duration_s}
                       onChange={e => patch(s.id, { duration_s: Math.min(Math.max(Math.round(Number(e.target.value) || 0), 2), 15) })}
                       style={{ ...area, border: '1px solid var(--border)', width: 38, textAlign: 'center', padding: '2px 2px', fontSize: 11.5, flexShrink: 0 }}
                     />
