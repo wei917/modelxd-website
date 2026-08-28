@@ -175,6 +175,8 @@ export const STRINGS: Record<string, Entry> = {
   'xc.call.speaking':  { en: 'Speaking…', 'zh-Hant': '說話中…', 'zh-Hans': '说话中…', ja: '話しています…', ko: '말하는 중…' },
   'xc.call.muted':     { en: 'Muted', 'zh-Hant': '已靜音', 'zh-Hans': '已静音', ja: 'ミュート中', ko: '음소거' },
   'xd.sb.addref':    { en: 'Add reference image/video for this scene', 'zh-Hant': '為此場景加入參考圖片/影片', 'zh-Hans': '为此场景加入参考图片/视频', ja: 'このシーンに参照画像/動画を追加', ko: '이 장면에 참조 이미지/영상 추가' },
+  'xd.tpl.scratch':      { en: 'Start from scratch', 'zh-Hant': '從零開始', 'zh-Hans': '从零开始', ja: 'ゼロから始める', ko: '처음부터 시작' },
+  'xd.tpl.scratchblurb': { en: 'No template — just tell me what you want and I direct it.', 'zh-Hant': '不用範本 — 直接說你要什麼，我來執導。', 'zh-Hans': '不用范本 — 直接说你要什么，我来执导。', ja: 'テンプレートなし — 作りたいものを話すだけで演出します。', ko: '템플릿 없이 — 원하는 것을 말하면 제가 연출합니다.' },
   'xd.sb.pickmodel': { en: 'Pick model', 'zh-Hant': '選擇模型', 'zh-Hans': '选择模型', ja: 'モデルを選択', ko: '모델 선택' },
   'xd.sb.cast.upload':     { en: 'My photos', 'zh-Hant': '用我的照片', 'zh-Hans': '用我的照片', ja: '自分の写真', ko: '내 사진' },
   'xd.sb.cast.uploadhint': { en: 'Attach 1-3 photos of the person you want as this lead — their likeness carries into every scene.', 'zh-Hant': '附上 1-3 張你想當主角的人物照片 — 這個長相會延續到每一個場景。', 'zh-Hans': '附上 1-3 张你想当主角的人物照片 — 这个长相会延续到每一个场景。', ja: '主役にしたい人物の写真を 1〜3 枚添付 — その顔が全シーンに引き継がれます。', ko: '주인공으로 쓸 인물 사진을 1~3장 첨부하세요 — 그 얼굴이 모든 장면에 이어집니다.' },

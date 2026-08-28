@@ -16,6 +16,7 @@
 // run and shows up in Recent / the gallery like any other.
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useT, useLang } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
@@ -106,7 +107,7 @@ export type SceneRunnerHandle = {
   stopGeneration: () => void
 }
 
-export default function XDirectorChat({ onConversationId, onMintedConversation, onActivity, storyboard, onStoryboard, runnerRef, onBusy, boardNodes, onBrief }: {
+export default function XDirectorChat({ onConversationId, onMintedConversation, onActivity, storyboard, onStoryboard, runnerRef, onBusy, boardNodes, onBrief, initialTemplate }: {
   /** /xdirect listens here so its canvas can follow the conversation's
    *  board (board id === conversation id). Fired on restore and on the
    *  first message of a fresh chat. */
@@ -130,6 +131,11 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
    *  generation that finished while the page was closed (see the
    *  orphaned-completion effect). */
   boardNodes?: any[]
+  /** Arrived from /xdirect/<template> — this chat opens with that template
+   *  already chosen and the gallery hidden, because the user picked it on the
+   *  page before. 'scratch' means the freeform road: no template, no setup
+   *  form, straight to the composer. */
+  initialTemplate?: string | null
   /** The conversation's ORIGINAL brief (first user message) — the canvas
    *  shows it as the Prompt input node beside the references (owner,
    *  Aug 9: "the overall original input is not just 3 references"). */
@@ -177,7 +183,10 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // The template setup form (owner, Aug 14): shown when the music-video
   // skill is armed on an EMPTY conversation. Its fields pre-answer the
   // skill's one permitted ask turn, so the first director turn is the plan.
-  const [setupDismissed, setSetupDismissed] = useState(false)
+  // 'scratch' has no form to open, so the composer must not be suppressed
+  // waiting for one.
+  const router = useRouter()
+  const [setupDismissed, setSetupDismissed] = useState(initialTemplate === 'scratch')
   const [busy,     setBusy]     = useState<'idle' | 'thinking' | 'generating'>('idle')
   // What the chat is doing between Enter and the first reply — uploading,
   // transcribing, or waiting on the director. Shown as a live progress
@@ -191,7 +200,8 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // /api/skills. Selecting one sends its name with every agent turn; the
   // server loads the SKILL.md body and fences it behind ModelXD's own rules.
   const [skills,      setSkills]      = useState<Array<{ name: string; description: string; metadata: Record<string, string> }>>([])
-  const [activeSkill, setActiveSkill] = useState<string | null>(null)
+  const [activeSkill, setActiveSkill] = useState<string | null>(
+    initialTemplate && initialTemplate !== 'scratch' ? initialTemplate : null)
   // agentTurn is re-entered from chip clicks and generation results, so the
   // selection is read from a ref rather than a stale closure.
   const activeSkillRef = useRef<string | null>(null)
@@ -200,6 +210,14 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   // hide behind it and leave exactly one place to type.
   const setupOpen = !setupDismissed && bubbles.length === 0
     && ['music-video', 'social-post', 'ai-animation', 'story-to-video'].includes(activeSkill ?? '')
+
+  // True while the TEMPLATE GALLERY is the screen. The composer hides behind
+  // it too (owner, Aug 27: "don't show prompt text in XDirect page"): a card
+  // and a text box were two entrances to the same send, and the box silently
+  // skipped every setup form. Removing it is only safe because the freeform
+  // road is now its own card — /xdirect/scratch — which lands here with
+  // initialTemplate set, so this is false and the composer is back.
+  const galleryOpen = !initialTemplate && bubbles.length === 0 && skills.length > 0
 
   useEffect(() => { activeSkillRef.current = activeSkill }, [activeSkill])
 
@@ -1672,7 +1690,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           {/* Skill gallery. Only offered before the first message — switching
               skills mid-conversation would silently rewrite the rules the
               earlier turns were produced under. */}
-          {!loading && bubbles.length === 0 && skills.length > 0 && (
+          {!loading && !initialTemplate && bubbles.length === 0 && skills.length > 0 && (
             <div>
               <div style={{ fontSize: 11, fontFamily: 'var(--mono)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--muted)', marginBottom: 10 }}>
                 {t('xdirector.skills')}
@@ -1698,7 +1716,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                     <button
                       key={sk.name}
                       className={on ? 'xt-tpl xd-tpl is-on' : 'xt-tpl xd-tpl'}
-                      onClick={() => setActiveSkill(on ? null : sk.name)}
+                      onClick={() => router.push(`/xdirect/${sk.name}`)}
                     >
                       <span className="xt-tpl-banner" style={banner || bannerVideo ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
                         {bannerVideo
@@ -1724,6 +1742,27 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                     </button>
                   )
                 })}
+                {/* The freeform road, made a card (owner, Aug 27). The
+                    composer used to sit under the gallery as a second,
+                    unlabelled entrance; removing it would have hidden
+                    "just describe it" entirely, so it becomes a template
+                    like the others. */}
+                <button
+                  className="xt-tpl xd-tpl"
+                  onClick={() => router.push('/xdirect/scratch')}
+                >
+                  <span className="xt-tpl-banner" style={{ background: 'linear-gradient(135deg, #4a4c52, #14161a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
+                    <span aria-hidden>✏️</span>
+                  </span>
+                  <span className="xt-tpl-body">
+                    <span className="xt-tpl-text">
+                      <span className="xt-tpl-head">
+                        <span className="xt-tpl-name">{t('xd.tpl.scratch')}</span>
+                      </span>
+                      <span className="xt-tpl-blurb">{t('xd.tpl.scratchblurb')}</span>
+                    </span>
+                  </span>
+                </button>
               </div>
             </div>
           )}
@@ -1900,7 +1939,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
             box are two entrances to the same send, and showing both left no way to
             tell which one was real. The form's Skip link is the way out — it sets
             setupDismissed, which brings this back. */}
-        {!setupOpen && (
+        {!setupOpen && !galleryOpen && (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, flexShrink: 0 }}>
           <AttachmentButton attachments={atts} onChange={setAtts} disabled={busy !== 'idle'} context="xcreate" multiple maxFiles={15} accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.m4a,.wav,.flac,.ogg,.txt,.lrc,text/plain,.pdf,application/pdf" roles />
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>

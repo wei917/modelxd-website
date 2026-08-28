@@ -27,15 +27,15 @@ import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 // chat, storyboard, board — instead of leaking the previous conversation's
 // state into the next. The chat's own restore effect is mount-only by
 // design; the key is what makes that correct. (CC, Aug 6)
-export default function XDirectClient() {
+export default function XDirectClient({ initialTemplate }: { initialTemplate?: string | null } = {}) {
   return (
     <Suspense fallback={null}>
-      <XDirectKeyed />
+      <XDirectKeyed initialTemplate={initialTemplate ?? null} />
     </Suspense>
   )
 }
 
-function XDirectKeyed() {
+function XDirectKeyed({ initialTemplate }: { initialTemplate: string | null }) {
   const c = useSearchParams()?.get('c') ?? null
   // The chat MINTS its conversation id mid-send and writes it to the URL
   // with history.replaceState — which Next's router syncs into
@@ -47,10 +47,10 @@ function XDirectKeyed() {
   const minted = useRef<string | null>(null)
   if (c && minted.current && c !== minted.current) minted.current = null
   const key = c && c === minted.current ? 'new' : (c ?? 'new')
-  return <XDirectBody key={key} onMinted={(id) => { minted.current = id }} />
+  return <XDirectBody key={key} initialTemplate={initialTemplate} onMinted={(id) => { minted.current = id }} />
 }
 
-function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
+function XDirectBody({ onMinted, initialTemplate }: { onMinted?: (id: string) => void; initialTemplate?: string | null }) {
   useRequireAuth()
   const t = useT()
 
@@ -248,6 +248,7 @@ function XDirectBody({ onMinted }: { onMinted?: (id: string) => void }) {
           {/* Chat rail — the director. Provides its own subtitle/intro. */}
           <div className="xdirect-chat">
             <XDirectorChat
+              initialTemplate={initialTemplate}
               onConversationId={onConversationId}
               onMintedConversation={onMinted}
               onActivity={onActivity}
