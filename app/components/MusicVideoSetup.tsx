@@ -84,6 +84,10 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   onSkip: () => void
 }) {
   const t = useT()
+  // Whether the cast SINGS on camera. Only meaningful with a song attached —
+  // the audio itself is the generation input that drives the mouth, so there
+  // is nothing to sync to without one (owner, Aug 28).
+  const [sync, setSync]       = useState(false)
   const [reference, setRef]   = useState('')
   const [mood, setMood]       = useState<string | null>(null)
   const [form, setForm]       = useState('kpop')
@@ -115,7 +119,18 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
       : 'Cast: create original leads to fit the song.')
     if (mood) parts.push(`Song mood: ${MOOD_BRIEF[mood]}. That governs PACING and energy — cut rhythm, section grammar, how hard the chorus lands. It is a separate axis from the look; do not let it override the visual reference.`)
     if (styleAtts.length > 0) parts.push('Style: match the attached style frames — build the look bible from them.')
-    if (songAtts.length > 0) parts.push('The song file is attached — transcribe it for timing, and use its segments as SYNC reference audio for sung scenes.')
+    if (songAtts.length > 0) {
+      parts.push('The song file is attached — transcribe it for timing.')
+      parts.push(sync
+        ? 'SING ON CAMERA (SYNC mode): the user asked for real lip-sync, so the performance scenes are SYNC takes. '
+          + 'Use an audio-capable video model — Wan 3.0 or MiniMax H3 — and attach the scene\'s own slice of the song as reference audio; '
+          + 'no_speech is FALSE on those scenes and the shot text ends with "sings the exact words heard in the audio". '
+          + 'Two things follow and you must say both to the user before spending: a SYNC take cannot also pin an approved opening still '
+          + '(the API refuses first_frame together with reference_audio, on BOTH models), so likeness rides on reference images and written '
+          + 'wardrobe invariants instead; and reference audio must be wav or mp3, at most 15s per clip, so a long chorus is split at a musical boundary. '
+          + 'Keep sung takes to 9-12s. Narrative B-roll scenes stay performance-only on whichever model suits them — one board, both modes.'
+        : 'PERFORMANCE ONLY: the cast never sings or speaks on camera. no_speech stays true on every scene; the song is laid over the cut afterwards.')
+    }
     if (lyrics.trim()) parts.push(`Lyrics: ${lyrics.trim()}`)
     onStart(parts.join(' '), [...songAtts, ...castAtts, ...styleAtts], {
       referenceUrl: hasRef ? reference.trim() : undefined,
@@ -235,6 +250,20 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <span style={label}>🎵 {t('xd.mv.song')}</span>
           <AttachmentButton attachments={songAtts} onChange={setSong} disabled={busy} context="xcreate" maxFiles={1} accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg" />
         </div>
+        {/* Only offered with a song attached: the audio IS the lip-sync
+            input, so without one there is nothing to sync to. */}
+        {songAtts.length > 0 && (
+          <div>
+            <span style={label}>🎤 {t('xd.mv.perf')}</span>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button onClick={() => setSync(false)} style={chip(!sync)}>{t('xd.mv.perf.silent')}</button>
+              <button onClick={() => setSync(true)}  style={chip(sync)}>{t('xd.mv.perf.sync')}</button>
+            </div>
+            <span style={{ fontSize: 10.5, color: 'var(--muted2)', display: 'block', marginTop: 4, maxWidth: 340 }}>
+              {sync ? t('xd.mv.perf.synchint') : t('xd.mv.perf.silenthint')}
+            </span>
+          </div>
+        )}
         <div>
           <span style={label}>👤 {t('xd.mv.cast')}</span>
           <AttachmentButton attachments={castAtts} onChange={setCast} disabled={busy} context="xcreate" multiple maxFiles={3} accept="image/jpeg,image/png,image/webp" />
