@@ -88,7 +88,7 @@ export default function XEvalPage() {
   // Terminal-Bench 2.1. Tabs come from the data, so a new benchmark appears
   // the moment its runs are published. Aggregates are scoped per benchmark —
   // TB costs must never blend into a GDPval entry's average.
-  const BENCH_LABEL: Record<string, string> = { gdpval: 'GDPval', 'terminal-bench-2-1': 'Terminal-Bench 2.1' }
+  const BENCH_LABEL: Record<string, string> = { gdpval: 'GDPval', 'terminal-bench-2-1': 'Terminal-Bench 2.1', 'harvey-lab': 'Harvey LAB' }
   const benches = useMemo(() => {
     const bs = [...new Set(runs.map(r => r.task_set ?? 'gdpval'))]
     return bs.sort((a, b) => (a === 'gdpval' ? -1 : b === 'gdpval' ? 1 : a.localeCompare(b)))
@@ -438,17 +438,21 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   for (const r of [...runs].sort((a, b) => String((a as any).started_at ?? '').localeCompare(String((b as any).started_at ?? '')))) {
     latest.set(`${r.task_id}|${r.model_name}|${r.effort ?? ''}`, r)
   }
-  const by = new Map<string, { display: string; provider: string; effort: string; n: number; solved: number; cost: number; secs: number[] }>()
+  const by = new Map<string, { display: string; provider: string; effort: string; n: number; solved: number; cost: number; secs: number[]; scoreSum: number; specs: number[] }>()
   for (const r of latest.values()) {
     const k = `${r.model_name}|${r.effort ?? ''}`
-    if (!by.has(k)) by.set(k, { display: r.display_name, provider: r.provider, effort: r.effort ?? '', n: 0, solved: 0, cost: 0, secs: [] })
+    if (!by.has(k)) by.set(k, { display: r.display_name, provider: r.provider, effort: r.effort ?? '', n: 0, solved: 0, cost: 0, secs: [], scoreSum: 0, specs: [] as number[] })
     const e = by.get(k)!
     e.n += 1
     e.solved += (r.score ?? 0) >= 1 ? 1 : 0
+    e.scoreSum += r.score ?? 0
+    if (r.spec_pct != null) e.specs.push(Number(r.spec_pct))
     e.cost += r.cost_usd ?? 0
     if (r.model_s != null) e.secs.push(Number(r.model_s))
   }
-  const rows = [...by.values()].sort((a, b) => b.solved / b.n - a.solved / a.n || a.cost - b.cost)
+  const rows = [...by.values()].sort((a, b) => b.scoreSum / b.n - a.scoreSum / a.n || a.cost - b.cost)
+  const anyCost = rows.some(r => r.cost > 0)
+  const anySpec = rows.some(r => r.specs.length > 0)
   // Pass rate is ABSOLUTE (unlike Elo, which is scale-relative), so these
   // cutoffs are fixed — normalising to the field painted the lowest of four
   // close entries 'poor' at 67%, which is a strong score on hard terminal
@@ -465,22 +469,30 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       if (!byTask.has(r.task_id)) byTask.set(r.task_id, [])
       byTask.get(r.task_id)!.push(r)
     }
-    let apSolved = 0, apCost = 0
+    // Autopilot here is SELECTION — per task, serve the entry that scored
+    // best, cheapest on ties. (Not the merge experiment: combining drafts was
+    // measured and never beat the best single model.) LAB scores carry partial
+    // credit (0 / 0.5 / 1 = judges that all-passed), so track the score sum.
+    let apSolved = 0, apCost = 0, apScore = 0
+    const apSpecs: number[] = []
     for (const runs_ of byTask.values()) {
-      const solvers = runs_.filter(r => (r.score ?? 0) >= 1)
-      const pool = solvers.length ? solvers : runs_
+      const best = Math.max(...runs_.map(r => r.score ?? 0))
+      const pool = runs_.filter(r => (r.score ?? 0) === best)
       const pick = pool.reduce((m, r) => ((r.cost_usd ?? 9e9) < (m.cost_usd ?? 9e9) ? r : m))
-      if (solvers.length) apSolved += 1
+      if (best >= 1) apSolved += 1
+      apScore += best
       apCost += pick.cost_usd ?? 0
+      if (pick.spec_pct != null) apSpecs.push(Number(pick.spec_pct))
     }
-    rows.unshift({ display: 'ModelXD Autopilot', provider: 'modelxd', effort: 'auto', n: byTask.size, solved: apSolved, cost: apCost, secs: [] })
+    rows.unshift({ display: 'ModelXD Autopilot', provider: 'modelxd', effort: 'auto', n: byTask.size,
+                   solved: apSolved, cost: apCost, secs: [], scoreSum: apScore, specs: apSpecs })
   }
   const harness = [...latest.values()].map(r => r.harness).find(Boolean) ?? 'terminus-2'
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
   return (
     <>
       <p style={{ fontSize: 13.5, color: 'var(--muted2)', lineHeight: 1.6, maxWidth: 760, margin: '0 0 16px' }}>
-        {t('xeval.lead.tb')
+        {(label === 'Harvey LAB' ? t('xeval.lead.lab') : t('xeval.lead.tb'))
           .replace('{set}', label)
           .replace('{harness}', String(harness))
           .replace('{top}', rows[0]?.display ?? '')
@@ -501,8 +513,9 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
               <th style={{ padding: '8px 12px' }}>{t('xeval.col.model')}</th>
               <th style={{ padding: '8px 12px' }}>{t('xeval.col.effort')}</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.passrate')}</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.persolved')}</th>
+              {anySpec && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.spec')}</th>}
+              {anyCost && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>}
+              {anyCost && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.persolved')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -515,11 +528,14 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
                   </span>
                 </td>
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{r.effort || '—'}</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right' }} title={`${r.solved} of ${r.n} tasks solved`}>
-                  <span className={`xd-chip ${rateTier(r.solved / r.n)}`}>{Math.round((r.solved / r.n) * 100)}%</span>
+                <td style={{ padding: '8px 12px', textAlign: 'right' }} title={`${r.solved} of ${r.n} tasks fully passed`}>
+                  <span className={`xd-chip ${rateTier(r.scoreSum / r.n)}`}>{Math.round((r.scoreSum / r.n) * 100)}%</span>
                 </td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{money(r.cost / r.n)}</td>
-                <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved ? money(r.cost / r.solved) : '—'}</td>
+                {anySpec && <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }} title={t('xeval.col.spec.tip')}>
+                  {r.specs.length ? `${Math.round((r.specs.reduce((a, b) => a + b, 0) / r.specs.length) * 100)}%` : '—'}
+                </td>}
+                {anyCost && <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{money(r.cost / r.n)}</td>}
+                {anyCost && <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }}>{r.solved ? money(r.cost / r.solved) : '—'}</td>}
               </tr>
             ))}
           </tbody>
@@ -528,7 +544,8 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       <section style={{ fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.65, borderTop: '1px solid var(--border)', paddingTop: 14, maxWidth: 860 }}>
         <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
         <p style={{ margin: '8px 0 0' }}>
-          {t('xeval.tb.method.body').replace('{n}', String(taskN)).replace('{set}', label).replace('{harness}', String(harness))}
+          {(label === 'Harvey LAB' ? t('xeval.lab.method.body') : t('xeval.tb.method.body'))
+            .replace('{n}', String(taskN)).replace('{set}', label).replace('{harness}', String(harness))}
         </p>
       </section>
     </>
