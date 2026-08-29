@@ -469,7 +469,11 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   // serving the winner presupposes classifying an incoming task to a
   // benchmarked one, and the similarity test says we cannot do that yet
   // (nearest-neighbour winner transfer 30% vs a 52% baseline).
-  if (by.size > 1 && label !== 'Harvey LAB') {
+  // Category-best applies to every verifier/rubric benchmark, LAB included:
+  // its tasks carry practice areas, so the rule is the same measurement as
+  // GDPval's sectors. (Most LAB areas hold one task today — the methodology
+  // says the strength depends on tasks per category.)
+  if (by.size > 1) {
     const byTask = new Map<string, RunRow[]>()
     for (const r of latest.values()) {
       if (!byTask.has(r.task_id)) byTask.set(r.task_id, [])
