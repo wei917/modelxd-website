@@ -1,0 +1,486 @@
+{
+ "name": "60-Question MBTI-Style Assessment",
+ "source": "Qwen 3.8 Max, 2026-08-28",
+ "questions": [
+  {
+   "n": 1,
+   "q": "At a party or social gathering, you usually:",
+   "a": "Mingle with many people, including strangers.",
+   "b": "Stick to a few people you already know well.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 2,
+   "q": "After a long, busy week, you recharge by:",
+   "a": "Going out with friends or doing something highly stimulating.",
+   "b": "Spending quiet time alone or in a very low-key environment.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 3,
+   "q": "When solving a problem, you tend to:",
+   "a": "Talk it out with others to figure out what you think.",
+   "b": "Think it through quietly in your head before sharing your thoughts.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 4,
+   "q": "In conversations, you are more likely to:",
+   "a": "Jump in quickly and speak as you formulate your ideas.",
+   "b": "Listen and wait until you have a fully formed thought before speaking.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 5,
+   "q": "Your social circle is typically:",
+   "a": "Wide and diverse; you have many friends and acquaintances.",
+   "b": "Small and close-knit; you have a few very deep friendships.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 6,
+   "q": "When learning something new, you prefer:",
+   "a": "A broad overview of many different topics.",
+   "b": "To dive deep into one specific subject and master it.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 7,
+   "q": "If your phone rings unexpectedly, you usually:",
+   "a": "Answer it eagerly, happy for the interaction.",
+   "b": "Let it go to voicemail or text back later, unless it’s urgent.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 8,
+   "q": "In a group project, you naturally gravitate toward:",
+   "a": "Being the spokesperson or taking a highly collaborative role.",
+   "b": "Doing the research or independent work behind the scenes.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 9,
+   "q": "How do you handle your personal space?",
+   "a": "My door is usually open; I don't mind people dropping by.",
+   "b": "I need my private space and prefer people to ask before entering.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 10,
+   "q": "When it comes to taking action:",
+   "a": "I am quick to act and figure out the details as I go.",
+   "b": "I prefer to observe and think carefully before making a move.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 11,
+   "q": "People who know you well would describe you as:",
+   "a": "Highly approachable and easy to get to know.",
+   "b": "Reserved and somewhat difficult to truly get to know.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 12,
+   "q": "In a work or school environment, you prefer:",
+   "a": "An open-plan office or lots of group collaboration.",
+   "b": "A quiet, private workspace where you can focus without interruption.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 13,
+   "q": "When you are passionate about a topic:",
+   "a": "You naturally share your enthusiasm with whoever is around.",
+   "b": "You keep your enthusiasm mostly to yourself or share only with trusted friends.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 14,
+   "q": "If you have to wait in a long line, you:",
+   "a": "Easily strike up a conversation with the person next to you.",
+   "b": "Put in headphones, read, or just wait quietly in your own thoughts.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 15,
+   "q": "You feel most confident when:",
+   "a": "You are interacting with the outside world and taking part in activities.",
+   "b": "You are in your own inner world, reflecting on your ideas and feelings.",
+   "aLetter": "E",
+   "bLetter": "I"
+  },
+  {
+   "n": 16,
+   "q": "When reading a book or watching a movie, you care most about:",
+   "a": "The realistic details, facts, and literal events.",
+   "b": "The underlying themes, metaphors, and symbolic meanings.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 17,
+   "q": "If someone gives you instructions, you prefer them to be:",
+   "a": "Step-by-step, highly detailed, and concrete.",
+   "b": "A general overview of the goal, leaving you to figure out the steps.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 18,
+   "q": "You tend to trust:",
+   "a": "Past experience and proven methods.",
+   "b": "Gut instincts and future possibilities.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 19,
+   "q": "In your daily life, you are more focused on:",
+   "a": "What is real, practical, and happening right now.",
+   "b": "What could be, imagining future scenarios and \"what ifs.\"",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 20,
+   "q": "When describing an event that happened to you, you usually:",
+   "a": "Give a chronological, precise account of exactly what happened.",
+   "b": "Jump around, focusing on the impressions, feelings, or the \"big picture\" of the event.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 21,
+   "q": "You are more naturally drawn to people who are:",
+   "a": "Grounded, realistic, and down-to-earth.",
+   "b": "Imaginative, theoretical, and unconventional.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 22,
+   "q": "When facing a challenge at work or school, you prefer to:",
+   "a": "Use a standard, tried-and-true approach that you know works.",
+   "b": "Brainstorm a brand new, innovative way to solve the problem.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 23,
+   "q": "Your learning style leans toward:",
+   "a": "Hands-on experience and practical application.",
+   "b": "Abstract concepts and theoretical discussions.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 24,
+   "q": "You are more likely to notice:",
+   "a": "Small changes in your physical environment or a person's appearance.",
+   "b": "Shifts in mood, overarching patterns, or hidden meanings in a conversation.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 25,
+   "q": "Which statement appeals to you more?",
+   "a": "\"Keep your feet on the ground and focus on the facts.\"",
+   "b": "\"Keep your head in the clouds and dream big.\"",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 26,
+   "q": "When planning a vacation, you prefer:",
+   "a": "A detailed itinerary with specific places, times, and practical logistics.",
+   "b": "A loose idea of where you are going, leaving plenty of room for spontaneous exploration.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 27,
+   "q": "You are most bothered by:",
+   "a": "People who are overly theoretical and lack common sense.",
+   "b": "People who are too rigid and lack imagination.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 28,
+   "q": "When you buy a new gadget, you usually:",
+   "a": "Read the manual carefully before turning it on.",
+   "b": "Turn it on immediately and start pressing buttons to see what it does.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 29,
+   "q": "In a conversation, you prefer talking about:",
+   "a": "Actual events, specific details, and real-life experiences.",
+   "b": "Ideas, philosophies, and hypothetical situations.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 30,
+   "q": "You believe the best way to improve a system is to:",
+   "a": "Tweak and refine the existing, practical elements.",
+   "b": "Tear it down and invent a completely new conceptual framework.",
+   "aLetter": "S",
+   "bLetter": "N"
+  },
+  {
+   "n": 31,
+   "q": "When making an important decision, you rely more on:",
+   "a": "Objective logic, pros and cons, and cause-and-effect.",
+   "b": "Personal values, empathy, and how the decision affects people.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 32,
+   "q": "If a friend comes to you with a problem, your first instinct is to:",
+   "a": "Offer practical solutions and help them fix the issue.",
+   "b": "Offer emotional support, validation, and a listening ear.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 33,
+   "q": "You prefer to be praised for:",
+   "a": "Your competence, fairness, and intelligence.",
+   "b": "Your compassion, warmth, and helpfulness.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 34,
+   "q": "When negotiating or arguing a point:",
+   "a": "You focus on the facts and strive to be objectively correct.",
+   "b": "You focus on maintaining harmony and ensuring everyone feels respected.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 35,
+   "q": "Which is a worse flaw in a leader?",
+   "a": "Being overly emotional and letting personal feelings cloud their judgment.",
+   "b": "Being cold, rigid, and ignoring the human element of their decisions.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 36,
+   "q": "When you have to deliver bad news, you:",
+   "a": "Get straight to the point and state the facts clearly.",
+   "b": "Soften the blow, carefully choosing your words to minimize hurt feelings.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 37,
+   "q": "You are more naturally convinced by:",
+   "a": "A well-researched, logically sound argument.",
+   "b": "A passionate, emotionally resonant appeal.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 38,
+   "q": "In a team setting, you are the person who:",
+   "a": "Points out the flaws in the plan to ensure it will actually work.",
+   "b": "Ensures everyone is getting along and feels included in the process.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 39,
+   "q": "When someone makes a mistake, you are more likely to:",
+   "a": "Critique the error so they can learn and not repeat it.",
+   "b": "Encourage them and focus on what they did right to protect their confidence.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 40,
+   "q": "You value justice and fairness, meaning:",
+   "a": "Everyone should be treated equally according to the rules, regardless of circumstances.",
+   "b": "Everyone should be treated with mercy and understanding based on their individual circumstances.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 41,
+   "q": "If you have to fire or let go of an employee/team member:",
+   "a": "You focus on the business metrics and performance data that justify the decision.",
+   "b": "You agonize over the personal impact it will have on them and their family.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 42,
+   "q": "Which statement sounds more like you?",
+   "a": "\"The truth is more important than making people feel good.\"",
+   "b": "\"Tact and harmony are more important than being brutally honest.\"",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 43,
+   "q": "When watching a movie, you get frustrated when:",
+   "a": "The plot has glaring logical holes or the characters act irrationally.",
+   "b": "The characters are unkind to one another or lack emotional depth.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 44,
+   "q": "In your friendships, you prioritize:",
+   "a": "Mutual respect, intellectual stimulation, and reliability.",
+   "b": "Emotional intimacy, warmth, and unconditional support.",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 45,
+   "q": "You naturally ask yourself:",
+   "a": "\"Does this make logical sense?\"",
+   "b": "\"Is this the right thing to do for the people involved?\"",
+   "aLetter": "T",
+   "bLetter": "F"
+  },
+  {
+   "n": 46,
+   "q": "When it comes to your daily schedule, you prefer to:",
+   "a": "Have a clear plan and stick to it.",
+   "b": "Keep your options open and go with the flow.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 47,
+   "q": "How do you handle deadlines?",
+   "a": "I finish my work well ahead of time to avoid last-minute stress.",
+   "b": "I work in bursts of energy, often doing my best work right before the deadline.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 48,
+   "q": "Your workspace (desk, room, or home) is usually:",
+   "a": "Organized, tidy, and everything has its proper place.",
+   "b": "A bit messy, but I know where everything is (organized chaos).",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 49,
+   "q": "When going on a trip, you prefer to:",
+   "a": "Pack days in advance and have a detailed itinerary.",
+   "b": "Pack the night before (or the morning of) and decide what to do when you get there.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 50,
+   "q": "You feel the most satisfied when:",
+   "a": "A project is finished, checked off the list, and completely resolved.",
+   "b": "You are in the process of starting a new project and exploring new ideas.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 51,
+   "q": "If plans suddenly change at the last minute:",
+   "a": "You feel stressed or annoyed because your schedule is disrupted.",
+   "b": "You adapt easily and often enjoy the spontaneous change of plans.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 52,
+   "q": "How do you approach rules and guidelines?",
+   "a": "They are there for a reason and should be followed strictly.",
+   "b": "They are more like suggestions; they can be bent if the situation calls for it.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 53,
+   "q": "When making a purchase (like a car or a computer):",
+   "a": "You research thoroughly, compare options, and make a firm decision quickly.",
+   "b": "You browse for a long time, keeping your options open in case something better comes along.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 54,
+   "q": "Your to-do list usually:",
+   "a": "Dictates your day; you feel great when you cross items off.",
+   "b": "Is more of a vague mental guide; you do whatever feels most pressing at the moment.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 55,
+   "q": "You are more likely to:",
+   "a": "Work first, play later.",
+   "b": "Mix work and play, or play first and work later.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 56,
+   "q": "When someone asks, \"What are you doing this weekend?\", you say:",
+   "a": "Exactly what you have planned, down to the times and locations.",
+   "b": "\"I'm not sure yet, I'll just see how I feel when the weekend gets here.\"",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 57,
+   "q": "In your personal life, you seek:",
+   "a": "Closure and resolution; you dislike leaving things hanging.",
+   "b": "Open-endedness; you like keeping your options open.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 58,
+   "q": "When you are supposed to meet someone at 2:00 PM:",
+   "a": "You arrive at 1:50 PM to be safe.",
+   "b": "You arrive at 2:02 PM, or text them that you are \"almost there\" at 2:05 PM.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 59,
+   "q": "You prefer environments that are:",
+   "a": "Structured, predictable, and highly organized.",
+   "b": "Flexible, dynamic, and adaptable.",
+   "aLetter": "J",
+   "bLetter": "P"
+  },
+  {
+   "n": 60,
+   "q": "Which phrase describes you best?",
+   "a": "\"A place for everything, and everything in its place.\"",
+   "b": "\"Let’s cross that bridge when we come to it.\"",
+   "aLetter": "J",
+   "bLetter": "P"
+  }
+ ]
+}

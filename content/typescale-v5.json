@@ -1,0 +1,615 @@
+{
+ "name": "Type Scale v5",
+ "source": "Claude, 2026-08-28",
+ "format": "likert5",
+ "scale": [
+  "Strongly disagree",
+  "Disagree",
+  "Neutral",
+  "Agree",
+  "Strongly agree"
+ ],
+ "midpoint": 45,
+ "items": [
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 1,
+   "reverse": false,
+   "text": "A room full of strangers sounds more fun than daunting.",
+   "facet": "approach",
+   "pos": 1
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 9,
+   "reverse": false,
+   "text": "I often see a link between two things nobody else has connected.",
+   "facet": "association",
+   "pos": 2
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 1,
+   "reverse": false,
+   "text": "I'll say the unpopular thing if the reasoning holds.",
+   "facet": "conviction",
+   "pos": 3
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 8,
+   "reverse": false,
+   "text": "I do my best work in the last available hour.",
+   "facet": "timing",
+   "pos": 4
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 2,
+   "reverse": false,
+   "text": "I work out what I think by saying it out loud.",
+   "facet": "expression",
+   "pos": 5
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 10,
+   "reverse": false,
+   "text": "I get interested in problems I'll never actually have to solve.",
+   "facet": "curiosity",
+   "pos": 6
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 2,
+   "reverse": false,
+   "text": "When a friend describes a problem, I start looking for the fix.",
+   "facet": "response",
+   "pos": 7
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 9,
+   "reverse": false,
+   "text": "I have several things half-finished right now.",
+   "facet": "closure",
+   "pos": 8
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 3,
+   "reverse": false,
+   "text": "Being around people picks me up when I'm tired.",
+   "facet": "energy",
+   "pos": 9
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 11,
+   "reverse": false,
+   "text": "I'm thinking about the next version before this one is finished.",
+   "facet": "time focus",
+   "pos": 10
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 3,
+   "reverse": false,
+   "text": "A rule applied inconsistently bothers me more than a rule that's harsh.",
+   "facet": "fairness",
+   "pos": 11
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 10,
+   "reverse": false,
+   "text": "I'd rather see how the day goes than plan it.",
+   "facet": "structure",
+   "pos": 12
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 4,
+   "reverse": false,
+   "text": "I'd take a job with constant interaction over one with long solo stretches.",
+   "facet": "work mode",
+   "pos": 13
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 12,
+   "reverse": false,
+   "text": "Instructions read like one person's suggestion, not the way to do it.",
+   "facet": "method",
+   "pos": 14
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 4,
+   "reverse": false,
+   "text": "I can argue against something I believe just to test it.",
+   "facet": "detachment",
+   "pos": 15
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 11,
+   "reverse": false,
+   "text": "I say yes to a plan and figure out the details later.",
+   "facet": "commitment",
+   "pos": 16
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 5,
+   "reverse": false,
+   "text": "A silence in conversation makes me want to fill it.",
+   "facet": "pace",
+   "pos": 17
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 13,
+   "reverse": false,
+   "text": "I find myself explaining things with metaphors.",
+   "facet": "abstraction",
+   "pos": 18
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 5,
+   "reverse": false,
+   "text": "I judge work on the work, not on the effort behind it.",
+   "facet": "evaluation",
+   "pos": 19
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 12,
+   "reverse": false,
+   "text": "Changing course partway through is fine if something better shows up.",
+   "facet": "adaptation",
+   "pos": 20
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 6,
+   "reverse": false,
+   "text": "I know more people than I can keep track of.",
+   "facet": "breadth",
+   "pos": 21
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 14,
+   "reverse": false,
+   "text": "A brand-new approach appeals to me more than a reliable one.",
+   "facet": "novelty",
+   "pos": 22
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 6,
+   "reverse": false,
+   "text": "I'll keep pressing a point after other people have let it go.",
+   "facet": "persistence",
+   "pos": 23
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 13,
+   "reverse": false,
+   "text": "No two of my days look much alike.",
+   "facet": "routine",
+   "pos": 24
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 7,
+   "reverse": false,
+   "text": "I'd rather work in a busy café than a quiet room.",
+   "facet": "stimulation",
+   "pos": 25
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 15,
+   "reverse": false,
+   "text": "I'm more interested in why something works than that it works.",
+   "facet": "depth",
+   "pos": 26
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 7,
+   "reverse": false,
+   "text": "\"That's not fair to them\" doesn't move me if the logic is sound.",
+   "facet": "criteria",
+   "pos": 27
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 14,
+   "reverse": false,
+   "text": "My desk is a record of everything I'm in the middle of.",
+   "facet": "order",
+   "pos": 28
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 8,
+   "reverse": false,
+   "text": "When something good happens, my first instinct is to tell someone.",
+   "facet": "disclosure",
+   "pos": 29
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 1,
+   "reverse": true,
+   "text": "I'd rather read the manual than experiment with the buttons.",
+   "facet": "method",
+   "pos": 30
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 8,
+   "reverse": false,
+   "text": "An argument that leans on emotion makes me more suspicious of it.",
+   "facet": "persuasion",
+   "pos": 31
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 15,
+   "reverse": false,
+   "text": "I keep my options open even when it annoys people.",
+   "facet": "decisiveness",
+   "pos": 32
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 9,
+   "reverse": true,
+   "text": "I rehearse difficult conversations in my head first.",
+   "facet": "expression",
+   "pos": 33
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 2,
+   "reverse": true,
+   "text": "When someone pitches a plan, I want the numbers before the vision.",
+   "facet": "evidence",
+   "pos": 34
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 9,
+   "reverse": true,
+   "text": "I notice the mood in a room before I notice what's being discussed.",
+   "facet": "attunement",
+   "pos": 35
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 1,
+   "reverse": true,
+   "text": "I pack days before I travel.",
+   "facet": "preparation",
+   "pos": 36
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 10,
+   "reverse": true,
+   "text": "Two social events in one weekend is one too many.",
+   "facet": "capacity",
+   "pos": 37
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 3,
+   "reverse": true,
+   "text": "I notice when furniture has been moved.",
+   "facet": "perception",
+   "pos": 38
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 10,
+   "reverse": true,
+   "text": "I'd bend a rule for someone going through something hard.",
+   "facet": "mercy",
+   "pos": 39
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 2,
+   "reverse": true,
+   "text": "An open calendar makes me slightly uneasy.",
+   "facet": "structure",
+   "pos": 40
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 11,
+   "reverse": true,
+   "text": "I take a while to warm up around people I've just met.",
+   "facet": "approach",
+   "pos": 41
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 4,
+   "reverse": true,
+   "text": "\"It could work in theory\" isn't a good enough reason to try something.",
+   "facet": "pragmatism",
+   "pos": 42
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 11,
+   "reverse": true,
+   "text": "I remember how a decision made people feel long after I've forgotten the decision.",
+   "facet": "memory",
+   "pos": 43
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 3,
+   "reverse": true,
+   "text": "I'd rather decide now and be wrong than leave the question open.",
+   "facet": "closure",
+   "pos": 44
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 12,
+   "reverse": true,
+   "text": "My best thinking happens when nobody else is around.",
+   "facet": "processing",
+   "pos": 45
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 5,
+   "reverse": true,
+   "text": "I'd rather improve something that exists than invent something new.",
+   "facet": "novelty",
+   "pos": 46
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 12,
+   "reverse": true,
+   "text": "Whether I like someone affects how much I trust their judgment.",
+   "facet": "trust",
+   "pos": 47
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 4,
+   "reverse": true,
+   "text": "I clear my desk before I start.",
+   "facet": "order",
+   "pos": 48
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 13,
+   "reverse": true,
+   "text": "I keep most of what I'm feeling to myself.",
+   "facet": "disclosure",
+   "pos": 49
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 6,
+   "reverse": true,
+   "text": "I'd rather be told what happened than what it means.",
+   "facet": "literalism",
+   "pos": 50
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 13,
+   "reverse": true,
+   "text": "I need to believe in what I'm working on, not just that it works.",
+   "facet": "values",
+   "pos": 51
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 5,
+   "reverse": true,
+   "text": "I know roughly what my week looks like before it starts.",
+   "facet": "foresight",
+   "pos": 52
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 14,
+   "reverse": true,
+   "text": "A day with nothing scheduled and no one to see is a good day.",
+   "facet": "energy",
+   "pos": 53
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 7,
+   "reverse": true,
+   "text": "I get impatient with conversations that stay hypothetical.",
+   "facet": "concrete",
+   "pos": 54
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 14,
+   "reverse": true,
+   "text": "When two people disagree, I want them both heard before I pick a side.",
+   "facet": "mediation",
+   "pos": 55
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 6,
+   "reverse": true,
+   "text": "I answer an invitation the day I get it.",
+   "facet": "commitment",
+   "pos": 56
+  },
+  {
+   "dim": "IE",
+   "lowLetter": "I",
+   "highLetter": "E",
+   "n": 15,
+   "reverse": true,
+   "text": "I run out of energy for company before the people around me do.",
+   "facet": "capacity",
+   "pos": 57
+  },
+  {
+   "dim": "SN",
+   "lowLetter": "S",
+   "highLetter": "N",
+   "n": 8,
+   "reverse": true,
+   "text": "One worked example teaches me more than an explanation of the principle.",
+   "facet": "learning",
+   "pos": 58
+  },
+  {
+   "dim": "FT",
+   "lowLetter": "F",
+   "highLetter": "T",
+   "n": 15,
+   "reverse": true,
+   "text": "A win that costs a relationship doesn't feel like a win.",
+   "facet": "cost",
+   "pos": 59
+  },
+  {
+   "dim": "JP",
+   "lowLetter": "J",
+   "highLetter": "P",
+   "n": 7,
+   "reverse": true,
+   "text": "I do the same things at the same times most days.",
+   "facet": "routine",
+   "pos": 60
+  }
+ ]
+}
