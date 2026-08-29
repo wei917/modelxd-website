@@ -427,10 +427,18 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(sse('meta', { count: n, mode, duelId, models: models.map(m => {
-        const { label: priceLabel, rate: outputPrice } = modePriceLabel(m, mode as 'text'|'image'|'video')
-        return { id: m.id, provider: m.provider, model_name: m.model_name, name: m.display_name, outputPrice, priceLabel }
-      }) }))
+      // BLIND MEANS BLIND ON THE WIRE (Aug 29). This used to ship every
+      // slot's id, provider, model_name, display_name AND price before a
+      // single token had streamed — the UI hid them, DevTools did not, so
+      // the "blind" vote in step 2 and the price reveal in step 3 were both
+      // sitting in the browser the whole time. Nothing renders them before
+      // vote 1 (every price block is gated on showPrices, the names appear
+      // only on the reveal card), so nothing needs them here.
+      //
+      // They arrive in the RESPONSE to the vote-1 POST instead — which makes
+      // the guarantee structural rather than cosmetic: identities and prices
+      // are unobtainable until a vote is recorded, not merely unrendered.
+      controller.enqueue(sse('meta', { count: n, mode, duelId }))
 
       // One redraw per slot, and ONLY for an account-level failure — our
       // spending cap, a disabled org, a dead key. A safety refusal or an
@@ -456,13 +464,11 @@ export async function POST(req: Request) {
           // the vote would credit a model that never ran.
           current   = replacement
           models[i] = replacement
-          const { label, rate } = modePriceLabel(replacement, mode as 'text'|'image'|'video')
           console.log(`${LOG} Slot[${i}] redrawn → ${replacement.provider}/${replacement.model_name}`)
-          controller.enqueue(sse(`trying:${i}`, {
-            index: i, id: replacement.id, provider: replacement.provider,
-            model_name: replacement.model_name, name: replacement.display_name,
-            outputPrice: rate, priceLabel: label,
-          }))
+          // Reset the slot, and NOTHING else: the replacement's identity and
+          // price go the same way as the original's — out with the vote-1
+          // response. A redraw must not become the one event that leaks.
+          controller.enqueue(sse(`trying:${i}`, { index: i }))
         }
       }
 

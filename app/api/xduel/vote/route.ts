@@ -14,25 +14,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { duelId, vote1, vote2, vote1ModelId, vote2ModelId } = await req.json() as {
+    // The client sends a SLOT INDEX, never a model id (Aug 29). It used to
+    // send `vote1ModelId` too, and this route wrote it through untouched —
+    // ownership was checked, but never that the id was one of THAT duel's
+    // two models. Since the column feeds XDRating through the DB triggers, a
+    // crafted POST could credit any model in the catalog. The id is now
+    // derived here from the duel's own slots; a client-supplied one is
+    // ignored, so the tampering path is gone rather than validated.
+    const { duelId, vote1, vote2 } = await req.json() as {
       duelId: string
       vote1?: string | number | null       // slot index or 'T'
       vote2?: string | number | null
-      vote1ModelId?: string | null         // model id e.g. 'openai/gpt-4o', null for tie
-      vote2ModelId?: string | null
     }
 
     if (!duelId) {
       return NextResponse.json({ error: 'Missing duelId' }, { status: 400 })
     }
-
-    const update: Record<string, unknown> = {}
-    if (vote1 !== undefined) update.vote1 = vote1 === null ? null : String(vote1)
-    if (vote2 !== undefined) update.vote2 = vote2 === null ? null : String(vote2)
-    if (vote1ModelId !== undefined) update.vote1_model_id = vote1ModelId
-    if (vote2ModelId !== undefined) update.vote2_model_id = vote2ModelId
-
-    if (Object.keys(update).length === 0) {
+    if (vote1 === undefined && vote2 === undefined) {
       return NextResponse.json({ error: 'No vote data provided' }, { status: 400 })
     }
 
@@ -41,13 +39,34 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SECRET_KEY!,
     )
 
-    // When vote2 arrives, compute vote_changed by comparing with vote1
-    if (vote2ModelId !== undefined) {
-      // Fetch current vote1_model_id to compare
-      const { data: duel } = await sb.from('duels').select('vote1_model_id').eq('id', duelId).single()
-      if (duel) {
-        update.vote_changed = (duel.vote1_model_id !== vote2ModelId)
-      }
+    // The duel row is the authority on what actually ran — including a slot
+    // XDuel redrew after its first model failed.
+    const { data: duel } = await sb
+      .from('duels').select('slots, vote1_model_id')
+      .eq('id', duelId).eq('user_id', user.id).single()
+    if (!duel) {
+      return NextResponse.json({ error: 'Duel not found' }, { status: 404 })
+    }
+    const slots: any[] = Array.isArray(duel.slots) ? duel.slots : []
+
+    /** Slot index → the model that filled it. 'T' (tie) and anything that
+     *  isn't a real slot both resolve to null rather than to a guess. */
+    const modelIdFor = (v: string | number | null | undefined): string | null => {
+      if (v === undefined || v === null || v === 'T') return null
+      const i = Number(v)
+      return Number.isInteger(i) && i >= 0 && i < slots.length ? (slots[i].model_id ?? null) : null
+    }
+
+    const update: Record<string, unknown> = {}
+    if (vote1 !== undefined) {
+      update.vote1 = vote1 === null ? null : String(vote1)
+      update.vote1_model_id = modelIdFor(vote1)
+    }
+    if (vote2 !== undefined) {
+      update.vote2 = vote2 === null ? null : String(vote2)
+      const winner = modelIdFor(vote2)
+      update.vote2_model_id = winner
+      update.vote_changed = (duel.vote1_model_id !== winner)
     }
 
     const { error } = await sb
@@ -72,6 +91,24 @@ export async function POST(req: NextRequest) {
       console.warn('[vote] refit skipped:', err instanceof Error ? err.message : err)
     }
 
+    // The reveal rides back on the vote-1 response. Identities and prices
+    // are never sent while the duel is still blind (see the `meta` note in
+    // ../route.ts), so this is the moment they become knowable — and only
+    // to someone who has just had a vote recorded on a duel they own.
+    if (vote1 !== undefined) {
+      return NextResponse.json({
+        ok: true,
+        models: slots.map((sl: any, index: number) => ({
+          index,
+          id:          sl.model_id,
+          provider:    sl.provider,
+          model_name:  sl.model_name,
+          name:        sl.name,
+          outputPrice: sl.outputPrice ?? 0,
+          priceLabel:  sl.priceLabel ?? '…',
+        })),
+      })
+    }
     return NextResponse.json({ ok: true })
 
   } catch (err) {

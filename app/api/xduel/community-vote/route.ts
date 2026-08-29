@@ -27,7 +27,16 @@ export async function POST(req: Request) {
 
   const sb = serviceClient()
 
-  // Upsert so duplicate calls are idempotent.
+  // Called TWICE per duel now (Aug 29): once with the blind choice at step 2,
+  // once with the informed choice at step 4. The upsert was always
+  // idempotent, so the second call simply overwrites vote_choice with the
+  // final answer — which is the one that should stand.
+  //
+  // It has to be recorded at the blind step because that is what earns the
+  // reveal below: the identities and prices are withheld until the server has
+  // the viewer's vote, so "reveal on vote" and "record on vote" have to be
+  // the same moment. The visible consequence is that community_vote_count
+  // now counts someone who votes blind and then walks away.
   const { error } = await sb.from('duel_votes').upsert(
     { user_id: user.id, duel_id: duelId, vote_choice: voteChoice ?? null },
     { onConflict: 'user_id,duel_id' }
@@ -37,7 +46,10 @@ export async function POST(req: Request) {
     return Response.json({ error: error.message }, { status: 500 })
   }
 
-  return Response.json({ ok: true })
+  // The vote is recorded, so this viewer has earned the identities. Same
+  // bargain as XDuel's own vote route: unobtainable until you have voted.
+  const { data: duel } = await sb.from('duels').select('slots').eq('id', duelId).single()
+  return Response.json({ ok: true, slots: duel?.slots ?? null })
 }
 
 // GET: returns all duel IDs this user has community-voted on.

@@ -9,6 +9,7 @@ import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
 import { downloadUrl } from '@/lib/download-url'
+import { useAuthModal } from '@/lib/AuthModalContext'
 
 type VoteChoice = number | 'T' | null
 
@@ -70,6 +71,12 @@ export default function DuelPage() {
   const [showReveal,  setShowReveal]  = useState(false)
   const [alreadyVoted, setAlreadyVoted] = useState(false)
   const [lightbox,    setLightbox]    = useState<string | null>(null)
+  /** Signed in. Both vote routes 401 otherwise, and this page used to let a
+   *  signed-out visitor click through all five steps while every vote was
+   *  silently discarded — participation theatre. Now it asks them to sign in
+   *  instead. (Aug 29) */
+  const [canVote,     setCanVote]     = useState(false)
+  const { show: showAuth } = useAuthModal()
 
   // Cursor tracking with ring lag
   useEffect(() => {
@@ -95,13 +102,19 @@ export default function DuelPage() {
 
   useEffect(() => {
     if (!id) return
-    const sb = createSupabaseBrowser()
-    sb.from('duels').select('*').eq('id', id).single()
-      .then(({ data, error }) => {
-        if (error || !data) { setNotFound(true); setLoading(false); return }
-        setDuel(data)
+    // Redacted server-side until this viewer has voted — the row used to be
+    // read straight from the browser, identities and prices included, on a
+    // page whose whole flow is about withholding them.
+    // (app/api/xduel/view/route.ts)
+    fetch(`/api/xduel/view?id=${encodeURIComponent(id)}`)
+      .then(r => r.json())
+      .then(j => {
+        if (!j?.duel) { setNotFound(true); setLoading(false); return }
+        setDuel(j.duel)
+        setCanVote(!!j.canVote)
         setLoading(false)
       })
+      .catch(() => { setNotFound(true); setLoading(false) })
   }, [id])
 
   // "Already voted" check — DB-first, localStorage as fallback.
@@ -111,8 +124,20 @@ export default function DuelPage() {
   //    vote table) for a row matching (user_id, duel_id).
   // 3. Anonymous viewer or DB miss → fall back to localStorage keyed by
   //    the *viewer's* id (or 'anon'), not the duel owner's id.
+  // Runs ONCE per duel, on first load. It used to re-run whenever `duel`
+  // changed, which was harmless while the row was fetched a single time —
+  // but the reveal now merges the released identities in with setDuel, and
+  // the viewer's own blind vote is recorded before that. So the re-run found
+  // the duel_votes row the viewer had just created, concluded they had
+  // already voted, and jumped to step 5 — hiding the vote row and making the
+  // informed vote unreachable. Once the viewer is in the flow, the flow owns
+  // the stepping. (Aug 29)
+  const votedCheckedFor = useRef<string | null>(null)
+
   useEffect(() => {
     if (!duel) return
+    if (votedCheckedFor.current === duel.id) return
+    votedCheckedFor.current = duel.id
 
     const finalize = () => {
       setAlreadyVoted(true)
@@ -155,16 +180,39 @@ export default function DuelPage() {
 
   const goStep = (n: number) => { setStep(n); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
+  /** Swap the redacted slots for the real ones the server released in
+   *  exchange for a vote. */
+  const applyReveal = (slots: any) => {
+    if (Array.isArray(slots)) setDuel(d => d ? { ...d, slots } : d)
+  }
+
   const castVote1 = (choice: VoteChoice) => {
     setVote1(choice)
-    fetch('/api/xduel/vote', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        duelId: duel!.id,
-        vote1: choice === 'T' ? 'T' : String(choice),
-        vote1ModelId: typeof choice === 'number' ? duel!.slots[choice]?.id ?? null : null,
-      }),
-    }).catch(console.error)
+    // No model id is sent any more — the server derives the winner from the
+    // slot index against the duel's own row.
+    const isOwner = !!userId && duel!.user_id === userId
+    const req = isOwner
+      ? fetch('/api/xduel/vote', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ duelId: duel!.id, vote1: choice === 'T' ? 'T' : String(choice) }),
+        }).then(r => r.json()).then(d => {
+          // The owner's route answers with per-slot rows; the page carries
+          // whole slots, so merge the released fields onto what it has.
+          if (Array.isArray(d?.models)) {
+            setDuel(prev => prev ? {
+              ...prev,
+              slots: prev.slots.map((sl: any, i: number) => {
+                const r = d.models.find((m: any) => m.index === i)
+                return r ? { ...sl, ...r } : sl
+              }),
+            } : prev)
+          }
+        })
+      : fetch('/api/xduel/community-vote', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ duelId: duel!.id, voteChoice: choice === 'T' ? 'T' : String(choice) }),
+        }).then(r => r.json()).then(d => applyReveal(d?.slots))
+    req.catch(console.error)
     setTimeout(() => { setShowPrices(true); goStep(4) }, 500)
   }
 
@@ -172,11 +220,7 @@ export default function DuelPage() {
     setVote2(choice)
     await fetch('/api/xduel/vote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        duelId: duel!.id,
-        vote2: choice === 'T' ? 'T' : String(choice),
-        vote2ModelId: typeof choice === 'number' ? duel!.slots[choice]?.id ?? null : null,
-      }),
+      body: JSON.stringify({ duelId: duel!.id, vote2: choice === 'T' ? 'T' : String(choice) }),
     }).catch(console.error)
     // Record community vote (for server-side filtering + popularity count)
     if (userId && duel!.user_id !== userId) {
@@ -375,8 +419,24 @@ export default function DuelPage() {
                 </div>
               )}
 
+              {/* Signed out: the vote routes 401, so asking is the honest
+                  thing. This page used to show the buttons anyway and drop
+                  the answer on the floor. */}
+              {!alreadyVoted && !canVote && (
+                <div className="vote-row" style={{ justifyContent: 'center' }}>
+                  <button
+                    className="btn-vote"
+                    onClick={() => showAuth(`/xduel/${duel!.id}`)}
+                    onMouseEnter={() => setCursor('#e8453c')}
+                    onMouseLeave={() => setCursor('#e8453c')}
+                  >
+                    Sign in to vote
+                  </button>
+                </div>
+              )}
+
               {/* Vote row */}
-              {!alreadyVoted && (
+              {!alreadyVoted && canVote && (
                 <div className="vote-row">
                   {(() => {
                     const total = slots.length

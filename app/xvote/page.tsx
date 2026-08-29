@@ -14,16 +14,14 @@ const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_
 
 type Mode = 'video' | 'image' | 'text'
 
+/** What a voter is allowed to know. XVote has no reveal step — the models
+ *  are never named here — so the feed route strips identity, price, cost and
+ *  timing before they leave the server (app/api/xvote/feed/route.ts). The
+ *  card drew none of them; the browser used to receive all of them. */
 interface SlotData {
-  id: string
-  name: string
-  provider: string
-  priceLabel: string
   text: string
   isImage: boolean
   isVideo: boolean
-  responseTime: number
-  cost: number
 }
 
 interface Duel {
@@ -252,71 +250,22 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
   // server-side offset math when rows are being filtered out.
   const fetchDuels = useCallback(async () => {
     setLoading(true)
-    const sb = createSupabaseBrowser()
-
-    // Try with new columns first; fall back to old schema if migration
-    // hasn't been run yet (community_vote_count / deleted_at missing).
-    // Exclude duels this user already voted on at the source when the id
-    // list fits comfortably in a query string (~37 chars per id); beyond
-    // that the client-side filter below does the job. Either way the
-    // page never shows a duel twice, and the DB does an indexed id lookup
-    // — no scan, no count.
-    const exclude = votedIds.size > 0 && votedIds.size <= 300 ? Array.from(votedIds) : null
-    const baseQuery = () => {
-      let q = sb
-        .from('duels')
-        .select('id, mode, prompt, slots, vote2, community_vote_count, created_at')
-        .eq('mode', mode)
-        .is('deleted_at', null)
-      if (exclude) q = q.not('id', 'in', `(${exclude.join(',')})`)
-      return q
-      // Hide duels where any slot failed or came back empty (CC, July 19)
-      // — broken duels aren't worth voting on, and a safety-blocked run
-      // (e.g. a bad upload) never surfaces publicly at all.
-        .not('slots', 'cs', JSON.stringify([{ text: null }]))
-        .not('slots', 'cs', JSON.stringify([{ text: '' }]))
+    // Redacted server-side. This used to be a direct `duels` select from
+    // the browser, which handed every voter the model names it was about to
+    // hide from them.
+    try {
+      const res = await fetch(`/api/xvote/feed?mode=${mode}`)
+      const json = await res.json()
+      setDuels(blendedOrder((json?.duels ?? []) as Duel[]))
+    } catch {
+      setDuels([])
     }
-
-    // Two windows, merged. blendedOrder weighs recency against popularity,
-    // but it can only rank what it is handed — a single created_at window
-    // would permanently hide an all-time popular duel that has scrolled
-    // past the newest 200, so its votes could never grow further.
-    const [recentRes, popularRes] = await Promise.all([
-      baseQuery().order('created_at', { ascending: false }).limit(200),
-      baseQuery().order('community_vote_count', { ascending: false })
-                 .order('created_at', { ascending: false }).limit(100),
-    ])
-
-    const error = recentRes.error
-    const merged = new Map<string, any>()
-    for (const row of [...(recentRes.data ?? []), ...(popularRes.data ?? [])]) merged.set(row.id, row)
-    const data = error ? null : Array.from(merged.values())
-
-    // Fallback: if the new columns don't exist yet, query without them.
-    if (error) {
-      let q2 = sb
-        .from('duels')
-        .select('id, mode, prompt, slots, vote2, created_at')
-        .eq('mode', mode)
-        .not('slots', 'cs', JSON.stringify([{ text: null }]))
-        .not('slots', 'cs', JSON.stringify([{ text: '' }]))
-        .order('created_at', { ascending: false })
-        .limit(200)
-
-      const fallback = await q2
-      if (fallback.error || !fallback.data) { setDuels([]); setLoading(false); return }
-      const normalized = (fallback.data as any[]).map(d => ({ ...d, community_vote_count: 0 })) as Duel[]
-      setDuels(blendedOrder(normalized))
-      setLoading(false)
-      return
-    }
-
-    if (!data) { setDuels([]); setLoading(false); return }
-    // Ensure community_vote_count defaults to 0 for old rows
-    const normalized = (data as any[]).map(d => ({ ...d, community_vote_count: d.community_vote_count ?? 0 })) as Duel[]
-    setDuels(blendedOrder(normalized))
     setLoading(false)
-  }, [mode, userId, votedIds])
+    // votedIds is deliberately NOT a dependency: the route already excludes
+    // what this user has voted on, and the render filters the rest, so
+    // keeping it here would refetch and reshuffle the whole feed on every
+    // single vote. userId stays — the feed needs an authenticated read.
+  }, [mode, userId])
 
   useEffect(() => { fetchDuels() }, [fetchDuels])
 
@@ -327,10 +276,11 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
   let filtered = duels.filter(d => !votedIds.has(d.id))
   if (search.trim()) {
     const q = search.trim().toLowerCase()
-    filtered = filtered.filter(d =>
-      d.prompt.toLowerCase().includes(q) ||
-      d.slots?.some(s => s.name?.toLowerCase().includes(q))
-    )
+    // Prompt only. Filtering by MODEL NAME leaked the answer by
+    // construction — a search for "gemini" returning five duels tells you
+    // Gemini is in all five — and moving it server-side would not have
+    // changed that, so it is gone rather than relocated.
+    filtered = filtered.filter(d => d.prompt.toLowerCase().includes(q))
   }
 
   // A visit shows at most MAX_PER_TAB duels per tab (owner, Aug 22): enough

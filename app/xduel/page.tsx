@@ -325,15 +325,21 @@ export default function XDuel() {
 
               if (currentEvent === 'meta') {
                 if (payload.duelId) setDuelId(payload.duelId)
-                // Initialize slots with model info from meta (includes price data)
-                const initialModels: ModelState[] = payload.models.map((pm: any) => ({
+                // Blind slots. The server no longer sends identities or prices
+                // while the duel is unvoted (see the `meta` note in
+                // app/api/xduel/route.ts) — they arrive in the vote-1
+                // response and are merged in by revealModels(). Nothing
+                // between here and that point reads these fields: every
+                // price block is gated on showPrices, and the names appear
+                // only on the reveal card.
+                const initialModels: ModelState[] = Array.from({ length: payload.count }, () => ({
                   meta: {
-                    id:          pm.id ?? '',
-                    name:        pm.name,
-                    provider:    pm.provider,
-                    outputPrice: pm.outputPrice ?? 0,
-                    priceLabel:  pm.priceLabel ?? '…',
-                    unitLabel:   pm.priceLabel ?? undefined,
+                    id:          '',
+                    name:        '',
+                    provider:    '',
+                    outputPrice: 0,
+                    priceLabel:  '…',
+                    unitLabel:   undefined,
                   },
                   text:         '',
                   isImage:      false,
@@ -351,10 +357,14 @@ export default function XDuel() {
                 setLoading(false)
 
               } else if (currentEvent.startsWith('trying:')) {
-                // Worker picked a model — update that slot's meta
+                // The slot's first model was unusable and the server redrew.
+                // Clear whatever it managed to stream so the replacement's
+                // answer doesn't get appended to a half-sentence; the new
+                // identity and price come with the reveal like everyone
+                // else's.
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) =>
-                  i === idx ? { ...m, meta: { id: payload.id ?? '', name: payload.name, provider: payload.provider, outputPrice: payload.outputPrice, priceLabel: payload.priceLabel, unitLabel: payload.priceLabel }, text: '', streaming: true, done: false } : m
+                  i === idx ? { ...m, text: '', isImage: false, isVideo: false, cost: 0, streaming: true, done: false } : m
                 ))
 
               } else if (currentEvent.startsWith('delta:')) {
@@ -372,30 +382,17 @@ export default function XDuel() {
                 const idx = payload.index
                 setModels(prev => prev.map((m, i) => {
                   if (i !== idx) return m
-                  const realCost = payload.cost != null ? Number(payload.cost) : m.isImage ? m.meta.outputPrice : (payload.tokens / 1_000_000) * m.meta.outputPrice
-                  // Update priceLabel to reflect actual cost
-                  const realPriceLabel = m.isImage
-                    ? `$${parseFloat(realCost.toFixed(4))} / image`
-                    : m.isVideo
-                    ? `$${parseFloat(realCost.toFixed(4))} / video`
-                    : m.meta.priceLabel
-                  // Image/video models that are token-billed (e.g. gpt-image-2)
-                  // have a headline outputPrice of 0 because calcImageCost
-                  // can't compute without a usage block. Once the real cost
-                  // comes back from the API, fold it back into meta.outputPrice
-                  // so the reveal-page savings math (cheapest vs most expensive)
-                  // has the actual numbers to work with. For text models, keep
-                  // outputPrice as the per-1M-token rate from the catalog.
-                  const realOutputPrice = (m.isImage || m.isVideo) && realCost > 0
-                    ? realCost
-                    : m.meta.outputPrice
+                  // Only what this RUN did. The price-label folding that used
+                  // to happen here moved to revealModels(): at this point the
+                  // slot has no list price to fold into, because the duel is
+                  // still blind. Every provider sends `cost` on done, so the
+                  // old outputPrice-based fallback had nothing left to do.
                   return {
                     ...m,
                     tokens:       payload.tokens,
                     responseTime: payload.responseTime,
-                    cost:         realCost,
+                    cost:         payload.cost != null ? Number(payload.cost) : 0,
                     searches:     Number(payload.searches ?? 0),
-                    meta:         { ...m.meta, priceLabel: realPriceLabel, outputPrice: realOutputPrice },
                     streaming:    false,
                     done:         true,
                   }
@@ -469,6 +466,35 @@ export default function XDuel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, phase, t])
 
+  /** Merge the identities and prices the server releases once vote 1 is
+   *  recorded. This is also where a run's ACTUAL cost becomes a price label
+   *  for image/video: those models are token-billed and their headline rate
+   *  is 0 until the usage comes back, so the reveal's savings math needs the
+   *  measured number folded into outputPrice. Text keeps the catalog's
+   *  per-1M rate. (Both used to happen in the `done:` handler, back when the
+   *  slot already knew its price mid-duel.) */
+  const revealModels = (revealed: any[]) => {
+    setModels(prev => prev.map((m, i) => {
+      const r = revealed.find((x: any) => x.index === i)
+      if (!r) return m
+      const listPrice = r.outputPrice ?? 0
+      const priceLabel = m.isImage
+        ? `$${parseFloat(m.cost.toFixed(4))} / image`
+        : m.isVideo
+        ? `$${parseFloat(m.cost.toFixed(4))} / video`
+        : (r.priceLabel ?? '…')
+      return {
+        ...m,
+        meta: {
+          id: r.id ?? '', name: r.name, provider: r.provider,
+          outputPrice: (m.isImage || m.isVideo) && m.cost > 0 ? m.cost : listPrice,
+          priceLabel,
+          unitLabel: priceLabel,
+        },
+      }
+    }))
+  }
+
   const castVote = (choice: Vote) => {
     setVote1(choice)
     // Snapshot ratings before this duel's first vote can trigger a refit.
@@ -476,14 +502,15 @@ export default function XDuel() {
       .then(rows => { preDuelRatingsRef.current = rows })
       .catch(() => { preDuelRatingsRef.current = null })
     setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
+    // No model id is sent: the server derives the winner from this slot
+    // index against the duel's own row, and answers with the reveal.
     if (duelId) fetch('/api/xduel/vote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        duelId,
-        vote1: choice === 'T' ? 'T' : String(choice),
-        vote1ModelId: choice === 'T' ? null : models[choice as number]?.meta?.id ?? null,
-      }),
-    }).catch(console.error)
+      body: JSON.stringify({ duelId, vote1: choice === 'T' ? 'T' : String(choice) }),
+    })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d?.models)) revealModels(d.models) })
+      .catch(console.error)
   }
 
   const castRevote = (choice: Vote) => {
@@ -506,11 +533,7 @@ export default function XDuel() {
         }
         if (duelId) await fetch('/api/xduel/vote', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            duelId,
-            vote2: choice === 'T' ? 'T' : String(choice),
-            vote2ModelId: winnerId,
-          }),
+          body: JSON.stringify({ duelId, vote2: choice === 'T' ? 'T' : String(choice) }),
         })
         if (!winnerId) return
         await fetch('/api/xdrating/refit?source=vote&force=1', { method: 'POST' })
