@@ -580,13 +580,33 @@ Anthropic first, **OpenAI when the account can't serve the turn**.
   billing and `provider_calls` logging) but follows the same rule via
   `mapAlt` / `reduceAlt` — stand-ins on a *different provider*.
 
-**This is for house-paid calls ONLY.** On a user-paid surface the user picked
-the model and pays its list price, so substituting another would falsify both
-the bill and XBoard. Those fail loudly with a message that says the limit is
-on our side, that nothing was charged, and to pick another model — the
-`ACCOUNT` branch of `lib/provider-errors.ts`. Every surface that shows a
-provider error must run it through `sanitizeProviderError` first (XTalk,
-XCharacter and `/api/v1` were sending raw provider JSON until Aug 28).
+### The rule: WHO CHOSE the model, not who pays
+
+The line is **not** house-paid vs user-paid — XDuel is free and still gets a
+fallback. It is whether the **user chose that specific model**:
+
+- **The user did NOT choose** → substituting is fine, because it is
+  indistinguishable from having drawn differently. `houseCall`'s four callers,
+  and **XDuel**, whose models the server draws.
+- **The user DID choose** → never substitute. XCreate, XTalk, XCharacter,
+  `/api/v1`. They picked it and pay its list price, so serving another model
+  would falsify both the bill and XBoard. These fail loudly instead, with a
+  message that says the limit is ours, that nothing was charged, and to pick
+  another model — the `ACCOUNT` branch of `lib/provider-errors.ts`.
+
+Every surface that shows a provider error must run it through
+`sanitizeProviderError` first (XTalk, XCharacter and `/api/v1` were sending
+raw provider JSON until Aug 28).
+
+**XDuel's redraw** (Aug 29): one shuffle yields the draw AND its reserve; a
+slot failing with an ACCOUNT-class error takes the next reserve model **from a
+different provider** and re-runs, once. Only ACCOUNT-class — a safety refusal
+or an oversized prompt fails on every model alike. The client needed no change
+(`trying:` was already there, unused). **The load-bearing line is
+`models[i] = replacement`**: `slots`, `slotPrices` and the reveal are all built
+from `models` after the slots settle, so without it the duel row credits the
+drawn model for the replacement's output and the vote corrupts XDRating —
+silently. Touch that loop and re-check that write-back.
 
 ## Provider Call Logging
 
