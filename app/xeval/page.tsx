@@ -41,6 +41,7 @@ interface RunRow {
   spec_pct?: number | null
   harness?: string | null
   occupation: string | null
+  sector: string | null
   model_name: string
   display_name: string
   provider: string
@@ -78,7 +79,7 @@ export default function XEvalPage() {
         // No status filter: verifier benchmarks publish failed trials too (a
         // timeout IS the cell's result). GDPval aggregates stay finished-only
         // because only finished GDPval runs are published.
-        .select('run_id, task_id, task_set, score, spec_pct, harness, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
+        .select('run_id, task_id, task_set, score, spec_pct, harness, sector, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
       setRuns(rr ?? [])
       setLoading(false)
     })()
@@ -474,18 +475,42 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       if (!byTask.has(r.task_id)) byTask.set(r.task_id, [])
       byTask.get(r.task_id)!.push(r)
     }
-    // Autopilot here is SELECTION — per task, serve the entry that scored
-    // best, cheapest on ties. (Not the merge experiment: combining drafts was
-    // measured and never beat the best single model.) LAB scores carry partial
-    // credit (0 / 0.5 / 1 = judges that all-passed), so track the score sum.
+    // Autopilot is CATEGORY-BEST, the same rule as GDPval's sector row: for
+    // each of the benchmark's own categories, measure every entry across that
+    // category's tasks and serve the category's best (cheaper on ties). It is
+    // a measurement of the category, not a prediction — so it is read on the
+    // same tasks it is measured from, and the task count per category is what
+    // makes it strong or weak.
+    const byCat = new Map<string, RunRow[]>()
+    for (const r of latest.values()) {
+      const c = r.sector ?? r.task_id
+      if (!byCat.has(c)) byCat.set(c, [])
+      byCat.get(c)!.push(r)
+    }
+    const catPick = new Map<string, string>()
+    for (const [c, runs_] of byCat) {
+      const agg = new Map<string, { sum: number; n: number; cost: number }>()
+      for (const r of runs_) {
+        const k = `${r.model_name}|${r.effort ?? ''}`
+        const a = agg.get(k) ?? { sum: 0, n: 0, cost: 0 }
+        a.sum += r.score ?? 0; a.n += 1; a.cost += r.cost_usd ?? 0
+        agg.set(k, a)
+      }
+      let best: [string, number, number] | null = null
+      for (const [k, a] of agg) {
+        const mean = a.sum / a.n
+        if (!best || mean > best[1] || (mean === best[1] && a.cost < best[2])) best = [k, mean, a.cost]
+      }
+      if (best) catPick.set(c, best[0])
+    }
     let apSolved = 0, apCost = 0, apScore = 0
     const apSpecs: number[] = []
     for (const runs_ of byTask.values()) {
-      const best = Math.max(...runs_.map(r => r.score ?? 0))
-      const pool = runs_.filter(r => (r.score ?? 0) === best)
-      const pick = pool.reduce((m, r) => ((r.cost_usd ?? 9e9) < (m.cost_usd ?? 9e9) ? r : m))
-      if (best >= 1) apSolved += 1
-      apScore += best
+      const cat = runs_[0].sector ?? runs_[0].task_id
+      const want = catPick.get(cat)
+      const pick = runs_.find(r => `${r.model_name}|${r.effort ?? ''}` === want) ?? runs_[0]
+      if ((pick.score ?? 0) >= 1) apSolved += 1
+      apScore += pick.score ?? 0
       apCost += pick.cost_usd ?? 0
       if (pick.spec_pct != null) apSpecs.push(Number(pick.spec_pct))
     }
