@@ -6,7 +6,7 @@ export const maxDuration = 300
 
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
 import { processAttachment }              from '@/lib/attachment'
-import { sanitizeProviderError }          from '@/lib/provider-errors'
+import { sanitizeProviderError, ACCOUNT_LIMIT } from '@/lib/provider-errors'
 import * as providers                     from '@/lib/providers'
 import { modePriceLabel }                 from '@/lib/providers/pricing'
 
@@ -98,6 +98,12 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ── Run one slot ──────────────────────────────────────────────────────────────
 
+type SlotOutput = {
+  text: string; isImage: boolean; isVideo: boolean
+  responseTime: number; cost: number; searches: number
+}
+type SlotFailure = { failed: true; message: string; ref: string | null }
+
 async function runSlot(
   index:       number,
   model:       ModelInfo,
@@ -107,7 +113,7 @@ async function runSlot(
   duelId:      string,
   controller:  ReadableStreamDefaultController,
   userId:      string,
-): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; searches: number } | null> {
+): Promise<SlotOutput | SlotFailure> {
   const callContext: providers.CallContext = { userId }
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name} mode=${mode}`)
@@ -268,8 +274,11 @@ async function runSlot(
     // and searchable in the provider_calls table for debugging.
     const ref = (err as any)?.requestId ?? null
     console.warn(`${LOG} Slot[${index}] ${model.provider}/${model.model_name} failed (ref=${ref}): ${msg}`)
-    controller.enqueue(sse(`error:${index}`, { index, message: sanitizeProviderError(msg), ref }))
-    return null
+    // The RAW message goes back to the caller, not to the user: only the
+    // caller can tell whether this failure is worth redrawing a different
+    // model for, and it is the one that sanitizes and emits `error:` when
+    // it decides to give up.
+    return { failed: true, message: msg, ref }
   }
 }
 
@@ -364,7 +373,25 @@ export async function POST(req: Request) {
   }
 
 
-  const models = shuffle(pool).slice(0, n)
+  // The draw and its reserve come from ONE shuffle: the first n are the
+  // duel, the tail is the (already random) replacement list. A model that
+  // turns out to be unusable is swapped for the next one down — the user
+  // never chose these, so a redraw is just a different draw, not a
+  // substitution. (That is why this belongs here and NOT on XCreate or the
+  // API, where the user picked the model and pays its list price.)
+  const shuffled = shuffle(pool)
+  const models   = shuffled.slice(0, n)
+  const reserve  = shuffled.slice(n)
+  let reserveAt  = 0
+  /** Next reserve model that isn't on the provider that just failed —
+   *  replacing Claude with more Claude fails identically. */
+  const takeReplacement = (badProvider: string): ModelInfo | null => {
+    while (reserveAt < reserve.length) {
+      const m = reserve[reserveAt++]
+      if (m.provider !== badProvider) return m
+    }
+    return null
+  }
   const duelId = crypto.randomUUID()
 
 
@@ -405,9 +432,41 @@ export async function POST(req: Request) {
         return { id: m.id, provider: m.provider, model_name: m.model_name, name: m.display_name, outputPrice, priceLabel }
       }) }))
 
-      const results = await Promise.all(
-        models.map((model, i) => runSlot(i, model, mode, prompt, attachments, duelId, controller, user.id))
-      )
+      // One redraw per slot, and ONLY for an account-level failure — our
+      // spending cap, a disabled org, a dead key. A safety refusal or an
+      // oversized prompt fails on every model alike, so redrawing there
+      // would burn a second call and turn "your prompt was refused" into a
+      // baffling swap.
+      const runWithRedraw = async (i: number, drawn: ModelInfo): Promise<SlotOutput | null> => {
+        let current = drawn
+        for (let attempt = 0; ; attempt++) {
+          const r = await runSlot(i, current, mode, prompt, attachments, duelId, controller, user.id)
+          if (!('failed' in r)) return r
+          const replacement = attempt === 0 && ACCOUNT_LIMIT.test(r.message)
+            ? takeReplacement(current.provider)
+            : null
+          if (!replacement) {
+            controller.enqueue(sse(`error:${i}`, { index: i, message: sanitizeProviderError(r.message), ref: r.ref }))
+            return null
+          }
+          // ATTRIBUTION. `slots`, `slotPrices` and the reveal are all built
+          // from `models` AFTER this settles, so this write-back is the one
+          // thing keeping the duel row honest: without it the row would
+          // carry the drawn model's name over the replacement's output, and
+          // the vote would credit a model that never ran.
+          current   = replacement
+          models[i] = replacement
+          const { label, rate } = modePriceLabel(replacement, mode as 'text'|'image'|'video')
+          console.log(`${LOG} Slot[${i}] redrawn → ${replacement.provider}/${replacement.model_name}`)
+          controller.enqueue(sse(`trying:${i}`, {
+            index: i, id: replacement.id, provider: replacement.provider,
+            model_name: replacement.model_name, name: replacement.display_name,
+            outputPrice: rate, priceLabel: label,
+          }))
+        }
+      }
+
+      const results = await Promise.all(models.map((model, i) => runWithRedraw(i, model)))
 
       // Broken duel = free duel (CC, July 19): if ANY slot failed, the
       // duel can't be voted on fairly (and XVote hides it), so give the

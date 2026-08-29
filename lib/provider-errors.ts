@@ -19,13 +19,26 @@
 // because retrying does NOT help: the user has to pick a different model.
 // RESOURCE_EXHAUSTED lives in RATE, not here — on Gemini it is the
 // per-minute quota, which does clear on its own.
-// The live Aug 28 wording is here verbatim in spirit: Anthropic returns a
-// 429 whose body reads "You have reached your API usage limits: your
-// organization has crossed its monthly API usage threshold". That is a 429
-// with the word "limit" in it, so it used to land in RATE and tell users to
-// "try again in a moment" — for a cap that clears next MONTH. Match the
-// account wording BEFORE the status code gets a chance to.
-const ACCOUNT  = /quota|billing|credit balance|credits|prepayment|insufficient|spend(ing)? limit|usage limit|usage threshold|monthly|payment/i
+/**
+ * OUR account with a provider cannot serve the call: a spending cap, an
+ * exhausted balance, a dead key, an org on hold. Exported because
+ * lib/house-llm.ts needs the SAME verdict to decide whether to cross to
+ * another provider — and the two drifting apart is exactly how this broke.
+ * Both classifiers were written against the Aug 28 wording (a 429 reading
+ * "your organization has crossed its monthly API usage threshold") and both
+ * missed the Aug 29 one (a 400 reading "This organization has been
+ * disabled", error_code organization_on_hold). One list, two readers: a new
+ * wording is now a one-line fix in one file.
+ *
+ * Deliberately NOT in here: per-minute rate limits and 5xx. Those clear on
+ * their own, and the caller should retry rather than give up on the model.
+ */
+export const ACCOUNT_LIMIT = /quota|billing|credit balance|credits|prepayment|insufficient|spend(ing)? limit|usage limit|usage threshold|monthly|payment|organization_on_hold|organization (has been|is) (disabled|suspended)|account (has been|is) (disabled|suspended|closed)/i
+
+// A 429 with the word "limit" in it used to land in RATE and tell users to
+// "try again in a moment" — about a cap that clears next MONTH. The account
+// wording is matched BEFORE the status code gets a chance to.
+const ACCOUNT  = ACCOUNT_LIMIT
 const RATE     = /rate limit|too many requests|overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|\b(429|503|529)\b/i
 // Runway's synchronous create-time moderation returns a 400 whose body says
 // "content moderation" and never the word safety/policy — it fell through to

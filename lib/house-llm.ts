@@ -25,6 +25,9 @@
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const OPENAI_URL    = 'https://api.openai.com/v1/chat/completions'
+import { workspaceHeader } from './providers/anthropic'
+import { ACCOUNT_LIMIT } from './provider-errors'
+
 const API_VERSION   = '2023-06-01'
 
 /** OpenAI stand-ins, tried in order. Same discipline as the Claude
@@ -74,15 +77,18 @@ const working: Record<string, { provider: 'anthropic' | 'openai'; model: string 
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-/** True when the failure is about the ACCOUNT, not this request — a
- *  spending cap, an exhausted balance, a dead key. Retrying does not help
- *  and neither does another model on the same account: only the other
- *  provider does. A per-minute rate limit is deliberately NOT in here, and
- *  neither is a 5xx: those clear on their own, and the retry loop should
- *  get its turn before we cross providers. */
+/** True when the failure is about the ACCOUNT, not this request — a spending
+ *  cap, an exhausted balance, a dead key, an org on hold. Retrying does not
+ *  help and neither does another model on the same account: only the other
+ *  provider does.
+ *
+ *  The wording list is ACCOUNT_LIMIT, shared with the user-facing
+ *  sanitizer. When a provider invents a new phrasing, BOTH the fallback and
+ *  the message a user reads have to learn it, and keeping two copies is how
+ *  the Aug 29 "organization has been disabled" slipped past both. */
 function isAccountFailure(status: number, body: string): boolean {
   if (status === 401 || status === 402 || status === 403) return true
-  return /credit balance|spend(ing)? limit|usage limit|usage threshold|monthly|quota|billing|insufficient|invalid.{0,12}api.?key/i.test(body)
+  return ACCOUNT_LIMIT.test(body) || /invalid.{0,12}api.?key/i.test(body)
 }
 
 // Once the account is out of room it stays out for a while, so the whole
@@ -115,6 +121,7 @@ async function callAnthropic(o: HouseCallOpts, models: string[]): Promise<HouseR
             'content-type':      'application/json',
             'x-api-key':         key,
             'anthropic-version': API_VERSION,
+            ...workspaceHeader(),
           },
           body: JSON.stringify({
             model,
