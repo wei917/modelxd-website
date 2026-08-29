@@ -598,6 +598,8 @@ export const STRINGS: Record<string, Entry> = {
   'xeval.filter.tier': { en: 'Tier', 'zh-Hant': '層級', 'zh-Hans': '层级', ja: 'ティア', ko: '티어' },
   'xeval.bench':      { en: 'Benchmark', 'zh-Hant': '基準', 'zh-Hans': '基准', ja: 'ベンチマーク', ko: '벤치마크' },
   'xeval.tb.verifier': { en: 'verifier-scored — each task’s own tests decide, no judges', 'zh-Hant': '驗證器評分——由各任務自帶的測試判定，無評審', 'zh-Hans': '验证器评分——由各任务自带的测试判定，无评审', ja: '検証器採点——各タスク自身のテストが判定、審査なし', ko: '검증기 채점 — 각 과제 자체 테스트로 판정, 심사 없음' },
+  // LAB has no verifier: every criterion is graded by an LLM judge pair.
+  'xeval.lab.scored': { en: 'all-pass rubric — 2 judges grade every criterion, a task counts only if all pass', 'zh-Hant': '全項通過評分標準——2 位評審逐項評分，全部通過才算通過', 'zh-Hans': '全项通过评分标准——2 位评审逐项评分，全部通过才算通过', ja: '全項目合格ルーブリック——2名の審査が各項目を採点し、全項目合格のみ合格', ko: '전 기준 통과 루브릭 — 2명의 심사가 각 기준을 채점, 모두 통과해야 인정' },
   'xeval.tb.solved':  { en: 'Solved', 'zh-Hant': '解決', 'zh-Hans': '解决', ja: '解決', ko: '해결' },
   'xeval.tb.passrate': { en: 'Pass rate', 'zh-Hant': '通過率', 'zh-Hans': '通过率', ja: '合格率', ko: '통과율' },
   'xeval.tb.persolved': { en: '$/solved', 'zh-Hant': '$/解決', 'zh-Hans': '$/解决', ja: '$/解決', ko: '$/해결' },

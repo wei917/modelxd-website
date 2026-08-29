@@ -537,7 +537,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
         <span><strong style={{ color: 'var(--white)' }}>{rows.length}</strong> {t('xeval.stat.entries')}</span>
         <span><strong style={{ color: 'var(--white)' }}>{taskN}</strong> {t('xeval.stat.tasks')}</span>
-        <span>{t('xeval.tb.verifier')}</span>
+        <span>{t(label === 'Harvey LAB' ? 'xeval.lab.scored' : 'xeval.tb.verifier')}</span>
       </div>
       <div style={{ overflowX: 'auto', marginBottom: 24 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640, fontSize: 13 }}>
