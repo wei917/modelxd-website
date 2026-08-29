@@ -463,7 +463,12 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   // ModelXD Autopilot: the library serving each task's cheapest SOLVER
   // (cheapest attempt where nobody solves). Derived from the same runs —
   // a measured selection, disclosed in the methodology like the GDPval row.
-  if (by.size > 1) {
+  // The Autopilot row is a per-task SELECTION over completed runs, so it only
+  // belongs where the owner approved it (GDPval, Terminal-Bench). Not on LAB:
+  // serving the winner presupposes classifying an incoming task to a
+  // benchmarked one, and the similarity test says we cannot do that yet
+  // (nearest-neighbour winner transfer 30% vs a 52% baseline).
+  if (by.size > 1 && label !== 'Harvey LAB') {
     const byTask = new Map<string, RunRow[]>()
     for (const r of latest.values()) {
       if (!byTask.has(r.task_id)) byTask.set(r.task_id, [])
