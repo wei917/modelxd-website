@@ -31,6 +31,21 @@ function apiKey(): string {
   return k
 }
 
+/**
+ * An "identity-linked" API key belongs to a user rather than a workspace, so
+ * Anthropic cannot tell which workspace the call bills to and answers 400:
+ *   "anthropic-workspace-id is required when authenticating with an
+ *    identity-linked API key"
+ * It broke every Claude call on the site at once (Aug 29) — agent, director,
+ * digest and the Claude models in XCreate/XDuel. Set ANTHROPIC_WORKSPACE_ID to
+ * the wrkspc_… from console → Settings → Workspaces. A workspace-scoped key
+ * needs no header, so leaving this unset stays correct for those.
+ */
+export function workspaceHeader(): Record<string, string> {
+  const id = process.env.ANTHROPIC_WORKSPACE_ID
+  return id ? { 'anthropic-workspace-id': id } : {}
+}
+
 // Images ride along as base64 content blocks; text/PDF attachments are
 // handled upstream by resolveDocAttachments (Claude also accepts PDFs
 // natively via the document block, but the folded-text path keeps duels
@@ -110,6 +125,7 @@ export async function streamText(
         'Content-Type': 'application/json',
         'x-api-key': apiKey(),
         'anthropic-version': API_VERSION,
+        ...workspaceHeader(),
       },
       body: JSON.stringify({
         model: model.model_name,
