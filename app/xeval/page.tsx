@@ -286,12 +286,10 @@ export default function XEvalPage() {
       <div className="arena">
         {/* In-page header — XBoard's pattern: eyebrow + big headline + method link. */}
         <Link href="/xeval" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xeval.eyebrow')}</Link>
-        <h1 className="page-headline">
-          {t('xeval.subtitle')}
-          <a href="#xeval-methodology" style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginLeft: 14, whiteSpace: 'nowrap' }}>
-            {t('xeval.how').toUpperCase()} →
-          </a>
-        </h1>
+        <h1 className="page-headline" style={{ marginBottom: 10 }}>{t('xeval.subtitle')}</h1>
+        <a href="#xeval-methodology" style={{ display: 'inline-block', fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, color: 'var(--red)', letterSpacing: '0.08em', textDecoration: 'none', marginBottom: 30, whiteSpace: 'nowrap' }}>
+          {t('xeval.how').toUpperCase()} →
+        </a>
 
       {loading ? (
         <p style={{ color: 'var(--muted)' }}>…</p>
@@ -300,29 +298,38 @@ export default function XEvalPage() {
       ) : (
         <>
           {benches.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '0 0 16px' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginRight: 2 }}>{t('xeval.bench').toUpperCase()}</span>
-              {benches.map(b => (
-                <button key={b} onClick={() => setBench(b)} style={{
-                  padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-mono)',
-                  border: `1px solid ${bench === b ? 'var(--red)' : 'var(--border)'}`,
-                  background: bench === b ? 'var(--red-dim)' : 'transparent',
-                  color: bench === b ? 'var(--red)' : 'var(--white)',
-                }}>{BENCH_LABEL[b] ?? b}</button>
-              ))}
+            <div style={{ margin: '0 0 26px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.14em', marginBottom: 10 }}>
+                {t('xeval.bench').toUpperCase()}
+              </div>
+              <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
+                {benches.map(b => {
+                  const on = bench === b
+                  return (
+                    <button key={b} onClick={() => setBench(b)} style={{
+                      padding: '10px 20px 12px', fontSize: 13.5, cursor: 'pointer',
+                      fontFamily: 'var(--font-body)', fontWeight: on ? 600 : 400,
+                      border: 'none', background: 'transparent',
+                      color: on ? 'var(--white)' : 'var(--muted)',
+                      borderBottom: `2px solid ${on ? 'var(--red)' : 'transparent'}`,
+                      marginBottom: -1, transition: 'color 0.12s',
+                    }}>{BENCH_LABEL[b] ?? b}</button>
+                  )
+                })}
+              </div>
             </div>
           )}
           {bench !== 'gdpval' ? (
             <TBSection runs={tbRuns} label={BENCH_LABEL[bench] ?? bench} />
           ) : (
           <>
-          <p style={{ fontSize: 13.5, color: 'var(--muted2)', lineHeight: 1.6, maxWidth: 760, margin: '0 0 16px' }}>
+          <p style={{ fontSize: 14.5, color: 'var(--muted2)', lineHeight: 1.7, maxWidth: 760, margin: '0 0 22px' }}>
             {t('xeval.lead.gdpval')
               .replace('{top}', topRow ? (perEntry.get(`${topRow.model_name}|${topRow.effort ?? ''}`)?.display ?? SPECIAL_DISPLAY[topRow.model_name] ?? topRow.model_name) : '')
               .replace('{rating}', String(topRow?.rating ?? ''))
               .replace('{anchor}', String(anchorRow?.rating ?? 1000))}
           </p>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '0 0 24px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
             <span><strong style={{ color: 'var(--white)' }}>{ratings.length}</strong> {t('xeval.stat.entries')}</span>
             <span><strong style={{ color: 'var(--white)' }}>{taskCount}</strong> {t('xeval.stat.tasks')}</span>
             <span><strong style={{ color: 'var(--white)' }}>{judgeCount}</strong> {t('xeval.stat.judges')}</span>
@@ -525,7 +532,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
   return (
     <>
-      <p style={{ fontSize: 13.5, color: 'var(--muted2)', lineHeight: 1.6, maxWidth: 760, margin: '0 0 16px' }}>
+      <p style={{ fontSize: 14.5, color: 'var(--muted2)', lineHeight: 1.7, maxWidth: 760, margin: '0 0 22px' }}>
         {(label === 'Harvey LAB' ? t('xeval.lead.lab') : t('xeval.lead.tb'))
           .replace('{set}', label)
           .replace('{harness}', String(harness))
@@ -534,7 +541,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
           .replace('{n}', String(rows[0]?.n ?? ''))
           .replace('{cost}', rows[0] ? money(rows[0].cost / rows[0].n) : '')}
       </p>
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '0 0 20px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '0 0 24px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
         <span><strong style={{ color: 'var(--white)' }}>{rows.length}</strong> {t('xeval.stat.entries')}</span>
         <span><strong style={{ color: 'var(--white)' }}>{taskN}</strong> {t('xeval.stat.tasks')}</span>
         <span>{t(label === 'Harvey LAB' ? 'xeval.lab.scored' : 'xeval.tb.verifier')}</span>
