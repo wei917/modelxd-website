@@ -19,6 +19,7 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { XCREATE_TEMPLATES } from '@/app/xcreate/templates'
+import { houseCall } from '@/lib/house-llm'
 
 export const runtime     = 'nodejs'
 export const maxDuration = 30
@@ -38,7 +39,6 @@ const MODEL_CANDIDATES = [
   'claude-sonnet-5',
   'claude-haiku-4-5',
 ].filter(Boolean) as string[]
-let workingModel: string | null = null
 
 /** Every surface the agent is allowed to send someone to. An allow-list, so
  *  a hallucinated path can never become a dead link in the UI. */
@@ -144,8 +144,11 @@ function resolveDestination(
 }
 
 export async function POST(req: Request) {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key) return Response.json({ error: 'agent_unavailable' }, { status: 503 })
+  // Either provider can serve this route (house-paid, see lib/house-llm.ts),
+  // so it is unavailable only when NEITHER key is present.
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    return Response.json({ error: 'agent_unavailable' }, { status: 503 })
+  }
 
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -272,68 +275,51 @@ export async function POST(req: Request) {
     `reading a ${lang} interface expects a ${lang} reply.`,
   ].join('\n')
 
-  const candidates = workingModel ? [workingModel] : MODEL_CANDIDATES
-  let lastErr = ''
-  for (const model of candidates) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model, max_tokens: 400,
-          // Sonnet 5 thinks by default, and max_tokens caps thinking PLUS the
-          // reply — at 400 tokens the thinking would swallow the budget and
-          // truncate the JSON mid-object. This is a lookup task; no depth
-          // needed. (Haiku, the fallback, also accepts disabled.)
-          thinking: { type: 'disabled' },
-          system: [
-            // Stable block first, breakpoint on it: ~3k tokens of rules +
-            // guide + catalog served from cache (~0.1x) on every question in
-            // every language. Sonnet 5's cache minimum is 1024 tokens, so
-            // this qualifies; on the Haiku fallback (4096 minimum) the marker
-            // is silently ignored — worst case is full price, never an error.
-            { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: langSystem },
-          ],
-          messages: [...history, { role: 'user', content: q }],
-        }),
-      })
-      if (!res.ok) { lastErr = `${res.status} ${(await res.text()).slice(0, 200)}`; continue }
-      workingModel = model
-      const j = await res.json()
-      // One line per answered question: which model served and whether the
-      // cached prefix was read. The owner pays for this route, so cache
-      // misses showing up here (cache_read=0 on warm traffic) are the signal
-      // that something re-broke the prefix. (CC, Aug 5)
-      const u = j?.usage ?? {}
-      console.log(`[agent/ask] model=${j?.model} in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens} cache_read=${u.cache_read_input_tokens} out=${u.output_tokens}`)
-      const raw = (j?.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('').trim()
-
-      // Models sometimes fence the JSON despite being asked not to; salvage
-      // the object rather than failing the whole answer over a code fence.
-      let parsed: any = null
-      try {
-        const m = raw.match(/\{[\s\S]*\}/)
-        parsed = m ? JSON.parse(m[0]) : null
-      } catch { parsed = null }
-
-      const answer = String(parsed?.answer ?? raw).slice(0, 600)
-      const offtopic = parsed?.offtopic === true
-      // An off-topic question gets no destination even if the model named one:
-      // declining and then offering a door is a mixed message, and it is the
-      // path a prompt-injection attempt would try to walk through.
-      const { route, routeLabel } = offtopic
-        ? { route: null, routeLabel: null }
-        : resolveDestination(parsed?.route, parsed?.template, q)
-      return Response.json({ answer, route, routeLabel, offtopic })
-    } catch (e: any) {
-      lastErr = String(e?.message ?? e)
-    }
+  let resp: any
+  try {
+    resp = await houseCall({
+      tag: '[agent/ask]',
+      models: MODEL_CANDIDATES,
+      maxTokens: 400,
+      // Sonnet 5 thinks by default, and max_tokens caps thinking PLUS the
+      // reply — at 400 tokens the thinking would swallow the budget and
+      // truncate the JSON mid-object. This is a lookup task; no depth
+      // needed. (Haiku, the fallback, also accepts disabled.)
+      disableThinking: true,
+      system: [
+        // Stable block first, breakpoint on it: ~3k tokens of rules +
+        // guide + catalog served from cache (~0.1x) on every question in
+        // every language. Sonnet 5's cache minimum is 1024 tokens, so
+        // this qualifies; on the Haiku fallback (4096 minimum) the marker
+        // is silently ignored — worst case is full price, never an error.
+        { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: langSystem },
+      ],
+      messages: [...history, { role: 'user', content: q }],
+    })
+  } catch (e: any) {
+    console.warn('[agent/ask] no provider could answer:', e?.message ?? e)
+    return Response.json({ error: 'agent_failed' }, { status: 502 })
   }
-  console.warn('[agent/ask] all models failed:', lastErr)
-  return Response.json({ error: 'agent_failed' }, { status: 502 })
+
+  const j = resp
+  const raw = (j?.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('').trim()
+
+  // Models sometimes fence the JSON despite being asked not to; salvage
+  // the object rather than failing the whole answer over a code fence.
+  let parsed: any = null
+  try {
+    const m = raw.match(/\{[\s\S]*\}/)
+    parsed = m ? JSON.parse(m[0]) : null
+  } catch { parsed = null }
+
+  const answer = String(parsed?.answer ?? raw).slice(0, 600)
+  const offtopic = parsed?.offtopic === true
+  // An off-topic question gets no destination even if the model named one:
+  // declining and then offering a door is a mixed message, and it is the
+  // path a prompt-injection attempt would try to walk through.
+  const { route, routeLabel } = offtopic
+    ? { route: null, routeLabel: null }
+    : resolveDestination(parsed?.route, parsed?.template, q)
+  return Response.json({ answer, route, routeLabel, offtopic })
 }

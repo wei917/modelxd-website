@@ -19,6 +19,7 @@ export const runtime     = 'nodejs'
 export const maxDuration = 120
 
 import { getModelById } from '@/lib/models'
+import { sanitizeProviderError } from '@/lib/provider-errors'
 import * as providers   from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { resolveVideoId } from '@/lib/youtube'
@@ -246,7 +247,11 @@ export async function POST(req: Request) {
             },
             onError: (message) => {
               console.warn(`${LOG} ${me} failed:`, message)
-              controller.enqueue(sse('error', { message, speaker: me }))
+              // Sanitized, like XDuel and XCreate: the raw text is a provider
+              // JSON dump and, when the failure is an ACCOUNT limit on our
+              // side, it leaks our billing. The sanitized form still says
+              // what happened and what to do (lib/provider-errors.ts).
+              controller.enqueue(sse('error', { message: sanitizeProviderError(message), speaker: me }))
               controller.close()
             },
           },
@@ -255,7 +260,7 @@ export async function POST(req: Request) {
           { thinking: thinkLvl, search: useSearch },
         )
       } catch (err: any) {
-        controller.enqueue(sse('error', { message: err?.message ?? 'turn failed', speaker: me }))
+        controller.enqueue(sse('error', { message: sanitizeProviderError(err), speaker: me }))
         controller.close()
       }
     },

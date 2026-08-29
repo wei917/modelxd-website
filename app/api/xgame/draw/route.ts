@@ -21,6 +21,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import { createClient } from '@supabase/supabase-js'
+import { houseCall } from '@/lib/house-llm'
 import { matchAnswer, normalizeAnswer, DRAW_LANGS, type DrawLang } from '@/lib/drawsomething-engine'
 
 const LOG = '[xgame:draw]'
@@ -71,30 +72,36 @@ const LANG_NAME: Record<DrawLang, string> = {
  *  guard: a reply containing the answer (or an alias) is discarded for
  *  the canned hint — the host must tease, never tell. */
 async function hostHint(lang: DrawLang, term: string, aliases: string[], wrongGuesses: string[], hintNo: number): Promise<string> {
-  const model = process.env.XGAME_HOST_MODEL || process.env.SITE_AGENT_MODEL || 'claude-haiku-4-5-20251001'
+  // House-paid: Claude first, OpenAI when the Anthropic account cannot serve
+  // it (see lib/house-llm.ts). The canned hint below is the last resort, not
+  // the first — a whole game of generic hints is a worse outage than a
+  // slightly different voice.
+  const models = [
+    process.env.XGAME_HOST_MODEL,
+    process.env.SITE_AGENT_MODEL,
+    'claude-haiku-4-5-20251001',
+  ].filter(Boolean) as string[]
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model, max_tokens: 150,
-        messages: [{
-          role: 'user',
-          content: [
-            `You are the playful host of a Pictionary-style guessing game. The secret answer is "${term}" (language: ${LANG_NAME[lang]}).`,
-            wrongGuesses.length ? `The player's wrong guesses so far: ${wrongGuesses.slice(-4).join(', ')}.` : 'The player has not guessed yet.',
-            `Give hint #${hintNo} of ${MAX_HINTS}, in ${LANG_NAME[lang]}: hint 1 is vague (category / where you meet it), hint 2 is more concrete. React to their wrong guesses if any ("not food — bigger!").`,
-            'STRICT RULES: never write, spell, or transliterate the answer itself. Max 25 words. Reply with the hint text only.',
-          ].join('\n'),
-        }],
-      }),
+    const resp = await houseCall({
+      tag: '[xgame/draw]',
+      models,
+      // 25 words of tease. The cheap tier on either provider is plenty, and
+      // this runs a few times per game.
+      fallbackModels: ['gpt-5.6-luna'],
+      maxTokens: 150,
+      system: '',
+      messages: [{
+        role: 'user',
+        content: [
+          `You are the playful host of a Pictionary-style guessing game. The secret answer is "${term}" (language: ${LANG_NAME[lang]}).`,
+          wrongGuesses.length ? `The player's wrong guesses so far: ${wrongGuesses.slice(-4).join(', ')}.` : 'The player has not guessed yet.',
+          `Give hint #${hintNo} of ${MAX_HINTS}, in ${LANG_NAME[lang]}: hint 1 is vague (category / where you meet it), hint 2 is more concrete. React to their wrong guesses if any ("not food — bigger!").`,
+          'STRICT RULES: never write, spell, or transliterate the answer itself. Max 25 words. Reply with the hint text only.',
+        ].join('\n'),
+      }],
     })
-    const d: any = await res.json().catch(() => null)
-    const text: string = d?.content?.[0]?.text?.trim() ?? ''
+    const text: string = (resp.content ?? [])
+      .filter((b: any) => b.type === 'text').map((b: any) => b.text).join('').trim()
     if (!text) return CANNED_HINT[lang]
     // The guard: leaked answer (or alias) → canned hint instead.
     const norm = normalizeAnswer(text, lang)

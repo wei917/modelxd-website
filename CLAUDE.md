@@ -192,7 +192,9 @@ what it is, where a feature lives, what it costs — and returns an optional
 route so the UI can offer to take you there.
 
 - **Claude Sonnet 5** (Haiku fallback), no tools, never generates, never bills the user.
-  **The owner pays** (no `debitCredits` call), using `ANTHROPIC_API_KEY`.
+  **The owner pays** (no `debitCredits` call). Goes through `lib/house-llm.ts`,
+  so it falls over to OpenAI when the Anthropic account can't serve it — see
+  "House-paid calls" below.
 - `content/site-guide.md` is its **only** knowledge of the product, read from
   disk per request (60s cache) so a product change ships by editing markdown
   rather than redeploying a prompt. **A stale line there becomes a confident
@@ -301,6 +303,7 @@ lib/
 ├── i18n.tsx                    # 5-language string table + LangProvider
 ├── werewolf-engine.ts          # Game rules/state machine
 ├── werewolf-lang.ts            # Werewolf per-language strings
+├── house-llm.ts                # House-paid calls: Claude, OpenAI on failure
 ├── inference.ts                # Shared text-inference core (API v1 + Werewolf)
 ├── json-schema.ts              # Small JSON Schema validator + tolerant extractor
 ├── schema-adapt.ts             # Per-provider JSON Schema dialect adapter
@@ -549,6 +552,42 @@ the format's whole selling point is needing no runtime or build step.
 craft; it must never override pricing honesty, model selection, or refusals.
 See `wrapSkillForPrompt()`. Nothing under `scripts/` is ever executed.
 
+## House-paid Calls (`lib/house-llm.ts`)
+
+Four things run on the owner's dime, not a user's credits: the **site agent**,
+the **XDirect director**, the **XGame Draw host hint**, and the **story
+digest**. Nobody chose Claude for these and nobody is billed for them, so an
+Anthropic outage has no business being visible.
+
+On **Aug 28** it was: the org crossed its monthly API usage threshold and all
+four went down together, because each route's "fallback" was a list of other
+**Claude** ids on the **same account**. `houseCall()` adds the missing axis —
+Anthropic first, **OpenAI when the account can't serve the turn**.
+
+- **Anthropic's wire shape is the interface**, both directions. OpenAI's
+  request and response are translated in and out, so callers, the tool loop
+  and the persisted conversation only ever see content blocks, `tool_use` and
+  `tool_result`. A thread can cross providers mid-conversation and back.
+- **`reasoning_effort: 'none'` is REQUIRED on chat/completions when tools are
+  present** and must be absent otherwise (probed live Aug 28: *"Function tools
+  with reasoning_effort are not supported ... set reasoning_effort to 'none'"*).
+  A 400 naming the field flips it and retries the same model.
+- **An account failure short-circuits**: no retry, no second Claude, and a 90s
+  cooldown, because otherwise every request pays ~8s of certain failure before
+  the fallback. `system` is omitted rather than sent empty — an empty text
+  block is a hard 400.
+- The digest doesn't use `houseCall` (it goes through the provider router for
+  billing and `provider_calls` logging) but follows the same rule via
+  `mapAlt` / `reduceAlt` — stand-ins on a *different provider*.
+
+**This is for house-paid calls ONLY.** On a user-paid surface the user picked
+the model and pays its list price, so substituting another would falsify both
+the bill and XBoard. Those fail loudly with a message that says the limit is
+on our side, that nothing was charged, and to pick another model — the
+`ACCOUNT` branch of `lib/provider-errors.ts`. Every surface that shows a
+provider error must run it through `sanitizeProviderError` first (XTalk,
+XCharacter and `/api/v1` were sending raw provider JSON until Aug 28).
+
 ## Provider Call Logging
 
 Every AI invocation produces **two rows** in `provider_calls`, paired by
@@ -679,6 +718,8 @@ SITE_PASSWORD=                        # unset = site gate disabled
 CRON_SECRET=                          # guards /api/cron/* and refit
 SITE_AGENT_MODEL=                     # override the site agent's model
 XDIRECTOR_MODEL=                      # override the director's model
+HOUSE_FALLBACK_MODEL=                 # OpenAI stand-in for house-paid calls;
+                                      #   unset = gpt-5.6-sol → terra → luna
 XCREATE_MOCK=                         # dev: fake generations, no spend
 ```
 

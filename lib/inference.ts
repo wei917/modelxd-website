@@ -26,6 +26,7 @@
 // row per call, which for 200 NPC lines would mean 200 gallery entries.
 
 import { createClient } from '@supabase/supabase-js'
+import { sanitizeProviderError } from './provider-errors'
 import * as providers from '@/lib/providers'
 import type { ModelInfo, JsonSchemaSpec } from '@/lib/providers'
 import { getModelById, getModelByProviderName } from '@/lib/models'
@@ -468,7 +469,14 @@ async function callOne(
     })
     if (usage.cost > 0 && req.bill !== false) void bill(req.userId, model, usage.cost, req.surface)
 
-    if (failure) throw new InferenceError(String(failure), 502, 'provider_error', 'api_error')
+    // Sanitized on the way out (Aug 28). An API caller needs to know WHICH
+    // kind of failure this is — an ACCOUNT limit on our side means "pick
+    // another model", not "retry" — but not the provider's raw JSON, which
+    // carries our billing. Full text stays in the log and provider_calls.
+    if (failure) {
+      console.warn(`[inference] ${model.provider}/${model.model_name} failed: ${String(failure).slice(0, 300)}`)
+      throw new InferenceError(sanitizeProviderError(String(failure)), 502, 'provider_error', 'api_error')
+    }
     if (!text.trim()) {
       throw new InferenceError(`${model.provider}/${model.model_name} returned an empty reply.`, 502, 'empty_response', 'api_error')
     }

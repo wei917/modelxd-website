@@ -5,9 +5,28 @@
 // exceeded your current quota, please check your plan and billing" is
 // OUR billing problem, not theirs. Full messages still go to console/
 // telemetry; only the sanitized form reaches the client or the DB slot.
+//
+// It IS still their problem when it stops their run, though (owner, Aug 28,
+// after an Anthropic org spending limit took every Claude model down at
+// once). So ACCOUNT says plainly that the limit is on our side, that nothing
+// was charged, and that another model will work — everything a user needs to
+// carry on, and nothing about which provider or which limit. The
+// house-paid surfaces don't reach here at all: they fail over to another
+// provider instead (lib/house-llm.ts).
 
-const BILLING  = /quota|billing|credits|prepayment|insufficient|RESOURCE_EXHAUSTED|payment/i
-const RATE     = /rate limit|too many requests|overloaded|UNAVAILABLE|\b(429|503|529)\b/i
+// OUR account with the provider is out of room — a spending cap, an
+// exhausted balance, an unpaid bill. Distinct from RATE (busy, retry works)
+// because retrying does NOT help: the user has to pick a different model.
+// RESOURCE_EXHAUSTED lives in RATE, not here — on Gemini it is the
+// per-minute quota, which does clear on its own.
+// The live Aug 28 wording is here verbatim in spirit: Anthropic returns a
+// 429 whose body reads "You have reached your API usage limits: your
+// organization has crossed its monthly API usage threshold". That is a 429
+// with the word "limit" in it, so it used to land in RATE and tell users to
+// "try again in a moment" — for a cap that clears next MONTH. Match the
+// account wording BEFORE the status code gets a chance to.
+const ACCOUNT  = /quota|billing|credit balance|credits|prepayment|insufficient|spend(ing)? limit|usage limit|usage threshold|monthly|payment/i
+const RATE     = /rate limit|too many requests|overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|\b(429|503|529)\b/i
 // Runway's synchronous create-time moderation returns a 400 whose body says
 // "content moderation" and never the word safety/policy — it fell through to
 // the generic "failed to generate" message and looked like an outage
@@ -59,7 +78,7 @@ export function sanitizeProviderError(raw: unknown): string {
     return 'The model declined this prompt for safety reasons. Try rephrasing it.'
   }
   if (TOOBIG.test(msg))   return 'The attached file or prompt is too large for this model. Try a smaller file or a model with a larger context window.'
-  if (BILLING.test(msg))  return 'This model is temporarily unavailable. Please try again later.'
+  if (ACCOUNT.test(msg))  return 'This model is unavailable right now — our account with its provider has hit a limit. You were not charged. Pick another model, or try this one again later.'
   if (RATE.test(msg))     return 'This model is busy right now. Please try again in a moment.'
   if (TIMEOUT.test(msg))  return 'The model took too long to respond. Please try again.'
   if (NOTFOUND.test(msg)) return 'This model is temporarily unavailable.'

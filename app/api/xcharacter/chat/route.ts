@@ -19,6 +19,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 120
 
 import { createClient } from '@supabase/supabase-js'
+import { sanitizeProviderError } from '@/lib/provider-errors'
 import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
@@ -343,12 +344,15 @@ export async function POST(req: Request) {
           },
           onError: (message) => {
             console.warn(`${LOG} ${model.display_name} failed:`, message)
-            controller.enqueue(sse('error', { message }))
+            // Sanitized before it leaves the server — the raw text is a
+            // provider JSON dump, and an ACCOUNT-limit failure would leak
+            // our billing (lib/provider-errors.ts).
+            controller.enqueue(sse('error', { message: sanitizeProviderError(message) }))
             controller.close()
           },
         }, [], { userId: user.id, surface: 'xcharacter' } as any, { thinking: thinkLvl, search: useSearch })
       } catch (err: any) {
-        controller.enqueue(sse('error', { message: err?.message ?? 'turn failed' }))
+        controller.enqueue(sse('error', { message: sanitizeProviderError(err) }))
         controller.close()
       }
     },

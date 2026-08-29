@@ -21,6 +21,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 180
 
 import { createClient } from '@supabase/supabase-js'
+import { houseCall } from '@/lib/house-llm'
 import { buildDirectorSystemPrompt } from '@/lib/xdirector-prompt'
 import { loadSkill, wrapSkillForPrompt, listSkillFiles, describeSkillFiles, readSkillFile } from '@/lib/skills'
 import { singleViewCastSheets, THREE_VIEW_RULE } from '@/lib/cast-sheet'
@@ -38,6 +39,9 @@ const serviceClient = () => createClient(
 // Model candidates, tried in order when Anthropic rejects the id — keeps
 // the route working across model deprecations without a deploy. Override
 // with XDIRECTOR_MODEL. The working id is cached for the process lifetime.
+// These are all Claude, so they all fail together when the ANTHROPIC
+// ACCOUNT is the problem rather than the id (org spending limit, Aug 28) —
+// that case is caught a provider down, in lib/house-llm.ts.
 //
 // Sonnet 5 first (CC, Aug 6): the director now writes multi-scene storyboards
 // — scripts and shot prompts in the user's language, mostly zh-Hant/ja — and
@@ -51,89 +55,40 @@ const MODEL_CANDIDATES = [
   'claude-haiku-4-5',
   'claude-sonnet-4-5',
 ].filter(Boolean) as string[]
-let workingModel: string | null = null
 
 // Storyboard validation, the tool schema and execListModels live in
 // lib/xdirector-tools.ts (lifted verbatim, Aug 22) so the director harness
 // can exercise them without this route's auth.
 
-// ── Anthropic call with model fallback ─────────────────────────────────────
-
-async function callClaude(system: string, messages: any[], tools: any[] = TOOLS): Promise<any> {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key) throw new Error('ANTHROPIC_API_KEY is not set')
-  const candidates = workingModel ? [workingModel] : MODEL_CANDIDATES
-  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-  let lastErr = ''
-  // Transient failures get RETRIED, not surfaced: a single corrupted TLS
-  // record on a reused keep-alive socket ("SSL alert bad record mac", seen
-  // live Aug 6) was reaching the user as "⚠ fetch failed" and killing the
-  // turn. Three attempts per model with a short backoff — a thrown fetch
-  // gets a fresh socket, a 5xx/529 gets a moment to recover. Model-shaped
-  // 400/404s still fall through the candidate list; other client errors
-  // stop immediately (retrying a 401 helps nobody).
-  outer: for (const model of candidates) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      let res: Response
-      try {
-        res = await callAnthropicOnce(key, model, system, messages, tools)
-      } catch (err: any) {
-        lastErr = `network: ${err?.cause?.code ?? err?.message ?? err}`
-        if (attempt < 2) { await sleep(500 + attempt * 900); continue }
-        continue outer
-      }
-      if (res.ok) {
-        workingModel = model
-        const j = await res.json()
-        // Same signal the site agent logs: warm traffic with cache_read=0
-        // means something re-broke the prefix. The owner pays these tokens.
-        const u = j?.usage ?? {}
-        console.log(`${LOG} model=${j?.model} in=${u.input_tokens} cache_write=${u.cache_creation_input_tokens} cache_read=${u.cache_read_input_tokens} out=${u.output_tokens}`)
-        return j
-      }
-      const body = await res.text()
-      lastErr = `${res.status} ${body.slice(0, 300)}`
-      if (res.status === 404 || (res.status === 400 && body.includes('model'))) continue outer
-      if (res.status >= 500 || res.status === 429) {
-        if (attempt < 2) { await sleep(700 + attempt * 1200); continue }
-        continue outer
-      }
-      break outer
-    }
-  }
-  throw new Error(`Anthropic API error: ${lastErr}`)
-}
-
-function callAnthropicOnce(key: string, model: string, system: string, messages: any[], tools: any[]): Promise<Response> {
-  return fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type':      'application/json',
-        'x-api-key':         key,
-        'anthropic-version': '2023-06-01',
-      },
-      // max_tokens covers the BIGGEST board: a Story to Video plan of 5
-      // cast sheets + 10 scenes is ~7k tokens of JSON (4000 cut one off
-      // mid-array, Aug 22 — the director then retried the same oversize
-      // call four times). The loop below turns a max_tokens cut into a
-      // "resend more compactly" tool error instead. thinking is pinned
-      // off on the 4.6+ models: they run ADAPTIVE thinking when the field is
-      // omitted, and thinking spends from this same max_tokens budget — the
-      // storyboard would pay a reasoning tax and risk truncation for latency
-      // we don't want on a chat surface. Older fallbacks (haiku-4-5,
-      // sonnet-4-5) never think unless asked, and predate the field's
-      // "disabled" value, so they get no thinking field at all.
-      //
-      // system carries breakpoint 1: tools render before system, so this one
-      // marker caches tools + director prompt + skill together. Sonnet 5's
-      // cache minimum is 1024 tokens (met); on a fallback below the minimum
-      // the marker is silently ignored — full price, never an error.
-      body: JSON.stringify({
-        model, max_tokens: 9000,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages, tools,
-        ...(/sonnet-5|opus-5|sonnet-4-6|opus-4-6|opus-4-7|opus-4-8/.test(model) ? { thinking: { type: 'disabled' } } : {}),
-      }),
+// ── The model call ─────────────────────────────────────────────────────────
+//
+// House-paid, so it goes through lib/house-llm.ts: Claude first, OpenAI when
+// the Anthropic account cannot serve the turn (spending limit, outage). The
+// candidate list below is still the DECISION about which Claude to direct
+// with; the cross-provider fallback underneath it is the safety net.
+//
+// max_tokens covers the BIGGEST board: a Story to Video plan of 5 cast
+// sheets + 10 scenes is ~7k tokens of JSON (4000 cut one off mid-array,
+// Aug 22 — the director then retried the same oversize call four times).
+// The loop below turns a max_tokens cut into a "resend more compactly" tool
+// error instead. thinking is pinned off: on a chat surface the storyboard
+// would pay a reasoning tax out of this same budget, and risk truncation,
+// for latency we do not want.
+//
+// system carries breakpoint 1: tools render before system, so this one
+// marker caches tools + director prompt + skill together. Sonnet 5's cache
+// minimum is 1024 tokens (met); on a fallback below the minimum the marker
+// is silently ignored — full price, never an error. (OpenAI ignores the
+// marker entirely; house-llm strips it.)
+function callClaude(system: string, messages: any[], tools: any[] = TOOLS): Promise<any> {
+  return houseCall({
+    tag: LOG,
+    models: MODEL_CANDIDATES,
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    messages,
+    tools,
+    maxTokens: 9000,
+    disableThinking: true,
   })
 }
 

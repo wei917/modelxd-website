@@ -14,6 +14,7 @@ import { buildDirectorSystemPrompt } from '../lib/xdirector-prompt'
 import { loadSkill, wrapSkillForPrompt, listSkillFiles, describeSkillFiles, readSkillFile } from '../lib/skills'
 import { TOOLS, READ_SKILL_FILE_TOOL, execListModels, cleanScenes, countCards, MAX_SCENES, MAX_ASSETS, type StoryScene } from '../lib/xdirector-tools'
 import { singleViewCastSheets, isThreeView, isCastAsset, THREE_VIEW_RULE } from '../lib/cast-sheet'
+import { houseCall } from '../lib/house-llm'
 
 const arg = (n: string) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : undefined }
 
@@ -27,8 +28,9 @@ async function main() {
   // other card and fix only the sheet?).
   let forceReject = process.argv.includes('--force-reject-once')
   if (!brief.trim()) throw new Error('--brief or --brief-file required')
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key) throw new Error('ANTHROPIC_API_KEY is not set')
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    throw new Error('Set ANTHROPIC_API_KEY or OPENAI_API_KEY')
+  }
   const model = process.env.XDIRECTOR_MODEL || 'claude-sonnet-5'
 
   let system = buildDirectorSystemPrompt()
@@ -48,18 +50,14 @@ async function main() {
   const usage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }
 
   while (rounds++ < 8) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model, max_tokens: 9000,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages, tools,
-        ...(/sonnet-5|opus-5/.test(model) ? { thinking: { type: 'disabled' } } : {}),
-      }),
+    const j: any = await houseCall({
+      tag: '[harness]',
+      models: [model],
+      maxTokens: 9000,
+      disableThinking: true,
+      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+      messages, tools,
     })
-    const j: any = await res.json()
-    if (!res.ok) throw new Error(`Anthropic ${res.status}: ${JSON.stringify(j).slice(0, 300)}`)
     usage.input += j.usage?.input_tokens ?? 0; usage.output += j.usage?.output_tokens ?? 0
     usage.cacheWrite += j.usage?.cache_creation_input_tokens ?? 0; usage.cacheRead += j.usage?.cache_read_input_tokens ?? 0
 
