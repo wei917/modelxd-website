@@ -680,13 +680,31 @@ export async function POST(req: Request) {
         if (mode !== 'image' && mode !== 'video') continue
         const { fetchAttachmentBuffer } = await import('@/lib/attachment')
         const raw = await fetchAttachmentBuffer({ bucket: inp.bucket, storagePath: inp.storagePath, mediaType: inp.mediaType || 'image/png' })
-        // Signed like any media input: VACE video masks are fetched by URL
-        // (mask_image_url); the OpenAI image path uses the bytes instead.
-        const { data: signedMask } = await sb.storage.from(inp.bucket).createSignedUrl(inp.storagePath, 3600)
+        let maskBuffer = raw.buffer
+        let maskUrl: string | undefined
+        if (mode === 'video') {
+          // TWO mask dialects exist and they are inverses. The editor exports
+          // the OpenAI images/edits contract: opaque black = keep,
+          // TRANSPARENT = repaint. VACE (video) wants WHITE = repaint,
+          // black = keep — and it flattens alpha, so sending the editor's
+          // PNG verbatim reads as "preserve everything" and bills a no-op
+          // (hit live, Aug 31: the handwriting survived a $0.24 edit).
+          // Convert here: the alpha channel inverted IS the VACE mask.
+          const sharp = (await import('sharp')).default
+          maskBuffer = await sharp(raw.buffer).ensureAlpha().extractChannel('alpha').negate().png().toBuffer()
+          const bwPath = inp.storagePath.replace(/\.[a-z0-9]+$/i, '') + '-bw.png'
+          const { error: bwErr } = await sb.storage.from(inp.bucket).upload(bwPath, maskBuffer, { contentType: 'image/png', upsert: true })
+          if (bwErr) throw new Error(`mask conversion upload failed: ${bwErr.message}`)
+          const { data: signedBw } = await sb.storage.from(inp.bucket).createSignedUrl(bwPath, 3600)
+          maskUrl = signedBw?.signedUrl
+        } else {
+          const { data: signedMask } = await sb.storage.from(inp.bucket).createSignedUrl(inp.storagePath, 3600)
+          maskUrl = signedMask?.signedUrl
+        }
         attachments.push({
-          buffer: raw.buffer, mediaType: raw.mediaType,
+          buffer: maskBuffer, mediaType: 'image/png',
           port: 'mask',
-          url: signedMask?.signedUrl,
+          url: maskUrl,
           wireSource: { kind: 'file', bucket: inp.bucket, path: inp.storagePath, name: inp.fileName },
         })
         continue
