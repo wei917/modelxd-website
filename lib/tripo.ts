@@ -118,8 +118,19 @@ export async function reconcile(userId: string, taskId: string, tripoTask: any):
     .select('billed_cents, reconciled').eq('task_id', taskId).eq('user_id', userId).maybeSingle()
   if (!row || row.reconciled) return null
 
-  const consumed = Number(tripoTask?.consumed_credit ?? tripoTask?.output?.consumed_credit ?? NaN)
-  const actualCents = Number.isFinite(consumed) ? Math.max(0, Math.round(consumed)) : row.billed_cents
+  // Live API (verified Aug 30): the field is `credits_consumed` on data —
+  // the docs' `consumed_credit` is kept as a fallback in case either name
+  // appears. Observed in the same probe: Tripo silently FORCED texture:true
+  // for a v2.5 task and charged 20 credits against our 10-credit estimate —
+  // which is exactly why settling on their number, not ours, is the billing.
+  const consumed = Number(
+    tripoTask?.credits_consumed ?? tripoTask?.consumed_credit ?? tripoTask?.output?.credits_consumed ?? NaN,
+  )
+  // No consumption figure at all: a successful task keeps the estimate; a
+  // failed one refunds in full rather than charging for nothing.
+  const actualCents = Number.isFinite(consumed)
+    ? Math.max(0, Math.round(consumed))
+    : (status === 'success' ? row.billed_cents : 0)
   const diff = actualCents - row.billed_cents
 
   // Claim reconciliation first so a poll race cannot settle twice.

@@ -31,7 +31,9 @@ const H = { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' }
 async function main() {
   const prompt = process.argv[2] ?? 'a simple wooden cube'
   const create = await fetch(`${BASE}/generation/text-to-model`, {
-    method: 'POST', headers: H, body: JSON.stringify({ prompt, texture: false }),
+    method: 'POST', headers: H, // model is REQUIRED (live API, Aug 30 — the docs implied a default). v2.5
+    // is the cheapest documented tier: 10 credits without texture.
+    body: JSON.stringify({ prompt, model: 'v2.5-20250123', texture: false }),
   }).then(r => r.json())
   console.log('create:', JSON.stringify(create))
   const id = create?.data?.task_id
@@ -42,7 +44,7 @@ async function main() {
     const d = t?.data ?? {}
     process.stdout.write(`\r${d.status} ${d.progress ?? ''}%   `)
     if (['success', 'failed', 'cancelled', 'banned', 'expired'].includes(d.status)) {
-      console.log('\nterminal:', JSON.stringify({ status: d.status, consumed_credit: d.consumed_credit, model_url: d.output?.model_url?.slice(0, 80) }))
+      console.log('\nterminal:', JSON.stringify({ status: d.status, credits_consumed: d.credits_consumed, model_url: d.output?.model_url?.slice(0, 80) }))
       break
     }
   }
