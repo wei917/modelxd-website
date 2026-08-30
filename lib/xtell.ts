@@ -18,12 +18,22 @@ import { astro } from 'iztro'
 
 export type Temple = 'bazi' | 'ziwei' | 'yuelao'
 
+// Provenance (idea learned from horosa-skill's technique cards): every chart
+// names the engine that computed it, so a doubted 排盤 is checkable against
+// the exact library version rather than against "the site".
+export const ENGINES: Record<Temple, string> = {
+  bazi:   'lunar-typescript v1.8.6',
+  yuelao: 'lunar-typescript v1.8.6',
+  ziwei:  'iztro v2.6.0',
+}
+
 export interface BirthInput {
   y: number; m: number; d: number; h: number; mi: number
   gender: 'male' | 'female'
 }
 
 export function validBirth(b: any): b is BirthInput {
+  if (b && b.hourUnknown === true) { b.h = 12; b.mi = 0 }
   return b && Number.isInteger(b.y) && b.y >= 1900 && b.y <= 2100
     && Number.isInteger(b.m) && b.m >= 1 && b.m <= 12
     && Number.isInteger(b.d) && b.d >= 1 && b.d <= 31
@@ -63,7 +73,19 @@ export function baziChart(b: BirthInput) {
 
 export type BaziChart = ReturnType<typeof baziChart>
 
-export function baziFacts(c: BaziChart, gender: string): string {
+export function baziFacts(c: BaziChart, gender: string, hourUnknown = false): string {
+  if (hourUnknown) {
+    const p = c.pillars
+    return [
+      `出生（國曆）：${c.solar}；農曆：${c.lunar}`,
+      `性別：${gender === 'male' ? '男' : '女'}`,
+      `時辰未知：僅排年月日三柱，時柱不論。`,
+      `三柱：年 ${p.year.ganZhi}、月 ${p.month.ganZhi}、日 ${p.day.ganZhi}　日主：${c.dayMaster}`,
+      `五行（干支）：${c.wuXing.slice(0, 3).join('，')}`,
+      c.daYun.length ? `大運（起歲為約略值，因時辰未知）：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
+      `解讀時明確告知信眾：時辰未知會影響精細度，時柱所主之事（晚年、子女、內心底色）不宜細斷。`,
+    ].filter(Boolean).join('\n')
+  }
   const p = c.pillars
   return [
     `出生（國曆）：${c.solar}，${gender === 'male' ? '男' : '女'}`,
@@ -145,6 +167,10 @@ export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender
 // on health/money/legal, and no fabricated chart facts — the chart above the
 // reading is exactly what the user can verify elsewhere.
 
+// Shared language discipline (learned from Wolke/ziwei-doushu's ETHICS.md):
+// tendencies, never verdicts.
+const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。'
+
 export const MASTERS: Record<Temple, string> = {
   yuelao: `你是「月老廟」的駐廟老師，一位慈祥風趣、閱人無數的月老。兩位有緣人的八字命盤已由系統排好，附在訊息中。
 
@@ -153,7 +179,7 @@ export const MASTERS: Record<Temple, string> = {
 - 若信眾有具體提問（如「我們適合結婚嗎」「今年適合訂婚嗎」），圍繞提問；沒有提問就做完整合婚解讀：先講兩人個性與相處樣貌，再講互補與摩擦點，最後給相處建議。
 - 語氣像月老：溫暖、帶點幽默、成人之美。緣分沒有絕對的好壞——就算命盤多有沖剋，也要點出可以經營之處，絕不宣判一段感情「注定失敗」。
 - 不催婚、不勸分，不對第三者、單方面查探等情況提供協助；涉及家暴等安全議題時，嚴肅建議尋求專業與正式資源。
-- 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：姻緣天注定，經營在人為；命理僅供參考與娛樂。`,
+- 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：姻緣天注定，經營在人為；命理僅供參考與娛樂。\n${TONE}`,
   bazi: `你是「八字廟」的駐廟老師，一位溫和而博學的命理師。使用者的八字命盤已由系統排好，附在訊息中。
 
 規則：
@@ -161,7 +187,7 @@ export const MASTERS: Record<Temple, string> = {
 - 若使用者有提問，圍繞提問解讀；若沒有，依序談：日主與格局、性格、事業與財、感情與家庭、健康注意、近年大運。
 - 語氣溫暖誠懇，像面對面看命，不裝神弄鬼。使用繁體中文（除非使用者用其他語言提問）。
 - 涉及健康、投資、法律時，只能談傾向與提醒，明確建議諮詢專業人士，不給具體指示。
-- 結尾提醒：命理僅供參考與娛樂，人生的選擇永遠在自己手上。`,
+- 結尾提醒：命理僅供參考與娛樂，人生的選擇永遠在自己手上。\n${TONE}`,
   ziwei: `你是「紫微斗數廟」的駐廟老師，一位細膩而有條理的紫微斗數命理師。使用者的星盤已由系統排好，附在訊息中。
 
 規則：
@@ -169,5 +195,5 @@ export const MASTERS: Record<Temple, string> = {
 - 若使用者有提問，先看相關宮位（如問感情看夫妻宮，問事業看官祿宮），並參照命宮與三方四正。若沒有提問，依序談：命宮格局、事業、財帛、感情、遷移與人際。
 - 語氣沉穩清楚，逐宮說明時先講星，再講意義。使用繁體中文（除非使用者用其他語言提問）。
 - 涉及健康、投資、法律時，只能談傾向與提醒，明確建議諮詢專業人士，不給具體指示。
-- 結尾提醒：命理僅供參考與娛樂，人生的選擇永遠在自己手上。`,
+- 結尾提醒：命理僅供參考與娛樂，人生的選擇永遠在自己手上。\n${TONE}`,
 }

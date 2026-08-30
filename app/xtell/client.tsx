@@ -76,12 +76,13 @@ export default function XTellClient() {
 
 function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) {
   const t = useT()
-  const [birth, setBirth] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female' })
+  const [birth, setBirth] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false })
   // 月老廟 needs a second person. Defaults to the other gender purely as a
   // starting point — both rows are fully editable, a couple is whoever they are.
-  const [birth2, setBirth2] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'female' as 'male' | 'female' })
+  const [birth2, setBirth2] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'female' as 'male' | 'female', hourUnknown: false })
   const [entered, setEntered] = useState(false)
   const [chart, setChart] = useState<any>(null)
+  const [engine, setEngine] = useState<string | null>(null)
   const [showChart, setShowChart] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -126,6 +127,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error ?? 'failed')
       setChart(d.chart)
+      setEngine(d.engine ?? null)
       setEntered(true)
     } catch (e: any) { setErr(String(e?.message ?? e)) }
   }
@@ -226,7 +228,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
               <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} />
             </>
           ) : (
-            <BirthRow value={birth} onChange={setBirth} sel={sel} />
+            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei'} />
           )}
           <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
             <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
@@ -284,6 +286,9 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                     <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><BaziBoard chart={chart.b} /></div>
                   </div>
                 )}
+              {engine && (
+                <div style={{ ...mono, color: 'var(--muted2)', marginTop: 10 }}>{t('xtell.engine')}: {engine}</div>
+              )}
             </div>
           )}
 
@@ -425,11 +430,13 @@ function ZiweiBoard({ chart }: { chart: any }) {
 }
 
 
-function BirthRow({ label, value, onChange, sel }: {
+function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
   label?: string
-  value: { y: number; m: number; d: number; h: number; mi: number; gender: 'male' | 'female' }
+  value: { y: number; m: number; d: number; h: number; mi: number; gender: 'male' | 'female'; hourUnknown?: boolean }
   onChange: (v: any) => void
   sel: any
+  /** 紫微 cannot place 命宮 without an hour, so the checkbox hides there. */
+  allowUnknown?: boolean
 }) {
   const t = useT()
   return (
@@ -447,14 +454,20 @@ function BirthRow({ label, value, onChange, sel }: {
         {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
       </select>
       <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span>
-      <select style={sel} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
+      <select style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
         {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}</option>)}
       </select>
       :
-      <select style={sel} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
+      <select style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
         {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
       </select>
-      <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{shichenOf(value.h)}</span>
+      <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{value.hourUnknown ? '—' : shichenOf(value.h)}</span>
+      {allowUnknown && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', color: 'var(--muted)' }}>
+          <input type="checkbox" checked={!!value.hourUnknown} onChange={e => onChange({ ...value, hourUnknown: e.target.checked })} />
+          {t('xtell.hourunknown')}
+        </label>
+      )}
       {(['male', 'female'] as const).map(g => (
         <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
           <input type="radio" checked={value.gender === g} onChange={() => onChange({ ...value, gender: g })} />

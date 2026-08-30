@@ -14,6 +14,7 @@ import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, validBirth, MASTERS, type Temple } from '@/lib/xtell'
+import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
 
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     ? ziweiFacts(ziweiChart(body.birth), body.birth.gender)
     : temple === 'yuelao'
       ? yuelaoFacts(baziChart(body.birth), body.birth.gender, baziChart(body.birth2), body.birth2.gender)
-      : baziFacts(baziChart(body.birth), body.birth.gender)
+      : baziFacts(baziChart(body.birth), body.birth.gender, body.birth?.hourUnknown === true)
 
   // The chart rides in the SYSTEM slot with the master persona: every turn of
   // the conversation carries it natively, and the client can never overwrite
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
         },
         [],
         { userId: user.id },
-        { system: `${MASTERS[temple]}\n\n信眾的命盤（系統排定，勿更動）：\n${facts}`, search },
+        { system: `${MASTERS[temple]}\n\n信眾的命盤（系統排定，勿更動）：\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`, search },
       )
     },
   })

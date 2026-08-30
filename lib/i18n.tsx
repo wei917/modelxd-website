@@ -845,6 +845,8 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.yuelao.intro':{ en: 'Yue Lao has both charts in hand. Ask about your match — 合不合、何時訂婚 — or ask for the full 合婚 reading.', 'zh-Hant': '月老已經把兩張命盤都看過了。想問什麼都可以——合不合、何時適合訂婚——或直接請月老做完整合婚。', 'zh-Hans': '月老已经把两张命盘都看过了。想问什么都可以——合不合、何时适合订婚——或直接请月老做完整合婚。', ja: '月老は二人の命盤を見ています。相性でも時期でも、何でも聞いてください。', ko: '월하노인이 두 분의 명반을 모두 보았습니다. 궁합이든 시기든 무엇이든 물어보세요.' },
   'xtell.person1':     { en: 'Person 1', 'zh-Hant': '第一位', 'zh-Hans': '第一位', ja: '一人目', ko: '첫째 분' },
   'xtell.person2':     { en: 'Person 2', 'zh-Hant': '第二位', 'zh-Hans': '第二位', ja: '二人目', ko: '둘째 분' },
+  'xtell.engine':      { en: 'Chart engine', 'zh-Hant': '排盤引擎', 'zh-Hans': '排盘引擎', ja: '命盤エンジン', ko: '차트 엔진' },
+  'xtell.hourunknown': { en: 'Hour unknown', 'zh-Hant': '時辰不確定', 'zh-Hans': '时辰不确定', ja: '時刻不明', ko: '시각 모름' },
   'xtell.back':        { en: 'Back to the street', 'zh-Hant': '回到廟口', 'zh-Hans': '回到庙口', ja: '参道へ戻る', ko: '거리로 돌아가기' },
   'xtell.year':        { en: 'Y', 'zh-Hant': '年', 'zh-Hans': '年', ja: '年', ko: '년' },
   'xtell.month':       { en: 'M', 'zh-Hant': '月', 'zh-Hans': '月', ja: '月', ko: '월' },

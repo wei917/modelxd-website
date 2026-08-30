@@ -6,7 +6,7 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, validBirth, type Temple } from '@/lib/xtell'
+import { baziChart, ziweiChart, validBirth, ENGINES, type Temple } from '@/lib/xtell'
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const chart = temple === 'ziwei' ? ziweiChart(body.birth)
       : temple === 'yuelao' ? { a: baziChart(body.birth), b: baziChart(body.birth2) }
       : baziChart(body.birth)
-    return Response.json({ temple, chart })
+    return Response.json({ temple, chart, engine: ENGINES[temple] })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)
     return Response.json({ error: 'chart computation failed' }, { status: 500 })
