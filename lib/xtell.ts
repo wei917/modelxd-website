@@ -16,7 +16,7 @@
 import { Solar } from 'lunar-typescript'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei'
+export type Temple = 'bazi' | 'ziwei' | 'yuelao'
 
 export interface BirthInput {
   y: number; m: number; d: number; h: number; mi: number
@@ -117,6 +117,27 @@ export function ziweiFacts(c: ZiweiChart, gender: string): string {
   ].join('\n')
 }
 
+// ── 月老廟：合婚 ────────────────────────────────────────────────────────────
+//
+// Two people, two 八字 charts, one question: how do they fit. The engine is
+// the same solar-term-exact BaZi computation run twice; the labels 第一位/
+// 第二位 are deliberate — 合婚 tradition says 男方/女方, but two people are
+// whoever they are.
+
+export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender: string): string {
+  const one = (c: BaziChart, g: string, label: string) => {
+    const p = c.pillars
+    return [
+      `${label}（${g === 'male' ? '男' : '女'}）：`,
+      `  出生（國曆）：${c.solar}；農曆：${c.lunar}`,
+      `  四柱：${p.year.ganZhi} ${p.month.ganZhi} ${p.day.ganZhi} ${p.time.ganZhi}　日主：${c.dayMaster}`,
+      `  五行（干支）：${c.wuXing.join('，')}`,
+      c.daYun.length ? `  大運：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
+    ].filter(Boolean).join('\n')
+  }
+  return `${one(a, aGender, '第一位')}\n\n${one(b, bGender, '第二位')}`
+}
+
 // ── The masters ─────────────────────────────────────────────────────────────
 //
 // One persona per temple, server-held. The guardrails are the contract:
@@ -125,6 +146,14 @@ export function ziweiFacts(c: ZiweiChart, gender: string): string {
 // reading is exactly what the user can verify elsewhere.
 
 export const MASTERS: Record<Temple, string> = {
+  yuelao: `你是「月老廟」的駐廟老師，一位慈祥風趣、閱人無數的月老。兩位有緣人的八字命盤已由系統排好，附在訊息中。
+
+規則：
+- 這裡專看感情與姻緣：合婚。只根據提供的兩份命盤解讀——日主相性、五行互補與沖剋、年支生肖的合沖、日支（夫妻宮）的呼應、大運走向的同步。絕對不要自行推算或修改任何干支。
+- 若信眾有具體提問（如「我們適合結婚嗎」「今年適合訂婚嗎」），圍繞提問；沒有提問就做完整合婚解讀：先講兩人個性與相處樣貌，再講互補與摩擦點，最後給相處建議。
+- 語氣像月老：溫暖、帶點幽默、成人之美。緣分沒有絕對的好壞——就算命盤多有沖剋，也要點出可以經營之處，絕不宣判一段感情「注定失敗」。
+- 不催婚、不勸分，不對第三者、單方面查探等情況提供協助；涉及家暴等安全議題時，嚴肅建議尋求專業與正式資源。
+- 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：姻緣天注定，經營在人為；命理僅供參考與娛樂。`,
   bazi: `你是「八字廟」的駐廟老師，一位溫和而博學的命理師。使用者的八字命盤已由系統排好，附在訊息中。
 
 規則：

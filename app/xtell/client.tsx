@@ -22,7 +22,7 @@ import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
 import ProviderLogo from '../components/ProviderLogo'
 
-type Temple = 'bazi' | 'ziwei'
+type Temple = 'bazi' | 'ziwei' | 'yuelao'
 
 // The house default master: the latest good text model. One name to update
 // when the catalog moves on.
@@ -50,7 +50,7 @@ export default function XTellClient() {
 
       {!temple ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {(['bazi', 'ziwei'] as Temple[]).map(k => (
+          {(['bazi', 'ziwei', 'yuelao'] as Temple[]).map(k => (
             <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
               onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
               style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -77,6 +77,9 @@ export default function XTellClient() {
 function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) {
   const t = useT()
   const [birth, setBirth] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female' })
+  // 月老廟 needs a second person. Defaults to the other gender purely as a
+  // starting point — both rows are fully editable, a couple is whoever they are.
+  const [birth2, setBirth2] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'female' as 'male' | 'female' })
   const [entered, setEntered] = useState(false)
   const [chart, setChart] = useState<any>(null)
   const [showChart, setShowChart] = useState(false)
@@ -118,7 +121,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
     try {
       const res = await fetch('/api/xtell/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ temple, birth }),
+        body: JSON.stringify({ temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}) }),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error ?? 'failed')
@@ -145,7 +148,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            temple, birth, question: q, modelId: m.id, history,
+            temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}), question: q, modelId: m.id, history,
             search: search && ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search'),
           }),
         })
@@ -216,40 +219,23 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
 
       {!entered ? (
         <div style={{ ...card, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select style={sel} value={birth.y} onChange={e => setBirth({ ...birth, y: +e.target.value })}>
-              {Array.from({ length: 106 }, (_, i) => 2010 - i).map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span>
-            <select style={sel} value={birth.m} onChange={e => setBirth({ ...birth, m: +e.target.value })}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span>
-            <select style={sel} value={birth.d} onChange={e => setBirth({ ...birth, d: +e.target.value })}>
-              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span>
-            <select style={sel} value={birth.h} onChange={e => setBirth({ ...birth, h: +e.target.value })}>
-              {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}</option>)}
-            </select>
-            :
-            <select style={sel} value={birth.mi} onChange={e => setBirth({ ...birth, mi: +e.target.value })}>
-              {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
-            </select>
-            <span style={{ ...mono, color: 'var(--muted2)' }}>{shichenOf(birth.h)}</span>
-            {(['male', 'female'] as const).map(g => (
-              <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
-                <input type="radio" checked={birth.gender === g} onChange={() => setBirth({ ...birth, gender: g })} />
-                {t(`xtell.${g}`)}
-              </label>
-            ))}
+          {temple === 'yuelao' ? (
+            <>
+              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} />
+              <div style={{ height: 12 }} />
+              <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} />
+            </>
+          ) : (
+            <BirthRow value={birth} onChange={setBirth} sel={sel} />
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
             <span style={{ flex: 1 }} />
             <button onClick={enter} style={{
               padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
               fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
             }}>{t('xtell.enter')}</button>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 8 }}>{t('xtell.solar.note')}</div>
           {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
         </div>
       ) : (
@@ -290,7 +276,14 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           {/* The chart, hidden by default — for those who want to verify. */}
           {showChart && chart && (
             <div style={{ ...card, padding: '14px 16px' }}>
-              {temple === 'bazi' ? <BaziBoard chart={chart} /> : <ZiweiBoard chart={chart} />}
+              {temple === 'bazi' ? <BaziBoard chart={chart} />
+                : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
+                : (
+                  <div style={{ display: 'grid', gap: 14 }}>
+                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} /></div>
+                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><BaziBoard chart={chart.b} /></div>
+                  </div>
+                )}
             </div>
           )}
 
@@ -427,6 +420,47 @@ function ZiweiBoard({ chart }: { chart: any }) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+
+function BirthRow({ label, value, onChange, sel }: {
+  label?: string
+  value: { y: number; m: number; d: number; h: number; mi: number; gender: 'male' | 'female' }
+  onChange: (v: any) => void
+  sel: any
+}) {
+  const t = useT()
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
+      <select style={sel} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
+        {Array.from({ length: 106 }, (_, i) => 2010 - i).map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span>
+      <select style={sel} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
+        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}</option>)}
+      </select>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span>
+      <select style={sel} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
+        {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
+      </select>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span>
+      <select style={sel} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
+        {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}</option>)}
+      </select>
+      :
+      <select style={sel} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
+        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
+      </select>
+      <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{shichenOf(value.h)}</span>
+      {(['male', 'female'] as const).map(g => (
+        <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
+          <input type="radio" checked={value.gender === g} onChange={() => onChange({ ...value, gender: g })} />
+          {t(`xtell.${g}`)}
+        </label>
+      ))}
     </div>
   )
 }

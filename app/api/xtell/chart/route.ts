@@ -14,11 +14,15 @@ export async function POST(req: Request) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
-  const temple: Temple = body?.temple === 'ziwei' ? 'ziwei' : 'bazi'
+  const temple: Temple = body?.temple === 'ziwei' ? 'ziwei' : body?.temple === 'yuelao' ? 'yuelao' : 'bazi'
   if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
+  if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
 
   try {
-    const chart = temple === 'ziwei' ? ziweiChart(body.birth) : baziChart(body.birth)
+    // 月老廟 is two BaZi charts — the engine run twice, labeled a and b.
+    const chart = temple === 'ziwei' ? ziweiChart(body.birth)
+      : temple === 'yuelao' ? { a: baziChart(body.birth), b: baziChart(body.birth2) }
+      : baziChart(body.birth)
     return Response.json({ temple, chart })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)

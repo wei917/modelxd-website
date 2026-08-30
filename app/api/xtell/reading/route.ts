@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, validBirth, MASTERS, type Temple } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, validBirth, MASTERS, type Temple } from '@/lib/xtell'
 
 const LOG = '[xtell/reading]'
 
@@ -27,9 +27,10 @@ export async function POST(req: Request) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
-  const temple: Temple = body?.temple === 'ziwei' ? 'ziwei' : 'bazi'
+  const temple: Temple = body?.temple === 'ziwei' ? 'ziwei' : body?.temple === 'yuelao' ? 'yuelao' : 'bazi'
   const question = typeof body?.question === 'string' ? body.question.slice(0, 2000) : ''
   if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
+  if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
   if (typeof body?.modelId !== 'string') return Response.json({ error: 'modelId required' }, { status: 400 })
 
   const model = await getModelById(body.modelId)
@@ -45,7 +46,9 @@ export async function POST(req: Request) {
 
   const facts = temple === 'ziwei'
     ? ziweiFacts(ziweiChart(body.birth), body.birth.gender)
-    : baziFacts(baziChart(body.birth), body.birth.gender)
+    : temple === 'yuelao'
+      ? yuelaoFacts(baziChart(body.birth), body.birth.gender, baziChart(body.birth2), body.birth2.gender)
+      : baziFacts(baziChart(body.birth), body.birth.gender)
 
   // The chart rides in the SYSTEM slot with the master persona: every turn of
   // the conversation carries it natively, and the client can never overwrite
