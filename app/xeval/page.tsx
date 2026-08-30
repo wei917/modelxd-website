@@ -535,6 +535,19 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
   return (
     <>
+      <div style={{ maxWidth: 760, margin: '0 0 22px', padding: '14px 18px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em', color: 'var(--muted)', marginBottom: 8 }}>
+          {t('xeval.about').toUpperCase()}
+        </div>
+        <p style={{ fontSize: 13.5, color: 'var(--muted2)', lineHeight: 1.7, margin: 0 }}>
+          {label === 'Harvey LAB' ? t('xeval.about.lab') : t('xeval.about.tb')}{' '}
+          <a href={label === 'Harvey LAB' ? 'https://github.com/harveyai/harvey-labs' : 'https://hub.harborframework.com/datasets/terminal-bench/terminal-bench-2-1'}
+             target="_blank" rel="noopener noreferrer"
+             style={{ color: 'var(--red)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            {t('xeval.about.source')} →
+          </a>
+        </p>
+      </div>
       <p style={{ fontSize: 14.5, color: 'var(--muted2)', lineHeight: 1.7, maxWidth: 760, margin: '0 0 22px' }}>
         {(label === 'Harvey LAB' ? t('xeval.lead.lab') : t('xeval.lead.tb'))
           .replace('{set}', label)
