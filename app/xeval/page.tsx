@@ -345,8 +345,6 @@ export default function XEvalPage() {
             <FilterGroup label={t('xeval.filter.tier')} items={allTiers} sel={selTier} setter={setSelTier} />
           </div>
 
-          <FrontierChart rows={shown} domainRows={ratings} perEntry={perEntry} avg={avg} />
-
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['all', 'best'] as const).map(v => (
               <button
@@ -418,6 +416,11 @@ export default function XEvalPage() {
               </div>
             )}
           </div>
+
+
+          {/* Chart under the table: the ranking is the answer, the
+              cost-vs-rating frontier is the explanation. */}
+          <FrontierChart rows={shown} domainRows={ratings} perEntry={perEntry} avg={avg} />
 
           {/* Methodology — the disclosure IS the differentiator. */}
           <section id="xeval-methodology" style={{ marginTop: 32, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>
