@@ -19,7 +19,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useT, useLang } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
-import AttachmentButton, { commitAttachments, type Attachment } from '../components/AttachmentButton'
+import AttachmentButton, { commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
+import { sliceAudioForVideo } from '../../lib/audio-normalize'
 import MusicVideoSetup from '../components/MusicVideoSetup'
 import SocialPostSetup from '../components/SocialPostSetup'
 import AnimationSetup from '../components/AnimationSetup'
@@ -536,6 +537,17 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   }
 
   const pushBubble = (b: Bubble) => setBubbles(prev => [...prev, b])
+
+  // The board's SONG, mirrored from the bubbles for async paths (SYNC scene
+  // slicing reads it mid-generation, where state would be stale). Songs ride
+  // on user bubbles (`songs`, never `atts`), so this survives restores too.
+  const songRef = useRef<{ storagePath: string; bucket?: string; mediaType: string; fileName: string } | null>(null)
+  useEffect(() => {
+    const song = [...bubbles].reverse()
+      .flatMap(b => Array.isArray((b as any)?.songs) ? (b as any).songs : [])
+      .find((s: any) => s?.storagePath)
+    songRef.current = song ?? null
+  }, [bubbles])
   const patchLastGen = (patch: Partial<Bubble>) =>
     setBubbles(prev => {
       const i = prev.map(b => b.role).lastIndexOf('gen')
@@ -905,8 +917,15 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         const stillModel = sc?.still_model_id
           ? ` Use the still model the card names: model_id="${sc.still_model_id}"${sc.still_model_name ? ` (${sc.still_model_name})` : ''}.`
           : ''
+        // A SYNC card (sync_from_s/sync_to_s) is sung to its slice of the
+        // real track: the platform attaches the slice automatically at
+        // generation, the take rides reference mode (the API refuses a
+        // pinned frame with audio), and the cast REALLY sings.
+        const isSync = Number.isFinite(Number(sc?.sync_from_s)) && Number.isFinite(Number(sc?.sync_to_s))
         const msgs = [...protocol, { role: 'user', content: kind === 'still'
           ? `Generate the KEY STILL for storyboard scene ${sceneId} now: call start_generation with medium="image", scene_id="${sceneId}", an image recipe (image_edit when this scene has references, else text_to_image), every reference this scene should use, and this scene's shot text as the prompt.${stillModel}${chainStill}${silent}${prereq} This is the cheap look test — do NOT generate the video, do not re-plan, and do not re-confirm.`
+          : isSync
+          ? `Generate SYNC storyboard scene ${sceneId} now — it is performed to the song's own audio, ${Number(sc.sync_from_s)}s–${Number(sc.sync_to_s)}s, which the platform slices and attaches to this run automatically (do not ask for a file, do not use use_files for audio). Call start_generation with scene_id="${sceneId}", medium="video", the card's audio-capable model, its recipe, duration and shot text; do NOT set from_still — with audio the cast rides as reference images, so likeness carries but the approved framing does not: say that trade in one short line. The cast REALLY sings in this shot — end the prompt with "sings the exact words heard in the audio", and do not write performance-only language. Use every cast reference this scene should carry via use_files. Do not re-plan and do not re-confirm.`
           : hasStill
             ? (sc?.recipe === 'reference_frames'
               // The card's model cannot open on a still — it speaks only
@@ -1222,6 +1241,47 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType,
         fileName: a.fileName, fileSize: a.fileSize,
       }))
+    }
+
+    // ── SYNC scene: the song's own bar drives the take ─────────────────────
+    // A card carrying sync_from_s/sync_to_s generates WITH that window of the
+    // uploaded song as reference audio: slice client-side (WebAudio — same
+    // primitive as the composer's ≤15s normalizer), upload the slice, and
+    // ride it on the run with port 'reference_audio' so the provider router
+    // seats it correctly. A SYNC scene that cannot get its slice BAILS —
+    // shooting it silent would return an invented mouth the user explicitly
+    // paid to avoid, and a failed prep costs nothing.
+    if (medium === 'video' && genScene
+        && Number.isFinite(Number(genScene.sync_from_s)) && Number.isFinite(Number(genScene.sync_to_s))) {
+      const song = songRef.current
+      if (!song) {
+        return bail('This is a SYNC scene but no song is attached to this conversation — ask the user to attach the track (mp3/wav/m4a), then retry.')
+      }
+      try {
+        const sb = createSupabaseBrowser()
+        const { data: signed } = await sb.storage
+          .from(song.bucket || 'xcreate-user-files')
+          .createSignedUrl(song.storagePath, 600)
+        if (!signed?.signedUrl) throw new Error('could not sign the song')
+        const blob = await fetch(signed.signedUrl).then(r => r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`)))
+        const songFile = new File([blob], song.fileName || 'song.mp3', { type: song.mediaType || 'audio/mpeg' })
+        const sliced = await sliceAudioForVideo(songFile, Number(genScene.sync_from_s), Number(genScene.sync_to_s))
+        if (!sliced) throw new Error('the browser could not decode the song')
+        const [mc] = await commitAttachments([pendingAttachment(sliced.file, 'xcreate')])
+        if (!mc?.storagePath) throw new Error('slice upload failed')
+        payload.attachments = [...(payload.attachments ?? []), {
+          storagePath: mc.storagePath, bucket: mc.bucket, mediaType: mc.mediaType,
+          fileName: mc.fileName, fileSize: mc.fileSize, port: 'reference_audio',
+        }]
+        console.info(`[xdirect:sync] song slice ${Number(genScene.sync_from_s)}–${Number(genScene.sync_to_s)}s attached (${sliced.durationSeconds.toFixed(1)}s wav)`)
+        // The approved key still can't be the pinned frame (the API refuses
+        // first_frame + audio) but it is still the best likeness reference
+        // there is — ride it as the parent, which both feeds it in as a
+        // reference image and keeps the lineage honest on the board.
+        if (!payload.parentIds && genScene.still_row_id) payload.parentIds = [genScene.still_row_id]
+      } catch (err) {
+        return bail(`The SYNC slice could not be prepared (${err instanceof Error ? err.message : String(err)}) — re-attach the song and retry, or clear the scene's sync window to shoot it performance-only.`)
+      }
     }
 
     let postRes: Response

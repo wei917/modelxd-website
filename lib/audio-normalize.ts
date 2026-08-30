@@ -56,7 +56,40 @@ export async function normalizeAudioForVideo(file: File, maxSeconds = 15): Promi
   }
 }
 
-function encodeWavPcm16(buf: AudioBuffer, channels: number, frames: number): ArrayBuffer {
+/** Cut [fromS, toS) out of `file` and return it as a WAV the sync models
+ *  accept. This is the scene-slice primitive the SYNC storyboard fields
+ *  (`sync_from_s`/`sync_to_s`) resolve through: the user uploads the SONG
+ *  once, and each sung scene's generation carries exactly its own window.
+ *  The window is clamped to the file and to `maxSeconds` (H3's hard cap);
+ *  returns null when the browser can't decode or the window is empty. */
+export async function sliceAudioForVideo(
+  file: File, fromS: number, toS: number, maxSeconds = 15,
+): Promise<NormalizedAudio | null> {
+  let buf: AudioBuffer
+  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+  try {
+    buf = await ctx.decodeAudioData(await file.arrayBuffer())
+  } catch {
+    return null
+  } finally {
+    ctx.close().catch(() => {})
+  }
+  const from = Math.max(0, Math.min(fromS, buf.duration))
+  const to   = Math.max(from, Math.min(toS, buf.duration, from + maxSeconds))
+  const startFrame = Math.floor(from * buf.sampleRate)
+  const frames     = Math.floor((to - from) * buf.sampleRate)
+  if (frames < buf.sampleRate * 0.5) return null  // <0.5s of audio is a mistake, not a take
+  const channels = Math.min(2, buf.numberOfChannels)
+  const wav  = encodeWavPcm16(buf, channels, frames, startFrame)
+  const base = file.name.replace(/\.[^.]+$/, '')
+  return {
+    file: new File([wav], `${base}-${from.toFixed(1)}-${to.toFixed(1)}s.wav`, { type: 'audio/wav' }),
+    trimmed: true,
+    durationSeconds: frames / buf.sampleRate,
+  }
+}
+
+function encodeWavPcm16(buf: AudioBuffer, channels: number, frames: number, startFrame = 0): ArrayBuffer {
   const sampleRate = buf.sampleRate
   const bytesPerFrame = channels * 2
   const dataSize = frames * bytesPerFrame
@@ -75,7 +108,7 @@ function encodeWavPcm16(buf: AudioBuffer, channels: number, frames: number): Arr
   let off = 44
   for (let i = 0; i < frames; i++) {
     for (let c = 0; c < channels; c++) {
-      const s = Math.max(-1, Math.min(1, chans[c][i]))
+      const s = Math.max(-1, Math.min(1, chans[c][startFrame + i]))
       v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true)
       off += 2
     }

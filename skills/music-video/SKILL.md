@@ -11,7 +11,7 @@ metadata:
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"
   title: "Music Video"
-  version: "3.6"
+  version: "4.0"
   category: music
   order: "1"
   aspect: "ask"
@@ -96,6 +96,32 @@ Apply it to EVERY generation (aspect_ratio) and name it in every shot prompt.
 If the user already stated an orientation, skip the ask. If they change their
 mind later, re-frame all scenes — one video, one aspect.
 
+## Treatments — when the user wants VERSIONS, sell directions, not re-rolls
+
+A client asking for "a few versions to choose from" does not want the same
+board generated twice. They want DIRECTIONS — and directions are cheap to
+show and expensive to shoot, so the order is: show first, shoot after.
+
+- **Propose 3 distinct treatments in chat**, one line each, genuinely far
+  apart (e.g. for one song: ① the reference video's look, performance-led;
+  ② narrative — the story the lyrics imply, face rationed; ③ concept — one
+  world, one accent colour, typography-forward). Name each treatment.
+- **Pre-viz before you shoot: each treatment is a CONTACT SHEET**, not a
+  film — 4-6 key stills (the chorus hook frame, one verse frame, the turn,
+  the last shot) at still prices. A whole treatment previews for under $2;
+  a wrong direction shot as video costs twenty times that. Build each
+  chosen treatment's sheet on its OWN board (one conversation per
+  treatment) so boards, takes and cuts never cross-contaminate, and name
+  the board after the treatment.
+- **The user picks or mixes.** Only the winning treatment(s) go to full
+  storyboard and motion. Iterating means pointing at frames — regenerate
+  THIS still, swap THIS world — never re-explaining the video.
+- **The cast sheet is shared.** Lock the cast ONCE (Step 0) and reuse the
+  approved sheet across every treatment board via its asset card — the
+  face must not re-audition per version.
+- Full-length versions of MORE than one treatment is a spend decision:
+  state the per-version total and let the user choose how many to shoot.
+
 ## Step 0 — LOCK THE CAST BEFORE YOU SHOOT ANYTHING
 
 This is the step that separates a directed MV from a pile of clips, and it is
@@ -110,7 +136,12 @@ it in this order:
 1. **Face.** Generate the face on its own until the bone structure, eyes and
    presence are right. If the user attached photos of a subject, this is an
    image_edit from those; if not, it is a text_to_image you iterate. Judge it
-   at still prices, not clip prices.
+   at still prices, not clip prices. **Anchors get PARALLEL takes, not serial
+   tweaks**: for the cast sheet (and each world master below), offer 3-4
+   candidates in one round and let the user PICK — selection converges in one
+   round where prompt-nudging takes five, and picking a face is a decision
+   only the user can make anyway. Serial one-variable iteration is for
+   refining the chosen one, not for first contact.
 2. **Wardrobe, itemised.** Write every element that must not drift, explicitly
    and by name: garment, fabric, colour, neckline, sleeve length, belt,
    earrings, rings, nail colour, hair length and parting, makeup register.
@@ -265,6 +296,88 @@ words as typography. That is fine for a song the user made or owns. For a
 commercial track it reproduces the lyrics verbatim on screen, so do not put
 them up unless the user has said the song is theirs — offer a typographic
 treatment that uses a title or a single phrase they wrote instead.
+
+## The world registry — lock PLACES the way you lock people
+
+Face drift has a twin nobody guards against: WORLD drift. A chorus that
+returns to a slightly different stage each time reads as broken exactly the
+way a changed face does. The fix is the same one: a canonical asset,
+generated once, referenced always.
+
+- **One LOOK asset per recurring world**, on the shelf beside the cast:
+  `LOOK · chorus stage`, `LOOK · verse alley` — a wide MASTER FRAME of the
+  place with nobody in it (or the cast small), shot in the bible's grade.
+  A section that recurs (every chorus, every verse) MUST have its world
+  locked before its scenes generate. One-off worlds (the bridge) may stay
+  prose.
+- **Wardrobe changes are new assets, not new adjectives.** An outfit change
+  per section is MV grammar — so each outfit is its own turnaround
+  (`CAST · her — chorus look`), fused from the approved face. Scenes chain
+  from the outfit their section wears. Two outfits sharing one prose
+  description WILL cross-contaminate.
+- **Derive coverage, don't re-imagine it.** Every key still inside a world
+  is an image_edit FROM that world's master (or from the previous cut's
+  still): "same alley, same light — now framed as a close-up on her at the
+  wall, camera low". Deriving keeps layout, light and eyelines coherent
+  across the section's cuts; fresh text-to-image per cut is how the same
+  place comes back different. The mask tool (region editing on GPT Image 2)
+  is made for the surgical version: repaint HER into the frame, keep the
+  world's pixels untouched.
+- The shelf is the registry: cast sheets, outfit sheets, world masters, key
+  props. If a scene's shot text names a person, place or prop that has no
+  shelf asset and recurs anywhere else on the board, that is a gap to fix
+  BEFORE generating, not after the drift shows.
+
+## Scene length discipline — the duration is the song's, not yours
+
+Every card's `duration_s` must be DERIVED and defensible, never a default.
+The song already wrote the edit; your job is to transcribe it:
+
+1. **A scene covers a lyric slice; its duration IS that slice** (next
+   stamp − this stamp), rounded to whole seconds only at the end. A 3.2s
+   line is a 3s cut, not a 6s one with dead air.
+2. **Cut lengths carry meaning.** Inserts and gesture beats 2-3s; standard
+   performance/narrative cuts 3-6s; a held emotional turn or hook frame
+   6-8s; longer than 8s only for a genuine one-er the prompt choreographs
+   second by second. A board of uniform 6s cards is un-directed — vary
+   durations WITH the music's energy (fast section, short cuts).
+3. **Model floors and ceilings are hard**: HappyHorse animates 3-15s (a 2s
+   card fails at the provider — hit live). SYNC takes: H3 4-15s hard, plan
+   9-12s; Wan 3.0 caps 30s on paper but plan it like H3 until probed. A
+   sub-3s musical beat rides inside a longer take (choreograph the beat in
+   the prompt) or joins the neighbouring cut; never pad a short line to
+   fit a floor without saying so.
+4. **The ledger must close.** Σ(scene durations) = song length (or the
+   segment being filmed), within ±1 bar. Under-covered sections play as
+   frozen frames in the cut; over-coverage is money spent on footage the
+   edit must throw away. Say the ledger in one line with the plan: "12
+   scenes / 64s over a 63.8s segment."
+5. **Every duration is audible.** If asked why a card is 4s, the answer is
+   a lyric stamp or a beat count, never "felt right".
+
+## The producer check — run it BEFORE the first ▶
+
+After the storyboard is set and before anything generates, audit your own
+board and post the result as a short report in chat — findings and fixes,
+never silent edits (the board is the user's; you propose, they dispose).
+Check, at minimum:
+
+- **Ledger**: Σ durations = song/segment length ±1 bar; every section
+  covered; no scene under its model's floor or over its cap.
+- **Recurrence**: the chorus visual actually recurs (same world asset, same
+  hook frame family) each time the chorus returns.
+- **Bindings**: every performance scene chains from a locked cast/outfit
+  sheet; every recurring world has its LOOK asset; no proper names in any
+  shot text; `no_speech` true everywhere except SYNC scenes.
+- **SYNC sanity**: each SYNC scene's slice is 4-15s, starts and ends on a
+  beat edge, and its card admits the frame trade (likeness rides
+  references, the pinned framing does not).
+- **Story**: first and last cut are not interchangeable; the turn exists on
+  a specific card.
+
+Report format: one ✓/⚠ line per check, then "N fixes needed" and what you
+propose. All ✓ = say the total price and stop. This costs nothing and
+catches every expensive mistake this file knows about.
 
 ## Section-to-image grammar
 
@@ -466,9 +579,16 @@ lands.
 
 The rules, all probed live on H3 (Aug 14):
 
-- **The scene's audio slice is the input.** Slice the user's song by the
-  scene's timestamps and attach it (reference audio is FREE as input on H3).
-  The prompt still ends with: "She sings the exact words heard in the audio."
+- **The scene's audio slice is the input — and the platform slices it for
+  you.** Set `sync_from_s` and `sync_to_s` on the scene card (seconds into
+  the UPLOADED SONG, from the transcript's stamps, snapped to beat edges).
+  When that scene generates, the board slices the user's uploaded song to
+  exactly that window and attaches it as the run's reference audio — do NOT
+  ask the user for a trimmed file and do NOT try to pass the song via
+  use_files (audio never rides use_files). A SYNC scene is therefore:
+  `no_speech: false` + `sync_from_s`/`sync_to_s` + an audio-capable model on
+  the card. The prompt still ends with: "She sings the exact words heard in
+  the audio."
 - **SYNC costs the pinned frame — on every sync model, confirmed.** Frame mode
   and reference mode are exclusive: with audio present, the cast images ride
   as reference_image — LIKENESS carries, the approved still's exact framing
@@ -497,11 +617,24 @@ The rules, all probed live on H3 (Aug 14):
 
 ### H3 attachment tags and in-take cuts (probed live, Aug 15) — H3 ONLY
 
-This whole subsection is H3 prompt vocabulary. It is NOT portable: nothing
-here has been shown to work on Wan 3.0, and a `<Picture 1>` tag a model does
-not understand becomes literal text in the prompt rather than a reference.
-On Wan 3.0, bind identity in prose and keep one shot setup per take until
-someone probes otherwise.
+The ATTACHMENT TAGS in this subsection are H3 prompt vocabulary and NOT
+portable: a `<Picture 1>` tag a model does not understand becomes literal
+text in the prompt rather than a reference. On Wan 3.0, bind identity in
+prose until someone probes otherwise.
+
+**In-take CUTS, however, ARE portable — probed live on HappyHorse 1.1
+(Aug 30).** An 8s happyhorse-1.1-t2v generation prompted as `CUT 1 (first
+4 seconds): …` / `CUT 2 (last 4 seconds): hard cut to …` delivered a real
+hard cut at the midpoint: two distinct framings (medium walking shot →
+low-angle close-up), same woman, same wardrobe, same lane, with scripted
+in-cut business executed — through the production path's prompt_extend.
+So SEGMENTS are a general grammar, not an H3 trick: prefer one 8-12s
+generation carrying 2-3 sub-cuts (each written on its own `CUT n:` line
+with its own framing and business, split at musical boundaries) over a
+row of 3-4s single-shot cards. Fewer stitches, coherent light and layout
+across the cuts, TV pacing. Keep single-shot cards for beats that truly
+stand alone. Wan 3.0 remains unprobed for CUT structure — plan
+single-setup takes there until tested.
 
 H3's prompt can ADDRESS its attachments by position — `<Picture 1>`,
 `<Picture 2>`, `<Audio 1>`, numbered in attachment order (images first,

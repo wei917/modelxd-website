@@ -41,6 +41,12 @@ export type StoryScene = {
   /** The user asked for straight-to-video on this scene. */
   direct?: boolean
   no_speech?: boolean
+  /** SYNC scene: the window of the UPLOADED SONG (seconds) this shot is
+   *  performed to. At generation time the client slices the song to this
+   *  window and attaches it as reference audio (lib/audio-normalize
+   *  sliceAudioForVideo) — the director sets timestamps, never files. */
+  sync_from_s?: number
+  sync_to_s?: number
   /** Card-level reference uploads (owner, Aug 8). Board-owned: the user
    *  puts them there, the director only ever READS them (as filenames in
    *  the storyboard context) — generation for that scene consumes them. */
@@ -97,6 +103,15 @@ export function cleanScenes(raw: unknown): StoryScene[] | null {
       ...((sc as any).direct === true ? { direct: true } : {}),
       ...((sc as any).no_speech === true ? { no_speech: true } : {}),
       ...((sc as any).asset === true ? { asset: true } : {}),
+      // SYNC window: kept only when it is a real, ordered, sub-30-minute
+      // pair — a malformed window silently dropping is better than one that
+      // slices the wrong bar of the song.
+      ...((() => {
+        const f = Number((sc as any).sync_from_s), t = Number((sc as any).sync_to_s)
+        return Number.isFinite(f) && Number.isFinite(t) && f >= 0 && t > f && t <= 1800
+          ? { sync_from_s: Math.round(f * 10) / 10, sync_to_s: Math.round(t * 10) / 10 }
+          : {}
+      })()),
       // Round-tripped like still_row_id: the CLIENT writes this when the user
       // answers the cast question on the card, so a later set_storyboard must
       // not strip their answer and put the question back.
@@ -191,6 +206,8 @@ export const TOOLS: any[] = [
               cast_source: { type: 'string', enum: ['ask', 'upload', 'ai'], description: 'ASSET CARDS ONLY, and only for a cast sheet of a PERSON. Set "ask" whenever you are inventing a lead the user has not given you photos of — the card then offers them both roads before a face is generated, instead of you quietly choosing one. Set "upload" when their photos already define this person, and "ai" only when they have explicitly said to invent one. Default to "ask": an original cast is a fine outcome, but it should be a decision the user made rather than one they discover after an invented stranger has been shot and paid for. This never blocks the board — "create one" stays a single click.' },
               no_speech:  { type: 'boolean', description: 'PERFORMANCE ONLY — the cast never sings, speaks or mouths words in this shot. DEFAULT TRUE on a music video scene: a model with no audio input has never heard the song, so it invents mouth articulation from the language the PROMPT is written in and it always reads wrong. Set FALSE only on a SYNC scene — one shot by an audio-capable model (Wan 3.0, MiniMax H3) with that scene\'s slice of the actual song attached, where the lips follow the real track. One board can hold both: the sung chorus on an audio model, the narrative B-roll on a keyframe model.' },
               recipe:     { type: 'string', description: 'mode string copied exactly from that model\'s modes' },
+              sync_from_s: { type: 'number', description: 'SYNC scenes only: where this shot\'s performance STARTS in the uploaded song, in seconds (from the transcript\'s timestamps, snapped to a beat edge). Setting sync_from_s + sync_to_s makes this a SYNC scene: at generation time the platform slices the user\'s uploaded song to exactly this window and attaches it as the run\'s reference audio — never ask the user for a trimmed file. Pair with no_speech:false and an audio-capable video model. Window must be 4-15s.' },
+              sync_to_s:   { type: 'number', description: 'SYNC scenes only: where the performance ENDS in the uploaded song, in seconds. See sync_from_s.' },
               estimate:   { type: 'number', description: 'estimated $ for THIS scene at duration_s' },
             },
             required: ['id', 'title', 'script', 'shot', 'duration_s'],

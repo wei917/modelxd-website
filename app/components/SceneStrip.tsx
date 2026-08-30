@@ -81,10 +81,17 @@ export type Scene = {
   cast_source?: 'ask' | 'upload' | 'ai'
   /** PERFORMANCE ONLY — the cast acts, never appears to sing or speak
    *  (owner, Aug 11: "I don't need the model says anything. They just act.
-   *  I will mix audio later."). There is no lip-sync on this product, so
-   *  invented articulation is always wrong; this makes the absence a
-   *  deliberate direction instead of a defect. */
+   *  I will mix audio later."). On a model with no audio input, invented
+   *  articulation is always wrong; this makes the absence a deliberate
+   *  direction. Real lip-sync exists on the SYNC path below — the two are
+   *  mutually exclusive per scene. */
   no_speech?: boolean
+  /** SYNC scene: this shot is PERFORMED to the song, and these mark its
+   *  window (seconds into the uploaded track). Generation slices the song
+   *  to this window client-side and attaches it as reference audio; the
+   *  card wears a ♪ badge so the sung takes are visible on the strip. */
+  sync_from_s?: number
+  sync_to_s?: number
   /** Every video row this cut has produced — the active take plus its
    *  alternates. Binding is by row identity, never prompt text. */
   takes?: string[]
@@ -594,6 +601,15 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                   color: s.direct ? 'var(--muted2)' : 'var(--red)',
                 }}
               >{s.direct ? t('xd.sb.mode.direct') : t('xd.sb.mode.keyframe')}</button>
+              {Number.isFinite(Number(s.sync_from_s)) && Number.isFinite(Number(s.sync_to_s)) && (
+                <span
+                  title={`SYNC — sung to the track ${Number(s.sync_from_s)}s–${Number(s.sync_to_s)}s; the song slice is attached automatically at generation`}
+                  style={{
+                    ...label, flexShrink: 0, padding: '1px 6px', borderRadius: 999,
+                    border: '1px solid #7c3aed55', background: '#7c3aed14', color: '#7c3aed',
+                  }}
+                >♪ {Number(s.sync_from_s)}–{Number(s.sync_to_s)}s</span>
+              )}
               <input
                 value={s.title}
                 onChange={e => patch(s.id, { title: e.target.value.slice(0, 80) })}
