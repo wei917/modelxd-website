@@ -231,8 +231,9 @@ explain when asked: the CHART is computed exactly by open calendar engines
 belongs to the previous 干支 year; iztro for 紫微) and is shown for the user
 to verify against any 排盤 site — collapsed behind「查看命盤」so the room
 stays simple. Casting the chart is free. The READING is a conversation, same
-composer as XDirect: up to TWO masters can be seated (each answers every
-question), the default master is preselected (currently GPT-5.6 Sol), web
+composer as XDirect: up to TWO masters can be seated — their answers
+render SIDE BY SIDE and the user picks one to continue with, same pattern
+as XCreate, the default master is preselected (currently GPT-5.6 Sol), web
 search can be enabled where a seated model supports it, and each reply is
 billed at that model's listed price with the cost shown under the reply. Readings are for reflection and entertainment, never advice —
 health, money and legal questions belong with professionals.

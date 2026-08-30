@@ -830,6 +830,7 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.title':       { en: 'The temple street', 'zh-Hant': '廟口一條街', 'zh-Hans': '庙口一条街', ja: '占いの参道', ko: '운세 거리' },
   'xtell.enter':       { en: 'Enter the temple', 'zh-Hant': '進廟', 'zh-Hans': '进庙', ja: '入廟する', ko: '입장' },
   'xtell.addmaster':   { en: 'Second master', 'zh-Hant': '請第二位老師', 'zh-Hans': '请第二位老师', ja: 'もう一人の老師', ko: '두 번째 스승' },
+  'xtell.choose':      { en: 'Continue with this master', 'zh-Hant': '由這位老師續批', 'zh-Hans': '由这位老师续批', ja: 'この老師と続ける', ko: '이 스승과 계속' },
   'xtell.viewchart':   { en: 'View the chart', 'zh-Hant': '查看命盤', 'zh-Hans': '查看命盘', ja: '命盤を見る', ko: '명반 보기' },
   'xtell.hidechart':   { en: 'Hide the chart', 'zh-Hant': '收起命盤', 'zh-Hans': '收起命盘', ja: '命盤を閉じる', ko: '명반 접기' },
   'xtell.bazi.intro':  { en: 'The master has your chart. Ask anything — career, love, this year — or just say 請老師看命.', 'zh-Hant': '老師已經看過你的命盤。想問什麼都可以——事業、感情、今年運勢——或直接說「請老師看命」。', 'zh-Hans': '老师已经看过你的命盘。想问什么都可以——事业、感情、今年运势——或直接说"请老师看命"。', ja: '老師はあなたの命盤を見ています。仕事・恋愛・今年の運勢など、何でも聞いてください。', ko: '스승이 이미 당신의 명반을 보았습니다. 일·사랑·올해 운세 등 무엇이든 물어보세요.' },

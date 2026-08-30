@@ -191,6 +191,20 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const doneAssistant = (idxOf: () => number, cost: number) =>
     setTurns(ts => ts.map((tn, i) => (i === idxOf() ? { ...tn, cost } : tn)))
 
+  /** Group the flat transcript into rounds: one user turn plus every reply
+   *  that followed it, so replies render as columns. */
+  const rounds = (ts: Turn[]) => {
+    const out: Array<{ user: Turn | null; replies: Turn[] }> = []
+    for (const tn of ts) {
+      if (tn.role === 'user') out.push({ user: tn, replies: [] })
+      else {
+        if (out.length === 0) out.push({ user: null, replies: [] })
+        out[out.length - 1].replies.push(tn)
+      }
+    }
+    return out
+  }
+
   const sel = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 13 }
 
   return (
@@ -287,20 +301,44 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                 {t(`xtell.${temple}.intro`)}
               </div>
             )}
-            {turns.map((tn, i) => tn.role === 'user' ? (
-              <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '82%', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, whiteSpace: 'pre-wrap' }}>
-                {tn.content}
-              </div>
-            ) : (
-              <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '86%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <ProviderLogo provider={(tn as any).provider} size={13} />
-                  <span style={{ ...mono, color: 'var(--muted2)' }}>{(tn as any).name}</span>
-                  {typeof (tn as any).cost === 'number' && (tn as any).cost > 0 && (
-                    <span style={{ ...mono, color: 'var(--muted2)' }}>· ${(tn as any).cost.toFixed(4)}</span>
-                  )}
-                </div>
-                {tn.content || <span style={{ color: 'var(--muted2)' }}>…</span>}
+            {/* Rounds: a user bubble, then every master's reply to it SIDE BY
+                SIDE — and while two masters are seated, each reply carries a
+                選這位老師 button that dismisses the other seat and continues
+                the conversation with the chosen one. Same shape as XCreate:
+                compare side by side, pick one to keep talking to. Past rounds
+                keep their columns after a choice — they are the record of the
+                comparison that led to it. */}
+            {rounds(turns).map((round, ri) => (
+              <div key={ri} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {round.user && (
+                  <div style={{ alignSelf: 'flex-end', maxWidth: '82%', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, whiteSpace: 'pre-wrap' }}>
+                    {round.user.content}
+                  </div>
+                )}
+                {round.replies.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${round.replies.length}, 1fr)`, gap: 10, alignItems: 'start' }}>
+                    {round.replies.map((tn: any, j: number) => (
+                      <div key={j} style={{ background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, whiteSpace: 'pre-wrap', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          <ProviderLogo provider={tn.provider} size={13} />
+                          <span style={{ ...mono, color: 'var(--muted2)' }}>{tn.name}</span>
+                          {typeof tn.cost === 'number' && tn.cost > 0 && (
+                            <span style={{ ...mono, color: 'var(--muted2)' }}>· ${tn.cost.toFixed(4)}</span>
+                          )}
+                          <span style={{ flex: 1 }} />
+                          {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
+                            <button onClick={() => !busy && setMasters(ms => ms.filter(x => x.id === tn.modelId))}
+                              disabled={busy}
+                              style={{ border: '1px solid var(--red)', background: 'none', color: 'var(--red)', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
+                              {t('xtell.choose')}
+                            </button>
+                          )}
+                        </div>
+                        {tn.content || <span style={{ color: 'var(--muted2)' }}>…</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             <div ref={endRef} />
