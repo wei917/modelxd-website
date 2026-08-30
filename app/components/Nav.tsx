@@ -22,6 +22,7 @@ const NAV_LINKS = [
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
+  { href: '/xtell',       i18n: 'nav.xtell',       protected: true,  icon: 'game'   },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
   { href: '/xdev',        i18n: 'nav.xdev',        protected: true,  icon: 'dev' },
 ]
