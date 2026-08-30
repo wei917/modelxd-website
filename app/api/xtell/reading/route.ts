@@ -47,13 +47,23 @@ export async function POST(req: Request) {
     ? ziweiFacts(ziweiChart(body.birth), body.birth.gender)
     : baziFacts(baziChart(body.birth), body.birth.gender)
 
-  const userMsg = `以下是系統排好的命盤：\n\n${facts}\n\n${question ? `信眾想問：${question}` : '信眾沒有特定問題，請做一次完整的解讀。'}`
+  // The chart rides in the SYSTEM slot with the master persona: every turn of
+  // the conversation carries it natively, and the client can never overwrite
+  // it — history is user/assistant turns only, capped so a long consultation
+  // cannot smuggle an unbounded prompt.
+  const history: Array<{ role: 'user' | 'assistant'; content: string }> = Array.isArray(body?.history)
+    ? body.history
+        .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
+        .slice(-20)
+        .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 8000) }))
+    : []
+  const messages = [...history, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
 
   const stream = new ReadableStream({
     async start(controller) {
       await providers.streamText(
         model as any,
-        [{ role: 'user', content: userMsg }],
+        messages,
         {
           onDelta: (text) => controller.enqueue(sse('delta', { text })),
           onDone: (r) => {
@@ -79,7 +89,7 @@ export async function POST(req: Request) {
         },
         [],
         { userId: user.id },
-        { system: MASTERS[temple], search },
+        { system: `${MASTERS[temple]}\n\n信眾的命盤（系統排定，勿更動）：\n${facts}`, search },
       )
     },
   })

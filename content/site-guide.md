@@ -229,10 +229,12 @@ and **紫微斗數廟** (Zi Wei Dou Shu, twelve palaces). The honest split to
 explain when asked: the CHART is computed exactly by open calendar engines
 (lunar-typescript for 八字 — solar-term correct, so an early-January birth
 belongs to the previous 干支 year; iztro for 紫微) and is shown for the user
-to verify against any 排盤 site. Casting the chart is free. The READING is
-interpretation: the user picks any text model with the standard picker, can
-turn on web search where that model supports it, and pays that model's
-listed price. Readings are for reflection and entertainment, never advice —
+to verify against any 排盤 site — collapsed behind「查看命盤」so the room
+stays simple. Casting the chart is free. The READING is a conversation, same
+composer as XDirect: up to TWO masters can be seated (each answers every
+question), the default master is preselected (currently GPT-5.6 Sol), web
+search can be enabled where a seated model supports it, and each reply is
+billed at that model's listed price with the cost shown under the reply. Readings are for reflection and entertainment, never advice —
 health, money and legal questions belong with professionals.
 
 ## Accounts, credits and pricing
