@@ -188,7 +188,7 @@ export default function XEvalPage() {
   ), [ratings, selProv, selEffort, selTier, perEntry])
 
   const visible = useMemo(() => {
-    let list = [...filtered].sort((a, b) => b.rating - a.rating)
+    let list = [...ratings].sort((a, b) => b.rating - a.rating)
     if (view === 'best') {
       // One row per model: its HIGHEST reasoning effort (the owner's "best
       // effort" reading), not its highest rating. Ties on effort → higher rating.
@@ -216,7 +216,7 @@ export default function XEvalPage() {
       const va = val(a), vb = val(b)
       return (va < vb ? -1 : va > vb ? 1 : 0) * dir
     })
-  }, [filtered, view, sortBy, sortDir, perEntry])
+  }, [ratings, view, sortBy, sortDir, perEntry])
   const shown = useMemo(() => (showAll ? visible : visible.slice(0, TOP_N)), [visible, showAll])
 
   // Brand casing for provider chips (slugs are lowercase in the DB).
@@ -337,14 +337,6 @@ export default function XEvalPage() {
             {updated && <span>{t('xeval.stat.updated')} {updated}</span>}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-            <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap
-              swatch={pv => <svg width={15} height={15} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={5.2} fill="currentColor" /></svg>} />
-            <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
-              swatch={ef => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(ef), display: 'inline-block' }} />} />
-            <FilterGroup label={t('xeval.filter.tier')} items={allTiers} sel={selTier} setter={setSelTier} />
-          </div>
-
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['all', 'best'] as const).map(v => (
               <button
@@ -420,7 +412,15 @@ export default function XEvalPage() {
 
           {/* Chart under the table: the ranking is the answer, the
               cost-vs-rating frontier is the explanation. */}
-          <FrontierChart rows={shown} domainRows={ratings} perEntry={perEntry} avg={avg} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+            <FilterGroup label={t('xeval.filter.provider')} items={allProviders} sel={selProv} setter={setSelProv} cap
+              swatch={pv => <svg width={15} height={15} viewBox="0 0 14 14"><Mark shape={shapeOf(pv)} cx={7} cy={7} r={5.2} fill="currentColor" /></svg>} />
+            <FilterGroup label={t('xeval.filter.effort')} items={allEfforts} sel={selEffort} setter={setSelEffort}
+              swatch={ef => <span style={{ width: 9, height: 9, borderRadius: '50%', background: colorOf(ef), display: 'inline-block' }} />} />
+            <FilterGroup label={t('xeval.filter.tier')} items={allTiers} sel={selTier} setter={setSelTier} />
+          </div>
+
+          <FrontierChart rows={filtered} domainRows={ratings} perEntry={perEntry} avg={avg} />
 
           {/* Methodology — the disclosure IS the differentiator. */}
           <section id="xeval-methodology" style={{ marginTop: 32, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>
