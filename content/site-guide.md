@@ -36,7 +36,7 @@ The core belief: the most expensive model is very often not the one you would
 have picked, and you can only discover that if the price is hidden while you
 judge.
 
-## The seven surfaces
+## The surfaces
 
 ### XDuel — `/xduel`
 The free front door. Enter one prompt; two anonymous models answer side by
@@ -167,6 +167,25 @@ Today:
 
 Coming to the arena: Chess, 中國象棋, and 麻將.
 
+### XDev — `/xdev`
+For developers and agents. Create an API key, and point any
+OpenAI-compatible client at ModelXD's own endpoint
+(`/api/v1/chat/completions`) to reach every model in the catalog through one
+key and one bill. Keys can carry a **spend cap**, and there is an **MCP
+server** so an agent can query the leaderboard and run models as tools. Full
+reference at `/xdev/docs`.
+
+Address a model as `provider/model_name` — for example
+`google/gemini-3.6-flash` — or let ModelXD choose: **`xd/auto`** picks the
+highest XD Score, **`xd/cheap`** picks the cheapest model that still clears a
+quality bar (measured about 10× cheaper than `xd/auto`). The headline feature
+is **structured output** — ask for JSON matching a schema and you get it back
+filled in, across providers that each express schemas differently. Tool
+calling is deliberately not supported.
+
+Calls bill at the model's **list price** — the same number XBoard publishes.
+Billing over it would make the leaderboard false.
+
 ### XVote — `/xvote`
 Judge other people's duels. You see two anonymous answers, vote for the one
 you prefer, and your vote feeds the same leaderboard. This is how the ratings
@@ -186,6 +205,23 @@ search-enabled models and for Werewolf results (Werewolf is scored as its own
 pool and deliberately kept out of the main XD Score, because talking six
 models into mislynching a villager is not the skill the duels measure).
 
+### XEval — `/xeval`
+ModelXD's benchmark replication lab, now multi-benchmark: a switcher at the
+top selects the task set. (1) OpenAI's GDPval gold tasks (real professional
+work: memos, spreadsheets, analyses) run through an open-source agent
+harness and scored by anonymized pairwise comparison with a fully disclosed
+LLM judge panel — this ladder also carries the ModelXD Router @ auto row,
+ModelXD's own service measured: for every task in the library it serves the
+entry that measured best there. (2) Terminal-Bench 2.1 (real terminal/agent
+tasks in Docker), scored by each task's own verifier tests — binary pass
+rate and $-per-solved-task, no judges. Two things make it different from other leaderboards: every entry
+is a (model × reasoning-effort) pair with its real measured cost per task,
+and the whole protocol (judge identity, effort, verdict counts) is public.
+XEval is separate from XBoard: XBoard ranks models by real human blind
+votes cast on ModelXD; XEval republishes benchmark work under our own
+transparent protocol. Public page, no sign-in needed. Numbers are not
+comparable to GDPval-AA's leaderboard (different judges and anchors).
+
 ## Accounts, credits and pricing
 
 Sign in with Google. New verified accounts get **$10 of free credit**.
@@ -195,6 +231,19 @@ Top up from your Profile. Your balance and a full itemised activity ledger
 live at `/profile` — the ledger groups charges by session, so a whole
 Werewolf game or one generation and its follow-ups read as a single row you
 can expand.
+
+### Inviting people
+
+Everyone gets the $10 on signup, with no card. On top of that, share your
+referral link from `/profile`: someone who joins through it gets **$5 extra**
+(so $15 to start), and you get **$5** as well. Both are released when they
+verify a payment card.
+
+The card check is a real card, but it is **never charged** — it only proves
+one person is not collecting the bonus with a stack of fresh Google accounts.
+There is no limit on how many people you can invite. Signing up without a
+referral link never requires a card; the link is always an upgrade, never a
+demand.
 
 ## Common questions, short answers
 
@@ -217,23 +266,11 @@ can expand.
   account with that provider has hit a limit, which is on our side and not
   yours; pick another model and it will run. On XDuel the site swaps in a
   different model by itself.
+- **How do I invite someone / do you have referrals?** Yes — your link is on
+  `/profile`. They get $15 instead of $10 and you get $5, once they verify a
+  card. The card is never charged.
+- **Can I use ModelXD from my own code or agent?** Yes — XDev (`/xdev`) gives
+  you an API key for an OpenAI-compatible endpoint, plus an MCP server.
 - **Can you answer questions about other things?** No. This guide is only
   about ModelXD — it does not answer general questions, write things, or do
   work for you. The surfaces above are where the models do that.
-
-### XEval — `/xeval`
-ModelXD's benchmark replication lab, now multi-benchmark: a switcher at the
-top selects the task set. (1) OpenAI's GDPval gold tasks (real professional
-work: memos, spreadsheets, analyses) run through an open-source agent
-harness and scored by anonymized pairwise comparison with a fully disclosed
-LLM judge panel — this ladder also carries the ModelXD Router @ auto row,
-ModelXD's own service measured: for every task in the library it serves the
-entry that measured best there. (2) Terminal-Bench 2.1 (real terminal/agent
-tasks in Docker), scored by each task's own verifier tests — binary pass
-rate and $-per-solved-task, no judges. Two things make it different from other leaderboards: every entry
-is a (model × reasoning-effort) pair with its real measured cost per task,
-and the whole protocol (judge identity, effort, verdict counts) is public.
-XEval is separate from XBoard: XBoard ranks models by real human blind
-votes cast on ModelXD; XEval republishes benchmark work under our own
-transparent protocol. Public page, no sign-in needed. Numbers are not
-comparable to GDPval-AA's leaderboard (different judges and anchors).
