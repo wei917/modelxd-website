@@ -203,6 +203,49 @@ the metric to watch as tasks are added.
 - Parked: TB 3.0 (74 tasks; only 12 fit this Mac, 4 need H100s — awaits
   funding), JobBench (no vendor citations).
 
+## 8b. Qwen3.8 Max on TB 2.1 — abandoned 2026-08-29 (do not re-run blind)
+
+Ran 5 of 21 tasks, **1 pass**, ~$2, then stopped on owner call. Not published;
+nothing was imported to `xeval.db`, so the TB ladder is untouched.
+
+**Why it fails: it thinks at length, and TB's clock rewards acting.** Qwen
+generates 2,000–8,000 output tokens *per turn*, so a turn costs 60–180s and the
+agent runs out of wall clock after ~20 turns where Opus/Gemini get 55–75. This
+is capability/style, not a broken endpoint — verified two ways:
+
+- 10 of the 11 calls over 60s ran at **33–54 tok/s**, i.e. normal throughput.
+  Only one call was anomalous (620s for 874 tokens, 1.4 tok/s), out of 107.
+- Model Studio's own console reported **28.17s average call duration** against
+  our **29.86s** measured end-to-end from the Mac. The ~1.7s gap is the network
+  (192ms RTT to Singapore plus TLS/client overhead), so ~94% of the wall time
+  is generation on Alibaba's side. Running from a Singapore VM would save
+  seconds per call, not minutes, and would not have saved a single timeout.
+
+Setup facts worth keeping if it is ever re-run:
+
+- **`DASHSCOPE_API_BASE` must point at the International endpoint** — litellm's
+  dashscope default is the China host and 401s our key. Now pinned in `tb.sh`.
+- **litellm rejects `reasoning_effort` for dashscope.** qwen3.8-max returns
+  `reasoning_content` by default, so its native thinking IS its best effort and
+  the entry lands with `effort` NULL — any join on it needs `is`, not `=`.
+- **Alibaba's content inspection refuses some published TB tasks outright**
+  (`DataInspectionFailed` on `break-filter-js-from-html`). Console showed 9
+  failed calls of 132 (6.82%). Our convention already counts a refusal as a
+  FAIL with spend excluded.
+- **The dollar arm of the runaway guard is inert for dashscope** — per-step
+  `cost_usd` is not populated in the trajectory, so the guard reads $0. The
+  150-episode arm still holds.
+- **No request IDs are recoverable.** Harbor discards litellm's response id, and
+  Model Studio's audit/inference logs require SLS authorization that was never
+  completed on this account — SLS is not retroactive, so nothing was captured.
+  Its aggregate TTFT column is blank because we call non-streaming.
+
+**Qwen's implicit cache is real and routine: 75–78% of input tokens hit.**
+`ai_models.cached_input` for qwen3.8-max is still null, and Alibaba does not
+publish the rate (their doc says it "is not 20% of the input_token unit price"
+and points to the Model Studio console). While it stays null, any recomputed
+cost bills those cached tokens at full $2/M and **overstates Qwen's $/task**.
+
 ## 9. Cost-accounting audit (2026-08-27) — long-context tiers do NOT apply
 
 The page advertises measured cost, so the catalog's flat per-model rates were
