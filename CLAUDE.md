@@ -2,7 +2,8 @@
 
 > Last verified against the code on **2026-08-26** (branch `dev`).
 > Companion docs: `docs/API-V1.md` — the public inference API
-> (`/api/v1/chat/completions`), its structured-output tiers and the shared
+> (`/api/v1/chat/completions`), its structured-output tiers, and the Tripo3D
+> proxy (`docs/TRIPO-API.md`) and the shared
 > core Werewolf now runs on. `docs/XEVAL-PAGE.md` — everything about the `/xeval`
 > page and the eval pipeline behind it (read before touching XEval).
 > `docs/XTELL-PAGE.md` — the X算命 surface (temples,
@@ -750,6 +751,8 @@ ADMIN_EMAILS=wei917@gmail.com         # comma-separated; passes every gate
 SITE_PASSWORD=                        # unset = site gate disabled
 
 # Ops / tuning
+TRIPO_API_KEY=                        # Tripo3D proxy (/api/v1/tripo/*) — see docs/TRIPO-API.md;
+                                      #   unset = those routes answer 503
 CRON_SECRET=                          # guards /api/cron/* and refit
 SITE_AGENT_MODEL=                     # override the site agent's model
 XDIRECTOR_MODEL=                      # override the director's model
