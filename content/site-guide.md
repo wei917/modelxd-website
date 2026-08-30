@@ -222,6 +222,19 @@ votes cast on ModelXD; XEval republishes benchmark work under our own
 transparent protocol. Public page, no sign-in needed. Numbers are not
 comparable to GDPval-AA's leaderboard (different judges and anchors).
 
+### XTell（X算命）— the temple street
+
+`/xtell`, signed-in. Two temples in phase 1: **八字廟** (BaZi, four pillars)
+and **紫微斗數廟** (Zi Wei Dou Shu, twelve palaces). The honest split to
+explain when asked: the CHART is computed exactly by open calendar engines
+(lunar-typescript for 八字 — solar-term correct, so an early-January birth
+belongs to the previous 干支 year; iztro for 紫微) and is shown for the user
+to verify against any 排盤 site. Casting the chart is free. The READING is
+interpretation: the user picks any text model with the standard picker, can
+turn on web search where that model supports it, and pays that model's
+listed price. Readings are for reflection and entertainment, never advice —
+health, money and legal questions belong with professionals.
+
 ## Accounts, credits and pricing
 
 Sign in with Google. New verified accounts get **$10 of free credit**.
