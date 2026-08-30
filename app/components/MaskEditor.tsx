@@ -23,10 +23,16 @@ const UNDO_CAP = 20
 
 export default function MaskEditor({
   imageUrl,
+  exactSize,
   onSave,
   onClose,
 }: {
   imageUrl: string
+  /** Export the mask at EXACTLY these pixel dimensions, bypassing MAX_DIM.
+   *  The video path needs this: VACE requires the mask's resolution to equal
+   *  the source video's, so the mask is painted over the video's own first
+   *  frame at its natural size. */
+  exactSize?: { w: number; h: number }
   /** file: the mask PNG (transparent = repaint). preview: small data-URL
    *  composite (photo + red region) for the composer chip. */
   onSave:  (file: File, preview: string) => void
@@ -56,11 +62,16 @@ export default function MaskEditor({
     img.onload = () => {
       if (dead) return
       imgRef.current = img
-      const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight))
       const c = paintRef.current
       if (c) {
-        c.width  = Math.max(1, Math.round(img.naturalWidth  * scale))
-        c.height = Math.max(1, Math.round(img.naturalHeight * scale))
+        if (exactSize) {
+          c.width  = Math.max(1, Math.round(exactSize.w))
+          c.height = Math.max(1, Math.round(exactSize.h))
+        } else {
+          const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight))
+          c.width  = Math.max(1, Math.round(img.naturalWidth  * scale))
+          c.height = Math.max(1, Math.round(img.naturalHeight * scale))
+        }
       }
       setReady(true)
     }

@@ -371,7 +371,12 @@ async function runSlot(
       const videoWatermark:   boolean | null = options.watermark ?? null
       const videoAspectRatio: string  | null = options.aspect_ratio ?? null
       console.log(`${LOG} Slot[${index}] video options received: watermark=${JSON.stringify(options.watermark)} aspect_ratio=${JSON.stringify(options.aspect_ratio)} → forwarding watermark=${videoWatermark}`)
-      const wired = assignPorts(portSchemaFor(model), attachments)
+      // Same rule as the image branch: the mask reaches ONLY models that
+      // declare region_edit — anyone else in the run would shoot the
+      // stencil as a reference image.
+      const videoEligible = attachments.filter(a =>
+        a.port !== 'mask' || (model.modes ?? []).includes('region_edit'))
+      const wired = assignPorts(portSchemaFor(model), videoEligible)
       if (wired.some(a => a.port)) {
         console.log(`${LOG} Slot[${index}] ports: ${wired.map(a => a.port ?? '·').join(', ')}`)
       }
@@ -672,12 +677,16 @@ export async function POST(req: Request) {
       // provider byte-for-byte and gets no attachments row or thumbnail —
       // it's an instruction, not content. Image runs only.
       if (inp.port === 'mask') {
-        if (mode !== 'image') continue
+        if (mode !== 'image' && mode !== 'video') continue
         const { fetchAttachmentBuffer } = await import('@/lib/attachment')
         const raw = await fetchAttachmentBuffer({ bucket: inp.bucket, storagePath: inp.storagePath, mediaType: inp.mediaType || 'image/png' })
+        // Signed like any media input: VACE video masks are fetched by URL
+        // (mask_image_url); the OpenAI image path uses the bytes instead.
+        const { data: signedMask } = await sb.storage.from(inp.bucket).createSignedUrl(inp.storagePath, 3600)
         attachments.push({
           buffer: raw.buffer, mediaType: raw.mediaType,
           port: 'mask',
+          url: signedMask?.signedUrl,
           wireSource: { kind: 'file', bucket: inp.bucket, path: inp.storagePath, name: inp.fileName },
         })
         continue

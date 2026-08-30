@@ -86,6 +86,12 @@ export function portSchemaFor(m: CatalogModel): PortSpec[] {
     if (modes.includes('extend_video') || modes.includes('video_edit') || modes.includes('video_to_video')) {
       ports.push({ name: 'video_in', type: 'video', max: 1 })
     }
+    // Regional VIDEO editing (wan2.1-vace-plus): a still PNG mask scopes the
+    // edit — white = repaint, tracked across frames provider-side. Declared
+    // only, same as the image mask: a stray photo must never become a stencil.
+    if (modes.includes('region_edit')) {
+      ports.push({ name: 'mask', type: 'image', max: 1, declaredOnly: true })
+    }
   } else if ((m.output_modalities ?? []).includes('image')) {
     if (modes.includes('image_edit') || modes.includes('image_to_image')) {
       ports.push({ name: 'source_image', type: 'image', max: 9 })

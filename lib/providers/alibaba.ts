@@ -670,7 +670,13 @@ export async function generateVideo(
   // Extend (wan2.7 `first_clip` continuation) is keyed off the RECIPE, not
   // the model name — it rides the same wan2.7-i2v model as image_to_video.
   const isExtend  = options?.mode === 'extend_video'
-  const isVideoEdit = !isExtend && /-video-edit$/i.test(model.model_name)
+  // VACE (wan2.1-vace-plus): mask-scoped regional video editing. The mask is
+  // an IMAGE attachment on port 'mask', so it must be pulled out before any
+  // family inference below — left in imageAtts it would read as an i2v/kf2v
+  // input and the stencil would be shot as content.
+  const isVace    = !isExtend && /vace/i.test(model.model_name)
+  const maskAtt   = attachments.find(a => a.port === 'mask' && a.mediaType.startsWith('image/'))
+  const isVideoEdit = !isExtend && !isVace && /-video-edit$/i.test(model.model_name)
   // Reference mode: by name suffix (HappyHorse r2v family), by recipe —
   // unified models like wan3.0-video have no -r2v suffix but take typed
   // reference_image / reference_video / reference_audio media entries
@@ -679,14 +685,29 @@ export async function generateVideo(
   // exactly one meaning here (reference material), so infer it the same
   // way isI2V infers from a lone image. Without this the generic path
   // silently DROPPED the audio and billed a plain t2v.
-  const isR2V     = !isExtend && !isVideoEdit &&
+  const isR2V     = !isExtend && !isVace && !isVideoEdit &&
     (/-r2v$/i.test(model.model_name) || options?.mode === 'reference_frames' ||
      options?.mode === 'audio_to_video' || audioAtts.length > 0)
-  const isKf2v    = !isExtend && !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
-  const isI2V     = !isExtend && !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
+  const isKf2v    = !isExtend && !isVace && !isVideoEdit && !isR2V && (imageAtts.length >= 2 || /-kf2v/i.test(model.model_name))
+  const isI2V     = !isExtend && !isVace && !isVideoEdit && !isR2V && !isKf2v && (!!imageAtt || /-i2v$/i.test(model.model_name))
 
   const input: any = { prompt }
-  if (isExtend) {
+  if (isVace) {
+    // Regional video edit: 1 source video + the painted mask. White pixels =
+    // repaint, tracked across frames provider-side (mask_type 'tracking').
+    // Probed live Aug 30: mask_frame_id is REQUIRED (1 = mask drawn on the
+    // first frame — which is what our editor shows the user). Input caps per
+    // the API reference: MP4 ≤5s, ≥16fps, ≤50MB; the mask must match the
+    // input video's resolution — the client exports it from the video's own
+    // first frame at natural size, which is that guarantee.
+    const videoAtt = videoAtts[0]
+    if (!videoAtt?.url) throw new Error('USERMSG: Regional video editing needs a video attachment (MP4, up to 5 seconds).')
+    if (!maskAtt?.url) throw new Error('USERMSG: Paint the region to change first — regional editing needs a mask. Use ◐ Edit region on the video, or pick a model without region editing for a whole-clip edit.')
+    input.function = 'video_edit'
+    input.video_url = videoAtt.url
+    input.mask_image_url = maskAtt.url
+    input.mask_frame_id = 1
+  } else if (isExtend) {
     // Video continuation: the source clip goes in as `first_clip` (input
     // 2-10s per the DashScope i2v reference); `duration` below is the
     // TOTAL output including the input portion, capped at 15s.
@@ -763,7 +784,21 @@ export async function generateVideo(
   // by the caller. null = use provider default (don't send).
   // Video-edit accepts only resolution/watermark/seed — duration and
   // ratio come from the input video (output capped at 15s by the API).
-  const parameters: Record<string, unknown> = isVideoEdit
+  const parameters: Record<string, unknown> = isVace
+    // VACE takes a size pair from a fixed list, not a resolution label; the
+    // output orientation must match the source, steered by aspect_ratio.
+    // Duration is the input's own (≤5s) — no duration param exists here.
+    // prompt_extend stays OFF: a rewriter paraphrasing a surgical edit
+    // prompt is how "remove the text" becomes a new composition.
+    ? {
+        mask_type: 'tracking',
+        prompt_extend: false,
+        size: options?.aspect_ratio === '9:16' ? '720*1280'
+            : options?.aspect_ratio === '1:1'  ? '960*960'
+            : options?.aspect_ratio === '16:9' ? '1280*720'
+            : '1280*720',
+      }
+    : isVideoEdit
     ? { resolution }
     : isExtend
     ? {

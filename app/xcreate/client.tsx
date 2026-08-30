@@ -121,6 +121,37 @@ function modeMatchesMode(modePattern: string, m: 'text' | 'image' | 'video'): bo
   return false
 }
 
+/** First frame of a video source at its NATURAL resolution — the region
+ *  mask is painted over this, and VACE requires the mask's dimensions to
+ *  equal the source video's exactly. */
+function grabVideoFrame(src: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
+  return new Promise(resolve => {
+    const v = document.createElement('video')
+    v.muted = true; v.playsInline = true; v.preload = 'auto'
+    if (!/^blob:|^data:/.test(src)) v.crossOrigin = 'anonymous'
+    let settled = false
+    const done = (r: { dataUrl: string; w: number; h: number } | null) => {
+      if (settled) return
+      settled = true
+      v.removeAttribute('src'); v.load()
+      resolve(r)
+    }
+    v.onerror = () => done(null)
+    v.onloadeddata = () => { try { v.currentTime = 0.01 } catch { done(null) } }
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas')
+        c.width = v.videoWidth; c.height = v.videoHeight
+        if (!c.width || !c.height) return done(null)
+        c.getContext('2d')!.drawImage(v, 0, 0)
+        done({ dataUrl: c.toDataURL('image/jpeg', 0.92), w: c.width, h: c.height })
+      } catch { done(null) }
+    }
+    setTimeout(() => done(null), 10_000)
+    v.src = src
+  })
+}
+
 /** Human-readable label for a mode pattern (matches the admin form). */
 function modeLabel(modePattern: string): string {
   switch (modePattern) {
@@ -1586,19 +1617,39 @@ function CreateStudio() {
   // The painted mask lives OUTSIDE `attachments` (it would otherwise render
   // as a normal chip, count against the file cap, and be restored into a
   // future run as a source image). It's committed at submit time and rides
-  // the POST as one extra attachment with port:'mask'. Applies to the FIRST
-  // image — the one the server hands every model as the primary source.
+  // the POST as one extra attachment with port:'mask'. Targets the FIRST
+  // image (image mode) or, on a video_edit run, the video — painted over its
+  // first frame at NATURAL size, because VACE requires mask resolution to
+  // equal the source video's.
   const [regionMask, setRegionMask] = useState<{ file: File; preview: string; forKey: string } | null>(null)
-  const [maskEditorOpen, setMaskEditorOpen] = useState(false)
+  const [maskEditorSrc, setMaskEditorSrc] = useState<{ url: string; exact?: { w: number; h: number } } | null>(null)
   const firstImageAtt = attachments.find(a => a.mediaType.startsWith('image/'))
-  const regionKey     = firstImageAtt ? (firstImageAtt.storagePath || firstImageAtt.previewUrl || firstImageAtt.fileName) : null
+  const firstVideoAtt = attachments.find(a => a.mediaType.startsWith('video/'))
+  const regionTarget  = mode === 'image' ? firstImageAtt
+    : (mode === 'video' && recipeMode === 'video_edit') ? firstVideoAtt
+    : undefined
+  const regionKey     = regionTarget ? (regionTarget.storagePath || regionTarget.previewUrl || regionTarget.fileName) : null
   const regionModels  = activeModels.filter(m => (m.modes ?? []).includes('region_edit' as ModelMode))
-  const regionEligible = mode === 'image' && !!firstImageAtt?.previewUrl && regionModels.length > 0
-  // A mask is a stencil for one specific photo — swap or remove the photo
+  const regionEligible = !!regionTarget && regionModels.length > 0
+    && (mode === 'image' ? !!regionTarget.previewUrl : !!(regionTarget.file || regionTarget.previewUrl))
+  // A mask is a stencil for one specific picture — swap or remove the source
   // and the mask is meaningless.
   useEffect(() => {
     if (regionMask && regionMask.forKey !== regionKey) setRegionMask(null)
   }, [regionKey, regionMask])
+  const openRegionEditor = async () => {
+    if (!regionTarget || isLocked) return
+    if (mode === 'image') {
+      if (regionTarget.previewUrl) setMaskEditorSrc({ url: regionTarget.previewUrl })
+      return
+    }
+    // Video: paint over the first frame at the video's own resolution.
+    const src = regionTarget.file ? URL.createObjectURL(regionTarget.file) : regionTarget.previewUrl
+    if (!src) return
+    const frame = await grabVideoFrame(src)
+    if (regionTarget.file) URL.revokeObjectURL(src)
+    if (frame) setMaskEditorSrc({ url: frame.dataUrl, exact: { w: frame.w, h: frame.h } })
+  }
 
   const addModel    = (i: number, m: SlotModel) => {
     // Slots fill left-to-right (CC, July 20): picking into an EMPTY slot
@@ -3264,14 +3315,15 @@ function CreateStudio() {
       {pickerSlot !== null && (
         <ModelPickerDialog mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m as unknown as SlotModel)} onClose={() => setPickerSlot(null)} />
       )}
-      {maskEditorOpen && firstImageAtt?.previewUrl && (
+      {maskEditorSrc && (
         <MaskEditor
-          imageUrl={firstImageAtt.previewUrl}
+          imageUrl={maskEditorSrc.url}
+          exactSize={maskEditorSrc.exact}
           onSave={(file, preview) => {
             if (regionKey) setRegionMask({ file, preview, forKey: regionKey })
-            setMaskEditorOpen(false)
+            setMaskEditorSrc(null)
           }}
-          onClose={() => setMaskEditorOpen(false)}
+          onClose={() => setMaskEditorSrc(null)}
         />
       )}
 
@@ -4363,7 +4415,7 @@ function CreateStudio() {
                             capability run the same prompt as a plain edit. */}
                         {regionEligible && !regionMask && (
                           <button
-                            onClick={() => !isLocked && setMaskEditorOpen(true)}
+                            onClick={() => void openRegionEditor()}
                             disabled={isLocked}
                             title={`Paint the exact area to change — applies on: ${regionModels.map(m => m.display_name).join(', ')}`}
                             style={{
@@ -4380,7 +4432,7 @@ function CreateStudio() {
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px 3px 4px', borderRadius: 8, border: '1px solid var(--red)', background: 'var(--red-dim, #fde8e5)' }}>
                             <img src={regionMask.preview} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
                             <button
-                              onClick={() => !isLocked && setMaskEditorOpen(true)}
+                              onClick={() => void openRegionEditor()}
                               disabled={isLocked}
                               title="Edit the painted region"
                               style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
