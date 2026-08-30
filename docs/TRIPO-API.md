@@ -45,9 +45,20 @@ completions) or a signed-in session.
 Debited at create from Tripo's published table ($1 = 100 credits, so 1 credit
 = 1¢). Unknown `model` strings are billed at the P1 (higher) rate. Then, on
 the FIRST poll that sees a terminal status, the charge is reconciled against
-the task's own `consumed_credit`: overcharge refunds, undercharge debits the
+the task's own `credits_consumed` (live-verified name; the docs say `consumed_credit` and we read both): overcharge refunds, undercharge debits the
 difference, a failed task that consumed nothing refunds in full. One
 reconciliation per task, race-guarded. The ledger row keeps the final figure.
+
+## Live-verified quirks (Aug 30 smoke test, $0.20)
+
+- `model` is REQUIRED on create; the API enumerates the allowed values:
+  `P1-20260311, P2-20260801, v2.5-20250123, v3.0-20250812, v3.1-20260211`.
+  An omitted model returns Tripo's own 1004 error through the proxy, undebited.
+- Tripo can OVERRIDE parameters: a `texture:false` request on v2.5 came back
+  `texture:true, pbr:true` and consumed 20 credits against our 10-credit
+  estimate. The settle-time reconciliation exists precisely for this.
+- Tasks really do sit at 99% for around a minute. Keep polling; never resubmit.
+- A failed task that reports no consumption figure refunds in full.
 
 ## Ops
 
