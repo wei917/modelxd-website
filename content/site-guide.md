@@ -45,6 +45,14 @@ you vote again knowing the cost. Both votes feed the leaderboard rating.
 Free to use, with a per-mode daily quota. Supports text, image and video.
 No web search here by design — it is meant to be a clean like-for-like test.
 
+If one of the drawn models is unavailable (a provider outage, or a model
+temporarily out of service), XDuel quietly draws a different one from another
+provider and runs it instead, so you get a real comparison rather than a
+broken half-duel. You never picked the two models — the site draws them — so
+a swap is just a different draw. Your vote is always credited to the model
+that actually answered. If no replacement is available, the duel is marked
+failed and your daily quota is refunded.
+
 ### XCreate — `/xcreate`
 Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
@@ -162,7 +170,13 @@ Coming to the arena: Chess, 中國象棋, and 麻將.
 ### XVote — `/xvote`
 Judge other people's duels. You see two anonymous answers, vote for the one
 you prefer, and your vote feeds the same leaderboard. This is how the ratings
-get enough data to be meaningful.
+get enough data to be meaningful. Unlike XDuel there is no reveal step here —
+you are judging the answers, not the names.
+
+The models really are hidden: their names and prices are not sent to your
+browser until you have voted, so they cannot be found by inspecting the page.
+Voting requires being signed in. You can open any duel's shareable link and
+read it without an account, but you cannot vote on it until you sign in.
 
 ### XBoard — `/xboard`
 The leaderboard. Models ranked by **XD Score**, a Bradley-Terry rating
@@ -197,6 +211,12 @@ can expand.
   in full at `/profile`.
 - **Is it free?** XDuel is, within a daily quota. Everything that runs a model
   for you costs credits; new Google accounts start with $10.
+- **A model said it was unavailable — was I charged?** No. When a model fails,
+  nothing is billed for it: XCreate refunds the reserved amount, and a broken
+  XDuel refunds the daily quota. "Unavailable right now" usually means our
+  account with that provider has hit a limit, which is on our side and not
+  yours; pick another model and it will run. On XDuel the site swaps in a
+  different model by itself.
 - **Can you answer questions about other things?** No. This guide is only
   about ModelXD — it does not answer general questions, write things, or do
   work for you. The surfaces above are where the models do that.
