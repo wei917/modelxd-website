@@ -272,14 +272,19 @@ export async function generateImage(
     return generateImageDirect(model, prompt, quality, size, images, TAG, options)
   }
 
+  // A region mask is meaningful only to the Images API edit endpoint. The
+  // route already withholds it from models without region_edit; this guard
+  // keeps a stray mask out of a chat-driven run's vision input regardless.
+  const chatImages = images.filter(a => a.port !== 'mask')
+
   // ── Responses API + image_generation tool (chat-driving models) ────────────
   // Build the input. For multi-turn edits with previous_response_id, we just
   // send the new prompt. For first-turn or explicit attachment, include images.
   const input: any[] = []
 
-  if (images.length > 0 && !previousResponseId) {
+  if (chatImages.length > 0 && !previousResponseId) {
     // First turn with attachments: include all images inline
-    const content: any[] = images.map(img => ({
+    const content: any[] = chatImages.map(img => ({
       type: 'input_image',
       image_url: `data:${img.mediaType};base64,${img.buffer.toString('base64')}`,
     }))
@@ -389,7 +394,32 @@ async function generateImageDirect(
   const variantPrompt = (vi: number) => n <= 1 ? prompt :
     `${prompt}\n\n(Variation ${vi + 1} of ${n} — this take must use ${VARIATION_DIRECTIVES[vi % VARIATION_DIRECTIVES.length]}.)`
 
-  const files = images.length > 0 ? await Promise.all(images.map(toUploadable)) : null
+  // Region mask (port 'mask', region_edit models): rides /v1/images/edits as
+  // `mask` — a PNG whose TRANSPARENT pixels mark the area to repaint. The
+  // API requires mask dimensions to equal the FIRST input image's, and the
+  // client paints at display resolution while uploads get resized to ≤1920
+  // server-side, so the only safe place to reconcile sizes is here, against
+  // the exact bytes being sent. `fit:'fill'` — both are views of the same
+  // frame, so stretching is correct and letterboxing would misalign edits.
+  const maskAtt  = images.find(a => a.port === 'mask') ?? null
+  const sources  = maskAtt ? images.filter(a => a !== maskAtt) : images
+  let   maskFile: any = null
+  if (maskAtt && sources.length > 0) {
+    const sharp = (await import('sharp')).default
+    const dims  = await sharp(sources[0].buffer).metadata()
+    if (dims.width && dims.height) {
+      const png = await sharp(maskAtt.buffer)
+        .ensureAlpha()
+        .resize(dims.width, dims.height, { fit: 'fill' })
+        .png()
+        .toBuffer()
+      const { toFile } = await import('openai')
+      maskFile = await toFile(png, 'mask.png', { type: 'image/png' })
+      console.log(`${TAG} region mask attached (${png.length}B, ${dims.width}x${dims.height})`)
+    }
+  }
+
+  const files = sources.length > 0 ? await Promise.all(sources.map(toUploadable)) : null
 
   const callOnce = async (vi: number): Promise<any> => {
     if (files) {
@@ -404,7 +434,8 @@ async function generateImageDirect(
         quality,
         n:       1,
       }
-      if (vi === 0) console.log(`${TAG} images.edit body:`, JSON.stringify({ ...params, image: images.map(im => `<${im.mediaType} ${im.buffer.length}B>`).join(',') }))
+      if (maskFile) params.mask = maskFile
+      if (vi === 0) console.log(`${TAG} images.edit body:`, JSON.stringify({ ...params, mask: maskFile ? '<mask.png>' : undefined, image: sources.map(im => `<${im.mediaType} ${im.buffer.length}B>`).join(',') }))
       return (client().images as any).edit(params)
     }
     // ── Generate path ──

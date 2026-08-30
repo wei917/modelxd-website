@@ -80,6 +80,17 @@ The paid studio. Up to 4 models side by side on the same prompt, plus recipes
 (`image_to_video`, `reference_frames`, `start_end_frames`, `video_edit`).
 Per-seat thinking level and web search toggle. Spends real credits.
 
+**Region editing (Aug 30).** Image runs offer "◐ Edit region" when a selected
+model's row declares the `region_edit` mode (gpt-image-2 only — the sole
+reachable mask API; Gemini/Qwen are prompt-only, wanx2.1-imageedit is
+Beijing-only). The painted mask is a PNG whose TRANSPARENT pixels mean
+"repaint here"; it rides the POST as an attachment with `port:'mask'`
+(declared-only port, never auto-filled — `lib/ports.ts`), skips the JPEG
+resize pipeline (alpha is the payload), is withheld from models without the
+mode, and is sharp-resized against the exact source bytes in
+`lib/providers/openai.ts`. OpenAI treats the mask as guidance, not a hard
+boundary. Editor: `app/components/MaskEditor.tsx`.
+
 Server shell (`page.tsx`) resolves feature flags before the client renders, so
 gated entrances are correct on first paint and never flash for a user who
 isn't entitled. All the actual UI is in `client.tsx`.

@@ -276,7 +276,12 @@ async function runSlot(
       const size    = options.size ?? sizeForAspect(options.aspect_ratio) ?? '1024x1024'
       // Typed ports: each model sees the attachments through ITS OWN port
       // schema (shallow copies — the shared array serves every slot).
-      const wired   = assignPorts(portSchemaFor(model), attachments)
+      // The mask reaches ONLY models that declare region_edit — anyone
+      // else in the run would receive it as a plain source image and
+      // faithfully repaint the stencil.
+      const eligible = attachments.filter(a =>
+        a.port !== 'mask' || (model.modes ?? []).includes('region_edit'))
+      const wired   = assignPorts(portSchemaFor(model), eligible)
       const result  = await providers.generateImage(
         model, prompt, quality, size, wired, null, null, callContext,
         {
@@ -661,6 +666,22 @@ export async function POST(req: Request) {
   for (const inp of rawInputs) {
     if (!inp?.storagePath) continue
     try {
+      // A region mask bypasses processAttachment entirely: the resize
+      // pipeline re-encodes images as JPEG, and the mask's alpha channel
+      // IS the payload (transparent = repaint here). It goes to the
+      // provider byte-for-byte and gets no attachments row or thumbnail —
+      // it's an instruction, not content. Image runs only.
+      if (inp.port === 'mask') {
+        if (mode !== 'image') continue
+        const { fetchAttachmentBuffer } = await import('@/lib/attachment')
+        const raw = await fetchAttachmentBuffer({ bucket: inp.bucket, storagePath: inp.storagePath, mediaType: inp.mediaType || 'image/png' })
+        attachments.push({
+          buffer: raw.buffer, mediaType: raw.mediaType,
+          port: 'mask',
+          wireSource: { kind: 'file', bucket: inp.bucket, path: inp.storagePath, name: inp.fileName },
+        })
+        continue
+      }
       const result = await processAttachment(user.id, inp.bucket, inp.storagePath, inp.mediaType, inp.fileName, inp.fileSize)
       const attach: providers.Attachment = {
         buffer: result.buffer, mediaType: result.mediaType,

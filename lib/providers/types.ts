@@ -79,6 +79,7 @@ export type ModelMode =
   // image-output
   | 'text_to_image'
   | 'image_edit'
+  | 'region_edit'       // mask-scoped edit: PNG mask, transparent = repaint (gpt-image-2)
   // video-output
   | 'text_to_video'
   | 'image_to_video'

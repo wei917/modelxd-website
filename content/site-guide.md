@@ -60,6 +60,11 @@ image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a
 model's thinking depth and switch web search on. Costs real credits.
 
+**Region editing (inpainting).** When editing an image, an "Edit region"
+button appears if a selected model supports masks (currently GPT Image 2):
+paint over the exact area to change and everything outside it is kept. Models
+without mask support in the same run just follow the prompt as a normal edit.
+
 **One-click tools and templates.** XCreate ships presets for the tasks people
 actually arrive with — removing or replacing a background, upscaling, erasing
 strangers from a photo, retouching skin, sticker sheets, virtual try-on,

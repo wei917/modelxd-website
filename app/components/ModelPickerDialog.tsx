@@ -25,7 +25,7 @@ export type Mode = 'text' | 'image' | 'video'
 
 export type ModelMode =
   | 'text_to_text' | 'image_to_text' | 'video_to_text' | 'audio_to_text' | 'pdf_to_text'
-  | 'text_to_image' | 'image_edit'
+  | 'text_to_image' | 'image_edit' | 'region_edit'
   | 'text_to_video' | 'image_to_video' | 'video_to_video' | 'video_edit' | 'extend_video' | 'audio_to_video'
   | 'start_end_frames' | 'reference_frames'
 

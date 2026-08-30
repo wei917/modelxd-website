@@ -15,7 +15,8 @@ import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
-import AttachmentButton, { attachSampleFile, commitAttachments, type Attachment } from '../components/AttachmentButton'
+import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
+import MaskEditor from '../components/MaskEditor'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import ModeIcon from '../components/ModeIcon'
 import TemplatePicker from '../components/TemplatePicker'
@@ -130,6 +131,7 @@ function modeLabel(modePattern: string): string {
     case 'pdf_to_text':      return 'PDF → Text'
     case 'text_to_image':    return 'Text → Image'
     case 'image_edit':       return 'Image Edit'
+    case 'region_edit':      return 'Region Edit (mask)'
     case 'text_to_video':    return 'Text → Video'
     case 'image_to_video':   return 'Image → Video'
     case 'video_to_video':   return 'Video → Video'
@@ -363,6 +365,7 @@ type ModelMode =
   | 'pdf_to_text'
   | 'text_to_image'
   | 'image_edit'
+  | 'region_edit'
   | 'text_to_video'
   | 'image_to_video'
   | 'video_to_video'
@@ -1579,6 +1582,24 @@ function CreateStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refSlotCount, recipeMode, attachments])
 
+  // ── Region editing (mask) ────────────────────────────────────────────────
+  // The painted mask lives OUTSIDE `attachments` (it would otherwise render
+  // as a normal chip, count against the file cap, and be restored into a
+  // future run as a source image). It's committed at submit time and rides
+  // the POST as one extra attachment with port:'mask'. Applies to the FIRST
+  // image — the one the server hands every model as the primary source.
+  const [regionMask, setRegionMask] = useState<{ file: File; preview: string; forKey: string } | null>(null)
+  const [maskEditorOpen, setMaskEditorOpen] = useState(false)
+  const firstImageAtt = attachments.find(a => a.mediaType.startsWith('image/'))
+  const regionKey     = firstImageAtt ? (firstImageAtt.storagePath || firstImageAtt.previewUrl || firstImageAtt.fileName) : null
+  const regionModels  = activeModels.filter(m => (m.modes ?? []).includes('region_edit' as ModelMode))
+  const regionEligible = mode === 'image' && !!firstImageAtt?.previewUrl && regionModels.length > 0
+  // A mask is a stencil for one specific photo — swap or remove the photo
+  // and the mask is meaningless.
+  useEffect(() => {
+    if (regionMask && regionMask.forKey !== regionKey) setRegionMask(null)
+  }, [regionKey, regionMask])
+
   const addModel    = (i: number, m: SlotModel) => {
     // Slots fill left-to-right (CC, July 20): picking into an EMPTY slot
     // always lands in the leftmost empty one (open the D picker with B
@@ -1994,8 +2015,15 @@ function CreateStudio() {
     // now, before the POST. Roll the UI back if it fails: better no run
     // than a run whose input silently didn't make it.
     let committed: Attachment[]
+    let maskDesc: { storagePath: string; bucket: string; mediaType: string; fileName: string; fileSize: number; port: 'mask' } | null = null
     try {
       committed = await commitAttachments(attachments)
+      // The region mask uploads with the run it belongs to — losing it
+      // silently would turn a scoped edit into a whole-image repaint.
+      if (regionMask && regionEligible) {
+        const [mc] = await commitAttachments([pendingAttachment(regionMask.file, 'xcreate')])
+        maskDesc = { storagePath: mc.storagePath, bucket: mc.bucket, mediaType: mc.mediaType, fileName: mc.fileName, fileSize: mc.fileSize, port: 'mask' }
+      }
     } catch (err) {
       setPhase('setup'); setSlots([])
       setLoadError(`Couldn't upload ${err instanceof Error ? err.message : String(err)}. Please try again.`)
@@ -2057,7 +2085,10 @@ function CreateStudio() {
         retryOf: retryOfId,
         modelIds: ids,
         modelOptions: optsList,
-        attachments: committed.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
+        attachments: [
+          ...committed.map(a => ({ storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize })),
+          ...(maskDesc ? [maskDesc] : []),
+        ],
       }),
     })
       .then(async res => {
@@ -3233,6 +3264,16 @@ function CreateStudio() {
       {pickerSlot !== null && (
         <ModelPickerDialog mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m as unknown as SlotModel)} onClose={() => setPickerSlot(null)} />
       )}
+      {maskEditorOpen && firstImageAtt?.previewUrl && (
+        <MaskEditor
+          imageUrl={firstImageAtt.previewUrl}
+          onSave={(file, preview) => {
+            if (regionKey) setRegionMask({ file, preview, forKey: regionKey })
+            setMaskEditorOpen(false)
+          }}
+          onClose={() => setMaskEditorOpen(false)}
+        />
+      )}
 
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
@@ -4316,6 +4357,42 @@ function CreateStudio() {
                           audioMaxSeconds={mode === 'video' ? 15 : undefined}
                           onPreview={a => { if (a.previewUrl) setLightbox(a.previewUrl) }}
                         />
+                        {/* Region editing — offered only while a selected
+                            model can honour a mask (region_edit). The mask
+                            applies to the FIRST image; models without the
+                            capability run the same prompt as a plain edit. */}
+                        {regionEligible && !regionMask && (
+                          <button
+                            onClick={() => !isLocked && setMaskEditorOpen(true)}
+                            disabled={isLocked}
+                            title={`Paint the exact area to change — applies on: ${regionModels.map(m => m.display_name).join(', ')}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '5px 10px', borderRadius: 8, fontSize: 11,
+                              fontFamily: 'var(--mono)', letterSpacing: '0.04em',
+                              border: '1px dashed var(--border2)', background: 'transparent',
+                              color: 'var(--muted2)', cursor: isLocked ? 'default' : 'pointer',
+                              opacity: isLocked ? 0.4 : 1,
+                            }}
+                          >◐ Edit region</button>
+                        )}
+                        {regionEligible && regionMask && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px 3px 4px', borderRadius: 8, border: '1px solid var(--red)', background: 'var(--red-dim, #fde8e5)' }}>
+                            <img src={regionMask.preview} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
+                            <button
+                              onClick={() => !isLocked && setMaskEditorOpen(true)}
+                              disabled={isLocked}
+                              title="Edit the painted region"
+                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
+                            >region set</button>
+                            <button
+                              onClick={() => !isLocked && setRegionMask(null)}
+                              disabled={isLocked}
+                              aria-label="Remove region"
+                              style={{ background: 'none', border: 'none', padding: '0 2px', fontSize: 13, lineHeight: 1, color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
+                            >×</button>
+                          </span>
+                        )}
                         {/* ("up to N images" capacity note removed July 2026
                             per CC — slots just keep appearing until the cap;
                             no announcement needed.) */}

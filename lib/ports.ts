@@ -23,6 +23,10 @@ export type PortSpec = {
   /** Ports in DIFFERENT conflict groups cannot be wired together —
    *  H3's frame mode vs reference mode, probed live Aug 14. */
   conflict?: 'frame' | 'reference'
+  /** Never auto-filled: a wire lands here only when the caller names the
+   *  port explicitly. The mask port needs this — an overflow photo
+   *  auto-assigned to `mask` would silently become a stencil. */
+  declaredOnly?: boolean
 }
 
 export type PortWireSource =
@@ -86,6 +90,12 @@ export function portSchemaFor(m: CatalogModel): PortSpec[] {
     if (modes.includes('image_edit') || modes.includes('image_to_image')) {
       ports.push({ name: 'source_image', type: 'image', max: 9 })
     }
+    // Regional (mask) editing — gpt-image-2 today. The mask is a PNG whose
+    // TRANSPARENT pixels say "repaint here"; it applies to the first
+    // source image. Only ever wired by explicit declaration.
+    if (modes.includes('region_edit')) {
+      ports.push({ name: 'mask', type: 'image', max: 1, declaredOnly: true })
+    }
   }
   return ports
 }
@@ -123,7 +133,7 @@ export function assignPorts<T extends { mediaType: string; port?: string }>(
   const hasAudio = atts.some(a => a.mediaType.startsWith('audio/'))
   const audioPort = schema.find(p => p.type === 'audio')
   const forced = declared ?? (hasAudio ? audioPort?.conflict ?? null : null)
-  const usable = schema.filter(p => !forced || !p.conflict || p.conflict === forced)
+  const usable = schema.filter(p => !p.declaredOnly && (!forced || !p.conflict || p.conflict === forced))
 
   const used = new Map<string, number>()
   for (const a of atts) if (a.port) used.set(a.port, (used.get(a.port) ?? 0) + 1)
