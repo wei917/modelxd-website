@@ -26,24 +26,32 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const body = await res.json().catch(() => ({}))
   if (!res.ok) return err(body?.error ?? `job read failed (${res.status})`, res.status, 'job_error')
 
+  // /api/xcreate/job/[id] answers { job, slots } in the studio's camelCase.
+  // Reading `mode` and `model_name` off the wrong level is why every video job
+  // used to report itself as an `image.generation.job` with no `model` at all.
+  const job = body?.job ?? {}
   const slots: any[] = Array.isArray(body?.slots) ? body.slots : []
-  const done = slots.length > 0 && slots.every(s => s.done)
-  const failed = slots.some(s => s.error)
   const cost = slots.reduce((sum, s) => sum + (Number(s.cost) || 0), 0)
+
+  // The job row is the authority on failure — a run that dies before its slots
+  // are seeded has no slot to carry the error, and scanning an empty array
+  // would report it as running for ever.
+  const failed = job.status === 'failed' || (slots.length > 0 && slots.every(s => s.error))
+  const done = !failed && slots.length > 0 && slots.every(s => s.done)
 
   return Response.json({
     id,
-    object: `${body?.mode ?? 'image'}.generation.job`,
+    object: `${job.mode ?? 'image'}.generation.job`,
     status: failed ? 'failed' : done ? 'succeeded' : 'running',
-    model: slots[0]?.model_name ? `${slots[0]?.provider}/${slots[0]?.model_name}` : undefined,
-    // The generated files. `url` is a signed Supabase URL — fetch it promptly;
-    // they expire in 24h (see CLAUDE.md pitfall 11).
-    data: slots.filter(s => s.text || s.url).map(s => ({
-      url: s.url ?? s.text,
-      revised_prompt: s.revised_prompt ?? undefined,
+    model: slots[0]?.modelName ? `${slots[0].provider}/${slots[0].modelName}` : undefined,
+    // The generated files. For image and video slots the URL arrives in `text`
+    // (that column carries a slot's output whatever its shape). It is a signed
+    // Supabase URL — fetch it promptly, they expire in 24h (CLAUDE.md #11).
+    data: slots.filter(s => s.text).map(s => ({
+      url: s.text,
       error: s.error ?? undefined,
     })),
     usage: { cost_usd: cost },
-    error: failed ? slots.find(s => s.error)?.error : undefined,
+    error: failed ? (slots.find(s => s.error)?.error ?? job.error ?? 'generation failed') : undefined,
   })
 }

@@ -30,6 +30,13 @@ Authorization: Bearer <key>
       "model": "openai/gpt-image-2", "poll": "/api/v1/jobs/3f2b…" }
 ```
 
+**The 202 does not wait for the image.** It returns as soon as the run is
+recorded, which is a second or two on any model, so the time to acknowledge a
+job does not depend on what the job costs. Everything a caller can act on has
+already been checked by then: an unknown model, a blocked model, an empty
+prompt, an exhausted balance and a key over its spend cap all come back as
+errors on this call, not as a job that fails later.
+
 `size: "1024x1024"` is accepted as an alias for `aspect_ratio`, so
 `client.images.generate()` from an OpenAI SDK works unchanged.
 
@@ -48,6 +55,17 @@ GET /api/v1/jobs/{id}
 
 `status` is `running`, `succeeded` or `failed`. **Fetch `url` promptly** —
 generated files sit behind signed URLs that expire in 24 hours.
+
+```http
+GET /api/v1/jobs?type=image&limit=20
+```
+
+Your recent image and video jobs, newest first. This is the recovery path: if a
+client loses an id between the create and its first poll, the job is still here
+and still fetchable, so nothing has to be paid for twice. Files are not inlined
+(the signed URLs would be stale by the time you read them) — poll the one you
+want and get a URL signed on the spot. Text runs are not listed; chat is
+synchronous and has no job.
 
 Models come from `GET /api/v1/models`; anything with `image` or `video` in its
 capabilities is valid here. Same key, same credits, same models as the studio

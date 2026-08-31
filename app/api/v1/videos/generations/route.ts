@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   return Response.json({
     id: started.jobId,
     object: 'video.generation.job',
-    status: 'running',
+    status: started.status,
     model: `${model.provider}/${model.model_name}`,
     created: Math.floor(Date.now() / 1000),
     poll: `/api/v1/jobs/${started.jobId}`,
