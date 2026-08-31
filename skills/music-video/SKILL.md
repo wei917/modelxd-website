@@ -216,8 +216,20 @@ SOUNDTRACK of a story, not captions to depict one line at a time.
 
 Before any set_storyboard, write ONE sentence in chat and get no objection:
 **who wants what, what's in the way, and what has changed by the last cut.**
-For this crush song: "she has the confession typed on her phone all day, can't
-send it — and on the last beat, she does." Then:
+
+**Derive the spine from THIS song's lyrics — never from a remembered story.**
+Two boards for the same song once shipped the identical borrowed
+phone-confession plot because an example in an earlier version of this file
+got treated as a template (Aug 31, both treatments, proven). The rule that
+replaces it: **the lyric's VERBS name the sense the film must land in.**
+說/唱 (say/sing) → someone is seen giving words; 聽 (hear) → an answer is
+received on screen — a SYNC answer line, or the film cutting the instant
+the answering lips part (the withheld answer is faithful to a song that
+ACHES to hear one; a wordless ending under a "say it / let me hear it"
+lyric is not restraint, it is the wrong story). 看/見 (see) → a sight
+revealed. A prop earns its place only if the lyrics name it — do not
+introduce phones, letters or rain the song never mentions when its own
+words hand you the object and the turn.
 
 - **Both people exist.** A song about 你 needs 你 on the board — in the cast,
   or deliberately implied (the unread chat thread, an empty seat opposite, a
@@ -230,8 +242,9 @@ send it — and on the last beat, she does." Then:
   closed. Or deliberately withheld — but if the first and last cut could swap
   without anyone noticing, there is no film.
 - **Mine the lyrics for the arc and the props** — they usually hand you both.
-  This song literally contains its object (訊息/the phone, the typed-unsent
-  message) and its turn (陰天 → 雨過天晴: the weather IS the confession).
+  Quote the specific lines that give you the object and the turn IN YOUR
+  spine sentence, so the user can see the story came from their song and
+  not from a stock plot.
 - **One moment beats five locations.** 18 seconds reads as a story when it is
   ONE place, one hour, cut for rhythm (chained cuts) — not five beautiful
   unrelated setups. Spend location changes only on the turn.
@@ -374,6 +387,10 @@ Check, at minimum:
   references, the pinned framing does not).
 - **Story**: first and last cut are not interchangeable; the turn exists on
   a specific card.
+- **Lyric fidelity**: the payoff delivers the lyric's WANT in the sense its
+  verbs name — a song asking to HEAR an answer ends on an answer being
+  given (or cut at the very instant it begins), never on a wordless
+  substitute; a named prop appears, an unnamed one does not.
 
 Report format: one ✓/⚠ line per check, then "N fixes needed" and what you
 propose. All ✓ = say the total price and stop. This costs nothing and
@@ -489,6 +506,18 @@ hair flip, wind, an impact — describe what the force does to the body and the
 world: "hair thrown back and settling a beat late", "skirt still moving after
 she stops", "dust lifting where the heel lands". That is what makes a model
 generate mass and momentum instead of a smooth mannequin.
+
+**ONE physical action per animated shot — the state lives in the STILL.**
+An I2V model executes roughly one clean action in 3-6 seconds; everything
+else in the prompt becomes invented gesture. So the approved still must
+already CONTAIN the shot's state (the distance, the held phone, the
+unsent-ness — composition is where "wanting but not doing" lives), and the
+motion prompt names exactly one thing that changes: "she slides the phone
+across the bench, palm opening". Emotional narration in a motion prompt
+("she wants to confess but can't") is how a distant two-shot drifts into
+an embrace by frame 20 — the model acts out the FEELING instead of the
+action (watched happen, Aug 31). Emotions go in the still and the face;
+motion prompts get a single transitive sentence.
 
 Prefer specific nouns and verbs over "beautiful" or "cinematic", which tell the
 model nothing. One dense paragraph per scene.
@@ -738,6 +767,15 @@ you just locked.
 
 ## Iterating — one variable at a time
 
+- **WATCH every take before it enters the cut.** The still proves the look;
+  it proves nothing about the motion. Play the clip (or step its frames)
+  and check three things: the scripted action actually happened, nothing
+  un-scripted happened (invented gestures, drifting blocking), and props/
+  wardrobe survived (a phone changing colour between cuts reads as a
+  different phone). A take that fails any of these is a retake, not a keep
+  — assembling unwatched takes shipped a film whose first cut contradicted
+  its own story (Aug 31). This applies to whoever operates the board, human
+  or agent.
 - Change ONE thing per attempt (the light, or the move, or the lens — not
   three), or you learn nothing about what fixed it.
 - When a shot is close but not right, re-run the STILL, not the video. Stills
