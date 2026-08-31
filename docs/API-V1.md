@@ -9,6 +9,50 @@ The public inference API. OpenAI-shaped, so any existing SDK works by
 changing one URL. **There is no ModelXD client library and there should
 never be one** — needing one would mean the compatibility failed.
 
+## Generating images and video
+
+REST, so a game engine or any OpenAI SDK can call them without speaking
+JSON-RPC. **Both are asynchronous**: you get a job id, not a finished file —
+an image run takes seconds and video takes minutes, and a blocking REST call
+dies at a proxy timeout. One polling loop serves images, video AND the Tripo
+3D routes.
+
+```http
+POST /api/v1/images/generations
+Authorization: Bearer <key>
+
+{ "model": "openai/gpt-image-2", "prompt": "a cheerful farm girl, low-poly",
+  "aspect_ratio": "16:9", "quality": "high" }
+```
+
+```json
+202 { "id": "3f2b…", "object": "image.generation.job", "status": "running",
+      "model": "openai/gpt-image-2", "poll": "/api/v1/jobs/3f2b…" }
+```
+
+`size: "1024x1024"` is accepted as an alias for `aspect_ratio`, so
+`client.images.generate()` from an OpenAI SDK works unchanged.
+
+Video is the same shape at `POST /api/v1/videos/generations`, taking
+`duration` (seconds, model-dependent) and `resolution`.
+
+```http
+GET /api/v1/jobs/{id}
+```
+
+```json
+{ "id": "3f2b…", "status": "succeeded",
+  "data": [ { "url": "https://…signed…" } ],
+  "usage": { "cost_usd": 0.067 } }
+```
+
+`status` is `running`, `succeeded` or `failed`. **Fetch `url` promptly** —
+generated files sit behind signed URLs that expire in 24 hours.
+
+Models come from `GET /api/v1/models`; anything with `image` or `video` in its
+capabilities is valid here. Same key, same credits, same models as the studio
+— and the same list price.
+
 ## Listing models
 
 ```http
