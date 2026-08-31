@@ -41,35 +41,38 @@ export default function XTellClient() {
   const [temple, setTemple] = useState<Temple | null>(null)
 
   return (
-    <div style={{ maxWidth: 980, margin: '0 auto', padding: '48px 24px 96px' }}>
-      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>//XTELL · X算命</div>
-      <h1 style={{ fontFamily: 'var(--font-display), inherit', fontWeight: 800, fontSize: 'clamp(26px, 4vw, 38px)', margin: '0 0 10px' }}>
-        {t('xtell.title')}
-      </h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.65, maxWidth: 700, margin: '0 0 34px' }}>{t('xtell.sub')}</p>
+    <div className="xduel-page">
+      <div className="arena">
+        {/* House in-page header (XBoard/XEval pattern). The red "//" is drawn
+            by .prompt-label.eyebrow in CSS, never typed into the string, and
+            .page-headline sets the title size. This header was hand-rolled. */}
+        <div className="prompt-label eyebrow">{t('xtell.eyebrow')}</div>
+        <h1 className="page-headline" style={{ marginBottom: 10 }}>{t('xtell.title')}</h1>
+        <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.65, maxWidth: 700, margin: '0 0 34px' }}>{t('xtell.sub')}</p>
 
-      {!temple ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {(['bazi', 'ziwei', 'yuelao'] as Temple[]).map(k => (
-            <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
-              onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
-              style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
-              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
-              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }} />
-              <div style={{ padding: '14px 18px 16px' }}>
-                <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>
+        {!temple ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {(['bazi', 'ziwei', 'yuelao'] as Temple[]).map(k => (
+              <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
+                onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
+                style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }} />
+                <div style={{ padding: '14px 18px 16px' }}>
+                  <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <TempleRoom temple={temple} onBack={() => setTemple(null)} />
-      )}
+            ))}
+          </div>
+        ) : (
+          <TempleRoom temple={temple} onBack={() => setTemple(null)} />
+        )}
 
-      <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
+        <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
+      </div>
     </div>
   )
 }
@@ -213,7 +216,9 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const sel = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 13 }
 
   return (
-    <div>
+    // The arena is 1200 wide because XBoard/XEval put tables in it. A birth
+    // form and a reading are prose, so the room keeps its own 980 measure.
+    <div style={{ maxWidth: 980 }}>
       <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
         ← {t('xtell.back')}
       </button>
