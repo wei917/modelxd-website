@@ -553,14 +553,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
           .replace('{set}', label)
           .replace('{harness}', String(harness))
           .replace('{top}', rows[0]?.display ?? '')
-          .replace('{solved}', String(rows[0]?.solved ?? ''))
-          .replace('{n}', String(rows[0]?.n ?? ''))
-          .replace('{cov}', rows[0]?.specs.length
-            ? `${Math.round((rows[0].specs.reduce((a, b) => a + b, 0) / rows[0].specs.length) * 100)}%` : '—')
-          .replace('{best}', rows.find(r => r.provider !== 'modelxd')?.display ?? '')
-          .replace('{bestcov}', (() => { const r = rows.find(x => x.provider !== 'modelxd')
-            ; return r && r.specs.length ? `${Math.round((r.specs.reduce((a, b) => a + b, 0) / r.specs.length) * 100)}%` : '—' })())
-          .replace('{bestsolved}', String(rows.find(r => r.provider !== 'modelxd')?.solved ?? ''))
+          .replace('{pass}', rows[0]?.n ? `${Math.round((rows[0].solved / rows[0].n) * 100)}%` : '')
           .replace('{cost}', rows[0] ? money(rows[0].cost / rows[0].n) : '')}
       </p>
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '0 0 24px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
