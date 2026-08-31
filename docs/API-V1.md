@@ -9,6 +9,40 @@ The public inference API. OpenAI-shaped, so any existing SDK works by
 changing one URL. **There is no ModelXD client library and there should
 never be one** — needing one would mean the compatibility failed.
 
+## Listing models
+
+```http
+GET /api/v1/models
+Authorization: Bearer <your ModelXD API key>
+```
+
+OpenAI-shaped, so an OpenAI SDK's `client.models.list()` works unchanged:
+
+```json
+{ "object": "list", "data": [
+  { "id": "xd/auto", "object": "model", "owned_by": "modelxd",
+    "display_name": "ModelXD Auto (highest XD Score)", "tags": ["router"],
+    "note": "Resolves to a catalog model per request; billed at that model's list price." },
+  { "id": "openai/gpt-5.6-sol", "object": "model", "owned_by": "openai",
+    "display_name": "GPT-5.6 Sol",
+    "pricing_usd_per_1m": { "input": 5, "output": 30 },
+    "capabilities": { "web_search": true, "structured_output": true, "vision": true },
+    "tags": [] }
+] }
+```
+
+The extra fields (`display_name`, `pricing_usd_per_1m`, `capabilities`, `tags`)
+are ModelXD's; an OpenAI client ignores them.
+
+The list is derived from the same rules `/v1/chat/completions` enforces —
+enabled, text-capable, not blocked for the API — so **anything listed is
+callable and anything callable is listed**. A discovery endpoint that
+disagrees with the endpoint it describes is worse than none. Both routers
+(`xd/auto`, `xd/cheap`) appear as ids, since a developer reading only this
+endpoint would otherwise never learn they exist.
+
+Currently 20 models + 2 routers; 15 support web search.
+
 ## The call
 
 ```bash
