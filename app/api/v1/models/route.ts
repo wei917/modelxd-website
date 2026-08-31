@@ -5,10 +5,14 @@
 // ride alongside in extra fields; an OpenAI SDK ignores them, a curious
 // developer reads them.
 //
-// The list is derived from the SAME rules /v1/chat/completions enforces —
-// enabled, text-capable, not blocked for the API surface — so anything listed
-// here is callable and anything callable is listed. A discovery endpoint that
-// disagrees with the endpoint it describes is worse than none.
+// The list covers EVERY modality the API can generate — text (chat), image and
+// video (the /v1/*/generations endpoints) — because a developer must be able
+// to discover `openai/gpt-image-2` here. Shipping text-only while documenting
+// image endpoints broke this file's own rule, and a customer caught it on
+// Aug 30: "an endpoint that disagrees with the endpoint it describes."
+//
+// Filter with ?type=text|image|video. Each row carries `modalities` so a
+// client can filter locally too.
 
 export const runtime = 'nodejs'
 
@@ -49,13 +53,20 @@ export async function GET(req: Request) {
     .eq('enabled', true)
   if (error) return Response.json({ error: { message: error.message, type: 'server_error' } }, { status: 503 })
 
+  const url = new URL(req.url)
+  const want = url.searchParams.get('type')   // text | image | video
+  const GENERATED = ['text', 'image', 'video']
+
   const rows = (data ?? [])
-    .filter(m => (m.output_modalities ?? []).includes('text'))
+    .filter(m => (m.output_modalities ?? []).some((x: string) => GENERATED.includes(x)))
     .filter(m => !((m.blocked_features ?? []) as string[]).includes(API_FEATURE))
+    .filter(m => !want || (m.output_modalities ?? []).includes(want))
     .sort((a, b) => `${a.provider}/${a.model_name}`.localeCompare(`${b.provider}/${b.model_name}`))
 
   const models = rows.map(m => {
     const caps = (m.output_config as any)?.text?.capabilities ?? []
+    const mods = (m.output_modalities ?? []) as string[]
+    const isText = mods.includes('text')
     return {
       id: `${m.provider}/${m.model_name}`,
       object: 'model' as const,
@@ -63,28 +74,45 @@ export async function GET(req: Request) {
       owned_by: m.provider,
       // ── ModelXD extensions ───────────────────────────────────────────────
       display_name: m.display_name,
-      pricing_usd_per_1m: { input: price(m.model_pricing, 'text_input'), output: price(m.model_pricing, 'text_output') },
+      // What this model GENERATES, and therefore which endpoint takes it:
+      //   text  → POST /v1/chat/completions
+      //   image → POST /v1/images/generations
+      //   video → POST /v1/videos/generations
+      modalities: mods,
+      endpoint: isText ? '/api/v1/chat/completions'
+        : mods.includes('image') ? '/api/v1/images/generations'
+        : '/api/v1/videos/generations',
+      // Per-1M-token rates are a TEXT concept; image and video are priced per
+      // output (see model_pricing on the catalog / XBoard price labels), so
+      // nulls here are honest rather than missing.
+      pricing_usd_per_1m: isText
+        ? { input: price(m.model_pricing, 'text_input'), output: price(m.model_pricing, 'text_output') }
+        : { input: null, output: null },
       capabilities: {
         web_search: (caps as string[]).includes('web_search'),
         // Structured output is the API's headline feature and every text model
         // supports it (tiered per provider — see docs/API-V1.md).
-        structured_output: true,
+        structured_output: isText,
         vision: (m.modes ?? []).some((x: string) => x.startsWith('image_to')) || (m.modes ?? []).includes('pdf_to_text'),
       },
+      modes: m.modes ?? [],
       tags: m.tags ?? [],
     }
   })
 
   // Routers are callable model ids too — a developer who only reads this
   // endpoint would otherwise never learn they exist.
-  const routers = ROUTES.map(id => ({
+  const routers = (want && want !== 'text' ? [] : ROUTES).map(id => ({
     id,
     object: 'model' as const,
     created: 0,
     owned_by: 'modelxd',
     display_name: id === 'xd/auto' ? 'ModelXD Auto (highest XD Score)' : 'ModelXD Cheap (best value at quality bar)',
+    modalities: ['text'],
+    endpoint: '/api/v1/chat/completions',
     pricing_usd_per_1m: { input: null, output: null },   // billed at whatever model it picks
     capabilities: { web_search: false, structured_output: true, vision: false },
+    modes: [],
     tags: ['router'],
     note: 'Resolves to a catalog model per request; billed at that model\'s list price. The chosen model is returned in the response.',
   }))

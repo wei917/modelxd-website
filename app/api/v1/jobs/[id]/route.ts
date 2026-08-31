@@ -18,7 +18,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (caller.bearer) headers.Authorization = caller.bearer
   else { const c = req.headers.get('cookie'); if (c) headers.cookie = c }
 
-  const res = await fetch(`${origin}/api/xcreate/job/${encodeURIComponent(id)}`, { headers, cache: 'no-store' })
+  const res = await fetch(`${origin}/api/xcreate/job/${encodeURIComponent(id)}`, { headers, cache: 'no-store', redirect: 'manual' })
+  if (res.status >= 300 && res.status < 400) {
+    console.error(`[v1] internal job read was redirected to ${res.headers.get('location')} — check proxy.ts bypass list`)
+    return err('Job polling is misconfigured on this deployment (internal call redirected).', 500, 'server_error')
+  }
   const body = await res.json().catch(() => ({}))
   if (!res.ok) return err(body?.error ?? `job read failed (${res.status})`, res.status, 'job_error')
 

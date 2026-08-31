@@ -45,6 +45,14 @@ function isBypassed(pathname: string): boolean {
   if (pathname === '/api/stripe/webhook')   return true
   if (pathname.startsWith('/api/v1/'))      return true
   if (pathname === '/api/mcp')              return true
+  // /api/v1/* and /api/mcp call these internally. The gate redirects a
+  // non-exempt POST to /coming-soon, and following that redirect turns into
+  // 405 Method Not Allowed — which is exactly what a customer hit on
+  // /v1/images/generations (Aug 30), and what silently broke MCP image
+  // generation on www too. These carry their own auth (API key or session)
+  // and bill credits; the site password was never what protected them.
+  if (pathname === '/api/xcreate')          return true
+  if (pathname.startsWith('/api/xcreate/')) return true
   if (pathname.startsWith('/_next/'))       return true
   if (pathname === '/favicon.ico')          return true
   if (pathname === '/robots.txt')           return true

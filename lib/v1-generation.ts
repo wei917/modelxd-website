@@ -69,10 +69,16 @@ export async function startJob(caller: Caller, req: Request, mode: 'image' | 'vi
     if (cookie) headers.cookie = cookie
   }
 
+  // redirect:'manual' so a gate or rewrite can never turn this into a
+  // mystery 405 again — a redirect here is a configuration bug and must say so.
   const res = await fetch(`${origin}/api/xcreate`, {
-    method: 'POST', headers,
+    method: 'POST', headers, redirect: 'manual',
     body: JSON.stringify({ prompt, mode, modelIds: [modelUuid], modelOptions: [options], jobId }),
   })
+  if (res.status >= 300 && res.status < 400) {
+    console.error(`[v1] internal /api/xcreate call was redirected to ${res.headers.get('location')} — check proxy.ts bypass list`)
+    return err('Generation is misconfigured on this deployment (internal call redirected).', 500, 'server_error')
+  }
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
     // Pass the real reason through — insufficient credits and safety refusals

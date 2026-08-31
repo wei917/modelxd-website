@@ -78,14 +78,22 @@ OpenAI-shaped, so an OpenAI SDK's `client.models.list()` works unchanged:
 The extra fields (`display_name`, `pricing_usd_per_1m`, `capabilities`, `tags`)
 are ModelXD's; an OpenAI client ignores them.
 
-The list is derived from the same rules `/v1/chat/completions` enforces —
-enabled, text-capable, not blocked for the API — so **anything listed is
-callable and anything callable is listed**. A discovery endpoint that
-disagrees with the endpoint it describes is worse than none. Both routers
-(`xd/auto`, `xd/cheap`) appear as ids, since a developer reading only this
-endpoint would otherwise never learn they exist.
+Every model the API can call is listed — **text, image and video** — because
+this is the only place a developer can discover ids like `openai/gpt-image-2`.
+Each row carries `modalities` and an `endpoint` telling you where to send it:
 
-Currently 20 models + 2 routers; 15 support web search.
+| filter | returns | send to |
+|---|---|---|
+| `?type=text` | 20 models + 2 routers | `POST /api/v1/chat/completions` |
+| `?type=image` | 9 models | `POST /api/v1/images/generations` |
+| `?type=video` | 21 models | `POST /api/v1/videos/generations` |
+
+Anything listed is callable and anything callable is listed. `pricing_usd_per_1m`
+is null for image and video models — those are priced per output, not per
+token, so a null is honest rather than missing.
+
+Both routers (`xd/auto`, `xd/cheap`) appear under text, since a developer
+reading only this endpoint would otherwise never learn they exist.
 
 ## The call
 
