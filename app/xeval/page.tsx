@@ -95,6 +95,30 @@ export default function XEvalPage() {
     return bs.sort((a, b) => (a === 'gdpval' ? -1 : b === 'gdpval' ? 1 : a.localeCompare(b)))
   }, [runs])
   const [bench, setBench] = useState('gdpval')
+  // Shareable tab links: /xeval?b=lab. Short slugs, because 'terminal-bench-2-1'
+  // is an internal task_set key and a URL should outlive our naming. The tab
+  // must NOT initialise from the URL — SSR renders on every host and would
+  // disagree with the client on first paint — so the URL is applied in an
+  // effect, once, after the data that decides which tabs exist has arrived.
+  const BENCH_SLUG: Record<string, string> = { gdpval: 'gdpval', 'terminal-bench-2-1': 'tb', 'harvey-lab': 'lab' }
+  const urlApplied = useRef(false)
+  useEffect(() => {
+    if (urlApplied.current || !benches.length) return
+    urlApplied.current = true
+    const want = new URLSearchParams(window.location.search).get('b')
+    if (!want) return
+    // Accept the slug or the raw task_set; ignore anything not actually published.
+    const hit = benches.find(b => BENCH_SLUG[b] === want || b === want)
+    if (hit) setBench(hit)
+  }, [benches])
+  const pickBench = (b: string) => {
+    setBench(b)
+    const q = new URLSearchParams(window.location.search)
+    b === 'gdpval' ? q.delete('b') : q.set('b', BENCH_SLUG[b] ?? b)
+    const qs = q.toString()
+    // replace, not push: three tabs should not bury the back button.
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
+  }
   const gdpvalRuns = useMemo(() => runs.filter(r => (r.task_set ?? 'gdpval') === 'gdpval'), [runs])
   const tbRuns = useMemo(() => runs.filter(r => r.task_set === bench), [runs, bench])
 
@@ -306,7 +330,7 @@ export default function XEvalPage() {
                 {benches.map(b => {
                   const on = bench === b
                   return (
-                    <button key={b} onClick={() => setBench(b)} style={{
+                    <button key={b} onClick={() => pickBench(b)} style={{
                       padding: '10px 20px 12px', fontSize: 13.5, cursor: 'pointer',
                       fontFamily: 'var(--font-body)', fontWeight: on ? 600 : 400,
                       border: 'none', background: 'transparent',
