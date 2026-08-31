@@ -241,10 +241,16 @@ Setup facts worth keeping if it is ever re-run:
   Its aggregate TTFT column is blank because we call non-streaming.
 
 **Qwen's implicit cache is real and routine: 75–78% of input tokens hit.**
-`ai_models.cached_input` for qwen3.8-max is still null, and Alibaba does not
-publish the rate (their doc says it "is not 20% of the input_token unit price"
-and points to the Model Studio console). While it stays null, any recomputed
-cost bills those cached tokens at full $2/M and **overstates Qwen's $/task**.
+`ai_models.cached_input` for qwen3.8-max is still null. The rate IS published —
+**$0.25/M for Singapore**, on the model's own info page, region-specific
+(Beijing is $0.206/M implicit). The general pricing doc misleads: it says the
+rate "is not 20% of the input_token unit price" and points at the console,
+which reads as undisclosed — it is 12.5% of the $2/M input rate, stated
+elsewhere. While the column stays null, any recomputed cost bills cached
+tokens at full $2/M and **overstates Qwen's $/task**. Owner stays on the
+Singapore endpoint (US Virginia rejected 2026-08-30 as not worth the
+region-scoped key and `-us` model-suffix handling), so $0.25/M is the rate
+to use if it is ever filled.
 
 ## 9. Cost-accounting audit (2026-08-27) — long-context tiers do NOT apply
 
