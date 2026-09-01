@@ -409,6 +409,13 @@ function HeCard({ match }: { match: any }) {
     mixed: 'var(--score-fair)', work: 'var(--score-poor)',
   }
   const colour = band[match.band] ?? 'var(--muted)'
+  // Each row is coloured by ITS OWN score, not by the overall band. Painting a
+  // 32 the same green as a 100 says the 六沖 is fine, which is the one thing
+  // this card must not say.
+  const rowColour = (n: number) => n >= 85 ? 'var(--score-elite)'
+    : n >= 72 ? 'var(--score-good)'
+    : n >= 58 ? 'var(--score-fair)'
+    : 'var(--score-poor)'
   return (
     <div style={{ ...card, padding: '16px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -425,10 +432,10 @@ function HeCard({ match }: { match: any }) {
           <div key={d.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, auto) 1fr minmax(72px, auto)', gap: 10, alignItems: 'center' }}>
             <div style={{ fontSize: 12.5, fontWeight: 600 }}>{d.label}</div>
             <div style={{ height: 6, borderRadius: 999, background: 'var(--surface2)', overflow: 'hidden' }}>
-              <div style={{ width: `${d.score}%`, height: '100%', background: colour, opacity: 0.75 }} />
+              <div style={{ width: `${d.score}%`, height: '100%', background: rowColour(d.score), opacity: 0.8 }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'flex-end' }}>
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12.5 }}>{d.score}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12.5, fontWeight: 700, color: rowColour(d.score) }}>{d.score}</span>
               <span style={{ ...mono, color: 'var(--muted2)', fontSize: 9.5 }}>×{d.weight}%</span>
             </div>
             <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--muted2)', marginTop: -4 }}>{d.detail}</div>
