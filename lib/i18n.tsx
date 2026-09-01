@@ -824,6 +824,7 @@ export const STRINGS: Record<string, Entry> = {
   'xboard.provisional':  { en: 'Provisional — still gathering votes.', 'zh-Hant': '暫定 — 仍在累積票數。', 'zh-Hans': '暂定 — 仍在累积票数。', ja: '暫定 — 投票を集計中です。', ko: '잠정 — 투표를 모으는 중입니다.' },
   'xboard.early':        { en: 'Early', 'zh-Hant': '初期', 'zh-Hans': '初期', ja: '暫定', ko: '초기' },
   'xtell.eyebrow':     { en: 'XTell', 'zh-Hant': 'X算命', 'zh-Hans': 'X算命', ja: 'X占い', ko: 'X점술' },
+  'xtell.he.ask':      { en: 'Read our compatibility, and where the next few years take us.', 'zh-Hant': '請月老看我們的合盤，以及未來幾年的姻緣走向。', 'zh-Hans': '请月老看我们的合盘，以及未来几年的姻缘走向。', ja: '二人の相性と、これから数年の縁の流れを見てください。', ko: '저희 궁합과 앞으로 몇 년의 인연 흐름을 봐 주세요.' },
   'xtell.he.title':    { en: 'Compatibility', 'zh-Hant': '合盤', 'zh-Hans': '合盘', ja: '相性', ko: '궁합' },
   'xtell.he.band.high':{ en: 'Rare fit', 'zh-Hant': '難得的相合', 'zh-Hans': '难得的合', ja: '得がたい相性', ko: '보기 드문 궁합' },
   'xtell.he.band.good':{ en: 'Fits well', 'zh-Hant': '相合', 'zh-Hans': '相合', ja: '相性は良い', ko: '잘 맞음' },

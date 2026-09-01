@@ -136,6 +136,10 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
       setMatch(d.match ?? null)
       setEngine(d.engine ?? null)
       setEntered(true)
+      // 月老廟: the scores land free and instantly, so the only thing left to
+      // ask is what they mean. Write the question for them but do NOT send it
+      // — sending spends credits, and that stays a click the visitor makes.
+      if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
     } catch (e: any) { setErr(String(e?.message ?? e)) }
   }
 
