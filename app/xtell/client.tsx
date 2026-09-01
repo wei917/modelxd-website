@@ -85,8 +85,11 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const [birth2, setBirth2] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'female' as 'male' | 'female', hourUnknown: false })
   const [entered, setEntered] = useState(false)
   const [chart, setChart] = useState<any>(null)
+  const [match, setMatch] = useState<any>(null)   // 月老廟's computed 合盤
   const [engine, setEngine] = useState<string | null>(null)
-  const [showChart, setShowChart] = useState(false)
+  // Shown by default. The computed chart is the whole reason this page is not
+  // just a chat window, and it was hidden behind a link nobody clicked.
+  const [showChart, setShowChart] = useState(true)
   const [err, setErr] = useState<string | null>(null)
 
   // Up to two masters. The default seat is the house pick — the latest good
@@ -130,6 +133,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error ?? 'failed')
       setChart(d.chart)
+      setMatch(d.match ?? null)
       setEngine(d.engine ?? null)
       setEntered(true)
     } catch (e: any) { setErr(String(e?.message ?? e)) }
@@ -280,7 +284,12 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
             </button>
           </div>
 
-          {/* The chart, hidden by default — for those who want to verify. */}
+          {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
+              is what the two of them came to see. The reading interprets it. */}
+          {match && <HeCard match={match} />}
+
+          {/* The chart. Open by default, foldable for anyone who only wants
+              the reading. */}
           {showChart && chart && (
             <div style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <BaziBoard chart={chart} />
@@ -374,6 +383,69 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           onClose={() => setPickerOpen(false)}
         />
       )}
+    </div>
+  )
+}
+
+// ── 合盤 ────────────────────────────────────────────────────────────────────
+// Every number here came out of lib/xtell.ts, and every row says which two
+// 干支 it read and what relation it found — the same contract as the chart
+// below it. Nothing on this card is the model's opinion.
+function HeCard({ match }: { match: any }) {
+  const t = useT()
+  const band: Record<string, string> = {
+    high: 'var(--score-elite)', good: 'var(--score-good)',
+    mixed: 'var(--score-fair)', work: 'var(--score-poor)',
+  }
+  const colour = band[match.band] ?? 'var(--muted)'
+  return (
+    <div style={{ ...card, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.he.title')}</div>
+        <span style={{ flex: 1 }} />
+        <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 30, fontWeight: 800, color: colour, lineHeight: 1 }}>
+          {match.overall}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{t(`xtell.he.band.${match.band}`)}</div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        {match.dimensions.map((d: any) => (
+          <div key={d.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, auto) 1fr minmax(72px, auto)', gap: 10, alignItems: 'center' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{d.label}</div>
+            <div style={{ height: 6, borderRadius: 999, background: 'var(--surface2)', overflow: 'hidden' }}>
+              <div style={{ width: `${d.score}%`, height: '100%', background: colour, opacity: 0.75 }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'flex-end' }}>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12.5 }}>{d.score}</span>
+              <span style={{ ...mono, color: 'var(--muted2)', fontSize: 9.5 }}>×{d.weight}%</span>
+            </div>
+            <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--muted2)', marginTop: -4 }}>{d.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* The years ahead. Only years whose 流年地支 actually 合 or 沖 a 日支 are
+          listed; a year with nothing to say is left out rather than padded. */}
+      <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.he.years')}</div>
+        {match.years.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xtell.he.noyears')}</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {match.years.map((y: any) => (
+              <div key={y.year} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5 }}>
+                <span style={{ fontFamily: 'var(--font-mono), monospace', fontWeight: 700, minWidth: 62 }}>{y.year}</span>
+                <span style={{ ...mono, color: 'var(--muted2)', minWidth: 34 }}>{y.ganZhi}</span>
+                <span style={{ color: y.good ? 'var(--green)' : 'var(--red)', fontWeight: 600, minWidth: 56 }}>{y.kind}</span>
+                <span style={{ color: 'var(--muted)' }}>{y.note}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.he.note')}</div>
     </div>
   )
 }

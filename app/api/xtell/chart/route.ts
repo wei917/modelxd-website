@@ -6,7 +6,7 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, validBirth, ENGINES, type Temple } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, validBirth, ENGINES, type Temple } from '@/lib/xtell'
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -23,7 +23,12 @@ export async function POST(req: Request) {
     const chart = temple === 'ziwei' ? ziweiChart(body.birth)
       : temple === 'yuelao' ? { a: baziChart(body.birth), b: baziChart(body.birth2) }
       : baziChart(body.birth)
-    return Response.json({ temple, chart, engine: ENGINES[temple] })
+    // 月老廟 also gets its 合盤 here, because it is the same kind of thing as a
+    // chart: pure computation, free, and shown before any reading is bought.
+    const match = temple === 'yuelao'
+      ? heMatch((chart as any).a, (chart as any).b, new Date().getFullYear())
+      : undefined
+    return Response.json({ temple, chart, match, engine: ENGINES[temple] })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)
     return Response.json({ error: 'chart computation failed' }, { status: 500 })

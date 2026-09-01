@@ -146,7 +146,129 @@ export function ziweiFacts(c: ZiweiChart, gender: string): string {
 // 第二位 are deliberate — 合婚 tradition says 男方/女方, but two people are
 // whoever they are.
 
-export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender: string): string {
+// ── 合盤：the computed score ────────────────────────────────────────────────
+//
+// The scores are CODE, like the charts. A model asked to "rate this couple"
+// invents a different number every run, which is exactly the kind of confident
+// noise this page exists to avoid — so the arithmetic lives here, every
+// dimension names the two 干支 it read and the relation it found, and the
+// master is handed the same numbers the visitor is looking at.
+//
+// The relations are the standard ones (六合/三合/六沖/相害/相刑, 天干五合,
+// 五行生剋). The WEIGHTS are a judgement call and are stated openly rather
+// than hidden: 日支 is the 夫妻宮 and carries the most weight in 合婚, the two
+// 日主 are the people themselves, 生肖 is what everyone already checks.
+
+const LIU_HE: Record<string, string> = { 子: '丑', 丑: '子', 寅: '亥', 亥: '寅', 卯: '戌', 戌: '卯', 辰: '酉', 酉: '辰', 巳: '申', 申: '巳', 午: '未', 未: '午' }
+const LIU_CHONG: Record<string, string> = { 子: '午', 午: '子', 丑: '未', 未: '丑', 寅: '申', 申: '寅', 卯: '酉', 酉: '卯', 辰: '戌', 戌: '辰', 巳: '亥', 亥: '巳' }
+const LIU_HAI: Record<string, string> = { 子: '未', 未: '子', 丑: '午', 午: '丑', 寅: '巳', 巳: '寅', 卯: '辰', 辰: '卯', 申: '亥', 亥: '申', 酉: '戌', 戌: '酉' }
+const SAN_HE: string[][] = [['申', '子', '辰'], ['亥', '卯', '未'], ['寅', '午', '戌'], ['巳', '酉', '丑']]
+const XIANG_XING: string[][] = [['寅', '巳', '申'], ['丑', '戌', '未'], ['子', '卯']]
+const TIAN_GAN_HE: Record<string, string> = { 甲: '己', 己: '甲', 乙: '庚', 庚: '乙', 丙: '辛', 辛: '丙', 丁: '壬', 壬: '丁', 戊: '癸', 癸: '戊' }
+const GAN_WU_XING: Record<string, string> = { 甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水' }
+const ZHI_SHENG_XIAO: Record<string, string> = { 子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '龍', 巳: '蛇', 午: '馬', 未: '羊', 申: '猴', 酉: '雞', 戌: '狗', 亥: '豬' }
+/** 木生火生土生金生水生木 */
+const SHENG_NEXT: Record<string, string> = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' }
+/** 木剋土剋水剋火剋金剋木 */
+const KE_NEXT: Record<string, string> = { 木: '土', 土: '水', 水: '火', 火: '金', 金: '木' }
+
+export type BranchRelation = { kind: '六合' | '三合' | '六沖' | '相害' | '相刑' | '無特殊關係'; score: number }
+
+/** The relation between two 地支, and what 合婚 tradition makes of it. */
+export function branchRelation(x: string, y: string): BranchRelation {
+  if (LIU_HE[x] === y) return { kind: '六合', score: 100 }
+  if (SAN_HE.some(g => g.includes(x) && g.includes(y) && x !== y)) return { kind: '三合', score: 88 }
+  if (LIU_CHONG[x] === y) return { kind: '六沖', score: 32 }
+  if (LIU_HAI[x] === y) return { kind: '相害', score: 46 }
+  if (XIANG_XING.some(g => g.includes(x) && g.includes(y) && x !== y)) return { kind: '相刑', score: 42 }
+  return { kind: '無特殊關係', score: 62 }
+}
+
+/** The relation between two 天干, read through their 五行. */
+export function stemRelation(x: string, y: string): { kind: string; score: number } {
+  if (TIAN_GAN_HE[x] === y) return { kind: '天干五合', score: 100 }
+  const ex = GAN_WU_XING[x], ey = GAN_WU_XING[y]
+  if (!ex || !ey) return { kind: '無法判讀', score: 60 }
+  if (ex === ey) return { kind: `同為${ex}`, score: 72 }
+  if (SHENG_NEXT[ex] === ey) return { kind: `${ex}生${ey}`, score: 86 }
+  if (SHENG_NEXT[ey] === ex) return { kind: `${ey}生${ex}`, score: 86 }
+  if (KE_NEXT[ex] === ey) return { kind: `${ex}剋${ey}`, score: 48 }
+  if (KE_NEXT[ey] === ex) return { kind: `${ey}剋${ex}`, score: 48 }
+  return { kind: '無特殊關係', score: 62 }
+}
+
+export type HeDimension = { key: string; label: string; weight: number; score: number; detail: string }
+export type HeYear = { year: number; ganZhi: string; who: 'a' | 'b' | 'both'; kind: string; good: boolean; note: string }
+export type HeMatch = {
+  overall: number
+  band: 'high' | 'good' | 'mixed' | 'work'
+  dimensions: HeDimension[]
+  years: HeYear[]
+}
+
+const elementsOf = (c: BaziChart) => new Set(c.wuXing.join('').split('').filter(Boolean))
+
+/**
+ * The full 合盤. `hourUnknown` drops the 時柱 from the element spread only —
+ * every weighted dimension reads 年/月/日, which the three known pillars cover.
+ */
+export function heMatch(a: BaziChart, b: BaziChart, fromYear: number): HeMatch {
+  const ad = a.pillars.day.ganZhi, bd = b.pillars.day.ganZhi
+  const ay = a.pillars.year.ganZhi, by = b.pillars.year.ganZhi
+  const am = a.pillars.month.ganZhi, bm = b.pillars.month.ganZhi
+
+  const dayBranch = branchRelation(ad[1], bd[1])
+  const dayStem = stemRelation(a.dayMaster, b.dayMaster)
+  const yearBranch = branchRelation(ay[1], by[1])
+  const monthBranch = branchRelation(am[1], bm[1])
+
+  // 五行互補: how much of the five is covered once both charts are laid
+  // together. Five out of five means whatever one lacks, the other carries.
+  const both = new Set([...elementsOf(a), ...elementsOf(b)])
+  const spread = 40 + Math.min(5, both.size) * 12
+
+  const dimensions: HeDimension[] = [
+    { key: 'dayBranch', label: '日支・夫妻宮', weight: 30, score: dayBranch.score,
+      detail: `${ad[1]} × ${bd[1]}　${dayBranch.kind}` },
+    { key: 'dayStem', label: '日主・兩人本性', weight: 25, score: dayStem.score,
+      detail: `${a.dayMaster} × ${b.dayMaster}　${dayStem.kind}` },
+    { key: 'yearBranch', label: '生肖・年支', weight: 20, score: yearBranch.score,
+      detail: `${ZHI_SHENG_XIAO[ay[1]] ?? ay[1]} × ${ZHI_SHENG_XIAO[by[1]] ?? by[1]}　${yearBranch.kind}` },
+    { key: 'monthBranch', label: '月支・家庭性情', weight: 15, score: monthBranch.score,
+      detail: `${am[1]} × ${bm[1]}　${monthBranch.kind}` },
+    { key: 'spread', label: '五行互補', weight: 10, score: spread,
+      detail: `兩盤合看涵蓋 ${[...both].join('、')}（${both.size}/5）` },
+  ]
+
+  const overall = Math.round(dimensions.reduce((sum, d) => sum + d.score * d.weight, 0) / 100)
+  const band: HeMatch['band'] = overall >= 82 ? 'high' : overall >= 70 ? 'good' : overall >= 58 ? 'mixed' : 'work'
+
+  // ── The years ahead ───────────────────────────────────────────────────────
+  // 流年地支 against each person's 日支 (夫妻宮). Only years that actually carry
+  // a relation are listed; a blank year is not a prediction and is left out.
+  // June 1 is used to read the year's 干支 because the 干支 year turns at 立春,
+  // not at January 1 — a January date would return the previous year's pillar.
+  const years: HeYear[] = []
+  for (let y = fromYear; y < fromYear + 8; y++) {
+    const gz = Solar.fromYmd(y, 6, 1).getLunar().getYearInGanZhi()
+    const zhi = gz[1]
+    const ra = branchRelation(zhi, ad[1]), rb = branchRelation(zhi, bd[1])
+    const hit = (r: BranchRelation) => r.kind !== '無特殊關係'
+    if (!hit(ra) && !hit(rb)) continue
+    const who: HeYear['who'] = hit(ra) && hit(rb) ? 'both' : hit(ra) ? 'a' : 'b'
+    const kinds = [hit(ra) ? ra.kind : null, hit(rb) ? rb.kind : null].filter(Boolean)
+    const good = (hit(ra) ? ra.score : 100) >= 80 && (hit(rb) ? rb.score : 100) >= 80
+    years.push({
+      year: y, ganZhi: gz, who, kind: [...new Set(kinds)].join('／'),
+      good,
+      note: good ? '感情容易加溫，適合把話說開、把事定下來' : '容易起波動，宜多溝通、少賭氣',
+    })
+  }
+
+  return { overall, band, dimensions, years }
+}
+
+export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender: string, match?: HeMatch): string {
   const one = (c: BaziChart, g: string, label: string) => {
     const p = c.pillars
     return [
@@ -157,7 +279,15 @@ export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender
       c.daYun.length ? `  大運：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
     ].filter(Boolean).join('\n')
   }
-  return `${one(a, aGender, '第一位')}\n\n${one(b, bGender, '第二位')}`
+  const base = `${one(a, aGender, '第一位')}\n\n${one(b, bGender, '第二位')}`
+  if (!match) return base
+  // The visitor is looking at these exact numbers on screen. A master who
+  // talks past them reads as broken, so they go in as facts, not suggestions.
+  const dims = match.dimensions.map(d => `  ${d.label}（權重 ${d.weight}）：${d.score} 分　${d.detail}`).join('\n')
+  const years = match.years.length
+    ? match.years.map(y => `  ${y.year} ${y.ganZhi}：${y.kind}（${y.who === 'both' ? '兩人皆應' : y.who === 'a' ? '應第一位' : '應第二位'}）`).join('\n')
+    : '  未來八年內，流年地支與雙方日支無明顯合沖。'
+  return `${base}\n\n系統已排好的合盤分數（信眾此刻正看著這張表，請以此為準，不要另給一組數字）：\n  總分：${match.overall}\n${dims}\n\n流年（未來八年，只列有合沖者）：\n${years}`
 }
 
 // ── The masters ─────────────────────────────────────────────────────────────

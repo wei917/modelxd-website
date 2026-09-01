@@ -26,7 +26,7 @@ import { computeMatchScores } from '../../lib/matchScore'
 import { downloadFile, downloadName } from '../../lib/download'
 import ProviderLogo from '../components/ProviderLogo'
 import ModelPickerDialog from '../components/ModelPickerDialog'
-import { XCREATE_TEMPLATES, type Template } from './templates'
+import { XCREATE_TEMPLATES, PLATFORM_PRESETS, type Template } from './templates'
 import { isSubmitEnter } from '../../lib/ime'
 
 type Mode = 'text' | 'image' | 'video'
@@ -1072,6 +1072,12 @@ function CreateStudio() {
   // of it after, so we don't "enforce" anything from the template after
   // application.
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null)
+  // E-commerce platform chip on product templates (General/Shopee/Taobao/
+  // Amazon). A chip is a re-application of the template with that
+  // marketplace's conventions appended — it owns the prompt the same way
+  // clicking the template card does, so switching chips overwrites edits
+  // exactly as predictably.
+  const [platformId, setPlatformId] = useState<string>('general')
   // True while a template's bundled sample file is being fetched + uploaded
   // (see applyTemplate). Keeps Generate disabled so a run can't start with
   // the attachment half-arrived.
@@ -2786,6 +2792,36 @@ function CreateStudio() {
   // model_name from the live catalog), apply per-slot options (input
   // shape + aspect ratio + duration), and fill the prompt. The user can
   // edit anything after — templates are starting points, not contracts.
+  /** Merge a platform preset's conventions into a template's prompt and
+   *  options. `general` (or a template without `ecommerce`) is identity. */
+  const platformSpecFor = (t: Template, pid: string) => {
+    if (!t.ecommerce) return null
+    const p = PLATFORM_PRESETS.find(x => x.id === pid)
+    return (t.mode === 'video' ? p?.video : p?.image) ?? null
+  }
+
+  /** Chip click on a product template: re-apply the active template with
+   *  that marketplace's spec — prompt block appended, aspect/duration
+   *  clamped through validateOpts like any template application. */
+  const applyPlatform = (pid: string) => {
+    const t = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
+    if (!t?.ecommerce) return
+    setPlatformId(pid)
+    const spec = platformSpecFor(t, pid)
+    setPrompt(spec ? `${t.starterPrompt}\n\n${spec.promptSpec}` : t.starterPrompt)
+    const specDuration = spec && 'duration' in spec ? (spec as { duration?: number }).duration : undefined
+    setSlotOptions(prev => prev.map((o, i) => {
+      const m = selectedModels[i]
+      if (!o || !m) return o
+      return validateOpts(m, t.mode as Mode, {
+        ...o,
+        aspect_ratio: spec?.aspectRatio ?? t.aspectRatio ?? o.aspect_ratio,
+        duration: t.mode === 'video' ? (specDuration ?? t.duration ?? o.duration) : o.duration,
+      })
+    }))
+    flashComposer()
+  }
+
   const applyTemplate = async (t: Template) => {
     // Block the mode-change effect from wiping the state we're setting.
     modeClearedRef.current = true
@@ -2795,6 +2831,7 @@ function CreateStudio() {
     setPrompt(t.starterPrompt)
     setAttachments([])
     setActiveTemplateId(t.id)
+    setPlatformId('general')
     setSlots([])
     setPhase('setup')
     setChosenIdx(null)
@@ -4455,6 +4492,39 @@ function CreateStudio() {
                               style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
                           </span>
                         )}
+                      </div>
+                    )
+                  })()}
+                  {/* E-commerce platform row — only on product templates.
+                      A chip re-applies the template with that marketplace's
+                      listing conventions (ratio, background, fill, text
+                      policy, video length). */}
+                  {(() => {
+                    const tpl = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
+                    if (!tpl?.ecommerce) return null
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '10px 0 2px' }}>
+                        <span style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.08em', color: 'var(--muted)', textTransform: 'uppercase' as const }}>Platform</span>
+                        {PLATFORM_PRESETS.map(p => {
+                          const on = platformId === p.id
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => !isLocked && applyPlatform(p.id)}
+                              disabled={isLocked}
+                              title={p.id === 'general' ? 'The template\'s own defaults' : `Re-apply this template with ${p.label}'s listing conventions`}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                padding: '4px 10px', borderRadius: 999, fontSize: 11.5,
+                                fontFamily: 'var(--mono)', cursor: isLocked ? 'default' : 'pointer',
+                                border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
+                                background: on ? 'var(--red-dim, #fde8e5)' : 'transparent',
+                                color: on ? 'var(--red)' : 'var(--muted2)',
+                                opacity: isLocked ? 0.5 : 1,
+                              }}
+                            >{p.emoji} {p.label}</button>
+                          )
+                        })}
                       </div>
                     )
                   })()}

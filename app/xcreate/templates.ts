@@ -40,6 +40,68 @@ export const SAMPLES_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/
 
 export type TemplateMode = 'text' | 'image' | 'video'
 
+/**
+ * E-commerce platform presets (owner ask, Aug 31): a product template can
+ * offer a second row of chips — General / Shopee / Taobao / Amazon — that
+ * re-applies the template with that marketplace's listing conventions
+ * baked in. A preset is CONVENTIONS, not a different generator: canvas
+ * ratio, background rule, fill ratio, text policy, and (video) length.
+ * The spec text is appended to the starter prompt as a labelled block so
+ * the user can still see and edit exactly what was asked.
+ *
+ * Keep specs CHECKABLE (the Dailies/compliance agent will verify these
+ * same rules later): "pure white RGB(255,255,255)" can be judged from
+ * pixels; "looks professional" cannot.
+ */
+export interface PlatformPreset {
+  id:    string
+  /** Chip label — proper nouns stay untranslated. */
+  label: string
+  emoji: string
+  image?: { aspectRatio?: string; promptSpec: string }
+  video?: { aspectRatio?: string; duration?: number; promptSpec: string }
+}
+
+export const PLATFORM_PRESETS: PlatformPreset[] = [
+  {
+    id: 'general', label: 'General', emoji: '✦',
+    // No overrides — the template's own defaults.
+  },
+  {
+    id: 'shopee', label: 'Shopee', emoji: '🛒',
+    image: {
+      aspectRatio: '1:1',
+      promptSpec: 'PLATFORM SPEC (Shopee main image): square 1:1 frame. Clean pure white background. The product fills most of the frame (at least 80%), fully inside the frame with a small even margin, front-facing hero angle, crisp edges and true-to-life colors. No text, no watermarks, no logos overlaid, no borders, no props that are not the product.',
+    },
+    video: {
+      aspectRatio: '1:1', duration: 10,
+      promptSpec: 'PLATFORM SPEC (Shopee product video): square 1:1 frame, around 10 seconds. Bright clean background, the product large and centered throughout; show the product itself and one clear use or detail moment. No on-screen text, no captions, no watermarks, no logos overlaid.',
+    },
+  },
+  {
+    id: 'taobao', label: 'Taobao', emoji: '🧧',
+    image: {
+      aspectRatio: '1:1',
+      promptSpec: 'PLATFORM SPEC (淘宝/天猫 主图): square 1:1 frame. Bright, clean, premium composition — pure light background or a very subtle lifestyle surface. The product is the clear hero at 70–80% of the frame with breathing room around it. Absolutely no promotional text, no price tags, no watermarks, no logo overlays, no borders (平台主图规范). Commercial studio lighting, true colors.',
+    },
+    video: {
+      aspectRatio: '1:1', duration: 10,
+      promptSpec: 'PLATFORM SPEC (淘宝主图视频): square 1:1 frame, 9–15 seconds. Open on the product hero angle within the first second, keep the product dominant in every shot, end on a clean stable hero frame. No on-screen text, no price claims, no watermarks or logo overlays.',
+    },
+  },
+  {
+    id: 'amazon', label: 'Amazon', emoji: '📦',
+    image: {
+      aspectRatio: '1:1',
+      promptSpec: 'PLATFORM SPEC (Amazon main image): square 1:1 frame on a PURE WHITE background (RGB 255,255,255) with no gradient and no scene. The product fills at least 85% of the frame, shown complete and front-facing, with only a soft natural contact shadow. Strictly no text, no logos overlaid, no watermarks, no borders, no props, no packaging inserts, no mannequins.',
+    },
+    video: {
+      aspectRatio: '16:9', duration: 15,
+      promptSpec: 'PLATFORM SPEC (Amazon product video): 16:9 frame, about 15 seconds. Show the real product clearly on a clean neutral set — features and scale, one simple demonstration moment. No on-screen claims or promotional text, no logos overlaid, no pricing.',
+    },
+  },
+]
+
 export interface TemplateSlot {
   /** Label shown above the upload slot, e.g. "ROSE" or "YOU". */
   label: string
@@ -88,6 +150,11 @@ export interface Template {
   sampleUrl?:     string
   sampleName?:    string
   sampleType?:    string   // MIME type; defaults to text/plain
+
+  /** True on product/e-commerce templates: the composer offers the
+   *  PLATFORM_PRESETS chip row (General / Shopee / Taobao / Amazon),
+   *  which re-applies the template with that marketplace's conventions. */
+  ecommerce?:     boolean
 }
 
 export const XCREATE_TEMPLATES: Template[] = [
@@ -391,6 +458,7 @@ export const XCREATE_TEMPLATES: Template[] = [
     emoji:             '📦',
     title:             'Product Video',
     subtitle:          'Product refs in → cinematic ad out',
+    ecommerce:         true,
     mode:              'video',
     slotMode:          'reference_frames',
     // The utility sibling of the Product Shots image template — and same
@@ -551,6 +619,7 @@ export const XCREATE_TEMPLATES: Template[] = [
     id:                'product-shots',
     emoji:             '🛍',
     popular:           true,
+    ecommerce:         true,
     title:             'Product Shots',
     subtitle:          'Product refs in → store-ready photos out',
     mode:              'image',

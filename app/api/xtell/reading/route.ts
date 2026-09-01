@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, validBirth, MASTERS, type Temple } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, validBirth, MASTERS, type Temple } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
@@ -48,7 +48,13 @@ export async function POST(req: Request) {
   const facts = temple === 'ziwei'
     ? ziweiFacts(ziweiChart(body.birth), body.birth.gender)
     : temple === 'yuelao'
-      ? yuelaoFacts(baziChart(body.birth), body.birth.gender, baziChart(body.birth2), body.birth2.gender)
+      ? (() => {
+        // Recomputed, not taken from the client: the score is a fact about two
+        // birth moments, and a number that arrived over the wire is a number
+        // someone could have chosen.
+        const a = baziChart(body.birth), b = baziChart(body.birth2)
+        return yuelaoFacts(a, body.birth.gender, b, body.birth2.gender, heMatch(a, b, new Date().getFullYear()))
+      })()
       : baziFacts(baziChart(body.birth), body.birth.gender, body.birth?.hourUnknown === true)
 
   // The chart rides in the SYSTEM slot with the master persona: every turn of
