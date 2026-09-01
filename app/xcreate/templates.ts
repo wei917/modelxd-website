@@ -58,9 +58,11 @@ export interface PlatformPreset {
   /** Chip label — proper nouns stay untranslated. */
   label: string
   emoji: string
-  /** Brand mark under /public/platforms (simple-icons). Chips fall back
-   *  to the emoji when absent (Amazon: no icon — trademark-withdrawn from
-   *  simple-icons — its chip wears the wordmark color instead). */
+  /** Brand mark under /public/platforms. Sources: Shopee = simple-icons;
+   *  Taobao = Ant Design icons (Alibaba's own set — their circular 淘
+   *  glyph stays legible at 15px where the simple-icons 淘宝 seal turns
+   *  to mush); Amazon = Font Awesome brands (CC BY 4.0). Chips fall back
+   *  to the emoji when absent. */
   logo?:  string
   /** Brand accent for the active chip state. */
   brand?: string
@@ -98,8 +100,8 @@ export const PLATFORM_PRESETS: PlatformPreset[] = [
     },
   },
   {
-    id: 'amazon', label: 'amazon', emoji: '📦',
-    brand: '#FF9900',
+    id: 'amazon', label: 'Amazon', emoji: '📦',
+    logo: '/platforms/amazon.svg', brand: '#FF9900',
     image: {
       aspectRatio: '1:1',
       promptSpec: 'PLATFORM SPEC (Amazon main image): square 1:1 frame on a PURE WHITE background (RGB 255,255,255) with no gradient and no scene. The product fills at least 85% of the frame, shown complete and front-facing, with only a soft natural contact shadow. Strictly no text, no logos overlaid, no watermarks, no borders, no props, no packaging inserts, no mannequins.',

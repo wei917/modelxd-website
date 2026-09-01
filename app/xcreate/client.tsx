@@ -4531,11 +4531,11 @@ function CreateStudio() {
                               onMouseLeave={e => { if (!on) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
                             >
                               {p.logo
-                                ? <img src={p.logo} alt="" width={15} height={15} style={{ display: 'block', filter: on ? 'none' : 'grayscale(1) opacity(0.55)', transition: 'filter .15s' }} />
+                                ? <img src={p.logo} alt="" width={16} height={16} style={{ display: 'block', filter: on ? 'none' : 'grayscale(1) opacity(0.55)', transition: 'filter .15s' }} />
                                 : p.id === 'general'
                                   ? <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>✦</span>
                                   : null}
-                              <span style={p.id === 'amazon' ? { fontWeight: on ? 800 : 600, letterSpacing: '0.01em' } : undefined}>{p.label}</span>
+                              <span>{p.label}</span>
                             </button>
                           )
                         })}
