@@ -54,6 +54,20 @@ reconciliation per task, race-guarded. The ledger row keeps the final figure.
 - `model` is REQUIRED on create; the API enumerates the allowed values:
   `P1-20260311, P2-20260801, v2.5-20250123, v3.0-20250812, v3.1-20260211`.
   An omitted model returns Tripo's own 1004 error through the proxy, undebited.
+- **`rig` has its OWN model enum, disjoint from generation**:
+  `v1.0-20240301, v2.5-20260210`. And Tripo defaults an omitted rig `model`
+  to its GENERATION default (`v2.5-20250123`) and then rejects it against
+  the rig enum — so a rig request without `model` always fails with an
+  error naming a value the caller never sent. The proxy briefly dropped the
+  caller's `model` on this route and every rig failed exactly that way
+  (customer bug report, Sep 1 — fixed same day: `model` now passes through
+  here like everywhere else). Always send one of the two rig values.
+- `image-to-model` takes Tripo's `file` OBJECT, not an `image_url` string:
+  `{"model":"P1-20260311","face_limit":5000,"texture":true,
+    "file":{"type":"png","url":"https://…"}}`.
+  The 400 for a missing file now carries this example. The URL can be a
+  signed URL straight from `/api/v1/images/generations` — image → 3D with
+  no upload step.
 - Tripo can OVERRIDE parameters: a `texture:false` request on v2.5 came back
   `texture:true, pbr:true` and consumed 20 credits against our 10-credit
   estimate. The settle-time reconciliation exists precisely for this.

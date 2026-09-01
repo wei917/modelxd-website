@@ -11,7 +11,16 @@ export async function POST(req: Request) {
   if (g instanceof Response) return g
   const body = await req.json().catch(() => ({}))
   if (!body?.file || typeof body.file !== 'object') {
-    return Response.json({ error: 'file object required (Tripo image-to-model shape)' }, { status: 400 })
+    // The example is the fix (reporter, Sep 1): the bare error cost a round
+    // trip because nothing showed the working shape. The URL may be a signed
+    // URL straight from /api/v1/images/generations — no upload step needed.
+    return Response.json({
+      error: 'file object required (Tripo image-to-model shape)',
+      example: {
+        model: 'P1-20260311', face_limit: 5000, texture: true,
+        file: { type: 'png', url: 'https://… (any fetchable image URL, e.g. a signed URL from /api/v1/images/generations)' },
+      },
+    }, { status: 400 })
   }
 
   const fwd: Record<string, unknown> = { file: body.file }
