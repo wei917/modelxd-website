@@ -58,6 +58,12 @@ export interface PlatformPreset {
   /** Chip label — proper nouns stay untranslated. */
   label: string
   emoji: string
+  /** Brand mark under /public/platforms (simple-icons). Chips fall back
+   *  to the emoji when absent (Amazon: no icon — trademark-withdrawn from
+   *  simple-icons — its chip wears the wordmark color instead). */
+  logo?:  string
+  /** Brand accent for the active chip state. */
+  brand?: string
   image?: { aspectRatio?: string; promptSpec: string }
   video?: { aspectRatio?: string; duration?: number; promptSpec: string }
 }
@@ -69,6 +75,7 @@ export const PLATFORM_PRESETS: PlatformPreset[] = [
   },
   {
     id: 'shopee', label: 'Shopee', emoji: '🛒',
+    logo: '/platforms/shopee.svg', brand: '#EE4D2D',
     image: {
       aspectRatio: '1:1',
       promptSpec: 'PLATFORM SPEC (Shopee main image): square 1:1 frame. Clean pure white background. The product fills most of the frame (at least 80%), fully inside the frame with a small even margin, front-facing hero angle, crisp edges and true-to-life colors. No text, no watermarks, no logos overlaid, no borders, no props that are not the product.',
@@ -80,6 +87,7 @@ export const PLATFORM_PRESETS: PlatformPreset[] = [
   },
   {
     id: 'taobao', label: 'Taobao', emoji: '🧧',
+    logo: '/platforms/taobao.svg', brand: '#E94F20',
     image: {
       aspectRatio: '1:1',
       promptSpec: 'PLATFORM SPEC (淘宝/天猫 主图): square 1:1 frame. Bright, clean, premium composition — pure light background or a very subtle lifestyle surface. The product is the clear hero at 70–80% of the frame with breathing room around it. Absolutely no promotional text, no price tags, no watermarks, no logo overlays, no borders (平台主图规范). Commercial studio lighting, true colors.',
@@ -90,7 +98,8 @@ export const PLATFORM_PRESETS: PlatformPreset[] = [
     },
   },
   {
-    id: 'amazon', label: 'Amazon', emoji: '📦',
+    id: 'amazon', label: 'amazon', emoji: '📦',
+    brand: '#FF9900',
     image: {
       aspectRatio: '1:1',
       promptSpec: 'PLATFORM SPEC (Amazon main image): square 1:1 frame on a PURE WHITE background (RGB 255,255,255) with no gradient and no scene. The product fills at least 85% of the frame, shown complete and front-facing, with only a soft natural contact shadow. Strictly no text, no logos overlaid, no watermarks, no borders, no props, no packaging inserts, no mannequins.',

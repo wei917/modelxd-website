@@ -4503,10 +4503,11 @@ function CreateStudio() {
                     const tpl = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
                     if (!tpl?.ecommerce) return null
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '10px 0 2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '12px 0 4px' }}>
                         <span style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.08em', color: 'var(--muted)', textTransform: 'uppercase' as const }}>Platform</span>
                         {PLATFORM_PRESETS.map(p => {
                           const on = platformId === p.id
+                          const brand = p.brand ?? 'var(--red)'
                           return (
                             <button
                               key={p.id}
@@ -4514,15 +4515,28 @@ function CreateStudio() {
                               disabled={isLocked}
                               title={p.id === 'general' ? 'The template\'s own defaults' : `Re-apply this template with ${p.label}'s listing conventions`}
                               style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 5,
-                                padding: '4px 10px', borderRadius: 999, fontSize: 11.5,
-                                fontFamily: 'var(--mono)', cursor: isLocked ? 'default' : 'pointer',
-                                border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
-                                background: on ? 'var(--red-dim, #fde8e5)' : 'transparent',
-                                color: on ? 'var(--red)' : 'var(--muted2)',
+                                display: 'inline-flex', alignItems: 'center', gap: 7,
+                                height: 30, padding: '0 13px', borderRadius: 999,
+                                fontSize: 12.5, fontWeight: on ? 700 : 500,
+                                fontFamily: 'var(--font-body, inherit)',
+                                cursor: isLocked ? 'default' : 'pointer',
+                                border: '1.5px solid ' + (on ? brand : 'var(--border)'),
+                                background: on ? `color-mix(in srgb, ${brand} 9%, transparent)` : 'var(--surface)',
+                                color: on ? brand : 'var(--muted2)',
+                                boxShadow: on ? `0 1px 6px color-mix(in srgb, ${brand} 22%, transparent)` : 'none',
+                                transition: 'border-color .15s, background .15s, color .15s, box-shadow .15s',
                                 opacity: isLocked ? 0.5 : 1,
                               }}
-                            >{p.emoji} {p.label}</button>
+                              onMouseEnter={e => { if (!isLocked && !on) (e.currentTarget as HTMLElement).style.borderColor = brand }}
+                              onMouseLeave={e => { if (!on) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                            >
+                              {p.logo
+                                ? <img src={p.logo} alt="" width={15} height={15} style={{ display: 'block', filter: on ? 'none' : 'grayscale(1) opacity(0.55)', transition: 'filter .15s' }} />
+                                : p.id === 'general'
+                                  ? <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>✦</span>
+                                  : null}
+                              <span style={p.id === 'amazon' ? { fontWeight: on ? 800 : 600, letterSpacing: '0.01em' } : undefined}>{p.label}</span>
+                            </button>
                           )
                         })}
                       </div>
