@@ -65,6 +65,14 @@ button appears if a selected model supports masks (currently GPT Image 2):
 paint over the exact area to change and everything outside it is kept. Models
 without mask support in the same run just follow the prompt as a normal edit.
 
+**E-commerce platform presets.** The Product Shots (image) and Product
+Video templates offer a Platform row — General, Shopee, Taobao, Amazon.
+Picking one re-applies the template with that marketplace's listing
+conventions (square main images, Amazon's pure-white ≥85% fill rule,
+淘宝主图's no-promo-text rule, 主图视频 lengths) appended to the prompt,
+which stays fully editable. If someone asks how to make Shopee/Taobao/
+Amazon listing images or videos, send them to those templates.
+
 **One-click tools and templates.** XCreate ships presets for the tasks people
 actually arrive with — removing or replacing a background, upscaling, erasing
 strangers from a photo, retouching skin, sticker sheets, virtual try-on,
