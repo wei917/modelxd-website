@@ -20,6 +20,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
+import ReactMarkdown from 'react-markdown'
 import ProviderLogo from '../components/ProviderLogo'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao'
@@ -334,7 +335,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                 {round.replies.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${round.replies.length}, 1fr)`, gap: 10, alignItems: 'start' }}>
                     {round.replies.map((tn: any, j: number) => (
-                      <div key={j} style={{ background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, whiteSpace: 'pre-wrap', minWidth: 0 }}>
+                      <div key={j} style={{ background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                           <ProviderLogo provider={tn.provider} size={13} />
                           <span style={{ ...mono, color: 'var(--muted2)' }}>{tn.name}</span>
@@ -350,7 +351,13 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                             </button>
                           )}
                         </div>
-                        {tn.content || <span style={{ color: 'var(--muted2)' }}>…</span>}
+                        {/* Markdown, not pre-wrap. Models write 批文 with **bold**
+                            and headings; rendering it raw printed the asterisks
+                            at the reader. `markdown-body` + skipHtml is what
+                            every other text surface here uses. */}
+                        {tn.content
+                          ? <div className="markdown-body" style={{ lineHeight: 1.85 }}><ReactMarkdown skipHtml>{tn.content}</ReactMarkdown></div>
+                          : <span style={{ color: 'var(--muted2)' }}>…</span>}
                       </div>
                     ))}
                   </div>
