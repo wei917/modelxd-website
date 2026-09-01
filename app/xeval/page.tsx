@@ -89,7 +89,7 @@ export default function XEvalPage() {
   // Terminal-Bench 2.1. Tabs come from the data, so a new benchmark appears
   // the moment its runs are published. Aggregates are scoped per benchmark —
   // TB costs must never blend into a GDPval entry's average.
-  const BENCH_LABEL: Record<string, string> = { gdpval: 'GDPval', 'terminal-bench-2-1': 'Terminal-Bench 2.1', 'harvey-lab': 'Harvey LAB' }
+  const BENCH_LABEL: Record<string, string> = { gdpval: 'GDPval', 'terminal-bench-2-1': 'Terminal-Bench 2.1', 'harvey-lab': 'Harvey LAB', 'text-rendering': 'Text Rendering' }
   const benches = useMemo(() => {
     const bs = [...new Set(runs.map(r => r.task_set ?? 'gdpval'))]
     return bs.sort((a, b) => (a === 'gdpval' ? -1 : b === 'gdpval' ? 1 : a.localeCompare(b)))
@@ -100,7 +100,7 @@ export default function XEvalPage() {
   // must NOT initialise from the URL — SSR renders on every host and would
   // disagree with the client on first paint — so the URL is applied in an
   // effect, once, after the data that decides which tabs exist has arrived.
-  const BENCH_SLUG: Record<string, string> = { gdpval: 'gdpval', 'terminal-bench-2-1': 'tb', 'harvey-lab': 'lab' }
+  const BENCH_SLUG: Record<string, string> = { gdpval: 'gdpval', 'terminal-bench-2-1': 'tb', 'harvey-lab': 'lab', 'text-rendering': 'text' }
   const urlApplied = useRef(false)
   useEffect(() => {
     if (urlApplied.current || !benches.length) return
@@ -560,7 +560,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   return (
     <>
       <p style={{ fontSize: 14.5, color: 'var(--muted2)', lineHeight: 1.7, maxWidth: 760, margin: '0 0 22px' }}>
-        {(label === 'Harvey LAB' ? t('xeval.lead.lab') : t('xeval.lead.tb'))
+        {(label === 'Harvey LAB' ? t('xeval.lead.lab') : label === 'Text Rendering' ? t('xeval.lead.textrender') : t('xeval.lead.tb'))
           .replace('{set}', label)
           .replace('{harness}', String(harness))
           .replace('{top}', rows[0]?.display ?? '')
