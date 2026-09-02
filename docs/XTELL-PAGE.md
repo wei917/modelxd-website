@@ -1,7 +1,7 @@
 # XTELL-PAGE.md — X算命 (`/xtell`)
 
 > Everything about the XTell surface. Written 2026-08-30, updated 2026-09-01
-> (關帝廟 + 四面佛), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
+> (關帝廟 + 四面佛 + 九曜廟), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
 > `lib/classics.ts`, or `app/api/xtell/*`.
 
 ## What it is
@@ -33,7 +33,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (5 live)
+## Temples (6 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -42,6 +42,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
 | 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1 |
 | 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
+| 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -68,6 +69,40 @@ source list is empty. The golden suite checks count, four lines each, 聖意 +
 first written from memory as 庚庚 and was wrong (己庚) — the same lesson as
 the 立春 case: observe, never recall.
 
+## The Jyotish engine (`lib/jyotish.ts`)
+
+No mature JS library exists (surveyed Sep 1: `vedic-astro` is positions +
+panchang with one star, `grahan` is Sun/Moon, `jyotishganit` is Python,
+Swiss Ephemeris bindings are a native addon under AGPL). The whole thing is
+~250 lines on `astronomy-engine`, which gives true-ecliptic-of-date
+positions (`Ecliptic(GeoVector)` and `EclipticGeoMoon`) and sidereal time.
+
+- **Ayanamsa**: Lahiri = 23.857092° at J2000 (the Swiss Ephemeris value,
+  observed) + IAU 2006 general precession in longitude. Matches pyswisseph to
+  0.0" on every test date.
+- **Rahu**: Meeus mean node; Ketu opposite. Most Indian software defaults to
+  mean node.
+- **Lagna**: from GAST + longitude and the mean obliquity, standard formula.
+- **Houses**: whole sign from the Lagna. **D9**: standard 9-fold division.
+- **Dasha**: Vimshottari from the Moon's nakshatra, 365.25-day years; the
+  antardashas of the current mahadasha are laid over its FULL span so a
+  birth-truncated first period comes out right.
+- **Time zones**: `zonedToUtc` resolves local wall time through Intl with the
+  place's IANA zone, so 1985 Tokyo and 2000 New York both come out right
+  without a tz database.
+- **Verification**: `scripts/xtell-golden.ts` carries Swiss Ephemeris
+  (pyswisseph, SIDM_LAHIRI) reference longitudes for four charts; the engine
+  sits within 15" and the suite fails past 60" (a twentieth of a pada). The
+  remaining ±12" is aberration/nutation modelling, invisible at pada scale.
+  Reference numbers were produced in a scratch venv (`pip install
+  pyswisseph`) and copied in — regenerate the same way if the engine changes.
+
+The facts serializer names each 宿 in Sanskrit plus the 宿曜經 Chinese
+equivalent (Ashwini = 婁 … Revati = 奎; the Tang mapping drops 牛/Abhijit),
+and the classics corpus for this temple is the 宿曜經 itself
+(`content/classics/suyaojing.txt`, Wikisource, fetched via the API's
+`variant=zh-hant` because the page is stored in simplified script).
+
 ## The room flow (owner's design, Aug 30: "hide as much as possible")
 
 1. Birth date + time + gender → **進廟**. The chart is computed at that moment
@@ -75,7 +110,8 @@ the 立春 case: observe, never recall.
    關帝廟 replaces the form with 所問之事 + the ritual (`RitualPanel`): the
    third 聖筊 calls the chart route itself, so there is no 進廟 button.
    四面佛 adds `WishForm` under the birth row; at least one face must be
-   filled (`validWishes`).
+   filled (`validWishes`). 九曜廟 adds a place `<select>` (`PLACES`) and
+   hides 時辰不確定, since the Lagna needs the hour.
 2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
    **Master chips** above: up to 2 models, default preselected
    (`DEFAULT_MASTER = 'gpt-5.6-sol'` in `app/xtell/client.tsx` — one constant
@@ -103,8 +139,11 @@ app/api/xtell/reading/route.ts  # POST {temple, birth[, birth2], question, model
 lib/xtell.ts                # charts, facts serializers, ENGINES, MASTERS, validBirth,
                             #   關帝 corpus loader + guandiFacts, 四面佛 liuNian + simianfoFacts
 lib/xtell-ritual.ts         # client-safe ritual: drawQian / throwJiao / cryptoRand / CONFIRM_THROWS
+lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, nakshatra, Vimshottari, facts
+lib/xtell-places.ts         # curated birth places (lat/lon/IANA zone) for temples that need one
 lib/classics.ts             # 古籍 retrieval (see below)
 content/qian/guandi.json    # 關聖帝君靈籤 100 首 (built by scripts/fetch-guandi-qian.ts)
+content/classics/suyaojing.txt  # 《宿曜經》 (Tang, 不空譯) — 九曜廟's grounding text
 scripts/fetch-guandi-qian.ts    # corpus builder (MediaWiki API, both transcription formats)
 scripts/generate-xtell-covers.ts # temple covers, gpt-image-2 in the ink-wash house style
 content/classics/*.txt      # 《滴天髓》42 chapters + 《紫微斗數全書·卷一》 (Wikisource, public domain)
@@ -115,7 +154,8 @@ public/xtell/*.jpg          # temple covers (ink-wash, gpt-image-2)
 ## Masters (system prompts in `lib/xtell.ts` MASTERS)
 
 Per-temple personas (廟裡的老師; 月老 himself in 月老廟; the 解籤老師 in 關帝廟,
-never 關帝 himself; a Thai 守願人 at 四面佛). Shared guardrails:
+never 關帝 himself; a Thai 守願人 at 四面佛; a Jyotishi under Shani's shrine
+at 九曜廟, never the god). Shared guardrails:
 
 - Only the provided chart — never recompute or alter a pillar.
 - **Tendency tone** (learned from Wolke/ziwei-doushu's ETHICS.md): 傾向/容易/
@@ -129,6 +169,10 @@ never 關帝 himself; a Thai 守願人 at 四面佛). Shared guardrails:
 - 四面佛 extra: it is 許願, not 算命 — help word the wish concretely, read the
   computed 流年 against the four faces, keep the pledge affordable; no
   vendors, dancers or proxy-worship services; no wishes against third parties.
+- 九曜 extra: sidereal, so the Sun sign is usually one earlier than Western
+  (say so, it is not an error); 宿 named Sanskrit + 宿曜經 Chinese; remedies
+  (gems, mantras) are cultural notes, never instructions; Shani is a teacher
+  of discipline, not a curse.
 - No medical/financial/legal directives. Ends with 僅供參考與娛樂.
 - 繁體中文 unless the visitor writes otherwise.
 
@@ -186,10 +230,10 @@ iztro.
 
 - ~~籤詩亭~~ — shipped Sep 1 as 關帝廟. Other 籤 sets (媽祖六十甲子籤,
   觀音一百籤) would be new corpora on the same ritual.
-- 印度 temple (owner's map, Sep 1: 九曜/Shani, 太陽神廟, 納迪葉). Not built.
-  Needs a Jyotish engine — no mature JS library exists; plan is ~200 lines
-  on `astronomy-engine` (MIT) with Lahiri ayanamsa, plus a birth-PLACE field
-  the Chinese temples never needed (Lagna depends on it).
+- ~~印度 temple~~ — shipped Sep 1 as 九曜廟 (one temple, Shani patron; the
+  owner's 太陽神廟/納迪葉 ideas would be further personas over the same
+  engine). Not yet: divisional charts beyond D9, Shadbala, transits, true
+  node option, a free-text geocoder for places outside the list.
 - Birth-time rectifier temple; 六爻亭 (interactive coin ritual); 擇日
 - 真太陽時 toggle (Taipei ≈ +6 min vs UTC+8 meridian)
 - Persistence (saved charts, 流年 refresh) — currently nothing is stored

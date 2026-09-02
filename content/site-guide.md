@@ -251,7 +251,13 @@ hundred poems are the public-domain 關聖帝君靈籤 from Wikisource), and
 **四面佛** (the Erawan four-faced Brahma: write a wish to each face — 平安,
 事業, 婚姻, 財富, clockwise — and how you will repay it; the keeper helps
 word the wish and reads your own 八字 plus this year's 流年 to say which face
-the year favours; it is 許願, not 算命). The honest split to
+the year favours; it is 許願, not 算命), and **九曜廟** (Vedic / Indian
+astrology under the Saturn god Shani: birth date, hour AND place — pick the
+nearest city — give a sidereal Lahiri chart with the Lagna, the nine grahas
+in signs and whole-sign houses, the 27 nakshatras, the navamsa, and the
+Vimshottari dasha timeline; computed by our own engine on astronomy-engine
+and checked against Swiss Ephemeris; a Vedic Sun sign is usually one sign
+earlier than the Western one and that is the zodiac, not a bug). The honest split to
 explain when asked: the CHART is computed exactly by open calendar engines
 (lunar-typescript for 八字 — solar-term correct, so an early-January birth
 belongs to the previous 干支 year; iztro for 紫微) and is shown for the user

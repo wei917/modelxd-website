@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, validBirth, validQian, validWishes, asTemple, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, validBirth, validQian, validWishes, validPlace, asTemple, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
@@ -26,6 +26,7 @@ const FACTS_HEAD: Record<string, string> = {
   yuelao:   '信眾的命盤（系統排定，勿更動）：',
   guandi:   '信眾求得的籤（系統從籤筒抽出、擲筊允准；籤文取自清刊本，勿更動）：',
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
+  navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
 }
 
 function sse(event: string, data: object) {
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
     if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
     if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
     if (temple === 'simianfo' && !validWishes(body?.wishes)) return Response.json({ error: 'write at least one wish' }, { status: 400 })
+    if (temple === 'navagraha' && !validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
   }
   if (typeof body?.modelId !== 'string') return Response.json({ error: 'modelId required' }, { status: 400 })
 
@@ -71,6 +73,8 @@ export async function POST(req: Request) {
         const a = baziChart(body.birth), b = baziChart(body.birth2)
         return yuelaoFacts(a, body.birth.gender, b, body.birth2.gender, heMatch(a, b, new Date().getFullYear()))
       })()
+      : temple === 'navagraha'
+        ? navagrahaFacts(navagrahaChart(body.birth, body.place), body.birth.gender)
       : temple === 'guandi'
         // The poem comes from disk by number; the client's copy is never used.
         ? guandiFacts(qianOf(body.n)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '')

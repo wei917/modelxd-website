@@ -29,6 +29,10 @@ const SOURCES: Record<Temple, string[]> = {
   guandi:   [],
   // 四面佛 reads the visitor's 八字 against the four faces.
   simianfo: ['ditiansui.txt'],
+  // 九曜廟: the Tang 《宿曜經》 (Amoghavajra), the text that carried the
+  // twelve signs and 27 nakshatras into Chinese — its 宿 names are the ones
+  // the facts use, so retrieval lands on the visitor's actual 宿.
+  navagraha: ['suyaojing.txt'],
 }
 
 type Passage = { book: string; text: string }

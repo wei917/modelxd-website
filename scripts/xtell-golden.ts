@@ -12,6 +12,7 @@
 
 import { baziChart, ziweiChart, liuNian, guandiQian, validWishes } from '../lib/xtell'
 import { drawQian, throwJiao } from '../lib/xtell-ritual'
+import { jyotishChart, lahiriAyanamsa, NAKSHATRA, RASI } from '../lib/jyotish'
 
 let failures = 0
 function eq(label: string, got: string, want: string) {
@@ -89,6 +90,38 @@ console.log('\n四面佛 (流年):')
 const ln = liuNian(baziChart({ y: 1990, m: 1, d: 1, h: 15, mi: 25, gender: 'male' }), 1990, 2026)
 eq('2026 流年', `${ln.ganZhi} ${ln.shiShen} 日支${ln.dayBranch.kind} 年支${ln.yearBranch.kind} ${ln.taiSui}`, '丙午 比肩 日支三合 年支無特殊關係 無')
 eq('wishes: at least one face required', `${validWishes({ pledge: 'x' })} ${validWishes({ career: '升遷' })}`, 'false true')
+
+// ── 九曜廟 ─────────────────────────────────────────────────────────────────
+// Reference values are Swiss Ephemeris (pyswisseph, SIDM_LAHIRI, mean node,
+// whole-sign Asc), observed 2026-09-01. Our engine agreed within 15" on all
+// four charts; the tolerance here is 60" — a twentieth of a pada — so a
+// silent slip of a 宿 or a sign fails loudly while ephemeris noise passes.
+console.log('\n九曜 (lib/jyotish vs Swiss Ephemeris):')
+const SWE: Array<{ label: string; in: any; ayan: number; pos: Record<string, number>; asc: number }> = [
+  { label: '1990-01-01 15:25 台北', in: { y: 1990, m: 1, d: 1, h: 15, mi: 25, lat: 25.0330, lon: 121.5654, tz: 'Asia/Taipei', place: '台北' },
+    ayan: 23.717418, pos: { Sun: 256.8989, Moon: 306.9782, Mars: 226.145, Mercury: 272.0047, Jupiter: 71.4537, Venus: 282.5252, Saturn: 261.9142, Rahu: 294.7244 }, asc: 52.2588 },
+  { label: '1985-07-20 09:00 東京', in: { y: 1985, m: 7, d: 20, h: 9, mi: 0, lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo', place: '東京' },
+    ayan: 23.655224, pos: { Sun: 93.5782, Moon: 118.6247, Mars: 93.0008, Mercury: 119.1168, Jupiter: 290.335, Venus: 51.2744, Saturn: 207.8429, Rahu: 20.9058 }, asc: 145.8919 },
+  { label: '2000-02-04 21:30 新德里', in: { y: 2000, m: 2, d: 4, h: 21, mi: 30, lat: 28.6139, lon: 77.2090, tz: 'Asia/Kolkata', place: '新德里' },
+    ayan: 23.858399, pos: { Sun: 291.2858, Moon: 281.4402, Mars: 330.5021, Mercury: 305.0109, Jupiter: 4.5904, Venus: 259.4674, Saturn: 16.9446, Rahu: 99.3769 }, asc: 157.3286 },
+  { label: '1975-11-30 04:10 高雄', in: { y: 1975, m: 11, d: 30, h: 4, mi: 10, lat: 22.6273, lon: 120.3014, tz: 'Asia/Taipei', place: '高雄' },
+    ayan: 23.520608, pos: { Sun: 223.4598, Moon: 180.7734, Mars: 65.2741, Mercury: 223.9919, Jupiter: 351.4219, Venus: 178.3167, Saturn: 99.2419, Rahu: 207.4462 }, asc: 193.7725 },
+]
+const arcsec = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180) * 3600
+for (const c of SWE) {
+  const ch = jyotishChart(c.in)
+  let worst = arcsec(ch.lagna.lon, c.asc)
+  for (const g of ch.grahas) if (g.graha !== 'Ketu') worst = Math.max(worst, arcsec(g.lon, c.pos[g.graha]))
+  eq(`${c.label} — worst Δ vs Swiss Ephemeris ≤ 60"`, String(worst <= 60), 'true')
+  eq('  ayanamsa', ch.ayanamsa.toFixed(4), c.ayan.toFixed(4))
+}
+// Frozen derived values for the first chart: the parts a reader sees.
+const j = jyotishChart(SWE[0].in)
+eq('台北 1990 — Lagna', `${RASI[j.lagna.rasi][1]} ${j.lagna.deg.toFixed(2)} ${NAKSHATRA[j.lagna.nakshatra][0]}-${j.lagna.pada}`, '金牛 22.26 Rohini-4')
+eq('  Moon nakshatra', NAKSHATRA[j.moonNakshatra][0], 'Shatabhisha')
+eq('  dasha lords from birth', j.dasha.maha.slice(0, 4).map(p => p.lord).join(' '), 'Rahu Jupiter Saturn Mercury')
+eq('  Saturn mahadasha starts', j.dasha.maha[2].from.toISOString().slice(0, 10), '2023-07-30')
+eq('  Lahiri at J2000', lahiriAyanamsa(new Date('2000-01-01T12:00:00Z')).toFixed(4), '23.8571')
 
 console.log(failures === 0 ? '\nall golden charts hold' : `\n${failures} FAILURE(S) — a library upgrade changed the 排盤. Do not ship until resolved.`)
 process.exit(failures === 0 ? 0 : 1)

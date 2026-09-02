@@ -14,12 +14,14 @@
 // master personas live here too, and those must not be client-editable.
 
 import { Solar, LunarUtil } from 'lunar-typescript'
+import { jyotishChart, jyotishFacts, type JyotishChart } from './jyotish'
+import { placeOf } from './xtell-places'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha']
 export function asTemple(v: unknown): Temple { return (TEMPLES as string[]).includes(v as string) ? (v as Temple) : 'bazi' }
 
 // Provenance (idea learned from horosa-skill's technique cards): every chart
@@ -34,6 +36,9 @@ export const ENGINES: Record<Temple, string> = {
   guandi:   '關聖帝君靈籤（維基文庫・清刊本）+ 擲筊三聖',
   // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
   simianfo: 'lunar-typescript v1.8.6',
+  // 九曜廟: our own engine on astronomy-engine, checked against Swiss
+  // Ephemeris (Lahiri) in the golden suite.
+  navagraha: 'lib/jyotish.ts on astronomy-engine v2.1 · Lahiri · mean node · whole sign',
 }
 
 export interface BirthInput {
@@ -305,6 +310,20 @@ export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender
   return `${base}\n\n系統已排好的合盤分數（信眾此刻正看著這張表，請以此為準，不要另給一組數字）：\n  總分：${match.overall}\n${dims}\n\n流年（未來八年，只列有合沖者）：\n${years}`
 }
 
+// ── 九曜廟：吠陀星盤 ────────────────────────────────────────────────────────
+//
+// The birth needs a place. `placeOf` resolves a curated city key to
+// coordinates and an IANA zone (lib/xtell-places.ts); the chart itself is
+// lib/jyotish.ts. Re-exported here so the routes have one import.
+
+export function navagrahaChart(b: BirthInput, placeKey: unknown): JyotishChart {
+  const p = placeOf(placeKey)
+  if (!p) throw new Error('unknown place')
+  return jyotishChart({ y: b.y, m: b.m, d: b.d, h: b.h, mi: b.mi, lat: p.lat, lon: p.lon, tz: p.tz, place: p.label })
+}
+export const navagrahaFacts = jyotishFacts
+export const validPlace = (k: unknown) => placeOf(k) !== null
+
 // ── The masters ─────────────────────────────────────────────────────────────
 //
 // One persona per temple, server-held. The guardrails are the contract:
@@ -359,6 +378,15 @@ export const MASTERS: Record<Temple, string> = {
 - 不替人求害人之願、不受理針對第三者的願望；涉及安全或健康急迫之事，嚴肅建議尋求正式資源。
 - 語氣安靜、尊重，帶一點泰式的從容；稱「四面佛」或「大梵天王」，不與佛教的佛混談。
 - 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：許願在人，成願靠行；命理僅供參考與娛樂。\n${TONE}`,
+  navagraha: `你是「九曜廟」的駐廟占星師（Jyotishi），廟裡供奉九曜，主神是藍黑色、持杖、行步最慢的土星神 Shani。你說話從容、有耐性、講因果與紀律，偶爾引一句《宿曜經》或《薄伽梵歌》，但從不冒充神本人，也不把 Shani 說成災星——他是教人守分與長久的老師。使用者的吠陀星盤已由系統排好，附在訊息中：上升（Lagna）、九曜在 D1 命盤的星座、度數、整宮制宮位與二十七宿（Nakshatra）及其足（pada）、D9 九分盤星座、月亮所在宿、Vimshottari 大運與目前的副運。
+
+規則：
+- 只根據提供的星盤解讀。絕不自行推算行星位置、宿位、宮位或大運起迄——排盤是系統以 Lahiri 歲差算好的，你的工作只有解讀。
+- 吠陀占星是恆星黃道，太陽星座通常比西洋占星早一宮；使用者若疑惑，說明這是制度差異，不是排錯。
+- 若使用者有提問，先看相關宮位與宮主星，再看月亮所在宿與目前大運、副運主星；沒有提問就依序談：上升與月亮宿的性格底色、事業（十宮）、財（二宮、十一宮）、感情（七宮與 D9）、目前大運與副運的主題。
+- 宿用梵文名加宿曜經的中文宿名，如「Rohini（畢宿）」；宮位用第一到第十二宮；曜名用中文並可附梵名（土星 Shani）。
+- 傳統補救法（寶石、咒語、齋戒、布施）只作文化說明，不作指示；涉及健康、投資、法律，明確建議諮詢專業人士。
+- 使用繁體中文（除非使用者用其他語言提問）。結尾提醒：《薄伽梵歌》說人只擁有行動的權利，不擁有結果；星盤僅供參考與娛樂。\n${TONE}`,
 }
 
 // ── 關帝廟：靈籤 ─────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, validBirth, validQian, validWishes, asTemple, ENGINES } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, validBirth, validQian, validWishes, validPlace, asTemple, ENGINES } from '@/lib/xtell'
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -30,10 +30,12 @@ export async function POST(req: Request) {
   if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
   if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
   if (temple === 'simianfo' && !validWishes(body?.wishes)) return Response.json({ error: 'write at least one wish' }, { status: 400 })
+  if (temple === 'navagraha' && !validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
 
   try {
     // 月老廟 is two BaZi charts — the engine run twice, labeled a and b.
     const chart = temple === 'ziwei' ? ziweiChart(body.birth)
+      : temple === 'navagraha' ? navagrahaChart(body.birth, body.place)
       : temple === 'yuelao' ? { a: baziChart(body.birth), b: baziChart(body.birth2) }
       : baziChart(body.birth)
     // 月老廟 also gets its 合盤 here, because it is the same kind of thing as a

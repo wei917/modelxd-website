@@ -39,6 +39,11 @@ const PROMPTS: Record<string, string> = {
     'surrounded by heaps of yellow marigold garlands, jasmine strings, lit candles and incense, a few ' +
     'worshippers as soft ink silhouettes with hands pressed together, warm gold light melting into ink wash, ' +
     'traditional Thai dancers faintly suggested at the edge.' + STYLE,
+  navagraha:
+    'A South Indian Navagraha shrine at night: nine small stone deities arranged in a square grid on a low ' +
+    'platform, oil lamps flickering around them, the central figure a tall dark blue-black Shani holding a ' +
+    'staff, seen as a solemn silhouette, a crow perched near him, pillars of a Dravidian temple hall receding ' +
+    'into ink, a thin crescent moon and faint stars above, a worshipper circling the platform as a soft silhouette.' + STYLE,
 }
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })

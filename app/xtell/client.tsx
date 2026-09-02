@@ -23,8 +23,10 @@ import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDi
 import ReactMarkdown from 'react-markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, type Jiao } from '../../lib/xtell-ritual'
+import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
+import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha'
 
 // 四面佛's faces, clockwise. Mirrors FACES in lib/xtell.ts (server-only file).
 const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
@@ -58,7 +60,7 @@ export default function XTellClient() {
 
         {!temple ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha'] as Temple[]).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -100,6 +102,8 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
   // 四面佛: one wish per face, plus the pledge.
   const [wishes, setWishes] = useState<Wishes>({})
+  // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
+  const [place, setPlace] = useState(DEFAULT_PLACE)
   const [engine, setEngine] = useState<string | null>(null)
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
@@ -142,6 +146,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const subject = (n?: number) =>
     temple === 'guandi' ? { temple, n: n ?? stick?.n, ask }
     : temple === 'simianfo' ? { temple, birth, wishes }
+    : temple === 'navagraha' ? { temple, birth, place }
     : { temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}) }
 
   const enter = async (n?: number) => {
@@ -290,9 +295,18 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
               <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} />
             </>
           ) : (
-            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei'} />
+            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei' && temple !== 'navagraha'} />
           )}
           {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} />}
+          {temple === 'navagraha' && (
+            <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.place')}</span>
+              <select style={sel} value={place} onChange={e => setPlace(e.target.value)}>
+                {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+              </select>
+              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 240 }}>{t('xtell.place.note')}</span>
+            </div>
+          )}
           {temple !== 'guandi' && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
@@ -352,6 +366,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
                 : temple === 'guandi' ? <QianCard qian={chart} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
+                : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : (
                   <div style={{ display: 'grid', gap: 14 }}>
                     <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} /></div>
@@ -766,6 +781,71 @@ function WishBoard({ chart, wishes, year }: { chart: any; wishes: Wishes; year: 
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+
+// ── 九曜廟 ─────────────────────────────────────────────────────────────────
+
+/** Lagna, the nine grahas (sign, degree, house, nakshatra-pada, D9), and
+ *  the Vimshottari timeline. Every value came out of lib/jyotish.ts. */
+function NavagrahaBoard({ chart }: { chart: any }) {
+  const t = useT()
+  const dms = (d: number) => `${Math.floor(d)}°${String(Math.round((d % 1) * 60)).padStart(2, '0')}'`
+  const rasi = (i: number) => RASI[i][1]
+  const nak = (i: number, pada: number) => `${NAKSHATRA[i][0]} ${NAKSHATRA[i][1]}宿 ${pada}`
+  const ymd = (s: string) => String(s).slice(0, 10)
+  const nowId = chart.dasha?.current ? `${chart.dasha.current.lord}${chart.dasha.current.from}` : ''
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+        {String(chart.utc).replace('T', ' ').slice(0, 16)} UTC · {chart.place} · Lahiri {Number(chart.ayanamsa).toFixed(2)}°
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.lagna')}</span>
+        <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 800 }}>{rasi(chart.lagna.rasi)} {dms(chart.lagna.deg)}</span>
+        <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{nak(chart.lagna.nakshatra, chart.lagna.pada)}</span>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: 560 }}>
+          <thead>
+            <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
+              {['曜', '星座', '度', '宮', 'Nakshatra · pada', 'D9'].map(h => <th key={h} style={{ padding: '4px 10px 6px 0', fontWeight: 500 }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {chart.grahas.map((g: any) => (
+              <tr key={g.graha} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '6px 10px 6px 0', fontWeight: 700 }}>{GRAHA_ZH[g.graha as keyof typeof GRAHA_ZH]} <span style={{ color: 'var(--muted2)', fontWeight: 400 }}>{GRAHA_SA[g.graha as keyof typeof GRAHA_SA]}</span></td>
+                <td style={{ padding: '6px 10px 6px 0' }}>{rasi(g.rasi)}</td>
+                <td style={{ padding: '6px 10px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>{dms(g.deg)}{g.retro && g.graha !== 'Rahu' && g.graha !== 'Ketu' ? ' R' : ''}</td>
+                <td style={{ padding: '6px 10px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>{g.house}</td>
+                <td style={{ padding: '6px 10px 6px 0' }}>{nak(g.nakshatra, g.pada)}</td>
+                <td style={{ padding: '6px 10px 6px 0' }}>{rasi(g.navamsa)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 6px' }}>{t('xtell.dasha')}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {chart.dasha.maha.map((p: any) => {
+          const now = `${p.lord}${p.from}` === nowId
+          return (
+            <span key={p.from} style={{
+              padding: '4px 10px', borderRadius: 999, fontSize: 12,
+              border: '1px solid ' + (now ? 'var(--red)' : 'var(--border2)'), color: now ? 'var(--red)' : 'var(--muted)', fontWeight: now ? 700 : 400,
+            }}>{GRAHA_ZH[p.lord as keyof typeof GRAHA_ZH]} {ymd(p.from).slice(0, 4)}–{ymd(p.to).slice(0, 4)}{now ? ` · ${t('xtell.dasha.now')}` : ''}</span>
+          )
+        })}
+      </div>
+      {chart.dasha.currentAntar && (
+        <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 8 }}>
+          {t('xtell.dasha.now')}：{GRAHA_ZH[chart.dasha.current.lord as keyof typeof GRAHA_ZH]} / {GRAHA_ZH[chart.dasha.currentAntar.lord as keyof typeof GRAHA_ZH]}　{ymd(chart.dasha.currentAntar.from)} – {ymd(chart.dasha.currentAntar.to)}
+        </div>
+      )}
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.nav.note')}</div>
     </div>
   )
 }
