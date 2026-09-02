@@ -174,6 +174,14 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   ran ~45 min/cell versus Fable 5's ~20. Budget the successor of a model at
   ~1.4× its predecessor's spend, not 1.0×.
 
+- **"Run every judge on every task" back-fills every pair that judge never
+  covered — not just the new entry's pairs.** Opus/Sol/Grok had covered the
+  old pairs and skipped them; Qwen (trialled on only 243 pairs historically)
+  started judging ~135 old pairs per task — ~3,600 verdicts, ~$240, ~10 h of
+  unplanned work — caught after ~$9. `judge.py --involving <model@effort>`
+  now restricts a judge to pairs with the new entry on at least one side.
+  Use it for every judge when adding one entry; `fable51_judge.sh` does.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
