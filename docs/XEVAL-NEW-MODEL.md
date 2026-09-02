@@ -182,6 +182,20 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   now restricts a judge to pairs with the new entry on at least one side.
   Use it for every judge when adding one entry; `fable51_judge.sh` does.
 
+- **Check the Anthropic credit balance BEFORE a flagship round, and watch it
+  during.** The $403 Fable 5.1 run plus judging drained the account mid-way;
+  the Opus judge then returned `400 credit balance is too low` on every pair
+  for two hours — invisible, because `_judge_anthropic` read the body off an
+  already-consumed stream and logged `(unreadable)`. Fixed: the body is
+  captured at stream-open, and ACCOUNT-class messages (credit balance,
+  billing, organization_on_hold, spend/usage limit) fail the pair at once
+  instead of burning the retry ladder. The same outage hits production: the
+  house-paid paths fall over to OpenAI, but a user who picked a Claude model in
+  XCreate gets the ACCOUNT message.
+- **Never `pkill -f <pattern>` while your own watchers are running** — their
+  command text contains the pattern and they die with exit 144 (two did on
+  2026-09-02). Kill by PID, or by PPID for a lane's subshell.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
