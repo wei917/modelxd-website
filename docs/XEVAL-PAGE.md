@@ -187,6 +187,18 @@ the metric to watch as tasks are added.
 - **Cost guards**: per-cell `--max-cost`, plus an episode+dollar runaway guard
   on TB lanes (Opus once spent $114 on one TB cell, $55 on another).
 
+### Gotcha: a benchmark whose entries have `effort = NULL` vanishes at publish (2026-09-01)
+
+`scripts/publish.py` picks each cell's latest run with a correlated subquery
+that compared `r2.effort = r.effort`. `NULL = NULL` is false in SQL, so every
+run with a NULL effort matched nothing and was dropped — the text-rendering
+set imported 216 rows locally and published **zero**, with no error. Fixed to
+`r2.effort is r.effort`. This is CLAUDE.md pitfall 13 and it has now bitten
+twice (the human-baseline row in the GDPval fit, then this). Any new lane
+whose entries carry no effort label (image models, Qwen's native thinking)
+must be checked in Supabase after publish, not trusted from the upsert count —
+the count was 690 both times and looked fine.
+
 ## 8. Open items
 
 - **Per-task library view** (designed, not built, zero new spend): a section
