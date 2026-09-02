@@ -175,7 +175,7 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   legs had written `failed`/`finished`, both python processes were still alive
   (stuck past teardown), blocking the guard and holding two sandboxes. Verify
   the rows are terminal, TERM (not KILL), prune sandboxes, then launch.
-- **Actual Fable 5.1 GDPval run cost: $403.01 for 27 cells** ($14.93/task,
+- **Actual Fable 5.1 GDPval cost: $403.01 runs + $178.31 judging + ~$3 rubric ≈ $585** (runs: 27 cells ($14.93/task,
   max cell $60.28, 19.1 wall-hours, two multi-leg chains) against the $280
   projection from Fable 5's $277.71 — the heaviest tasks needed resumes and 5.1
   ran ~45 min/cell versus Fable 5's ~20. Budget the successor of a model at

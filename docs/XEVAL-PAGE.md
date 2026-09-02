@@ -199,6 +199,35 @@ whose entries carry no effort label (image models, Qwen's native thinking)
 must be checked in Supabase after publish, not trusted from the upsert count —
 the count was 690 both times and looked fine.
 
+## 8c. Fable 5.1 on GDPval + the Autopilot router bug (2026-09-02)
+
+**Fable 5.1 @ max published: 1946 Elo, #1.** 27/27 tasks, $403.01 runs
+($14.93/task; two multi-leg chains), $178.31 judging (4 judges; 312 pairs with
+4 verdicts, 251 with 3 where a judge shared the entry's model), rubric ~$3.
+Total ≈ $585 against a $440 quote — see `docs/XEVAL-NEW-MODEL.md` for why.
+
+**Router bug, fixed the same day.** `router_row.py` keyed entries on
+`(latest[rid][1], latest[rid][2])`, but column 1 of its SELECT is `task_id`,
+so every "entry" was unique to one task, no sector winner could match any
+other task, and every task fell back to its own per-task best. The published
+Autopilot since Aug 29 (1859 Elo, $4.09/task, "@ auto") was therefore the
+per-task ORACLE, not the owner's sector-best rule — and its `params` even
+said so (`ROUTER=full-pool-winner-per-task`). Key is now `(model, effort)`,
+the label reads `sector-best`, and the per-sector picks are printed and
+stored in `params` (`PICKS=…`).
+
+**Under the real rule, Fable 5.1 wins all 9 sectors**, so the Autopilot IS
+Fable 5.1: **1947 Elo, $14.93/task, "@ max"** (one effort → label "max").
+The 1922/$9.31 "@ auto" row that the buggy path produced on the same fit was
+deleted from Supabase by hand (publish only upserts; an entry rename leaves
+the old row behind — now pruned by `publish.py`).
+
+Consequence for the product story: on GDPval today the Autopilot no longer
+beats the best single model on price, because one model is best everywhere.
+The sector rule still pays off on TB 2.1 (86% vs 81%) and LAB (47% vs 39%),
+where winners differ by category. Any copy claiming GDPval savings from the
+Autopilot must not be written until a sector is won by a cheaper model.
+
 ## 8. Open items
 
 - **Per-task library view** (designed, not built, zero new spend): a section
