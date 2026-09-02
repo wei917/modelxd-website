@@ -136,7 +136,10 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   ceiling: at ~94 tok/s a full 128k turn is ~23 min. A model that writes
   long single turns (Fable 5.1 on research tasks) needs
   `XEVAL_TURN_TIMEOUT_S=3600` on its resume legs; the lane scripts now set it
-  automatically after a turn-timeout or wall-clock error.
+  automatically after a turn-timeout or wall-clock error. Better: declare it
+  once in the registry entry (`turn_timeout=3600`, same mechanism as
+  `max_output`) so every fresh process for that model — lane cells and resume
+  legs alike — gets it without touching a running driver. Env still wins.
 
 - **Resume chains could double-count cost (fixed 2026-09-02).** A leg that
   died in an abort path stored the chain total in `cost_usd` but left
