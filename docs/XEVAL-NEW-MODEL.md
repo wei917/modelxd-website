@@ -138,6 +138,16 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   `XEVAL_TURN_TIMEOUT_S=3600` on its resume legs; the lane scripts now set it
   automatically after a turn-timeout or wall-clock error.
 
+- **Resume chains could double-count cost (fixed 2026-09-02).** A leg that
+  died in an abort path stored the chain total in `cost_usd` but left
+  `own_cost_usd` NULL; the next resume's `coalesce(own, cost_usd)` then
+  re-added that inherited total as fresh spend. 8c823e32 recorded $68.40 for
+  $40.10 real. Fixed both ways (prior legs sum `coalesce(own, 0)`; a dead leg
+  writes own 0.0). Two published entries carried it and are restated on the
+  next publish: Fable 5 @max 27-task total $277.71 → **$272.87** (−$4.84, one
+  task), Kimi K3 @low $3.10 → **$2.85**. Verify a chain's cost by summing its
+  legs' `own_cost_usd`, never by reading the finished row's `cost_usd` alone.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
