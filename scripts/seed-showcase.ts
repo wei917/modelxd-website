@@ -132,11 +132,13 @@ async function main() {
   console.log(`account : ${ACCOUNT} (${owner.id.slice(0, 8)}…)`)
   console.log(`models  : ${models.length} (newest in each family)`)
   for (const m of models) console.log(`          ${m.provider}/${m.model_name}  ${String(m.released_at ?? '').slice(0, 10)}`)
-  // Skip briefs already on the wall: reruns should top the wall up, not pay
-  // twice for pictures that are already hanging.
-  const { data: existing } = await sb.from('xcreates')
-    .select('prompt').eq('user_id', owner.id).eq('mode', 'image')
-  const already = new Set((existing ?? []).map((r: any) => String(r.prompt)))
+  // Skip briefs already HUNG — not briefs already attempted. The xcreates row
+  // is born at run start, so keying the skip off it marked a failed brief as
+  // done and made the failure permanent: a rerun could never retry it.
+  const { data: hungRows } = await sb.from('showcase').select('xcreate_id')
+  const { data: hungRuns } = await sb.from('xcreates')
+    .select('prompt').in('id', [...new Set((hungRows ?? []).map((r: any) => r.xcreate_id))])
+  const already = new Set((hungRuns ?? []).map((r: any) => String(r.prompt)))
   const todo = PROMPTS.filter(p => !already.has(p.prompt))
 
   console.log(`prompts : ${PROMPTS.length} (${todo.length} new, ${PROMPTS.length - todo.length} already hung)`)
@@ -162,9 +164,14 @@ async function main() {
       // `sizes`), so a blind rotation hands a model a ratio it cannot honour
       // and the picture fails for a reason that has nothing to do with the
       // prompt. Capability comes from the catalog, not from a list here.
+      // A DECLARED list is a real constraint and is honoured. No list means
+      // the model does not take aspect_ratio at all (gpt-image-2 works in
+      // `sizes`) and the provider maps the shape itself — measured: it shot
+      // 2:3 and 4:3 in this run. Treating "no list" as "square only" would
+      // bench the model that actually handles every shape.
       const canShoot = (m: any) => {
         const ars: string[] | null = m.output_config?.image?.aspect_ratios ?? null
-        return ars === null ? p.aspect === '1:1' : ars.includes(p.aspect)
+        return ars === null || ars.includes(p.aspect)
       }
       const eligible = models.filter(canShoot)
       if (eligible.length === 0) {
