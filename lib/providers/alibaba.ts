@@ -57,6 +57,27 @@ const NATIVE_TEXT_ENDPOINT = '/api/v1/services/aigc/text-generation/generation'
 // here media goes IN and text comes out.
 const MULTIMODAL_ENDPOINT = IMAGE_ENDPOINT
 
+/**
+ * Output ceiling — same rail, same reasoning as anthropic.ts's
+ * outputCeiling(). A flat 4096 sat here too, truncating long Qwen answers
+ * (thinking tokens count toward output on DashScope). Probed live
+ * 2026-09-01: qwen3.6-plus accepts up to 65,536 and qwen3.8-max up to
+ * 131,072 — the cap was ~16x below what the models allow.
+ *
+ * Not a budget: only generated tokens are billed. The binding constraint
+ * is /api/xcreate's maxDuration = 800s, so 64k is about what can finish.
+ * Clamped to the row's declared max_output_tokens when present, because
+ * exceeding a model's range is a hard 400 ("Range of max_tokens should be
+ * [1, N]").
+ */
+const DEFAULT_MAX_TOKENS = 64_000
+function outputCeiling(model: ModelInfo): number {
+  const cap = (model.output_config as any)?.text?.max_output_tokens
+  return typeof cap === 'number' && cap > 0
+    ? Math.min(DEFAULT_MAX_TOKENS, cap)
+    : DEFAULT_MAX_TOKENS
+}
+
 // DashScope's OpenAI-compatible endpoint. Some Qwen models are served ONLY
 // here — qwen3.8-max answers on this path and returns "url error, please
 // check url" on the native one (probed live, Aug 26). The catalog says
@@ -124,7 +145,7 @@ export async function streamText(
   const parameters: any = {
     result_format:      'message',
     incremental_output: true,
-    max_tokens:         4096,
+    max_tokens:         outputCeiling(model),
   }
   if (searchOn) {
     parameters.enable_search = true
@@ -238,6 +259,7 @@ async function streamCompatible(
     model:          model.model_name,
     stream:         true,
     stream_options: { include_usage: true },
+    max_tokens:     outputCeiling(model),
     messages:       [
       ...(extras.system ? [{ role: 'system', content: extras.system }] : []),
       ...messages.map(m => ({ role: m.role, content: String(m.content) })),
