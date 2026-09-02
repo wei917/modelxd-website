@@ -196,6 +196,15 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   command text contains the pattern and they die with exit 144 (two did on
   2026-09-02). Kill by PID, or by PPID for a lane's subshell.
 
+- **A slow judge can be parallelised by task, not by concurrency alone.**
+  With `--involving`, a second loop over the tasks the first loop has not
+  reached is safe: pairs are disjoint by task, and `judge.py` skips
+  already-judged pairs when the first loop arrives later. Keep total
+  concurrency within provider precedent (fill round: Grok 4, Qwen 8, Sol 4,
+  Opus 2). Gate the finish on EVERY loop's DONE marker, not just "no judge
+  processes" — loops have 1s gaps between tasks. Each judge invocation shows
+  as two python processes (wrapper + child); that is not duplicate judging.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
