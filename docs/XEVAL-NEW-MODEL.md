@@ -151,6 +151,14 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   task), Kimi K3 @low $3.10 → **$2.85**. Verify a chain's cost by summing its
   legs' `own_cost_usd`, never by reading the finished row's `cost_usd` alone.
 
+- **Transport drops must not consume resume legs.** On the owner's VPN the
+  Anthropic stream dies intermittently (`SSLV3_ALERT_BAD_RECORD_MAC`, `Broken
+  pipe`, surfaced as litellm `InternalServerError`). 105f8ad0 lost two lane
+  legs to it in a row on 2026-09-02 while the API answered handshakes in
+  20 ms between drops. The checkpoint keeps the work, so a transport failure
+  is just "resume again"; only rail/budget failures should count toward a leg
+  limit. `fable51_resume_105f8ad0.sh` is the pattern.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
