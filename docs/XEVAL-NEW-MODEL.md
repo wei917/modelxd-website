@@ -116,6 +116,17 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   failure at 64k will fail at 64k again; the loop must raise the ceiling on the
   resume leg (see `fable51_lane.sh`), not just retry.
 
+- **Wall clock (owner rule, 2026-09-02): keep raising it while the model is
+  doing real work; cut only a loop.** `XEVAL_MAX_WALL_S` is OURS (default 45
+  min, lanes pass 2 h) — GDPval has no time limit. Tell the cases apart by
+  tokens per second, not by elapsed time: leg 5 of 8c823e32 billed ~$2 (~40k
+  output tokens) over 2 h after its tool results had returned = **6 tok/s**
+  against Fable 5.1's ~94 — a stalled stream (VPN `bad record mac` class), so
+  resume with a bigger clock; a leg that blows 64k in ONE turn is real work
+  that needs the 128k ceiling, not a kill. Fable 5 finished the same task in
+  63 turns for $7.94, so a cell many times that is worth one fresh (non-resume)
+  attempt only after the resume-with-room path has been tried.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
