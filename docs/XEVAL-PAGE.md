@@ -208,18 +208,43 @@ the metric to watch as tasks are added.
 Ran 5 of 21 tasks, **1 pass**, ~$2, then stopped on owner call. Not published;
 nothing was imported to `xeval.db`, so the TB ladder is untouched.
 
-**Why it fails: it thinks at length, and TB's clock rewards acting.** Qwen
-generates 2,000–8,000 output tokens *per turn*, so a turn costs 60–180s and the
-agent runs out of wall clock after ~20 turns where Opus/Gemini get 55–75. This
-is capability/style, not a broken endpoint — verified two ways:
+**Why it fails: slow generation with a fat tail — NOT verbosity.** The first
+write-up here said "it thinks at length"; the comparison data disproved that
+and it is corrected so nobody repeats the error:
 
-- 10 of the 11 calls over 60s ran at **33–54 tok/s**, i.e. normal throughput.
-  Only one call was anomalous (620s for 874 tokens, 1.4 tok/s), out of 107.
-- Model Studio's own console reported **28.17s average call duration** against
-  our **29.86s** measured end-to-end from the Mac. The ~1.7s gap is the network
-  (192ms RTT to Singapore plus TLS/client overhead), so ~94% of the wall time
-  is generation on Alibaba's side. Running from a Singapore VM would save
-  seconds per call, not minutes, and would not have saved a single timeout.
+| model | median tok/call | median tok/s | timeout rate |
+|---|---|---|---|
+| Gemini 3.7 Flash | 195 | 69 | 14% |
+| Claude Opus 5 | 688 | 68 | 32% |
+| Grok 4.6 | 304 | 56 | 21% |
+| GPT-5.6 Sol | 505 | 43 | 10% |
+| Qwen3.8 Max | 612 | 43 | 40% (n=5) |
+
+- Qwen's tokens per call are **mid-pack** — below Opus, which scored 71%.
+- Its generation speed is the **slow tier**, ~43 tok/s, roughly half Opus and
+  Gemini. Opus writes more per turn and still finishes each turn in a third
+  of the time.
+- **Timeouts are TB-wide.** Opus times out on 32% of trials and still places
+  second. Qwen's 40% on five trials is statistically indistinguishable from
+  that; the CI runs roughly 5-85%.
+- The typical Qwen turn (~14s) is close to Sol's, which scored 71%. What kills
+  it is the tail: occasional 2,000-8,000-token turns at 43 tok/s land at
+  50-190s each, and a few of those eat a 15-minute task budget.
+
+Two independent measurements agree the time is generation on Alibaba's side,
+not network: 10 of the 11 calls over 60s ran at 33-54 tok/s (normal
+throughput for their length), and Model Studio's own console reported
+**28.17s average call duration** against our **29.86s** end-to-end from the
+Mac — a ~1.7s gap that is the 192ms RTT to Singapore plus TLS. A controlled
+Singapore-vs-Virginia A/B (5 calls each, streaming) then showed identical
+TTFT (1.54s vs 1.61s) and throughput (35.6 vs 36.0 tok/s): Alibaba's
+"routing issue" explanation is not supported. Only ONE call in 107 was a
+genuine anomaly (620s for 874 tokens).
+
+**Do not raise the timeout multiplier to rescue it.** All four published
+entries ran at 1.0, and timeouts hit every model — a 2x run would change
+Opus's score most of all and invalidate the ladder. If Qwen is ever finished
+it runs at 1.0 on the remaining 16 tasks (~$3) and publishes whatever it gets.
 
 Setup facts worth keeping if it is ever re-run:
 
