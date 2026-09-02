@@ -20,7 +20,7 @@ analysis, chats, gaming, benchmarks, or your own agents — and ModelXD sends ea
 whichever model earns it, decided by two independent kinds of evidence:
 real blind votes, and XEval runs on public benchmark datasets (GDPval).
 Prices are always in the open. Developers get the same routing inside their own agents through
-XDev (API keys; docs at /xdev/docs). Two surfaces on one key: an
+XDev (API keys + the full API reference, one public page — docs readable without signing in; key management needs sign-in). Two surfaces on one key: an
 OpenAI-compatible text API — POST /api/v1/chat/completions, point any OpenAI
 SDK at the base URL; `model` takes `provider/model_name` or the routing verbs
 `xd/auto` (best by blind votes) / `xd/cheap` (good enough, cheapest); JSON

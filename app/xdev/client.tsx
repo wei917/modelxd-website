@@ -9,7 +9,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
-import { useRequireAuth } from '../../lib/useRequireAuth'
+import { useAuthModal } from '../../lib/AuthModalContext'
+import DocsSections from './DocsSections'
 import { useT } from '../../lib/i18n'
 
 type TokenRow = {
@@ -34,7 +35,12 @@ const TOOLS: Array<[string, string]> = [
 
 export default function XDevClient() {
   const t = useT()
-  useRequireAuth()
+  // PUBLIC page (owner, Sep 1: one developer page, docs readable before
+  // signup). Instead of bouncing anonymous visitors to the auth modal on
+  // load, the keys card itself asks for sign-in and everything else reads
+  // fine logged-out.
+  const { show: showAuth } = useAuthModal()
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [rows, setRows] = useState<TokenRow[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
@@ -56,6 +62,9 @@ export default function XDevClient() {
 
   const load = async () => {
     const sb = createSupabaseBrowser()
+    const { data: { user } } = await sb.auth.getUser()
+    setSignedIn(!!user)
+    if (!user) { setRows([]); setLoading(false); return }
     const { data } = await sb.from('api_tokens')
       .select('id, name, token_prefix, spend_cap_usd, spent_usd, last_used_at, revoked_at, created_at')
       .is('revoked_at', null)
@@ -66,6 +75,7 @@ export default function XDevClient() {
   useEffect(() => { load() }, [])
 
   const mint = async () => {
+    if (signedIn === false) { showAuth('/xdev'); return }
     setMinting(true); setErr(null)
     try {
       const res = await fetch('/api/xdev/tokens', {
@@ -141,8 +151,11 @@ export default function XDevClient() {
   )
 
   return (
-    <div className="xduel-page">
-      <div className="arena xcreate-arena">
+    // overflowY visible: .xduel-page's overflow-y:auto breaks position:sticky
+    // for the reference rail below (it pins to a scroll container that never
+    // scrolls). Same override the standalone docs page needed.
+    <div className="xduel-page" style={{ overflowY: 'visible' }}>
+      <div className="arena xcreate-arena" style={{ maxWidth: 1100 }}>
         <span className="prompt-label eyebrow">XDEV</span>
         <h1 className="page-headline" style={{ marginBottom: 8 }}>{t('xdev.subtitle')}</h1>
         <p style={{ color: 'var(--muted)', fontSize: 14, maxWidth: 640, marginBottom: 26 }}>
@@ -180,7 +193,15 @@ export default function XDevClient() {
             {err && <span style={{ color: 'var(--red)', fontSize: 12 }}>{err}</span>}
           </div>
 
-          {loading ? <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>Loading…</div> : rows.length === 0 ? (
+          {signedIn === false ? (
+            <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>
+              <button onClick={() => showAuth('/xdev')} style={{
+                border: 'none', background: 'var(--red)', color: '#fff', borderRadius: 999,
+                padding: '7px 18px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', marginRight: 10,
+              }}>Sign in to create a key</button>
+              New accounts start with $10 free credit — no card.
+            </div>
+          ) : loading ? <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>Loading…</div> : rows.length === 0 ? (
             <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>No keys yet — create one to connect an agent.</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -219,11 +240,11 @@ export default function XDevClient() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
             <span style={{ fontWeight: 800, fontSize: 15 }}>💬 Text API — OpenAI-compatible</span>
             <span style={{ ...label }}>chat · structured output · image & video jobs</span>
-            <a href="/xdev/docs" style={{
+            <a href="#docs" onClick={(e) => { e.preventDefault(); document.getElementById('docs')?.scrollIntoView({ behavior: 'instant' as ScrollBehavior }) }} style={{
               marginLeft: 'auto', fontSize: 12.5, fontWeight: 800, color: '#fff',
               background: 'var(--red)', padding: '6px 16px', borderRadius: 999,
-              textDecoration: 'none', whiteSpace: 'nowrap',
-            }}>📖 API docs →</a>
+              textDecoration: 'none', whiteSpace: 'nowrap', cursor: 'pointer',
+            }}>📖 API reference ↓</a>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
             Point any OpenAI SDK at this base URL and keep your code. <code>model</code> takes{' '}
@@ -284,6 +305,9 @@ export default function XDevClient() {
             before it spends.
           </p>
         </div>
+
+        {/* ── The API reference, same page (owner: one developer page) ── */}
+        <DocsSections />
       </div>
     </div>
   )

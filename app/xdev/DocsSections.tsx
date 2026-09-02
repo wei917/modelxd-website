@@ -1,7 +1,9 @@
 'use client'
-// app/xdev/docs/client.tsx — the API reference proper.
+// app/xdev/DocsSections.tsx — the API reference, embedded in /xdev.
 //
-// Shaped like the references developers already trust (Stripe, OpenAI,
+// One page for developers (owner, twice: "why a separate page?") — the
+// reference lives UNDER the key dashboard, not on its own URL. Shaped like
+// the references developers already trust (Stripe, OpenAI,
 // Anthropic): a sticky section rail with scroll-spy on the left, one
 // endpoint per section on the right — method chip, path, a parameter
 // table with types and required flags, then a verified example with a
@@ -156,7 +158,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 // ── the page ────────────────────────────────────────────────────────────
 
-export default function ApiDocsClient() {
+export default function DocsSections() {
   const [active, setActive] = useState('quickstart')
   const spyPaused = useRef(false)
 
@@ -197,24 +199,17 @@ export default function ApiDocsClient() {
   }
 
   return (
-    // overflowY OVERRIDE: .xduel-page declares overflow-y:auto, which makes
-    // it a scroll container in name only (the window does the scrolling) —
-    // and position:sticky pins to the nearest scroll container, so the rail
-    // pinned to a box that never scrolls and simply scrolled away. Visible
-    // restores the window as the sticky reference. Verified live.
-    <div className="xduel-page" style={{ overflowY: 'visible' }}>
-      <div className="arena xcreate-arena" style={{ maxWidth: 1100 }}>
-        <span className="prompt-label eyebrow">XDEV · API REFERENCE</span>
-        <h1 className="page-headline" style={{ marginBottom: 8 }}>Build on the models that win.</h1>
-        <p style={{ ...p, maxWidth: 680, marginBottom: 26 }}>
-          One key, two surfaces: a <strong>REST API</strong> — OpenAI-compatible chat completions
-          plus async image and video generation — and an <strong>MCP server</strong> for agent
-          clients. Same wallet, same listed prices, and routing on the one signal nobody else has:
-          blind human votes. Keys on <Link href="/xdev" style={{ color: 'var(--red)' }}>XDev</Link>,
-          prices on <Link href="/xboard" style={{ color: 'var(--red)' }}>XBoard</Link>.
-        </p>
+    <div id="docs" style={{ scrollMarginTop: 84 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '34px 0 4px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>API reference</h2>
+        <span style={{ ...eyebrow }}>rest · mcp · verified examples</span>
+      </div>
+      <p style={{ ...p, maxWidth: 680, marginBottom: 20 }}>
+        Everything below is the whole contract — every example has been run against production.
+        Prices live on <Link href="/xboard" style={{ color: 'var(--red)' }}>XBoard</Link>.
+      </p>
 
-        <div style={{ display: 'flex', gap: 26, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 26, alignItems: 'flex-start' }}>
 
           {/* ── sticky rail ── */}
           <nav style={{
@@ -522,7 +517,6 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
               <Link href="/" style={{ color: 'var(--red)' }}>home page</Link>.
             </p>
           </div>
-        </div>
       </div>
 
       {/* the rail folds away on narrow viewports — desktop-first, but no overlap */}

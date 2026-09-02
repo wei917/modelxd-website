@@ -1,16 +1,15 @@
-// app/xdev/page.tsx — XDev server shell: API keys + MCP for external agents.
-// Open to any signed-in user since Aug 24 (owner: "we can open XDev") — the
-// beta gate that used to 404 this page is gone, along with the whole
-// per-user feature system it was the last member of. Money safety does not
-// depend on that gate: a key spends its OWN user's credits behind the
-// pre-flight balance check, carries a per-key spend cap, and can never mint
-// another key.
+// app/xdev/page.tsx — XDev server shell: THE developer page. Public since
+// Sep 1 (owner: docs must be readable before signup; one page, not two) —
+// the reference renders for everyone, key management asks for sign-in
+// inline. Money safety never depended on gating this page: a key spends
+// its OWN user's credits behind the pre-flight balance check, carries a
+// per-key spend cap, and can never mint another key.
 import type { Metadata } from 'next'
 import XDevClient from './client'
 
 export const metadata: Metadata = {
-  title: 'XDev — ModelXD for Agents | ModelXD',
-  description: 'Mint API keys and connect any MCP client — Claude Code, Cursor, n8n — to generate through ModelXD with honest, vote-backed model picking.',
+  title: 'XDev — API keys & docs | ModelXD',
+  description: 'The ModelXD developer page: mint API keys and read the full reference — OpenAI-compatible chat completions with vote-based routing, async image & video generation, and MCP for agent clients.',
 }
 
 export default async function XDevPage() {

@@ -52,8 +52,7 @@ const ROUTES: Record<string, string> = {
   '/xvote':   'XVote',
   '/xboard':  'XBoard',
   '/profile': 'Profile',
-  '/xdev':      'XDev',
-  '/xdev/docs': 'API docs',
+  '/xdev':      'XDev (keys + API docs)',
 }
 
 // The template catalog is derived from the real XCREATE_TEMPLATES export,
