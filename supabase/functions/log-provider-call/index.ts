@@ -123,6 +123,7 @@ Deno.serve(async (req) => {
       ...commonRow,
       event:              'start',
       estimated_cost_usd: body.estimated_cost_usd ?? null,
+      thinking_level:     body.thinking_level     ?? null,
     })
     if (error) return jsonResponse({ error: error.message }, { status: 500 })
     return jsonResponse({ ok: true })
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
       cached_input_tokens: body.cached_input_tokens ?? null,
       cost_usd:            body.cost_usd            ?? null,
       usage_metadata:      body.usage_metadata      ?? null,
+      thinking_level:      body.thinking_level      ?? null,
     })
     if (error) return jsonResponse({ error: error.message }, { status: 500 })
     return jsonResponse({ ok: true })

@@ -178,6 +178,7 @@ function descriptor(
   model: ModelInfo,
   mode: 'text' | 'image' | 'video',
   context?: CallContext,
+  thinkingLevel?: string | null,
 ) {
   return {
     provider:   model.provider,
@@ -185,6 +186,9 @@ function descriptor(
     model_id:   model.id ?? null,
     mode,
     user_id:    context?.userId ?? null,
+    // Migration 88: latency without the effort it ran at is an average
+    // over settings, not a measurement.
+    thinking_level: thinkingLevel ?? null,
   }
 }
 
@@ -225,7 +229,7 @@ export async function streamText(
   // in analytics. Only the last user message matters for typical chat —
   // approximate by summing all text content lengths.
   const promptChars = messages.reduce((acc, m) => acc + String(m.content ?? '').length, 0)
-  const desc      = descriptor(model, 'text', context)
+  const desc      = descriptor(model, 'text', context, thinking)
   const requestId = startCall(desc, { estimated_cost_usd: estimateCost(model, 'text', { promptChars, thinkingLevel: thinking }) })
   const t0        = Date.now()
 

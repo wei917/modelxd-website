@@ -18,6 +18,10 @@ interface CallDescriptor {
   model_id?:  string | null
   mode:       'text' | 'image' | 'video'
   user_id?:   string | null
+  /** Effort the call ran at, in the PROVIDER's own vocabulary (openai
+   *  none|low|…|max, google minimal|…|high, alibaba thinking_true/false).
+   *  Null when the caller picked no level. Migration 88. */
+  thinking_level?: string | null
 }
 
 interface StartOptions {
@@ -92,6 +96,7 @@ export function startCall(d: CallDescriptor, opts: StartOptions = {}): string | 
       model_id:           d.model_id ?? null,
       mode:               d.mode,
       user_id:            d.user_id ?? null,
+      thinking_level:     d.thinking_level ?? null,
       estimated_cost_usd: opts.estimated_cost_usd ?? null,
     },
     'start',
@@ -119,6 +124,7 @@ export function endCall(
       model_id:             d.model_id ?? null,
       mode:                 d.mode,
       user_id:              d.user_id ?? null,
+      thinking_level:       d.thinking_level ?? null,
       status:               outcome.status,
       error_message:        outcome.error_message       ?? null,
       latency_ms:           outcome.latency_ms          ?? null,
