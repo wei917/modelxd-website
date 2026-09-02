@@ -824,6 +824,8 @@ export const STRINGS: Record<string, Entry> = {
   'xboard.ww.col.survival': { en: 'Survived', 'zh-Hant': '存活', 'zh-Hans': '存活', ja: '生存', ko: '생존' },
   'xboard.provisional':  { en: 'Provisional — still gathering votes.', 'zh-Hant': '暫定 — 仍在累積票數。', 'zh-Hans': '暂定 — 仍在累积票数。', ja: '暫定 — 投票を集計中です。', ko: '잠정 — 투표를 모으는 중입니다.' },
   'xboard.early':        { en: 'Early', 'zh-Hant': '初期', 'zh-Hans': '初期', ja: '暫定', ko: '초기' },
+  'showcase.eyebrow': { en: 'The gallery', 'zh-Hant': '藝廊', 'zh-Hans': '艺廊', ja: 'ギャラリー', ko: '갤러리' },
+  'showcase.sub':     { en: 'The same brief, painted by each of the newest models, with what that picture cost. Nothing here is voted on; the label is the point.', 'zh-Hant': '同一道題目，交給每個最新的模型各畫一張，並標出這張圖的成本。這裡不投票，重點在於標籤。', 'zh-Hans': '同一道题目，交给每个最新的模型各画一张，并标出这张图的成本。这里不投票，重点在于标签。', ja: '同じ課題を最新の各モデルに描かせ、その一枚の費用を添えています。ここでは投票はしません。ラベルこそが主役です。', ko: '같은 과제를 최신 모델들이 각각 그리고, 그 한 장의 비용을 함께 표시합니다. 여기서는 투표하지 않습니다. 라벨이 핵심입니다.' },
   'xtell.eyebrow':     { en: 'XTell', 'zh-Hant': 'X算命', 'zh-Hans': 'X算命', ja: 'X占い', ko: 'X점술' },
   'xtell.he.ask':      { en: 'Read our compatibility, and where the next few years take us.', 'zh-Hant': '請月老看我們的合盤，以及未來幾年的姻緣走向。', 'zh-Hans': '请月老看我们的合盘，以及未来几年的姻缘走向。', ja: '二人の相性と、これから数年の縁の流れを見てください。', ko: '저희 궁합과 앞으로 몇 년의 인연 흐름을 봐 주세요.' },
   'xtell.he.title':    { en: 'Compatibility', 'zh-Hant': '合盤', 'zh-Hans': '合盘', ja: '相性', ko: '궁합' },

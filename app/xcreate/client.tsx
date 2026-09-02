@@ -15,6 +15,8 @@ import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
+import ShowcaseWall from '@/app/components/ShowcaseWall'
+import type { ShowcaseRoom } from '@/lib/showcase'
 import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
 import MaskEditor from '../components/MaskEditor'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
@@ -1018,15 +1020,15 @@ function OptGroup({ label, children, last }: {
 }
 
 
-export default function CreateClient() {
+export default function CreateClient({ showcase = [] }: { showcase?: ShowcaseRoom[] }) {
   return (
     <Suspense fallback={null}>
-      <CreateStudio />
+      <CreateStudio showcase={showcase} />
     </Suspense>
   )
 }
 
-function CreateStudio() {
+function CreateStudio({ showcase }: { showcase: ShowcaseRoom[] }) {
   useRequireAuth()
   const t = useT()
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
@@ -4713,6 +4715,11 @@ function CreateStudio() {
                     </div>
                   )
                 })()}
+
+                {/* The museum wall. Only on the setup screen: it is what to
+                    look at while deciding, not something to sit under your
+                    own results. Renders nothing when nothing is published. */}
+                {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseWall rooms={showcase} />}
 
                 {/* Results */}
                 {slots.length > 0 && (
