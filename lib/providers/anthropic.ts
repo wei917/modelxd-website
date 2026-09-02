@@ -62,6 +62,37 @@ function buildContent(text: string, attachments: Attachment[]): any {
   ]
 }
 
+/**
+ * Output ceiling for a request.
+ *
+ * A flat 4096 silently truncated high-effort answers: thinking tokens are
+ * billed as output and share this ceiling, so a `max`-effort run spent its
+ * budget reasoning and stopped mid-sentence — measured 2026-08-29 on Fable
+ * 5.1 (exactly 4096 tokens, no conclusion; the same question at `low`
+ * finished correctly in 824). The user paid 5x for a worse answer.
+ *
+ * This is a RAIL, not a budget. Only generated tokens are billed, so a low
+ * ceiling never saves money — it destroys output already paid for. Cost is
+ * controlled by the effort the user picks and by the credit reserve, not by
+ * cutting answers off.
+ *
+ * Deliberately NOT scaled by effort: effort shifts the typical length, it
+ * does not bound it. Our own eval data has Fable at `low` legitimately
+ * producing 25,277 output tokens on one task — an effort ladder would have
+ * truncated that at exactly the tier meant to be cheap and safe.
+ *
+ * Clamped to the model's real cap when the row declares one
+ * (output_config.text.max_output_tokens); exceeding a model's limit is a
+ * hard 400.
+ */
+const DEFAULT_MAX_TOKENS = 64_000
+function outputCeiling(model: ModelInfo): number {
+  const cap = (model.output_config as any)?.text?.max_output_tokens
+  return typeof cap === 'number' && cap > 0
+    ? Math.min(DEFAULT_MAX_TOKENS, cap)
+    : DEFAULT_MAX_TOKENS
+}
+
 export async function streamText(
   model:       ModelInfo,
   messages:    { role: 'user' | 'assistant'; content: any }[],
@@ -129,7 +160,7 @@ export async function streamText(
       },
       body: JSON.stringify({
         model: model.model_name,
-        max_tokens: maxTokens ?? 4096,
+        max_tokens: maxTokens ?? outputCeiling(model),
         stream: true,
         messages: chatMessages,
         // Top-level `system`, never a message — the Messages API has no

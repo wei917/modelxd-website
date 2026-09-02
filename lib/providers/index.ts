@@ -226,7 +226,7 @@ export async function streamText(
   // approximate by summing all text content lengths.
   const promptChars = messages.reduce((acc, m) => acc + String(m.content ?? '').length, 0)
   const desc      = descriptor(model, 'text', context)
-  const requestId = startCall(desc, { estimated_cost_usd: estimateCost(model, 'text', { promptChars }) })
+  const requestId = startCall(desc, { estimated_cost_usd: estimateCost(model, 'text', { promptChars, thinkingLevel: thinking }) })
   const t0        = Date.now()
 
   // Hook the user's onDone so we capture usage when the stream finishes

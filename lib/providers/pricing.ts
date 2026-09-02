@@ -234,6 +234,7 @@ export function estimateCost(
     size?:         string     // image: selected size ("1024", "1024x1024", …)
     resolution?:   string     // video: resolution key
     seconds?:      number     // video: duration
+    thinkingLevel?: string | null  // text: effort level — thinking tokens bill as output
   } = {},
 ): number {
   const p = pricing(model)
@@ -245,7 +246,16 @@ export function estimateCost(
     const tout = resolveTokenRate(t.text_output)
     if (tin === 0 && tout === 0) return 0
     const inputTokens  = Math.max(1, Math.ceil(promptChars / 4))
-    const outputTokens = 500                   // heuristic — most chats land here
+    // Thinking tokens are billed as output, so the estimate has to follow
+    // the effort the user picked — a flat 500 quoted 3c for a max-effort
+    // Fable answer that really costs ~20c, and the gap landed in the settle
+    // (measured 2026-08-29). Non-thinking calls keep the old heuristic.
+    const EFFORT_OUTPUT: Record<string, number> = {
+      low: 1_500, medium: 3_000, high: 6_000, xhigh: 10_000, max: 16_000,
+    }
+    const outputTokens = opts.thinkingLevel
+      ? (EFFORT_OUTPUT[opts.thinkingLevel] ?? 6_000)
+      : 500                                    // heuristic — most chats land here
     return (
       (inputTokens  / 1_000_000) * tin +
       (outputTokens / 1_000_000) * tout

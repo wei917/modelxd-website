@@ -603,6 +603,7 @@ export async function POST(req: Request) {
         size:        o.size,
         resolution:  o.size ?? o.resolution,
         seconds:     o.duration ?? o.seconds,
+        thinkingLevel: o.thinking_level ?? null,
       })
     }, 0)
     // Mock runs cost nothing, so they must not reserve anything either —
