@@ -99,6 +99,23 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
 - **Check Supabase after publish, not the upsert count.** The count read 690
   while zero text-rendering rows landed (NULL-effort dedup bug, pitfall 13).
 
+- **stirrup's default output ceiling is 64k tokens per turn, not per run.**
+  Fable 5.1 emitted a single >64k turn on task 8c823e32 twice — two dead legs,
+  ~$26 — while Fable 5 had cleared the same task under 64k. The registry now
+  takes `max_output` (Fable 5.1: 128_000, its real cap; the anthropic path
+  streams so it is safe), and `XEVAL_MAX_OUTPUT` overrides it for one process.
+  The cap is a rail, not a budget: a low one destroys output already paid for.
+- **Never SIGKILL a cell.** `--resume` restores from the checkpoint cache
+  (`work/cache/<model>/<effort>/<task8>/*/state.json`), not from DB status —
+  but a killed leg leaves its `runs` row stuck at `running`, the lane's leg
+  loop reads that as "resume again", and the next leg can die on the
+  half-written checkpoint. If a leg must be stopped: `kill` (TERM), wait, then
+  mark the row `aborted` with an error note, validate `state.json` parses, and
+  relaunch the resume OUTSIDE the lane so the lane keeps moving.
+- **The lane's leg loop retries a structural failure identically.** A length
+  failure at 64k will fail at 64k again; the loop must raise the ceiling on the
+  resume leg (see `fable51_lane.sh`), not just retry.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
