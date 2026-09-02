@@ -211,6 +211,20 @@ export async function POST(req: Request) {
       // silently (Aug 22). A truncated tool call is answered below instead,
       // so the director resends a more compact board rather than the user
       // seeing nothing happen.
+      // A classifier refusal (Fable 5.1 / Opus 5) returns stop_reason
+      // 'refusal' with empty content, which otherwise fell through the
+      // "text only" branch below and returned NO messages at all — the
+      // director simply appeared to do nothing. House-paid, so nothing is
+      // billed either way; the user still deserves to be told. NOT routed to
+      // the OpenAI fallback: only ACCOUNT-class failures substitute a model
+      // (see CLAUDE.md), and a refusal is a content decision, not an outage.
+      if (resp.stop_reason === 'refusal') {
+        console.warn(`${LOG} hop ${hop}: refused by classifier`)
+        const msg = { role: 'assistant', content: [{ type: 'text',
+          text: 'I could not act on that request. Try rephrasing it.' }] }
+        newMessages.push(msg)
+        return Response.json({ newMessages, action: null, storyboard: storyboardOut })
+      }
       const truncated = resp.stop_reason === 'max_tokens'
       if (truncated) console.warn(`${LOG} hop ${hop}: reply truncated at max_tokens (${toolUses.length} tool call(s) affected)`)
       if (resp.stop_reason !== 'tool_use' && !(truncated && toolUses.length > 0)) {

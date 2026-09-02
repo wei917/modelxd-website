@@ -244,6 +244,22 @@ export async function streamText(
             }
             break
           case 'message_delta':
+            // A safety refusal arrives as HTTP 200 with stop_reason 'refusal'
+            // and little or no content — NOT as an error. Unchecked, the user
+            // got a blank generation, no explanation, and a credit reserve that
+            // settled as a success. Throwing routes it through
+            // sanitizeProviderError like any other provider failure and leaves
+            // nothing to settle; Anthropic does not bill a refusal that
+            // produced no output, so failing loudly is also the honest bill.
+            // Deliberately thrown even mid-stream: a half-answer presented as
+            // complete is worse than a clear refusal, and this path is rare.
+            // Applies to every Anthropic model with classifiers (Fable 5.1,
+            // Opus 5), not just the one that prompted the fix.
+            if (event.delta?.stop_reason === 'refusal') {
+              const cat = event.delta?.stop_details?.category
+              throw new Error('USERMSG:This model declined the request for safety reasons'
+                + (cat ? ` (${cat})` : '') + '. You were not charged. Try rephrasing it, or pick another model.')
+            }
             outputTokens = event.usage?.output_tokens ?? outputTokens
             if (event.usage?.input_tokens) inputTokens = event.usage.input_tokens
             if (event.usage?.cache_read_input_tokens)     cachedTokens     = event.usage.cache_read_input_tokens
