@@ -159,6 +159,13 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   is just "resume again"; only rail/budget failures should count toward a leg
   limit. `fable51_resume_105f8ad0.sh` is the pattern.
 
+- **Process guards: match on args, then filter by executable name.** Plain
+  `pgrep -f` matched operator and watcher shells whose command TEXT mentioned
+  the pattern; an anchored `^[^ ]*python…` pattern then proved unreliable on
+  macOS (missed live judges). What works: `pgrep -f '<args>'` piped through
+  `ps -o comm=` keeping only `python` (`_procs()` in `fable51_*.sh`). Each
+  judge/run_one invocation shows as python + a `caffeinate` child — not a
+  duplicate. (Original note follows.)
 - **Anchor every `pgrep -f` guard to a real interpreter (`^[^ ]*python[^ ]* -u -m …`).**
   The judge lane refused twice at 27/27 with "cells still running" and zero
   real processes: the guard matched the *launching shell's own command text*,
