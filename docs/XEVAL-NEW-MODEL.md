@@ -159,6 +159,21 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   is just "resume again"; only rail/budget failures should count toward a leg
   limit. `fable51_resume_105f8ad0.sh` is the pattern.
 
+- **Anchor every `pgrep -f` guard to a real interpreter (`^[^ ]*python[^ ]* -u -m …`).**
+  The judge lane refused twice at 27/27 with "cells still running" and zero
+  real processes: the guard matched the *launching shell's own command text*,
+  which mentioned the pattern. A `/bin/zsh -c "…"` wrapper can never match an
+  anchored pattern.
+- **`run_one` processes can outlive their own rows.** After 105f8ad0's last two
+  legs had written `failed`/`finished`, both python processes were still alive
+  (stuck past teardown), blocking the guard and holding two sandboxes. Verify
+  the rows are terminal, TERM (not KILL), prune sandboxes, then launch.
+- **Actual Fable 5.1 GDPval run cost: $403.01 for 27 cells** ($14.93/task,
+  max cell $60.28, 19.1 wall-hours, two multi-leg chains) against the $280
+  projection from Fable 5's $277.71 — the heaviest tasks needed resumes and 5.1
+  ran ~45 min/cell versus Fable 5's ~20. Budget the successor of a model at
+  ~1.4× its predecessor's spend, not 1.0×.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
