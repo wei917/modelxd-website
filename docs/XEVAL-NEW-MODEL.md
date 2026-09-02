@@ -15,12 +15,12 @@ actually cost in `xeval.db`, not from list-price guesswork.
 
 Fable 5.1 is a text model: three ladders. Text Rendering does not apply.
 
-## GDPval — ~$375
+## GDPval — ~$440
 
 | item | basis | cost |
 |---|---|---|
 | 27 runs @max | Fable 5 @max cost **$277.71** at the identical rate | **~$280** |
-| judging | 20 complete entries × 27 tasks = **540 new pairs**, 1 verdict each. Anthropic family excludes Opus 5, leaving Sol $0.080 + Grok $0.022 + Qwen $0.066 = **$0.168/pair** | **~$91** |
+| judging | 20 complete entries × 27 tasks = **540 new pairs**. The no-self-judging rule is by **exact model, not vendor** (`judge.py:518`; Opus 5 judged 536 of Fable 5's pairs), so all four panel judges apply: Opus $0.127 + Sol $0.080 + Qwen $0.066 + Grok $0.022 = **$0.295/pair** | **~$159** |
 | rubric pass | 27 Grok calls (one per task, ~44 items each) | ~$3 |
 
 Judging grows with the ladder: the 21st entry costs 567 pairs, the 25th 675.
@@ -67,13 +67,37 @@ otherwise. Two levers before spending that:
 
 | | low | high |
 |---|---|---|
-| GDPval | $375 | $375 |
+| GDPval | $440 | $440 |
 | TB 2.1 | $40 | $80 |
 | LAB | $250 | $1,450 |
-| **total** | **~$665** | **~$1,900** |
+| **total** | **~$730** | **~$1,970** |
 
 The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
-(**~$450**) and should run first.
+(**~$520**) and should run first.
+
+## Onboarding gotchas (learned adding Fable 5.1, 2026-09-01)
+
+- **`run_one` refuses undeclared entries.** `ai_models.eval_config` must list
+  the effort: `{"efforts": ["max"]}`. Without it: `SKIP: (model, effort) not
+  declared`. Shared table — declare only the efforts actually approved.
+- **Register in `xeval/run_one.py` MODELS** with the `ai_models.id` UUID and
+  **`price_cached`** — the Anthropic entries never carried one, so cached
+  reads were costed at the full input rate. Fable 5.1's smoke cell was 95%
+  cache reads; with `price_cached=0.25` the run cost matched to the cent
+  ($5.62). Fable 5 / Opus 5 / Sonnet 5 still lack it, so their published
+  $/task is overstated by the cached share — owner decision whether to
+  restate.
+- **litellm handles the thinking shape**: `reasoning_effort="max"` goes out as
+  `thinking: {type: adaptive}` + `output_config: {effort: max}`. Verified by
+  capturing the request body, not by reading our own label.
+- **`--max-cost` is a HARD per-leg cap** (`aborted:budget`). Fable 5's $77
+  cell finished only as a three-leg chain at $30/leg. A lane must resume
+  repeatedly, not once; a $25 cap would have broken complete rows on two of
+  the 27 tasks.
+- **Judge idempotence is real** (`skip (already judged)`), so judging a new
+  entry is just "run every judge on every task" — only the new pairs cost.
+- **Check Supabase after publish, not the upsert count.** The count read 690
+  while zero text-rendering rows landed (NULL-effort dedup bug, pitfall 13).
 
 ## Recipe (any new text model)
 
