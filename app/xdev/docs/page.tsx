@@ -68,10 +68,10 @@ export default function ApiDocsPage() {
         <span className="prompt-label eyebrow">XDEV · API REFERENCE</span>
         <h1 className="page-headline" style={{ marginBottom: 8 }}>Build on the models that win.</h1>
         <p style={{ ...p, maxWidth: 640, marginBottom: 8 }}>
-          One key, two surfaces. An <strong>OpenAI-compatible text API</strong> — swap the base URL,
-          keep your SDK — and an <strong>MCP server</strong> for image and video generation from
-          agents. Both bill your ModelXD wallet at the listed prices, and both can route on the one
-          signal nobody else has: blind human votes.
+          One key, two surfaces. A <strong>REST API</strong> — OpenAI-compatible chat completions
+          plus async image and video generation — and an <strong>MCP server</strong> for agent
+          clients like Claude Code and Cursor. Same operations, same wallet, same listed prices,
+          and both can route on the one signal nobody else has: blind human votes.
         </p>
         <p style={{ ...p, marginBottom: 26 }}>
           Keys are minted on <Link href="/xdev" style={{ color: 'var(--red)' }}>XDev</Link> · prices
@@ -130,7 +130,7 @@ print(r.usage)              # includes cost_usd — the real price of this call`
 
         <Section id="models" title="Naming a model">
           <table style={{ borderCollapse: 'collapse' }}><tbody>
-            <Row k="provider/model_name" v={<>Exactly that model — e.g. <code style={mono}>google/gemini-3.6-flash</code>, <code style={mono}>anthropic/claude-sonnet-5</code>. The slugs come from <Link href="/xboard" style={{ color: 'var(--red)' }}>XBoard</Link> or the MCP <code style={mono}>get_leaderboard</code> tool.</>} />
+            <Row k="provider/model_name" v={<>Exactly that model — e.g. <code style={mono}>google/gemini-3.6-flash</code>, <code style={mono}>anthropic/claude-sonnet-5</code>. Discover ids with <code style={mono}>GET /api/v1/models</code> (OpenAI-shaped, so <code style={mono}>client.models.list()</code> works; <code style={mono}>?type=text|image|video</code> filters, and each row names the endpoint to send it to), on <Link href="/xboard" style={{ color: 'var(--red)' }}>XBoard</Link>, or via the MCP <code style={mono}>get_leaderboard</code> tool.</>} />
             <Row k="xd/auto" v="ModelXD picks the highest XD Score on the text board — the model real blind votes say is best right now." />
             <Row k="xd/cheap" v="Among models at or above the board's median score, the cheapest by list token price. Routinely ~10× cheaper than xd/auto; built for NPC crowds." />
           </tbody></table>
@@ -189,6 +189,41 @@ print(r.usage)              # includes cost_usd — the real price of this call`
           </p>
         </Section>
 
+        <Section id="generation" title="Images & video — REST, async by design">
+          <p style={p}>
+            <code style={mono}>POST /api/v1/images/generations</code> and{' '}
+            <code style={mono}>POST /api/v1/videos/generations</code>. OpenAI-named, so{' '}
+            <code style={mono}>client.images.generate()</code> finds it — but the answer is a{' '}
+            <strong>202 with a job id</strong>, not a finished file: an image takes seconds, a video
+            takes minutes, and a blocking call would die at a proxy timeout. Everything you can act
+            on is checked before the 202 — unknown model, empty prompt, exhausted balance, capped
+            key all fail on the create call, never as a job that dies later.
+          </p>
+          <Code>{`POST ${BASE}/api/v1/images/generations
+{ "model": "openai/gpt-image-2", "prompt": "a cheerful farm girl, low-poly",
+  "aspect_ratio": "16:9", "quality": "high" }
+
+→ 202 { "id": "3f2b…", "status": "running", "poll": "/api/v1/jobs/3f2b…" }
+
+GET ${BASE}/api/v1/jobs/3f2b…
+→ { "status": "succeeded", "data": [{ "url": "https://…signed…" }],
+    "usage": { "cost_usd": 0.067 } }`}</Code>
+          <p style={{ ...p, marginTop: 12 }}>
+            Video takes <code style={mono}>duration</code> (seconds, model-dependent) and{' '}
+            <code style={mono}>resolution</code>; images take <code style={mono}>aspect_ratio</code>{' '}
+            (or OpenAI's <code style={mono}>size</code> as an alias), <code style={mono}>quality</code>,{' '}
+            <code style={mono}>n</code>. Poll every ~15s for video. <code style={mono}>status</code>{' '}
+            is <code style={mono}>running</code> / <code style={mono}>succeeded</code> /{' '}
+            <code style={mono}>failed</code>.
+          </p>
+          <p style={{ ...p, marginBottom: 0 }}>
+            <strong>Fetch <code style={mono}>url</code> promptly</strong> — generated files sit
+            behind signed URLs that expire in ~24 hours (everything also lands in your XCreate
+            gallery, which never expires). Lost the id? <code style={mono}>GET /api/v1/jobs?type=image&limit=20</code>{' '}
+            lists your recent jobs, newest first, so nothing has to be paid for twice.
+          </p>
+        </Section>
+
         <Section id="errors" title="Errors">
           <p style={p}>OpenAI's envelope: <code style={mono}>{`{"error": {"message", "type", "code"}}`}</code>. Retry on 429/5xx (429 carries <code style={mono}>Retry-After</code>); never retry 4xx.</p>
           <table style={{ borderCollapse: 'collapse' }}><tbody>
@@ -217,11 +252,11 @@ print(r.usage)              # includes cost_usd — the real price of this call`
           </p>
         </Section>
 
-        <Section id="mcp" title="Images & video — the MCP server">
+        <Section id="mcp" title="MCP — the same operations, for agent clients">
           <p style={p}>
-            Generation is job-shaped (minutes, progress, polling), so it lives on MCP rather than
-            chat completions. Same key, endpoint <code style={mono}>{BASE}/api/mcp</code>:
-          </p>
+            Writing a program? Use the REST endpoints above. Connecting an <em>agent</em> that picks
+            its own tools — Claude Code, Cursor, n8n? That's what MCP is for. Same key, same
+            billing, endpoint <code style={mono}>{BASE}/api/mcp</code>:</p>
           <Code>{`claude mcp add --transport http modelxd ${BASE}/api/mcp \\
   --header "Authorization: Bearer xd_..."`}</Code>
           <table style={{ borderCollapse: 'collapse', marginTop: 14 }}><tbody>

@@ -218,7 +218,7 @@ export default function XDevClient() {
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
             <span style={{ fontWeight: 800, fontSize: 15 }}>💬 Text API — OpenAI-compatible</span>
-            <span style={{ ...label }}>chat completions · streaming · structured output</span>
+            <span style={{ ...label }}>chat · structured output · image & video jobs</span>
             <a href="/xdev/docs" style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>📖 Full API docs →</a>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
@@ -238,14 +238,15 @@ export default function XDevClient() {
           <p style={{ color: 'var(--muted2)', fontSize: 11.5, marginTop: 12, marginBottom: 0 }}>
             For agents in games: <code>response_format</code> with a <code>json_schema</code> is
             enforced server-side — a reply either matches your schema or you get a 422, never
-            malformed text. <code>{'models: [a, b]'}</code> is an ordered fallback chain. Server-side
-            keys only: there is no browser CORS, by design.
+            malformed text. <code>{'models: [a, b]'}</code> is an ordered fallback chain. Images and
+            video are REST too: <code>POST /api/v1/images/generations</code> → poll{' '}
+            <code>/api/v1/jobs/{'{id}'}</code>. Server-side keys only: there is no browser CORS, by design.
           </p>
         </div>
 
         {/* ── Connect ──────────────────────────────────────────────────── */}
         <div style={card}>
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>🔌 MCP — images & video for agents</div>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>🔌 MCP — for agent clients</div>
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
             {fresh ? 'Commands below carry your new key — paste and go.' : 'Create a key above and these fill in automatically; or replace <YOUR_KEY> by hand.'}
           </p>

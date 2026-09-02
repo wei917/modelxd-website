@@ -26,8 +26,12 @@ SDK at the base URL; `model` takes `provider/model_name` or the routing verbs
 `xd/auto` (best by blind votes) / `xd/cheap` (good enough, cheapest); JSON
 schema output is enforced server-side; every response reports its real
 `cost_usd` — and an MCP server (/api/mcp: `get_leaderboard`, `pick_model`,
-`generate_image`, `generate_video`, `check_job`, `get_balance`) for image and
-video generation from agents. Keys are server-side only and spend-capped.
+`generate_image`, `generate_video`, `check_job`, `get_balance`) for agent
+clients like Claude Code and Cursor. Image and video generation are ALSO plain
+REST — POST /api/v1/images/generations and /api/v1/videos/generations return a
+job id, GET /api/v1/jobs/{id} polls it; GET /api/v1/models lists every callable
+model. MCP vs REST: agents use MCP, ordinary code uses REST — same key, same
+prices either way. Keys are server-side only and spend-capped.
 The votes come from people comparing models on their own prompt and
 voting **before** the price is revealed; those votes feed XBoard and the
 XEval benchmark page.
