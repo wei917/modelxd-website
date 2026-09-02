@@ -16,7 +16,7 @@ import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
 import ShowcaseWall from '@/app/components/ShowcaseWall'
-import type { ShowcaseRoom } from '@/lib/showcase'
+import type { ShowcasePiece } from '@/lib/showcase'
 import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
 import MaskEditor from '../components/MaskEditor'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
@@ -1020,7 +1020,7 @@ function OptGroup({ label, children, last }: {
 }
 
 
-export default function CreateClient({ showcase = [] }: { showcase?: ShowcaseRoom[] }) {
+export default function CreateClient({ showcase = [] }: { showcase?: ShowcasePiece[] }) {
   return (
     <Suspense fallback={null}>
       <CreateStudio showcase={showcase} />
@@ -1028,7 +1028,7 @@ export default function CreateClient({ showcase = [] }: { showcase?: ShowcaseRoo
   )
 }
 
-function CreateStudio({ showcase }: { showcase: ShowcaseRoom[] }) {
+function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   useRequireAuth()
   const t = useT()
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
@@ -4719,7 +4719,7 @@ function CreateStudio({ showcase }: { showcase: ShowcaseRoom[] }) {
                 {/* The museum wall. Only on the setup screen: it is what to
                     look at while deciding, not something to sit under your
                     own results. Renders nothing when nothing is published. */}
-                {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseWall rooms={showcase} />}
+                {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseWall pieces={showcase} />}
 
                 {/* Results */}
                 {slots.length > 0 && (

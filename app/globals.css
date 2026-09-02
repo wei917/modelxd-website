@@ -2439,3 +2439,10 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .no-spin::-webkit-outer-spin-button,
 .no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .no-spin { -moz-appearance: textfield; appearance: textfield; }
+
+/* Showcase wall: a masonry board. CSS columns rather than grid so every
+   picture keeps its own height and nothing gets cropped to a common ratio. */
+.showcase-masonry { column-count: 4; column-gap: 14px; }
+@media (max-width: 1100px) { .showcase-masonry { column-count: 3; } }
+@media (max-width: 780px)  { .showcase-masonry { column-count: 2; } }
+@media (max-width: 480px)  { .showcase-masonry { column-count: 1; } }

@@ -1,24 +1,21 @@
 'use client'
 
-// app/components/ShowcaseWall.tsx — the museum wall on XCreate.
+// app/components/ShowcaseWall.tsx — the showcase wall on XCreate.
 //
-// One brief per room, hung by every qualifying model, each picture with a name
-// card: which model painted it and what that picture cost. Attribution IS the
-// exhibit — an unlabelled gallery of AI images is wallpaper, and the reason to
-// show these at all is that the same brief costs $0.034 from one model and
-// $0.134 from another, and you can see what the difference buys.
+// A Pinterest board: many pictures, packed, each labelled with the model that
+// made it. NOT a comparison — one picture per brief, and no brief appears
+// twice. Showing one prompt rendered by every model side by side is XDuel's
+// job, and doing it here turns a gallery into a test (which is exactly what
+// the first version of this got wrong).
 //
-// Nothing here is a test and nothing is voted on. XDuel is where judgement
-// happens with the price hidden; this is the opposite room, where the label is
-// the point and you are told everything up front.
+// The label is still the point: an unlabelled grid of AI images is wallpaper.
+// You should be able to see something you like and immediately know which
+// model to pick, and what it costs.
 
 import { useState } from 'react'
 import ProviderLogo from './ProviderLogo'
 import { useT } from '@/lib/i18n'
-import type { ShowcaseRoom, ShowcasePiece } from '@/lib/showcase'
-
-type Piece = ShowcasePiece
-type Room = ShowcaseRoom
+import type { ShowcasePiece } from '@/lib/showcase'
 
 /** Prices run from $0.0336 to $0.1345; show enough digits to tell them apart. */
 function price(c: number | null): string {
@@ -26,65 +23,60 @@ function price(c: number | null): string {
   return '$' + (c < 0.1 ? c.toFixed(4) : c.toFixed(3)).replace(/0+$/, '').replace(/\.$/, '')
 }
 
-// Rooms arrive as a PROP, read on the server by the page. This component owns
-// no fetching on purpose: a client fetch renders nothing wherever React defers
-// passive effects (any hidden or background tab) and costs a waterfall
-// everywhere else. State here is only the lightbox.
-export default function ShowcaseWall({ rooms }: { rooms: Room[] }) {
+export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
   const t = useT()
-  const [open, setOpen] = useState<{ piece: Piece; room: Room } | null>(null)
+  const [open, setOpen] = useState<ShowcasePiece | null>(null)
 
   // Silent when empty: an unseeded wall should look like no wall, not a
   // broken one.
-  if (!rooms || rooms.length === 0) return null
+  if (!pieces || pieces.length === 0) return null
 
   return (
     <div style={{ marginTop: 56 }}>
       <div className="prompt-label" style={{ marginBottom: 10 }}>{t('showcase.eyebrow')}</div>
-      <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 640, margin: '0 0 28px' }}>
+      <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 640, margin: '0 0 24px' }}>
         {t('showcase.sub')}
       </p>
 
-      {rooms.map(room => (
-        <section key={room.room} style={{ marginBottom: 44 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 4px' }}>{room.title}</h3>
-          {/* The brief, shown as wall text: the pictures only mean something
-              beside the words every model was given. */}
-          <p style={{
-            fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px',
-            maxWidth: 760, fontStyle: 'italic',
-          }}>{room.prompt}</p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 18 }}>
-            {room.pieces.map(p => (
-              <figure key={p.id} style={{ margin: 0 }}>
-                <button
-                  onClick={() => setOpen({ piece: p, room })}
-                  style={{
-                    display: 'block', width: '100%', padding: 0, border: '1px solid var(--border2)',
-                    borderRadius: 8, overflow: 'hidden', background: 'var(--surface)', cursor: 'zoom-in',
-                    lineHeight: 0,
-                  }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.url} alt={`${room.title} — ${p.name}`} loading="lazy"
-                    style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block' }} />
-                </button>
-                {/* The name card. */}
-                <figcaption style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <ProviderLogo provider={p.provider} size={12} />
-                  <span style={{ fontSize: 12, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.name}
-                  </span>
-                  <span style={{ flex: 1 }} />
-                  <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted2)' }}>
-                    {price(p.cost)}
-                  </span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
-      ))}
+      {/* CSS columns, not grid: a masonry wall packs by column and lets every
+          picture keep its own height. A grid would force one aspect ratio and
+          crop the work, which is the one thing a gallery must not do. */}
+      {/* Column count lives in globals.css so the media queries can win — an
+          inline columnCount would override them and pin a phone to 4 columns. */}
+      <div className="showcase-masonry">
+        {pieces.map(p => (
+          <figure
+            key={p.id}
+            onClick={() => setOpen(p)}
+            style={{
+              margin: '0 0 14px', breakInside: 'avoid', cursor: 'zoom-in',
+              borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border2)',
+              background: 'var(--surface)', position: 'relative',
+            }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.url} alt={p.title} loading="lazy"
+              style={{ width: '100%', height: 'auto', display: 'block' }} />
+            {/* The name card, on the picture. Always legible over any image
+                thanks to the scrim, and out of the way until you look at it. */}
+            <figcaption style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              display: 'flex', alignItems: 'center', gap: 6, padding: '18px 10px 8px',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0))',
+              color: '#fff',
+            }}>
+              <ProviderLogo provider={p.provider} size={12} />
+              <span style={{
+                fontSize: 11.5, fontWeight: 700, minWidth: 0,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{p.name}</span>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, opacity: 0.85 }}>
+                {price(p.cost)}
+              </span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
 
       {open && (
         <div
@@ -95,19 +87,19 @@ export default function ShowcaseWall({ rooms }: { rooms: Room[] }) {
           }}>
           <div onClick={e => e.stopPropagation()} style={{ maxWidth: 900, width: '100%', cursor: 'default' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={open.piece.url} alt={open.piece.name}
-              style={{ width: '100%', maxHeight: '76vh', objectFit: 'contain', display: 'block', borderRadius: 8 }} />
+            <img src={open.url} alt={open.title}
+              style={{ width: '100%', maxHeight: '74vh', objectFit: 'contain', display: 'block', borderRadius: 8 }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, color: '#fff' }}>
-              <ProviderLogo provider={open.piece.provider} size={14} />
-              <span style={{ fontWeight: 800, fontSize: 14 }}>{open.piece.name}</span>
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, opacity: 0.75 }}>
-                {open.piece.model}
-              </span>
+              <ProviderLogo provider={open.provider} size={14} />
+              <span style={{ fontWeight: 800, fontSize: 14 }}>{open.name}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, opacity: 0.7 }}>{open.model}</span>
               <span style={{ flex: 1 }} />
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13 }}>{price(open.piece.cost)}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13 }}>{price(open.cost)}</span>
             </div>
+            {/* The brief is worth reading once you have stopped on a picture,
+                not while you are scanning the wall. */}
             <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12.5, lineHeight: 1.6, marginTop: 8 }}>
-              {open.room.prompt}
+              {open.prompt}
             </p>
           </div>
         </div>

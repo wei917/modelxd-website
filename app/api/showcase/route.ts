@@ -11,8 +11,8 @@ export const dynamic = 'force-dynamic'
 import { readShowcase } from '@/lib/showcase'
 
 export async function GET() {
-  const rooms = await readShowcase()
-  return Response.json({ rooms }, {
+  const pieces = await readShowcase()
+  return Response.json({ pieces }, {
     // Shorter than the signing TTL, so a cached payload can never outlive its
     // own URLs.
     headers: { 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300' },

@@ -18,25 +18,30 @@ import { createClient } from '@supabase/supabase-js'
 
 const SIGN_TTL_SECONDS = 60 * 60 * 2
 
-export type ShowcasePiece = {
-  id: string; url: string; model: string; provider: string; name: string; cost: number | null; sort: number
-}
-export type ShowcaseRoom = { room: string; title: string; prompt: string; pieces: ShowcasePiece[] }
-
 /** The bucket + object path out of a stored Supabase signed URL. */
 function parseStored(url: string): { bucket: string; path: string } | null {
   const m = String(url).split('\n')[0].match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
   return m ? { bucket: m[1], path: decodeURIComponent(m[2]) } : null
 }
 
-export async function readShowcase(): Promise<ShowcaseRoom[]> {
+export type ShowcasePiece = {
+  id: string; url: string; model: string; provider: string; name: string
+  cost: number | null; sort: number; title: string; prompt: string
+}
+
+/**
+ * A FLAT list, deliberately. The wall is a Pinterest board, not a comparison:
+ * one picture per brief, many briefs, packed together. The same brief rendered
+ * by six models side by side is XDuel's job, and it turns a gallery into a
+ * test — which is what the first version of this got wrong.
+ */
+export async function readShowcase(): Promise<ShowcasePiece[]> {
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!,
     { auth: { persistSession: false } })
 
   const { data: hung, error } = await sb.from('showcase')
     .select('id, xcreate_id, slot_index, room, title, sort_order')
     .eq('published', true)
-    .order('room', { ascending: true })
     .order('sort_order', { ascending: true })
   if (error) {
     console.error('[showcase] read failed:', error.message)
@@ -49,22 +54,18 @@ export async function readShowcase(): Promise<ShowcaseRoom[]> {
     .in('id', [...new Set(hung.map(h => h.xcreate_id))])
   const runById = new Map((runs ?? []).map(r => [r.id, r]))
 
-  // One room per run: same brief, N pictures, one name card each.
-  const rooms = new Map<string, any>()
-  await Promise.all(hung.map(async h => {
+  const pieces = await Promise.all(hung.map(async h => {
     const run: any = runById.get(h.xcreate_id)
-    if (!run || run.deleted_at) return                    // a deleted run leaves the wall
+    if (!run || run.deleted_at) return null            // a deleted run leaves the wall
     const slot = (run.slots as any[])?.[h.slot_index]
-    if (!slot?.text || slot.error) return
+    if (!slot?.text || slot.error) return null
 
     const loc = parseStored(slot.text)
-    if (!loc) return
+    if (!loc) return null
     const { data: signed } = await sb.storage.from(loc.bucket).createSignedUrl(loc.path, SIGN_TTL_SECONDS)
-    if (!signed?.signedUrl) return
+    if (!signed?.signedUrl) return null
 
-    const key = h.xcreate_id
-    if (!rooms.has(key)) rooms.set(key, { room: h.room, title: h.title, prompt: run.prompt, pieces: [] as any[] })
-    rooms.get(key).pieces.push({
+    return {
       id: h.id,
       url: signed.signedUrl,
       // The name card. Every field comes off the slot that made the picture,
@@ -74,12 +75,10 @@ export async function readShowcase(): Promise<ShowcaseRoom[]> {
       name: slot.name,
       cost: typeof slot.cost === 'number' ? slot.cost : null,
       sort: h.sort_order,
-    })
+      title: h.title ?? '',
+      prompt: run.prompt ?? '',
+    } as ShowcasePiece
   }))
 
-  const out = [...rooms.values()]
-    .map(r => ({ ...r, pieces: r.pieces.sort((a: any, b: any) => a.sort - b.sort) }))
-    .filter(r => r.pieces.length > 0)
-
-  return out
+  return pieces.filter((p): p is ShowcasePiece => p !== null).sort((a, b) => a.sort - b.sort)
 }
