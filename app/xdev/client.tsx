@@ -219,7 +219,11 @@ export default function XDevClient() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
             <span style={{ fontWeight: 800, fontSize: 15 }}>💬 Text API — OpenAI-compatible</span>
             <span style={{ ...label }}>chat · structured output · image & video jobs</span>
-            <a href="/xdev/docs" style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>📖 Full API docs →</a>
+            <a href="/xdev/docs" style={{
+              marginLeft: 'auto', fontSize: 12.5, fontWeight: 800, color: '#fff',
+              background: 'var(--red)', padding: '6px 16px', borderRadius: 999,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>📖 API docs →</a>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
             Point any OpenAI SDK at this base URL and keep your code. <code>model</code> takes{' '}
