@@ -73,13 +73,21 @@ function buildContent(text: string, attachments: Attachment[]): any {
  *
  * This is a RAIL, not a budget. Only generated tokens are billed, so a low
  * ceiling never saves money — it destroys output already paid for. Cost is
- * controlled by the effort the user picks and by the credit reserve, not by
- * cutting answers off.
+ * controlled by the effort the user picks and by the credit reserve.
+ *
+ * The rail's real constraint is the SERVERLESS WALL CLOCK, not spend.
+ * Measured 2026-08-29: Fable 5.1 streams ~94 tok/s at max effort, and
+ * /api/xcreate runs with maxDuration = 800s — so ~75k tokens is all that
+ * can physically finish. A full 128k response would need ~1,366s and the
+ * function is killed first, which is WORSE than truncation: the user gets
+ * nothing at all and the credit reserve never settles cleanly. 64k sits
+ * under that ceiling with room for the upload/settle tail, and is far
+ * above any real answer (~48k words).
  *
  * Deliberately NOT scaled by effort: effort shifts the typical length, it
  * does not bound it. Our own eval data has Fable at `low` legitimately
- * producing 25,277 output tokens on one task — an effort ladder would have
- * truncated that at exactly the tier meant to be cheap and safe.
+ * emitting 25,277 output tokens on one task — an effort ladder would have
+ * truncated that at the tier meant to be cheap and safe.
  *
  * Clamped to the model's real cap when the row declares one
  * (output_config.text.max_output_tokens); exceeding a model's limit is a
