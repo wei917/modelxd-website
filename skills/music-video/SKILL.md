@@ -296,6 +296,32 @@ user for palette, light, lens or texture. Write the six lines from what came
 back, say them once in chat, and go. The questions still worth asking are the
 ones the reference cannot answer: **who is in it**, and how much to borrow.
 
+**NEVER read the reference's own thumbnail or cover.** It is the one frame of
+that video most likely to be a LIKENESS rather than a look — official artwork,
+usually the artist's face, often their name set in type. Style frames come
+from the footage, which is where the grade actually lives.
+
+### The COVER as the look anchor
+
+Make a cover early, and treat it as the film's style reference rather than as
+artwork you tack on at the end.
+
+A cover is a stronger statement of a look than any scene frame, because it is
+one composition where palette, grade, lens and world all have to agree at
+once. Shoot it as a shelf ASSET (`asset: true`, title `LOOK · <film>`, a still
+model, no duration and no place in the sequence), approve it with the user at
+still prices, then pass it with `use_files` on every key still. Scenes chaining
+from one approved image drift far less than scenes chaining from six words.
+
+- 16:9 or 9:16 to match the film, so it is usable as the upload thumbnail too.
+- An anonymous figure at distance, from behind or in silhouette — the cover
+  states the WORLD; the cast sheet states the face. Keep those jobs apart or
+  the cover starts arguing with the locked cast.
+- The song's title is the user's own text and may be set on the cover. Nothing
+  else: no artist name, no logo, no channel mark, and never the reference's
+  title or wording.
+- Offer it, do not require it. A user who wants scenes now gets scenes now.
+
 **Style yes, copy no — and with a link in hand this stops being theoretical.**
 An aesthetic — neon-noir, bleached daylight, handheld 16mm — is fair game and
 is what they are really asking for. The reference's performers, its specific
