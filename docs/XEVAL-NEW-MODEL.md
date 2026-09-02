@@ -127,6 +127,17 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   63 turns for $7.94, so a cell many times that is worth one fresh (non-resume)
   attempt only after the resume-with-room path has been tried.
 
+- **There is a PER-TURN timeout too: `XEVAL_TURN_TIMEOUT_S`, default 900 s.**
+  It wraps every model call, and until 2026-09-02 its `TimeoutError` was
+  re-labelled by the outer handler as "wall-clock cap … exceeded" — two legs
+  of 8c823e32 died at ~15 min and were misdiagnosed as the 2 h / 4 h wall
+  clock. Now labelled "turn timeout". The rail exists for true hangs (Opus
+  once sat 80 min streaming nothing), but 900 s cannot even fit the 128k
+  ceiling: at ~94 tok/s a full 128k turn is ~23 min. A model that writes
+  long single turns (Fable 5.1 on research tasks) needs
+  `XEVAL_TURN_TIMEOUT_S=3600` on its resume legs; the lane scripts now set it
+  automatically after a turn-timeout or wall-clock error.
+
 ## Recipe (any new text model)
 
 1. **Catalog row** at `/admin/models` with list price — done for Fable 5.1.
