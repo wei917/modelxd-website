@@ -22,8 +22,13 @@ import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
 import ReactMarkdown from 'react-markdown'
 import ProviderLogo from '../components/ProviderLogo'
+import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, type Jiao } from '../../lib/xtell-ritual'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo'
+
+// 四面佛's faces, clockwise. Mirrors FACES in lib/xtell.ts (server-only file).
+const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
+type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: string }
 
 // The house default master: the latest good text model. One name to update
 // when the catalog moves on.
@@ -53,7 +58,7 @@ export default function XTellClient() {
 
         {!temple ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo'] as Temple[]).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -87,6 +92,14 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const [entered, setEntered] = useState(false)
   const [chart, setChart] = useState<any>(null)
   const [match, setMatch] = useState<any>(null)   // 月老廟's computed 合盤
+  const [year, setYear] = useState<any>(null)     // 四面佛's computed 流年
+  // 關帝廟: the matter asked, and the ritual. The poem is never in the client
+  // until the third 聖筊 — the server sends it with the chart response.
+  const [ask, setAsk] = useState('')
+  const [stick, setStick] = useState<{ n: number; throws: Jiao[] } | null>(null)
+  const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
+  // 四面佛: one wish per face, plus the pledge.
+  const [wishes, setWishes] = useState<Wishes>({})
   const [engine, setEngine] = useState<string | null>(null)
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
@@ -124,24 +137,57 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
 
   const canSearch = masters.some(m => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search'))
 
-  const enter = async () => {
+  /** What identifies this consultation, per temple: birth(s), a stick
+   *  number, or birth + wishes. Sent to both the chart and reading routes. */
+  const subject = (n?: number) =>
+    temple === 'guandi' ? { temple, n: n ?? stick?.n, ask }
+    : temple === 'simianfo' ? { temple, birth, wishes }
+    : { temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}) }
+
+  const enter = async (n?: number) => {
     setErr(null)
     try {
       const res = await fetch('/api/xtell/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}) }),
+        body: JSON.stringify(subject(n)),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error ?? 'failed')
       setChart(d.chart)
       setMatch(d.match ?? null)
+      setYear(d.year ?? null)
       setEngine(d.engine ?? null)
       setEntered(true)
       // 月老廟: the scores land free and instantly, so the only thing left to
       // ask is what they mean. Write the question for them but do NOT send it
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
-    } catch (e: any) { setErr(String(e?.message ?? e)) }
+    } catch (e: any) { setErr(String(e?.message ?? e)); if (temple === 'guandi') setRitualBoth('drawn') }
+  }
+
+  // The ritual. Draw a stick, throw the blocks; three 聖筊 confirm and open
+  // the hall, anything else sends the visitor back to the tube. Randomness is
+  // the browser's crypto source — nobody, including us, picks the stick.
+  //
+  // The ritual state lives in refs and is mirrored into React state for
+  // rendering: two quick throws inside one render would otherwise both read
+  // an empty `throws` and the count could never reach three (found in the
+  // first browser test — a fast clicker was stuck at 1/3 forever).
+  const stickRef = useRef<{ n: number; throws: Jiao[] } | null>(null)
+  const ritualRef = useRef<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
+  const setRitualBoth = (r: 'idle' | 'drawn' | 'rejected' | 'confirmed') => { ritualRef.current = r; setRitual(r) }
+  const draw = () => {
+    const s = { n: drawQian(cryptoRand), throws: [] as Jiao[] }
+    stickRef.current = s; setStick(s); setRitualBoth('drawn'); setErr(null)
+  }
+  const throwBlocks = () => {
+    const s = stickRef.current
+    if (!s || ritualRef.current !== 'drawn') return
+    const j = throwJiao(cryptoRand)
+    const next = { ...s, throws: [...s.throws, j] }
+    stickRef.current = next; setStick(next)
+    if (j !== '聖筊') setRitualBoth('rejected')
+    else if (next.throws.length >= CONFIRM_THROWS) { setRitualBoth('confirmed'); void enter(next.n) }
   }
 
   const send = async () => {
@@ -162,7 +208,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}), question: q, modelId: m.id, history,
+            ...subject(), question: q, modelId: m.id, history,
             search: search && ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search'),
           }),
         })
@@ -235,7 +281,9 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
 
       {!entered ? (
         <div style={{ ...card, padding: '18px 20px' }}>
-          {temple === 'yuelao' ? (
+          {temple === 'guandi' ? (
+            <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} />
+          ) : temple === 'yuelao' ? (
             <>
               <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} />
               <div style={{ height: 12 }} />
@@ -244,14 +292,17 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           ) : (
             <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei'} />
           )}
-          <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
-            <span style={{ flex: 1 }} />
-            <button onClick={enter} style={{
-              padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
-              fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
-            }}>{t('xtell.enter')}</button>
-          </div>
+          {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} />}
+          {temple !== 'guandi' && (
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
+              <span style={{ flex: 1 }} />
+              <button onClick={() => void enter()} style={{
+                padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
+                fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
+              }}>{t('xtell.enter')}</button>
+            </div>
+          )}
           {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
         </div>
       ) : (
@@ -299,6 +350,8 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
             <div style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <BaziBoard chart={chart} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
+                : temple === 'guandi' ? <QianCard qian={chart} />
+                : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
                 : (
                   <div style={{ display: 'grid', gap: 14 }}>
                     <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} /></div>
@@ -569,6 +622,150 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
           {t(`xtell.${g}`)}
         </label>
       ))}
+    </div>
+  )
+}
+
+
+// ── 關帝廟 ─────────────────────────────────────────────────────────────────
+
+/** 稟明事由, then the tube and the blocks. */
+function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow }: {
+  ask: string; setAsk: (s: string) => void
+  stick: { n: number; throws: Jiao[] } | null
+  ritual: 'idle' | 'drawn' | 'rejected' | 'confirmed'
+  onDraw: () => void; onThrow: () => void
+}) {
+  const t = useT()
+  const pill = (bg: string) => ({ padding: '10px 26px', borderRadius: 999, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' })
+  const jiaoColour: Record<Jiao, string> = { 聖筊: 'var(--green)', 笑筊: 'var(--muted)', 陰筊: 'var(--red)' }
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.qian.ask')}</div>
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')}
+          disabled={ritual === 'confirmed'}
+          style={{ width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', color: 'var(--white)', fontSize: 14 }} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', minHeight: 56 }}>
+        {stick ? (
+          <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800, letterSpacing: 2 }}>
+            {t('xtell.qian.stick')} {stick.n} {t('xtell.qian.stickunit')}
+          </div>
+        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.qian.rule')}</div>}
+        {stick && (
+          <div style={{ display: 'flex', gap: 6 }}>
+            {Array.from({ length: CONFIRM_THROWS }, (_, i) => {
+              const j = stick.throws[i]
+              return (
+                <span key={i} style={{
+                  minWidth: 44, textAlign: 'center', padding: '5px 10px', borderRadius: 999, fontSize: 12.5, fontWeight: 700,
+                  border: '1px solid ' + (j ? jiaoColour[j] : 'var(--border2)'), color: j ? jiaoColour[j] : 'var(--muted2)',
+                  background: j === '聖筊' ? 'var(--green-dim)' : 'transparent',
+                }}>{j ?? '·'}</span>
+              )
+            })}
+          </div>
+        )}
+        <span style={{ flex: 1 }} />
+        {ritual === 'idle' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xtell.qian.draw')}</button>}
+        {ritual === 'drawn' && <button onClick={onThrow} style={pill('var(--white)')}>{t('xtell.qian.throw')} {stick?.throws.length ?? 0}/{CONFIRM_THROWS}</button>}
+        {ritual === 'rejected' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xtell.qian.redraw')}</button>}
+        {ritual === 'confirmed' && <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 700 }}>{t('xtell.qian.confirmed')}</span>}
+      </div>
+      {ritual === 'rejected' && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{t('xtell.qian.rejected')}</div>}
+      {stick && ritual !== 'rejected' && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.qian.rule')}</div>}
+    </div>
+  )
+}
+
+/** The stick, as the temple prints it: number, luck, story, the four lines,
+ *  and every commentary the edition carries. All of it is text from disk. */
+function QianCard({ qian }: { qian: any }) {
+  const t = useT()
+  const luckColour = /上|大/.test(qian.luck) ? 'var(--score-elite)' : /中/.test(qian.luck) ? 'var(--score-fair)' : 'var(--score-poor)'
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>第{qian.n}籤　{qian.ganZhi}</div>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 18, fontWeight: 800, color: luckColour }}>{qian.luck}</div>
+        {qian.story && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{qian.story}</div>}
+      </div>
+      <div style={{ padding: '18px 16px', background: 'var(--surface2)', borderRadius: 10, textAlign: 'center' }}>
+        {qian.poem.map((l: string, i: number) => (
+          <div key={i} style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 700, letterSpacing: 3, lineHeight: 1.8 }}>{l}</div>
+        ))}
+      </div>
+      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t('xtell.qian.notes')}</div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {Object.entries(qian.sections as Record<string, string>).map(([name, text]) => (
+          <div key={name} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 10, fontSize: 13, lineHeight: 1.7 }}>
+            <b style={{ color: 'var(--muted)' }}>{name}</b>
+            <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.qian.source')}</div>
+    </div>
+  )
+}
+
+// ── 四面佛 ─────────────────────────────────────────────────────────────────
+
+function WishForm({ wishes, setWishes }: { wishes: Wishes; setWishes: (w: Wishes) => void }) {
+  const t = useT()
+  const area = { width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '9px 12px', color: 'var(--white)', fontSize: 13.5, resize: 'vertical' as const }
+  return (
+    <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+      <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.face.note')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+        {FACE_KEYS.map(k => (
+          <div key={k}>
+            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t(`xtell.face.${k}`)}</div>
+            <textarea rows={2} value={wishes[k] ?? ''} onChange={e => setWishes({ ...wishes, [k]: e.target.value.slice(0, 400) })}
+              placeholder={t('xtell.wish.ph')} style={area} />
+          </div>
+        ))}
+      </div>
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t('xtell.pledge')}</div>
+        <textarea rows={2} value={wishes.pledge ?? ''} onChange={e => setWishes({ ...wishes, pledge: e.target.value.slice(0, 400) })}
+          placeholder={t('xtell.pledge.ph')} style={area} />
+      </div>
+    </div>
+  )
+}
+
+/** The 八字 board, this year's 流年 against it, and the four wishes as
+ *  written — the same facts the keeper was handed. */
+function WishBoard({ chart, wishes, year }: { chart: any; wishes: Wishes; year: any }) {
+  const t = useT()
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <BaziBoard chart={chart} />
+      {year && (
+        <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
+          <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
+          {year.year} {year.ganZhi}　天干對日主 <b>{year.shiShen}</b>　地支對日支 <b>{year.dayBranch?.kind}</b>　對年支 <b>{year.yearBranch?.kind}</b>{year.taiSui !== '無' ? `（${year.taiSui}）` : ''}
+          {year.daYun ? <>　大運 <b>{year.daYun}</b></> : null}
+        </div>
+      )}
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.wishes.title')}</div>
+        <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+          {FACE_KEYS.map(k => (
+            <div key={k} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10 }}>
+              <span style={{ color: 'var(--muted)' }}>{t(`xtell.face.${k}`)}</span>
+              <span style={{ whiteSpace: 'pre-wrap' }}>{(wishes[k] ?? '').trim() || <span style={{ color: 'var(--muted2)' }}>—</span>}</span>
+            </div>
+          ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10 }}>
+            <span style={{ color: 'var(--muted)' }}>{t('xtell.pledge')}</span>
+            <span style={{ whiteSpace: 'pre-wrap' }}>{(wishes.pledge ?? '').trim() || <span style={{ color: 'var(--muted2)' }}>—</span>}</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

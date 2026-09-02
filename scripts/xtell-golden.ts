@@ -10,7 +10,8 @@
 // fails loudly — a silently shifted 排盤 is the one bug users would never
 // forgive, and the one we could never detect from prose.
 
-import { baziChart, ziweiChart } from '../lib/xtell'
+import { baziChart, ziweiChart, liuNian, guandiQian, validWishes } from '../lib/xtell'
+import { drawQian, throwJiao } from '../lib/xtell-ritual'
 
 let failures = 0
 function eq(label: string, got: string, want: string) {
@@ -62,6 +63,32 @@ const ming: any = (z.palaces as any[]).find((p: any) => p.name === '命宮')
 eq('1990-01-01 申時 男 — 命宮', `${ming?.ganZhi} ${(ming?.majorStars ?? []).join(',')}`, '己巳 巨門[旺]')
 eq('  五行局', (z as any).fiveElementsClass, '木三局')
 eq('  命主/身主', `${(z as any).soul}/${(z as any).body}`, '武曲/天機')
+
+// ── 關帝廟 ─────────────────────────────────────────────────────────────────
+// The corpus must be whole: 100 sticks, four lines each, the 甲子 label in
+// stick order (第一籤 甲甲 … 第一百籤 癸癸), 聖意 and 解曰 on every one.
+console.log('\n關帝靈籤 (corpus):')
+const qian = guandiQian()
+eq('count', String(qian.length), '100')
+eq('every poem has four lines', String(qian.every(q => q.poem.length === 4)), 'true')
+eq('every stick has 聖意 and 解曰', String(qian.every(q => q.sections['聖意'] && q.sections['解曰'])), 'true')
+eq('第1籤', `${qian[0].ganZhi} ${qian[0].luck} ${qian[0].poem[0]}`, '甲甲 大吉 巍巍獨步向雲間')
+eq('第57籤', `${qian[56].ganZhi} ${qian[56].luck} ${qian[56].story}`, '己庚 中平 爛柯觀棋')
+eq('第100籤', `${qian[99].ganZhi} ${qian[99].luck} ${qian[99].poem[3]}`, '癸癸 上上 抽得終籤百事宜')
+// The ritual is arithmetic on a random source; drive it with fixed numbers.
+eq('draw at 0 → 1, at 0.999 → 100', `${drawQian(() => 0)} ${drawQian(() => 0.999)}`, '1 100')
+const seq = (...v: number[]) => { let i = 0; return () => v[i++ % v.length] }
+eq('blocks: 陽陰 = 聖筊', throwJiao(seq(0.2, 0.8)), '聖筊')
+eq('blocks: 陽陽 = 笑筊', throwJiao(seq(0.2, 0.2)), '笑筊')
+eq('blocks: 陰陰 = 陰筊', throwJiao(seq(0.8, 0.8)), '陰筊')
+
+// ── 四面佛 ─────────────────────────────────────────────────────────────────
+// 流年 2026 丙午 against the 1990-01-01 chart (日主 丙, 日支 寅, 年支 巳):
+// 丙 vs 丙 = 比肩; 午 vs 寅 = 三合 (寅午戌); 午 vs 巳 = 無特殊關係.
+console.log('\n四面佛 (流年):')
+const ln = liuNian(baziChart({ y: 1990, m: 1, d: 1, h: 15, mi: 25, gender: 'male' }), 1990, 2026)
+eq('2026 流年', `${ln.ganZhi} ${ln.shiShen} 日支${ln.dayBranch.kind} 年支${ln.yearBranch.kind} ${ln.taiSui}`, '丙午 比肩 日支三合 年支無特殊關係 無')
+eq('wishes: at least one face required', `${validWishes({ pledge: 'x' })} ${validWishes({ career: '升遷' })}`, 'false true')
 
 console.log(failures === 0 ? '\nall golden charts hold' : `\n${failures} FAILURE(S) — a library upgrade changed the 排盤. Do not ship until resolved.`)
 process.exit(failures === 0 ? 0 : 1)

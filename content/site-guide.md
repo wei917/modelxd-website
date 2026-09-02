@@ -241,10 +241,17 @@ comparable to GDPval-AA's leaderboard (different judges and anchors).
 
 ### XTell（X算命）— the temple street
 
-`/xtell`, signed-in. Three temples: **八字廟** (BaZi, four pillars),
-**紫微斗數廟** (Zi Wei Dou Shu, twelve palaces), and **月老廟** (Yue Lao —
+`/xtell`, signed-in. Five temples: **八字廟** (BaZi, four pillars),
+**紫微斗數廟** (Zi Wei Dou Shu, twelve palaces), **月老廟** (Yue Lao —
 love and 合婚: enter TWO people's birth data and the master reads both
-charts together). The honest split to
+charts together), **關帝廟** (Guan Di 靈籤: no birth data — draw a numbered
+stick, throw the 筊 blocks until three 聖筊 in a row confirm it, then the
+master explains that one poem using the Qing-edition commentaries; the
+hundred poems are the public-domain 關聖帝君靈籤 from Wikisource), and
+**四面佛** (the Erawan four-faced Brahma: write a wish to each face — 平安,
+事業, 婚姻, 財富, clockwise — and how you will repay it; the keeper helps
+word the wish and reads your own 八字 plus this year's 流年 to say which face
+the year favours; it is 許願, not 算命). The honest split to
 explain when asked: the CHART is computed exactly by open calendar engines
 (lunar-typescript for 八字 — solar-term correct, so an early-January birth
 belongs to the previous 干支 year; iztro for 紫微) and is shown for the user

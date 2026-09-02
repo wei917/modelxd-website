@@ -24,6 +24,11 @@ const SOURCES: Record<Temple, string[]> = {
   bazi:   ['ditiansui.txt'],
   yuelao: ['ditiansui.txt'],
   ziwei:  ['ziweiquanshu-j1.txt'],
+  // 關帝廟: the 籤's own six commentaries ride with the poem (lib/xtell.ts
+  // guandiFacts) — 一籤一書 — so nothing here to retrieve.
+  guandi:   [],
+  // 四面佛 reads the visitor's 八字 against the four faces.
+  simianfo: ['ditiansui.txt'],
 }
 
 type Passage = { book: string; text: string }

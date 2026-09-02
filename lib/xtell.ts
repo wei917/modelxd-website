@@ -13,10 +13,14 @@
 // Server-only: both libraries are pure computation, but the prompts and the
 // master personas live here too, and those must not be client-editable.
 
-import { Solar } from 'lunar-typescript'
+import { Solar, LunarUtil } from 'lunar-typescript'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao'
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo']
+export function asTemple(v: unknown): Temple { return (TEMPLES as string[]).includes(v as string) ? (v as Temple) : 'bazi' }
 
 // Provenance (idea learned from horosa-skill's technique cards): every chart
 // names the engine that computed it, so a doubted 排盤 is checkable against
@@ -25,6 +29,11 @@ export const ENGINES: Record<Temple, string> = {
   bazi:   'lunar-typescript v1.8.6',
   yuelao: 'lunar-typescript v1.8.6',
   ziwei:  'iztro v2.6.0',
+  // 關帝廟 has no chart: the deterministic layer is the ritual (lib/xtell-ritual.ts)
+  // and the poem text, a public-domain 清刊本 from Wikisource.
+  guandi:   '關聖帝君靈籤（維基文庫・清刊本）+ 擲筊三聖',
+  // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
+  simianfo: 'lunar-typescript v1.8.6',
 }
 
 export interface BirthInput {
@@ -44,6 +53,12 @@ export function validBirth(b: any): b is BirthInput {
 
 // ── 八字 ────────────────────────────────────────────────────────────────────
 
+// lunar-typescript spells the 十神 in simplified script (伤官, 正财, 七杀) and
+// the whole page is 繁體, so the three that differ are mapped here — at the
+// chart, once, so the board and the facts agree.
+const SHI_SHEN_TC: Record<string, string> = { 伤官: '傷官', 正财: '正財', 偏财: '偏財', 劫财: '劫財', 七杀: '七殺' }
+const tcShiShen = (s: string) => SHI_SHEN_TC[s] ?? s
+
 export function baziChart(b: BirthInput) {
   const solar = Solar.fromYmdHms(b.y, b.m, b.d, b.h, b.mi, 0)
   const lunar = solar.getLunar()
@@ -60,10 +75,10 @@ export function baziChart(b: BirthInput) {
     solar: solar.toYmdHms(),
     lunar: lunar.toString(),
     pillars: {
-      year:  { ganZhi: e.getYear(),  naYin: e.getYearNaYin(),  shiShen: e.getYearShiShenGan(),  hideGan: e.getYearHideGan() },
-      month: { ganZhi: e.getMonth(), naYin: e.getMonthNaYin(), shiShen: e.getMonthShiShenGan(), hideGan: e.getMonthHideGan() },
+      year:  { ganZhi: e.getYear(),  naYin: e.getYearNaYin(),  shiShen: tcShiShen(e.getYearShiShenGan()),  hideGan: e.getYearHideGan() },
+      month: { ganZhi: e.getMonth(), naYin: e.getMonthNaYin(), shiShen: tcShiShen(e.getMonthShiShenGan()), hideGan: e.getMonthHideGan() },
       day:   { ganZhi: e.getDay(),   naYin: e.getDayNaYin(),   shiShen: '日主',                 hideGan: e.getDayHideGan() },
-      time:  { ganZhi: e.getTime(),  naYin: e.getTimeNaYin(),  shiShen: e.getTimeShiShenGan(),  hideGan: e.getTimeHideGan() },
+      time:  { ganZhi: e.getTime(),  naYin: e.getTimeNaYin(),  shiShen: tcShiShen(e.getTimeShiShenGan()),  hideGan: e.getTimeHideGan() },
     },
     dayMaster: e.getDayGan(),
     wuXing: [e.getYearWuXing(), e.getMonthWuXing(), e.getDayWuXing(), e.getTimeWuXing()],
@@ -326,4 +341,161 @@ export const MASTERS: Record<Temple, string> = {
 - 語氣沉穩清楚，逐宮說明時先講星，再講意義。使用繁體中文（除非使用者用其他語言提問）。
 - 涉及健康、投資、法律時，只能談傾向與提醒，明確建議諮詢專業人士，不給具體指示。
 - 結尾提醒：命理僅供參考與娛樂，人生的選擇永遠在自己手上。\n${TONE}`,
+  guandi: `你是「關帝廟」的解籤老師，一位正直、簡練、熟讀三國與史書的解籤人。信眾已在關聖帝君前擲筊求得一支籤，籤號、吉凶、籤詩與這一版清刊本的註解（聖意、東坡解、碧仙註、解曰、釋義、占驗，或本籤所附的分項解）都由系統附在訊息中。
+
+規則：
+- 只解這一支籤。籤詩與註解一字不改、不引用其他籤、不自創典故；引用註解時註明是「聖意」「東坡解」還是「解曰」。註解裡沒有的，不要說成籤上有。
+- 先把四句籤詩用白話講一遍，再對應信眾所問之事（問功名看功名、問婚姻看婚姻、問出行看出行）；若系統註明信眾未說明所問之事，先問清楚再解，不要先解一大篇。
+- 語氣像關帝廟裡的老先生：直、有分寸、不討好。下籤照實說，但把「宜留意、宜守、宜緩」講清楚，不嚇人；上籤也提醒盡人事，不許諾結果。
+- 求籤講究誠心，一事一籤；同一件事不重抽。信眾若要再問別的事，請他回到廟前重新求籤。
+- 涉及健康、投資、法律、訴訟，只談籤意的提醒，明確建議諮詢專業人士，不給具體指示。
+- 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：籤詩僅供參考與娛樂，關聖帝君教人的是忠義與盡人事。\n${TONE}`,
+  simianfo: `你是曼谷四面佛前的守願人，一位溫和、務實、在佛前服務多年的泰國廟祝。信眾已依順時鐘四面（第一面平安、第二面事業、第三面婚姻、第四面財富）寫下願望與還願方式，系統把這四段願文、信眾的八字命盤和今年流年一起附在訊息中。
+
+規則：
+- 四面佛不是算命，是許願與還願。你的工作有三件：幫信眾把願望說得具體（時間、對象、可驗證的結果）；對照命盤與今年流年，說四面之中哪一面的願與今年走勢相順、哪一面需要多用心、多耐心；提醒還願要量力、要說到做到。
+- 談命盤只根據附上的四柱、大運與流年，絕不自行推算或修改干支；命盤只用來對照四面，不做完整批命——信眾若想批命，請他去八字廟。
+- 還願方式由信眾自己定，你只提醒合理與可行（供花、供香、捐款、義工都可以，不必花大錢）；不推薦任何商家、舞團或代拜服務。
+- 不替人求害人之願、不受理針對第三者的願望；涉及安全或健康急迫之事，嚴肅建議尋求正式資源。
+- 語氣安靜、尊重，帶一點泰式的從容；稱「四面佛」或「大梵天王」，不與佛教的佛混談。
+- 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：許願在人，成願靠行；命理僅供參考與娛樂。\n${TONE}`,
+}
+
+// ── 關帝廟：靈籤 ─────────────────────────────────────────────────────────────
+//
+// No chart here. The deterministic layer is the ritual (lib/xtell-ritual.ts:
+// a numbered stick, three 聖筊 to confirm) and the TEXT: 《關聖帝君靈籤》
+// 一百首 from Wikisource, a public-domain 清刊本 with its six commentaries
+// (聖意, 東坡解, 碧仙註, 解曰, 釋義, 占驗). The commentaries are the classic
+// the master quotes — 一籤一書 — so the classics retriever has nothing to
+// add and is skipped for this temple. The stick number is the only thing
+// the client sends; the poem is loaded from disk here, so the model can
+// only ever see the real text.
+
+export type Qian = {
+  n: number
+  ganZhi: string
+  luck: string
+  story: string
+  poem: string[]
+  sections: Record<string, string>
+}
+
+let qianCache: Qian[] | null = null
+export function guandiQian(): Qian[] {
+  if (!qianCache) qianCache = JSON.parse(readFileSync(join(process.cwd(), 'content', 'qian', 'guandi.json'), 'utf-8'))
+  return qianCache!
+}
+export function qianOf(n: number): Qian | null {
+  return guandiQian().find(q => q.n === n) ?? null
+}
+export function validQian(n: unknown): n is number {
+  return Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 100
+}
+
+/** The 籤 as facts: number, luck, the poem, every commentary the edition carries. */
+export function guandiFacts(q: Qian, ask: string): string {
+  const sections = Object.entries(q.sections).map(([k, v]) => `${k}：${v}`).join('\n')
+  return [
+    ask ? `信眾所問之事：${ask}` : '信眾未說明所問之事（請先問清楚，再解籤）。',
+    `籤號：第${q.n}籤${q.ganZhi ? `　${q.ganZhi}` : ''}　${q.luck}`,
+    q.story ? `典故：${q.story}` : '',
+    `籤詩：\n${q.poem.map(l => '  ' + l).join('\n')}`,
+    sections ? `本籤註解（清刊本原文，可直接引用，標明出處）：\n${sections}` : '',
+    '擲筊：三聖筊為允，此籤已由關聖帝君允准。',
+  ].filter(Boolean).join('\n')
+}
+
+// ── 四面佛：四面願文 + 流年 ─────────────────────────────────────────────────
+//
+// The Erawan ritual has no chart either: you walk the four faces clockwise
+// (平安, 事業, 婚姻, 財富), tell each the same wish, and name how you will
+// repay it. What code CAN do is read the visitor's own 八字 for this year —
+// the 流年's 天干 as a 十神 against the 日主, its 地支 against the 日支
+// (the marriage palace) and the 年支 (太歲) — so the master can say which
+// face the year favours instead of inventing a tendency. Same relation
+// tables as 合婚, same 立春-correct year pillar.
+
+export const FACES = [
+  { key: 'peace',    label: '平安' },
+  { key: 'career',   label: '事業' },
+  { key: 'marriage', label: '婚姻' },
+  { key: 'wealth',   label: '財富' },
+] as const
+export type FaceKey = (typeof FACES)[number]['key']
+export type Wishes = Partial<Record<FaceKey, string>> & { pledge?: string }
+
+const MAX_WISH = 400
+export function validWishes(w: any): w is Wishes {
+  if (!w || typeof w !== 'object') return false
+  const keys: string[] = [...FACES.map(f => f.key), 'pledge']
+  let any = false
+  for (const k of keys) {
+    const v = w[k]
+    if (v === undefined || v === '') continue
+    if (typeof v !== 'string' || v.length > MAX_WISH) return false
+    if (k !== 'pledge' && v.trim()) any = true
+  }
+  return any
+}
+
+export type LiuNian = {
+  year: number
+  ganZhi: string
+  shiShen: string           // 流年天干 vs 日主
+  dayBranch: BranchRelation // 流年地支 vs 日支（夫妻宮）
+  yearBranch: BranchRelation // 流年地支 vs 年支（太歲）
+  taiSui: string            // 值太歲 / 沖太歲 / 刑太歲 / 害太歲 / 合太歲 / 無
+  daYun: string | null      // the 大運 in force
+  age: number
+}
+
+export function liuNian(c: BaziChart, birthYear: number, year: number): LiuNian {
+  // June 1 reads the year's 干支 because the 干支 year turns at 立春, not Jan 1.
+  const gz = Solar.fromYmd(year, 6, 1).getLunar().getYearInGanZhi()
+  const gan = gz[0], zhi = gz[1]
+  const dayZhi = c.pillars.day.ganZhi[1], yearZhi = c.pillars.year.ganZhi[1]
+  const yearBranch = branchRelation(zhi, yearZhi)
+  const taiSui = zhi === yearZhi ? '值太歲'
+    : yearBranch.kind === '六沖' ? '沖太歲'
+    : yearBranch.kind === '相刑' ? '刑太歲'
+    : yearBranch.kind === '相害' ? '害太歲'
+    : yearBranch.kind === '六合' || yearBranch.kind === '三合' ? '合太歲'
+    : '無'
+  const age = year - birthYear
+  const daYun = c.daYun.filter(d => d.startAge <= age).slice(-1)[0]?.ganZhi ?? null
+  return {
+    year, ganZhi: gz,
+    shiShen: tcShiShen(LunarUtil.SHI_SHEN[c.dayMaster + gan] ?? '—'),
+    dayBranch: branchRelation(zhi, dayZhi),
+    yearBranch, taiSui, daYun, age,
+  }
+}
+
+export function liuNianFacts(l: LiuNian): string {
+  return [
+    `今年流年：${l.year} ${l.ganZhi}年（虛歲約 ${l.age + 1}）`,
+    `  流年天干對日主：${l.shiShen}`,
+    `  流年地支對日支（夫妻宮）：${l.dayBranch.kind}`,
+    `  流年地支對年支：${l.yearBranch.kind}${l.taiSui !== '無' ? `（${l.taiSui}）` : ''}`,
+    l.daYun ? `  目前大運：${l.daYun}` : '',
+  ].filter(Boolean).join('\n')
+}
+
+export function simianfoFacts(c: BaziChart, gender: string, hourUnknown: boolean, wishes: Wishes, l: LiuNian): string {
+  const faces = FACES.map((f, i) => {
+    const w = (wishes[f.key] ?? '').trim()
+    return `  第${i + 1}面 ${f.label}：${w || '（未許願）'}`
+  }).join('\n')
+  const pledge = (wishes.pledge ?? '').trim()
+  return [
+    '信眾的八字（供對照四面之用，不做完整批命）：',
+    baziFacts(c, gender, hourUnknown),
+    '',
+    liuNianFacts(l),
+    '',
+    '四面願文（信眾順時鐘向四面所說）：',
+    faces,
+    `還願方式：${pledge || '（尚未說明，請提醒信眾想好再許）'}`,
+  ].join('\n')
 }

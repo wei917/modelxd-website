@@ -1,7 +1,7 @@
 # XTELL-PAGE.md — X算命 (`/xtell`)
 
-> Everything about the XTell surface. Written 2026-08-30, verified against the
-> code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
+> Everything about the XTell surface. Written 2026-08-30, updated 2026-09-01
+> (關帝廟 + 四面佛), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
 > `lib/classics.ts`, or `app/api/xtell/*`.
 
 ## What it is
@@ -33,18 +33,49 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (3 live)
+## Temples (5 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
 | 八字廟 | BaZi four pillars | `lunar-typescript` (MIT, zero deps) | 節氣-exact: year pillar turns at the 立春 INSTANT (20:40:24-level precision), 五虎遁/五鼠遁, 藏干, 十神, 納音, 大運 via `getYun(gender)` |
 | 紫微斗數廟 | Zi Wei Dou Shu | `iztro` (MIT) | 12 palaces, major/minor/adjective stars, brightness + 四化 (mutagen), 五行局, 命主/身主. Needs an exact hour — 命宮 cannot be placed without one |
 | 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
+| 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1 |
+| 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
+
+## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
+
+Wikisource《關聖帝君靈籤》, 清刊本 (姑蘇鈕氏藏板), public domain. Fetched
+through the MediaWiki API in two batches of 50 — anonymous bulk page loads
+without a User-Agent get refused, which looked like throttling and was not.
+
+The hundred pages were transcribed by two hands: **format A** (籤 1–10:
+`<poem>`, `===聖意===` … `===占驗===`, the 甲子 label in the header) and
+**format B** (籤 11–100: two 。-joined lines, `'''聖意：'''` …
+`'''故事及記載：'''`, no label, ■ variant-character notes, and a modern
+twelve-topic 解籤簿 (功名/六甲/求財…) pasted inside 聖意). The parser reads
+both. The twelve-topic sheet is **dropped** — it is a 20th-century temple
+sheet, not the Qing text, and its copyright is unknown; only the edition
+that is clearly public domain goes in. The label for B is derived,
+第n籤 = STEMS[(n-1)/10] + STEMS[(n-1)%10], and the parser asserts that
+formula against every A page (第一籤 甲甲 … 第十籤 甲癸 … 第一百籤 癸癸).
+
+The commentaries ride with the poem in `guandiFacts()` as citable original
+text (聖意, 東坡解, 碧仙註, 解曰, 釋義, plus 占驗 on A and 典故 on B) — 一籤
+一書 — so `lib/classics.ts` has nothing to retrieve for this temple and its
+source list is empty. The golden suite checks count, four lines each, 聖意 +
+解曰 everywhere, and three frozen sticks (1, 57, 100). The 57 expectation was
+first written from memory as 庚庚 and was wrong (己庚) — the same lesson as
+the 立春 case: observe, never recall.
 
 ## The room flow (owner's design, Aug 30: "hide as much as possible")
 
 1. Birth date + time + gender → **進廟**. The chart is computed at that moment
    (free) so bad dates fail before any chat. The chart is NOT shown.
+   關帝廟 replaces the form with 所問之事 + the ritual (`RitualPanel`): the
+   third 聖筊 calls the chart route itself, so there is no 進廟 button.
+   四面佛 adds `WishForm` under the birth row; at least one face must be
+   filled (`validWishes`).
 2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
    **Master chips** above: up to 2 models, default preselected
    (`DEFAULT_MASTER = 'gpt-5.6-sol'` in `app/xtell/client.tsx` — one constant
@@ -69,8 +100,13 @@ app/xtell/client.tsx        # street + TempleRoom chat + BirthRow + boards
 app/api/xtell/chart/route.ts    # POST {temple, birth[, birth2]} → chart + engine. Free, auth required.
 app/api/xtell/reading/route.ts  # POST {temple, birth[, birth2], question, modelId, history, search}
                                 #   → SSE stream; bills list price at settle (XCreate chat pattern)
-lib/xtell.ts                # charts, facts serializers, ENGINES, MASTERS, validBirth
+lib/xtell.ts                # charts, facts serializers, ENGINES, MASTERS, validBirth,
+                            #   關帝 corpus loader + guandiFacts, 四面佛 liuNian + simianfoFacts
+lib/xtell-ritual.ts         # client-safe ritual: drawQian / throwJiao / cryptoRand / CONFIRM_THROWS
 lib/classics.ts             # 古籍 retrieval (see below)
+content/qian/guandi.json    # 關聖帝君靈籤 100 首 (built by scripts/fetch-guandi-qian.ts)
+scripts/fetch-guandi-qian.ts    # corpus builder (MediaWiki API, both transcription formats)
+scripts/generate-xtell-covers.ts # temple covers, gpt-image-2 in the ink-wash house style
 content/classics/*.txt      # 《滴天髓》42 chapters + 《紫微斗數全書·卷一》 (Wikisource, public domain)
 scripts/xtell-golden.ts     # golden-chart suite — npm run test:xtell
 public/xtell/*.jpg          # temple covers (ink-wash, gpt-image-2)
@@ -78,7 +114,8 @@ public/xtell/*.jpg          # temple covers (ink-wash, gpt-image-2)
 
 ## Masters (system prompts in `lib/xtell.ts` MASTERS)
 
-Per-temple personas (廟裡的老師; 月老 himself in 月老廟). Shared guardrails:
+Per-temple personas (廟裡的老師; 月老 himself in 月老廟; the 解籤老師 in 關帝廟,
+never 關帝 himself; a Thai 守願人 at 四面佛). Shared guardrails:
 
 - Only the provided chart — never recompute or alter a pillar.
 - **Tendency tone** (learned from Wolke/ziwei-doushu's ETHICS.md): 傾向/容易/
@@ -86,6 +123,12 @@ Per-temple personas (廟裡的老師; 月老 himself in 月老廟). Shared guard
 - 月老 extra: never declares a relationship doomed (clash-heavy pairings get
   what-to-tend framing); refuses third-party snooping; safety issues →
   serious referral to real resources, out of persona.
+- 關帝 extra: one stick, one matter (一事一籤); quote the commentaries by
+  name (聖意/東坡解/解曰) and never claim the stick says what its notes do
+  not; if 所問之事 is blank, ask before reading.
+- 四面佛 extra: it is 許願, not 算命 — help word the wish concretely, read the
+  computed 流年 against the four faces, keep the pledge affordable; no
+  vendors, dancers or proxy-worship services; no wishes against third parties.
 - No medical/financial/legal directives. Ends with 僅供參考與娛樂.
 - 繁體中文 unless the visitor writes otherwise.
 
@@ -141,8 +184,12 @@ iztro.
 
 ## Backlog (owner picks)
 
-- 籤詩亭 (求籤 + 擲筊 ritual; poems are fixed public-domain texts) — was
-  phase 1 of the original temple-street design, deferred by the chat redesign
+- ~~籤詩亭~~ — shipped Sep 1 as 關帝廟. Other 籤 sets (媽祖六十甲子籤,
+  觀音一百籤) would be new corpora on the same ritual.
+- 印度 temple (owner's map, Sep 1: 九曜/Shani, 太陽神廟, 納迪葉). Not built.
+  Needs a Jyotish engine — no mature JS library exists; plan is ~200 lines
+  on `astronomy-engine` (MIT) with Lahiri ayanamsa, plus a birth-PLACE field
+  the Chinese temples never needed (Lagna depends on it).
 - Birth-time rectifier temple; 六爻亭 (interactive coin ritual); 擇日
 - 真太陽時 toggle (Taipei ≈ +6 min vs UTC+8 meridian)
 - Persistence (saved charts, 流年 refresh) — currently nothing is stored
