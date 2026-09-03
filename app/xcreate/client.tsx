@@ -4636,6 +4636,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   )}
                 </div>
 
+                {/* The wall, above the tool and template rows. It was below
+                    them, which meant a first-time visitor had to scroll past
+                    two full card grids to reach the only part of this page
+                    that shows what the models actually produce. Setup screen
+                    only — once there are results, the results are the thing. */}
+                {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseWall pieces={showcase} />}
+
                 {/* ── Product board (CC, July 28): the entry point for the
                     product-video pipeline. Uploading here does NOT generate
                     anything — the photos become source nodes on a fresh
@@ -4683,6 +4690,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     a run has results so it doesn't compete with them.
                     Clicking anything applies it and scrolls back up to the
                     flashing composer. */}
+
                 {phase === 'setup' && slots.length === 0 && (() => {
                   // Category sections (Popular / Tools / Templates), each
                   // wrapped so EVERY card is visible — no horizontal
@@ -4715,11 +4723,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </div>
                   )
                 })()}
-
-                {/* The museum wall. Only on the setup screen: it is what to
-                    look at while deciding, not something to sit under your
-                    own results. Renders nothing when nothing is published. */}
-                {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseWall pieces={showcase} />}
 
                 {/* Results */}
                 {slots.length > 0 && (

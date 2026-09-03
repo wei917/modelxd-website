@@ -32,9 +32,9 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
   if (!pieces || pieces.length === 0) return null
 
   return (
-    <div style={{ marginTop: 56 }}>
+    <div style={{ marginTop: 22 }}>
       <div className="prompt-label" style={{ marginBottom: 10 }}>{t('showcase.eyebrow')}</div>
-      <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 640, margin: '0 0 24px' }}>
+      <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 640, margin: '0 0 16px' }}>
         {t('showcase.sub')}
       </p>
 
@@ -49,30 +49,34 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
             key={p.id}
             onClick={() => setOpen(p)}
             style={{
-              margin: '0 0 14px', breakInside: 'avoid', cursor: 'zoom-in',
+              margin: '0 0 16px', breakInside: 'avoid', cursor: 'zoom-in',
               borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border2)',
-              background: 'var(--surface)', position: 'relative',
+              background: 'var(--surface)',
             }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={p.url} alt={p.title} loading="lazy"
               style={{ width: '100%', height: 'auto', display: 'block' }} />
-            {/* The name card, on the picture. Always legible over any image
-                thanks to the scrim, and out of the way until you look at it. */}
-            <figcaption style={{
-              position: 'absolute', left: 0, right: 0, bottom: 0,
-              display: 'flex', alignItems: 'center', gap: 6, padding: '18px 10px 8px',
-              background: 'linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0))',
-              color: '#fff',
-            }}>
-              <ProviderLogo provider={p.provider} size={12} />
-              <span style={{
-                fontSize: 11.5, fontWeight: 700, minWidth: 0,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</span>
-              <span style={{ flex: 1 }} />
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, opacity: 0.85 }}>
-                {price(p.cost)}
-              </span>
+
+            {/* The brief, on the tile. This is the half worth reading: the
+                picture shows what a model can do, the prompt shows how to ask
+                for it. Hiding it behind a click made the wall decorative. */}
+            <figcaption style={{ padding: '10px 12px 11px' }}>
+              <p style={{
+                margin: 0, fontSize: 12, lineHeight: 1.5, color: 'var(--white)',
+                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>{p.prompt}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 9 }}>
+                <ProviderLogo provider={p.provider} size={12} />
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color: 'var(--muted)', minWidth: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{p.name}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: 'var(--muted2)' }}>
+                  {price(p.cost)}
+                </span>
+              </div>
             </figcaption>
           </figure>
         ))}
