@@ -253,6 +253,24 @@ Autopilot must not be written until a sector is won by a cheaper model.
 - Parked: TB 3.0 (74 tasks; only 12 fit this Mac, 4 need H100s — awaits
   funding), JobBench (no vendor citations).
 
+## 8c. OPEN: the sector score is verdict-count-sensitive (found 2026-09-02)
+
+`router_row` scores a task as raw **wins − losses** over all panel verdicts and
+averages that per sector. It is never divided by the number of games, so an
+entry whose pairs were judged by more judges scores higher for the same win
+rate. Fable 5.1's pairs carry ~70 verdicts/task (full 4-judge panel) against
+~52 for older entries, and that alone decided two sectors on fit fd1ad35c:
+
+- Government: Opus 5 won 2 of 3 tasks by win rate (100%, 95% vs Fable's 82%,
+  87%) yet Fable took the sector on net score (71–75 games vs 40–55).
+- Health Care: Sol @none ties Fable on mean win rate (79%) at $0.21 vs $11.91.
+
+Same rule, normalised (net ÷ games = win rate): Government → Opus 5, Health
+Care → Sol @none, Autopilot **$10.89/task at 93.0%** instead of $14.93 at
+92.2%. Staged as `router_row --metric winrate`; **default unchanged** pending
+the owner (who asked on 2026-09-02 that score calculation not change — this
+is a bias in the computation, not a new rule, and needs an explicit decision).
+
 ## 8a. Coverage is capped by what the grader can SEE (found 2026-09-02)
 
 `render_submission` (judge.py) shows judges and the rubric grader at most
