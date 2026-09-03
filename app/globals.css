@@ -837,7 +837,7 @@ body {
    left the "// XCREATE" eyebrow sitting 12px higher than the identical
    eyebrow on XDuel / XVote / XBoard — visible when tabbing between pages
    (CC, July 25). */
-.arena.xcreate-arena { margin: 0 auto; max-width: 1200px; padding: 24px 40px 80px; }
+.arena.xcreate-arena { margin: 0 auto; max-width: 1200px; padding: 24px 40px 80px; position: relative; z-index: 1; }
 
 
 /* Base text-input styling. All editable controls default to a true white
@@ -2446,3 +2446,41 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 @media (max-width: 1100px) { .showcase-masonry { column-count: 3; } }
 @media (max-width: 780px)  { .showcase-masonry { column-count: 2; } }
 @media (max-width: 480px)  { .showcase-masonry { column-count: 1; } }
+
+/* ── XCreate backdrop: the gallery behind the studio ────────────────────────
+   Owner's call (Sep 2): the composer floats ON the wall rather than sitting
+   below it. The problem that had to be solved first is that this site is light
+   theme with dark text — WonderClip can put white type on a sharp photograph,
+   we cannot. So the pictures behind the working UI are veiled and slightly
+   blurred: they read as texture and colour, never as competing detail, and the
+   veil resolves to solid --bg by the bottom so the prompt box always sits on
+   flat ground. The real wall lower down is untouched and full fidelity. */
+.xcreate-backdrop {
+  position: absolute; top: 0; left: 0; right: 0; height: 900px;
+  overflow: hidden; z-index: 0; pointer-events: none;   /* never eat a click */
+}
+.xcreate-backdrop-inner {
+  column-count: 6; column-gap: 10px; padding: 0 10px;
+  filter: blur(3px) saturate(0.92);
+  transform: scale(1.06);            /* hides the blur's soft edges */
+  transform-origin: top center;
+}
+.xcreate-backdrop-inner img {
+  width: 100%; height: auto; display: block;
+  margin-bottom: 10px; border-radius: 8px; break-inside: avoid;
+}
+/* The veil. Nearly opaque where the composer sits, resolving to the page
+   colour before the content ends. */
+.xcreate-backdrop::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(253, 253, 251, 0.82) 0%,
+    rgba(253, 253, 251, 0.90) 38%,
+    rgba(253, 253, 251, 0.97) 72%,
+    var(--bg) 100%);
+}
+@media (max-width: 900px) {
+  /* On a phone the composer fills the screen, so the backdrop is all veil and
+     no benefit — and it costs a screenful of image bytes on mobile data. */
+  .xcreate-backdrop { display: none; }
+}

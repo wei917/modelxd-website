@@ -15,7 +15,7 @@ import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
-import ShowcaseWall from '@/app/components/ShowcaseWall'
+import ShowcaseWall, { ShowcaseBackdrop } from '@/app/components/ShowcaseWall'
 import type { ShowcasePiece } from '@/lib/showcase'
 import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
 import MaskEditor from '../components/MaskEditor'
@@ -3423,7 +3423,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         </div>
       )}
 
-      <div className="xduel-page">
+      <div className="xduel-page" style={{ position: 'relative' }}>
+        {/* The gallery, behind the studio. Veiled and blurred in CSS so the
+            composer stays readable on a light theme; the real wall further
+            down is sharp and full fidelity. Image mode only, and only before
+            a run — once there are results, they are what matters. */}
+        {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseBackdrop pieces={showcase} />}
         <div className="arena xcreate-arena">
 
           {/* In-page header: "// XCREATE" eyebrow + big headline (CC, July 20). */}

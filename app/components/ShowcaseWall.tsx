@@ -23,6 +23,35 @@ function price(c: number | null): string {
   return '$' + (c < 0.1 ? c.toFixed(4) : c.toFixed(3)).replace(/0+$/, '').replace(/\.$/, '')
 }
 
+/**
+ * The gallery as the page's own backdrop, behind the studio UI. Purely
+ * decorative: no name cards, no lightbox, no clicks (pointer-events is off in
+ * CSS, so it can never steal a press meant for the composer), and aria-hidden
+ * so a screen reader is not read a wall of alt text before reaching the form.
+ *
+ * The veil and blur live in globals.css. They are not decoration for its own
+ * sake: this site is light theme with dark text, so pictures behind the
+ * working UI have to become texture or the prompt box stops being readable.
+ */
+export function ShowcaseBackdrop({ pieces }: { pieces: ShowcasePiece[] }) {
+  if (!pieces || pieces.length === 0) return null
+  // Twelve: enough to fill six columns, few enough to be worth loading eagerly.
+  // These are ABOVE THE FOLD — the first thing on the page — so `loading=lazy`
+  // is wrong for them: it guarantees a flash of empty veil on every load, and
+  // in any tab the browser has deprioritised they never arrive at all.
+  const wall = pieces.slice(0, 12)
+  return (
+    <div className="xcreate-backdrop" aria-hidden="true">
+      <div className="xcreate-backdrop-inner">
+        {wall.map(p => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={p.id} src={p.url} alt="" loading="eager" decoding="async" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
   const t = useT()
   const [open, setOpen] = useState<ShowcasePiece | null>(null)
