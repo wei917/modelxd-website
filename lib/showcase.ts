@@ -27,6 +27,8 @@ function parseStored(url: string): { bucket: string; path: string } | null {
 export type ShowcasePiece = {
   id: string; url: string; model: string; provider: string; name: string
   cost: number | null; sort: number; title: string; prompt: string
+  /** Milliseconds this exact picture took. One sample, not a benchmark. */
+  ms: number | null
 }
 
 /**
@@ -74,6 +76,7 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
       provider: slot.provider,
       name: slot.name,
       cost: typeof slot.cost === 'number' ? slot.cost : null,
+      ms: typeof slot.responseTime === 'number' ? slot.responseTime : null,
       sort: h.sort_order,
       title: h.title ?? '',
       prompt: run.prompt ?? '',

@@ -17,6 +17,14 @@ import ProviderLogo from './ProviderLogo'
 import { useT } from '@/lib/i18n'
 import type { ShowcasePiece } from '@/lib/showcase'
 
+/** How long this picture took. Sub-10s gets a decimal; the spread runs 3.8s to
+ *  69s, so the difference is worth a digit. */
+function secs(ms: number | null): string {
+  if (ms === null || !Number.isFinite(ms) || ms <= 0) return ''
+  const s = ms / 1000
+  return (s < 10 ? s.toFixed(1) : String(Math.round(s))) + 's'
+}
+
 /** Prices run from $0.0336 to $0.1345; show enough digits to tell them apart. */
 function price(c: number | null): string {
   if (c === null || !Number.isFinite(c)) return ''
@@ -56,12 +64,20 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
             {/* Attribution is never hidden: the chip is on every picture from
                 the start, and only steps aside when the full caption arrives.
                 A wall of unlabelled AI images is wallpaper. */}
-            {/* Model AND price, always on. Those two are the site's whole
-                argument; only the prompt waits for a hover. */}
+            {/* Two lines, always on: who made it, then what it cost and how
+                long it took. Those three are the site's whole argument, and
+                speed is the axis the leaderboard does not carry — flash-lite
+                is 3.8s AND the cheapest, grok is 60s+ at twice the price.
+                Only the prompt waits for a hover. */}
             <figcaption className="showcase-chip">
-              <ProviderLogo provider={p.provider} size={10} />
-              <span>{p.name}</span>
-              <span className="price">{price(p.cost)}</span>
+              <span className="line1">
+                <ProviderLogo provider={p.provider} size={10} />
+                <span className="name">{p.name}</span>
+              </span>
+              <span className="line2">
+                <span className="price">{price(p.cost)}</span>
+                {secs(p.ms) && <><span className="dot">·</span><span className="speed">{secs(p.ms)}</span></>}
+              </span>
             </figcaption>
 
             <figcaption className="showcase-cap">
@@ -70,6 +86,7 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
                 <ProviderLogo provider={p.provider} size={11} />
                 <span className="name">{p.name}</span>
                 <span className="price">{price(p.cost)}</span>
+                {secs(p.ms) && <span className="speed">{secs(p.ms)}</span>}
               </div>
             </figcaption>
           </figure>
@@ -93,6 +110,11 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, opacity: 0.6 }}>{open.model}</span>
               <span style={{ flex: 1 }} />
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, color: '#ff6b60' }}>{price(open.cost)}</span>
+              {secs(open.ms) && (
+                <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                  {secs(open.ms)}
+                </span>
+              )}
             </div>
             <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 13, lineHeight: 1.65, marginTop: 10, maxWidth: 780 }}>
               {open.prompt}

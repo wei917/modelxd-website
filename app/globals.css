@@ -2487,18 +2487,26 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 }
 .showcase-meta .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .showcase-meta .price { margin-left: auto; color: #ff6b60; }
+.showcase-meta .speed { color: #9fd3ff; }
 
 /* Always-on model chip, so a picture is never unattributed even before hover.
    It fades out as the full caption comes in, so the two never stack. */
+/* Two lines: who made it, then cost and speed. A pill was fine for one line;
+   two needs a rounded rectangle or the corners eat the text. */
 .showcase-chip {
-  position: absolute; left: 8px; bottom: 8px;
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 8px; border-radius: 999px;
+  position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px);
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 6px 9px 7px; border-radius: 7px;
   background: rgba(0,0,0,.62); backdrop-filter: blur(6px);
   color: #fff; font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em;
   text-transform: uppercase; line-height: 1;
   transition: opacity .28s ease;
 }
+.showcase-chip .line1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.showcase-chip .line1 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.showcase-chip .line2 { display: flex; align-items: center; gap: 5px; opacity: .92; }
+.showcase-chip .dot { opacity: .45; }
+.showcase-chip .speed { color: #9fd3ff; }
 .showcase-tile:hover .showcase-chip { opacity: 0; }
 .showcase-chip .price { color: #ff8f86; }
 
