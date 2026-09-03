@@ -10,9 +10,16 @@ system, not AI-generated images. That is the existing convention: see
 public/templates/text-decimals.jpg and text-earnings-analysis.jpg, whose
 palette this samples exactly (--bg #fdfdfb, --white #0f0f0f, --red #d63b32).
 
-Fonts are the real ones, vendored in public/fonts/ (both OFL) rather than
+Fonts are the real ones, vendored in scripts/fonts/ (both OFL) rather than
 downloaded per run, so anyone can regenerate these and get the same output.
 PIL cannot read the .woff2 that next/font compiles.
+
+NOT in public/fonts/. That directory is XCut's ffmpeg font source, and
+lib/xcut-render.ts bundledFont() takes the FIRST .ttf in readdir order —
+"ArchivoBlack" sorts before "NotoSansTC", so parking these there made every
+subtitle burn pick a font with no CJK glyphs and Chinese subtitles silently
+drew nothing. These files are build-time tooling; they must never be web-served
+or discoverable by that scan.
 """
 
 import os
@@ -24,8 +31,8 @@ BG, INK, RED = "#fdfdfb", "#0f0f0f", "#d63b32"
 MARGIN = 34
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DISPLAY = os.path.join(ROOT, "public/fonts/ArchivoBlack-Regular.ttf")
-MONO = os.path.join(ROOT, "public/fonts/JetBrainsMono-Bold.ttf")
+DISPLAY = os.path.join(ROOT, "scripts/fonts/ArchivoBlack-Regular.ttf")
+MONO = os.path.join(ROOT, "scripts/fonts/JetBrainsMono-Bold.ttf")
 OUT = os.path.join(ROOT, "public/templates")
 
 # The pair. These two templates take the SAME input file and differ only in
