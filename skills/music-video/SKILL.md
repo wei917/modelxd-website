@@ -11,7 +11,7 @@ metadata:
   tagline: "Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera."
   color: "#7c3aed"
   title: "Music Video"
-  version: "4.0"
+  version: "4.1"
   category: music
   order: "1"
   aspect: "ask"
@@ -206,6 +206,89 @@ per scene.
 
 **The lyrics are the user's.** A transcription may be wrong; if they correct a
 line, that correction is authoritative over what you heard.
+
+### An 18-second cut is ONE BEAT of a song, not a song in miniature
+
+The most expensive story mistake of Aug 28, and it looked like craft while it
+was happening: an 18-second board was written as setup, turn and payoff — a
+whole three-act arc compressed into three cuts. The owner's reaction was the
+diagnosis: *"why does the man show up so fast?"* Because a relationship that
+the song takes three minutes to earn had been staged in eleven seconds.
+
+**Get the WHOLE song's arc before you write anything, even when you are only
+shooting a fragment.** If the user gives a link or a release page, read it. If
+you only have an excerpt, ask what the full song does — one question, once.
+
+- **Never derive the story from the excerpt alone.** A 15-30s clip is one
+  movement. Its job is to be that movement completely, not to summarise the
+  others. Name which movement it is, in chat, before boarding it.
+- **The film may not contradict the song's own ending.** A song that resolves
+  — confession answered, distance closed — cannot be shot as a loss because
+  loss photographs better. The board inverted exactly this once: written as
+  "she says it and he has already gone" for a song whose turn is a confession
+  that IS reciprocated. Beautiful, and the wrong film.
+- **Choose the slice deliberately and say why.** The guarded verse, the
+  confession, and the settled outro are three different films from one song.
+  Offer the choice rather than defaulting to whichever the excerpt starts in.
+
+### What ASR is good for, and what it is not
+
+Transcribing an attached song is cheap and worth doing, but be honest about
+which half of the result you can trust. Measured on an 18-second sung excerpt
+(Aug 28): **2 lines, 53 characters, and the word in the song's own title did
+not survive the read.**
+
+- **Timings: trust them.** Phrase boundaries and silences come back accurate
+  and they are the edit grid.
+- **Words: do not build a story on them.** Sung Mandarin defeats ASR. Ask the
+  user for the lyrics, or read them from the release page they linked, and
+  treat their wording as authoritative from that moment.
+- **A no-vocal gap is a gift.** Instrumental space is where the turn belongs —
+  and it is the ONLY place a sung board can pin an opening frame, because a
+  scene with no vocal needs no reference audio and can therefore be a KEYFRAME
+  shot. Find the gaps before you assign models.
+
+### Casting a REAL person — the artist, or anyone else
+
+A user asking to put a real person in the film is normal and often the whole
+point: it is their song, their face, their video. Two things have to be true
+before a single frame is generated, and neither is a formality.
+
+**1. Authorisation, stated by the user.** Not inferred from them having the
+photo, sending the photo, or linking the artist's page. Ask once, plainly: is
+this you, or has this person asked for / agreed to this? A yes is enough — you
+are not running a rights department. Silence, or a change of subject, is not a
+yes; keep the original cast and say so.
+
+**2. Reference photos that can actually carry a likeness.** Ask for what works
+and say why, because the wrong photos waste the user's money rather than yours:
+
+- Plain background, even light, no strong colour cast.
+- Face-forward AND three-quarter. Face unobstructed — no hands, sunglasses,
+  or hair across it.
+- **Hair as it should read on screen.** A reference with it up will fight a
+  board that has it down, in every frame.
+- A window-light phone selfie beats a studio shot with heavy grade. You are
+  extracting a FACE, not a mood — the mood comes from the look bible, and a
+  strongly-lit reference drags its own lighting into every generation.
+
+**Where photos must NOT come from**, however convenient:
+
+- **The release's cover art or a video thumbnail.** It is the single image most
+  likely to be a likeness rather than a look, and it is usually graded, posed
+  and cropped in ways that poison a cast sheet.
+- **Watermarked or paywalled images.** A watermark is a statement about
+  redistribution; treat it as one.
+- **Anything raising a question you cannot answer about the subject's age**, or
+  any set that mixes sexualised images with school-age ones. Do not proceed and
+  do not negotiate the point — ask for ordinary portraits from the person
+  themselves.
+- If the supplied photos do not obviously show the SAME person as the artist
+  being credited, say so and ask, rather than casting whoever was sent.
+
+**Then build the three-view turnaround as always** (Step 0). Likeness matters
+more here than with an invented cast, not less: a SYNC take cannot pin an
+opening frame, so a real person's face survives on the reference sheet alone.
 
 ## Step 1.5 — The story spine: no board without one
 
