@@ -63,7 +63,13 @@ const DRAMA_BRIEF: Record<string, string> = {
   drama:       'DRAMA LEVEL 3 — DRAMA. Story, plus all four or the board is not at this level: a REVERSAL (the situation flips against the wanting — escalation is not reversal), a COST paid or deliberately withheld on screen, at least ONE UNPRETTY frame that is allowed to be uncomfortable, and a first and last cut that CONTRADICT rather than merely differ.',
 }
 
-// The song's MOOD is a different axis from the visual style, and the form had
+// The song's FEELING — a different axis from the visual style, and from GENRE.
+// The first version of this list was mostly genres (rock / country / electronic /
+// hip-hop / folk / R&B), which left a love song nowhere to go: 'ballad' means
+// slow, not romantic, and a song can be both warm and quick (owner, Aug 28:
+// "which one is romance?"). Genre the director can hear for itself; how the
+// song FEELS is the thing only the user knows.
+// The form had
 // no way to say it (owner, Aug 25: "we also want users to enter the style of
 // the song? 輕快 鄉村 搖滾 深情"). A reference video answers what the film
 // LOOKS like; the mood answers how it MOVES — cutting energy, section
@@ -71,27 +77,27 @@ const DRAMA_BRIEF: Record<string, string> = {
 // is a different film from 輕快 against the same one, and until now nothing
 // in the pipeline knew which was meant.
 const MOODS = [
+  { id: 'romantic',   i18n: 'xd.mv.mood.romantic' },
+  { id: 'heartfelt',  i18n: 'xd.mv.mood.heartfelt' },
   { id: 'upbeat',     i18n: 'xd.mv.mood.upbeat' },
-  { id: 'ballad',     i18n: 'xd.mv.mood.ballad' },
-  { id: 'rock',       i18n: 'xd.mv.mood.rock' },
-  { id: 'country',    i18n: 'xd.mv.mood.country' },
-  { id: 'electronic', i18n: 'xd.mv.mood.electronic' },
-  { id: 'hiphop',     i18n: 'xd.mv.mood.hiphop' },
-  { id: 'folk',       i18n: 'xd.mv.mood.folk' },
-  { id: 'rnb',        i18n: 'xd.mv.mood.rnb' },
+  { id: 'melancholy', i18n: 'xd.mv.mood.melancholy' },
+  { id: 'driving',    i18n: 'xd.mv.mood.driving' },
+  { id: 'laidback',   i18n: 'xd.mv.mood.laidback' },
+  { id: 'nostalgic',  i18n: 'xd.mv.mood.nostalgic' },
+  { id: 'defiant',    i18n: 'xd.mv.mood.defiant' },
 ] as const
 
 /** Written for the DIRECTOR, in craft terms — a genre word alone would just
  *  invite the clichés the skill spends a whole section warning against. */
 const MOOD_BRIEF: Record<string, string> = {
+  romantic:   'warm and close — two people in the same frame, soft light, the camera lingering a beat past comfortable',
+  heartfelt:  'deep and unhurried — long takes, stillness, the emotion carried by the face and the light',
   upbeat:     'bright and light-footed — quick cuts, motion in frame, the chorus lifts',
-  ballad:     'deep and unhurried — long takes, stillness, the emotion carried by the face and the light',
-  rock:       'hard and physical — heavier contrast, handheld energy, cuts landing on the beat',
-  country:    'warm and open — daylight, landscape, unhurried camera, lived-in texture',
-  electronic: 'synthetic and rhythmic — graphic framing, repetition, cuts locked to the pulse',
-  hiphop:     'confident and grounded — strong poses, low angles, hard cuts, attitude over prettiness',
-  folk:       'intimate and acoustic — soft natural light, close and human, minimal camera movement',
-  rnb:        'smooth and sensual — slow moves, rich shadow, texture and skin, restraint',
+  melancholy: 'cool and spacious — wide frames, the subject small in them, held longer than feels comfortable',
+  driving:    'hard and physical — heavier contrast, handheld energy, cuts landing on the beat',
+  laidback:   'loose and unhurried — slow moves, rich shadow, texture and skin, nothing rushed',
+  nostalgic:  'remembered rather than seen — softer grade, grain, warm falloff, moments caught slightly late',
+  defiant:    'confident and grounded — strong poses, low angles, hard cuts, attitude over prettiness',
 }
 
 export default function MusicVideoSetup({ busy, onStart, onSkip }: {
