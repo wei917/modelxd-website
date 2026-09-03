@@ -144,6 +144,16 @@ on AgentSense's structure (2–3 people, private goals, private information).
   verified 2026-09-02. Judge must not share a family with the tested model.
 - Measured: a flash-vs-flash episode ≈ 21 calls, 28K in / 2K out, 28 s; a
   Sol-judged episode 50 s. Pilot = 70 hard combos × entry: ~$10–22 per entry.
+- **Do not use `ConstraintBasedSampler` for a ladder.** It draws env/agent
+  pairs at random from the candidates: the first pilot run gave 45 episodes
+  over 38 distinct combos with 7 repeats, so no two entries would have played
+  the same scenes. Build the combos explicitly, as `sotopia/benchmark.py`
+  does — `ParallelSotopiaEnv(env_profile, action_order="round-robin",
+  evaluators=[RuleBasedTerminatedEvaluator(20, 2)],
+  terminal_evaluators=[EpisodeLLMEvaluator(judge, …)])` plus two `LLMAgent`s
+  (tested model in chair 1, partner in chair 2) — and pass them as
+  `env_agent_combo_list` with the default `BaseSampler()`. Verified on the
+  relaunch: 30 episodes = 30 distinct combos, all scored.
 
 ## Constraints inherited from the text lanes
 
