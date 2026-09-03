@@ -4341,23 +4341,26 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   ever shown, which told you what four models
                                   cost together but never which one was
                                   expensive.
-                                  Discounted to match the total beside Generate,
-                                  so the slots add up to it. */}
+                                  LIST PRICE, undiscounted (owner, Sep 3): the
+                                  multi-model % off is earned by running several
+                                  models together, so it belongs to the run, not
+                                  to any one model. This line says what this
+                                  model costs; the total beside Generate applies
+                                  the discount to the sum. */}
                               {(() => {
                                 const est = estimateSlotDollars(model, mode, opts, prompt.length, docTokens)
                                 if (est == null) return null
-                                const shown = est * (1 - discountFor(activeModels.length))
                                 return (
                                   <div style={{
-                                    display: 'flex', alignItems: 'baseline', gap: 6,
+                                    display: 'flex', alignItems: 'baseline', gap: 5,
                                     marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--border2)',
                                   }}>
-                                    <span style={{ fontSize: 9.5, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'var(--mono)', color: 'var(--muted2)' }}>
-                                      {t('xcreate.thismodel')}
-                                    </span>
                                     <span style={{ flex: 1 }} />
-                                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color }}>
-                                      ~{fmtDollars(shown)}
+                                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted)' }}>
+                                      {t('xcreate.estcost')}
+                                    </span>
+                                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12.5, fontWeight: 700, color }}>
+                                      {fmtDollars(est)}
                                     </span>
                                   </div>
                                 )

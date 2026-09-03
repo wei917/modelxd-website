@@ -1001,7 +1001,6 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.pickone':     { en: 'Pick at least one model', 'zh-Hant': '至少選擇一個模型', 'zh-Hans': '至少选择一个模型', ja: 'モデルを1つ以上選択', ko: '모델을 하나 이상 선택하세요' },
   'xcreate.selected':    { en: '{n} models selected', 'zh-Hant': '已選 {n} 個模型', 'zh-Hans': '已选 {n} 个模型', ja: '{n}モデル選択中', ko: '모델 {n}개 선택됨' },
   'xcreate.selected1':   { en: '1 model selected', 'zh-Hant': '已選 1 個模型', 'zh-Hans': '已选 1 个模型', ja: '1モデル選択中', ko: '모델 1개 선택됨' },
-  'xcreate.thismodel':  { en: 'This model', 'zh-Hant': '這個模型', 'zh-Hans': '这个模型', ja: 'このモデル', ko: '이 모델' },
   'xcreate.estcost':     { en: 'Estimated Cost ~', 'zh-Hant': '預估費用 ~', 'zh-Hans': '预估费用 ~', ja: '推定コスト ~', ko: '예상 비용 ~' },
   'xcreate.addcredits':  { en: 'Add credits', 'zh-Hant': '加值', 'zh-Hans': '充值', ja: 'クレジット追加', ko: '크레딧 충전' },
   'xcreate.lowbalance':  { en: 'Not enough credits. Balance:', 'zh-Hant': '點數不足。餘額：', 'zh-Hans': '点数不足。余额：', ja: 'クレジット不足。残高：', ko: '크레딧 부족. 잔액:' },
