@@ -31,6 +31,30 @@ function price(c: number | null): string {
   return '$' + (c < 0.1 ? c.toFixed(4) : c.toFixed(3)).replace(/0+$/, '').replace(/\.$/, '')
 }
 
+/**
+ * The information block. ONE component, used by the always-on chip, the hover
+ * caption and the lightbox, because the first version wrote them separately
+ * and they immediately drifted: the chip was two lines, the caption was one,
+ * arranged differently. Whatever joins this (resolution, duration for the
+ * video wall) lands in all three at once.
+ *
+ * Line 1 is who made it. Line 2 is what it cost you.
+ */
+function PieceMeta({ p, size = 10 }: { p: ShowcasePiece; size?: number }) {
+  return (
+    <>
+      <span className="line1">
+        <ProviderLogo provider={p.provider} size={size} />
+        <span className="name">{p.name}</span>
+      </span>
+      <span className="line2">
+        <span className="price">{price(p.cost)}</span>
+        {secs(p.ms) && <><span className="dot">·</span><span className="speed">{secs(p.ms)}</span></>}
+      </span>
+    </>
+  )
+}
+
 export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
   const t = useT()
   const [open, setOpen] = useState<ShowcasePiece | null>(null)
@@ -69,24 +93,14 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
                 speed is the axis the leaderboard does not carry — flash-lite
                 is 3.8s AND the cheapest, grok is 60s+ at twice the price.
                 Only the prompt waits for a hover. */}
-            <figcaption className="showcase-chip">
-              <span className="line1">
-                <ProviderLogo provider={p.provider} size={10} />
-                <span className="name">{p.name}</span>
-              </span>
-              <span className="line2">
-                <span className="price">{price(p.cost)}</span>
-                {secs(p.ms) && <><span className="dot">·</span><span className="speed">{secs(p.ms)}</span></>}
-              </span>
+            <figcaption className="showcase-chip piece-meta">
+              <PieceMeta p={p} />
             </figcaption>
 
             <figcaption className="showcase-cap">
               <p className="showcase-prompt">{p.prompt}</p>
-              <div className="showcase-meta">
-                <ProviderLogo provider={p.provider} size={11} />
-                <span className="name">{p.name}</span>
-                <span className="price">{price(p.cost)}</span>
-                {secs(p.ms) && <span className="speed">{secs(p.ms)}</span>}
+              <div className="piece-meta cap-meta">
+                <PieceMeta p={p} size={11} />
               </div>
             </figcaption>
           </figure>
@@ -104,17 +118,14 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={open.url} alt={open.title}
               style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, color: '#fff' }}>
-              <ProviderLogo provider={open.provider} size={14} />
-              <span style={{ fontWeight: 800, fontSize: 14 }}>{open.name}</span>
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, opacity: 0.6 }}>{open.model}</span>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: 14, color: '#fff' }}>
+              <div className="piece-meta" style={{ fontSize: 11.5 }}>
+                <PieceMeta p={open} size={14} />
+              </div>
               <span style={{ flex: 1 }} />
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, color: '#ff6b60' }}>{price(open.cost)}</span>
-              {secs(open.ms) && (
-                <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-                  {secs(open.ms)}
-                </span>
-              )}
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                {open.model}
+              </span>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 13, lineHeight: 1.65, marginTop: 10, maxWidth: 780 }}>
               {open.prompt}

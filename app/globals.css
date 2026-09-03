@@ -2481,34 +2481,34 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   margin: 0 0 7px; font-size: 12px; color: #fff;
   display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
-.showcase-meta {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+/* The info block, shared by the chip, the hover caption and the lightbox.
+   Two lines everywhere: who made it, then what it cost you. */
+.piece-meta {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em;
+  text-transform: uppercase; line-height: 1;
 }
-.showcase-meta .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.showcase-meta .price { margin-left: auto; color: #ff6b60; }
-.showcase-meta .speed { color: #9fd3ff; }
+.piece-meta .line1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.piece-meta .line1 .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.piece-meta .line2 { display: flex; align-items: center; gap: 5px; opacity: .92; }
+.piece-meta .dot { opacity: .45; }
+.piece-meta .price { color: #ff6b60; }
+.piece-meta .speed { color: #9fd3ff; }
+.cap-meta { font-size: 10px; }
 
 /* Always-on model chip, so a picture is never unattributed even before hover.
    It fades out as the full caption comes in, so the two never stack. */
 /* Two lines: who made it, then cost and speed. A pill was fine for one line;
    two needs a rounded rectangle or the corners eat the text. */
+/* Box only — the two-line layout inside comes from .piece-meta. */
 .showcase-chip {
   position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px);
-  display: flex; flex-direction: column; gap: 3px;
   padding: 6px 9px 7px; border-radius: 7px;
   background: rgba(0,0,0,.62); backdrop-filter: blur(6px);
-  color: #fff; font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em;
-  text-transform: uppercase; line-height: 1;
+  color: #fff;
   transition: opacity .28s ease;
 }
-.showcase-chip .line1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
-.showcase-chip .line1 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.showcase-chip .line2 { display: flex; align-items: center; gap: 5px; opacity: .92; }
-.showcase-chip .dot { opacity: .45; }
-.showcase-chip .speed { color: #9fd3ff; }
 .showcase-tile:hover .showcase-chip { opacity: 0; }
-.showcase-chip .price { color: #ff8f86; }
 
 /* No hover on a touch screen, so the prompt would be unreachable there. On
    those devices the caption is simply always on, and the chip stands down. */
