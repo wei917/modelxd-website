@@ -32,50 +32,44 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
   if (!pieces || pieces.length === 0) return null
 
   return (
-    <div style={{ marginTop: 22 }}>
-      <div className="prompt-label" style={{ marginBottom: 10 }}>{t('showcase.eyebrow')}</div>
-      <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 640, margin: '0 0 16px' }}>
+    <div style={{ marginTop: 26 }}>
+      {/* Header in the house voice: red // eyebrow, one line of explanation,
+          and the count set in mono on the right so the wall announces its own
+          size the way XBoard does. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
+        <div className="prompt-label eyebrow" style={{ marginBottom: 0 }}>{t('showcase.eyebrow')}</div>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: 'var(--muted2)', letterSpacing: '0.1em' }}>
+          {pieces.length} WORKS · {new Set(pieces.map(p => p.model)).size} MODELS
+        </span>
+      </div>
+      <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 620, margin: '0 0 16px' }}>
         {t('showcase.sub')}
       </p>
 
-      {/* CSS columns, not grid: a masonry wall packs by column and lets every
-          picture keep its own height. A grid would force one aspect ratio and
-          crop the work, which is the one thing a gallery must not do. */}
-      {/* Column count lives in globals.css so the media queries can win — an
-          inline columnCount would override them and pin a phone to 4 columns. */}
-      <div className="showcase-masonry">
+      <div className="showcase-wall">
         {pieces.map(p => (
-          <figure
-            key={p.id}
-            onClick={() => setOpen(p)}
-            style={{
-              margin: '0 0 16px', breakInside: 'avoid', cursor: 'zoom-in',
-              borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border2)',
-              background: 'var(--surface)',
-            }}>
+          <figure key={p.id} className="showcase-tile" tabIndex={0} onClick={() => setOpen(p)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.url} alt={p.title} loading="lazy"
-              style={{ width: '100%', height: 'auto', display: 'block' }} />
+            <img src={p.url} alt={p.title} loading="lazy" />
 
-            {/* The brief, on the tile. This is the half worth reading: the
-                picture shows what a model can do, the prompt shows how to ask
-                for it. Hiding it behind a click made the wall decorative. */}
-            <figcaption style={{ padding: '10px 12px 11px' }}>
-              <p style={{
-                margin: 0, fontSize: 12, lineHeight: 1.5, color: 'var(--white)',
-                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}>{p.prompt}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 9 }}>
-                <ProviderLogo provider={p.provider} size={12} />
-                <span style={{
-                  fontSize: 11, fontWeight: 700, color: 'var(--muted)', minWidth: 0,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{p.name}</span>
-                <span style={{ flex: 1 }} />
-                <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: 'var(--muted2)' }}>
-                  {price(p.cost)}
-                </span>
+            {/* Attribution is never hidden: the chip is on every picture from
+                the start, and only steps aside when the full caption arrives.
+                A wall of unlabelled AI images is wallpaper. */}
+            {/* Model AND price, always on. Those two are the site's whole
+                argument; only the prompt waits for a hover. */}
+            <figcaption className="showcase-chip">
+              <ProviderLogo provider={p.provider} size={10} />
+              <span>{p.name}</span>
+              <span className="price">{price(p.cost)}</span>
+            </figcaption>
+
+            <figcaption className="showcase-cap">
+              <p className="showcase-prompt">{p.prompt}</p>
+              <div className="showcase-meta">
+                <ProviderLogo provider={p.provider} size={11} />
+                <span className="name">{p.name}</span>
+                <span className="price">{price(p.cost)}</span>
               </div>
             </figcaption>
           </figure>
@@ -86,23 +80,21 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
         <div
           onClick={() => setOpen(null)}
           style={{
-            position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.82)',
+            position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.9)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out',
           }}>
-          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 900, width: '100%', cursor: 'default' }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 940, width: '100%', cursor: 'default' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={open.url} alt={open.title}
-              style={{ width: '100%', maxHeight: '74vh', objectFit: 'contain', display: 'block', borderRadius: 8 }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, color: '#fff' }}>
+              style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, color: '#fff' }}>
               <ProviderLogo provider={open.provider} size={14} />
               <span style={{ fontWeight: 800, fontSize: 14 }}>{open.name}</span>
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12, opacity: 0.7 }}>{open.model}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, opacity: 0.6 }}>{open.model}</span>
               <span style={{ flex: 1 }} />
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13 }}>{price(open.cost)}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, color: '#ff6b60' }}>{price(open.cost)}</span>
             </div>
-            {/* The brief is worth reading once you have stopped on a picture,
-                not while you are scanning the wall. */}
-            <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12.5, lineHeight: 1.6, marginTop: 8 }}>
+            <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 13, lineHeight: 1.65, marginTop: 10, maxWidth: 780 }}>
               {open.prompt}
             </p>
           </div>
