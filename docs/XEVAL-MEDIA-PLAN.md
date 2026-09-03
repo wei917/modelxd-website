@@ -154,6 +154,31 @@ on AgentSense's structure (2–3 people, private goals, private information).
   (tested model in chair 1, partner in chair 2) — and pass them as
   `env_agent_combo_list` with the default `BaseSampler()`. Verified on the
   relaunch: 30 episodes = 30 distinct combos, all scored.
+- **Effort is a run dimension here too (owner, 2026-09-03): every entry plays
+  the 70 scenes twice, at the LOWEST and the HIGHEST setting its API accepts,
+  so the page draws a two-point curve per model.** Provider defaults were
+  probed with no effort parameter: every one of the six thinks by default
+  (Opus 5 and Fable 5.1 run adaptive thinking unless told otherwise). The
+  ends, labelled with the provider's own value: Sol `none`/`xhigh`; Opus 5
+  disabled(`none`)/effort `high`; Fable 5.1 effort `low`/`high` (cannot
+  disable); Grok 4.6 `low`/`xhigh` (`none` rejected); Gemini 3.7 Flash
+  level `low`/`high` (`minimal` rejected, budget 0 ignored); Qwen 3.8 Max
+  `enable_thinking` false/true. Partner and judges stay at default.
+- **Verify effort ON THE WIRE, never by the absence of an error.** SOTOPIA
+  calls litellm with `drop_params=True`, which silently drops
+  `reasoning_effort='xhigh'` for gpt-5.6 and every level for Grok; those go
+  through `extra_body`. Anthropic rejects the `temperature` SOTOPIA sends
+  (stripped for every anthropic call, judge included). Fable 5.1 rejects the
+  forced tool call litellm builds for `json_schema` output (`tool_choice:
+  tool/any not supported`), so the schema is put in the prompt for Fable and
+  SOTOPIA's parser reads the raw JSON. `work/sotopia/probe_wire.py` prints
+  what actually leaves the machine. The effort reaches only the tested chair
+  through a contextvar set by `TestedAgent.aact()`, because the model string
+  must stay pristine (SOTOPIA picks its structured-output mode from it).
+- Cost attribution: the pilot logs `role` (tested / other) per call and bills
+  xAI reasoning tokens, which sit OUTSIDE `completion_tokens`, unlike every
+  other provider. Measured per episode: Gemini@high $0.08, Opus@none $0.13,
+  Fable@high $0.12 (agent + partner + Sol judge); 12 entries quoted at ~$115.
 
 ## Constraints inherited from the text lanes
 
