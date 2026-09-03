@@ -46,6 +46,23 @@ const FORM_BRIEF: Record<string, string> = {
 
 const DURATIONS = [15, 18, 30, 60]
 
+// Not an adjective — each level switches on a different set of REQUIREMENTS
+// the board must satisfy (owner, Aug 28, after an 18s cut came back as the
+// same shot at three focal lengths). "More dramatic" pasted into a shot
+// prompt buys harder lighting and nothing else; the drama lives in whether
+// anything REVERSES, so the dial has to change the board, not the wording.
+const DRAMA = [
+  { id: 'performance', i18n: 'xd.mv.drama.perf' },
+  { id: 'story',       i18n: 'xd.mv.drama.story' },
+  { id: 'drama',       i18n: 'xd.mv.drama.drama' },
+] as const
+
+const DRAMA_BRIEF: Record<string, string> = {
+  performance: 'DRAMA LEVEL 1 — PERFORMANCE. The hook is the point. One spine sentence, but no turn is required and one location is fine. Chosen deliberately: do not land here by failing to find a story.',
+  story:       'DRAMA LEVEL 2 — STORY. Full Step 1.5: spine sentence, both people on the board, setup/build/turn/payoff, the last cut shows the change, one place and one hour.',
+  drama:       'DRAMA LEVEL 3 — DRAMA. Story, plus all four or the board is not at this level: a REVERSAL (the situation flips against the wanting — escalation is not reversal), a COST paid or deliberately withheld on screen, at least ONE UNPRETTY frame that is allowed to be uncomfortable, and a first and last cut that CONTRADICT rather than merely differ.',
+}
+
 // The song's MOOD is a different axis from the visual style, and the form had
 // no way to say it (owner, Aug 25: "we also want users to enter the style of
 // the song? 輕快 鄉村 搖滾 深情"). A reference video answers what the film
@@ -87,6 +104,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   // Whether the cast SINGS on camera. Only meaningful with a song attached —
   // the audio itself is the generation input that drives the mouth, so there
   // is nothing to sync to without one (owner, Aug 28).
+  const [drama, setDrama]     = useState<string>('story')
   const [sync, setSync]       = useState(false)
   const [reference, setRef]   = useState('')
   const [mood, setMood]       = useState<string | null>(null)
@@ -117,6 +135,8 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     parts.push(castAtts.length > 0
       ? 'Cast: lock the leads from the attached subject photos.'
       : 'Cast: create original leads to fit the song.')
+    parts.push(DRAMA_BRIEF[drama])
+    parts.push('Run the board self-check before set_storyboard — swap test, first/last test, spine test, both-people test, shot-size test — and do not generate a board that fails one for this level.')
     if (mood) parts.push(`Song mood: ${MOOD_BRIEF[mood]}. That governs PACING and energy — cut rhythm, section grammar, how hard the chorus lands. It is a separate axis from the look; do not let it override the visual reference.`)
     if (styleAtts.length > 0) parts.push('Style: match the attached style frames — build the look bible from them.')
     if (songAtts.length > 0) {
@@ -191,6 +211,22 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
 
       {/* Mood survives a reference link, unlike the style presets — the link
           says what the film looks like, this says how it moves. */}
+      {/* How much STORY. Sits above mood on purpose: mood shapes how the film
+          moves, this decides whether there is a film at all. */}
+      <div>
+        <span style={label}>🎭 {t('xd.mv.drama')}</span>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {DRAMA.map(d => (
+            <button key={d.id} onClick={() => setDrama(d.id)} style={chip(drama === d.id)}>
+              {t(d.i18n)}
+            </button>
+          ))}
+        </div>
+        <span style={{ fontSize: 10.5, color: 'var(--muted2)', display: 'block', marginTop: 4, maxWidth: 420 }}>
+          {t(`xd.mv.drama.${drama === 'performance' ? 'perf' : drama}hint`)}
+        </span>
+      </div>
+
       <div>
         <span style={label}>🎚 {t('xd.mv.mood')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

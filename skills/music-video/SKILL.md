@@ -251,6 +251,64 @@ words hand you the object and the turn.
 - **Performance form doesn't waive this.** Hooks are the performance; the
   story lives between them — and the hook frame can hold both people.
 
+### DRAMA LEVEL — the user's dial, expressed as rules
+
+The setup form asks how much STORY the user wants. It is not an adjective to
+paste into prompts: "more dramatic" in a shot prompt buys nothing but harder
+lighting. Each level instead switches on a different set of REQUIREMENTS the
+board has to satisfy before it is worth generating.
+
+**① PERFORMANCE — the hook is the point.**
+A performance reel, honestly made. Spine sentence still required (one line),
+but no turn is demanded and one location is fine. Legitimate for a chorus cut
+or a K-pop hook. What it must NOT be is this level by accident: choose it
+because the user asked for it, never because no story was found.
+
+**② STORY — the default.**
+Everything in Step 1.5 applies: spine sentence, both people on the board,
+setup → build → turn → payoff, the last cut showing the change, one place and
+one hour. This is what a music video normally is.
+
+**③ DRAMA — something is lost or risked.**
+Story, plus four things that must be true or the board is not at this level:
+- **A reversal.** One cut where the situation flips against the wanting —
+  the answer doesn't come, the door closes, the other person turns away.
+  Escalation is not reversal; louder is not a turn.
+- **A cost.** The want has a price on screen, and the payoff either pays it
+  or withholds it deliberately. Nothing is free.
+- **One unpretty frame.** At least one cut is allowed to be uncomfortable —
+  a bad angle, a held silence, a face caught wrong. A board where every frame
+  is beautiful has no drama in it, only production value.
+- **First and last must CONTRADICT.** Not merely differ. If the opening cut
+  could play after the closing one, the level has not been reached.
+
+Say the level back in one line with the spine sentence, so the user can move
+the dial before anything is shot. Moving it later is a re-plan, not a re-roll:
+③ is not ② with a stronger grade.
+
+### The board self-check — run it BEFORE set_storyboard
+
+Every one of these runs on TEXT, costs nothing, and catches the failure that
+is otherwise only visible after the money is spent (proven the expensive way,
+Aug 28: a three-scene board came back as wide / medium / close of one woman
+singing in the rain — the same shot at three focal lengths, no event, fully
+reorderable).
+
+1. **Swap test.** Can any two adjacent scenes trade places with no loss? If
+   yes, those scenes are decoration, not sequence.
+2. **First/last test.** Does the final cut show a change from the first? If
+   they could swap unnoticed, there is no film.
+3. **Spine test.** Is there one sentence naming who wants what, what is in the
+   way, and what changed? If it cannot be written, the board has no story to
+   shoot.
+4. **Both-people test.** A song addressed to 你 with one person on the board
+   is a lookbook.
+5. **Shot-size test.** Wide, medium and close of the SAME action count as ONE
+   beat. Three framings of one moment is not three scenes.
+
+A board failing any check for its level does not get generated. Fix it and say
+what changed — the user is watching the board, not this file.
+
 ## Step 2 — The look bible
 
 Users usually arrive with a reference — "like that JENNIE video", a mood board,
