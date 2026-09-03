@@ -167,6 +167,15 @@ the metric to watch as tasks are added.
 5. www/main is **not** an open item (owner, Aug 26) — `main` has no `/xeval`
    and that is fine; dev is the working surface.
 
+- **Autopilot rule stays quality-first (owner, 2026-09-02): sector leader by
+  mean pairwise score, cheapest only on an exact tie.** A cost-aware variant
+  (cheaper entry that ties/beats the leader head-to-head takes the sector) was
+  computed and declined; on the Fable 5.1 fit it would have moved one sector
+  (Government → Opus 5) for $14.93 → $12.88. When one entry wins every sector
+  the Autopilot row IS that entry's 27 runs; its rating differs by ~1 Elo
+  because it is fitted as a frozen-opponent append rather than jointly. That
+  is expected noise, not a lead — leave it.
+
 ## 7. Gotchas that cost real time
 
 - **Parallel sessions collide.** On Aug 25-26 another session built the human
