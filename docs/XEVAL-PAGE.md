@@ -168,7 +168,8 @@ the metric to watch as tasks are added.
    and that is fine; dev is the working surface.
 
 - **Autopilot rule stays quality-first (owner, 2026-09-02): sector leader by
-  mean pairwise score, cheapest only on an exact tie.** A cost-aware variant
+  mean per-task WIN RATE (equal-games), cheapest only on an exact tie.** Raw
+  net score was replaced the same day — see §8c. A cost-aware variant
   (cheaper entry that ties/beats the leader head-to-head takes the sector) was
   computed and declined; on the Fable 5.1 fit it would have moved one sector
   (Government → Opus 5) for $14.93 → $12.88. When one entry wins every sector
@@ -253,7 +254,7 @@ Autopilot must not be written until a sector is won by a cheaper model.
 - Parked: TB 3.0 (74 tasks; only 12 fit this Mac, 4 need H100s — awaits
   funding), JobBench (no vendor citations).
 
-## 8c. OPEN: the sector score is verdict-count-sensitive (found 2026-09-02)
+## 8c. RESOLVED 2026-09-02: sector score is now win rate (equal-games), not raw net
 
 `router_row` scores a task as raw **wins − losses** over all panel verdicts and
 averages that per sector. It is never divided by the number of games, so an
@@ -267,9 +268,10 @@ rate. Fable 5.1's pairs carry ~70 verdicts/task (full 4-judge panel) against
 
 Same rule, normalised (net ÷ games = win rate): Government → Opus 5, Health
 Care → Sol @none, Autopilot **$10.89/task at 93.0%** instead of $14.93 at
-92.2%. Staged as `router_row --metric winrate`; **default unchanged** pending
-the owner (who asked on 2026-09-02 that score calculation not change — this
-is a bias in the computation, not a new rule, and needs an explicit decision).
+92.2%. Owner's call on seeing the Government numbers: "why not let them play
+the same times?" — `router_row` now defaults to `--metric winrate`; the row
+was rebuilt on fit fd1ad35c and published: **Autopilot 1998 Elo, $10.89/task**
+(Fable 5.1 in 7 sectors, Opus 5 in Government, Sol @none in Health Care).
 
 ## 8a. Coverage is capped by what the grader can SEE (found 2026-09-02)
 
