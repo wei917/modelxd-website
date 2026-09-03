@@ -244,6 +244,34 @@ Autopilot must not be written until a sector is won by a cheaper model.
 - Parked: TB 3.0 (74 tasks; only 12 fit this Mac, 4 need H100s — awaits
   funding), JobBench (no vendor citations).
 
+## 8a. Coverage is capped by what the grader can SEE (found 2026-09-02)
+
+`render_submission` (judge.py) shows judges and the rubric grader at most
+**30,000 characters per file**. xlsx/pptx renderers announce the cut; docx,
+pdf and text were cut **silently** — a 100 KB docx rendered to exactly 30,067
+chars and read as a complete document. Both the pairwise Elo and the rubric
+Coverage were computed on that truncated text.
+
+Impact on the 27-task GDPval ladder (latest run per entry, files over the cap):
+Grok 4.6 11/27 runs, **Fable 5.1 10/27 (37% of its text unseen)**, Opus 5
+7/27, Qwen 6/27, Fable 5 5/27, Sol 4/27. Long-form writers are under-measured
+most. It is symmetric in rule (everyone is cut at 30k) but not in effect.
+
+What it does and does not mean:
+- The ranking stands — judges compared what they saw, and the longest-form
+  entry still won 1889 of 2037 games. Coverage for long deliverables is a
+  floor, not a measurement.
+- The **80% Coverage ceiling** shared by Fable 5.1, Grok and Qwen is partly
+  this cap and partly the metric (44-item checklists graded by Grok @high).
+- Spreadsheet tasks grade lowest ladder-wide (xlsx 65% vs pdf 82%): a row
+  dump loses the structure the rubric asks about. 1752cb53 is 14–25% for
+  EVERY model — the task, not any entry.
+
+Fixed now: every file type announces truncation ("… (truncated: N more
+characters not shown)"), so a grader no longer mistakes a cut for the end.
+Not fixed: the cap itself. Raising it changes what judges see, so it belongs
+to a new season with a full re-judge (~14k pairs, ~$1,000+), not a patch.
+
 ## 8b. Qwen3.8 Max on TB 2.1 — abandoned 2026-08-29 (do not re-run blind)
 
 Ran 5 of 21 tasks, **1 pass**, ~$2, then stopped on owner call. Not published;
