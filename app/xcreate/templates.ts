@@ -334,6 +334,11 @@ export const XCREATE_TEMPLATES: Template[] = [
     // input file, opposite senses — the card copy is the differentiation.
     starterPrompt:     '{{What do you want to know? e.g. "Describe every scene and camera move", "Summarize what happens", "Is the product logo visible throughout?"}}',
     recommendedModels: ['gemini-3.1-flash-lite', 'qwen3.6-plus'],
+    // Designed typographic card (PIL, site type system) — not AI-generated:
+    // "ask a model about a video" is not a picture of anything. Paired with
+    // audio-transcribe below, which reads LISTENS to this one's WATCHES.
+    // Regenerate: python3 scripts/make-text-cards.py
+    previewUrl:        '/templates/video-understand.jpg',
     previewBgColor:    '#2d3a52',
     attachmentSlots: [
       { label: 'VIDEO', hint: 'MP4 / WebM / MOV — the clip to analyze' },
@@ -358,6 +363,8 @@ export const XCREATE_TEMPLATES: Template[] = [
     // transcribed the Mandarin lyrics cleanly. Same song, both transcripts,
     // real prices — the ModelXD thesis in audio.
     recommendedModels: ['whisper-1', 'fun-asr'],
+    // The LISTENS half of the pair — see video-understand above.
+    previewUrl:        '/templates/audio-transcribe.jpg',
     previewBgColor:    '#2d4152',
     attachmentSlots: [
       { label: 'AUDIO', hint: 'MP3 / M4A / WAV — or an MP4 video (audio track is read, ≤25MB)' },
