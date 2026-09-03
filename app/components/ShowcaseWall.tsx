@@ -25,6 +25,14 @@ function secs(ms: number | null): string {
   return (s < 10 ? s.toFixed(1) : String(Math.round(s))) + 's'
 }
 
+/** What you actually got. Sizes on the wall run 832x1248 to 2528x1696, and the
+ *  spread does not follow price: the cheapest-per-picture model is not the
+ *  cheapest per pixel. */
+function res(w: number | null, h: number | null): string {
+  if (!w || !h) return ''
+  return `${w}\u00d7${h}`
+}
+
 /** Prices run from $0.0336 to $0.1345; show enough digits to tell them apart. */
 function price(c: number | null): string {
   if (c === null || !Number.isFinite(c)) return ''
@@ -50,6 +58,7 @@ function PieceMeta({ p, size = 10 }: { p: ShowcasePiece; size?: number }) {
       <span className="line2">
         <span className="price">{price(p.cost)}</span>
         {secs(p.ms) && <><span className="dot">·</span><span className="speed">{secs(p.ms)}</span></>}
+        {res(p.width, p.height) && <><span className="dot">·</span><span className="res">{res(p.width, p.height)}</span></>}
       </span>
     </>
   )

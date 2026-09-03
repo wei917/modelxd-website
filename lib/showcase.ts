@@ -29,6 +29,9 @@ export type ShowcasePiece = {
   cost: number | null; sort: number; title: string; prompt: string
   /** Milliseconds this exact picture took. One sample, not a benchmark. */
   ms: number | null
+  /** Actual pixel size, read from the file by the backfill script. */
+  width: number | null
+  height: number | null
 }
 
 /**
@@ -42,7 +45,7 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
     { auth: { persistSession: false } })
 
   const { data: hung, error } = await sb.from('showcase')
-    .select('id, xcreate_id, slot_index, room, title, sort_order')
+    .select('id, xcreate_id, slot_index, room, title, sort_order, width, height')
     .eq('published', true)
     .order('sort_order', { ascending: true })
   if (error) {
@@ -77,6 +80,8 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
       name: slot.name,
       cost: typeof slot.cost === 'number' ? slot.cost : null,
       ms: typeof slot.responseTime === 'number' ? slot.responseTime : null,
+      width: h.width ?? null,
+      height: h.height ?? null,
       sort: h.sort_order,
       title: h.title ?? '',
       prompt: run.prompt ?? '',

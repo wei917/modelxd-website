@@ -2494,6 +2494,10 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .piece-meta .dot { opacity: .45; }
 .piece-meta .price { color: #ff6b60; }
 .piece-meta .speed { color: #9fd3ff; }
+.piece-meta .res { color: rgba(255,255,255,.62); }
+/* Line 2 carries three facts now; let it wrap rather than clip in a narrow
+   column, and keep the wrapped line tight. */
+.piece-meta .line2 { flex-wrap: wrap; row-gap: 2px; }
 .cap-meta { font-size: 10px; }
 
 /* Always-on model chip, so a picture is never unattributed even before hover.
