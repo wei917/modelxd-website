@@ -104,6 +104,47 @@ account we cannot hold).
 
 Nothing public. Fully authored, so it goes last and is labelled as ours.
 
+
+## Phase S — Social (SOTOPIA), stood up 2026-09-02
+
+Owner wants a social benchmark: everyday scenes (hallway, team meeting,
+dinner), fast enough for live conversation, and scored on whether the model
+actually listened. No lab publishes one; CMU's SOTOPIA (ICLR 2024) is the
+accepted academic rubric. Plan: run SOTOPIA first, then author our own scenes
+on AgentSense's structure (2–3 people, private goals, private information).
+
+**Working setup (checkout `~/Documents/Claude/Projects/XEval/sotopia`, branch `xeval`):**
+- Data is a Redis dump. `sotopia install` is broken (interactive; its Docker
+  volume path is invalid). Load by hand: download
+  `https://huggingface.co/datasets/cmu-lti/sotopia-pi/resolve/main/dump.rdb`
+  (256 MB, superset of the ICLR set) into `redis-data/`, then
+  `docker run -d --name sotopia-redis -p 6379:6379 -v $PWD/redis-data:/data redis/redis-stack-server`.
+  Result: 884 scenarios, 40 characters, 4,886 env-agent combos, 32,662 shipped episodes.
+- **SOTOPIA-hard** = `EnvironmentList 01HAK34YPB1H1RWXQDASDKHSNS`: 20
+  scenarios, 70 combos (craigslist bargains 8, social chemistry 6, social IQa 4,
+  persuasion 1, deal-or-no-deal 1). Mostly goal-driven, two-party.
+- Three patches were needed on main (all on branch `xeval`): explicit
+  `EpisodeLog` pk (redis-om leaks its class proxy); the evaluator's score loop
+  indexed a dict as a tuple and returned `[]`; `run_async_server` never copied
+  the terminal evaluator's rates into `complete_rating`, so every stored
+  reward was `[0.0, 0.0]` while the reasoning text was saved. After the
+  patches a Sol-judged episode stores (overall, {7 dims}) per agent.
+- `run_async_server(..., push_to_db=True)` — default is False (nothing stored).
+- Tokens + per-call latency: litellm `CustomLogger.async_log_success_event`
+  (`litellm.success_callback` sees nothing). TTFT would need streaming; the
+  pilot uses per-turn wall time.
+- gin wraps evaluator exceptions in a proxy that itself crashes
+  (`ValidationError is not an acceptable base type`); bypass with
+  `gin.utils.augment_exception_message_and_reraise = lambda e, m: (_ for _ in ()).throw(e)`
+  when debugging.
+- Shipped legacy episodes break `EpisodeLog.get()` and a naive key scan; read
+  raw JSON and skip keys whose `r.type(k) != "ReJSON-RL"`.
+- Providers route through litellm: `anthropic/…`, `gpt-…`, `gemini/…`, and
+  `custom/<model>@<base_url>` with `CUSTOM_API_KEY` for xAI/DashScope. All
+  verified 2026-09-02. Judge must not share a family with the tested model.
+- Measured: a flash-vs-flash episode ≈ 21 calls, 28K in / 2K out, 28 s; a
+  Sol-judged episode 50 s. Pilot = 70 hard combos × entry: ~$10–22 per entry.
+
 ## Constraints inherited from the text lanes
 
 - **Complete rows only** — an entry appears when it has covered the full enabled
