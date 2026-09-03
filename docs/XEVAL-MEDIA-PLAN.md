@@ -179,6 +179,14 @@ on AgentSense's structure (2–3 people, private goals, private information).
   xAI reasoning tokens, which sit OUTSIDE `completion_tokens`, unlike every
   other provider. Measured per episode: Gemini@high $0.08, Opus@none $0.13,
   Fable@high $0.12 (agent + partner + Sol judge); 12 entries quoted at ~$115.
+- **Result (2026-09-03, $130.69 actual):** the two-point curve is flat for
+  every model — no paired low→high difference on goal or overall clears a 95%
+  CI on the same 70 scenes; the high setting only buys latency (Grok 6→25
+  s/turn, Qwen 2→23 s). Best point Opus 5 @none (goal 5.97, overall 3.27,
+  4.5 s/turn); Fable 5.1 @high level with it. Full table in
+  `docs/XEVAL-PAGE.md` §8d. Next for this lane: the owner's own scenes
+  (hallway / meeting / dinner, 3–4 people, TTFT + throughput) — the SOTOPIA
+  run says the interesting axis there will be speed, not thinking level.
 
 ## Constraints inherited from the text lanes
 

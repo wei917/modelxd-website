@@ -608,6 +608,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
           </tbody>
         </table>
       </div>
+      {anyCost && <EffortCurveChart rows={rows.filter(r => r.provider !== 'modelxd')} />}
       <section style={{ fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.65, borderTop: '1px solid var(--border)', paddingTop: 14, maxWidth: 860 }}>
         <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
         <p style={{ margin: '8px 0 0' }}>
@@ -616,6 +617,53 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
         </p>
       </section>
     </>
+  )
+}
+
+/** Effort curve for verifier/rubric benchmarks: one mark per (model × effort),
+ *  x = $/task (log), y = mean score; the efforts of ONE model are joined in
+ *  effort order, so each model reads as a short curve — what more thinking
+ *  buys, and what it costs (owner, Sep 3: "we only need the none and max
+ *  dots"). Shown only when some model has two or more efforts; a benchmark
+ *  run at one effort per model has no curve to draw. Encoding as the GDPval
+ *  frontier: SHAPE = provider, COLOR = effort. */
+function EffortCurveChart({ rows }: { rows: { display: string; provider: string; effort: string; n: number; cost: number; scoreSum: number }[] }) {
+  const t = useT()
+  const pts = rows.filter(r => r.n > 0 && r.cost > 0).map(r => ({ ...r, x: r.cost / r.n, y: r.scoreSum / r.n }))
+  const byModel = new Map<string, typeof pts>()
+  for (const p of pts) { if (!byModel.has(p.display)) byModel.set(p.display, []); byModel.get(p.display)!.push(p) }
+  if (![...byModel.values()].some(l => l.length >= 2)) return null
+  const W = 860, H = 340, L = 52, R = 24, T = 18, B = 44
+  const xs = pts.map(p => Math.log10(p.x)); const x0 = Math.floor(Math.min(...xs) * 2) / 2, x1 = Math.ceil(Math.max(...xs) * 2) / 2 || x0 + 0.5
+  const ys = pts.map(p => p.y); const y0 = Math.max(0, Math.floor((Math.min(...ys) - 0.05) * 10) / 10), y1 = Math.min(1, Math.ceil((Math.max(...ys) + 0.05) * 10) / 10)
+  const X = (v: number) => L + ((Math.log10(v) - x0) / (x1 - x0 || 1)) * (W - L - R)
+  const Y = (v: number) => T + (1 - (v - y0) / (y1 - y0 || 1)) * (H - T - B)
+  const xTicks: number[] = []; for (let e = Math.floor(x0); e <= Math.ceil(x1); e++) for (const m of [1, 2, 5]) { const v = m * 10 ** e; if (Math.log10(v) >= x0 - 1e-9 && Math.log10(v) <= x1 + 1e-9) xTicks.push(v) }
+  const yTicks: number[] = []; for (let v = y0; v <= y1 + 1e-9; v += 0.1) yTicks.push(Math.round(v * 10) / 10)
+  const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
+  const rank = (e: string) => EFFORT_RANK.indexOf(e)
+  return (
+    <div style={{ margin: '4px 0 28px' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>{t('xeval.curve.title')}</div>
+      <div style={{ overflowX: 'auto' }}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: '100%', fontFamily: 'var(--font-mono)' }}>
+          {yTicks.map(v => <g key={'y' + v}><line x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} stroke="var(--border)" /><text x={L - 8} y={Y(v) + 4} fontSize={10} fill="var(--muted)" textAnchor="end">{Math.round(v * 100)}%</text></g>)}
+          {xTicks.map(v => <g key={'x' + v}><line x1={X(v)} x2={X(v)} y1={T} y2={H - B} stroke="var(--border)" /><text x={X(v)} y={H - B + 16} fontSize={10} fill="var(--muted)" textAnchor="middle">{money(v)}</text></g>)}
+          <text x={(L + W - R) / 2} y={H - 6} fontSize={10.5} fill="var(--muted)" textAnchor="middle">{t('xeval.curve.x')}</text>
+          {[...byModel.entries()].map(([name, l]) => {
+            const seq = [...l].sort((a, b) => rank(a.effort) - rank(b.effort))
+            return seq.length >= 2 ? <polyline key={'l' + name} points={seq.map(p => `${X(p.x)},${Y(p.y)}`).join(' ')} fill="none" stroke="var(--muted)" strokeWidth={1.2} strokeDasharray="3 3" opacity={0.8} /> : null
+          })}
+          {pts.map(p => (
+            <g key={p.display + p.effort}>
+              <title>{`${p.display} @${p.effort || '—'}: ${Math.round(p.y * 100)}% · ${money(p.x)}/task`}</title>
+              <Mark shape={shapeOf(p.provider)} cx={X(p.x)} cy={Y(p.y)} r={6} fill={colorOf(p.effort)} />
+              <text x={X(p.x) + 9} y={Y(p.y) - 7} fontSize={10} fill="var(--muted2)">{p.display}{p.effort ? ` @${p.effort}` : ''}</text>
+            </g>
+          ))}
+        </svg>
+      </div>
+    </div>
   )
 }
 
@@ -633,6 +681,7 @@ const PROVIDER_SHAPE: Record<string, string> = {
 const EFFORT_COLOR: Record<string, string> = {
   none: '#888780', minimal: '#5b9bd5', low: '#2a78d6', medium: '#1baf7a', high: '#eda100', xhigh: '#eb6834', max: '#d03b3b',
 }
+const EFFORT_RANK = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 // Entries with no catalog run behind them (ModelXD's own row, the human
 // anchor) have no display_name in xeval_runs — name them here.
 const SPECIAL_DISPLAY: Record<string, string> = { 'modelxd-router': 'ModelXD Autopilot', 'human-expert': 'Human expert' }

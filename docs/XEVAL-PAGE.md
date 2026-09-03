@@ -238,6 +238,71 @@ The sector rule still pays off on TB 2.1 (86% vs 81%) and LAB (47% vs 39%),
 where winners differ by category. Any copy claiming GDPval savings from the
 Autopilot must not be written until a sector is won by a cheaper model.
 
+## 8d. Social (SOTOPIA-hard): two dots per model (2026-09-03)
+
+The fifth ladder, `task_set = 'sotopia-hard'`, tab **Social (SOTOPIA)**,
+`/xeval?b=social`. CMU's SOTOPIA-hard: 20 scenarios, 70 env-agent combos,
+two characters with private goals (craigslist bargains, social chemistry,
+social IQa, persuasion, deal-or-no-deal). The tested model sits in chair 1,
+Gemini 3.7 Flash at default is the fixed partner in chair 2, an LLM judge
+outside the tested family scores the 7 SOTOPIA-Eval dimensions (Sol for
+everyone, Opus 5 for the Sol entries). `runs.score = goal/10`,
+`spec_pct = overall/10` (mean of the 7 dims, shown as Coverage), sector =
+the scenario's source dataset, `model_s` = mean per-call latency of the
+tested chair.
+
+**Effort is a run dimension (owner, Sep 3): every model plays the same 70
+scenes twice, at the lowest and the highest thinking setting its API
+accepts**, labelled with the provider's own value. Provider defaults were
+probed and every model thinks by default — so "default" is neither
+comparable nor reproducible and was dropped. The ends: Sol none/xhigh;
+Opus 5 none (disabled)/high; Fable 5.1 low/high (cannot disable); Grok 4.6
+low/xhigh (none rejected); Gemini 3.7 Flash low/high (minimal rejected);
+Qwen 3.8 Max enable_thinking false/true. Judges and partner stay at default.
+
+Run 2026-09-03, 12 entries × 70 scenes, **$130.69** (quote $115, +14%),
+two lanes, ~2.8 h wall:
+
+| entry | goal (0–10) | overall (7-dim mean) | s/turn (median) | $/entry |
+|---|---|---|---|---|
+| Opus 5 @none | 5.97 | 3.27 | 4.5 | 13.42 |
+| Fable 5.1 @high | 5.99 | 3.18 | 6.7 | 18.49 |
+| Fable 5.1 @low | 5.71 | 3.19 | 6.6 | 17.48 |
+| Opus 5 @high | 5.90 | 3.17 | 4.6 | 14.22 |
+| Gemini 3.7 Flash @low | 5.73 | 2.89 | 2.8 | 5.89 |
+| Qwen 3.8 Max @high | 5.71 | 2.86 | 23.3 | 9.06 |
+| Gemini 3.7 Flash @high | 5.76 | 2.84 | 6.0 | 7.53 |
+| Sol @xhigh | 5.74 | 2.83 | 3.9 | 11.97 |
+| Sol @none | 5.39 | 2.74 | 2.0 | 10.38 |
+| Qwen 3.8 Max @none | 5.43 | 2.73 | 2.3 | 6.29 |
+| Grok 4.6 @low | 5.36 | 2.49 | 6.1 | 6.72 |
+| Grok 4.6 @xhigh | 5.11 | 2.48 | 24.6 | 9.24 |
+
+**The curve is flat.** Paired on the same 70 scenes, no model's low→high
+difference is significant on goal or overall (all six 95% bootstrap CIs
+include 0; e.g. Sol goal +0.36 [−0.11, +0.86], Grok goal −0.24 [−0.69,
++0.19]). What the high setting buys is latency: Grok 6→25 s per turn, Qwen
+2→23 s. Between models (same judge, Opus@none as reference) Gemini, Qwen and
+Grok are significantly below on overall (−0.38, −0.41, −0.78); Fable@high
+is level (+0.01 goal, −0.08 overall). The Sol entries were judged by Opus,
+so Sol-vs-others is a cross-judge comparison; treat it as indicative.
+
+Caveats recorded in the run: SOTOPIA drops a turn when a model returns an
+empty action and the repair pass cannot parse it — 16 such turns across the
+three Claude entries (~1–2% of turns), none elsewhere; and 2 repair calls on
+the Opus entries failed because the pilot leaked Anthropic thinking kwargs
+onto SOTOPIA's OpenAI repair model (fixed the same day, `2841c29` in
+gdpval-xd: the effort now applies only to calls to the tested model).
+
+Harness: `gdpval-xd/scripts/sotopia_pilot.py` (two-lane launch in the
+docstring), `xeval/sotopia_import.py`; wire-level lessons in
+`docs/XEVAL-MEDIA-PLAN.md` Phase S. **Status: imported into xeval.db, NOT
+published** — publishing needs the owner's word. The page gained an
+**effort-curve chart** under every verifier/rubric table (`EffortCurveChart`
+in `app/xeval/page.tsx`): x = $/task (log), y = mean score, the efforts of
+one model joined in effort order; it renders only when some model has two or
+more efforts, so today it appears nowhere until Social is published.
+
 ## 8. Open items
 
 - **Per-task library view** (designed, not built, zero new spend): a section
