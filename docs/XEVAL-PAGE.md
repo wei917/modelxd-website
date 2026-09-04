@@ -290,8 +290,8 @@ $0.10 and $0.17):**
 Both sit significantly below their bigger siblings on the same scenes
 (Flash-Lite vs Flash@low: goal −0.87 [−1.43, −0.36]; Luna vs Sol@none: goal
 −0.63 [−1.04, −0.21]) and below Opus@none (−1.11 goal). So on SOTOPIA-hard
-the model tier moves the score and the thinking level does not. Imported;
-publication of these two rows is the owner's call.
+the model tier moves the score and the thinking level does not. Published
+2026-09-03 evening (fit fd1ad35c, 1,936 runs).
 
 **The curve is flat.** Paired on the same 70 scenes, no model's low→high
 difference is significant on goal or overall (all six 95% bootstrap CIs
