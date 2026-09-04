@@ -74,13 +74,24 @@ export default function XEvalPage() {
       setRatings((r ?? []).filter(row => row.fit_id === latestFit && !(row as any).retired))
       const { count } = await sb.from('xeval_judgments').select('id', { count: 'exact', head: true })
       setVerdicts(count ?? 0)
-      const { data: rr } = await sb
-        .from('xeval_runs')
-        // No status filter: verifier benchmarks publish failed trials too (a
-        // timeout IS the cell's result). GDPval aggregates stay finished-only
-        // because only finished GDPval runs are published.
-        .select('run_id, task_id, task_set, score, spec_pct, harness, sector, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
-      setRuns(rr ?? [])
+      // Paged: Supabase answers at most 1,000 rows per request, silently. The
+      // day the SOTOPIA set took the table past 1,000 (2026-09-03, 1,796 rows)
+      // every tab quietly lost rows — Social showed 37 of its 70 scenes.
+      // No status filter: verifier benchmarks publish failed trials too (a
+      // timeout IS the cell's result). GDPval aggregates stay finished-only
+      // because only finished GDPval runs are published.
+      const PAGE = 1000
+      const all: RunRow[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data: rr } = await sb
+          .from('xeval_runs')
+          .select('run_id, task_id, task_set, score, spec_pct, harness, sector, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
+          .order('run_id')
+          .range(from, from + PAGE - 1)
+        all.push(...((rr ?? []) as RunRow[]))
+        if (!rr || rr.length < PAGE) break
+      }
+      setRuns(all)
       setLoading(false)
     })()
   }, [])

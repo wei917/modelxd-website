@@ -296,8 +296,12 @@ gdpval-xd: the effort now applies only to calls to the tested model).
 
 Harness: `gdpval-xd/scripts/sotopia_pilot.py` (two-lane launch in the
 docstring), `xeval/sotopia_import.py`; wire-level lessons in
-`docs/XEVAL-MEDIA-PLAN.md` Phase S. **Status: imported into xeval.db, NOT
-published** — publishing needs the owner's word. The page gained an
+`docs/XEVAL-MEDIA-PLAN.md` Phase S. **Published 2026-09-03 (fit fd1ad35c,
+owner: "publish to dev and www"), live on both hosts.** Publishing it took
+`xeval_runs` past 1,000 rows and exposed a page bug: the runs query had no
+paging and Supabase silently caps a request at 1,000 rows, so every tab was
+truncated for a few minutes (Social showed 37 of 70 scenes). The page now
+pages the query in 1,000-row chunks — keep it that way. The page gained an
 **effort-curve chart** under every verifier/rubric table (`EffortCurveChart`
 in `app/xeval/page.tsx`): x = $/task (log), y = mean score, the efforts of
 one model joined in effort order; it renders only when some model has two or
