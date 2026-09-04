@@ -630,7 +630,16 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                 onClick={() => onPreview(s.url!, true)}
                 style={{ border: 'none', padding: 0, cursor: 'pointer', borderRadius: 8, overflow: 'hidden', background: '#000', height: 150 }}
               >
-                <video src={s.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* poster is the scene's OWN approved key still. Without it a
+                    finished clip paints solid black until several MB of 720p
+                    decode, which reads as "the video didn't generate" — the
+                    row was healthy, the URL valid, the card just had nothing
+                    to show yet (owner, Sep 4: "it says I have video generated
+                    but I don't see it"). The still is already loaded two lines
+                    below for the pre-clip state; showing it under the video
+                    costs nothing and makes the card correct at first paint. */}
+                <video src={s.url} poster={s.still_url || undefined} preload="metadata"
+                  muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             )}
 

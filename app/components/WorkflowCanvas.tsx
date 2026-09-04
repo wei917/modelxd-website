@@ -21,6 +21,19 @@ import { useT } from '../../lib/i18n'
 import { PORT_COLORS } from '../../lib/ports'
 import ModelPickerDialog from './ModelPickerDialog'
 
+/** A video URL that will actually PAINT a frame when it lands.
+ *
+ *  A bare <video src> sits at readyState 0 and renders solid black until
+ *  enough of the file decodes — on a 720p clip that reads as a missing or
+ *  broken generation. The media fragment makes the browser seek to 0.1s and
+ *  decode that frame, so the node shows its own opening image instead of a
+ *  hole. Canvas nodes have no separate still to use as a poster; the video
+ *  is the thumbnail. */
+function firstFrame(url: string | null | undefined): string | undefined {
+  if (!url) return undefined
+  return url.includes('#') ? url : `${url}#t=0.1`
+}
+
 export type NodeKind = 'source' | 'input' | 'video' | 'shot'
 
 export type CanvasNode = {
@@ -133,6 +146,7 @@ function RegenControl({ n, busy, fallbackDur, onRegen, onSent }: {
   // on the re-run. All of them by default — deselect to drop one, or all
   // of them for a clean text-only take.
   const [refOff, setRefOff] = useState<Record<number, boolean>>({})
+
   const pickable = (n.sources ?? []).filter(s => s.storagePath && s.bucket)
   const chosenRefs = pickable
     .filter((_, i) => !refOff[i])
@@ -205,7 +219,7 @@ function RegenControl({ n, busy, fallbackDur, onRegen, onSent }: {
                         >
                           {s.url
                             ? ((s.mediaType || '').startsWith('video/')
-                              ? <video src={s.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ? <video src={firstFrame(s.url)} preload="metadata" muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               // eslint-disable-next-line @next/next/no-img-element
                               : <img src={s.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
                             : <span aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 14 }}>🖼</span>}
@@ -425,7 +439,7 @@ function NodeActionPanel({ n, origin, onPlay, onClose, onDelete, onRegen, pick, 
               >
                 {s.url
                   ? ((s.mediaType || '').startsWith('video/')
-                    ? <video src={s.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <video src={firstFrame(s.url)} preload="metadata" muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     // eslint-disable-next-line @next/next/no-img-element
                     : <img src={s.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
                   : <span aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 16 }}>{(s.mediaType || '').startsWith('video/') ? '🎞' : '🖼'}</span>}
@@ -1154,7 +1168,7 @@ export default function WorkflowCanvas({
                       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                         {n.takes.filter(tk => tk.rowId !== n.rowId).slice(0, 2).map((tk, si) => tk.thumb ? (
                           tk.isVideo
-                            ? <video key={tk.id} src={tk.thumb} muted playsInline style={{
+                            ? <video key={tk.id} src={firstFrame(tk.thumb)} preload="metadata" muted playsInline style={{
                                 position: 'absolute', left: 34 + si * 12, top: 10 + si * 5,
                                 width: '58%', height: '72%', objectFit: 'cover', borderRadius: 6,
                                 border: '1px solid #3a3c42', transform: `rotate(${6 + si * 4}deg)`,
@@ -1169,7 +1183,7 @@ export default function WorkflowCanvas({
                               }} />
                         ) : null)}
                         {n.thumb && (n.isVideo
-                          ? <video src={n.thumb} muted playsInline style={{
+                          ? <video src={firstFrame(n.thumb)} preload="metadata" muted playsInline style={{
                               position: 'absolute', left: 8, top: 6, width: '64%', height: '82%',
                               objectFit: 'cover', borderRadius: 6, border: '1px solid #4a4c52',
                               transform: 'rotate(-3deg)', boxShadow: '0 3px 10px rgba(0,0,0,0.6)',
@@ -1490,7 +1504,7 @@ export default function WorkflowCanvas({
                 <div style={{ height: 110, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {s.url
                     ? (s.mediaType.startsWith('video/')
-                      ? <video src={s.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <video src={firstFrame(s.url)} preload="metadata" muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       // eslint-disable-next-line @next/next/no-img-element
                       : <img src={s.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
                     : <span style={{ color: '#555', fontSize: 11, fontFamily: 'var(--mono)' }}>expired</span>}
