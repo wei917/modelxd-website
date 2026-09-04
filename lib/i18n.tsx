@@ -394,6 +394,7 @@ export const STRINGS: Record<string, Entry> = {
   'xd.mv.form.anime':     { en: 'Anime', 'zh-Hant': '動漫', 'zh-Hans': '动漫', ja: 'アニメ', ko: '애니메' },
   'xd.mv.form.lyric':     { en: 'Lyric video', 'zh-Hant': '歌詞字卡', 'zh-Hans': '歌词字卡', ja: 'リリックビデオ', ko: '리릭 비디오' },
   'xd.mv.aspect':    { en: 'Aspect', 'zh-Hant': '畫面比例', 'zh-Hans': '画面比例', ja: 'アスペクト', ko: '화면 비율' },
+  'xd.mv.duration.songhint': { en: 'Attach a song and this fills in its length', 'zh-Hant': '附上歌曲後會自動帶入長度', 'zh-Hans': '附上歌曲后会自动带入长度', ja: '曲を添付すると長さが入ります', ko: '곡을 첨부하면 길이가 자동으로 채워집니다' },
   'xd.mv.duration.song':  { en: 'Whole song', 'zh-Hant': '整首歌', 'zh-Hans': '整首歌', ja: '曲全体', ko: '곡 전체' },
   'xd.mv.duration':  { en: 'Length', 'zh-Hant': '長度', 'zh-Hans': '长度', ja: '長さ', ko: '길이' },
   'xd.mv.section':   { en: 'Which part of the song?', 'zh-Hant': '歌曲的哪一段？', 'zh-Hans': '歌曲的哪一段？', ja: '曲のどの部分？', ko: '곡의 어느 부분?' },

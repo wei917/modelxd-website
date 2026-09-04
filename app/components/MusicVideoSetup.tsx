@@ -129,6 +129,11 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   // to make the user eyeball it and type a number, which is the one duration
   // nobody should have to guess — the track already knows (owner, Sep 4).
   const [songSeconds, setSongSeconds] = useState<number | null>(null)
+  // Whether length is TRACKING the song rather than holding a fixed number.
+  // Kept as a mode so the chip can be chosen before the file is attached and
+  // still be right afterwards — the length follows the song in, and follows
+  // it again if the song is swapped (owner, Sep 4).
+  const [matchSong, setMatchSong] = useState(false)
   const [styleAtts, setStyle] = useState<Attachment[]>([])
   const [castAtts, setCast]   = useState<Attachment[]>([])
 
@@ -151,6 +156,10 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     el.src = url
     return () => { dead = true; URL.revokeObjectURL(url) }
   }, [songAtts])
+
+  useEffect(() => {
+    if (matchSong && songSeconds != null) setDur(songSeconds)
+  }, [matchSong, songSeconds])
 
   const ready = lyrics.trim().length > 0 || songAtts.length > 0
   // A valid link answers palette, grade, lens, light, location and cutting
@@ -283,15 +292,19 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <div>
           <span style={label}>{t('xd.mv.duration')}</span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {/* The song's own length, offered first — a music video that stops
-                before the track does is almost never what was wanted. */}
-            {songSeconds != null && (
-              <button onClick={() => setDur(songSeconds)} style={chip(duration === songSeconds)}>
-                ♪ {t('xd.mv.duration.song')} ({songSeconds}s)
-              </button>
-            )}
-            {DURATIONS.filter(d => d !== songSeconds).map(d => (
-              <button key={d} onClick={() => setDur(d)} style={chip(duration === d)}>{d}s</button>
+            {/* Always offered, so the option is discoverable before a file
+                exists — it just fills in its own number once one does. A music
+                video that stops before the track does is almost never what was
+                wanted. */}
+            <button
+              onClick={() => { setMatchSong(true); if (songSeconds != null) setDur(songSeconds) }}
+              title={songSeconds == null ? t('xd.mv.duration.songhint') : undefined}
+              style={{ ...chip(matchSong), opacity: songSeconds == null && !matchSong ? 0.55 : 1 }}
+            >
+              ♪ {t('xd.mv.duration.song')}{songSeconds != null ? ` (${songSeconds}s)` : ''}
+            </button>
+            {DURATIONS.map(d => (
+              <button key={d} onClick={() => { setMatchSong(false); setDur(d) }} style={chip(!matchSong && duration === d)}>{d}s</button>
             ))}
             <input
               /* Floor is the shortest clip a video model will make (3s on
@@ -299,7 +312,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
                  of 10 was arbitrary and refused runtimes we had already shot
                  — a 6-second single-scene MV is a normal thing to want. */
               type="number" className="no-spin" min={3} max={180} value={duration}
-              onChange={e => setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 30))))}
+              onChange={e => { setMatchSong(false); setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 30)))) }}
               style={{ width: 58, padding: '5px 6px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5, textAlign: 'center' }}
             />
           </div>
