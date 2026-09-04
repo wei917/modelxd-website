@@ -9,7 +9,7 @@
 // flows): pick from cards, chips for aspect/duration, labeled reference
 // slots, free text last and optional.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import AttachmentButton, { type Attachment } from './AttachmentButton'
 import type { StoryExtra } from './StorySetup'
@@ -121,8 +121,32 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   const [lyrics, setLyrics]   = useState('')
   const [title, setTitle]     = useState('')
   const [songAtts, setSong]   = useState<Attachment[]>([])
+  // The song's real length, read off the file in the browser. The form used
+  // to make the user eyeball it and type a number, which is the one duration
+  // nobody should have to guess — the track already knows (owner, Sep 4).
+  const [songSeconds, setSongSeconds] = useState<number | null>(null)
   const [styleAtts, setStyle] = useState<Attachment[]>([])
   const [castAtts, setCast]   = useState<Attachment[]>([])
+
+  useEffect(() => {
+    const f = songAtts[0]?.file
+    if (!f) { setSongSeconds(null); return }
+    // Bytes are still in the browser until the run is submitted, so this
+    // needs no upload and no round trip.
+    const url = URL.createObjectURL(f)
+    const el = new Audio()
+    let dead = false
+    const done = () => {
+      if (!dead && Number.isFinite(el.duration) && el.duration > 0) {
+        setSongSeconds(Math.max(3, Math.min(180, Math.round(el.duration))))
+      }
+      URL.revokeObjectURL(url)
+    }
+    el.addEventListener('loadedmetadata', done)
+    el.addEventListener('error', () => { URL.revokeObjectURL(url) })
+    el.src = url
+    return () => { dead = true; URL.revokeObjectURL(url) }
+  }, [songAtts])
 
   const ready = lyrics.trim().length > 0 || songAtts.length > 0
   // A valid link answers palette, grade, lens, light, location and cutting
@@ -255,7 +279,14 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <div>
           <span style={label}>{t('xd.mv.duration')}</span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {DURATIONS.map(d => (
+            {/* The song's own length, offered first — a music video that stops
+                before the track does is almost never what was wanted. */}
+            {songSeconds != null && (
+              <button onClick={() => setDur(songSeconds)} style={chip(duration === songSeconds)}>
+                ♪ {t('xd.mv.duration.song')} ({songSeconds}s)
+              </button>
+            )}
+            {DURATIONS.filter(d => d !== songSeconds).map(d => (
               <button key={d} onClick={() => setDur(d)} style={chip(duration === d)}>{d}s</button>
             ))}
             <input
