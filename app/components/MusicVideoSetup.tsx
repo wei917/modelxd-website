@@ -44,7 +44,11 @@ const FORM_BRIEF: Record<string, string> = {
   lyric:     'lyric-forward typography style',
 }
 
-const DURATIONS = [15, 18, 30, 60]
+// Round numbers only. 15 and 18 were here because an early test song was 18
+// seconds long — a preset that fits one file is not a preset (owner, Sep 4:
+// "why do we need 18s?"). The song's own length is offered separately when
+// there is a song, which is the answer 18 was pretending to be.
+const DURATIONS = [10, 30, 60]
 
 // Not an adjective — each level switches on a different set of REQUIREMENTS
 // the board must satisfy (owner, Aug 28, after an 18s cut came back as the
@@ -116,7 +120,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   const [mood, setMood]       = useState<string | null>(null)
   const [form, setForm]       = useState('kpop')
   const [aspect, setAspect]   = useState<'16:9' | '9:16'>('16:9')
-  const [duration, setDur]    = useState<number>(18)
+  const [duration, setDur]    = useState<number>(30)
   const [section, setSection] = useState('')
   const [lyrics, setLyrics]   = useState('')
   const [title, setTitle]     = useState('')
@@ -295,7 +299,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
                  of 10 was arbitrary and refused runtimes we had already shot
                  — a 6-second single-scene MV is a normal thing to want. */
               type="number" className="no-spin" min={3} max={180} value={duration}
-              onChange={e => setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 18))))}
+              onChange={e => setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 30))))}
               style={{ width: 58, padding: '5px 6px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5, textAlign: 'center' }}
             />
           </div>
