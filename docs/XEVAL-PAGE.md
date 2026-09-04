@@ -322,6 +322,12 @@ in `app/xeval/page.tsx`): x = $/task (log), y = mean score, the efforts of
 one model joined in effort order; it renders only when some model has two or
 more efforts, so today it appears nowhere until Social is published.
 
+The verifier table also carries a **speed column** (Sep 3, owner: "where is
+the speed?"): `s / reply` where the set records turns (Social: the tested
+model's `model_s` divided by half its turns, since messages alternate between
+two chairs), otherwise the median agent time per task (TB, LAB). The runs
+query selects `turns` for this.
+
 ## 8. Open items
 
 - **Per-task library view** (designed, not built, zero new spend): a section
