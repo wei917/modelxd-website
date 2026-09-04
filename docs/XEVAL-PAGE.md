@@ -334,7 +334,9 @@ Storage: `runs.ttft_s` / `runs.out_tps` per scene in xeval.db (importer merges
 2026-09-04; `publish.py` withholds them while the columns are absent, so a
 fresh project publishes cleanly before the migration). The verifier table
 shows TTFT and tok/s as medians per entry — live on both hosts since
-2026-09-04. From now on the pilot streams every
+2026-09-04. Every column of the verifier table sorts (Sep 4): click a header,
+click again to flip; the rank column follows the chosen order, the lead
+sentence keeps the canonical score order; a missing value sorts last. From now on the pilot streams every
 tested call, so a full run carries TTFT for every reply, not just the first.
 
 **The curve is flat.** Paired on the same 70 scenes, no model's low→high

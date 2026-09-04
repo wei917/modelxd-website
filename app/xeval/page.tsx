@@ -523,6 +523,49 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   const anyTtft = rows.some(r => r.ttfts.length > 0)
   const anyTps = rows.some(r => r.tpss.length > 0)
   const speedOf = (r: { secs: number[]; turns: number }) => !r.secs.length ? '—' : perReply && r.turns > 0 ? fmtDur(r.secs.reduce((a, b) => a + b, 0) / (r.turns / 2)) : fmtDur(median(r.secs))
+  const speedSecs = (r: { secs: number[]; turns: number }) => !r.secs.length ? null : perReply && r.turns > 0 ? r.secs.reduce((a, b) => a + b, 0) / (r.turns / 2) : median(r.secs)
+  // Every column sorts (owner, Sep 4). `rows` stays in the canonical order
+  // (score desc) because the lead sentence and the rank column's meaning
+  // come from it; `view` is what the reader chose to look at. A missing
+  // value sorts last in either direction.
+  type TBKey = 'model' | 'effort' | 'pass' | 'ttft' | 'tps' | 'reply' | 'spec' | 'cost' | 'persolved'
+  const DESC_FIRST: TBKey[] = ['pass', 'tps', 'spec']
+  const [tbSort, setTbSort] = useState<{ k: TBKey; dir: 'asc' | 'desc' }>({ k: 'pass', dir: 'desc' })
+  const onTbSort = (k: TBKey) => setTbSort(s => s.k === k ? { k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { k, dir: DESC_FIRST.includes(k) ? 'desc' : 'asc' })
+  type TBRow = typeof rows[number]
+  const keyOf = (r: TBRow, k: TBKey): number | string | null => {
+    switch (k) {
+      case 'model': return r.display.toLowerCase()
+      case 'effort': return EFFORT_RANK.indexOf(r.effort)
+      case 'pass': return r.scoreSum / r.n
+      case 'ttft': return r.ttfts.length ? median(r.ttfts) : null
+      case 'tps': return r.tpss.length ? median(r.tpss) : null
+      case 'reply': return speedSecs(r)
+      case 'spec': return r.specs.length ? r.specs.reduce((a, b) => a + b, 0) / r.specs.length : null
+      case 'cost': return r.cost > 0 ? r.cost / r.n : null
+      case 'persolved': return r.cost > 0 && r.solved ? r.cost / r.solved : null
+    }
+  }
+  const view = [...rows].sort((a, b) => {
+    const x = keyOf(a, tbSort.k), y = keyOf(b, tbSort.k)
+    if (x == null && y == null) return 0
+    if (x == null) return 1
+    if (y == null) return -1
+    const c = typeof x === 'string' ? x.localeCompare(String(y)) : x - Number(y)
+    return (tbSort.dir === 'asc' ? c : -c) || (b.scoreSum / b.n - a.scoreSum / a.n)
+  })
+  const Th = ({ label, k, align = 'left', tip }: { label: string; k: TBKey; align?: 'left' | 'right'; tip?: string }) => {
+    const active = tbSort.k === k
+    return (
+      <th style={{ padding: '8px 12px', textAlign: align }} title={tip}>
+        <button onClick={() => onTbSort(k)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                                                     fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit', color: active ? 'var(--white)' : 'var(--muted)', transition: 'color 0.12s' }}>
+          <span>{label}</span>
+          <span style={{ fontSize: 8, opacity: active ? 1 : 0.3, color: active ? 'var(--green)' : 'inherit' }}>{active ? (tbSort.dir === 'asc' ? '▲' : '▼') : '▲'}</span>
+        </button>
+      </th>
+    )
+  }
   // Pass rate is ABSOLUTE (unlike Elo, which is scale-relative), so these
   // cutoffs are fixed — normalising to the field painted the lowest of four
   // close entries 'poor' at 67%, which is a strong score on hard terminal
@@ -619,19 +662,19 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border2)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', textAlign: 'left' }}>
               <th style={{ padding: '8px 12px' }}>#</th>
-              <th style={{ padding: '8px 12px' }}>{t('xeval.col.model')}</th>
-              <th style={{ padding: '8px 12px' }}>{t('xeval.col.effort')}</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.passrate')}</th>
-              {anyTtft && <th style={{ padding: '8px 12px', textAlign: 'right' }} title={t('xeval.col.ttft.tip')}>{t('xeval.col.ttft')}</th>}
-              {anyTps && <th style={{ padding: '8px 12px', textAlign: 'right' }} title={t('xeval.col.tps.tip')}>{t('xeval.col.tps')}</th>}
-              {anyTime && <th style={{ padding: '8px 12px', textAlign: 'right' }} title={t(perReply ? 'xeval.social.sreply.tip' : 'xeval.tb.time.tip')}>{t(perReply ? 'xeval.social.sreply' : 'xeval.col.time')}</th>}
-              {anySpec && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.spec')}</th>}
-              {anyCost && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>}
-              {anyCost && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.persolved')}</th>}
+              <Th label={t('xeval.col.model')} k="model" />
+              <Th label={t('xeval.col.effort')} k="effort" />
+              <Th label={t('xeval.tb.passrate')} k="pass" align="right" />
+              {anyTtft && <Th label={t('xeval.col.ttft')} k="ttft" align="right" tip={t('xeval.col.ttft.tip')} />}
+              {anyTps && <Th label={t('xeval.col.tps')} k="tps" align="right" tip={t('xeval.col.tps.tip')} />}
+              {anyTime && <Th label={t(perReply ? 'xeval.social.sreply' : 'xeval.col.time')} k="reply" align="right" tip={t(perReply ? 'xeval.social.sreply.tip' : 'xeval.tb.time.tip')} />}
+              {anySpec && <Th label={t('xeval.col.spec')} k="spec" align="right" tip={t('xeval.col.spec.tip')} />}
+              {anyCost && <Th label={t('xeval.col.cost')} k="cost" align="right" />}
+              {anyCost && <Th label={t('xeval.tb.persolved')} k="persolved" align="right" />}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {view.map((r, i) => (
               <tr key={r.display + r.effort} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{i + 1}</td>
                 <td style={{ padding: '8px 12px' }}>
