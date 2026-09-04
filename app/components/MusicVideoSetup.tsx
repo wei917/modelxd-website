@@ -227,7 +227,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
   }
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', width: '100%', maxWidth: 780, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14,
+    <div className="mv-card" style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', width: '100%', maxWidth: 780, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14,
       // The chat pane is a flex column that scrolls. A flex child shrinks by
       // default, so a tall form is COMPRESSED instead of overflowing: the pane
       // thinks everything fits, no scrollbar appears, and the lower fields are
@@ -244,9 +244,9 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <span style={label}>{t('xd.mv.reference')}</span>
         <input
           value={reference} onChange={e => setRef(e.target.value)} placeholder={t('xd.mv.referenceph')}
-          style={{ ...field, border: '1px solid ' + (hasRef ? 'var(--red)' : 'var(--border2)') }}
+          className={'mv-field' + (hasRef ? ' is-live' : '')}
         />
-        <span style={{ ...hint, color: hasRef ? 'var(--red)' : 'var(--muted2)' }}>
+        <span style={{ ...hint, color: hasRef ? 'var(--blue)' : 'var(--muted2)' }}>
           {reference.trim() && !hasRef ? t('xd.mv.referencebad') : hasRef ? t('xd.mv.referenceon') : t('xd.mv.referencehint')}
         </span>
       </div>
@@ -259,7 +259,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <span style={label}>{t('xd.mv.formpick')}</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {FORMS.map(f => (
-              <button key={f.id} onClick={() => setForm(f.id)} style={chip(form === f.id)}>
+              <button key={f.id} onClick={() => setForm(f.id)} className={'mv-chip' + (form === f.id ? ' on' : '')}>
                 {t(f.i18n)}
               </button>
             ))}
@@ -275,7 +275,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <span style={label}>{t('xd.mv.drama')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {DRAMA.map(d => (
-            <button key={d.id} onClick={() => setDrama(d.id)} style={chip(drama === d.id)}>
+            <button key={d.id} onClick={() => setDrama(d.id)} className={'mv-chip' + (drama === d.id ? ' on' : '')}>
               {t(d.i18n)}
             </button>
           ))}
@@ -289,7 +289,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <span style={label}>{t('xd.mv.mood')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {MOODS.map(m => (
-            <button key={m.id} onClick={() => setMood(mood === m.id ? null : m.id)} style={chip(mood === m.id)}>
+            <button key={m.id} onClick={() => setMood(mood === m.id ? null : m.id)} className={'mv-chip' + (mood === m.id ? ' on' : '')}>
               {t(m.i18n)}
             </button>
           ))}
@@ -300,8 +300,8 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <div>
           <span style={label}>{t('xd.mv.aspect')}</span>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => setAspect('16:9')} style={chip(aspect === '16:9')}>▭ 16:9</button>
-            <button onClick={() => setAspect('9:16')} style={chip(aspect === '9:16')}>▯ 9:16</button>
+            <button onClick={() => setAspect('16:9')} className={'mv-chip' + (aspect === '16:9' ? ' on' : '')}>▭ 16:9</button>
+            <button onClick={() => setAspect('9:16')} className={'mv-chip' + (aspect === '9:16' ? ' on' : '')}>▯ 9:16</button>
           </div>
         </div>
         <div>
@@ -314,21 +314,22 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
             <button
               onClick={() => { setMatchSong(true); if (songSeconds != null) setDur(songSeconds) }}
               title={songSeconds == null ? t('xd.mv.duration.songhint') : undefined}
-              style={{ ...chip(matchSong), opacity: songSeconds == null && !matchSong ? 0.55 : 1 }}
+              className={'mv-chip' + (matchSong ? ' on' : '')}
+              style={{ opacity: songSeconds == null && !matchSong ? 0.55 : 1 }}
             >
               ♪ {t('xd.mv.duration.song')}{songSeconds != null ? ` (${songSeconds}s)` : ''}
             </button>
             {DURATIONS.map(d => (
-              <button key={d} onClick={() => { setMatchSong(false); setDur(d) }} style={chip(!matchSong && duration === d)}>{d}s</button>
+              <button key={d} onClick={() => { setMatchSong(false); setDur(d) }} className={'mv-chip' + (!matchSong && duration === d ? ' on' : '')}>{d}s</button>
             ))}
             <input
               /* Floor is the shortest clip a video model will make (3s on
                  HappyHorse, 2s on Wan 3.0), not a round number. The old min
                  of 10 was arbitrary and refused runtimes we had already shot
                  — a 6-second single-scene MV is a normal thing to want. */
-              type="number" className="no-spin" min={3} max={180} value={duration}
+              type="number" className="mv-field no-spin" min={3} max={180} value={duration}
               onChange={e => { setMatchSong(false); setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 30)))) }}
-              style={{ ...field, width: 62, padding: '7px 6px', textAlign: 'center' }}
+              style={{ width: 62, padding: '7px 6px', textAlign: 'center' }}
             />
           </div>
         </div>
@@ -336,7 +337,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <span style={label}>{t('xd.mv.section')}</span>
           <input
             value={section} onChange={e => setSection(e.target.value)} placeholder={t('xd.mv.sectionph')}
-            style={field}
+            className="mv-field"
           />
         </div>
       </div>
@@ -346,7 +347,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <textarea
           value={lyrics} onChange={e => setLyrics(e.target.value)} rows={3}
           placeholder={t('xd.mv.lyricsph')}
-          style={{ ...field, padding: '9px 10px', resize: 'vertical', fontFamily: 'inherit' }}
+          className="mv-field" style={{ resize: 'vertical', fontFamily: 'inherit' }}
         />
       </div>
 
@@ -361,8 +362,8 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <div>
             <span style={label}>{t('xd.mv.perf')}</span>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button onClick={() => setSync(false)} style={chip(!sync)}>{t('xd.mv.perf.silent')}</button>
-              <button onClick={() => setSync(true)}  style={chip(sync)}>{t('xd.mv.perf.sync')}</button>
+              <button onClick={() => setSync(false)} className={'mv-chip' + (!sync ? ' on' : '')}>{t('xd.mv.perf.silent')}</button>
+              <button onClick={() => setSync(true)}  className={'mv-chip' + (sync ? ' on' : '')}>{t('xd.mv.perf.sync')}</button>
             </div>
             <span style={{ ...hint, maxWidth: 460 }}>
               {sync ? t('xd.mv.perf.synchint') : t('xd.mv.perf.silenthint')}
@@ -382,7 +383,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <span style={label}>{t('xd.mv.title')}</span>
           <input
             value={title} onChange={e => setTitle(e.target.value)} placeholder={t('xd.mv.titleph')}
-            style={field}
+            className="mv-field"
           />
         </div>
       </div>
@@ -390,11 +391,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
       <button
         onClick={start} disabled={!ready || busy}
         title={ready ? '' : t('xd.mv.needsong')}
-        style={{
-          alignSelf: 'flex-end', padding: '10px 26px', borderRadius: 999, border: 'none',
-          background: 'var(--red)', color: '#fff', fontWeight: 800, fontSize: 13.5,
-          cursor: (!ready || busy) ? 'default' : 'pointer', opacity: (!ready || busy) ? 0.45 : 1,
-        }}
+        className="mv-start"
       >{t('xd.mv.start')}</button>
     </div>
   )

@@ -20,6 +20,7 @@
      at a glance (landing comparator). Tuned for contrast on --bg. */
   --blue:      #2f6fd0;
   --blue-dim:  rgba(47,111,208,0.1);
+  --blue-glow: rgba(47,111,208,0.25);
   --green:     #009970;
   --green-dim: rgba(0,153,112,0.1);
 
@@ -2521,3 +2522,66 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .showcase-chip { display: none; }
 }
 
+
+
+/* ── XDirect setup forms: the neon treatment ──────────────────────────────
+   Owner, Sep 4: "change the style to be neon ... ModelXD scene is blue/red,
+   like star wars". The canvas stays warm off-white — this is a light-theme
+   product and inverting one form would make it the odd page out — so the neon
+   is carried by the two brand accents and a GLOW, which is a mechanic the
+   site already owns (.btn-battle and .btn-next both hover to
+   `0 0 32px var(--red-glow)`).
+
+   Red is selection, because red is already the accent for every active nav
+   item and every primary button. Blue is reserved for the reference LINK,
+   which is the one control pointing at something outside the product — the
+   globals comment sanctions blue exactly for "two choices told apart at a
+   glance". The two colours never mean the same thing.
+   Focus lives here rather than inline because :focus has no inline form. */
+
+.mv-field {
+  width: 100%; padding: 8px 11px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--bg);
+  color: var(--white); font-size: 12.5px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mv-field::placeholder { color: var(--muted); }
+.mv-field:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-dim), 0 0 18px var(--blue-glow);
+}
+/* A live reference link — the field is pointing somewhere real. */
+.mv-field.is-live {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blue-dim), 0 0 14px var(--blue-glow);
+}
+
+.mv-chip {
+  padding: 7px 13px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--border2); background: transparent; color: var(--muted);
+  transition: all 0.15s;
+}
+.mv-chip:hover { border-color: var(--red); color: var(--red); }
+.mv-chip.on {
+  border-color: var(--red); color: var(--red); background: var(--red-dim);
+  box-shadow: 0 0 0 2px var(--red-dim), 0 0 14px var(--red-glow);
+}
+.mv-chip:disabled { cursor: default; }
+
+/* The card's top edge is the one place both sabers appear together. */
+.mv-card { position: relative; overflow: hidden; }
+.mv-card::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 2px;
+  background: linear-gradient(90deg, var(--red) 0%, #8b5ea8 50%, var(--blue) 100%);
+  opacity: 0.9;
+}
+
+.mv-start {
+  align-self: flex-end; padding: 10px 28px; border-radius: 6px; border: none;
+  background: var(--red); color: #fff; font-weight: 700; font-size: 13.5px;
+  cursor: pointer; transition: background 0.15s, box-shadow 0.15s;
+}
+.mv-start:hover:not(:disabled) { background: #ff5249; box-shadow: 0 0 32px var(--red-glow); }
+.mv-start:disabled { opacity: 0.4; cursor: default; }
