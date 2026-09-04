@@ -330,9 +330,11 @@ chunk followed by a burst gives 200+ on a single call).
 
 Storage: `runs.ttft_s` / `runs.out_tps` per scene in xeval.db (importer merges
 `work/sotopia/ttft-<entry>.jsonl`, or a streamed run's own `calls-*.jsonl`);
-`xeval_runs` gets the same two columns from **migration 94**, and
-`publish.py` withholds them until it is applied. The verifier table shows
-TTFT and tok/s as medians per entry. From now on the pilot streams every
+`xeval_runs` gets the same two columns from **migration 94** (applied
+2026-09-04; `publish.py` withholds them while the columns are absent, so a
+fresh project publishes cleanly before the migration). The verifier table
+shows TTFT and tok/s as medians per entry — live on both hosts since
+2026-09-04. From now on the pilot streams every
 tested call, so a full run carries TTFT for every reply, not just the first.
 
 **The curve is flat.** Paired on the same 70 scenes, no model's low→high
