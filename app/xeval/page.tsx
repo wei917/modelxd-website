@@ -546,14 +546,6 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       case 'persolved': return r.cost > 0 && r.solved ? r.cost / r.solved : null
     }
   }
-  const view = [...rows].sort((a, b) => {
-    const x = keyOf(a, tbSort.k), y = keyOf(b, tbSort.k)
-    if (x == null && y == null) return 0
-    if (x == null) return 1
-    if (y == null) return -1
-    const c = typeof x === 'string' ? x.localeCompare(String(y)) : x - Number(y)
-    return (tbSort.dir === 'asc' ? c : -c) || (b.scoreSum / b.n - a.scoreSum / a.n)
-  })
   const Th = ({ label, k, align = 'left', tip }: { label: string; k: TBKey; align?: 'left' | 'right'; tip?: string }) => {
     const active = tbSort.k === k
     return (
@@ -640,6 +632,16 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
     rows.unshift({ display: 'ModelXD Autopilot', provider: 'modelxd', effort: 'auto', n: byTask.size,
                    solved: apSolved, cost: apCost, secs: apSecs, turns: apTurns, ttfts: apTtfts, tpss: apTpss, scoreSum: apScore, specs: apSpecs })
   }
+  // Sorted AFTER the Autopilot row joins `rows` — computing the view above
+  // that block dropped Autopilot from every verifier tab (Sep 4, owner).
+  const view = [...rows].sort((a, b) => {
+    const x = keyOf(a, tbSort.k), y = keyOf(b, tbSort.k)
+    if (x == null && y == null) return 0
+    if (x == null) return 1
+    if (y == null) return -1
+    const c = typeof x === 'string' ? x.localeCompare(String(y)) : x - Number(y)
+    return (tbSort.dir === 'asc' ? c : -c) || (b.scoreSum / b.n - a.scoreSum / a.n)
+  })
   const harness = [...latest.values()].map(r => r.harness).find(Boolean) ?? 'terminus-2'
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
   return (
