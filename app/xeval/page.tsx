@@ -581,7 +581,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '0 0 24px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
         <span><strong style={{ color: 'var(--white)' }}>{rows.length}</strong> {t('xeval.stat.entries')}</span>
         <span><strong style={{ color: 'var(--white)' }}>{taskN}</strong> {t('xeval.stat.tasks')}</span>
-        <span>{t(label === 'Harvey LAB' ? 'xeval.lab.scored' : 'xeval.tb.verifier')}</span>
+        <span>{t(label === 'Harvey LAB' ? 'xeval.lab.scored' : label === 'Social (SOTOPIA)' ? 'xeval.social.scored' : 'xeval.tb.verifier')}</span>
       </div>
       <div style={{ overflowX: 'auto', marginBottom: 24 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640, fontSize: 13 }}>
@@ -623,7 +623,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       <section style={{ fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.65, borderTop: '1px solid var(--border)', paddingTop: 14, maxWidth: 860 }}>
         <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
         <p style={{ margin: '8px 0 0' }}>
-          {(label === 'Harvey LAB' ? t('xeval.lab.method.body') : t('xeval.tb.method.body'))
+          {(label === 'Harvey LAB' ? t('xeval.lab.method.body') : label === 'Social (SOTOPIA)' ? t('xeval.social.method.body') : t('xeval.tb.method.body'))
             .replace('{n}', String(taskN)).replace('{set}', label).replace('{harness}', String(harness))}
         </p>
       </section>
