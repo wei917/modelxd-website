@@ -659,15 +659,35 @@ where s.event='start'
                   where e.request_id = s.request_id and e.event='end')
   and s.created_at < now() - interval '10 minutes';
 
--- Success rate per provider+model, last 24h
+-- Success rate per provider+model, last 24h.
+-- The REFUSED filter is load-bearing: a run turned away BEFORE any provider
+-- call is logged as status='failed' with a 'REFUSED:' error_message, and
+-- counting those as provider failures makes a healthy model look broken.
 select provider, model_name,
        count(*) filter (where status='success') as ok,
-       count(*) filter (where status='failed')  as fail,
+       count(*) filter (where status='failed' and error_message not like 'REFUSED:%') as fail,
        round(avg(latency_ms))                   as avg_ms
 from provider_calls
 where event='end' and created_at > now() - interval '24 hours'
 group by 1,2 order by ok+fail desc;
+
+-- Why runs were turned away before reaching a provider (no credits, blocked
+-- model, rejected attachment). These rows have no 'start' pair and zero
+-- latency — they never left the building.
+select created_at, provider, model_name, user_id, error_message
+from provider_calls
+where error_message like 'REFUSED:%' and created_at > now() - interval '24 hours'
+order by created_at desc;
 ```
+
+**Pre-flight refusals are logged too** (`logRefusal` in
+`lib/providers/call-log.ts`). They ride in `error_message` behind a
+`REFUSED:` prefix rather than a third `status`, because
+`provider_calls.status` has a CHECK constraint of `('success','failed')` and
+a new value would need a migration. Before this, a refused run existed only
+in stdout and a chat bubble, so debugging one meant unnesting jsonb out of
+`xdirector_conversations.bubbles` — which is exactly how the insufficient-credits
+case was found on Sep 3.
 
 ## Admin
 

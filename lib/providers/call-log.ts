@@ -40,6 +40,51 @@ interface EndOutcome {
   usage_metadata?:       unknown
 }
 
+/** Prefix that marks an `end` row as a PRE-FLIGHT REFUSAL rather than a
+ *  provider failure. Refusals never reach a provider, so they have no start
+ *  row and no latency — but they are the most common way a run dies, and
+ *  until now they existed only in stdout and a chat bubble. Debugging one
+ *  meant unnesting jsonb out of a conversation blob.
+ *
+ *  It rides in `error_message` because `provider_calls.status` has a CHECK
+ *  constraint of ('success','failed') — a third value needs a migration, and
+ *  this needed none. Analytics MUST filter it out or refusals will read as
+ *  provider failures:
+ *
+ *    -- real provider failures only
+ *    where status = 'failed' and error_message not like 'REFUSED:%'
+ *    -- refusals only
+ *    where error_message like 'REFUSED:%'
+ */
+export const REFUSED_PREFIX = 'REFUSED:'
+
+/** Log a run that was turned away BEFORE any provider call: no credits, a
+ *  blocked model, a rejected attachment. Fire-and-forget like the rest, and
+ *  it mints its own request_id since there is no start row to pair with. */
+export function logRefusal(
+  d: CallDescriptor,
+  reason: string,
+  detail?: string | null,
+): void {
+  fireAndForget(
+    {
+      action:         'end',
+      request_id:     crypto.randomUUID(),
+      provider:       d.provider,
+      model_name:     d.model_name,
+      model_id:       d.model_id ?? null,
+      mode:           d.mode,
+      user_id:        d.user_id ?? null,
+      thinking_level: d.thinking_level ?? null,
+      status:         'failed',
+      error_message:  `${REFUSED_PREFIX} ${reason}${detail ? ` — ${detail}` : ''}`.slice(0, 800),
+      latency_ms:     0,
+      cost_usd:       0,
+    },
+    'refusal',
+  )
+}
+
 function endpoint(): string | null {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!base) return null

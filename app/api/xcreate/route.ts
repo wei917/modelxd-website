@@ -24,6 +24,7 @@ import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, f
 import { estimateCost, searchRate, supportsWebSearch, resolveTokenRate } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { portSchemaFor, assignPorts, toWires } from '@/lib/ports'
+import { logRefusal } from '@/lib/providers/call-log'
 
 const LOG = '[xcreate]'
 
@@ -643,6 +644,19 @@ export async function POST(req: Request) {
           const credits = await getUserCredits(user.id)
           const balanceCents = credits?.balance_cents ?? 0
           console.warn(`${LOG} blocked: needs ~${estCents}c, balance ${balanceCents}c (user ${user.id})`)
+          // …and to the call log, so a refusal is QUERYABLE. This is the most
+          // common way a run dies and it used to leave no trace but this line
+          // and a chat bubble: debugging one meant unnesting jsonb out of a
+          // conversation blob (owner, Sep 4: "so why there is no log when I
+          // ask you to debug"). One row per model, since a multi-model run is
+          // refused for all of them at once.
+          for (const m of models) {
+            logRefusal(
+              { provider: m.provider, model_name: m.model_name, model_id: m.id, mode, user_id: user.id },
+              'insufficient_credits',
+              `needs ${estCents}c, balance ${balanceCents}c`,
+            )
+          }
           // Nothing generated, so the key must not carry the reservation.
           if (apiToken) adjustTokenSpend(apiToken.tokenId, -estCents / 100)
           return Response.json({
