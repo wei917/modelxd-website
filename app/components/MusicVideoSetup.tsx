@@ -201,18 +201,33 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     })
   }
 
+  // Geometry borrowed from XCreate's OptPill / OptGroup (client.tsx) rather
+  // than invented here. This form had 999-radius pills with 1.5px borders and
+  // an emoji on every label and every chip, which made the busiest surface in
+  // XDirect look like a different product from the studio next door (owner,
+  // Sep 4: "the entire UI of Music Video doesn't match the website").
   const label: React.CSSProperties = {
-    fontSize: 10, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.09em',
-    textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: 6,
+    fontSize: 11, color: 'var(--muted2)', fontWeight: 600,
+    display: 'block', marginBottom: 6,
   }
   const chip = (on: boolean): React.CSSProperties => ({
-    padding: '6px 14px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
-    border: '1.5px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
-    background: on ? 'var(--red-dim)' : 'none', color: on ? 'var(--red)' : 'var(--muted)',
+    padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+    border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'),
+    background: on ? 'var(--red-dim)' : 'transparent',
+    color: on ? 'var(--red)' : 'var(--muted)',
+    transition: 'all 0.15s', whiteSpace: 'nowrap' as const,
   })
+  const field: React.CSSProperties = {
+    width: '100%', padding: '7px 10px', borderRadius: 6,
+    border: '1px solid var(--border2)', background: 'var(--bg)',
+    color: 'var(--white)', fontSize: 12.5,
+  }
+  const hint: React.CSSProperties = {
+    fontSize: 11, color: 'var(--muted2)', display: 'block', marginTop: 5,
+  }
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14,
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', width: '100%', maxWidth: 780, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 14,
       // The chat pane is a flex column that scrolls. A flex child shrinks by
       // default, so a tall form is COMPRESSED instead of overflowing: the pane
       // thinks everything fits, no scrollbar appears, and the lower fields are
@@ -220,18 +235,18 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
       // this first). flexShrink: 0 keeps the natural height and lets the pane scroll.
       flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <span style={{ fontWeight: 800, fontSize: 14 }}>🎬 {t('xd.mv.setup')}</span>
+        <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em' }}>{t('xd.mv.setup')}</span>
         <span style={{ flex: 1 }} />
         <button onClick={onSkip} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xd.mv.skip')}</button>
       </div>
 
       <div>
-        <span style={label}>🔗 {t('xd.mv.reference')}</span>
+        <span style={label}>{t('xd.mv.reference')}</span>
         <input
           value={reference} onChange={e => setRef(e.target.value)} placeholder={t('xd.mv.referenceph')}
-          style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1.5px solid ' + (hasRef ? 'var(--red)' : 'var(--border2)'), background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5 }}
+          style={{ ...field, border: '1px solid ' + (hasRef ? 'var(--red)' : 'var(--border2)') }}
         />
-        <span style={{ fontSize: 10.5, color: hasRef ? 'var(--red)' : 'var(--muted2)', display: 'block', marginTop: 4 }}>
+        <span style={{ ...hint, color: hasRef ? 'var(--red)' : 'var(--muted2)' }}>
           {reference.trim() && !hasRef ? t('xd.mv.referencebad') : hasRef ? t('xd.mv.referenceon') : t('xd.mv.referencehint')}
         </span>
       </div>
@@ -245,7 +260,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {FORMS.map(f => (
               <button key={f.id} onClick={() => setForm(f.id)} style={chip(form === f.id)}>
-                {f.emoji} {t(f.i18n)}
+                {t(f.i18n)}
               </button>
             ))}
           </div>
@@ -257,7 +272,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
       {/* How much STORY. Sits above mood on purpose: mood shapes how the film
           moves, this decides whether there is a film at all. */}
       <div>
-        <span style={label}>🎭 {t('xd.mv.drama')}</span>
+        <span style={label}>{t('xd.mv.drama')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {DRAMA.map(d => (
             <button key={d.id} onClick={() => setDrama(d.id)} style={chip(drama === d.id)}>
@@ -265,13 +280,13 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
             </button>
           ))}
         </div>
-        <span style={{ fontSize: 10.5, color: 'var(--muted2)', display: 'block', marginTop: 4, maxWidth: 420 }}>
+        <span style={{ ...hint, maxWidth: 460 }}>
           {t(`xd.mv.drama.${drama === 'performance' ? 'perf' : drama}hint`)}
         </span>
       </div>
 
       <div>
-        <span style={label}>🎚 {t('xd.mv.mood')}</span>
+        <span style={label}>{t('xd.mv.mood')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {MOODS.map(m => (
             <button key={m.id} onClick={() => setMood(mood === m.id ? null : m.id)} style={chip(mood === m.id)}>
@@ -313,7 +328,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
                  — a 6-second single-scene MV is a normal thing to want. */
               type="number" className="no-spin" min={3} max={180} value={duration}
               onChange={e => { setMatchSong(false); setDur(Math.min(180, Math.max(3, Math.round(Number(e.target.value) || 30)))) }}
-              style={{ width: 58, padding: '5px 6px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5, textAlign: 'center' }}
+              style={{ ...field, width: 62, padding: '7px 6px', textAlign: 'center' }}
             />
           </div>
         </div>
@@ -321,7 +336,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           <span style={label}>{t('xd.mv.section')}</span>
           <input
             value={section} onChange={e => setSection(e.target.value)} placeholder={t('xd.mv.sectionph')}
-            style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5 }}
+            style={field}
           />
         </div>
       </div>
@@ -331,43 +346,43 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <textarea
           value={lyrics} onChange={e => setLyrics(e.target.value)} rows={3}
           placeholder={t('xd.mv.lyricsph')}
-          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5, resize: 'vertical', fontFamily: 'inherit' }}
+          style={{ ...field, padding: '9px 10px', resize: 'vertical', fontFamily: 'inherit' }}
         />
       </div>
 
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div>
-          <span style={label}>🎵 {t('xd.mv.song')}</span>
+          <span style={label}>{t('xd.mv.song')}</span>
           <AttachmentButton attachments={songAtts} onChange={setSong} disabled={busy} context="xcreate" maxFiles={1} accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg" />
         </div>
         {/* Only offered with a song attached: the audio IS the lip-sync
             input, so without one there is nothing to sync to. */}
         {songAtts.length > 0 && (
           <div>
-            <span style={label}>🎤 {t('xd.mv.perf')}</span>
+            <span style={label}>{t('xd.mv.perf')}</span>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button onClick={() => setSync(false)} style={chip(!sync)}>{t('xd.mv.perf.silent')}</button>
               <button onClick={() => setSync(true)}  style={chip(sync)}>{t('xd.mv.perf.sync')}</button>
             </div>
-            <span style={{ fontSize: 10.5, color: 'var(--muted2)', display: 'block', marginTop: 4, maxWidth: 340 }}>
+            <span style={{ ...hint, maxWidth: 460 }}>
               {sync ? t('xd.mv.perf.synchint') : t('xd.mv.perf.silenthint')}
             </span>
           </div>
         )}
         <div>
-          <span style={label}>👤 {t('xd.mv.cast')}</span>
+          <span style={label}>{t('xd.mv.cast')}</span>
           <AttachmentButton attachments={castAtts} onChange={setCast} disabled={busy} context="xcreate" multiple maxFiles={3} accept="image/jpeg,image/png,image/webp" />
-          <span style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{castAtts.length === 0 ? t('xd.mv.castoriginal') : ''}</span>
+          <span style={hint}>{castAtts.length === 0 ? t('xd.mv.castoriginal') : ''}</span>
         </div>
         <div>
-          <span style={label}>🎨 {t('xd.mv.stylerefs')}</span>
+          <span style={label}>{t('xd.mv.stylerefs')}</span>
           <AttachmentButton attachments={styleAtts} onChange={setStyle} disabled={busy} context="xcreate" multiple maxFiles={4} accept="image/jpeg,image/png,image/webp" />
         </div>
         <div style={{ flex: 1, minWidth: 150 }}>
-          <span style={label}>🃏 {t('xd.mv.title')}</span>
+          <span style={label}>{t('xd.mv.title')}</span>
           <input
             value={title} onChange={e => setTitle(e.target.value)} placeholder={t('xd.mv.titleph')}
-            style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 12.5 }}
+            style={field}
           />
         </div>
       </div>
@@ -380,7 +395,7 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
           background: 'var(--red)', color: '#fff', fontWeight: 800, fontSize: 13.5,
           cursor: (!ready || busy) ? 'default' : 'pointer', opacity: (!ready || busy) ? 0.45 : 1,
         }}
-      >🎬 {t('xd.mv.start')}</button>
+      >{t('xd.mv.start')}</button>
     </div>
   )
 }
