@@ -16,9 +16,23 @@
 // through /api/xcreate.
 
 export const runtime = 'nodejs'
-// 180 (was 60, Aug 22): a story board — up to 5 cast sheets + 10 scenes in
-// one set_storyboard — is ~7k output tokens, which alone runs past a minute.
-export const maxDuration = 180
+// 800 (was 180 Aug 22, 60 before that). This route does NOT stream: it awaits
+// the whole director turn and then returns JSON, so the ceiling is the total
+// turn, not time-to-first-byte — and every raise so far has been chasing a
+// board that got bigger.
+//
+// 180 was sized for "5 cast sheets + 10 scenes, ~7k output tokens". A
+// 176-second music video at DRAMA level blew straight past it (Sep 4, HTTP
+// 504 with the storyboard lost): the input alone carried a 90-second timed
+// transcript, reference rhythm notes, style frames and cast photos as vision
+// blocks, and the output is a full 12-scene board with a shot paragraph each.
+// Film length is the user's to choose, so the ceiling has to cover the long
+// ones. 800 matches /api/xcreate and /api/xcut/render, the other routes that
+// legitimately run for minutes.
+//
+// The real fix is streaming this route so the wall is first-byte instead of
+// total; until then a raise is the honest lever.
+export const maxDuration = 800
 
 import { createClient } from '@supabase/supabase-js'
 import { houseCall } from '@/lib/house-llm'
