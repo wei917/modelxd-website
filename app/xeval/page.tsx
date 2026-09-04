@@ -48,6 +48,7 @@ interface RunRow {
   effort: string | null
   cost_usd: number | null
   model_s: number | null
+  turns?: number | null
 }
 
 export default function XEvalPage() {
@@ -85,7 +86,7 @@ export default function XEvalPage() {
       for (let from = 0; ; from += PAGE) {
         const { data: rr } = await sb
           .from('xeval_runs')
-          .select('run_id, task_id, task_set, score, spec_pct, harness, sector, occupation, model_name, display_name, provider, effort, cost_usd, model_s, started_at')
+          .select('run_id, task_id, task_set, score, spec_pct, harness, sector, occupation, model_name, display_name, provider, effort, cost_usd, model_s, turns, started_at')
           .order('run_id')
           .range(from, from + PAGE - 1)
         all.push(...((rr ?? []) as RunRow[]))
@@ -484,10 +485,10 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   for (const r of [...runs].sort((a, b) => String((a as any).started_at ?? '').localeCompare(String((b as any).started_at ?? '')))) {
     latest.set(`${r.task_id}|${r.model_name}|${r.effort ?? ''}`, r)
   }
-  const by = new Map<string, { display: string; provider: string; effort: string; n: number; solved: number; cost: number; secs: number[]; scoreSum: number; specs: number[] }>()
+  const by = new Map<string, { display: string; provider: string; effort: string; n: number; solved: number; cost: number; secs: number[]; turns: number; scoreSum: number; specs: number[] }>()
   for (const r of latest.values()) {
     const k = `${r.model_name}|${r.effort ?? ''}`
-    if (!by.has(k)) by.set(k, { display: r.display_name, provider: r.provider, effort: r.effort ?? '', n: 0, solved: 0, cost: 0, secs: [], scoreSum: 0, specs: [] as number[] })
+    if (!by.has(k)) by.set(k, { display: r.display_name, provider: r.provider, effort: r.effort ?? '', n: 0, solved: 0, cost: 0, secs: [], turns: 0, scoreSum: 0, specs: [] as number[] })
     const e = by.get(k)!
     e.n += 1
     e.solved += (r.score ?? 0) >= 1 ? 1 : 0
@@ -495,10 +496,22 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
     if (r.spec_pct != null) e.specs.push(Number(r.spec_pct))
     e.cost += r.cost_usd ?? 0
     if (r.model_s != null) e.secs.push(Number(r.model_s))
+    e.turns += Number(r.turns ?? 0)
   }
   const rows = [...by.values()].sort((a, b) => b.scoreSum / b.n - a.scoreSum / a.n || a.cost - b.cost)
   const anyCost = rows.some(r => r.cost > 0)
   const anySpec = rows.some(r => r.specs.length > 0)
+  // Speed. model_s is the tested model's own clock per task (its calls, not
+  // the partner's or the judge's). Where the set records turns (Social), the
+  // messages alternate between two chairs, so the tested model's replies are
+  // half the turns and s/reply = time / (turns/2) — the number a live
+  // conversation cares about (owner, Sep 3: "where is the speed?"). Elsewhere
+  // (Terminal-Bench, LAB) it is the median agent time per task.
+  const anyTime = rows.some(r => r.secs.length > 0)
+  const perReply = rows.some(r => r.turns > 0)
+  const median = (a: number[]) => { const b = [...a].sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : 0 }
+  const fmtDur = (sec: number) => sec >= 90 ? `${Math.floor(sec / 60)}m${String(Math.round(sec % 60)).padStart(2, '0')}s` : `${sec.toFixed(sec >= 10 ? 0 : 1)}s`
+  const speedOf = (r: { secs: number[]; turns: number }) => !r.secs.length ? '—' : perReply && r.turns > 0 ? fmtDur(r.secs.reduce((a, b) => a + b, 0) / (r.turns / 2)) : fmtDur(median(r.secs))
   // Pass rate is ABSOLUTE (unlike Elo, which is scale-relative), so these
   // cutoffs are fixed — normalising to the field painted the lowest of four
   // close entries 'poor' at 67%, which is a strong score on hard terminal
@@ -552,8 +565,9 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       }
       if (best) catPick.set(c, best[0])
     }
-    let apSolved = 0, apCost = 0, apScore = 0
+    let apSolved = 0, apCost = 0, apScore = 0, apTurns = 0
     const apSpecs: number[] = []
+    const apSecs: number[] = []
     for (const runs_ of byTask.values()) {
       const cat = runs_[0].sector ?? runs_[0].task_id
       const want = catPick.get(cat)
@@ -562,9 +576,11 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       apScore += pick.score ?? 0
       apCost += pick.cost_usd ?? 0
       if (pick.spec_pct != null) apSpecs.push(Number(pick.spec_pct))
+      if (pick.model_s != null) apSecs.push(Number(pick.model_s))
+      apTurns += Number(pick.turns ?? 0)
     }
     rows.unshift({ display: 'ModelXD Autopilot', provider: 'modelxd', effort: 'auto', n: byTask.size,
-                   solved: apSolved, cost: apCost, secs: [], scoreSum: apScore, specs: apSpecs })
+                   solved: apSolved, cost: apCost, secs: apSecs, turns: apTurns, scoreSum: apScore, specs: apSpecs })
   }
   const harness = [...latest.values()].map(r => r.harness).find(Boolean) ?? 'terminus-2'
   const money = (v: number) => '$' + (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(2))
@@ -591,6 +607,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
               <th style={{ padding: '8px 12px' }}>{t('xeval.col.model')}</th>
               <th style={{ padding: '8px 12px' }}>{t('xeval.col.effort')}</th>
               <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.passrate')}</th>
+              {anyTime && <th style={{ padding: '8px 12px', textAlign: 'right' }} title={t(perReply ? 'xeval.social.sreply.tip' : 'xeval.tb.time.tip')}>{t(perReply ? 'xeval.social.sreply' : 'xeval.col.time')}</th>}
               {anySpec && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.spec')}</th>}
               {anyCost && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.col.cost')}</th>}
               {anyCost && <th style={{ padding: '8px 12px', textAlign: 'right' }}>{t('xeval.tb.persolved')}</th>}
@@ -609,6 +626,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
                 <td style={{ padding: '8px 12px', textAlign: 'right' }} title={`${r.solved} of ${r.n} tasks fully passed`}>
                   <span className={`xd-chip ${rateTier(r.scoreSum / r.n)}`}>{Math.round((r.scoreSum / r.n) * 100)}%</span>
                 </td>
+                {anyTime && <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{speedOf(r)}</td>}
                 {anySpec && <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)' }} title={t('xeval.col.spec.tip')}>
                   {r.specs.length ? `${Math.round((r.specs.reduce((a, b) => a + b, 0) / r.specs.length) * 100)}%` : '—'}
                 </td>}
