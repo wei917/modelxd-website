@@ -293,6 +293,48 @@ Both sit significantly below their bigger siblings on the same scenes
 the model tier moves the score and the thinking level does not. Published
 2026-09-03 evening (fit fd1ad35c, 1,936 runs).
 
+**Latency, measured properly (Sep 3 evening, owner: "TTFT and throughput
+are different concepts").** s/reply is one number and hides the split, so a
+streaming probe re-ran the FIRST turn of every scene for every entry (same
+prompt SOTOPIA builds, no judge, nothing stored in Redis: $7.74 for all 16
+entries). Definitions: **TTFT** = seconds to the first VISIBLE token (reply
+text or the JSON arguments of the structured-output tool call; thinking
+deltas do not count); **tok/s** = visible output tokens per second after
+that token, reasoning excluded (counting reasoning in that window had
+inflated Sol@xhigh to 209). Medians over the 70 scenes:
+
+| entry | TTFT s | p90 | tok/s |
+|---|---|---|---|
+| Gemini 3.5 Flash-Lite @none | 0.64 | 0.81 | 332 |
+| GPT-5.6 Luna @none | 0.75 | 1.19 | 107 |
+| Qwen3.8 Max @none | 0.78 | 1.17 | 57 |
+| GPT-5.6 Sol @none | 0.95 | 1.97 | 69 |
+| Claude Opus 5 @high | 1.37 | 1.97 | 88 |
+| Gemini 3.7 Flash @low | 1.38 | 2.97 | 275 |
+| Claude Opus 5 @none | 1.64 | 3.36 | 94 |
+| Claude Fable 5.1 @high | 2.37 | 2.91 | 44 |
+| Claude Fable 5.1 @low | 2.38 | 3.00 | 44 |
+| GPT-5.6 Sol @xhigh | 2.51 | 4.23 | 86 |
+| Gemini 3.7 Flash @high | 2.64 | 3.88 | 382 |
+| Grok 4.6 @low | 3.87 | 6.42 | 53 |
+| Qwen3.8 Max @high | 11.60 | 25.95 | 44 |
+| Grok 4.6 @xhigh | 15.64 | 23.10 | 56 |
+
+Reading: the models that think before speaking are not real-time at their
+high setting — Qwen@high 15 s and Grok@xhigh 8–17 s to the first word —
+while their thinking-off points answer in under a second. Anthropic's
+adaptive thinking did not fire on these turns (first byte = first visible
+token on every call), so Opus/Fable TTFT is plain network + prefill on a
+~1.5k-token prompt. tok/s medians are robust; means are not (a late first
+chunk followed by a burst gives 200+ on a single call).
+
+Storage: `runs.ttft_s` / `runs.out_tps` per scene in xeval.db (importer merges
+`work/sotopia/ttft-<entry>.jsonl`, or a streamed run's own `calls-*.jsonl`);
+`xeval_runs` gets the same two columns from **migration 94**, and
+`publish.py` withholds them until it is applied. The verifier table shows
+TTFT and tok/s as medians per entry. From now on the pilot streams every
+tested call, so a full run carries TTFT for every reply, not just the first.
+
 **The curve is flat.** Paired on the same 70 scenes, no model's low→high
 difference is significant on goal or overall (all six 95% bootstrap CIs
 include 0; e.g. Sol goal +0.36 [−0.11, +0.86], Grok goal −0.24 [−0.69,
