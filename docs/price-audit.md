@@ -178,6 +178,7 @@ Stale-audit check:
 
 | Date | Provider | Checked by | Result |
 |---|---|---|---|
+| 2026-09-04 | openai | Claude | **gpt-6-astra added + enabled** — new generation, $10/$50, cached $1 (long ctx $20/$75), effort **low→max** (`none` AND `minimal` both rejected per-model, unlike the 5.6 family), web_search accepted. Smoked through the provider path at low and max. All 7 existing openai rows re-verified against the page: **no drift**. Note gpt-5.6-sol now *displays* $4/$20 with a promo footnote through Nov 21 — catalog keeps list $5/$30 per rule 3, so XBoard shows it pricier than OpenAI currently charges. Also on the API, not added: gpt-image-1.5, chatgpt-image-latest. |
 | 2026-08-19 | openai | Claude | 6 rows checked; 4 correct; fixed gpt-5.6-luna (1/6/0.1 → 0.2/1.2/0.02) and gpt-5.6-terra (2.5/15/0.25 → 2/12/0.2) |
 | 2026-08-19 | anthropic | Claude | 4 rows, all correct (Fable 5 10/50/1, Opus 5 + 4.8 5/25/0.5, Sonnet 5 2/10/0.2; $0.01/search). Sonnet 5 intro price now permanent. |
 | 2026-08-19 | google | Claude | 10 enabled rows; fixed **gemini-2.5-flash-image** text_output (3 → 2.5). gemini-3.6-flash was briefly set to the 0.75/3.75 dated intro price, then **reverted to list 1.5/7.5/0.15 same day when the owner set rule 3** (list only). **Added gemini-3.7-flash** at list 1.5/7.5/0.15 (thinking levels low/med/high only — `minimal` errors). All per-image maps, veo-3.1 tiers, omni-flash, flash-lites correct. |
