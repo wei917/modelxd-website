@@ -278,6 +278,21 @@ two lanes, ~2.8 h wall:
 | Grok 4.6 @low | 5.36 | 2.49 | 6.1 | 6.72 |
 | Grok 4.6 @xhigh | 5.11 | 2.48 | 24.6 | 9.24 |
 
+**Low-end pair (owner, Sep 3: "people waste so much money"), run the same
+evening, $12.14 (quote $10; the judge is ~95% of it — agent tokens were
+$0.10 and $0.17):**
+
+| entry | goal | overall | s/turn | $/entry |
+|---|---|---|---|---|
+| Gemini 3.5 Flash-Lite @none (does not think by default) | 4.86 | 2.54 | 0.8 | 5.08 |
+| GPT-5.6 Luna @none | 4.76 | 2.52 | 1.5 | 7.06 |
+
+Both sit significantly below their bigger siblings on the same scenes
+(Flash-Lite vs Flash@low: goal −0.87 [−1.43, −0.36]; Luna vs Sol@none: goal
+−0.63 [−1.04, −0.21]) and below Opus@none (−1.11 goal). So on SOTOPIA-hard
+the model tier moves the score and the thinking level does not. Imported;
+publication of these two rows is the owner's call.
+
 **The curve is flat.** Paired on the same 70 scenes, no model's low→high
 difference is significant on goal or overall (all six 95% bootstrap CIs
 include 0; e.g. Sol goal +0.36 [−0.11, +0.86], Grok goal −0.24 [−0.69,
