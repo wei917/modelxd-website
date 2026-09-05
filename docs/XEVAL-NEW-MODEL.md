@@ -294,3 +294,16 @@ turn): **$34.42 → $13.82** ($1.54/task; 88% of its input was cache reads).
 The transport now reads the stored usage once per turn. Sol's shadow run
 shows the same bug ($8.98 recorded vs ~$1.63 real) — analysis-only, not on
 the ladder.
+
+**External corroboration (searched 2026-09-05):** Artificial Analysis's
+independent run shows GPT-6 Astra *dropping ~80 Elo on GDPval-AA v2* versus
+GPT-5.6 Sol while gaining on AA-Briefcase, and scoring 61 on their
+Intelligence Index — identical to Sol, behind Fable 5.1 at 66. OpenAI's own
+headline gains are computer use (OSWorld 2.0 72.6%), terminals (Terminal
+Bench 4.0 57.9% vs Fable 5.1 55.8%) and cyber; Fable leads coding-agent and
+HLE. Coverage also notes Astra uses about a third of Sol's tokens on agent
+evals — the terseness our transcripts show. Our 9-task ladder (just above
+Sol, well below Fable 5.1) is the same picture. Sources:
+artificialanalysis.ai/articles/benchmarking-gpt-6-astra,
+mindstudio.ai/blog/gpt-6-astra-benchmarks-analysis,
+deploymentsafety.openai.com/gpt-6-astra (system card: no GDPval figures).
