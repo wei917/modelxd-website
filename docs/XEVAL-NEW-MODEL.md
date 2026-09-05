@@ -234,3 +234,32 @@ The $1,200 spread is entirely LAB input tokens. GDPval + TB are predictable
   most expensive judge, so they are cheaper to add).
 - The TB runaway guard is the only thing standing between a context-replay
   task and a three-figure bill on a single cell.
+
+## GPT-6 Astra (2026-09-04) — what it took to get one cell to run
+
+Owner approved GDPval on the 9 most-played tasks only ("if it's only $100").
+Three harness facts, each of which failed a cell at $0 before the fix:
+
+1. **An entry must be declared in `ai_models.eval_config`** (`{"efforts":
+   [...]}` on the catalog row) or `run_one` refuses it as "retired or never
+   added". GPT-6's row had none; set to `{"efforts": ["low", "xhigh"]}`.
+2. **litellm does not know the id** and treats it as a legacy model: it sends
+   `max_tokens`, which GPT-6 rejects ("use max_completion_tokens"). The
+   direct chat/completions client sends the right field — but:
+3. **GPT-6 refuses function tools on /v1/chat/completions unless
+   `reasoning_effort` is `none`, and GPT-6 does not accept `none`.** So no
+   agent run at a chosen effort is possible on that endpoint. `/v1/responses`
+   takes tools + `reasoning.effort` (probed with xhigh). `run_one` gained a
+   third transport, `responses` (`CappedResponsesClient` over stirrup's
+   `OpenResponsesClient`): same per-call cost cap and per-turn timeout, but
+   the SDK call is blocking, not streamed — the VPN idle cut (~260 s) is a
+   risk on long turns; 600 s timeout, one SDK retry.
+
+Also verified on the wire the same day: litellm 1.97 (the gdpval-xd venv)
+routes **gpt-5.6-sol to /v1/responses with `reasoning: {effort: "xhigh"}`**
+when tools are present, so the published Sol @xhigh runs were genuinely at
+xhigh. (The SOTOPIA venv's litellm drops xhigh on chat/completions — that lane
+sends it in `extra_body`, checked with `probe_wire.py`.)
+
+GPT-6 efforts are low/medium/high/xhigh; `none` and `max` are rejected, so
+the catalog's `thinking_levels` "max" for this model is wrong.
