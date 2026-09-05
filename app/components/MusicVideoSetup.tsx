@@ -55,10 +55,12 @@ const DURATIONS = [10, 30, 60]
 // same shot at three focal lengths). "More dramatic" pasted into a shot
 // prompt buys harder lighting and nothing else; the drama lives in whether
 // anything REVERSES, so the dial has to change the board, not the wording.
+// The dial is an intensity ramp, so its colour ramps too: calm teal through
+// narrative purple to the house red. Hues are the site's own mode accents.
 const DRAMA = [
-  { id: 'performance', i18n: 'xd.mv.drama.perf' },
-  { id: 'story',       i18n: 'xd.mv.drama.story' },
-  { id: 'drama',       i18n: 'xd.mv.drama.drama' },
+  { id: 'performance', i18n: 'xd.mv.drama.perf',  hue: 'var(--mode-audio)' },
+  { id: 'story',       i18n: 'xd.mv.drama.story', hue: 'var(--mode-image)' },
+  { id: 'drama',       i18n: 'xd.mv.drama.drama', hue: 'var(--red)' },
 ] as const
 
 const DRAMA_BRIEF: Record<string, string> = {
@@ -80,15 +82,17 @@ const DRAMA_BRIEF: Record<string, string> = {
 // grammar, how hard the chorus lands. 深情 against a bright coastal reference
 // is a different film from 輕快 against the same one, and until now nothing
 // in the pipeline knew which was meant.
+// A mood chip wears the feeling it names — the row reads as a palette of
+// registers rather than eight identical buttons.
 const MOODS = [
-  { id: 'romantic',   i18n: 'xd.mv.mood.romantic' },
-  { id: 'heartfelt',  i18n: 'xd.mv.mood.heartfelt' },
-  { id: 'upbeat',     i18n: 'xd.mv.mood.upbeat' },
-  { id: 'melancholy', i18n: 'xd.mv.mood.melancholy' },
-  { id: 'driving',    i18n: 'xd.mv.mood.driving' },
-  { id: 'laidback',   i18n: 'xd.mv.mood.laidback' },
-  { id: 'nostalgic',  i18n: 'xd.mv.mood.nostalgic' },
-  { id: 'defiant',    i18n: 'xd.mv.mood.defiant' },
+  { id: 'romantic',   i18n: 'xd.mv.mood.romantic',   hue: 'var(--red)' },
+  { id: 'heartfelt',  i18n: 'xd.mv.mood.heartfelt',  hue: 'var(--mode-image)' },
+  { id: 'upbeat',     i18n: 'xd.mv.mood.upbeat',     hue: 'var(--mode-video)' },
+  { id: 'melancholy', i18n: 'xd.mv.mood.melancholy', hue: 'var(--mode-text)' },
+  { id: 'driving',    i18n: 'xd.mv.mood.driving',    hue: 'var(--provider-anthropic)' },
+  { id: 'laidback',   i18n: 'xd.mv.mood.laidback',   hue: 'var(--mode-audio)' },
+  { id: 'nostalgic',  i18n: 'xd.mv.mood.nostalgic',  hue: 'var(--provider-alibaba)' },
+  { id: 'defiant',    i18n: 'xd.mv.mood.defiant',    hue: 'var(--score-elite)' },
 ] as const
 
 /** Written for the DIRECTOR, in craft terms — a genre word alone would just
@@ -275,7 +279,8 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <span style={label}>{t('xd.mv.drama')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {DRAMA.map(d => (
-            <button key={d.id} onClick={() => setDrama(d.id)} className={'mv-chip' + (drama === d.id ? ' on' : '')}>
+            <button key={d.id} onClick={() => setDrama(d.id)} className={'mv-chip' + (drama === d.id ? ' on' : '')}
+              style={{ ['--chip' as any]: d.hue }}>
               {t(d.i18n)}
             </button>
           ))}
@@ -289,7 +294,8 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
         <span style={label}>{t('xd.mv.mood')}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {MOODS.map(m => (
-            <button key={m.id} onClick={() => setMood(mood === m.id ? null : m.id)} className={'mv-chip' + (mood === m.id ? ' on' : '')}>
+            <button key={m.id} onClick={() => setMood(mood === m.id ? null : m.id)} className={'mv-chip' + (mood === m.id ? ' on' : '')}
+              style={{ ['--chip' as any]: m.hue }}>
               {t(m.i18n)}
             </button>
           ))}

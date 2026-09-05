@@ -2563,10 +2563,19 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   border: 1px solid var(--border2); background: transparent; color: var(--muted);
   transition: all 0.15s;
 }
-.mv-chip:hover { border-color: var(--red); color: var(--red); }
+/* Each chip can carry its OWN hue via --chip; red is only the default.
+   Colour is used where it MEANS something — the drama dial escalates, and a
+   mood chip is tinted with the feeling it names — so the form gains colour
+   without becoming a rainbow. Utility rows (style, aspect, length) stay red,
+   because "16:9" is not a feeling. Every hue is one the site already ships
+   in the trading-floor accent block; nothing new was invented. */
+.mv-chip:hover { border-color: var(--chip, var(--red)); color: var(--chip, var(--red)); }
 .mv-chip.on {
-  border-color: var(--red); color: var(--red); background: var(--red-dim);
-  box-shadow: 0 0 0 2px var(--red-dim), 0 0 14px var(--red-glow);
+  border-color: var(--chip, var(--red));
+  color: var(--chip, var(--red));
+  background: color-mix(in srgb, var(--chip, var(--red)) 10%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chip, var(--red)) 12%, transparent),
+              0 0 14px color-mix(in srgb, var(--chip, var(--red)) 28%, transparent);
 }
 .mv-chip:disabled { cursor: default; }
 
