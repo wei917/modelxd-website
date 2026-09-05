@@ -263,3 +263,34 @@ sends it in `extra_body`, checked with `probe_wire.py`.)
 
 GPT-6 efforts are low/medium/high/xhigh; `none` and `max` are rejected, so
 the catalog's `thinking_levels` "max" for this model is wrong.
+
+## 2026-09-05 — GPT-6 Astra: "impossible, it should be top" — what the check found
+
+Owner challenged the 9-task result (1660, 6th). Checks, in order:
+
+1. **Task choice**: the 9 most-played tasks, not the hardest; a little harder
+   than the other 18 on average (rubric coverage over all entries 69% vs
+   75%) — the same 9 for every opponent, so no tilt.
+2. **Effort delivered**: `reasoning.effort` reaches /v1/responses (low 0 →
+   high 903 → xhigh 1,389 reasoning tokens on a fixed prompt); the run
+   transcripts carry reasoning tokens on every xhigh turn (~250/turn).
+3. **Transport control**: GPT-5.6 Sol @xhigh sent through the same Responses
+   transport on the lease-rate task (`XEVAL_FORCE_RESPONSES=1 … --shadow`):
+   **153 turns, 1.6M input, 32.7k output** — the same as its normal litellm
+   run (143 / 1.35M / 24.3k). The transport does not make a model terse.
+4. **Harness parity**: identical system prompt (759 chars), no invalid tool
+   args, reasoning chained by `previous_response_id`, deliverables found
+   by the judges. Judge reasons cite depth (four comparables and hedging vs
+   six with analysis), not artefacts.
+
+**Verdict: the number stands.** GPT-6 does less work per task by choice: 40
+turns vs 97–105 for Fable/Opus, reads a tenth of the material, and its
+rubric coverage (74%) matches Opus and Sol, not Fable/Grok (78%).
+
+**What WAS wrong: its cost.** Stirrup's Responses client does not surface
+`input_tokens_details.cached_tokens`, so every cache read was billed at
+$10/M. Restated from the stored responses (`GET /v1/responses/{id}` per
+turn): **$34.42 → $13.82** ($1.54/task; 88% of its input was cache reads).
+The transport now reads the stored usage once per turn. Sol's shadow run
+shows the same bug ($8.98 recorded vs ~$1.63 real) — analysis-only, not on
+the ladder.

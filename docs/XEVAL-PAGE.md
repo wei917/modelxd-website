@@ -603,7 +603,7 @@ the code at 'all'). Bring it back as a filter chip if it is missed.
 GPT-6 Astra @xhigh played the 9 most-played GDPval tasks (8 of them have
 every entry; `scripts/gpt6_gdpval9.sh`), judged by the panel on pairs
 involving it (`scripts/gpt6_judge.sh`), finished with `scripts/gpt6_finish.sh`.
-Fit `2bbd9e9a`: 1660 (6th), 736 games, $3.82/task, 5 min/task, rubric 74%;
-$79.40 all-in. It lands on the ladder at 33% coverage like other partial
+Fit `2bbd9e9a`: 1660 (6th), 736 games, $1.54/task (restated: cache reads),
+5 min/task, rubric 74%; $58.80 all-in. It lands on the ladder at 33% coverage like other partial
 entries. Sol judged it far more kindly (92% wins) than Opus/Grok/Qwen
 (57–68%). Harness lessons for this model are in `docs/XEVAL-NEW-MODEL.md`.
