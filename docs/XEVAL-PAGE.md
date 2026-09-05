@@ -607,3 +607,12 @@ Fit `2bbd9e9a`: 1660 (6th), 736 games, $1.54/task (restated: cache reads),
 5 min/task, rubric 74%; $58.80 all-in. It lands on the ladder at 33% coverage like other partial
 entries. Sol judged it far more kindly (92% wins) than Opus/Grok/Qwen
 (57–68%). Harness lessons for this model are in `docs/XEVAL-NEW-MODEL.md`.
+
+## 2026-09-05 — GPT-6 Astra on Terminal-Bench 2.1 (NOT published yet)
+
+GPT-6 @xhigh solves 17 of the 21 enabled TB 2.1 tasks (81%, tied with
+Gemini 3.7 Flash @high) at $0.97/task and $1.20/solved — the cheapest per
+solve of the top pair. One miss is an OpenAI cyber-filter refusal
+(`break-filter-js-from-html`), recorded as a fail like any refusal. Lane:
+`terminal-bench/tb21_gpt6_lane.sh`; import with `xeval.tb_import … --set
+terminal-bench-2-1`. Publishing both GPT-6 entries waits on the owner.
