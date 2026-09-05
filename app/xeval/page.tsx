@@ -138,11 +138,12 @@ export default function XEvalPage() {
 
   // Per-entry aggregates from the runs behind the ratings (GDPval only).
   const perEntry = useMemo(() => {
-    const m = new Map<string, { display: string; provider: string; costs: number[]; times: number[]; specs: number[] }>()
+    const m = new Map<string, { display: string; provider: string; costs: number[]; times: number[]; specs: number[]; tasks: Set<string> }>()
     for (const r of gdpvalRuns) {
       const key = `${r.model_name}|${r.effort ?? ''}`
-      if (!m.has(key)) m.set(key, { display: r.display_name, provider: r.provider, costs: [], times: [], specs: [] })
+      if (!m.has(key)) m.set(key, { display: r.display_name, provider: r.provider, costs: [], times: [], specs: [], tasks: new Set() })
       const e = m.get(key)!
+      e.tasks.add(r.task_id)
       if (r.cost_usd != null) e.costs.push(Number(r.cost_usd))
       if (r.model_s != null) e.times.push(Number(r.model_s))
       if (r.spec_pct != null) e.specs.push(Number(r.spec_pct))
@@ -225,6 +226,14 @@ export default function XEvalPage() {
     (selTier.size === 0 || selTier.has(tierChip(r)))
   ), [ratings, selProv, selEffort, selTier, perEntry])
 
+  // Coverage: how many of the ladder's GDPval tasks an entry has played. A
+  // partial entry (owner, Sep 5: "let's try publish it now") is shown with a
+  // badge, sorted below every complete entry whatever the sort key, and left
+  // out of the Autopilot picks — the Aug 25 subset-luck concern made visible
+  // instead of the row being absent.
+  const gdpvalTaskTotal = useMemo(() => new Set(gdpvalRuns.map(r => r.task_id)).size, [gdpvalRuns])
+  const playedOf = (r: RatingRow) => perEntry.get(`${r.model_name}|${r.effort ?? ''}`)?.tasks.size ?? 0
+  const isPartial = (r: RatingRow) => r.model_name !== 'modelxd-router' && r.model_name !== 'human-expert' && gdpvalTaskTotal > 0 && playedOf(r) < gdpvalTaskTotal
   const visible = useMemo(() => {
     let list = [...ratings].sort((a, b) => b.rating - a.rating)
     if (view === 'best') {
@@ -251,10 +260,12 @@ export default function XEvalPage() {
       }
     }
     return list.sort((a, b) => {
+      const pa = isPartial(a) ? 1 : 0, pb = isPartial(b) ? 1 : 0
+      if (pa !== pb) return pa - pb
       const va = val(a), vb = val(b)
       return (va < vb ? -1 : va > vb ? 1 : 0) * dir
     })
-  }, [ratings, view, sortBy, sortDir, perEntry])
+  }, [ratings, view, sortBy, sortDir, perEntry, gdpvalTaskTotal])
   const shown = useMemo(() => (showAll ? visible : visible.slice(0, TOP_N)), [visible, showAll])
 
   // Brand casing for provider chips (slugs are lowercase in the DB).
@@ -393,6 +404,12 @@ export default function XEvalPage() {
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             <ProviderLogo provider={e?.provider ?? (row.model_name === 'modelxd-router' ? 'modelxd' : null)} size={row.model_name === 'modelxd-router' ? 22 : 16} />
                             {e?.display ?? SPECIAL_DISPLAY[row.model_name] ?? row.model_name}
+                            {isPartial(row) && (
+                              <span title={t('xeval.partial.tip').replace('{n}', String(playedOf(row))).replace('{total}', String(gdpvalTaskTotal))}
+                                    style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>
+                                {playedOf(row)}/{gdpvalTaskTotal}
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--muted)' }}>{row.effort ?? '—'}</td>
