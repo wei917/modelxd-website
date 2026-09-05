@@ -604,8 +604,11 @@ GPT-6 Astra @xhigh played the 9 most-played GDPval tasks (8 of them have
 every entry; `scripts/gpt6_gdpval9.sh`), judged by the panel on pairs
 involving it (`scripts/gpt6_judge.sh`), finished with `scripts/gpt6_finish.sh`.
 Fit `2bbd9e9a`: 1660 (6th), 736 games, $1.54/task (restated: cache reads),
-5 min/task, rubric 74%; $58.80 all-in. It lands on the ladder at 33% coverage like other partial
-entries. Sol judged it far more kindly (92% wins) than Opus/Grok/Qwen
+5 min/task, rubric 74%; $58.80 all-in. **It does NOT appear on the public ladder**: the complete-rows-only rule
+(owner, Aug 25, `scripts/publish.py`) holds back any entry without full
+coverage of the 27 enabled tasks; its 9 runs and 715 judgments are
+published and count in opponents' games, the rating row is held until the
+other 18 tasks run (~$120 all-in). Sol judged it far more kindly (92% wins) than Opus/Grok/Qwen
 (57–68%). Harness lessons for this model are in `docs/XEVAL-NEW-MODEL.md`.
 
 ## 2026-09-05 — GPT-6 Astra on Terminal-Bench 2.1 (NOT published yet)
@@ -615,4 +618,7 @@ Gemini 3.7 Flash @high) at $0.97/task and $1.20/solved — the cheapest per
 solve of the top pair. One miss is an OpenAI cyber-filter refusal
 (`break-filter-js-from-html`), recorded as a fail like any refusal. Lane:
 `terminal-bench/tb21_gpt6_lane.sh`; import with `xeval.tb_import … --set
-terminal-bench-2-1`. Publishing both GPT-6 entries waits on the owner.
+terminal-bench-2-1`. Published 2026-09-05 (owner: "publish them"): live on both hosts as 81% /
+$0.97 / $1.20, third row behind Autopilot and Gemini (equal pass rate,
+Gemini cheaper). The catalog row's `thinking_levels` lost its bogus `max`
+the same day (the API accepts low..xhigh only).
