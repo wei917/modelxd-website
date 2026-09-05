@@ -604,11 +604,13 @@ GPT-6 Astra @xhigh played the 9 most-played GDPval tasks (8 of them have
 every entry; `scripts/gpt6_gdpval9.sh`), judged by the panel on pairs
 involving it (`scripts/gpt6_judge.sh`), finished with `scripts/gpt6_finish.sh`.
 Fit `2bbd9e9a`: 1660 (6th), 736 games, $1.54/task (restated: cache reads),
-5 min/task, rubric 74%; $58.80 all-in. **It does NOT appear on the public ladder**: the complete-rows-only rule
-(owner, Aug 25, `scripts/publish.py`) holds back any entry without full
-coverage of the 27 enabled tasks; its 9 runs and 715 judgments are
-published and count in opponents' games, the rating row is held until the
-other 18 tasks run (~$120 all-in). Sol judged it far more kindly (92% wins) than Opus/Grok/Qwen
+5 min/task, rubric 74%; $58.80 all-in. **Published as a partial row (owner, Sep 5: "let's try publish it now")**:
+the Aug 25 complete-rows-only rule became a visible caveat instead of an
+absent row — the page shows a coverage badge (`9/27`) beside the name,
+sorts partial entries below every complete one whatever the sort key, and
+`xeval.router_row` excludes them from the Autopilot picks. Coverage is
+computed on the page from the published runs, so no new column was needed.
+A full row still needs the other 18 tasks (~$120 all-in). Sol judged it far more kindly (92% wins) than Opus/Grok/Qwen
 (57–68%). Harness lessons for this model are in `docs/XEVAL-NEW-MODEL.md`.
 
 ## 2026-09-05 — GPT-6 Astra on Terminal-Bench 2.1 (NOT published yet)
