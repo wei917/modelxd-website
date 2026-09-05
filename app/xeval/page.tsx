@@ -367,31 +367,6 @@ export default function XEvalPage() {
               .replace('{rating}', String(topRow?.rating ?? ''))
               .replace('{anchor}', String(anchorRow?.rating ?? 1000))}
           </p>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '0 0 24px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
-            <span><strong style={{ color: 'var(--white)' }}>{ratings.length}</strong> {t('xeval.stat.entries')}</span>
-            <span><strong style={{ color: 'var(--white)' }}>{taskCount}</strong> {t('xeval.stat.tasks')}</span>
-            <span><strong style={{ color: 'var(--white)' }}>{judgeCount}</strong> {t('xeval.stat.judges')}</span>
-            <span><strong style={{ color: 'var(--white)' }}>{verdicts}</strong> {t('xeval.stat.verdicts')}</span>
-            {updated && <span>{t('xeval.stat.updated')} {updated}</span>}
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {(['all', 'best'] as const).map(v => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                style={{
-                  padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                  fontFamily: 'var(--font-mono)', letterSpacing: '0.04em',
-                  border: `1px solid ${view === v ? 'var(--red)' : 'var(--border)'}`,
-                  background: view === v ? 'var(--red-dim)' : 'transparent',
-                  color: view === v ? 'var(--red)' : 'var(--muted)',
-                }}
-              >
-                {t(v === 'all' ? 'xeval.filter.all' : 'xeval.filter.best')}
-              </button>
-            ))}
-          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
               <thead>

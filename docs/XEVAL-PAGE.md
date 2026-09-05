@@ -589,3 +589,11 @@ XEVAL_MAX_WALL_S=7200 .venv/bin/python -m xeval.run_one --task <id> --model <key
 # ops dashboard
 scripts/dashboard.sh   # http://localhost:9090
 ```
+
+## 2026-09-04 — GDPval header trimmed (owner)
+
+The stats strip under the GDPval lead (entries · tasks · judges · verdicts ·
+updated) and the "Top 10 / Best per model" toggle are gone — owner: "remove
+this line". The table still opens on the top 10 with "Show all N" beneath it;
+the "best per model" view has no entrance now (the `view` state remains in
+the code at 'all'). Bring it back as a filter chip if it is missed.
