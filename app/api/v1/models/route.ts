@@ -101,13 +101,21 @@ export async function GET(req: Request) {
   })
 
   // Routers are callable model ids too — a developer who only reads this
-  // endpoint would otherwise never learn they exist.
+  // endpoint would otherwise never learn they exist. A table, not a ternary:
+  // the ternary here predated xd/fast and xd/max and would have labelled both
+  // of them "Cheap".
+  const ROUTE_LABELS: Record<string, string> = {
+    'xd/auto':   'ModelXD Auto (highest XD Score)',
+    'xd/fast':   'ModelXD Fast (lowest measured time to first token)',
+    'xd/budget': 'ModelXD Budget (cheapest above the quality bar)',
+    'xd/max':    'ModelXD Max (highest blind-vote quality, price ignored)',
+  }
   const routers = (want && want !== 'text' ? [] : ROUTES).map(id => ({
     id,
     object: 'model' as const,
     created: 0,
     owned_by: 'modelxd',
-    display_name: id === 'xd/auto' ? 'ModelXD Auto (highest XD Score)' : 'ModelXD Cheap (best value at quality bar)',
+    display_name: ROUTE_LABELS[id],
     modalities: ['text'],
     endpoint: '/api/v1/chat/completions',
     pricing_usd_per_1m: { input: null, output: null },   // billed at whatever model it picks

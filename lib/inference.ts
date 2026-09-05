@@ -66,14 +66,34 @@ export const structuredModeFor = (provider: string, hasSchema: boolean): Structu
 
 // ── Model resolution ─────────────────────────────────────────────────────
 
-// xd/fast is NOT here. It was implemented, then measured: over the last
-// seven days provider_calls holds 128 rows, and exactly one model on the
-// text board clears three samples. A route that sorts on a signal that
-// doesn't exist yet is silently identical to xd/auto — which is precisely
-// the "gate outlived its API" failure CLAUDE.md warns about, wearing a
-// different hat. byMeasuredLatency() below is kept and correct; the route
-// turns on when there is traffic to rank.
-export const ROUTES = ['xd/auto', 'xd/cheap'] as const
+/**
+ * The four routes. Each must rank on a signal that actually exists — a route
+ * sorting on a signal it does not have is silently identical to xd/auto, which
+ * is the "gate outlived its API" failure CLAUDE.md warns about in a hat.
+ * Measured 2026-09-05, and this is why fast is defined the way it is:
+ *
+ *   auto    XD Score (XBoard votes)              shipped since Aug 27
+ *   budget  list price, above a quality floor    catalog: complete
+ *   max     quality_rating alone, price ignored  same votes as auto
+ *   fast    measured TTFT (model_latency)        needs the probe below
+ *
+ * fast means TIME TO FIRST VISIBLE TOKEN — near realtime — not time to finish
+ * (owner, Sep 5). Those are different questions and wall_s answers the wrong
+ * one: a model can start instantly and grind, or think for 40s and then pour.
+ * A chat UI lives or dies on the first token.
+ *
+ * The signal comes from scripts/probe-latency.ts into model_latency, because
+ * nothing else has the breadth: xeval_runs.ttft_s covers 2 of 34 entries
+ * (Fable 5.1 only, the SOTOPIA pilot), and provider_calls holds four text
+ * models with three or more samples over seven days, 894 of its 1000 rows
+ * being a single model. The route REFUSES rather than guessing when the probe
+ * has not run — an unmeasured xd/fast is xd/auto in a hat.
+ *
+ * xd/cheap was renamed to xd/budget (owner, Sep 5) with NO alias. Note for the
+ * record: nothing logs which route a caller asked for — provider_calls stores
+ * the model that ran — so "nobody used it" could not be verified from data.
+ */
+export const ROUTES = ['xd/auto', 'xd/fast', 'xd/budget', 'xd/max'] as const
 export type RouteId = typeof ROUTES[number]
 
 /** The surface key for blocked_features. A model blocked here is refused on
@@ -152,7 +172,7 @@ async function routeModel(route: RouteId): Promise<ModelInfo> {
   const sb = service()
   const { data: all } = await sb
     .from('model_ratings')
-    .select('model_id, xd_score, value_rating, total_votes')
+    .select('model_id, xd_score, quality_rating, value_rating, total_votes')
     .eq('mode', 'text')
     .order('xd_score', { ascending: false })
     .limit(40)
@@ -176,17 +196,43 @@ async function routeModel(route: RouteId): Promise<ModelInfo> {
     console.warn(`${LOG} only ${rated.length} text models have >= ${MIN_ROUTE_VOTES} votes; routing on the full board`)
   }
 
-  let ordered = rows
-  if (route === 'xd/cheap') {
-    // "Cheap" has to mean cheap. Sorting by value_rating alone put Fable 5
-    // — the single most expensive model on the site — at the top of a route
-    // called cheap, because value is a rating and not a price. So: keep the
-    // models that are good enough (at or above the median XD Score of the
-    // rated set), then order those by what they actually charge.
+  // Everything but auto keeps a QUALITY FLOOR first, then re-sorts the
+  // survivors on its own axis. Without the floor, "budget" and "fast" both
+  // degenerate into "the worst model that is technically usable" — the
+  // cheapest and the quickest model on any board is very often the same one,
+  // and it is not one you would hand a paying caller by default.
+  const aboveMedian = () => {
     const scores = [...rows].map(r => Number(r.xd_score ?? 0)).sort((a, b) => a - b)
     const median = scores[Math.floor(scores.length / 2)] ?? 0
-    const goodEnough = rows.filter(r => Number(r.xd_score ?? 0) >= median)
-    ordered = await byListPrice(goodEnough.length ? goodEnough : rows)
+    const kept = rows.filter(r => Number(r.xd_score ?? 0) >= median)
+    return kept.length ? kept : rows
+  }
+
+  let ordered = rows
+  if (route === 'xd/budget') {
+    // "Budget" has to mean cheap. Sorting by value_rating alone put Fable 5 —
+    // the single most expensive model on the site — at the top, because value
+    // is a rating and not a price. Keep what is good enough, then order by
+    // what it actually charges.
+    ordered = await byListPrice(aboveMedian())
+  } else if (route === 'xd/fast') {
+    ordered = await byMeasuredTtft(aboveMedian())
+    if (!ordered.length) {
+      // Better to say "not measured yet" than to hand back the XD Score
+      // leader and call it fast. Naming the fix keeps the caller unblocked.
+      throw new InferenceError(
+        'xd/fast has no latency measurements yet. Name a model explicitly, or use xd/auto.',
+        503, 'route_unmeasured', 'api_error',
+      )
+    }
+  } else if (route === 'xd/max') {
+    // QUALITY ONLY. rows arrives sorted by xd_score, which is
+    // quality*0.4 + value*0.4 + stickiness*0.2 — so sorting on it here would
+    // make max a duplicate of auto, and it did: both resolved to the same
+    // model. The difference between the two routes IS the value term, so max
+    // drops it and ranks on the blind-vote quality rating alone. Price is
+    // deliberately ignored; that is the whole point of the route.
+    ordered = [...rows].sort((a, b) => Number(b.quality_rating ?? 0) - Number(a.quality_rating ?? 0))
   }
 
   for (const row of ordered) {
@@ -225,42 +271,40 @@ async function byListPrice(rows: any[]): Promise<any[]> {
   return priced.sort((a, b) => a.price - b.price).map(p => p.row)
 }
 
-/** Sort candidates by their median latency over the last week. Models with
- *  no measurements sink to the bottom rather than winning on a null.
+/**
+ * Order by measured time to first visible token, fastest first.
  *
- *  Currently UNUSED: this is what xd/fast will sort on once provider_calls
- *  holds enough text traffic to rank (see the ROUTES note). Kept rather than
- *  deleted because the query is the hard part and it is already right. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function byMeasuredLatency(rows: any[]): Promise<any[]> {
+ * Reads model_latency, written by scripts/probe-latency.ts — a standing probe
+ * rather than a read of live traffic, because production traffic is not a fair
+ * sample: it is dominated by whatever the site itself calls most, and a model
+ * nobody happens to use looks unmeasured rather than slow.
+ *
+ * A model is ranked by its WORST measured dot, not its best. model_latency has
+ * one row per (model, effort) and this route returns a model with no effort
+ * attached — the caller decides that, or the provider default does. Ranking on
+ * the best dot picked qwen3.6-plus, whose two dots are 0.58s and 14.37s: fast
+ * because of a setting the route cannot guarantee. Taking the maximum makes
+ * the ordering a promise that holds however the model is then called.
+ *
+ * Entries with no measurement are DROPPED, not sunk to the bottom on a null.
+ * A route named fast should never return a model whose speed is unknown.
+ */
+async function byMeasuredTtft(rows: any[]): Promise<any[]> {
   const sb = service()
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
   const { data } = await sb
-    .from('provider_calls')
-    .select('model_name, latency_ms')
-    .eq('event', 'end')
-    .eq('status', 'success')
-    .gte('created_at', since)
-    .limit(4000)
+    .from('model_latency')
+    .select('model_id, ttft_s, samples')
+    .gte('samples', 3)
 
-  const byName = new Map<string, number[]>()
+  const worst = new Map<string, number>()
   for (const r of data ?? []) {
-    if (typeof r.latency_ms !== 'number') continue
-    const list = byName.get(r.model_name) ?? []
-    list.push(r.latency_ms)
-    byName.set(r.model_name, list)
+    if (typeof r.ttft_s !== 'number' || r.ttft_s <= 0) continue
+    const seen = worst.get(r.model_id)
+    if (seen === undefined || r.ttft_s > seen) worst.set(r.model_id, r.ttft_s)
   }
-  const median = (xs: number[]) => {
-    const s = [...xs].sort((a, b) => a - b)
-    return s.length ? s[Math.floor(s.length / 2)] : Number.POSITIVE_INFINITY
-  }
-
-  const scored = await Promise.all(rows.map(async row => {
-    const model = await getModelById(row.model_id)
-    const samples = model ? byName.get(model.model_name) ?? [] : []
-    return { row, p50: samples.length >= 3 ? median(samples) : Number.POSITIVE_INFINITY }
-  }))
-  return scored.sort((a, b) => a.p50 - b.p50).map(s => s.row)
+  return rows
+    .filter(r => worst.has(r.model_id))
+    .sort((a, b) => worst.get(a.model_id)! - worst.get(b.model_id)!)
 }
 
 // ── The call ─────────────────────────────────────────────────────────────
