@@ -307,3 +307,25 @@ Sol, well below Fable 5.1) is the same picture. Sources:
 artificialanalysis.ai/articles/benchmarking-gpt-6-astra,
 mindstudio.ai/blog/gpt-6-astra-benchmarks-analysis,
 deploymentsafety.openai.com/gpt-6-astra (system card: no GDPval figures).
+
+## 2026-09-05 — GPT-6 Astra on Terminal-Bench 2.1: how it runs at all
+
+Harbor's own litellm (1.98) does not know the `gpt-6-astra` id either: it
+rejects `reasoning_effort` ("openai does not support parameters") and sends
+`max_tokens`, which GPT-6 refuses. Three moves, all probed on the wire:
+
+1. `terminal-bench/tb21_gpt6_lane.sh` passes the effort INSIDE the body —
+   `--ak 'llm_call_kwargs={"max_tokens": null, "extra_body": {"reasoning_effort": "xhigh"}}'`
+   — harbor parses `--ak` values as JSON and its LiteLLM wrapper deep-merges
+   `extra_body`, so the effort bypasses litellm's name gate and `max_tokens`
+   is dropped (a `null` override wins in the final `update()`).
+2. A `gpt-6-astra` entry was added to harbor's litellm model map
+   (`…/litellm/model_prices_and_context_window_backup.json`, backup kept
+   beside it) and the lane exports `LITELLM_LOCAL_MODEL_COST_MAP=True`, so
+   per-step cost and cached-token counts land in the trajectory (smoke: 32k
+   in, 21.5k cached, $0.30).
+3. `xeval.tb_import` reads the effort label from `llm_call_kwargs.extra_body`
+   when `reasoning_effort` is absent, so the entry is `@xhigh`, not NULL.
+
+Smoke `hf-model-inference`: reward 1.0 in 9 steps, ~2 min. Lane launched
+07:43Z, sequential, runaway guard 150 episodes / $20 per task.
