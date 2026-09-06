@@ -110,7 +110,7 @@ Anything listed is callable and anything callable is listed. `pricing_usd_per_1m
 is null for image and video models — those are priced per output, not per
 token, so a null is honest rather than missing.
 
-Both routers (`xd/auto`, `xd/cheap`) appear under text, since a developer
+All four routers (`xd/auto`, `xd/fast`, `xd/budget`, `xd/max`) appear under text, since a developer
 reading only this endpoint would otherwise never learn they exist.
 
 ## The call
@@ -119,7 +119,7 @@ reading only this endpoint would otherwise never learn they exist.
 curl https://www.modelxd.com/api/v1/chat/completions \
   -H "Authorization: Bearer xd_…" \
   -H "Content-Type: application/json" \
-  -d '{"model":"xd/cheap","messages":[{"role":"user","content":"hi"}]}'
+  -d '{"model":"xd/budget","messages":[{"role":"user","content":"hi"}]}'
 ```
 
 ```python
@@ -136,9 +136,11 @@ directly: `MODELXD_API_BASE_URL`, `MODELXD_API_KEY`, `MODELXD_MODEL`.
 |---|---|---|
 | Explicit | `google/gemini-3.6-flash` | Exactly that model. Canonical. |
 | Legacy | `7c9f…` (uuid) | What MCP returns. Accepted indefinitely. |
-| Routed | `xd/auto`, `xd/cheap` | We choose from the vote-based leaderboard. |
+| Routed | `xd/auto`, `xd/fast`, `xd/budget`, `xd/max` | We choose, on axes you pick. |
 
-`xd/auto` = highest XD Score. `xd/cheap` = among models at or above the
+`xd/auto` = balanced. `xd/fast` = lowest measured time to first token.
+`xd/max` = quality only, price ignored. `xd/budget` = among models within a
+fixed quality gap of the leader, the
 median XD Score, the cheapest by list token price. Both apply a **10-vote
 floor** so a model rated on a handful of votes cannot become the silent
 default for every call a game makes.
@@ -237,7 +239,9 @@ Live, against a capped throwaway key (total spend $0.0157):
   `moonshot/kimi-k3` (native_json).
 - Streaming with a system prompt, usage + `cost_usd` in the final chunk.
 - Fallback chain recovering from a bad model name.
-- `xd/cheap` resolving 10× cheaper than `xd/auto` ($0.00056 vs $0.0056).
+- `xd/budget` resolving far cheaper than `xd/max` (measured Aug 27 at 10x,
+  $0.00056 vs $0.0056; the gap is wider now that the router normalises price
+  on a log scale — re-measure before quoting a figure).
 - 401 / tools-400 / unknown-model-404 / bad-response_format-400.
 - 18/18 unit cases on the validator and JSON extractor.
 

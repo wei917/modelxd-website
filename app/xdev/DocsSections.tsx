@@ -295,7 +295,7 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
               </p>
               <Params rows={[
                 ['model', 'string', true, <>A model slug or routing verb — see <a href="#routing" style={{ color: 'var(--red)' }}>Models &amp; routing</a>. (Required unless <code style={mono}>models</code> is given.)</>],
-                ['models', 'string[]', false, <>Ordered fallback chain, e.g. <code style={mono}>{`["xai/grok-4.6", "xd/cheap"]`}</code>. First model that answers wins; 429s and provider failures move down the chain. <code style={mono}>xd.fallbacks</code> in the response lists what was skipped and why.</>],
+                ['models', 'string[]', false, <>Ordered fallback chain, e.g. <code style={mono}>{`["xai/grok-4.6", "xd/budget"]`}</code>. First model that answers wins; 429s and provider failures move down the chain. <code style={mono}>xd.fallbacks</code> in the response lists what was skipped and why.</>],
                 ['messages', 'array', true, <><code style={mono}>system</code> / <code style={mono}>user</code> / <code style={mono}>assistant</code>. The system message rides each provider's native system slot — and its prompt cache — never the message array.</>],
                 ['stream', 'boolean', false, <>SSE chunks. The final chunk carries <code style={mono}>usage</code> including <code style={mono}>cost_usd</code> — no second request to learn the price. A request with a schema buffers instead (you cannot un-send a stream).</>],
                 ['response_format', 'object', false, <><code style={mono}>{`{"type": "json_schema", ...}`}</code>, enforced server-side — see <a href="#structured" style={{ color: 'var(--red)' }}>Structured output</a>.</>],
@@ -314,8 +314,10 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
             <Section id="routing" title="Models & routing">
               <Params rows={[
                 ['provider/model_name', 'slug', false, <>Exactly that model — <code style={mono}>google/gemini-3.6-flash</code>, <code style={mono}>anthropic/claude-sonnet-5</code>. Discover ids via <a href="#list-models" style={{ color: 'var(--red)' }}>GET /api/v1/models</a>.</>],
-                ['xd/auto', 'router', false, 'The highest XD Score on the text board — the model real blind votes say is best right now.'],
-                ['xd/cheap', 'router', false, 'Among models at or above the board’s median score, the cheapest by list price. Routinely ~10× cheaper than xd/auto; built for NPC crowds.'],
+                ['xd/auto', 'router', false, 'Balanced — quality, price and measured first-token latency together. The everyday default.'],
+                ['xd/fast', 'router', false, 'Lowest measured time to first visible token, above a quality bar. Ranked on each model’s SLOWEST thinking setting, so the speed holds however you call it.'],
+                ['xd/budget', 'router', false, 'Cheapest by list price, above a quality bar. Routinely ~20× cheaper than xd/max; built for NPC crowds.'],
+                ['xd/max', 'router', false, 'Highest blind-vote quality, price ignored entirely.'],
               ]} />
               <p style={{ ...p }}>
                 The resolved model always comes back in <code style={mono}>response.model</code> — you
@@ -341,7 +343,7 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
                 <code style={mono}>coaxed</code> (schema in the prompt, validated by us).
               </p>
               <Code label="a game agent's decision — this exact request runs against production" text={`{
-  "model": "xd/cheap",
+  "model": "xd/budget",
   "messages": [
     {"role": "system", "content": "You are Rosa, a cautious farmer agent."},
     {"role": "user", "content": "<world snapshot JSON>"}
@@ -443,7 +445,7 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
                 <code style={mono}>display_name</code>, <code style={mono}>pricing_usd_per_1m</code>{' '}
                 (null for per-output-priced image/video models — honest, not missing), and{' '}
                 <code style={mono}>capabilities</code>. The routers (<code style={mono}>xd/auto</code>,{' '}
-                <code style={mono}>xd/cheap</code>) appear under text.
+                <code style={mono}>xd/budget</code>) appear under text.
               </p>
               <Code text={`{ "object": "list", "data": [
   { "id": "openai/gpt-5.6-sol", "object": "model", "owned_by": "openai",

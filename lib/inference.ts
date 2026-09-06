@@ -29,6 +29,7 @@ import { createClient } from '@supabase/supabase-js'
 import { sanitizeProviderError } from './provider-errors'
 import * as providers from '@/lib/providers'
 import type { ModelInfo, JsonSchemaSpec } from '@/lib/providers'
+import { PRESETS, rank, type Candidate } from './router-weights'
 import { getModelById, getModelByProviderName } from '@/lib/models'
 import { isBlockedFor } from '@/lib/model-features'
 import { debitCredits, getUserCredits } from '@/lib/credits'
@@ -168,7 +169,13 @@ function assertUsable(model: ModelInfo): void {
  * than calling /api/xboard over HTTP — see the header note about lambdas
  * calling themselves.
  */
-async function routeModel(route: RouteId): Promise<ModelInfo> {
+/**
+ * Every text model the router may consider, with the three axes attached.
+ * Exported because the XDev preview panel ranks the SAME candidates through
+ * the SAME scoring function — a panel that scored its own way would show a
+ * developer one model while the API served another.
+ */
+export async function routerCandidates(): Promise<{ candidates: Candidate[]; floorQuality: number }> {
   const sb = service()
   const { data: all } = await sb
     .from('model_ratings')
@@ -176,67 +183,94 @@ async function routeModel(route: RouteId): Promise<ModelInfo> {
     .eq('mode', 'text')
     .order('xd_score', { ascending: false })
     .limit(40)
+  if (!all?.length) return { candidates: [], floorQuality: 0 }
 
-  if (!all?.length) {
+  // A vote floor. The board has had a model leading on six votes — fine on
+  // XBoard, where a reader sees the count beside the score, and not fine as the
+  // silent default for every API call a game makes. If too few clear it, use
+  // the unfiltered list rather than refusing: a thin board should degrade to
+  // "best we know", not 503 a running game.
+  const rated = all.filter(r => Number(r.total_votes ?? 0) >= MIN_ROUTE_VOTES)
+  const rows = rated.length >= 3 ? rated : all
+  if (rows !== rated) {
+    console.warn(`${LOG} only ${rated.length} text models have >= ${MIN_ROUTE_VOTES} votes; routing on the full board`)
+  }
+
+  // The quality floor is a GAP BELOW THE LEADER, not the median of the board.
+  //
+  // The median was the first version and it was wrong on a thin board: the five
+  // rated text models sit within 10% of each other (975-1077, because votes are
+  // few and Bradley-Terry starts everyone at 1000), so the median excluded
+  // gemini-3.1-flash-lite — 20x cheaper than the winner and 0.9% below it on
+  // quality — and xd/budget returned a $35/1M model. A median cuts half the
+  // board no matter how alike the halves are.
+  //
+  // 100 points is roughly a 1-in-3 upset rate on this scale: a real difference.
+  // Four points is not, and should not cost a caller 20x.
+  const QUALITY_GAP = 100
+  const best = Math.max(...rows.map(r => Number(r.quality_rating ?? 0)))
+  const floorQuality = best - QUALITY_GAP
+
+  const { data: lat } = await sb.from('model_latency').select('model_id, ttft_s, samples').gte('samples', 3)
+  // WORST dot per model, never the best. model_latency has one row per
+  // (model, effort) and a route returns a model with no effort attached, so
+  // ranking on the best dot promises a speed only one setting delivers —
+  // xd/fast picked qwen3.6-plus that way, whose dots are 0.58s and 14.37s.
+  const worstTtft = new Map<string, number>()
+  for (const r of lat ?? []) {
+    if (typeof r.ttft_s !== 'number' || r.ttft_s <= 0) continue
+    const seen = worstTtft.get(r.model_id)
+    if (seen === undefined || r.ttft_s > seen) worstTtft.set(r.model_id, r.ttft_s)
+  }
+
+  const { resolveTokenRate } = await import('@/lib/providers/pricing')
+  const candidates = await Promise.all(rows.map(async row => {
+    const model = await getModelById(row.model_id)
+    const t = model?.model_pricing?.tokens
+    // Input + output per 1M, deliberately unweighted: the true ratio depends on
+    // the caller's shape (a world-snapshot agent is input-heavy, a storyteller
+    // output-heavy) and picking one game's ratio would overfit the router to it.
+    const price = t ? resolveTokenRate(t.text_input, null) + resolveTokenRate(t.text_output, null) : null
+    return {
+      model_id: row.model_id,
+      quality: Number(row.quality_rating ?? 0) || null,
+      pricePer1m: price && price > 0 ? price : null,
+      ttftS: worstTtft.get(row.model_id) ?? null,
+    } as Candidate
+  }))
+
+  return { candidates, floorQuality }
+}
+
+async function routeModel(route: RouteId): Promise<ModelInfo> {
+  const preset = PRESETS[route]
+  const { candidates, floorQuality } = await routerCandidates()
+  if (!candidates.length) {
     throw new InferenceError(
       'No rated text models are available to route to right now. Name a model explicitly.',
       503, 'router_unavailable', 'api_error',
     )
   }
 
-  // A vote floor. The board today has a model leading on SIX votes and
-  // another rated on one — fine on XBoard, where a reader sees the vote
-  // count beside the score, and not fine as the silent default for every
-  // API call a game makes. If too few models clear the floor the unfiltered
-  // list is used rather than refusing: a thin board should degrade to
-  // "best we know" and say so in the logs, not 503 a running game.
-  const rated = all.filter(r => Number(r.total_votes ?? 0) >= MIN_ROUTE_VOTES)
-  const rows  = rated.length >= 3 ? rated : all
-  if (rows !== rated) {
-    console.warn(`${LOG} only ${rated.length} text models have >= ${MIN_ROUTE_VOTES} votes; routing on the full board`)
+  const pool = preset.floor
+    ? (candidates.filter(c => (c.quality ?? 0) >= floorQuality).length
+        ? candidates.filter(c => (c.quality ?? 0) >= floorQuality)
+        : candidates)
+    : candidates
+
+  const ordered = rank(pool, preset.weights)
+  if (!ordered.length) {
+    // Only reachable when an axis the preset weights has no data at all —
+    // today that means xd/fast before the latency probe has run. Say so;
+    // handing back the quality leader and calling it fast is the lie.
+    throw new InferenceError(
+      `${route} cannot be resolved: the data it ranks on has not been measured yet. Name a model explicitly, or use xd/auto.`,
+      503, 'route_unmeasured', 'api_error',
+    )
   }
 
-  // Everything but auto keeps a QUALITY FLOOR first, then re-sorts the
-  // survivors on its own axis. Without the floor, "budget" and "fast" both
-  // degenerate into "the worst model that is technically usable" — the
-  // cheapest and the quickest model on any board is very often the same one,
-  // and it is not one you would hand a paying caller by default.
-  const aboveMedian = () => {
-    const scores = [...rows].map(r => Number(r.xd_score ?? 0)).sort((a, b) => a - b)
-    const median = scores[Math.floor(scores.length / 2)] ?? 0
-    const kept = rows.filter(r => Number(r.xd_score ?? 0) >= median)
-    return kept.length ? kept : rows
-  }
-
-  let ordered = rows
-  if (route === 'xd/budget') {
-    // "Budget" has to mean cheap. Sorting by value_rating alone put Fable 5 —
-    // the single most expensive model on the site — at the top, because value
-    // is a rating and not a price. Keep what is good enough, then order by
-    // what it actually charges.
-    ordered = await byListPrice(aboveMedian())
-  } else if (route === 'xd/fast') {
-    ordered = await byMeasuredTtft(aboveMedian())
-    if (!ordered.length) {
-      // Better to say "not measured yet" than to hand back the XD Score
-      // leader and call it fast. Naming the fix keeps the caller unblocked.
-      throw new InferenceError(
-        'xd/fast has no latency measurements yet. Name a model explicitly, or use xd/auto.',
-        503, 'route_unmeasured', 'api_error',
-      )
-    }
-  } else if (route === 'xd/max') {
-    // QUALITY ONLY. rows arrives sorted by xd_score, which is
-    // quality*0.4 + value*0.4 + stickiness*0.2 — so sorting on it here would
-    // make max a duplicate of auto, and it did: both resolved to the same
-    // model. The difference between the two routes IS the value term, so max
-    // drops it and ranks on the blind-vote quality rating alone. Price is
-    // deliberately ignored; that is the whole point of the route.
-    ordered = [...rows].sort((a, b) => Number(b.quality_rating ?? 0) - Number(a.quality_rating ?? 0))
-  }
-
-  for (const row of ordered) {
-    const model = await getModelById(row.model_id)
+  for (const c of ordered) {
+    const model = await getModelById(c.model_id)
     if (!model) continue
     try { assertUsable(model); return model } catch { /* try the next one */ }
   }

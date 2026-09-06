@@ -23,7 +23,7 @@ Prices are always in the open. Developers get the same routing inside their own 
 XDev (API keys + the full API reference, one public page — docs readable without signing in; key management needs sign-in). Two surfaces on one key: an
 OpenAI-compatible text API — POST /api/v1/chat/completions, point any OpenAI
 SDK at the base URL; `model` takes `provider/model_name` or the routing verbs
-`xd/auto` (best by blind votes) / `xd/cheap` (good enough, cheapest); JSON
+`xd/auto` / `xd/fast` / `xd/budget` / `xd/max`; JSON
 schema output is enforced server-side; every response reports its real
 `cost_usd` — and an MCP server (/api/mcp: `get_leaderboard`, `pick_model`,
 `generate_image`, `generate_video`, `check_job`, `get_balance`) for agent
@@ -193,9 +193,14 @@ server** so an agent can query the leaderboard and run models as tools. Full
 reference at `/xdev/docs`.
 
 Address a model as `provider/model_name` — for example
-`google/gemini-3.6-flash` — or let ModelXD choose: **`xd/auto`** picks the
-highest XD Score, **`xd/cheap`** picks the cheapest model that still clears a
-quality bar (measured about 10× cheaper than `xd/auto`). The headline feature
+`google/gemini-3.6-flash` — or let ModelXD choose with one of four routing
+verbs: **`xd/auto`** balances quality, price and speed; **`xd/fast`** picks the
+lowest measured time to first token; **`xd/budget`** picks the cheapest model
+that still clears a quality bar; **`xd/max`** picks the highest blind-vote
+quality and ignores price. All four score the same candidates on the same
+three axes — they differ only in how those axes are weighted, and the panel on
+XDev lets you move the weights yourself and see what would answer. The
+headline feature
 is **structured output** — ask for JSON matching a schema and you get it back
 filled in, across providers that each express schemas differently. Tool
 calling is deliberately not supported.

@@ -1,4 +1,6 @@
 'use client'
+
+import RouterTuner from '@/app/components/RouterTuner'
 // app/xdev/client.tsx — XDev: API keys + the MCP connect guide.
 //
 // Two halves. KEYS: mint / cap / revoke, list via owner-read RLS (the
@@ -112,7 +114,7 @@ export default function XDevClient() {
   }
 
   const chatCurl = useMemo(() =>
-    `curl -s ${origin}/api/v1/chat/completions \\\n  -H "Authorization: Bearer ${keyShown}" -H "Content-Type: application/json" \\\n  -d '{"model":"xd/cheap","messages":[{"role":"user","content":"One sentence: why blind votes?"}]}'`,
+    `curl -s ${origin}/api/v1/chat/completions \\\n  -H "Authorization: Bearer ${keyShown}" -H "Content-Type: application/json" \\\n  -d '{"model":"xd/budget","messages":[{"role":"user","content":"One sentence: why blind votes?"}]}'`,
     [origin, keyShown])
   const chatPy = useMemo(() =>
     `from openai import OpenAI\nclient = OpenAI(base_url="${origin}/api/v1", api_key="${keyShown}")\nr = client.chat.completions.create(model="xd/auto", messages=[{"role": "user", "content": "hi"}])\nprint(r.choices[0].message.content, r.usage)`,
@@ -235,6 +237,14 @@ export default function XDevClient() {
           )}
         </div>
 
+        {/* ── The router, made legible ──────────────────────────────────
+            Directly above the Text API card, because "which model answers
+            xd/auto?" is the first question the card provokes and the panel is
+            the answer. It shows the live ranking, not a description of one. */}
+        <div style={{ ...card, padding: 0, border: 'none', background: 'transparent' }}>
+          <RouterTuner />
+        </div>
+
         {/* ── Text API ─────────────────────────────────────────────────── */}
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
@@ -249,7 +259,7 @@ export default function XDevClient() {
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
             Point any OpenAI SDK at this base URL and keep your code. <code>model</code> takes{' '}
             <code>provider/model_name</code> from the leaderboard, or let the votes decide:{' '}
-            <code>xd/auto</code> (best XD Score) / <code>xd/cheap</code> (good enough, cheapest).
+            <code>xd/auto</code>, <code>xd/fast</code>, <code>xd/budget</code> or <code>xd/max</code>.
             The model that answered comes back in <code>response.model</code>, the real price in{' '}
             <code>usage.cost_usd</code> — on every response, streams included.
           </p>
