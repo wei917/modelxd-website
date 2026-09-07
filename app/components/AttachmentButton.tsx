@@ -2,7 +2,7 @@
 // Attachment button — uploads original files to private Supabase bucket
 // Supports multiple file selection for multi-image reference
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 export type Attachment = {
@@ -28,7 +28,7 @@ export type Attachment = {
    *  numbering was "too complicated"). The role travels with the bytes,
    *  so it survives the director rewriting the brief — prose can be
    *  reworded, a tag cannot. Images only; audio/lyrics detect themselves. */
-  role?:       'subject' | 'style'
+  role?:       'subject' | 'style' | 'cover'
   /** WHICH subject, when there is more than one (owner, Aug 11: "what if I
    *  have multiple subjects?"). A short name the user types on the chip —
    *  "Mei", "the bag". Files sharing a name are the same subject, so a
@@ -203,6 +203,9 @@ export default function AttachmentButton({
   accept,
   maxFiles,
   roles = false,
+  variant = 'clip',
+  label,
+  sublabel,
 }: {
   attachments: Attachment[]
   onChange:    (a: Attachment[]) => void
@@ -217,8 +220,19 @@ export default function AttachmentButton({
   accept?:     string
   /** Max total files. Defaults to MAX_FILES (5); batch flows pass 10. */
   maxFiles?:   number
+  /** How the trigger looks. 'clip' is the paperclip that rides beside a
+   *  composer. 'dropzone' is a real upload box — an outlined target with a
+   *  label, a hint and drag-and-drop — for a FORM, where a 16px paperclip
+   *  reads as a stray character rather than a place to put a file (owner,
+   *  Sep 6: "stop keep using the 迴紋針 icon"). */
+  variant?:    'clip' | 'dropzone'
+  /** Dropzone only: the call to action, e.g. "Upload song". */
+  label?:      string
+  /** Dropzone only: the quiet line under it, e.g. "MP3 / WAV / M4A". */
+  sublabel?:   string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
 
   const handleFiles = async (files: FileList) => {
     const ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','text/plain','application/pdf','video/mp4','video/quicktime','video/webm',
@@ -335,7 +349,30 @@ export default function AttachmentButton({
           {`max ${maxFiles ?? MAX_FILES} files`}
         </span>
       )}
-      {attachments.length < (maxFiles ?? MAX_FILES) && (
+      {attachments.length < (maxFiles ?? MAX_FILES) && variant === 'dropzone' && (
+        <>
+          <input ref={inputRef} type="file" accept={accept ?? ACCEPT} multiple={multiple} style={{ display: 'none' }}
+            onChange={e => { if (e.target.files?.length) handleFiles(e.target.files) }} />
+          <button
+            type="button"
+            className={'att-drop' + (dragOver ? ' over' : '')}
+            onClick={() => !disabled && inputRef.current?.click()}
+            disabled={disabled}
+            onDragOver={e => { e.preventDefault(); if (!disabled) setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => {
+              e.preventDefault(); setDragOver(false)
+              if (!disabled && e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files)
+            }}
+          >
+            <span className="att-drop-ic" aria-hidden>↥</span>
+            <span className="att-drop-label">{label ?? 'Add a file'}</span>
+            {sublabel && <span className="att-drop-sub">{sublabel}</span>}
+            <span className="att-drop-sub">or drag and drop</span>
+          </button>
+        </>
+      )}
+      {attachments.length < (maxFiles ?? MAX_FILES) && variant === 'clip' && (
         <>
           <input ref={inputRef} type="file" accept={accept ?? ACCEPT} multiple={multiple} style={{ display: 'none' }}
             onChange={e => { if (e.target.files?.length) handleFiles(e.target.files) }} />

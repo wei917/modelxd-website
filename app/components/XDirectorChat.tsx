@@ -335,6 +335,8 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   }
 
   const endRef      = useRef<HTMLDivElement>(null)
+  const paneRef     = useRef<HTMLDivElement>(null)
+  const settled     = useRef(false)
   // ── Board identity (CC, July 31) ──────────────────────────────────────
   // Everything the agent makes in one conversation belongs on ONE canvas
   // board, and the board IS the conversation — same uuid, so resuming a
@@ -472,7 +474,28 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
 
   // block:'nearest' keeps the auto-scroll INSIDE the transcript's own
   // overflow container — the page itself must never move on a new bubble.
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [bubbles])
+  // Follow NEW messages — but not on a fresh board. endRef sits below the
+  // setup form, so scrolling to it on mount dragged the page past the form and
+  // landed mid-Direction (owner, Sep 6: "why I enter the Music Video page, it
+  // scrolls to section 3"). With no bubbles there is nothing to follow.
+  useEffect(() => {
+    if (bubbles.length === 0) return
+    // Drive the transcript's OWN scrollTop rather than scrollIntoView: the
+    // pane sits inside a sticky, flex rail, and scrollIntoView there resolved
+    // against the wrong box — on a resumed ?c= board it moved the pane 2.5px
+    // and left the plan card 3000px down, unreachable and invisible.
+    const pane = paneRef.current
+    // A resumed board must open AT the newest card, so jump the first time
+    // (smooth animates from the top and reads as the page ignoring you); once
+    // settled, follow new messages smoothly.
+    const behavior: ScrollBehavior = settled.current ? 'smooth' : 'auto'
+    settled.current = true
+    if (pane && pane.scrollHeight > pane.clientHeight) {
+      pane.scrollTo({ top: pane.scrollHeight, behavior })
+      return
+    }
+    endRef.current?.scrollIntoView({ behavior, block: 'end' })
+  }, [bubbles])
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   // ── Frame chaining (CC, Aug 6) ────────────────────────────────────────
@@ -1475,9 +1498,11 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       const blk = { type: 'image', source: { type: 'url', url } }
       shown++
       const nm = (((a as any).label ?? '').trim())
-      const role = (a as any).role === 'style'
-        ? 'STYLE REFERENCE (look only — palette, light, grade; NOT the subject)'
-        : `SUBJECT${nm ? ` "${nm}"` : ''} (keep this likeness)`
+      const role = (a as any).role === 'cover'
+        ? "COVER (the film's LOOK ANCHOR — palette, grade, world. Not a subject: nobody in it is cast)"
+        : (a as any).role === 'style'
+          ? 'STYLE REFERENCE (look only — palette, light, grade; NOT the subject)'
+          : `SUBJECT${nm ? ` "${nm}"` : ''} (keep this likeness)`
       visionBlocks.push({ type: 'text', text: `File ${no} — ${a.fileName} — ${role}` })
       visionBlocks.push(blk)
     }
@@ -1602,9 +1627,15 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
       // identity, and a scene is fed only the subjects that appear in it.
       const fmt = (list: any[]) => list.map(a => `${a.fileNo}. ${a.fileName}`).join(', ')
       const sty = committedRef.current.filter(a => (a as any).role === 'style')
+      // A COVER is neither a subject nor a style frame: it is the film's
+      // look anchor. Untagged it fell into the unnamed-SUBJECT bucket, so a
+      // brief that said "a cover is attached" pointed at nothing the file
+      // list agreed with, and the director reported it had not received one
+      // (owner, Sep 6).
+      const cov = committedRef.current.filter(a => (a as any).role === 'cover')
       const byName = new Map<string, any[]>()
       for (const a of committedRef.current) {
-        if ((a as any).role === 'style') continue
+        if ((a as any).role === 'style' || (a as any).role === 'cover') continue
         const k = (((a as any).label ?? '').trim()) || '(unnamed)'
         if (!byName.has(k)) byName.set(k, [])
         byName.get(k)!.push(a)
@@ -1617,6 +1648,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
         '[attached files — the ROLE TAGS BELOW ARE THE USER\'S OWN, set on each file. They are authoritative: never re-assign a role from a filename or from anything written in the brief.',
         ...lines,
         sty.length ? `STYLE REFERENCE (look only — palette, light, grade; never the subject): ${fmt(sty)}` : '',
+        cov.length ? `COVER — the film's LOOK ANCHOR (palette, grade, world). Do NOT generate one; use this, and reference it by number on every key still: ${fmt(cov)}` : '',
         byName.size > 1
           ? `There are ${byName.size} DIFFERENT subjects. Name them in each scene's script and shot text, and pass use_files with ONLY the subjects that appear in that scene — mixing two people's photos into one generation blends their faces.`
           : '',
@@ -1748,7 +1780,18 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
           /xdirect the canvas IS alongside the chat. (CC, Aug 5) */}
 
         {/* Transcript — the ONLY scrolling region in the rail. */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14, paddingRight: 6 }}>
+        {/* On a TEMPLATE ROUTE the whole rail grows and the PAGE scrolls (see
+            .xdirect-chat.is-page), so this pane must not also try to be a
+            scroll container — nested scrollers were what made a plan card's
+            Generate button unreachable. On the split shell it keeps the
+            contained scroller the pinned composer depends on. */}
+        <div ref={paneRef} style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: initialTemplate ? 'visible' : 'auto',
+          overscrollBehavior: initialTemplate ? 'auto' : 'contain',
+          display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14, paddingRight: 6,
+        }}>
           {loading && bubbles.length === 0 && (
             <div style={{ padding: '18px 20px', fontSize: 14, color: 'var(--muted)' }}>
               <span className="stream-cursor">▋</span>
@@ -1893,7 +1936,12 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               </div>
             </div>
           ) : b.role === 'plan' ? (
-            <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '82%', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+            // flexShrink:0 is load-bearing. The transcript is a column flex
+            // box, and `overflow:hidden` zeroes a flex item's automatic
+            // minimum size — so in an over-constrained rail this card and the
+            // gen card below collapsed to their 2px of border, putting a plan
+            // waiting on Generate off-screen with nothing to click (Sep 6).
+            <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '82%', flexShrink: 0, border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderBottom: '1px solid var(--border2)', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
                 <span>{t('xdirector.plan')}</span>
                 <span style={{ opacity: 0.8 }}>· {b.plan?.modelName}</span>
@@ -1926,7 +1974,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               </div>
             </div>
           ) : b.role === 'gen' ? (
-            <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '82%', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+            <div key={i} style={{ alignSelf: 'flex-start', maxWidth: '82%', flexShrink: 0, border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderBottom: '1px solid var(--border2)', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
                 {b.status === 'generating' && <span className="nav-history-spin" aria-hidden />}
                 <span>{b.status === 'generating' ? 'GENERATING' : b.status === 'error' ? 'FAILED' : 'DONE'}</span>

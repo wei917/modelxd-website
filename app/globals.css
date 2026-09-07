@@ -679,6 +679,18 @@ body {
 /* Desktop: the content TopBar provides the top spacing, so pages need only a
    little padding. Mobile: restore 60px to clear the fixed nav top bar. */
 .xduel-page { padding-top: 20px; min-height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+/* The rail's scrollport. `.xduel-page` already declares `overflow-y: auto`,
+   but with `min-height: 100vh` it grows with its content and so never
+   scrolls — a scroll container that doesn't scroll swallows every
+   `position: sticky` inside it (sticky resolves against the nearest
+   scrollport, not the viewport). Pinning its height under the sticky
+   .omni-bar makes it the box that actually scrolls, which is what the brief
+   rail sticks to. Below the rail's breakpoint there is nothing sticky left,
+   so the normal page-height behaviour comes back. */
+.xduel-page.is-sticky-host { height: calc(100vh - 54px); min-height: 0; }
+@media (max-width: 1180px) {
+  .xduel-page.is-sticky-host { height: auto; min-height: 100vh; }
+}
 /* The mobile nav is position:fixed with height 60px, so it sits outside the
    flow and every page's first 60px render underneath it. XDuel used to be the
    only page compensating, which is why the landing page's value bar lost its
@@ -2594,3 +2606,245 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 }
 .mv-start:hover:not(:disabled) { background: #ff5249; box-shadow: 0 0 32px var(--red-glow); }
 .mv-start:disabled { opacity: 0.4; cursor: default; }
+
+
+/* ── Music Video setup: the page layout (owner's reference, Sep 6) ───────
+   The form stopped being one bordered card in the chat rail and became the
+   page: song across the top with its waveform, then Reference / Direction
+   side by side, then a brief bar that says what is about to be shot.
+   Colours and geometry stay the site's own; only the arrangement is new. */
+
+.mvp { display: flex; flex-direction: column; flex-shrink: 0; }
+.mvp-head { display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap; padding-bottom: 18px; }
+.mvp-head h2 { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.mvp-steps { margin-left: auto; display: flex; gap: 28px; align-items: flex-end; }
+.mvp-step { display: flex; align-items: baseline; gap: 7px; padding-bottom: 8px;
+            border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; }
+.mvp-step b { font-size: 15px; font-weight: 700; color: var(--muted2); }
+.mvp-step.on { border-bottom-color: var(--red); color: var(--red); }
+.mvp-step.on b { color: var(--red); }
+.mvp-skip { margin-left: 18px; font-size: 11.5px; color: var(--muted);
+            text-decoration: underline dotted; cursor: pointer; background: none; border: none; }
+
+.mvp-rule { height: 1px; background: var(--border); border: 0; margin: 0; }
+
+/* song band */
+.mvp-song { display: grid; grid-template-columns: 132px 1fr; gap: 22px; padding: 20px 0; }
+.mvp-art { width: 132px; height: 132px; border-radius: 4px; object-fit: cover;
+           border: 1px solid var(--border); background: var(--surface); }
+.mvp-artempty { display: flex; align-items: center; justify-content: center;
+                color: var(--muted); font-size: 26px; border: 1px dashed var(--border2); }
+.mvp-stop { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.mvp-title { font-size: 21px; font-weight: 700; letter-spacing: -0.015em; }
+.mvp-dur { font-size: 13.5px; color: var(--muted2); margin-top: 2px; }
+.mvp-seg { margin-left: auto; display: flex; align-items: baseline; gap: 12px;
+           color: var(--red); font-weight: 600; font-size: 13.5px; }
+.mvp-seg .t { font-family: var(--font-mono), monospace; font-weight: 500; font-variant-numeric: tabular-nums; }
+.mvp-wave { display: block; width: 100%; height: 96px; margin-top: 10px; cursor: ew-resize; }
+.mvp-ticks { display: flex; justify-content: space-between; font-family: var(--font-mono), monospace;
+             font-size: 11px; color: var(--muted2); font-variant-numeric: tabular-nums; margin-top: 3px; }
+.mvp-wavehint { font-size: 11px; color: var(--muted2); margin-top: 8px; }
+
+/* two columns */
+.mvp-cols { display: grid; grid-template-columns: 1.05fr 1fr; }
+.mvp-col { padding: 20px 0 4px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.mvp-col + .mvp-col { border-left: 1px solid var(--border); padding-left: 26px; margin-left: 26px; }
+.mvp-sechead { display: flex; align-items: flex-start; gap: 14px; }
+.mvp-num { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; color: var(--muted);
+           opacity: 0.4; line-height: 0.85; }
+.mvp-sechead h3 { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+.mvp-sechead p { margin: 0; font-size: 12.5px; color: var(--muted2); }
+
+/* picture style cards */
+.mvp-styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mvp-style { border: none; background: none; padding: 0; cursor: pointer; text-align: center; }
+/* display:block is load-bearing — as an inline span the border rendered as two
+   stubs above and below the card instead of boxing it, and the tick anchored
+   to a collapsed box. */
+.mvp-style .fr { display: block; position: relative; border: 2px solid transparent;
+                 border-radius: 6px; overflow: hidden; background: var(--surface); }
+.mvp-style img, .mvp-style .ph { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+.mvp-style .ph { display: flex; align-items: center; justify-content: center;
+                 border: 1px solid var(--border2); color: var(--muted); font-size: 11.5px; }
+.mvp-style .tick { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+                   background: var(--red); color: #fff; font-size: 11px; display: none;
+                   align-items: center; justify-content: center; }
+.mvp-style .nm { display: block; margin-top: 7px; font-size: 12.5px; color: var(--muted2); }
+.mvp-style:hover .fr { border-color: var(--border2); }
+.mvp-style[aria-pressed="true"] .fr { border-color: var(--red); box-shadow: 0 0 16px var(--red-glow); }
+.mvp-style[aria-pressed="true"] .tick { display: flex; }
+.mvp-style[aria-pressed="true"] .nm { color: var(--ink, var(--white)); font-weight: 600; }
+.mvp-style:focus-visible .fr { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* ── the brief rail ─────────────────────────────────────────────────────
+   What replaced the one-line brief bar. The bar lived under the form, so
+   the summary AND the Start button only existed once you had scrolled all
+   the way down, and while you were choosing nothing told you what the film
+   was becoming. Pinned beside the form it answers that at every scroll
+   position, and Start sits with the answer it sends. */
+/* The grid item STRETCHES and the card inside it is the sticky one. With
+   `align-items: start` the rail's box is exactly as tall as the card, and a
+   sticky element cannot travel outside its containing block — so it pinned
+   for a few pixels and then scrolled away with the page. */
+.mvp-shell { display: grid; grid-template-columns: minmax(0, 1fr) 306px; gap: 26px; }
+.mvp-railcard { position: sticky; top: 14px;   /* the .omni-bar is above this scrollport */
+                max-height: calc(100vh - 96px); overflow: auto; overscroll-behavior: contain;
+                border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
+                padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.mvp-railhead { display: flex; align-items: center; justify-content: space-between;
+                font-family: var(--font-mono), monospace; font-size: 10.5px;
+                letter-spacing: 0.1em; color: var(--muted2); }
+
+/* Art: the film's face before a frame of it exists. */
+.mvp-railart { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 4/3; }
+.mvp-railart img, .mvp-railart .ph { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mvp-railart .ph { background: linear-gradient(150deg, var(--red-dim), var(--surface2) 55%, var(--bg)); }
+.mvp-railart::after { content: ''; position: absolute; inset: 0;
+                      background: linear-gradient(180deg, rgba(0,0,0,0.42) 0 22%, transparent 45%,
+                                                          rgba(0,0,0,0.72) 100%); }
+.mvp-railart .tag, .mvp-railart .ratio {
+  position: absolute; top: 9px; z-index: 1; font-family: var(--font-mono), monospace;
+  font-size: 9px; letter-spacing: 0.11em; color: rgba(255,255,255,0.9);
+}
+.mvp-railart .tag   { left: 10px; }
+.mvp-railart .ratio { right: 10px; padding: 2px 5px; border-radius: 4px;
+                      background: rgba(0,0,0,0.4); letter-spacing: 0.04em; }
+.mvp-railart .txt { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 1;
+                    display: flex; flex-direction: column; gap: 2px; }
+.mvp-railart .txt b { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; color: #fff;
+                      line-height: 1.1; }
+.mvp-railart .txt i { font-style: normal; font-size: 11.5px; color: rgba(255,255,255,0.82); }
+
+/* The sentence. A red bullet marks it as the rail's claim, not a label. */
+.mvp-railline { margin: 2px 0 0; font-size: 15px; font-weight: 700; letter-spacing: -0.015em;
+                display: flex; gap: 8px; }
+.mvp-railline::before { content: '●'; color: var(--red); font-size: 8px; line-height: 1.9; }
+.mvp-railsub  { margin: -8px 0 0 16px; font-size: 12px; color: var(--muted2); }
+
+.mvp-railrows { margin: 4px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border);
+                display: flex; flex-direction: column; gap: 9px; }
+.mvp-railrow  { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.mvp-railrow dt { display: flex; align-items: center; gap: 7px; color: var(--muted2); }
+.mvp-railrow dt svg { color: var(--muted); flex-shrink: 0; }
+.mvp-railrow dd { margin: 0 0 0 auto; text-align: right; font-weight: 600; color: var(--white);
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62%; }
+
+/* The one thing still missing — a disabled Start with no reason beside it
+   is the version of this that makes people leave. */
+.mvp-railnext { display: flex; gap: 10px; align-items: flex-start; margin-top: 2px;
+                padding: 10px 11px; border-radius: 9px; background: var(--red-dim);
+                border: 1px solid var(--border); color: var(--red); }
+.mvp-railnext svg { margin-top: 2px; flex-shrink: 0; }
+.mvp-railnext span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mvp-railnext b { font-size: 12.5px; font-weight: 700; }
+.mvp-railnext i { font-style: normal; font-size: 11.5px; color: var(--muted2); }
+.mvp-railnext.is-ok { background: var(--surface2); color: var(--green, var(--muted2)); }
+
+.mvp-railgo { width: 100%; justify-content: center; }
+
+@media (max-width: 1180px) {
+  .mvp-shell { grid-template-columns: 1fr; }
+  .mvp-railcard { position: static; max-height: none; }
+}
+@media (max-width: 900px) {
+  .mvp-cols { grid-template-columns: 1fr; }
+  .mvp-col + .mvp-col { border-left: none; padding-left: 0; margin-left: 0;
+                        border-top: 1px solid var(--border); padding-top: 18px; }
+  .mvp-song { grid-template-columns: 1fr; }
+  .mvp-art { width: 96px; height: 96px; }
+}
+
+
+/* ── AttachmentButton, dropzone variant ─────────────────────────────────
+   A 16px paperclip beside a label is fine in a composer, where it reads as
+   "attach to this message". In a FORM it reads as a stray glyph rather than
+   a place to put a file (owner, Sep 6). This is the same control with a
+   target you can see and drop onto. */
+.att-drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; width: 100%; min-width: 132px; padding: 16px 14px;
+  border: 1px dashed var(--border2); border-radius: 8px; background: var(--bg);
+  cursor: pointer; font-family: var(--font-body), sans-serif;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.att-drop:hover:not(:disabled), .att-drop.over {
+  border-color: var(--red); background: var(--red-dim);
+}
+.att-drop.over { box-shadow: 0 0 18px var(--red-glow); }
+.att-drop:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.att-drop:disabled { opacity: 0.45; cursor: default; }
+.att-drop-ic { font-size: 19px; line-height: 1; color: var(--red); }
+.att-drop-label { font-size: 13px; font-weight: 600; color: var(--red); }
+.att-drop-sub { font-size: 10.5px; color: var(--muted2); }
+
+
+/* ── the song hero ──────────────────────────────────────────────────────
+   With no song attached the top of the page is ONE large target. The song is
+   the subject of this whole template — it was a paperclip near the bottom
+   once, then a small box beside an empty waveform, and neither said "start
+   here" (owner, Sep 6: "the top should be a big upload box"). */
+.mvp-songdrop { padding: 30px 0 34px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mvp-songdrop .att-drop {
+  width: 100%; max-width: 620px; padding: 46px 30px; gap: 6px;
+  border-width: 2px; border-radius: 12px;
+  background: linear-gradient(180deg, var(--red-dim), transparent 70%);
+}
+.mvp-songdrop .att-drop-ic { font-size: 34px; }
+.mvp-songdrop .att-drop-label { font-size: 18px; }
+.mvp-songdrop .att-drop-sub { font-size: 12px; }
+.mvp-dropnote { margin: 0; font-size: 12px; color: var(--muted2); text-align: center; max-width: 60ch; }
+
+
+/* ── song transport ─────────────────────────────────────────────────────
+   Importing a track and getting no way to hear it was the gap (owner,
+   Sep 6). Play previews the SELECTED stretch, not the song, so the button
+   answers "what will actually be shot?". */
+.mvp-transport { display: flex; align-items: center; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+.mvp-play {
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border2);
+  background: var(--bg); color: var(--red); font-size: 12px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.mvp-play:hover:not(:disabled) { border-color: var(--red); background: var(--red-dim); box-shadow: 0 0 14px var(--red-glow); }
+.mvp-play:disabled { opacity: 0.4; cursor: default; }
+.mvp-clock { font-family: var(--font-mono), monospace; font-size: 11.5px; color: var(--muted2);
+             font-variant-numeric: tabular-nums; }
+.mvp-trim { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono), monospace;
+            font-size: 11.5px; color: var(--muted2); }
+.mvp-trim b { color: var(--white); font-weight: 500; font-variant-numeric: tabular-nums; min-width: 50px;
+              text-align: center; }
+.mvp-trim button { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border2);
+                   background: var(--bg); color: var(--muted2); cursor: pointer; line-height: 1;
+                   font-size: 12px; padding: 0; }
+.mvp-trim button:hover { border-color: var(--red); color: var(--red); }
+.mvp-trimlab { text-transform: uppercase; letter-spacing: 0.08em; font-size: 9.5px; margin-left: 6px; }
+.mvp-clear { margin-left: 4px; width: auto !important; padding: 0 7px !important; }
+
+
+/* Cover slot — the user's own artwork when they have it, an upload target
+   when they don't (owner, Sep 6: "we allow users to upload cover"). */
+.mvp-artbtn { padding: 0; border: 1px solid var(--border); cursor: pointer; overflow: hidden; background: none; }
+.mvp-artbtn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mvp-artdrop { border: none; padding: 0; display: block; }
+.mvp-artdrop .att-drop { width: 100%; height: 100%; padding: 10px 8px; gap: 1px; border-radius: 4px; }
+.mvp-artdrop .att-drop-ic { font-size: 16px; }
+.mvp-artdrop .att-drop-label { font-size: 12px; }
+.mvp-artdrop .att-drop-sub { font-size: 9.5px; }
+/* Six thumbnails, not three — they wrap on a narrow column. */
+.mvp-styles { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mvp-style .nm { font-size: 12px; margin-top: 5px; }
+
+
+/* A TEMPLATE ROUTE (/xdirect/music-video …) is a PAGE, not the split shell.
+   The rail's sticky max-height exists so a long transcript scrolls inside it
+   with the composer pinned beside the canvas — correct there, wrong here: it
+   capped the column at calc(100vh - 200px) while holding ~3000px of setup
+   form and transcript, so a plan card's Generate button sat outside the
+   document entirely and the board looked stuck with nothing to click
+   (owner, Sep 6). On these routes the rail grows to its content and the page
+   does the scrolling. */
+.xdirect-chat.is-page {
+  position: static;
+  max-height: none;
+  min-height: 0;
+}

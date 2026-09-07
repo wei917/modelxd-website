@@ -14,7 +14,7 @@
 import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useT } from '../../lib/i18n'
+import { STRINGS, useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useBoardNodes } from '../../lib/board-nodes'
 import XDirectorChat, { type SceneRunnerHandle } from '../components/XDirectorChat'
@@ -47,10 +47,18 @@ function XDirectKeyed({ initialTemplate }: { initialTemplate: string | null }) {
   const minted = useRef<string | null>(null)
   if (c && minted.current && c !== minted.current) minted.current = null
   const key = c && c === minted.current ? 'new' : (c ?? 'new')
-  return <XDirectBody key={key} initialTemplate={initialTemplate} onMinted={(id) => { minted.current = id }} />
+  // A template URL carrying ?c= is a BOARD, not a setup page. Passing the
+  // template through anyway gave a conversation the full-page setup treatment
+  // crammed into the 250px chat rail beside the canvas (owner, Sep 6: "the
+  // layout is broken"). Once a conversation exists the route behaves exactly
+  // like /xdirect?c= — the skill comes from the stored conversation, not the
+  // path.
+  // `template` is only the HEADER's business — the page keeps saying which
+  // template you are in even once a board exists, because the URL still does.
+  return <XDirectBody key={key} initialTemplate={c ? null : initialTemplate} template={initialTemplate} onMinted={(id) => { minted.current = id }} />
 }
 
-function XDirectBody({ onMinted, initialTemplate }: { onMinted?: (id: string) => void; initialTemplate?: string | null }) {
+function XDirectBody({ onMinted, initialTemplate, template }: { onMinted?: (id: string) => void; initialTemplate?: string | null; template?: string | null }) {
   useRequireAuth()
   const t = useT()
 
@@ -195,6 +203,15 @@ function XDirectBody({ onMinted, initialTemplate }: { onMinted?: (id: string) =>
   // from ?c=, or anything already on the board. Drives the landing layout.
   const started = !!boardId || storyboard.length > 0 || nodes.length > 0
 
+  // Template header copy. Missing keys fall through to the XDirect default
+  // rather than printing the key, so a new skill slug is a soft landing.
+  const tplCopy = (suffix: string) => {
+    const k = `xd.tpl.${template}.${suffix}`
+    return template && STRINGS[k] ? t(k) : null
+  }
+  const tplName     = tplCopy('name')
+  const tplHeadline = tplCopy('h')
+
   // Delete (owner bug, Aug 9: "delete doesn't work in canvas") — /xdirect
   // never wired the canvas's onDelete, so the button no-opped silently.
   // Same row-granular soft delete XCreate uses; a scene whose ACTIVE take
@@ -233,12 +250,27 @@ function XDirectBody({ onMinted, initialTemplate }: { onMinted?: (id: string) =>
   }, [boardLoading, wiping])
 
   return (
-    <div className="xduel-page">
+    /* `.xduel-page` carries `overflow-y: auto`, which makes it a scroll
+       container that never actually scrolls (it grows with its content) —
+       and a phantom scrollport like that swallows every `position: sticky`
+       inside it, because sticky resolves against the nearest scrollport
+       rather than the viewport. The Music Video brief rail needs the real
+       one, so this route opts out. */
+    <div className={template ? 'xduel-page is-sticky-host' : 'xduel-page'}>
       {/* Landing wears the site-standard centred 1200 arena like every
           other page; only the working stage (chat + canvas) earns 1560. */}
       <div className="arena xcreate-arena" style={{ maxWidth: started ? 1560 : undefined }}>
-        <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xdirector.eyebrow')}</Link>
-        <h1 className="page-headline" style={{ marginBottom: 24 }}>{t('xdirector.title')}</h1>
+        {/* A template route is its own page, so it wears its own header —
+            "XDIRECT / Tell Me the Story" is the GALLERY's header and read as
+            the wrong page once you had clicked into Music Video (owner,
+            Sep 6). The eyebrow keeps the way back to the gallery and adds
+            where you are; the headline is the same construction as the
+            gallery's, in this template's terms. `scratch` has no template
+            copy and correctly falls back to the XDirect header. */}
+        <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>
+          {t('xdirector.eyebrow')}{tplName ? ` / ${tplName}` : ''}
+        </Link>
+        <h1 className="page-headline" style={{ marginBottom: 24 }}>{tplHeadline || t('xdirector.title')}</h1>
 
         {/* Before the first turn the stage is empty noise — hide it and let
             the director + templates be the whole landing (owner, Aug 10).
@@ -246,7 +278,7 @@ function XDirectBody({ onMinted, initialTemplate }: { onMinted?: (id: string) =>
             send, or restored from ?c=) or anything lands on the board. */}
         <div className={started ? 'xdirect-split' : 'xdirect-split is-landing'}>
           {/* Chat rail — the director. Provides its own subtitle/intro. */}
-          <div className="xdirect-chat">
+          <div className={initialTemplate ? 'xdirect-chat is-page' : 'xdirect-chat'}>
             <XDirectorChat
               initialTemplate={initialTemplate}
               onConversationId={onConversationId}
