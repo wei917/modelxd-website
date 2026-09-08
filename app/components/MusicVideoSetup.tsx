@@ -436,6 +436,13 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     setSel(next)
   }
 
+  // Free-text direction. Every other control here is a picker or an upload, so
+  // until now the only way to say "the leads should be Asian" was to upload
+  // photos of people who are — and the cast_source:'ask' placeholder exists
+  // precisely for the case where you have no photo yet. This is the field that
+  // case needed.
+  const [notes, setNotes] = useState('')
+
   const ready = songAtts.length > 0
   const hasRef = isYouTube(reference)
   const sectionLabel = sel ? `${mmssT(sel.a)}–${mmssT(sel.b)}` : ''
@@ -458,6 +465,16 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     parts.push(castAtts.length > 0
       ? 'Cast: lock the leads from the attached subject photos.'
       : 'Cast: create original leads to fit the song.')
+    // ADDITIVE, never an override. The pickers are the contract — drama dial,
+    // form, reference frames — and a note that could silently contradict them
+    // would give the board two sources of truth and stop it matching the
+    // controls the user set. So it is scoped to what the pickers cannot say:
+    // who is in it, what they wear, where it is, what to avoid.
+    if (notes.trim()) {
+      parts.push(
+        `Notes from the user, to honour in the casting, the wardrobe, the places and every scene prompt: "${notes.trim().slice(0, 400)}". ` +
+        'These describe details the controls above cannot express. They do not override the form, the drama level, the runtime or the reference — where they seem to conflict, follow the controls and satisfy the note in the detail.')
+    }
     parts.push(DRAMA_BRIEF[drama])
     // Only when the user has NOT brought one. Sent unconditionally it told
     // the director to generate a look anchor in the same brief that said one
@@ -703,6 +720,24 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
                 context="xcreate" multiple maxFiles={4} accept="image/jpeg,image/png,image/webp"
                 variant="dropzone" label={t('xd.mv.addframes')} sublabel="JPG / PNG" />
             </div>
+          </div>
+
+          {/* Sits under Cast because that is the gap it fills: with no photo,
+              there was nowhere to describe who is in the film. Two rows, not a
+              second composer — this is a note, and the song is the subject. */}
+          <div style={{ marginTop: 14 }}>
+            <span style={label}>{t('xd.mv.notes')}</span>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              disabled={busy}
+              rows={2}
+              maxLength={400}
+              placeholder={t('xd.mv.notesph')}
+              className="mv-field"
+              style={{ width: '100%', resize: 'vertical', minHeight: 52, lineHeight: 1.5 }}
+            />
+            <span style={hint}>{t('xd.mv.noteshint')}</span>
           </div>
 
         </section>
