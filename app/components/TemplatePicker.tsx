@@ -337,7 +337,13 @@ export default function TemplatePicker({
         {t.previewUrl && isVideo && (
           <video
             ref={el => { videoRefs.current[t.id] = el }}
-            src={t.previewUrl}
+            /* #t=0.1 is what makes the card show a frame before you hover it.
+               preload="metadata" fetches duration and dimensions and does not
+               have to decode anything, so the tile painted empty and the
+               template looked like it had lost its artwork until a reload
+               served the file from cache. A fragment asks for a seek, and a
+               seek forces a decode. */
+            src={`${t.previewUrl}#t=0.1`}
             loop
             muted
             playsInline

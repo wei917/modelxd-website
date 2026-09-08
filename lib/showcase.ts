@@ -29,6 +29,8 @@ export type ShowcasePiece = {
   /** Actual pixel size, read from the file by the backfill script. */
   width: number | null
   height: number | null
+  /** 'image' or 'video' — a tile has to know whether to render a <video>. */
+  kind: 'image' | 'video'
 }
 
 /**
@@ -52,7 +54,7 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
   if (!hung?.length) return []
 
   const { data: runs } = await sb.from('xcreates')
-    .select('id, prompt, slots, deleted_at')
+    .select('id, prompt, slots, deleted_at, mode')
     .in('id', [...new Set(hung.map(h => h.xcreate_id))])
   const runById = new Map((runs ?? []).map(r => [r.id, r]))
 
@@ -74,6 +76,10 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
       ms: typeof slot.responseTime === 'number' ? slot.responseTime : null,
       width: h.width ?? null,
       height: h.height ?? null,
+      // The RUN's mode, not a guess from the slot: a slot carries isVideo but
+      // an image run and a video run are different walls and should not be
+      // distinguished by sniffing a boolean that only some providers set.
+      kind: run.mode === 'video' ? 'video' : 'image',
       sort: h.sort_order,
       title: h.title ?? '',
       prompt: run.prompt ?? '',

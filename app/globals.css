@@ -2475,8 +2475,11 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 /* DIRECT CHILD ONLY. `.showcase-tile img` also matched the ProviderLogo inside
    the caption and blew it up to the full width of the tile, so several
    pictures were replaced by a giant provider mark. */
-.showcase-tile > img { width: 100%; height: auto; display: block; transition: transform .5s ease; }
+.showcase-tile > img,
+.showcase-tile > video { width: 100%; height: auto; display: block; transition: transform .5s ease; }
 .showcase-tile:hover > img { transform: scale(1.04); }
+/* No scale on hovering a clip: it is already playing, and moving it as well
+   reads as a glitch rather than a lift. */
 
 /* The words. Present by default so the prompt is readable at a glance, and
    deepening on hover so the full brief can be read without leaving the wall. */

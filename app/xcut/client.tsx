@@ -106,9 +106,17 @@ export default function XCutClient() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {(projects ?? []).map(p => (
               <button key={p.id} onClick={() => router.push(`/xcut?p=${p.id}`)} style={{ textAlign: 'left', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', background: 'var(--surface)', cursor: 'pointer' }}>
-                {/* A cut is a picture, so the card leads with one. Video
-                    posters draw their own first frame via preload=metadata —
-                    no separate poster file to generate or store. */}
+                {/* A cut is a picture, so the card leads with one, and no
+                    poster file is generated or stored — the clip draws its own
+                    first frame.
+
+                    The #t=0.1 fragment is what MAKES it draw one. preload
+                    "metadata" fetches duration and dimensions but does not
+                    have to decode a frame, so the element painted nothing and
+                    the card looked empty until a reload served the file from
+                    cache — "I have to refresh to see the thumbnails" (owner,
+                    Sep 8). The fragment asks for a seek, and a seek forces a
+                    decode. XCutLibrary already did this; this card did not. */}
                 <div style={{
                   aspectRatio: '16 / 9', marginBottom: 8, borderRadius: 8, overflow: 'hidden',
                   background: 'var(--surface2)', border: '1px solid var(--border2)',
@@ -118,7 +126,7 @@ export default function XCutClient() {
                     ? (p.poster.mediaType.startsWith('image/')
                         // eslint-disable-next-line @next/next/no-img-element
                         ? <img src={p.poster.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <video src={p.poster.url} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
+                        : <video src={`${p.poster.url}#t=0.1`} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
                     : <span aria-hidden style={{ color: 'var(--muted2)', fontSize: 22 }}>✂</span>}
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>{p.title || t('xcut.untitled')}</div>

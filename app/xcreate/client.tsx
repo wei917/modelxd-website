@@ -4677,7 +4677,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     two full card grids to reach the only part of this page
                     that shows what the models actually produce. Setup screen
                     only — once there are results, the results are the thing. */}
-                {phase === 'setup' && slots.length === 0 && mode === 'image' && <ShowcaseWall pieces={showcase} />}
+                {phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
+                  <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
+                )}
 
                 {/* ── Product board (CC, July 28): the entry point for the
                     product-video pipeline. Uploading here does NOT generate

@@ -81,7 +81,7 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
         <div className="prompt-label eyebrow" style={{ marginBottom: 0 }}>{t('showcase.eyebrow')}</div>
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: 'var(--muted2)', letterSpacing: '0.1em' }}>
-          {pieces.length} WORKS · {new Set(pieces.map(p => p.model)).size} MODELS
+          {pieces.length} {pieces.every(p => p.kind === 'video') ? 'CLIPS' : 'WORKS'} · {new Set(pieces.map(p => p.model)).size} MODELS
         </span>
       </div>
       <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, maxWidth: 620, margin: '0 0 16px' }}>
@@ -91,8 +91,23 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
       <div className="showcase-wall">
         {pieces.map(p => (
           <figure key={p.id} className="showcase-tile" tabIndex={0} onClick={() => setOpen(p)}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.url} alt={p.title} loading="lazy" />
+            {/* A clip has to move to be worth showing, but twenty autoplaying
+                videos would fight each other and burn a phone's battery, so
+                they play on hover and hold a poster frame otherwise.
+                muted+playsInline is what lets autoplay work at all on iOS. */}
+            {p.kind === 'video' ? (
+              <video
+                /* #t=0.1 for the same reason the template cards need it: this
+                   tile only plays on hover, so without a seek it sits blank
+                   until you touch it. */
+                src={`${p.url}#t=0.1`} muted loop playsInline preload="metadata"
+                onMouseEnter={e => { void (e.currentTarget as HTMLVideoElement).play().catch(() => {}) }}
+                onMouseLeave={e => { const v = e.currentTarget as HTMLVideoElement; v.pause(); v.currentTime = 0 }}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.url} alt={p.title} loading="lazy" />
+            )}
 
             {/* Attribution is never hidden: the chip is on every picture from
                 the start, and only steps aside when the full caption arrives.
@@ -124,9 +139,15 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out',
           }}>
           <div onClick={e => e.stopPropagation()} style={{ maxWidth: 940, width: '100%', cursor: 'default' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={open.url} alt={open.title}
-              style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block' }} />
+            {open.kind === 'video' ? (
+              // Opened deliberately, so it plays, loops and takes controls.
+              <video src={open.url} autoPlay loop controls playsInline
+                style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block', background: '#000' }} />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={open.url} alt={open.title}
+                style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block' }} />
+            )}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: 14, color: '#fff' }}>
               <div className="piece-meta" style={{ fontSize: 11.5 }}>
                 <PieceMeta p={open} size={14} />

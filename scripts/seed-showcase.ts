@@ -31,10 +31,14 @@ import { createClient } from '@supabase/supabase-js'
 import { mintApiToken } from '../lib/api-token'
 
 const APPLY = process.argv.includes('--apply')
+// --video seeds the video wall instead of the image wall. Same table, same
+// proxy, same tiles; the difference is what a clip costs and how long it takes.
+const VIDEO = process.argv.includes('--video')
 const BASE = process.env.SEED_BASE_URL ?? 'http://localhost:3000'
 const ACCOUNT = 'founder@modelxd.com'
-const SPEND_CAP_USD = 4          // ~$0.065 a picture; the rest is headroom, not budget
-const PER_PROMPT_TIMEOUT_MS = 300_000
+const SPEND_CAP_USD = VIDEO ? 20 : 4   // video runs ~$0.67 a clip vs $0.065 a picture
+const CLIP_SECONDS = 5
+const PER_PROMPT_TIMEOUT_MS = VIDEO ? 900_000 : 300_000   // video takes minutes
 
 // The wall. Range is the job here, not coverage: food, faces, places, type,
 // interiors, illustration, architecture — the things people actually open
@@ -95,21 +99,83 @@ const PROMPTS: { room: string; title: string; aspect: string; prompt: string }[]
     prompt: 'Worn stone steps up to a temple gate in early morning, incense smoke drifting across, one sweeper at the top in silhouette, cool shadow and warm sun divided down the middle.' },
 ]
 
+// The video wall. MOTION IS THE SUBJECT — a still-life brief wastes the medium
+// and produces a photograph that happens to drift. Every one of these has a
+// thing that changes: something blooms, ignites, falls, curls, is erased. No
+// brand marks, no named people, no robots.
+const VIDEO_PROMPTS: { room: string; title: string; aspect: string; prompt: string }[] = [
+  { room: 'water',    title: 'Ink, blooming', aspect: '1:1',
+    prompt: 'A single drop of black ink falling into still water and blooming outward in slow motion, backlit against white, tendrils unfurling. Macro, locked-off camera.' },
+  { room: 'fire',     title: 'The match', aspect: '16:9',
+    prompt: 'A match struck in darkness: the head catches, flares, and settles to a steady flame, smoke curling off. Extreme macro, shallow focus, everything else black.' },
+  { room: 'food',     title: 'Steam off the bowl', aspect: '1:1',
+    prompt: 'Steam curling up off a bowl of hot noodle soup in a dark room, one warm light behind it catching the vapour. Slow, macro, nothing else moves.' },
+  { room: 'sea',      title: 'Footprints, erased', aspect: '16:9',
+    prompt: 'A thin wave slides up wet sand and erases a line of footprints, then withdraws. Late afternoon light, low camera almost at sand level.' },
+  { room: 'quiet',    title: 'Blown out', aspect: '9:16',
+    prompt: 'A candle blown out: the flame gutters, dies, and a ribbon of smoke rises and curls in the still air. Dark background, single warm rim light.' },
+  { room: 'season',   title: 'Petals, stone path', aspect: '16:9',
+    prompt: 'Cherry blossom petals drifting down onto a wet stone path in a temple garden, a few settling on moss. Overcast light, gentle breeze, no people.' },
+  { room: 'hands',    title: 'Paper crane', aspect: '1:1',
+    prompt: 'Hands folding a sheet of paper into a crane, seen from directly above on a wooden table. Unhurried, real folds, natural window light.' },
+  { room: 'workshop', title: 'Sparks', aspect: '16:9',
+    prompt: 'An angle grinder meeting steel in a dark workshop, sparks arcing away and dying on the floor. Handheld, high contrast, the only light is the sparks.' },
+  { room: 'sky',      title: 'The kite lifts', aspect: '16:9',
+    prompt: 'A kite catching wind and climbing away over a dusk beach, string tightening, the horizon low. Camera tilts up to follow it.' },
+  { room: 'city',     title: 'Puddle, passing bus', aspect: '9:16',
+    prompt: 'A still puddle holding a perfect neon reflection at night; a bus passes and the reflection shatters into ripples, then reassembles. Locked-off, close to the ground.' },
+  { room: 'water',    title: 'Pour', aspect: '1:1',
+    prompt: 'Espresso poured into a white cup from above, crema swirling into a spiral. Top-down, macro, soft daylight.' },
+  { room: 'field',    title: 'The gust', aspect: '16:9',
+    prompt: 'A wheat field bending in a single travelling gust of wind, the wave moving away from camera toward a far treeline. Low drone, golden hour.' },
+  { room: 'season',   title: 'Snow on a lantern', aspect: '9:16',
+    prompt: 'Snow settling slowly onto a stone lantern in a garden at dusk, flakes drifting through the warm light inside it. Very slow, almost still.' },
+  { room: 'city',     title: 'The train passes', aspect: '16:9',
+    prompt: 'A train passing a station platform at speed, camera locked off at the platform edge, everything blurring except the far wall between carriages.' },
+  { room: 'workshop', title: 'Centering clay', aspect: '1:1',
+    prompt: 'Two hands centering wet clay on a spinning potter wheel, the lump wobbling then settling true. Close, top-down, water glistening.' },
+  { room: 'quiet',    title: 'Shadows cross', aspect: '16:9',
+    prompt: 'Time-lapse of shadows travelling across an empty stone courtyard through an afternoon, the light warming as they move. Static wide shot.' },
+  { room: 'creature', title: 'Hummingbird', aspect: '1:1',
+    prompt: 'A hummingbird hovering at a red flower in extreme slow motion, wings resolving into individual beats. Bright, shallow depth of field.' },
+  { room: 'water',    title: 'Paper boat', aspect: '9:16',
+    prompt: 'A folded paper boat riding a fast gutter stream after rain, spinning once as it passes a drain. Camera tracks alongside, low.' },
+  { room: 'creature', title: 'Rooftop leap', aspect: '16:9',
+    prompt: 'A cat leaping between two low rooftops in slow motion, body stretching, landing and continuing out of frame. Warm evening light.' },
+  { room: 'city',     title: 'Night market, wide', aspect: '16:9',
+    prompt: 'A Taiwanese night market alley at full swing: steam, lanterns swinging slightly, people moving through frame in both directions. Handheld, available light.' },
+]
+
 function service() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!,
     { auth: { persistSession: false } })
 }
 
-/** Family = the model name with every version token removed. */
+/**
+ * Family = the model name with version tokens AND release-stage words removed.
+ *
+ * The stage words matter as much as the numbers. Without them
+ * `gemini-omni-flash-preview` (Jun 30) and `gemini-omni-1.1-flash` (Aug 20)
+ * computed as two different families, so the preview survived beside the
+ * release that replaced it and BOTH went on the wall — which is exactly the
+ * "newest per family" rule failing at the one job it has.
+ */
+const STAGE = /^(preview|generate|exp|experimental|latest|beta)$/i
 const familyOf = (provider: string, name: string) =>
-  provider + '/' + name.split(/[-_.]/).filter(t => !/^v?\d+(\.\d+)*$/.test(t)).join('-')
+  provider + '/' + name
+    .split(/[-_.]/)
+    .filter(t => !/^v?\d+(\.\d+)*$/.test(t) && !STAGE.test(t))
+    .join('-')
 
 async function qualifyingModels(sb: ReturnType<typeof service>) {
   const { data, error } = await sb.from('ai_models')
-    .select('id, provider, model_name, display_name, released_at, blocked_features, output_config')
-    .eq('enabled', true).contains('output_modalities', ['image'])
+    .select('id, provider, model_name, display_name, released_at, blocked_features, output_config, modes, model_pricing')
+    .eq('enabled', true).contains('output_modalities', [VIDEO ? 'video' : 'image'])
   if (error) throw new Error(`model read failed: ${error.message}`)
-  const usable = (data ?? []).filter(m => !((m.blocked_features ?? []) as string[]).includes('xcreate'))
+  const usable = (data ?? [])
+    .filter(m => !((m.blocked_features ?? []) as string[]).includes('xcreate'))
+    // A video model that only does image_to_video cannot take a written brief.
+    .filter(m => !VIDEO || ((m.modes ?? []) as string[]).includes('text_to_video'))
   const groups = new Map<string, any[]>()
   for (const m of usable) {
     const k = familyOf(m.provider, m.model_name)
@@ -132,6 +198,8 @@ async function main() {
   console.log(`account : ${ACCOUNT} (${owner.id.slice(0, 8)}…)`)
   console.log(`models  : ${models.length} (newest in each family)`)
   for (const m of models) console.log(`          ${m.provider}/${m.model_name}  ${String(m.released_at ?? '').slice(0, 10)}`)
+  const PROMPT_SET = VIDEO ? VIDEO_PROMPTS : PROMPTS
+
   // Skip briefs already HUNG — not briefs already attempted. The xcreates row
   // is born at run start, so keying the skip off it marked a failed brief as
   // done and made the failure permanent: a rerun could never retry it.
@@ -139,10 +207,60 @@ async function main() {
   const { data: hungRuns } = await sb.from('xcreates')
     .select('prompt').in('id', [...new Set((hungRows ?? []).map((r: any) => r.xcreate_id))])
   const already = new Set((hungRuns ?? []).map((r: any) => String(r.prompt)))
-  const todo = PROMPTS.filter(p => !already.has(p.prompt))
+  const todo = PROMPT_SET.filter(p => !already.has(p.prompt))
 
-  console.log(`prompts : ${PROMPTS.length} (${todo.length} new, ${PROMPTS.length - todo.length} already hung)`)
+  console.log(`wall    : ${VIDEO ? 'VIDEO' : 'IMAGE'}`)
+  console.log(`prompts : ${PROMPT_SET.length} (${todo.length} new, ${PROMPT_SET.length - todo.length} already hung)`)
   console.log(`pictures: ${todo.length} — one model per brief, round-robin`)
+
+  // Cheapest declared tier per model: the wall is about range, and paying for
+  // 1080p on a 300px tile buys nothing a viewer can see.
+  const tierOf = (m: any): { res: string; rate: number; secs: number } | null => {
+    const pv = m.model_pricing?.per_video_second ?? {}
+    const tiers = Object.entries(pv).filter(([k]) => k !== 'default') as [string, number][]
+    if (!tiers.length) return null
+    const [res, rate] = tiers.sort((a, b) => a[1] - b[1])[0]
+
+    // A model may only accept certain clip lengths at a given resolution, and
+    // asking for one it does not take is a hard, silent failure: CLIP_SECONDS
+    // was 5 for everyone and Veo 3.1 — which takes 4, 6 or 8 at 720p — refused
+    // BOTH its clips with "the model failed to generate a response". Nothing in
+    // that message says "5 is not on the list". Use the nearest length the
+    // model actually declares, preferring the shorter one on a tie so a
+    // rounding decision never costs more.
+    // Two shapes in the catalog, both real: Veo lists exact lengths
+    // ([4, 6, 8]), Seedance gives a range ({ min: 5, max: 30 }). Handling only
+    // the list meant the range fell through to CLIP_SECONDS, which happens to
+    // be legal today and would silently ask for 5s of a model whose minimum
+    // was 8 the moment one existed.
+    const allowed = m.output_config?.video?.durations_by_resolution?.[res]
+    let secs = CLIP_SECONDS
+    if (Array.isArray(allowed) && allowed.length) {
+      secs = [...allowed].sort((a, b) =>
+        Math.abs(a - CLIP_SECONDS) - Math.abs(b - CLIP_SECONDS) || a - b)[0]
+    } else if (allowed && typeof allowed === 'object') {
+      const min = Number(allowed.min), max = Number(allowed.max)
+      if (Number.isFinite(min)) secs = Math.max(secs, min)
+      if (Number.isFinite(max)) secs = Math.min(secs, max)
+    }
+    return { res, rate, secs }
+  }
+
+  if (VIDEO) {
+    let quote = 0
+    console.log('\nassignment (round-robin, cheapest tier each):')
+    todo.forEach(p => {
+      const m = models[PROMPT_SET.indexOf(p) % models.length]
+      const t = tierOf(m)
+      const cost = (t?.rate ?? 0) * (t?.secs ?? CLIP_SECONDS)
+      quote += cost
+      console.log(`  ${String(PROMPT_SET.indexOf(p) + 1).padStart(2)}. ${p.title.padEnd(22)} ${(m.provider + '/' + m.model_name).padEnd(34)} ${(t?.res ?? '?').padEnd(6)} ${t?.secs ?? CLIP_SECONDS}s  $${cost.toFixed(2)}`)
+    })
+    // The quote is a FLOOR, not a promise: it prices the cheapest declared
+    // tier, and the first run came in 14% over it because three models billed
+    // above that (wan3.0 $0.25 -> $0.50, seedance $1.00 -> $1.50).
+    console.log(`\nQUOTE (cheapest declared tier; actuals have run ~15% higher): $${quote.toFixed(2)}   cap $${SPEND_CAP_USD}`)
+  }
 
   const { data: bal } = await sb.from('user_credits').select('balance_cents').eq('user_id', owner.id).maybeSingle()
   console.log(`balance : $${((bal?.balance_cents ?? 0) / 100).toFixed(2)}`)
@@ -157,7 +275,13 @@ async function main() {
   let hung = 0
 
   try {
-    for (const [i, p] of todo.entries()) {
+    for (const p of todo) {
+      // The brief's place in the FULL set decides its model, NOT its place in
+      // `todo`. Indexing into todo meant a retry reassigned every brief: the
+      // three clips Veo and Seedance failed came back pointing at happyhorse
+      // and wan, so the models that actually failed stayed missing from the
+      // wall and the ones that worked got a third clip.
+      const i = PROMPT_SET.indexOf(p)
       // Round-robin so no model dominates the wall — but only among models
       // that can actually shoot this brief's shape. grok and qwen do not take
       // 2:3 / 3:2 / 4:5, and gpt-image-2 has no aspect_ratio at all (it takes
@@ -170,6 +294,7 @@ async function main() {
       // 2:3 and 4:3 in this run. Treating "no list" as "square only" would
       // bench the model that actually handles every shape.
       const canShoot = (m: any) => {
+        if (VIDEO) return true   // video rows declare resolutions, not aspect lists
         const ars: string[] | null = m.output_config?.image?.aspect_ratios ?? null
         return ars === null || ars.includes(p.aspect)
       }
@@ -188,9 +313,11 @@ async function main() {
           method: 'POST', signal: ctl.signal, redirect: 'manual',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key.plaintext}` },
           body: JSON.stringify({
-            prompt: p.prompt, mode: 'image',
+            prompt: p.prompt, mode: VIDEO ? 'video' : 'image',
             modelIds: [model.id],
-            modelOptions: [{ aspect_ratio: p.aspect }],
+            modelOptions: [VIDEO
+              ? { aspect_ratio: p.aspect, duration: tierOf(model)?.secs ?? CLIP_SECONDS, resolution: tierOf(model)?.res }
+              : { aspect_ratio: p.aspect }],
           }),
         })
       } catch (e: any) {
