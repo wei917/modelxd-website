@@ -239,7 +239,12 @@ export async function execListModels(medium: 'image' | 'video' = 'video'): Promi
   const svc = serviceClient()
   const [{ data, error }, { data: ratings }] = await Promise.all([
     svc.from('ai_models')
-      .select('id, provider, model_name, display_name, modes, model_pricing, input_config, output_modalities')
+      // output_config carries durations_by_resolution. Without it the director
+      // never learns a model only takes 4, 6 or 8 seconds, and it derives scene
+      // lengths from lyric timings — so it will happily plan a 23-second Veo
+      // shot that the provider refuses. /api/xcreate now clamps as a backstop,
+      // but the director should PLAN a length the model can shoot.
+      .select('id, provider, model_name, display_name, modes, model_pricing, input_config, output_config, output_modalities')
       .eq('enabled', true),
     // THE LEADERBOARD (CC, July 28). Leaving this out was not a cosmetic
     // gap: without scores the agent recommended Grok Imagine Video as the

@@ -365,7 +365,39 @@ async function runSlot(
       await patch({ is_video: true })
 
       const videoSize     = options.size ?? '1280x720'
-      const videoDuration = options.duration ?? 16
+      // CLAMP the duration to what this model actually accepts. Providers do
+      // not negotiate: Veo 3.1 takes 4, 6 or 8 seconds at 720p and refuses
+      // anything else with "The model failed to generate a response", a message
+      // that never mentions duration — so an unclamped request looks like a
+      // broken model and the user pays the reserve for it. This mattered the
+      // moment the director started deriving scene lengths from lyric timings,
+      // because a music-video scene can easily ask for 23 seconds.
+      //
+      // The catalog carries this per resolution in TWO shapes, both real: an
+      // exact list (Veo: [4, 6, 8]) or a range ({ min: 5, max: 30 }).
+      const clampDuration = (want: number): number => {
+        const byRes = (model.output_config as any)?.video?.durations_by_resolution
+        // Match the tier the size names, else the only tier there is.
+        const keys = byRes ? Object.keys(byRes) : []
+        const key = keys.find(k => String(videoSize).includes(k.replace(/p$/i, ''))) ?? keys[0]
+        const allowed = key ? byRes[key] : null
+        if (Array.isArray(allowed) && allowed.length) {
+          return [...allowed].sort((a, b) => Math.abs(a - want) - Math.abs(b - want) || a - b)[0]
+        }
+        if (allowed && typeof allowed === 'object') {
+          const min = Number(allowed.min), max = Number(allowed.max)
+          let v = want
+          if (Number.isFinite(min)) v = Math.max(v, min)
+          if (Number.isFinite(max)) v = Math.min(v, max)
+          return v
+        }
+        return want
+      }
+      const askedDuration = options.duration ?? 16
+      const videoDuration = clampDuration(askedDuration)
+      if (videoDuration !== askedDuration) {
+        console.warn(`${LOG} Slot[${index}] ${model.model_name}: duration ${askedDuration}s is not accepted at ${videoSize}; using ${videoDuration}s`)
+      }
       // Watermark is Alibaba-only and tri-state (null/true/false). Forward
       // exactly what the user picked; the router only sends it when truthy
       // and only to Alibaba. Aspect ratio is passed through as `ratio`.

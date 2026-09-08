@@ -638,7 +638,11 @@ export default function SceneStrip({ scenes, busy, onChange, onGenerate, onGener
                     but I don't see it"). The still is already loaded two lines
                     below for the pre-clip state; showing it under the video
                     costs nothing and makes the card correct at first paint. */}
-                <video src={s.url} poster={s.still_url || undefined} preload="metadata"
+                {/* #t=0.1 as well as the poster: an MV scene routinely has no
+                    key still, and preload="metadata" does not have to decode a
+                    frame, so with an empty poster the card painted black until
+                    a reload. A seek forces a decode. */}
+                <video src={`${s.url}#t=0.1`} poster={s.still_url || undefined} preload="metadata"
                   muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             )}
