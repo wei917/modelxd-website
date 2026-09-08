@@ -470,9 +470,14 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     // would give the board two sources of truth and stop it matching the
     // controls the user set. So it is scoped to what the pickers cannot say:
     // who is in it, what they wear, where it is, what to avoid.
-    if (notes.trim()) {
+    // Flatten before quoting. The note lands inside a quoted span in a brief
+    // made of lines, so a newline breaks the structure and a double quote
+    // closes the span early — both let typed text restructure the instruction
+    // around it rather than be read as content.
+    const noteClean = notes.replace(/[\r\n]+/g, ' ').replace(/["\u201C\u201D]/g, "'").replace(/\s+/g, ' ').trim().slice(0, 400)
+    if (noteClean) {
       parts.push(
-        `Notes from the user, to honour in the casting, the wardrobe, the places and every scene prompt: "${notes.trim().slice(0, 400)}". ` +
+        `Notes from the user, to honour in the casting, the wardrobe, the places and every scene prompt: "${noteClean}". ` +
         'These describe details the controls above cannot express. They do not override the form, the drama level, the runtime or the reference — where they seem to conflict, follow the controls and satisfy the note in the detail.')
     }
     parts.push(DRAMA_BRIEF[drama])

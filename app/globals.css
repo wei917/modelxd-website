@@ -2558,8 +2558,16 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   width: 100%; padding: 8px 11px; border-radius: 6px;
   border: 1px solid var(--border2); background: var(--bg);
   color: var(--white); font-size: 12.5px;
+  /* Form controls do not inherit font-family, so without this every field in
+     the Music Video setup rendered in the browser default — measured as Arial,
+     not the Barlow the rest of the page uses. Adding a <textarea> made it
+     visible: textareas default to monospace, so the new notes box did not even
+     match the inputs beside it. Setting it on the class fixes the field set
+     rather than papering over the one new control. */
+  font-family: inherit;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+
 .mv-field::placeholder { color: var(--muted); }
 .mv-field:focus {
   outline: none;
