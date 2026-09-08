@@ -138,22 +138,62 @@ directly: `MODELXD_API_BASE_URL`, `MODELXD_API_KEY`, `MODELXD_MODEL`.
 | Legacy | `7c9f…` (uuid) | What MCP returns. Accepted indefinitely. |
 | Routed | `xd/auto`, `xd/fast`, `xd/budget`, `xd/max` | We choose, on axes you pick. |
 
-`xd/auto` = balanced. `xd/fast` = lowest measured time to first token.
-`xd/max` = quality only, price ignored. `xd/budget` = among models within a
-fixed quality gap of the leader, the
-median XD Score, the cheapest by list token price. Both apply a **10-vote
-floor** so a model rated on a handful of votes cannot become the silent
-default for every call a game makes.
+The four are **presets on the same three axes** — quality, cost, speed — not
+four algorithms. One scorer (`lib/router-weights.ts`) resolves all of them.
+
+| Route | Weights (quality / cost / speed) | Meaning |
+|---|---|---|
+| `xd/auto` | 0.5 / 0.3 / 0.2 | Balanced. The everyday default. |
+| `xd/fast` | 0.2 / 0.1 / 0.7 | Lowest measured time to first token. |
+| `xd/budget` | 0.2 / 0.7 / 0.1 | Cheapest by list price. |
+| `xd/max` | 1.0 / 0 / 0 | Highest blind-vote quality, price ignored. |
+
+All but `xd/max` apply a **quality floor**: a model must be within 100 rating
+points of the leader. Without it, `budget` and `fast` both collapse to "the
+worst model that is technically usable" — the cheapest and the quickest are
+usually the same one. A **10-vote floor** also applies, so a model rated on a
+handful of votes cannot become the silent default for every call a game makes.
+
+**Cost and speed are scored on a log scale.** The board spans 120x on price
+($1.75 to $210 per 1M); linearly, $35 scores 0.84 against $1.75's 1.0 and
+`xd/budget` returns the expensive model. 20x cheaper is the interesting fact,
+not 20 dollars.
+
+**`xd/fast` ranks each model on its SLOWEST thinking setting.** A route returns
+a model with no effort attached — the caller or the provider default decides
+that — so ranking on the best setting would promise a speed only one
+configuration delivers. `qwen3.6-plus` is 0.58s with thinking off and 14.37s
+with it on; taking the worst dot makes the ordering hold however you call it.
+If the latency probe has not run, `xd/fast` returns **503 `route_unmeasured`**
+rather than quietly handing back the quality leader.
+
+Latency comes from a standing probe (`scripts/probe-latency.ts` -> the
+`model_latency` table), not from live traffic: production calls are dominated
+by whatever the site itself calls most, so a model nobody happens to use would
+read as unmeasured rather than slow.
 
 The resolved model always comes back in `response.model`. An unknown,
 disabled, wrong-modality, or API-blocked slug is a **404 naming the model** —
 never a silent substitution.
 
-**`xd/fast` does not exist yet.** It is implemented (`byMeasuredLatency` in
-`lib/inference.ts`) but not exposed: `provider_calls` holds ~128 rows over
-seven days and only one text-board model clears three samples, so the route
-would have been silently identical to `xd/auto`. It turns on when there is
-traffic to rank.
+**The router does not read your prompt.** It weights axes you choose. Three
+routers that classified the request were built, frozen and tested on unseen
+tasks; all three lost to simply always using one strong model, because only 6
+of 27 per-task winners were confirmed by human rubrics — they were learning
+judge taste. If you want per-task selection, make it yourself and name the
+model.
+
+### Previewing a route
+
+```http
+GET /api/v1/router/preview?preset=xd/budget
+GET /api/v1/router/preview?quality=0.2&cost=0.7&speed=0.1
+```
+
+Returns the ranked candidates with the axis values behind each score — what
+would answer, and why — without calling a model or spending anything. This is
+what the tuning panel on `/xdev` uses; a preset returns that route's own
+weights, so the preview cannot disagree with the live route.
 
 ## Structured output — the reason this exists
 

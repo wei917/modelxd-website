@@ -7,22 +7,19 @@
 // any background or hidden tab. Server-render it and the pictures are in the
 // HTML.
 //
-// Reads with the SERVICE ROLE for two reasons, neither of them laziness:
-// xcreates is owner-read under RLS (loosening that policy to build a gallery
-// would open every user's private work), and every picture needs a storage URL
-// signed HERE, at read time. The URL persisted on the slot expires 24h after
-// the run, so serving it verbatim gives a wall that works today and shows
-// broken images tomorrow (CLAUDE.md pitfall 11).
+// Reads with the SERVICE ROLE because xcreates is owner-read under RLS, and
+// loosening that policy to build a gallery would open every user's private
+// work.
+//
+// It does NOT sign anything. Each piece carries the path of our own
+// /api/showcase/img/{id} route, which signs at request time and redirects.
+// Signing here was the first version and it broke on dev: /xcreate is
+// prerendered as STATIC content, so "sign at read time" meant "sign once at
+// build time", and every picture 404'd two hours after each deploy with a
+// token that had expired 20 hours earlier. A signature must never be baked
+// into markup that outlives it (CLAUDE.md pitfall 11).
 
 import { createClient } from '@supabase/supabase-js'
-
-const SIGN_TTL_SECONDS = 60 * 60 * 2
-
-/** The bucket + object path out of a stored Supabase signed URL. */
-function parseStored(url: string): { bucket: string; path: string } | null {
-  const m = String(url).split('\n')[0].match(/\/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/)
-  return m ? { bucket: m[1], path: decodeURIComponent(m[2]) } : null
-}
 
 export type ShowcasePiece = {
   id: string; url: string; model: string; provider: string; name: string
@@ -65,14 +62,9 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
     const slot = (run.slots as any[])?.[h.slot_index]
     if (!slot?.text || slot.error) return null
 
-    const loc = parseStored(slot.text)
-    if (!loc) return null
-    const { data: signed } = await sb.storage.from(loc.bucket).createSignedUrl(loc.path, SIGN_TTL_SECONDS)
-    if (!signed?.signedUrl) return null
-
     return {
       id: h.id,
-      url: signed.signedUrl,
+      url: `/api/showcase/img/${h.id}`,
       // The name card. Every field comes off the slot that made the picture,
       // so a card cannot drift from the work it labels.
       model: slot.model_name,
