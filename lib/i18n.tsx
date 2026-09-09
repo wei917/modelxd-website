@@ -439,6 +439,18 @@ export const STRINGS: Record<string, Entry> = {
   'xd.mv.perf.synchint': { en: 'Wan 3.0 or MiniMax H3 sings the real words. Sung takes can\'t also lock an approved opening frame, and each audio slice is wav/mp3 up to 15s.', 'zh-Hant': '由 Wan 3.0 或 MiniMax H3 唱出真正的歌詞。對嘴鏡頭無法同時鎖定已核准的起始畫面，音檔每段限 wav/mp3、15 秒內。', 'zh-Hans': '由 Wan 3.0 或 MiniMax H3 唱出真正的歌词。对嘴镜头无法同时锁定已核准的起始画面，音档每段限 wav/mp3、15 秒内。', ja: 'Wan 3.0 か MiniMax H3 が実際の歌詞を歌います。歌唱カットは承認済みの開始フレームを固定できず、音声は 1 本あたり wav/mp3 で 15 秒までです。', ko: 'Wan 3.0 또는 MiniMax H3가 실제 가사를 부릅니다. 노래 컷은 승인된 시작 프레임을 고정할 수 없고, 오디오는 클립당 wav/mp3 15초까지입니다.' },
   'xd.mv.song':      { en: 'Song file', 'zh-Hant': '歌曲檔案', 'zh-Hans': '歌曲档案', ja: '楽曲ファイル', ko: '곡 파일' },
   'xd.mv.cast':      { en: 'Your leads', 'zh-Hant': '主角照片', 'zh-Hans': '主角照片', ja: '主役の写真', ko: '주인공 사진' },
+  // The whole song, or the whole story. Distinct from Notes, which is a
+  // one-liner for what the pickers cannot say. This is SOURCE MATERIAL, and
+  // it exists because an excerpt lies about its song: an 18s clip was cut as
+  // a story that ended in loss when the full song resolves happily, and the
+  // owner had to hand over the track to explain it ("do you understand the
+  // story?"). Nothing in the form could have carried that.
+  'xd.mv.story':     { en: 'The story, or the full lyric', 'zh-Hant': '完整故事或歌詞', 'zh-Hans': '完整故事或歌词', ja: 'ストーリー、または歌詞全文', ko: '이야기 또는 가사 전문' },
+  'xd.mv.storyph':   { en: "Paste the whole lyric, or tell me the story you want — who they are, what changes, how it ends…", 'zh-Hant': '貼上完整歌詞，或說說你想要的故事——他們是誰、什麼改變了、怎麼收尾……', 'zh-Hans': '贴上完整歌词，或说说你想要的故事——他们是谁、什么改变了、怎么收尾……', ja: '歌詞を全文貼るか、描きたい物語を——誰の話で、何が変わり、どう終わるのか……', ko: '가사를 전부 붙여넣거나, 원하는 이야기를 알려주세요 — 누구의 이야기이고, 무엇이 달라지고, 어떻게 끝나는지…' },
+  'xd.mv.storyhint': { en: 'Paste the WHOLE song even when you are only shooting a slice — a clip that contradicts the ending is the mistake this prevents. Timestamps welcome.', 'zh-Hant': '就算只拍其中一段，也請貼完整首歌——與結局矛盾的片段正是這裡要避免的錯誤。可以附時間軸。', 'zh-Hans': '就算只拍其中一段，也请贴完整首歌——与结局矛盾的片段正是这里要避免的错误。可以附时间轴。', ja: '一部だけ撮る場合でも全曲を貼ってください——結末と矛盾する断片こそ、ここで防ぎたい失敗です。タイムスタンプ歓迎。', ko: '일부만 찍더라도 곡 전체를 붙여넣어 주세요 — 결말과 어긋나는 조각이 바로 여기서 막으려는 실수입니다. 타임스탬프도 좋습니다.' },
+  'xd.mv.rail.r.src':   { en: 'Source', 'zh-Hant': '素材', 'zh-Hans': '素材', ja: '素材', ko: '소스' },
+  'xd.mv.rail.lyric':   { en: 'Full lyric', 'zh-Hant': '完整歌詞', 'zh-Hans': '完整歌词', ja: '歌詞全文', ko: '가사 전문' },
+  'xd.mv.rail.synopsis':{ en: 'Your story', 'zh-Hant': '你的故事', 'zh-Hans': '你的故事', ja: 'あなたの物語', ko: '내 이야기' },
   'xd.mv.notes':     { en: 'Notes', 'zh-Hant': '補充說明', 'zh-Hans': '补充说明', ja: '補足', ko: '메모' },
   'xd.mv.notesph':   { en: 'e.g. Asian cast in their twenties, shot in Taipei, no on-screen text', 'zh-Hant': '例如：二十多歲的亞洲演員、在台北拍攝、畫面不要出現文字', 'zh-Hans': '例如：二十多岁的亚洲演员、在台北拍摄、画面不要出现文字', ja: '例：20代のアジア系キャスト、台北で撮影、画面に文字を入れない', ko: '예: 20대 아시아계 출연진, 타이베이 촬영, 화면에 텍스트 없음' },
   'xd.mv.noteshint': { en: 'Anything the controls above cannot say: cast, wardrobe, place, things to avoid.', 'zh-Hant': '上面的選項說不出來的事：演員、造型、場景、要避開的東西。', 'zh-Hans': '上面的选项说不出来的事：演员、造型、场景、要避开的东西。', ja: '上の設定では伝えられないこと：出演者、衣装、場所、避けたいもの。', ko: '위 설정으로는 전할 수 없는 것: 출연진, 의상, 장소, 피할 것.' },
