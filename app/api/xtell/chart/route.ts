@@ -10,7 +10,7 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, validBirth, validQian, validWishes, validPlace, asTemple, ENGINES } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, ENGINES } from '@/lib/xtell'
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -31,10 +31,22 @@ export async function POST(req: Request) {
   if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
   if (temple === 'simianfo' && !validWishes(body?.wishes)) return Response.json({ error: 'write at least one wish' }, { status: 400 })
   if (temple === 'navagraha' && !validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+  // 占星塔 needs a place for the same reason 九曜廟 does — no houses without
+  // one — and its 配對 room needs a whole second person.
+  const mode = asAstroMode(body?.mode)
+  if (temple === 'zhanxing') {
+    if (!validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+    if (mode === 'synastry') {
+      if (!validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
+      if (!validPlace(body?.place2)) return Response.json({ error: 'bad place (second person)' }, { status: 400 })
+    }
+  }
 
   try {
     // 月老廟 is two BaZi charts — the engine run twice, labeled a and b.
-    const chart = temple === 'ziwei' ? ziweiChart(body.birth)
+    const chart = temple === 'zhanxing'
+      ? zhanxingChart(body.birth, body.place, mode, { b2: body.birth2, place2: body.place2, year: Number(body.year) || undefined })
+      : temple === 'ziwei' ? ziweiChart(body.birth)
       : temple === 'navagraha' ? navagrahaChart(body.birth, body.place)
       : temple === 'yuelao' ? { a: baziChart(body.birth), b: baziChart(body.birth2) }
       : baziChart(body.birth)

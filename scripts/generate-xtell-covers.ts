@@ -44,6 +44,17 @@ const PROMPTS: Record<string, string> = {
     'platform, oil lamps flickering around them, the central figure a tall dark blue-black Shani holding a ' +
     'staff, seen as a solemn silhouette, a crow perched near him, pillars of a Dravidian temple hall receding ' +
     'into ink, a thin crescent moon and faint stars above, a worshipper circling the platform as a soft silhouette.' + STYLE,
+  // The one temple with no temple. Western astrology has no shrine tradition
+  // to paint, so the subject is the instrument and the room it stands in:
+  // an old observatory tower, which is what the name 占星塔 claims and all it
+  // claims. Kept in the street's ink-wash language so it does not read as a
+  // different website.
+  zhanxing:
+    'The top room of an old stone observatory tower at night, seen from inside: a large brass armillary ' +
+    'sphere and a worn astrolabe on a wooden table, an open star atlas with hand-drawn constellation lines, ' +
+    'a tall arched window with a deep blue night sky and scattered stars beyond, a stone zodiac wheel carved ' +
+    'faintly into the floor, one candle, the astronomer suggested only as a soft dark silhouette leaning over ' +
+    'the table.' + STYLE,
 }
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })

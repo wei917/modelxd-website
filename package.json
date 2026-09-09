@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:xtell": "tsx scripts/xtell-golden.ts"
+    "test:xtell": "tsx scripts/xtell-golden.ts && tsx scripts/test-astrology.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.0",

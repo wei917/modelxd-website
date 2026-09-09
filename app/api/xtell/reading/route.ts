@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, validBirth, validQian, validWishes, validPlace, asTemple, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
@@ -27,6 +27,7 @@ const FACTS_HEAD: Record<string, string> = {
   guandi:   '信眾求得的籤（系統從籤筒抽出、擲筊允准；籤文取自清刊本，勿更動）：',
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
+  zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
 }
 
 function sse(event: string, data: object) {
@@ -49,6 +50,13 @@ export async function POST(req: Request) {
     if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
     if (temple === 'simianfo' && !validWishes(body?.wishes)) return Response.json({ error: 'write at least one wish' }, { status: 400 })
     if (temple === 'navagraha' && !validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+    if (temple === 'zhanxing') {
+      if (!validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+      if (asAstroMode(body?.mode) === 'synastry'
+        && (!validBirth(body?.birth2) || !validPlace(body?.place2))) {
+        return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
+      }
+    }
   }
   if (typeof body?.modelId !== 'string') return Response.json({ error: 'modelId required' }, { status: 400 })
 
@@ -63,7 +71,14 @@ export async function POST(req: Request) {
   const canSearch = ((model as any).output_config?.text?.capabilities ?? []).includes('web_search')
   const search = canSearch && body?.search === true
 
-  const facts = temple === 'ziwei'
+  // Recomputed here, never taken from the client — same rule as every other
+  // temple: the model may only see a chart this server produced.
+  const facts = temple === 'zhanxing'
+    ? zhanxingFacts(
+        zhanxingChart(body.birth, body.place, asAstroMode(body?.mode),
+          { b2: body.birth2, place2: body.place2, year: Number(body.year) || undefined }),
+        body.birth.gender, body.birth2?.gender ?? 'female')
+    : temple === 'ziwei'
     ? ziweiFacts(ziweiChart(body.birth), body.birth.gender)
     : temple === 'yuelao'
       ? (() => {

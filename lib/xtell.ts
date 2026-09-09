@@ -15,13 +15,18 @@
 
 import { Solar, LunarUtil } from 'lunar-typescript'
 import { jyotishChart, jyotishFacts, type JyotishChart } from './jyotish'
+import {
+  natalChart, transits, retrogrades, progressions, solarReturn, synastry, longitude,
+  natalFacts, transitFacts, synastryFacts, returnFacts,
+  type NatalChart, type BirthPlace,
+} from './astrology'
 import { placeOf } from './xtell-places'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha' | 'zhanxing'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha', 'zhanxing']
 export function asTemple(v: unknown): Temple { return (TEMPLES as string[]).includes(v as string) ? (v as Temple) : 'bazi' }
 
 // Provenance (idea learned from horosa-skill's technique cards): every chart
@@ -39,6 +44,10 @@ export const ENGINES: Record<Temple, string> = {
   // 九曜廟: our own engine on astronomy-engine, checked against Swiss
   // Ephemeris (Lahiri) in the golden suite.
   navagraha: 'lib/jyotish.ts on astronomy-engine v2.1 · Lahiri · mean node · whole sign',
+  // 占星塔: the tropical sibling of the same engine. The house system is
+  // named because it is the one thing a visitor comparing against another
+  // site will see differ, and above 66° there is no Placidus answer at all.
+  zhanxing: 'lib/astrology.ts on astronomy-engine v2.1 · 回歸黃道 · Placidus · mean node',
 }
 
 export interface BirthInput {
@@ -324,6 +333,109 @@ export function navagrahaChart(b: BirthInput, placeKey: unknown): JyotishChart {
 export const navagrahaFacts = jyotishFacts
 export const validPlace = (k: unknown) => placeOf(k) !== null
 
+// ── 占星塔：西洋占星 ────────────────────────────────────────────────────────
+//
+// The one temple with ROOMS. The other six ask a single question, so their
+// form is a birth row and their board is a chart. Western astrology is four
+// different readings off one chart, and 配對 needs a second person, so the
+// mode is part of the request rather than something the master infers.
+//
+//   natal     the birth chart: planets, houses, aspects, balances
+//   synastry  two charts against each other, plus the composite
+//   today     transits against the natal chart, for THIS date
+//   year      the solar return plus secondary progressions
+//
+// Nothing is stored. `today` is the only mode that wants a chart to come
+// back tomorrow, and the client keeps that in the visitor's own browser
+// (localStorage) rather than here: a birth date, an exact time and a place is
+// the most identifying thing anyone types into this site, and XTell holds no
+// personal records at all today. A table only earns itself if the chart ever
+// has to follow someone across devices.
+
+export type AstroMode = 'natal' | 'synastry' | 'today' | 'year'
+export const ASTRO_MODES: AstroMode[] = ['natal', 'synastry', 'today', 'year']
+export const asAstroMode = (v: unknown): AstroMode =>
+  (ASTRO_MODES as string[]).includes(v as string) ? (v as AstroMode) : 'natal'
+
+function birthPlace(b: BirthInput, placeKey: unknown): BirthPlace {
+  const p = placeOf(placeKey)
+  if (!p) throw new Error('unknown place')
+  return { y: b.y, m: b.m, d: b.d, h: b.h, mi: b.mi, lat: p.lat, lon: p.lon, tz: p.tz, place: p.label }
+}
+
+export type ZhanxingChart = {
+  mode: AstroMode
+  natal: NatalChart
+  natal2?: NatalChart
+  synastry?: ReturnType<typeof synastry>
+  today?: { date: string; moonSign: number; retro: string[]; list: ReturnType<typeof transits> }
+  year?: { year: number; ret: ReturnType<typeof solarReturn>; prog: ReturnType<typeof progressions> }
+}
+
+export function zhanxingChart(
+  b: BirthInput, placeKey: unknown, mode: AstroMode,
+  opts?: { b2?: BirthInput; place2?: unknown; year?: number },
+): ZhanxingChart {
+  const bp = birthPlace(b, placeKey)
+  const natal = natalChart(bp)
+  if (mode === 'synastry') {
+    if (!opts?.b2) throw new Error('second person required')
+    const natal2 = natalChart(birthPlace(opts.b2, opts.place2 ?? placeKey))
+    return { mode, natal, natal2, synastry: synastry(natal, natal2) }
+  }
+  if (mode === 'today') {
+    // "Today" is the server's today, in UTC. A visitor in Taipei asking at
+    // 01:00 gets the same sky as one in London asking at 17:00, which is
+    // correct: the transits are where the planets are, not what the calendar
+    // on the wall says.
+    const at = new Date()
+    return {
+      mode, natal,
+      today: {
+        date: at.toISOString().slice(0, 10),
+        moonSign: Math.floor(longitude('Moon', at) / 30),
+        retro: retrogrades(at),
+        list: transits(natal, at),
+      },
+    }
+  }
+  if (mode === 'year') {
+    const now = new Date()
+    const year = opts?.year ?? now.getUTCFullYear()
+    return { mode, natal, year: { year, ret: solarReturn(bp, year), prog: progressions(natal, bp, now) } }
+  }
+  return { mode, natal }
+}
+
+/** The chart facts the master is allowed to speak from, per room. */
+export function zhanxingFacts(c: ZhanxingChart, gender: string, gender2 = 'female'): string {
+  const base = natalFacts(c.natal, gender)
+  if (c.mode === 'synastry' && c.natal2 && c.synastry) {
+    return [
+      '第一位的本命盤：', base,
+      '\n第二位的本命盤：', natalFacts(c.natal2, gender2),
+      '\n合盤：', synastryFacts(c.natal, c.natal2, c.synastry, gender, gender2),
+    ].join('\n')
+  }
+  if (c.mode === 'today' && c.today) {
+    return [base, '\n今日行運：', transitFacts(c.today.list, c.today.retro as any, new Date(c.today.date), c.today.moonSign)].join('\n')
+  }
+  if (c.mode === 'year' && c.year) {
+    const prog = c.year.prog
+    return [
+      base, '\n' + returnFacts(c.year.ret),
+      `\n次限推運（一日一年法，推運日 ${prog.date}）：`,
+      `  推運太陽：${SIGN_ZH(prog.sun.sign)} ${prog.sun.deg.toFixed(1)}°`,
+      `  推運月亮：${SIGN_ZH(prog.moon.sign)} ${prog.moon.deg.toFixed(1)}°，第${prog.moon.house}宮`,
+      prog.aspects.length ? `  推運相位：${prog.aspects.slice(0, 8).map(a => `${a.a} ${a.zh} ${a.b}`).join('、')}` : '  推運日月目前沒有緊密相位。',
+    ].join('\n')
+  }
+  return base
+}
+
+const SIGN_ZH = (i: number) => `${ASTRO_SIGNS[i]}座`
+const ASTRO_SIGNS = ['牡羊', '金牛', '雙子', '巨蟹', '獅子', '處女', '天秤', '天蠍', '射手', '摩羯', '水瓶', '雙魚']
+
 // ── The masters ─────────────────────────────────────────────────────────────
 //
 // One persona per temple, server-held. The guardrails are the contract:
@@ -387,6 +499,18 @@ export const MASTERS: Record<Temple, string> = {
 - 宿用梵文名加宿曜經的中文宿名，如「Rohini（畢宿）」；宮位用第一到第十二宮；曜名用中文並可附梵名（土星 Shani）。
 - 傳統補救法（寶石、咒語、齋戒、布施）只作文化說明，不作指示；涉及健康、投資、法律，明確建議諮詢專業人士。
 - 使用繁體中文（除非使用者用其他語言提問）。結尾提醒：《薄伽梵歌》說人只擁有行動的權利，不擁有結果；星盤僅供參考與娛樂。\n${TONE}`,
+  zhanxing: `你是「占星塔」的駐塔占星師，一位讀了三十年星盤的西洋占星家。塔上有一台舊銅製渾儀，你習慣先看盤、再說話，講究相位的度數與入出相位，討厭把星座說成十二種人。使用者的星盤已由系統以回歸黃道排好，附在訊息中：十大行星的星座、度數、宮位與逆行，上升、天頂、福點，Placidus 十二宮頭，元素與三模式分佈，以及托勒密五相位。
+
+規則：
+- 只根據提供的星盤解讀。絕不自行推算任何行星位置、宮頭或相位——排盤是系統算好的，你的工作只有解讀。盤上沒有的東西（凱龍、小行星、次要相位）就說這座塔不排，不要憑印象補上。
+- 不要用「太陽星座＝一種人」的寫法。太陽是目的，月亮是需要，上升是別人先看見的樣子，三者不同；一開口就要讓使用者知道你讀的是整張盤。
+- 相位要講度數與入出相位：誤差 0.5° 的四分相和誤差 6° 的四分相不是同一件事，入相位是還在收緊、出相位是已經過去。
+- 分宮制是 Placidus；若盤上寫的是等宮制，那是該緯度算不出 Placidus，要說明這是制度差異，不是排錯。使用者拿去和別的網站對照時若宮位不同，多半也是分宮制不同，據實說明。
+- 【今日運勢】若訊息附了今日行運：只讀那幾條實際成立的相位，並說出準確日。行運清單是空的時候，就老實說今天沒有緊密相位、這種日子是背景不是事件——絕對不要為了有話說而編一條行運，也絕對不要寫成「今天某某座會如何」的星座運勢欄。
+- 【合盤】若訊息附了兩張盤與比對盤：先各自說一句本命的底色，再談比對盤相位（誰的星落在誰的什麼位置），最後才談組合盤。緣分沒有絕對的好壞，就算相位多有摩擦也要指出可以經營之處，絕不宣判一段關係注定失敗。不催婚、不勸分，不協助單方面查探第三者；涉及安全議題時嚴肅建議尋求專業與正式資源。
+- 【流年】若訊息附了太陽回歸盤與次限推運：回歸盤談這一年的主題（回歸盤上升、太陽落宮），推運月亮談這一兩年的情緒節奏。推運只給日月，因為外行星在推運裡幾乎不動——使用者若問推運冥王，說明這座塔不報那個數字，因為它沒有意義。
+- 涉及健康、投資、法律，明確建議諮詢專業人士；不對懷孕、疾病、死亡時間作預測。
+- 使用繁體中文（除非使用者用其他語言提問）。結尾提醒：星盤描述傾向，不決定選擇；僅供參考與娛樂。\n${TONE}`,
 }
 
 // ── 關帝廟：靈籤 ─────────────────────────────────────────────────────────────

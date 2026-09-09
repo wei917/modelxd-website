@@ -33,7 +33,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (6 live)
+## Temples (7 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -43,6 +43,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1 |
 | 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
+| 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -103,6 +104,62 @@ and the classics corpus for this temple is the 宿曜經 itself
 (`content/classics/suyaojing.txt`, Wikisource, fetched via the API's
 `variant=zh-hant` because the page is stored in simplified script).
 
+## The Western engine (`lib/astrology.ts`)
+
+Built on the same `astronomy-engine` as `lib/jyotish.ts`, and deliberately so:
+that file already computes TROPICAL longitudes and a tropical ascendant and
+then subtracts the Lahiri ayanamsa. Western astrology is those numbers without
+the subtraction, so the ephemeris, the timezone handling and the arcsecond
+accuracy were already paid for. `scripts/test-astrology.ts` asserts the
+relationship holds (`tropical - Lahiri == sidereal`, to 0.0").
+
+What is genuinely ours, and how each part is checked:
+
+- **Placidus houses.** Placidus divides each quadrant by TIME, so every cusp
+  depends on its own declination and has to be iterated. It is verified from
+  its DEFINITION rather than against a published table: the suite takes the
+  cusp the code returns, independently recomputes that degree's declination and
+  semi-diurnal arc, and asks what fraction of its own arc it has travelled.
+  Cusps 11, 12, 2 and 3 land on exactly 1/3 and 2/3 to nine decimal places. A
+  second test pins the closed-form case: at the equator every ascensional
+  difference is zero, so Placidus must collapse to equal thirds of right
+  ascension, and it does.
+- **Above |lat| 66°** a degree of the ecliptic can be circumpolar: it never
+  rises, so there is no arc to divide and Placidus has no answer. The engine
+  returns equal houses and sets `system: 'equal'`, which the board prints. A
+  silent NaN or a quietly wrong cusp would be far worse than saying so.
+- **No Chiron, no asteroids.** `astronomy-engine` has no ephemeris for them.
+  A number we cannot check has no business on a board whose whole promise is
+  that it is checkable.
+- **Transits at a 1° orb.** Roughly a day of solar motion. A wider orb puts
+  thirty aspects in force every day of the year, which is the same as having
+  none: it cannot say what is different about today. The exact date is found
+  by bisection over a ±45-day window, so a retrograde planet reports the next
+  crossing rather than pretending there is only one.
+- **Progressions report the Sun and Moon only.** The outer planets barely move
+  in ninety days, so a progressed Pluto is the natal Pluto with a decimal on
+  it. The angles are left out because progressing them needs a choice between
+  Naibod, solar arc and progressed sidereal time that the schools disagree on,
+  and picking one silently would make the board unverifiable.
+- **The solar return** is found by bisection to the second and cast at the
+  BIRTH place, so the room needs no second input. Verified by the definition:
+  the return Sun lands on the natal Sun within an arcsecond.
+- **Composite midpoints are taken the short way round.** The long way puts the
+  composite Sun opposite where every other program puts it.
+
+**Nothing is stored.** 今日運勢 is the one room someone returns to daily, and
+the birth row for it lives in the visitor's own browser (`localStorage`, key
+`xtell.zhanxing.birth`), wrapped in try/catch because a private window throws
+on access rather than returning null. A birth date, an exact time and a place
+is the most identifying thing anyone types into this site and XTell holds no
+personal records at all; a table only earns itself if a chart ever has to
+follow someone across devices or feed a notification.
+
+**占星塔 has no classics corpus** (`lib/classics.ts` declares `[]`). Its
+classics are Ptolemy and Lilly, neither of which is in `content/classics`, and
+pointing it at 《宿曜經》 because that file mentions the twelve signs would
+ground a Western reading in a Buddhist text about a different system.
+
 ## The room flow (owner's design, Aug 30: "hide as much as possible")
 
 1. Birth date + time + gender → **進廟**. The chart is computed at that moment
@@ -140,6 +197,8 @@ lib/xtell.ts                # charts, facts serializers, ENGINES, MASTERS, valid
                             #   關帝 corpus loader + guandiFacts, 四面佛 liuNian + simianfoFacts
 lib/xtell-ritual.ts         # client-safe ritual: drawQian / throwJiao / cryptoRand / CONFIRM_THROWS
 lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, nakshatra, Vimshottari, facts
+lib/astrology.ts            # Western engine: tropical positions, Placidus houses, aspects,
+                            #   transits, secondary progressions, solar return, synastry + composite
 lib/xtell-places.ts         # curated birth places (lat/lon/IANA zone) for temples that need one
 lib/classics.ts             # 古籍 retrieval (see below)
 content/qian/guandi.json    # 關聖帝君靈籤 100 首 (built by scripts/fetch-guandi-qian.ts)
@@ -148,6 +207,8 @@ scripts/fetch-guandi-qian.ts    # corpus builder (MediaWiki API, both transcript
 scripts/generate-xtell-covers.ts # temple covers, gpt-image-2 in the ink-wash house style
 content/classics/*.txt      # 《滴天髓》42 chapters + 《紫微斗數全書·卷一》 (Wikisource, public domain)
 scripts/xtell-golden.ts     # golden-chart suite — npm run test:xtell
+scripts/test-astrology.ts   # Western engine suite (same npm script); Placidus checked against
+                            #   its own definition, not a table — see below
 public/xtell/*.jpg          # temple covers (ink-wash, gpt-image-2)
 ```
 

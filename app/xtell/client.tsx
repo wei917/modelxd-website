@@ -25,8 +25,23 @@ import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, type Jiao } from '../../lib/xtell-ritual'
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
+import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES } from '../../lib/astrology'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha' | 'zhanxing'
+
+// 占星塔 is the one temple with rooms: four readings off one chart. The other
+// six ask a single question, so their form is a birth row and their board is
+// a chart; this one has to be told which reading before it can even ask for
+// the right input (配對 needs a second person).
+const ASTRO_MODES = ['natal', 'synastry', 'today', 'year'] as const
+type AstroMode = (typeof ASTRO_MODES)[number]
+
+// The visitor's own last birth row, so 今日 does not make them retype it
+// every morning. It stays in THEIR browser: a birth date, an exact time and
+// a place is the most identifying thing anyone types into this site, and
+// XTell stores nothing server-side. Cleared with the browser, never synced,
+// never seen by us.
+const REMEMBER_KEY = 'xtell.zhanxing.birth'
 
 // 四面佛's faces, clockwise. Mirrors FACES in lib/xtell.ts (server-only file).
 const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
@@ -60,7 +75,7 @@ export default function XTellClient() {
 
         {!temple ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha', 'zhanxing'] as Temple[]).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -104,6 +119,10 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const [wishes, setWishes] = useState<Wishes>({})
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(DEFAULT_PLACE)
+  // 占星塔 only.
+  const [astroMode, setAstroMode] = useState<AstroMode>('natal')
+  const [place2, setPlace2] = useState(DEFAULT_PLACE)
+  const [srYear, setSrYear] = useState(new Date().getFullYear())
   const [engine, setEngine] = useState<string | null>(null)
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
@@ -147,10 +166,35 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
     temple === 'guandi' ? { temple, n: n ?? stick?.n, ask }
     : temple === 'simianfo' ? { temple, birth, wishes }
     : temple === 'navagraha' ? { temple, birth, place }
+    : temple === 'zhanxing' ? {
+        temple, birth, place, mode: astroMode,
+        ...(astroMode === 'synastry' ? { birth2, place2 } : {}),
+        ...(astroMode === 'year' ? { year: srYear } : {}),
+      }
     : { temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}) }
+
+  // 今日 is the one room someone comes back to daily, so the birth row is
+  // restored from THEIR browser rather than retyped. Wrapped because a
+  // private window or blocked site data makes localStorage throw on access,
+  // not just return null.
+  useEffect(() => {
+    if (temple !== 'zhanxing') return
+    try {
+      const raw = localStorage.getItem(REMEMBER_KEY)
+      if (!raw) return
+      const v = JSON.parse(raw)
+      if (v && Number.isInteger(v.y)) {
+        setBirth(b => ({ ...b, y: v.y, m: v.m, d: v.d, h: v.h, mi: v.mi, gender: v.gender ?? b.gender }))
+        if (typeof v.place === 'string') setPlace(v.place)
+      }
+    } catch { /* no memory is fine; the form still works */ }
+  }, [temple])
 
   const enter = async (n?: number) => {
     setErr(null)
+    if (temple === 'zhanxing') {
+      try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
+    }
     try {
       const res = await fetch('/api/xtell/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -286,16 +330,37 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
 
       {!entered ? (
         <div style={{ ...card, padding: '18px 20px' }}>
+          {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
+              second person and 流年 needs a year. */}
+          {temple === 'zhanxing' && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {ASTRO_MODES.map(m => {
+                const on = astroMode === m
+                return (
+                  <button key={m} onClick={() => setAstroMode(m)} style={{
+                    padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 400,
+                    border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`,
+                    background: on ? 'var(--red)' : 'transparent', color: on ? '#fff' : 'var(--muted)',
+                  }}>{t(`xtell.astro.${m}`)}</button>
+                )
+              })}
+              <span style={{ flexBasis: '100%', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, marginTop: 2 }}>
+                {t(`xtell.astro.${astroMode}.hint`)}
+              </span>
+            </div>
+          )}
           {temple === 'guandi' ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} />
-          ) : temple === 'yuelao' ? (
+          ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
-              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} />
+              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'zhanxing'} />
+              {temple === 'zhanxing' && <PlaceRow value={place} onChange={setPlace} sel={sel} />}
               <div style={{ height: 12 }} />
-              <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} />
+              <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} allowUnknown={temple !== 'zhanxing'} />
+              {temple === 'zhanxing' && <PlaceRow value={place2} onChange={setPlace2} sel={sel} />}
             </>
           ) : (
-            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei' && temple !== 'navagraha'} />
+            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei' && temple !== 'navagraha' && temple !== 'zhanxing'} />
           )}
           {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} />}
           {temple === 'navagraha' && (
@@ -305,6 +370,23 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                 {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
               </select>
               <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 240 }}>{t('xtell.place.note')}</span>
+            </div>
+          )}
+          {temple === 'zhanxing' && astroMode !== 'synastry' && (
+            <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.place')}</span>
+              <select style={sel} value={place} onChange={e => setPlace(e.target.value)}>
+                {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+              </select>
+              {astroMode === 'year' && (
+                <>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8 }}>{t('xtell.astro.year.pick')}</span>
+                  <select style={sel} value={srYear} onChange={e => setSrYear(+e.target.value)}>
+                    {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 3 + i).map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </>
+              )}
+              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>{t('xtell.place.note')}</span>
             </div>
           )}
           {temple !== 'guandi' && (
@@ -367,6 +449,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                 : temple === 'guandi' ? <QianCard qian={chart} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
+                : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
                 : (
                   <div style={{ display: 'grid', gap: 14 }}>
                     <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} /></div>
@@ -846,6 +929,275 @@ function NavagrahaBoard({ chart }: { chart: any }) {
         </div>
       )}
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.nav.note')}</div>
+    </div>
+  )
+}
+
+// ── 占星塔 ─────────────────────────────────────────────────────────────────
+
+function PlaceRow({ value, onChange, sel }: { value: string; onChange: (v: string) => void; sel: any }) {
+  const t = useT()
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6, marginLeft: 62 }}>
+      <span style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xtell.place')}</span>
+      <select style={sel} value={value} onChange={e => onChange(e.target.value)}>
+        {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+      </select>
+    </div>
+  )
+}
+
+const sign = (i: number) => `${SIGNS[i][1]}座`
+const dms = (d: number) => `${Math.floor(d)}°${String(Math.floor((d % 1) * 60)).padStart(2, '0')}'`
+const nameOf = (k: string) => (PLANET_ZH as any)[k] ?? (POINT_ZH as any)[k] ?? k
+const glyphOf = (k: string) => (PLANET_GLYPH as any)[k] ?? ''
+
+/** One aspect as a chip. The orb is on it because a 0.2° square and a 6.8°
+ *  square are not the same statement, and the whole point of showing the
+ *  chart is that the reading can be checked against it. */
+function AspectChip({ a, prefix }: { a: any; prefix?: [string, string] }) {
+  const tight = a.orb < 1
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 999,
+      border: '1px solid ' + (tight ? 'var(--red)' : 'var(--border2)'), fontSize: 11.5,
+      color: tight ? 'var(--red)' : 'var(--muted)', whiteSpace: 'nowrap',
+    }}>
+      <span>{prefix?.[0]}{nameOf(a.a)}</span>
+      <span style={{ fontSize: 13 }}>{a.glyph}</span>
+      <span>{prefix?.[1]}{nameOf(a.b)}</span>
+      <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, opacity: 0.75 }}>
+        {a.orb.toFixed(1)}°{a.applying ? '→' : ''}
+      </span>
+    </span>
+  )
+}
+
+function Bars({ title, data, keys }: { title: string; data: Record<string, number>; keys: readonly string[] }) {
+  const max = Math.max(1, ...keys.map(k => data[k] ?? 0))
+  return (
+    <div>
+      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{title}</div>
+      <div style={{ display: 'flex', gap: 14 }}>
+        {keys.map(k => (
+          <div key={k} style={{ textAlign: 'center', minWidth: 34 }}>
+            <div style={{ height: 44, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+              <div style={{
+                width: 18, height: `${((data[k] ?? 0) / max) * 100}%`, minHeight: 2,
+                background: (data[k] ?? 0) === 0 ? 'var(--border2)' : 'var(--red)', borderRadius: 3,
+              }} />
+            </div>
+            <div style={{ fontSize: 11.5, marginTop: 4 }}>{k}</div>
+            <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted2)' }}>{data[k] ?? 0}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** The natal board: what every room shows before its own extra. */
+function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
+  const t = useT()
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+        {String(c.utc).replace('T', ' ').slice(0, 16)} UTC · {c.place} · {c.system === 'placidus' ? 'Placidus' : t('xtell.astro.equal')}
+      </div>
+      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'baseline', marginBottom: 12 }}>
+        {[['ASC', c.angles.asc], ['MC', c.angles.mc], ['Fortune', c.angles.fortune]].map(([k, v]: any) => (
+          <span key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+            <span style={{ ...mono, color: 'var(--muted2)' }}>{POINT_ZH[k as keyof typeof POINT_ZH]}</span>
+            <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 19, fontWeight: 800 }}>{sign(Math.floor(v / 30))}</span>
+            <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, color: 'var(--muted)' }}>{dms(v % 30)}</span>
+          </span>
+        ))}
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+          {t('xtell.astro.ruler')} {c.chartRuler ? PLANET_ZH[c.chartRuler as keyof typeof PLANET_ZH] : '—'} · {t(`xtell.astro.sect.${c.sect}`)}
+        </span>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: 420 }}>
+          <thead>
+            <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
+              {[t('xtell.astro.body'), t('xtell.astro.sign'), t('xtell.astro.deg'), t('xtell.astro.house')].map(h =>
+                <th key={h} style={{ padding: '4px 14px 6px 0', fontWeight: 500 }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {c.planets.map((p: any) => (
+              <tr key={p.body} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '6px 14px 6px 0', fontWeight: 700 }}>
+                  <span style={{ color: 'var(--muted2)', fontWeight: 400, marginRight: 6 }}>{glyphOf(p.body)}</span>
+                  {PLANET_ZH[p.body as keyof typeof PLANET_ZH]}
+                </td>
+                <td style={{ padding: '6px 14px 6px 0' }}>{sign(p.sign)}</td>
+                <td style={{ padding: '6px 14px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>
+                  {dms(p.deg)}{p.retro && p.body !== 'NorthNode' && p.body !== 'SouthNode' ? ' ℞' : ''}
+                </td>
+                <td style={{ padding: '6px 14px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>{p.house}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!compact && (
+        <>
+          <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xtell.astro.cusps')}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {c.cusps.map((x: number, i: number) => (
+              <span key={i} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
+                <span style={{ fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>{i + 1}</span>{' '}
+                {sign(Math.floor(x / 30))} {dms(x % 30)}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 34, flexWrap: 'wrap', margin: '18px 0 4px' }}>
+            <Bars title={t('xtell.astro.elements')} data={c.balance.elements} keys={ELEMENTS} />
+            <Bars title={t('xtell.astro.modalities')} data={c.balance.modalities} keys={MODALITIES} />
+          </div>
+
+          <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xtell.astro.aspects')}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {c.aspects.map((a: any, i: number) => <AspectChip key={i} a={a} />)}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The board, one shape per room. Everything on it came out of lib/astrology.ts
+ * and is checkable against any ephemeris — which is the whole reason it is
+ * shown before the reading is bought.
+ */
+function ZhanxingBoard({ chart }: { chart: any }) {
+  const t = useT()
+  const c = chart?.natal
+  if (!c) return null
+
+  if (chart.mode === 'synastry' && chart.natal2 && chart.synastry) {
+    const s = chart.synastry
+    return (
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 22 }}>
+          <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><NatalTable c={c} compact /></div>
+          <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><NatalTable c={chart.natal2} compact /></div>
+        </div>
+        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.inter')}</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {s.inter.slice(0, 30).map((a: any, i: number) => <AspectChip key={i} a={a} prefix={['①', '②']} />)}
+        </div>
+        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.composite')}</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {s.composite.planets.slice(0, 10).map((p: any) => (
+            <span key={p.body} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
+              {glyphOf(p.body)} {PLANET_ZH[p.body as keyof typeof PLANET_ZH]} {sign(p.sign)} {dms(p.deg)}
+            </span>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.synastry.note')}</div>
+      </div>
+    )
+  }
+
+  if (chart.mode === 'today' && chart.today) {
+    const d = chart.today
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
+          <span style={{ ...mono, color: 'var(--muted2)' }}>{d.date}</span>
+          <span style={{ fontSize: 13 }}>{t('xtell.astro.moontoday')} <b>{sign(d.moonSign)}</b></span>
+          <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+            {d.retro.length
+              ? `${t('xtell.astro.retro')}：${d.retro.map((p: string) => PLANET_ZH[p as keyof typeof PLANET_ZH]).join('、')}`
+              : t('xtell.astro.noretro')}
+          </span>
+        </div>
+        {/* An empty list is a real answer, and saying so is the difference
+            between a transit reading and a horoscope column. */}
+        {d.list.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--muted)', padding: '14px 0' }}>{t('xtell.astro.notransits')}</div>
+        ) : (
+          <table style={{ borderCollapse: 'collapse', fontSize: 12.5, width: '100%' }}>
+            <thead>
+              <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
+                {[t('xtell.astro.transit'), t('xtell.astro.natalpt'), t('xtell.astro.orb'), t('xtell.astro.exact')].map(h =>
+                  <th key={h} style={{ padding: '4px 12px 6px 0', fontWeight: 500 }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {d.list.map((x: any, i: number) => (
+                <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '6px 12px 6px 0' }}>
+                    <b>{glyphOf(x.a)} {nameOf(x.a)}</b> <span style={{ color: 'var(--muted2)' }}>{sign(x.transitSign)} {dms(x.transitDeg)}{x.retro ? ' ℞' : ''}</span>
+                  </td>
+                  <td style={{ padding: '6px 12px 6px 0' }}>{x.glyph} {nameOf(x.b)}</td>
+                  <td style={{ padding: '6px 12px 6px 0', fontFamily: 'var(--font-mono), monospace', color: x.orb < 0.3 ? 'var(--red)' : 'var(--muted)' }}>
+                    {x.orb.toFixed(2)}°{x.applying ? ' →' : ''}
+                  </td>
+                  <td style={{ padding: '6px 12px 6px 0', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted)' }}>{x.exact ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <details style={{ marginTop: 16 }}>
+          <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.natalchart')}</summary>
+          <div style={{ marginTop: 12 }}><NatalTable c={c} /></div>
+        </details>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.today.note')}</div>
+      </div>
+    )
+  }
+
+  if (chart.mode === 'year' && chart.year) {
+    const { ret, prog, year } = chart.year
+    return (
+      <div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+          {year} · {String(ret.utc).replace('T', ' ').slice(0, 16)} UTC
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+          <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.astro.srasc')}</span>
+          <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{sign(Math.floor(ret.asc / 30))}</span>
+          <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, color: 'var(--muted)' }}>{dms(ret.asc % 30)}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {ret.planets.slice(0, 10).map((p: any) => (
+            <span key={p.body} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
+              {glyphOf(p.body)} {sign(p.sign)} {dms(p.deg)} <span style={{ fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>H{p.house}</span>
+            </span>
+          ))}
+        </div>
+        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.prog')}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+          {t('xtell.astro.progsun')} <b>{sign(prog.sun.sign)} {prog.sun.deg.toFixed(1)}°</b>　·　
+          {t('xtell.astro.progmoon')} <b>{sign(prog.moon.sign)} {prog.moon.deg.toFixed(1)}°</b>
+          <span style={{ color: 'var(--muted)' }}> ({t('xtell.astro.house')} {prog.moon.house})</span>
+        </div>
+        {prog.aspects.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            {prog.aspects.map((a: any, i: number) => <AspectChip key={i} a={a} />)}
+          </div>
+        )}
+        <details style={{ marginTop: 16 }}>
+          <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.natalchart')}</summary>
+          <div style={{ marginTop: 12 }}><NatalTable c={c} /></div>
+        </details>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.year.note')}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <NatalTable c={c} />
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.natal.note')}</div>
     </div>
   )
 }

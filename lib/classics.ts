@@ -33,6 +33,12 @@ const SOURCES: Record<Temple, string[]> = {
   // twelve signs and 27 nakshatras into Chinese — its 宿 names are the ones
   // the facts use, so retrieval lands on the visitor's actual 宿.
   navagraha: ['suyaojing.txt'],
+  // 占星塔 has no corpus. Its classics are Ptolemy's Tetrabiblos and Lilly's
+  // Christian Astrology, neither of which is in content/classics — and
+  // pointing it at 《宿曜經》 because that file happens to mention the twelve
+  // signs would ground a Western reading in a Buddhist text about a different
+  // system. An empty corpus is honest; a wrong one reads as authority.
+  zhanxing: [],
 }
 
 type Passage = { book: string; text: string }
