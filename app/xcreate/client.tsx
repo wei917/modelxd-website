@@ -4672,15 +4672,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   )}
                 </div>
 
-                {/* The wall, above the tool and template rows. It was below
-                    them, which meant a first-time visitor had to scroll past
-                    two full card grids to reach the only part of this page
-                    that shows what the models actually produce. Setup screen
-                    only — once there are results, the results are the thing. */}
-                {phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
-                  <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
-                )}
-
                 {/* ── Product board (CC, July 28): the entry point for the
                     product-video pipeline. Uploading here does NOT generate
                     anything — the photos become source nodes on a fresh
@@ -4761,6 +4752,17 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </div>
                   )
                 })()}
+
+                {/* The wall, under the tools and templates (owner, Sep 9).
+                    It sat above them for a while on the argument that a
+                    first-time visitor should meet real output before two
+                    grids of cards; the owner's call is that the tools are
+                    what this page is FOR, and the wall is what you browse
+                    once you have not found one. Setup screen only — once
+                    there are results, the results are the thing. */}
+                {phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
+                  <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
+                )}
 
                 {/* Results */}
                 {slots.length > 0 && (
