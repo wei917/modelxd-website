@@ -466,8 +466,17 @@ export default function MusicVideoSetup({ busy, onStart, onSkip }: {
     if (sectionLabel) {
       parts.push(`The user picked that window on the waveform, so it is exact: shoot ${sectionLabel} of the track and nothing outside it.`)
     }
+    // A CARD IS EXTRA RUNTIME, NEVER CARVED OUT OF IT. It used to say the card
+    // lived INSIDE the runtime, so an 18s brief was boarded as a 2s card plus
+    // 16s of scenes — and XCut, which holds the song back until the leading
+    // card has played, then had 16s of picture left for an 18s song and
+    // trimmed two seconds off its ending. You cannot shorten a song; you can
+    // put type in front of it (owner, Sep 9: "the song is 18 seconds, we
+    // should not count title card in").
     parts.push(title.trim()
-      ? `Title card first: 「${title.trim()}」 — it lives INSIDE the ${duration}s runtime.`
+      ? `Title card first: 「${title.trim()}」 — its length is EXTRA and does NOT come out of the ${duration}s. `
+        + `Board the full ${duration}s of SCENES and put the card in front of them, so the finished film runs card + ${duration}s `
+        + `and the song plays whole from the first scene. Do not shorten the scenes to make room for it.`
       : 'No title card — the full runtime is the film.')
     parts.push(castAtts.length > 0
       ? 'Cast: lock the leads from the attached subject photos.'

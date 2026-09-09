@@ -268,6 +268,19 @@ export function timelineFromStoryboard(
       // is left so the film cannot outlast its own images: totalDuration()
       // takes the MAX of the two tracks, so an untrimmed long song would pad
       // the export with black.
+      //
+      // Reaching that trim used to be the NORMAL path for any film with a
+      // title card, and it cost the song its ending every time: the runtime
+      // included the card, this function then delayed the song by that card,
+      // and an 18s song under a 2s card plus 16s of scenes lost two seconds
+      // with nothing said (owner, Sep 9). The rule is fixed where it belongs —
+      // a LEADING card is extra runtime, not carved out of it (see the title
+      // card line in MusicVideoSetup and "Title cards" in the MV skill) — so a
+      // trim here now means the board genuinely came up short of picture, and
+      // cutting the song is the least-bad way to keep the export from running
+      // past its own images. We cannot say by how much: the song reaches this
+      // layer as a storage path with no duration (see the `songs` bubble in
+      // /api/xcut/projects), so there is nothing to compare `len` against.
       tl.audio.push({
         id: newId('a'), src: opts.song, start: lead, in: 0, out: len,
         gain: 1, fadeIn: 0, fadeOut: Math.min(1, len / 4),
