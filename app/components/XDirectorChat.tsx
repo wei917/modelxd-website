@@ -498,6 +498,44 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
   }, [bubbles])
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
+  // ── Don't sleep through your own film ─────────────────────────────────
+  // A board is minutes of waiting, and a laptop that idle-sleeps mid-run
+  // stops the poll, so a "generate all" stalls after the clip in flight —
+  // the server finishes it and the tab never learns. Hold a screen wake
+  // lock for as long as something is running, the same way a live character
+  // call does (app/xtalk/CharactersRoom.tsx).
+  //
+  // Two things this is NOT: it keeps the SCREEN on, so it cannot help a
+  // closed lid; and the browser drops the lock whenever the document is
+  // hidden, so a backgrounded tab loses it and re-takes it on return. It
+  // covers watching the board, which is the case that was losing runs.
+  const wakeRef = useRef<any>(null)
+  // Keyed on RUNNING, not on `busy` itself: thinking→generating is the same
+  // wait to a sleeping laptop, and depending on the raw value tore the lock
+  // down and rebuilt it on every phase change.
+  const running = busy !== 'idle'
+  useEffect(() => {
+    const release = () => { wakeRef.current?.release?.().catch(() => {}); wakeRef.current = null }
+    if (!running) { release(); return }
+    let dead = false
+    const lock = () => {
+      if (dead || document.hidden || wakeRef.current) return
+      ;(navigator as any).wakeLock?.request('screen')
+        .then((w: any) => {
+          if (dead) { w.release?.().catch(() => {}); return }
+          wakeRef.current = w
+          // The browser releases it on its own when the tab hides; clear our
+          // handle too, or the re-acquire below sees a dead lock and skips.
+          w.addEventListener?.('release', () => { if (wakeRef.current === w) wakeRef.current = null })
+        })
+        .catch(() => {})   // denied, unsupported, or not a secure context
+    }
+    lock()
+    const onVis = () => { if (!document.hidden) lock() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { dead = true; document.removeEventListener('visibilitychange', onVis); release() }
+  }, [running])
+
   // ── Frame chaining (CC, Aug 6) ────────────────────────────────────────
   // Continuity between scenes is FRAME continuity: scene N+1 opens on the
   // exact image scene N closed on, or the model reinvents the room. This
@@ -1337,19 +1375,33 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
     // generation completes, but polling gives us progress + survives the
     // POST connection dropping on long videos.
     const startedAt = Date.now()
+    // THE TIMEOUT IS CHECKED LAST, AND ONLY AGAINST A JOB THE SERVER STILL
+    // CALLS UNFINISHED. It used to run first, on wall-clock time, before the
+    // status was fetched — so a laptop that slept through a generation woke
+    // up, tripped the 10-minute check on its first tick, and marked a scene
+    // "Timed out" that the server had finished and charged for. The work
+    // never lived in this tab (the POST writes xcreate_jobs and the server
+    // runs it to completion), so elapsed time here says nothing about the
+    // job; only the job's own status does.
+    const timedOut = () => {
+      if (Date.now() - startedAt <= 10 * 60_000) return false
+      patchLastGen({ status: 'error', error: 'Timed out' })
+      if (cardScene) patchScene(cardScene, { status: 'error', error: 'Timed out' })
+      reArmOnFailure(cardScene)
+      finish({ ok: false, error: 'generation timed out after 10 minutes' })
+      return true
+    }
     pollRef.current = setInterval(async () => {
-      if (Date.now() - startedAt > 10 * 60_000) {
-        patchLastGen({ status: 'error', error: 'Timed out' })
-        if (cardScene) patchScene(cardScene,{ status: 'error', error: 'Timed out' })
-        reArmOnFailure(cardScene)
-        return finish({ ok: false, error: 'generation timed out after 10 minutes' })
-      }
+      let data: any = null
       try {
         const res = await fetch(`/api/xcreate/job/${jobId}`, { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
+        if (res.ok) data = await res.json()
+      } catch { /* transient poll error — fall through to the timeout */ }
+      // Unreachable server: the only case where elapsed time is all we have.
+      if (!data) { timedOut(); return }
+      try {
         const slot = (data.slots ?? [])[0]
-        if (data.job?.status === 'running' && !(slot?.done)) return
+        if (data.job?.status === 'running' && !(slot?.done)) { timedOut(); return }
         // Done (or failed).
         if (slot?.error || data.job?.status === 'failed') {
           const err = slot?.error ?? data.job?.error ?? 'generation failed'
