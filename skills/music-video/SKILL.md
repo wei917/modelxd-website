@@ -697,8 +697,11 @@ sluglines (`I. INT. HOUSE — DAY`) as chapter cards between sections, a hand-
 written lyric line. Cards like these are what make a piece read as *authored*,
 and they cost cents.
 
-- Make each one **its own scene card** in the storyboard (title `CARD · <text>`)
-  so it has a slot in the edit and a price. Duration: **3s minimum if it will
+- Make each one **its own scene card** in the storyboard (title `CARD · <text>`,
+  and set `card: true`) so it has a slot in the edit and a price. The flag is
+  not decoration: XCut holds the SONG back until the last leading card has
+  played, so the track starts with the picture instead of spending its first
+  bar under a caption. Without it the cutting room has only the title to go on. Duration: **3s minimum if it will
   be animated** — HappyHorse's floor is 3s and a 2s card fails at the provider
   (hit live, Aug 12: "duration must be between 3 and 15 seconds, got 2"). Only
   a card that stays a still (the user holds it in their own edit) may be

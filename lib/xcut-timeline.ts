@@ -156,7 +156,31 @@ export function insertClip(tl: Timeline, clip: VideoClip, atIndex?: number): Tim
 
 export type StoryboardScene = {
   id: string; title?: string; script?: string; duration_s?: number; asset?: boolean; continues?: boolean
+  /** A title card or graphic insert: type held on a frame, not a shot of the
+   *  film. Set by the director (see lib/xdirector-tools.ts). */
+  card?: boolean
   url?: string; row_id?: string; still_url?: string; still_row_id?: string; model_name?: string; still_model_name?: string; cost?: number
+}
+
+/**
+ * Is this scene a title card?
+ *
+ * `card: true` is the answer on any board made after Sep 9. Boards made before
+ * it have only their title, so the fallback reads that, and the patterns are
+ * the ones that actually occur: the music-video skill asks for `CARD · <text>`,
+ * and when the director ignores that it writes "Title Card" or "Intro · Title
+ * Card". The CJK/JA/KO spellings are here because cards get titled in the
+ * user's language.
+ *
+ * Deliberately narrow. A false positive costs the song its opening bars, which
+ * is worse than the bug this fixes, so "Card, Late Afternoon" (a real scene
+ * title shape on these boards) must not match: a separator is required.
+ */
+const CARD_TITLE = /^\s*cards?\s*[·:：|/–—-]|title\s*card|標題卡|标题卡|タイトルカード|타이틀\s*카드/i
+
+export function isTitleCard(s: StoryboardScene): boolean {
+  if (s.asset) return false
+  return s.card === true || CARD_TITLE.test(s.title ?? '')
 }
 
 /** A source resolved for a scene: its clip (if shot) or its key still. */
@@ -217,15 +241,36 @@ export function timelineFromStoryboard(
   // The cues are still built, just not burned: the user can switch them on.
   if (opts?.song) {
     const picture = tl.video.reduce((n, c) => n + clipLength(c), 0)
-    if (picture > 0) {
+    // A title card at the head is NOT part of the song (owner, Sep 9). The
+    // track was being laid at 0, so a 3s card spent the song's first bar on a
+    // caption and the film proper began mid-phrase. The card is type held on
+    // a frame; the music starts when the picture does.
+    //
+    // Only the LEADING run counts. A card between verses is punctuation inside
+    // the film, and cutting the song there would be a worse bug than playing
+    // over it.
+    const cards = new Set(scenes.filter(isTitleCard).map(s => s.id))
+    let lead = 0
+    for (const c of tl.video) {
+      if (!c.sceneId || !cards.has(c.sceneId)) break
+      lead += clipLength(c)
+    }
+    // Everything read as a card: either the detection misfired or the film is
+    // nothing but type. A song that never plays is worse than one that plays
+    // over a card, so fall back to the head.
+    if (lead >= picture) lead = 0
+    const len = picture - lead
+    if (len > 0) {
       tl.settings.muteClips = true
       tl.settings.burnSubtitles = false
-      // Trimmed to the picture so the film cannot outlast its own images —
-      // totalDuration() takes the MAX of the two tracks, so an untrimmed
-      // long song would pad the export with black.
+      // `in: 0` — the song still starts at its own beginning; it is moved
+      // later on the timeline, not scrubbed into. Trimmed to the picture that
+      // is left so the film cannot outlast its own images: totalDuration()
+      // takes the MAX of the two tracks, so an untrimmed long song would pad
+      // the export with black.
       tl.audio.push({
-        id: newId('a'), src: opts.song, start: 0, in: 0, out: picture,
-        gain: 1, fadeIn: 0, fadeOut: Math.min(1, picture / 4),
+        id: newId('a'), src: opts.song, start: lead, in: 0, out: len,
+        gain: 1, fadeIn: 0, fadeOut: Math.min(1, len / 4),
         label: opts.song.fileName,
       })
     }

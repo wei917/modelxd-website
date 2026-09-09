@@ -147,7 +147,7 @@ the sheet for the rest.
   reaction — the look, the hand, the turn away — or play it on a wide where
   the mouth does not read. Never "he says" in a prompt.
 - A title card is optional: the story's title in its own script as a
-  `CARD · <text>` scene (3s minimum if animated), on an image model that
+  `CARD · <text>` scene with `card: true` (3s minimum if animated), on an image model that
   renders type cleanly, the exact string in quotes.
 
 ## Cost is a directing decision

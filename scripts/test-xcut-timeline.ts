@@ -1,7 +1,8 @@
 // scripts/test-xcut-timeline.ts — unit test for lib/xcut-timeline.ts.   npx tsx scripts/test-xcut-timeline.ts
 import {
   timelineFromStoryboard, clipStarts, totalDuration, locate, trimClip, splitAt, moveClip, removeClip,
-  cleanTimeline, renderPlan, toSrt, toAss, wrapCue, fitCue, subtitlesFromScenes, emptyTimeline, type StoryboardScene,
+  cleanTimeline, renderPlan, toSrt, toAss, wrapCue, fitCue, subtitlesFromScenes, emptyTimeline, isTitleCard, clipLength,
+  type StoryboardScene,
 } from '../lib/xcut-timeline'
 
 let fails = 0
@@ -79,6 +80,49 @@ check('ASS dialogue times + \\N wrap', /Dialogue: 0,0:00:00\.50,0:00:03\.25,Defa
 check('ASS escapes braces and backslashes', ass.includes('a ｛tag｝ ＼ test'))
 const srt = toSrt(tl.subtitles)
 check('SRT format', /^1\n00:00:00,000 --> 00:00:06,000\n石猴稱王。\n/.test(srt))
+
+// ── Music video: the song starts when the picture does ─────────────────────
+// A title card at the head is type, not a shot, and the song must not play
+// under it (owner, Sep 9).
+const song = { bucket: 'xcreate-user-audio', path: 'u/song.mp3', mediaType: 'audio/mpeg', fileName: 'song.mp3' }
+const mvScenes: StoryboardScene[] = [
+  { id: 'cast', asset: true, title: 'CAST · 她' },
+  { id: 'card', title: 'Title Card', duration_s: 3 },
+  { id: 'v1', title: 'Verse', duration_s: 6 },
+  { id: 'v2', title: 'Chorus', duration_s: 6 },
+]
+const mvSources = {
+  card: { still: { ...src('u/card.png', 'image/png') } },
+  v1: { video: { ...src('u/v1.mp4'), duration: 6 } },
+  v2: { video: { ...src('u/v2.mp4'), duration: 6 } },
+}
+const mv = timelineFromStoryboard(mvScenes, mvSources, { song })
+check('MV: one song on the audio track', mv.audio.length === 1)
+check('MV: song starts after the title card', mv.audio[0].start === 3, `→ ${mv.audio[0]?.start}`)
+check('MV: song plays from its own beginning', mv.audio[0].in === 0)
+check('MV: song ends with the picture', mv.audio[0].start + clipLength(mv.audio[0]) === 15, `→ ${mv.audio[0]?.start + clipLength(mv.audio[0])}`)
+check('MV: clips muted, scripts off the frame', mv.settings.muteClips === true && mv.settings.burnSubtitles === false)
+check('MV: film is no longer than its picture', totalDuration(mv) === 15)
+check('MV: the delay survives into the render plan', renderPlan(mv).audio[0].start === 3)
+
+const noCard = timelineFromStoryboard(mvScenes.filter(s => s.id !== 'card'), mvSources, { song })
+check('MV: no card → song at 0 for the whole picture', noCard.audio[0].start === 0 && noCard.audio[0].out === 12)
+
+// A card between verses is punctuation, not a delay.
+const midCard = timelineFromStoryboard(
+  [mvScenes[2], { id: 'card', title: 'CARD · 好像喜歡你', duration_s: 3 }, mvScenes[3]], mvSources, { song })
+check('MV: a card mid-film does not move the song', midCard.audio[0].start === 0 && midCard.audio[0].out === 15)
+
+// All type and nothing else: a song that never plays is the worse bug.
+const allCards = timelineFromStoryboard([{ id: 'card', title: 'Title Card', duration_s: 3 }], mvSources, { song })
+check('MV: an all-card film still gets its song', allCards.audio[0].start === 0 && allCards.audio[0].out === 3)
+
+check('card by flag', isTitleCard({ id: 'x', title: 'Anything', card: true }))
+check('card by title', ['Title Card', 'Intro · Title Card', 'CARD · 好像喜歡你', 'card: 想对你说', '標題卡']
+  .every(t => isTitleCard({ id: 'x', title: t })))
+check('not a card', !['Car, Late Afternoon', 'The Unsent Message', 'Wildcard', '', 'Cardiff Bay']
+  .some(t => isTitleCard({ id: 'x', title: t })))
+check('an asset is never a card', !isTitleCard({ id: 'x', title: 'CARD · x', asset: true }))
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
 process.exit(fails === 0 ? 0 : 1)
