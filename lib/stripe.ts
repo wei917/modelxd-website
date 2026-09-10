@@ -238,6 +238,10 @@ export async function createSubscriptionSession(opts: {
     // can be credited without trusting anything a browser sent.
     'subscription_data[metadata][user_id]': opts.userId,
     'subscription_data[metadata][plan]': PLAN.id,
+    // Locked at signup: renewals credit what THIS subscriber was promised,
+    // even after lib/plans.ts changes (see grantForInvoice).
+    'subscription_data[metadata][credit_cents]': PLAN.creditCents,
+    'subscription_data[metadata][bonus_cents]': PLAN.bonusCents,
     'metadata[user_id]': opts.userId,
     'metadata[purpose]': 'subscription',
     success_url: opts.successUrl,

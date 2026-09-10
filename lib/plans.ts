@@ -11,6 +11,11 @@
 // month it was paid for. The bonus is spent first, and whatever is left
 // expires when that month ends. It does not roll over.
 //
+// LOCKED AT SIGNUP. Checkout writes credit_cents and bonus_cents onto the
+// Stripe subscription, and every renewal credits those, not the numbers
+// below. Changing this file reaches NEW subscribers only, so a launch bonus
+// cut back later never quietly shrinks a plan someone is already paying for.
+//
 // PRICES ARE SET PER CURRENCY, not converted. NT$157.43 reads as a mistake;
 // NT$149 reads as a price (owner, Sep 11: NT$149 and ¥749, to match $4.99).
 // Every currency buys the same USD credit, so the wallet stays in one unit.
@@ -21,8 +26,9 @@ export const PLAN = {
   id: 'monthly_499',
   /** Paid credit per month. Never expires. */
   creditCents: 499,
-  /** Bonus credit per month. Expires at the end of the month it was paid for. */
-  bonusCents: 100,
+  /** Bonus credit per month. Expires at the end of the month it was paid for.
+   *  $2 at launch (owner, Sep 11: "I just started, so I should give more"). */
+  bonusCents: 200,
   prices: { usd: 499, twd: 14900, jpy: 749 },
 } as const
 

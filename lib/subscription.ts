@@ -39,6 +39,14 @@ export const subscriptionIdOfInvoice = (inv: any): string | null =>
   idOf(inv?.subscription) ?? idOf(inv?.parent?.subscription_details?.subscription)
 const invoiceMeta = (inv: any): Record<string, string> =>
   inv?.subscription_details?.metadata ?? inv?.parent?.subscription_details?.metadata ?? {}
+/** A whole-cent amount from Stripe metadata (always a string there), or
+ *  null when absent or out of range. Metadata can be edited by hand in the
+ *  Stripe dashboard, so it is bounded rather than trusted. */
+const metaCents = (v: unknown, min: number, max: number): number | null => {
+  if (v === undefined || v === null || v === '') return null
+  const n = Number(v)
+  return Number.isInteger(n) && n >= min && n <= max ? n : null
+}
 const subPeriodEnd = (s: any): number | null =>
   s?.current_period_end ?? s?.items?.data?.[0]?.current_period_end ?? null
 
@@ -91,13 +99,19 @@ export async function grantForInvoice(inv: any): Promise<{ granted: boolean; rea
   const meta = invoiceMeta(inv)
   let userId: string | null = meta.user_id ?? null
   let plan: string | null = meta.plan ?? null
+  let locked: Record<string, string> = meta
   let periodEnd: number | null = inv?.lines?.data?.[0]?.period?.end ?? null
-  if (!userId || !plan || !periodEnd) {
+  if (!userId || !plan || !periodEnd || meta.bonus_cents === undefined) {
     const s = await fetchSubscription(subId)
     userId = userId ?? s?.metadata?.user_id ?? null
     plan = plan ?? s?.metadata?.plan ?? null
     periodEnd = periodEnd ?? subPeriodEnd(s)
+    locked = { ...(s?.metadata ?? {}), ...meta }
   }
+  // What THIS subscriber signed up for, written at checkout (lib/stripe.ts).
+  // PLAN is only the fallback, for a subscription that carries no amounts.
+  const creditCents = metaCents(locked.credit_cents, 1, 100_000) ?? PLAN.creditCents
+  const bonusCents = metaCents(locked.bonus_cents, 0, 100_000) ?? PLAN.bonusCents
   // Only OUR plan's invoices buy this credit. Anything else billed through the
   // same Stripe account is none of this function's business.
   if (plan !== PLAN.id) return { granted: false, reason: `not this plan (${plan})` }
@@ -109,13 +123,13 @@ export async function grantForInvoice(inv: any): Promise<{ granted: boolean; rea
   const res = await grantSubscriptionPeriod({
     userId,
     invoiceId: inv.id,
-    paidCents: PLAN.creditCents,
-    bonusCents: PLAN.bonusCents,
+    paidCents: creditCents,
+    bonusCents,
     // The bonus lives exactly as long as the month it was paid for.
     bonusExpiresAt: new Date((periodEnd ?? Math.floor(Date.now() / 1000) + 31 * 86400) * 1000),
     metadata: { stripe_subscription: subId, currency: cur, amount_paid: inv.amount_paid, billing_reason: inv.billing_reason ?? null },
   })
-  console.log(`${LOG} invoice ${inv.id}: ${res.granted ? `granted ${PLAN.creditCents}+${PLAN.bonusCents}¢ to ${userId}` : 'already granted'}`)
+  console.log(`${LOG} invoice ${inv.id}: ${res.granted ? `granted ${creditCents}+${bonusCents}¢ to ${userId}` : 'already granted'}`)
   return res
 }
 

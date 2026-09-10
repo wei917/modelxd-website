@@ -307,9 +307,10 @@ can expand.
 
 A subscription, priced in your local currency: **NT$149** in Taiwan, **¥749**
 in Japan, **$4.99** everywhere else. Every month it gives you **$4.99 of
-credit that never expires** (the same as a top-up), plus a **$1.00 bonus**
+credit that never expires** (the same as a top-up), plus a **$2.00 bonus**
 for that month. The bonus is spent first and expires when the month ends;
-it does not roll over. Subscribe, cancel or resume on `/profile`. Cancelling
+it does not roll over. The amounts are locked when you subscribe, so a later
+change to the offer never shrinks a plan you already have. Subscribe, cancel or resume on `/profile`. Cancelling
 stops the next renewal and the plan stays active until the end of the month
 already paid for. It is optional: top-ups still work exactly as before.
 
