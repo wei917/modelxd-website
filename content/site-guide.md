@@ -305,7 +305,7 @@ can expand.
 
 ### The monthly plan
 
-A subscription, priced in your local currency: **NT$150** in Taiwan, **¥750**
+A subscription, priced in your local currency: **NT$149** in Taiwan, **¥749**
 in Japan, **$4.99** everywhere else. Every month it gives you **$4.99 of
 credit that never expires** (the same as a top-up), plus a **$1.00 bonus**
 for that month. The bonus is spent first and expires when the month ends;

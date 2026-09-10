@@ -12,9 +12,10 @@
 // expires when that month ends. It does not roll over.
 //
 // PRICES ARE SET PER CURRENCY, not converted. NT$157.43 reads as a mistake;
-// NT$150 reads as a price. Every currency buys the same USD credit, so the
-// wallet stays in one unit. Amounts are Stripe minor units: TWD is charged as
-// a two-decimal currency (150 TWD = 15000), JPY is zero-decimal (¥750 = 750).
+// NT$149 reads as a price (owner, Sep 11: NT$149 and ¥749, to match $4.99).
+// Every currency buys the same USD credit, so the wallet stays in one unit.
+// Amounts are Stripe minor units: TWD is charged as a two-decimal currency
+// (149 TWD = 14900), JPY is zero-decimal (¥749 = 749).
 
 export const PLAN = {
   id: 'monthly_499',
@@ -22,7 +23,7 @@ export const PLAN = {
   creditCents: 499,
   /** Bonus credit per month. Expires at the end of the month it was paid for. */
   bonusCents: 100,
-  prices: { usd: 499, twd: 15000, jpy: 750 },
+  prices: { usd: 499, twd: 14900, jpy: 749 },
 } as const
 
 export type PlanCurrency = keyof typeof PLAN.prices
