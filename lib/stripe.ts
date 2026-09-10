@@ -233,7 +233,7 @@ export async function createSubscriptionSession(opts: {
     'line_items[0][price_data][recurring][interval]': 'month',
     'line_items[0][price_data][product_data][name]': 'ModelXD Monthly',
     'line_items[0][price_data][product_data][description]':
-      `$${(PLAN.creditCents / 100).toFixed(2)} of credit every month, plus a $${(PLAN.bonusCents / 100).toFixed(2)} bonus for that month`,
+      `$${((PLAN.creditCents + PLAN.bonusCents) / 100).toFixed(2)} of credit each month, used that month ($${(PLAN.creditCents / 100).toFixed(2)} plus a $${(PLAN.bonusCents / 100).toFixed(2)} bonus)`,
     // The SUBSCRIPTION carries its owner and plan, so every renewal invoice
     // can be credited without trusting anything a browser sent.
     'subscription_data[metadata][user_id]': opts.userId,

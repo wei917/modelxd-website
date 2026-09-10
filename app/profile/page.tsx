@@ -824,8 +824,8 @@ export default function ProfilePage() {
                   {credits ? formatCents(credits.balance_cents) : '$0.00'}
                 </div>
                 {/* The balance above is the TOTAL spendable; this says how much
-                    of it is this month's plan bonus, which goes first and does
-                    not roll over. */}
+                    of it is this month's plan credit, which goes first and
+                    expires at month end (migration 99). */}
                 {credits && (credits.bonus_cents ?? 0) > 0 && credits.bonus_expires_at
                   && new Date(credits.bonus_expires_at).getTime() > Date.now() && (
                   <div style={{
@@ -929,6 +929,7 @@ export default function ProfilePage() {
                     <>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--white)', lineHeight: 1.5 }}>
                         {t('profile.plan.pitch')
+                          .replace('{total}', formatCents(plan.plan.creditCents + plan.plan.bonusCents))
                           .replace('{credit}', formatCents(plan.plan.creditCents))
                           .replace('{bonus}', formatCents(plan.plan.bonusCents))}
                       </div>

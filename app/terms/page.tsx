@@ -47,7 +47,7 @@ export default function TermsPage() {
         XDuel includes a limited number of free duels per day. XCreate usage is paid from your prepaid
         credit balance at the estimated provider rates shown before you generate; final
         cost is based on actual usage reported by the provider. Credits are prepaid,
-        non-transferable, and — except where required by law — non-refundable. The monthly plan renews automatically every month until you cancel it; cancelling stops the next renewal, and the plan stays active until the end of the month already paid for. Each month's bonus credit is used first and expires at the end of that month; credit you paid for does not expire. If a
+        non-transferable, and — except where required by law — non-refundable. The monthly plan renews automatically every month until you cancel it; cancelling stops the next renewal, and the plan stays active until the end of the month already paid for. Each month's plan credit is used before any other credit and expires at the end of that month; it does not roll over. Credit bought separately as a top-up does not expire. If a
         generation fails on our side, the corresponding quota or credits are refunded
         automatically. Prices, quotas, and discounts may change at any time.
       </p>

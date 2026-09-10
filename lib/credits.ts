@@ -27,9 +27,9 @@ export interface UserCredits {
   lifetime_granted_cents: number
   lifetime_spent_cents: number
   updated_at: string
-  /** The part of balance_cents that is monthly-plan bonus and expires
-   *  (supabase/98_subscriptions.sql). balance_cents stays the TOTAL
-   *  spendable, so every existing reader is still right. */
+  /** The part of balance_cents that is monthly-plan credit and expires with
+   *  the month (supabase/98 + 99). balance_cents stays the TOTAL spendable,
+   *  so every existing reader is still right. */
   bonus_cents?: number
   bonus_expires_at?: string | null
 }
@@ -153,10 +153,10 @@ export async function debitCredits(opts: DebitOptions): Promise<number> {
 // ── Monthly plan ──────────────────────────────────────────────────────────
 
 /**
- * Credit one paid month of the plan: the price back as credit that keeps, and
- * a bonus that REPLACES last month's (it never rolls over). One call per
- * Stripe invoice, enforced by the database, so a redelivered event is a
- * no-op rather than a second month.
+ * Credit one paid month of the plan: the price plus the bonus, all of it plan
+ * credit that expires with the month and REPLACES last month's (nothing rolls
+ * over; supabase/99). One call per Stripe invoice, enforced by the database,
+ * so a redelivered event is a no-op rather than a second month.
  */
 export async function grantSubscriptionPeriod(opts: {
   userId: string

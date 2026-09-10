@@ -6,10 +6,13 @@
 // drift the way a hand-kept client mirror can (DISPLAY_TIERS in
 // app/profile/page.tsx exists only because lib/stripe.ts is server-only).
 //
-// WHAT A MONTH BUYS (owner, Sep 10): the price comes back as credit 1:1 and
-// stays yours, like any top-up. On top of that a BONUS that lives only for the
-// month it was paid for. The bonus is spent first, and whatever is left
-// expires when that month ends. It does not roll over.
+// WHAT A MONTH BUYS (owner, Sep 11: "the market please! only extra credits
+// bought are permanent"): the price back as credit plus a bonus, ALL of it
+// usable only in the month it was paid for. It is spent before any other
+// credit and whatever is left expires when the month ends; nothing rolls
+// over. That is how Runway, Midjourney and Suno do it. Credit bought as a
+// top-up (and welcome or referral credit) never expires, so a light user
+// always has a way to pay that loses nothing. (supabase/99)
 //
 // LOCKED AT SIGNUP. Checkout writes credit_cents and bonus_cents onto the
 // Stripe subscription, and every renewal credits those, not the numbers
@@ -24,7 +27,7 @@
 
 export const PLAN = {
   id: 'monthly_499',
-  /** Paid credit per month. Never expires. */
+  /** The price back as credit each month. Expires with the month. */
   creditCents: 499,
   /** Bonus credit per month. Expires at the end of the month it was paid for.
    *  $2 at launch (owner, Sep 11: "I just started, so I should give more"). */

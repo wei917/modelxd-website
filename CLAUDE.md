@@ -496,20 +496,22 @@ guarantees users only see their own rows.
 - The Profile activity ledger groups charges **by session** — a whole Werewolf
   game, or a generation plus its follow-ups, is one expandable row.
 
-### Monthly plan (migrations 97 + 98, Sep 11)
+### Monthly plan (migrations 97, 98, 99, Sep 11)
 
 `lib/plans.ts` (client-safe, the one source of price and amounts),
 `lib/subscription.ts` (webhook half), `/api/stripe/subscription`, and the plan
 card on `/profile`.
 
 - **$4.99 / NT$149 / ¥749 a month**, currency chosen from Vercel's geo header.
-  Each paid month grants $4.99 that never expires plus a **$2.00 bonus** that
-  is spent first and expires when that month ends. It does not roll over.
+  Each paid month grants **$6.99 of plan credit** ($4.99 plus a $2.00 bonus),
+  spent before any other credit and expiring when the month ends. Nothing
+  rolls over: the market model (Runway, Midjourney, Suno), owner Sep 11.
+  Only credit bought as a top-up (and welcome/referral credit) is permanent.
 - **Amounts are locked per subscriber at signup** (`credit_cents` /
   `bonus_cents` on the Stripe subscription's metadata). Editing `lib/plans.ts`
   reaches new subscribers only.
 - `balance_cents` stays the TOTAL spendable; `bonus_cents` is the expiring part
-  of it, so no existing reader changed. `debit_credits` drains the bonus first
+  of it (the whole monthly allowance since 99), so no existing reader changed. `debit_credits` drains the bonus first
   and expires a due bonus under the wallet lock; the daily cron sweeps the rest.
 - One grant per Stripe invoice, enforced by a unique index. Month one can
   arrive via `checkout.session.completed` AND `invoice.paid`; renewals only via
