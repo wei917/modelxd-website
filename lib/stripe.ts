@@ -12,6 +12,7 @@
 // Dashboard →   https://dashboard.stripe.com/test/apikeys
 
 import { createHmac, timingSafeEqual } from 'crypto'
+import { PLAN, type PlanCurrency } from './plans'
 
 // ── Tier catalog ──────────────────────────────────────────────────────────
 //
@@ -192,6 +193,75 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts): Promise<C
 
   const session = await stripeRequest<CheckoutSession>('/v1/checkout/sessions', body)
   return { id: session.id, url: session.url }
+}
+
+// ── The monthly plan ──────────────────────────────────────────────────────
+
+async function stripeGet<T = any>(path: string): Promise<T> {
+  const res = await fetch(`https://api.stripe.com${path}`, {
+    headers: { Authorization: `Bearer ${secretKey()}` },
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(`stripe: ${json?.error?.message ?? res.status}`)
+  return json as T
+}
+
+/**
+ * A Checkout Session for the monthly plan (lib/plans.ts).
+ *
+ * The price is built inline (price_data + recurring) instead of being
+ * pre-created in the dashboard, the same way the top-up path works, so there
+ * is no Stripe object to keep in step with lib/plans.ts: change the number
+ * there and the next checkout charges it. Existing subscribers keep the price
+ * they signed up at, which is how Stripe treats a subscription's price anyway.
+ */
+export async function createSubscriptionSession(opts: {
+  userId: string
+  email?: string | null
+  /** Reused when the user subscribed before, so Stripe keeps one customer. */
+  customerId?: string | null
+  currency: PlanCurrency
+  successUrl: string
+  cancelUrl: string
+}): Promise<CheckoutSession> {
+  const body: Record<string, unknown> = {
+    mode: 'subscription',
+    'payment_method_types[0]': 'card',
+    'line_items[0][quantity]': 1,
+    'line_items[0][price_data][currency]': opts.currency,
+    'line_items[0][price_data][unit_amount]': PLAN.prices[opts.currency],
+    'line_items[0][price_data][recurring][interval]': 'month',
+    'line_items[0][price_data][product_data][name]': 'ModelXD Monthly',
+    'line_items[0][price_data][product_data][description]':
+      `$${(PLAN.creditCents / 100).toFixed(2)} of credit every month, plus a $${(PLAN.bonusCents / 100).toFixed(2)} bonus for that month`,
+    // The SUBSCRIPTION carries its owner and plan, so every renewal invoice
+    // can be credited without trusting anything a browser sent.
+    'subscription_data[metadata][user_id]': opts.userId,
+    'subscription_data[metadata][plan]': PLAN.id,
+    'metadata[user_id]': opts.userId,
+    'metadata[purpose]': 'subscription',
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+  }
+  if (opts.customerId) body.customer = opts.customerId
+  else if (opts.email) body.customer_email = opts.email
+  const session = await stripeRequest<CheckoutSession>('/v1/checkout/sessions', body)
+  return { id: session.id, url: session.url }
+}
+
+/** Cancel at the end of the paid month (true) or undo that (false). Never an
+ *  immediate cancel: the month is paid for, so it runs to its end. */
+export function setCancelAtPeriodEnd(subscriptionId: string, cancel: boolean): Promise<any> {
+  return stripeRequest(`/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, { cancel_at_period_end: cancel })
+}
+
+export const fetchSubscription = (id: string) => stripeGet(`/v1/subscriptions/${encodeURIComponent(id)}`)
+export const fetchInvoice = (id: string) => stripeGet(`/v1/invoices/${encodeURIComponent(id)}`)
+
+/** Stripe's hosted billing page (card update, invoices). Live mode refuses
+ *  until the portal settings have been saved once in the dashboard. */
+export function createPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }> {
+  return stripeRequest<{ url: string }>('/v1/billing_portal/sessions', { customer: customerId, return_url: returnUrl })
 }
 
 // ── Webhook signature verification ────────────────────────────────────────

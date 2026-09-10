@@ -96,6 +96,9 @@ const REF_LABELS: Record<string, string> = {
   xcreate_refund: 'XCreate',
   xcreate_chat: 'XCreate',
   stripe_checkout_session: 'Purchase',
+  stripe_invoice: 'Monthly plan',
+  subscription_bonus: 'Monthly plan',
+  subscription_bonus_expiry: 'Monthly plan',
   welcome: 'Welcome bonus',
   admin_grant: 'Admin grant',
   asset: 'Asset',
@@ -474,6 +477,10 @@ export default function ProfilePage() {
   // options (CC, July 25) — now the tiles only select, and the Pay button
   // is the single thing that spends money. 'custom' = use customAmount.
   const [pickedTier,   setPickedTier]   = useState<string | null>('tier_20')
+  // The monthly plan as priced for this visitor, plus their subscription
+  // (GET /api/stripe/subscription). `available: false` until migration 98.
+  const [plan,         setPlan]         = useState<any>(null)
+  const [planBusy,     setPlanBusy]     = useState(false)
 
   const startCheckout = async (tierId: string | null, customCents?: number) => {
     if (giftMode === 'other' && !giftEmail.trim()) {
@@ -524,10 +531,38 @@ export default function ProfilePage() {
     return () => window.removeEventListener('pageshow', onPageShow)
   }, [])
 
+  const loadPlan = () => fetch('/api/stripe/subscription')
+    .then(r => (r.ok ? r.json() : null)).then(d => { if (d && !d.error) setPlan(d) }).catch(() => {})
+
+  useEffect(() => {
+    if (!user) return
+    void loadPlan()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   useEffect(() => {
     if (!user) return
     fetch('/api/referral').then(r => (r.ok ? r.json() : null)).then(d => { if (d && !d.error) setReferral(d) }).catch(() => {})
   }, [user])
+
+  const planAction = async (action: 'subscribe' | 'cancel' | 'resume' | 'portal', when?: string) => {
+    if (action === 'cancel' && !confirm(t('profile.plan.confirmcancel').replace('{date}', when ?? ''))) return
+    setPlanBusy(true)
+    try {
+      const res = await fetch('/api/stripe/subscription', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (d?.url) { window.location.href = d.url; return }
+      if (!res.ok) { alert(d?.error ?? res.statusText); return }
+      await loadPlan()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPlanBusy(false)
+    }
+  }
 
   // Card verification is a Stripe Checkout session in setup mode: it validates
   // the card and charges nothing. The webhook — never the client — releases the
@@ -580,6 +615,9 @@ export default function ProfilePage() {
         }
         await new Promise(r => setTimeout(r, 1500))
       }
+      // A subscription checkout returns here too; its row lands via the
+      // webhook in the same window the balance does.
+      if (!cancelled) void loadPlan()
     }
     poll()
     return () => { cancelled = true }
@@ -785,6 +823,20 @@ export default function ProfilePage() {
                 }}>
                   {credits ? formatCents(credits.balance_cents) : '$0.00'}
                 </div>
+                {/* The balance above is the TOTAL spendable; this says how much
+                    of it is this month's plan bonus, which goes first and does
+                    not roll over. */}
+                {credits && (credits.bonus_cents ?? 0) > 0 && credits.bonus_expires_at
+                  && new Date(credits.bonus_expires_at).getTime() > Date.now() && (
+                  <div style={{
+                    fontSize: 11.5, color: '#1FAA34', marginTop: 6,
+                    fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.02em',
+                  }}>
+                    {t('profile.bonus')
+                      .replace('{amount}', formatCents(credits.bonus_cents ?? 0))
+                      .replace('{date}', new Date(credits.bonus_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}
+                  </div>
+                )}
                 {credits && credits.lifetime_spent_cents > 0 && (
                   <div style={{
                     fontSize: 11, color: 'var(--muted2)', marginTop: 8,
@@ -834,6 +886,69 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
+
+          {/* Monthly plan (lib/plans.ts). Hidden until the plan is open
+              (migration 98): a Subscribe button that took money the webhook
+              could not yet turn into credit would be worse than no button. */}
+          {plan?.available && (() => {
+            const sub = plan.subscription
+            const live = !!sub && ['active', 'trialing', 'past_due'].includes(sub.status)
+            const when = sub?.currentPeriodEnd
+              ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+              : ''
+            const btn = (primary: boolean) => ({
+              padding: '10px 16px', borderRadius: 6, flexShrink: 0,
+              cursor: planBusy ? 'wait' : 'pointer', opacity: planBusy ? 0.6 : 1,
+              whiteSpace: 'nowrap' as const, fontWeight: 700, fontSize: 12,
+              letterSpacing: '0.06em', textTransform: 'uppercase' as const,
+              fontFamily: 'var(--font-body), sans-serif',
+              background: primary ? '#1FAA34' : 'transparent',
+              border: primary ? 'none' : '1px solid var(--border2)',
+              color: primary ? '#fff' : 'var(--muted2)',
+            })
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+                border: '1px solid var(--border2)', borderLeft: '3px solid #1FAA34',
+                borderRadius: 10, padding: '16px 22px', marginBottom: 16,
+              }}>
+                <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10, color: 'var(--muted2)', textTransform: 'uppercase' as const,
+                    letterSpacing: '0.18em', fontFamily: 'var(--font-mono), monospace', marginBottom: 6,
+                  }}>
+                    {t('profile.plan.title')} · {plan.plan.price}{t('profile.plan.permonth')}
+                  </div>
+                  {live ? (
+                    <div style={{ fontSize: 14, fontWeight: 700, color: sub.status === 'past_due' ? 'var(--red)' : 'var(--white)' }}>
+                      {sub.status === 'past_due' ? t('profile.plan.pastdue')
+                        : sub.cancelAtPeriodEnd ? t('profile.plan.ending').replace('{date}', when)
+                        : t('profile.plan.active').replace('{date}', when)}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--white)', lineHeight: 1.5 }}>
+                        {t('profile.plan.pitch')
+                          .replace('{credit}', formatCents(plan.plan.creditCents))
+                          .replace('{bonus}', formatCents(plan.plan.bonusCents))}
+                      </div>
+                      {/* The renewal terms sit next to the button that agrees
+                          to them, not behind a link. */}
+                      <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 6, lineHeight: 1.6 }}>
+                        {t('profile.plan.fine')}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {!live && <button disabled={planBusy} onClick={() => void planAction('subscribe')} style={btn(true)}>{t('profile.plan.subscribe')}</button>}
+                  {live && !sub.cancelAtPeriodEnd && <button disabled={planBusy} onClick={() => void planAction('cancel', when)} style={btn(false)}>{t('profile.plan.cancel')}</button>}
+                  {live && sub.cancelAtPeriodEnd && <button disabled={planBusy} onClick={() => void planAction('resume')} style={btn(true)}>{t('profile.plan.resume')}</button>}
+                  {sub && <button disabled={planBusy} onClick={() => void planAction('portal')} style={btn(false)}>{t('profile.plan.manage')}</button>}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Post-checkout banner. Shown briefly after Stripe redirects the
               user back to /profile?checkout=success|cancel. The success

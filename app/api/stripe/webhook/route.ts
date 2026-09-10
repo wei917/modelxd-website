@@ -6,6 +6,10 @@
 //
 // Events we handle:
 //   checkout.session.completed — grant credits based on session.metadata
+//   Monthly plan (lib/subscription.ts): checkout.session.completed in
+//   subscription mode, invoice.paid, customer.subscription.*. Renewals
+//   arrive ONLY as invoice.paid, so that event must be enabled on the
+//   endpoint in the Stripe dashboard.
 //
 // Idempotency:
 //   Stripe retries webhooks (up to 3 days) on any non-2xx response, so the
@@ -28,6 +32,7 @@ export const dynamic = 'force-dynamic'
 
 import { verifyWebhookSignature, StripeWebhookError } from '@/lib/stripe'
 import { grantCredits }                               from '@/lib/credits'
+import { handleSubscriptionEvent }                    from '@/lib/subscription'
 import { createClient }                               from '@supabase/supabase-js'
 
 const LOG = '[stripe/webhook]'
@@ -57,6 +62,14 @@ export async function POST(req: Request) {
   }
 
   console.log(`${LOG} event=${event.type} id=${event.id}`)
+
+  // The monthly plan: subscription checkouts, renewals and status changes.
+  // Returns null for anything else, which falls through to the one-off
+  // top-up and card-verification paths below, unchanged. It must run first:
+  // a subscription-mode session carries no credit_cents, and the top-up path
+  // would 400 it, which Stripe would then retry for three days.
+  const planResponse = await handleSubscriptionEvent(event)
+  if (planResponse) return planResponse
 
   // We only act on checkout.session.completed. Everything else is
   // acknowledged with a 200 so Stripe stops retrying.

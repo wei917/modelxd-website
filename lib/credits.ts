@@ -27,6 +27,11 @@ export interface UserCredits {
   lifetime_granted_cents: number
   lifetime_spent_cents: number
   updated_at: string
+  /** The part of balance_cents that is monthly-plan bonus and expires
+   *  (supabase/98_subscriptions.sql). balance_cents stays the TOTAL
+   *  spendable, so every existing reader is still right. */
+  bonus_cents?: number
+  bonus_expires_at?: string | null
 }
 
 export interface CreditTransaction {
@@ -144,6 +149,41 @@ export async function debitCredits(opts: DebitOptions): Promise<number> {
 }
 
 
+
+// ── Monthly plan ──────────────────────────────────────────────────────────
+
+/**
+ * Credit one paid month of the plan: the price back as credit that keeps, and
+ * a bonus that REPLACES last month's (it never rolls over). One call per
+ * Stripe invoice, enforced by the database, so a redelivered event is a
+ * no-op rather than a second month.
+ */
+export async function grantSubscriptionPeriod(opts: {
+  userId: string
+  invoiceId: string
+  paidCents: number
+  bonusCents: number
+  bonusExpiresAt: Date
+  metadata?: Record<string, unknown>
+}): Promise<{ granted: boolean; balance: number }> {
+  const { data, error } = await serviceClient().rpc('grant_subscription_period', {
+    p_user_id:          opts.userId,
+    p_invoice_id:       opts.invoiceId,
+    p_paid_cents:       opts.paidCents,
+    p_bonus_cents:      opts.bonusCents,
+    p_bonus_expires_at: opts.bonusExpiresAt.toISOString(),
+    p_metadata:         opts.metadata ?? null,
+  })
+  if (error) throw new Error(`grantSubscriptionPeriod failed: ${error.message}`)
+  return { granted: !!(data as any)?.granted, balance: Number((data as any)?.balance ?? 0) }
+}
+
+/** Expire every bonus whose month has ended. Returns how many wallets changed. */
+export async function expireDueBonuses(): Promise<number> {
+  const { data, error } = await serviceClient().rpc('expire_due_bonuses')
+  if (error) throw new Error(`expireDueBonuses failed: ${error.message}`)
+  return Number(data ?? 0)
+}
 
 // ── Read helpers (server-side) ────────────────────────────────────────────
 

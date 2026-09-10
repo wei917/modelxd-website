@@ -303,6 +303,16 @@ live at `/profile` — the ledger groups charges by session, so a whole
 Werewolf game or one generation and its follow-ups read as a single row you
 can expand.
 
+### The monthly plan
+
+A subscription, priced in your local currency: **NT$150** in Taiwan, **¥750**
+in Japan, **$4.99** everywhere else. Every month it gives you **$4.99 of
+credit that never expires** (the same as a top-up), plus a **$1.00 bonus**
+for that month. The bonus is spent first and expires when the month ends;
+it does not roll over. Subscribe, cancel or resume on `/profile`. Cancelling
+stops the next renewal and the plan stays active until the end of the month
+already paid for. It is optional: top-ups still work exactly as before.
+
 ### Inviting people
 
 Everyone gets the $10 on signup, with no card. On top of that, share your

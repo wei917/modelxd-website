@@ -31,6 +31,7 @@ export const maxDuration = 60
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { expireDueBonuses } from '@/lib/credits'
 
 const BUCKETS = [
   'xcreate-user-images',
@@ -127,6 +128,17 @@ async function handle(req: NextRequest) {
   // resumes running jobs, so a zombie left open reads as a run that never
   // ends. The client guards with its own 15-min staleness cutoff; this
   // sweep is what keeps the table honest. (Owner, Aug 20.)
+  // Monthly-plan bonuses whose month has ended (supabase/98_subscriptions.sql).
+  // debit_credits already refuses to spend an expired bonus, so this is about
+  // the DISPLAYED balance: without it, a lapsed subscriber's balance would
+  // keep showing last month's bonus until their next charge. Failure is
+  // logged and skipped: before migration 98 the function does not exist.
+  let bonusesExpired = 0
+  if (!dry) {
+    try { bonusesExpired = await expireDueBonuses() }
+    catch (e) { console.warn(`${LOG} bonus expiry skipped:`, e instanceof Error ? e.message : e) }
+  }
+
   let zombieJobs = 0
   {
     const stale = new Date(Date.now() - 3600_000).toISOString()
@@ -184,9 +196,9 @@ async function handle(req: NextRequest) {
     (a, s) => ({ scanned: a.scanned + s.scanned, orphans: a.orphans + s.orphans, deleted: a.deleted + s.deleted }),
     { scanned: 0, orphans: 0, deleted: 0 },
   )
-  console.log(`${LOG} scanned=${totals.scanned} orphans=${totals.orphans} deleted=${totals.deleted} zombieJobs=${zombieJobs}`)
+  console.log(`${LOG} scanned=${totals.scanned} orphans=${totals.orphans} deleted=${totals.deleted} zombieJobs=${zombieJobs} bonusesExpired=${bonusesExpired}`)
 
-  return NextResponse.json({ swept: true, dry, minAgeHours: MIN_AGE_HOURS, totals, report, samples, zombieJobs })
+  return NextResponse.json({ swept: true, dry, minAgeHours: MIN_AGE_HOURS, totals, report, samples, zombieJobs, bonusesExpired })
 }
 
 export async function GET(req: NextRequest)  { return handle(req) }
