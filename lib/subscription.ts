@@ -128,8 +128,15 @@ export async function handleSubscriptionEvent(event: any): Promise<Response | nu
   try {
     if (event?.type === 'checkout.session.completed' && obj?.mode === 'subscription') {
       const subId = idOf(obj.subscription)
-      if (subId) await recordSubscription(await fetchSubscription(subId), obj.metadata?.user_id)
-      const invId = idOf(obj.invoice)
+      const sub = subId ? await fetchSubscription(subId) : null
+      if (sub) await recordSubscription(sub, obj.metadata?.user_id)
+      // The session names its first invoice; the subscription's latest_invoice
+      // is the same invoice by another road. Both are read because this path
+      // is the ONLY one that credits month one while invoice.paid is not
+      // enabled on the endpoint (it was not, checked Sep 10), and a paying
+      // subscriber whose first month silently never arrives is the failure
+      // this whole file exists to prevent.
+      const invId = idOf(obj.invoice) ?? idOf(sub?.latest_invoice)
       const r = invId ? await grantForInvoice(await fetchInvoice(invId)) : { granted: false, reason: 'no invoice yet' }
       return Response.json({ received: true, handled: true, ...r })
     }
