@@ -57,6 +57,7 @@ these are the pages that actually load, not the historical ones):
 | xai | **docs.x.ai/developers/pricing** (full tables incl. Imagine); docs.x.ai/docs/models is summary-only, old /docs/… paths 404 | Imagine rows bill per image/second + a **media input** charge per reference image — 2.0's input price (0.01) differs from 1.0's (0.002). Text = short-context column. |
 | moonshot | **platform.kimi.ai/docs/pricing/chat-k3** (moonshot.ai redirects to kimi.ai; per-model pages linked from `/docs/pricing/chat`) | Table has cache-HIT and cache-MISS input columns — `text_input` = miss, `cached_input` = hit. |
 | minimax | **platform.minimax.io/docs/guides/pricing-paygo** (one page: LLM + video + audio) | H3 video: input images beyond the first 5 bill $0.04 each, input video bills at output rates — we don't model input charges (fine ≤5 refs). |
+| worldlabs | **docs.worldlabs.ai/api/pricing** (not in ai_models — prices live in `lib/xworld-models.ts`) | $1 = 1,250 credits. Per world by model × input (pano image / text+image / multi-image+video). 1.1 Plus is a RANGE (1,500 + 0–1,500 variable); we hold the ceiling and settle to the operation's `cost.total_credits`. HQ mesh export 3,500 credits — not offered. |
 | runway | docs.dev.runwayml.com/guides/pricing/ | Credits at **$0.01/credit** → USD. Watch per-resolution splits (seedance2_5 is 20/30/68 credits for 480p/720p/1080p, NOT flat), minimums (80-credit floor), and input/reference-video surcharges we don't model. |
 
 ## Method (what actually works)
@@ -178,6 +179,7 @@ Stale-audit check:
 
 | Date | Provider | Checked by | Result |
 |---|---|---|---|
+| 2026-09-10 | worldlabs | Claude | **New provider for XWorld.** Table copied into `lib/xworld-models.ts`: Draft 230/250, 1.1 1,580/1,600, 1.1 Plus up to 3,080/3,100 credits (text+image / multi-image+video). Live Draft text world billed 230 credits (80 pano + 150 draft) = table. |
 | 2026-09-04 | openai | Claude | **gpt-6-astra added + enabled** — new generation, $10/$50, cached $1 (long ctx $20/$75), effort **low→max** (`none` AND `minimal` both rejected per-model, unlike the 5.6 family), web_search accepted. Smoked through the provider path at low and max. All 7 existing openai rows re-verified against the page: **no drift**. Note gpt-5.6-sol now *displays* $4/$20 with a promo footnote through Nov 21 — catalog keeps list $5/$30 per rule 3, so XBoard shows it pricier than OpenAI currently charges. Also on the API, not added: gpt-image-1.5, chatgpt-image-latest. |
 | 2026-08-19 | openai | Claude | 6 rows checked; 4 correct; fixed gpt-5.6-luna (1/6/0.1 → 0.2/1.2/0.02) and gpt-5.6-terra (2.5/15/0.25 → 2/12/0.2) |
 | 2026-08-19 | anthropic | Claude | 4 rows, all correct (Fable 5 10/50/1, Opus 5 + 4.8 5/25/0.5, Sonnet 5 2/10/0.2; $0.01/search). Sonnet 5 intro price now permanent. |

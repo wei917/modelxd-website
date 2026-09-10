@@ -68,6 +68,7 @@ more**, and the per-user feature system is gone with it.
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
 | **XCut** | `/xcut` | required | The cutting room: rough-cut an XDirect board, trim, add music, burn subtitles, export an MP4. Open. |
+| **XWorld** | `/xworld` | required | 3D worlds you walk through (World Labs Marble, Spark renderer) + photo → 3D object (Tripo). Rows in `xworlds` (migration 96); billing held at the ceiling, settled to the provider's reported cost (`lib/worldlabs.ts`). |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 | **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
 | **XTell** | `/xtell` | required | X算命: temple street (八字/紫微/月老/關帝籤/四面佛/九曜 Jyotish/占星塔 Western). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
@@ -773,6 +774,7 @@ SITE_PASSWORD=                        # unset = site gate disabled
 # Ops / tuning
 TRIPO_API_KEY=                        # Tripo3D proxy (/api/v1/tripo/*) — see docs/TRIPO-API.md;
                                       #   unset = those routes answer 503
+WORLDLABS_API_KEY=                    # World Labs Marble (XWorld worlds); unset = /api/xworld answers 503 for worlds
 CRON_SECRET=                          # guards /api/cron/* and refit
 SITE_AGENT_MODEL=                     # override the site agent's model
 XDIRECTOR_MODEL=                      # override the director's model

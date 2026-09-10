@@ -17,7 +17,8 @@ const NAV_LINKS = [
   { href: '/xcreate',     i18n: 'nav.xcreate',     protected: true,  icon: 'create' },
   { href: '/xdirect',     i18n: 'nav.xdirect',     protected: true,  icon: 'director' },
   { href: '/xcut',        i18n: 'nav.xcut',        protected: true,  icon: 'cut' },
-  { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk'   },
+  { href: '/xworld',      i18n: 'nav.xworld',      protected: true,  icon: 'world' },
+  { href: '/xtalk',      i18n: 'nav.xtalk',       protected: true,  icon: 'talk'   },
   { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game'   },
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
@@ -44,6 +45,8 @@ function NavIcon({ name }: { name: string }) {
     case 'talk':   return (<svg {...p}><path d="M8 13H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="M6 13v3l3-3"/><path d="M19 20h-9a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2z"/><path d="M18 20v3l-3-3"/></svg>)
     // Angle brackets around a key stem: agents plug in here.
     case 'cut':    return (<svg {...p}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg>)
+    // A cube in a ring: a 3D thing you can walk around.
+    case 'world':  return (<svg {...p}><path d="M12 3l7 4v8l-7 4l-7-4V7z"/><path d="M5 7l7 4l7-4"/><path d="M12 11v8"/></svg>)
     case 'dev':    return (<svg {...p}><path d="M8 6l-5 6l5 6"/><path d="M16 6l5 6l-5 6"/><path d="M12 9v6"/><circle cx="12" cy="9" r="0.8" fill="currentColor"/></svg>)
     default:       return null
   }

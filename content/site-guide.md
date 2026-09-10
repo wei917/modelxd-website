@@ -145,6 +145,24 @@ FINAL CUT node on the source board, in your history, and as a download.
 Exporting is free — it is compute, not a model. Available to every
 signed-in account.
 
+### XWorld — `/xworld`
+Make 3D things. Two tabs:
+- **3D World** (World Labs Marble): describe a place, or give one photo,
+  2 to 4 photos taken while turning around, or a video, and get a 3D world
+  you can walk through in the browser (drag to look, WASD to move). Models
+  and list prices: **Marble Draft** $0.18 (fast preview, under a minute),
+  **Marble 1.1** $1.26 (full quality, about 5 to 15 minutes), **Marble 1.1 Plus**
+  $1.26 to $2.46 (a bigger world; the top of the range is held and settled to
+  the real price when it finishes). Multi-photo and video inputs cost 2 cents
+  more. Downloads: the splats (.spz) and a collider mesh (.glb) for game
+  engines.
+- **3D Object** (Tripo): one photo of an object becomes a textured 3D model
+  you can spin around and download as .glb. **Tripo P1** $0.50,
+  **Tripo 3.1** $0.30, about a minute.
+A failed generation is refunded in full. You can leave the page while it
+builds; everything you make is listed on XWorld and on your Profile.
+Available to every signed-in account.
+
 ### XTalk — `/xtalk`
 Put several AI models in one room together. Available to every signed-in
 account. Two formats today:
