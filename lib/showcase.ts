@@ -21,6 +21,20 @@
 
 import { createClient } from '@supabase/supabase-js'
 
+/**
+ * Where a video piece's derived files live. scripts/showcase-video-assets.ts
+ * writes them and the img route serves them. The paths are fixed per showcase
+ * id, so nothing has to be stored to find them.
+ *
+ *   poster      one JPEG frame for the tile, so the wall never loads a clip
+ *               just to paint a still
+ *   fast-start  the same streams with the MP4 index moved to the front, made
+ *               only for files that had it at the end (13 of 19 on Sep 11);
+ *               those cannot show a frame until the whole file has arrived
+ */
+export const SHOWCASE_POSTER = { bucket: 'xcreate-ai-images', path: (id: string) => `showcase/posters/${id}.jpg` }
+export const SHOWCASE_FASTSTART = { bucket: 'xcreate-ai-videos', path: (id: string) => `showcase/video/${id}.mp4` }
+
 export type ShowcasePiece = {
   id: string; url: string; model: string; provider: string; name: string
   cost: number | null; sort: number; title: string; prompt: string
@@ -31,6 +45,8 @@ export type ShowcasePiece = {
   height: number | null
   /** 'image' or 'video' — a tile has to know whether to render a <video>. */
   kind: 'image' | 'video'
+  /** Video pieces only: the still the tile shows until it is hovered. */
+  poster: string | null
 }
 
 /**
@@ -80,6 +96,7 @@ export async function readShowcase(): Promise<ShowcasePiece[]> {
       // an image run and a video run are different walls and should not be
       // distinguished by sniffing a boolean that only some providers set.
       kind: run.mode === 'video' ? 'video' : 'image',
+      poster: run.mode === 'video' ? `/api/showcase/img/${h.id}?poster=1` : null,
       sort: h.sort_order,
       title: h.title ?? '',
       prompt: run.prompt ?? '',

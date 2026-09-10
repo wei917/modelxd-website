@@ -363,6 +363,15 @@ async function main() {
 
   const { data: spent } = await service().from('api_tokens').select('spent_usd').eq('id', key.id).maybeSingle()
   console.log(`hung ${hung} pieces; key spent $${Number(spent?.spent_usd ?? 0).toFixed(4)}`)
+
+  // A new clip needs a poster, and often a fast-start copy, or the wall it
+  // was hung on goes slow again (scripts/showcase-video-assets.ts). Free:
+  // ffmpeg runs locally and only derived files are written.
+  if (VIDEO && hung > 0) {
+    const { buildVideoAssets } = await import('./showcase-video-assets')
+    const a = await buildVideoAssets(service(), { apply: APPLY })
+    console.log(`video assets: ${a.posters} poster(s), ${a.fastStart} fast-start copy(ies), ${a.failed} failed`)
+  }
   console.log('Hung and published. Take one down with:  update showcase set published = false where id = …;')
 }
 

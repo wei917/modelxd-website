@@ -90,19 +90,32 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
 
       <div className="showcase-wall">
         {pieces.map(p => (
-          <figure key={p.id} className="showcase-tile" tabIndex={0} onClick={() => setOpen(p)}>
+          <figure key={p.id} className="showcase-tile" tabIndex={0} onClick={() => setOpen(p)}
+            // Hover-play lives on the TILE, not the <video>: the caption that
+            // fades in on hover sits on top of the clip and takes the mouse,
+            // so a handler on the video itself never fired.
+            onMouseEnter={p.kind === 'video' ? e => {
+              const v = e.currentTarget.querySelector('video')
+              if (v) void v.play().catch(() => {})
+            } : undefined}
+            onMouseLeave={p.kind === 'video' ? e => {
+              const v = e.currentTarget.querySelector('video')
+              // load() puts the POSTER back. Seeking to 0 would leave the
+              // clip's first frame up, and many of these open on black.
+              if (v) { v.pause(); v.load() }
+            } : undefined}>
             {/* A clip has to move to be worth showing, but twenty autoplaying
                 videos would fight each other and burn a phone's battery, so
                 they play on hover and hold a poster frame otherwise.
                 muted+playsInline is what lets autoplay work at all on iOS. */}
             {p.kind === 'video' ? (
               <video
-                /* #t=0.1 for the same reason the template cards need it: this
-                   tile only plays on hover, so without a seek it sits blank
-                   until you touch it. */
-                src={`${p.url}#t=0.1`} muted loop playsInline preload="metadata"
-                onMouseEnter={e => { void (e.currentTarget as HTMLVideoElement).play().catch(() => {}) }}
-                onMouseLeave={e => { const v = e.currentTarget as HTMLVideoElement; v.pause(); v.currentTime = 0 }}
+                /* The tile shows a small JPEG still (scripts/showcase-video-
+                   assets.ts) and fetches nothing else until a hover plays it.
+                   It used to load every clip to paint a first frame: 19 clips,
+                   73 MB at once, and 13 of them had their MP4 index at the end,
+                   so each tile stayed blank until its whole file arrived. */
+                src={p.url} poster={p.poster ?? undefined} muted loop playsInline preload="none"
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
@@ -141,7 +154,7 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
           <div onClick={e => e.stopPropagation()} style={{ maxWidth: 940, width: '100%', cursor: 'default' }}>
             {open.kind === 'video' ? (
               // Opened deliberately, so it plays, loops and takes controls.
-              <video src={open.url} autoPlay loop controls playsInline
+              <video src={open.url} poster={open.poster ?? undefined} autoPlay loop controls playsInline
                 style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block', background: '#000' }} />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
