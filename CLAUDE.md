@@ -49,7 +49,7 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `94_xeval_latency.sql` (2026-09-04).
+  Latest applied: `98_subscriptions.sql` (2026-09-11).
 
 ## The Surfaces
 
@@ -496,6 +496,27 @@ guarantees users only see their own rows.
 - The Profile activity ledger groups charges **by session** — a whole Werewolf
   game, or a generation plus its follow-ups, is one expandable row.
 
+### Monthly plan (migrations 97 + 98, Sep 11)
+
+`lib/plans.ts` (client-safe, the one source of price and amounts),
+`lib/subscription.ts` (webhook half), `/api/stripe/subscription`, and the plan
+card on `/profile`.
+
+- **$4.99 / NT$149 / ¥749 a month**, currency chosen from Vercel's geo header.
+  Each paid month grants $4.99 that never expires plus a **$2.00 bonus** that
+  is spent first and expires when that month ends. It does not roll over.
+- **Amounts are locked per subscriber at signup** (`credit_cents` /
+  `bonus_cents` on the Stripe subscription's metadata). Editing `lib/plans.ts`
+  reaches new subscribers only.
+- `balance_cents` stays the TOTAL spendable; `bonus_cents` is the expiring part
+  of it, so no existing reader changed. `debit_credits` drains the bonus first
+  and expires a due bonus under the wallet lock; the daily cron sweeps the rest.
+- One grant per Stripe invoice, enforced by a unique index. Month one can
+  arrive via `checkout.session.completed` AND `invoice.paid`; renewals only via
+  `invoice.paid`. The www endpoint listens for both plus
+  `customer.subscription.*` (set Sep 11), and the customer portal is saved.
+- A $9.99 tier is planned; the metadata lock is what makes adding one safe.
+
 ### Referrals (migration 87, Aug 25)
 
 `lib/referral.ts` + `/api/referral` + the panel on `/profile`.
@@ -836,6 +857,14 @@ npx tsc --noEmit         # type check — run before packaging
     lock that can't be unlinked. Run git from a real terminal;
     `rm .git/index.lock` if a commit fails with "Another git process seems to
     be running."
+15. **A `revoke ... from public` does not lock down a Supabase function.**
+    Supabase's default privileges grant EXECUTE on every new public function to
+    `anon` and `authenticated` BY NAME, and PostgREST serves them at
+    `/rest/v1/rpc/*`. Migration 11 relied on the PUBLIC revoke, so until Sep 11
+    anyone with the publishable key could call `grant_credits` and mint credit
+    (fixed in `97_lock_security_definer.sql`). Every new SECURITY DEFINER
+    function needs `revoke ... from public, anon, authenticated` by name, and a
+    `has_function_privilege('anon', …)` check after it runs.
 
 ## XTalk Werewolf Specifics
 
