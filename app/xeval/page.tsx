@@ -14,7 +14,7 @@ const TOP_N = 10
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import ProviderLogo from '../components/ProviderLogo'
-import { useT } from '../../lib/i18n'
+import { useT, useLang } from '../../lib/i18n'
 
 interface RatingRow {
   fit_id: string
@@ -475,6 +475,7 @@ export default function XEvalPage() {
  *  Latest finished run per (task, entry) counts, mirroring the ladder rule. */
 function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   const t = useT()
+  const { lang } = useLang()
   const latest = new Map<string, RunRow>()
   for (const r of [...runs].sort((a, b) => String((a as any).started_at ?? '').localeCompare(String((b as any).started_at ?? '')))) {
     latest.set(`${r.task_id}|${r.model_name}|${r.effort ?? ''}`, r)
@@ -538,13 +539,19 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       case 'persolved': return r.cost > 0 && r.solved ? r.cost / r.solved : null
     }
   }
-  const Th = ({ label, k, align = 'left', tip }: { label: string; k: TBKey; align?: 'left' | 'right'; tip?: string }) => {
+  // `en` is the English term a column is known by. Outside English it sits in
+  // small type after the translated label, because a reader comparing against
+  // other benchmarks meets "TTFT", not 首字延遲 (owner, Sep 11).
+  const Th = ({ label, k, align = 'left', tip, en }: { label: string; k: TBKey; align?: 'left' | 'right'; tip?: string; en?: string }) => {
     const active = tbSort.k === k
     return (
       <th style={{ padding: '8px 12px', textAlign: align }} title={tip}>
         <button onClick={() => onTbSort(k)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
                                                      fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit', color: active ? 'var(--white)' : 'var(--muted)', transition: 'color 0.12s' }}>
           <span>{label}</span>
+          {en && lang !== 'en' && label !== en && (
+            <span style={{ fontSize: 9, opacity: 0.6, letterSpacing: '0.04em' }}>{en}</span>
+          )}
           <span style={{ fontSize: 8, opacity: active ? 1 : 0.3, color: active ? 'var(--green)' : 'inherit' }}>{active ? (tbSort.dir === 'asc' ? '▲' : '▼') : '▲'}</span>
         </button>
       </th>
@@ -659,7 +666,7 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
               <Th label={t('xeval.col.model')} k="model" />
               <Th label={t('xeval.col.effort')} k="effort" />
               <Th label={t('xeval.tb.passrate')} k="pass" align="right" />
-              {anyTtft && <Th label={t('xeval.col.ttft')} k="ttft" align="right" tip={t('xeval.col.ttft.tip')} />}
+              {anyTtft && <Th label={t('xeval.col.ttft')} en="TTFT" k="ttft" align="right" tip={t('xeval.col.ttft.tip')} />}
               {anyTps && <Th label={t('xeval.col.tps')} k="tps" align="right" tip={t('xeval.col.tps.tip')} />}
               {anyTime && <Th label={t(perReply ? 'xeval.social.sreply' : 'xeval.col.time')} k="reply" align="right" tip={t(perReply ? 'xeval.social.sreply.tip' : 'xeval.tb.time.tip')} />}
               {anySpec && <Th label={t('xeval.col.spec')} k="spec" align="right" tip={t('xeval.col.spec.tip')} />}
