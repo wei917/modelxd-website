@@ -19,14 +19,13 @@ import { ARCHITECTS, labelMismatches, roomSize, fmtFt, type ArchitectId, type Ki
 const MaskEditor = dynamic(() => import('../components/MaskEditor'), { ssr: false })
 
 type SignedMedia = Media & { url: string | null }
-type ChatTurn = { role: 'user' | 'assistant'; text: string; at: string; architect?: string; action?: any }
+type ChatTurn = { role: 'user' | 'assistant'; text: string; at: string; architect?: string; action?: any; via?: string; pending?: boolean }
 type Project = {
   id: string; title: string; status: 'reading' | 'ready' | 'failed'; error: string | null; architect: string
   plan: Plan | null; can_undo: boolean; media: SignedMedia[]; chat: ChatTurn[]
   plan_image_url: string | null; spent_cents: number; is_sample: boolean; updated_at: string
 }
 type ListRow = { id: string; title: string; status: string; is_sample: boolean; spent_cents: number; updated_at: string; thumb_url: string | null }
-type EditResult = { changed: string[]; notes: string; warnings: string[]; errors: string[]; issues: { id: string; issue: string }[]; cost_cents: number }
 
 const QUICK: Record<Kind, string[]> = {
   walls: ['xarch.q.removeWall', 'xarch.q.moveWall', 'xarch.q.addDoorway'],
@@ -89,11 +88,13 @@ export default function XArchClient() {
   const [editText, setEditText] = useState('')
   const [architect, setArchitect] = useState<ArchitectId>('fable')
   const [busy, setBusy] = useState<string | null>(null)
-  const [result, setResult] = useState<EditResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [highlight, setHighlight] = useState<Set<string>>(new Set())
-  const [focus, setFocus] = useState<'both' | 'plan' | 'media'>('both')
-  const [panel, setPanel] = useState<'media' | 'agent'>('media')
+  // The LEFT side: blueprint, room photos, or both. The design agent on the
+  // right is always visible (owner, Sep 14: an edit's result was hidden
+  // behind a Photos tab).
+  const [focus, setFocus] = useState<'both' | 'plan' | 'media'>('plan')
+  const chatInput = useRef<HTMLTextAreaElement>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [photoPrompt, setPhotoPrompt] = useState('')
@@ -111,7 +112,7 @@ export default function XArchClient() {
     if (!r.ok) { setLoadErr(d?.error ?? `HTTP ${r.status}`); return }
     setProject(d.project)
   }, [pid])
-  useEffect(() => { setProject(null); setSelection(null); setResult(null); load() }, [load])
+  useEffect(() => { setProject(null); setSelection(null); load() }, [load])
 
   // A plan being read polls itself (hidden tabs don't — Common Pitfall #9).
   useEffect(() => {
@@ -129,7 +130,7 @@ export default function XArchClient() {
     if (project && editedOnLoad.current !== project.id) { editedOnLoad.current = project.id; setShowDrawing(!project.can_undo) }
   }, [project])
 
-  useEffect(() => { chatEnd.current?.scrollIntoView({ block: 'end' }) }, [project?.chat?.length, panel])
+  useEffect(() => { chatEnd.current?.scrollIntoView({ block: 'end' }) }, [project?.chat?.length, busy])
 
   const plan = project?.plan ?? null
   const mismatches = useMemo(() => plan ? labelMismatches(plan) : [], [plan])
@@ -158,18 +159,24 @@ export default function XArchClient() {
     } catch (e: any) { setError(e?.message ?? 'Failed'); return null } finally { setBusy(null) }
   }
 
+  /** Show the request in the agent column at once; the server's saved
+   *  conversation replaces it when the call returns (or it is withdrawn). */
+  const optimistic = (text: string) =>
+    setProject(p => p ? { ...p, chat: [...p.chat, { role: 'user', text, at: new Date().toISOString(), pending: true }] } : p)
+  const withdraw = () => setProject(p => p ? { ...p, chat: p.chat.filter(m => !m.pending) } : p)
+
   const runEdit = async (instruction: string, sel: Selection) => {
     // One architect call at a time: two in flight used to race and the
     // later write erased the earlier edit (Sep 13).
     if (!project || !instruction.trim() || busy) return
-    setMenu(null); setResult(null)
+    setMenu(null); setEditText('')
+    optimistic(`${sel ? `[${nameOf(sel)}] ` : ''}${instruction}`)
     const d = await call('edit', `/api/xarch/projects/${project.id}/edit`, { instruction, selection: sel, architect })
-    if (d?.result) {
-      setResult(d.result); flash(d.result.changed); setEditText('')
-      if (d.result.changed.length) setShowDrawing(false)
-    }
+    if (!d) { withdraw(); return }
+    flash(d.result.changed)
+    if (d.result.changed.length) setShowDrawing(false)
   }
-  const undo = async () => { if (project) { await call('undo', `/api/xarch/projects/${project.id}`, { undo: true }, 'PATCH'); setResult(null) } }
+  const undo = async () => { if (project) await call('undo', `/api/xarch/projects/${project.id}`, { undo: true }, 'PATCH') }
 
   const onPick = (c: PlanClick) => {
     setSelection(c.selection)
@@ -196,19 +203,21 @@ export default function XArchClient() {
       const [m] = await commitAttachments([pendingAttachment(mask.file, 'xcreate')])
       maskRef = { bucket: m.bucket, storagePath: m.storagePath }
     }
+    optimistic(`[${t('xarch.photo.title')}] ${photoPrompt}`)
     const d = await call('photo', `/api/xarch/projects/${project.id}/photo`, { media_id: open, prompt: photoPrompt, mask: maskRef })
-    if (d?.media_id) { setOpen(d.media_id); setPhotoPrompt(''); setMask(null) }
+    if (!d) { withdraw(); return }
+    setOpen(d.media_id); setPhotoPrompt(''); setMask(null)
   }
 
   const sendChat = async () => {
     if (!project || !chatText.trim() || busy) return
     const message = chatText
     setChatText('')
-    setProject(p => p ? { ...p, chat: [...p.chat, { role: 'user', text: message, at: new Date().toISOString() }] } : p)
+    optimistic(message)
     const d = await call('chat', `/api/xarch/projects/${project.id}/chat`, { message, selection, architect })
-    if (!d) setProject(p => p ? { ...p, chat: p.chat.slice(0, -1) } : p)
+    if (!d) withdraw()
     if (d?.action?.type === 'edit_plan') { flash(d.action.changed ?? []); setShowDrawing(false) }
-    if (d?.action?.type === 'edit_photo' && d.action.media_id) { setRoomId(d.action.room_id ?? null); setOpen(d.action.media_id) }
+    if (d?.action?.type === 'edit_photo' && d.action.media_id) { setRoomId(d.action.room_id ?? null); setOpen(d.action.media_id); setFocus(f => f === 'plan' ? 'both' : f) }
   }
 
   const mono: React.CSSProperties = { fontSize: 10.5, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }
@@ -278,8 +287,9 @@ export default function XArchClient() {
   const roomMedia = project.media.filter(m => roomId === null || m.room_id === roomId)
   const openItem = project.media.find(m => m.id === open) ?? null
   const openSource = openItem?.source_id ? project.media.find(m => m.id === openItem.source_id) : null
-  const cols = focus === 'plan' ? '1fr 0px' : focus === 'media' ? '0px 1fr' : 'minmax(0, 1.35fr) minmax(360px, 1fr)'
-
+  const lastPlanEdit = (() => { for (let i = project.chat.length - 1; i >= 0; i--) if (project.chat[i].action?.type === 'edit_plan') return i; return -1 })()
+  const busyLabel = busy === 'edit' || busy === 'chat' ? `${ARCHITECTS[architect].label} ${t('xarch.agent.thinking')}…`
+    : busy === 'photo' ? `GPT Image 2 ${t('xarch.agent.thinking')}…` : busy === 'undo' ? '…' : null
   return (
     <div style={{ height: 'calc(100vh - 20px)', display: 'flex', flexDirection: 'column', padding: '14px 18px', boxSizing: 'border-box', gap: 10 }}>
       {/* Top bar */}
@@ -291,7 +301,7 @@ export default function XArchClient() {
           <button key={a} onClick={() => setArchitect(a)} style={chip(architect === a)}>{ARCHITECTS[a].label}</button>
         ))}
         <span style={{ width: 1, height: 22, background: 'var(--border2)' }} />
-        {(['both', 'plan', 'media'] as const).map(f => (
+        {(['plan', 'media', 'both'] as const).map(f => (
           <button key={f} onClick={() => setFocus(f)} style={chip(focus === f)}>{t(`xarch.focus.${f}`)}</button>
         ))}
         <button disabled={!project.can_undo || !!busy} onClick={undo} style={chip()}>↶ {t('xarch.undo')}</button>
@@ -310,174 +320,164 @@ export default function XArchClient() {
       {project.status === 'failed' && <div style={{ color: 'var(--red)', padding: 30 }}>{t('xarch.readFailed')}: {project.error}</div>}
 
       {project.status === 'ready' && plan && (
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: cols, gap: focus === 'both' ? 12 : 0 }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 400px)', gap: 12 }}>
+          {/* ── Left: blueprint and/or room photos ── */}
+          <div style={{ minWidth: 0, minHeight: 0, display: 'flex', gap: 12 }}>
           {/* ── Blueprint ── */}
-          <div id="xarch-stage" style={{ position: 'relative', minWidth: 0, minHeight: 0, display: focus === 'media' ? 'none' : 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <label style={{ ...mono, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showDrawing} onChange={e => setShowDrawing(e.target.checked)} /> {t('xarch.showDrawing')}
-              </label>
-              {project.can_undo && showDrawing && <span style={{ fontSize: 11.5, color: '#b45309' }}>{t('xarch.drawingOld')}</span>}
-              <span style={mono}>
-                {plan.scale ? `${t('xarch.scale')} ${plan.scale.px_per_ft.toFixed(1)} px/ft` : t('xarch.noScale')}
-                {plan.overall_ft?.width && plan.overall_ft?.depth ? ` · ${fmtFt(plan.overall_ft.width)} × ${fmtFt(plan.overall_ft.depth)}` : ''}
-              </span>
-              <span style={{ ...mono, marginLeft: 'auto' }}>{t('xarch.clickHint')}</span>
+            <div id="xarch-stage" style={{ position: 'relative', minWidth: 0, minHeight: 0, display: focus === 'media' ? 'none' : 'flex', flex: 1, flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ ...mono, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showDrawing} onChange={e => setShowDrawing(e.target.checked)} /> {t('xarch.showDrawing')}
+                </label>
+                {project.can_undo && showDrawing && <span style={{ fontSize: 11.5, color: '#b45309' }}>{t('xarch.drawingOld')}</span>}
+                <span style={mono}>
+                  {plan.scale ? `${t('xarch.scale')} ${plan.scale.px_per_ft.toFixed(1)} px/ft` : t('xarch.noScale')}
+                  {plan.overall_ft?.width && plan.overall_ft?.depth ? ` · ${fmtFt(plan.overall_ft.width)} × ${fmtFt(plan.overall_ft.depth)}` : ''}
+                </span>
+                <span style={{ ...mono, marginLeft: 'auto' }}>{t('xarch.clickHint')}</span>
+              </div>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <PlanCanvas plan={plan} imageUrl={project.plan_image_url} selection={selection} highlight={highlight} flagged={flagged} showDrawing={showDrawing}
+                  onPick={onPick} onClear={() => { setMenu(null); setSelection(null) }} />
+              </div>
+  
+              {mismatches.length > 0 && (
+                <div style={{ fontSize: 12, color: '#a21caf' }}>
+                  {mismatches.map(m => `${roomName(m.id)}: ${t('xarch.label')} ${m.label}, ${t('xarch.drawn')} ${m.measured}`).join(' · ')} — {t('xarch.checkOutline')}
+                </div>
+              )}
+  
+              {/* Click menu */}
+              {menu && (
+                <div onClick={e => e.stopPropagation()} style={{
+                  position: 'absolute', left: Math.min(menu.x + 8, 9999), top: menu.y + 8, zIndex: 20, width: 330,
+                  background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--white)', fontSize: 14 }}>{nameOf(menu.sel)}</div>
+                    {menu.sel.kind === 'rooms' && plan && (() => { const s = roomSize(plan, plan.rooms.find(r => r.id === menu.sel.id)!); return s ? <span style={{ ...mono, marginLeft: 8 }}>{fmtFt(s.w)} × {fmtFt(s.d)}</span> : null })()}
+                    <button onClick={() => setMenu(null)} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>
+                  </div>
+                  <div style={mono}>1 · {t('xarch.menu.edit')}</div>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', margin: '6px 0' }}>
+                    {QUICK[menu.sel.kind].map(k => <button key={k} onClick={() => setEditText(t(k))} style={{ ...chip(), fontSize: 11.5, padding: '4px 9px' }}>{t(k)}</button>)}
+                  </div>
+                  <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} placeholder={t('xarch.menu.placeholder')} style={{ ...input, resize: 'vertical' }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); runEdit(editText, menu.sel) } }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    <button disabled={!editText.trim() || !!busy} onClick={() => runEdit(editText, menu.sel)} style={primary(!!editText.trim() && !busy)}>{t('xarch.menu.apply')}</button>
+                    <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{ARCHITECTS[architect].label} · ~{money(ARCHITECTS[architect].editEstimateCents)}</span>
+                  </div>
+                  <div style={{ ...mono, marginTop: 12 }}>2 · {t('xarch.menu.media')}</div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    <button onClick={() => { setRoomId(menu.sel.kind === 'rooms' ? menu.sel.id : null); setFocus(f => f === 'plan' ? 'both' : f); setOpen(null); setMenu(null) }} style={chip()}>
+                      🖼 {menu.sel.kind === 'rooms' ? `${project.media.filter(m => m.room_id === menu.sel.id).length} · ${t('xarch.menu.openMedia')}` : t('xarch.menu.allMedia')}
+                    </button>
+                    <button onClick={() => { setMenu(null); setTimeout(() => chatInput.current?.focus(), 0) }} style={chip()}>💬 {t('xarch.menu.ask')}</button>
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <PlanCanvas plan={plan} imageUrl={project.plan_image_url} selection={selection} highlight={highlight} flagged={flagged} showDrawing={showDrawing}
-                onPick={onPick} onClear={() => { setMenu(null); setSelection(null) }} />
-            </div>
-
-            {/* Result of the last edit */}
-            {(result || busy === 'edit' || error) && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--white)' }}>
-                {busy === 'edit' && <div style={{ color: 'var(--muted)' }}>{t('xarch.working')} ({ARCHITECTS[architect].label})…</div>}
-                {error && <div style={{ color: 'var(--red)' }}>{error}</div>}
-                {result && <>
-                  <div>{result.changed.length ? '✓ ' : ''}{result.notes || t('xarch.noChange')} <span style={{ ...mono, marginLeft: 6 }}>{money(result.cost_cents)}</span></div>
-                  {result.warnings.map((w, i) => <div key={i} style={{ color: '#b45309', marginTop: 4 }}>⚠ {w}</div>)}
-                  {result.errors.map((w, i) => <div key={`e${i}`} style={{ color: 'var(--red)', marginTop: 4 }}>✕ {w}</div>)}
-                  {result.issues.length > 0 && <div style={{ color: '#a21caf', marginTop: 4, fontSize: 12 }}>◇ {t('xarch.checkJoints')}: {result.issues.map(i => i.id).join(', ')}</div>}
-                </>}
-              </div>
-            )}
-            {mismatches.length > 0 && !result && (
-              <div style={{ fontSize: 12, color: '#a21caf' }}>
-                {mismatches.map(m => `${roomName(m.id)}: ${t('xarch.label')} ${m.label}, ${t('xarch.drawn')} ${m.measured}`).join(' · ')} — {t('xarch.checkOutline')}
-              </div>
-            )}
-
-            {/* Click menu */}
-            {menu && (
-              <div onClick={e => e.stopPropagation()} style={{
-                position: 'absolute', left: Math.min(menu.x + 8, 9999), top: menu.y + 8, zIndex: 20, width: 330,
-                background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontWeight: 600, color: 'var(--white)', fontSize: 14 }}>{nameOf(menu.sel)}</div>
-                  {menu.sel.kind === 'rooms' && plan && (() => { const s = roomSize(plan, plan.rooms.find(r => r.id === menu.sel.id)!); return s ? <span style={{ ...mono, marginLeft: 8 }}>{fmtFt(s.w)} × {fmtFt(s.d)}</span> : null })()}
-                  <button onClick={() => setMenu(null)} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>
+            {focus !== 'plan' && (
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', padding: 14, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <button onClick={() => { setRoomId(null); setOpen(null) }} style={chip(roomId === null)}>{t('xarch.allRooms')} · {project.media.length}</button>
+                    {plan.rooms.map(r => {
+                      const n = project.media.filter(m => m.room_id === r.id).length
+                      return <button key={r.id} onClick={() => { setRoomId(r.id); setOpen(null); setSelection({ kind: 'rooms', id: r.id }) }} style={chip(roomId === r.id)}>{r.name} · {n}</button>
+                    })}
+                  </div>
+  
+                  {openItem ? (
+                    <div>
+                      <button onClick={() => { setOpen(null); setMask(null) }} style={{ ...mono, border: 'none', background: 'none', cursor: 'pointer', padding: 0, marginBottom: 8 }}>← {roomName(openItem.room_id)}</button>
+                      {openItem.mediaType.startsWith('video/')
+                        ? <video src={openItem.url ?? undefined} controls style={{ width: '100%', borderRadius: 8, background: '#000' }} />
+                        : <img src={openItem.url ?? undefined} alt="" style={{ width: '100%', borderRadius: 8 }} />}
+                      {openItem.kind === 'edit' && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>✨ {openItem.prompt}{openSource && <> · <button onClick={() => setOpen(openSource.id)} style={{ border: 'none', background: 'none', color: 'var(--blue)', cursor: 'pointer', padding: 0, fontSize: 12 }}>{t('xarch.original')}</button></>}</div>}
+                      {openItem.mediaType.startsWith('image/') && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={mono}>{t('xarch.photo.title')}</div>
+                          <textarea value={photoPrompt} onChange={e => setPhotoPrompt(e.target.value)} rows={2} placeholder={t('xarch.photo.placeholder')} style={{ ...input, marginTop: 6, resize: 'vertical' }} />
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0' }}>
+                            {['xarch.p.sofa', 'xarch.p.style', 'xarch.p.walls', 'xarch.p.floor', 'xarch.p.declutter'].map(k => <button key={k} onClick={() => setPhotoPrompt(t(k))} style={{ ...chip(), fontSize: 11.5, padding: '4px 9px' }}>{t(k)}</button>)}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <button onClick={() => setMaskOpen(true)} style={chip(!!mask)}>◐ {mask ? t('xarch.photo.maskSet') : t('xarch.photo.mask')}</button>
+                            {mask && <button onClick={() => setMask(null)} style={{ ...chip(), fontSize: 11 }}>✕</button>}
+                            <button disabled={!photoPrompt.trim() || !!busy} onClick={editPhotoNow} style={primary(!!photoPrompt.trim() && !busy)}>{busy === 'photo' ? t('xarch.working') + '…' : t('xarch.photo.apply')}</button>
+                            <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>GPT Image 2 · ~$0.06</span>
+                          </div>
+                          
+                        </div>
+                      )}
+                      {maskOpen && openItem.url && (
+                        <MaskEditor imageUrl={openItem.url} onClose={() => setMaskOpen(false)} onSave={(file, preview) => { setMask({ file, preview }); setMaskOpen(false) }} />
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+                        {roomMedia.map(m => (
+                          <button key={m.id} onClick={() => setOpen(m.id)} style={{ padding: 0, border: '1px solid var(--border2)', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'var(--surface2)', position: 'relative', aspectRatio: '4 / 3' }}>
+                            {m.mediaType.startsWith('video/')
+                              ? <video src={m.url ?? undefined} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <img src={m.url ?? undefined} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                            <span style={{ position: 'absolute', left: 4, bottom: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>
+                              {m.kind === 'edit' ? '✨ ' : ''}{roomName(m.room_id)}
+                            </span>
+                          </button>
+                        ))}
+                        <button onClick={() => mediaInput.current?.click()} disabled={!!busy} style={{ border: '1px dashed var(--border2)', borderRadius: 8, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', aspectRatio: '4 / 3', fontSize: 12 }}>
+                          {busy === 'upload' ? '…' : `+ ${t('xarch.addMedia')}${roomId ? `\n${roomName(roomId)}` : ''}`}
+                        </button>
+                      </div>
+                      {roomMedia.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 12.5, marginTop: 10 }}>{t('xarch.noMedia')}</div>}
+                    </>
+                  )}
+                  <input ref={mediaInput} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" onChange={e => addMedia(e.target.files)} />
                 </div>
-                <div style={mono}>1 · {t('xarch.menu.edit')}</div>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', margin: '6px 0' }}>
-                  {QUICK[menu.sel.kind].map(k => <button key={k} onClick={() => setEditText(t(k))} style={{ ...chip(), fontSize: 11.5, padding: '4px 9px' }}>{t(k)}</button>)}
-                </div>
-                <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2} placeholder={t('xarch.menu.placeholder')} style={{ ...input, resize: 'vertical' }}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); runEdit(editText, menu.sel) } }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <button disabled={!editText.trim() || !!busy} onClick={() => runEdit(editText, menu.sel)} style={primary(!!editText.trim() && !busy)}>{t('xarch.menu.apply')}</button>
-                  <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{ARCHITECTS[architect].label} · ~{money(ARCHITECTS[architect].editEstimateCents)}</span>
-                </div>
-                <div style={{ ...mono, marginTop: 12 }}>2 · {t('xarch.menu.media')}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                  <button onClick={() => { setRoomId(menu.sel.kind === 'rooms' ? menu.sel.id : null); setPanel('media'); setFocus(f => f === 'plan' ? 'both' : f); setOpen(null); setMenu(null) }} style={chip()}>
-                    🖼 {menu.sel.kind === 'rooms' ? `${project.media.filter(m => m.room_id === menu.sel.id).length} · ${t('xarch.menu.openMedia')}` : t('xarch.menu.allMedia')}
-                  </button>
-                  <button onClick={() => { setPanel('agent'); setFocus(f => f === 'plan' ? 'both' : f); setMenu(null) }} style={chip()}>💬 {t('xarch.menu.ask')}</button>
-                </div>
-              </div>
-            )}
+              )}
           </div>
 
-          {/* ── Right panel: media / agent ── */}
-          <div style={{ minWidth: 0, minHeight: 0, display: focus === 'plan' ? 'none' : 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border2)' }}>
-              {(['media', 'agent'] as const).map(p => (
-                <button key={p} onClick={() => setPanel(p)} style={{ flex: 1, padding: '11px 0', border: 'none', background: 'transparent', cursor: 'pointer', color: panel === p ? 'var(--white)' : 'var(--muted)', borderBottom: panel === p ? '2px solid var(--red)' : '2px solid transparent', fontSize: 13, fontWeight: 600 }}>
-                  {p === 'media' ? `🖼 ${t('xarch.panel.media')}` : `💬 ${t('xarch.panel.agent')}`}
-                </button>
-              ))}
-            </div>
-
-            {panel === 'media' && (
-              <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 14 }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                  <button onClick={() => { setRoomId(null); setOpen(null) }} style={chip(roomId === null)}>{t('xarch.allRooms')} · {project.media.length}</button>
-                  {plan.rooms.map(r => {
-                    const n = project.media.filter(m => m.room_id === r.id).length
-                    return <button key={r.id} onClick={() => { setRoomId(r.id); setOpen(null); setSelection({ kind: 'rooms', id: r.id }) }} style={chip(roomId === r.id)}>{r.name} · {n}</button>
-                  })}
-                </div>
-
-                {openItem ? (
-                  <div>
-                    <button onClick={() => { setOpen(null); setMask(null) }} style={{ ...mono, border: 'none', background: 'none', cursor: 'pointer', padding: 0, marginBottom: 8 }}>← {roomName(openItem.room_id)}</button>
-                    {openItem.mediaType.startsWith('video/')
-                      ? <video src={openItem.url ?? undefined} controls style={{ width: '100%', borderRadius: 8, background: '#000' }} />
-                      : <img src={openItem.url ?? undefined} alt="" style={{ width: '100%', borderRadius: 8 }} />}
-                    {openItem.kind === 'edit' && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>✨ {openItem.prompt}{openSource && <> · <button onClick={() => setOpen(openSource.id)} style={{ border: 'none', background: 'none', color: 'var(--blue)', cursor: 'pointer', padding: 0, fontSize: 12 }}>{t('xarch.original')}</button></>}</div>}
-                    {openItem.mediaType.startsWith('image/') && (
-                      <div style={{ marginTop: 12 }}>
-                        <div style={mono}>{t('xarch.photo.title')}</div>
-                        <textarea value={photoPrompt} onChange={e => setPhotoPrompt(e.target.value)} rows={2} placeholder={t('xarch.photo.placeholder')} style={{ ...input, marginTop: 6, resize: 'vertical' }} />
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0' }}>
-                          {['xarch.p.sofa', 'xarch.p.style', 'xarch.p.walls', 'xarch.p.floor', 'xarch.p.declutter'].map(k => <button key={k} onClick={() => setPhotoPrompt(t(k))} style={{ ...chip(), fontSize: 11.5, padding: '4px 9px' }}>{t(k)}</button>)}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <button onClick={() => setMaskOpen(true)} style={chip(!!mask)}>◐ {mask ? t('xarch.photo.maskSet') : t('xarch.photo.mask')}</button>
-                          {mask && <button onClick={() => setMask(null)} style={{ ...chip(), fontSize: 11 }}>✕</button>}
-                          <button disabled={!photoPrompt.trim() || !!busy} onClick={editPhotoNow} style={primary(!!photoPrompt.trim() && !busy)}>{busy === 'photo' ? t('xarch.working') + '…' : t('xarch.photo.apply')}</button>
-                          <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>GPT Image 2 · ~$0.06</span>
-                        </div>
-                        {error && busy === null && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 6 }}>{error}</div>}
-                      </div>
-                    )}
-                    {maskOpen && openItem.url && (
-                      <MaskEditor imageUrl={openItem.url} onClose={() => setMaskOpen(false)} onSave={(file, preview) => { setMask({ file, preview }); setMaskOpen(false) }} />
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-                      {roomMedia.map(m => (
-                        <button key={m.id} onClick={() => setOpen(m.id)} style={{ padding: 0, border: '1px solid var(--border2)', borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'var(--surface2)', position: 'relative', aspectRatio: '4 / 3' }}>
-                          {m.mediaType.startsWith('video/')
-                            ? <video src={m.url ?? undefined} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <img src={m.url ?? undefined} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                          <span style={{ position: 'absolute', left: 4, bottom: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>
-                            {m.kind === 'edit' ? '✨ ' : ''}{roomName(m.room_id)}
-                          </span>
-                        </button>
-                      ))}
-                      <button onClick={() => mediaInput.current?.click()} disabled={!!busy} style={{ border: '1px dashed var(--border2)', borderRadius: 8, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', aspectRatio: '4 / 3', fontSize: 12 }}>
-                        {busy === 'upload' ? '…' : `+ ${t('xarch.addMedia')}${roomId ? `\n${roomName(roomId)}` : ''}`}
-                      </button>
-                    </div>
-                    {roomMedia.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 12.5, marginTop: 10 }}>{t('xarch.noMedia')}</div>}
-                  </>
-                )}
-                <input ref={mediaInput} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" onChange={e => addMedia(e.target.files)} />
-              </div>
-            )}
-
-            {panel === 'agent' && (
+          {/* ── Right: the design agent, always visible ── */}
+          <div style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '11px 14px', borderBottom: '1px solid var(--border2)', fontSize: 13, fontWeight: 600, color: 'var(--white)' }}>💬 {t('xarch.panel.agent')}</div>
+            {(
               <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {project.chat.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55 }}>{t('xarch.agent.intro')}</div>}
                   {project.chat.map((m, i) => (
                     <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%' }}>
-                      <div style={{ background: m.role === 'user' ? 'var(--surface2)' : 'transparent', border: m.role === 'user' ? 'none' : '1px solid var(--border2)', borderRadius: 10, padding: '8px 11px', fontSize: 13.5, color: 'var(--white)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{m.text}</div>
+                      <div style={{ background: m.role === 'user' ? 'var(--surface2)' : 'transparent', border: m.role === 'user' ? 'none' : '1px solid var(--border2)', borderRadius: 10, padding: '8px 11px', fontSize: 13.5, color: 'var(--white)', whiteSpace: 'pre-wrap', lineHeight: 1.5, opacity: m.pending ? 0.7 : 1 }}>{m.text}</div>
                       {m.action?.type === 'edit_plan' && (
-                        <div style={{ fontSize: 11.5, marginTop: 4, color: 'var(--muted)' }}>
-                          📐 {m.action.notes} {(m.action.warnings ?? []).map((w: string, j: number) => <div key={j} style={{ color: '#b45309' }}>⚠ {w}</div>)}
+                        <div style={{ fontSize: 12, marginTop: 5, color: 'var(--muted)', lineHeight: 1.5 }}>
+                          <div style={{ color: 'var(--green)' }}>✓ {t('xarch.agent.planChanged')}{typeof m.action.cost_cents === 'number' ? ` · ${money(m.action.cost_cents)}` : ''}</div>
+                          {m.via !== 'menu' && m.action.notes && <div>📐 {m.action.notes}</div>}
+                          {(m.action.warnings ?? []).map((w: string, j: number) => <div key={j} style={{ color: '#b45309' }}>⚠ {w}</div>)}
+                          {(m.action.errors ?? []).map((w: string, j: number) => <div key={`e${j}`} style={{ color: 'var(--red)' }}>✕ {w}</div>)}
+                          {(m.action.issues ?? []).length > 0 && <div style={{ color: '#a21caf' }}>◇ {t('xarch.checkJoints')}: {m.action.issues.map((x: any) => x.id).join(', ')}</div>}
+                          <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                            <button onClick={() => { flash(m.action.changed ?? []); setFocus(f => f === 'media' ? 'both' : f) }} style={{ ...chip(), fontSize: 11.5, padding: '3px 9px' }}>◎ {t('xarch.agent.show')}</button>
+                            {i === lastPlanEdit && project.can_undo && <button disabled={!!busy} onClick={undo} style={{ ...chip(), fontSize: 11.5, padding: '3px 9px' }}>↶ {t('xarch.undo')}</button>}
+                          </div>
                         </div>
                       )}
                       {m.action?.type === 'edit_photo' && (
                         m.action.error
                           ? <div style={{ fontSize: 11.5, marginTop: 4, color: 'var(--red)' }}>✕ {m.action.error}</div>
-                          : <button onClick={() => { setPanel('media'); setRoomId(m.action.room_id ?? null); setOpen(m.action.media_id) }} style={{ ...chip(), fontSize: 11.5, marginTop: 4 }}>✨ {t('xarch.agent.seePhoto')}</button>
+                          : <button onClick={() => { setFocus(f => f === 'plan' ? 'both' : f); setRoomId(m.action.room_id ?? null); setOpen(m.action.media_id) }} style={{ ...chip(), fontSize: 11.5, marginTop: 4 }}>✨ {t('xarch.agent.seePhoto')}</button>
                       )}
                     </div>
                   ))}
-                  {busy === 'chat' && <div style={{ color: 'var(--muted)', fontSize: 12.5 }}>{ARCHITECTS[architect].label} {t('xarch.agent.thinking')}…</div>}
+                  {busyLabel && <div style={{ alignSelf: 'flex-start', color: 'var(--muted)', fontSize: 12.5, border: '1px dashed var(--border2)', borderRadius: 10, padding: '7px 11px' }}>⏳ {busyLabel}</div>}
                   <div ref={chatEnd} />
                 </div>
-                {error && panel === 'agent' && <div style={{ color: 'var(--red)', fontSize: 12, padding: '0 14px' }}>{error}</div>}
+                {error && <div style={{ color: 'var(--red)', fontSize: 12, padding: '0 14px' }}>{error}</div>}
                 <div style={{ borderTop: '1px solid var(--border2)', padding: 10 }}>
                   {selection && <div style={{ ...mono, marginBottom: 6 }}>{t('xarch.agent.about')}: {nameOf(selection)} <button onClick={() => setSelection(null)} style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer' }}>✕</button></div>}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <textarea value={chatText} onChange={e => setChatText(e.target.value)} rows={2} placeholder={t('xarch.agent.placeholder')} style={{ ...input, resize: 'none' }}
+                    <textarea ref={chatInput} value={chatText} onChange={e => setChatText(e.target.value)} rows={2} placeholder={t('xarch.agent.placeholder')} style={{ ...input, resize: 'none' }}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); sendChat() } }} />
                     <button disabled={!chatText.trim() || !!busy} onClick={sendChat} style={primary(!!chatText.trim() && !busy)}>↑</button>
                   </div>

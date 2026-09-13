@@ -19,9 +19,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const { item, cents } = await runPhotoEdit(req, o.row, o.userId, String(body?.media_id ?? ''), prompt, body?.mask ?? null)
     // Re-read: a photo edit takes ~30-60s and the user may have edited the plan meanwhile.
-    const { data: fresh } = await service().from('xarch_projects').select('media, spent_cents').eq('id', o.row.id).single()
+    const { data: fresh } = await service().from('xarch_projects').select('media, spent_cents, chat').eq('id', o.row.id).single()
+    const at = new Date().toISOString()
+    // Logged in the conversation like every other action, so the agent
+    // column shows what was redesigned and links to it.
+    const chat = [...(fresh?.chat ?? o.row.chat ?? []),
+      { role: 'user', text: `[photo] ${prompt}`, at, via: 'photo' },
+      { role: 'assistant', text: 'Here is the redesigned photo. The original is kept.', at, via: 'photo', action: { type: 'edit_photo', media_id: item.id, room_id: item.room_id, prompt, cost_cents: cents } },
+    ].slice(-80)
     const { data } = await service().from('xarch_projects').update({
-      media: [...(fresh?.media ?? o.row.media ?? []), item], spent_cents: (fresh?.spent_cents ?? 0) + cents, updated_at: new Date().toISOString(),
+      media: [...(fresh?.media ?? o.row.media ?? []), item], chat, spent_cents: (fresh?.spent_cents ?? 0) + cents, updated_at: at,
     }).eq('id', o.row.id).select('*').single()
     return Response.json({ project: await view(data ?? o.row), media_id: item.id, cost_cents: cents })
   } catch (e) {
