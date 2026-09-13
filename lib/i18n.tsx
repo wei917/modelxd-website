@@ -31,6 +31,8 @@ type Entry = { en: string } & Partial<Record<Lang, string>>
 export const STRINGS: Record<string, Entry> = {
   // ── Brand + nav ──
   // Landing: value snapshot bar + tier comparator (CC, July 25).
+  'home.ourpick':     { en: 'our pick', 'zh-Hant': '編輯推薦', 'zh-Hans': '编辑推荐', ja: '編集部おすすめ', ko: '에디터 추천' },
+  'home.ourpick.why': { en: 'Chosen by ModelXD until there are enough blind votes', 'zh-Hant': '盲測票數足夠前由 ModelXD 推薦', 'zh-Hans': '盲测票数足够前由 ModelXD 推荐', ja: 'ブラインド投票が集まるまで ModelXD が選定', ko: '블라인드 투표가 충분히 모일 때까지 ModelXD가 선정' },
   'home.picks':       { en: "Today's best-value models", 'zh-Hant': '今日最超值模型', 'zh-Hans': '今日最超值模型', ja: '今日の高コスパモデル', ko: '오늘의 가성비 모델' },
   'home.vc.save':     { en: 'Save More', 'zh-Hant': '更省錢', 'zh-Hans': '更省钱', ja: 'コスト重視', ko: '절약 우선' },
   'home.vc.push':     { en: 'Better Quality', 'zh-Hant': '更好品質', 'zh-Hans': '更好质量', ja: 'より高品質', ko: '더 나은 품질' },

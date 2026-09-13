@@ -1275,6 +1275,15 @@ select {
   white-space: nowrap; overflow: hidden;
 }
 .vb-mode { flex: 0 0 auto; color: var(--muted); }
+/* "Our pick": the owner chose this slot, votes did not (app/api/snapshot).
+   Out of the flow, pinned to the chip's top-right corner: the chip width is
+   measured for the longest name with no room to spare, so an inline tag
+   truncated "Claude Opus 5". */
+button.vb-chip, span.vb-chip { position: relative; }
+.vb-tag {
+  position: absolute; top: 2px; right: 8px; font-style: normal; font-size: 8px; line-height: 1;
+  letter-spacing: 0.12em; color: var(--muted); pointer-events: none;
+}
 .vb-dot { font-style: normal; margin-left: 9px; color: var(--border2); }
 
 /* Clickable variant. It has to read as pressable without shouting over the

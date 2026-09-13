@@ -317,10 +317,11 @@ export default function Home() {
               className="vb-chip is-action"
               key={mode}
               onClick={() => handleNav(`/xcreate?model=${encodeURIComponent(pick.modelName)}&mode=${mode}`)}
-              title={`${t(key)} · ${pick.name}`}
+              title={`${t(key)} · ${pick.name}${pick.source === 'pick' ? ` · ${t('home.ourpick.why')}` : ''}`}
             >
               <span className="vb-mode">{t(key)}<i className="vb-dot">·</i></span>
               <b className={tone}>{pick.name}</b>
+              {pick.source === 'pick' && <em className="vb-tag">{t('home.ourpick')}</em>}
               <span className="vb-go" aria-hidden>→</span>
             </button>
           ) : (

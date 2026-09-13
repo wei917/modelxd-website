@@ -18,7 +18,21 @@ import { createClient } from '@supabase/supabase-js'
 const MODES = ['text', 'image', 'video'] as const
 type Mode = (typeof MODES)[number]
 
-export type SnapshotEntry = { name: string; modelName: string; provider: string; xdScore: number }
+export type SnapshotEntry = { name: string; modelName: string; provider: string; xdScore: number | null
+  /** 'votes' = top of XBoard; 'pick' = ModelXD's own pick, labelled on the page. */
+  source: 'votes' | 'pick' }
+
+/**
+ * Owner picks, used ONLY while the vote leader is too thin to mean anything
+ * (owner, Sep 14: "we don't have many users" — Gemini 3.6 Flash was leading
+ * text on 6 votes). The landing page labels a pick as ours, so the strip never
+ * claims votes chose it, and the vote leader takes the slot back by itself
+ * once it has MIN_VOTES. Delete an entry to return that mode to votes.
+ */
+const PICKS: Partial<Record<Mode, { provider: string; model_name: string }>> = {
+  text: { provider: 'anthropic', model_name: 'claude-opus-5' },
+}
+const MIN_VOTES = 30
 export type Snapshot = Record<Mode, SnapshotEntry | null>
 
 const EMPTY: Snapshot = { text: null, image: null, video: null }
@@ -74,7 +88,12 @@ export async function GET() {
       if (!MODES.includes(mode) || result[mode]) continue
       const m = byId.get(row.model_id)
       if (!m) continue
-      result[mode] = { name: shortName(m.display_name), modelName: m.model_name, provider: m.provider, xdScore: row.xd_score }
+      const pick = PICKS[mode]
+      if (pick && (row.total_votes ?? 0) < MIN_VOTES) {
+        const pm = (models ?? []).find(x => x.provider === pick.provider && x.model_name === pick.model_name)
+        if (pm) { result[mode] = { name: shortName(pm.display_name), modelName: pm.model_name, provider: pm.provider, xdScore: null, source: 'pick' }; continue }
+      }
+      result[mode] = { name: shortName(m.display_name), modelName: m.model_name, provider: m.provider, xdScore: row.xd_score, source: 'votes' }
     }
   } catch (err) {
     // A decorative strip must never take the landing page down with it.
