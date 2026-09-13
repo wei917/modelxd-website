@@ -49,7 +49,7 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `98_subscriptions.sql` (2026-09-11).
+  Latest applied: `100_xarch.sql` (2026-09-13).
 
 ## The Surfaces
 
