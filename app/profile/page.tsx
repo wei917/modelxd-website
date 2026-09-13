@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import type { UserCredits, CreditTransaction } from '../../lib/credits'
 import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
 import { downloadFile, downloadName } from '../../lib/download'
+import { useRequireAuth } from '../../lib/useRequireAuth'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -150,6 +151,7 @@ const DISPLAY_TIERS: { id: string; priceCents: number; label: string; descriptio
 ]
 
 export default function ProfilePage() {
+  useRequireAuth()
   const { lang, setLang } = useLang()
   const t = useT()
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -270,7 +272,11 @@ export default function ProfilePage() {
   useEffect(() => {
     const client = sb()
     client.auth.getUser().then(async ({ data }) => {
-      if (!data.user) { window.location.href = '/auth/login'; return }
+      // Signed out: useRequireAuth has already opened the sign-in modal, the
+      // same door every gated surface uses. It parks /profile in the
+      // auth_redirect cookie, so Google brings them back here. This used to
+      // send them to /auth/login, a route that never existed (404, Sep 14).
+      if (!data.user) return
       const u = data.user
       setUser(u)
 
