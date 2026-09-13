@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <div className="prompt-label eyebrow">Privacy</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: July 20, 2026
+        Last updated: September 14, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
@@ -51,10 +51,11 @@ export default function PrivacyPage() {
 
       <h2 style={S.h2}>3. What Is Public</h2>
       <p style={S.p}>
-        Completed XDuels — the prompt and the models&apos; outputs — are public and
-        appear in XVote. Your identity is never attached to public duels. Your
-        uploaded input files, XCreate runs, votes, and credit history are private
-        to your account.
+        Completed XDuels are public and appear in XVote, including the prompt,
+        anything attached to it, and the models&apos; outputs. Your name, email and
+        profile are never shown with a duel. Everything else is private to your
+        account: your work in XCreate, XDirect, XCut, XTalk, XGame, XWorld, XArch and
+        XTell, your votes, your profile, and your credit history.
       </p>
 
       <h2 style={S.h2}>4. Cookies</h2>

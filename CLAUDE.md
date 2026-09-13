@@ -49,7 +49,7 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `100_xarch.sql` (2026-09-13).
+  Latest applied: `103_private_xtalk_games.sql` (2026-09-14).
 
 ## The Surfaces
 
@@ -868,6 +868,15 @@ npx tsc --noEmit         # type check — run before packaging
     (fixed in `97_lock_security_definer.sql`). Every new SECURITY DEFINER
     function needs `revoke ... from public, anon, authenticated` by name, and a
     `has_function_privilege('anon', …)` check after it runs.
+16. **`for select using (true)` publishes every column of every row.** Three
+    tables were opened for a narrow need and leaked wholesale until Sep 14:
+    `xtalk_games` "for the leaderboard" (every transcript), `profiles` (every
+    user's country and last-seen time), `duel_votes` (who voted for what). An
+    API route holding the service key bypasses RLS, so a server-side reader never
+    needs a public policy; check who reads a table before opening it. To publish
+    some columns and not others, revoke the table SELECT and grant it back
+    column by column (`102` on `mbti_results`). Verify with the publishable key
+    against the live database, never by reading the migration.
 
 ## XTalk Werewolf Specifics
 

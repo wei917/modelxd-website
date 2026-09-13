@@ -15,7 +15,7 @@ export default function TermsPage() {
       <div className="prompt-label eyebrow">Terms</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: July 20, 2026
+        Last updated: September 14, 2026
       </p>
       <p style={S.p}>
         Welcome to ModelXD. These Terms of Service (&quot;Terms&quot;) govern your use of the
@@ -57,10 +57,10 @@ export default function TermsPage() {
         You keep ownership of the prompts and files you submit. By submitting them you
         grant ModelXD a license to process them (including sending them to the AI
         providers you are comparing) and to store the results. XDuel results are
-        public: completed duels — including your prompt and the model outputs — appear
-        in XVote and may be displayed across the Service. Your uploaded input files are
-        visible only to you. XCreate runs and your votes are private to your account.
-        Do not submit content you don&apos;t have the right to share.
+        public: completed duels, including your prompt, anything attached to it, and
+        the model outputs, appear in XVote and may be displayed across the Service.
+        Everything else you submit is private to your account. Do not submit content
+        you don&apos;t have the right to share.
       </p>
 
       <h2 style={S.h2}>5. Acceptable Use</h2>
