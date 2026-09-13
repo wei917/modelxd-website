@@ -64,7 +64,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xtalks' | 'xgames' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xtalks' | 'xgames' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -164,6 +164,7 @@ export default function ProfilePage() {
   const [xtalks,      setXtalks]      = useState<any[]>([])
   const [xcuts,       setXcuts]       = useState<any[]>([])
   const [xworlds,     setXworlds]     = useState<any[]>([])
+  const [xarchs,      setXarchs]      = useState<any[]>([])
   const [xgames,      setXgames]      = useState<any[]>([])
   // Which beta surfaces this account can see — the XDirect/XGame tabs
   // follow the same gate as their nav items, so a non-beta user's profile
@@ -174,8 +175,8 @@ export default function ProfilePage() {
   // array would otherwise show "No X yet" before the first fetch resolved,
   // making it look like the user has nothing when really we just haven't
   // asked the server yet.
-  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xcuts: boolean; xworlds: boolean; xtalks: boolean; xgames: boolean }>({
-    duels: false, xcreates: false, votes: false, xdirects: false, xcuts: false, xworlds: false, xtalks: false, xgames: false,
+  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xcuts: boolean; xworlds: boolean; xarchs: boolean; xtalks: boolean; xgames: boolean }>({
+    duels: false, xcreates: false, votes: false, xdirects: false, xcuts: false, xworlds: false, xarchs: false, xtalks: false, xgames: false,
   })
   // XCreate pagination — 12 cards per page, server-side `range` so we
   // don't load the entire history into the browser when a user has
@@ -335,7 +336,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xtalks' | 'xgames') =>
+    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xtalks' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
     if (tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
@@ -378,6 +379,10 @@ export default function ProfilePage() {
       fetch('/api/xworld').then(r => r.ok ? r.json() : { items: [] })
         .then(d => { setXworlds(d.items ?? []); markLoaded('xworlds') })
         .catch(() => markLoaded('xworlds'))
+    } else if (tab === 'xarchs') {
+      fetch('/api/xarch/projects').then(r => r.ok ? r.json() : { projects: [] })
+        .then(d => { setXarchs(d.projects ?? []); markLoaded('xarchs') })
+        .catch(() => markLoaded('xarchs'))
     } else if (tab === 'xtalks') {
       // Persisted discussion rooms (Aug 6) — the same rows the /xtalk nav
       // history lists, linking back into the live room.
@@ -1188,6 +1193,7 @@ export default function ProfilePage() {
               ['xdirects', '▶ ' + t('nav.xdirect')],
               ['xcuts', '✂ ' + t('nav.xcut')],
               ['xworlds', '🌐 ' + t('nav.xworld')],
+              ['xarchs', '📐 ' + t('nav.xarch')],
               ['xtalks', '💬 ' + t('nav.xtalk')],
               ['xgames', '◉ ' + t('nav.xgame')],
               ['votes', '⊞ ' + t('nav.xvote')],
@@ -1607,6 +1613,27 @@ export default function ProfilePage() {
                 </div>
           )}
 
+          {tab === 'xarchs' && (
+            !tabsLoaded.xarchs
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              : xarchs.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxarch')}</div>
+              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                  {xarchs.map((p: any) => (
+                    <a key={p.id} href={`/xarch?p=${p.id}`} style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, overflow: 'hidden' }}>
+                      <div style={{ aspectRatio: '16 / 10', background: '#fff', display: 'grid', placeItems: 'center' }}>
+                        {p.thumb_url && <img src={p.thumb_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
+                      </div>
+                      <div style={{ padding: '8px 12px' }}>
+                        <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📐 {p.title}</div>
+                        <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', marginTop: 3 }}>
+                          ${((p.spent_cents ?? 0) / 100).toFixed(2)}  ·  {new Date(p.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+          )}
           {tab === 'xworlds' && (
             !tabsLoaded.xworlds
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>

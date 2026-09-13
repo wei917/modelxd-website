@@ -69,6 +69,7 @@ more**, and the per-user feature system is gone with it.
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
 | **XCut** | `/xcut` | required | The cutting room: rough-cut an XDirect board, trim, add music, burn subtitles, export an MP4. Open. |
 | **XWorld** | `/xworld` | required | 3D worlds you walk through (World Labs Marble, Spark renderer) + photo → 3D object (Tripo). Rows in `xworlds` (migration 96); billing held at the ceiling, settled to the provider's reported cost (`lib/worldlabs.ts`). |
+| **XArch** | `/xarch` | required | X建築設計: floor plans + interior design. GPT-6 Astra / Claude Fable 5.1 read a blueprint into geometry and return edit OPS that code applies (`lib/xarch.ts`); room photos redesigned with GPT Image 2; design agent chat. Rows in `xarch_projects` (migration 100). Free sample: HABS Breiding House. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 | **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
 | **XTell** | `/xtell` | required | X算命: temple street (八字/紫微/月老/關帝籤/四面佛/九曜 Jyotish/占星塔 Western). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |

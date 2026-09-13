@@ -163,6 +163,29 @@ A failed generation is refunded in full. You can leave the page while it
 builds; everything you make is listed on XWorld and on your Profile.
 Available to every signed-in account.
 
+### XArch — `/xarch`
+X建築設計: floor plans and interior design with AI architects. Upload a photo
+or scan of a floor plan (JPG, PNG or WebP) and an architect reads it into an
+editable plan: walls, doors, windows, stairs and rooms, plus the printed
+dimensions and scale when the drawing has them, so every room shows its size
+in feet. Two architects: **GPT-6 Astra** (most precise, about 6 minutes and
+roughly $1 to read a plan) and **Claude Fable 5.1** (about a minute, roughly
+$0.30). Both bill list price for what they actually use.
+- **Click any wall, door, window or room** for a menu: edit it (remove a wall,
+  make a room larger, move or widen a door, split a room, or type any change;
+  a few cents each, undoable), or open that room's photos and videos.
+- **Room photos and videos**: attach your own to each room. Redesign a photo
+  with a sentence ("replace the sofa with a grey L-shaped sofa", "Scandinavian
+  style", "paint the walls sage green"), optionally painting the exact area;
+  GPT Image 2, about $0.06 a photo. The original is kept.
+- **Design agent**: a chat beside the plan, like XDirect. Ask questions ("is
+  this wall load-bearing?") or ask for changes to the plan or a photo.
+- **Free sample**: a real 1890s Washington DC rowhouse (Library of Congress
+  survey drawing), already read, with room photos to try the tools on.
+Results are design drafts: structural changes still need a licensed architect
+or engineer before a permit or construction. Available to every signed-in
+account; projects are listed on XArch and on your Profile.
+
 ### XTalk — `/xtalk`
 Put several AI models in one room together. Available to every signed-in
 account. Two formats today:
