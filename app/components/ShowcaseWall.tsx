@@ -78,7 +78,7 @@ export default function ShowcaseWall({ pieces }: { pieces: ShowcasePiece[] }) {
           and the count set in mono on the right so the wall announces its own
           size the way XBoard does. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-        <div className="prompt-label eyebrow" style={{ marginBottom: 0 }}>{t('showcase.eyebrow')}</div>
+        <h2 className="page-headline" style={{ margin: 0 }}>{t('showcase.eyebrow')}</h2>
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: 'var(--muted2)', letterSpacing: '0.1em' }}>
           {pieces.length} {pieces.every(p => p.kind === 'video') ? 'CLIPS' : 'WORKS'} · {new Set(pieces.map(p => p.model)).size} MODELS
