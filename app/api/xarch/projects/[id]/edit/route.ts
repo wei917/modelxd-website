@@ -5,7 +5,7 @@
 export const runtime = 'nodejs'
 export const maxDuration = 800
 
-import { service, editPlan, assertBalance, bill } from '@/lib/xarch-ai'
+import { service, editPlan, applyAgentOps, assertBalance, bill } from '@/lib/xarch-ai'
 import { ARCHITECTS, KINDS, isArchitect, type ArchitectId, type Selection } from '@/lib/xarch'
 import { owned, view, fail, HISTORY_CAP } from '../../../_shared'
 
@@ -23,16 +23,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await assertBalance(o.userId, ARCHITECTS[architect].editEstimateCents)
     const r = await editPlan(architect, o.userId, o.row.plan, selection, instruction)
     const cents = await bill(o.userId, r.cost, o.row.id, `edit (${ARCHITECTS[architect].label})`, { architect, kind: 'edit' })
-    const patch: Record<string, unknown> = { spent_cents: (o.row.spent_cents ?? 0) + cents, updated_at: new Date().toISOString() }
-    if (r.ops.length > 0) {
-      patch.plan = r.plan
-      patch.history = [...(o.row.history ?? []), o.row.plan].slice(-HISTORY_CAP)
+
+    // An architect takes 20-60s. Anything saved meanwhile (another edit, an
+    // agent turn, an upload) must survive, so the write is built on a FRESH
+    // read and the ops are applied to the fresh plan — building it on the row
+    // read before the call is how a kitchen edit was silently overwritten
+    // (Sep 13).
+    const { data: fresh } = await service().from('xarch_projects').select('*').eq('id', o.row.id).single()
+    const base = fresh ?? o.row
+    const applied = r.ops.length ? applyAgentOps(base.plan, r.ops) : null
+    const result = {
+      changed: r.ops.map(op => op.id), notes: r.notes, warnings: r.warnings,
+      errors: applied?.errors ?? [], issues: applied?.issues ?? [], cost_cents: cents,
+    }
+    const at = new Date().toISOString()
+    const patch: Record<string, unknown> = {
+      spent_cents: (base.spent_cents ?? 0) + cents, updated_at: at,
+      // The menu edit is logged in the conversation too, so the agent (and
+      // the user scrolling back) can see what was changed and why.
+      chat: [...(base.chat ?? []),
+        { role: 'user', text: `${selection ? `[${selection.kind} ${selection.id}] ` : ''}${instruction}`, at, via: 'menu' },
+        { role: 'assistant', text: r.notes || (r.ops.length ? 'Done.' : 'No change made.'), at, architect, via: 'menu',
+          action: r.ops.length ? { type: 'edit_plan', ...result } : null },
+      ].slice(-80),
+    }
+    if (applied) {
+      patch.plan = applied.plan
+      patch.history = [...(base.history ?? []), base.plan].slice(-HISTORY_CAP)
     }
     const { data } = await service().from('xarch_projects').update(patch).eq('id', o.row.id).select('*').single()
-    return Response.json({
-      project: await view(data ?? o.row),
-      result: { changed: r.ops.map(op => op.id), notes: r.notes, warnings: r.warnings, errors: r.errors, issues: r.newIssues, cost_cents: cents },
-    })
+    return Response.json({ project: await view(data ?? base), result })
   } catch (e) {
     return fail(e, 'The edit failed')
   }

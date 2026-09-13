@@ -120,6 +120,15 @@ export default function XArchClient() {
     return () => clearInterval(h)
   }, [project?.status, load])
 
+  // The scan underneath shows the ORIGINAL layout. Once the plan has been
+  // edited it contradicts the geometry (the old kitchen wall stays drawn),
+  // which made a successful edit look like nothing happened — so it starts
+  // hidden on an edited plan.
+  const editedOnLoad = useRef<string | null>(null)
+  useEffect(() => {
+    if (project && editedOnLoad.current !== project.id) { editedOnLoad.current = project.id; setShowDrawing(!project.can_undo) }
+  }, [project])
+
   useEffect(() => { chatEnd.current?.scrollIntoView({ block: 'end' }) }, [project?.chat?.length, panel])
 
   const plan = project?.plan ?? null
@@ -150,10 +159,15 @@ export default function XArchClient() {
   }
 
   const runEdit = async (instruction: string, sel: Selection) => {
-    if (!project || !instruction.trim()) return
+    // One architect call at a time: two in flight used to race and the
+    // later write erased the earlier edit (Sep 13).
+    if (!project || !instruction.trim() || busy) return
     setMenu(null); setResult(null)
     const d = await call('edit', `/api/xarch/projects/${project.id}/edit`, { instruction, selection: sel, architect })
-    if (d?.result) { setResult(d.result); flash(d.result.changed); setEditText('') }
+    if (d?.result) {
+      setResult(d.result); flash(d.result.changed); setEditText('')
+      if (d.result.changed.length) setShowDrawing(false)
+    }
   }
   const undo = async () => { if (project) { await call('undo', `/api/xarch/projects/${project.id}`, { undo: true }, 'PATCH'); setResult(null) } }
 
@@ -187,13 +201,13 @@ export default function XArchClient() {
   }
 
   const sendChat = async () => {
-    if (!project || !chatText.trim()) return
+    if (!project || !chatText.trim() || busy) return
     const message = chatText
     setChatText('')
     setProject(p => p ? { ...p, chat: [...p.chat, { role: 'user', text: message, at: new Date().toISOString() }] } : p)
     const d = await call('chat', `/api/xarch/projects/${project.id}/chat`, { message, selection, architect })
     if (!d) setProject(p => p ? { ...p, chat: p.chat.slice(0, -1) } : p)
-    if (d?.action?.type === 'edit_plan') flash(d.action.changed ?? [])
+    if (d?.action?.type === 'edit_plan') { flash(d.action.changed ?? []); setShowDrawing(false) }
     if (d?.action?.type === 'edit_photo' && d.action.media_id) { setRoomId(d.action.room_id ?? null); setOpen(d.action.media_id) }
   }
 
@@ -303,6 +317,7 @@ export default function XArchClient() {
               <label style={{ ...mono, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <input type="checkbox" checked={showDrawing} onChange={e => setShowDrawing(e.target.checked)} /> {t('xarch.showDrawing')}
               </label>
+              {project.can_undo && showDrawing && <span style={{ fontSize: 11.5, color: '#b45309' }}>{t('xarch.drawingOld')}</span>}
               <span style={mono}>
                 {plan.scale ? `${t('xarch.scale')} ${plan.scale.px_per_ft.toFixed(1)} px/ft` : t('xarch.noScale')}
                 {plan.overall_ft?.width && plan.overall_ft?.depth ? ` · ${fmtFt(plan.overall_ft.width)} × ${fmtFt(plan.overall_ft.depth)}` : ''}
@@ -322,7 +337,8 @@ export default function XArchClient() {
                 {result && <>
                   <div>{result.changed.length ? '✓ ' : ''}{result.notes || t('xarch.noChange')} <span style={{ ...mono, marginLeft: 6 }}>{money(result.cost_cents)}</span></div>
                   {result.warnings.map((w, i) => <div key={i} style={{ color: '#b45309', marginTop: 4 }}>⚠ {w}</div>)}
-                  {[...result.errors, ...result.issues.map(i => `${i.id}: ${i.issue}`)].map((w, i) => <div key={`e${i}`} style={{ color: 'var(--red)', marginTop: 4 }}>✕ {w}</div>)}
+                  {result.errors.map((w, i) => <div key={`e${i}`} style={{ color: 'var(--red)', marginTop: 4 }}>✕ {w}</div>)}
+                  {result.issues.length > 0 && <div style={{ color: '#a21caf', marginTop: 4, fontSize: 12 }}>◇ {t('xarch.checkJoints')}: {result.issues.map(i => i.id).join(', ')}</div>}
                 </>}
               </div>
             )}

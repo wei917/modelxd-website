@@ -128,11 +128,25 @@ export function checkPlan(plan: Plan): { id: string; issue: string }[] {
       || ends.some(([x, y]) => Math.hypot(d.x - x, d.y - y) <= reach(d))
     if (!onWall) out.push({ id: d.id, issue: 'door is not on a wall' })
   }
+  // A doorless opening (a cased passage between kitchen and dining room) is
+  // two walls ending in line with a gap between them. Up to 8 ft of gap,
+  // lined up with the wall, counts as an opening rather than a dangling end.
+  const gapMax = (plan.scale?.px_per_ft ?? Math.max(plan.image.w, plan.image.h) / 60) * 8
+  const inOpening = (w: Wall, x: number, y: number) => {
+    const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) || 1
+    const ux = (w.x2 - w.x1) / len, uy = (w.y2 - w.y1) / len
+    return plan.walls.some(q => q !== w && ([[q.x1, q.y1], [q.x2, q.y2]] as const).some(([qx, qy]) => {
+      const dx = qx - x, dy = qy - y, dist = Math.hypot(dx, dy)
+      if (dist < tol || dist > gapMax) return false
+      return Math.abs(dx * uy - dy * ux) <= tol * 1.5   // on the wall's own line
+    }))
+  }
   for (const w of plan.walls) {
     for (const [x, y] of [[w.x1, w.y1], [w.x2, w.y2]] as const) {
       const touches = plan.walls.some(q => q !== w && segDist(x, y, q) <= tol)
         || plan.windows.some(q => segDist(x, y, q) <= tol)
         || plan.doors.some(d => Math.hypot(d.x - x, d.y - y) <= reach(d))
+        || inOpening(w, x, y)
       if (!touches) { out.push({ id: w.id, issue: `wall end (${Math.round(x)}, ${Math.round(y)}) touches nothing` }); break }
     }
   }

@@ -693,6 +693,8 @@ export const STRINGS: Record<string, Entry> = {
   'xarch.agent.thinking': { en: 'is thinking', 'zh-Hant': '思考中', 'zh-Hans': '思考中', ja: '考え中', ko: '생각 중' },
   'xarch.agent.about': { en: 'About', 'zh-Hant': '針對', 'zh-Hans': '针对', ja: '対象', ko: '대상' },
   'xarch.agent.placeholder': { en: 'Message the design agent', 'zh-Hant': '傳訊息給設計助理', 'zh-Hans': '发消息给设计助理', ja: 'デザインエージェントにメッセージ', ko: '디자인 에이전트에게 메시지' },
+  'xarch.drawingOld': { en: 'The drawing shows the original layout, before your edits.', 'zh-Hant': '原圖是修改前的格局。', 'zh-Hans': '原图是修改前的格局。', ja: '元図は編集前の間取りです。', ko: '원본은 수정 전 배치입니다.' },
+  'xarch.checkJoints': { en: 'Check where these walls meet', 'zh-Hant': '請確認這些牆的接合處', 'zh-Hans': '请确认这些墙的接合处', ja: 'これらの壁の接合部を確認', ko: '이 벽들의 접합부를 확인하세요' },
   'xarch.disclaimer': { en: 'Design drafts only. Structural changes need a licensed architect or engineer before any permit or construction.', 'zh-Hant': '僅為設計草稿。結構變更在申請建照或施工前，需經有執照的建築師或結構技師確認。', 'zh-Hans': '仅为设计草稿。结构变更在申请许可或施工前，需经有执照的建筑师或结构工程师确认。', ja: '設計の下書きです。構造の変更は許可申請や工事の前に有資格の建築士・構造技術者の確認が必要です。', ko: '설계 초안입니다. 구조 변경은 허가나 시공 전에 면허가 있는 건축사나 구조기술사의 확인이 필요합니다.' },
   'profile.noxarch': { en: 'No XArch projects yet. Open XArch to try the sample.', 'zh-Hant': '還沒有 XArch 專案，到 XArch 試用範例。', 'zh-Hans': '还没有 XArch 项目，到 XArch 试用范例。', ja: 'XArchのプロジェクトはまだありません。サンプルを試しましょう。', ko: '아직 XArch 프로젝트가 없습니다. XArch에서 샘플을 열어 보세요.' },
   'xworld.sub':       { en: 'Build a 3D world you can walk through, or turn a photo into a 3D object.', 'zh-Hant': '生成一個可以走進去的 3D 世界，或把照片變成 3D 物件。', 'zh-Hans': '生成一个可以走进去的 3D 世界，或把照片变成 3D 物体。', ja: '歩き回れる3Dワールドを作る、または写真を3Dオブジェクトに。', ko: '걸어 다닐 수 있는 3D 월드를 만들거나, 사진을 3D 오브젝트로 바꿔 보세요.' },

@@ -77,7 +77,7 @@ export default function PlanCanvas({ plan, imageUrl, selection, highlight, showD
     >
       <div style={{ position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, width: '100%' }}>
         <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto', display: 'block', background: '#fff' }}>
-          {imageUrl && showDrawing && <image href={imageUrl} width={w} height={h} opacity={0.55} />}
+          {imageUrl && showDrawing && <image href={imageUrl} width={w} height={h} opacity={0.35} />}
           {plan.rooms.map(r => {
             const size = roomSize(plan, r)
             const [cx, cy] = centroid(r.polygon)
