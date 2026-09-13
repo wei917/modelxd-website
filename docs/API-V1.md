@@ -113,6 +113,25 @@ token, so a null is honest rather than missing.
 All four routers (`xd/auto`, `xd/fast`, `xd/budget`, `xd/max`) appear under text, since a developer
 reading only this endpoint would otherwise never learn they exist.
 
+## Usage — `GET /api/v1/usage` (Sep 14)
+
+Per-call history for a user's API keys, from `api_usage` (migration 101),
+written when each call settles: chat in the completions route, image/video in
+`/api/xcreate`'s settle (one row per model slot, discounted price actually
+charged), Tripo at create and settled by `reconcile()`. Failures are recorded
+at $0 with an `error_code`.
+
+Params: `from`/`to` (default last 30 days, max 366), `group_by=day|model|key|
+surface|none`, `key=<id>|self`, `surface=chat|image|video|3d`, and for
+`none` a cursor page (`limit` ≤ 500, `next_cursor`/`has_more`; cursor is
+`created_at|id`, stable while new rows arrive). `totals` always cover the
+whole window. A key sees ALL its owner's keys, like XDev does. The XDev page's
+Usage panel reads the same endpoint with the session.
+
+`GET /api/v1/models` also carries `pricing_usd_per_output` for image models
+(`per_image` map, and image token rates when token-billed) and video models
+(`per_second` by resolution).
+
 ## The call
 
 ```bash

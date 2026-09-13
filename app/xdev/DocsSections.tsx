@@ -32,6 +32,7 @@ const SECTIONS: Array<{ id: string; label: string }> = [
   { id: 'list-models', label: 'List models' },
   { id: 'errors',      label: 'Errors' },
   { id: 'billing',     label: 'Billing & limits' },
+  { id: 'usage',       label: 'Usage' },
   { id: 'mcp',         label: 'MCP for agents' },
 ]
 
@@ -487,8 +488,32 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
                 serializes, and the spend cap stays exact under parallel calls. There is no
                 per-request rate limit today; the cap and your balance are the wall. New accounts
                 start with $10 free credit; top-ups are 1:1 on{' '}
-                <Link href="/profile" style={{ color: 'var(--red)' }}>Profile</Link>, where the
-                activity ledger shows API usage per key.
+                <Link href="/profile" style={{ color: 'var(--red)' }}>Profile</Link>. Spend by day,
+                model and key is on this page and at <code style={mono}>GET /api/v1/usage</code>.
+              </p>
+            </Section>
+
+            <Section id="usage" title="Usage — what your keys spent">
+              <p style={p}>
+                Every call made with a key is recorded: endpoint, model, tokens, list-price cost and
+                whether it failed (failures cost $0). Read it from code with the same key:
+              </p>
+              <Endpoint method="GET" path="/api/v1/usage" />
+              <Code text={`curl -s "${BASE}/api/v1/usage?group_by=model&from=2026-09-01" \\
+  -H "Authorization: Bearer $MODELXD_KEY"`} />
+              <Params rows={[
+                ['from / to', 'date', false, 'UTC date or ISO time. Default: the last 30 days; a bare `to` date includes that whole day. Up to 366 days.'],
+                ['group_by', 'string', false, <><code style={mono}>day</code> (default, zero-filled), <code style={mono}>model</code>, <code style={mono}>key</code>, <code style={mono}>surface</code>, or <code style={mono}>none</code> for the request log.</>],
+                ['key', 'string', false, <>A key id, or <code style={mono}>self</code> for the key making the request. Omit for all your keys.</>],
+                ['surface', 'string', false, <><code style={mono}>chat</code>, <code style={mono}>image</code>, <code style={mono}>video</code> or <code style={mono}>3d</code>.</>],
+                ['limit / cursor', 'int / string', false, <>Request-log paging (<code style={mono}>group_by=none</code>): up to 500 per page; pass <code style={mono}>next_cursor</code> back while <code style={mono}>has_more</code> is true.</>],
+              ]} />
+              <p style={{ ...p, marginBottom: 0 }}>
+                The response carries <code style={mono}>totals</code> for the whole window (requests,
+                failed, input and output tokens, <code style={mono}>cost_usd</code>) plus the grouped
+                rows in <code style={mono}>data</code>. Prices before you call are in{' '}
+                <code style={mono}>GET /api/v1/models</code>: per 1M tokens for text,{' '}
+                <code style={mono}>pricing_usd_per_output</code> per image or per video second.
               </p>
             </Section>
 

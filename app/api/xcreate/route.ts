@@ -1094,6 +1094,18 @@ export async function POST(req: Request) {
   // the ESTIMATE, so this is the same signed delta the wallet settles by — a
   // run that produced nothing hands the whole reservation back.
   if (apiToken) adjustTokenSpend(apiToken.tokenId, deltaCents / 100)
+  // Per-call usage for the key's owner (GET /api/v1/usage): one row per
+  // model slot, at the discounted price actually charged.
+  if (apiToken) {
+    const { recordApiUsage } = await import('@/lib/api-usage')
+    slotsForXCreate.forEach((sl, i) => recordApiUsage({
+      userId: user.id, tokenId: apiToken.tokenId,
+      surface: mode === 'video' ? 'video' : mode === 'image' ? 'image' : 'chat',
+      provider: sl.provider, modelName: sl.model_name,
+      status: sl.error ? 'failed' : 'success', costUsd: (sl.cost ?? 0) * (1 - discount),
+      refId: `${job.id}:${i}`, errorCode: sl.error ? 'generation_failed' : null,
+    }))
+  }
   if (deltaCents > 0) {
     try {
       await debitCredits({

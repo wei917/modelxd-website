@@ -18,6 +18,6 @@ export async function POST(req: Request) {
   const taskId = json?.data?.task_id
   if (status !== 200 || !taskId) return passThrough(status, json)
 
-  await recordTask({ userId: g.userId, taskId, kind: 'rig_check', inputTaskId: input, params: { input }, billCents: 0 })
+  await recordTask({ userId: g.userId, tokenId: g.tokenId, taskId, kind: 'rig_check', inputTaskId: input, params: { input }, billCents: 0 })
   return Response.json({ ...json, usage: { cost_usd: 0 } })
 }

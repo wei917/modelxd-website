@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import DocsSections from './DocsSections'
+import UsagePanel from './UsagePanel'
 import { useT } from '../../lib/i18n'
 
 type TokenRow = {
@@ -236,6 +237,8 @@ export default function XDevClient() {
             </div>
           )}
         </div>
+
+        {signedIn && <UsagePanel keys={rows} card={card} label={label} />}
 
         {/* ── The router, made legible ──────────────────────────────────
             Directly above the Text API card, because "which model answers

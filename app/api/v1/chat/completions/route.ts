@@ -24,6 +24,7 @@ export const runtime     = 'nodejs'
 export const maxDuration = 300
 
 import { resolveApiToken, reserveTokenSpend, adjustTokenSpend } from '@/lib/api-token'
+import { recordApiUsage } from '@/lib/api-usage'
 import {
   runInference, InferenceError,
   type InferenceMessage, type InferenceResult,
@@ -103,6 +104,17 @@ export async function POST(req: Request) {
     settled = true
     adjustTokenSpend(tok.tokenId, actualUsd - CAP_RESERVE_USD)
   }
+  // One usage row per request (GET /api/v1/usage). A failure is recorded
+  // too, at $0: "why did my agent go quiet at 3am" is a usage question.
+  const logged = (r: InferenceResult | null, err?: InferenceError | null) => {
+    const [prov, ...rest] = (r ? slug(r) : String(models[0] ?? '')).split('/')
+    recordApiUsage({
+      userId: tok.userId, tokenId: tok.tokenId, surface: 'chat',
+      provider: rest.length ? prov : null, modelName: rest.length ? rest.join('/') : prov,
+      status: r ? 'success' : 'failed', inputTokens: r?.inputTokens ?? null, outputTokens: r?.outputTokens ?? null,
+      cachedTokens: r?.cachedTokens ?? null, costUsd: r?.costUsd ?? 0, errorCode: err?.code ?? null,
+    })
+  }
 
   const request = {
     userId:     tok.userId,
@@ -143,6 +155,7 @@ export async function POST(req: Request) {
             onDelta: (t) => { streamedAnything = true; send(chunkOf(id, created, named, { content: t })) },
           })
           costUsd = result.costUsd
+          logged(result)
           // The schema path buffers, so nothing has gone out yet — emit it
           // now. Keyed on what was actually sent, NOT on whether the reply
           // parsed: a json_object request without a schema both streams and
@@ -156,6 +169,7 @@ export async function POST(req: Request) {
           const e = err instanceof InferenceError
             ? err : new InferenceError((err as Error)?.message ?? 'generation failed', 502, 'provider_error', 'api_error')
           console.warn(`${LOG} stream failed: ${e.message}`)
+          logged(null, e)
           // Mid-stream there is no status code left to set, so the error goes
           // in-band. Clients that follow OpenAI's SSE contract surface it.
           send({ error: { message: e.message, type: e.type, code: e.code } })
@@ -180,6 +194,7 @@ export async function POST(req: Request) {
   try {
     const result = await runInference(request)
     settle(result.costUsd)
+    logged(result)
     return Response.json({
       id:      `chatcmpl-${crypto.randomUUID()}`,
       object:  'chat.completion',
@@ -200,6 +215,7 @@ export async function POST(req: Request) {
     })
   } catch (err) {
     settle(0)
+    logged(null, err instanceof InferenceError ? err : null)
     if (err instanceof InferenceError) return errorResponse(err)
     console.error(`${LOG} unhandled:`, err)
     return fail(500, 'Internal error.', 'internal_error', 'api_error')

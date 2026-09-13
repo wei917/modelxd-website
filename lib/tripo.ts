@@ -26,6 +26,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from './supabase-server'
 import { resolveApiToken } from './api-token'
 import { grantCredits, debitCredits } from './credits'
+import { recordApiUsage, settleApiUsage } from './api-usage'
 
 export const TRIPO_BASE = 'https://openapi.tripo3d.ai/v3'
 const LOG = '[tripo]'
@@ -43,11 +44,17 @@ export function tripoKey(): string | null {
 
 /** Session cookie or ModelXD API key — the same two doors XCreate answers. */
 export async function callerId(req: Request): Promise<string | null> {
+  return (await caller(req))?.userId ?? null
+}
+
+/** The caller plus the API key it came through (null for a session), so a
+ *  key's Tripo spend shows up in GET /api/v1/usage. */
+export async function caller(req: Request): Promise<{ userId: string; tokenId: string | null } | null> {
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()
-  if (user) return user.id
+  if (user) return { userId: user.id, tokenId: null }
   const tok = await resolveApiToken(req.headers.get('authorization'))
-  return tok ? tok.userId : null
+  return tok ? { userId: tok.userId, tokenId: tok.tokenId } : null
 }
 
 /** Tripo's published per-task credits (1 credit = 1 cent). */
@@ -80,8 +87,13 @@ export async function tripoGet(path: string): Promise<{ status: number; json: an
 /** Record a created task; debit its list price. Returns billed cents. */
 export async function recordTask(opts: {
   userId: string; taskId: string; kind: TripoKind; inputTaskId?: string | null
-  params: Record<string, unknown>; billCents: number
+  params: Record<string, unknown>; billCents: number; tokenId?: string | null
 }): Promise<void> {
+  if (opts.tokenId) {
+    // Written at the estimate; reconcile() settles it to Tripo's number.
+    recordApiUsage({ userId: opts.userId, tokenId: opts.tokenId, surface: '3d', provider: 'tripo',
+      modelName: String((opts.params as any)?.model ?? opts.kind), costUsd: opts.billCents / 100, refId: opts.taskId })
+  }
   const sb = service()
   const { error } = await sb.from('tripo_tasks').insert({
     task_id: opts.taskId, user_id: opts.userId, kind: opts.kind,
@@ -152,18 +164,19 @@ export async function reconcile(userId: string, taskId: string, tripoTask: any):
       description: 'Tripo price reconciliation',
     }).catch(e => console.error(`${LOG} extra debit failed for ${taskId}:`, e?.message ?? e))
   }
+  settleApiUsage('3d', taskId, actualCents / 100, status === 'success' ? 'success' : 'failed')
   console.log(`${LOG} settled ${taskId}: billed ${row.billed_cents}c, actual ${actualCents}c (${status})`)
   return actualCents
 }
 
 /** Uniform guards for every route. */
-export async function guard(req: Request): Promise<{ userId: string } | Response> {
+export async function guard(req: Request): Promise<{ userId: string; tokenId: string | null } | Response> {
   if (!tripoKey()) {
     return Response.json({ error: 'Tripo is not configured on this deployment (TRIPO_API_KEY not set).' }, { status: 503 })
   }
-  const userId = await callerId(req)
-  if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  return { userId }
+  const c = await caller(req)
+  if (!c) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  return c
 }
 
 /** Pass Tripo's own error body through, with our status mirroring theirs. */

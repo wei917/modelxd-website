@@ -88,6 +88,19 @@ export async function GET(req: Request) {
       pricing_usd_per_1m: isText
         ? { input: price(m.model_pricing, 'text_input'), output: price(m.model_pricing, 'text_output') }
         : { input: null, output: null },
+      // Image and video list prices, as the catalog stores them: per image
+      // keyed by quality/size ("medium", "high:1536x1024") and per second of
+      // video keyed by resolution ("720p"). Token-billed image models also
+      // carry their per-1M image token rates. null for text models.
+      pricing_usd_per_output: mods.includes('image') ? {
+        unit: 'image',
+        per_image: (m.model_pricing as any)?.per_image ?? null,
+        image_tokens_per_1m: (m.model_pricing as any)?.tokens?.image_output != null
+          ? { input: (m.model_pricing as any).tokens.image_input ?? null, output: (m.model_pricing as any).tokens.image_output } : null,
+      } : mods.includes('video') ? {
+        unit: 'second',
+        per_second: (m.model_pricing as any)?.per_video_second ?? null,
+      } : null,
       capabilities: {
         web_search: (caps as string[]).includes('web_search'),
         // Structured output is the API's headline feature and every text model
@@ -119,6 +132,7 @@ export async function GET(req: Request) {
     modalities: ['text'],
     endpoint: '/api/v1/chat/completions',
     pricing_usd_per_1m: { input: null, output: null },   // billed at whatever model it picks
+    pricing_usd_per_output: null,
     capabilities: { web_search: false, structured_output: true, vision: false },
     modes: [],
     tags: ['router'],

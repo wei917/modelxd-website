@@ -31,6 +31,6 @@ export async function POST(req: Request) {
   const taskId = json?.data?.task_id
   if (status !== 200 || !taskId) return passThrough(status, json)
 
-  await recordTask({ userId: g.userId, taskId, kind: 'text_to_model', params: fwd, billCents: cents })
+  await recordTask({ userId: g.userId, tokenId: g.tokenId, taskId, kind: 'text_to_model', params: fwd, billCents: cents })
   return Response.json({ ...json, usage: { cost_usd: cents / 100, billing: 'debited now; reconciled to Tripo consumed_credit at first terminal poll' } })
 }
