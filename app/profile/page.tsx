@@ -158,6 +158,22 @@ export default function ProfilePage() {
   const ringRef   = useRef<HTMLDivElement>(null)
   const [user,        setUser]        = useState<any>(null)
   const [profile,     setProfile]     = useState<Profile | null>(null)
+  // /profile#language is where the sidebar globe lands (Sep 14): bring the
+  // picker into view and focus it once the profile has rendered (the page
+  // shows Loading until then), and again on a hash change when the globe is
+  // clicked while already here.
+  useEffect(() => {
+    const go = () => {
+      if (window.location.hash !== '#language') return
+      const el = document.getElementById('language') as HTMLSelectElement | null
+      if (!el) return
+      el.scrollIntoView({ block: 'center' })
+      el.focus({ preventScroll: true })
+    }
+    go()
+    window.addEventListener('hashchange', go)
+    return () => window.removeEventListener('hashchange', go)
+  }, [profile])
   const [tab,         setTab]         = useState<Tab>('duels')
   const [duels,       setDuels]       = useState<any[]>([])
   const [xcreates,    setXcreates]    = useState<any[]>([])
@@ -743,6 +759,7 @@ export default function ProfilePage() {
             {/* Language picker — auto-detect handles first visits; this is
                 the manual override. Labels are each language's own name. */}
             <select
+              id="language"
               value={lang}
               onChange={e => setLang(e.target.value as Lang)}
               aria-label="Language"

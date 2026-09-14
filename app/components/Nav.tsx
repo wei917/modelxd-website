@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../lib/AuthModalContext'
-import { useLang, LANGS, type Lang } from '../../lib/i18n'
+import { useLang } from '../../lib/i18n'
 import { XCREATE_TEMPLATES } from '../xcreate/templates'
 import ContactEmail from './ContactEmail'
 import BugReportLink from './BugReport'
@@ -86,7 +86,7 @@ export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const { show } = useAuthModal()
-  const { lang, setLang, t } = useLang()
+  const { lang, t } = useLang()
   const [menuOpen, setMenuOpen] = useState(false)
   // dev.modelxd.com and localhost wear a Beta tag with an exit to the
   // official site (CC, Aug 3) — anywhere that isn't www is a dev build.
@@ -369,6 +369,20 @@ export default function Nav() {
       e.preventDefault()
       show(href)
     }
+  }
+  // The globe goes to the language picker on /profile, explicitly: signed
+  // out it opens the sign-in modal with that return path; elsewhere it
+  // pushes the route (the profile page focuses the picker once it renders);
+  // already on /profile it focuses the picker directly, because a Link push
+  // of the same hash appended a second #language (observed Sep 14). The
+  // href stays on the element for open-in-new-tab.
+  const goToLanguage = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!user) { show('/profile#language'); return }
+    if (pathname !== '/profile') { router.push('/profile#language'); return }
+    const el = document.getElementById('language') as HTMLSelectElement | null
+    if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }) }
+    if (window.location.hash !== '#language') window.history.replaceState(window.history.state, '', '/profile#language')
   }
 
   return (
@@ -690,15 +704,6 @@ export default function Nav() {
       {/* Auth — bottom of the sidebar, above Terms (CC, July 20): the
           content-area TopBar is gone; profile avatar / Sign In live HERE. */}
       <div className="nav-auth">
-        {/* Language — shared chrome, reachable before sign-in (Sep 14). The
-            only other picker was on /profile, so a visitor on a borrowed
-            English laptop never found 日本語. Same store as that picker. */}
-        <label className="nav-lang">
-          <NavIcon name="globe" />
-          <select aria-label={t('nav.lang')} value={lang} onChange={e => setLang(e.target.value as Lang)}>
-            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-          </select>
-        </label>
         {!authLoaded ? (
           <div style={{ height: 30 }} aria-hidden />
         ) : user ? (
@@ -715,6 +720,14 @@ export default function Nav() {
         ) : (
           <button className="nav-login" onClick={() => show()}>{t('auth.signin')}</button>
         )}
+        {/* Language lives on /profile (owner, Sep 14: the sidebar's rows are
+            for product links, not a selector). The globe is the way there;
+            signed out it opens the sign-in modal like every protected link.
+            ?lang=xx stays the direct entry (LangProvider). */}
+        <Link href="/profile#language" className="nav-lang-link" aria-label={t('nav.lang')} title={t('nav.lang')}
+              onClick={goToLanguage}>
+          <NavIcon name="globe" />
+        </Link>
       </div>
 
       {/* Terms + Contact — pinned to the bottom of the sidebar (CC, July 20). */}
@@ -743,14 +756,21 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {/* Language first: below the 13 links it sat at y=936 on a 360x800
-            phone, i.e. off-screen for the visitor it exists for. */}
-        <label className="nav-lang nav-lang--mobile">
-          <NavIcon name="globe" />
-          <select aria-label={t('nav.lang')} value={lang} onChange={e => setLang(e.target.value as Lang)}>
-            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-          </select>
-        </label>
+        {/* Account and language in one compact row at the top (owner,
+            Sep 14): the product links get the space. Sign Out lives on the
+            profile page (CC, July 19); the globe goes to the language
+            setting there. */}
+        <div className="nav-mobile-account">
+          {authLoaded && (user ? (
+            <Link href="/profile">{t('nav.profile')}</Link>
+          ) : (
+            <button type="button" onClick={() => { setMenuOpen(false); show() }}>{t('auth.signin')}</button>
+          ))}
+          <Link href="/profile#language" className="nav-lang-link" aria-label={t('nav.lang')} title={t('nav.lang')}
+                onClick={e => { setMenuOpen(false); goToLanguage(e) }}>
+            <NavIcon name="globe" />
+          </Link>
+        </div>
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
@@ -767,13 +787,6 @@ export default function Nav() {
           <ContactEmail />
         <BugReportLink />
         </div>
-        {/* Sign Out moved to the profile page (CC, July 19) — the
-            Profile link above is the path to it. */}
-        {authLoaded && (user ? (
-          <Link href="/profile">{t('nav.profile')}</Link>
-        ) : (
-          <button type="button" onClick={() => { setMenuOpen(false); show() }}>{t('auth.signin')}</button>
-        ))}
       </div>
     </nav>
   )

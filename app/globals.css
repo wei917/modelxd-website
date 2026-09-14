@@ -106,28 +106,9 @@ html[lang="ja"] .nav-foot a      { letter-spacing: 0.08em; }
 html[lang="ja"] .prompt-label    { font-size: 11.5px; }
 html[lang="ja"] .nav-links a     { letter-spacing: 0.04em; }
 
-/* Language selector in the sidebar (Sep 14): part of the auth block so it
-   is pinned to the bottom with Sign In and visible before sign-in. In the
-   collapsed rail the native <select> sits invisibly over the globe, so a
-   click on the icon still opens the full list. */
-.nav-lang { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--muted2); }
-.nav-lang svg { flex-shrink: 0; }
-.nav-lang select {
-  flex: 1; min-width: 0;
-  font-family: var(--font-body), sans-serif; font-size: 12.5px; color: var(--white);
-  background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
-  padding: 6px 8px; cursor: none;
-}
-.nav-lang select:focus { outline: none; border-color: var(--red); }
-.nav--collapsed .nav-lang { position: relative; justify-content: center; margin: 0 0 6px; }
-.nav--collapsed .nav-lang select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
-/* Mobile menu: the selector is the first row, at a size a thumb can hit
-   (16px text also stops iOS Safari zooming the page on focus). */
-.nav-mobile-overlay .nav-lang { padding: 0 4px; margin: 0 0 6px; }
 /* XGame practice board: a focused cell is visible (SVG rects are focusable
    via tabIndex; outline applies in Chrome/Safari/Firefox). */
 .practice-cell:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
-.nav-mobile-overlay .nav-lang select { font-size: 16px; min-height: 44px; padding: 8px 12px; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -247,9 +228,9 @@ body {
 /* Sidebar footer links (Terms / Contact) — pinned to the bottom. */
 .nav-auth { margin-top: auto; padding: 0 12px 10px; }
 .nav-auth-profile {
-  display: flex; align-items: center; gap: 10px; text-decoration: none;
-  width: 100%; min-width: 0;
-  padding: 6px 8px; margin: 0; border-radius: 8px; transition: background 0.15s;
+  display: flex; align-items: center; gap: 8px; text-decoration: none;
+  flex: 1 1 auto; min-width: 0;
+  padding: 6px 4px; margin: 0; border-radius: 8px; transition: background 0.15s;
 }
 .nav-auth-profile:hover { background: var(--surface2); }
 .nav-auth-profile img, .nav-auth-initials {
@@ -266,15 +247,17 @@ body {
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted2);
   min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.nav-auth .nav-login { width: 100%; }
+.nav-auth .nav-login { width: auto; flex: 1 1 auto; min-width: 0; }
 .nav-foot {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 10px 12px 0; border-top: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; column-gap: 12px; row-gap: 0;
+  padding: 6px 12px 0; border-top: 1px solid var(--border);
 }
+/* The hamburger overlay keeps its stacked copy of the footer. */
+.nav-mobile-overlay .nav-foot { flex-direction: column; flex-wrap: nowrap; }
 .nav-foot a {
   font-family: var(--font-mono), monospace; font-size: 10px;
   letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--muted); text-decoration: none; padding: 4px 0;
+  color: var(--muted); text-decoration: none; padding: 4px 0; line-height: 1.4;
   transition: color 0.15s;
 }
 .nav-foot a:hover, .nav-foot a.active { color: var(--red); }
@@ -306,7 +289,7 @@ body {
   font-family: var(--font-mono), monospace;
   font-size: 13px; color: var(--muted2);
   text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase;
-  padding: 10px 12px; border-radius: 8px;
+  padding: 8px 12px; border-radius: 8px; line-height: 1.3;
   transition: color 0.15s, background 0.15s;
 }
 .nav-links a:hover  { color: var(--white); background: rgba(214,59,50,0.06); }
@@ -343,16 +326,28 @@ body {
   .nav--collapsed .nav-auth { justify-content: center; padding-left: 0; padding-right: 0; }
   .nav--collapsed .nav-auth-profile { margin: 0; padding: 6px; justify-content: center; }
 }
-/* Language and account actions each get a full row in the narrow rail. */
+/* One compact account row (owner, Sep 14): the auth action grows, the globe
+   keeps 30px and leads to the language setting on /profile. Collapsed, the
+   two stack and centre. */
 .nav-auth {
   margin-top: auto;
-  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  display: flex; flex-direction: row; align-items: center; gap: 8px;
   flex-shrink: 0;
-  padding: 14px 8px 4px;
+  padding: 10px 8px 2px;
   border-top: 1px solid var(--border);
   min-width: 0;
 }
-.nav-auth .nav-lang { min-width: 0; margin: 0; }
+.nav--collapsed .nav-auth { flex-direction: column; align-items: center; gap: 6px; }
+.nav-lang-link {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted2); transition: color 0.15s, background 0.15s;
+}
+.nav-lang-link:hover { color: var(--red); background: var(--red-dim); }
+.nav-mobile-overlay .nav-mobile-account { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.nav-mobile-overlay .nav-mobile-account > a:first-child,
+.nav-mobile-overlay .nav-mobile-account > button { flex: 1; }
+.nav-mobile-overlay .nav-lang-link { width: 44px; height: 44px; padding: 0; border: none; justify-content: center; color: var(--muted2); }
 
 /* ── Mobile nav: hamburger menu under 760px ─────────────────────────────── */
 .nav-burger {
@@ -1175,15 +1170,21 @@ select {
    as a distinct layer (CC). Rows are smaller + sentence-case vs the
    uppercase mono menu links. Scrolls independently if long. */
 .nav-history {
-  margin-top: 14px; padding-top: 12px;
+  margin-top: 8px; padding-top: 6px;
   border-top: 1px solid var(--border);
   overflow-y: auto; scrollbar-width: thin;
-  min-height: 0;
+  min-height: 0; flex-shrink: 0;
+  /* Heading plus two or three rows (owner, Sep 14): the product links get
+     the sidebar's height; every record stays reachable by scrolling here,
+     and the collapse chevron stays in the sticky heading. */
+  max-height: 96px;
 }
+@media (max-height: 800px) { .nav-history { max-height: 72px; } }
 .nav-history-head {
   display: flex; align-items: center; justify-content: space-between;
   width: 100%; padding: 4px 12px 6px;
-  background: none; border: none; cursor: pointer; border-radius: 8px;
+  background: #ffffff; border: none; cursor: pointer; border-radius: 8px;
+  position: sticky; top: 0; z-index: 1;
 }
 .nav-history-head:hover .nav-history-cap,
 .nav-history-head:hover .nav-history-toggle { color: var(--red); }
