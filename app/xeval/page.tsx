@@ -566,18 +566,15 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
   const rateTier = (x: number) =>
     x >= 0.8 ? 'elite' : x >= 0.7 ? 'good' : x >= 0.55 ? 'mid' : x >= 0.4 ? 'fair' : 'poor'
   const taskN = new Set([...latest.values()].map(r => r.task_id)).size
-  // ModelXD Autopilot: the library serving each task's cheapest SOLVER
-  // (cheapest attempt where nobody solves). Derived from the same runs —
-  // a measured selection, disclosed in the methodology like the GDPval row.
-  // The Autopilot row is a per-task SELECTION over completed runs, so it only
-  // belongs where the owner approved it (GDPval, Terminal-Bench). Not on LAB:
-  // serving the winner presupposes classifying an incoming task to a
-  // benchmarked one, and the similarity test says we cannot do that yet
-  // (nearest-neighbour winner transfer 30% vs a 52% baseline).
-  // Category-best applies to every verifier/rubric benchmark, LAB included:
-  // its tasks carry practice areas, so the rule is the same measurement as
-  // GDPval's sectors. (Most LAB areas hold one task today — the methodology
-  // says the strength depends on tasks per category.)
+  // ModelXD Autopilot: a CATEGORY-BEST selection over these same runs (the
+  // byCat / catPick block below), the same rule as GDPval's sector row. It is
+  // a measured selection, not a blind entry, and the page says so in the
+  // methodology and in the note beside the lead. It applies to every
+  // verifier/rubric benchmark, LAB included: LAB's tasks carry practice
+  // areas, so the rule is the same measurement as GDPval's sectors. (Most
+  // LAB areas hold one task today; the methodology says the strength depends
+  // on tasks per category.) The per-task "cheapest solver" rule this block
+  // once implemented is gone; the copy was corrected with it (Sep 14).
   if (by.size > 1) {
     const byTask = new Map<string, RunRow[]>()
     for (const r of latest.values()) {
