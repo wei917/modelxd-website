@@ -91,7 +91,7 @@ export default function MethodologyPage() {
           <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: 'var(--red)' }}>//</span> METHODOLOGY
           </div>
-          <LocaleSummary items={['legal.method.quality', 'legal.method.value', 'legal.method.keep', 'legal.method.score']} />
+          <LocaleSummary noteKey="legal.summary.method.note" items={['legal.method.quality', 'legal.method.value', 'legal.method.keep', 'legal.method.score']} />
           <h1 style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1, margin: '0 0 16px' }}>
             How <span style={{ color: 'var(--red)' }}>XDRating</span> Works
           </h1>

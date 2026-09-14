@@ -378,6 +378,12 @@ export default function XEvalPage() {
               .replace('{rating}', String(topRow?.rating ?? ''))
               .replace('{anchor}', String(anchorRow?.rating ?? 1000))}
           </p>
+          {/* The Autopilot row is a selection over these same runs, not a
+              blind entry. Said here, beside the table, not only in the
+              methodology box at the bottom (TGS review, Sep 14). */}
+          {ratings.some(r => r.model_name === 'modelxd-router') && (
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.65, maxWidth: 760, margin: '-8px 0 20px' }}>{t('xeval.autopilot.note')}</p>
+          )}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
               <thead>
@@ -453,13 +459,9 @@ export default function XEvalPage() {
           <FrontierChart rows={filtered} domainRows={ratings} perEntry={perEntry} avg={avg} />
 
           {/* Methodology — the disclosure IS the differentiator. */}
-          <section id="xeval-methodology" style={{ marginTop: 32, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>
+          <section id="xeval-methodology" style={{ marginTop: 32, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, maxWidth: 860 }}>
             <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
-            <p style={{ margin: '8px 0 0' }}>
-              {t('xeval.method.body')
-                .replace('{tasks}', String(taskCount))
-                .replace('{judge}', judge)}
-            </p>
+            <Paras text={t('xeval.method.body').replace('{tasks}', String(taskCount)).replace('{judge}', judge)} />
           </section>
           </>
           )}
@@ -653,6 +655,9 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
           .replace('{pass}', rows[0]?.n ? `${Math.round((rows[0].solved / rows[0].n) * 100)}%` : '')
           .replace('{cost}', rows[0] ? money(rows[0].cost / rows[0].n) : '')}
       </p>
+      {rows.some(r => r.provider === 'modelxd') && (
+        <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.65, maxWidth: 760, margin: '-8px 0 20px' }}>{t('xeval.autopilot.note.tb')}</p>
+      )}
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '0 0 24px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
         <span><strong style={{ color: 'var(--white)' }}>{rows.length}</strong> {t('xeval.stat.entries')}</span>
         <span><strong style={{ color: 'var(--white)' }}>{taskN}</strong> {t('xeval.stat.tasks')}</span>
@@ -703,10 +708,8 @@ function TBSection({ runs, label }: { runs: RunRow[]; label: string }) {
       {anyCost && <EffortCurveChart rows={rows.filter(r => r.provider !== 'modelxd')} />}
       <section style={{ fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.65, borderTop: '1px solid var(--border)', paddingTop: 14, maxWidth: 860 }}>
         <strong style={{ color: 'var(--white)' }}>{t('xeval.method.title')}</strong>
-        <p style={{ margin: '8px 0 0' }}>
-          {(label === 'Harvey LAB' ? t('xeval.lab.method.body') : label === 'Social (SOTOPIA)' ? t('xeval.social.method.body') : t('xeval.tb.method.body'))
-            .replace('{n}', String(taskN)).replace('{set}', label).replace('{harness}', String(harness))}
-        </p>
+        <Paras text={(label === 'Harvey LAB' ? t('xeval.lab.method.body') : label === 'Social (SOTOPIA)' ? t('xeval.social.method.body') : t('xeval.tb.method.body'))
+          .replace('{n}', String(taskN)).replace('{set}', label).replace('{harness}', String(harness))} />
       </section>
     </>
   )
@@ -991,4 +994,12 @@ function FrontierChart({ rows, domainRows, perEntry, avg }: {
       </div>
     </div>
   )
+}
+
+/** Long disclosure text as paragraphs. The i18n strings carry '\n\n' at
+ *  their breaks (en and ja today); a string without breaks is one
+ *  paragraph, as before. A wall of 200 words in one <p> was unreadable in
+ *  Japanese (TGS pass, Sep 14). */
+function Paras({ text }: { text: string }) {
+  return <>{text.split(/\n{2,}/).map((para, i) => <p key={i} style={{ margin: i ? '10px 0 0' : '8px 0 0' }}>{para}</p>)}</>
 }

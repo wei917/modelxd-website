@@ -28,6 +28,7 @@
 // rest lazy. .mp4/.webm previews play on hover only.
 
 import { useEffect, useRef, useState } from 'react'
+import { useT, tOr } from '../../lib/i18n'
 import type { Template } from '../xcreate/templates'
 
 // Gradient palette for the no-preview fallback, cycled by index so
@@ -79,6 +80,9 @@ export default function TemplatePicker({
   disabled?:   boolean
   layout?:     'row' | 'grid' | 'wrap'
 }) {
+  // Card titles/subtitles are English in templates.ts; Japanese comes from
+  // xct.<id>.* keys with the English as fallback (TGS pass, Sep 14).
+  const tr = useT()
   const isGrid   = layout === 'grid'
   const isWrap   = layout === 'wrap'
   const rowRef   = useRef<HTMLDivElement | null>(null)
@@ -161,7 +165,7 @@ export default function TemplatePicker({
         key={t.id}
         ref={el => { cardRefs.current[t.id] = el }}
         type="button"
-        title={active ? `${t.subtitle} — click to clear` : t.subtitle}
+        title={active ? `${tOr(tr, `xct.${t.id}.subtitle`, t.subtitle)} — click to clear` : tOr(tr, `xct.${t.id}.subtitle`, t.subtitle)}
         aria-pressed={active}
         onClick={() => {
           if (disabled) return
@@ -240,7 +244,7 @@ export default function TemplatePicker({
             fontSize: 12.5, fontWeight: 700, lineHeight: 1.25,
             color: active ? 'var(--red)' : 'var(--white)',
             whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{t.title}</span>
+          }}>{tOr(tr, `xct.${t.id}.title`, t.title)}</span>
         </span>
       </button>
     )
@@ -263,7 +267,7 @@ export default function TemplatePicker({
         key={t.id}
         ref={el => { cardRefs.current[t.id] = el }}
         type="button"
-        title={active ? `${t.subtitle} — click to clear` : t.subtitle}
+        title={active ? `${tOr(tr, `xct.${t.id}.subtitle`, t.subtitle)} — click to clear` : tOr(tr, `xct.${t.id}.subtitle`, t.subtitle)}
         aria-pressed={active}
         onClick={() => {
           if (disabled) return
@@ -390,7 +394,7 @@ export default function TemplatePicker({
             whiteSpace: 'nowrap' as const,
             overflow: 'hidden', textOverflow: 'ellipsis',
             display: 'block',
-          }}>{t.title}</span>
+          }}>{tOr(tr, `xct.${t.id}.title`, t.title)}</span>
         </div>
       </button>
     )
