@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import LandingAgent from './components/LandingAgent'
-import TgsHeroCard from './tgs/HeroCard'
+import PlaygroundHeroCard from './playground/HeroCard'
 import ContactEmail from './components/ContactEmail'
 import BugReportLink from './components/BugReport'
 import { useRouter } from 'next/navigation'
@@ -383,10 +383,11 @@ export default function Home() {
           </div>
         </div>
         {lang === 'ja' ? (
-          // TGS 2026 (owner, Sep 14): the Japanese first screen shows one of
-          // the new game artworks and leads to /tgs; the agent panel moves
-          // under the hero. English keeps the agent beside the pitch.
-          <TgsHeroCard />
+          // Playground (owner, Sep 14): the Japanese first screen shows the
+          // playground's hero artwork and leads to /playground; the agent
+          // panel moves under the hero. English keeps the agent beside the
+          // pitch.
+          <PlaygroundHeroCard />
         ) : (
           <div className="home-hero-agent">
             <LandingAgent />

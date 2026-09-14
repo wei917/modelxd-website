@@ -1,14 +1,14 @@
-import type { Metadata } from 'next'
-import TgsClient from './client'
+import { redirect } from 'next/navigation'
 
-// Public: no sign-in, no model call, no credits. The gallery only shows
-// pictures and prompts; the two actions open XDuel / XDirect with the prompt
-// filled in and nothing runs until the visitor presses start there.
-export const metadata: Metadata = {
-  title: 'TGS 2026 · AI fan art gallery — ModelXD',
-  description: 'Unofficial AI fan concepts of famous Japanese games, generated for the Tokyo Game Show 2026 showcase. Open a work for its prompt and run it as an XDuel.',
-}
-
-export default function TgsPage() {
-  return <TgsClient />
+// /tgs was the first name of the playground (Sep 14). Old links keep
+// working: redirect to /playground with the query (?lang=ja …) intact.
+export default async function TgsRedirect({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams
+  const qs = new URLSearchParams()
+  for (const [k, val] of Object.entries(sp)) {
+    if (Array.isArray(val)) val.forEach(x => qs.append(k, x))
+    else if (val != null) qs.set(k, val)
+  }
+  const s = qs.toString()
+  redirect('/playground' + (s ? `?${s}` : ''))
 }
