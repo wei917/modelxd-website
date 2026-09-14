@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC } from 'next/font/google'
+import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC, Noto_Sans_JP } from 'next/font/google'
 import { AuthModalProvider } from '../lib/AuthModalContext'
 import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
@@ -26,10 +26,14 @@ const barlowDisplay = Barlow({
   weight: ['700', '800', '900'],
   variable: '--font-display',
 })
+// The mono SOURCE token. The public `--font-mono` is composed from it on
+// <body> in globals.css, so Japanese mode can append Noto Sans JP as a
+// per-glyph fallback: digits and code stay JetBrains Mono, kana and kanji
+// in mono-styled labels get real glyphs (Sep 14).
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
-  variable: '--font-mono',
+  variable: '--font-mono-src',
 })
 // Wide, single-weight display font — used for the ModelXD logo so the
 // letters look chunky and distinct instead of narrow like Barlow Condensed.
@@ -45,6 +49,16 @@ const notoTC = Noto_Sans_TC({
   subsets: ['latin'],
   weight: ['400', '500', '700', '900'],
   variable: '--font-zh',
+  preload: false,
+  display: 'swap',
+})
+// Japanese — used when the site is switched to 日本語 (Sep 14, TGS pass).
+// Japanese used to fall through to system glyphs; the zh override must not
+// be reused for it (different glyph forms). Same on-demand loading as TC.
+const notoJP = Noto_Sans_JP({
+  subsets: ['latin'],
+  weight: ['400', '500', '700', '900'],
+  variable: '--font-ja',
   preload: false,
   display: 'swap',
 })
@@ -67,7 +81,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable}`}>
+      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}`}>
         <LangProvider>
           <AuthModalProvider>
             <PageTitleProvider>

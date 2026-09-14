@@ -63,14 +63,67 @@
   --card:         var(--surface);
 }
 
+/* Font tokens are resolved on BODY, not html: next/font declares its
+   variables through a class on <body>, so a token set on <html> is shadowed
+   for everything inside body. Both language overrides below therefore target
+   `html[lang] body`. (The zh rule used to sit on html and was shadowed by
+   that class — Sep 14.) The public `--font-mono` is composed from the source
+   token so Japanese can append a fallback family. */
+body { --font-mono: var(--font-mono-src); }
+
 /* Chinese mode: re-point the font tokens to Noto Sans TC (Traditional /
    Taiwan) so all UI text renders with proper CJK glyphs. Latin text keeps
    working since Noto TC includes Latin. */
-html[lang="zh-Hant"] {
+html[lang="zh-Hant"] body {
   --font-body:    var(--font-zh);
   --font-display: var(--font-zh);
   --font-mono:    var(--font-zh);
 }
+
+/* Japanese mode (Sep 14, TGS pass): Noto Sans JP for body and display text.
+   Mono keeps JetBrains Mono for digits and code, with Noto Sans JP as the
+   per-glyph fallback so kana and kanji inside mono-styled labels get real
+   glyphs. Wide tracking, designed for uppercase Latin labels, is relaxed:
+   it fragments Japanese. Headings drop the tight Latin letter-spacing and
+   get room to wrap on phrase boundaries. */
+html[lang="ja"] body {
+  --font-body:    var(--font-ja);
+  --font-display: var(--font-ja);
+  --font-mono:    var(--font-mono-src), var(--font-ja);
+  line-height: 1.7;
+}
+html[lang="ja"] .home-hero-title { font-size: clamp(34px, 3.6vw, 56px); font-weight: 800; letter-spacing: 0; line-height: 1.22; max-width: 760px; }
+html[lang="ja"] .home-hero-sub   { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.75; }
+html[lang="ja"] .prompt-title    { letter-spacing: 0; line-height: 1.25; }
+html[lang="ja"] .page-headline   { line-height: 1.45; }
+html[lang="ja"] .prompt-label,
+html[lang="ja"] .home-hero-eyebrow,
+html[lang="ja"] .home-compare-eyebrow,
+html[lang="ja"] .ms-cap,
+html[lang="ja"] .nav-auth-name,
+html[lang="ja"] .nav-foot a      { letter-spacing: 0.08em; }
+html[lang="ja"] .prompt-label    { font-size: 11.5px; }
+html[lang="ja"] .nav-links a     { letter-spacing: 0.04em; }
+
+/* Language selector in the sidebar (Sep 14): part of the auth block so it
+   is pinned to the bottom with Sign In and visible before sign-in. In the
+   collapsed rail the native <select> sits invisibly over the globe, so a
+   click on the icon still opens the full list. */
+.nav-lang { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--muted2); }
+.nav-lang svg { flex-shrink: 0; }
+.nav-lang select {
+  flex: 1; min-width: 0;
+  font-family: var(--font-body), sans-serif; font-size: 12.5px; color: var(--white);
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 8px;
+  padding: 6px 8px; cursor: none;
+}
+.nav-lang select:focus { outline: none; border-color: var(--red); }
+.nav--collapsed .nav-lang { position: relative; justify-content: center; margin: 0 0 6px; }
+.nav--collapsed .nav-lang select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+/* Mobile menu: the selector is the first row, at a size a thumb can hit
+   (16px text also stops iOS Safari zooming the page on focus). */
+.nav-mobile-overlay .nav-lang { padding: 0 4px; margin: 0 0 6px; }
+.nav-mobile-overlay .nav-lang select { font-size: 16px; min-height: 44px; padding: 8px 12px; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

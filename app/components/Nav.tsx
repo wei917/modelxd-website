@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../lib/AuthModalContext'
-import { useLang } from '../../lib/i18n'
+import { useLang, LANGS, type Lang } from '../../lib/i18n'
 import { XCREATE_TEMPLATES } from '../xcreate/templates'
 import ContactEmail from './ContactEmail'
 import BugReportLink from './BugReport'
@@ -51,6 +51,7 @@ function NavIcon({ name }: { name: string }) {
     // A cube in a ring: a 3D thing you can walk around.
     case 'world':  return (<svg {...p}><path d="M12 3l7 4v8l-7 4l-7-4V7z"/><path d="M5 7l7 4l7-4"/><path d="M12 11v8"/></svg>)
     case 'dev':    return (<svg {...p}><path d="M8 6l-5 6l5 6"/><path d="M16 6l5 6l-5 6"/><path d="M12 9v6"/><circle cx="12" cy="9" r="0.8" fill="currentColor"/></svg>)
+    case 'globe':  return (<svg {...p}><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>)
     default:       return null
   }
 }
@@ -85,7 +86,7 @@ export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
   const { show } = useAuthModal()
-  const { lang, t } = useLang()
+  const { lang, setLang, t } = useLang()
   const [menuOpen, setMenuOpen] = useState(false)
   // dev.modelxd.com and localhost wear a Beta tag with an exit to the
   // official site (CC, Aug 3) — anywhere that isn't www is a dev build.
@@ -689,6 +690,15 @@ export default function Nav() {
       {/* Auth — bottom of the sidebar, above Terms (CC, July 20): the
           content-area TopBar is gone; profile avatar / Sign In live HERE. */}
       <div className="nav-auth">
+        {/* Language — shared chrome, reachable before sign-in (Sep 14). The
+            only other picker was on /profile, so a visitor on a borrowed
+            English laptop never found 日本語. Same store as that picker. */}
+        <label className="nav-lang">
+          <NavIcon name="globe" />
+          <select aria-label={t('nav.lang')} value={lang} onChange={e => setLang(e.target.value as Lang)}>
+            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+          </select>
+        </label>
         {!authLoaded ? (
           <div style={{ height: 30 }} aria-hidden />
         ) : user ? (
@@ -722,7 +732,7 @@ export default function Nav() {
       <button
         type="button"
         className="nav-burger"
-        aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+        aria-label={menuOpen ? t('nav.menu.close') : t('nav.menu.open')}
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen(v => !v)}
       >
@@ -733,6 +743,14 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
+        {/* Language first: below the 13 links it sat at y=936 on a 360x800
+            phone, i.e. off-screen for the visitor it exists for. */}
+        <label className="nav-lang nav-lang--mobile">
+          <NavIcon name="globe" />
+          <select aria-label={t('nav.lang')} value={lang} onChange={e => setLang(e.target.value as Lang)}>
+            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+          </select>
+        </label>
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}

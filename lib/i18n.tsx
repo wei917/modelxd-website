@@ -801,6 +801,9 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.recent':   { en: 'Recent',  'zh-Hant': '最近作品', 'zh-Hans': '最近作品', ja: '最近の作品',  ko: '최근 작품' },
   'nav.profile':      { en: 'Profile', 'zh-Hant': '個人檔案', 'zh-Hans': '个人档案', ja: 'プロフィール', ko: '프로필' },
   'nav.home':         { en: 'Home', 'zh-Hant': '首頁', 'zh-Hans': '首页', ja: 'ホーム', ko: '홈' },
+  'nav.menu.open':     { en: 'Open menu', 'zh-Hant': '開啟選單', 'zh-Hans': '打开菜单', ja: 'メニューを開く', ko: '메뉴 열기' },
+  'nav.menu.close':    { en: 'Close menu', 'zh-Hant': '關閉選單', 'zh-Hans': '关闭菜单', ja: 'メニューを閉じる', ko: '메뉴 닫기' },
+  'nav.lang':          { en: 'Language', 'zh-Hant': '語言', 'zh-Hans': '语言', ja: '言語', ko: '언어' },
   'nav.terms':        { en: 'Terms', 'zh-Hant': '服務條款', 'zh-Hans': '服务条款', ja: '利用規約', ko: '이용약관' },
   'nav.privacy':      { en: 'Privacy', 'zh-Hant': '隱私政策', 'zh-Hans': '隐私政策', ja: 'プライバシー', ko: '개인정보처리방침' },
   'nav.contact':      { en: 'Contact Us', 'zh-Hant': '聯絡我們', 'zh-Hans': '联系我们', ja: 'お問い合わせ', ko: '문의하기' },
@@ -1352,6 +1355,23 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     // preference list, in the USER'S order, first supported language wins
     // → English. Detection is NOT persisted, so users who never touched
     // the picker keep following their browser settings.
+    // Explicit entry link, e.g. a QR code at an event: /?lang=ja. A query
+    // parameter does nothing unless code reads it, so it is read HERE and
+    // nowhere else. It outranks the saved choice, is persisted exactly like
+    // a picker choice, and is then dropped from the URL so a reload or a
+    // shared link does not keep forcing it (Sep 14).
+    try {
+      const url = new URL(window.location.href)
+      const q = url.searchParams.get('lang')
+      if (q && VALID_CODES.has(q)) {
+        setLangState(q as Lang)
+        document.documentElement.lang = q
+        try { window.localStorage.setItem('modelxd:lang', q) } catch {}
+        url.searchParams.delete('lang')
+        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+        return
+      }
+    } catch {}
     const savedRaw = typeof window !== 'undefined' ? window.localStorage.getItem('modelxd:lang') : null
     // Migration: the old two-language toggle stored 'zh' (Traditional).
     const saved = savedRaw === 'zh' ? 'zh-Hant' : savedRaw
