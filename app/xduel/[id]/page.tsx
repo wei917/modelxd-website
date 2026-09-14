@@ -324,11 +324,12 @@ export default function DuelPage() {
                 : <span style={{color:'#555',fontSize:13}}>{duel.prompt.substring(0,120)}{duel.prompt.length>120?'…':''}</span>
               }
             </div>
-            {/* Original input — OWNER-ONLY (CC, July 19): inputs are raw,
-                unmoderated user uploads, so we never show them to other
-                voters. (Revisit with a moderation pass if we ever want
-                voters to see edit-duel originals.) */}
-            {userId && duel.user_id === userId && duel.input_media?.url && (
+            {/* Original input — shown to every viewer (owner, Sep 14: a duel's
+                input is part of the duel; a voter judging "animate this photo"
+                needs the photo). Was owner-only from July 19 because uploads
+                are unmoderated; that concern is now accepted, and the URL was
+                already public through /api/xduel/view. */}
+            {duel.input_media?.url && (
               <div style={{ marginTop: 14, display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                 <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 9, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Original input</span>
                 {duel.input_media.mediaType.startsWith('image/') ? (

@@ -389,9 +389,12 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
       onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.boxShadow = '0 6px 24px rgba(214,59,50,0.12)'; el.style.transform = 'translateY(-2px)' }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)' }}
     >
-      {/* Prompt — large, prominent */}
-      <div style={{ padding: '20px 20px 18px' }}>
+      {/* Prompt — large, prominent. The duel's input, if it has one, sits
+          beside it: a voter judging "animate this photo" needs the photo
+          (owner, Sep 14). */}
+      <div style={{ padding: '20px 20px 18px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <div style={{
+          flex: 1, minWidth: 0,
           fontSize: 17, fontWeight: 500, color: 'var(--white)', lineHeight: 1.4,
           fontFamily: 'var(--font-body), sans-serif',
           letterSpacing: '-0.005em',
@@ -400,6 +403,16 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
         }}>
           {duel.prompt}
         </div>
+        {duel.input_media?.url && /^(image|video)\//.test(duel.input_media.mediaType) && (
+          <div title="Original input" style={{
+            width: 48, height: 48, flexShrink: 0, borderRadius: 8, overflow: 'hidden',
+            border: '1px solid var(--border2)', background: 'var(--surface2)',
+          }}>
+            {duel.input_media.mediaType.startsWith('image/')
+              ? <img src={duel.input_media.url} alt="Original input" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              : <video src={duel.input_media.url} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+          </div>
+        )}
       </div>
 
       {/* Preview — response snippets */}

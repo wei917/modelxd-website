@@ -70,7 +70,7 @@ export async function GET(req: Request) {
   const { data: voted } = await sb.from('duel_votes').select('duel_id').eq('user_id', user.id)
   const votedIds = new Set((voted ?? []).map((r: any) => r.duel_id))
 
-  const columns = 'id, mode, prompt, slots, vote2, community_vote_count, created_at'
+  const columns = 'id, mode, prompt, slots, vote2, community_vote_count, created_at, input_media'
   const base = () => sb.from('duels').select(columns).eq('mode', mode).is('deleted_at', null)
 
   // Two windows, merged. blendedOrder on the client weighs recency against
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
   if (recentRes.error) {
     // Fallback for a database that predates community_vote_count/deleted_at.
     const fb = await sb.from('duels')
-      .select('id, mode, prompt, slots, vote2, created_at')
+      .select('id, mode, prompt, slots, vote2, created_at, input_media')
       .eq('mode', mode)
       .order('created_at', { ascending: false }).limit(RECENT_LIMIT)
     if (fb.error) return Response.json({ duels: [] })
@@ -106,6 +106,7 @@ export async function GET(req: Request) {
       vote2: d.vote2 ?? null,
       community_vote_count: d.community_vote_count ?? 0,
       created_at: d.created_at,
+      input_media: d.input_media ?? null,
       slots: redact(d.slots),
     }))
 
