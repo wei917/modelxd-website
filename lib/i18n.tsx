@@ -801,6 +801,57 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.recent':   { en: 'Recent',  'zh-Hant': '最近作品', 'zh-Hans': '最近作品', ja: '最近の作品',  ko: '최근 작품' },
   'nav.profile':      { en: 'Profile', 'zh-Hant': '個人檔案', 'zh-Hans': '个人档案', ja: 'プロフィール', ko: '프로필' },
   'nav.home':         { en: 'Home', 'zh-Hant': '首頁', 'zh-Hans': '首页', ja: 'ホーム', ko: '홈' },
+  // ── TGS / Japanese pass (Sep 14) ──
+  'xg.lobby.play':          { en: 'Play:', 'zh-Hant': '對戰：', 'zh-Hans': '对战：', ja: '対戦する：', ko: '대전:' },
+  'xg.lobby.play.desc':     { en: 'take a seat at any table and play against the AI.', 'zh-Hant': '在任一桌坐下，和 AI 對戰。', 'zh-Hans': '在任一桌坐下，和 AI 对战。', ja: '席に座って、AIと対戦します。', ko: '자리에 앉아 AI와 대전합니다.' },
+  'xg.lobby.spectate':      { en: 'Spectate:', 'zh-Hant': '觀戰：', 'zh-Hans': '观战：', ja: '観戦する：', ko: '관전:' },
+  'xg.lobby.spectate.desc': { en: 'leave every seat to the models and watch them play.', 'zh-Hant': '把所有座位留給模型，看它們對戰。', 'zh-Hans': '把所有座位留给模型，看它们对战。', ja: 'すべての席をAIに任せて、AI同士の対戦を見ます。', ko: '모든 자리를 AI에게 맡기고 대전을 지켜봅니다.' },
+  'xg.practice.name':       { en: 'Practice', 'zh-Hant': '練習', 'zh-Hans': '练习', ja: '練習', ko: '연습' },
+  'xg.practice.tag':        { en: 'no AI · free', 'zh-Hant': '無 AI · 免費', 'zh-Hans': '无 AI · 免费', ja: 'AIなし・無料', ko: 'AI 없음 · 무료' },
+  'xg.practice.tagline':    { en: 'One Gomoku puzzle, thirty seconds.', 'zh-Hant': '一題五子棋，三十秒。', 'zh-Hans': '一题五子棋，三十秒。', ja: '五目並べを一問、30秒。', ko: '오목 퍼즐 한 문제, 30초.' },
+  'xg.practice.blurb':      { en: 'Find the winning move on a fixed board. No model is called and no credits are used.', 'zh-Hant': '在固定棋盤上找出致勝的一手。不呼叫模型，也不消耗點數。', 'zh-Hans': '在固定棋盘上找出致胜的一手。不调用模型，也不消耗点数。', ja: '決まった盤面で、勝ちの一手を見つけてください。モデルは呼ばず、クレジットも使いません。', ko: '고정된 판에서 이기는 수를 찾으세요. 모델 호출도, 크레딧 사용도 없습니다.' },
+  'xg.practice.eyebrow':    { en: 'PRACTICE', 'zh-Hant': '練習', 'zh-Hans': '练习', ja: '練習', ko: '연습' },
+  'xg.practice.title':      { en: 'Gomoku: find the winning move.', 'zh-Hant': '五子棋：找出致勝的一手。', 'zh-Hans': '五子棋：找出致胜的一手。', ja: '五目並べで、まず一手。', ko: '오목: 이기는 수를 찾으세요.' },
+  'xg.practice.sub':        { en: 'Black has four in a row. Place one black stone to make five. Nothing here calls a model or spends credits.', 'zh-Hant': '黑棋已經四連。放一顆黑棋連成五子。這裡不會呼叫模型，也不會消耗點數。', 'zh-Hans': '黑棋已经四连。放一颗黑棋连成五子。这里不会调用模型，也不会消耗点数。', ja: '黒が四つ並んでいます。黒石をひとつ置いて五つにしてください。ここではモデルを呼ばず、クレジットも使いません。', ko: '흑이 넉 점 연속입니다. 흑돌 하나를 놓아 다섯을 만드세요. 모델 호출도, 크레딧 사용도 없습니다.' },
+  'xg.practice.turn':       { en: 'Black to move', 'zh-Hant': '輪到黑棋', 'zh-Hans': '轮到黑棋', ja: '黒の番', ko: '흑 차례' },
+  'xg.practice.task':       { en: 'Tap the intersection that completes five in a row.', 'zh-Hant': '點擊能連成五子的交叉點。', 'zh-Hans': '点击能连成五子的交叉点。', ja: '五つ並びが完成する交点をタップしてください。', ko: '다섯 줄이 완성되는 교차점을 누르세요.' },
+  'xg.practice.hint':       { en: 'Not there. Look at either end of the four black stones.', 'zh-Hant': '不是這裡。看看四顆黑棋的兩端。', 'zh-Hans': '不是这里。看看四颗黑棋的两端。', ja: 'そこではありません。四つ並んだ黒石の両端を見てください。', ko: '거기가 아닙니다. 흑돌 넉 점의 양 끝을 보세요.' },
+  'xg.practice.won':        { en: 'Five in a row', 'zh-Hant': '五子連線', 'zh-Hans': '五子连线', ja: '五目、完成', ko: '오목 완성' },
+  'xg.practice.won.desc':   { en: 'That is the whole game in one move. The real tables put AI models in the other seat, with the price of every move shown.', 'zh-Hant': '一手就是整局。真正的牌桌上，對面坐的是 AI 模型，而且每一步的價格都看得到。', 'zh-Hans': '一手就是整局。真正的牌桌上，对面坐的是 AI 模型，而且每一步的价格都看得到。', ja: 'この一手がゲームのすべてです。本番のテーブルでは向かいにAIモデルが座り、一手ごとの価格が表示されます。', ko: '이 한 수가 게임의 전부입니다. 실제 테이블에서는 맞은편에 AI 모델이 앉고, 매 수의 가격이 표시됩니다.' },
+  'xg.practice.real':       { en: 'Play against an AI', 'zh-Hant': '和 AI 對戰', 'zh-Hans': '和 AI 对战', ja: 'AIと対戦する', ko: 'AI와 대전하기' },
+  'xg.practice.again':      { en: 'Play again', 'zh-Hant': '再玩一次', 'zh-Hans': '再玩一次', ja: 'もう一度', ko: '다시 하기' },
+  'xg.practice.reset':      { en: 'Reset', 'zh-Hant': '重設', 'zh-Hans': '重置', ja: 'リセット', ko: '초기화' },
+  'xg.practice.home':       { en: 'Home', 'zh-Hant': '首頁', 'zh-Hans': '首页', ja: 'ホームへ', ko: '홈으로' },
+  'xg.practice.note':       { en: 'A fixed practice puzzle, solved on this page. It is not one of the rated games and sends nothing to voting or benchmarks.', 'zh-Hant': '這是固定的練習題，在本頁就地完成。它不是計分遊戲，也不會送進投票或基準。', 'zh-Hans': '这是固定的练习题，在本页就地完成。它不是计分游戏，也不会送进投票或基准。', ja: '固定の練習問題で、このページ内で完結します。評価対象のゲームではなく、投票やベンチマークには何も送られません。', ko: '이 페이지에서 끝나는 고정 연습 문제입니다. 평가 대상 게임이 아니며 투표나 벤치마크로 아무것도 보내지 않습니다.' },
+
+  // Display copy for the XDirect skills (gallery cards, home cards). The
+  // SKILL.md metadata stays English and is the fallback; machine ids and the
+  // agent instructions are never translated. zh/ko fall back to en for now.
+  'skill.music-video.title':            { en: 'Music Video', ja: 'ミュージックビデオ' },
+  'skill.music-video.tagline':          { en: 'Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera.', ja: '歌詞を入れると、MVが出てきます。キャストを固定し、ビートに合わせてカット。' },
+  'skill.ai-animation.title':           { en: 'Animation', ja: 'アニメーション' },
+  'skill.ai-animation.tagline':         { en: 'One style, your characters, a story that moves — animated shot by shot.', ja: 'ひとつの画風、あなたのキャラクター。物語がショットごとに動き出します。' },
+  'skill.story-to-video.title':         { en: 'Story to Video', ja: '物語を映像に' },
+  'skill.story-to-video.tagline':       { en: 'A whole book goes in. Ten scenes come out — the ones that matter, cast locked, one style.', ja: '小説一冊から、大事な10シーンだけを映像に。キャストと画風は固定。' },
+  'skill.product-video-pipeline.title':   { en: 'Product Video', ja: '商品紹介動画' },
+  'skill.product-video-pipeline.tagline': { en: 'One photo becomes the sales film — angles built, scene designed, motion earned.', ja: '商品写真1枚が販売用の動画に。アングルを組み、シーンを設計。' },
+  'skill.social-post.title':            { en: 'Social Post', ja: 'SNS投稿' },
+  'skill.social-post.tagline':          { en: 'Your photos, one look, sized for every platform you post.', ja: 'あなたの写真を、ひとつの世界観で、投稿先ごとのサイズに。' },
+  'skill.category.animation':           { en: 'animation', ja: 'アニメ' },
+  'skill.category.music':               { en: 'music', ja: '音楽' },
+  'skill.category.commercial':          { en: 'commercial', ja: '商品' },
+  'skill.category.social':              { en: 'social', ja: 'SNS' },
+  'skill.category.story':               { en: 'story', ja: '物語' },
+  'xvote.votes':                        { en: '{n} votes', 'zh-Hant': '{n} 票', 'zh-Hans': '{n} 票', ja: '{n}票', ko: '{n}표' },
+  'xvote.vote1':                        { en: '1 vote', 'zh-Hant': '1 票', 'zh-Hans': '1 票', ja: '1票', ko: '1표' },
+  'home.cta.play':       { en: 'Try a game first', 'zh-Hant': '先玩玩看', 'zh-Hans': '先玩玩看', ja: 'まずは遊んでみる', ko: '먼저 게임해 보기' },
+  'home.cta.compare':    { en: 'Compare quality and price', 'zh-Hant': '比較品質與價格', 'zh-Hans': '比较质量与价格', ja: '比べて選ぶ', ko: '품질과 가격 비교' },
+  'common.loading':      { en: 'Loading…', 'zh-Hant': '載入中…', 'zh-Hans': '加载中…', ja: '読み込み中…', ko: '불러오는 중…' },
+  'xduel.attach':        { en: 'ATTACH', 'zh-Hant': '附加檔案', 'zh-Hans': '附加文件', ja: '添付', ko: '첨부' },
+  'xduel.attach.hint':   { en: 'Optional', 'zh-Hant': '選填', 'zh-Hans': '选填', ja: '任意', ko: '선택' },
+  'xduel.attach.hint.doc': { en: 'Optional — PDF or .txt', 'zh-Hant': '選填：PDF 或 .txt', 'zh-Hans': '选填：PDF 或 .txt', ja: '任意：PDF または .txt', ko: '선택: PDF 또는 .txt' },
+  'xvote.prev':          { en: '← Prev', 'zh-Hant': '← 上一頁', 'zh-Hans': '← 上一页', ja: '← 前へ', ko: '← 이전' },
+  'xvote.next':          { en: 'Next →', 'zh-Hant': '下一頁 →', 'zh-Hans': '下一页 →', ja: '次へ →', ko: '다음 →' },
   'nav.menu.open':     { en: 'Open menu', 'zh-Hant': '開啟選單', 'zh-Hans': '打开菜单', ja: 'メニューを開く', ko: '메뉴 열기' },
   'nav.menu.close':    { en: 'Close menu', 'zh-Hant': '關閉選單', 'zh-Hans': '关闭菜单', ja: 'メニューを閉じる', ko: '메뉴 닫기' },
   'nav.lang':          { en: 'Language', 'zh-Hant': '語言', 'zh-Hans': '语言', ja: '言語', ko: '언어' },
@@ -899,9 +950,9 @@ export const STRINGS: Record<string, Entry> = {
   'xduel.publichint': { en: 'Duels are public. Yours will appear in XVote for others to vote on.', 'zh-Hant': '對決是公開的。你的結果會出現在 XVote 供其他人投票。', 'zh-Hans': '对决是公开的。你的结果会出现在 XVote 供其他人投票。', ja: '対決は公開されます。結果は XVote に表示され、他のユーザーが投票できます。', ko: '대결은 공개됩니다. 결과는 XVote에 표시되어 다른 사용자가 투표할 수 있습니다.' },
 
   // ── Home (hero + CTAs) ──
-  'home.hero':        { en: 'The best AI for every task.', 'zh-Hant': '每個任務，都用最好的 AI。', 'zh-Hans': '每个任务，都用最好的 AI。', ja: 'すべてのタスクに、最高のAIを。', ko: '모든 작업에 최고의 AI를.' },
-  'home.sub':         { en: 'Films, stories, analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends each job to whichever model earns it, decided by real blind votes and public benchmark data, with the prices in the open.', 'zh-Hant': '影片、故事、分析、聊天、遊戲、評測，或接上你自己的 Agent。ModelXD 讓每項任務交給勝出的模型，由真實盲測投票與公開資料集評測決定，價格公開透明。', 'zh-Hans': '视频、故事、分析、聊天、游戏、评测，或接上你自己的 Agent。ModelXD 让每项任务交给胜出的模型，由真实盲测投票与公开数据集评测决定，价格公开透明。', ja: '映像、物語、分析、チャット、ゲーム、ベンチマーク、あるいは自分のエージェントを接続。ModelXDは各タスクを勝ち抜いたモデルに任せます。決めるのは実際のブラインド投票と公開データセットでの評価、価格は公開。', ko: '영상, 스토리, 분석, 채팅, 게임, 벤치마크, 또는 나만의 에이전트 연결. ModelXD는 각 작업을 이긴 모델에 맡깁니다. 실제 블라인드 투표와 공개 데이터셋 평가로 결정되고, 가격은 공개됩니다.' },
-  'home.cta.primary': { en: 'Start creating', 'zh-Hant': '開始創作', 'zh-Hans': '开始创作', ja: '創作をはじめる', ko: '창작 시작하기' },
+  'home.hero':        { en: 'The best AI for every task.', 'zh-Hant': '每個任務，都用最好的 AI。', 'zh-Hans': '每个任务，都用最好的 AI。', ja: '遊ぶ。つくる。AIを選ぶ。', ko: '모든 작업에 최고의 AI를.' },
+  'home.sub':         { en: 'Films, stories, analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends each job to whichever model earns it, decided by real blind votes and public benchmark data, with the prices in the open.', 'zh-Hant': '影片、故事、分析、聊天、遊戲、評測，或接上你自己的 Agent。ModelXD 讓每項任務交給勝出的模型，由真實盲測投票與公開資料集評測決定，價格公開透明。', 'zh-Hans': '视频、故事、分析、聊天、游戏、评测，或接上你自己的 Agent。ModelXD 让每项任务交给胜出的模型，由真实盲测投票与公开数据集评测决定，价格公开透明。', ja: 'AIと対戦。アイデアを映像に。品質も価格も、比べて選べる。', ko: '영상, 스토리, 분석, 채팅, 게임, 벤치마크, 또는 나만의 에이전트 연결. ModelXD는 각 작업을 이긴 모델에 맡깁니다. 실제 블라인드 투표와 공개 데이터셋 평가로 결정되고, 가격은 공개됩니다.' },
+  'home.cta.primary': { en: 'Start creating', 'zh-Hant': '開始創作', 'zh-Hans': '开始创作', ja: '作品をつくる', ko: '창작 시작하기' },
   'home.cta.secondary': { en: 'Blind-test models free', 'zh-Hant': '免費盲測模型', 'zh-Hans': '免费盲测模型', ja: '無料でモデルをブラインドテスト', ko: '모델 무료 블라인드 테스트' },
   'home.compare.eyebrow': { en: 'Why model choice matters', 'zh-Hant': '為什麼模型選擇很重要', 'zh-Hans': '为什么模型选择很重要', ja: 'モデル選びが重要な理由', ko: '모델 선택이 중요한 이유' },
   'home.compare.title': { en: 'Same prompt. Different price tags.', 'zh-Hant': '同一個提示詞，不同的價格。', 'zh-Hans': '同一个提示词，不同的价格。', ja: '同じプロンプト。違う価格。', ko: '같은 프롬프트. 다른 가격.' },
@@ -1408,4 +1459,12 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useLang = () => useContext(Ctx)
+
+/** t() with a fallback: a missing key returns the fallback instead of the
+ *  key itself. For display copy that lives outside the table (SKILL.md
+ *  metadata, template data) and is localized here only where it matters. */
+export const tOr = (t: (k: string) => string, key: string, fallback: string): string => {
+  const v = t(key)
+  return v === key ? fallback : v
+}
 export const useT = () => useContext(Ctx).t

@@ -204,7 +204,7 @@ export default function XDevClient() {
               }}>Sign in to create a key</button>
               New accounts start with $10 free credit — no card.
             </div>
-          ) : loading ? <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>Loading…</div> : rows.length === 0 ? (
+          ) : loading ? <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>{t('common.loading')}</div> : rows.length === 0 ? (
             <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>No keys yet — create one to connect an agent.</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>

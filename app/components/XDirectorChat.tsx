@@ -17,7 +17,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useT, useLang } from '../../lib/i18n'
+import { useT, useLang, tOr } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import AttachmentButton, { commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
 import { sliceAudioForVideo } from '../../lib/audio-normalize'
@@ -1868,12 +1868,15 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                   // A short result LOOP beats a poster (ComfyUI study, Aug 17:
                   // the card is the demo). Poster frame at rest; hover plays.
                   const bannerVideo = sk.metadata?.banner_video
-                  const title = sk.metadata?.title || sk.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                  const category = sk.metadata?.category
+                  const title = tOr(t, `skill.${sk.name}.title`, sk.metadata?.title || sk.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
+                  const category = sk.metadata?.category ? tOr(t, `skill.category.${sk.metadata.category}`, sk.metadata.category) : undefined
                   // Card copy is the TAGLINE — one written line, not the
                   // skill's operational description dumped on a customer.
                   // No model names on cards: the platform is trying them all.
-                  const tagline = sk.metadata?.tagline || sk.description
+                  // Localized display copy first (lib/i18n.tsx); the
+                  // SKILL.md English is the fallback, never the source of truth
+                  // for a Japanese card (Sep 14).
+                  const tagline = tOr(t, `skill.${sk.name}.tagline`, sk.metadata?.tagline || sk.description)
                   return (
                     <button
                       key={sk.name}

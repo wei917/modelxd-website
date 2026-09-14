@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import ModeIcon from '../components/ModeIcon'
 import { useRequireAuth } from '../../lib/useRequireAuth'
-import { useT } from '../../lib/i18n'
+import { useT, useLang, type Lang } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import { attachSampleFile, commitAttachments, type Attachment } from '../components/AttachmentButton'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
@@ -23,26 +23,29 @@ type Mode = 'text' | 'image' | 'video'
 // Popular starter prompts, per mode (CC, July 19) — the XDuel analog of
 // XCreate's popular templates. Clicking a chip fills the prompt box;
 // chips marked needsImage want a photo attached (image_to_image / i2v).
-const POPULAR_PROMPTS: Record<Mode, { label: string; prompt: string; needsImage?: boolean; sampleUrl?: string; sampleName?: string }[]> = {
+// `ja` carries a Japanese label AND prompt so the chip and what the models
+// receive agree (TGS pass, Sep 14). Card ids, thumbnails and metadata stay
+// keyed by the English label.
+const POPULAR_PROMPTS: Record<Mode, { label: string; prompt: string; needsImage?: boolean; sampleUrl?: string; sampleName?: string; ja?: { label: string; prompt: string } }[]> = {
   text: [
-    { label: '9.9 vs 9.11',       prompt: 'Which number is bigger: 9.9 or 9.11? Explain your reasoning.' },
-    { label: 'Explain like I\'m 5', prompt: 'Explain how airplanes stay in the air to a 5-year-old.' },
-    { label: 'Monday haiku',      prompt: 'Write a haiku about Monday mornings.' },
+    { label: '9.9 vs 9.11',       prompt: 'Which number is bigger: 9.9 or 9.11? Explain your reasoning.', ja: { label: '9.9 と 9.11', prompt: '9.9 と 9.11 はどちらが大きいですか？理由も説明してください。' } },
+    { label: 'Explain like I\'m 5', prompt: 'Explain how airplanes stay in the air to a 5-year-old.', ja: { label: '5歳にもわかるように', prompt: '飛行機がなぜ空を飛べるのか、5歳の子どもにもわかるように説明してください。' } },
+    { label: 'Monday haiku',      prompt: 'Write a haiku about Monday mornings.', ja: { label: '月曜日の俳句', prompt: '月曜日の朝をテーマに俳句を一句詠んでください。' } },
     // Auto-attaches the bundled public-domain novel (CC, July 19) — a
     // real summarization stress test (~38k tokens per model).
-    { label: 'Summarization', prompt: 'Summarize this novel in three paragraphs, then give one insight most readers miss.', sampleUrl: `${SAMPLES_BASE}/alice-in-wonderland.txt`, sampleName: 'alice-in-wonderland.txt' },
+    { label: 'Summarization', prompt: 'Summarize this novel in three paragraphs, then give one insight most readers miss.', sampleUrl: `${SAMPLES_BASE}/alice-in-wonderland.txt`, sampleName: 'alice-in-wonderland.txt', ja: { label: '要約', prompt: 'この小説を3段落で要約し、多くの読者が見落としがちな洞察をひとつ挙げてください。' } },
   ],
   image: [
-    { label: 'Remove background people', needsImage: true, prompt: 'Remove the people in the background of my photo. Keep the main subject and everything else exactly the same.' },
-    { label: 'Ghibli style',             needsImage: true, prompt: 'Turn my photo into a Studio Ghibli-style illustration. Keep the composition and subjects recognizable.' },
-    { label: 'Neon sign text',           prompt: "A photorealistic neon sign at night that says 'MODEL XD', glowing pink and blue, reflected on a rain-slicked street." },
-    { label: 'Astronaut on a horse',     prompt: 'A hyper-realistic photo of an astronaut riding a white horse on the moon, Earth glowing in the black sky.' },
+    { label: 'Remove background people', needsImage: true, prompt: 'Remove the people in the background of my photo. Keep the main subject and everything else exactly the same.', ja: { label: '背景の人を消す', prompt: '写真の背景に写っている人物を消してください。主役とそれ以外はそのままにしてください。' } },
+    { label: 'Ghibli style',             needsImage: true, prompt: 'Turn my photo into a Studio Ghibli-style illustration. Keep the composition and subjects recognizable.', ja: { label: 'ジブリ風に', prompt: 'この写真をスタジオジブリ風のイラストにしてください。構図と被写体はそのまま認識できるように。' } },
+    { label: 'Neon sign text',           prompt: "A photorealistic neon sign at night that says 'MODEL XD', glowing pink and blue, reflected on a rain-slicked street.", ja: { label: 'ネオンサインの文字', prompt: '夜のネオンサインの写実的な写真。\'MODEL XD\' の文字がピンクと青に光り、雨に濡れた路面に反射している。' } },
+    { label: 'Astronaut on a horse',     prompt: 'A hyper-realistic photo of an astronaut riding a white horse on the moon, Earth glowing in the black sky.', ja: { label: '馬に乗った宇宙飛行士', prompt: '月面で白い馬に乗る宇宙飛行士の超リアルな写真。黒い空に地球が輝いている。' } },
   ],
   video: [
-    { label: 'Make my photo move', needsImage: true, prompt: 'Bring this photo to life with natural, subtle motion. Keep the subject exactly the same.' },
-    { label: 'Wave at the camera', needsImage: true, prompt: 'Make the person in this photo smile and wave at the camera naturally.' },
-    { label: 'Glass fruit ASMR',   prompt: 'ASMR video: a knife slowly slices a translucent glass apple on a wooden cutting board, crisp crystal sounds, macro shot.' },
-    { label: 'Surfing dog',        prompt: 'A golden retriever surfing a big wave, cinematic slow motion, golden hour light.' },
+    { label: 'Make my photo move', needsImage: true, prompt: 'Bring this photo to life with natural, subtle motion. Keep the subject exactly the same.', ja: { label: '写真を動かす', prompt: 'この写真に自然でさりげない動きをつけて命を吹き込んでください。被写体はそのままに。' } },
+    { label: 'Wave at the camera', needsImage: true, prompt: 'Make the person in this photo smile and wave at the camera naturally.', ja: { label: 'カメラに手を振る', prompt: 'この写真の人物が自然に微笑んでカメラに手を振るようにしてください。' } },
+    { label: 'Glass fruit ASMR',   prompt: 'ASMR video: a knife slowly slices a translucent glass apple on a wooden cutting board, crisp crystal sounds, macro shot.', ja: { label: 'ガラスの果物ASMR', prompt: 'ASMR動画：木のまな板の上で、透き通ったガラスのリンゴをナイフがゆっくり切る。澄んだクリスタルの音、マクロ撮影。' } },
+    { label: 'Surfing dog',        prompt: 'A golden retriever surfing a big wave, cinematic slow motion, golden hour light.', ja: { label: 'サーフィンする犬', prompt: '大きな波に乗るゴールデンレトリバー。シネマティックなスローモーション、黄金色の夕方の光。' } },
     { label: 'Storm timelapse',    prompt: 'A timelapse of a thunderstorm rolling over a mountain range at dusk, lightning flashing inside the clouds.' },
   ],
 }
@@ -72,23 +75,26 @@ const POPULAR_PREVIEW_OVERRIDE: Record<string, string> = {
   'Remove background people': '/templates/tool-remove-background.jpg',
   'Ghibli style':             '/templates/style-watercolor-anime.jpg',
 }
-const POPULAR_CARDS: Record<Mode, Template[]> = (['text','image','video'] as Mode[]).reduce((acc, m) => {
-  acc[m] = POPULAR_PROMPTS[m].map(p => ({
-    id:            'xduel-' + p.label.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+const cardId = (label: string) => 'xduel-' + label.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+const promptFor = (p: { label: string; prompt: string; ja?: { label: string; prompt: string } }, lang: Lang) =>
+  lang === 'ja' && p.ja ? p.ja : { label: p.label, prompt: p.prompt }
+// Built per language: the card shows the visitor's label and the prompt it
+// will actually send. Lookups from a card go by id, never by title.
+const popularCards = (m: Mode, lang: Lang): Template[] =>
+  POPULAR_PROMPTS[m].map(p => ({
+    id:            cardId(p.label),
     emoji:         POPULAR_CARD_META[p.label]?.emoji ?? '⚔️',
-    title:         p.label,
-    subtitle:      POPULAR_CARD_META[p.label]?.subtitle ?? p.prompt,
+    title:         promptFor(p, lang).label,
+    subtitle:      lang === 'ja' && p.ja ? p.ja.prompt : (POPULAR_CARD_META[p.label]?.subtitle ?? p.prompt),
     mode:          m,
     slotMode:      '',
-    starterPrompt: p.prompt,
+    starterPrompt: promptFor(p, lang).prompt,
     kind:          'tool' as const,
     previewUrl:    POPULAR_PREVIEW_OVERRIDE[p.label]
                      ?? '/templates/xduel-' + p.label.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.jpg',
     recommendedModels: [],
     attachmentSlots: [],
   }))
-  return acc
-}, {} as Record<Mode, Template[]>)
 
 /** Text runs cost fractions of a cent, video costs dollars — one fixed
  *  precision would print either "$0.00" or "$1.230000". */
@@ -157,6 +163,7 @@ function formatCost(cost: number, isImage: boolean, isVideo: boolean): string {
 export default function XDuel() {
   useRequireAuth()
   const t = useT()
+  const { lang } = useLang()
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const setCursor = (color: string) => {
@@ -166,6 +173,8 @@ export default function XDuel() {
 
   const [step,       setStep]       = useState(1)
   const [mode,       setMode]       = useState<Mode>('image')  // visual wow, sustainable cost
+  // Quick-prompt cards in the visitor's language (label AND prompt agree).
+  const popularForMode = useMemo(() => popularCards(mode, lang), [mode, lang])
   // GAME task type (owner, Aug 6): blind game duels. Not a prompt mode —
   // selecting it swaps the composer for the match launcher; the duel arc
   // (watch → judge → reveal) plays out on the game's own page. The chip
@@ -762,7 +771,7 @@ export default function XDuel() {
               <div className="prompt-box framed">
                 <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
                   <LabeledSlotsPicker
-                    slots={[{ label: 'ATTACH', hint: mode === 'text' ? 'Optional — PDF or .txt' : 'Optional' }]}
+                    slots={[{ label: t('xduel.attach'), hint: mode === 'text' ? t('xduel.attach.hint.doc') : t('xduel.attach.hint') }]}
                     attachments={attachments}
                     onChange={setAttachments}
                     context="xduel"
@@ -812,7 +821,7 @@ export default function XDuel() {
               <div style={{ marginTop: 36 }}>
                 <div className="ms-cap">{t('xcreate.popular')}</div>
                 <TemplatePicker
-                  templates={POPULAR_CARDS[mode]}
+                  templates={popularForMode}
                   selectedId={popularId}
                   disabled={attachingSample}
                   layout="wrap"
@@ -823,10 +832,10 @@ export default function XDuel() {
                     setAttachments([])
                   }}
                   onSelect={async card => {
-                    const p = POPULAR_PROMPTS[mode].find(x => x.label === card.title)
+                    const p = POPULAR_PROMPTS[mode].find(x => cardId(x.label) === card.id)
                     if (!p) return
                     setPopularId(card.id)
-                    setPrompt(p.prompt)
+                    setPrompt(promptFor(p, lang).prompt)
                     setChipNeedsImage(!!p.needsImage)
                     // Attachments follow the template (CC, July 20): a card
                     // with a bundled sample replaces whatever is attached;

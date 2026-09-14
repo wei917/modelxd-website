@@ -9,6 +9,7 @@
 // construction, and the key table above lists live keys only.
 
 import { useCallback, useEffect, useState } from 'react'
+import { useT } from '../../lib/i18n'
 
 type Totals = { requests: number; failed: number; input_tokens: number; output_tokens: number; cost_usd: number }
 type KeyOpt = { id: string; name: string; token_prefix: string }
@@ -18,6 +19,7 @@ const usd = (n: number) => n >= 100 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixe
 const num = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n)
 
 export default function UsagePanel({ keys, card, label }: { keys: KeyOpt[]; card: React.CSSProperties; label: React.CSSProperties }) {
+  const t = useT()
   const [days, setDays] = useState(30)
   const [keyId, setKeyId] = useState('')
   const [view, setView] = useState<View>('day')
@@ -151,7 +153,7 @@ export default function UsagePanel({ keys, card, label }: { keys: KeyOpt[]; card
           {cursor && <button disabled={loading} onClick={() => load(cursor)} style={{ ...chip(false), marginTop: 10 }}>{loading ? '…' : 'Load more'}</button>}
         </div>
       )}
-      {loading && !data.length && <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>Loading…</div>}
+      {loading && !data.length && <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>{t('common.loading')}</div>}
     </div>
   )
 }

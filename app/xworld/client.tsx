@@ -258,7 +258,7 @@ export default function XWorldClient() {
 
       <div style={{ ...mono, margin: '32px 0 12px' }}>{t('xworld.mine')}</div>
       {items === null
-        ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>Loading…</div>
+        ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('common.loading')}</div>
         : items.length === 0
         ? <div style={{ color: 'var(--muted)', fontSize: 13, padding: '30px 0' }}>{t('xworld.empty')}</div>
         : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>

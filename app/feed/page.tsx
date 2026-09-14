@@ -3,6 +3,7 @@
 // Public feed of all duels, filterable by mode
 
 import { useEffect, useState, useCallback } from 'react'
+import { useT } from '../../lib/i18n'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
@@ -33,6 +34,7 @@ interface Duel {
 const PAGE_SIZE = 20
 
 export default function FeedPage() {
+  const t = useT()
   const [mode,     setMode]     = useState<Mode>('all')
   const [duels,    setDuels]    = useState<Duel[]>([])
   const [loading,  setLoading]  = useState(true)
@@ -114,7 +116,7 @@ export default function FeedPage() {
       {/* Feed */}
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 24px' }}>
         {loading && duels.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading…</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>{t('common.loading')}</div>
         ) : duels.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>No duels yet in this mode.</div>
         ) : (
@@ -147,7 +149,7 @@ export default function FeedPage() {
         )}
 
         {loading && duels.length > 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>Loading…</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>{t('common.loading')}</div>
         )}
       </div>
     </div>

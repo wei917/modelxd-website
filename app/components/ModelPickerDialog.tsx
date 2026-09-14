@@ -342,7 +342,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
           </div>
         )}
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {loading ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
+          {loading ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>{t('common.loading')}</div>
           : filtered.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <div>No models found</div>

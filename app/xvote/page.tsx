@@ -293,7 +293,7 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
   return (
     <div style={{ marginBottom: 48 }}>
       {loading ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13, padding: '40px 0' }}>Loading…</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13, padding: '40px 0' }}>{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
         <div style={{ color: 'var(--muted)', fontSize: 14, padding: '24px 0' }}>No duels to vote on yet.</div>
       ) : (
@@ -312,7 +312,7 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
               gap: 8, marginTop: 20,
             }}>
               <PageBtn
-                label="← Prev"
+                label={t('xvote.prev')}
                 disabled={safePage === 0}
                 onClick={() => setPage(p => Math.max(0, p - 1))}
               />
@@ -325,7 +325,7 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
                 {safePage + 1} / {totalPages}
               </span>
               <PageBtn
-                label="Next →"
+                label={t('xvote.next')}
                 disabled={safePage >= totalPages - 1}
                 onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
               />
@@ -486,7 +486,7 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
                 fontFamily: 'var(--font-mono), monospace',
                 fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em',
               }}>
-                {duel.community_vote_count} vote{duel.community_vote_count !== 1 ? 's' : ''}
+                {duel.community_vote_count === 1 ? t('xvote.vote1') : t('xvote.votes').replace('{n}', String(duel.community_vote_count))}
               </span>
             </>
           )}

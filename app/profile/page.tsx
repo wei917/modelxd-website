@@ -636,7 +636,7 @@ export default function ProfilePage() {
   }, [])
 
   if (!profile) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading…</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>{t('common.loading')}</div>
   )
 
   const initials = (profile.display_name ?? user?.email ?? '?').charAt(0).toUpperCase()
@@ -1294,7 +1294,7 @@ export default function ProfilePage() {
             const visibleDuels = duelFilter === 'all' ? duels : duels.filter(d => d.mode === duelFilter)
             return (
             !tabsLoaded.duels
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : <>
               <ModePills value={duelFilter} onChange={setDuelFilter} />
               {visibleDuels.length === 0
@@ -1447,7 +1447,7 @@ export default function ProfilePage() {
                 </button>
               </div>
               {!tabsLoaded.xcreates ? (
-                <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+                <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               ) : visibleSlice.length === 0 ? (
                 <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>
                   {xcreateFilter === 'all'
@@ -1585,7 +1585,7 @@ export default function ProfilePage() {
             const visibleVotes = voteFilter === 'all' ? votes : votes.filter((v: any) => v.duels?.mode === voteFilter)
             return (
             !tabsLoaded.votes
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : <>
               <ModePills value={voteFilter} onChange={setVoteFilter} />
               {visibleVotes.length === 0
@@ -1647,7 +1647,7 @@ export default function ProfilePage() {
               Nav history shows, linked back into the stage. ── */}
           {tab === 'xdirects' && (
             !tabsLoaded.xdirects
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : xdirects.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxdirects')}</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1679,7 +1679,7 @@ export default function ProfilePage() {
 
           {tab === 'xarchs' && (
             !tabsLoaded.xarchs
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : xarchs.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxarch')}</div>
               : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
@@ -1700,7 +1700,7 @@ export default function ProfilePage() {
           )}
           {tab === 'xworlds' && (
             !tabsLoaded.xworlds
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : xworlds.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxworlds')}</div>
               : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
@@ -1727,7 +1727,7 @@ export default function ProfilePage() {
               the live conversation. ── */}
           {tab === 'xcuts' && (
             !tabsLoaded.xcuts
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : xcuts.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxcuts')}</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1759,7 +1759,7 @@ export default function ProfilePage() {
           )}
           {tab === 'xtalks' && (
             !tabsLoaded.xtalks
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : xtalks.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.notalks')}</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1793,7 +1793,7 @@ export default function ProfilePage() {
               permalink is the row. LIVE badge for games still running. ── */}
           {tab === 'xgames' && (
             !tabsLoaded.xgames
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>Loading…</div>
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
               : xgames.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.nogames')}</div>
               : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

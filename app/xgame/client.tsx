@@ -79,8 +79,33 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             the page to itself, no other game's card in sight. (owner, Aug 6) */}
         {!resume && (
         <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>)}
+        {/* Play vs spectate, said outright (TGS audit, Sep 14): every table
+            below seats you OR runs AI against AI; the seat toggles live on
+            each table. Practice is a separate public page with no model
+            call and no credits. */}
+        {!resume && (
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+          <span><b style={{ color: 'var(--white)' }}>{t('xg.lobby.play')}</b> {t('xg.lobby.play.desc')}</span>
+          <span><b style={{ color: 'var(--white)' }}>{t('xg.lobby.spectate')}</b> {t('xg.lobby.spectate.desc')}</span>
+        </div>)}
         {!resume && (
         <div className="xt-tpl-grid">
+          <div className="xt-tpl-wrap">
+            <Link href="/xgame/practice" className="xt-tpl" style={{ textDecoration: 'none' }}>
+              <span className="xt-tpl-banner" style={{ background: 'linear-gradient(135deg, #1B1B1A, #3a3936)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}><span aria-hidden>⚫</span></span>
+              <span className="xt-tpl-body">
+                <span className="xt-tpl-text">
+                  <span className="xt-tpl-head">
+                    <span className="xt-tpl-name">{t('xg.practice.name')}</span>
+                    <span className="xt-tpl-seats">{t('xg.practice.tag')}</span>
+                  </span>
+                  <span className="xt-tpl-tag">{t('xg.practice.tagline')}</span>
+                  <span className="xt-tpl-blurb">{t('xg.practice.blurb')}</span>
+                </span>
+              </span>
+            </Link>
+          </div>
+
           <div className="xt-tpl-wrap">
             <button className={`xt-tpl${active === 'werewolf' ? ' is-on' : ''}`} onClick={() => { setActive('werewolf'); setResume(null); setNonce(n => n + 1) }}>
               <span className="xt-tpl-banner"><img src={tpl.banner} alt="" loading="lazy" /></span>

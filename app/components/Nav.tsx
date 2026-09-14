@@ -26,7 +26,7 @@ const NAV_LINKS = [
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
   { href: '/xtell',       i18n: 'nav.xtell',       protected: true,  icon: 'game'   },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
-  { href: '/xdev',        i18n: 'nav.xdev',        protected: true,  icon: 'dev' },
+  { href: '/xdev',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
 ]
 
 // Inline SVG icons (no icon-font dependency). 18px, inherit color via

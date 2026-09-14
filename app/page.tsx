@@ -7,7 +7,7 @@ import BugReportLink from './components/BugReport'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../lib/AuthModalContext'
-import { useLang } from '../lib/i18n'
+import { useLang, tOr } from '../lib/i18n'
 import type { Snapshot } from './api/snapshot/route'
 
 // The apps grid — the landing's star section since the repositioning
@@ -17,21 +17,21 @@ import type { Snapshot } from './api/snapshot/route'
 // gone (Aug 18), so every card shows to everyone — signed-out clicks land
 // in the auth modal with the destination preserved.
 type LandingApp = {
-  href: string; name: string; descKey: string
+  href: string; name: string; nameKey?: string; descKey: string
   video?: string; img?: string; emoji?: string; color?: string
   public?: boolean
 }
 const APPS: LandingApp[] = [
-  { href: '/xdirect', name: 'Music Video',  descKey: 'home.app.mv',
+  { href: '/xdirect', name: 'Music Video',  nameKey: 'skill.music-video.title', descKey: 'home.app.mv',
     video: '/xdirect/skills/music-video-loop.mp4', img: '/xdirect/skills/music-video-cover.webp' },
-  { href: '/xdirect', name: 'Animation',    descKey: 'home.app.anim',
+  { href: '/xdirect', name: 'Animation',    nameKey: 'skill.ai-animation.title', descKey: 'home.app.anim',
     video: '/xdirect/skills/ai-animation-loop.mp4', img: '/xdirect/skills/ai-animation-cover.webp' },
   // Shipped Aug 22; its loop sat unused in public/ while the shelf skipped it.
-  { href: '/xdirect', name: 'Story to Video', descKey: 'home.app.story',
+  { href: '/xdirect', name: 'Story to Video', nameKey: 'skill.story-to-video.title', descKey: 'home.app.story',
     video: '/xdirect/skills/story-to-video-loop.mp4', img: '/xdirect/skills/story-to-video-cover.jpg' },
-  { href: '/xdirect', name: 'Product Video', descKey: 'home.app.pv',
+  { href: '/xdirect', name: 'Product Video', nameKey: 'skill.product-video-pipeline.title', descKey: 'home.app.pv',
     video: '/xdirect/skills/product-video-loop.mp4', img: '/xdirect/skills/product-video-cover.jpg' },
-  { href: '/xdirect', name: 'Social Post',  descKey: 'home.app.sp',
+  { href: '/xdirect', name: 'Social Post',  nameKey: 'skill.social-post.title', descKey: 'home.app.sp',
     video: '/xdirect/skills/social-post-loop.mp4', img: '/xdirect/skills/social-post-cover.jpg' },
   // The surfaces wear generated covers of the same ambition as the template
   // loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
@@ -246,7 +246,7 @@ export default function Home() {
   const ringRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { show } = useAuthModal()
-  const { t } = useLang()
+  const { t, lang } = useLang()
   // Live XBoard leaders, one per mode. Null until it lands (and if the
   // fetch fails) — the chips render a dash rather than disappearing, so
   // the bar never changes height under the hero.
@@ -343,12 +343,33 @@ export default function Home() {
           <h1 className="home-hero-title">{t('home.hero')}</h1>
           <p className="home-hero-sub">{t('home.sub')}</p>
           <div className="home-hero-actions">
-            <button type="button" className="home-hero-cta is-primary" onClick={() => void handleNav('/xdirect')}>
-              {t('home.cta.primary')} <span aria-hidden>→</span>
-            </button>
-            <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
-              {t('home.cta.secondary')}
-            </button>
+            {lang === 'ja' ? (
+              // The TGS entrance (Sep 14): play first, create as an equal
+              // path, compare third. Practice is a public page with no model
+              // call and no credits, so it is pushed directly — never through
+              // handleNav's sign-in gate. Scoped to Japanese; the English hero
+              // is the owner's Aug 25 decision and stays as it is.
+              <>
+                <button type="button" className="home-hero-cta is-primary" onClick={() => router.push('/xgame/practice')}>
+                  {t('home.cta.play')} <span aria-hidden>→</span>
+                </button>
+                <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xdirect')}>
+                  {t('home.cta.primary')}
+                </button>
+                <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
+                  {t('home.cta.compare')}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="home-hero-cta is-primary" onClick={() => void handleNav('/xdirect')}>
+                  {t('home.cta.primary')} <span aria-hidden>→</span>
+                </button>
+                <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
+                  {t('home.cta.secondary')}
+                </button>
+              </>
+            )}
           </div>
         </div>
         <div className="home-hero-agent">
@@ -397,7 +418,7 @@ export default function Home() {
                 </div>
                 <div style={{ padding: '12px 16px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{a.name}</span>
+                    <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{a.nameKey ? tOr(t, a.nameKey, a.name) : a.name}</span>
                     <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>{t(a.descKey)}</div>
