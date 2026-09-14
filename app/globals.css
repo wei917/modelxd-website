@@ -2932,3 +2932,95 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   max-height: none;
   min-height: 0;
 }
+
+/* ── TGS 2026 game gallery (/tgs) and the Japanese home's hero card ────────
+   Image-led cards, a lightbox with the prompt and two real actions. Every
+   interactive element uses the site's custom cursor (cursor: none). */
+.tgs-arena { max-width: 1100px; }
+.tgs-sub { max-width: 760px; margin: 0 0 26px; font-size: 15px; line-height: 1.7; color: var(--muted2); }
+.tgs-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 980px) { .tgs-grid { grid-template-columns: 1fr; max-width: 640px; } }
+.tgs-card {
+  display: flex; flex-direction: column; text-align: left; padding: 0;
+  border: 1px solid var(--border); border-radius: 16px; background: var(--surface);
+  overflow: hidden; cursor: none; font: inherit; color: inherit;
+  transition: transform .16s, box-shadow .16s, border-color .16s;
+}
+.tgs-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,.10); border-color: var(--border2); }
+.tgs-card:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.tgs-card-img, .tgs-hero-img, .tgs-lb-img { position: relative; display: block; background: #f0efec; min-width: 0; }
+.tgs-card-img { aspect-ratio: 16 / 9; }
+.tgs-card-img img, .tgs-hero-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tgs-img-fallback {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 22px; color: var(--muted);
+}
+.tgs-badge {
+  position: absolute; left: 12px; top: 12px; padding: 4px 8px; border-radius: 6px;
+  background: rgba(27,27,26,.78); color: #fff;
+  font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .06em;
+}
+.tgs-badge--inline { position: static; display: inline-block; margin-bottom: 10px; }
+.tgs-card-body { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px 16px; }
+.tgs-card-title { font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 20px; color: var(--white); }
+.tgs-card-ref { font-size: 13px; color: var(--muted); }
+.tgs-note { margin: 26px 0 0; max-width: 820px; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
+.tgs-lightbox {
+  position: fixed; inset: 0; z-index: 200; background: rgba(20,20,19,.72);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.tgs-lb-card {
+  position: relative; width: min(1080px, 100%); max-height: calc(100vh - 48px); overflow: auto;
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
+  background: #ffffff; border-radius: 18px;
+}
+@media (max-width: 860px) { .tgs-lb-card { grid-template-columns: 1fr; } }
+.tgs-lb-img { display: flex; align-items: center; min-height: 0; }
+.tgs-lb-img img { width: 100%; height: auto; max-height: calc(100vh - 48px); object-fit: contain; display: block; background: #f0efec; }
+.tgs-lb-close {
+  position: absolute; top: 10px; right: 10px; z-index: 1; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border2); background: #ffffff; color: var(--white); font-size: 16px; cursor: none;
+}
+.tgs-lb-close:hover { border-color: var(--red); color: var(--red); }
+.tgs-lb-body { padding: 22px 22px 24px; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.tgs-lb-title { margin: 0 0 4px; font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 26px; color: var(--white); }
+.tgs-lb-ref { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+.tgs-lb-label { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
+.tgs-lb-prompt {
+  width: 100%; margin: 0 0 14px; padding: 12px 14px; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  font-family: var(--font-body), sans-serif; font-size: 13.5px; line-height: 1.65; color: var(--white);
+  white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto;
+}
+.tgs-lb-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tgs-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px;
+  border-radius: 9px; border: 1px solid var(--border2); background: #ffffff; color: var(--white);
+  font-family: var(--font-body), sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; cursor: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.tgs-btn:hover { border-color: var(--white); }
+.tgs-btn--primary { background: var(--red); border-color: var(--red); color: #ffffff; }
+.tgs-btn--primary:hover { border-color: var(--red); box-shadow: 0 10px 24px rgba(229,57,53,.25); }
+/* Phones: 44px targets, and the card uses the whole height. Declared after
+   .tgs-btn so the min-height wins at equal specificity. */
+@media (max-width: 760px) { .tgs-btn { min-height: 44px; } .tgs-lightbox { padding: 12px; } .tgs-lb-card { max-height: calc(100vh - 24px); } }
+.tgs-lb-hint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--muted); }
+/* Japanese home: the artwork card takes the hero's second column; the agent
+   panel sits under the hero in its standalone form. */
+.tgs-hero-card {
+  display: block; min-width: 0; text-decoration: none; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 24px; background: #ffffff;
+  box-shadow: 0 22px 60px rgba(0,0,0,.08); cursor: none;
+  transition: transform .16s, box-shadow .16s;
+}
+.tgs-hero-card:hover { transform: translateY(-3px); box-shadow: 0 26px 64px rgba(0,0,0,.12); }
+.tgs-hero-card:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.tgs-hero-img { aspect-ratio: 16 / 9; }
+.tgs-hero-body { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px 16px; }
+.tgs-hero-eyebrow { font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--red); }
+.tgs-hero-title { font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 20px; color: var(--white); }
+.tgs-hero-cta { font-size: 14px; font-weight: 600; color: var(--red); }
+.home-agent-ja { max-width: 1240px; margin: -24px auto 0; padding: 0 40px 6px; }
+.home-agent-ja .la-wrap { padding-top: 0; }
+@media (max-width: 760px) { .home-agent-ja { padding: 0 18px 6px; } }

@@ -913,6 +913,26 @@ export const STRINGS: Record<string, Entry> = {
   'xct.text-earnings-analysis.subtitle': { en: 'Attach a quarterly report to analyze', ja: '四半期決算資料を添付して分析' },
 
 
+  // TGS 2026 game gallery (/tgs) and the Japanese home's hero card. English
+  // is the fallback for zh/ko. Every string says the art is unofficial and
+  // generated for the showcase; none names a model, price or vote.
+  'tgs.eyebrow':        { en: 'TGS 2026 · AI fan art', ja: 'TGS 2026 · AIファンアート' },
+  'tgs.title':          { en: 'Japanese games, drawn by AI.', ja: '日本のゲームを、AIで描く。' },
+  'tgs.sub':            { en: 'Unofficial fan concepts of famous Japanese titles, generated for this showcase. Open a work for its prompt, then run the same prompt as a two-model image duel or as a film.', ja: '有名タイトルへのオマージュを、このショーケース用にAIで生成した非公式ファンアートです。作品を開くとプロンプトが見られます。同じプロンプトで2モデルの画像対決や、映像づくりへ。' },
+  'tgs.badge':          { en: 'Unofficial AI fan art', ja: '非公式AIファンアート' },
+  'tgs.note':           { en: 'These images were generated for this showcase. They are not affiliated with or endorsed by any publisher; game names and characters belong to their owners. They are not XDuel results and carry no model names, prices or votes.', ja: 'これらの画像はこのショーケース用に生成したものです。各ゲーム会社との提携・承認はなく、ゲーム名やキャラクターの権利は各社に帰属します。XDuelの対戦結果ではなく、モデル名・価格・投票は付いていません。' },
+  'tgs.prompt':         { en: 'Prompt', ja: 'プロンプト' },
+  'tgs.prompt.pending': { en: 'The prompt for this work is being prepared.', ja: 'この作品のプロンプトは準備中です。' },
+  'tgs.copy':           { en: 'Copy prompt', ja: 'プロンプトをコピー' },
+  'tgs.copied':         { en: 'Copied', ja: 'コピーしました' },
+  'tgs.duel':           { en: 'Compare in XDuel', ja: 'XDuelで比較する' },
+  'tgs.duel.hint':      { en: 'Opens XDuel with this prompt filled in as an image duel. Nothing runs until you press start; sign-in and the daily free quota apply as usual.', ja: 'このプロンプトを入れた状態で、画像対決としてXDuelを開きます。開始を押すまで何も実行されません。ログインと1日の無料回数は通常どおりです。' },
+  'tgs.direct':         { en: 'Make a film in XDirect', ja: 'XDirectで映像にする' },
+  'tgs.close':          { en: 'Close', ja: '閉じる' },
+  'tgs.home.eyebrow':   { en: 'Tokyo Game Show 2026', ja: 'Tokyo Game Show 2026' },
+  'tgs.home.title':     { en: 'Japanese games, drawn by AI', ja: '日本のゲームを、AIで描く' },
+  'tgs.home.cta':       { en: 'See the gallery', ja: 'ギャラリーを見る' },
+
   // Display copy for the XDirect skills (gallery cards, home cards). The
   // SKILL.md metadata stays English and is the fallback; machine ids and the
   // agent instructions are never translated. zh/ko fall back to en for now.

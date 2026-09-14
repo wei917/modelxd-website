@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import LandingAgent from './components/LandingAgent'
+import TgsHeroCard from './tgs/HeroCard'
 import ContactEmail from './components/ContactEmail'
 import BugReportLink from './components/BugReport'
 import { useRouter } from 'next/navigation'
@@ -381,10 +382,22 @@ export default function Home() {
             )}
           </div>
         </div>
-        <div className="home-hero-agent">
+        {lang === 'ja' ? (
+          // TGS 2026 (owner, Sep 14): the Japanese first screen shows one of
+          // the new game artworks and leads to /tgs; the agent panel moves
+          // under the hero. English keeps the agent beside the pitch.
+          <TgsHeroCard />
+        ) : (
+          <div className="home-hero-agent">
+            <LandingAgent />
+          </div>
+        )}
+      </section>
+      {lang === 'ja' && (
+        <div className="home-agent-ja">
           <LandingAgent />
         </div>
-      </section>
+      )}
 
       {/* ── The apps (owner, Aug 18): the product is a shelf of working
           applications — template films with REAL generated result loops on

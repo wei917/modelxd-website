@@ -203,6 +203,26 @@ export default function XDuel() {
   const [lightbox,   setLightbox]   = useState<string | null>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
+  // /xduel?mode=image&q=… prefills step 1 (the TGS gallery links here, Sep
+  // 14). It only fills the form: nothing runs until the user presses start,
+  // so sign-in, quotas and charges are exactly as before. The prompt is
+  // applied once the requested mode is in, so a mode switch cannot clear it.
+  const seed = useRef<{ q: string; m: Mode } | null>(null)
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href)
+      const q = url.searchParams.get('q')
+      const m = url.searchParams.get('mode')
+      if (!q) return
+      const mm: Mode = m === 'text' || m === 'video' ? m : 'image'
+      seed.current = { q: q.slice(0, 2000), m: mm }
+      if (mm !== mode) setMode(mm)
+    } catch { /* no window */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (seed.current && seed.current.m === mode) { setPrompt(seed.current.q); seed.current = null }
+  }, [mode])
   const { setOverride } = usePageTitle()
   const [showPrices, setShowPrices] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
