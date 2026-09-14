@@ -940,9 +940,9 @@ export const STRINGS: Record<string, Entry> = {
   'pg.hint':             { en: 'Opens the tool with the prompt filled in. Nothing runs until you press start there; sign-in and the daily free quota apply as usual.', ja: 'プロンプトを入れた状態でツールを開きます。そこで開始を押すまで何も実行されません。ログインと1日の無料回数は通常どおりです。' },
   'pg.close':            { en: 'Close', ja: '閉じる' },
   'pg.open':             { en: 'Open', ja: '開く' },
-  'pg.home.eyebrow':     { en: 'ModelXD Playground', ja: 'ModelXD Playground' },
-  'pg.home.title':       { en: 'Play, make and compare with AI', ja: 'AIで遊ぶ。つくる。比べる。' },
-  'pg.home.cta':         { en: 'Open the playground', ja: 'プレイグラウンドへ' },
+  'pg.home.eyebrow':     { en: 'ModelXD Playground', 'zh-Hant': 'ModelXD Playground', 'zh-Hans': 'ModelXD Playground', ja: 'ModelXD Playground', ko: 'ModelXD Playground' },
+  'pg.home.caption':     { en: 'You can create images and videos like this.', 'zh-Hant': '這樣的圖片和影片，你也做得出來。', 'zh-Hans': '这样的图片和视频，你也做得出来。', ja: 'こんな画像や動画、あなたも作れる。', ko: '이런 이미지와 영상, 당신도 만들 수 있어요.' },
+  'pg.home.cta':         { en: 'Open the playground', 'zh-Hant': '前往 Playground', 'zh-Hans': '前往 Playground', ja: 'プレイグラウンドへ', ko: 'Playground로 이동' },
 
   // Display copy for the XDirect skills (gallery cards, home cards). The
   // SKILL.md metadata stays English and is the fallback; machine ids and the
@@ -964,7 +964,7 @@ export const STRINGS: Record<string, Entry> = {
   'skill.category.story':               { en: 'story', ja: '物語' },
   'xvote.votes':                        { en: '{n} votes', 'zh-Hant': '{n} 票', 'zh-Hans': '{n} 票', ja: '{n}票', ko: '{n}표' },
   'xvote.vote1':                        { en: '1 vote', 'zh-Hant': '1 票', 'zh-Hans': '1 票', ja: '1票', ko: '1표' },
-  'home.cta.play':       { en: 'Try a game first', 'zh-Hant': '先玩玩看', 'zh-Hans': '先玩玩看', ja: 'まずは遊んでみる', ko: '먼저 게임해 보기' },
+  'home.cta.play':       { en: 'Try it', 'zh-Hant': '玩玩看', 'zh-Hans': '玩玩看', ja: '遊んでみる', ko: '체험해 보기' },
   'home.cta.compare':    { en: 'Compare quality and price', 'zh-Hant': '比較品質與價格', 'zh-Hans': '比较质量与价格', ja: '比べて選ぶ', ko: '품질과 가격 비교' },
   'common.loading':      { en: 'Loading…', 'zh-Hant': '載入中…', 'zh-Hans': '加载中…', ja: '読み込み中…', ko: '불러오는 중…' },
   'xduel.attach':        { en: 'ATTACH', 'zh-Hant': '附加檔案', 'zh-Hans': '附加文件', ja: '添付', ko: '첨부' },

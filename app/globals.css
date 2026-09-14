@@ -3021,9 +3021,28 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .pg-hero-eyebrow { font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--red); }
 .pg-hero-title { font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 20px; color: var(--white); }
 .pg-hero-cta { font-size: 14px; font-weight: 600; color: var(--red); }
-.home-agent-ja { max-width: 1240px; margin: -24px auto 0; padding: 0 40px 6px; }
-.home-agent-ja .la-wrap { padding-top: 0; }
-@media (max-width: 760px) { .home-agent-ja { padding: 0 18px 6px; } }
+.home-agent-below { max-width: 1240px; margin: -24px auto 0; padding: 0 40px 6px; }
+.home-agent-below .la-wrap { padding-top: 0; }
+@media (max-width: 760px) { .home-agent-below { margin-top: -8px; padding: 0 18px 6px; } }
+/* Phones (owner, Sep 14): the primary Playground door and the artwork must
+   both sit above the fold at 375x667. The model strip hides, the hero
+   loses its top air and eyebrow, the two secondary doors share one row. */
+@media (max-width: 760px) {
+  .value-bar { display: none; }
+  .home-hero { padding: 14px 18px 22px; gap: 14px; }
+  .home-hero-eyebrow { display: none; }
+  .home-hero-title { margin: 4px 0 10px; font-size: clamp(32px, 10vw, 44px); }
+  .home-hero-sub { font-size: 15px; margin: 0; }
+  .home-hero-actions { flex-direction: row; flex-wrap: wrap; align-items: stretch; gap: 8px; margin-top: 14px; }
+  .home-hero-cta { width: auto; min-height: 44px; }
+  .home-hero-cta.is-primary { flex: 1 0 100%; }
+  .home-hero-cta.is-secondary { flex: 1 1 calc(50% - 4px); min-height: 40px; padding: 0 10px; font-size: 12.5px; }
+  html[lang="ja"] .home-hero-cta.is-secondary { font-size: 13px; }
+  .pg-hero-card { border-radius: 16px; }
+  .pg-hero-body { gap: 2px; padding: 10px 14px 12px; }
+  .pg-hero-title { font-size: 15px; }
+  .pg-hero-cta { font-size: 13px; }
+}
 /* Playground additions: tool entrances, section titles, preset cards, the
    editable prompt boxes in the detail panel. */
 .pg-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 34px; }

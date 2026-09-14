@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import LandingAgent from './components/LandingAgent'
 import PlaygroundHeroCard from './playground/HeroCard'
 import ContactEmail from './components/ContactEmail'
@@ -353,52 +354,28 @@ export default function Home() {
           </h1>
           <p className="home-hero-sub">{t('home.sub')}</p>
           <div className="home-hero-actions">
-            {lang === 'ja' ? (
-              // The TGS entrance (Sep 14): play first, create as an equal
-              // path, compare third. Practice is a public page with no model
-              // call and no credits, so it is pushed directly — never through
-              // handleNav's sign-in gate. Scoped to Japanese; the English hero
-              // is the owner's Aug 25 decision and stays as it is.
-              <>
-                <button type="button" className="home-hero-cta is-primary" onClick={() => router.push('/xgame/practice')}>
-                  {t('home.cta.play')} <span aria-hidden>→</span>
-                </button>
-                <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xdirect')}>
-                  {t('home.cta.primary')}
-                </button>
-                <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
-                  {t('home.cta.compare')}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="home-hero-cta is-primary" onClick={() => void handleNav('/xdirect')}>
-                  {t('home.cta.primary')} <span aria-hidden>→</span>
-                </button>
-                <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
-                  {t('home.cta.secondary')}
-                </button>
-              </>
-            )}
+            {/* Owner, Sep 14: in every language the primary door is the
+                Playground, public and before sign-in, carrying the current
+                language. Create and compare stay as the secondary doors
+                (compare keeps each locale's existing label). */}
+            <Link href={`/playground?lang=${lang}`} className="home-hero-cta is-primary">
+              {t('home.cta.play')} <span aria-hidden>→</span>
+            </Link>
+            <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xdirect')}>
+              {t('home.cta.primary')}
+            </button>
+            <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
+              {t(lang === 'ja' ? 'home.cta.compare' : 'home.cta.secondary')}
+            </button>
           </div>
         </div>
-        {lang === 'ja' ? (
-          // Playground (owner, Sep 14): the Japanese first screen shows the
-          // playground's hero artwork and leads to /playground; the agent
-          // panel moves under the hero. English keeps the agent beside the
-          // pitch.
-          <PlaygroundHeroCard />
-        ) : (
-          <div className="home-hero-agent">
-            <LandingAgent />
-          </div>
-        )}
+        {/* The playground's hero artwork beside the pitch, every locale
+            (owner, Sep 14); the agent panel sits under the hero. */}
+        <PlaygroundHeroCard />
       </section>
-      {lang === 'ja' && (
-        <div className="home-agent-ja">
-          <LandingAgent />
-        </div>
-      )}
+      <div className="home-agent-below">
+        <LandingAgent />
+      </div>
 
       {/* ── The apps (owner, Aug 18): the product is a shelf of working
           applications — template films with REAL generated result loops on
