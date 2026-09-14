@@ -77,7 +77,8 @@ export async function GET(req: Request) {
       prompt:      duel.prompt,
       input_media: duel.input_media ?? null,
       created_at:  duel.created_at,
-      user_id:     duel.user_id,
+      // Whether the viewer made this duel; the id itself stays server-side (104).
+      is_owner:    !!user && duel.user_id === user.id,
       // Slot INDICES, not model ids — the owner's own choices are part of
       // the page, but `vote1_model_id` would name a model outright.
       vote1:       duel.vote1 ?? null,

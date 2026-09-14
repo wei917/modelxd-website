@@ -43,8 +43,10 @@ export default function FeedPage() {
   const load = useCallback(async (m: Mode, p: number, append = false) => {
     setLoading(true)
     const sb = createSupabaseBrowser()
+    // duels_public (migration 104): the public columns of live duels. The
+    // table itself is owner-read since 104.
     let q = sb
-      .from('duels')
+      .from('duels_public')
       .select('id, mode, prompt, slots, vote1, vote2, created_at')
       .order('created_at', { ascending: false })
       .range(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE - 1)

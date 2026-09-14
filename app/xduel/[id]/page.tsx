@@ -33,7 +33,7 @@ interface Duel {
   slots: SlotData[]
   vote1: string | null
   vote2: string | null
-  user_id: string
+  is_owner: boolean
   created_at: string
   /** Public URL of the user's input file (July 19+ duels). */
   input_media?: { url: string; mediaType: string; fileName: string | null } | null
@@ -148,14 +148,14 @@ export default function DuelPage() {
 
     // Case 1: viewer is the duel creator and the original vote is on
     // the duel row.
-    if (userId && duel.user_id === userId && duel.vote1 != null) {
+    if (duel.is_owner && duel.vote1 != null) {
       finalize()
       return
     }
 
     // Case 2: viewer is logged in but didn't create the duel — check
     // duel_votes (community vote table).
-    if (userId && duel.user_id !== userId) {
+    if (userId && !duel.is_owner) {
       const sb = createSupabaseBrowser()
       sb.from('duel_votes')
         .select('id')
@@ -190,7 +190,7 @@ export default function DuelPage() {
     setVote1(choice)
     // No model id is sent any more — the server derives the winner from the
     // slot index against the duel's own row.
-    const isOwner = !!userId && duel!.user_id === userId
+    const isOwner = !!duel!.is_owner
     const req = isOwner
       ? fetch('/api/xduel/vote', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -223,7 +223,7 @@ export default function DuelPage() {
       body: JSON.stringify({ duelId: duel!.id, vote2: choice === 'T' ? 'T' : String(choice) }),
     }).catch(console.error)
     // Record community vote (for server-side filtering + popularity count)
-    if (userId && duel!.user_id !== userId) {
+    if (userId && !duel!.is_owner) {
       fetch('/api/xduel/community-vote', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
