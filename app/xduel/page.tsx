@@ -46,7 +46,7 @@ const POPULAR_PROMPTS: Record<Mode, { label: string; prompt: string; needsImage?
     { label: 'Wave at the camera', needsImage: true, prompt: 'Make the person in this photo smile and wave at the camera naturally.', ja: { label: 'カメラに手を振る', prompt: 'この写真の人物が自然に微笑んでカメラに手を振るようにしてください。' } },
     { label: 'Glass fruit ASMR',   prompt: 'ASMR video: a knife slowly slices a translucent glass apple on a wooden cutting board, crisp crystal sounds, macro shot.', ja: { label: 'ガラスの果物ASMR', prompt: 'ASMR動画：木のまな板の上で、透き通ったガラスのリンゴをナイフがゆっくり切る。澄んだクリスタルの音、マクロ撮影。' } },
     { label: 'Surfing dog',        prompt: 'A golden retriever surfing a big wave, cinematic slow motion, golden hour light.', ja: { label: 'サーフィンする犬', prompt: '大きな波に乗るゴールデンレトリバー。シネマティックなスローモーション、黄金色の夕方の光。' } },
-    { label: 'Storm timelapse',    prompt: 'A timelapse of a thunderstorm rolling over a mountain range at dusk, lightning flashing inside the clouds.' },
+    { label: 'Storm timelapse',    prompt: 'A timelapse of a thunderstorm rolling over a mountain range at dusk, lightning flashing inside the clouds.', ja: { label: '嵐のタイムラプス', prompt: '夕暮れの山脈に雷雨が押し寄せるタイムラプス。雲の中で稲妻が光る。' } },
   ],
 }
 // XCreate-style popular cards (CC, July 20): the chips row is rendered

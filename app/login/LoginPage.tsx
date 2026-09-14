@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useT } from '../../lib/i18n'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
 
 export default function LoginPage() {
+  const t = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('from') || '/'
@@ -140,8 +142,8 @@ export default function LoginPage() {
 
           <div className="auth-divider" />
 
-          <div className="auth-title">Sign in to <span className="accent">XDuel</span></div>
-          <p className="auth-sub">Free account · Takes 10 seconds</p>
+          <div className="auth-title">{t('auth.titleprefix')} Model<span className="accent">XD</span></div>
+          <p className="auth-sub">{t('auth.free')}</p>
 
           {/* Google button */}
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
@@ -151,16 +153,16 @@ export default function LoginPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            {loading ? 'Signing in...' : 'Continue with Google'}
+            {loading ? t('auth.signingin') : t('auth.google')}
           </button>
 
 
           {/* Feature list */}
           <div className="auth-features">
             {[
-              { icon: '⚔️', text: <><strong>XDuel</strong> — blind-test models on your prompts</> },
-              { icon: '🗳️', text: <><strong>Vote</strong> — judge archived battles</> },
-              { icon: '✨', text: <><strong>XCreate</strong> — run prompts across models side by side</> },
+              { icon: '⚔️', text: <><strong>XDuel</strong> · {t('auth.f.xduel')}</> },
+              { icon: '🗳️', text: <><strong>XVote</strong> · {t('auth.f.xvote')}</> },
+              { icon: '✨', text: <><strong>XCreate</strong> · {t('auth.f.xcreate')}</> },
             ].map((f, i) => (
               <div className="auth-feature-row" key={i}>
                 <span className="auth-feature-icon">{f.icon}</span>

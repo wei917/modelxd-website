@@ -457,6 +457,10 @@ export default function LeaderboardPage() {
               {t('xboard.how').toUpperCase()} →
             </Link>
           </h1>
+          {/* One sentence on what the two columns are (TGS audit, Sep 14):
+              Score is the blind vote; XD Score adds the price-aware vote and
+              retention. Weights from lib/xdrating.ts. */}
+          <p style={{ maxWidth: 820, margin: '10px 0 0', fontSize: 14, lineHeight: 1.65, color: 'var(--muted)' }}>{t('xboard.explain')}</p>
 
           {/* Page-local layout: subtype rail + content. NOT the app nav —
               a second, in-page menu (CC, Aug 2): subtypes will multiply, and

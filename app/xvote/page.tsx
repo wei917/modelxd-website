@@ -295,7 +295,7 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
       {loading ? (
         <div style={{ color: 'var(--muted)', fontSize: 13, padding: '40px 0' }}>{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 14, padding: '24px 0' }}>No duels to vote on yet.</div>
+        <div style={{ color: 'var(--muted)', fontSize: 14, padding: '24px 0' }}>{t('xvote.empty')}</div>
       ) : (
         <>
           {/* Card grid */}

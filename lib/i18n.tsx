@@ -52,7 +52,7 @@ export const STRINGS: Record<string, Entry> = {
   // create, direct, talk, vote), while the persona inside stays "the
   // director". 導演/导演 already read as verbs in zh, so only en changed.
   'nav.xgame':        { en: 'XGame', 'zh-Hant': 'X遊戲', 'zh-Hans': 'X游戏', ja: 'Xゲーム', ko: 'X게임' },
-  'xg.shell.title':   { en: 'Watch AI Play. Take a Seat.', 'zh-Hant': '看 AI 對戰，或親自入座。', 'zh-Hans': '看 AI 对战，或亲自入座。', ja: 'AIの対戦を観る。席に着く。', ko: 'AI 대전을 보거나 직접 참여하세요.' },
+  'xg.shell.title':   { en: 'Watch AI Play. Take a Seat.', 'zh-Hant': '看 AI 對戰，或親自入座。', 'zh-Hans': '看 AI 对战，或亲自入座。', ja: 'AIと対戦。観戦だけでも。', ko: 'AI 대전을 보거나 직접 참여하세요.' },
   'xg.game.gomoku':   { en: 'Gomoku', 'zh-Hant': '五子棋', 'zh-Hans': '五子棋', ja: '五目並べ', ko: '오목' },
   'xg.game.chess':    { en: 'Chess', 'zh-Hant': '西洋棋', 'zh-Hans': '国际象棋', ja: 'チェス', ko: '체스' },
   'xg.game.xiangqi':  { en: 'Chinese Chess', 'zh-Hant': '中國象棋', 'zh-Hans': '中国象棋', ja: 'シャンチー', ko: '샹치' },
@@ -304,8 +304,8 @@ export const STRINGS: Record<string, Entry> = {
   // XCut — the cutting room (owner, Aug 22)
   'xcut.title':      { en: 'XCut', 'zh-Hant': 'X剪輯', 'zh-Hans': 'X剪辑', ja: 'Xカット', ko: 'X컷' },
   'xcut.tagline':    { en: 'The cutting room — every shot knows its model and its price.', 'zh-Hant': '剪輯室——每一個鏡頭都知道自己的模型與價格。', 'zh-Hans': '剪辑室——每一个镜头都知道自己的模型与价格。', ja: '編集室 — すべてのショットがモデルと価格を知っている。', ko: '편집실 — 모든 샷이 자신의 모델과 가격을 알고 있습니다.' },
-  'xcut.projects':   { en: 'Your cuts', 'zh-Hant': '你的剪輯', 'zh-Hans': '你的剪辑', ja: 'あなたのカット', ko: '내 컷' },
-  'xcut.new':        { en: 'New cut', 'zh-Hant': '新剪輯', 'zh-Hans': '新剪辑', ja: '新しいカット', ko: '새 컷' },
+  'xcut.projects':   { en: 'Your cuts', 'zh-Hant': '你的剪輯', 'zh-Hans': '你的剪辑', ja: '編集プロジェクト', ko: '내 컷' },
+  'xcut.new':        { en: 'New cut', 'zh-Hant': '新剪輯', 'zh-Hans': '新剪辑', ja: '新しい編集プロジェクト', ko: '새 컷' },
   // "Cut this board" was two pieces of jargon stacked: to anyone who is not an
   // editor "cut" reads as DELETE, and "board" is our word rather than theirs.
   // The button should say what happens; XCut is a name you learn on arrival,
@@ -822,13 +822,38 @@ export const STRINGS: Record<string, Entry> = {
   'xg.practice.again':      { en: 'Play again', 'zh-Hant': '再玩一次', 'zh-Hans': '再玩一次', ja: 'もう一度', ko: '다시 하기' },
   'xg.practice.reset':      { en: 'Reset', 'zh-Hant': '重設', 'zh-Hans': '重置', ja: 'リセット', ko: '초기화' },
   'xg.practice.home':       { en: 'Home', 'zh-Hant': '首頁', 'zh-Hans': '首页', ja: 'ホームへ', ko: '홈으로' },
+  'xg.practice.cell':       { en: '{col}{row}', 'zh-Hant': '{col}{row}', 'zh-Hans': '{col}{row}', ja: '{col}{row}', ko: '{col}{row}' },
+  'xg.practice.occupied':   { en: 'occupied', 'zh-Hant': '已有棋子', 'zh-Hans': '已有棋子', ja: '石あり', ko: '돌 있음' },
+  'xdev.createkey':         { en: '+ Create key', 'zh-Hant': '+ 建立金鑰', 'zh-Hans': '+ 创建密钥', ja: '+ キーを作成', ko: '+ 키 만들기' },
+  'xdev.signin.createkey':  { en: 'Sign in to create a key', 'zh-Hant': '登入以建立金鑰', 'zh-Hans': '登录以创建密钥', ja: 'ログインしてキーを作成', ko: '로그인하여 키 만들기' },
+  'xdev.revoke.confirm':    { en: 'Revoke this key? Agents using it stop working immediately.', 'zh-Hant': '要撤銷這把金鑰嗎？使用它的代理會立即停止運作。', 'zh-Hans': '要撤销这个密钥吗？使用它的代理会立即停止工作。', ja: 'このキーを無効にしますか？このキーを使うエージェントは直ちに動かなくなります。', ko: '이 키를 취소할까요? 이 키를 쓰는 에이전트는 즉시 멈춥니다.' },
+  'xdev.reference.link':    { en: 'API reference', 'zh-Hant': 'API 參考文件', 'zh-Hans': 'API 参考文档', ja: 'APIリファレンス', ko: 'API 레퍼런스' },
+  'xboard.explain':         { en: 'Score is the blind vote on quality, cast before the price is shown. XD Score adds the vote taken with the price known and whether people keep their choice once they see it: quality 40%, price-aware value 40%, keeping the choice 20%. Prices are list prices per 1M tokens, in USD.', 'zh-Hant': '「品質分數」是在看到價格前的盲測投票。XD Score 再加上看過價格後的投票，以及看到價格後是否維持原選擇：品質 40%、含價格的價值 40%、維持原選擇 20%。價格為每 100 萬 token 的定價，以美元計。', 'zh-Hans': '"质量分数"是在看到价格前的盲测投票。XD Score 再加上看过价格后的投票，以及看到价格后是否维持原选择：质量 40%、含价格的价值 40%、维持原选择 20%。价格为每 100 万 token 的定价，以美元计。', ja: '品質スコアは、価格を見せずに行うブラインド投票です。XD Scoreはそれに、価格を知ったうえでの投票と、価格を見ても選択を変えない割合を加えた総合評価です（品質40%・価格込みの価値40%・選択維持率20%）。価格は100万トークンあたりの定価で、米ドル表示です。', ko: '품질 점수는 가격을 보기 전의 블라인드 투표입니다. XD Score는 여기에 가격을 알고 한 투표와 가격을 본 뒤에도 선택을 유지하는 비율을 더한 종합 점수입니다(품질 40%, 가격 반영 가치 40%, 선택 유지 20%). 가격은 100만 토큰당 정가, 미국 달러 기준입니다.' },
+  'auth.free':              { en: 'Free account · Takes 10 seconds', 'zh-Hant': '免費帳號 · 10 秒完成', 'zh-Hans': '免费账号 · 10 秒完成', ja: '無料アカウント・10秒で完了', ko: '무료 계정 · 10초면 완료' },
+  'legal.summary.title':    { en: 'Summary', ja: '日本語の要約' },
+  'legal.summary.note':     { en: 'The English text below is the governing version. This box restates its main points.', ja: '正式な条文は下の英語版です。ここでは主な点だけをまとめています。' },
+  'legal.privacy.public':   { en: 'Completed XDuels are public in XVote: the prompt, anything attached, and the outputs. Your name, email and profile are never shown with a duel.', ja: '完了したXDuelは、プロンプト・添付・モデルの出力を含めてXVoteで公開されます。名前・メール・プロフィールが対決と一緒に表示されることはありません。' },
+  'legal.privacy.private':  { en: 'Everything else is private to your account: your work in XCreate, XDirect, XCut, XTalk, XGame, XWorld, XArch and XTell, your votes, your profile and your credit history.', ja: 'それ以外はすべてあなたのアカウント内で非公開です：XCreate・XDirect・XCut・XTalk・XGame・XWorld・XArch・XTellの作品、投票、プロフィール、クレジット履歴。' },
+  'legal.privacy.use':      { en: 'We do not sell personal data and do not train our own models on your content. AI providers receive only what a generation needs (the prompt and attached files), never your name or email.', ja: '個人データを販売せず、あなたのコンテンツで自社モデルを学習させることもありません。AIプロバイダーに送るのは生成に必要なもの（プロンプトと添付ファイル）だけで、名前やメールは送りません。' },
+  'legal.privacy.cookies':  { en: 'Only essential cookies: your sign-in session and, on gated preview domains, a site-access token. No advertising or cross-site tracking.', ja: 'Cookieは必須のものだけです：ログインセッションと、限定公開ドメインでのサイトアクセス用トークン。広告用やサイト横断の追跡はありません。' },
+  'legal.privacy.delete':   { en: 'Data is kept while your account is active. You can delete individual XDuels and XCreates from your profile, or delete the whole account.', ja: 'データはアカウントが有効な間保持されます。個々のXDuelやXCreateはプロフィールから削除でき、アカウント全体の削除もできます。' },
+  'legal.terms.content':    { en: 'You keep ownership of the prompts and files you submit; ModelXD gets a license to process them (including sending them to the AI providers you compare) and to store the results.', ja: '送信したプロンプトやファイルの所有権はあなたにあります。ModelXDはそれらを処理し（比較対象のAIプロバイダーへの送信を含む）、結果を保存するライセンスを得ます。' },
+  'legal.terms.public':     { en: 'XDuel results are public, including your prompt, anything attached to it and the outputs. Everything else you submit is private to your account.', ja: 'XDuelの結果は、プロンプト・添付・出力を含めて公開されます。それ以外に送信したものは、あなたのアカウント内で非公開です。' },
+  'legal.terms.credits':    { en: 'XDuel includes a limited number of free duels per day. Paid use is charged from your prepaid credit balance at the provider rates shown before you generate; the final cost follows the provider\'s reported usage. Credits are prepaid, non-transferable and, except where the law requires, non-refundable.', ja: 'XDuelには1日あたり一定回数の無料対決があります。有料の利用は、生成前に表示されるプロバイダー料金に基づき、前払いのクレジット残高から差し引かれます。最終的な金額はプロバイダーが報告する実際の使用量によります。クレジットは前払い制で譲渡できず、法律で求められる場合を除き返金されません。' },
+  'legal.terms.plan':       { en: 'The monthly plan renews every month until you cancel; cancelling stops the next renewal and the plan stays active to the end of the month already paid. Each month\'s plan credit is used before other credit and expires at the end of that month. Credit bought as a top-up does not expire.', ja: '月額プランは解約するまで毎月自動更新されます。解約すると次回の更新が止まり、すでに支払った月の末日までプランは有効です。各月のプラン分クレジットは他のクレジットより先に使われ、その月の末日で失効します。個別に購入したクレジットは失効しません。' },
+  'legal.terms.refund':     { en: 'If a generation fails on our side, the quota or credits are refunded automatically. Prices, quotas and discounts may change at any time.', ja: '当方側の原因で生成に失敗した場合、対応する無料枠またはクレジットは自動的に返還されます。価格・無料枠・割引は予告なく変わることがあります。' },
+  'legal.method.quality':   { en: 'Score: a blind vote on which answer is better, cast before the price is shown.', ja: '品質スコア：価格を見せない状態で、どちらの回答が良いかを投票します（ブラインド投票）。' },
+  'legal.method.value':     { en: 'Price-aware value: the same question asked again once the price is visible.', ja: '価格込みの評価：価格を見たうえで、もう一度どちらを選ぶかを投票します。' },
+  'legal.method.keep':      { en: 'Keeping the choice: the share of people who stay with their pick after seeing the price.', ja: '選択維持率：価格を見たあとも同じ選択を保った人の割合です。' },
+  'legal.method.score':     { en: 'XD Score combines them: quality 40%, price-aware value 40%, keeping the choice 20%. It is not score divided by price. The formulas are in the English text below.', ja: 'XD Scoreはこれらを合成した総合評価です：品質40%・価格込みの評価40%・選択維持率20%。単純な「スコア÷価格」ではありません。詳しい式は下の英語本文にあります。' },
+  'xvote.empty':            { en: 'No duels to vote on yet.', 'zh-Hant': '目前還沒有可投票的對決。', 'zh-Hans': '目前还没有可投票的对决。', ja: 'まだ投票できる対決がありません。', ko: '아직 투표할 대결이 없습니다.' },
   'xg.practice.note':       { en: 'A fixed practice puzzle, solved on this page. It is not one of the rated games and sends nothing to voting or benchmarks.', 'zh-Hant': '這是固定的練習題，在本頁就地完成。它不是計分遊戲，也不會送進投票或基準。', 'zh-Hans': '这是固定的练习题，在本页就地完成。它不是计分游戏，也不会送进投票或基准。', ja: '固定の練習問題で、このページ内で完結します。評価対象のゲームではなく、投票やベンチマークには何も送られません。', ko: '이 페이지에서 끝나는 고정 연습 문제입니다. 평가 대상 게임이 아니며 투표나 벤치마크로 아무것도 보내지 않습니다.' },
 
   // Display copy for the XDirect skills (gallery cards, home cards). The
   // SKILL.md metadata stays English and is the fallback; machine ids and the
   // agent instructions are never translated. zh/ko fall back to en for now.
   'skill.music-video.title':            { en: 'Music Video', ja: 'ミュージックビデオ' },
-  'skill.music-video.tagline':          { en: 'Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera.', ja: '歌詞を入れると、MVが出てきます。キャストを固定し、ビートに合わせてカット。' },
+  'skill.music-video.tagline':          { en: 'Your song goes in. A film comes out — cast locked, cut on the beat, sung on camera.', ja: '楽曲を入れると、MVが出てきます。キャストを固定し、ビートに合わせてカット。' },
   'skill.ai-animation.title':           { en: 'Animation', ja: 'アニメーション' },
   'skill.ai-animation.tagline':         { en: 'One style, your characters, a story that moves — animated shot by shot.', ja: 'ひとつの画風、あなたのキャラクター。物語がショットごとに動き出します。' },
   'skill.story-to-video.title':         { en: 'Story to Video', ja: '物語を映像に' },
@@ -1231,7 +1256,7 @@ export const STRINGS: Record<string, Entry> = {
   'xboard.allproviders': { en: 'All providers', 'zh-Hant': '全部供應商', 'zh-Hans': '全部供应商', ja: 'すべてのプロバイダー', ko: '모든 제공사' },
   'xboard.modelcount':   { en: '{n} models', 'zh-Hant': '{n} 個模型', 'zh-Hans': '{n} 个模型', ja: '{n}モデル', ko: '모델 {n}개' },
   'xboard.col.model':    { en: 'Model', 'zh-Hant': '模型', 'zh-Hans': '模型', ja: 'モデル', ko: '모델' },
-  'xboard.col.quality':  { en: 'Score', 'zh-Hant': '分數', 'zh-Hans': '分数', ja: 'スコア', ko: '점수' },
+  'xboard.col.quality':  { en: 'Score', 'zh-Hant': '品質分數', 'zh-Hans': '质量分数', ja: '品質スコア', ko: '품질 점수' },
   'xboard.col.provider': { en: 'Provider', 'zh-Hant': '供應商', 'zh-Hans': '供应商', ja: 'プロバイダー', ko: '제공사' },
   'xboard.col.released': { en: 'Released', 'zh-Hant': '發布', 'zh-Hans': '发布', ja: 'リリース', ko: '출시' },
   'xboard.col.input':    { en: 'Input', 'zh-Hant': '輸入', 'zh-Hans': '输入', ja: '入力', ko: '입력' },

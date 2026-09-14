@@ -340,7 +340,16 @@ export default function Home() {
       <section className="home-hero">
         <div className="home-hero-copy">
           <div className="home-hero-eyebrow">{t('home.eyebrow')}</div>
-          <h1 className="home-hero-title">{t('home.hero')}</h1>
+          <h1 className="home-hero-title">
+            {lang === 'ja'
+              // Each phrase is an unbreakable unit, so a narrow column wraps
+              // between 遊ぶ。/ つくる。/ AIを選ぶ。 and never inside a word
+              // (text-wrap: balance split つくる at 1280px — Codex, Sep 14).
+              ? t('home.hero').split('。').filter(Boolean).map(ph => (
+                  <span key={ph} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>{ph}。</span>
+                ))
+              : t('home.hero')}
+          </h1>
           <p className="home-hero-sub">{t('home.sub')}</p>
           <div className="home-hero-actions">
             {lang === 'ja' ? (

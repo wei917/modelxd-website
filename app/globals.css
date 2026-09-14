@@ -123,6 +123,9 @@ html[lang="ja"] .nav-links a     { letter-spacing: 0.04em; }
 /* Mobile menu: the selector is the first row, at a size a thumb can hit
    (16px text also stops iOS Safari zooming the page on focus). */
 .nav-mobile-overlay .nav-lang { padding: 0 4px; margin: 0 0 6px; }
+/* XGame practice board: a focused cell is visible (SVG rects are focusable
+   via tabIndex; outline applies in Chrome/Safari/Firefox). */
+.practice-cell:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
 .nav-mobile-overlay .nav-lang select { font-size: 16px; min-height: 44px; padding: 8px 12px; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

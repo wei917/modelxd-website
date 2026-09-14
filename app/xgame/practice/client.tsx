@@ -54,13 +54,25 @@ export default function PracticeClient() {
             {/* hit targets last, so they sit above the stones */}
             {Array.from({ length: N * N }, (_, i) => {
               const x = i % N, y = Math.floor(i / N)
-              return <rect key={'h' + i} x={px(x) - CELL / 2} y={px(y) - CELL / 2} width={CELL} height={CELL} fill="transparent" style={{ cursor: won || taken.has(key(x, y)) ? 'default' : 'pointer' }} onClick={() => play(x, y)} />
+              const occupied = taken.has(key(x, y))
+              const label = t('xg.practice.cell').replace('{col}', 'ABCDEFG'[x]).replace('{row}', String(y + 1)) + (occupied ? ' · ' + t('xg.practice.occupied') : '')
+              return (
+                <rect
+                  key={'h' + i} x={px(x) - CELL / 2} y={px(y) - CELL / 2} width={CELL} height={CELL} fill="transparent"
+                  role="button" tabIndex={won || occupied ? -1 : 0} aria-label={label} aria-disabled={won || occupied || undefined}
+                  className="practice-cell"
+                  style={{ cursor: won || occupied ? 'default' : 'pointer' }}
+                  onClick={() => play(x, y)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(x, y) } }}
+                />
+              )
             })}
           </svg>
 
           <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <div className="prompt-label" style={{ marginBottom: 8 }}>{won ? t('xg.practice.won') : t('xg.practice.turn')}</div>
-            <p style={{ fontSize: 15, lineHeight: 1.7, color: won ? 'var(--white)' : 'var(--muted)', margin: '0 0 16px' }}>
+            {/* aria-live: the win and the hint are announced, not just drawn */}
+            <p aria-live="polite" style={{ fontSize: 15, lineHeight: 1.7, color: won ? 'var(--white)' : 'var(--muted)', margin: '0 0 16px' }}>
               {won ? t('xg.practice.won.desc') : misses > 0 ? t('xg.practice.hint') : t('xg.practice.task')}
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

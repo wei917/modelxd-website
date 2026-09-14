@@ -95,7 +95,7 @@ export default function XDevClient() {
   }
 
   const revoke = async (id: string) => {
-    if (!confirm('Revoke this key? Agents using it stop working immediately.')) return
+    if (!confirm(t('xdev.revoke.confirm'))) return
     await fetch('/api/xdev/tokens', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     if (fresh?.id === id) setFresh(null)
     load()
@@ -192,7 +192,7 @@ export default function XDevClient() {
             <button onClick={mint} disabled={minting} style={{
               padding: '8px 20px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
               fontWeight: 800, fontSize: 12.5, cursor: minting ? 'default' : 'pointer', opacity: minting ? 0.5 : 1,
-            }}>+ Create key</button>
+            }}>{t('xdev.createkey')}</button>
             {err && <span style={{ color: 'var(--red)', fontSize: 12 }}>{err}</span>}
           </div>
 
@@ -201,7 +201,7 @@ export default function XDevClient() {
               <button onClick={() => showAuth('/xdev')} style={{
                 border: 'none', background: 'var(--red)', color: '#fff', borderRadius: 999,
                 padding: '7px 18px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', marginRight: 10,
-              }}>Sign in to create a key</button>
+              }}>{t('xdev.signin.createkey')}</button>
               New accounts start with $10 free credit — no card.
             </div>
           ) : loading ? <div style={{ color: 'var(--muted2)', fontSize: 12.5 }}>{t('common.loading')}</div> : rows.length === 0 ? (
@@ -250,14 +250,14 @@ export default function XDevClient() {
 
         {/* ── Text API ─────────────────────────────────────────────────── */}
         <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
             <span style={{ fontWeight: 800, fontSize: 15 }}>💬 Text API — OpenAI-compatible</span>
             <span style={{ ...label }}>chat · structured output · image & video jobs</span>
             <a href="#docs" onClick={(e) => { e.preventDefault(); document.getElementById('docs')?.scrollIntoView({ behavior: 'instant' as ScrollBehavior }) }} style={{
               marginLeft: 'auto', fontSize: 12.5, fontWeight: 800, color: '#fff',
               background: 'var(--red)', padding: '6px 16px', borderRadius: 999,
               textDecoration: 'none', whiteSpace: 'nowrap', cursor: 'pointer',
-            }}>📖 API reference ↓</a>
+            }}>📖 {t('xdev.reference.link')} ↓</a>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
             Point any OpenAI SDK at this base URL and keep your code. <code>model</code> takes{' '}

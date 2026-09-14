@@ -1,3 +1,4 @@
+import LocaleSummary from '../components/LocaleSummary'
 // app/terms/page.tsx — Terms of Service (drafted July 20, 2026; CC to review
 // before beta. This is a plain static page; the big title lives in the
 // TopBar per the July 16 convention.)
@@ -24,6 +25,7 @@ export default function TermsPage() {
         agree to these Terms.
       </p>
 
+      <LocaleSummary items={['legal.terms.content', 'legal.terms.public', 'legal.terms.credits', 'legal.terms.plan', 'legal.terms.refund']} />
       <h2 style={S.h2}>1. What ModelXD Does</h2>
       <p style={S.p}>
         ModelXD lets you compare AI models side by side. XDuel runs your task on

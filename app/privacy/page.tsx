@@ -1,3 +1,4 @@
+import LocaleSummary from '../components/LocaleSummary'
 // app/privacy/page.tsx — Privacy Policy (drafted July 20, 2026; CC to review
 // before beta). Static page, same layout language as /terms.
 
@@ -22,6 +23,7 @@ export default function PrivacyPage() {
         (XDuel, XCreate, XVote, XBoard).
       </p>
 
+      <LocaleSummary items={['legal.privacy.public', 'legal.privacy.private', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
       <h2 style={S.h2}>1. What We Collect</h2>
       <p style={S.p}>
         <strong>Account data.</strong> When you sign in with Google we receive your
