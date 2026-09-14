@@ -248,7 +248,8 @@ body {
 .nav-auth { margin-top: auto; padding: 0 12px 10px; }
 .nav-auth-profile {
   display: flex; align-items: center; gap: 10px; text-decoration: none;
-  padding: 6px 8px; margin: 0 -8px; border-radius: 8px; transition: background 0.15s;
+  width: 100%; min-width: 0;
+  padding: 6px 8px; margin: 0; border-radius: 8px; transition: background 0.15s;
 }
 .nav-auth-profile:hover { background: var(--surface2); }
 .nav-auth-profile img, .nav-auth-initials {
@@ -263,6 +264,7 @@ body {
 .nav-auth-name {
   font-family: var(--font-mono), monospace; font-size: 11px;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted2);
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .nav-auth .nav-login { width: 100%; }
 .nav-foot {
@@ -297,9 +299,10 @@ body {
 .nav-logo-text .d { color: var(--red); font-style: normal; }
 .nav-links {
   display: flex; flex-direction: column; gap: 2px;
+  min-height: 0; overflow-y: auto; scrollbar-width: thin;
 }
 .nav-links a {
-  display: flex; align-items: center; gap: 11px;
+  display: flex; align-items: center; gap: 11px; flex-shrink: 0;
   font-family: var(--font-mono), monospace;
   font-size: 13px; color: var(--muted2);
   text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase;
@@ -338,15 +341,18 @@ body {
   .nav--collapsed .nav-logo-text { padding: 4px 0 14px; justify-content: center; }
   .nav--collapsed .nav-links a { justify-content: center; gap: 0; padding: 10px 0; }
   .nav--collapsed .nav-auth { justify-content: center; padding-left: 0; padding-right: 0; }
-  .nav--collapsed .nav-auth-profile { margin: 0; padding: 6px; }
+  .nav--collapsed .nav-auth-profile { margin: 0; padding: 6px; justify-content: center; }
 }
+/* Language and account actions each get a full row in the narrow rail. */
 .nav-auth {
   margin-top: auto;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  flex-shrink: 0;
   padding: 14px 8px 4px;
   border-top: 1px solid var(--border);
   min-width: 0;
 }
+.nav-auth .nav-lang { min-width: 0; margin: 0; }
 
 /* ── Mobile nav: hamburger menu under 760px ─────────────────────────────── */
 .nav-burger {
