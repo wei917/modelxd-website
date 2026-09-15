@@ -879,7 +879,7 @@ body {
 .mode-col { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .field-label { font-family: var(--font-body), sans-serif; font-size: 13px; font-weight: 600; color: var(--white); }
 .mode-seg { display: inline-flex; background: #ffffff; border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; }
-.mode-seg-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; background: transparent; border: none; border-right: 1px solid var(--border); font-family: var(--font-mono), monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); cursor: pointer; transition: background 0.15s, color 0.15s; }
+.mode-seg-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; white-space: nowrap; flex-shrink: 0; background: transparent; border: none; border-right: 1px solid var(--border); font-family: var(--font-mono), monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); cursor: pointer; transition: background 0.15s, color 0.15s; }
 .mode-seg-btn:last-child { border-right: none; }
 .mode-seg-btn:hover { color: var(--white); }
 .mode-seg-btn.active { background: rgba(214,59,50,0.08); color: var(--red); }
@@ -965,7 +965,9 @@ select {
 
   /* XCreate's model-slot + cost row also stacks. Inline style sets
      repeat(N, 1fr); !important overrides that. */
-  .xcreate-slot-grid { grid-template-columns: 1fr !important; }
+  .xcreate-slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; }
+  /* A chosen model keeps the whole row; only empty seats share one */
+  .xcreate-slot-grid > [data-slot="filled"] { grid-column: 1 / -1; }
 
   /* Trim the page padding so content has more room. Hero sections still
      get some breathing room from the inner padding. */
@@ -1930,7 +1932,7 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   display: grid;
   gap: 14px;
   margin-bottom: 26px;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr));
 }
 
 .xt-tpl {
@@ -3081,3 +3083,40 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .pg-lb-source summary { cursor: none; color: var(--muted2); }
 .pg-lb-source pre { margin: 6px 0 0; padding: 10px 12px; border: 1px dashed var(--border2); border-radius: 8px; background: #ffffff; font-family: var(--font-body), sans-serif; font-size: 12.5px; line-height: 1.6; color: var(--muted2); white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto; }
 .pg-btn--quiet:hover { border-color: var(--border2); }
+
+/* ── Mobile basics (owner, Sep 15): make the core controls usable on phones
+   without hiding anything. Desktop is untouched (all inside max-width 760). */
+.nav-burger span, .nav-burger span::before, .nav-burger span::after { transition: transform .15s, top .15s, background .15s; }
+.nav-burger.is-open span { background: transparent; }
+.nav-burger.is-open span::before { top: 0; transform: rotate(45deg); }
+.nav-burger.is-open span::after  { top: 0; transform: rotate(-45deg); }
+@media (max-width: 760px) {
+  /* Menu: 44px rows so the whole list fits a 667px phone with one flick */
+  .nav-mobile-overlay { gap: 2px; padding: 14px 20px 40px; }
+  .nav-mobile-overlay a, .nav-mobile-overlay button { min-height: 44px; padding: 8px 4px; font-size: 14px; letter-spacing: .06em; }
+  .nav-mobile-overlay .nav-foot { margin-top: 6px; }
+  /* Segment controls (XDuel task type, XBoard category): one row that
+     scrolls sideways if it must, labels never stacked letter by letter */
+  .mode-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .mode-seg::-webkit-scrollbar { display: none; }
+  .mode-seg-btn { padding: 10px 12px; letter-spacing: .04em; font-size: 11.5px; }
+  /* XDuel: notice above a full-width start button */
+  .duel-footer { flex-wrap: wrap; justify-content: flex-start !important; }
+  .duel-footer .prompt-counter { white-space: normal; flex: 1 1 100%; text-align: left !important; line-height: 1.5; }
+  .duel-footer .btn-battle { width: 100%; justify-content: center; min-height: 44px; }
+  /* XBoard: the sub-type rail becomes a chip row above the content; the
+     table keeps its 820px grid and scrolls inside its own wrapper */
+  .xb-layout { flex-direction: column; gap: 12px; align-items: stretch !important; }
+  .xb-layout > * { width: 100%; min-width: 0; box-sizing: border-box; }
+  .xb-rail { position: static !important; width: 100% !important; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; border-left: none !important; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .xb-rail > div:first-child { flex: 1 0 100%; padding-left: 0 !important; }
+  .xb-rail button { width: auto !important; margin-left: 0 !important; padding: 8px 10px !important; border-left: none !important; border-radius: 8px !important; }
+  .xb-rail button[style*="var(--red)"] { background: var(--red-dim) !important; }
+  /* XDuel step bar: five steps scroll sideways instead of being cut */
+  .step-bar { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding: 10px 12px; }
+  .step-bar::-webkit-scrollbar { display: none; }
+  .step-item { padding: 0 10px; white-space: nowrap; flex-shrink: 0; }
+  .step-connector { flex-shrink: 0; }
+  /* Attachment drop targets are finger-sized */
+  .att-drop { min-height: 44px; min-width: 44px; }
+}

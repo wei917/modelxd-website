@@ -815,7 +815,7 @@ export default function XDuel() {
                   }}
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
+              <div className="duel-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
                 <span className="prompt-counter">
                   {prompt.length > 7000
                     ? `${prompt.length.toLocaleString()} / 8,000 — for longer text, attach a .txt file`

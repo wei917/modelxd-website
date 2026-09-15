@@ -88,6 +88,13 @@ export default function Nav() {
   const { show } = useAuthModal()
   const { lang, t } = useLang()
   const [menuOpen, setMenuOpen] = useState(false)
+  // The page must not scroll under the open menu (phones, Sep 15).
+  useEffect(() => {
+    if (!menuOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [menuOpen])
   // dev.modelxd.com and localhost wear a Beta tag with an exit to the
   // official site (CC, Aug 3) — anywhere that isn't www is a dev build.
   // Hostname check after mount: env vars would need separate builds, and
@@ -744,7 +751,7 @@ export default function Nav() {
       {/* Mobile hamburger — only shown under 760px viewport via CSS. */}
       <button
         type="button"
-        className="nav-burger"
+        className={menuOpen ? 'nav-burger is-open' : 'nav-burger'}
         aria-label={menuOpen ? t('nav.menu.close') : t('nav.menu.open')}
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen(v => !v)}

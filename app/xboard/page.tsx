@@ -465,8 +465,8 @@ export default function LeaderboardPage() {
           {/* Page-local layout: subtype rail + content. NOT the app nav —
               a second, in-page menu (CC, Aug 2): subtypes will multiply, and
               a vertical list scales where a chip row wraps into soup. */}
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', marginTop: 24 }}>
-            <aside style={{
+          <div className="xb-layout" style={{ display: 'flex', gap: 24, alignItems: 'flex-start', marginTop: 24 }}>
+            <aside className="xb-rail" style={{
               width: 148, flexShrink: 0, position: 'sticky', top: 24,
               borderLeft: '1px solid var(--border2)',
             }}>

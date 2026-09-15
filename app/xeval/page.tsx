@@ -385,7 +385,7 @@ export default function XEvalPage() {
             <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.65, maxWidth: 760, margin: '-8px 0 20px' }}>{t('xeval.autopilot.note')}</p>
           )}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+            <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '8px 12px' }}>#</th>

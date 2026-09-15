@@ -3857,7 +3857,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         ? t(`discount.${wouldBeCount}`)
                         : null
                       return (
-                      <button key={i} onClick={() => !isLocked && setPickerSlot(i)}
+                      <button key={i} data-slot="empty" onClick={() => !isLocked && setPickerSlot(i)}
                         disabled={isLocked}
                         style={{ position: 'relative', background: '#ffffff', border: '1px dashed var(--border2)', borderRadius: 10, padding: '0 14px', height: 56, boxSizing: 'border-box', color: 'var(--muted)', fontSize: 12, cursor: !isLocked ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s', opacity: isLocked ? 0.4 : 1 }}
                         onMouseEnter={e => { if (!isLocked) { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
@@ -3951,7 +3951,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     const estDollars = estimateSlotDollars(model, mode, opts, prompt.length, docTokens)
 
                     return (
-                      <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div key={i} data-slot="filled" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {/* Model card — name + remove only. Cost estimate lives
                             in the summary row right above the prompt box, not
                             here, so the grid stays clean. */}

@@ -90,6 +90,13 @@ export default function AuthModal() {
           transition: all 0.2s;
         }
         .auth-close:hover { border-color: var(--white); color: var(--white); }
+        /* Phones (Sep 15): the card scrolls inside the viewport instead of
+           being cut, and the close target is finger-sized. */
+        @media (max-width: 760px) {
+          .auth-overlay { padding: 12px; overflow-y: auto; align-items: flex-start; }
+          .auth-card { margin: auto 0; max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; padding: 44px 22px 28px; }
+          .auth-close { width: 40px; height: 40px; top: 10px; right: 10px; font-size: 16px; }
+        }
         .auth-logo {
           display: flex; align-items: center; justify-content: center;
           gap: 8px; margin-bottom: 32px;
