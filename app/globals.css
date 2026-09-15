@@ -3121,3 +3121,49 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   /* Attachment targets are finger-sized (drop zone and the composer clip) */
   .att-drop, .att-clip { min-height: 44px; min-width: 44px; }
 }
+
+/* ── ✨ Improve prompt (XDuel, XCreate; Sep 16) ─────────────────────────── */
+.refine { margin: 6px 0 4px; }
+.refine-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.refine-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--border2); border-radius: 999px; background: #ffffff; color: var(--white);
+  font-family: var(--font-body), sans-serif; font-size: 13px; font-weight: 600; cursor: none;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.refine-btn:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+.refine-btn:disabled { opacity: .5; cursor: default; }
+.refine-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.refine-applied, .refine-error { font-size: 12.5px; color: var(--muted2); }
+.refine-error { color: var(--red); }
+.refine-link { background: none; border: none; padding: 0; margin-left: 4px; color: var(--red); font: inherit; font-weight: 600; text-decoration: underline; cursor: none; }
+.refine-panel { margin-top: 10px; padding: 12px 14px 14px; border: 1px solid var(--border2); border-radius: 10px; background: var(--surface); }
+.refine-label { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
+.refine-ta {
+  width: 100%; box-sizing: border-box; resize: vertical; padding: 10px 12px;
+  border: 1px solid var(--border2); border-radius: 8px; background: #ffffff;
+  font-family: var(--font-body), sans-serif; font-size: 14px; line-height: 1.6; color: var(--white);
+}
+.refine-ta:focus { outline: none; border-color: var(--red); }
+.refine-added { margin-top: 8px; font-size: 12px; color: var(--muted2); line-height: 1.6; }
+.refine-added-cap { margin-right: 6px; }
+.refine-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.refine-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #ffffff; border: 1px dashed var(--border2); color: var(--white); font-size: 12px; }
+.refine-stale { margin-top: 8px; font-size: 12px; color: var(--red); }
+.refine-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.refine-act {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px;
+  border: 1px solid var(--border2); border-radius: 8px; background: #ffffff; color: var(--white);
+  font-family: var(--font-body), sans-serif; font-size: 13.5px; font-weight: 600; cursor: none;
+}
+.refine-act:hover:not(:disabled) { border-color: var(--white); }
+.refine-act:disabled { opacity: .5; }
+.refine-act--primary { background: var(--red); border-color: var(--red); color: #ffffff; }
+.refine-act--primary:hover:not(:disabled) { border-color: var(--red); box-shadow: 0 8px 20px rgba(229,57,53,.22); }
+.refine-free { font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) {
+  .refine-btn { min-height: 44px; padding: 0 14px; font-size: 14px; }
+  .refine-act { min-height: 44px; flex: 1 1 auto; }
+  .refine-free { flex: 1 0 100%; }
+  .refine-ta { font-size: 16px; }
+}

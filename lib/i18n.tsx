@@ -945,6 +945,26 @@ export const STRINGS: Record<string, Entry> = {
   'pg.home.caption':     { en: 'You can create images and videos like this.', 'zh-Hant': '這樣的圖片和影片，你也做得出來。', 'zh-Hans': '这样的图片和视频，你也做得出来。', ja: 'こんな画像や動画、あなたも作れる。', ko: '이런 이미지와 영상, 당신도 만들 수 있어요.' },
   'pg.home.cta':         { en: 'Open the playground', 'zh-Hant': '前往 Playground', 'zh-Hans': '前往 Playground', ja: 'プレイグラウンドへ', ko: 'Playground로 이동' },
 
+  // ✨ Improve prompt (XDuel, XCreate; Sep 16). Suggestion, confirmation,
+  // undo; the added details are labelled as suggestions, not facts.
+  'refine.button':     { en: 'Improve prompt', 'zh-Hant': '優化提示詞', 'zh-Hans': '优化提示词', ja: 'プロンプトを改善', ko: '프롬프트 개선' },
+  'refine.loading':    { en: 'Improving…', 'zh-Hant': '優化中…', 'zh-Hans': '优化中…', ja: '改善中…', ko: '개선 중…' },
+  'refine.title':      { en: 'Suggested prompt (editable)', 'zh-Hant': '建議的提示詞（可編輯）', 'zh-Hans': '建议的提示词（可编辑）', ja: '提案されたプロンプト（編集できます）', ko: '제안된 프롬프트(편집 가능)' },
+  'refine.added':      { en: 'Added as suggestions, not something you stated:', 'zh-Hant': '以下是建議加入的內容，不是你原本寫的：', 'zh-Hans': '以下是建议加入的内容，不是你原本写的：', ja: '追加した提案（あなたが指定した内容ではありません）：', ko: '제안으로 덧붙인 내용(직접 지정한 사실이 아닙니다):' },
+  'refine.apply':      { en: 'Use this prompt', 'zh-Hant': '使用這個提示詞', 'zh-Hans': '使用这个提示词', ja: 'このプロンプトを使う', ko: '이 프롬프트 사용' },
+  'refine.keep':       { en: 'Keep original', 'zh-Hant': '保留原本的', 'zh-Hans': '保留原本的', ja: '元のままにする', ko: '원본 유지' },
+  'refine.retry':      { en: 'Try again', 'zh-Hant': '再試一次', 'zh-Hans': '再试一次', ja: 'もう一度', ko: '다시 시도' },
+  'refine.undo':       { en: 'Undo', 'zh-Hant': '復原', 'zh-Hans': '撤销', ja: '元に戻す', ko: '되돌리기' },
+  'refine.applied':    { en: 'Prompt replaced.', 'zh-Hant': '已替換提示詞。', 'zh-Hans': '已替换提示词。', ja: 'プロンプトを置き換えました。', ko: '프롬프트를 바꿨습니다.' },
+  'refine.stale':      { en: 'Your input changed after this suggestion was made.', 'zh-Hant': '這個建議是根據你之前的輸入產生的。', 'zh-Hans': '这个建议是根据你之前的输入产生的。', ja: 'この提案は、変更前の入力に対するものです。', ko: '이 제안은 수정 전 입력을 바탕으로 만든 것입니다.' },
+  'refine.free':       { en: 'Free. Nothing is generated until you press start.', 'zh-Hant': '免費。按下開始前不會生成任何內容。', 'zh-Hans': '免费。按下开始前不会生成任何内容。', ja: '無料です。開始を押すまで何も生成されません。', ko: '무료입니다. 시작을 누르기 전까지 아무것도 생성되지 않습니다.' },
+  'refine.empty':      { en: 'Type a prompt first.', 'zh-Hant': '請先輸入提示詞。', 'zh-Hans': '请先输入提示词。', ja: '先にプロンプトを入力してください。', ko: '먼저 프롬프트를 입력하세요.' },
+  'refine.err.failed': { en: 'Could not improve the prompt.', 'zh-Hant': '無法優化提示詞。', 'zh-Hans': '无法优化提示词。', ja: 'プロンプトを改善できませんでした。', ko: '프롬프트를 개선하지 못했습니다.' },
+  'refine.err.busy':   { en: 'Too many requests. Wait a moment.', 'zh-Hant': '請求過多，請稍候再試。', 'zh-Hans': '请求过多，请稍候再试。', ja: 'リクエストが多すぎます。少し待ってください。', ko: '요청이 너무 많습니다. 잠시 기다려 주세요.' },
+  'refine.err.signin': { en: 'Sign in to use this.', 'zh-Hant': '請先登入。', 'zh-Hans': '请先登录。', ja: 'ログインが必要です。', ko: '로그인이 필요합니다.' },
+  'refine.err.long':   { en: 'The prompt is too long to improve (2000 characters).', 'zh-Hant': '提示詞太長，無法優化（上限 2000 字）。', 'zh-Hans': '提示词太长，无法优化（上限 2000 字）。', ja: 'プロンプトが長すぎて改善できません（2000文字まで）。', ko: '프롬프트가 너무 길어 개선할 수 없습니다(2000자까지).' },
+
+
   // Display copy for the XDirect skills (gallery cards, home cards). The
   // SKILL.md metadata stays English and is the fallback; machine ids and the
   // agent instructions are never translated. zh/ko fall back to en for now.

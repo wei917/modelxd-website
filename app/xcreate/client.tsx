@@ -6,6 +6,7 @@
 // 3. Multi-turn chat with chosen model
 
 import Link from 'next/link'
+import PromptRefiner from '../components/PromptRefiner'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -4590,6 +4591,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     readOnly={isLocked}
                     onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); if (canGenerate) generate() } }}
                   />
+                  {/* ✨ Improve prompt (owner, Sep 16): a suggestion the user
+                      confirms; never generates, never changes settings. */}
+                  {phase === 'setup' && (
+                    <div style={{ padding: '0 16px 10px' }}>
+                      <PromptRefiner prompt={prompt} mode={mode} surface="xcreate" disabled={isLocked} onApply={setPrompt} />
+                    </div>
+                  )}
                   {/* Fill-in hint — INSIDE the prompt box (CC), shown while
                       the prompt contains a {{placeholder}}. Distinctive
                       double-brace delimiter can't false-fire on normal
