@@ -377,6 +377,7 @@ export default function AttachmentButton({
           <input ref={inputRef} type="file" accept={accept ?? ACCEPT} multiple={multiple} style={{ display: 'none' }}
             onChange={e => { if (e.target.files?.length) handleFiles(e.target.files) }} />
           <button
+            className="att-clip"
             onClick={() => !disabled && inputRef.current?.click()}
             disabled={disabled}
             title={`Attach file${multiple ? 's' : ''} — image, video, audio, PDF or txt (max ${MAX_MB}MB${multiple ? `, up to ${maxFiles ?? MAX_FILES} files` : ''})`}

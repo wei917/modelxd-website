@@ -3099,7 +3099,8 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
      scrolls sideways if it must, labels never stacked letter by letter */
   .mode-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .mode-seg::-webkit-scrollbar { display: none; }
-  .mode-seg-btn { padding: 10px 12px; letter-spacing: .04em; font-size: 11.5px; }
+  .mode-seg-btn { padding: 10px 12px; min-height: 44px; letter-spacing: .04em; font-size: 11.5px; }
+  .mode-seg-btn svg, .mode-seg-btn img { flex-shrink: 0; }
   /* XDuel: notice above a full-width start button */
   .duel-footer { flex-wrap: wrap; justify-content: flex-start !important; }
   .duel-footer .prompt-counter { white-space: normal; flex: 1 1 100%; text-align: left !important; line-height: 1.5; }
@@ -3117,6 +3118,6 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .step-bar::-webkit-scrollbar { display: none; }
   .step-item { padding: 0 10px; white-space: nowrap; flex-shrink: 0; }
   .step-connector { flex-shrink: 0; }
-  /* Attachment drop targets are finger-sized */
-  .att-drop { min-height: 44px; min-width: 44px; }
+  /* Attachment targets are finger-sized (drop zone and the composer clip) */
+  .att-drop, .att-clip { min-height: 44px; min-width: 44px; }
 }
