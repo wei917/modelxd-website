@@ -21,6 +21,16 @@ function Detail({ item, lang, t, onClose }: { item: PgItem; lang: string; t: (k:
   const [copied, setCopied] = useState<'img' | 'vid' | null>(null)
   const [broken, setBroken] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
+  // The defaults follow the language the panel was opened in. If the
+  // language changes while it is open, an untouched box takes the new
+  // language's default; a box the visitor has edited is left alone.
+  const prevDefaults = useRef({ img: img0, vid: vid0 })
+  useEffect(() => {
+    const prev = prevDefaults.current
+    setImg(cur => (cur === prev.img ? img0 : cur))
+    setVid(cur => (cur === prev.vid ? vid0 : cur))
+    prevDefaults.current = { img: img0, vid: vid0 }
+  }, [img0, vid0])
 
   useEffect(() => {
     closeRef.current?.focus()
@@ -54,6 +64,14 @@ function Detail({ item, lang, t, onClose }: { item: PgItem; lang: string; t: (k:
 
           <label className="pg-lb-label" htmlFor="pg-img-prompt">{t('pg.prompt.image')}</label>
           <textarea id="pg-img-prompt" className="pg-textarea" rows={6} value={img} onChange={e => setImg(e.target.value)} />
+          {item.kind === 'artwork' && item.sourcePrompt !== img0 && (
+            // Provenance: the exact English prompt the picture was made from,
+            // when the language's default is a translation of it.
+            <details className="pg-lb-source">
+              <summary>{t('pg.prompt.source')}</summary>
+              <pre>{item.sourcePrompt}</pre>
+            </details>
+          )}
           <div className="pg-lb-actions">
             <Link href={duelHref(img)} className="pg-btn pg-btn--primary">{t('pg.act.duel')}</Link>
             <button type="button" className="pg-btn" onClick={() => void copy('img', img)}>{copied === 'img' ? t('pg.copied') : t('pg.copy')}</button>

@@ -3077,4 +3077,7 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .pg-textarea:focus { outline: none; border-color: var(--red); background: #ffffff; }
 .pg-lb-actions + .pg-lb-label { margin-top: 18px; }
 .pg-btn--quiet { border-color: transparent; color: var(--muted2); }
+.pg-lb-source { width: 100%; margin: -4px 0 12px; font-size: 12px; color: var(--muted); }
+.pg-lb-source summary { cursor: none; color: var(--muted2); }
+.pg-lb-source pre { margin: 6px 0 0; padding: 10px 12px; border: 1px dashed var(--border2); border-radius: 8px; background: #ffffff; font-family: var(--font-body), sans-serif; font-size: 12.5px; line-height: 1.6; color: var(--muted2); white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto; }
 .pg-btn--quiet:hover { border-color: var(--border2); }
