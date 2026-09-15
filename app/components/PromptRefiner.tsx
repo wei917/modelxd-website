@@ -30,6 +30,7 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
   const [base, setBase]       = useState('')          // the input the suggestion was made for
   const [draft, setDraft]     = useState('')          // editable suggestion
   const [added, setAdded]     = useState<string[]>([])
+  const [changes, setChanges] = useState<string[]>([])
   const [applied, setApplied] = useState<{ previous: string; next: string } | null>(null)
   const reqRef = useRef(0)
   const busyRef = useRef(false)   // synchronous double-click guard; state lags a render
@@ -79,6 +80,7 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
     setBase(asked)
     setDraft(suggestion)
     setAdded(Array.isArray(data?.added) ? data.added.filter((x: unknown) => typeof x === 'string') : [])
+    setChanges(Array.isArray(data?.changes) ? data.changes.filter((x: unknown) => typeof x === 'string').slice(0, 3) : [])
     setStatus('preview')
   }
 
@@ -119,6 +121,12 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
         <div className="refine-panel" role="region" aria-label={t('refine.title')}>
           <div className="refine-label">{t('refine.title')}</div>
           <textarea ref={taRef} className="refine-ta" rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={MAX_CHARS} />
+          {changes.length > 0 && (
+            <div className="refine-changes">
+              <span className="refine-added-cap">{t('refine.changes')}</span>
+              <span className="refine-chips">{changes.map((c, i) => <span key={i} className="refine-chip refine-chip--change">{c}</span>)}</span>
+            </div>
+          )}
           {added.length > 0 && (
             <div className="refine-added">
               <span className="refine-added-cap">{t('refine.added')}</span>

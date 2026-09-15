@@ -950,6 +950,7 @@ export const STRINGS: Record<string, Entry> = {
   'refine.button':     { en: 'Improve prompt', 'zh-Hant': '優化提示詞', 'zh-Hans': '优化提示词', ja: 'プロンプトを改善', ko: '프롬프트 개선' },
   'refine.loading':    { en: 'Improving…', 'zh-Hant': '優化中…', 'zh-Hans': '优化中…', ja: '改善中…', ko: '개선 중…' },
   'refine.title':      { en: 'Suggested prompt (editable)', 'zh-Hant': '建議的提示詞（可編輯）', 'zh-Hans': '建议的提示词（可编辑）', ja: '提案されたプロンプト（編集できます）', ko: '제안된 프롬프트(편집 가능)' },
+  'refine.changes':    { en: 'What changed:', 'zh-Hant': '調整了：', 'zh-Hans': '调整了：', ja: '改善した点：', ko: '바뀐 점:' },
   'refine.added':      { en: 'Added as suggestions, not something you stated:', 'zh-Hant': '以下是建議加入的內容，不是你原本寫的：', 'zh-Hans': '以下是建议加入的内容，不是你原本写的：', ja: '追加した提案（あなたが指定した内容ではありません）：', ko: '제안으로 덧붙인 내용(직접 지정한 사실이 아닙니다):' },
   'refine.apply':      { en: 'Use this prompt', 'zh-Hant': '使用這個提示詞', 'zh-Hans': '使用这个提示词', ja: 'このプロンプトを使う', ko: '이 프롬프트 사용' },
   'refine.keep':       { en: 'Keep original', 'zh-Hant': '保留原本的', 'zh-Hans': '保留原本的', ja: '元のままにする', ko: '원본 유지' },

@@ -3149,6 +3149,8 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .refine-added-cap { margin-right: 6px; }
 .refine-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
 .refine-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #ffffff; border: 1px dashed var(--border2); color: var(--white); font-size: 12px; }
+.refine-changes { margin-top: 8px; font-size: 12px; color: var(--muted2); line-height: 1.6; }
+.refine-chip--change { border-style: solid; color: var(--muted2); }
 .refine-stale { margin-top: 8px; font-size: 12px; color: var(--red); }
 .refine-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .refine-act {
