@@ -17,7 +17,7 @@ export default function PlaygroundHeroCard() {
         {broken
           ? <span className="pg-img-fallback">{pick(w.title, lang)}</span>
           : <img src={w.thumb} alt={pick(w.alt, lang)} onError={() => setBroken(true)} />}
-        <span className="pg-badge">{t('pg.badge.original')}</span>
+        <span className="pg-badge">{w.original ? t('pg.badge.original') : t('pg.badge.fan')}</span>
       </span>
       <span className="pg-hero-body">
         <span className="pg-hero-eyebrow">{t('pg.home.eyebrow')}</span>

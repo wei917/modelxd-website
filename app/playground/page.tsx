@@ -6,7 +6,7 @@ import PlaygroundClient from './client'
 // nothing runs until the visitor presses start there.
 export const metadata: Metadata = {
   title: 'ModelXD Playground — AIで遊ぶ。つくる。比べる。',
-  description: 'Play, make and compare with AI. Open a work, rewrite its prompt, and send it to an image duel or a film. Original characters and unofficial fan concepts; nothing runs until you press start.',
+  description: 'Play, make and compare with AI. Open a work, rewrite its prompt, and send it to an image duel or a film. Unofficial fan concepts of famous games plus scenario presets; nothing runs until you press start.',
 }
 
 export default function PlaygroundPage() {
