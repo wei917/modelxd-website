@@ -1497,12 +1497,16 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 }
 .home-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
 .home-hero-cta {
+  /* Shared by <button> and <a> (the primary door is a link since Sep 14):
+     centre the label the same way in both and drop the anchor underline. */
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box; line-height: 1.2; text-decoration: none;
   min-height: 46px; padding: 0 19px; border-radius: 9px;
   font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 750;
   letter-spacing: .09em; text-transform: uppercase; cursor: none;
   transition: transform .16s, box-shadow .16s, border-color .16s, background .16s;
 }
-.home-hero-cta:hover { transform: translateY(-2px); }
+.home-hero-cta:hover { transform: translateY(-2px); text-decoration: none; }
 .home-hero-cta:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .home-hero-cta.is-primary {
   border: 1px solid var(--red); background: var(--red); color: #fff;
