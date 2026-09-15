@@ -29,8 +29,12 @@ export type SnapshotEntry = { name: string; modelName: string; provider: string;
  * claims votes chose it, and the vote leader takes the slot back by itself
  * once it has MIN_VOTES. Delete an entry to return that mode to votes.
  */
-const PICKS: Partial<Record<Mode, { provider: string; model_name: string }>> = {
+const PICKS: Partial<Record<Mode, { provider: string; model_name: string; always?: boolean }>> = {
   text: { provider: 'anthropic', model_name: 'claude-opus-5' },
+  // `always`: shown even when the vote leader has MIN_VOTES. GPT Image 2.5
+  // shipped Sep 8 with no votes yet, while GPT Image 2 leads on 33 (owner,
+  // Sep 15). Still labelled "our pick"; remove the entry to hand back to votes.
+  image: { provider: 'openai', model_name: 'gpt-image-2.5-sunburst', always: true },
 }
 const MIN_VOTES = 30
 export type Snapshot = Record<Mode, SnapshotEntry | null>
@@ -89,7 +93,7 @@ export async function GET() {
       const m = byId.get(row.model_id)
       if (!m) continue
       const pick = PICKS[mode]
-      if (pick && (row.total_votes ?? 0) < MIN_VOTES) {
+      if (pick && (pick.always || (row.total_votes ?? 0) < MIN_VOTES)) {
         const pm = (models ?? []).find(x => x.provider === pick.provider && x.model_name === pick.model_name)
         if (pm) { result[mode] = { name: shortName(pm.display_name), modelName: pm.model_name, provider: pm.provider, xdScore: null, source: 'pick' }; continue }
       }
