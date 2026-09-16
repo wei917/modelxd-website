@@ -23,7 +23,11 @@ type Props = {
 const MIN_CHARS = 2
 const MAX_CHARS = 2000
 
-export default function PromptRefiner({ prompt, mode, surface, disabled, onApply }: Props) {
+/** The refiner split in two so the button can live in the composer's action
+ *  row beside Generate / Start while the editable preview takes a full-width
+ *  section of its own. One hook call holds the state for both; callers place
+ *  `action` and `preview` wherever the layout wants them. */
+export function usePromptRefiner({ prompt, mode, surface, disabled, onApply }: Props): { action: JSX.Element; preview: JSX.Element | null } {
   const { lang, t } = useLang()
   const [status, setStatus]   = useState<Status>('idle')
   const [error, setError]     = useState<string | null>(null)
@@ -98,26 +102,26 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
     setApplied(null)
   }
 
-  return (
-    <div className="refine">
-      <div className="refine-row">
-        <button type="button" className="btn-secondary refine-btn" onClick={ask} disabled={!canAsk} aria-busy={status === 'loading'}
-                title={trimmed.length < MIN_CHARS ? t('refine.empty') : undefined}>
-          <span className="refine-glyph" aria-hidden>✦</span>{status === 'loading' ? t('refine.loading') : t('refine.button')}
-        </button>
-        {applied && status === 'idle' && (
-          <span className="refine-applied" role="status">
-            {t('refine.applied')} <button type="button" className="refine-link" onClick={undo}>{t('refine.undo')}</button>
-          </span>
-        )}
-        {status === 'error' && (
-          <span className="refine-error" role="alert">
-            {error} <button type="button" className="refine-link" onClick={ask} disabled={!canAsk}>{t('refine.retry')}</button>
-          </span>
-        )}
-      </div>
+  const action = (
+    <span className="refine-action">
+      <button type="button" className="btn-secondary refine-btn" onClick={ask} disabled={!canAsk} aria-busy={status === 'loading'}
+              title={trimmed.length < MIN_CHARS ? t('refine.empty') : undefined}>
+        <span className="refine-glyph" aria-hidden>✦</span>{status === 'loading' ? t('refine.loading') : t('refine.button')}
+      </button>
+      {applied && status === 'idle' && (
+        <span className="refine-applied" role="status">
+          {t('refine.applied')} <button type="button" className="refine-link" onClick={undo}>{t('refine.undo')}</button>
+        </span>
+      )}
+      {status === 'error' && (
+        <span className="refine-error" role="alert">
+          {error} <button type="button" className="refine-link" onClick={ask} disabled={!canAsk}>{t('refine.retry')}</button>
+        </span>
+      )}
+    </span>
+  )
 
-      {status === 'preview' && (
+  const preview = status !== 'preview' ? null : (
         <div className="refine-panel" role="region" aria-label={t('refine.title')}>
           <div className="refine-label">{t('refine.title')}</div>
           <textarea ref={taRef} className="prompt-textarea refine-ta" rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={MAX_CHARS} />
@@ -140,7 +144,19 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
             <span className="refine-free">{t('refine.free')}</span>
           </div>
         </div>
-      )}
+  )
+
+  return { action, preview }
+}
+
+/** Stacked form: button row, then the preview. Kept for callers that have
+ *  no composer action row to put the button in. */
+export default function PromptRefiner(props: Props) {
+  const { action, preview } = usePromptRefiner(props)
+  return (
+    <div className="refine">
+      <div className="refine-row">{action}</div>
+      {preview}
     </div>
   )
 }

@@ -6,7 +6,7 @@
 // 3. Multi-turn chat with chosen model
 
 import Link from 'next/link'
-import PromptRefiner from '../components/PromptRefiner'
+import { usePromptRefiner } from '../components/PromptRefiner'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -3294,6 +3294,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // don't want them mutating state behind already-rendered results.
   // The only way out is the Start Over button (which calls reset()).
   const isLocked = phase !== 'setup'
+  // Improve prompt (owner, Sep 16): the button sits in the action row beside
+  // Generate; the editable preview gets its own full-width section below it.
+  const refiner = usePromptRefiner({ prompt, mode, surface: 'xcreate', disabled: isLocked, onApply: setPrompt })
 
   // Estimated input tokens contributed by attached documents: txt/PDF at
   // ~bytes/4, capped at 50k tokens per file to mirror the server's 200k-char
@@ -4591,13 +4594,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     readOnly={isLocked}
                     onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); if (canGenerate) generate() } }}
                   />
-                  {/* ✨ Improve prompt (owner, Sep 16): a suggestion the user
-                      confirms; never generates, never changes settings. */}
-                  {phase === 'setup' && (
-                    <div style={{ padding: '0 16px 10px' }}>
-                      <PromptRefiner prompt={prompt} mode={mode} surface="xcreate" disabled={isLocked} onApply={setPrompt} />
-                    </div>
-                  )}
                   {/* Fill-in hint — INSIDE the prompt box (CC), shown while
                       the prompt contains a {{placeholder}}. Distinctive
                       double-brace delimiter can't false-fire on normal
@@ -4614,7 +4610,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     sits just below the composer as a normal flex row, so it
                     can never overlap the prompt text. (XDuel keeps its own
                     overlay .prompt-actions — this row is XCreate-only.) */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
+                <div className="xc-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
                   <span className="prompt-counter">{activeModels.length === 0 ? t('xcreate.pickone') : activeModels.length === 1 ? t('xcreate.selected1') : t('xcreate.selected').replace('{n}', String(activeModels.length))}</span>
                   {/* Multi-model discount — red little label, full string
                       from i18n (en "10% off" = zh "9折"). */}
@@ -4668,6 +4664,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       {promptRequiredBy.map((m: any) => m.display_name).join(', ')} — {t('xcreate.promptneed')}
                     </span>
                   )}
+                  {/* Improve prompt: secondary, beside Generate (owner, Sep 16). */}
+                  {phase === 'setup' && refiner.action}
                   {phase === 'setup' && (
                     <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
                       {t('xcreate.generatebtn')}
@@ -4679,6 +4677,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </button>
                   )}
                 </div>
+                {phase === 'setup' && refiner.preview}
 
                 {/* ── Product board (CC, July 28): the entry point for the
                     product-video pipeline. Uploading here does NOT generate

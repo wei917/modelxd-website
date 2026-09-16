@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import ModeIcon from '../components/ModeIcon'
 import { useRequireAuth } from '../../lib/useRequireAuth'
-import PromptRefiner from '../components/PromptRefiner'
+import { usePromptRefiner } from '../components/PromptRefiner'
 import { useT, useLang, type Lang } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
 import { attachSampleFile, commitAttachments, type Attachment } from '../components/AttachmentButton'
@@ -204,6 +204,7 @@ export default function XDuel() {
   const [lightbox,   setLightbox]   = useState<string | null>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
   const [phase,      setPhase]      = useState<ArenaPhase>('vote')
+  const refiner = usePromptRefiner({ prompt, mode: gameArena ? 'game' : mode, surface: 'xduel', disabled: loading, onApply: setPrompt })
   // /xduel?mode=image&q=… prefills step 1 (the TGS gallery links here, Sep
   // 14). It only fills the form: nothing runs until the user presses start,
   // so sign-in, quotas and charges are exactly as before. The prompt is
@@ -816,9 +817,6 @@ export default function XDuel() {
                   }}
                 />
               </div>
-              {/* ✨ Improve prompt (owner, Sep 16): a suggestion the user
-                  confirms; it never starts the duel or touches settings. */}
-              <PromptRefiner prompt={prompt} mode={gameArena ? 'game' : mode} surface="xduel" disabled={loading} onApply={setPrompt} />
               <div className="duel-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
                 <span className="prompt-counter">
                   {prompt.length > 7000
@@ -835,10 +833,14 @@ export default function XDuel() {
                   </svg>
                   {t('xduel.publichint')}
                 </span>
+                {/* Improve prompt (owner, Sep 16): secondary, beside Start;
+                    a suggestion the user confirms, never a duel start. */}
+                {refiner.action}
                 <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3}>
                   ⚔️ {t('xduel.cta')} →
                 </button>
               </div>
+              {refiner.preview}
 
               {/* Popular starter prompts — same card gallery as XCreate's
                   Popular section (TemplatePicker, wrap layout). */}

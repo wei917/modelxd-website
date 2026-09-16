@@ -3104,7 +3104,6 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   /* XDuel: notice above a full-width start button */
   .duel-footer { flex-wrap: wrap; justify-content: flex-start !important; }
   .duel-footer .prompt-counter { white-space: normal; flex: 1 1 100%; text-align: left !important; line-height: 1.5; }
-  .duel-footer .btn-battle { width: 100%; justify-content: center; min-height: 44px; }
   /* XBoard: the sub-type rail becomes a chip row above the content; the
      table keeps its 820px grid and scrolls inside its own wrapper */
   .xb-layout { flex-direction: column; gap: 12px; align-items: stretch !important; }
@@ -3150,9 +3149,18 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .btn-secondary.refine-act--apply:hover:not(:disabled) { background: var(--white); color: #ffffff; }
 .btn-secondary.refine-act:disabled { opacity: .45; cursor: default; }
 .refine-free { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.refine-action { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+/* In the composer action rows the refine button sits beside the primary. */
+.duel-footer .refine-action, .xc-actions .refine-action { margin-left: auto; }
+.duel-footer .refine-action + .btn-battle, .xc-actions .refine-action + .btn-battle { margin-left: 0; }
 @media (max-width: 760px) {
-  .btn-secondary.refine-btn { min-height: 44px; padding: 0 14px; }
+  .btn-secondary.refine-btn { min-height: 44px; padding: 0 12px; white-space: normal; text-align: center; line-height: 1.25; }
   .btn-secondary.refine-act { min-height: 44px; flex: 1 1 auto; }
   .refine-free { flex: 1 0 100%; }
   .prompt-textarea.refine-ta { font-size: 16px; }
+  /* Phones: notice on its own line, then refine and the primary share one
+     row; labels may wrap inside their button, nothing is hidden. */
+  .duel-footer .refine-action, .xc-actions .refine-action { margin-left: 0; flex: 0 1 auto; max-width: 52%; }
+  .duel-footer .btn-battle, .xc-actions .btn-battle { width: auto; flex: 1 1 130px; min-height: 44px; justify-content: center; white-space: normal; text-align: center; line-height: 1.25; padding: 8px 14px; }
+  .refine-applied, .refine-error { flex: 1 0 100%; }
 }
