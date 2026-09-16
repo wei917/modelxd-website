@@ -1448,7 +1448,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     ;(async () => {
       const sb = createSupabaseBrowser()
       const { data } = await sb.from('ai_models')
-        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config, output_modalities')
         .eq('model_name', searchModelParam)
         .eq('enabled', true)
         .maybeSingle()
@@ -1464,9 +1464,17 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       // Same guard applyTemplate uses: stop the mode-change effect from
       // wiping the slot we're about to fill.
       modeClearedRef.current = true
-      const nextMode: Mode = (['text', 'image', 'video'] as const).includes(searchModeParam as Mode)
-        ? (searchModeParam as Mode)
-        : 'image'
+      // The model's own output decides the studio mode. ?mode= is honoured
+      // only when the model can make it: a link saying mode=image for a
+      // video-only model, or carrying no mode at all (the old default was
+      // 'image'), seated a model that could never produce what the mode
+      // asks for, and every Generate died at the provider (Sep 16).
+      const outs: string[] = Array.isArray((data as any).output_modalities) ? (data as any).output_modalities : []
+      const asked: Mode | null = (['text', 'image', 'video'] as const).includes(searchModeParam as Mode)
+        ? (searchModeParam as Mode) : null
+      const nextMode: Mode = asked && (outs.length === 0 || outs.includes(asked))
+        ? asked
+        : outs.includes('video') ? 'video' : outs.includes('image') ? 'image' : outs.includes('text') ? 'text' : (asked ?? 'image')
       // Prefer the model's own first recipe for this mode; fall back to the
       // mode's default so an odd catalogue entry can't leave a dead studio.
       const recipes = RECIPES[nextMode]
@@ -2191,7 +2199,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           if (typeof detail?.balanceCents === 'number') setBalanceCents(detail.balanceCents)
           setLoadError(detail?.message ?? 'Not enough credits for this run.')
         } else {
-          setLoadError(detail?.error ?? `Generation failed (HTTP ${res.status}).`)
+          // Prefer the sentence written for the user (wrong_modality,
+          // prompt guards) over the machine code in `error`.
+          setLoadError(detail?.message ?? detail?.error ?? `Generation failed (HTTP ${res.status}).`)
         }
       })
       .catch(err => console.warn('[xcreate] POST failed:', err))
@@ -2210,10 +2220,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     ;(async () => {
       const sb = createSupabaseBrowser()
       const { data: mrows } = await sb.from('ai_models')
-        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+        .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config, output_modalities')
         .eq('enabled', true)
       if (cancelled) return
+      // output_modalities first (the rule), then the recipe: `modes` says
+      // what a model takes in, only output_modalities says what comes out,
+      // and an edit step must come out in the studio's mode.
       const fits = (mrows ?? []).filter((m: any) => {
+        const outs: string[] = Array.isArray(m.output_modalities) ? m.output_modalities : []
+        if (!outs.includes(mode)) return false
         const mm: string[] = m.modes ?? []
         return mode === 'image' ? mm.includes('image_edit') : mm.some(x => x.startsWith('video_'))
       })
@@ -2334,6 +2349,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (!wfModelId || !xcreateId || wfPrompt.trim().length < 1) return
     const m: any = wfEditModels.find((x: any) => x.id === wfModelId)
     if (!m) return
+    // The list is rebuilt when the mode changes, but the rebuild is a
+    // network round-trip; a click inside that window would carry the old
+    // mode's model into the new mode's recipe. Refuse here rather than let
+    // the server refuse for us.
+    if (Array.isArray(m.output_modalities) && !m.output_modalities.includes(mode)) {
+      setLoadError(`${stripModelVariant(m.display_name)} does not make ${mode === 'video' ? 'video' : 'images'}. Pick another model.`)
+      return
+    }
     const stepRecipe = mode === 'image'
       ? 'image_edit'
       : ((m.modes ?? []).includes('video_edit') ? 'video_edit' : 'video_to_video')
@@ -2376,7 +2399,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           if (typeof detail?.balanceCents === 'number') setBalanceCents(detail.balanceCents)
           setLoadError(detail?.message ?? 'Not enough credits for this run.')
         } else {
-          setLoadError(detail?.error ?? `Step failed (HTTP ${res.status}).`)
+          setLoadError(detail?.message ?? detail?.error ?? `Step failed (HTTP ${res.status}).`)
         }
       })
       .catch(err => console.warn('[xcreate] step POST failed:', err))
@@ -2520,6 +2543,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
   const runBatch = async () => {
     if (!wfModelId || batchAtts.length === 0 || batchActive) return
+    {
+      const bm: any = wfEditModels.find((x: any) => x.id === wfModelId)
+      if (bm && Array.isArray(bm.output_modalities) && !bm.output_modalities.includes('image')) {
+        setLoadError(`${stripModelVariant(bm.display_name)} does not make images. Pick another model.`)
+        return
+      }
+    }
     let committed: Attachment[]
     try { committed = await commitAttachments(batchAtts) } catch { return }
     setBatchAtts(committed)

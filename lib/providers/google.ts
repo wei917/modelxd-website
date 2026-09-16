@@ -843,10 +843,19 @@ async function generateOmniVideo(
       + prompt
   }
 
+  // An EMPTY text part is a hard 400 — "Missing text in content of type
+  // text." (owner's run, Sep 16). /api/xcreate lets a video run go out with
+  // no prompt when a frame is attached; HappyHorse animated that frame and
+  // Omni refused the whole call. A media-only run gets a neutral directive
+  // instead of an empty string, so the frame decides the shot, not us.
+  const textPart = (effPrompt ?? '').trim()
+    || (imageAtts.length > 0
+      ? 'Animate this image. Keep its subject, framing, lighting and style exactly as shown; add natural motion only.'
+      : 'Continue this video naturally, keeping its subject, framing and style.')
   const input: any = (imageAtts.length === 0 && !isEdit) ? prompt : [
     ...(videoUri ? [{ type: 'video', uri: videoUri }] : []),
     ...imageAtts.map(a => ({ type: 'image', data: a.buffer.toString('base64'), mime_type: a.mediaType })),
-    { type: 'text', text: effPrompt },
+    { type: 'text', text: textPart },
   ]
 
   // Duration is a "Ns" string, clamped to the API's 3-10s window.

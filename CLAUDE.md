@@ -639,10 +639,13 @@ Every surface that shows a provider error must run it through
 `sanitizeProviderError` first (XTalk, XCharacter and `/api/v1` were sending
 raw provider JSON until Aug 28).
 
-**XDuel's redraw** (Aug 29): one shuffle yields the draw AND its reserve; a
-slot failing with an ACCOUNT-class error takes the next reserve model **from a
-different provider** and re-runs, once. Only ACCOUNT-class — a safety refusal
-or an oversized prompt fails on every model alike. The client needed no change
+**XDuel's redraw** (Aug 29, widened Sep 16): one shuffle yields the draw AND
+its reserve; a slot failing with an ACCOUNT-class error **or a provider
+content-moderation rejection** (`SAFETY` in `lib/provider-errors.ts`) takes
+the next reserve model **from a different provider** and re-runs, once.
+Moderation joined on Sep 16: xAI rejected "Tokyo game show pikachu" while
+Gemini drew it, so a refusal is the provider's verdict, not the prompt's. An
+oversized prompt or a timeout still fails in place. The client needed no change
 (`trying:` was already there, unused). **The load-bearing line is
 `models[i] = replacement`**: `slots`, `slotPrices` and the reveal are all built
 from `models` after the slots settle, so without it the duel row credits the
@@ -819,7 +822,12 @@ npx tsc --noEmit         # type check — run before packaging
 ## Common Pitfalls
 
 1. **Model picked for wrong mode** — check `output_modalities`, not `modes` or
-   `tags`. "Vision" = can *see* images, not generate them.
+   `tags`. "Vision" = can *see* images, not generate them. Since Sep 16
+   `/api/xcreate` refuses the mismatch before any provider call
+   (`wrong_modality`, logged as a `REFUSED:` row) and the director route
+   rejects the tool call; the Sep 16 case was the director running a
+   video-only Gemini Omni id, taken from a `list_models(video)` result, as
+   an image edit.
 2. **New model not surfacing** — `ai_models` is hand-edited at `/admin/models`.
    Also check `enabled` and `blocked_features`.
 3. **Scientific notation in prices** — always `toFixed()`, never

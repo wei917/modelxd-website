@@ -6,7 +6,7 @@ export const maxDuration = 300
 
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
 import { processAttachment }              from '@/lib/attachment'
-import { sanitizeProviderError, ACCOUNT_LIMIT } from '@/lib/provider-errors'
+import { sanitizeProviderError, ACCOUNT_LIMIT, SAFETY } from '@/lib/provider-errors'
 import * as providers                     from '@/lib/providers'
 import { modePriceLabel }                 from '@/lib/providers/pricing'
 
@@ -440,17 +440,22 @@ export async function POST(req: Request) {
       // are unobtainable until a vote is recorded, not merely unrendered.
       controller.enqueue(sse('meta', { count: n, mode, duelId }))
 
-      // One redraw per slot, and ONLY for an account-level failure — our
-      // spending cap, a disabled org, a dead key. A safety refusal or an
-      // oversized prompt fails on every model alike, so redrawing there
-      // would burn a second call and turn "your prompt was refused" into a
-      // baffling swap.
+      // One redraw per slot, for the two failure classes that belong to the
+      // PROVIDER rather than the prompt: an account-level failure (our
+      // spending cap, a disabled org, a dead key) and a content-moderation
+      // rejection. Moderation was left out on Aug 29 on the theory that a
+      // refusal fails on every model alike. It does not: on Sep 16 xAI
+      // rejected "Tokyo game show pikachu" as moderated while Gemini drew
+      // it, and the duel died with one side blank. The reserve comes from a
+      // DIFFERENT provider for exactly this reason. An oversized prompt or
+      // a timeout still fails in place — a second call would fail the same
+      // way — and a second refusal is shown, not redrawn again.
       const runWithRedraw = async (i: number, drawn: ModelInfo): Promise<SlotOutput | null> => {
         let current = drawn
         for (let attempt = 0; ; attempt++) {
           const r = await runSlot(i, current, mode, prompt, attachments, duelId, controller, user.id)
           if (!('failed' in r)) return r
-          const replacement = attempt === 0 && ACCOUNT_LIMIT.test(r.message)
+          const replacement = attempt === 0 && (ACCOUNT_LIMIT.test(r.message) || SAFETY.test(r.message))
             ? takeReplacement(current.provider)
             : null
           if (!replacement) {

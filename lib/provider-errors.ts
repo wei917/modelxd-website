@@ -46,7 +46,12 @@ const RATE     = /rate limit|too many requests|overloaded|UNAVAILABLE|RESOURCE_E
 // (CC, July 25). Keep 'moderat' and 'flagged' in here. Deliberately NOT
 // 'violat': it also appears in billing/ToS messages, and SAFETY is tested
 // first, so it would hijack them.
-const SAFETY   = /safety|blocked|policy|policies|refused|RECITATION|moderat|flagged/i
+// Exported for XDuel's redraw (Sep 16): a moderation verdict is the
+// PROVIDER's, not the prompt's — xAI rejected "Tokyo game show pikachu" as
+// moderated while Gemini drew it — so a slot that fails this way is worth
+// one redraw from a different provider. Same rule as ACCOUNT_LIMIT above:
+// one list, two readers.
+export const SAFETY = /safety|blocked|policy|policies|refused|RECITATION|moderat|flagged/i
 // A provider message wrapped by one of our own throw sites — e.g.
 // `Runway request failed (400): {...}` or `Runway task FAILED: SAFETY.INPUT`.
 // Never echo these to the user: they carry our endpoint/status detail and read

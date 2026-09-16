@@ -449,6 +449,29 @@ export async function POST(req: Request) {
               continue
             }
           }
+          // THE MODEL MUST MATCH THE MEDIUM (owner's board, Sep 16): the
+          // director listed models for medium="video", then sent three
+          // image_edit runs to Gemini Omni 1.1 Flash from that list, and
+          // every one died at the provider with a message that blamed the
+          // model. The prompt says "an id returned by list_models"; it never
+          // said "from the list for THIS medium". output_modalities is the
+          // rule, and the director gets the correction as a tool error so
+          // it re-lists and picks again in the same POST.
+          if (typeof inp.model_id === 'string' && inp.model_id) {
+            const want = isVideo ? 'video' : 'image'
+            const { data: mrow } = await serviceClient()
+              .from('ai_models').select('display_name, output_modalities')
+              .eq('id', inp.model_id).maybeSingle()
+            const outs: string[] = Array.isArray((mrow as any)?.output_modalities) ? (mrow as any).output_modalities : []
+            if (mrow && !outs.includes(want)) {
+              results.push({
+                type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                content: `Rejected: "${(mrow as any).display_name}" makes ${outs.join('/') || 'nothing listed'}, not ${want}. Call list_models with medium="${want}" and pick a model from THAT list; a model id from the other medium's list can never run here.`,
+              })
+              console.warn(`${LOG} rejected start_generation: ${(mrow as any).display_name} outputs ${outs.join('/')} for medium=${want}`)
+              continue
+            }
+          }
           // Hand off to the client. Loop pauses here; it resumes when the
           // client POSTs back with the matching tool_result appended.
           action = { kind: 'generate', toolUseId: tu.id, input: tu.input }

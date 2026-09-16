@@ -539,6 +539,35 @@ export async function POST(req: Request) {
   const models = (await Promise.all(modelIds.map((id: string) => getModelById(id)))).filter(Boolean) as ModelInfo[]
   if (models.length === 0) return Response.json({ error: 'No valid models found' }, { status: 400 })
 
+  // THE MODEL MUST MAKE WHAT THE RUN ASKS FOR (owner's board, Sep 16): the
+  // director sent three image_edit runs to Gemini Omni 1.1 Flash, a
+  // video-only model, and Google answered 400 "This model only supports
+  // Interactions API." — which the sanitizer turned into "The model failed
+  // to generate a response. Please try again." Nothing in that told anyone
+  // the model could never have drawn it. output_modalities is the rule
+  // (CLAUDE.md: it decides the mode, never `modes` or tags), so it is
+  // checked here, before any provider call, naming the model and the
+  // reason. Logged as a pre-flight refusal so the mismatch is queryable.
+  const outsOf = (m: ModelInfo): string[] => Array.isArray(m.output_modalities) ? m.output_modalities : []
+  const wrongModality = models.filter(m => !outsOf(m).includes(mode))
+  if (wrongModality.length > 0) {
+    const noun = (x: string) => x === 'video' ? 'video' : x === 'image' ? 'images' : 'text'
+    const makes = (m: ModelInfo) => {
+      const out = outsOf(m)
+      return out.includes('video') ? 'video' : out.includes('image') ? 'images' : out.includes('text') ? 'text' : 'nothing in this mode'
+    }
+    for (const m of wrongModality) {
+      logRefusal(
+        { provider: m.provider, model_name: m.model_name, model_id: m.id, mode, user_id: user.id },
+        'wrong_modality',
+        `run mode ${mode}, model outputs ${outsOf(m).join(',') || 'none'}`,
+      )
+    }
+    const message = `${wrongModality.map(m => `${m.display_name} makes ${makes(m)}`).join('; ')}, not ${noun(mode)}. Pick a model made for ${noun(mode)}, or switch the mode.`
+    console.warn(`${LOG} refused wrong_modality mode=${mode} models=${wrongModality.map(m => m.model_name).join(',')}`)
+    return Response.json({ error: 'wrong_modality', message }, { status: 400 })
+  }
+
   // ── Pre-flight balance gate ────────────────────────────────────────────
   // The debit at the bottom of this route runs AFTER generation, and its
   // InsufficientCreditsError was caught-and-logged while the job still
