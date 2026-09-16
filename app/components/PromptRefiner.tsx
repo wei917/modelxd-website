@@ -101,9 +101,9 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
   return (
     <div className="refine">
       <div className="refine-row">
-        <button type="button" className="refine-btn" onClick={ask} disabled={!canAsk} aria-busy={status === 'loading'}
+        <button type="button" className="btn-secondary refine-btn" onClick={ask} disabled={!canAsk} aria-busy={status === 'loading'}
                 title={trimmed.length < MIN_CHARS ? t('refine.empty') : undefined}>
-          <span aria-hidden>✨</span> {status === 'loading' ? t('refine.loading') : t('refine.button')}
+          <span className="refine-glyph" aria-hidden>✦</span>{status === 'loading' ? t('refine.loading') : t('refine.button')}
         </button>
         {applied && status === 'idle' && (
           <span className="refine-applied" role="status">
@@ -120,23 +120,23 @@ export default function PromptRefiner({ prompt, mode, surface, disabled, onApply
       {status === 'preview' && (
         <div className="refine-panel" role="region" aria-label={t('refine.title')}>
           <div className="refine-label">{t('refine.title')}</div>
-          <textarea ref={taRef} className="refine-ta" rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={MAX_CHARS} />
+          <textarea ref={taRef} className="prompt-textarea refine-ta" rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={MAX_CHARS} />
           {changes.length > 0 && (
-            <div className="refine-changes">
-              <span className="refine-added-cap">{t('refine.changes')}</span>
-              <span className="refine-chips">{changes.map((c, i) => <span key={i} className="refine-chip refine-chip--change">{c}</span>)}</span>
+            <div className="refine-note">
+              <span className="refine-cap">{t('refine.changes')}</span>
+              <span className="refine-items">{changes.join(' · ')}</span>
             </div>
           )}
           {added.length > 0 && (
-            <div className="refine-added">
-              <span className="refine-added-cap">{t('refine.added')}</span>
-              <span className="refine-chips">{added.map((a, i) => <span key={i} className="refine-chip">{a}</span>)}</span>
+            <div className="refine-note">
+              <span className="refine-cap">{t('refine.added')}</span>
+              <span className="refine-items">{added.join(' · ')}</span>
             </div>
           )}
-          {stale && <div className="refine-stale">{t('refine.stale')}</div>}
+          {stale && <div className="refine-note refine-note--warn">{t('refine.stale')}</div>}
           <div className="refine-actions">
-            <button type="button" className="refine-act refine-act--primary" onClick={apply} disabled={!draft.trim()}>{t('refine.apply')}</button>
-            <button type="button" className="refine-act" onClick={cancel}>{t('refine.keep')}</button>
+            <button type="button" className="btn-secondary refine-act refine-act--apply" onClick={apply} disabled={!draft.trim()}>{t('refine.apply')}</button>
+            <button type="button" className="btn-secondary refine-act" onClick={cancel}>{t('refine.keep')}</button>
             <span className="refine-free">{t('refine.free')}</span>
           </div>
         </div>
