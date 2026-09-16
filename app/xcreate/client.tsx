@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
 import { discountFor } from '../../lib/xcreate-discount'
+import { decidePoll, newPollHealth, isJobPayload, RETRY_NOTE, POST_UNANSWERED_NOTE, POLL_TIMEOUT_MS, type PollHealth, type PollStatus } from '../../lib/xcreate-poll'
 import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
@@ -1361,6 +1362,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // Job polling — persists generation across navigation.
   const [jobId,          setJobId]          = useState<string | null>(null)
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Health of the poll loop for the CURRENT job (lib/xcreate-poll.ts owns
+  // the policy). Reset by startPolling, so one job's rough patch never
+  // carries into the next.
+  const pollHealthRef = useRef<PollHealth>(newPollHealth())
+  // One poll in flight at a time: overlapping requests could apply out of
+  // order, and a hung one would otherwise evade the retry window. The ref
+  // holds the in-flight request's TICKET, not a boolean, so a request that
+  // finishes late can only release its own lock — never a newer one's.
+  const pollInFlightRef = useRef(0)
+  const pollTicketRef   = useRef(0)
   // The job THIS tab is already polling. The ?job= resume effect checks it
   // so that generate() moving the address bar to ?job=<id> (below) doesn't
   // make the effect re-restore state for a run that is already live here.
@@ -1928,7 +1939,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       setJobId(null)
       stopPolling()
     } else if (data.job.status === 'failed') {
+      // A job that died before its slots ran used to drop the studio back
+      // into setup with the cards still spinning and no word why (Sep 16).
+      // The route refunds the reserve on that path; say so, clear the cards.
       console.warn('[xcreate] job failed:', data.job.error)
+      const firstSlotError = nextSlots.find(s => s.error)?.error
+      setLoadError(firstSlotError ?? 'This run failed before any model ran. If credit was reserved for it, the ledger on your profile page shows whether it was returned. Try again.')
+      setSlots([])
       setPhase('setup')
       setJobId(null)
       stopPolling()
@@ -1936,27 +1953,71 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }
 
   const pollOnce = async (id: string) => {
+    const health = pollHealthRef.current
+    // Backing off after transient trouble: skip the tick, keep the loop.
+    if (Date.now() < health.nextAllowedAt) return
+    if (pollInFlightRef.current !== 0) return
+    const ticket = ++pollTicketRef.current
+    pollInFlightRef.current = ticket
+    let status: PollStatus
+    let data: { job: any; slots: any[] } | null = null
+    const abort = new AbortController()
+    const timer = setTimeout(() => abort.abort(), POLL_TIMEOUT_MS)
     try {
-      const res = await fetch(`/api/xcreate/job/${id}`, { cache: 'no-store' })
-      if (res.status === 404) return  // job row may not exist yet in the first ~100ms after POST
-      if (!res.ok) {
-        console.warn('[xcreate] poll failed', res.status)
-        stopPolling()
-        return
+      const res = await fetch(`/api/xcreate/job/${id}`, { cache: 'no-store', signal: abort.signal })
+      status = res.status
+      if (res.ok) {
+        // A 200 is only a result if it is SHAPED like one; anything else
+        // (an HTML error page, a half-written body) is transient.
+        try {
+          const body: unknown = await res.json()
+          if (isJobPayload(body)) data = body
+          else status = 'malformed'
+        } catch { status = 'malformed' }
       }
-      const data = await res.json()
-      // A reset (nav to bare /xcreate, Start Over) may have detached this
-      // tab while the fetch was in flight — applying the stale result
-      // would drag the fresh studio back to the abandoned run.
-      if (activeJobRef.current !== id) return
-      applyJobData(data)
-    } catch (err) {
-      console.error('[xcreate] poll error', err)
+    } catch {
+      status = 'network'   // offline, DNS, or the 15s timeout above
+    } finally {
+      clearTimeout(timer)
+      if (pollInFlightRef.current === ticket) pollInFlightRef.current = 0
     }
+    // STALE FIRST (Sep 16). A reset (nav to bare /xcreate, Start Over) or a
+    // newer run may own the studio by the time this answer lands; nothing
+    // about the abandoned job — its result, its 503, its 404 — may touch
+    // the page. The check used to sit after the error branch, so an old
+    // job's error stopped the new job's polling.
+    const action = decidePoll({ status, now: Date.now(), health, stale: activeJobRef.current !== id })
+    if (action.kind === 'ignore') return
+    if (action.kind === 'stop') {
+      // Auth, ownership, or trouble that outlasted its window. The run is
+      // untouched on the server; the sentence says how to get back to it.
+      // Cards are cleared so nothing spins behind the banner.
+      console.warn('[xcreate] polling stopped:', status, action.message)
+      stopPolling()
+      setSlots([])
+      setPhase('setup')
+      setJobId(null)
+      setLoadError(action.message)
+      return
+    }
+    if (action.kind === 'retry') {
+      // Transient (5xx, 429, network): visible, recoverable, still polling.
+      console.warn('[xcreate] poll hiccup', status, `(${health.failures} in a row)`)
+      setLoadError(RETRY_NOTE)
+      return
+    }
+    if (action.kind === 'pending' || !data) return
+    // Back to healthy: take our own notices down, leave any other banner.
+    setLoadError(prev => (prev === RETRY_NOTE || prev === POST_UNANSWERED_NOTE) ? null : prev)
+    applyJobData(data)
   }
 
   const startPolling = (id: string) => {
     stopPolling()
+    pollHealthRef.current = newPollHealth()
+    // The in-flight lock is NOT reset here: a previous job's request may
+    // still be running (bounded to 15s); its answer is ignored as stale and
+    // its own cleanup releases the lock, after which this job's ticks run.
     activeJobRef.current = id
     setJobId(id)
     // Poll immediately, then every 1s
@@ -1973,8 +2034,22 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // still generating (rows are born at run start).
   const resumeJob = async (activeId: string) => {
     try {
-      const res = await fetch(`/api/xcreate/job/${activeId}`, { cache: 'no-store' })
-      if (!res.ok) return
+      // Three tries for a transient answer (a deploy's 502, a 429): a
+      // resume that gave up on the first hiccup showed an empty studio for
+      // a run that was still going (Sep 16). Auth, ownership and a missing
+      // job stop at once.
+      let res: Response | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try { res = await fetch(`/api/xcreate/job/${activeId}`, { cache: 'no-store' }) } catch { res = null }
+        if (res && (res.ok || res.status === 401 || res.status === 403 || res.status === 404)) break
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)))
+      }
+      if (!res || !res.ok) {
+        setLoadError(res?.status === 401
+          ? 'Your session has expired. Sign in again, then reopen this page to pick the run up.'
+          : 'Could not resume this run right now. Reload the page to try again.')
+        return
+      }
       const data = await res.json()
 
       // Restore prompt + mode + selectedModels + slotOptions
@@ -2161,6 +2236,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     })
       .then(async res => {
         if (res.ok) return
+        // A newer run (or a reset) owns the studio now: this verdict is
+        // about an abandoned job and must not clear cards or stop the
+        // poller that replaced it (Sep 16).
+        if (activeJobRef.current !== newJobId) return
         // Gateway timeouts (504/502/524) mean the PROXY gave up holding this
         // response open — the serverless function is still running the job
         // and polling will deliver it. Treating them as failure made the
@@ -2176,6 +2255,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         // reading the response at all (the old fire-and-forget), a refusal was
         // completely invisible and the UI just span forever.
         const detail = await res.json().catch(() => null)
+        // The body read is another await: check again before touching state.
+        if (activeJobRef.current !== newJobId) return
         stopPolling()
         setPhase('setup')
         // Clear the optimistic streaming slots too — without this the cards
@@ -2204,7 +2285,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           setLoadError(detail?.message ?? detail?.error ?? `Generation failed (HTTP ${res.status}).`)
         }
       })
-      .catch(err => console.warn('[xcreate] POST failed:', err))
+      .catch(err => {
+        // No answer at all (offline, DNS, a dropped socket). The request may
+        // still have LANDED — a run that is charging credits — so the
+        // studio must not invite a second submission. Say so and let the
+        // poll loop settle it: the job appears (and takes over), or the
+        // missing-job grace window stops the loop with its own sentence.
+        console.warn('[xcreate] POST failed:', err)
+        if (activeJobRef.current !== newJobId) return
+        setLoadError(POST_UNANSWERED_NOTE)
+      })
 
     // Begin polling right away. First couple of polls may 404 until the
     // server has inserted the job row — pollOnce handles 404 gracefully.

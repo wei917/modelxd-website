@@ -30,14 +30,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     .eq('id', id)
     .single()
 
-  if (jobErr || !job) return Response.json({ error: 'Not found' }, { status: 404 })
+  // "No rows" (PGRST116) is the only answer that means not found. Anything
+  // else — a database outage, a timeout — is a server error, and answering
+  // 404 for it let the client mistake an outage for a vanished run (Sep 16).
+  if (jobErr && jobErr.code !== 'PGRST116') {
+    console.error('[xcreate/job] lookup failed:', jobErr.message)
+    return Response.json({ error: 'server_error' }, { status: 500 })
+  }
+  if (!job) return Response.json({ error: 'Not found' }, { status: 404 })
   if (job.user_id !== userId) return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data: slots } = await sb
+  const { data: slots, error: slotErr } = await sb
     .from('xcreate_job_slots')
     .select('slot_index, model_id, provider, model_name, name, options, text, is_image, is_video, streaming, done, cost, response_time, progress, error, error_ref')
     .eq('job_id', job.id)
     .order('slot_index', { ascending: true })
+  // A slot read that failed is not "no slots yet": say so, or the client
+  // paints an empty run over a live one.
+  if (slotErr) {
+    console.error('[xcreate/job] slot lookup failed:', slotErr.message)
+    return Response.json({ error: 'server_error' }, { status: 500 })
+  }
 
   return Response.json({
     job: {

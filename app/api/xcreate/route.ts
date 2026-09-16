@@ -877,10 +877,39 @@ export async function POST(req: Request) {
   }
   jobInsert.id = jobIdForRun
 
+  // The reserve is already taken by here. An early exit that kept it
+  // charged the user for a run that never existed (read out of the poll
+  // paths, Sep 16; rare, but money). One helper for both exits below.
+  const refundReserve = async (why: string): Promise<'refunded' | 'nothing_reserved' | 'refund_failed'> => {
+    if (reservedCents <= 0) return 'nothing_reserved'
+    try {
+      await grantCredits({
+        userId:        user.id,
+        amountCents:   reservedCents,
+        kind:          'refund',
+        referenceType: 'xcreate_refund',
+        referenceId:   jobIdForRun,
+        description:   `XCreate ${mode} refund (${why})`,
+        metadata:      { mode, modelCount: models.length, jobId: jobIdForRun, reservedCents, why },
+      })
+      if (apiToken) adjustTokenSpend(apiToken.tokenId, -reservedCents / 100)
+      console.log(`${LOG} refunded the ${reservedCents}¢ reserve: ${why}`)
+      return 'refunded'
+    } catch (err) {
+      console.error(`${LOG} refund of the ${reservedCents}¢ reserve failed (${why}):`, err)
+      return 'refund_failed'
+    }
+  }
+  // The sentence the user sees must match what actually happened to the money.
+  const earlyExitMessage = (what: string, outcome: 'refunded' | 'nothing_reserved' | 'refund_failed') =>
+    outcome === 'refunded'         ? `${what} Your reserved credit has been refunded. Try again.`
+    : outcome === 'nothing_reserved' ? `${what} Nothing was charged. Try again.`
+    : `${what} Your reserved credit could not be returned automatically; the ledger on your profile page shows the reserve, and support can settle it with run id ${jobIdForRun}.`
   const { data: job, error: jobErr } = await sb.from('xcreate_jobs').insert(jobInsert).select('id').single()
   if (jobErr || !job) {
     console.error(`${LOG} job insert failed:`, jobErr)
-    return Response.json({ error: 'Failed to create job' }, { status: 500 })
+    const outcome = await refundReserve('the run could not be created')
+    return Response.json({ error: 'server_error', refund: outcome, message: earlyExitMessage('The run could not be created.', outcome) }, { status: 500 })
   }
 
   // Seed slot rows.
@@ -897,7 +926,8 @@ export async function POST(req: Request) {
   if (slotErr) {
     console.error(`${LOG} slot insert failed:`, slotErr)
     await sb.from('xcreate_jobs').update({ status: 'failed', error: slotErr.message, completed_at: new Date().toISOString() }).eq('id', job.id)
-    return Response.json({ error: 'Failed to initialize slots' }, { status: 500 })
+    const outcome = await refundReserve('the run could not be set up')
+    return Response.json({ error: 'server_error', refund: outcome, message: earlyExitMessage('The run could not be set up.', outcome) }, { status: 500 })
   }
 
   // ── The row is born HERE, at run start (owner, Aug 20) ─────────────────

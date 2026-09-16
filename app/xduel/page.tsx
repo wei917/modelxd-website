@@ -17,6 +17,7 @@ import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
 import { isSubmitEnter } from '../../lib/ime'
 import { downloadUrl } from '@/lib/download-url'
+import { finalizeInterrupted, STREAM_INTERRUPTED_MESSAGE, STREAM_NEVER_STARTED_MESSAGE } from '@/lib/xduel-stream'
 
 type Vote = number | 'T' | null   // index of chosen model, or 'T' for tie
 type Mode = 'text' | 'image' | 'video'
@@ -334,6 +335,11 @@ export default function XDuel() {
         throw new Error(text || `Server error ${res.status}`)
       }
 
+      // Did the server close the duel itself? Anything else — a proxy
+      // cutting an idle stream, a lost connection, the function reaching
+      // its limit — is an interruption to settle explicitly (Sep 16).
+      let sawEnd  = false
+      let sawMeta = false
       const reader  = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -355,6 +361,7 @@ export default function XDuel() {
               const payload = JSON.parse(line.slice(6))
 
               if (currentEvent === 'meta') {
+                sawMeta = true
                 if (payload.duelId) setDuelId(payload.duelId)
                 // Blind slots. The server no longer sends identities or prices
                 // while the duel is unvoted (see the `meta` note in
@@ -430,6 +437,7 @@ export default function XDuel() {
                 }))
 
               } else if (currentEvent === 'end') {
+                sawEnd = true
                 // A duel with a failed slot refunds the quota server-side
                 // (July 19). Tell the user plainly — no provider details.
                 if (payload?.refunded) {
@@ -469,8 +477,19 @@ export default function XDuel() {
           }
         }
       }
+      if (!sawEnd) {
+        // EOF without `end`: every card still waiting becomes a failed card
+        // with a sentence, never a spinner for a model that will not
+        // answer. Quota is re-read below; the server refunds only when it
+        // reached the end itself, so nothing is promised here.
+        if (sawMeta) setModels(prev => finalizeInterrupted(prev))
+        setApiError(sawMeta ? STREAM_INTERRUPTED_MESSAGE : STREAM_NEVER_STARTED_MESSAGE)
+        setLoading(false)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
+      // Same settlement for a read that threw (the socket died mid-duel).
+      setModels(prev => finalizeInterrupted(prev))
       setApiError(msg)
       setLoading(false)
       // Quota state may have shifted (either we consumed a slot before

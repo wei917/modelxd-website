@@ -2,7 +2,12 @@
 // XDuel: randomly pick N models, run in parallel, stream results via SSE
 
 export const runtime     = 'nodejs'
-export const maxDuration = 300
+// 800, not 300 (Sep 16): XCreate video runs of 305-415s have completed on
+// this deployment (wan3.0, Seedance), and the same providers serve XDuel,
+// whose 300s limit could kill a video duel mid-poll with no `end`, no
+// refund and two spinners. The per-slot deadline below keeps the duel's
+// own bookkeeping ahead of the platform limit.
+export const maxDuration = 800
 
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
 import { processAttachment }              from '@/lib/attachment'
@@ -103,6 +108,25 @@ type SlotOutput = {
   responseTime: number; cost: number; searches: number
 }
 type SlotFailure = { failed: true; message: string; ref: string | null }
+
+/** ONE absolute budget per duel, measured from the moment the stream opens
+ *  and shared by a slot's first attempt and its redraw: a slot that outlives
+ *  it settles as a timeout BEFORE the function's own limit (maxDuration
+ *  above) can kill the whole duel, so the row is written, the quota is
+ *  refunded and `end` is sent. 720s sits ABOVE the ~600s the providers
+ *  themselves poll for, so a slow but live generation is never cut short
+ *  by us — only one the provider has already given up on. The provider
+ *  call carries on in the background (nothing can cancel a running video
+ *  job); its late events are dropped by the gate in runWithRedraw. */
+const DUEL_BUDGET_MS = 720_000
+const withDeadline = (p: Promise<SlotOutput | SlotFailure>, ms: number, onExpire: () => void): Promise<SlotOutput | SlotFailure> =>
+  new Promise(resolve => {
+    const t = setTimeout(() => { onExpire(); resolve({ failed: true, message: `timed out after ${Math.round(ms / 1000)}s`, ref: null }) }, Math.max(0, ms))
+    p.then(
+      v => { clearTimeout(t); resolve(v) },
+      err => { clearTimeout(t); resolve({ failed: true, message: err instanceof Error ? err.message : String(err), ref: null }) },
+    )
+  })
 
 async function runSlot(
   index:       number,
@@ -439,6 +463,16 @@ export async function POST(req: Request) {
       // the guarantee structural rather than cosmetic: identities and prices
       // are unobtainable until a vote is recorded, not merely unrendered.
       controller.enqueue(sse('meta', { count: n, mode, duelId }))
+      // Keep the response alive while a video model polls in silence: an
+      // SSE comment every 15s is invisible to the parser (it acts only on
+      // `event:` and `data:` lines) and stops proxies from cutting an idle
+      // stream. Cleared before `end`; an enqueue on a closed stream throws,
+      // which also clears it.
+      const heartbeat = setInterval(() => {
+        try { controller.enqueue(new TextEncoder().encode(': hb\n\n')) } catch { clearInterval(heartbeat) }
+      }, 15_000)
+      const deadlineAt = Date.now() + DUEL_BUDGET_MS
+      try {
 
       // One redraw per slot, for the two failure classes that belong to the
       // PROVIDER rather than the prompt: an account-level failure (our
@@ -453,8 +487,20 @@ export async function POST(req: Request) {
       const runWithRedraw = async (i: number, drawn: ModelInfo): Promise<SlotOutput | null> => {
         let current = drawn
         for (let attempt = 0; ; attempt++) {
-          const r = await runSlot(i, current, mode, prompt, attachments, duelId, controller, user.id)
+          // Events from an attempt that has expired or been replaced must
+          // not reach the client: a late `done:` would paint a result over
+          // the failure (or the replacement) the user already sees.
+          let live = true
+          const gate = {
+            enqueue: (chunk: Uint8Array) => { if (live) controller.enqueue(chunk) },
+          } as unknown as ReadableStreamDefaultController
+          const r = await withDeadline(
+            runSlot(i, current, mode, prompt, attachments, duelId, gate, user.id),
+            deadlineAt - Date.now(),
+            () => { live = false },
+          )
           if (!('failed' in r)) return r
+          live = false
           const replacement = attempt === 0 && (ACCOUNT_LIMIT.test(r.message) || SAFETY.test(r.message))
             ? takeReplacement(current.provider)
             : null
@@ -534,6 +580,9 @@ export async function POST(req: Request) {
 
       controller.enqueue(sse('end', { duelId, refunded: failedSlots > 0 }))
       controller.close()
+      } finally {
+        clearInterval(heartbeat)
+      }
     }
   })
 
