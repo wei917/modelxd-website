@@ -3150,9 +3150,9 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 .btn-secondary.refine-act:disabled { opacity: .45; cursor: default; }
 .refine-free { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .06em; color: var(--muted); }
 .refine-action { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-/* In the composer action rows the refine button sits beside the primary. */
-.duel-footer .refine-action, .xc-actions .refine-action { margin-left: auto; }
-.duel-footer .refine-action + .btn-battle, .xc-actions .refine-action + .btn-battle { margin-left: 0; }
+/* In the composer action rows the refine button sits beside the primary,
+   inside the row's own right-aligned group (estimate, notice, refine,
+   primary) with the row's gap; no spacer pushes anything to the left. */
 @media (max-width: 760px) {
   .btn-secondary.refine-btn { min-height: 44px; padding: 0 12px; white-space: normal; text-align: center; line-height: 1.25; }
   .btn-secondary.refine-act { min-height: 44px; flex: 1 1 auto; }
@@ -3160,7 +3160,7 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .prompt-textarea.refine-ta { font-size: 16px; }
   /* Phones: notice on its own line, then refine and the primary share one
      row; labels may wrap inside their button, nothing is hidden. */
-  .duel-footer .refine-action, .xc-actions .refine-action { margin-left: 0; flex: 0 1 auto; max-width: 52%; }
+  .duel-footer .refine-action, .xc-actions .refine-action { flex: 0 1 auto; max-width: 52%; }
   .duel-footer .btn-battle, .xc-actions .btn-battle { width: auto; flex: 1 1 130px; min-height: 44px; justify-content: center; white-space: normal; text-align: center; line-height: 1.25; padding: 8px 14px; }
   .refine-applied, .refine-error { flex: 1 0 100%; }
 }
