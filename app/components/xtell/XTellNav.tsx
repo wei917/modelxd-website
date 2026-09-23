@@ -16,11 +16,16 @@ export default function XTellNav({ user }: { user: User | null }) {
   const pathname = usePathname()
   return (
     <header className="xtell-nav">
-      <a href="#xtell-main" className="xtell-skip">{t('xtell.site.skip')}</a>
+      <a href="#xtell-main" className="xtell-skip" onClick={event => {
+        event.preventDefault()
+        const main = document.getElementById('xtell-main')
+        main?.focus()
+        main?.scrollIntoView({ block: 'start' })
+      }}>{t('xtell.site.skip')}</a>
       <div className="xtell-nav-inner">
-        <Link href="/" aria-label="XTell"><XTellMark /></Link>
+        <a href="/" aria-label="XTell"><XTellMark /></a>
         <nav className="xtell-nav-links" aria-label={t('xtell.site.navigation')}>
-          <Link href="/" aria-current={pathname === '/' || pathname === '/xtell' ? 'page' : undefined}>{t('xtell.site.street')}</Link>
+          <a href="/" aria-current={pathname === '/' || pathname === '/xtell' ? 'page' : undefined}>{t('xtell.site.street')}</a>
           <Link href="/profile" aria-current={pathname === '/profile' ? 'page' : undefined}>{t('xtell.site.account')}</Link>
         </nav>
         <div className="xtell-nav-actions">

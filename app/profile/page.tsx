@@ -662,7 +662,7 @@ export default function ProfilePage() {
   if (!profile) return (
     <>
       {isXTell ? <XTellAuthGate /> : <ModelXDProfileAuth />}
-      {isXTell ? <main id="xtell-main" className="xtell-container xtell-account-welcome">
+      {isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
         <h1 className="xtell-account-title">{t('xtell.site.account')}</h1>
         <p className="xtell-account-note">{t('xtell.site.authCopy')}</p>
         {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
@@ -756,7 +756,7 @@ export default function ProfilePage() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
-      <div id={isXTell ? "xtell-main" : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
+      <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
         <div className="arena" style={{ maxWidth: 1040 }}>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
 

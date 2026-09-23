@@ -42,3 +42,7 @@ Claude owns domain setup, deployment and authenticated integration checks. The l
 The UI does not change API authorization, OAuth configuration, subscription terms, or billing. Verify the Supabase callback allow-list and Vercel/DNS configuration for the final domain, then check authenticated account and reading flows there.
 
 A development server is running on `http://127.0.0.1:4317/`. The open Chrome preview has the local `modelxd_site=xtell` cookie. The temporary cookie-switching QA helper was removed before the production build and is not committed.
+
+## Navigation follow-up
+
+Final navigation QA caught a same-path Next Link retaining the selected temple after returning to `/`. The standalone brand/home links now use document navigation so the street resets reliably. The skip link focuses the main region without replacing the temple hash, and XTell OAuth return paths preserve that hash. Desktop browser verified: home returns to street; skip stays in the room.
