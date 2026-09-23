@@ -42,15 +42,18 @@ existing $4.99 monthly plan framed as a temple pass, shown in NT$/¥. No ads.
 - **Server components**: `siteFromHeaders(await headers())` →
   `'xtell' | 'modelxd'`. `proxy.ts` stamps `x-modelxd-site` on every request
   on every host.
-- **Client components**: `useSite()` from `lib/useSite.ts` → `'modelxd'` during SSR and first
-  paint, the real value after mount (same pattern as Nav's BETA tag, and for
-  the same reason: SSR markup must be identical on every host).
+- **Client components**: `useSite()` from `lib/useSite.tsx`. The root layout
+  reads the header on the server and provides it through `SiteProvider`, so
+  the value is right on the first paint (no ModelXD sidebar flash). SSR
+  markup differs per host by design now; the layout is dynamic.
 - **Local development without DNS**: set the cookie
   `document.cookie = 'modelxd_site=xtell; path=/'` on localhost /
   dev.modelxd.com / *.vercel.app and both the proxy and `useSite()` treat the
   request as the XTell host. Clear it to go back.
 - **Routing on the XTell host** (proxy, not the shell):
-  - `/` is rewritten to `/xtell` (URL stays `/`).
+  - `/` renders the street directly (`app/page.tsx` chooses the component on
+    the server). No rewrite, so `usePathname()` is `/` on both server and
+    client. Treat `/` and `/xtell` as the same active state in the nav.
   - Allowed pages: `XTELL_ROUTES` = `/xtell`, `/profile`, `/terms`,
     `/privacy`, `/login`, `/auth`, `/coming-soon` (and subpaths).
   - Everything else (`/xduel`, `/xboard`, `/xeval`, …) 302s to `/`. You do
@@ -93,7 +96,7 @@ existing $4.99 monthly plan framed as a temple pass, shown in NT$/¥. No ads.
 
 ## Reserved (Claude's; do not edit)
 
-`proxy.ts`, `lib/site.ts`, `lib/useSite.ts`, `lib/xtell.ts`, `lib/xtell-ritual.ts`,
+`proxy.ts`, `lib/site.ts`, `lib/useSite.tsx`, `app/layout.tsx`, `app/page.tsx`, `app/HomeClient.tsx`, `lib/xtell.ts`, `lib/xtell-ritual.ts`,
 `lib/xtell-places.ts`, `lib/jyotish.ts`, `lib/astrology.ts`, `lib/names.ts`,
 `lib/classics.ts`, `app/api/**`, `content/**`, `scripts/**`, `supabase/**`,
 `docs/XTELL-PAGE.md`, `CLAUDE.md`, `content/site-guide.md`.
@@ -161,3 +164,23 @@ Leave them as comments in your PR description or ask the owner to relay.
   `x-forwarded-host` is honoured (that is what Vercel sends); www and plain
   localhost are unchanged. The host comes from the headers, not
   `nextUrl.hostname`, because the dev server reports its bind address there.
+
+## Replies (Claude, Sep 23, second round)
+
+- **Hydration mismatch + sidebar flash: fixed** in the commit "XTell front
+  door: server-provided site, no rewrite" (hash in chat; cherry-pick it on
+  top of df1e8a9). What changed:
+  - `app/layout.tsx` is async, reads `siteFromHeaders(await headers())`,
+    sets `<html data-site="xtell|modelxd">` and wraps the tree in
+    `SiteProvider`. `useSite()` API unchanged; it now returns the server
+    value from the first render. The hostname/cookie detection remains only
+    as a fallback when no provider is above.
+  - The proxy no longer rewrites `/`. `app/page.tsx` is a server component
+    that renders `XTellClient` on the XTell host and `HomeClient` (the old
+    landing, moved verbatim to `app/HomeClient.tsx`) on www, with metadata
+    per site. `usePathname()` therefore agrees on both sides.
+  - Verified: `/` on the XTell host returns `data-site="xtell"` and the
+    XTell title; `/xboard` still 302s to `/`; www unchanged; loading `/` with
+    the cookie shows the street with no hydration warnings in the console.
+- `app/layout.tsx`, `app/page.tsx`, `app/HomeClient.tsx` are mine (added to
+  the reserved list). If you need something from the layout, ask.

@@ -8,6 +8,9 @@ import Omnibox from './components/Omnibox'
 import GlobalCursor from './components/GlobalCursor'
 import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
+import { headers } from 'next/headers'
+import { siteFromHeaders } from '../lib/site'
+import { SiteProvider } from '../lib/useSite'
 import './globals.css'
 
 // Barlow at body weights — used for paragraph copy and UI labels.
@@ -78,10 +81,15 @@ export const viewport = {
   viewportFit:   'cover',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Which front door (www or xtell.modelxd.com) — stamped by proxy.ts. Read
+  // here so the shell is right on the server render; this makes every route
+  // dynamic, which they effectively were already (auth on nearly all).
+  const site = siteFromHeaders(await headers())
   return (
-    <html lang="en">
+    <html lang="en" data-site={site}>
       <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}`}>
+        <SiteProvider site={site}>
         <LangProvider>
           <AuthModalProvider>
             <PageTitleProvider>
@@ -100,6 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </PageTitleProvider>
           </AuthModalProvider>
         </LangProvider>
+        </SiteProvider>
         {/* Vercel Web Analytics — anonymous visitor stats (country, pages,
             referrers). No-ops outside Vercel deployments, so localhost and
             self-hosted runs cost nothing. Enable also requires the dashboard

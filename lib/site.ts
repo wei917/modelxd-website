@@ -8,12 +8,14 @@
 //
 // Contract (frontend reads these, backend sets them):
 //   - proxy.ts stamps every request with the header `x-modelxd-site`
-//     ('xtell' | 'modelxd') and rewrites `/` → `/xtell` on the XTell host.
+//     ('xtell' | 'modelxd'); app/page.tsx renders the street at `/` on the
+//     XTell host (no rewrite — see app/page.tsx for why).
 //   - Server components: `siteFromHeaders(await headers())`.
-//   - Client components: `useSite()` from lib/useSite.ts; it reads window.location.hostname,
-//     and honours the cookie `modelxd_site=xtell` on localhost so the XTell
-//     shell can be developed without DNS (set it from devtools:
-//     document.cookie = 'modelxd_site=xtell; path=/').
+//   - Client components: `useSite()` from lib/useSite.tsx, fed by the root
+//     layout's SiteProvider (server value, no first-paint flash). The cookie
+//     `modelxd_site=xtell` on localhost makes the proxy treat the request as
+//     the XTell host so the shell can be developed without DNS (set it from
+//     devtools: document.cookie = 'modelxd_site=xtell; path=/').
 //   - Routes ALLOWED on the XTell host are listed in XTELL_ROUTES; anything
 //     else is redirected to `/` by proxy.ts, so the XTell shell never has to
 //     hide a link defensively — the backend refuses the page.

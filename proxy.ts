@@ -66,10 +66,10 @@ function isBypassed(pathname: string): boolean {
 // ── The XTell front door ────────────────────────────────────────────────────
 // xtell.modelxd.com is the temple street as its own site (owner, Sep 23):
 // same deployment, same auth and wallet, different shell. The proxy does
-// three things for that host and nothing else: stamp the request with the
-// site header so server components know which shell to render, rewrite `/`
-// to the street, and refuse every route that is not XTell's by sending it
-// to `/`. Refusing here means the XTell shell never hides a link
+// two things for that host and nothing else: stamp the request with the
+// site header so server components know which shell to render, and refuse
+// every route that is not XTell's by sending it to `/` (app/page.tsx renders
+// the street there for this host). Refusing here means the XTell shell never hides a link
 // defensively — the page simply does not exist on that host. The contract
 // (header name, cookie, route list) lives in lib/site.ts.
 /** The host the visitor typed. Behind Vercel that is x-forwarded-host; the
@@ -92,10 +92,9 @@ function xtellDoor(req: NextRequest): NextResponse | null {
   if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || /\.[a-z0-9]+$/i.test(pathname)) {
     return NextResponse.next({ request: { headers } })
   }
-  if (pathname === '/') {
-    const url = req.nextUrl.clone(); url.pathname = '/xtell'
-    return NextResponse.rewrite(url, { request: { headers } })
-  }
+  // `/` is served by app/page.tsx, which renders the street for this host
+  // itself — a rewrite to /xtell here made usePathname() disagree between
+  // server and browser and broke hydration.
   if (isXTellRoute(pathname)) return NextResponse.next({ request: { headers } })
   const home = req.nextUrl.clone(); home.pathname = '/'; home.search = ''
   return NextResponse.redirect(home)
