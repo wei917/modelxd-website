@@ -66,9 +66,17 @@ const notoJP = Noto_Sans_JP({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: 'ModelXD',
-  description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
+// Default title per front door: pages without their own metadata (the
+// client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
+// tab on the XTell host.
+export async function generateMetadata(): Promise<Metadata> {
+  if (siteFromHeaders(await headers()) === 'xtell') {
+    return { title: 'XTell — X算命', description: '線上廟街：免費排盤、抽籤，再與你選的 AI 老師聊聊。僅供參考與娛樂。' }
+  }
+  return {
+    title: 'ModelXD',
+    description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
+  }
 }
 
 // Tell mobile browsers to use the device's real width instead of
