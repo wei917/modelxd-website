@@ -8,6 +8,11 @@ import type { UserCredits, CreditTransaction } from '../../lib/credits'
 import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
 import { downloadFile, downloadName } from '../../lib/download'
 import { useRequireAuth } from '../../lib/useRequireAuth'
+import { useSite } from '../../lib/useSite'
+import XTellAuthGate from '../components/xtell/XTellAuthGate'
+import { useAuthModal } from '../../lib/AuthModalContext'
+import XTellActivity from '../components/xtell/XTellActivity'
+import { XTellFooter } from '../components/xtell/XTellNav'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -150,8 +155,11 @@ const DISPLAY_TIERS: { id: string; priceCents: number; label: string; descriptio
   { id: 'tier_100', priceCents: 10000, label: '$100', description: 'Power' },
 ]
 
+function ModelXDProfileAuth() { useRequireAuth(); return null }
+
 export default function ProfilePage() {
-  useRequireAuth()
+  const isXTell = useSite() === 'xtell'
+  const { show: showAuth } = useAuthModal()
   const { lang, setLang } = useLang()
   const t = useT()
   const cursorRef = useRef<HTMLDivElement>(null)
@@ -360,7 +368,7 @@ export default function ProfilePage() {
     const client = sb()
     const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xtalks' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
-    if (tab === 'duels') {
+    if (!isXTell && tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
       client.from('duels').select('*').eq('user_id', user.id).is('deleted_at', null)
         .order('created_at', { ascending: false }).limit(50)
@@ -459,7 +467,7 @@ export default function ProfilePage() {
   // 200-row xcreate cache. Filter + pagination are now both client-side
   // so they intentionally don't appear here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, user, xcreateRefreshTick, showActivity])
+  }, [tab, user, xcreateRefreshTick, showActivity, isXTell])
 
   // Fetch the visible XCreate page from the server, which fetches + re-signs
   // ONLY that page's rows (one batched sign per bucket) and returns them
@@ -652,7 +660,14 @@ export default function ProfilePage() {
   }, [])
 
   if (!profile) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>{t('common.loading')}</div>
+    <>
+      {isXTell ? <XTellAuthGate /> : <ModelXDProfileAuth />}
+      {isXTell ? <main id="xtell-main" className="xtell-container xtell-account-welcome">
+        <h1 className="xtell-account-title">{t('xtell.site.account')}</h1>
+        <p className="xtell-account-note">{t('xtell.site.authCopy')}</p>
+        {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
+      </main> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>{t('common.loading')}</div>}
+    </>
   )
 
   const initials = (profile.display_name ?? user?.email ?? '?').charAt(0).toUpperCase()
@@ -741,8 +756,9 @@ export default function ProfilePage() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
-      <div className="xduel-page">
+      <div id={isXTell ? "xtell-main" : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
         <div className="arena" style={{ maxWidth: 1040 }}>
+          {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
 
           {/* Eyebrow — ties the profile page into the same section-label
               motif used across XDuel / XCreate / landing. Gives the page
@@ -782,7 +798,7 @@ export default function ProfilePage() {
               balance card on the right of the same row. They share one
               flex parent with `flex-wrap` so the layout collapses to a
               vertical stack on narrow viewports. */}
-          <div style={{
+          <div className={isXTell ? 'xtell-profile-summary' : undefined} style={{
             display: 'flex', alignItems: 'flex-start',
             gap: 24, marginBottom: 44, flexWrap: 'wrap',
           }}>
@@ -823,7 +839,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Credit balance card (right of profile) */}
-            <div style={{
+            <div className={isXTell ? 'xtell-wallet' : undefined} style={{
               position: 'relative',
               display: 'flex', alignItems: 'center', gap: 18,
               background: 'var(--surface)',
@@ -900,7 +916,7 @@ export default function ProfilePage() {
               </button>
               {/* Ledger toggle — credit activity belongs to this card. */}
               <button
-                onClick={() => setShowActivity(true)}
+                onClick={() => isXTell ? document.getElementById('xtell-activity')?.scrollIntoView({ behavior: 'smooth' }) : setShowActivity(true)}
                 style={{
                   padding: '12px 16px', borderRadius: 6,
                   background: 'transparent', border: '1px solid var(--border2)',
@@ -945,7 +961,7 @@ export default function ProfilePage() {
                     fontSize: 10, color: 'var(--muted2)', textTransform: 'uppercase' as const,
                     letterSpacing: '0.18em', fontFamily: 'var(--font-mono), monospace', marginBottom: 6,
                   }}>
-                    {t('profile.plan.title')} · {plan.plan.price}{t('profile.plan.permonth')}
+                    {t(isXTell ? 'xtell.site.pass' : 'profile.plan.title')} · {plan.plan.price}{t('profile.plan.permonth')}
                   </div>
                   {live ? (
                     <div style={{ fontSize: 14, fontWeight: 700, color: sub.status === 'past_due' ? 'var(--red)' : 'var(--white)' }}>
@@ -1254,6 +1270,7 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {isXTell ? <XTellActivity userId={user.id} /> : <>
           {/* Privacy summary — sits right above the content tabs so the
               public/private expectations frame what's below (CC, July 19). */}
           <div style={{
@@ -1857,6 +1874,8 @@ export default function ProfilePage() {
               row dividers instead of per-row borders, alternating row
               background for legibility, mono numerics pinned to the right. */}
 
+          </>}
+
           {/* ── Danger zone — delete account (Privacy Policy §5) ── */}
           <div style={{ marginTop: 56, border: '1px solid rgba(232,69,60,0.35)', borderRadius: 10, padding: '18px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -1917,6 +1936,8 @@ export default function ProfilePage() {
 
         </div>
       </div>
+
+      {isXTell && <XTellFooter />}
 
       {/* ── Delete confirmation modal ──────────────────────────────────── */}
       {deleteModal && (

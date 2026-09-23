@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT } from '../../lib/i18n'
+import { useSite } from '../../lib/useSite'
+import { XTellMark } from './xtell/XTellNav'
 
 // Same glyphs as Nav's NavIcon (app/components/Nav.tsx) — keep in sync.
 function AuthFeatureIcon({ name }: { name: string }) {
@@ -19,9 +21,31 @@ function AuthFeatureIcon({ name }: { name: string }) {
 }
 
 export default function AuthModal() {
+  const isXTell = useSite() === 'xtell'
   const { open, nextPath, hide } = useAuthModal()
   const t = useT()
   const [loading, setLoading] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const dismiss = useRef(hide)
+  dismiss.current = hide
+  useEffect(() => {
+    if (!open || !isXTell) return
+    const before = document.activeElement as HTMLElement | null
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); dismiss.current(); return }
+      if (event.key !== 'Tab') return
+      const controls = dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], select, input, textarea, [tabindex="0"]')
+      if (!controls?.length) return
+      const first = controls[0], last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); before?.focus() }
+  }, [open, isXTell])
 
   const handleLogin = async () => {
     setLoading(true)
@@ -143,18 +167,21 @@ export default function AuthModal() {
         .auth-feature-text strong { color: var(--white); font-weight: 500; }
       `}</style>
 
-      <div className="auth-overlay" onClick={(e) => { if (e.target === e.currentTarget) hide() }}>
-        <div className="auth-card">
-          <button className="auth-close" onClick={hide}>✕</button>
+      <div className={isXTell ? "auth-overlay xtell-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget) hide() }}>
+        <div ref={dialogRef} className="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+          <button className="auth-close" aria-label={t('xtell.site.close')} onClick={hide}>✕</button>
 
           <div className="auth-logo">
+            {isXTell ? <XTellMark /> : <>
             <Image src="/logo.png" alt="ModelXD" width={28} height={28} style={{ borderRadius: 6 }} />
             <span className="auth-logo-text">Model<span className="xd">XD</span></span>
+            </>}
           </div>
 
           <div className="auth-divider" />
 
-          <div className="auth-title">{t('auth.titleprefix')} Model<span className="accent">XD</span></div>
+          <div id="auth-title" className="auth-title">{isXTell ? t('xtell.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
+          {isXTell && <p className="auth-sub">{t('xtell.site.authCopy')}</p>}
 
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -168,6 +195,7 @@ export default function AuthModal() {
 
 
           <div className="auth-features">
+            {isXTell ? <p className="xtell-auth-credit">{t('xtell.site.authCredit')}</p> : <>
             {[
               { icon: 'duel',   text: <><strong>XDuel</strong> — {t('auth.f.xduel')}</> },
               { icon: 'create', text: <><strong>XCreate</strong> — {t('auth.f.xcreate')}</> },
@@ -179,6 +207,7 @@ export default function AuthModal() {
                 <span className="auth-feature-text">{f.text}</span>
               </div>
             ))}
+            </>}
           </div>
         </div>
       </div>

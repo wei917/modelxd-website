@@ -16,6 +16,10 @@
 //      as a 批文. The model interprets the chart; it never computes one.
 
 import { useEffect, useRef, useState } from 'react'
+import { useSite } from '../../lib/useSite'
+import XTellAuthGate from '../components/xtell/XTellAuthGate'
+import TempleStreet, { TEMPLES } from '../components/xtell/TempleStreet'
+import { XTellFooter } from '../components/xtell/XTellNav'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -59,13 +63,43 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
 const shichenOf = (h: number) => ZHI[h === 23 ? 0 : Math.floor((h + 1) / 2) % 12] + '時'
 
-export default function XTellClient() {
-  useRequireAuth()
+function RequireTempleAuth() { useRequireAuth(); return null }
+
+export default function XTellClient({ standalone: standaloneOverride }: { standalone?: boolean }) {
+  const site = useSite()
+  const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
   const [temple, setTemple] = useState<Temple | null>(null)
+  useEffect(() => {
+    if (!standalone) return
+    const sync = () => {
+      const key = window.location.hash.slice(1) as Temple
+      setTemple(TEMPLES.includes(key) ? key : null)
+    }
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [standalone])
+  const chooseTemple = (key: Temple | null) => {
+    if (standalone) window.location.hash = key ?? ''
+    setTemple(key)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
+  if (standalone) return <div className="xtell-site">
+    <main id="xtell-main" className="xtell-container" tabIndex={-1}>
+      {!temple ? <TempleStreet onEnter={chooseTemple} /> : <>
+        <XTellAuthGate />
+        <TempleRoom key={temple} temple={temple} onBack={() => chooseTemple(null)} standalone />
+      </>}
+      <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
+    </main>
+    <XTellFooter />
+  </div>
 
   return (
     <div className="xduel-page">
+      <RequireTempleAuth />
       <div className="arena">
         {/* House in-page header (XBoard/XEval pattern). The red "//" is drawn
             by .prompt-label.eyebrow in CSS, never typed into the string, and
@@ -101,7 +135,7 @@ export default function XTellClient() {
   )
 }
 
-function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) {
+function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; onBack: () => void; standalone?: boolean }) {
   const t = useT()
   const [birth, setBirth] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false })
   // 月老廟 needs a second person. Defaults to the other gender purely as a
@@ -329,14 +363,23 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   return (
     // The arena is 1200 wide because XBoard/XEval put tables in it. A birth
     // form and a reading are prose, so the room keeps its own 980 measure.
-    <div style={{ maxWidth: 980 }}>
+    <div className={standalone ? "xtell-room" : undefined} style={{ maxWidth: 980 }}>
       <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
         ← {t('xtell.back')}
       </button>
-      <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>
+      {standalone ? <>
+        <header className="xtell-room-header">
+          <img src={`/xtell/${temple}.jpg`} alt="" width={768} height={432} />
+          <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p><h1>{t(`xtell.${temple}.name`)}</h1><p>{t(`xtell.${temple}.desc`)}</p></div>
+        </header>
+        <ol className="xtell-room-steps" aria-label={t('xtell.site.navigation')}>
+          {['details', 'result', 'conversation'].map((step, i) => <li key={step} aria-current={(!entered && i === 0) || (entered && i === 2) ? 'step' : undefined}><span>{String(i + 1).padStart(2, '0')}</span>{t(`xtell.site.${step}`)}</li>)}
+        </ol>
+      </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 
       {!entered ? (
-        <div style={{ ...card, padding: '18px 20px' }}>
+        <div className={standalone ? "xtell-entry-form" : undefined} style={{ ...card, padding: '18px 20px' }}>
+          {standalone && <p className="xtell-form-note">{t('xtell.site.freeStep')}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
               second person and 流年 needs a year. */}
           {temple === 'zhanxing' && (
@@ -425,7 +468,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                 <ProviderLogo provider={m.provider} size={14} />
                 <b>{m.display_name}</b>
                 {masters.length > 1 && (
-                  <button onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
+                  <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
                     style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
                 )}
               </span>
@@ -455,7 +498,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           {/* The chart. Open by default, foldable for anyone who only wants
               the reading. */}
           {showChart && chart && (
-            <div style={{ ...card, padding: '14px 16px' }}>
+            <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <BaziBoard chart={chart} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
                 : isQian(temple) ? <QianCard qian={chart} temple={temple} />
@@ -498,7 +541,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
                   </div>
                 )}
                 {round.replies.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${round.replies.length}, 1fr)`, gap: 10, alignItems: 'start' }}>
+                  <div className={standalone ? "xtell-replies" : undefined} style={{ display: 'grid', gridTemplateColumns: `repeat(${round.replies.length}, 1fr)`, gap: 10, alignItems: 'start' }}>
                     {round.replies.map((tn: any, j: number) => (
                       <div key={j} style={{ background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -535,15 +578,15 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           {err && <div style={{ color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
 
           {/* Composer — same shape as XDirect's. */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
-              placeholder={t('xtell.question.ph')}
+              aria-label={t('xtell.question.ph')} placeholder={t('xtell.question.ph')}
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
             />
-            <button onClick={() => void send()} disabled={busy || !input.trim()} style={{
+            <button aria-label={t('xtell.site.send')} onClick={() => void send()} disabled={busy || !input.trim()} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer',
               opacity: busy || !input.trim() ? 0.5 : 1,
@@ -702,26 +745,26 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
-      <select style={sel} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} style={sel} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {Array.from({ length: 106 }, (_, i) => 2010 - i).map(y => <option key={y} value={y}>{y}</option>)}
       </select>
-      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span>
-      <select style={sel} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span></label>
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.month")}`} style={sel} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
         {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}</option>)}
       </select>
-      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span>
-      <select style={sel} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span></label>
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.day")}`} style={sel} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
         {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
       </select>
-      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span>
-      <select style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span></label>
+      <span className="xtell-birth-time"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.hour")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
         {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}</option>)}
       </select>
       :
-      <select style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
+      <select aria-label={`${label ?? ""} ${t("xtell.site.birth.minute")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
         {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
       </select>
-      <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{value.hourUnknown ? '—' : shichenOf(value.h)}</span>
+      <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{value.hourUnknown ? '—' : shichenOf(value.h)}</span></span>
       {allowUnknown && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', color: 'var(--muted)' }}>
           <input type="checkbox" checked={!!value.hourUnknown} onChange={e => onChange({ ...value, hourUnknown: e.target.checked })} />

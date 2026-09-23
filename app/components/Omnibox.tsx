@@ -19,6 +19,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useLang, useT } from '../../lib/i18n'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import ProviderLogo from './ProviderLogo'
+import { useSite } from '../../lib/useSite'
 
 type Row = {
   key: string
@@ -63,11 +64,12 @@ function modeOf(m: any): string {
 }
 
 export default function Omnibox() {
+  const site = useSite()
   const t = useT()
   const { lang } = useLang()
   const router = useRouter()
   const pathname = usePathname() ?? ''
-  const onSurface = SURFACES.some(s => pathname === s || pathname.startsWith(s + '/'))
+  const onSurface = site !== 'xtell' && SURFACES.some(s => pathname === s || pathname.startsWith(s + '/'))
   const [open, setOpen]   = useState(false)
   const [q, setQ]         = useState('')
   const [sel, setSel]     = useState(0)

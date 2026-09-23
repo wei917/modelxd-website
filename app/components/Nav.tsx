@@ -10,6 +10,8 @@ import { useLang } from '../../lib/i18n'
 import { XCREATE_TEMPLATES } from '../xcreate/templates'
 import ContactEmail from './ContactEmail'
 import BugReportLink from './BugReport'
+import { useSite } from '../../lib/useSite'
+import XTellNav from './xtell/XTellNav'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
@@ -83,6 +85,7 @@ function historyTitle(prompt: string): string {
 }
 
 export default function Nav() {
+  const site = useSite()
   const pathname = usePathname()
   const router = useRouter()
   const { show } = useAuthModal()
@@ -369,6 +372,7 @@ export default function Nav() {
   // NOTE: this early return MUST stay below every hook above — React
   // requires the same hooks to run in the same order on every render,
   // or you get "Rendered fewer hooks than expected".
+  if (site === 'xtell') return <XTellNav user={user} />
   if (pathname === '/coming-soon') return null
 
   const handleProtectedClick = (e: React.MouseEvent, href: string, isProtected: boolean) => {
