@@ -624,3 +624,27 @@ terminal-bench-2-1`. Published 2026-09-05 (owner: "publish them"): live on both 
 $0.97 / $1.20, third row behind Autopilot and Gemini (equal pass rate,
 Gemini cheaper). The catalog row's `thinking_levels` lost its bogus `max`
 the same day (the API accepts low..xhigh only).
+
+## 2026-09-23 — Judging scheme: one judge per pair (GDPval-AA), from Opus 5.5 on
+
+Owner, on hearing that four judges score every pair: "why you pick 4???
+... terrible cost design. what paper did?" GDPval-AA uses a panel of three
+(Opus 5 high, Sol medium, Gemini 3.1 Pro high) and ONE sampled judge per
+pair. We keep our four (Opus 5, Sol, Grok 4.6, Qwen 3.8 Max @high) and
+switch to one per pair: `xeval/panel.py` assigns each (task, pair) a judge
+by hash, balanced, with the two contestants' own models excluded.
+`judge.py --one-per-pair` makes each judge process take only its assigned
+pairs; `ratings.py --one-per-pair` keeps one verdict per existing pair by
+the same rule (the assigned judge's if present, else the next in rotation)
+and counts rule forfeits once. Nothing is re-run or re-judged.
+
+Check on the 2026-09-23 data: fit `b3c1ac60` (one per pair) vs `2bbd9e9a`
+(four per pair) — every entry within ±33 points, rank order unchanged except
+GPT-6 Astra (partial, 9/27) rising 30. Judging a new 27-task row now costs
+~$45 instead of ~$140. The page label reads "one judge per pair, drawn from
+a panel of 4 …" (regex on `judge_filter` unchanged).
+
+The four-judge origin, for the record: on Aug 23 the ladder had three
+contenders who were also the judges; with no self-judging some pairs had a
+single eligible judge, so Qwen was added as an outside fourth and "all four
+per pair" was never revisited as the ladder grew.
