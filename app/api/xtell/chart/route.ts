@@ -10,7 +10,7 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, ENGINES } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -25,6 +25,19 @@ export async function POST(req: Request) {
     const qian = qianOf(body.n, temple)
     if (!qian) return Response.json({ error: 'stick not in corpus' }, { status: 500 })
     return Response.json({ temple, chart: qian, engine: ENGINES[temple] })
+  }
+
+  // 姓名亭 and 測字亭 start from characters, not a birth.
+  if (temple === 'xingming') {
+    if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
+    try { return Response.json({ temple, chart: nameChart(body.surname, body.given), engine: ENGINES[temple] }) }
+    catch (e: any) { return Response.json({ error: e?.message ?? 'no stroke data' }, { status: 400 }) }
+  }
+  if (temple === 'cezi') {
+    if (!validChar(body?.ch)) return Response.json({ error: 'write exactly one character' }, { status: 400 })
+    const info = charInfo(body.ch)
+    if (!info) return Response.json({ error: `no data for ${body.ch}` }, { status: 400 })
+    return Response.json({ temple, chart: info, engine: ENGINES[temple] })
   }
 
   if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })

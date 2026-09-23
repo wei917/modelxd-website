@@ -12,6 +12,7 @@
 
 import { baziChart, ziweiChart, liuNian, guandiQian, qianCorpus, validQian, validWishes } from '../lib/xtell'
 import { drawQian, throwJiao } from '../lib/xtell-ritual'
+import { nameChart, charInfo, shuli } from '../lib/names'
 import { jyotishChart, lahiriAyanamsa, NAKSHATRA, RASI } from '../lib/jyotish'
 
 let failures = 0
@@ -96,6 +97,24 @@ eq('第1籤', `${mz[0].ganZhi} ${mz[0].luck} ${mz[0].poem[0]}`, '甲子 屬金�
 eq('第13籤', `${mz[12].ganZhi} ${mz[12].story}`, '丙子 撐渡伯遇桃花')
 eq('第60籤', `${mz[59].ganZhi} ${mz[59].poem[3]}`, '癸亥 當官分理便有益')
 eq('61 is not a 媽祖 stick, 100 is a 關帝 stick', `${validQian(61, 'mazu')} ${validQian(100, 'guandi')}`, 'false true')
+
+// ── 姓名亭 ─────────────────────────────────────────────────────────────────
+// Strokes are the 康熙 convention every 姓名學 table prints; the five grids
+// are arithmetic on them (single/double surname, single/double given name).
+console.log('\n姓名 (lib/names):')
+const strokesOf = (s: string) => [...s].map(c => charInfo(c)!.strokes).join(' ')
+eq('陳林張李黃蔡許鄭謝洪', strokesOf('陳林張李黃蔡許鄭謝洪'), '16 8 11 7 12 17 11 19 17 10')
+eq('氵艹阝 radicals at full form: 江 蘇 邱 陽', strokesOf('江蘇邱陽'), '7 22 12 17')
+eq('numerals by value: 一 四 十', strokesOf('一四十'), '1 4 10')
+const wdm = nameChart('王', '大明')
+eq('王大明 五格', Object.values(wdm.ge).map(g => `${g.label}${g.n}`).join(' '), '天格5 人格7 地格11 外格9 總格15')
+eq('  三才', `${wdm.sancai.tian}${wdm.sancai.ren}${wdm.sancai.di} ${wdm.sancai.tianRen}/${wdm.sancai.renDi}`, '土金木 相生/相剋')
+const oy = nameChart('歐陽', '菲')
+eq('歐陽菲 五格 (double surname, single given)', Object.values(oy.ge).map(g => `${g.label}${g.n}`).join(' '), '天格32 人格31 地格15 外格16 總格46')
+const lin = nameChart('林', '安')
+eq('林安 五格 (single/single → 外格 2)', Object.values(lin.ge).map(g => `${g.label}${g.n}`).join(' '), '天格9 人格14 地格7 外格2 總格14')
+eq('81 數理 wraps: 81 還元 吉, 82 → 2 凶', `${shuli(81).name}${shuli(81).luck} ${shuli(82).n}${shuli(82).luck}`, '還元吉 2凶')
+eq('測字 facts: 林 is 木部 8 畫', `${charInfo('林')!.radical} ${charInfo('林')!.strokes}`, '木 8')
 
 // ── 四面佛 ─────────────────────────────────────────────────────────────────
 // 流年 2026 丙午 against the 1990-01-01 chart (日主 丙, 日支 寅, 年支 巳):

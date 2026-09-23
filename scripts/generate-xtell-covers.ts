@@ -45,6 +45,16 @@ const PROMPTS: Record<string, string> = {
     'guardian shapes at either side, a bamboo cylinder of fortune sticks and a pair of crescent divination blocks ' +
     'on the altar in the foreground, swallowtail temple roof ridge against a pale sea sky, fishing boats and ' +
     'waves dissolving into ink at the edge, one strand of red lanterns.' + STYLE,
+  xingming:
+    'A quiet scholar\'s desk in an old Taiwanese storefront: a brush resting on an inkstone, a sheet of red paper ' +
+    'with a vertical column of three large characters being written (the characters loose, painterly, not legible), ' +
+    'a well-thumbed dictionary open beside it, an abacus, a pair of reading glasses, soft afternoon light through a ' +
+    'wooden lattice window, the shopkeeper suggested only as a silhouette of a sleeve and hand.' + STYLE,
+  cezi:
+    'An old street fortune-teller\'s stall under a banyan tree at dusk: a small folding table with a cloth banner, ' +
+    'a single large character freshly brushed on white paper lying on the table, the brush beside it, a lantern, ' +
+    'the fortune-teller as a seated silhouette in a long robe leaning in to look, a visitor\'s silhouette standing, ' +
+    'ink bleeding into the paper, the character itself abstract strokes not legible.' + STYLE,
   navagraha:
     'A South Indian Navagraha shrine at night: nine small stone deities arranged in a square grid on a low ' +
     'platform, oil lamps flickering around them, the central figure a tall dark blue-black Shani holding a ' +

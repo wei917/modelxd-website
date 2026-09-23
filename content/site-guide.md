@@ -295,7 +295,14 @@ stick, throw the 筊 blocks until three 聖筊 in a row confirm it, then the
 master explains that one poem using the Qing-edition commentaries; the
 hundred poems are the public-domain 關聖帝君靈籤 from Wikisource), **媽祖廟**
 (the same draw-and-blocks ritual with Mazu's sixty 甲子 sticks, the set used
-at 鎮瀾宮 and 朝天宮; strong on travel, safety, home and trade), and
+at 鎮瀾宮 and 朝天宮; strong on travel, safety, home and trade), **姓名亭**
+(姓名學: type a surname and given name in traditional characters; the 康熙
+strokes come from Unicode's own data and are shown per character, then the
+five grids 天格/人格/地格/外格/總格, the 81-number 吉凶 convention and the
+三才 balance; the master reads them and will not push a name change),
+**測字亭** (glyphomancy: write one character and one question; the radical
+and strokes are looked up, the master takes the character apart the old way
+and shows every part, with the Qing classic 《測字秘牒》 at hand), and
 **四面佛** (the Erawan four-faced Brahma: write a wish to each face — 平安,
 事業, 婚姻, 財富, clockwise — and how you will repay it; the keeper helps
 word the wish and reads your own 八字 plus this year's 流年 to say which face

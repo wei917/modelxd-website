@@ -1,7 +1,7 @@
 # XTELL-PAGE.md — X算命 (`/xtell`)
 
 > Everything about the XTell surface. Written 2026-08-30, updated 2026-09-01
-> (關帝廟 + 四面佛 + 九曜廟; 媽祖廟 Sep 22), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
+> (關帝廟 + 四面佛 + 九曜廟; 媽祖廟, 姓名亭, 測字亭 Sep 22), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
 > `lib/classics.ts`, or `app/api/xtell/*`.
 
 ## What it is
@@ -33,7 +33,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (8 live)
+## Temples (10 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -42,6 +42,8 @@ time for free. The models' job is the part with no right answer: the reading.
 | 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
 | 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1 |
 | 媽祖廟 | 六十甲子籤 (求籤 + 擲筊) | `content/qian/mazu.json` + `lib/xtell-ritual.ts` | Same ritual as 關帝廟 with a 60-stick tube (`QIAN_COUNTS`). Wikisource《天上聖母六十甲子籤》, the set used at 鎮瀾宮/朝天宮: 甲子 label, a 五行/season/direction line (shown neutral, it is a hint not a grade), four lines, 卦頭故事. No per-topic 解曰 in this edition, and the master is told so. Added Sep 22 |
+| 姓名亭 | 姓名學 (五格剖象) | `lib/names.ts` + `content/names/kangxi.json` | Surname + given name (1–2 chars each, 繁體). 康熙筆畫 from Unicode Unihan `kRSUnicode` at the radical's FULL form (氵=水 4, 艹=艸 6, 阝=阜 8/邑 7, 月=肉 6, 王=玉 5−1=4), numerals by value. 天/人/地/外/總格, 熊崎式 81 數理 (吉/半吉/凶, wraps by −80), 三才 五行 生剋. Master never counts strokes; a second name goes back through the form. Added Sep 22 |
+| 測字亭 | 拆字 | `lib/names.ts` + 《測字秘牒》 | One character + the matter asked. Code gives the 康熙 radical, its strokes, the character's strokes and the radical's 五行 (common radicals only). **The decomposition is the master's**, and the prompt makes it spell every part out so the visitor can check it, because no license-clean IDS dataset exists (CHISE/cjkvi-ids are GPL). Classic: 清 程省《測字秘牒》 from Wikisource via `lib/classics`. Added Sep 22 |
 | 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
@@ -80,6 +82,22 @@ label from the number. The `Qian` shape is shared with 關帝: `luck` holds
 the 五行 line, `sections` holds only 卦頭故事. `qianCorpus(temple)`,
 `qianOf(n, temple)`, `validQian(n, temple)` and `guandiFacts(q, ask,
 temple)` take the temple; the closing 允准 line names the right deity.
+
+## 姓名 strokes (`scripts/build-kangxi-strokes.ts`)
+
+Unicode dropped `kRSKangXi` from Unihan (gone by Unicode 17); `kRSUnicode`
+is the surviving radical.residual field and encodes the same 康熙 convention
+姓名學 uses: the radical at its full form plus the residual strokes, with a
+NEGATIVE residual for reduced radical forms (王 = 玉 5 − 1 = 4). Radical
+stroke counts come from each radical's unified-ideograph form via
+`kTotalStrokes`, bridged by `CJKRadicals.txt`; simplified radical variants
+(`120'`) are skipped. The only rule Unihan cannot know is the numeral
+convention (一 … 十 count as their value), applied as an override. Scope is
+URO + Extension A, 27,584 characters, 386 KB with the radical number kept
+per character for 測字. The build spot-checks 48 surnames and given-name
+characters against the tables 姓名學 books print; all hold. Inputs are
+`Unihan_IRGSources.txt` and `CJKRadicals.txt` from unicode.org, not kept in
+the repo.
 
 ## The Jyotish engine (`lib/jyotish.ts`)
 
@@ -179,7 +197,9 @@ ground a Western reading in a Buddhist text about a different system.
    third 聖筊 calls the chart route itself, so there is no 進廟 button.
    四面佛 adds `WishForm` under the birth row; at least one face must be
    filled (`validWishes`). 九曜廟 adds a place `<select>` (`PLACES`) and
-   hides 時辰不確定, since the Lagna needs the hour.
+   hides 時辰不確定, since the Lagna needs the hour. 姓名亭 and 測字亭 have
+   no birth row at all (`NameForm`, `CeziForm`); the gender radio in 姓名亭
+   rides on the shared `birth.gender`.
 2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
    **Master chips** above: up to 2 models, default preselected
    (`DEFAULT_MASTER = 'gpt-5.6-sol'` in `app/xtell/client.tsx` — one constant
@@ -211,6 +231,10 @@ lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, naksh
 lib/astrology.ts            # Western engine: tropical positions, Placidus houses, aspects,
                             #   transits, secondary progressions, solar return, synastry + composite
 lib/xtell-places.ts         # curated birth places (lat/lon/IANA zone) for temples that need one
+lib/names.ts                # 姓名學 五格 + 81 數理 + 三才; 測字 character facts (server-only)
+content/names/kangxi.json   # char → [康熙筆畫, radical no] (built by scripts/build-kangxi-strokes.ts)
+content/names/radicals.json # radical no → [char, strokes]
+content/classics/cezimidie.txt  # 《測字秘牒》 — 測字亭's grounding text
 lib/classics.ts             # 古籍 retrieval (see below)
 content/qian/guandi.json    # 關聖帝君靈籤 100 首 (built by scripts/fetch-guandi-qian.ts)
 content/classics/suyaojing.txt  # 《宿曜經》 (Tang, 不空譯) — 九曜廟's grounding text
@@ -227,7 +251,8 @@ public/xtell/*.jpg          # temple covers (ink-wash, gpt-image-2)
 
 Per-temple personas (廟裡的老師; 月老 himself in 月老廟; the 解籤老師 in 關帝廟,
 never 關帝 himself; a Thai 守願人 at 四面佛; a Jyotishi under Shani's shrine
-at 九曜廟, never the god). Shared guardrails:
+at 九曜廟, never the god; a 姓名學 老先生 at 姓名亭; a 廟口測字先生 at 測字亭).
+Shared guardrails:
 
 - Only the provided chart — never recompute or alter a pillar.
 - **Tendency tone** (learned from Wolke/ziwei-doushu's ETHICS.md): 傾向/容易/
@@ -245,6 +270,11 @@ at 九曜廟, never the god). Shared guardrails:
   (say so, it is not an error); 宿 named Sanskrit + 宿曜經 Chinese; remedies
   (gems, mantras) are cultural notes, never instructions; Shani is a teacher
   of discipline, not a curse.
+- 姓名 extra: the 81 數理 is called a convention, never a law; no pushing a
+  name change; a second name must go back through the form, the master
+  never counts strokes itself.
+- 測字 extra: spell out every component of the decomposition; use only the
+  character's real structure; one character, one question.
 - No medical/financial/legal directives. Ends with 僅供參考與娛樂.
 - 繁體中文 unless the visitor writes otherwise.
 

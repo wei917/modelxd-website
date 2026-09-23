@@ -27,7 +27,7 @@ import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES } from '../../lib/astrology'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
 
 // 占星塔 is the one temple with rooms: four readings off one chart. The other
@@ -76,7 +76,7 @@ export default function XTellClient() {
 
         {!temple ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi'] as Temple[]).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -118,6 +118,10 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
   // 四面佛: one wish per face, plus the pledge.
   const [wishes, setWishes] = useState<Wishes>({})
+  // 姓名亭: surname + given name; 測字亭: one character (+ the shared `ask`).
+  const [surname, setSurname] = useState('')
+  const [given, setGiven] = useState('')
+  const [ch, setCh] = useState('')
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(DEFAULT_PLACE)
   // 占星塔 only.
@@ -165,6 +169,8 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
     isQian(temple) ? { temple, n: n ?? stick?.n, ask }
+    : temple === 'xingming' ? { temple, surname: surname.trim(), given: given.trim(), gender: birth.gender }
+    : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'simianfo' ? { temple, birth, wishes }
     : temple === 'navagraha' ? { temple, birth, place }
     : temple === 'zhanxing' ? {
@@ -352,6 +358,11 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           )}
           {isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} />
+          ) : temple === 'xingming' ? (
+            <NameForm surname={surname} given={given} gender={birth.gender}
+              onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel} />
+          ) : temple === 'cezi' ? (
+            <CeziForm ch={ch} setCh={setCh} ask={ask} setAsk={setAsk} sel={sel} />
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
               <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'zhanxing'} />
@@ -392,7 +403,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
           )}
           {!isQian(temple) && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' ? '' : t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
               <button onClick={() => void enter()} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
@@ -448,6 +459,8 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
               {temple === 'bazi' ? <BaziBoard chart={chart} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
                 : isQian(temple) ? <QianCard qian={chart} temple={temple} />
+                : temple === 'xingming' ? <NameBoard chart={chart} />
+                : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
@@ -1202,6 +1215,120 @@ function ZhanxingBoard({ chart }: { chart: any }) {
     <div>
       <NatalTable c={c} />
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.natal.note')}</div>
+    </div>
+  )
+}
+
+
+// ── 姓名亭 ─────────────────────────────────────────────────────────────────
+
+function NameForm({ surname, given, gender, onSurname, onGiven, onGender, sel }: {
+  surname: string; given: string; gender: 'male' | 'female'
+  onSurname: (s: string) => void; onGiven: (s: string) => void; onGender: (g: 'male' | 'female') => void; sel: any
+}) {
+  const t = useT()
+  const box = { ...sel, width: 96, fontSize: 18, fontFamily: 'var(--font-display), serif', letterSpacing: 4, textAlign: 'center' as const }
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
+          {t('xtell.surname')}
+          <input value={surname} maxLength={2} onChange={e => onSurname(e.target.value.replace(/\s/g, '').slice(0, 2))} style={box} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
+          {t('xtell.given')}
+          <input value={given} maxLength={2} onChange={e => onGiven(e.target.value.replace(/\s/g, '').slice(0, 2))} style={box} />
+        </label>
+        {(['male', 'female'] as const).map(g => (
+          <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
+            <input type="radio" checked={gender === g} onChange={() => onGender(g)} />
+            {t(`xtell.${g}`)}
+          </label>
+        ))}
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.name.note')}</div>
+    </div>
+  )
+}
+
+/** Every character with its 康熙 strokes and radical, the five grids with
+ *  their 數理, and the 三才 line. All of it came out of lib/names.ts. */
+function NameBoard({ chart }: { chart: any }) {
+  const t = useT()
+  const luckColour: Record<string, string> = { 吉: 'var(--score-elite)', 半吉: 'var(--score-fair)', 凶: 'var(--score-poor)' }
+  const chars = [...chart.surname, ...chart.given]
+  const ge: any[] = Object.values(chart.ge)
+  return (
+    <div>
+      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.name.chars')}</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+        {chars.map((c: any, i: number) => (
+          <div key={i} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', textAlign: 'center', minWidth: 72 }}>
+            <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800 }}>{c.ch}</div>
+            <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 700 }}>{c.strokes}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{c.radical}部</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.name.grids')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 14 }}>
+        {ge.map(g => (
+          <div key={g.key} style={{ border: '1px solid ' + (g.key === 'ren' ? 'var(--red)' : 'var(--border2)'), borderRadius: 10, padding: '10px 12px', background: g.key === 'ren' ? 'var(--surface2)' : 'transparent' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <b style={{ fontSize: 12.5 }}>{g.label}</b>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 20, fontWeight: 800 }}>{g.n}</span>
+            </div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              <span style={{ color: 'var(--muted)' }}>{g.wuxing}　</span>
+              <span style={{ fontWeight: 700, color: luckColour[g.shuli.luck] ?? 'var(--muted)' }}>{g.shuli.luck}</span>
+              <span style={{ color: 'var(--muted)' }}>　{g.shuli.name}{g.n !== g.shuli.n ? `（${g.shuli.n}）` : ''}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 13 }}>
+        <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.name.sancai')}</span>
+        天{chart.sancai.tian} 人{chart.sancai.ren} 地{chart.sancai.di}　
+        <span style={{ color: 'var(--muted)' }}>天→人 {chart.sancai.tianRen}，人→地 {chart.sancai.renDi}　{chart.sancai.label}</span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.name.source')}</div>
+    </div>
+  )
+}
+
+// ── 測字亭 ─────────────────────────────────────────────────────────────────
+
+function CeziForm({ ch, setCh, ask, setAsk, sel }: { ch: string; setCh: (s: string) => void; ask: string; setAsk: (s: string) => void; sel: any }) {
+  const t = useT()
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
+          {t('xtell.cezi.char')}
+          <input value={ch} maxLength={1} onChange={e => setCh(e.target.value.replace(/\s/g, '').slice(0, 1))} placeholder={t('xtell.cezi.char.ph')}
+            style={{ ...sel, width: 72, fontSize: 28, fontFamily: 'var(--font-display), serif', textAlign: 'center' }} />
+        </label>
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')}
+          style={{ ...sel, flex: 1, minWidth: 240 }} />
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.cezi.note')}</div>
+    </div>
+  )
+}
+
+function CeziBoard({ info, ask }: { info: any; ask: string }) {
+  const t = useT()
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 72, fontWeight: 800, lineHeight: 1, padding: '10px 18px', background: 'var(--surface2)', borderRadius: 12 }}>{info.ch}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.cezi.radical')}</span>{info.radical}部（{info.radicalStrokes}畫）</div>
+          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.name.chars')}</span>{info.strokes}</div>
+          {ask && <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.qian.ask')}</span>{ask}</div>}
+        </div>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.cezi.source')}</div>
     </div>
   )
 }

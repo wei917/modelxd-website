@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
@@ -26,6 +26,8 @@ const FACTS_HEAD: Record<string, string> = {
   yuelao:   '信眾的命盤（系統排定，勿更動）：',
   guandi:   '信眾求得的籤（系統從籤筒抽出、擲筊允准；籤文取自清刊本，勿更動）：',
   mazu:     '信眾求得的籤（系統從籤筒抽出、擲筊允准；籤文取自維基文庫六十甲子籤，勿更動）：',
+  xingming: '使用者的姓名與五格（系統查康熙筆畫排定，勿更動）：',
+  cezi:     '來訪者所書之字（部首與筆畫由系統查表，勿更動）：',
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
@@ -46,6 +48,10 @@ export async function POST(req: Request) {
   // 關帝廟's input is the stick number; everything else starts from a birth.
   if (isQianTemple(temple)) {
     if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
+  } else if (temple === 'xingming') {
+    if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
+  } else if (temple === 'cezi') {
+    if (!validChar(body?.ch) || !charInfo(body.ch)) return Response.json({ error: 'bad character' }, { status: 400 })
   } else {
     if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
     if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
@@ -91,6 +97,10 @@ export async function POST(req: Request) {
       })()
       : temple === 'navagraha'
         ? navagrahaFacts(navagrahaChart(body.birth, body.place), body.birth.gender)
+      : temple === 'xingming'
+        ? nameFacts(nameChart(body.surname, body.given), typeof body?.gender === 'string' ? body.gender : '')
+      : temple === 'cezi'
+        ? ceziFacts(charInfo(body.ch)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '')
       : isQianTemple(temple)
         // The poem comes from disk by number; the client's copy is never used.
         ? guandiFacts(qianOf(body.n, temple)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple)
