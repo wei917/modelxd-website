@@ -36,6 +36,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifySiteToken } from '@/lib/site-token'
+import { siteOfHost, isXTellRoute, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
 
 const COOKIE_NAME = 'modelxd_site_unlocked'
 
@@ -62,17 +63,57 @@ function isBypassed(pathname: string): boolean {
   return false
 }
 
+// ── The XTell front door ────────────────────────────────────────────────────
+// xtell.modelxd.com is the temple street as its own site (owner, Sep 23):
+// same deployment, same auth and wallet, different shell. The proxy does
+// three things for that host and nothing else: stamp the request with the
+// site header so server components know which shell to render, rewrite `/`
+// to the street, and refuse every route that is not XTell's by sending it
+// to `/`. Refusing here means the XTell shell never hides a link
+// defensively — the page simply does not exist on that host. The contract
+// (header name, cookie, route list) lives in lib/site.ts.
+/** The host the visitor typed. Behind Vercel that is x-forwarded-host; the
+ *  dev server's nextUrl reports its own bind address regardless of the Host
+ *  header, so the headers are read first and nextUrl is the fallback. */
+function requestHost(req: NextRequest): string {
+  const h = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.hostname
+  return h.split(',')[0].trim().replace(/:\d+$/, '').toLowerCase()
+}
+
+function xtellDoor(req: NextRequest): NextResponse | null {
+  const host = requestHost(req)
+  const site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
+  const headers = new Headers(req.headers)
+  headers.set(SITE_HEADER, site)
+  if (site !== 'xtell') return NextResponse.next({ request: { headers } })
+
+  const pathname = req.nextUrl.pathname
+  // APIs, assets and static files are shared; only pages are curated.
+  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || /\.[a-z0-9]+$/i.test(pathname)) {
+    return NextResponse.next({ request: { headers } })
+  }
+  if (pathname === '/') {
+    const url = req.nextUrl.clone(); url.pathname = '/xtell'
+    return NextResponse.rewrite(url, { request: { headers } })
+  }
+  if (isXTellRoute(pathname)) return NextResponse.next({ request: { headers } })
+  const home = req.nextUrl.clone(); home.pathname = '/'; home.search = ''
+  return NextResponse.redirect(home)
+}
+
 export async function proxy(req: NextRequest) {
+  // The XTell host is never behind the site password (like dev.), and every
+  // request on every host gets the site header.
+  const door = xtellDoor(req)
+  const host = requestHost(req)
+  if (host !== 'modelxd.com' && host !== 'www.modelxd.com') return door ?? NextResponse.next()
+
   const sitePw = process.env.SITE_PASSWORD
-  if (!sitePw) return NextResponse.next()           // gate disabled
+  if (!sitePw) return door ?? NextResponse.next()   // gate disabled
 
   // Only the real production hosts are gated. localhost, dev.modelxd.com
   // and *.vercel.app previews pass through even when SITE_PASSWORD is set
   // (CC, July 19) — so the same env file works everywhere.
-  const host = req.nextUrl.hostname
-  if (host !== 'modelxd.com' && host !== 'www.modelxd.com') {
-    return NextResponse.next()
-  }
 
   const pathname = req.nextUrl.pathname
   if (isBypassed(pathname)) return NextResponse.next()
