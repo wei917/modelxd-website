@@ -648,3 +648,13 @@ The four-judge origin, for the record: on Aug 23 the ladder had three
 contenders who were also the judges; with no self-judging some pairs had a
 single eligible judge, so Qwen was added as an outside fourth and "all four
 per pair" was never revisited as the ladder grew.
+
+**Amendment, same day — owner: "Use Wan [Qwen] as judge more when possible."**
+Qwen 3.8 Max, the outside judge, now takes EVERY pair it is eligible for; the
+other three split, by hash, only pairs that involve Qwen's own model
+(`PREFERRED_JUDGE` in `xeval/panel.py`; fit label "… one per pair, Qwen
+first …"). Re-fitting history under that rule (fit `71c3237f`) moves the
+board more than the balanced draw did, because Qwen judged fewer old pairs
+than the others: Fable 5.1 −41, GPT-6 Astra −57, Terra −38, everyone else
+within ±20; Opus 5 and Grok 4.6 become a 1692/1691 tie. Kept verdicts:
+Qwen 3,881, Opus 1,653, Sol 809, Grok 401. Published with the Opus 5.5 row.

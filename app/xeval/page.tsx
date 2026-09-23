@@ -162,7 +162,8 @@ export default function XEvalPage() {
   const judge = useMemo(() => {
     const raw = ratings[0]?.judge_filter ?? ''
     const m = raw.match(/^panel\((\d+) judges?[^)]*\)@(\w+)/)
-    return m ? t('xeval.judge.panel').replace('{n}', m[1]).replace('{effort}', m[2]) : raw
+    // {n} = the OTHER judges (the panel minus Qwen), which is what the label sentence counts.
+    return m ? t('xeval.judge.panel').replace('{n}', String(Math.max(1, Number(m[1]) - 1))).replace('{effort}', m[2]) : raw
   }, [ratings, t])
 
   // View filter. 'best' collapses each model to its highest reasoning effort —
