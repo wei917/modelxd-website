@@ -1,7 +1,7 @@
 # XTELL-PAGE.md — X算命 (`/xtell`)
 
 > Everything about the XTell surface. Written 2026-08-30, updated 2026-09-01
-> (關帝廟 + 四面佛 + 九曜廟), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
+> (關帝廟 + 四面佛 + 九曜廟; 媽祖廟 Sep 22), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
 > `lib/classics.ts`, or `app/api/xtell/*`.
 
 ## What it is
@@ -33,7 +33,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (7 live)
+## Temples (8 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -41,6 +41,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 紫微斗數廟 | Zi Wei Dou Shu | `iztro` (MIT) | 12 palaces, major/minor/adjective stars, brightness + 四化 (mutagen), 五行局, 命主/身主. Needs an exact hour — 命宮 cannot be placed without one |
 | 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
 | 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1 |
+| 媽祖廟 | 六十甲子籤 (求籤 + 擲筊) | `content/qian/mazu.json` + `lib/xtell-ritual.ts` | Same ritual as 關帝廟 with a 60-stick tube (`QIAN_COUNTS`). Wikisource《天上聖母六十甲子籤》, the set used at 鎮瀾宮/朝天宮: 甲子 label, a 五行/season/direction line (shown neutral, it is a hint not a grade), four lines, 卦頭故事. No per-topic 解曰 in this edition, and the master is told so. Added Sep 22 |
 | 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
@@ -69,6 +70,16 @@ source list is empty. The golden suite checks count, four lines each, 聖意 +
 解曰 everywhere, and three frozen sticks (1, 57, 100). The 57 expectation was
 first written from memory as 庚庚 and was wrong (己庚) — the same lesson as
 the 立春 case: observe, never recall.
+
+## 媽祖 六十甲子籤 corpus (`scripts/fetch-mazu-qian.ts`)
+
+One Wikisource page, sixty entries, one regex. The 籤 order is the
+traditional one (甲子, 甲寅, 甲辰, 甲午, 甲申, 甲戌, 乙丑 …), stepping two
+branches at a time, not the calendar's sixty-cycle, so never derive the
+label from the number. The `Qian` shape is shared with 關帝: `luck` holds
+the 五行 line, `sections` holds only 卦頭故事. `qianCorpus(temple)`,
+`qianOf(n, temple)`, `validQian(n, temple)` and `guandiFacts(q, ask,
+temple)` take the temple; the closing 允准 line names the right deity.
 
 ## The Jyotish engine (`lib/jyotish.ts`)
 
@@ -289,7 +300,7 @@ iztro.
 
 ## Backlog (owner picks)
 
-- ~~籤詩亭~~ — shipped Sep 1 as 關帝廟. Other 籤 sets (媽祖六十甲子籤,
+- ~~籤詩亭~~ — shipped Sep 1 as 關帝廟, Sep 22 as 媽祖廟. Other 籤 sets (
   觀音一百籤) would be new corpora on the same ritual.
 - ~~印度 temple~~ — shipped Sep 1 as 九曜廟 (one temple, Shani patron; the
   owner's 太陽神廟/納迪葉 ideas would be further personas over the same

@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
@@ -25,6 +25,7 @@ const FACTS_HEAD: Record<string, string> = {
   ziwei:    '信眾的命盤（系統排定，勿更動）：',
   yuelao:   '信眾的命盤（系統排定，勿更動）：',
   guandi:   '信眾求得的籤（系統從籤筒抽出、擲筊允准；籤文取自清刊本，勿更動）：',
+  mazu:     '信眾求得的籤（系統從籤筒抽出、擲筊允准；籤文取自維基文庫六十甲子籤，勿更動）：',
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
@@ -43,8 +44,8 @@ export async function POST(req: Request) {
   const temple = asTemple(body?.temple)
   const question = typeof body?.question === 'string' ? body.question.slice(0, 2000) : ''
   // 關帝廟's input is the stick number; everything else starts from a birth.
-  if (temple === 'guandi') {
-    if (!validQian(body?.n) || !qianOf(body.n)) return Response.json({ error: 'bad stick number' }, { status: 400 })
+  if (isQianTemple(temple)) {
+    if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
   } else {
     if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
     if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
@@ -90,9 +91,9 @@ export async function POST(req: Request) {
       })()
       : temple === 'navagraha'
         ? navagrahaFacts(navagrahaChart(body.birth, body.place), body.birth.gender)
-      : temple === 'guandi'
+      : isQianTemple(temple)
         // The poem comes from disk by number; the client's copy is never used.
-        ? guandiFacts(qianOf(body.n)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '')
+        ? guandiFacts(qianOf(body.n, temple)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple)
         : temple === 'simianfo'
           ? (() => {
             const c = baziChart(body.birth)

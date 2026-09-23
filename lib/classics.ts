@@ -27,6 +27,7 @@ const SOURCES: Record<Temple, string[]> = {
   // 關帝廟: the 籤's own six commentaries ride with the poem (lib/xtell.ts
   // guandiFacts) — 一籤一書 — so nothing here to retrieve.
   guandi:   [],
+  mazu:     [],
   // 四面佛 reads the visitor's 八字 against the four faces.
   simianfo: ['ditiansui.txt'],
   // 九曜廟: the Tang 《宿曜經》 (Amoghavajra), the text that carried the

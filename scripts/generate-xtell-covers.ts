@@ -39,6 +39,12 @@ const PROMPTS: Record<string, string> = {
     'surrounded by heaps of yellow marigold garlands, jasmine strings, lit candles and incense, a few ' +
     'worshippers as soft ink silhouettes with hands pressed together, warm gold light melting into ink wash, ' +
     'traditional Thai dancers faintly suggested at the edge.' + STYLE,
+  mazu:
+    'A Mazu temple by a Taiwanese harbour at dawn: the seated goddess suggested as a serene silhouette in a ' +
+    'beaded crown and red robe deep in the incense haze, her two attendants 千里眼 and 順風耳 as tall dark ' +
+    'guardian shapes at either side, a bamboo cylinder of fortune sticks and a pair of crescent divination blocks ' +
+    'on the altar in the foreground, swallowtail temple roof ridge against a pale sea sky, fishing boats and ' +
+    'waves dissolving into ink at the edge, one strand of red lanterns.' + STYLE,
   navagraha:
     'A South Indian Navagraha shrine at night: nine small stone deities arranged in a square grid on a low ' +
     'platform, oil lamps flickering around them, the central figure a tall dark blue-black Shani holding a ' +

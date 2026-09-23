@@ -293,7 +293,9 @@ love and 合婚: enter TWO people's birth data and the master reads both
 charts together), **關帝廟** (Guan Di 靈籤: no birth data — draw a numbered
 stick, throw the 筊 blocks until three 聖筊 in a row confirm it, then the
 master explains that one poem using the Qing-edition commentaries; the
-hundred poems are the public-domain 關聖帝君靈籤 from Wikisource), and
+hundred poems are the public-domain 關聖帝君靈籤 from Wikisource), **媽祖廟**
+(the same draw-and-blocks ritual with Mazu's sixty 甲子 sticks, the set used
+at 鎮瀾宮 and 朝天宮; strong on travel, safety, home and trade), and
 **四面佛** (the Erawan four-faced Brahma: write a wish to each face — 平安,
 事業, 婚姻, 財富, clockwise — and how you will repay it; the keeper helps
 word the wish and reads your own 八字 plus this year's 流年 to say which face

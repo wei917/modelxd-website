@@ -10,7 +10,7 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, ENGINES } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, ENGINES } from '@/lib/xtell'
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -20,9 +20,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
   const temple = asTemple(body?.temple)
 
-  if (temple === 'guandi') {
-    if (!validQian(body?.n)) return Response.json({ error: 'bad stick number' }, { status: 400 })
-    const qian = qianOf(body.n)
+  if (isQianTemple(temple)) {
+    if (!validQian(body?.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
+    const qian = qianOf(body.n, temple)
     if (!qian) return Response.json({ error: 'stick not in corpus' }, { status: 500 })
     return Response.json({ temple, chart: qian, engine: ENGINES[temple] })
   }

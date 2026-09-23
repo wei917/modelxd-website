@@ -25,8 +25,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha' | 'zhanxing'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha', 'zhanxing']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing']
+/** The 求籤 temples: no birth, a stick number and three 聖筊. */
+export const QIAN_TEMPLES = ['guandi', 'mazu'] as const
+export type QianTemple = (typeof QIAN_TEMPLES)[number]
+export const isQianTemple = (t: Temple): t is QianTemple => (QIAN_TEMPLES as readonly string[]).includes(t)
 export function asTemple(v: unknown): Temple { return (TEMPLES as string[]).includes(v as string) ? (v as Temple) : 'bazi' }
 
 // Provenance (idea learned from horosa-skill's technique cards): every chart
@@ -39,6 +43,8 @@ export const ENGINES: Record<Temple, string> = {
   // 關帝廟 has no chart: the deterministic layer is the ritual (lib/xtell-ritual.ts)
   // and the poem text, a public-domain 清刊本 from Wikisource.
   guandi:   '關聖帝君靈籤（維基文庫・清刊本）+ 擲筊三聖',
+  // 媽祖廟: the 六十甲子籤 set used at 鎮瀾宮/朝天宮, also from Wikisource.
+  mazu:     '天上聖母六十甲子籤（維基文庫）+ 擲筊三聖',
   // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
   simianfo: 'lunar-typescript v1.8.6',
   // 九曜廟: our own engine on astronomy-engine, checked against Swiss
@@ -481,6 +487,15 @@ export const MASTERS: Record<Temple, string> = {
 - 求籤講究誠心，一事一籤；同一件事不重抽。信眾若要再問別的事，請他回到廟前重新求籤。
 - 涉及健康、投資、法律、訴訟，只談籤意的提醒，明確建議諮詢專業人士，不給具體指示。
 - 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：籤詩僅供參考與娛樂，關聖帝君教人的是忠義與盡人事。\n${TONE}`,
+  mazu: `你是「媽祖廟」的解籤老師，一位在海邊媽祖廟服務多年、慈和而務實的解籤人，看過漁家、商家、遠行人來來去去。信眾已在天上聖母前擲筊求得一支六十甲子籤，籤號、甲子、五行方位、籤詩與卦頭故事都由系統附在訊息中。
+
+規則：
+- 只解這一支籤。籤詩一字不改、不引用其他籤；卦頭故事只用系統附上的那幾則，用來點出籤意的比喻，不自創典故。這一版沒有分項解曰，不要說籤上有「解曰」。
+- 先把四句籤詩用白話講一遍，再對應信眾所問之事。六十甲子籤的強項是出行、平安、家宅、生意與漁獲、行人歸期；問到這些要講清楚。「屬某行利某季、宜其某方」是這支籤的時令與方位提示，可以講，但只當提示，不當定論。
+- 語氣像媽祖廟裡的阿嬤或老廟公：溫和、貼心、講實話。不好的籤照實說，但把「宜守、宜緩、宜避某方」講清楚，並提醒平安為先；好籤也提醒盡人事。
+- 求籤講究誠心，一事一籤；同一件事不重抽。信眾若要問別的事，請他回到廟前重新求籤。
+- 涉及健康、投資、法律、出海與交通安全，只談籤意的提醒，明確建議諮詢專業人士或遵守官方警示，不給具體指示。
+- 使用繁體中文，可帶一點台語語感的詞（但不要整句台語，除非信眾先用）；信眾用其他語言提問就跟著用。結尾提醒：籤詩僅供參考與娛樂，媽祖護佑的是平安，路還是要自己走。\n${TONE}`,
   simianfo: `你是曼谷四面佛前的守願人，一位溫和、務實、在佛前服務多年的泰國廟祝。信眾已依順時鐘四面（第一面平安、第二面事業、第三面婚姻、第四面財富）寫下願望與還願方式，系統把這四段願文、信眾的八字命盤和今年流年一起附在訊息中。
 
 規則：
@@ -533,28 +548,35 @@ export type Qian = {
   sections: Record<string, string>
 }
 
-let qianCache: Qian[] | null = null
-export function guandiQian(): Qian[] {
-  if (!qianCache) qianCache = JSON.parse(readFileSync(join(process.cwd(), 'content', 'qian', 'guandi.json'), 'utf-8'))
-  return qianCache!
+// One corpus per 求籤 temple. 關帝: 100 sticks, six Qing commentaries.
+// 媽祖: the 六十甲子籤, 60 sticks, a 五行/direction line and the 卦頭故事.
+const QIAN_FILE: Record<QianTemple, string> = { guandi: 'guandi.json', mazu: 'mazu.json' }
+const QIAN_DEITY: Record<QianTemple, string> = { guandi: '關聖帝君', mazu: '天上聖母媽祖' }
+const qianCache = new Map<QianTemple, Qian[]>()
+export function qianCorpus(temple: QianTemple = 'guandi'): Qian[] {
+  if (!qianCache.has(temple)) qianCache.set(temple, JSON.parse(readFileSync(join(process.cwd(), 'content', 'qian', QIAN_FILE[temple]), 'utf-8')))
+  return qianCache.get(temple)!
 }
-export function qianOf(n: number): Qian | null {
-  return guandiQian().find(q => q.n === n) ?? null
+/** Kept for the golden suite's older import. */
+export const guandiQian = () => qianCorpus('guandi')
+export function qianOf(n: number, temple: QianTemple = 'guandi'): Qian | null {
+  return qianCorpus(temple).find(q => q.n === n) ?? null
 }
-export function validQian(n: unknown): n is number {
-  return Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 100
+export function validQian(n: unknown, temple: QianTemple = 'guandi'): n is number {
+  return Number.isInteger(n) && (n as number) >= 1 && (n as number) <= qianCorpus(temple).length
 }
 
 /** The 籤 as facts: number, luck, the poem, every commentary the edition carries. */
-export function guandiFacts(q: Qian, ask: string): string {
+export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi'): string {
   const sections = Object.entries(q.sections).map(([k, v]) => `${k}：${v}`).join('\n')
+  const notesHead = temple === 'mazu' ? '本籤所附（維基文庫原文，可直接引用）：' : '本籤註解（清刊本原文，可直接引用，標明出處）：'
   return [
     ask ? `信眾所問之事：${ask}` : '信眾未說明所問之事（請先問清楚，再解籤）。',
     `籤號：第${q.n}籤${q.ganZhi ? `　${q.ganZhi}` : ''}　${q.luck}`,
     q.story ? `典故：${q.story}` : '',
     `籤詩：\n${q.poem.map(l => '  ' + l).join('\n')}`,
-    sections ? `本籤註解（清刊本原文，可直接引用，標明出處）：\n${sections}` : '',
-    '擲筊：三聖筊為允，此籤已由關聖帝君允准。',
+    sections ? `${notesHead}\n${sections}` : '',
+    `擲筊：三聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。`,
   ].filter(Boolean).join('\n')
 }
 

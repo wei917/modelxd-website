@@ -22,12 +22,13 @@ import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
 import ReactMarkdown from 'react-markdown'
 import ProviderLogo from '../components/ProviderLogo'
-import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, type Jiao } from '../../lib/xtell-ritual'
+import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, type Jiao } from '../../lib/xtell-ritual'
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES } from '../../lib/astrology'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'simianfo' | 'navagraha' | 'zhanxing'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing'
+const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
 
 // 占星塔 is the one temple with rooms: four readings off one chart. The other
 // six ask a single question, so their form is a birth row and their board is
@@ -75,7 +76,7 @@ export default function XTellClient() {
 
         {!temple ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'simianfo', 'navagraha', 'zhanxing'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing'] as Temple[]).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -163,7 +164,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   /** What identifies this consultation, per temple: birth(s), a stick
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
-    temple === 'guandi' ? { temple, n: n ?? stick?.n, ask }
+    isQian(temple) ? { temple, n: n ?? stick?.n, ask }
     : temple === 'simianfo' ? { temple, birth, wishes }
     : temple === 'navagraha' ? { temple, birth, place }
     : temple === 'zhanxing' ? {
@@ -211,7 +212,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
       // ask is what they mean. Write the question for them but do NOT send it
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
-    } catch (e: any) { setErr(String(e?.message ?? e)); if (temple === 'guandi') setRitualBoth('drawn') }
+    } catch (e: any) { setErr(String(e?.message ?? e)); if (isQian(temple)) setRitualBoth('drawn') }
   }
 
   // The ritual. Draw a stick, throw the blocks; three 聖筊 confirm and open
@@ -226,7 +227,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
   const ritualRef = useRef<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
   const setRitualBoth = (r: 'idle' | 'drawn' | 'rejected' | 'confirmed') => { ritualRef.current = r; setRitual(r) }
   const draw = () => {
-    const s = { n: drawQian(cryptoRand), throws: [] as Jiao[] }
+    const s = { n: drawQian(cryptoRand, temple === 'mazu' ? QIAN_COUNTS.mazu : QIAN_COUNTS.guandi), throws: [] as Jiao[] }
     stickRef.current = s; setStick(s); setRitualBoth('drawn'); setErr(null)
   }
   const throwBlocks = () => {
@@ -349,7 +350,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
               </span>
             </div>
           )}
-          {temple === 'guandi' ? (
+          {isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} />
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
@@ -389,7 +390,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
               <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>{t('xtell.place.note')}</span>
             </div>
           )}
-          {temple !== 'guandi' && (
+          {!isQian(temple) && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
@@ -446,7 +447,7 @@ function TempleRoom({ temple, onBack }: { temple: Temple; onBack: () => void }) 
             <div style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <BaziBoard chart={chart} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
-                : temple === 'guandi' ? <QianCard qian={chart} />
+                : isQian(temple) ? <QianCard qian={chart} temple={temple} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
@@ -780,14 +781,17 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow }: {
 
 /** The stick, as the temple prints it: number, luck, story, the four lines,
  *  and every commentary the edition carries. All of it is text from disk. */
-function QianCard({ qian }: { qian: any }) {
+function QianCard({ qian, temple }: { qian: any; temple: Temple }) {
   const t = useT()
-  const luckColour = /上|大/.test(qian.luck) ? 'var(--score-elite)' : /中/.test(qian.luck) ? 'var(--score-fair)' : 'var(--score-poor)'
+  // 關帝's edition grades each stick (大吉 … 下下); 媽祖's carries a 五行/direction
+  // line instead, which is a hint, not a grade, so it stays neutral.
+  const graded = temple !== 'mazu'
+  const luckColour = !graded ? 'var(--muted)' : /上|大/.test(qian.luck) ? 'var(--score-elite)' : /中/.test(qian.luck) ? 'var(--score-fair)' : 'var(--score-poor)'
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>第{qian.n}籤　{qian.ganZhi}</div>
-        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 18, fontWeight: 800, color: luckColour }}>{qian.luck}</div>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: graded ? 18 : 14, fontWeight: graded ? 800 : 600, color: luckColour }}>{qian.luck}</div>
         {qian.story && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{qian.story}</div>}
       </div>
       <div style={{ padding: '18px 16px', background: 'var(--surface2)', borderRadius: 10, textAlign: 'center' }}>
@@ -795,7 +799,7 @@ function QianCard({ qian }: { qian: any }) {
           <div key={i} style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 700, letterSpacing: 3, lineHeight: 1.8 }}>{l}</div>
         ))}
       </div>
-      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t('xtell.qian.notes')}</div>
+      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xtell.qian.notes.mazu' : 'xtell.qian.notes')}</div>
       <div style={{ display: 'grid', gap: 10 }}>
         {Object.entries(qian.sections as Record<string, string>).map(([name, text]) => (
           <div key={name} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 10, fontSize: 13, lineHeight: 1.7 }}>
@@ -804,7 +808,7 @@ function QianCard({ qian }: { qian: any }) {
           </div>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.qian.source')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xtell.qian.source.mazu' : 'xtell.qian.source')}</div>
     </div>
   )
 }

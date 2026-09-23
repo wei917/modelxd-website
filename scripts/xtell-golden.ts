@@ -10,7 +10,7 @@
 // fails loudly — a silently shifted 排盤 is the one bug users would never
 // forgive, and the one we could never detect from prose.
 
-import { baziChart, ziweiChart, liuNian, guandiQian, validWishes } from '../lib/xtell'
+import { baziChart, ziweiChart, liuNian, guandiQian, qianCorpus, validQian, validWishes } from '../lib/xtell'
 import { drawQian, throwJiao } from '../lib/xtell-ritual'
 import { jyotishChart, lahiriAyanamsa, NAKSHATRA, RASI } from '../lib/jyotish'
 
@@ -82,6 +82,20 @@ const seq = (...v: number[]) => { let i = 0; return () => v[i++ % v.length] }
 eq('blocks: 陽陰 = 聖筊', throwJiao(seq(0.2, 0.8)), '聖筊')
 eq('blocks: 陽陽 = 笑筊', throwJiao(seq(0.2, 0.2)), '笑筊')
 eq('blocks: 陰陰 = 陰筊', throwJiao(seq(0.8, 0.8)), '陰筊')
+
+// ── 媽祖廟 ─────────────────────────────────────────────────────────────────
+// The 六十甲子籤: 60 sticks in 甲子 order (甲子, 甲寅, 甲辰 … 癸亥 — the
+// traditional 籤 ordering steps by two branches, not the calendar's one),
+// four lines each, the 卦頭故事 on every stick.
+console.log('\n媽祖 六十甲子籤 (corpus):')
+const mz = qianCorpus('mazu')
+eq('count', String(mz.length), '60')
+eq('every poem has four lines', String(mz.every(q => q.poem.length === 4)), 'true')
+eq('every stick has 卦頭故事', String(mz.every(q => q.sections['卦頭故事'])), 'true')
+eq('第1籤', `${mz[0].ganZhi} ${mz[0].luck} ${mz[0].poem[0]}`, '甲子 屬金利秋 宜其西方 日出便見風雲散')
+eq('第13籤', `${mz[12].ganZhi} ${mz[12].story}`, '丙子 撐渡伯遇桃花')
+eq('第60籤', `${mz[59].ganZhi} ${mz[59].poem[3]}`, '癸亥 當官分理便有益')
+eq('61 is not a 媽祖 stick, 100 is a 關帝 stick', `${validQian(61, 'mazu')} ${validQian(100, 'guandi')}`, 'false true')
 
 // ── 四面佛 ─────────────────────────────────────────────────────────────────
 // 流年 2026 丙午 against the 1990-01-01 chart (日主 丙, 日支 寅, 年支 巳):
