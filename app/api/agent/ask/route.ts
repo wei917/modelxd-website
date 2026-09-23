@@ -49,6 +49,7 @@ const ROUTES: Record<string, string> = {
   '/xcut': 'XCut',
   '/xworld': 'XWorld (3D worlds + photo to 3D object)',
   '/xarch': 'XArch (floor plans + interior design)',
+  '/xpersona': 'XPersona (create and manage your AI characters)',
   '/xtalk':   'XTalk',
   '/xgame':   'XGame',
   '/xvote':   'XVote',

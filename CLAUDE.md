@@ -64,6 +64,7 @@ more**, and the per-user feature system is gone with it.
 | **XCreate** | `/xcreate` | required | Paid studio, up to 4 models. |
 | **XTalk** | `/xtalk` | required | Discussion rooms. Open. |
 | **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Open. |
+| **XPersona** | `/xpersona` | required | X角色: the home for AI characters (`x_characters`, migration 75). Mounts `CharactersRoom` in `manage` mode: cards open the builder, **Talk** opens `/xtalk/c/<id>`. XTalk's roster sends ＋/✏ here. `?c=<id>` edits, `?new=1` creates. |
 | **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |

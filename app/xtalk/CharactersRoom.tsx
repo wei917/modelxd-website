@@ -792,11 +792,18 @@ function Avatar({ path, name, size }: { path: string | null; name: string; size:
   )
 }
 
-export default function CharactersRoom({ models, charId, standalone }: TemplateProps & {
+export default function CharactersRoom({ models, charId, standalone, manage, editId, startNew }: TemplateProps & {
   /** Mounted on /xtalk/c/[id] — chat only, no roster/builder, the page IS
    *  the character (owner, Aug 13). The landing mounts without it and
    *  redirects any ?char= deep link to the dedicated page. */
   standalone?: boolean
+  /** Mounted on /xpersona (Sep 23) — the one home for creating and editing
+   *  characters. A card opens the builder, not the chat; XTalk's roster
+   *  sends its ＋ and ✏ here instead of building in place. */
+  manage?: boolean
+  /** /xpersona?c=<id> opens that character's builder; ?new=1 a blank one. */
+  editId?: string | null
+  startNew?: boolean
 }) {
   const t = useT()
   const { lang } = useLang()
@@ -904,6 +911,19 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
     rateRef.current = VOICE_RATES.includes(r) ? r : 1
     setView('build')
   }
+
+  // XPersona deep links, one-shot: ?new=1 at mount, ?c=<id> once the roster
+  // has loaded (and the models, so the builder shows the character's model).
+  const deepLinkedRef = useRef(false)
+  useEffect(() => {
+    if (!manage || deepLinkedRef.current) return
+    if (startNew) { deepLinkedRef.current = true; openBuilder(null); return }
+    if (!editId || !chars || models.length === 0) return
+    deepLinkedRef.current = true
+    const c = chars.find(x => x.id === editId)
+    if (c) openBuilder(c)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manage, startNew, editId, chars, models])
 
   const uploadBlob = async (blob: Blob, ext: string): Promise<string | null> => {
     setUploading(true)
@@ -1648,6 +1668,12 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
   }
 
   // ── list ────────────────────────────────────────────────────────────
+  // XPersona owns creating and editing; XTalk's roster only opens chats and
+  // hands ＋/✏ over to it, so there is one builder home, not two.
+  const toEdit = (c: CharRow | null) => {
+    if (manage) { openBuilder(c); return }
+    window.location.href = c ? `/xpersona?c=${c.id}` : '/xpersona?new=1'
+  }
   return (
     <div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -1655,22 +1681,32 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
           <div key={c.id} style={{
             width: 200, border: '1.5px solid var(--border)', borderRadius: 14,
             background: 'var(--surface)', padding: '18px 16px 14px', position: 'relative',
+            display: 'flex', flexDirection: 'column',
           }}>
-            <button onClick={() => { window.location.href = `/xtalk/c/${c.id}` }} style={{ border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'center', padding: 0 }}>
+            <button onClick={() => { if (manage) openBuilder(c); else window.location.href = `/xtalk/c/${c.id}` }} style={{ border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'center', padding: 0 }}>
               <Avatar path={c.avatar_path} name={c.name} size={64} />
               <span style={{ display: 'block', fontWeight: 800, fontSize: 15, marginTop: 10, color: 'var(--white)' }}>{c.name}</span>
               <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginTop: 3 }}>
                 {modelOf(c.model_id)?.display_name ?? '—'}
               </span>
-              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted2)', marginTop: 6 }}>
+              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted2)', marginTop: 6, marginBottom: manage ? 12 : 0 }}>
                 {c.msg_count > 0 ? t('xc.msgs').replace('{n}', String(c.msg_count)) : t('xc.fresh')}
               </span>
             </button>
-            <button onClick={() => openBuilder(c)} aria-label="edit" title={t('xc.edit')}
-              style={{ position: 'absolute', top: 8, right: 10, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 12, opacity: 0.6 }}>✏</button>
+            {manage ? (
+              // marginTop auto pins Talk to the card's foot, so the row of
+              // buttons lines up whatever the avatar above it measures.
+              <a href={`/xtalk/c/${c.id}`} style={{
+                display: 'block', marginTop: 'auto', padding: '6px 0', borderRadius: 8, textAlign: 'center',
+                border: '1px solid var(--border2)', color: 'var(--white)', fontSize: 12, fontWeight: 700, textDecoration: 'none',
+              }}>💬 {t('xpersona.talk')}</a>
+            ) : (
+              <button onClick={() => toEdit(c)} aria-label="edit" title={t('xc.edit')}
+                style={{ position: 'absolute', top: 8, right: 10, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 12, opacity: 0.6 }}>✏</button>
+            )}
           </div>
         ))}
-        <button onClick={() => openBuilder(null)} style={{
+        <button onClick={() => toEdit(null)} style={{
           width: 200, minHeight: 170, border: '2px dashed var(--border2)', borderRadius: 14,
           background: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13.5, fontWeight: 700,
         }}>
@@ -1679,6 +1715,11 @@ export default function CharactersRoom({ models, charId, standalone }: TemplateP
       </div>
       {chars !== null && chars.length === 0 && (
         <div style={{ marginTop: 14, fontSize: 13, color: 'var(--muted2)' }}>{t('xc.empty')}</div>
+      )}
+      {!manage && (
+        <a href="/xpersona" style={{ display: 'inline-block', marginTop: 14, fontSize: 12, color: 'var(--muted)', textDecoration: 'underline' }}>
+          {t('xpersona.manage')} →
+        </a>
       )}
       {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 13 }}>⚠ {err}</div>}
     </div>

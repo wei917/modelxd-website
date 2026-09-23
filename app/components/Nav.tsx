@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: '/xcut',        i18n: 'nav.xcut',        protected: true,  icon: 'cut' },
   { href: '/xworld',      i18n: 'nav.xworld',      protected: true,  icon: 'world' },
   { href: '/xarch',       i18n: 'nav.xarch',       protected: true,  icon: 'arch' },
+  { href: '/xpersona',    i18n: 'nav.xpersona',    protected: true,  icon: 'persona' },
   { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk'   },
   { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game'   },
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
@@ -52,6 +53,8 @@ function NavIcon({ name }: { name: string }) {
     case 'arch':   return (<svg {...p}><path d="M3 11l9-7l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>)
     // A cube in a ring: a 3D thing you can walk around.
     case 'world':  return (<svg {...p}><path d="M12 3l7 4v8l-7 4l-7-4V7z"/><path d="M5 7l7 4l7-4"/><path d="M12 11v8"/></svg>)
+    // A head and shoulders: someone you made.
+    case 'persona': return (<svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>)
     case 'dev':    return (<svg {...p}><path d="M8 6l-5 6l5 6"/><path d="M16 6l5 6l-5 6"/><path d="M12 9v6"/><circle cx="12" cy="9" r="0.8" fill="currentColor"/></svg>)
     case 'globe':  return (<svg {...p}><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>)
     default:       return null

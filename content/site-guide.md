@@ -186,6 +186,15 @@ Results are design drafts: structural changes still need a licensed architect
 or engineer before a permit or construction. Available to every signed-in
 account; projects are listed on XArch and on your Profile.
 
+### XPersona（X角色）— `/xpersona`
+The home for your AI characters. Create, edit and delete them here: a name
+and avatar, the persona you write, their appearance, photos, a voice (a
+preset, or a custom one designed from a text description), and the model
+each one runs on. Up to 20 characters per account. Each card has a **Talk**
+button that opens the character's chat in XTalk. Saving a character is free;
+talking to one bills the chosen model's list price. Available to every
+signed-in account; your characters are also listed on your Profile.
+
 ### XTalk — `/xtalk`
 Put several AI models in one room together. Available to every signed-in
 account. Two formats today:
@@ -194,7 +203,8 @@ account. Two formats today:
   speaking order (in order, auto-bidding for the floor, or manual pick), can
   give each seat a character, and can join in or add and remove models at any
   time.
-- **Characters** — build your own persistent AI character: a persona and
+- **Characters** — talk with the characters you made in XPersona
+  (`/xpersona`; XTalk's ＋ and ✏ open it). Each is a persistent AI character: a persona and
   appearance you write, photos you upload or generate, and — the ModelXD
   angle — your choice of the model it runs on, with the real price of a
   conversation shown up front. Characters remember past chats. They can

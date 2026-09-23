@@ -70,7 +70,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xtalks' | 'xgames' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -191,6 +191,7 @@ export default function ProfilePage() {
   const [xcuts,       setXcuts]       = useState<any[]>([])
   const [xworlds,     setXworlds]     = useState<any[]>([])
   const [xarchs,      setXarchs]      = useState<any[]>([])
+  const [xpersonas,   setXpersonas]   = useState<any[]>([])
   const [xgames,      setXgames]      = useState<any[]>([])
   // Which beta surfaces this account can see — the XDirect/XGame tabs
   // follow the same gate as their nav items, so a non-beta user's profile
@@ -201,8 +202,8 @@ export default function ProfilePage() {
   // array would otherwise show "No X yet" before the first fetch resolved,
   // making it look like the user has nothing when really we just haven't
   // asked the server yet.
-  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xcuts: boolean; xworlds: boolean; xarchs: boolean; xtalks: boolean; xgames: boolean }>({
-    duels: false, xcreates: false, votes: false, xdirects: false, xcuts: false, xworlds: false, xarchs: false, xtalks: false, xgames: false,
+  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xcuts: boolean; xworlds: boolean; xarchs: boolean; xpersonas: boolean; xtalks: boolean; xgames: boolean }>({
+    duels: false, xcreates: false, votes: false, xdirects: false, xcuts: false, xworlds: false, xarchs: false, xpersonas: false, xtalks: false, xgames: false,
   })
   // XCreate pagination — 12 cards per page, server-side `range` so we
   // don't load the entire history into the browser when a user has
@@ -366,7 +367,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xtalks' | 'xgames') =>
+    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
     if (!isXTell && tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
@@ -413,6 +414,11 @@ export default function ProfilePage() {
       fetch('/api/xarch/projects').then(r => r.ok ? r.json() : { projects: [] })
         .then(d => { setXarchs(d.projects ?? []); markLoaded('xarchs') })
         .catch(() => markLoaded('xarchs'))
+    } else if (tab === 'xpersonas') {
+      // Owner-read RLS on x_characters (migration 75): the roster, newest first.
+      client.from('x_characters').select('id, name, avatar_path, msg_count, created_at')
+        .eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
+        .then(({ data }: any) => { setXpersonas(data ?? []); markLoaded('xpersonas') })
     } else if (tab === 'xtalks') {
       // Persisted discussion rooms (Aug 6) — the same rows the /xtalk nav
       // history lists, linking back into the live room.
@@ -1292,6 +1298,7 @@ export default function ProfilePage() {
               ['xcuts', '✂ ' + t('nav.xcut')],
               ['xworlds', '🌐 ' + t('nav.xworld')],
               ['xarchs', '📐 ' + t('nav.xarch')],
+              ['xpersonas', '👤 ' + t('nav.xpersona')],
               ['xtalks', '💬 ' + t('nav.xtalk')],
               ['xgames', '◉ ' + t('nav.xgame')],
               ['votes', '⊞ ' + t('nav.xvote')],
@@ -1726,6 +1733,27 @@ export default function ProfilePage() {
                         <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📐 {p.title}</div>
                         <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', marginTop: 3 }}>
                           ${((p.spent_cents ?? 0) / 100).toFixed(2)}  ·  {new Date(p.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+          )}
+          {tab === 'xpersonas' && (
+            !tabsLoaded.xpersonas
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
+              : xpersonas.length === 0
+              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.nopersonas')}</div>
+              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                  {xpersonas.map((c: any) => (
+                    <a key={c.id} href={`/xpersona?c=${c.id}`} style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, padding: '14px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {c.avatar_path
+                        ? <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${c.avatar_path}`} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                        : <span style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--red-dim)', color: 'var(--red)', fontWeight: 800, fontSize: 18 }}>{(c.name || '?').slice(0, 1)}</span>}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: 'var(--white)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', marginTop: 3 }}>
+                          {c.msg_count > 0 ? t('xc.msgs').replace('{n}', String(c.msg_count)) : t('xc.fresh')}
                         </div>
                       </div>
                     </a>

@@ -654,6 +654,12 @@ export const STRINGS: Record<string, Entry> = {
   'nav.xtell':        { en: 'XTell',   'zh-Hant': 'X算命',   'zh-Hans': 'X算命',   ja: 'X占い',   ko: 'X운세' },
   'nav.xworld':       { en: 'XWorld',  'zh-Hant': 'X世界',   'zh-Hans': 'X世界',   ja: 'Xワールド', ko: 'X월드' },
   'nav.xarch': { en: 'XArch', 'zh-Hant': 'X建築設計', 'zh-Hans': 'X建筑设计', ja: 'X建築設計', ko: 'X건축설계' },
+  // XPersona (X角色, Sep 23): the one home for your AI characters.
+  'nav.xpersona': { en: 'XPersona', 'zh-Hant': 'X角色', 'zh-Hans': 'X角色', ja: 'Xキャラ', ko: 'X캐릭터' },
+  'xpersona.sub': { en: 'Create and manage your AI characters: persona, look, photos, voice, and the model each one runs on. Talk to them in XTalk.', 'zh-Hant': '建立與管理你的 AI 角色：人設、外觀、照片、聲音，以及每個角色使用的模型。到 XTalk 和他們聊天。', 'zh-Hans': '创建与管理你的 AI 角色：人设、外观、照片、声音，以及每个角色使用的模型。到 XTalk 和他们聊天。', ja: 'AIキャラクターを作成・管理。人物設定、見た目、写真、声、そして動かすモデルまで。会話は XTalk で。', ko: 'AI 캐릭터를 만들고 관리하세요. 페르소나, 외모, 사진, 목소리, 그리고 각 캐릭터가 쓰는 모델까지. 대화는 XTalk에서.' },
+  'xpersona.talk': { en: 'Talk', 'zh-Hant': '聊天', 'zh-Hans': '聊天', ja: '話す', ko: '대화' },
+  'xpersona.manage': { en: 'Create and edit characters in XPersona', 'zh-Hant': '到 X角色 建立與編輯角色', 'zh-Hans': '到 X角色 创建与编辑角色', ja: 'キャラの作成・編集は Xキャラ で', ko: '캐릭터 만들기·편집은 X캐릭터에서' },
+  'profile.nopersonas': { en: 'No characters yet. Open XPersona to create one.', 'zh-Hant': '還沒有角色，到 X角色 建立一個。', 'zh-Hans': '还没有角色，到 X角色 创建一个。', ja: 'まだキャラクターがいません。Xキャラで作りましょう。', ko: '아직 캐릭터가 없습니다. X캐릭터에서 만들어 보세요.' },
   'xarch.sub': { en: 'Floor plans and interior design with AI architects. Upload a blueprint, click any wall, door or room to change it, keep photos and videos for every room, and redesign them.', 'zh-Hant': '用 AI 建築師做平面圖與室內設計。上傳藍圖，點任何牆、門或房間就能修改，每個房間都能放照片和影片，並重新設計。', 'zh-Hans': '用 AI 建筑师做平面图与室内设计。上传蓝图，点任何墙、门或房间就能修改，每个房间都能放照片和视频，并重新设计。', ja: 'AI建築家と間取り・インテリアを設計。図面をアップロードし、壁・ドア・部屋をクリックして変更。部屋ごとに写真や動画を置いて、模様替えもできます。', ko: 'AI 건축가와 평면도와 인테리어를 설계하세요. 도면을 올리고 벽·문·방을 클릭해 바꾸고, 방마다 사진과 영상을 두고 다시 꾸밀 수 있습니다.' },
   'xarch.sample.title': { en: 'Try the sample', 'zh-Hant': '試用範例', 'zh-Hans': '试用范例', ja: 'サンプルを試す', ko: '샘플 체험' },
   'xarch.sample.body': { en: 'A real 1890s Washington DC rowhouse (Library of Congress survey drawing), already read, with room photos. Opening it is free.', 'zh-Hant': '一棟 1890 年代華盛頓 DC 的真實排屋（美國國會圖書館測繪圖），已經讀好，附房間照片。開啟免費。', 'zh-Hans': '一栋 1890 年代华盛顿 DC 的真实排屋（美国国会图书馆测绘图），已经读好，附房间照片。打开免费。', ja: '1890年代ワシントンDCの実在のタウンハウス（米国議会図書館の実測図）。読み取り済みで部屋の写真付き。開くのは無料です。', ko: '1890년대 워싱턴 DC의 실제 타운하우스(미 의회도서관 실측 도면). 이미 읽어 두었고 방 사진도 있습니다. 여는 것은 무료입니다.' },

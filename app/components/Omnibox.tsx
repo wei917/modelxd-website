@@ -38,7 +38,7 @@ type Row = {
  * yet. A block-list would quietly leak onto the next marketing page someone
  * adds; this way a new route has to opt in. (CC, Aug 5)
  */
-const SURFACES = ['/xduel', '/xcreate', '/xdirect', '/xcut', '/xworld', '/xarch', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/profile', '/xdirector']
+const SURFACES = ['/xduel', '/xcreate', '/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/profile', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const PAGES: { key: string; i18n: string; href: string }[] = [
@@ -48,6 +48,7 @@ const PAGES: { key: string; i18n: string; href: string }[] = [
   { key: 'xcut', i18n: 'nav.xcut', href: '/xcut' },
   { key: 'xworld', i18n: 'nav.xworld', href: '/xworld' },
   { key: 'xarch', i18n: 'nav.xarch', href: '/xarch' },
+  { key: 'xpersona', i18n: 'nav.xpersona', href: '/xpersona' },
   { key: 'xtalk',   i18n: 'nav.xtalk',   href: '/xtalk' },
   { key: 'xvote',   i18n: 'nav.xvote',   href: '/xvote' },
   { key: 'xboard',  i18n: 'nav.xboard',  href: '/xboard' },
