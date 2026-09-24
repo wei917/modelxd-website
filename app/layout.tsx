@@ -71,7 +71,7 @@ const notoJP = Noto_Sans_JP({
 // tab on the XTell host.
 export async function generateMetadata(): Promise<Metadata> {
   if (siteFromHeaders(await headers()) === 'xtell') {
-    return { title: 'XTell — X算命', description: '線上廟街：免費排盤、抽籤，再與你選的 AI 老師聊聊。僅供參考與娛樂。' }
+    return { title: 'XTell | 探索殿堂', description: '探索關帝、媽祖、月老與各地命理傳統。免費排盤、抽籤，再與你選的 AI 老師聊聊。僅供參考與娛樂。' }
   }
   return {
     title: 'ModelXD',

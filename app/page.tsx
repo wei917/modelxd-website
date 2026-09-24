@@ -18,8 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = siteFromHeaders(await headers())
   if (site === 'xtell') {
     return {
-      title: 'XTell — X算命',
-      description: '八字、紫微、關帝籤、媽祖籤、姓名、測字。排盤由開源曆法引擎精確計算，再由你挑選的 AI 老師解讀。僅供參考與娛樂。',
+      title: 'XTell | 探索殿堂',
+      description: '探索關帝、媽祖、月老與各地命理傳統。免費排盤、抽籤，再與你選的 AI 老師聊聊。僅供參考與娛樂。',
+      alternates: { canonical: 'https://xtell.modelxd.com' },
     }
   }
   return {
