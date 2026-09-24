@@ -129,15 +129,32 @@ export async function POST(req: Request) {
     : []
   const messages = [...history, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
 
+  // Saved reading (supabase/105): the client passes the row id it got from
+  // the chart route and a per-question id; both turns are appended through
+  // xtell_append_turns under the user's own session, so two masters answering
+  // at once cannot lose a write and the question is stored once.
+  const readingId = typeof body?.readingId === 'string' && /^[0-9a-f-]{36}$/i.test(body.readingId) ? body.readingId : null
+  const qid = typeof body?.qid === 'string' ? body.qid.slice(0, 40) : null
+  let full = ''
+
   const stream = new ReadableStream({
     async start(controller) {
       await providers.streamText(
         model as any,
         messages,
         {
-          onDelta: (text) => controller.enqueue(sse('delta', { text })),
+          onDelta: (text) => { full += text; controller.enqueue(sse('delta', { text })) },
           onDone: (r) => {
             const cents = Math.round((r.cost ?? 0) * 100)
+            if (readingId && qid) {
+              const ts = new Date().toISOString()
+              sb.rpc('xtell_append_turns', {
+                p_id: readingId,
+                p_user_turn: { role: 'user', content: question || '請為信眾做一次完整的解讀。', qid, ts },
+                p_assistant_turn: { role: 'assistant', content: full, modelId: (model as any).id, name: (model as any).display_name ?? (model as any).model_name, provider: (model as any).provider, cost: r.cost ?? 0, qid, ts },
+                p_add_cents: cents,
+              }).then(({ error }) => { if (error) console.warn(`${LOG} save turns failed:`, error.message) })
+            }
             if (cents > 0) {
               debitCredits({
                 userId: user.id, amountCents: cents,

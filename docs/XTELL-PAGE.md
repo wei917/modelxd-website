@@ -113,6 +113,31 @@ characters against the tables 姓名學 books print; all hold. Inputs are
 `Unihan_IRGSources.txt` and `CJKRadicals.txt` from unicode.org, not kept in
 the repo.
 
+## Saved readings (`supabase/105_xtell_readings.sql`, Sep 24)
+
+Owner: people paid for these, both the chart and the conversation are kept,
+and a saved reading is resumable. One row per temple visit:
+
+- `/api/xtell/chart` inserts the row (subject = the request reduced to the
+  keys the routes read, chart = what was shown, extras = match/year/bazi) and
+  returns `readingId`. A save failure never blocks the chart (log only); until
+  105 is applied the site simply behaves as before.
+- `/api/xtell/reading` takes `readingId` + `qid` and, when the reply settles,
+  calls `xtell_append_turns` (SECURITY INVOKER, runs under the visitor's own
+  RLS): appends the question once per `qid` even when two masters answer,
+  appends each assistant turn with model + cost, accumulates `cost_cents`,
+  sets `title` from the first question.
+- The account page lists rows (browser client, owner RLS): temple, title or
+  「只排了盤」, date, question count, cost, Continue (`/?reading=<id>`),
+  Delete (soft, `deleted_at`).
+- `?reading=<id>` reopens: `XTellClient` fetches the row, opens the temple,
+  and `TempleRoom` seeds every input, the chart, the extras and the turns
+  from it, so the next question sends exactly what the original visit sent
+  plus the saved history. The ritual shows as confirmed; the engine line is
+  not stored and is blank on a reopened room.
+- Proven on pglite before shipping: dedup, cost, title, cross-user isolation,
+  anon denied (`has_table_privilege` / `has_function_privilege` false).
+
 ## The Jyotish engine (`lib/jyotish.ts`)
 
 No mature JS library exists (surveyed Sep 1: `vedic-astro` is positions +
@@ -352,6 +377,6 @@ iztro.
   node option, a free-text geocoder for places outside the list.
 - Birth-time rectifier temple; 六爻亭 (interactive coin ritual); 擇日
 - 真太陽時 toggle (Taipei ≈ +6 min vs UTC+8 meridian)
-- Persistence (saved charts, 流年 refresh) — currently nothing is stored
+- ~~Persistence~~ — shipped Sep 24 (see "Saved readings"); 流年 refresh of an old chart is still open
 - Share cards for 批文; XDev MCP exposure of chart tools
 - More classics (淵海子平, 三命通會) as corpus grows

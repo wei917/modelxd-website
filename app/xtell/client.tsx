@@ -35,6 +35,8 @@ import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES } from '
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
+/** A row of xtell_readings, as the room reopens it. */
+type SavedReading = { id: string; temple: string; subject: any; chart: any; extras: any; turns: any[] }
 
 // 占星塔 is the one temple with rooms: four readings off one chart. The other
 // six ask a single question, so their form is a birth row and their board is
@@ -73,6 +75,23 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const t = useT()
   const [temple, setTemple] = useState<Temple | null>(null)
   const [selectedTemple, setSelectedTemple] = useState<Temple>('bazi')
+  // ?reading=<id> reopens a saved visit (supabase/105): the row is fetched
+  // under the visitor's own session, the temple opens on it, and TempleRoom
+  // starts from its subject, chart and turns instead of an empty form.
+  const [saved, setSaved] = useState<SavedReading | null>(null)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('reading')
+    if (!id) return
+    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+    sb.from('xtell_readings').select('id, temple, subject, chart, extras, turns').eq('id', id).is('deleted_at', null).maybeSingle()
+      .then(({ data }) => {
+        if (!data || !TEMPLES.includes(data.temple)) return
+        setSaved(data as SavedReading)
+        setSelectedTemple(data.temple as Temple)
+        if (standalone) window.location.hash = data.temple
+        setTemple(data.temple as Temple)
+      })
+  }, [standalone])
   useEffect(() => {
     if (!standalone) return
     const sync = () => {
@@ -95,7 +114,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={chooseTemple} /> : <>
         <XTellAuthGate />
-        <TempleRoom key={temple} temple={temple} onBack={() => chooseTemple(null)} standalone />
+        <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); chooseTemple(null) }} standalone initial={saved?.temple === temple ? saved : null} />
       </>}
       <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
     </main>
@@ -131,7 +150,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
             ))}
           </div>
         ) : (
-          <TempleRoom temple={temple} onBack={() => setTemple(null)} />
+          <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} />
         )}
 
         <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
@@ -140,36 +159,41 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   )
 }
 
-function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; onBack: () => void; standalone?: boolean }) {
+function TempleRoom({ temple, onBack, standalone = false, initial = null }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null }) {
   const t = useT()
-  const [birth, setBirth] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false })
+  // A reopened reading seeds every input from its saved subject, so the
+  // requests it sends next are byte-for-byte what the original visit sent.
+  const init = initial?.subject ?? {}
+  const defaultBirth = { y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false }
+  const [birth, setBirth] = useState<typeof defaultBirth>({ ...defaultBirth, ...(init.birth ?? {}), ...(init.gender && !init.birth ? { gender: init.gender } : {}) })
+  const [readingId, setReadingId] = useState<string | null>(initial?.id ?? null)
   // 月老廟 needs a second person. Defaults to the other gender purely as a
   // starting point — both rows are fully editable, a couple is whoever they are.
-  const [birth2, setBirth2] = useState({ y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'female' as 'male' | 'female', hourUnknown: false })
-  const [entered, setEntered] = useState(false)
-  const [chart, setChart] = useState<any>(null)
-  const [match, setMatch] = useState<any>(null)   // 月老廟's computed 合盤
-  const [year, setYear] = useState<any>(null)     // 四面佛's (and an optional 稟告's) computed 流年
-  const [bazi, setBazi] = useState<any>(null)     // 稟告 birth → 八字, shown under the stick
+  const [birth2, setBirth2] = useState<typeof defaultBirth>({ ...defaultBirth, gender: 'female', ...(init.birth2 ?? {}) })
+  const [entered, setEntered] = useState(!!initial)
+  const [chart, setChart] = useState<any>(initial?.chart ?? null)
+  const [match, setMatch] = useState<any>(initial?.extras?.match ?? null)   // 月老廟's computed 合盤
+  const [year, setYear] = useState<any>(initial?.extras?.year ?? null)     // 四面佛's (and an optional 稟告's) computed 流年
+  const [bazi, setBazi] = useState<any>(initial?.extras?.bazi ?? null)     // 稟告 birth → 八字, shown under the stick
   // 關帝/媽祖 稟告: optional name, city, and whether to attach `birth`.
-  const [bing, setBing] = useState({ name: '', city: '', withBirth: false })
+  const [bing, setBing] = useState({ name: init.name ?? '', city: init.city ?? '', withBirth: !!(init.birth && isQian(temple)) })
   // 關帝廟: the matter asked, and the ritual. The poem is never in the client
   // until the third 聖筊 — the server sends it with the chart response.
-  const [ask, setAsk] = useState('')
-  const [stick, setStick] = useState<{ n: number; throws: Jiao[] } | null>(null)
-  const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
+  const [ask, setAsk] = useState(init.ask ?? '')
+  const [stick, setStick] = useState<{ n: number; throws: Jiao[] } | null>(init.n ? { n: init.n, throws: ['聖筊', '聖筊', '聖筊'] } : null)
+  const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>(initial && init.n ? 'confirmed' : 'idle')
   // 四面佛: one wish per face, plus the pledge.
-  const [wishes, setWishes] = useState<Wishes>({})
+  const [wishes, setWishes] = useState<Wishes>(init.wishes ?? {})
   // 姓名亭: surname + given name; 測字亭: one character (+ the shared `ask`).
-  const [surname, setSurname] = useState('')
-  const [given, setGiven] = useState('')
-  const [ch, setCh] = useState('')
+  const [surname, setSurname] = useState(init.surname ?? '')
+  const [given, setGiven] = useState(init.given ?? '')
+  const [ch, setCh] = useState(init.ch ?? '')
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
-  const [place, setPlace] = useState(DEFAULT_PLACE)
+  const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
-  const [astroMode, setAstroMode] = useState<AstroMode>('natal')
-  const [place2, setPlace2] = useState(DEFAULT_PLACE)
-  const [srYear, setSrYear] = useState(new Date().getFullYear())
+  const [astroMode, setAstroMode] = useState<AstroMode>(init.mode ?? 'natal')
+  const [place2, setPlace2] = useState(init.place2 ?? DEFAULT_PLACE)
+  const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   const [engine, setEngine] = useState<string | null>(null)
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
@@ -186,7 +210,9 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
   // One shared conversation: the visitor speaks once, every seated master
   // answers. Each master keeps its own private transcript server-side.
   type Turn = { role: 'user'; content: string } | { role: 'assistant'; content: string; modelId: string; name: string; provider: string; cost?: number }
-  const [turns, setTurns] = useState<Turn[]>([])
+  const [turns, setTurns] = useState<Turn[]>(() => (initial?.turns ?? []).map((x: any) => x.role === 'user'
+    ? { role: 'user', content: String(x.content ?? '') }
+    : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
@@ -256,6 +282,7 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
       setYear(d.year ?? null)
       setBazi(d.bazi ?? null)
       setEngine(d.engine ?? null)
+      setReadingId(typeof d.readingId === 'string' ? d.readingId : null)
       setEntered(true)
       // 月老廟: the scores land free and instantly, so the only thing left to
       // ask is what they mean. Write the question for them but do NOT send it
@@ -272,8 +299,8 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
   // rendering: two quick throws inside one render would otherwise both read
   // an empty `throws` and the count could never reach three (found in the
   // first browser test — a fast clicker was stuck at 1/3 forever).
-  const stickRef = useRef<{ n: number; throws: Jiao[] } | null>(null)
-  const ritualRef = useRef<'idle' | 'drawn' | 'rejected' | 'confirmed'>('idle')
+  const stickRef = useRef<{ n: number; throws: Jiao[] } | null>(init.n ? { n: init.n, throws: ['聖筊', '聖筊', '聖筊'] } : null)
+  const ritualRef = useRef<'idle' | 'drawn' | 'rejected' | 'confirmed'>(initial && init.n ? 'confirmed' : 'idle')
   const setRitualBoth = (r: 'idle' | 'drawn' | 'rejected' | 'confirmed') => { ritualRef.current = r; setRitual(r) }
   const draw = () => {
     const s = { n: drawQian(cryptoRand, temple === 'mazu' ? QIAN_COUNTS.mazu : QIAN_COUNTS.guandi), throws: [] as Jiao[] }
@@ -294,6 +321,9 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
     if (!q || busy || masters.length === 0) return
     setInput(''); setBusy(true); setErr(null)
     setTurns(ts => [...ts, { role: 'user', content: q }])
+    // One id per question: every master's request carries it, the server
+    // stores the question once (xtell_append_turns dedupes on it).
+    const qid = crypto.randomUUID()
 
     // All seated masters answer the same question concurrently; each gets its
     // own history (its replies only) so two masters never contaminate each
@@ -307,7 +337,7 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...subject(), question: q, modelId: m.id, history,
+            ...subject(), question: q, modelId: m.id, history, readingId, qid,
             search: search && ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search'),
           }),
         })
@@ -535,6 +565,9 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
                 {t(`xtell.${temple}.intro`)}
               </div>
+            )}
+            {initial && turns.length > 0 && (
+              <div style={{ padding: '10px 18px', fontSize: 12.5, color: 'var(--muted2)' }}>{t('xtell.saved.resumed')}</div>
             )}
             {/* Rounds: a user bubble, then every master's reply to it SIDE BY
                 SIDE — and while two masters are seated, each reply carries a

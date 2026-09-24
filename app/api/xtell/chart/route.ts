@@ -10,7 +10,35 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
+
+// The subject is what the client sent, reduced to the keys the routes read,
+// so a saved reading can be recomputed later exactly as it was cast.
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch'] as const
+function subjectOf(body: any) {
+  const out: Record<string, unknown> = {}
+  for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
+  return out
+}
+
+// Every visit is saved (owner, Sep 24: people paid for these). The row is
+// created here, when the chart is cast, under the visitor's own session and
+// RLS (supabase/105); the reading route appends the turns. A save failure
+// never blocks the chart — the visitor still gets what they came for and the
+// server log says why (typically: migration 105 not applied yet).
+async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string, temple: Temple, body: any, chart: unknown, extras: Record<string, unknown>) {
+  try {
+    const clean = Object.fromEntries(Object.entries(extras).filter(([, v]) => v !== undefined))
+    const { data, error } = await sb.from('xtell_readings')
+      .insert({ user_id: userId, temple, subject: subjectOf(body), chart, extras: Object.keys(clean).length ? clean : null })
+      .select('id').single()
+    if (error) throw error
+    return data.id as string
+  } catch (e: any) {
+    console.warn('[xtell/chart] save failed:', e?.message ?? e)
+    return null
+  }
+}
 
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
@@ -29,20 +57,25 @@ export async function POST(req: Request) {
     if (body?.birth !== undefined && !validBirth(body.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
     const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
     const year = bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : undefined
-    return Response.json({ temple, chart: qian, bazi: bz ?? undefined, year, engine: ENGINES[temple] })
+    const readingId = await save(sb, user.id, temple, body, qian, { bazi: bz ?? undefined, year })
+    return Response.json({ temple, chart: qian, bazi: bz ?? undefined, year, engine: ENGINES[temple], readingId })
   }
 
   // 姓名亭 and 測字亭 start from characters, not a birth.
   if (temple === 'xingming') {
     if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
-    try { return Response.json({ temple, chart: nameChart(body.surname, body.given), engine: ENGINES[temple] }) }
-    catch (e: any) { return Response.json({ error: e?.message ?? 'no stroke data' }, { status: 400 }) }
+    try {
+      const chart = nameChart(body.surname, body.given)
+      const readingId = await save(sb, user.id, temple, body, chart, {})
+      return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
+    } catch (e: any) { return Response.json({ error: e?.message ?? 'no stroke data' }, { status: 400 }) }
   }
   if (temple === 'cezi') {
     if (!validChar(body?.ch)) return Response.json({ error: 'write exactly one character' }, { status: 400 })
     const info = charInfo(body.ch)
     if (!info) return Response.json({ error: `no data for ${body.ch}` }, { status: 400 })
-    return Response.json({ temple, chart: info, engine: ENGINES[temple] })
+    const readingId = await save(sb, user.id, temple, body, info, {})
+    return Response.json({ temple, chart: info, engine: ENGINES[temple], readingId })
   }
 
   if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
@@ -78,7 +111,8 @@ export async function POST(req: Request) {
     const year = temple === 'simianfo'
       ? liuNian(chart as any, body.birth.y, new Date().getFullYear())
       : undefined
-    return Response.json({ temple, chart, match, year, engine: ENGINES[temple] })
+    const readingId = await save(sb, user.id, temple, body, chart, { match, year })
+    return Response.json({ temple, chart, match, year, engine: ENGINES[temple], readingId })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)
     return Response.json({ error: 'chart computation failed' }, { status: 500 })
