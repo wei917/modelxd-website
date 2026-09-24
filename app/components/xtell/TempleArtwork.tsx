@@ -1,7 +1,11 @@
 import type { CSSProperties } from 'react'
 
 export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi'
-export const DISPLAY_TEMPLES: TempleKey[] = ['mazu', 'guandi', 'yuelao', 'simianfo', 'navagraha', 'bazi', 'ziwei', 'xingming', 'cezi', 'zhanxing']
+// Menu order (owner, Sep 24: 有技術的放前面): the computed methods first —
+// 八字, 紫微, 西洋占星, 吠陀占星, 姓名, 測字 — then the deity rooms. The art
+// sheets keep their own five-by-two order via TEMPLE_ART below, so this list
+// is display order only.
+export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming', 'cezi', 'yuelao', 'guandi', 'mazu', 'simianfo']
 
 // Both approved image sheets use the same five-column, two-row ordering.
 export const TEMPLE_ART: Record<TempleKey, { index: number; caption: string }> = {

@@ -71,7 +71,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
   const [temple, setTemple] = useState<Temple | null>(null)
-  const [selectedTemple, setSelectedTemple] = useState<Temple>('mazu')
+  const [selectedTemple, setSelectedTemple] = useState<Temple>('bazi')
   useEffect(() => {
     if (!standalone) return
     const sync = () => {

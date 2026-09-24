@@ -1709,14 +1709,25 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
       return
     }
     const prefs = (navigator.languages?.length ? navigator.languages : [navigator.language]) ?? []
+    // xtell.modelxd.com is for the Taiwan market (owner, Sep 24: the live
+    // site was coming up in English). On that host the browser list is
+    // consulted only for ja / ko / zh-Hans; everything else, including an
+    // English browser, gets 繁體. The picker and a saved choice still win.
+    const xtell = document.documentElement.dataset.site === 'xtell'
     for (const tag of prefs) {
-      const match = langFromTag(tag ?? '')
-      if (match) {
-        setLangState(match)
-        document.documentElement.lang = match
-        return
+      let match = langFromTag(tag ?? '')
+      if (!match) continue
+      if (xtell) {
+        if (match === 'en') continue
+        // A bare "zh" (no script, no region) means Traditional on this host;
+        // only an explicit Hans / CN / SG tag selects Simplified.
+        if (match === 'zh-Hans' && !/hans|-cn|-sg/.test((tag ?? '').toLowerCase())) match = 'zh-Hant'
       }
+      setLangState(match)
+      document.documentElement.lang = match
+      return
     }
+    if (xtell) { setLangState('zh-Hant'); document.documentElement.lang = 'zh-Hant'; return }
     // No supported language in the list → English (the default state).
   }, [])
 
