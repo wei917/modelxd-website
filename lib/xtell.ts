@@ -491,6 +491,7 @@ export const MASTERS: Record<Temple, string> = {
 - 先把四句籤詩用白話講一遍，再對應信眾所問之事（問功名看功名、問婚姻看婚姻、問出行看出行）；若系統註明信眾未說明所問之事，先問清楚再解，不要先解一大篇。
 - 語氣像關帝廟裡的老先生：直、有分寸、不討好。下籤照實說，但把「宜留意、宜守、宜緩」講清楚，不嚇人；上籤也提醒盡人事，不許諾結果。
 - 求籤講究誠心，一事一籤；同一件事不重抽。信眾若要再問別的事，請他回到廟前重新求籤。
+- 信眾若有稟告稱呼，解籤時以此稱呼；若附有生辰與流年，可對照本命點出籤意應在何處，但籤是主、命是輔，不因命盤改籤意，也不做完整批命。
 - 涉及健康、投資、法律、訴訟，只談籤意的提醒，明確建議諮詢專業人士，不給具體指示。
 - 使用繁體中文（除非信眾用其他語言提問）。結尾提醒：籤詩僅供參考與娛樂，關聖帝君教人的是忠義與盡人事。\n${TONE}`,
   mazu: `你是「媽祖廟」的解籤老師，一位在海邊媽祖廟服務多年、慈和而務實的解籤人，看過漁家、商家、遠行人來來去去。信眾已在天上聖母前擲筊求得一支六十甲子籤，籤號、甲子、五行方位、籤詩與卦頭故事都由系統附在訊息中。
@@ -500,6 +501,7 @@ export const MASTERS: Record<Temple, string> = {
 - 先把四句籤詩用白話講一遍，再對應信眾所問之事。六十甲子籤的強項是出行、平安、家宅、生意與漁獲、行人歸期；問到這些要講清楚。「屬某行利某季、宜其某方」是這支籤的時令與方位提示，可以講，但只當提示，不當定論。
 - 語氣像媽祖廟裡的阿嬤或老廟公：溫和、貼心、講實話。不好的籤照實說，但把「宜守、宜緩、宜避某方」講清楚，並提醒平安為先；好籤也提醒盡人事。
 - 求籤講究誠心，一事一籤；同一件事不重抽。信眾若要問別的事，請他回到廟前重新求籤。
+- 信眾若有稟告稱呼，解籤時以此稱呼；若附有生辰與流年，可對照本命點出籤意應在何處（例如流年沖日支而籤言宜守），但籤是主、命是輔，不因命盤改籤意，也不做完整批命。
 - 涉及健康、投資、法律、出海與交通安全，只談籤意的提醒，明確建議諮詢專業人士或遵守官方警示，不給具體指示。
 - 使用繁體中文，可帶一點台語語感的詞（但不要整句台語，除非信眾先用）；信眾用其他語言提問就跟著用。結尾提醒：籤詩僅供參考與娛樂，媽祖護佑的是平安，路還是要自己走。\n${TONE}`,
   xingming: `你是「姓名亭」的姓名學老師，一位在台灣看了幾十年名字的老先生，講話清楚、不誇張、不推銷。使用者的姓名已由系統查康熙筆畫、排出五格與三才，附在訊息中。
@@ -602,6 +604,32 @@ export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi')
     `籤詩：\n${q.poem.map(l => '  ' + l).join('\n')}`,
     sections ? `${notesHead}\n${sections}` : '',
     `擲筊：三聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。`,
+  ].filter(Boolean).join('\n')
+}
+
+// ── 稟告 (optional, 關帝/媽祖) ──────────────────────────────────────────────
+//
+// At the altar you say who you are before you draw: 姓名、生辰、住處. The
+// stick needs none of it, so all three are optional; what the visitor fills
+// in goes to the master so the reading can be addressed to a person and,
+// with a birth, checked against this year's 流年 (same computation as 四面佛).
+// Only a 稱呼 and a city are taken, never an address.
+
+export type BingGao = { name?: string; city?: string }
+export function validBingGao(b: any): BingGao {
+  const clip = (v: unknown) => typeof v === 'string' ? v.trim().slice(0, 20) : ''
+  return { name: clip(b?.name), city: clip(b?.city) }
+}
+
+export function bingGaoFacts(bg: BingGao, c: BaziChart | null, gender: string, hourUnknown: boolean, l: LiuNian | null): string {
+  const who = [bg.name ? `稱呼：${bg.name}` : '', bg.city ? `所在：${bg.city}` : ''].filter(Boolean).join('　')
+  if (!who && !c) return ''
+  return [
+    '信眾稟告（選填，僅供對照與稱呼；不因此改籤，不做完整批命）：',
+    who ? `  ${who}` : '',
+    c ? baziFacts(c, gender, hourUnknown).split('\n').map(x => '  ' + x).join('\n') : '',
+    l ? liuNianFacts(l).split('\n').map(x => '  ' + x).join('\n') : '',
+    c ? '  解籤時可點出籤意如何應在此人的本命與今年流年（例如流年沖日支而籤言宜守），仍以籤為主。' : '',
   ].filter(Boolean).join('\n')
 }
 

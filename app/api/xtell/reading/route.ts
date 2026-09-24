@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
   // 關帝廟's input is the stick number; everything else starts from a birth.
   if (isQianTemple(temple)) {
     if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
+    if (body?.birth !== undefined && !validBirth(body.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
   } else if (temple === 'xingming') {
     if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
   } else if (temple === 'cezi') {
@@ -103,7 +104,12 @@ export async function POST(req: Request) {
         ? ceziFacts(charInfo(body.ch)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '')
       : isQianTemple(temple)
         // The poem comes from disk by number; the client's copy is never used.
-        ? guandiFacts(qianOf(body.n, temple)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple)
+        ? (() => {
+          const base = guandiFacts(qianOf(body.n, temple)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple)
+          const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
+          const extra = bingGaoFacts(validBingGao(body), bz, body?.birth?.gender ?? '', body?.birth?.hourUnknown === true, bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : null)
+          return extra ? `${base}\n\n${extra}` : base
+        })()
         : temple === 'simianfo'
           ? (() => {
             const c = baziChart(body.birth)

@@ -24,7 +24,12 @@ export async function POST(req: Request) {
     if (!validQian(body?.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
     const qian = qianOf(body.n, temple)
     if (!qian) return Response.json({ error: 'stick not in corpus' }, { status: 500 })
-    return Response.json({ temple, chart: qian, engine: ENGINES[temple] })
+    // Optional 稟告: a birth turns into the same 八字 + 流年 the 四面佛 gets,
+    // shown under the stick and handed to the master for reference.
+    if (body?.birth !== undefined && !validBirth(body.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
+    const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
+    const year = bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : undefined
+    return Response.json({ temple, chart: qian, bazi: bz ?? undefined, year, engine: ENGINES[temple] })
   }
 
   // 姓名亭 and 測字亭 start from characters, not a birth.

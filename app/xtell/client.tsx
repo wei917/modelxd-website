@@ -149,7 +149,10 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
   const [entered, setEntered] = useState(false)
   const [chart, setChart] = useState<any>(null)
   const [match, setMatch] = useState<any>(null)   // 月老廟's computed 合盤
-  const [year, setYear] = useState<any>(null)     // 四面佛's computed 流年
+  const [year, setYear] = useState<any>(null)     // 四面佛's (and an optional 稟告's) computed 流年
+  const [bazi, setBazi] = useState<any>(null)     // 稟告 birth → 八字, shown under the stick
+  // 關帝/媽祖 稟告: optional name, city, and whether to attach `birth`.
+  const [bing, setBing] = useState({ name: '', city: '', withBirth: false })
   // 關帝廟: the matter asked, and the ritual. The poem is never in the client
   // until the third 聖筊 — the server sends it with the chart response.
   const [ask, setAsk] = useState('')
@@ -207,7 +210,7 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
   /** What identifies this consultation, per temple: birth(s), a stick
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
-    isQian(temple) ? { temple, n: n ?? stick?.n, ask }
+    isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}) }
     : temple === 'xingming' ? { temple, surname: surname.trim(), given: given.trim(), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'simianfo' ? { temple, birth, wishes }
@@ -251,6 +254,7 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
       setChart(d.chart)
       setMatch(d.match ?? null)
       setYear(d.year ?? null)
+      setBazi(d.bazi ?? null)
       setEngine(d.engine ?? null)
       setEntered(true)
       // 月老廟: the scores land free and instantly, so the only thing left to
@@ -405,7 +409,8 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
             </div>
           )}
           {isQian(temple) ? (
-            <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} />
+            <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks}
+              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
           ) : temple === 'xingming' ? (
             <NameForm surname={surname} given={given} gender={birth.gender}
               onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel} />
@@ -506,7 +511,7 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <BaziBoard chart={chart} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
-                : isQian(temple) ? <QianCard qian={chart} temple={temple} />
+                : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={bazi} year={year} />
                 : temple === 'xingming' ? <NameBoard chart={chart} />
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
@@ -790,13 +795,17 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
 // ── 關帝廟 ─────────────────────────────────────────────────────────────────
 
 /** 稟明事由, then the tube and the blocks. */
-function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow }: {
+function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel }: {
   ask: string; setAsk: (s: string) => void
   stick: { n: number; throws: Jiao[] } | null
   ritual: 'idle' | 'drawn' | 'rejected' | 'confirmed'
   onDraw: () => void; onThrow: () => void
+  bing: { name: string; city: string; withBirth: boolean }; setBing: (b: { name: string; city: string; withBirth: boolean }) => void
+  birth: any; setBirth: (b: any) => void; sel: any
 }) {
   const t = useT()
+  const [bingOpen, setBingOpen] = useState(false)
+  const locked = ritual === 'confirmed'
   const pill = (bg: string) => ({ padding: '10px 26px', borderRadius: 999, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' })
   const jiaoColour: Record<Jiao, string> = { 聖筊: 'var(--green)', 笑筊: 'var(--muted)', 陰筊: 'var(--red)' }
   return (
@@ -806,6 +815,30 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow }: {
         <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')}
           disabled={ritual === 'confirmed'}
           style={{ width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', color: 'var(--white)', fontSize: 14 }} />
+      </div>
+
+      {/* 稟告 — optional, collapsed. The stick never needs it; the master
+          uses whatever is filled in to address the visitor and, with a
+          birth, to read the stick against this year. */}
+      <div style={{ border: '1px dashed var(--border2)', borderRadius: 10, padding: bingOpen ? '10px 14px 12px' : '8px 14px' }}>
+        <button type="button" onClick={() => setBingOpen(v => !v)} disabled={locked}
+          style={{ border: 'none', background: 'none', padding: 0, cursor: locked ? 'default' : 'pointer', color: 'var(--muted)', fontSize: 12.5, fontWeight: 600 }}>
+          {bingOpen ? '▾' : '▸'} {t('xtell.qian.bing')}
+        </button>
+        {bingOpen && (
+          <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.qian.bing.note')}</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <input value={bing.name} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, name: e.target.value })} placeholder={t('xtell.qian.bing.name')} style={{ ...sel, flex: 1, minWidth: 160 }} />
+              <input value={bing.city} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, city: e.target.value })} placeholder={t('xtell.qian.bing.city')} style={{ ...sel, flex: 1, minWidth: 160 }} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={bing.withBirth} disabled={locked} onChange={e => setBing({ ...bing, withBirth: e.target.checked })} />
+              {t('xtell.qian.bing.birth')}
+            </label>
+            {bing.withBirth && <BirthRow value={birth} onChange={setBirth} sel={sel} />}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', minHeight: 56 }}>
@@ -842,7 +875,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow }: {
 
 /** The stick, as the temple prints it: number, luck, story, the four lines,
  *  and every commentary the edition carries. All of it is text from disk. */
-function QianCard({ qian, temple }: { qian: any; temple: Temple }) {
+function QianCard({ qian, temple, bazi, year }: { qian: any; temple: Temple; bazi?: any; year?: any }) {
   const t = useT()
   // 關帝's edition grades each stick (大吉 … 下下); 媽祖's carries a 五行/direction
   // line instead, which is a hint, not a grade, so it stays neutral.
@@ -869,6 +902,18 @@ function QianCard({ qian, temple }: { qian: any; temple: Temple }) {
           </div>
         ))}
       </div>
+      {bazi && (
+        <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.qian.bing.head')}</div>
+          <BaziBoard chart={bazi} />
+          {year && (
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7, marginTop: 8 }}>
+              <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
+              {year.year} {year.ganZhi}　天干對日主 <b>{year.shiShen}</b>　地支對日支 <b>{year.dayBranch?.kind}</b>　對年支 <b>{year.yearBranch?.kind}</b>{year.taiSui !== '無' ? `（${year.taiSui}）` : ''}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xtell.qian.source.mazu' : 'xtell.qian.source')}</div>
     </div>
   )
