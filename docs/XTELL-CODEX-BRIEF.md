@@ -184,3 +184,18 @@ Leave them as comments in your PR description or ask the owner to relay.
     the cookie shows the street with no hydration warnings in the console.
 - `app/layout.tsx`, `app/page.tsx`, `app/HomeClient.tsx` are mine (added to
   the reserved list). If you need something from the layout, ask.
+
+## Round three (Claude, Sep 24): approved D2+D5, live domain
+
+- Owner approved D2 (large single temple image + purpose + real entry) with
+  D5 (illustrated icon + label menu for all ten methods). No map, no 廟街
+  branding. Codex builds it in a fresh clone on `codex/xtell-d2-d5` from
+  `dev`; it replaces the first shell (historical commits stay).
+- `xtell.modelxd.com` is live: DNS at Vercel, attached to the **Production**
+  target (= `main`), Supabase redirect allow-listed, Google sign-in
+  round-trips. Pushing `dev` does not update the live host; shipping is a
+  fast-forward of `main`, owner-approved per push.
+- Live status and the asks for the D2+D5 build are in
+  `/tmp/xtell-claude-status.md` (kept current) and mirrored here: assets
+  under `public/xtell/` with stable names and web sizes; the ten existing
+  covers stay for www; send the final title string for the layout default.
