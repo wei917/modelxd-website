@@ -137,6 +137,10 @@ and a saved reading is resumable. One row per temple visit:
   not stored and is blank on a reopened room.
 - Proven on pglite before shipping: dedup, cost, title, cross-user isolation,
   anon denied (`has_table_privilege` / `has_function_privilege` false).
+- **Await before close.** The append and the debit are awaited inside
+  `onDone` before `controller.close()`. Vercel freezes the function when the
+  response ends; the first live follow-up lost its append to exactly that.
+  Any future write in a streaming route follows the same rule.
 
 ## The Jyotish engine (`lib/jyotish.ts`)
 

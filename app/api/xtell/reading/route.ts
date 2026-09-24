@@ -144,19 +144,24 @@ export async function POST(req: Request) {
         messages,
         {
           onDelta: (text) => { full += text; controller.enqueue(sse('delta', { text })) },
-          onDone: (r) => {
+          // The save and the debit are AWAITED before the stream closes:
+          // Vercel freezes the function the moment the response ends, and a
+          // fire-and-forget write started here can be cut off. The first
+          // live test lost exactly one appended turn that way (Sep 24).
+          onDone: async (r) => {
             const cents = Math.round((r.cost ?? 0) * 100)
             if (readingId && qid) {
               const ts = new Date().toISOString()
-              sb.rpc('xtell_append_turns', {
+              const { error } = await sb.rpc('xtell_append_turns', {
                 p_id: readingId,
                 p_user_turn: { role: 'user', content: question || '請為信眾做一次完整的解讀。', qid, ts },
                 p_assistant_turn: { role: 'assistant', content: full, modelId: (model as any).id, name: (model as any).display_name ?? (model as any).model_name, provider: (model as any).provider, cost: r.cost ?? 0, qid, ts },
                 p_add_cents: cents,
-              }).then(({ error }) => { if (error) console.warn(`${LOG} save turns failed:`, error.message) })
+              })
+              if (error) console.warn(`${LOG} save turns failed:`, error.message)
             }
             if (cents > 0) {
-              debitCredits({
+              await debitCredits({
                 userId: user.id, amountCents: cents,
                 referenceType: 'xtell', referenceId: (model as any).id ?? (model as any).model_name,
                 description: `XTell ${temple} reading (${(model as any).model_name})`,

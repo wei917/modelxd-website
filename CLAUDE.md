@@ -49,8 +49,7 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `104_private_duels.sql` (2026-09-14). **Pending: `105_xtell_readings.sql`**
-  (saved XTell readings; the code degrades to unsaved until it runs).
+  Latest applied: `105_xtell_readings.sql` (2026-09-24).
 
 ## The Surfaces
 
