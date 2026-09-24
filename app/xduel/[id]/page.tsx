@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../../lib/markdown'
 import { downloadUrl } from '@/lib/download-url'
 import { useAuthModal } from '@/lib/AuthModalContext'
 
@@ -377,7 +378,7 @@ export default function DuelPage() {
                           ? <video src={slot.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : slot.isImage
                           ? <img src={slot.text} alt="Generated" onClick={() => setLightbox(slot.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
-                          : <div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>
+                          : <div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>
                         }
                       </div>
                     </div>
@@ -544,7 +545,7 @@ export default function DuelPage() {
                           ? <video src={slot.text} autoPlay loop muted playsInline controls style={{width:'100%',display:'block'}} />
                           : slot.isImage
                           ? <img src={slot.text} alt="Generated" onClick={() => setLightbox(slot.text)} style={{width:'100%',borderRadius:4,display:'block',cursor:'zoom-in'}} />
-                          : <div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>
+                          : <div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>
                         }
                       </div>
                     </div>

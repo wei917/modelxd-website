@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useT, useLang, tOr } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../lib/markdown'
 import AttachmentButton, { commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
 import { sliceAudioForVideo } from '../../lib/audio-normalize'
 import MusicVideoSetup from '../components/MusicVideoSetup'
@@ -2054,7 +2055,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                 fontSize: 14, lineHeight: 1.7,
                 color: b.role === 'user' ? 'var(--muted2)' : 'var(--white)',
               }}>
-                <div className="markdown-body"><ReactMarkdown skipHtml>{b.text ?? ''}</ReactMarkdown></div>
+                <div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{b.text ?? ''}</ReactMarkdown></div>
                 {(b.bible || /📖/.test(b.text ?? '')) && convIdRef.current && (
                   <a href={`/xdirect/bible/${convIdRef.current}`} target="_blank" rel="noreferrer"
                      style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontFamily: 'var(--font-mono), monospace', color: 'var(--red)', textDecoration: 'none', letterSpacing: '0.04em' }}>

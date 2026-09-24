@@ -7,6 +7,7 @@ import { useRequireAuth } from '../../lib/useRequireAuth'
 import { usePromptRefiner } from '../components/PromptRefiner'
 import { useT, useLang, type Lang } from '../../lib/i18n'
 import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../lib/markdown'
 import { attachSampleFile, commitAttachments, type Attachment } from '../components/AttachmentButton'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import TemplatePicker from '../components/TemplatePicker'
@@ -1029,7 +1030,7 @@ export default function XDuel() {
                               <div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/>
                               <span style={{marginLeft:8}}>Generating{m.isImage ? ' image' : ' video'}…</span>
                             </div>
-                          : <><div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
+                          : <><div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }
                       </div>
                     </div>

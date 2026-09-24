@@ -17,6 +17,7 @@ import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../lib/markdown'
 import ShowcaseWall from '@/app/components/ShowcaseWall'
 import type { ShowcasePiece } from '@/lib/showcase'
 import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
@@ -3847,7 +3848,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                             ))}
                           </div>
                         )
-                        : <div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{msg.content}</ReactMarkdown></div>}
+                        : <div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{msg.content}</ReactMarkdown></div>}
                         {i === chatHistory.length - 1 && msg.role === 'assistant' && chatStreaming && <span className="stream-cursor">▋</span>}
                       </div>
                     </div>
@@ -5050,7 +5051,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                       </div>
                                     )
                                   })()
-                                : <><div className="markdown-body"><ReactMarkdown skipHtml components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
+                                : <><div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
                               }
                             </div>
                             {/* Pick button — only when there was a contest

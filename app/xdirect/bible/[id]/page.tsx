@@ -12,6 +12,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../../../lib/markdown'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import SaveAsPdfButton from './SaveAsPdfButton'
 import { findBible } from '@/lib/story-bible'
@@ -55,7 +56,7 @@ export default async function BiblePage({ params }: { params: Promise<{ id: stri
       </div>
       <article id="bible-print">
         <div className="markdown-body">
-          <ReactMarkdown skipHtml>{bible.text}</ReactMarkdown>
+          <ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{bible.text}</ReactMarkdown>
         </div>
         <p style={{ marginTop: 28, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace' }}>
           ModelXD · XDirect · Story to Video{bible.model ? ` · bible by ${bible.model}` : ''}{data.title ? ` · ${String(data.title).slice(0, 80)}` : ''}

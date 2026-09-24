@@ -26,6 +26,7 @@ import { useT } from '../../lib/i18n'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
 import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, type Jiao } from '../../lib/xtell-ritual'
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
@@ -568,7 +569,7 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
                             at the reader. `markdown-body` + skipHtml is what
                             every other text surface here uses. */}
                         {tn.content
-                          ? <div className="markdown-body" style={{ lineHeight: 1.85 }}><ReactMarkdown skipHtml>{tn.content}</ReactMarkdown></div>
+                          ? <div className="markdown-body" style={{ lineHeight: 1.85 }}><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{tn.content}</ReactMarkdown></div>
                           : <span style={{ color: 'var(--muted2)' }}>…</span>}
                       </div>
                     ))}

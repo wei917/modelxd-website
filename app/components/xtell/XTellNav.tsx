@@ -1,19 +1,33 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { LANGS, useLang, type Lang } from '../../../lib/i18n'
 
+/** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
+ *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
 export function XTellMark() {
-  return <span className="xtell-brand xtell-focus-brand"><span>X</span>Tell</span>
+  const { t } = useLang()
+  const brand = t('xtell.site.brand')
+  return <span className="xtell-brand xtell-focus-brand"><span>{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
 }
 
 export default function XTellNav({ user }: { user: User | null }) {
   const { lang, setLang, t } = useLang()
   const { show } = useAuthModal()
   const pathname = usePathname()
+  // The tab title follows the language; the server can only know the host.
+  // Next 16 streams the metadata <title> in after the shell has hydrated, so
+  // a title set once at mount gets overwritten — set it again shortly after.
+  useEffect(() => {
+    const apply = () => { document.title = t('xtell.site.tab') }
+    apply()
+    const timers = [setTimeout(apply, 800), setTimeout(apply, 2500)]
+    return () => timers.forEach(clearTimeout)
+  }, [lang, t])
   return (
     <header className="xtell-nav">
       <a href="#xtell-main" className="xtell-skip" onClick={event => {
@@ -44,7 +58,7 @@ export default function XTellNav({ user }: { user: User | null }) {
 export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
-    <div><span className="xtell-footer-brand">XTell</span><span>{t('xtell.site.entertainment')}</span></div>
+    <div><span className="xtell-footer-brand">{t('xtell.site.brand')}</span><span>{t('xtell.site.entertainment')}</span></div>
     <nav aria-label={t('xtell.site.legal')}><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span>by ModelXD</span></nav>
   </footer>
 }
