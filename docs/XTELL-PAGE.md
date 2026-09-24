@@ -15,6 +15,20 @@ don't open a chat about love — you visit 月老廟. The street page lists the
 temples; each temple is one divination method with its own ink-wash cover
 (house art language: painterly, no robots, no AI-slop).
 
+## Two front doors (Sep 23–24)
+
+`xtell.modelxd.com` serves the same app through `lib/site.ts` + `proxy.ts`
+(see `docs/XTELL-CODEX-BRIEF.md` for the contract and the split of work with
+Codex). On that host `app/page.tsx` renders `XTellClient` at `/`, the shell
+is Codex's D2+D5 explorer (`app/components/xtell/*`: one large selected
+temple portrait, purpose copy, a real entry button, and an illustrated
+icon-plus-label menu for the ten methods; assets in `public/xtell/approved/`,
+provenance in Codex's design directory), and non-XTell pages 302 to `/`.
+**Art decision (owner, Sep 24):** the standalone host uses those
+sculptural portraits and screenprint icons, not the ink-wash covers; the
+ink-wash rule below still governs `/xtell` on www and every temple cover.
+The host is attached to Vercel's Production target, so it ships with `main`.
+
 ## The architecture rule (the one thing you must not break)
 
 **The model never computes the chart. Code computes the chart; the model only
