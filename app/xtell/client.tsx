@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import TempleStreet, { TEMPLES } from '../components/xtell/TempleStreet'
+import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT } from '../../lib/i18n'
@@ -70,11 +71,13 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
   const [temple, setTemple] = useState<Temple | null>(null)
+  const [selectedTemple, setSelectedTemple] = useState<Temple>('mazu')
   useEffect(() => {
     if (!standalone) return
     const sync = () => {
       const key = window.location.hash.slice(1) as Temple
       setTemple(TEMPLES.includes(key) ? key : null)
+      if (TEMPLES.includes(key)) setSelectedTemple(key)
     }
     sync()
     window.addEventListener('hashchange', sync)
@@ -83,12 +86,13 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const chooseTemple = (key: Temple | null) => {
     if (standalone) window.location.hash = key ?? ''
     setTemple(key)
+    if (key) setSelectedTemple(key)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   if (standalone) return <div className="xtell-site">
-    <main id="xtell-main" className="xtell-container" tabIndex={-1}>
-      {!temple ? <TempleStreet onEnter={chooseTemple} /> : <>
+    <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
+      {!temple ? <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={chooseTemple} /> : <>
         <XTellAuthGate />
         <TempleRoom key={temple} temple={temple} onBack={() => chooseTemple(null)} standalone />
       </>}
@@ -365,12 +369,12 @@ function TempleRoom({ temple, onBack, standalone = false }: { temple: Temple; on
     // form and a reading are prose, so the room keeps its own 980 measure.
     <div className={standalone ? "xtell-room" : undefined} style={{ maxWidth: 980 }}>
       <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
-        ← {t('xtell.back')}
+        ← {t(standalone ? 'xtell.site.focus.back' : 'xtell.back')}
       </button>
       {standalone ? <>
         <header className="xtell-room-header">
-          <img src={`/xtell/${temple}.jpg`} alt="" width={768} height={432} />
-          <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p><h1>{t(`xtell.${temple}.name`)}</h1><p>{t(`xtell.${temple}.desc`)}</p></div>
+          <TempleArtwork temple={temple} kind="icon" className="xtell-room-artwork" />
+          <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p><h1>{t(`xtell.site.focus.${temple}.name`)}</h1><p>{t(`xtell.site.focus.${temple}.description`)}</p></div>
         </header>
         <ol className="xtell-room-steps" aria-label={t('xtell.site.navigation')}>
           {['details', 'result', 'conversation'].map((step, i) => <li key={step} aria-current={(!entered && i === 0) || (entered && i === 2) ? 'step' : undefined}><span>{String(i + 1).padStart(2, '0')}</span>{t(`xtell.site.${step}`)}</li>)}

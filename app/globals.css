@@ -3352,3 +3352,106 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
   .xtell-room-header p:not(.xtell-eyebrow) { font-size: 14px; line-height: 1.7; }
   .xtell-room-header .xtell-eyebrow { font-size: 10px; margin-bottom: 9px; }
 }
+
+/* Approved XTell D2 + D5: one temple in focus, illustrated selection menu.
+   These overrides only affect the standalone XTell shell. */
+html[data-site="xtell"] body, html[data-site="xtell"] .xtell-site, html[data-site="xtell"] .xtell-auth {
+  --xtell-paper: #faf6f0;
+  --xtell-ink: #302d29;
+  --xtell-secondary: #74685f;
+  --xtell-rule: #e4d9cd;
+  --xtell-vermilion: #984c36;
+  --xtell-tint: #efe5da;
+  --xtell-scene: #ecdccf;
+  --xtell-scene-ink: #624536;
+}
+.xtell-focus-brand { display: inline; font-size: 30px; letter-spacing: -.055em; }
+.xtell-focus-brand > span { color: var(--xtell-vermilion); }
+html[data-site="xtell"] .xtell-nav-inner { min-height: 70px; max-width: 1280px; gap: 34px; padding: 10px 32px; }
+html[data-site="xtell"] .xtell-nav-links { gap: 26px; }
+html[data-site="xtell"] .xtell-nav-links a { font-size: 13px; min-height: 44px; }
+html[data-site="xtell"] .xtell-nav-links a[aria-current]::after { bottom: -10px; }
+html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
+.xtell-explorer-container { max-width: 1280px; padding: 0 32px 30px; }
+.xtell-explorer { padding-top: 24px; }
+.xtell-focus-hero { display: grid; grid-template-columns: 44% 56%; min-height: 554px; border: 1px solid var(--xtell-rule); border-bottom: 0; }
+.xtell-focus-scene { position: relative; overflow: hidden; min-height: 554px; background: var(--xtell-scene); }
+.xtell-artwork { display: block; background-repeat: no-repeat; background-size: 500% 200%; flex: none; }
+.xtell-artwork-portrait { background-image: url('/xtell/approved/portraits.avif'); aspect-ratio: 1586 / 2480; }
+.xtell-artwork-icon { background-image: url('/xtell/approved/icons.avif'); aspect-ratio: 1; }
+.xtell-focus-portrait { width: 100%; max-width: 440px; position: absolute; left: 50%; top: 0; transform: translateX(-50%); }
+.xtell-focus-scene[data-kind="object"] .xtell-focus-portrait { max-width: 360px; }
+.xtell-focus-number { position: absolute; top: 25px; left: 25px; color: var(--xtell-scene-ink); font: 18px var(--xtell-serif); }
+.xtell-focus-number > span { font-size: 11px; opacity: .8; }
+.xtell-focus-caption { position: absolute; left: 25px; bottom: 22px; color: var(--xtell-scene-ink); font-size: 11px; letter-spacing: .25em; }
+.xtell-focus-copy { padding: 44px; align-self: center; min-width: 0; }
+.xtell-focus-eyebrow { font-size: 11px; color: var(--xtell-secondary); letter-spacing: .12em; line-height: 1.7; margin: 0 0 16px; }
+.xtell-focus-copy h1 { font: 500 clamp(36px, 4.5vw, 58px)/1.25 var(--xtell-serif); letter-spacing: .04em; margin: 0 0 22px; overflow-wrap: anywhere; }
+.xtell-focus-lead { font: 400 25px/1.65 var(--xtell-serif); white-space: pre-line; letter-spacing: .025em; margin: 0 0 20px; }
+.xtell-focus-description { font-size: 15px; line-height: 1.85; color: var(--xtell-secondary); max-width: 32em; margin: 0 0 22px; }
+.xtell-focus-methods { display: flex; flex-wrap: wrap; gap: 9px; padding: 0; list-style: none; margin: 0 0 28px; }
+.xtell-focus-methods li { border: 1px solid var(--xtell-rule); border-radius: 3px; padding: 4px 9px; font-size: 11px; line-height: 1.5; }
+.xtell-focus-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px; }
+.xtell-focus-enter { display: flex; align-items: center; justify-content: space-between; gap: 26px; min-width: 210px; max-width: 100%; min-height: 48px; background: var(--xtell-vermilion); color: var(--xtell-white); border: 0; border-radius: 3px; padding: 12px 20px; font: inherit; font-size: 15px; text-align: left; cursor: pointer; }
+.xtell-focus-enter:hover { filter: brightness(.95); }
+.xtell-focus-enter > span:last-child { flex-shrink: 0; }
+.xtell-focus-how { min-width: 0; flex: 1; font-size: 12px; color: var(--xtell-secondary); line-height: 1.8; }
+.xtell-focus-how summary { width: fit-content; max-width: 100%; min-height: 48px; display: flex; align-items: center; border-bottom: 1px solid var(--xtell-rule); cursor: pointer; list-style: none; }
+.xtell-focus-how summary::-webkit-details-marker { display: none; }
+.xtell-focus-how[open] { flex-basis: 100%; }
+.xtell-focus-how p { margin: 12px 0 0; }
+.xtell-focus-menu { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); padding: 8px 12px 12px; gap: 4px; border: 1px solid var(--xtell-rule); }
+.xtell-focus-choice { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-width: 0; gap: 8px; padding: 10px 4px 8px; background: transparent; color: var(--xtell-ink); border: 0; border-top: 3px solid transparent; border-radius: 4px; cursor: pointer; font: inherit; }
+.xtell-focus-choice[aria-pressed="true"] { background: var(--xtell-tint); color: var(--xtell-vermilion); border-top-color: var(--xtell-vermilion); }
+.xtell-focus-choice:hover { background: var(--xtell-tint); }
+.xtell-focus-icon { width: min(56px, 100%); border-radius: 3px; }
+.xtell-focus-label { font-size: 12px; line-height: 1.4; min-height: 2.8em; display: flex; align-items: center; justify-content: center; overflow-wrap: anywhere; text-align: center; }
+.xtell-room-artwork { width: 120px; border-radius: 5px; }
+.xtell-explorer-container > .xtell-disclaimer { padding-inline: 0; }
+@media (max-width: 900px) {
+  .xtell-focus-copy { padding: 32px; }
+  .xtell-focus-enter { min-width: 180px; }
+  .xtell-focus-hero { grid-template-columns: 42% 58%; }
+  .xtell-focus-menu { gap: 2px; padding-inline: 8px; }
+  .xtell-focus-label { font-size: 11px; }
+}
+@media (max-width: 700px) {
+  html[data-site="xtell"] .xtell-nav-inner { min-height: 64px; padding: 10px 20px; flex-wrap: nowrap; gap: 12px; }
+  html[data-site="xtell"] .xtell-nav-links { display: none; }
+  html[data-site="xtell"] .xtell-nav-actions { gap: 12px; }
+  html[data-site="xtell"] .xtell-nav-actions select { max-width: 88px; min-height: 44px; font-size: 13px; }
+  html[data-site="xtell"] .xtell-nav-actions .xtell-button { padding: 10px 13px; font-size: 13px; min-height: 44px; }
+  html[data-site="xtell"] .xtell-account-link { width: 44px; height: 44px; }
+  .xtell-focus-brand { font-size: 28px; }
+  .xtell-explorer-container { padding: 0 0 26px; }
+  .xtell-explorer { padding-top: 0; }
+  .xtell-focus-hero { display: block; border: 0; min-height: 0; }
+  .xtell-focus-scene { min-height: 0; height: 280px; }
+  .xtell-focus-portrait { width: 300px; max-width: 100%; top: -4px; }
+  .xtell-focus-scene[data-kind="object"] .xtell-focus-portrait { width: 230px; max-width: 100%; top: -24px; }
+  .xtell-focus-number { top: 20px; left: 20px; font-size: 16px; }
+  .xtell-focus-caption { left: 20px; bottom: 16px; }
+  .xtell-focus-copy { padding: 22px 24px 24px; }
+  .xtell-focus-eyebrow { margin-bottom: 8px; }
+  .xtell-focus-copy h1 { font-size: 36px; margin-bottom: 12px; line-height: 1.25; }
+  .xtell-focus-lead { font-size: 19px; line-height: 1.6; white-space: normal; margin-bottom: 12px; }
+  .xtell-focus-description { font-size: 15px; line-height: 1.75; margin-bottom: 16px; }
+  .xtell-focus-methods { gap: 8px; margin-bottom: 18px; }
+  .xtell-focus-methods li { padding: 3px 8px; }
+  .xtell-focus-actions { gap: 18px; }
+  .xtell-focus-enter { flex: 1 1 190px; min-width: 0; min-height: 48px; gap: 12px; padding: 12px 16px; font-size: 14px; }
+  .xtell-focus-how { flex: 0 1 auto; }
+  .xtell-focus-how[open] { flex: 1 1 100%; }
+  .xtell-focus-menu { grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 8px max(12px, env(safe-area-inset-bottom)); gap: 6px 2px; border-inline: 0; }
+  .xtell-focus-choice { min-height: 88px; padding: 7px 3px 8px; gap: 6px; }
+  .xtell-focus-icon { width: min(48px, 100%); }
+  .xtell-focus-label { font-size: 12px; min-height: 2.8em; }
+  .xtell-explorer-container > .xtell-disclaimer { padding-inline: 24px; }
+  .xtell-room-artwork { width: 96px; }
+}
+@media (max-width: 350px) {
+  html[data-site="xtell"] .xtell-nav-inner { padding-inline: 16px; }
+  html[data-site="xtell"] .xtell-nav-actions { gap: 8px; }
+  html[data-site="xtell"] .xtell-nav-actions select { max-width: 76px; }
+  .xtell-focus-copy { padding-inline: 20px; }
+}

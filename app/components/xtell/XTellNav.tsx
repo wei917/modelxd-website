@@ -7,7 +7,7 @@ import { useAuthModal } from '../../../lib/AuthModalContext'
 import { LANGS, useLang, type Lang } from '../../../lib/i18n'
 
 export function XTellMark() {
-  return <span className="xtell-brand"><span className="xtell-seal" aria-hidden="true">卜</span><span>XTell<span className="xtell-brand-note">X算命</span></span></span>
+  return <span className="xtell-brand xtell-focus-brand"><span>X</span>Tell</span>
 }
 
 export default function XTellNav({ user }: { user: User | null }) {

@@ -1,41 +1,55 @@
 'use client'
 
 import { useT } from '../../../lib/i18n'
+import { TempleArtwork, DISPLAY_TEMPLES, TEMPLE_ART, type TempleKey } from './TempleArtwork'
 
+// Also used to validate room hashes. These are the existing API keys.
 export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi'] as const
-export type TempleKey = typeof TEMPLES[number]
-const MARKS: Record<TempleKey, string> = { bazi: '命', ziwei: '星', yuelao: '緣', guandi: '義', mazu: '安', simianfo: '願', navagraha: '曜', zhanxing: '宙', xingming: '名', cezi: '字' }
-const METHODS: Record<TempleKey, string> = { bazi: '八字', ziwei: '紫微斗數', yuelao: '合婚', guandi: '關帝靈籤', mazu: '六十甲子籤', simianfo: '四面許願', navagraha: '吠陀占星', zhanxing: '西洋占星', xingming: '姓名學', cezi: '測字' }
+export type { TempleKey } from './TempleArtwork'
 
-export default function TempleStreet({ onEnter }: { onEnter: (key: TempleKey) => void }) {
+export default function TempleStreet({ selected, onSelect, onEnter }: {
+  selected: TempleKey
+  onSelect: (key: TempleKey) => void
+  onEnter: (key: TempleKey) => void
+}) {
   const t = useT()
-  return <>
-    <section className="xtell-welcome" aria-labelledby="xtell-title">
-      <div>
-        <p className="xtell-eyebrow">{t('xtell.site.eyebrow')}</p>
-        <h1 id="xtell-title">{t('xtell.site.title')}</h1>
-        <p className="xtell-welcome-copy">{t('xtell.site.subtitle')}</p>
+  const name = t('xtell.site.focus.' + selected + '.name')
+  const qian = selected === 'mazu' || selected === 'guandi'
+  return <section className="xtell-explorer" aria-label={t('xtell.site.choose')}>
+    <div className="xtell-focus-hero">
+      <div className="xtell-focus-scene" data-kind={TEMPLE_ART[selected].index >= 5 ? 'object' : 'deity'}>
+        <TempleArtwork temple={selected} className="xtell-focus-portrait" label={name} />
+        <span className="xtell-focus-number" aria-hidden="true">{String(DISPLAY_TEMPLES.indexOf(selected) + 1).padStart(2, '0')} <span>/ 10</span></span>
+        <span className="xtell-focus-caption" aria-hidden="true">{TEMPLE_ART[selected].caption}</span>
       </div>
-      <div className="xtell-welcome-aside"><span className="xtell-street-glyph" aria-hidden="true">廟街</span><p>{t('xtell.site.free')}</p></div>
-    </section>
-    <div className="xtell-street-label"><h2>{t('xtell.site.choose')}</h2><span>{String(TEMPLES.length).padStart(2, '0')} <span aria-hidden="true">/</span> {t('xtell.site.temples')}</span></div>
-    <div className="xtell-temple-grid">
-      {TEMPLES.map((key, index) => <button key={key} className="xtell-temple-card" onClick={() => onEnter(key)}>
-        <div className="xtell-temple-image">
-          {/* Existing commissioned temple art, preserved in its original ratio. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/xtell/${key}.jpg`} alt="" width={768} height={432} loading={index < 3 ? 'eager' : 'lazy'} />
-          <span className="xtell-temple-number">{String(index + 1).padStart(2, '0')}</span>
-          <span className="xtell-temple-mark" aria-hidden="true">{MARKS[key]}</span>
+      <div className="xtell-focus-copy">
+        <div aria-live="polite" aria-atomic="true">
+          <p className="xtell-focus-eyebrow">{t('xtell.site.focus.' + selected + '.eyebrow')}</p>
+          <h1 id="xtell-title">{name}</h1>
+          <p className="xtell-focus-lead">{t('xtell.site.focus.' + selected + '.lead')}</p>
+          <p className="xtell-focus-description">{t('xtell.site.focus.' + selected + '.description')}</p>
+          <ul className="xtell-focus-methods" aria-label={t('xtell.site.focus.methods')}>
+            {t('xtell.site.focus.' + selected + '.methods').split('|').map(method => <li key={method}>{method}</li>)}
+          </ul>
         </div>
-        <div className="xtell-temple-copy">
-          <span className="xtell-temple-method">{METHODS[key]}</span>
-          <h3>{t(`xtell.${key}.name`)}</h3>
-          <p>{t(`xtell.${key}.desc`)}</p>
-          <span className="xtell-temple-enter">{t('xtell.site.visit')}<span aria-hidden="true">↗</span></span>
+        <div className="xtell-focus-actions">
+          <button type="button" className="xtell-focus-enter" onClick={() => onEnter(selected)}>
+            <span>{t('xtell.site.focus.enter').replace('{temple}', name)}</span><span aria-hidden="true">→</span>
+          </button>
+          <details className="xtell-focus-how" key={selected}>
+            <summary>{t('xtell.site.focus.how')}</summary>
+            <p>{t(qian ? 'xtell.site.focus.howQian' : 'xtell.site.focus.howChart')}</p>
+            <p>{t('xtell.site.focus.howReading')}</p>
+          </details>
         </div>
-      </button>)}
+      </div>
     </div>
-    <div className="xtell-street-note"><span className="xtell-note-mark" aria-hidden="true">卜</span><p>{t('xtell.site.note')}</p></div>
-  </>
+    <nav className="xtell-focus-menu" aria-label={t('xtell.site.choose')}>
+      {DISPLAY_TEMPLES.map(key => <button type="button" key={key} className="xtell-focus-choice"
+        aria-label={t('xtell.site.focus.' + key + '.name')} aria-pressed={selected === key} onClick={() => onSelect(key)}>
+        <TempleArtwork temple={key} kind="icon" className="xtell-focus-icon" />
+        <span className="xtell-focus-label">{t('xtell.site.focus.' + key + '.short')}</span>
+      </button>)}
+    </nav>
+  </section>
 }
