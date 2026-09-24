@@ -658,3 +658,11 @@ board more than the balanced draw did, because Qwen judged fewer old pairs
 than the others: Fable 5.1 −41, GPT-6 Astra −57, Terra −38, everyone else
 within ±20; Opus 5 and Grok 4.6 become a 1692/1691 tie. Kept verdicts:
 Qwen 3,881, Opus 1,653, Sol 809, Grok 401. Published with the Opus 5.5 row.
+
+**Amendment 2026-09-24 — owner: "do mixing."** Qwen-first made one ~30 s
+judge carry 90% of the pairs (44 verdicts in 12 minutes). Back to the
+balanced draw: `PREFERRED_JUDGE = None`, each judge takes a quarter, four
+run at once. `judge.py --one-per-pair` now also skips any pair that already
+holds a panel verdict, so the ~100 pairs Qwen had decided were kept, not
+re-judged; the fit's rotation rule keeps those verdicts. Label back to
+"… one per pair, no self-judging …"; page sentence "drawn evenly".
