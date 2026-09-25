@@ -3381,9 +3381,6 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-artwork-icon { background-image: url('/xtell/approved/icons.avif'); aspect-ratio: 1; }
 .xtell-focus-portrait { width: 100%; max-width: 440px; position: absolute; left: 50%; top: 0; transform: translateX(-50%); }
 .xtell-focus-scene[data-kind="object"] .xtell-focus-portrait { max-width: 360px; }
-.xtell-focus-number { position: absolute; top: 25px; left: 25px; color: var(--xtell-scene-ink); font: 18px var(--xtell-serif); }
-.xtell-focus-number > span { font-size: 11px; opacity: .8; }
-.xtell-focus-caption { position: absolute; left: 25px; bottom: 22px; color: var(--xtell-scene-ink); font-size: 11px; letter-spacing: .25em; }
 .xtell-focus-copy { padding: 44px; align-self: center; min-width: 0; }
 .xtell-focus-eyebrow { font-size: 11px; color: var(--xtell-secondary); letter-spacing: .12em; line-height: 1.7; margin: 0 0 16px; }
 .xtell-focus-copy h1 { font: 500 clamp(36px, 4.5vw, 58px)/1.25 var(--xtell-serif); letter-spacing: .04em; margin: 0 0 22px; overflow-wrap: anywhere; }
@@ -3429,8 +3426,6 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
   .xtell-focus-scene { min-height: 0; height: 280px; }
   .xtell-focus-portrait { width: 300px; max-width: 100%; top: -4px; }
   .xtell-focus-scene[data-kind="object"] .xtell-focus-portrait { width: 230px; max-width: 100%; top: -24px; }
-  .xtell-focus-number { top: 20px; left: 20px; font-size: 16px; }
-  .xtell-focus-caption { left: 20px; bottom: 16px; }
   .xtell-focus-copy { padding: 22px 24px 24px; }
   .xtell-focus-eyebrow { margin-bottom: 8px; }
   .xtell-focus-copy h1 { font-size: 36px; margin-bottom: 12px; line-height: 1.25; }

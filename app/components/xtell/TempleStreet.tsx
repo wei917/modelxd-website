@@ -19,8 +19,6 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
     <div className="xtell-focus-hero">
       <div className="xtell-focus-scene" data-kind={TEMPLE_ART[selected].index >= 5 ? 'object' : 'deity'}>
         <TempleArtwork temple={selected} className="xtell-focus-portrait" label={name} />
-        <span className="xtell-focus-number" aria-hidden="true">{String(DISPLAY_TEMPLES.indexOf(selected) + 1).padStart(2, '0')} <span>/ 10</span></span>
-        <span className="xtell-focus-caption" aria-hidden="true">{TEMPLE_ART[selected].caption}</span>
       </div>
       <div className="xtell-focus-copy">
         <div aria-live="polite" aria-atomic="true">
