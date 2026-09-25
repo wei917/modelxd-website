@@ -181,7 +181,15 @@ export async function POST(req: Request) {
         },
         [],
         { userId: user.id },
-        { system: `${MASTERS[temple]}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`, search },
+        {
+          system: `${MASTERS[temple]}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`,
+          search,
+          // Qwen's own default is thinking ON with no budget; on a 紫微 prompt
+          // (12 palaces + 運限 + classics) that was 130 s to the first token
+          // (Sep 24). A reading is interpretation, not a proof — thinking off
+          // here, the answer streams in seconds. Other providers keep theirs.
+          thinking: (model as any).provider === 'alibaba' ? 'thinking_false' : null,
+        },
       )
     },
   })

@@ -754,6 +754,7 @@ function BaziBoard({ chart }: { chart: any }) {
 }
 
 function ZiweiBoard({ chart }: { chart: any }) {
+  const t = useT()
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
@@ -774,6 +775,19 @@ function ZiweiBoard({ chart }: { chart: any }) {
           </div>
         ))}
       </div>
+      {chart.horoscope && (
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 12.5, lineHeight: 1.8, color: 'var(--muted)' }}>
+          <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.ziwei.periods')}</div>
+          {[chart.horoscope.decadal, ...chart.horoscope.years, chart.horoscope.month].map((p: any, k: number) => (
+            <div key={k}>
+              <b style={{ color: 'var(--white)' }}>{p.name}{p.year ? ` ${p.year}` : ''}{p.label ? ` ${p.label}` : ''}</b>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', margin: '0 8px' }}>{p.ganZhi}{p.range ? ` · ${p.range[0]}–${p.range[1]}歲` : ''}</span>
+              {t('xtell.ziwei.lands')} <b style={{ color: 'var(--white)' }}>{p.palace}</b>　
+              <span style={{ color: 'var(--muted2)' }}>祿{p.mutagen[0]} 權{p.mutagen[1]} 科{p.mutagen[2]} 忌{p.mutagen[3]}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

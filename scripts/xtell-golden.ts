@@ -65,6 +65,12 @@ const ming: any = (z.palaces as any[]).find((p: any) => p.name === '命宮')
 eq('1990-01-01 申時 男 — 命宮', `${ming?.ganZhi} ${(ming?.majorStars ?? []).join(',')}`, '己巳 巨門[旺]')
 eq('  五行局', (z as any).fiveElementsClass, '木三局')
 eq('  命主/身主', `${(z as any).soul}/${(z as any).body}`, '武曲/天機')
+// 運限 frozen at 2026-09-24: 大限 in the natal 子女宮 (33–42), 流年 2026 丙午
+// with its 命宮 on the natal 父母宮, 流年四化 from the 丙 stem.
+const zh = ziweiChart({ y: 1990, m: 1, d: 1, h: 15, mi: 25, gender: 'male' }, new Date(2026, 8, 24))
+eq('  大限 @2026-09-24', `${zh.horoscope.decadal.palace} ${zh.horoscope.decadal.range?.join('-')} ${zh.horoscope.decadal.ganZhi}`, '子女 33-42 丙寅')
+eq('  流年 2026', `${zh.horoscope.years[0].year} ${zh.horoscope.years[0].ganZhi} 命宮在${zh.horoscope.years[0].palace} 四化 ${zh.horoscope.years[0].mutagen.join('')}`, '2026 丙午 命宮在父母 四化 天同天機文昌廉貞')
+eq('  流年官祿 maps to a natal palace', String(!!zh.horoscope.years[0].roles['官祿']), 'true')
 
 // ── 關帝廟 ─────────────────────────────────────────────────────────────────
 // The corpus must be whole: 100 sticks, four lines each, the 甲子 label in

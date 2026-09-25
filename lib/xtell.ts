@@ -146,9 +146,42 @@ export function timeIndexOf(h: number): number {
   return h === 23 ? 12 : Math.floor((h + 1) / 2)
 }
 
-export function ziweiChart(b: BirthInput) {
-  const a = astro.bySolar(`${b.y}-${b.m}-${b.d}`, timeIndexOf(b.h), b.gender === 'male' ? 'male' : 'female', true, 'zh-TW')
+// 運限: the 大限 in force, this year's and next year's 流年, and the current
+// 流月 — each as "which NATAL palace its 命宮 lands on" plus its 四化
+// (祿權科忌 by star). Both masters were telling visitors, correctly, that
+// the chart carried no 大限/流年 and refusing to say which year was better
+// (owner, Sep 24) — iztro had it all along; it just was not serialized.
+// `now` is a parameter so the golden suite can freeze a date.
+export type ZiweiPeriod = { name: string; ganZhi: string; palace: string; range?: [number, number]; year?: number; mutagen: string[]; roles: Record<string, string> }
+function periodOf(a: any, h: any, name: string, year?: number): ZiweiPeriod {
+  const natal = a.palaces.map((p: any) => p.name as string)
+  const idx = h.index as number
+  // roles: 流年/大限 palace role → the natal palace it sits on
+  const roles: Record<string, string> = {}
+  ;(h.palaceNames as string[]).forEach((role, i) => { roles[role] = natal[i] })
   return {
+    name, ganZhi: `${h.heavenlyStem}${h.earthlyBranch}`, palace: natal[idx],
+    range: name === '大限' ? a.palaces[idx]?.decadal?.range : undefined,
+    year, mutagen: h.mutagen as string[], roles,
+  }
+}
+
+export function ziweiChart(b: BirthInput, now: Date = new Date()) {
+  const a = astro.bySolar(`${b.y}-${b.m}-${b.d}`, timeIndexOf(b.h), b.gender === 'male' ? 'male' : 'female', true, 'zh-TW')
+  const ymd = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+  const thisYear = now.getFullYear()
+  // 流年 turns at 立春; mid-year dates read each year's own pillar cleanly.
+  const h0: any = a.horoscope(ymd(now))
+  const h1: any = a.horoscope(`${thisYear}-6-1`)
+  const h2: any = a.horoscope(`${thisYear + 1}-6-1`)
+  const horoscope = {
+    nominalAge: h0.age?.nominalAge as number | undefined,
+    decadal: periodOf(a, h0.decadal, '大限'),
+    years: [periodOf(a, h1.yearly, '流年', thisYear), periodOf(a, h2.yearly, '流年', thisYear + 1)],
+    month: { ...periodOf(a, h0.monthly, '流月'), label: `${thisYear}-${now.getMonth() + 1}` },
+  }
+  return {
+    horoscope,
     solar: `${b.y}-${b.m}-${b.d} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}`,
     lunar: a.lunarDate,
     time: a.time,
@@ -171,13 +204,29 @@ export type ZiweiChart = ReturnType<typeof ziweiChart>
 export function ziweiFacts(c: ZiweiChart, gender: string): string {
   const lines = c.palaces.map(p =>
     `${p.name}（${p.ganZhi}${p.isBodyPalace ? '，身宮' : ''}）：主星 ${p.majorStars.join('、') || '無主星'}${p.minorStars.length ? `；輔星 ${p.minorStars.join('、')}` : ''}`)
+  const hua = (m: string[]) => `化祿 ${m[0]}、化權 ${m[1]}、化科 ${m[2]}、化忌 ${m[3]}`
+  const ROLES = ['命宮', '官祿', '財帛', '夫妻', '遷移', '田宅', '福德', '疾厄']
+  const roleLine = (p: ZiweiPeriod) => ROLES.map(r => `${p.name}${r}＝本命${p.roles[r]}宮`).join('，')
+  const h = c.horoscope
+  const period = (p: ZiweiPeriod) => [
+    `${p.name}${p.year ? ` ${p.year} 年` : ''}（${p.ganZhi}${p.range ? `，${p.range[0]}–${p.range[1]} 歲` : ''}）：${p.name}命宮落在本命「${p.palace}宮」；${p.name}四化：${hua(p.mutagen)}`,
+    `  ${roleLine(p)}`,
+  ].join('\n')
   return [
     `出生（國曆）：${c.solar}，${gender === 'male' ? '男' : '女'}`,
     `農曆：${c.lunar} ${c.time}`,
     `五行局：${c.fiveElementsClass}　命主：${c.soul}　身主：${c.body}`,
-    `十二宮：`,
+    `十二宮（本命盤）：`,
     ...lines,
-  ].join('\n')
+    ``,
+    `運限（系統以 iztro 排定，可直接據此論流年，勿自行推算）：`,
+    h.nominalAge ? `目前虛歲：${h.nominalAge}` : '',
+    period(h.decadal),
+    period(h.years[0]),
+    period(h.years[1]),
+    `${h.month.name}（${h.month.label}，${h.month.ganZhi}）：流月命宮落在本命「${h.month.palace}宮」；流月四化：${hua(h.month.mutagen)}`,
+    `論某一年時：以該年流年四化落入哪一本命宮位、流年命宮與流年官祿／財帛所疊的本命宮位及其主星為據，並參照大限四化；只提供今年與明年，更遠的年份與其他月份請告知信眾系統未排、不可推測。`,
+  ].filter(x => x !== '').join('\n')
 }
 
 // ── 月老廟：合婚 ────────────────────────────────────────────────────────────
@@ -481,6 +530,7 @@ export const MASTERS: Record<Temple, string> = {
 規則：
 - 只根據提供的星盤內容解讀（十二宮、主星與四化、五行局、命主身主）。絕對不要自行安星或修改宮位——排盤是系統算好的，你的工作只有解讀。
 - 若使用者有提問，先看相關宮位（如問感情看夫妻宮，問事業看官祿宮），並參照命宮與三方四正。若沒有提問，依序談：命宮格局、事業、財帛、感情、遷移與人際。
+- 問到「今年、明年、什麼時候」：系統已附上目前大限、今年與明年的流年、以及本月流月，各含命宮所在的本命宮位與四化（祿權科忌）。就用這些論：流年四化落入哪一宮、流年命宮與流年官祿／財帛疊在本命哪一宮、大限四化如何配合。不要說「沒有流年資料」。只有今年與明年有排，再遠的年份或其他月份要如實說系統未排，不可推測。
 - 語氣沉穩清楚，逐宮說明時先講星，再講意義。使用繁體中文（除非使用者用其他語言提問）。
 - 涉及健康、投資、法律時，只能談傾向與提醒，明確建議諮詢專業人士，不給具體指示。
 - 結尾提醒：命理僅供參考與娛樂，人生的選擇永遠在自己手上。\n${TONE}`,
