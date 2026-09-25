@@ -234,6 +234,8 @@ const knownAt = (y: number, m: number, d: number, h = 12) => { const b: any = { 
   const y = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'year', { year: 2026 }), f = zhanxingFacts(y, 'male')
   check('unknown hour, year: no house on the progressed Moon and no return clock time', !/推運月亮：[^\n]*第\d+宮/.test(f) && !/太陽回歸：\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(f) && !/推運月亮：[^\n]*\d+\.\d°/.test(f))
   check('unknown hour, year: progressed Moon house is 0 and its aspects are not reported', y.year!.prog.moon.house === 0 && y.year!.prog.aspects.every(a => a.a !== 'Moon'))
+  check('unknown hour, year: no return Moon at all, and the facts say why', y.year!.ret.planets.every(p => p.body !== 'Moon') && f.includes('回歸盤月亮不列') && !/月亮：/.test(f.slice(f.indexOf('回歸盤行星'), f.indexOf('次限推運'))))
+  check('known hour, year: the return Moon is still reported', zhanxingChart(knownAt(1990, 1, 1), 'taipei', 'year', { year: 2026 }).year!.ret.planets.some(p => p.body === 'Moon'))
 }
 {
   const s = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'synastry', { b2: knownAt(1985, 7, 20, 9), place2: 'taipei' }), f = zhanxingFacts(s, 'male')

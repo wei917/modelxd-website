@@ -1678,7 +1678,7 @@ function ZhanxingBoard({ chart }: { chart: any }) {
           <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.natalchart')}</summary>
           <div style={{ marginTop: 12 }}><NatalTable c={c} /></div>
         </details>
-        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.year.note')}</div>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(c.hourUnknown ? 'xtell.astro.year.note.unknown' : 'xtell.astro.year.note')}</div>
       </div>
     )
   }

@@ -689,6 +689,7 @@ export function returnFacts(r: SolarReturn, hourUnknown = false): string {
     // hour moves by up to half a degree: the return time is then off by up
     // to twelve hours and its Ascendant means nothing.
     hourUnknown ? `出生時刻不詳：回歸時刻只能取到日，回歸盤上升與宮位無法判定，不得論述。` : `回歸盤上升：${signName(Math.floor(r.asc / 30))} ${dms(r.asc % 30)}`,
-    `回歸盤行星：`, ...rows,
+    ...(hourUnknown ? ['回歸盤月亮不列：回歸時刻差幾小時，月亮就差好幾度，不要補。'] : []),
+    `回歸盤行星${hourUnknown ? '（不含月亮）' : ''}：`, ...rows,
   ].join('\n')
 }

@@ -466,7 +466,11 @@ export function zhanxingChart(
   if (mode === 'year') {
     const now = new Date()
     const year = opts?.year ?? now.getUTCFullYear()
-    return { mode, natal, year: { year, ret: solarReturn(bp, year), prog: progressions(natal, bp, now) } }
+    const ret = solarReturn(bp, year)
+    // An unknown hour moves the return moment by up to twelve hours, and the
+    // Moon by up to 6.5° with it, so the return Moon is dropped at the source:
+    // neither the board nor the facts can then show it (Codex QA, Sep 25).
+    return { mode, natal, year: { year, ret: bp.hourUnknown ? { ...ret, planets: ret.planets.filter(p => p.body !== 'Moon') } : ret, prog: progressions(natal, bp, now) } }
   }
   return { mode, natal }
 }
