@@ -20,6 +20,20 @@ function AuthFeatureIcon({ name }: { name: string }) {
   }
 }
 
+/** The XTell copy names ModelXD in every language; render that word as the
+ *  mark + a link to the main site, so a newcomer sees whose account this is. */
+function brandLinked(copy: string) {
+  const i = copy.indexOf('ModelXD')
+  if (i < 0) return copy
+  return <>
+    {copy.slice(0, i)}
+    <a href="https://www.modelxd.com" target="_blank" rel="noopener" className="xtell-auth-maker">
+      <img src="/logo.png" alt="" width={16} height={16} />ModelXD
+    </a>
+    {copy.slice(i + 'ModelXD'.length)}
+  </>
+}
+
 export default function AuthModal() {
   const isXTell = useSite() === 'xtell'
   const { open, nextPath, hide, required, release } = useAuthModal()
@@ -183,7 +197,7 @@ export default function AuthModal() {
           <div className="auth-divider" />
 
           <div id="auth-title" className="auth-title">{isXTell ? t('xtell.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
-          {isXTell && <p className="auth-sub">{t('xtell.site.authCopy')}</p>}
+          {isXTell && <p className="auth-sub">{brandLinked(t('xtell.site.authCopy'))}</p>}
 
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">

@@ -66,6 +66,6 @@ export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
     <div><span className="xtell-footer-brand">{t('xtell.site.brand')}</span><span>{t('xtell.site.entertainment')}</span></div>
-    <nav aria-label={t('xtell.site.legal')}><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span>by ModelXD</span></nav>
+    <nav aria-label={t('xtell.site.legal')}><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener"><img src="/logo.png" alt="" width={18} height={18} />ModelXD</a></span></nav>
   </footer>
 }
