@@ -29,8 +29,27 @@ function subjectOf(body: any) {
 async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string, temple: Temple, body: any, chart: unknown, extras: Record<string, unknown>) {
   try {
     const clean = Object.fromEntries(Object.entries(extras).filter(([, v]) => v !== undefined))
+    const subject = subjectOf(body)
+    // Recasting the same chart is not a new visit. If a row with the same
+    // inputs exists and nobody has asked anything in it yet, hand that one
+    // back instead of inserting another (owner, Sep 24: seven rows for one
+    // afternoon of the same 紫微 chart). A row that already holds a
+    // conversation stays as it is; the history list offers Continue for it.
+    // Compared in code, not in the query: a jsonb equality filter through
+    // PostgREST does not match reliably (key order, serialisation), and the
+    // candidate set is tiny — the visitor's last ten rows in this temple.
+    const canon = (v: unknown): string => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x)) ? Object.fromEntries(Object.keys(x).sort().map(k => [k, x[k]])) : x)
+    const want = canon(subject)
+    const { data: recent } = await sb.from('xtell_readings')
+      .select('id, turns, subject').eq('user_id', userId).eq('temple', temple).is('deleted_at', null)
+      .order('created_at', { ascending: false }).limit(10)
+    const reusable = (recent ?? []).find(r => (!Array.isArray(r.turns) || r.turns.length === 0) && canon(r.subject) === want)
+    if (reusable) {
+      await sb.from('xtell_readings').update({ chart, extras: Object.keys(clean).length ? clean : null, updated_at: new Date().toISOString() }).eq('id', reusable.id)
+      return reusable.id as string
+    }
     const { data, error } = await sb.from('xtell_readings')
-      .insert({ user_id: userId, temple, subject: subjectOf(body), chart, extras: Object.keys(clean).length ? clean : null })
+      .insert({ user_id: userId, temple, subject, chart, extras: Object.keys(clean).length ? clean : null })
       .select('id').single()
     if (error) throw error
     return data.id as string

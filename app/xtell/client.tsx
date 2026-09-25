@@ -1600,7 +1600,7 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
       const { data } = await sb.from('xtell_readings')
         .select('id, temple, subject, chart, extras, turns, title, cost_cents, created_at')
         .eq('user_id', user.id).eq('temple', temple).is('deleted_at', null)
-        .order('created_at', { ascending: false }).limit(8)
+        .order('created_at', { ascending: false }).limit(5)
       if (active) { setRows((data ?? []) as any); setLoaded(true) }
     })()
     return () => { active = false }
