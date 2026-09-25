@@ -41,7 +41,13 @@ export default function XTellNav({ user }: { user: User | null }) {
         {/* The avatar on the right IS the account link; a second text link
             said the same thing twice (owner, Sep 24). */}
         <nav className="xtell-nav-links" aria-label={t('xtell.site.navigation')}>
-          <a href="/" aria-current={pathname === '/' || pathname === '/xtell' ? 'page' : undefined}>{t('xtell.site.street')}</a>
+          <a href="/" aria-current={pathname === '/' || pathname === '/xtell' ? 'page' : undefined}
+            onClick={e => {
+              // Inside a temple, 探索殿堂 is the back link: clear the hash in
+              // place so the explorer keeps the selected temple instead of
+              // reloading to the default one.
+              if (window.location.pathname === '/' && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
+            }}>{t('xtell.site.street')}</a>
         </nav>
         <div className="xtell-nav-actions">
           <select value={lang} onChange={e => setLang(e.target.value as Lang)} aria-label={t('xtell.site.language')}>

@@ -446,9 +446,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     // The arena is 1200 wide because XBoard/XEval put tables in it. A birth
     // form and a reading are prose, so the room keeps its own 980 measure.
     <div className={standalone ? "xtell-room" : undefined} style={{ maxWidth: 980 }}>
-      <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
-        ← {t(standalone ? 'xtell.site.focus.back' : 'xtell.back')}
-      </button>
+      {/* On the standalone site the header's 探索殿堂 link is the way back
+          (owner, Sep 24: no second back link). www's /xtell keeps it — the
+          ModelXD sidebar has no route to the street. */}
+      {!standalone && (
+        <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
+          ← {t('xtell.back')}
+        </button>
+      )}
       {standalone ? <>
         <header className="xtell-room-header">
           <TempleArtwork temple={temple} kind="icon" className="xtell-room-artwork" />
