@@ -19,6 +19,7 @@ import {
   aspectsBetween, houseOf, longitude, SIGNS, PLANETS, type BirthPlace,
 } from '../lib/astrology'
 import { jyotishChart, lahiriAyanamsa, zonedToUtc } from '../lib/jyotish'
+import { zhanxingChart, zhanxingFacts, validBirth } from '../lib/xtell'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => {
@@ -207,6 +208,42 @@ check('a southern-hemisphere chart still runs', (() => {
   const c3 = natalChart({ y: 1975, m: 2, d: 20, h: 3, mi: 45, lat: -33.87, lon: 151.21, tz: 'Australia/Sydney', place: 'Sydney' })
   return c3.system === 'placidus' && c3.cusps.every(Number.isFinite)
 })())
+
+// ── Unknown birth time (Codex QA, Sep 25) ──────────────────────────────────
+// The rule: nothing the hour decides may be stated. Angles, houses, the Moon's
+// degree and aspects, and the sign of any body that crosses a boundary that
+// day are all withheld, in the facts the master reads and in the engine
+// outputs the board draws from.
+const unknownAt = (y: number, m: number, d: number) => { const b: any = { y, m, d, h: 12, mi: 0, gender: 'male', hourUnknown: true }; validBirth(b); return b }
+const knownAt = (y: number, m: number, d: number, h = 12) => { const b: any = { y, m, d, h, mi: 0, gender: 'male' }; validBirth(b); return b }
+{
+  // 1990-01-20 Taipei: Capricorn until the evening, Aquarius after.
+  const c = zhanxingChart(unknownAt(1990, 1, 20), 'taipei', 'natal'), f = zhanxingFacts(c, 'male')
+  const two = c.natal.daySigns?.Sun
+  check('unknown hour: a Sun transition day lists both signs', !!two && two[0] === 9 && two[1] === 10, JSON.stringify(two))
+  check('unknown hour: the facts say 摩羯座或水瓶座 for the Sun, never one of them', f.includes('太陽星座（一般說的「星座」）：摩羯座或水瓶座') && !/太陽：摩羯座 \d/.test(f))
+  check('known hour: the same day has one Sun sign and no daySigns', zhanxingChart(knownAt(1990, 1, 20), 'taipei', 'natal').natal.daySigns === undefined)
+}
+{
+  const c = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'natal'), f = zhanxingFacts(c, 'male')
+  check('unknown hour: a Moon transition day lists both signs and no degree', /月亮：水瓶座或雙魚座（/.test(f) && !/月亮：水瓶座 \d/.test(f), JSON.stringify(c.natal.daySigns))
+  check('unknown hour: natal aspects carry no angle and no Moon', c.natal.aspects.every(a => !/ASC|MC|Fortune|Moon/.test(a.a + ' ' + a.b)))
+  check('unknown hour: no chart ruler', c.natal.chartRuler === null)
+}
+{
+  const y = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'year', { year: 2026 }), f = zhanxingFacts(y, 'male')
+  check('unknown hour, year: no house on the progressed Moon and no return clock time', !/推運月亮：[^\n]*第\d+宮/.test(f) && !/太陽回歸：\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(f) && !/推運月亮：[^\n]*\d+\.\d°/.test(f))
+  check('unknown hour, year: progressed Moon house is 0 and its aspects are not reported', y.year!.prog.moon.house === 0 && y.year!.prog.aspects.every(a => a.a !== 'Moon'))
+}
+{
+  const s = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'synastry', { b2: knownAt(1985, 7, 20, 9), place2: 'taipei' }), f = zhanxingFacts(s, 'male')
+  check('unknown hour, synastry: the summary keeps 水瓶座或雙魚座', /第一位[^\n]*月亮 水瓶座或雙魚座/.test(f))
+  check('unknown hour, synastry: no composite Moon, no composite Asc, no aspects from the unknown Moon', s.synastry!.composite.planets.every(p => p.body !== 'Moon') && s.synastry!.composite.asc === null && s.synastry!.inter.every(a => a.a !== 'Moon'))
+}
+{
+  const d = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'today')
+  check('unknown hour, today: transits never target the Moon or the angles', d.today!.list.every(x => !/Moon|ASC|MC|Fortune/.test(String(x.b))))
+}
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
 process.exit(fails === 0 ? 0 : 1)

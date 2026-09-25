@@ -766,7 +766,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 120 }}>
             {turns.length === 0 && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-                {t(`xtell.${temple}.intro`)}
+                {t(temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
               </div>
             )}
             {initial && turns.length > 0 && (
@@ -1359,6 +1359,16 @@ function PlaceRow({ value, onChange, sel }: { value: string; onChange: (v: strin
 }
 
 const sign = (i: number) => `${SIGNS[i][1]}座`
+/** One sign, or both of a transition day's when the hour is unknown. Reads
+ *  the engine's daySigns; `moonSigns` is the short-lived earlier shape of the
+ *  same idea, still on a few saved charts. */
+const signsOfC = (c: any, body: string): number[] => {
+  const two = c?.daySigns?.[body] ?? (body === 'Moon' ? c?.moonSigns : undefined)
+  if (Array.isArray(two) && two.length > 1) return two
+  const p = c?.planets?.find((x: any) => x.body === body)
+  return p ? [p.sign] : []
+}
+const signLabelC = (c: any, body: string) => signsOfC(c, body).map(sign).join(' / ')
 const dms = (d: number) => `${Math.floor(d)}°${String(Math.floor((d % 1) * 60)).padStart(2, '0')}'`
 const nameOf = (k: string) => (PLANET_ZH as any)[k] ?? (POINT_ZH as any)[k] ?? k
 const glyphOf = (k: string) => (PLANET_GLYPH as any)[k] ?? ''
@@ -1412,17 +1422,17 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
   const t = useT()
   // Older saved charts predate the flag and read as a known hour.
   const unknown = !!c.hourUnknown
-  const sun = c.planets.find((p: any) => p.body === 'Sun'), moon = c.planets.find((p: any) => p.body === 'Moon')
-  const moonLabel = unknown && Array.isArray(c.moonSigns) && c.moonSigns.length > 1
-    ? c.moonSigns.map((x: number) => sign(x)).join(' / ')
-    : sign(moon.sign)
+  const sunSigns = signsOfC(c, 'Sun')
+  // Bodies with two possible signs that day; the note under the cards names
+  // them and says why (Codex QA: the slash had no explanation nearby).
+  const twoBodies: string[] = unknown ? c.planets.filter((p: any) => signsOfC(c, p.body).length > 1).map((p: any) => PLANET_ZH[p.body as keyof typeof PLANET_ZH]) : []
   const local = localStamp(String(c.utc), String(c.tz))
   // The answer to 「我是什麼星座」 comes first. The everyday 星座 is the Sun
   // sign; the Ascendant, which used to lead the board, was being read as the
   // answer (Codex QA, Sep 25).
   const big: Array<[string, string, string]> = [
-    ['sun', sign(sun.sign), t('xtell.astro.sun.meaning')],
-    ['moon', moonLabel, t('xtell.astro.moon.meaning')],
+    ['sun', signLabelC(c, 'Sun'), t('xtell.astro.sun.meaning')],
+    ['moon', signLabelC(c, 'Moon'), t('xtell.astro.moon.meaning')],
     ['asc', unknown ? t('xtell.astro.needstime') : sign(Math.floor(c.angles.asc / 30)), t('xtell.astro.asc.meaning')],
   ]
   const planetTable = (
@@ -1441,9 +1451,10 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
                 <span style={{ color: 'var(--muted2)', fontWeight: 400, marginRight: 6 }}>{glyphOf(p.body)}</span>
                 {PLANET_ZH[p.body as keyof typeof PLANET_ZH]}
               </td>
-              <td style={{ padding: '6px 14px 6px 0' }}>{p.body === 'Moon' ? moonLabel : sign(p.sign)}</td>
+              <td style={{ padding: '6px 14px 6px 0' }}>{signLabelC(c, p.body)}</td>
               <td style={{ padding: '6px 14px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>
-                {dms(p.deg)}{p.retro && p.body !== 'NorthNode' && p.body !== 'SouthNode' ? ' ℞' : ''}
+                {/* No noon degree for the Moon or a sign-crossing body when the hour is unknown. */}
+                {unknown && (p.body === 'Moon' || signsOfC(c, p.body).length > 1) ? '—' : dms(p.deg)}{p.retro && p.body !== 'NorthNode' && p.body !== 'SouthNode' ? ' ℞' : ''}
               </td>
               {!unknown && <td style={{ padding: '6px 14px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>{p.house}</td>}
             </tr>
@@ -1455,7 +1466,9 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
   return (
     <div>
       <div style={{ fontFamily: 'var(--font-display), serif', fontSize: compact ? 16 : 21, fontWeight: 800, lineHeight: 1.3 }}>
-        {t('xtell.astro.sunsign.is').replace('{sign}', sign(sun.sign))}
+        {sunSigns.length > 1
+          ? t('xtell.astro.sunsign.either').replace('{a}', sign(sunSigns[0])).replace('{b}', sign(sunSigns[1]))
+          : t('xtell.astro.sunsign.is').replace('{sign}', sign(sunSigns[0]))}
         <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted2)', marginLeft: 8, fontFamily: 'var(--font-body), sans-serif' }}>{t('xtell.astro.sunsign.note')}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: compact ? 'repeat(3, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '10px 0' }}>
@@ -1467,6 +1480,11 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
           </div>
         ))}
       </div>
+      {twoBodies.length > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--white)', lineHeight: 1.6, margin: '-2px 0 8px' }}>
+          {t('xtell.astro.daysigns.note').replace('{bodies}', twoBodies.join('、'))}
+        </div>
+      )}
       {/* The birth as entered: local wall time and place. UTC, which is what
           the ephemeris was read at, sits inside the full chart below. */}
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
@@ -1515,7 +1533,9 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
               </div>
               <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xtell.astro.aspects')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {c.aspects.map((a: any, i: number) => <AspectChip key={i} a={a} />)}
+                {/* The engine no longer emits angle or Moon aspects for an
+                    unknown hour; the filter covers charts saved before it did. */}
+                {c.aspects.filter((a: any) => !unknown || !/ASC|MC|Fortune|Moon/.test(`${a.a} ${a.b}`)).map((a: any, i: number) => <AspectChip key={i} a={a} />)}
               </div>
             </div>
           </details>
@@ -1621,7 +1641,7 @@ function ZhanxingBoard({ chart }: { chart: any }) {
     return (
       <div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-          {year} · {String(ret.utc).replace('T', ' ').slice(0, 16)} UTC
+          {year} · {c.hourUnknown ? `${String(ret.utc).slice(0, 10)}（${t('xtell.astro.needstime')}）` : `${String(ret.utc).replace('T', ' ').slice(0, 16)} UTC`}
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
           <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.astro.srasc')}</span>
@@ -1643,9 +1663,11 @@ function ZhanxingBoard({ chart }: { chart: any }) {
         </div>
         <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.prog')}</div>
         <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-          {t('xtell.astro.progsun')} <b>{sign(prog.sun.sign)} {prog.sun.deg.toFixed(1)}°</b>　·　
-          {t('xtell.astro.progmoon')} <b>{sign(prog.moon.sign)} {prog.moon.deg.toFixed(1)}°</b>
-          <span style={{ color: 'var(--muted)' }}> ({t('xtell.astro.house')} {prog.moon.house})</span>
+          {t('xtell.astro.progsun')} <b>{sign(prog.sun.sign)} {c.hourUnknown ? `${Math.round(prog.sun.deg)}°` : `${prog.sun.deg.toFixed(1)}°`}</b>　·　
+          {t('xtell.astro.progmoon')} <b>{sign(prog.moon.sign)}{c.hourUnknown ? '' : ` ${prog.moon.deg.toFixed(1)}°`}</b>
+          {c.hourUnknown
+            ? <span style={{ color: 'var(--muted)' }}> (±6°, {t('xtell.astro.needstime')})</span>
+            : <span style={{ color: 'var(--muted)' }}> ({t('xtell.astro.house')} {prog.moon.house})</span>}
         </div>
         {prog.aspects.length > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>

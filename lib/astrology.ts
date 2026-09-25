@@ -270,11 +270,12 @@ export type NatalChart = {
    *  reader of this chart (board, facts, transits, synastry) leaves them out.
    *  Older saved charts lack the field, which reads as false. */
   hourUnknown?: boolean
-  /** The signs the Moon passes through on that civil day, in order. One
-   *  entry when the day has a single Moon sign; two when the visitor's true
-   *  Moon sign depends on the hour they do not know. Only set when
-   *  hourUnknown. */
-  moonSigns?: number[]
+  /** Bodies that change sign during that civil day, each with [sign at
+   *  00:00, sign at 23:59] local. The visitor's true sign for such a body
+   *  depends on the hour they do not know, so every reader shows both. The
+   *  Sun does this about one day in thirty, the Moon two days in five. Only
+   *  set when hourUnknown; a body with a single sign that day is absent. */
+  daySigns?: Partial<Record<Planet, number[]>>
   system: 'placidus' | 'equal'
   cusps: number[]
   angles: { asc: number; mc: number; fortune: number }
@@ -291,10 +292,12 @@ export type BirthPlace = { y: number; m: number; d: number; h: number; mi: numbe
 function pointMap(c: NatalChart): Record<string, number> {
   const m: Record<string, number> = {}
   for (const p of c.planets) m[p.body] = p.lon
-  // No birth time, no angles: natal aspects, transits and synastry all draw
-  // their points from here, so leaving them out here leaves them out
-  // everywhere.
-  if (!c.hourUnknown) { m.ASC = c.angles.asc; m.MC = c.angles.mc; m.Fortune = c.angles.fortune }
+  // No birth time, no angles, and no Moon either: it moves ~13° a day, so a
+  // noon Moon can be 6.5° off, wider than any orb here. Natal aspects,
+  // transits, synastry and progressions all draw their points from this map,
+  // so leaving them out here leaves them out everywhere.
+  if (c.hourUnknown) { delete m.Moon; return m }
+  m.ASC = c.angles.asc; m.MC = c.angles.mc; m.Fortune = c.angles.fortune
   return m
 }
 
@@ -353,11 +356,19 @@ export function natalChart(input: BirthPlace): NatalChart {
   }
   if (input.hourUnknown) {
     chart.hourUnknown = true
-    // The Moon moves 12–15° a day, so on roughly two days in five it changes
-    // sign; without the hour the honest answer is both signs.
-    const first = Math.floor(longitude('Moon', zonedToUtc(input.y, input.m, input.d, 0, 0, input.tz)) / 30)
-    const last = Math.floor(longitude('Moon', zonedToUtc(input.y, input.m, input.d, 23, 59, input.tz)) / 30)
-    chart.moonSigns = first === last ? [first] : [first, last]
+    // Any body that changes sign between local midnight and the next has two
+    // possible signs for this visitor. The Moon does it two days in five; the
+    // Sun about one day in thirty, and on that day the everyday 星座 itself is
+    // the thing the hour decides (Codex QA, Sep 25: 1990-01-20 Taipei is
+    // Capricorn until the evening and Aquarius after).
+    const dayStart = zonedToUtc(input.y, input.m, input.d, 0, 0, input.tz)
+    const dayEnd = zonedToUtc(input.y, input.m, input.d, 23, 59, input.tz)
+    const daySigns: Partial<Record<Planet, number[]>> = {}
+    for (const p of PLANETS) {
+      const first = Math.floor(longitude(p, dayStart) / 30), last = Math.floor(longitude(p, dayEnd) / 30)
+      if (first !== last) daySigns[p] = [first, last]
+    }
+    if (Object.keys(daySigns).length) chart.daySigns = daySigns
   }
   chart.aspects = aspectsBetween(pointMap(chart), pointMap(chart), {
     sameSet: true,
@@ -476,12 +487,15 @@ export function progressions(natal: NatalChart, birth: BirthPlace, at: Date): Pr
   const years = (at.getTime() - born.getTime()) / (365.2422 * 86400000)
   const pDate = new Date(born.getTime() + years * 86400000)
   const sun = longitude('Sun', pDate), moon = longitude('Moon', pDate)
-  const moving = { Sun: sun, Moon: moon }
-  const speeds = { Sun: 1, Moon: 13 }
+  // The progressed Moon inherits the natal Moon's ±6.5° when the hour is
+  // unknown, so its aspects are not reported then.
+  const moving: Record<string, number> = natal.hourUnknown ? { Sun: sun } : { Sun: sun, Moon: moon }
+  const speeds: Record<string, number> = { Sun: 1, Moon: 13 }
   return {
     date: pDate.toISOString().slice(0, 10),
     sun: { sign: Math.floor(sun / 30), deg: sun % 30 },
-    moon: { sign: Math.floor(moon / 30), deg: moon % 30, house: houseOf(moon, natal.cusps) },
+    // 0 = unknown: the natal cusps are noon guesses when the hour is unknown.
+    moon: { sign: Math.floor(moon / 30), deg: moon % 30, house: natal.hourUnknown ? 0 : houseOf(moon, natal.cusps) },
     aspects: aspectsBetween(moving, pointMap(natal), { speeds, maxOrb: 2 }),
   }
 }
@@ -556,7 +570,10 @@ export function synastry(a: NatalChart, b: NatalChart): Synastry {
   const inter = aspectsBetween(pa, pb, { speeds })
 
   const mid = (x: number, y: number) => norm(x + sep(x, y) / 2)
-  const planets = PLANETS.map(body => {
+  // A composite Moon needs both Moons to a degree; an unknown hour on either
+  // side leaves it out rather than midpointing a noon guess.
+  const noMoon = !!(a.hourUnknown || b.hourUnknown)
+  const planets = PLANETS.filter(body => !(noMoon && body === 'Moon')).map(body => {
     const lon = mid(a.planets.find(p => p.body === body)!.lon, b.planets.find(p => p.body === body)!.lon)
     return { body, lon, sign: Math.floor(lon / 30), deg: lon % 30 }
   })
@@ -577,24 +594,44 @@ export const signName = (i: number) => `${SIGNS[i][1]}座`
 const bodyName = (k: string) => (PLANET_ZH as any)[k] ?? (POINT_ZH as any)[k] ?? k
 const aspectLine = (x: Aspect) => `${bodyName(x.a)} ${x.zh} ${bodyName(x.b)}（誤差 ${x.orb.toFixed(1)}°${x.applying ? '，入相位' : '，出相位'}）`
 
+/** The sign(s) a body can be in for this visitor: one, or both of a
+ *  transition day's when the hour is unknown. Every writer of a sign name
+ *  (facts, summaries) goes through this so none can pick the noon value. */
+export function signsOf(c: NatalChart, body: Planet): number[] {
+  const two = c.daySigns?.[body]
+  if (two && two.length > 1) return two
+  const p = c.planets.find(x => x.body === body)
+  return p ? [p.sign] : []
+}
+export const signLabelOf = (c: NatalChart, body: Planet) => signsOf(c, body).map(signName).join('或')
+
 export function natalFacts(c: NatalChart, gender: string): string {
   const unknown = !!c.hourUnknown
-  const rows = c.planets.map(p =>
-    `  ${PLANET_ZH[p.body]}：${signName(p.sign)} ${dms(p.deg)}${unknown ? '' : `，第${p.house}宮`}${p.retro && p.body !== 'NorthNode' && p.body !== 'SouthNode' ? '，逆行' : ''}`)
+  const rows = c.planets.map(p => {
+    const two = unknown && signsOf(c, p.body).length > 1
+    const retro = p.retro && p.body !== 'NorthNode' && p.body !== 'SouthNode' ? '，逆行' : ''
+    // A noon degree is honest for a slow body and a lie for the Moon or for
+    // anything that crosses a sign boundary that day.
+    const tail = two && p.body === 'Moon' ? '（當天換座，取決於不詳的時刻；度數與相位不列）'
+      : two ? '（當天換座，取決於不詳的時刻；度數不列）'
+      : unknown && p.body === 'Moon' ? '（時刻不詳：月亮一日移動約 13°，度數與相位不列）'
+      : ` ${dms(p.deg)}`
+    return `  ${PLANET_ZH[p.body]}：${signLabelOf(c, p.body)}${tail}${unknown ? '' : `，第${p.house}宮`}${retro}`
+  })
+  const twoBodies = unknown ? c.planets.filter(p => signsOf(c, p.body).length > 1).map(p => PLANET_ZH[p.body]) : []
   const cusps = c.cusps.map((x, i) => `  第${i + 1}宮：${signName(Math.floor(x / 30))} ${dms(x % 30)}`)
   const el = ELEMENTS.map(e => `${e} ${c.balance.elements[e]}`).join('、')
   const mo = MODALITIES.map(m => `${m} ${c.balance.modalities[m]}`).join('、')
   const sun = c.planets.find(p => p.body === 'Sun')!, moon = c.planets.find(p => p.body === 'Moon')!
   const local = localStamp(c.utc, c.tz)
-  const moonSign = unknown && c.moonSigns && c.moonSigns.length > 1
-    ? `${c.moonSigns.map(signName).join('或')}（當天月亮換座，取決於不詳的時刻）`
-    : signName(moon.sign)
   // The three signs first, named for what a newcomer asks ("我是什麼星座？"):
   // the Sun sign IS the everyday 星座, and the reading should say so before
-  // anything about the Ascendant.
+  // anything about the Ascendant. Both names go through signLabelOf, so a
+  // transition day reads 「摩羯座或水瓶座」 here and in the rows alike.
+  void sun; void moon
   const big = unknown
-    ? `太陽星座（一般說的「星座」）：${signName(sun.sign)}；月亮星座：${moonSign}；上升星座：出生時刻不詳，無法判定。`
-    : `太陽星座（一般說的「星座」）：${signName(sun.sign)}；月亮星座：${signName(moon.sign)}；上升星座：${signName(Math.floor(c.angles.asc / 30))}。`
+    ? `太陽星座（一般說的「星座」）：${signLabelOf(c, 'Sun')}；月亮星座：${signLabelOf(c, 'Moon')}；上升星座：出生時刻不詳，無法判定。`
+    : `太陽星座（一般說的「星座」）：${signLabelOf(c, 'Sun')}；月亮星座：${signLabelOf(c, 'Moon')}；上升星座：${signName(Math.floor(c.angles.asc / 30))}。`
   return [
     unknown
       ? `出生：${local.stamp.slice(0, 10)}，時刻不詳（以當地中午暫排），${c.place}（${c.tz}），${gender === 'male' ? '男' : '女'}`
@@ -602,7 +639,8 @@ export function natalFacts(c: NatalChart, gender: string): string {
     big,
     `制度：回歸黃道（西洋占星）；${c.system === 'placidus' ? 'Placidus 分宮' : '等宮制（該緯度無法用 Placidus）'}；南北交點取平均交點。`,
     ...(unknown ? [
-      `出生時刻不詳：上升、天頂、福點、宮位、命主星、日夜盤皆無法判定，一律不得論述，也不要猜。行星只看星座、度數與行星之間的相位；月亮以上述為準。`,
+      `出生時刻不詳：上升、天頂、福點、宮位、命主星、日夜盤皆無法判定，一律不得論述，也不要猜。月亮的度數與相位也不列。行星只看星座、度數與行星之間的相位。`,
+      ...(twoBodies.length ? [`${twoBodies.join('、')}在這一天換了星座：兩個都要說，是哪一個要看出生時刻，不可自行選一個。`] : []),
     ] : [
       `上升 ${signName(Math.floor(c.angles.asc / 30))} ${dms(c.angles.asc % 30)}　天頂 ${signName(Math.floor(c.angles.mc / 30))} ${dms(c.angles.mc % 30)}　福點 ${signName(Math.floor(c.angles.fortune / 30))} ${dms(c.angles.fortune % 30)}`,
       `命主星（上升星座守護星）：${c.chartRuler ? PLANET_ZH[c.chartRuler] : '—'}；${c.sect === 'day' ? '日生盤（太陽在地平線上）' : '夜生盤（太陽在地平線下）'}`,
@@ -630,8 +668,9 @@ export function synastryFacts(a: NatalChart, b: NatalChart, s: Synastry, aGender
   const top = s.inter.slice(0, 22).map(x => `  第一位的${bodyName(x.a)} ${x.zh} 第二位的${bodyName(x.b)}（誤差 ${x.orb.toFixed(1)}°）`)
   const comp = s.composite.planets.slice(0, 10).map(p => `  ${PLANET_ZH[p.body]}：${signName(p.sign)} ${dms(p.deg)}`)
   return [
-    `第一位（${aGender === 'male' ? '男' : '女'}）：上升 ${a.hourUnknown ? '時刻不詳，無法判定' : signName(Math.floor(a.angles.asc / 30))}，太陽 ${signName(a.planets[0].sign)}，月亮 ${signName(a.planets[1].sign)}`,
-    `第二位（${bGender === 'male' ? '男' : '女'}）：上升 ${b.hourUnknown ? '時刻不詳，無法判定' : signName(Math.floor(b.angles.asc / 30))}，太陽 ${signName(b.planets[0].sign)}，月亮 ${signName(b.planets[1].sign)}`,
+    `第一位（${aGender === 'male' ? '男' : '女'}）：上升 ${a.hourUnknown ? '時刻不詳，無法判定' : signName(Math.floor(a.angles.asc / 30))}，太陽 ${signLabelOf(a, 'Sun')}，月亮 ${signLabelOf(a, 'Moon')}`,
+    `第二位（${bGender === 'male' ? '男' : '女'}）：上升 ${b.hourUnknown ? '時刻不詳，無法判定' : signName(Math.floor(b.angles.asc / 30))}，太陽 ${signLabelOf(b, 'Sun')}，月亮 ${signLabelOf(b, 'Moon')}`,
+    ...(a.hourUnknown || b.hourUnknown ? ['其中一方出生時刻不詳：該方的月亮相位、比對盤中的月亮與組合盤月亮都不列，不要補。'] : []),
     `元素：第一位 ${ELEMENTS.map(e => `${e}${a.balance.elements[e]}`).join('、')}；第二位 ${ELEMENTS.map(e => `${e}${b.balance.elements[e]}`).join('、')}`,
     s.elementFit.missing.length ? `兩人都缺的元素：${s.elementFit.missing.join('、')}` : '兩人合起來四元素俱全。',
     `合盤相位（比對盤，第一位的星對第二位的星）：`, ...top,
@@ -643,7 +682,9 @@ export function synastryFacts(a: NatalChart, b: NatalChart, s: Synastry, aGender
 export function returnFacts(r: SolarReturn, hourUnknown = false): string {
   const rows = r.planets.slice(0, 10).map(p => `  ${PLANET_ZH[p.body]}：${signName(p.sign)} ${dms(p.deg)}${hourUnknown ? '' : `，第${p.house}宮`}${p.retro ? '，逆行' : ''}`)
   return [
-    `${r.year} 年太陽回歸：${r.utc.replace('T', ' ').slice(0, 16)} UTC，於出生地起盤`,
+    hourUnknown
+      ? `${r.year} 年太陽回歸：${r.utc.slice(0, 10)} 前後（出生時刻不詳，回歸時刻只能取到日），於出生地起盤`
+      : `${r.year} 年太陽回歸：${r.utc.replace('T', ' ').slice(0, 16)} UTC，於出生地起盤`,
     // The return moment follows the natal Sun's longitude, which an unknown
     // hour moves by up to half a degree: the return time is then off by up
     // to twelve hours and its Ascendant means nothing.
