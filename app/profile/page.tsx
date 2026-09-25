@@ -922,7 +922,10 @@ export default function ProfilePage() {
               </button>
               {/* Ledger toggle — credit activity belongs to this card. */}
               <button
-                onClick={() => isXTell ? document.getElementById('xtell-activity')?.scrollIntoView({ behavior: 'smooth' }) : setShowActivity(true)}
+                // The same credit ledger on both hosts. The XTell shell once
+                // pointed this at its charges list; that list became the saved
+                // readings, and the ledger vanished with it (owner, Sep 25).
+                onClick={() => setShowActivity(true)}
                 style={{
                   padding: '12px 16px', borderRadius: 6,
                   background: 'transparent', border: '1px solid var(--border2)',
