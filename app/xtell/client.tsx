@@ -29,6 +29,7 @@ import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, type Jiao } from '../../lib/xtell-ritual'
+import { OptPill, OptGroup, SLOT_COLORS } from '../components/OptControls'
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES } from '../../lib/astrology'
@@ -233,6 +234,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // default sat 130 s before the first token on a 紫微 prompt.
   type SeatOpts = { thinking: string | null; search: boolean }
   const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
+  // ⚙ on any chip opens the settings panels for ALL seated masters together,
+  // the way XCreate's gear works (owner, Sep 24: follow XCreate). Collapsed
+  // by default; the defaults are fine for most visits.
+  const [optsOpen, setOptsOpen] = useState(false)
   const levelsOf = (m: PickerModel): string[] => ((m.output_config?.text?.thinking_levels ?? []) as string[])
   const searchable = (m: PickerModel) => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search')
   const defaultThinking = (m: PickerModel): string | null => {
@@ -554,6 +559,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                   style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--white)', font: 'inherit', fontWeight: 700, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
                   {m.display_name}
                 </button>
+                {(levelsOf(m).length > 0 || searchable(m)) && (
+                  <button type="button" title={t('xcreate.thinking')} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
+                    style={{ border: 'none', background: 'none', color: optsOpen ? SLOT_COLORS[masters.indexOf(m)] : 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1 }}>⚙</button>
+                )}
                 {masters.length > 1 && (
                   <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
                     style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
@@ -572,38 +581,35 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </button>
           </div>
 
-          {/* Per-seat settings, XCreate's grammar: thinking level and web
-              search as pills, one line per seated master. Only shown when the
-              row declares something to set. */}
-          {masters.some(m => levelsOf(m).length > 0 || searchable(m)) && (
-            <div style={{ display: 'grid', gap: 6 }}>
-              {masters.map(m => {
-                const levels = levelsOf(m), o = optsOf(m)
-                if (levels.length === 0 && !searchable(m)) return null
-                const pill = (active: boolean, onClick: () => void, label: string, key: string) => (
-                  <button key={key} type="button" onClick={onClick} style={{
-                    padding: '3px 9px', borderRadius: 999, fontSize: 11.5, cursor: 'pointer',
-                    border: '1px solid ' + (active ? 'var(--red)' : 'var(--border2)'),
-                    background: active ? 'var(--red-dim, var(--surface2))' : 'transparent',
-                    color: active ? 'var(--red)' : 'var(--muted)', fontWeight: active ? 700 : 500,
-                  }}>{label}</button>
-                )
+          {/* Settings panels, XCreate's: one card per seated master in its
+              slot colour, thinking level and web search as pill groups,
+              shown together when any ⚙ is open. */}
+          {optsOpen && (
+            <div style={{ display: 'grid', gridTemplateColumns: masters.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 520px)', gap: 10 }}>
+              {masters.map((m, i) => {
+                const color = SLOT_COLORS[i], levels = levelsOf(m), o = optsOf(m)
+                const groups = [levels.length > 0 ? 'think' : null, searchable(m) ? 'search' : null].filter(Boolean)
+                if (groups.length === 0) return null
+                const isLast = (g: string) => groups[groups.length - 1] === g
                 return (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11.5, color: 'var(--muted2)' }}>
-                    {masters.length > 1 && <span style={{ ...mono, minWidth: 90 }}>{m.display_name}</span>}
+                  <div key={m.id} style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <ProviderLogo provider={m.provider} size={13} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color }}>{m.display_name}</span>
+                    </div>
                     {levels.length > 0 && (
-                      <>
-                        <span>{t('xcreate.thinking')}</span>
-                        {pill(o.thinking == null, () => setOpts(m, { thinking: null }), t('xcreate.auto'), 'auto')}
-                        {levels.map(l => pill(o.thinking === l, () => setOpts(m, { thinking: l }), l, l))}
-                      </>
+                      <OptGroup label={t('xcreate.thinking')} last={isLast('think')}>
+                        <OptPill color={color} active={o.thinking == null} onClick={() => setOpts(m, { thinking: null })}>{t('xcreate.auto')}</OptPill>
+                        {levels.map(l => (
+                          <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}>{l}</OptPill>
+                        ))}
+                      </OptGroup>
                     )}
                     {searchable(m) && (
-                      <>
-                        <span style={{ marginLeft: levels.length ? 10 : 0 }}>{t('xcreate.websearch')}</span>
-                        {pill(!o.search, () => setOpts(m, { search: false }), t('xcreate.off'), 'off')}
-                        {pill(o.search, () => setOpts(m, { search: true }), t('xcreate.on'), 'on')}
-                      </>
+                      <OptGroup label={t('xcreate.websearch')} last={isLast('search')}>
+                        <OptPill color={color} active={!o.search} onClick={() => setOpts(m, { search: false })}>{t('xcreate.off')}</OptPill>
+                        <OptPill color={color} active={o.search} onClick={() => setOpts(m, { search: true })}>{t('xcreate.on')}</OptPill>
+                      </OptGroup>
                     )}
                   </div>
                 )

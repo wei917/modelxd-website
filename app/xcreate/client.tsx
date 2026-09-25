@@ -7,6 +7,7 @@
 
 import Link from 'next/link'
 import { usePromptRefiner } from '../components/PromptRefiner'
+import { OptPill, OptGroup, SLOT_COLORS } from '../components/OptControls'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -482,7 +483,6 @@ interface GalleryItem {
 }
 
 const LABELS = ['A', 'B', 'C', 'D']
-const SLOT_COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399']
 
 // ── Cost estimation ──────────────────────────────────────────────────────────
 // We estimate upfront USD cost so users can see what a Generate run will cost
@@ -991,37 +991,8 @@ function Gallery({ userId, filterMode, onCounts, onOpen, limit = 40, compact = f
 // useSearchParams() (the ?id= deep-link) requires a Suspense boundary for
 // the production build's prerender pass — dev mode tolerates its absence,
 // `next build` hard-fails. The wrapper is the whole fix.
-// Option pill + group for the per-slot config panel. MODULE scope on
-// purpose: inline definitions made React remount the panel on every state
-// update, breaking slider drags (see the config panel below).
-function OptPill({ color, active, onClick, children, narrow }: {
-  color: string; active: boolean; onClick: () => void; children: React.ReactNode; narrow?: boolean
-}) {
-  return (
-    <button onClick={onClick}
-      style={{
-        flex: 1, padding: narrow ? '6px 4px' : '7px 6px',
-        borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-        background: active ? color + '22' : 'transparent',
-        border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,
-        color: active ? color : 'var(--muted)',
-        transition: 'all 0.15s', textAlign: 'center' as const,
-      }}>
-      {children}
-    </button>
-  )
-}
-function OptGroup({ label, children, last }: {
-  label: string; children: React.ReactNode; last?: boolean
-}) {
-  return (
-    <div style={{ marginBottom: last ? 0 : 8 }}>
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 6, fontWeight: 600 }}>{label}</div>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>{children}</div>
-    </div>
-  )
-}
-
+// OptPill / OptGroup / SLOT_COLORS live in app/components/OptControls.tsx
+// (shared with XTell since Sep 24).
 
 export default function CreateClient({ showcase = [] }: { showcase?: ShowcasePiece[] }) {
   return (

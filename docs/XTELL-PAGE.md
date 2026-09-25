@@ -259,9 +259,13 @@ ground a Western reading in a Buddhist text about a different system.
 3. `查看命盤` (dotted link) expands the full board for verification, with the
    **engine provenance line** (`排盤引擎: lunar-typescript v1.8.6`).
 4. Per-seat settings (Sep 24, owner: configure each master like an XCreate
-   slot): under the chips, one line per master with **thinking level** pills
-   (Auto + the row's `output_config.text.thinking_levels`) and **web search**
-   Off/On (only where the row declares `web_search`). The reading request
+   slot, and follow XCreate's UI): a ⚙ on each chip opens the panels for ALL
+   seated masters together, collapsed by default — one card per master in
+   its slot colour (`SLOT_COLORS`), built from the shared `OptPill` /
+   `OptGroup` in `app/components/OptControls.tsx` (lifted out of XCreate),
+   with **thinking level** pills (Auto + the row's
+   `output_config.text.thinking_levels`) and **web search** Off/On (only
+   where the row declares `web_search`). The reading request
    carries `thinking` and `search` per seat; the route accepts a level only
    if the row declares it. House default: Qwen Flash `thinking_true`, other Alibaba rows
    `thinking_false` (Max's own default sat 130 s before the first token on a
