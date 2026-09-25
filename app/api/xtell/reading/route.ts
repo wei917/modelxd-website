@@ -78,6 +78,15 @@ export async function POST(req: Request) {
   // same double gate every other surface uses.
   const canSearch = ((model as any).output_config?.text?.capabilities ?? []).includes('web_search')
   const search = canSearch && body?.search === true
+  // Thinking level per seat (owner, Sep 24: configure each master like an
+  // XCreate slot). Accepted only if the row declares it; `null` from the
+  // client means an explicit Auto (provider default); absent means the house
+  // default, which for Qwen is thinking off — its own default sat 130 s
+  // before the first token on a 紫微 prompt.
+  const levels: string[] = (model as any).output_config?.text?.thinking_levels ?? []
+  const thinking: string | null = body?.thinking === undefined
+    ? ((model as any).provider === 'alibaba' ? 'thinking_false' : null)
+    : (typeof body.thinking === 'string' && levels.includes(body.thinking) ? body.thinking : null)
 
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
@@ -165,7 +174,7 @@ export async function POST(req: Request) {
                 userId: user.id, amountCents: cents,
                 referenceType: 'xtell', referenceId: (model as any).id ?? (model as any).model_name,
                 description: `XTell ${temple} reading (${(model as any).model_name})`,
-                metadata: { temple, modelName: (model as any).model_name, search },
+                metadata: { temple, modelName: (model as any).model_name, search, thinking },
               }).catch(err => {
                 if (err instanceof InsufficientCreditsError) console.warn(`${LOG} insufficient credits (${cents}¢)`)
                 else console.warn(`${LOG} debit failed:`, err)
@@ -184,11 +193,7 @@ export async function POST(req: Request) {
         {
           system: `${MASTERS[temple]}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`,
           search,
-          // Qwen's own default is thinking ON with no budget; on a 紫微 prompt
-          // (12 palaces + 運限 + classics) that was 130 s to the first token
-          // (Sep 24). A reading is interpretation, not a proof — thinking off
-          // here, the answer streams in seconds. Other providers keep theirs.
-          thinking: (model as any).provider === 'alibaba' ? 'thinking_false' : null,
+          thinking,
         },
       )
     },

@@ -254,8 +254,17 @@ ground a Western reading in a Buddhist text about a different system.
    the ModelXD thesis in temple robes.
 3. `查看命盤` (dotted link) expands the full board for verification, with the
    **engine provenance line** (`排盤引擎: lunar-typescript v1.8.6`).
-4. Web search: one toggle, double-gated — applied per master only where that
-   model declares `web_search` in `output_config.text.capabilities`.
+4. Per-seat settings (Sep 24, owner: configure each master like an XCreate
+   slot): under the chips, one line per master with **thinking level** pills
+   (Auto + the row's `output_config.text.thinking_levels`) and **web search**
+   Off/On (only where the row declares `web_search`). The reading request
+   carries `thinking` and `search` per seat; the route accepts a level only
+   if the row declares it. House default for Alibaba rows is `thinking_false`
+   (Qwen's own default sat 130 s before the first token on a 紫微 prompt);
+   the UI shows that as the selected pill so Auto is a deliberate choice.
+   Clicking a master's name opens the picker to **replace** that seat, so the
+   first master is as changeable as the second. The old global search
+   toggle is gone.
 
 No auto-send anywhere: an intro line is static text; nothing spends until the
 user types (same rule as XDirect's `?q=`).

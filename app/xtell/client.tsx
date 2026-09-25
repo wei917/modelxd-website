@@ -207,8 +207,21 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
   // text model (GPT-5.6 Sol) — preselected so the temple works with zero
   // configuration; the picker is there for people who care.
   const [masters, setMasters] = useState<PickerModel[]>([])
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [search, setSearch] = useState(false)
+  // The picker either adds a seat or replaces one (owner, Sep 24: the first
+  // master must be changeable too, not only the second).
+  const [picker, setPicker] = useState<null | { replace: string | null }>(null)
+  // Per-seat settings, the way XCreate configures each slot: thinking level
+  // (from the row's declared levels) and web search (where the row declares
+  // the capability). Defaults are computed, so an untouched seat needs no
+  // entry; Qwen defaults to thinking off — its own default sat 130 s before
+  // the first token on a 紫微 prompt.
+  type SeatOpts = { thinking: string | null; search: boolean }
+  const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
+  const levelsOf = (m: PickerModel): string[] => ((m.output_config?.text?.thinking_levels ?? []) as string[])
+  const searchable = (m: PickerModel) => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search')
+  const defaultOpts = (m: PickerModel): SeatOpts => ({ thinking: m.provider === 'alibaba' && levelsOf(m).includes('thinking_false') ? 'thinking_false' : null, search: false })
+  const optsOf = (m: PickerModel): SeatOpts => seatOpts[m.id] ?? defaultOpts(m)
+  const setOpts = (m: PickerModel, patch: Partial<SeatOpts>) => setSeatOpts(o => ({ ...o, [m.id]: { ...optsOf(m), ...patch } }))
 
   // One shared conversation: the visitor speaks once, every seated master
   // answers. Each master keeps its own private transcript server-side.
@@ -234,7 +247,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
       })
   }, [])
 
-  const canSearch = masters.some(m => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search'))
 
   /** What identifies this consultation, per temple: birth(s), a stick
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
@@ -341,7 +353,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...subject(), question: q, modelId: m.id, history, readingId, qid,
-            search: search && ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search'),
+            search: optsOf(m).search && searchable(m),
+            thinking: optsOf(m).thinking,
           }),
         })
         if (!res.ok || !res.body) {
@@ -501,7 +514,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Masters row: chips, up to two. */}
+          {/* Masters row: chips, up to two. Clicking a name opens the picker
+              to REPLACE that seat, so the first master is as changeable as
+              the second; ✕ removes a seat while another remains. */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {masters.map(m => (
               <span key={m.id} style={{
@@ -509,7 +524,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
                 border: '1px solid var(--border2)', background: 'var(--surface)', fontSize: 12.5,
               }}>
                 <ProviderLogo provider={m.provider} size={14} />
-                <b>{m.display_name}</b>
+                <button type="button" title={t('xtell.changemaster')} onClick={() => setPicker({ replace: m.id })}
+                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--white)', font: 'inherit', fontWeight: 700, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
+                  {m.display_name}
+                </button>
                 {masters.length > 1 && (
                   <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
                     style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
@@ -517,22 +535,55 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
               </span>
             ))}
             {masters.length < 2 && (
-              <button onClick={() => setPickerOpen(true)} style={{
+              <button onClick={() => setPicker({ replace: null })} style={{
                 padding: '7px 12px', borderRadius: 999, border: '1px dashed var(--border2)',
                 background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer',
               }}>＋ {t('xtell.addmaster')}</button>
-            )}
-            {canSearch && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'var(--muted)' }}>
-                <input type="checkbox" checked={search} onChange={e => setSearch(e.target.checked)} />
-                {t('xtell.search')}
-              </label>
             )}
             <span style={{ flex: 1 }} />
             <button onClick={() => setShowChart(v => !v)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
               {showChart ? t('xtell.hidechart') : t('xtell.viewchart')}
             </button>
           </div>
+
+          {/* Per-seat settings, XCreate's grammar: thinking level and web
+              search as pills, one line per seated master. Only shown when the
+              row declares something to set. */}
+          {masters.some(m => levelsOf(m).length > 0 || searchable(m)) && (
+            <div style={{ display: 'grid', gap: 6 }}>
+              {masters.map(m => {
+                const levels = levelsOf(m), o = optsOf(m)
+                if (levels.length === 0 && !searchable(m)) return null
+                const pill = (active: boolean, onClick: () => void, label: string, key: string) => (
+                  <button key={key} type="button" onClick={onClick} style={{
+                    padding: '3px 9px', borderRadius: 999, fontSize: 11.5, cursor: 'pointer',
+                    border: '1px solid ' + (active ? 'var(--red)' : 'var(--border2)'),
+                    background: active ? 'var(--red-dim, var(--surface2))' : 'transparent',
+                    color: active ? 'var(--red)' : 'var(--muted)', fontWeight: active ? 700 : 500,
+                  }}>{label}</button>
+                )
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11.5, color: 'var(--muted2)' }}>
+                    {masters.length > 1 && <span style={{ ...mono, minWidth: 90 }}>{m.display_name}</span>}
+                    {levels.length > 0 && (
+                      <>
+                        <span>{t('xcreate.thinking')}</span>
+                        {pill(o.thinking == null, () => setOpts(m, { thinking: null }), t('xcreate.auto'), 'auto')}
+                        {levels.map(l => pill(o.thinking === l, () => setOpts(m, { thinking: l }), l, l))}
+                      </>
+                    )}
+                    {searchable(m) && (
+                      <>
+                        <span style={{ marginLeft: levels.length ? 10 : 0 }}>{t('xcreate.websearch')}</span>
+                        {pill(!o.search, () => setOpts(m, { search: false }), t('xcreate.off'), 'off')}
+                        {pill(o.search, () => setOpts(m, { search: true }), t('xcreate.on'), 'on')}
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
               is what the two of them came to see. The reading interprets it. */}
@@ -641,11 +692,18 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
         </div>
       )}
 
-      {pickerOpen && (
+      {picker && (
         <ModelPickerDialog
-          mode="text" recipeMode="text_to_text" feature="xtell" slotIds={masters.map(m => m.id)}
-          onSelect={m => { setMasters(ms => (ms.some(x => x.id === m.id) || ms.length >= 2 ? ms : [...ms, m])); setPickerOpen(false) }}
-          onClose={() => setPickerOpen(false)}
+          mode="text" recipeMode="text_to_text" feature="xtell" slotIds={masters.filter(m => m.id !== picker.replace).map(m => m.id)}
+          onSelect={m => {
+            setMasters(ms => {
+              if (ms.some(x => x.id === m.id)) return ms
+              if (picker.replace) return ms.map(x => (x.id === picker.replace ? m : x))
+              return ms.length >= 2 ? ms : [...ms, m]
+            })
+            setPicker(null)
+          }}
+          onClose={() => setPicker(null)}
         />
       )}
     </div>
