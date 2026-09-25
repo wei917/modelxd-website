@@ -593,30 +593,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Masters row: chips, up to two. Clicking a name opens the picker
-              to REPLACE that seat, so the first master is as changeable as
-              the second; ✕ removes a seat while another remains. */}
+          {/* Controls: add a seat, the reply layout, the chart toggle. */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {masters.map(m => (
-              <span key={m.id} style={{
-                display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999,
-                border: '1px solid var(--border2)', background: 'var(--surface)', fontSize: 12.5,
-              }}>
-                <ProviderLogo provider={m.provider} size={14} />
-                <button type="button" title={t('xtell.changemaster')} onClick={() => setPicker({ replace: m.id })}
-                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--white)', font: 'inherit', fontWeight: 700, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
-                  {m.display_name}
-                </button>
-                {(levelsOf(m).length > 0 || searchable(m)) && (
-                  <button type="button" title={t('xtell.opts.title')} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
-                    style={{ border: 'none', background: 'none', color: optsOpen ? SLOT_COLORS[masters.indexOf(m)] : 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1 }}>⚙</button>
-                )}
-                {masters.length > 1 && (
-                  <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
-                    style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
-                )}
-              </span>
-            ))}
             {masters.length < MAX_SEATS && (
               <button onClick={() => setPicker({ replace: null })} style={{
                 padding: '7px 12px', borderRadius: 999, border: '1px dashed var(--border2)',
@@ -639,53 +617,86 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </button>
           </div>
 
-          {/* Settings panels, XCreate's: one card per seated master in its
-              slot colour, thinking level and web search as pill groups,
-              shown together when any ⚙ is open. */}
-          {optsOpen && (
-            <div style={{ border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)', padding: '10px 12px 12px' }}>
-              {/* A visible way out (owner, Sep 24): a header with a Done
-                  button, besides the ⚙ that toggles. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.opts.title')}</span>
-                <span style={{ flex: 1 }} />
-                <button type="button" onClick={() => setOptsOpen(false)} style={{
-                  padding: '5px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: '#ffffff',
-                  color: 'var(--white)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                }}>{t('xtell.opts.done')} ▴</button>
-              </div>
-            <div style={{ display: 'grid', gridTemplateColumns: masters.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 520px)', gap: 10 }}>
-              {masters.map((m, i) => {
-                const color = SLOT_COLORS[i], levels = levelsOf(m), o = optsOf(m)
-                const groups = [levels.length > 0 ? 'think' : null, searchable(m) ? 'search' : null].filter(Boolean)
-                if (groups.length === 0) return null
-                const isLast = (g: string) => groups[groups.length - 1] === g
-                return (
-                  <div key={m.id} style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <ProviderLogo provider={m.provider} size={13} />
-                      <span style={{ fontSize: 12, fontWeight: 700, color }}>{m.display_name}</span>
+          {/* Seats: one equal-width column per master, and the settings
+              cards sit in the SAME columns under their chips (owner, Sep 24:
+              same width, side by side, never stacked). Both rows share one
+              scroll frame, so on a phone four seats drag sideways together
+              instead of wrapping. Clicking a name opens the picker to
+              REPLACE that seat; ⚙ opens every seat's settings; ✕ removes a
+              seat while another remains. */}
+          {(() => {
+            const cols = `repeat(${masters.length}, minmax(${masters.length > 1 ? 210 : 0}px, 1fr))`
+            return (
+              <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8 }}>
+                  {masters.map((m, i) => (
+                    <span key={m.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, minWidth: 0,
+                      border: '1px solid ' + (optsOpen ? SLOT_COLORS[i] + '66' : 'var(--border2)'), background: 'var(--surface)', fontSize: 12.5,
+                    }}>
+                      <ProviderLogo provider={m.provider} size={14} />
+                      <button type="button" title={t('xtell.changemaster')} onClick={() => setPicker({ replace: m.id })}
+                        style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--white)', font: 'inherit', fontWeight: 700, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
+                        {m.display_name}
+                      </button>
+                      <button type="button" title={t('xtell.opts.title')} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
+                        style={{ border: 'none', background: 'none', color: optsOpen ? SLOT_COLORS[i] : 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1 }}>⚙</button>
+                      {masters.length > 1 && (
+                        <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
+                          style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Settings, XCreate's cards, one per column. A master with
+                    nothing to set keeps its column with a dash, so the cards
+                    stay under their chips. */}
+                {optsOpen && (
+                  <div style={{ marginTop: 8, border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)', padding: '10px 12px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.opts.title')}</span>
+                      <span style={{ flex: 1 }} />
+                      <button type="button" onClick={() => setOptsOpen(false)} style={{
+                        padding: '5px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: '#ffffff',
+                        color: 'var(--white)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}>{t('xtell.opts.done')} ▴</button>
                     </div>
-                    {levels.length > 0 && (
-                      <OptGroup label={t('xcreate.thinking')} last={isLast('think')}>
-                        <OptPill color={color} active={o.thinking == null} onClick={() => setOpts(m, { thinking: null })}>{t('xcreate.auto')}</OptPill>
-                        {levels.map(l => (
-                          <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}>{l}</OptPill>
-                        ))}
-                      </OptGroup>
-                    )}
-                    {searchable(m) && (
-                      <OptGroup label={t('xcreate.websearch')} last={isLast('search')}>
-                        <OptPill color={color} active={!o.search} onClick={() => setOpts(m, { search: false })}>{t('xcreate.off')}</OptPill>
-                        <OptPill color={color} active={o.search} onClick={() => setOpts(m, { search: true })}>{t('xcreate.on')}</OptPill>
-                      </OptGroup>
-                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'start' }}>
+                      {masters.map((m, i) => {
+                        const color = SLOT_COLORS[i], levels = levelsOf(m), o = optsOf(m)
+                        const groups = [levels.length > 0 ? 'think' : null, searchable(m) ? 'search' : null].filter(Boolean)
+                        const isLast = (g: string) => groups[groups.length - 1] === g
+                        return (
+                          <div key={m.id} style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px', minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, minWidth: 0 }}>
+                              <ProviderLogo provider={m.provider} size={13} />
+                              <span style={{ fontSize: 12, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.display_name}</span>
+                            </div>
+                            {groups.length === 0 && <div style={{ fontSize: 12, color: 'var(--muted2)' }}>—</div>}
+                            {levels.length > 0 && (
+                              <OptGroup label={t('xcreate.thinking')} last={isLast('think')}>
+                                <OptPill color={color} active={o.thinking == null} onClick={() => setOpts(m, { thinking: null })}>{t('xcreate.auto')}</OptPill>
+                                {levels.map(l => (
+                                  <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}>{l}</OptPill>
+                                ))}
+                              </OptGroup>
+                            )}
+                            {searchable(m) && (
+                              <OptGroup label={t('xcreate.websearch')} last={isLast('search')}>
+                                <OptPill color={color} active={!o.search} onClick={() => setOpts(m, { search: false })}>{t('xcreate.off')}</OptPill>
+                                <OptPill color={color} active={o.search} onClick={() => setOpts(m, { search: true })}>{t('xcreate.on')}</OptPill>
+                              </OptGroup>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-            </div>
-          )}
+                )}
+              </div>
+            )
+          })()}
 
           {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
               is what the two of them came to see. The reading interprets it. */}
