@@ -548,8 +548,11 @@ worse than signing up directly.
   The webhook branches on `session.mode === 'setup'`.
 - **No cap** on referrals (a celebrity bringing 1,000 real users is the win);
   a weekly threshold logs an alert instead.
-- `?ref=CODE` is parked in localStorage by `Nav.tsx` and spent after sign-in —
-  Google's OAuth round-trip drops query params.
+- `?ref=CODE` is parked by `Nav.tsx` and spent after sign-in — Google's OAuth
+  round-trip drops query params. Since Sep 24 it is parked in a cookie on
+  `.modelxd.com` (plus localStorage), so a link opened on xtell.modelxd.com
+  and a sign-in on www (or the reverse) still pays out. The link itself is
+  built from the request origin, so an XTell account hands out an xtell link.
 - Accepted: one person with one card and two Google accounts collects the pair
   ONCE ($30, not $10). Not repeatable, and stopping it would mean asking every
   referrer for a card.

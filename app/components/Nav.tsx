@@ -87,6 +87,29 @@ function historyTitle(prompt: string): string {
   return words.slice(0, 7).join(' ') + (words.length > 7 ? '…' : '')
 }
 
+// Referral code cookie shared across www and xtell (see claimReferral).
+// On modelxd.com hosts the cookie is set for `.modelxd.com`; anywhere else
+// (localhost, previews) it is host-only. 30 days, Lax, never HttpOnly — the
+// client reads it back.
+const REF_COOKIE = 'modelxd_ref'
+function refCookieDomain(): string {
+  const h = window.location.hostname
+  return h === 'modelxd.com' || h.endsWith('.modelxd.com') ? '; domain=.modelxd.com' : ''
+}
+function writeRefCookie(code: string) {
+  try { document.cookie = `${REF_COOKIE}=${encodeURIComponent(code)}; path=/; max-age=${30 * 86400}; SameSite=Lax${refCookieDomain()}${window.location.protocol === 'https:' ? '; Secure' : ''}` } catch { /* ignore */ }
+}
+function readRefCookie(): string | null {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + REF_COOKIE + '=([^;]*)'))
+    const v = m ? decodeURIComponent(m[1]) : ''
+    return /^[A-Za-z0-9]{6,16}$/.test(v) ? v : null
+  } catch { return null }
+}
+function clearRefCookie() {
+  try { document.cookie = `${REF_COOKIE}=; path=/; max-age=0${refCookieDomain()}` } catch { /* ignore */ }
+}
+
 export default function Nav() {
   const site = useSite()
   const pathname = usePathname()
@@ -166,10 +189,16 @@ export default function Nav() {
   // on every route, which is why this lives here. Cleared whatever the answer:
   // a code that was refused (already referred, self-referral, unknown) must not
   // be retried on every page load forever.
+  //
+  // Two front doors since Sep 23 (www and xtell.modelxd.com): storage is per
+  // host, so a code parked on one and a sign-in on the other lost the
+  // referral. The code is now parked in a cookie on the parent domain as
+  // well (owner, Sep 24), readable from both hosts; localStorage stays for
+  // localhost and as a fallback.
   const claimReferral = useCallback(async () => {
     let code: string | null = null
     try {
-      code = localStorage.getItem('referral_code')
+      code = readRefCookie() ?? localStorage.getItem('referral_code')
       if (!code) return
     } catch { return }
     try {
@@ -179,13 +208,17 @@ export default function Nav() {
       })
     } catch { /* offline: keep the code and try again next load */ return }
     try { localStorage.removeItem('referral_code') } catch { /* private mode */ }
+    clearRefCookie()
   }, [])
 
   // Park an arriving ?ref= before anything else can navigate away.
   useEffect(() => {
     try {
       const code = new URLSearchParams(window.location.search).get('ref')
-      if (code && /^[A-Za-z0-9]{6,16}$/.test(code)) localStorage.setItem('referral_code', code.toUpperCase())
+      if (code && /^[A-Za-z0-9]{6,16}$/.test(code)) {
+        localStorage.setItem('referral_code', code.toUpperCase())
+        writeRefCookie(code.toUpperCase())
+      }
     } catch { /* private mode */ }
   }, [])
 
