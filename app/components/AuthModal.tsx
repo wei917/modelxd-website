@@ -22,7 +22,7 @@ function AuthFeatureIcon({ name }: { name: string }) {
 
 export default function AuthModal() {
   const isXTell = useSite() === 'xtell'
-  const { open, nextPath, hide } = useAuthModal()
+  const { open, nextPath, hide, required, release } = useAuthModal()
   const t = useT()
   const [loading, setLoading] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -35,7 +35,7 @@ export default function AuthModal() {
     document.body.style.overflow = 'hidden'
     dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); dismiss.current(); return }
+      if (event.key === 'Escape') { event.preventDefault(); if (!required) dismiss.current(); return }
       if (event.key !== 'Tab') return
       const controls = dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], select, input, textarea, [tabindex="0"]')
       if (!controls?.length) return
@@ -45,7 +45,7 @@ export default function AuthModal() {
     }
     document.addEventListener('keydown', onKey)
     return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); before?.focus() }
-  }, [open, isXTell])
+  }, [open, isXTell, required])
 
   const handleLogin = async () => {
     setLoading(true)
@@ -167,9 +167,11 @@ export default function AuthModal() {
         .auth-feature-text strong { color: var(--white); font-weight: 500; }
       `}</style>
 
-      <div className={isXTell ? "auth-overlay xtell-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget) hide() }}>
+      <div className={isXTell ? "auth-overlay xtell-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget && !required) hide() }}>
         <div ref={dialogRef} className="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-          <button className="auth-close" aria-label={t('xtell.site.close')} onClick={hide}>✕</button>
+          {/* A required dialog has no ✕ (owner, Sep 25). On the XTell host the
+              way out is the link back to the explorer below the button. */}
+          {!required && <button className="auth-close" aria-label={t('xtell.site.close')} onClick={hide}>✕</button>}
 
           <div className="auth-logo">
             {isXTell ? <XTellMark /> : <>
@@ -193,6 +195,13 @@ export default function AuthModal() {
             {loading ? t('auth.signingin') : t('auth.google')}
           </button>
 
+
+          {required && isXTell && (
+            <button type="button" onClick={() => { release(); window.location.href = '/' }}
+              style={{ display: 'block', margin: '10px auto 0', border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
+              ← {t('xtell.site.focus.back')}
+            </button>
+          )}
 
           <div className="auth-features">
             {isXTell ? <p className="xtell-auth-credit">{t('xtell.site.authCredit')}</p> : <>
