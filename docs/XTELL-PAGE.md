@@ -245,8 +245,9 @@ ground a Western reading in a Buddhist text about a different system.
    rides on the shared `birth.gender`.
 2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
    **Master chips** above: up to 2 models, default preselected
-   (`DEFAULT_MASTER = 'gpt-5.6-sol'` in `app/xtell/client.tsx` — one constant
-   to move when the catalog does; falls back to newest enabled text model).
+   (`DEFAULT_MASTER = 'qwen3.8-max'` in `app/xtell/client.tsx` since Sep 24,
+   owner's call — native in the classics, a fifth of Sol's price; falls back
+   to `gpt-5.6-sol`, then the newest enabled text model).
    Every seated master answers every question; each keeps its own private
    thread (its replies only) so two masters never contaminate each other.
    Each reply shows model + actual cost. Two masters = 合參/second opinion —

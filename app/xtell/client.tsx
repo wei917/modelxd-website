@@ -56,9 +56,12 @@ const REMEMBER_KEY = 'xtell.zhanxing.birth'
 const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
 type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: string }
 
-// The house default master: the latest good text model. One name to update
-// when the catalog moves on.
-const DEFAULT_MASTER = 'gpt-5.6-sol'
+// The house default master (owner, Sep 24): Qwen 3.8 Max — native in the
+// classics and the language the temples speak, at about a fifth of Sol's
+// price. Sol is the fallback if Qwen ever leaves the catalog; the picker
+// stays for anyone who wants another seat or a 合參.
+const DEFAULT_MASTER = 'qwen3.8-max'
+const FALLBACK_MASTER = 'gpt-5.6-sol'
 
 const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' as const }
 const card = { border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)' }
@@ -226,7 +229,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
       .eq('enabled', true).contains('output_modalities', ['text'])
       .then(({ data }) => {
         const rows = (data ?? []).filter(r => !(r.blocked_features ?? []).includes('xtell'))
-        const pick = rows.find(r => r.model_name === DEFAULT_MASTER) ?? rows[0]
+        const pick = rows.find(r => r.model_name === DEFAULT_MASTER) ?? rows.find(r => r.model_name === FALLBACK_MASTER) ?? rows[0]
         if (pick) setMasters(m => (m.length ? m : [pick as PickerModel]))
       })
   }, [])
