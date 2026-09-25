@@ -455,7 +455,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p><h1>{t(`xtell.site.focus.${temple}.name`)}</h1><p>{t(`xtell.site.focus.${temple}.description`)}</p></div>
         </header>
         <ol className="xtell-room-steps" aria-label={t('xtell.site.navigation')}>
-          {['details', 'result', 'conversation'].map((step, i) => <li key={step} aria-current={(!entered && i === 0) || (entered && i === 2) ? 'step' : undefined}><span>{String(i + 1).padStart(2, '0')}</span>{t(`xtell.site.${step}`)}</li>)}
+          {/* 01 the form, 02 the chart until the first question is sent, 03
+              the conversation (owner, Sep 24: step 2 was never lit). */}
+          {['details', 'result', 'conversation'].map((step, i) => <li key={step} aria-current={(!entered && i === 0) || (entered && turns.length === 0 && i === 1) || (entered && turns.length > 0 && i === 2) ? 'step' : undefined}><span>{String(i + 1).padStart(2, '0')}</span>{t(`xtell.site.${step}`)}</li>)}
         </ol>
       </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 
