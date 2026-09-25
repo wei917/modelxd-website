@@ -1655,7 +1655,8 @@ function ZhanxingBoard({ chart }: { chart: any }) {
           )}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {ret.planets.slice(0, 10).map((p: any) => (
+          {/* Saved charts from before the engine dropped the return Moon still carry it. */}
+          {ret.planets.filter((p: any) => !(c.hourUnknown && p.body === 'Moon')).slice(0, 10).map((p: any) => (
             <span key={p.body} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
               {glyphOf(p.body)} {sign(p.sign)} {dms(p.deg)} {!c.hourUnknown && <span style={{ fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>H{p.house}</span>}
             </span>

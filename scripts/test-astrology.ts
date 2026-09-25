@@ -15,7 +15,7 @@
 // arc it actually is.
 
 import {
-  natalChart, houses, transits, progressions, solarReturn, synastry, retrogrades,
+  natalChart, houses, transits, progressions, solarReturn, synastry, retrogrades, returnFacts,
   aspectsBetween, houseOf, longitude, SIGNS, PLANETS, type BirthPlace,
 } from '../lib/astrology'
 import { jyotishChart, lahiriAyanamsa, zonedToUtc } from '../lib/jyotish'
@@ -236,6 +236,11 @@ const knownAt = (y: number, m: number, d: number, h = 12) => { const b: any = { 
   check('unknown hour, year: progressed Moon house is 0 and its aspects are not reported', y.year!.prog.moon.house === 0 && y.year!.prog.aspects.every(a => a.a !== 'Moon'))
   check('unknown hour, year: no return Moon at all, and the facts say why', y.year!.ret.planets.every(p => p.body !== 'Moon') && f.includes('回歸盤月亮不列') && !/月亮：/.test(f.slice(f.indexOf('回歸盤行星'), f.indexOf('次限推運'))))
   check('known hour, year: the return Moon is still reported', zhanxingChart(knownAt(1990, 1, 1), 'taipei', 'year', { year: 2026 }).year!.ret.planets.some(p => p.body === 'Moon'))
+  // A return saved before the engine filtered it: the facts must still drop the Moon.
+  const oldRet = solarReturn({ y: 1990, m: 1, d: 1, h: 12, mi: 0, lat: 25.033, lon: 121.5654, tz: 'Asia/Taipei', place: '台北' }, 2026)
+  const oldRows = returnFacts(oldRet, true)
+  check('unknown hour, year: returnFacts drops a stored return Moon', oldRet.planets.some(p => p.body === 'Moon') && !/^\s+月亮：/m.test(oldRows) && oldRows.includes('回歸盤月亮不列'))
+  check('known hour, year: returnFacts keeps the return Moon', /^\s+月亮：/m.test(returnFacts(oldRet, false)))
 }
 {
   const s = zhanxingChart(unknownAt(1990, 1, 1), 'taipei', 'synastry', { b2: knownAt(1985, 7, 20, 9), place2: 'taipei' }), f = zhanxingFacts(s, 'male')

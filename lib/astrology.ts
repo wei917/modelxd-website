@@ -680,7 +680,9 @@ export function synastryFacts(a: NatalChart, b: NatalChart, s: Synastry, aGender
 }
 
 export function returnFacts(r: SolarReturn, hourUnknown = false): string {
-  const rows = r.planets.slice(0, 10).map(p => `  ${PLANET_ZH[p.body]}：${signName(p.sign)} ${dms(p.deg)}${hourUnknown ? '' : `，第${p.house}宮`}${p.retro ? '，逆行' : ''}`)
+  // zhanxingChart already drops the return Moon for an unknown hour; charts
+  // saved before it did still carry one, so the filter is repeated here.
+  const rows = r.planets.filter(p => !(hourUnknown && p.body === 'Moon')).slice(0, 10).map(p => `  ${PLANET_ZH[p.body]}：${signName(p.sign)} ${dms(p.deg)}${hourUnknown ? '' : `，第${p.house}宮`}${p.retro ? '，逆行' : ''}`)
   return [
     hourUnknown
       ? `${r.year} 年太陽回歸：${r.utc.slice(0, 10)} 前後（出生時刻不詳，回歸時刻只能取到日），於出生地起盤`
