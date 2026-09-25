@@ -560,7 +560,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                   {m.display_name}
                 </button>
                 {(levelsOf(m).length > 0 || searchable(m)) && (
-                  <button type="button" title={t('xcreate.thinking')} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
+                  <button type="button" title={t('xtell.opts.title')} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
                     style={{ border: 'none', background: 'none', color: optsOpen ? SLOT_COLORS[masters.indexOf(m)] : 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1 }}>⚙</button>
                 )}
                 {masters.length > 1 && (
@@ -585,6 +585,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               slot colour, thinking level and web search as pill groups,
               shown together when any ⚙ is open. */}
           {optsOpen && (
+            <div style={{ border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)', padding: '10px 12px 12px' }}>
+              {/* A visible way out (owner, Sep 24): a header with a Done
+                  button, besides the ⚙ that toggles. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.opts.title')}</span>
+                <span style={{ flex: 1 }} />
+                <button type="button" onClick={() => setOptsOpen(false)} style={{
+                  padding: '5px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: '#ffffff',
+                  color: 'var(--white)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}>{t('xtell.opts.done')} ▴</button>
+              </div>
             <div style={{ display: 'grid', gridTemplateColumns: masters.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 520px)', gap: 10 }}>
               {masters.map((m, i) => {
                 const color = SLOT_COLORS[i], levels = levelsOf(m), o = optsOf(m)
@@ -614,6 +625,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                   </div>
                 )
               })}
+            </div>
             </div>
           )}
 
