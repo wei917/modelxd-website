@@ -29,7 +29,30 @@ import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, type Jiao } from '../../lib/xtell-ritual'
-import { OptPill, OptGroup, SLOT_COLORS } from '../components/OptControls'
+import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
+
+// Upfront estimate per master, shown under the composer (Codex QA, Sep 25:
+// nothing said what a question would cost before Send). The system prompt
+// measured 1.6k–2.8k chars (八字 / 紫微: persona + facts + classics), and CJK
+// runs near one token per char, so 3,000 input tokens covers it, plus the
+// thread and the question; 800 output tokens is a full reading with thinking
+// on. Search terms mirror XCreate's estimator. A ceiling, not a quote: the
+// receipt is the cost under each reply.
+const EST_PROMPT_TOKENS = 3000, EST_OUT_TOKENS = 800, EST_SEARCHES = 8, EST_READ_TOKENS = 30_000
+function rateOf(r: any, level: string | null): number {
+  if (r == null) return 0
+  if (typeof r === 'number') return r
+  if (level && r.by_level && typeof r.by_level[level] === 'number') return r.by_level[level]
+  return typeof r.default === 'number' ? r.default : 0
+}
+function estimateReadingUsd(m: PickerModel, o: { thinking: string | null; search: boolean }, chars: number): number | null {
+  const p = m.model_pricing ?? {}, tk = p.tokens ?? {}
+  const tin = rateOf(tk.text_input, o.thinking), tout = rateOf(tk.text_output, o.thinking)
+  if (!tin && !tout) return null
+  const inTok = EST_PROMPT_TOKENS + chars + (o.search ? EST_READ_TOKENS : 0)
+  return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + EST_OUT_TOKENS * tout) / 1_000_000
+}
+const fmtUsd = (v: number) => v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES } from '../../lib/astrology'
@@ -384,9 +407,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     else if (next.throws.length >= CONFIRM_THROWS) { setRitualBoth('confirmed'); void enter(next.n) }
   }
 
-  const send = async () => {
-    const q = input.trim()
-    if (!q || busy || masters.length === 0) return
+  const send = async (fromButton = false) => {
+    // The placeholder promises the question may be left empty: the button
+    // then asks for a general reading, in the visitor's language. Enter on an
+    // empty box stays a no-op so a stray key cannot spend credits.
+    const typed = input.trim()
+    if ((!typed && !fromButton) || busy || masters.length === 0) return
+    const q = typed || t('xtell.question.general')
     setInput(''); setBusy(true); setErr(null)
     setTurns(ts => [...ts, { role: 'user', content: q }])
     // One id per question: every master's request carries it, the server
@@ -678,7 +705,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                               <OptGroup label={t('xcreate.thinking')} last={isLast('think')}>
                                 <OptPill color={color} active={o.thinking == null} onClick={() => setOpts(m, { thinking: null })}>{t('xcreate.auto')}</OptPill>
                                 {levels.map(l => (
-                                  <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}>{l}</OptPill>
+                                  <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}>{thinkingLabel(l, t)}</OptPill>
                                 ))}
                               </OptGroup>
                             )}
@@ -778,7 +805,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                           <ProviderLogo provider={tn.provider} size={13} />
                           <span style={{ ...mono, color: 'var(--muted2)' }}>{tn.name}</span>
                           {typeof tn.cost === 'number' && tn.cost > 0 && (
-                            <span style={{ ...mono, color: 'var(--muted2)' }}>· ${tn.cost.toFixed(4)}</span>
+                            // Credits are debited in whole cents (Math.round in the
+                            // reading route, as on every surface), so a reply under
+                            // half a cent shows its list cost but deducted nothing.
+                            <span title={Math.round(tn.cost * 100) === 0 ? t('xtell.cost.subcent') : undefined}
+                              style={{ ...mono, color: 'var(--muted2)', cursor: Math.round(tn.cost * 100) === 0 ? 'help' : undefined }}>· ${tn.cost.toFixed(4)}</span>
                           )}
                           <span style={{ flex: 1 }} />
                           {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
@@ -809,8 +840,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
 
           {err && <div style={{ color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
 
-          {/* Composer — same shape as XDirect's. */}
-          <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          {/* Composer — same shape as XDirect's. On the standalone site the
+              block is sticky at the bottom, so the estimate line lives INSIDE
+              it; placed after it, the line sat below the fold. */}
+          <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
@@ -818,11 +852,25 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
             />
-            <button aria-label={t('xtell.site.send')} onClick={() => void send()} disabled={busy || !input.trim()} style={{
+            <button aria-label={t('xtell.site.send')} onClick={() => void send(true)} disabled={busy} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer',
-              opacity: busy || !input.trim() ? 0.5 : 1,
+              opacity: busy ? 0.5 : 1,
             }}>{busy ? '…' : '→'}</button>
+          </div>
+          {/* What this question will roughly cost, per master, before Send. */}
+          {(() => {
+            const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
+            const known = masters
+              .map(m => ({ m, usd: estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars) }))
+              .filter((p): p is { m: PickerModel; usd: number } => p.usd != null)
+            if (known.length === 0) return null
+            const total = known.reduce((s, p) => s + p.usd, 0)
+            return <div style={{ ...mono, fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>
+              {t('xtell.estimate').replace('{amount}', fmtUsd(total))}
+              {known.length > 1 && <> · {known.map(p => `${p.m.display_name} ${fmtUsd(p.usd)}`).join(' · ')}</>}
+            </div>
+          })()}
           </div>
         </div>
       )}

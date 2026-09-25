@@ -3263,7 +3263,7 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-chart { overflow-x: auto; }
 .xtell-composer { position: sticky; bottom: 0; background: var(--xtell-paper); padding: 18px 0; border-top: 1px solid var(--xtell-rule); }
 .xtell-composer textarea { min-width: 0; line-height: 1.65; }
-.xtell-composer > button { color: var(--xtell-white) !important; min-height: 48px; min-width: 48px; }
+.xtell-composer-row > button { color: var(--xtell-white) !important; min-height: 48px; min-width: 48px; }
 .xtell-replies .markdown-body { font-size: 16px; line-height: 1.85; overflow-wrap: anywhere; }
 .xtell-replies > div > div:first-child { flex-wrap: wrap; }
 .xtell-auth .auth-card { max-width: 440px; background: var(--xtell-paper); border-radius: 9px; border-color: var(--xtell-rule); }

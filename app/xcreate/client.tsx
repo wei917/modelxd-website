@@ -7,7 +7,7 @@
 
 import Link from 'next/link'
 import { usePromptRefiner } from '../components/PromptRefiner'
-import { OptPill, OptGroup, SLOT_COLORS } from '../components/OptControls'
+import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -4186,7 +4186,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   </Pill>
                                   {thinkLevels.map(l => (
                                     <Pill key={l} active={opts.thinking_level === l} onClick={() => updateSlotOpts(i, { thinking_level: l })}>
-                                      {l}
+                                      {thinkingLabel(l, t)}
                                     </Pill>
                                   ))}
                                 </Group>

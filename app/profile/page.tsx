@@ -80,13 +80,6 @@ const formatCents = (cents: number): string => {
 }
 
 // Human label for each credit_transactions.kind value.
-const KIND_LABELS: Record<CreditTransaction['kind'], string> = {
-  grant:      'Grant',
-  purchase:   'Purchase',
-  debit:      'Spent',
-  refund:     'Refund',
-  adjustment: 'Adjustment',
-}
 
 // Friendly, human label for a grouped ledger session, from its primary
 // reference_type. XCreate's reserve / charge / refund / chat all collapse to
@@ -162,6 +155,9 @@ export default function ProfilePage() {
   const { show: showAuth } = useAuthModal()
   const { lang, setLang } = useLang()
   const t = useT()
+  // Ledger kinds by name; the row callbacks below shadow `t` with the
+  // transaction, so the lookup is bound here.
+  const kindLabel = (k: CreditTransaction['kind']) => t('profile.kind.' + k)
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const [user,        setUser]        = useState<any>(null)
@@ -254,6 +250,9 @@ export default function ProfilePage() {
   // rows, so we can read both tables directly from the browser client.
   const [credits,     setCredits]     = useState<UserCredits | null>(null)
   const [txns,        setTxns]        = useState<CreditTransaction[]>([])
+  // False until the first ledger fetch answers, so an open panel says
+  // loading rather than flashing "no activity" over a full history.
+  const [txLoaded,    setTxLoaded]    = useState(false)
   // Which session groups are expanded in the activity ledger.
   const [openGroups,  setOpenGroups]  = useState<Record<string, boolean>>({})
   // Checkout UI: picker modal + in-flight flag + post-redirect banner
@@ -462,9 +461,10 @@ export default function ProfilePage() {
     }
     if (showActivity) {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
+      setTxLoaded(false)
       client.from('credit_transactions').select('*').eq('user_id', user.id)
         .order('created_at', { ascending: false }).limit(300)
-        .then(({ data }) => setTxns((data ?? []) as CreditTransaction[]))
+        .then(({ data }) => { setTxns((data ?? []) as CreditTransaction[]); setTxLoaded(true) })
       // Refresh balance at the same time in case a debit just landed.
       client.from('user_credits').select('*').eq('user_id', user.id).maybeSingle()
         .then(({ data: c }) => setCredits((c as UserCredits | null) ?? null))
@@ -1115,7 +1115,7 @@ export default function ProfilePage() {
                   }}>{t('profile.activity')}</span>
                   <button
                     onClick={() => setShowActivity(false)}
-                    aria-label="Close"
+                    aria-label={t('xtell.site.close')}
                     style={{
                       width: 28, height: 28, background: 'transparent',
                       border: '1px solid var(--border2)', borderRadius: 6,
@@ -1127,7 +1127,7 @@ export default function ProfilePage() {
                 <div style={{ overflowY: 'auto', padding: 20 }}>
                   {txns.length === 0
               ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 72, fontSize: 13, border: '1px dashed var(--border2)', borderRadius: 10 }}>
-                  No credit activity yet. Grants and purchases will appear here.
+                  {txLoaded ? t('profile.ledger.empty') : t('profile.ledger.loading')}
                 </div>
               : <div style={{
                   border: '1px solid var(--border2)',
@@ -1146,11 +1146,11 @@ export default function ProfilePage() {
                     background: 'var(--surface2)',
                     borderBottom: '1px solid var(--border2)',
                   }}>
-                    <div>Date</div>
-                    <div>Type</div>
-                    <div>Description</div>
-                    <div style={{ textAlign: 'right' }}>Amount</div>
-                    <div style={{ textAlign: 'right' }}>Balance</div>
+                    <div>{t('profile.ledger.date')}</div>
+                    <div>{t('profile.ledger.type')}</div>
+                    <div>{t('profile.ledger.description')}</div>
+                    <div style={{ textAlign: 'right' }}>{t('profile.ledger.amount')}</div>
+                    <div style={{ textAlign: 'right' }}>{t('profile.ledger.balance')}</div>
                   </div>
                   {(() => {
                     const groups = buildLedgerGroups(txns)
@@ -1192,7 +1192,7 @@ export default function ProfilePage() {
                                 display: 'inline-block', padding: '3px 9px', borderRadius: 3, fontSize: 9, fontWeight: 700,
                                 background: color === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)', color,
                                 fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase',
-                              }}>{KIND_LABELS[t.kind]}</span>
+                              }}>{kindLabel(t.kind)}</span>
                             </div>
                             <div style={{ color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12 }}>
                               {t.description ?? refLabel(t.reference_type)}
@@ -1255,7 +1255,7 @@ export default function ProfilePage() {
                                     display: 'inline-block', padding: '2px 8px', borderRadius: 3, fontSize: 8.5, fontWeight: 700,
                                     background: cc === 'var(--green)' ? 'var(--green-dim)' : 'var(--red-dim)', color: cc,
                                     fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase',
-                                  }}>{KIND_LABELS[t.kind]}</span>
+                                  }}>{kindLabel(t.kind)}</span>
                                 </div>
                                 <div style={{ color: 'var(--muted2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: 17, paddingRight: 12 }}>
                                   {t.description ?? refLabel(t.reference_type)}

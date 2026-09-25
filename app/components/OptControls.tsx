@@ -37,3 +37,13 @@ export function OptGroup({ label, children, last }: {
     </div>
   )
 }
+
+/** Thinking levels come from output_config.text.thinking_levels as the
+ *  provider's own values. Most read fine as they are (low / high / xhigh);
+ *  DashScope's boolean pair does not (Codex QA, Sep 25: raw thinking_true in
+ *  the settings), so those two get the On / Off words. */
+export function thinkingLabel(level: string, t: (k: string) => string): string {
+  if (level === 'thinking_true') return t('xcreate.on')
+  if (level === 'thinking_false') return t('xcreate.off')
+  return level
+}
