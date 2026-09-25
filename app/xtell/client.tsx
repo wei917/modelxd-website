@@ -63,6 +63,9 @@ type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: s
 // are the fallbacks if it ever leaves the catalog; the picker stays for
 // anyone who wants another seat or a 合參.
 const DEFAULT_MASTER = 'qwen3.8-flash'
+// Up to four masters at once (owner, Sep 24). Every seat keeps its own thread.
+const MAX_SEATS = 4
+const LAYOUT_KEY = 'xtell:layout'
 const FALLBACK_MASTERS = ['qwen3.8-max', 'gpt-5.6-sol']
 
 const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' as const }
@@ -238,6 +241,19 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // the way XCreate's gear works (owner, Sep 24: follow XCreate). Collapsed
   // by default; the defaults are fine for most visits.
   const [optsOpen, setOptsOpen] = useState(false)
+  // How several masters' replies are shown (owner, Sep 24): side by side
+  // (each column at least 360 px, the row scrolls sideways) or one at a time
+  // behind a button group. Phones default to tabs; the choice is remembered.
+  const [layout, setLayout] = useState<'columns' | 'tabs'>('columns')
+  const [tab, setTab] = useState<string | null>(null)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAYOUT_KEY)
+      if (saved === 'columns' || saved === 'tabs') { setLayout(saved); return }
+    } catch { /* ignore */ }
+    if (window.innerWidth < 900) setLayout('tabs')
+  }, [])
+  const chooseLayout = (l: 'columns' | 'tabs') => { setLayout(l); try { localStorage.setItem(LAYOUT_KEY, l) } catch { /* ignore */ } }
   const levelsOf = (m: PickerModel): string[] => ((m.output_config?.text?.thinking_levels ?? []) as string[])
   const searchable = (m: PickerModel) => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search')
   const defaultThinking = (m: PickerModel): string | null => {
@@ -268,6 +284,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       .eq('enabled', true).contains('output_modalities', ['text'])
       .then(({ data }) => {
         const rows = (data ?? []).filter(r => !(r.blocked_features ?? []).includes('xtell'))
+        // A reopened reading re-seats the masters of its last round, in the
+        // order they answered, so 繼續 with four teachers continues with the
+        // same four (owner, Sep 24). A master since removed from the catalog
+        // is simply not re-seated.
+        if (initial?.turns?.length) {
+          const lastUser = initial.turns.map((x: any) => x.role).lastIndexOf('user')
+          const ids: string[] = []
+          for (const x of initial.turns.slice(lastUser + 1)) if (x.role === 'assistant' && x.modelId && !ids.includes(x.modelId)) ids.push(x.modelId)
+          const seated = ids.map(id => rows.find(r => r.id === id)).filter(Boolean).slice(0, MAX_SEATS) as PickerModel[]
+          if (seated.length) { setMasters(m => (m.length ? m : seated)); return }
+        }
         const pick = rows.find(r => r.model_name === DEFAULT_MASTER) ?? FALLBACK_MASTERS.map(n => rows.find(r => r.model_name === n)).find(Boolean) ?? rows[0]
         if (pick) setMasters(m => (m.length ? m : [pick as PickerModel]))
       })
@@ -440,6 +467,20 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     return out
   }
 
+  // Every model that has answered in this room (seated or since dismissed),
+  // with its summed cost — the tabs of the 分頁 layout.
+  const replyModels = (() => {
+    const seen = new Map<string, { id: string; name: string; provider: string; cost: number }>()
+    for (const m of masters) seen.set(m.id, { id: m.id, name: m.display_name, provider: m.provider, cost: 0 })
+    for (const tn of turns) if (tn.role === 'assistant') {
+      const cur = seen.get(tn.modelId) ?? { id: tn.modelId, name: tn.name, provider: tn.provider, cost: 0 }
+      cur.cost += tn.cost ?? 0
+      seen.set(tn.modelId, cur)
+    }
+    return [...seen.values()]
+  })()
+  const activeTab = replyModels.some(m => m.id === tab) ? tab : (replyModels[0]?.id ?? null)
+
   const sel = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 13 }
 
   return (
@@ -576,13 +617,23 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                 )}
               </span>
             ))}
-            {masters.length < 2 && (
+            {masters.length < MAX_SEATS && (
               <button onClick={() => setPicker({ replace: null })} style={{
                 padding: '7px 12px', borderRadius: 999, border: '1px dashed var(--border2)',
                 background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer',
               }}>＋ {t('xtell.addmaster')}</button>
             )}
             <span style={{ flex: 1 }} />
+            {(masters.length > 1 || replyModels.length > 1) && (
+              <span style={{ display: 'inline-flex', border: '1px solid var(--border2)', borderRadius: 999, overflow: 'hidden', fontSize: 11.5 }}>
+                {(['columns', 'tabs'] as const).map(l => (
+                  <button key={l} type="button" onClick={() => chooseLayout(l)} style={{
+                    border: 'none', padding: '5px 11px', cursor: 'pointer', fontWeight: layout === l ? 700 : 500,
+                    background: layout === l ? 'var(--surface2)' : 'transparent', color: layout === l ? 'var(--white)' : 'var(--muted)',
+                  }}>{t(`xtell.layout.${l}`)}</button>
+                ))}
+              </span>
+            )}
             <button onClick={() => setShowChart(v => !v)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
               {showChart ? t('xtell.hidechart') : t('xtell.viewchart')}
             </button>
@@ -674,13 +725,27 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             {initial && turns.length > 0 && (
               <div style={{ padding: '10px 18px', fontSize: 12.5, color: 'var(--muted2)' }}>{t('xtell.saved.resumed')}</div>
             )}
-            {/* Rounds: a user bubble, then every master's reply to it SIDE BY
-                SIDE — and while two masters are seated, each reply carries a
-                選這位老師 button that dismisses the other seat and continues
-                the conversation with the chosen one. Same shape as XCreate:
-                compare side by side, pick one to keep talking to. Past rounds
-                keep their columns after a choice — they are the record of the
-                comparison that led to it. */}
+            {/* Rounds: a user bubble, then every seated master's reply — side
+                by side (scrolling past two) or one at a time behind the tabs.
+                Nobody has to pick one to continue (owner, Sep 24): every seat
+                keeps its own thread; 只留這位老師 is there for whoever wants to
+                stop paying for the rest. Past rounds keep their replies. */}
+            {layout === 'tabs' && replyModels.length > 1 && (
+              <div role="tablist" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
+                {replyModels.map(m => (
+                  <button key={m.id} role="tab" aria-selected={activeTab === m.id} onClick={() => setTab(m.id)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer',
+                    border: '1px solid ' + (activeTab === m.id ? 'var(--red)' : 'var(--border2)'),
+                    background: activeTab === m.id ? 'var(--red-dim, var(--surface2))' : '#ffffff',
+                    color: activeTab === m.id ? 'var(--red)' : 'var(--muted)', fontWeight: activeTab === m.id ? 700 : 500,
+                  }}>
+                    <ProviderLogo provider={m.provider} size={13} />
+                    {m.name}
+                    {m.cost > 0 && <span style={{ ...mono, fontSize: 9.5 }}>${m.cost.toFixed(3)}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             {rounds(turns).map((round, ri) => (
               <div key={ri} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {round.user && (
@@ -688,9 +753,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                     {round.user.content}
                   </div>
                 )}
-                {round.replies.length > 0 && (
-                  <div className={standalone ? "xtell-replies" : undefined} style={{ display: 'grid', gridTemplateColumns: `repeat(${round.replies.length}, 1fr)`, gap: 10, alignItems: 'start' }}>
-                    {round.replies.map((tn: any, j: number) => (
+                {round.replies.length > 0 && (() => {
+                  // 並排: one column per reply, at least 360 px each, the row
+                  // scrolls sideways past two. 分頁: only the active master's.
+                  const shown = layout === 'tabs' ? round.replies.filter((tn: any) => tn.modelId === activeTab) : round.replies
+                  if (shown.length === 0) return null
+                  return (
+                  <div style={{ overflowX: layout === 'columns' ? 'auto' : 'visible', paddingBottom: layout === 'columns' && shown.length > 2 ? 6 : 0 }}>
+                  <div className={standalone ? "xtell-replies" : undefined} style={{ display: 'grid', gridTemplateColumns: layout === 'columns' ? `repeat(${shown.length}, minmax(${shown.length > 1 ? 360 : 0}px, 1fr))` : 'minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
+                    {shown.map((tn: any, j: number) => (
                       <div key={j} style={{ background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                           <ProviderLogo provider={tn.provider} size={13} />
@@ -703,7 +774,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                             <button onClick={() => !busy && setMasters(ms => ms.filter(x => x.id === tn.modelId))}
                               disabled={busy}
                               style={{ border: '1px solid var(--red)', background: 'none', color: 'var(--red)', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
-                              {t('xtell.choose')}
+                              {t('xtell.keep')}
                             </button>
                           )}
                         </div>
@@ -717,7 +788,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                       </div>
                     ))}
                   </div>
-                )}
+                  </div>
+                  )
+                })()}
               </div>
             ))}
             <div ref={endRef} />
@@ -750,7 +823,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             setMasters(ms => {
               if (ms.some(x => x.id === m.id)) return ms
               if (picker.replace) return ms.map(x => (x.id === picker.replace ? m : x))
-              return ms.length >= 2 ? ms : [...ms, m]
+              return ms.length >= MAX_SEATS ? ms : [...ms, m]
             })
             setPicker(null)
           }}

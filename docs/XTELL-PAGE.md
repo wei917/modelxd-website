@@ -247,15 +247,21 @@ ground a Western reading in a Buddhist text about a different system.
    no birth row at all (`NameForm`, `CeziForm`); the gender radio in 姓名亭
    rides on the shared `birth.gender`.
 2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
-   **Master chips** above: up to 2 models, default preselected
+   **Master chips** above: up to 4 models (Sep 24; was 2), default preselected
    (`DEFAULT_MASTER = 'qwen3.8-flash'` in `app/xtell/client.tsx` since Sep 24,
    owner's call, with thinking ON as its default pill — native in the
    classics, a hundredth of Sol's price, first word in seconds; falls back to
    `qwen3.8-max`, then `gpt-5.6-sol`, then the newest enabled text model).
    Every seated master answers every question; each keeps its own private
-   thread (its replies only) so two masters never contaminate each other.
-   Each reply shows model + actual cost. Two masters = 合參/second opinion —
-   the ModelXD thesis in temple robes.
+   thread (its replies only) so masters never contaminate each other.
+   Each reply shows model + actual cost. Several masters = 合參 — the ModelXD
+   thesis in temple robes. Two layouts (owner, Sep 24), remembered per
+   browser: **並排** (one column per reply, ≥360 px each, the row scrolls
+   sideways past two) and **分頁** (a button group of every model that has
+   answered, with its summed cost; one reply at a time; the phone default).
+   Nobody has to pick one to continue; 「只留這位老師」 drops the others for
+   whoever wants to stop paying for them. A reopened reading re-seats the
+   masters of its last round.
 3. `查看命盤` (dotted link) expands the full board for verification, with the
    **engine provenance line** (`排盤引擎: lunar-typescript v1.8.6`).
 4. Per-seat settings (Sep 24, owner: configure each master like an XCreate
