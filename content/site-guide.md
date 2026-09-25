@@ -330,7 +330,7 @@ to verify against any 排盤 site — collapsed behind「查看命盤」so the r
 stays simple. Casting the chart is free. The READING is a conversation, same
 composer as XDirect: up to TWO masters can be seated — their answers
 render SIDE BY SIDE and the user picks one to continue with, same pattern
-as XCreate, the default master is preselected (currently Qwen 3.8 Max) and can be
+as XCreate, the default master is preselected (currently Qwen 3.8 Flash, thinking on) and can be
 swapped by clicking its name, each seated master has its own thinking-level
 and web-search settings (like an XCreate slot), and each reply is
 billed at that model's listed price with the cost shown under the reply. Readings are for reflection and entertainment, never advice —

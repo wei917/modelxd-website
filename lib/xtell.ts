@@ -506,7 +506,9 @@ const ASTRO_SIGNS = ['牡羊', '金牛', '雙子', '巨蟹', '獅子', '處女',
 
 // Shared language discipline (learned from Wolke/ziwei-doushu's ETHICS.md):
 // tendencies, never verdicts.
-const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。'
+// The 繁體 clause is for Qwen Flash, which let 进得来／性质／这一年 slip into
+// an otherwise Traditional reading (Sep 24).
+const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。以繁體中文回答時，全文一律繁體字，不得夾雜任何簡體字。'
 
 export const MASTERS: Record<Temple, string> = {
   yuelao: `你是「月老廟」的駐廟老師，一位慈祥風趣、閱人無數的月老。兩位有緣人的八字命盤已由系統排好，附在訊息中。

@@ -18,6 +18,18 @@ import { classicsBlock } from '@/lib/classics'
 
 const LOG = '[xtell/reading]'
 
+// The visitor's site language → the language the master answers in. The
+// chart facts stay Chinese (they are the checkable record); the reading
+// follows the picker unless the visitor writes in another language.
+const LANG_LINE: Record<string, string> = {
+  'zh-Hant': '回答語言：繁體中文，全文不得夾雜簡體字。',
+  'zh-Hans': '回答语言：简体中文。',
+  'ja': '回答言語：日本語。命理の術語は漢字表記を残し、必要なら短い説明を添えること（例：日主（にっしゅ）、流年（りゅうねん））。',
+  'ko': '답변 언어: 한국어. 명리 용어는 한자를 병기하고 필요하면 짧은 설명을 덧붙일 것 (예: 일주(日主), 유년(流年)).',
+  'en': 'Answer in English. Keep the Chinese terms in parentheses the first time each appears (e.g. day master 日主, the year\'s flow 流年) and do not translate proper names of stars or palaces without also giving the Chinese.',
+}
+const langLine = (v: unknown) => (typeof v === 'string' && LANG_LINE[v]) ? `\n\n${LANG_LINE[v]} 若信眾以其他語言提問，改用信眾的語言。` : ''
+
 // What the facts block is called, per temple: a 命盤 for the chart temples,
 // a 籤 for 關帝廟, wishes plus a chart for 四面佛.
 const FACTS_HEAD: Record<string, string> = {
@@ -81,11 +93,14 @@ export async function POST(req: Request) {
   // Thinking level per seat (owner, Sep 24: configure each master like an
   // XCreate slot). Accepted only if the row declares it; `null` from the
   // client means an explicit Auto (provider default); absent means the house
-  // default, which for Qwen is thinking off — its own default sat 130 s
-  // before the first token on a 紫微 prompt.
+  // default: Qwen Flash thinking on (the default master), other Qwen rows
+  // thinking off — Max's own default sat 130 s before the first token on a
+  // 紫微 prompt.
   const levels: string[] = (model as any).output_config?.text?.thinking_levels ?? []
+  const houseDefault = (model as any).provider !== 'alibaba' ? null
+    : (model as any).model_name === 'qwen3.8-flash' ? 'thinking_true' : 'thinking_false'
   const thinking: string | null = body?.thinking === undefined
-    ? ((model as any).provider === 'alibaba' ? 'thinking_false' : null)
+    ? houseDefault
     : (typeof body.thinking === 'string' && levels.includes(body.thinking) ? body.thinking : null)
 
   // Recomputed here, never taken from the client — same rule as every other
@@ -191,7 +206,7 @@ export async function POST(req: Request) {
         [],
         { userId: user.id },
         {
-          system: `${MASTERS[temple]}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`,
+          system: `${MASTERS[temple]}${langLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`,
           search,
           thinking,
         },

@@ -245,9 +245,10 @@ ground a Western reading in a Buddhist text about a different system.
    rides on the shared `birth.gender`.
 2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
    **Master chips** above: up to 2 models, default preselected
-   (`DEFAULT_MASTER = 'qwen3.8-max'` in `app/xtell/client.tsx` since Sep 24,
-   owner's call — native in the classics, a fifth of Sol's price; falls back
-   to `gpt-5.6-sol`, then the newest enabled text model).
+   (`DEFAULT_MASTER = 'qwen3.8-flash'` in `app/xtell/client.tsx` since Sep 24,
+   owner's call, with thinking ON as its default pill — native in the
+   classics, a hundredth of Sol's price, first word in seconds; falls back to
+   `qwen3.8-max`, then `gpt-5.6-sol`, then the newest enabled text model).
    Every seated master answers every question; each keeps its own private
    thread (its replies only) so two masters never contaminate each other.
    Each reply shows model + actual cost. Two masters = 合參/second opinion —
@@ -259,9 +260,10 @@ ground a Western reading in a Buddhist text about a different system.
    (Auto + the row's `output_config.text.thinking_levels`) and **web search**
    Off/On (only where the row declares `web_search`). The reading request
    carries `thinking` and `search` per seat; the route accepts a level only
-   if the row declares it. House default for Alibaba rows is `thinking_false`
-   (Qwen's own default sat 130 s before the first token on a 紫微 prompt);
-   the UI shows that as the selected pill so Auto is a deliberate choice.
+   if the row declares it. House default: Qwen Flash `thinking_true`, other Alibaba rows
+   `thinking_false` (Max's own default sat 130 s before the first token on a
+   紫微 prompt); the UI shows the default as the selected pill so Auto is a
+   deliberate choice.
    Clicking a master's name opens the picker to **replace** that seat, so the
    first master is as changeable as the second. The old global search
    toggle is gone.
