@@ -611,7 +611,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
                             every other text surface here uses. */}
                         {tn.content
                           ? <div className="markdown-body" style={{ lineHeight: 1.85 }}><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{tn.content}</ReactMarkdown></div>
-                          : <span style={{ color: 'var(--muted2)' }}>…</span>}
+                          : <Thinking name={tn.name} />}
                       </div>
                     ))}
                   </div>
@@ -1458,6 +1458,28 @@ function CeziBoard({ info, ask }: { info: any; ask: string }) {
         </div>
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.cezi.source')}</div>
+    </div>
+  )
+}
+
+
+// ── Waiting for the first token ─────────────────────────────────────────────
+// A reasoning model can sit for ten or twenty seconds before its first
+// delta, and a static "…" read as a crash (owner, Sep 24, with a screenshot).
+// Three breathing dots, the master's name, and after a few seconds the
+// elapsed time so the wait is visibly alive.
+function Thinking({ name }: { name?: string }) {
+  const t = useT()
+  const [secs, setSecs] = useState(0)
+  useEffect(() => {
+    const started = Date.now()
+    const id = setInterval(() => setSecs(Math.floor((Date.now() - started) / 1000)), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }} role="status" aria-live="polite">
+      <span className="xtell-think" aria-hidden="true"><i /><i /><i /></span>
+      <span>{t('xtell.thinking')}{name ? `　${name}` : ''}{secs >= 4 ? `　${secs}s` : ''}</span>
     </div>
   )
 }

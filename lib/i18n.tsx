@@ -1402,6 +1402,7 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.saved.turns':    { en: 'questions', 'zh-Hant': '則提問', 'zh-Hans': '则提问', ja: '件の質問', ko: '개 질문' },
   'xtell.saved.chartonly':{ en: 'Chart only, no reading yet', 'zh-Hant': '只排了盤，還沒請老師', 'zh-Hans': '只排了盘，还没请老师', ja: '命盤のみ、鑑定はまだ', ko: '명반만, 아직 풀이 없음' },
   'xtell.saved.resumed':  { en: 'Continuing a saved reading. Ask your next question below.', 'zh-Hant': '接續先前的解讀。可以直接在下方繼續問。', 'zh-Hans': '接续先前的解读。可以直接在下方继续问。', ja: '保存した鑑定の続きです。下から次の質問をどうぞ。', ko: '저장된 풀이를 이어갑니다. 아래에서 다음 질문을 하세요.' },
+  'xtell.thinking':      { en: 'The master is thinking', 'zh-Hant': '老師正在思考', 'zh-Hans': '老师正在思考', ja: '老師が考えています', ko: '스승이 생각 중입니다' },
   'xtell.qian.ask':      { en: 'What are you asking about?', 'zh-Hant': '所問之事', 'zh-Hans': '所问之事', ja: '尋ねること', ko: '묻는 일' },
   'xtell.qian.ask.ph':   { en: 'One matter per stick: career, marriage, a move, a lawsuit, an illness…', 'zh-Hant': '一事一籤：功名事業、婚姻、出行、訟事、疾病、家宅……', 'zh-Hans': '一事一签：功名事业、婚姻、出行、讼事、疾病、家宅……', ja: '一件につき一籤：仕事、結婚、旅行、訴訟、病気、家……', ko: '한 가지 일에 한 제비: 일, 결혼, 이동, 소송, 병, 집…' },
   'xtell.qian.draw':     { en: 'Draw a stick', 'zh-Hant': '抽籤', 'zh-Hans': '抽签', ja: '籤を引く', ko: '제비 뽑기' },
