@@ -129,7 +129,10 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   // using; a picker that ordered them by release date was ignoring its own
   // leaderboard at the one moment the answer matters. Release order stays as
   // the alternative — "what's new" is a real question, just not the first one.
-  const [sortBy,      setSortBy]      = useState<'rank' | 'released'>('rank')
+  // Default order is release date, newest first (owner, Sep 25): the XD
+  // score is not ready to rank the catalog yet, and a vote-thin score put
+  // stale models on top. The XD score sort stays one click away.
+  const [sortBy,      setSortBy]      = useState<'rank' | 'released'>('released')
   const [scores,      setScores]      = useState<Record<string, number>>({})
 
   useEffect(() => {
