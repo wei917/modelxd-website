@@ -39,6 +39,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
             <p>{t(qian ? 'xtell.site.focus.howQian' : 'xtell.site.focus.howChart')}</p>
             <p>{t('xtell.site.focus.howReading')}</p>
           </details>
+          <p className="xtell-focus-note">{t('xtell.site.focus.signin')}</p>
         </div>
       </div>
     </div>

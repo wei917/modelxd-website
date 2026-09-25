@@ -10,6 +10,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
+import { xtellMetadata } from '../lib/xtell-meta'
 import { SiteProvider } from '../lib/useSite'
 import './globals.css'
 
@@ -70,9 +71,8 @@ const notoJP = Noto_Sans_JP({
 // client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
 // tab on the XTell host.
 export async function generateMetadata(): Promise<Metadata> {
-  if (siteFromHeaders(await headers()) === 'xtell') {
-    return { title: 'XTell | 探索殿堂', description: '探索關帝、媽祖、月老與各地命理傳統。免費排盤、抽籤，再與你選的 AI 老師聊聊。僅供參考與娛樂。' }
-  }
+  const h = await headers()
+  if (siteFromHeaders(h) === 'xtell') return xtellMetadata(h)
   return {
     title: 'ModelXD',
     description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',

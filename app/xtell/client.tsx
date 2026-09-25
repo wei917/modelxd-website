@@ -1051,6 +1051,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   const locked = ritual === 'confirmed'
   const pill = (bg: string) => ({ padding: '10px 26px', borderRadius: 999, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' })
   const jiaoColour: Record<Jiao, string> = { 聖筊: 'var(--green)', 笑筊: 'var(--muted)', 陰筊: 'var(--red)' }
+  const jiaoKey: Record<Jiao, string> = { 聖筊: 'sheng', 笑筊: 'xiao', 陰筊: 'yin' }
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div>
@@ -1095,7 +1096,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
             {Array.from({ length: CONFIRM_THROWS }, (_, i) => {
               const j = stick.throws[i]
               return (
-                <span key={i} style={{
+                <span key={i} title={j ? t('xtell.qian.jiao.' + jiaoKey[j]) : undefined} style={{
                   minWidth: 44, textAlign: 'center', padding: '5px 10px', borderRadius: 999, fontSize: 12.5, fontWeight: 700,
                   border: '1px solid ' + (j ? jiaoColour[j] : 'var(--border2)'), color: j ? jiaoColour[j] : 'var(--muted2)',
                   background: j === '聖筊' ? 'var(--green-dim)' : 'transparent',

@@ -11,7 +11,7 @@ const S = {
 
 export default function PrivacyPage() {
   return (
-    <div style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px' }}>
+    <main id="xtell-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Privacy</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
@@ -98,6 +98,6 @@ export default function PrivacyPage() {
         Questions:{' '}
         <a href="mailto:founder@modelxd.com" style={{ color: 'var(--red)' }}>founder@modelxd.com</a>.
       </p>
-    </div>
+    </main>
   )
 }

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { LANGS, useLang, type Lang } from '../../../lib/i18n'
+import { DISPLAY_TEMPLES, type TempleKey } from './TempleArtwork'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -19,22 +20,40 @@ export default function XTellNav({ user }: { user: User | null }) {
   const { lang, setLang, t } = useLang()
   const { show } = useAuthModal()
   const pathname = usePathname()
-  // The tab title follows the language; the server can only know the host.
+  // The tab title follows the language and the place: the explorer, a
+  // temple (from the hash), the account page, the legal pages. Their own
+  // metadata (server, English) is the fallback the first paint shows.
   // Next 16 streams the metadata <title> in after the shell has hydrated, so
   // a title set once at mount gets overwritten — set it again shortly after.
   useEffect(() => {
-    const apply = () => { document.title = t('xtell.site.tab') }
+    const brand = t('xtell.site.brand')
+    const compute = () => {
+      if (pathname === '/' || pathname === '/xtell') {
+        const key = window.location.hash.slice(1) as TempleKey
+        return DISPLAY_TEMPLES.includes(key) ? `${t('xtell.site.focus.' + key + '.name')} | ${brand}` : t('xtell.site.tab')
+      }
+      if (pathname === '/profile') return `${t('xtell.site.account')} | ${brand}`
+      if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
+      if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
+      return null
+    }
+    const apply = () => { const title = compute(); if (title) document.title = title }
     apply()
     const timers = [setTimeout(apply, 800), setTimeout(apply, 2500)]
-    return () => timers.forEach(clearTimeout)
-  }, [lang, t])
+    window.addEventListener('hashchange', apply)
+    return () => { timers.forEach(clearTimeout); window.removeEventListener('hashchange', apply) }
+  }, [lang, t, pathname])
   return (
     <header className="xtell-nav">
       <a href="#xtell-main" className="xtell-skip" onClick={event => {
         event.preventDefault()
-        const main = document.getElementById('xtell-main')
-        main?.focus()
-        main?.scrollIntoView({ block: 'start' })
+        // The explorer and the account page carry #xtell-main; shared pages
+        // (terms, privacy) are reached through their <main> landmark.
+        const main = document.getElementById('xtell-main') ?? document.querySelector<HTMLElement>('main') ?? document.querySelector<HTMLElement>('.app-main')
+        if (!main) return
+        if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1')
+        main.focus()
+        main.scrollIntoView({ block: 'start' })
       }}>{t('xtell.site.skip')}</a>
       <div className="xtell-nav-inner">
         <a href="/" aria-label="XTell"><XTellMark /></a>
@@ -46,7 +65,8 @@ export default function XTellNav({ user }: { user: User | null }) {
               // Inside a temple, 探索殿堂 is the back link: clear the hash in
               // place so the explorer keeps the selected temple instead of
               // reloading to the default one.
-              if (window.location.pathname === '/' && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
+              const p = window.location.pathname
+              if ((p === '/' || p === '/xtell') && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
             }}>{t('xtell.site.street')}</a>
         </nav>
         <div className="xtell-nav-actions">

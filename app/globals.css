@@ -3402,6 +3402,7 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-focus-how summary::-webkit-details-marker { display: none; }
 .xtell-focus-how[open] { flex-basis: 100%; }
 .xtell-focus-how p { margin: 12px 0 0; }
+.xtell-focus-note { flex-basis: 100%; margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--xtell-secondary); }
 .xtell-focus-menu { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); padding: 8px 12px 12px; gap: 4px; border: 1px solid var(--xtell-rule); }
 .xtell-focus-choice { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-width: 0; gap: 8px; padding: 10px 4px 8px; background: transparent; color: var(--xtell-ink); border: 0; border-top: 3px solid transparent; border-radius: 4px; cursor: pointer; font: inherit; }
 .xtell-focus-choice[aria-pressed="true"] { background: var(--xtell-tint); color: var(--xtell-vermilion); border-top-color: var(--xtell-vermilion); }

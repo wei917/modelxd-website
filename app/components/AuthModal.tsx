@@ -211,7 +211,15 @@ export default function AuthModal() {
 
 
           {required && isXTell && (
-            <button type="button" onClick={() => { release(); window.location.href = '/' }}
+            <button type="button" onClick={() => {
+              release()
+              // Inside a temple, clear the hash in place (what the 探索殿堂 link
+              // does) so the explorer keeps the temple just left instead of
+              // reloading to the default one. Elsewhere (account page) go home.
+              const p = window.location.pathname
+              if ((p === '/' || p === '/xtell') && window.location.hash) { window.location.hash = ''; window.scrollTo({ top: 0 }) }
+              else window.location.href = '/'
+            }}
               style={{ display: 'block', margin: '10px auto 0', border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
               ← {t('xtell.site.focus.back')}
             </button>
