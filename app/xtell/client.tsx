@@ -107,6 +107,15 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
   }, [standalone])
+  // Resume from inside a temple (its history list): seed the room from the
+  // saved row without a page load. Same path ?reading= takes.
+  const resume = (row: SavedReading) => {
+    setSaved(row)
+    setSelectedTemple(row.temple as Temple)
+    if (standalone) window.location.hash = row.temple
+    setTemple(row.temple as Temple)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
   const chooseTemple = (key: Temple | null) => {
     if (standalone) window.location.hash = key ?? ''
     setTemple(key)
@@ -118,7 +127,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={chooseTemple} /> : <>
         <XTellAuthGate />
-        <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); chooseTemple(null) }} standalone initial={saved?.temple === temple ? saved : null} />
+        <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); chooseTemple(null) }} standalone initial={saved?.temple === temple ? saved : null} onResume={resume} />
       </>}
       <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
     </main>
@@ -154,7 +163,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
             ))}
           </div>
         ) : (
-          <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} />
+          <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} onResume={resume} />
         )}
 
         <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
@@ -163,7 +172,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   )
 }
 
-function TempleRoom({ temple, onBack, standalone = false, initial = null }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null }) {
+function TempleRoom({ temple, onBack, standalone = false, initial = null, onResume }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null; onResume?: (r: SavedReading) => void }) {
   const t = useT()
   // The site language rides with every reading so the master answers in it
   // (owner, Sep 24) — a Japanese visitor pressing the Chinese pre-filled
@@ -524,6 +533,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null }: { te
             </div>
           )}
           {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
+          {/* This temple's saved visits (owner, Sep 24: history in each
+              temple, not only on the account page). Continue reopens the
+              room in place with chart and conversation. */}
+          {onResume && <TempleHistory temple={temple} onResume={onResume} />}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1565,6 +1578,60 @@ function Thinking({ name }: { name?: string }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }} role="status" aria-live="polite">
       <span className="xtell-think" aria-hidden="true"><i /><i /><i /></span>
       <span>{t('xtell.thinking')}{name ? `　${name}` : ''}{secs >= 4 ? `　${secs}s` : ''}</span>
+    </div>
+  )
+}
+
+
+// ── This temple's history ───────────────────────────────────────────────────
+// The visitor's saved visits to THIS temple (supabase/105, owner RLS), shown
+// under the entry form so a returning visitor continues instead of recasting.
+function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: SavedReading) => void }) {
+  const { lang, t } = useLang()
+  const [rows, setRows] = useState<Array<SavedReading & { title: string | null; cost_cents: number; created_at: string }>>([])
+  const [loaded, setLoaded] = useState(false)
+  const client = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      const sb = client()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { if (active) setLoaded(true); return }
+      const { data } = await sb.from('xtell_readings')
+        .select('id, temple, subject, chart, extras, turns, title, cost_cents, created_at')
+        .eq('user_id', user.id).eq('temple', temple).is('deleted_at', null)
+        .order('created_at', { ascending: false }).limit(8)
+      if (active) { setRows((data ?? []) as any); setLoaded(true) }
+    })()
+    return () => { active = false }
+  }, [temple])
+  const remove = async (id: string) => {
+    const { error } = await client().from('xtell_readings').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+    if (!error) setRows(rs => rs.filter(r => r.id !== id))
+  }
+  if (!loaded || rows.length === 0) return null
+  return (
+    <div style={{ marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.history.temple')}</div>
+      <div style={{ display: 'grid', gap: 6 }}>
+        {rows.map(r => {
+          const asked = (r.turns ?? []).filter((x: any) => x.role === 'user').length
+          return (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
+              <span style={{ flex: 1, minWidth: 200 }}>
+                <b>{r.title || t('xtell.saved.chartonly')}</b>
+                <span style={{ color: 'var(--muted2)', marginLeft: 8 }}>
+                  {new Date(r.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}
+                  {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : ''}
+                  {r.cost_cents > 0 ? `　$${(r.cost_cents / 100).toFixed(2)}` : ''}
+                </span>
+              </span>
+              <button type="button" onClick={() => onResume(r)} style={{ padding: '5px 12px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
+              <button type="button" onClick={() => void remove(r.id)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

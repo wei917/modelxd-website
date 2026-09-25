@@ -1406,6 +1406,7 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.ziwei.periods':  { en: 'Periods (大限 · 流年 · 流月)', 'zh-Hant': '運限（大限・流年・流月）', 'zh-Hans': '运限（大限・流年・流月）', ja: '運限（大限・流年・流月）', ko: '운한 (대한・유년・유월)' },
   'xtell.ziwei.lands':    { en: 'lands on natal', 'zh-Hant': '落本命', 'zh-Hans': '落本命', ja: '本命の', ko: '본명' },
   'xtell.changemaster':  { en: 'Change this master', 'zh-Hant': '換一位老師', 'zh-Hans': '换一位老师', ja: '老師を変える', ko: '스승 바꾸기' },
+  'xtell.history.temple': { en: 'Your past visits here', 'zh-Hant': '你在這裡的紀錄', 'zh-Hans': '你在这里的记录', ja: 'ここでの過去の鑑定', ko: '이곳에서의 기록' },
   'xtell.qian.ask':      { en: 'What are you asking about?', 'zh-Hant': '所問之事', 'zh-Hans': '所问之事', ja: '尋ねること', ko: '묻는 일' },
   'xtell.qian.ask.ph':   { en: 'One matter per stick: career, marriage, a move, a lawsuit, an illness…', 'zh-Hant': '一事一籤：功名事業、婚姻、出行、訟事、疾病、家宅……', 'zh-Hans': '一事一签：功名事业、婚姻、出行、讼事、疾病、家宅……', ja: '一件につき一籤：仕事、結婚、旅行、訴訟、病気、家……', ko: '한 가지 일에 한 제비: 일, 결혼, 이동, 소송, 병, 집…' },
   'xtell.qian.draw':     { en: 'Draw a stick', 'zh-Hant': '抽籤', 'zh-Hans': '抽签', ja: '籤を引く', ko: '제비 뽑기' },

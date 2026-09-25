@@ -130,6 +130,9 @@ and a saved reading is resumable. One row per temple visit:
 - The account page lists rows (browser client, owner RLS): temple, title or
   「只排了盤」, date, question count, cost, Continue (`/?reading=<id>`),
   Delete (soft, `deleted_at`).
+- Each temple's entry form also lists the visitor's saved visits to THAT
+  temple (`TempleHistory`, owner Sep 24: history in each temple, not only
+  the account page), with Continue (in place, via `onResume`) and Delete.
 - `?reading=<id>` reopens: `XTellClient` fetches the row, opens the temple,
   and `TempleRoom` seeds every input, the chart, the extras and the turns
   from it, so the next question sends exactly what the original visit sent
