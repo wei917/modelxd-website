@@ -49,22 +49,25 @@ export const ENGINES: Record<Temple, string> = {
   // 姓名亭: strokes from Unicode's Unihan (kRSUnicode → 康熙部首原形), the
   // 81 數理 is the 熊崎式 convention. 測字亭: the same table for radical and
   // strokes; the 拆字 is the master's.
-  xingming: 'lib/names.ts · 康熙筆畫 from Unihan (Unicode 17) · 五格剖象 · 熊崎式 81 數理',
-  cezi:     'lib/names.ts · 康熙部首與筆畫 from Unihan · 拆解由老師為之',
+  xingming: '康熙筆畫（Unihan，Unicode 17）· 五格剖象 · 熊崎式 81 數理',
+  cezi:     '康熙部首與筆畫（Unihan）· 拆解由老師為之',
   // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
   simianfo: 'lunar-typescript v1.8.6',
   // 九曜廟: our own engine on astronomy-engine, checked against Swiss
   // Ephemeris (Lahiri) in the golden suite.
-  navagraha: 'lib/jyotish.ts on astronomy-engine v2.1 · Lahiri · mean node · whole sign',
+  navagraha: 'astronomy-engine v2.1 · Lahiri 歲差 · 平均交點 · 整宮制',
   // 占星塔: the tropical sibling of the same engine. The house system is
   // named because it is the one thing a visitor comparing against another
   // site will see differ, and above 66° there is no Placidus answer at all.
-  zhanxing: 'lib/astrology.ts on astronomy-engine v2.1 · 回歸黃道 · Placidus · mean node',
+  zhanxing: 'astronomy-engine v2.1 · 回歸黃道 · Placidus 分宮 · 平均交點',
 }
 
 export interface BirthInput {
   y: number; m: number; d: number; h: number; mi: number
   gender: 'male' | 'female'
+  /** validBirth() sets h/mi to noon when this is true; the engines that can
+   *  work without an hour (八字, 占星塔) read the flag, the rest hide it. */
+  hourUnknown?: boolean
 }
 
 export function validBirth(b: any): b is BirthInput {
@@ -421,7 +424,7 @@ export const asAstroMode = (v: unknown): AstroMode =>
 function birthPlace(b: BirthInput, placeKey: unknown): BirthPlace {
   const p = placeOf(placeKey)
   if (!p) throw new Error('unknown place')
-  return { y: b.y, m: b.m, d: b.d, h: b.h, mi: b.mi, lat: p.lat, lon: p.lon, tz: p.tz, place: p.label }
+  return { y: b.y, m: b.m, d: b.d, h: b.h, mi: b.mi, lat: p.lat, lon: p.lon, tz: p.tz, place: p.label, hourUnknown: b.hourUnknown === true }
 }
 
 export type ZhanxingChart = {
@@ -484,8 +487,8 @@ export function zhanxingFacts(c: ZhanxingChart, gender: string, gender2 = 'femal
   if (c.mode === 'year' && c.year) {
     const prog = c.year.prog
     return [
-      base, '\n' + returnFacts(c.year.ret),
-      `\n次限推運（一日一年法，推運日 ${prog.date}）：`,
+      base, '\n' + returnFacts(c.year.ret, !!c.natal.hourUnknown),
+      `\n次限推運（一日一年法，推運日 ${prog.date}）${c.natal.hourUnknown ? '（出生時刻不詳：推運月亮的度數可有約 ±6° 的誤差，宮位不可用）' : ''}：`,
       `  推運太陽：${SIGN_ZH(prog.sun.sign)} ${prog.sun.deg.toFixed(1)}°`,
       `  推運月亮：${SIGN_ZH(prog.moon.sign)} ${prog.moon.deg.toFixed(1)}°，第${prog.moon.house}宮`,
       prog.aspects.length ? `  推運相位：${prog.aspects.slice(0, 8).map(a => `${a.a} ${a.zh} ${a.b}`).join('、')}` : '  推運日月目前沒有緊密相位。',
@@ -597,7 +600,9 @@ export const MASTERS: Record<Temple, string> = {
 
 規則：
 - 只根據提供的星盤解讀。絕不自行推算任何行星位置、宮頭或相位——排盤是系統算好的，你的工作只有解讀。盤上沒有的東西（凱龍、小行星、次要相位）就說這座塔不排，不要憑印象補上。
-- 不要用「太陽星座＝一種人」的寫法。太陽是目的，月亮是需要，上升是別人先看見的樣子，三者不同；一開口就要讓使用者知道你讀的是整張盤。
+- 先回答，再展開。訊息裡有一行「太陽星座（一般說的「星座」）：…；月亮星座：…；上升星座：…」，那就是答案的來源。使用者問「我是什麼星座」或看得出是新手時，第一句就直接說：一般說的星座就是太陽星座，你的太陽星座是〈那一行寫的太陽星座〉；接著各用一句白話講月亮（情緒與需要）和上升（別人先看見的樣子，也是宮位的起點），然後才談整張盤。不要以「你不只是某某座」開場，也不要先講宮位、天頂或相位。星座名只能取自盤面那一行，不得改寫。
+- 新手聽得懂才算讀完。每個術語第一次出現都要跟著白話，例如「第十宮（事業與社會位置）」「土星四分上升（土星與上升點成 90°，一種需要用力的角度）」；使用者要求淺白時，直接省略術語只講意思。太陽是目的、月亮是需要、上升是樣子，三者不同，但先給答案再談差別。
+- 訊息若寫「出生時刻不詳」：上升、天頂、福點、宮位、命主星、日夜盤一律不提、不猜；使用者問起就說明這些需要出生時刻，並建議查出生證明或問家人。月亮若列了兩個星座，照實說當天月亮換座、要有時刻才能確定。
 - 相位要講度數與入出相位：誤差 0.5° 的四分相和誤差 6° 的四分相不是同一件事，入相位是還在收緊、出相位是已經過去。
 - 分宮制是 Placidus；若盤上寫的是等宮制，那是該緯度算不出 Placidus，要說明這是制度差異，不是排錯。使用者拿去和別的網站對照時若宮位不同，多半也是分宮制不同，據實說明。
 - 【今日運勢】若訊息附了今日行運：只讀那幾條實際成立的相位，並說出準確日。行運清單是空的時候，就老實說今天沒有緊密相位、這種日子是背景不是事件——絕對不要為了有話說而編一條行運，也絕對不要寫成「今天某某座會如何」的星座運勢欄。
