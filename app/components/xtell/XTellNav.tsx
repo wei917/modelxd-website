@@ -38,9 +38,10 @@ export default function XTellNav({ user }: { user: User | null }) {
       }}>{t('xtell.site.skip')}</a>
       <div className="xtell-nav-inner">
         <a href="/" aria-label="XTell"><XTellMark /></a>
+        {/* The avatar on the right IS the account link; a second text link
+            said the same thing twice (owner, Sep 24). */}
         <nav className="xtell-nav-links" aria-label={t('xtell.site.navigation')}>
           <a href="/" aria-current={pathname === '/' || pathname === '/xtell' ? 'page' : undefined}>{t('xtell.site.street')}</a>
-          <Link href="/profile" aria-current={pathname === '/profile' ? 'page' : undefined}>{t('xtell.site.account')}</Link>
         </nav>
         <div className="xtell-nav-actions">
           <select value={lang} onChange={e => setLang(e.target.value as Lang)} aria-label={t('xtell.site.language')}>
