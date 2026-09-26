@@ -1200,6 +1200,9 @@ export const STRINGS: Record<string, Entry> = {
 
   // "From: ___" button values — plain input nouns. Every sub-mode also
   // takes a text prompt; that's understood, so we don't spell it out.
+  'recipe.text_to_speech': { en: 'Text to speech', 'zh-Hant': '文字轉語音', 'zh-Hans': '文字转语音', ja: 'テキストから音声', ko: '텍스트 음성 변환' },
+  'recipefrom.text_to_speech': { en: 'Text', 'zh-Hant': '文字', 'zh-Hans': '文字', ja: 'テキスト', ko: '텍스트' },
+  'xcreate.ph.audio': { en: 'Write the words you want spoken…', 'zh-Hant': '輸入你想朗讀的文字…', 'zh-Hans': '输入你想朗读的文字…', ja: '読み上げる文章を入力…', ko: '읽어 줄 내용을 입력하세요…' },
   'recipefrom.text_to_text':     { en: 'Text',  'zh-Hant': '文字', 'zh-Hans': '文字', ja: 'テキスト', ko: '텍스트' },
   'recipefrom.image_to_text':    { en: 'Image', 'zh-Hant': '圖片', 'zh-Hans': '图片', ja: '画像',    ko: '이미지' },
   'recipefrom.pdf_to_text':      { en: 'PDF',   'zh-Hant': 'PDF', 'zh-Hans': 'PDF', ja: 'PDF',    ko: 'PDF' },
