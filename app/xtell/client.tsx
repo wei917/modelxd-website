@@ -15,14 +15,15 @@
 //      web search where the model supports it, and the reading streams in
 //      as a 批文. The model interprets the chart; it never computes one.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import TempleStreet, { TEMPLES } from '../components/xtell/TempleStreet'
 import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { createBrowserClient } from '@supabase/ssr'
-import { useT, useLang } from '../../lib/i18n'
+import { useT, useLang, tOr } from '../../lib/i18n'
+import { birthProblem, daysInMonth, birthYears } from '../../lib/xtell-birth'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
 import ReactMarkdown from 'react-markdown'
@@ -80,10 +81,9 @@ const ASTRO_MODES = ['natal', 'synastry', 'today', 'year'] as const
 type AstroMode = (typeof ASTRO_MODES)[number]
 
 // The visitor's own last birth row, so 今日 does not make them retype it
-// every morning. It stays in THEIR browser: a birth date, an exact time and
-// a place is the most identifying thing anyone types into this site, and
-// XTell stores nothing server-side. Cleared with the browser, never synced,
-// never seen by us.
+// every morning. This copy stays in THEIR browser (the visit itself is saved
+// to their account like every temple's, supabase/105); cleared with the
+// browser, never synced.
 const REMEMBER_KEY = 'xtell.zhanxing.birth'
 
 // 四面佛's faces, clockwise. Mirrors FACES in lib/xtell.ts (server-only file).
@@ -105,6 +105,66 @@ const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letter
 const card = { border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)' }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
+// Every minute (audit F04): on a 節 day one minute moves the 年柱 and 月柱
+// (2000-02-04 20:40 is 己卯/丁丑, 20:41 庚辰/戊寅), so the form never rounds.
+const MINUTES = Array.from({ length: 60 }, (_, i) => i)
+/** Temples whose chart cannot exist without the hour: 紫微 places 命宮 by
+ *  it, 九曜 its 上升. The routes refuse an unknown hour for these too. */
+const HOUR_REQUIRED: Temple[] = ['ziwei', 'navagraha']
+/** Temples whose saved chart is recomputed (without saving) when a visit is
+ *  reopened, so a record saved before the unknown-hour fix shows no 時柱 and
+ *  a correct 合盤. Charts that move with today's date (紫微 流年, 占星 今日)
+ *  keep what was saved, so a past conversation still matches its board. */
+const REFRESHED: Temple[] = ['bazi', 'yuelao', 'simianfo', 'guandi', 'mazu']
+
+/**
+ * A refusal from /api/xtell/*, in the visitor's language (audit F05). The
+ * routes send a stable `code`; `birth2_*` is the same message as `birth_*`
+ * for the second person. An unknown code shows the raw message rather than
+ * nothing.
+ */
+function errorText(t: (k: string) => string, code: string | undefined, raw: string): string {
+  if (!code) return raw
+  const m = code.match(/^(birth2?)_(.+)$/)
+  if (m) {
+    const msg = tOr(t, `xtell.err.birth.${m[2]}`, raw)
+    return m[1] === 'birth2' ? t('xtell.err.second') + msg : msg
+  }
+  return tOr(t, `xtell.err.${code}`, raw)
+}
+class CodedError extends Error { constructor(message: string, readonly code?: string) { super(message) } }
+
+/** The same checks the routes make, run on a subject before it is sent, and
+ *  on a saved subject before its chart is shown. Null when it is fine. */
+function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
+  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue'
+  if (needsBirth || (isQian(temple) && subj?.birth)) {
+    const p = birthProblem(subj?.birth)
+    if (p) return `birth_${p}`
+    if (HOUR_REQUIRED.includes(temple) && subj.birth.hourUnknown) return 'birth_hour_required'
+  }
+  if (temple === 'yuelao' || (temple === 'zhanxing' && (astroMode ?? subj?.mode) === 'synastry')) {
+    const p = birthProblem(subj?.birth2)
+    if (p) return `birth2_${p}`
+  }
+  if (temple === 'simianfo' && !FACE_KEYS.some(k => String(subj?.wishes?.[k] ?? '').trim())) return 'wish_required'
+  return null
+}
+
+/** One line of what a consultation was cast from, shown where a paid
+ *  question is written so the visitor can confirm it first. */
+function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const born = (b: any) => !b ? '' : `${b.y}-${pad(b.m)}-${pad(b.d)} ${b.hourUnknown ? t('xtell.hourunknown') : `${pad(b.h)}:${pad(b.mi)}`} · ${t(`xtell.${b.gender}`)}`
+  const where = (k: unknown) => PLACES.find(p => p.key === k)?.label ?? ''
+  if (temple === 'yuelao' || (temple === 'zhanxing' && subj.mode === 'synastry')) {
+    return `${t('xtell.person1')} ${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}　${t('xtell.person2')} ${born(subj.birth2)}${subj.place2 ? ` · ${where(subj.place2)}` : ''}`
+  }
+  if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xtell.${subj.gender}`)}`
+  if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
+  if (isQian(temple)) return subj.ask ? String(subj.ask).slice(0, 60) : ''
+  return `${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}`
+}
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
 const shichenOf = (h: number) => ZHI[h === 23 ? 0 : Math.floor((h + 1) / 2) % 12] + '時'
 
@@ -221,7 +281,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // requests it sends next are byte-for-byte what the original visit sent.
   const init = initial?.subject ?? {}
   const defaultBirth = { y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false }
-  const [birth, setBirth] = useState<typeof defaultBirth>({ ...defaultBirth, ...(init.birth ?? {}), ...(init.gender && !init.birth ? { gender: init.gender } : {}) })
+  const [birth, setBirth] = useState<typeof defaultBirth>({ ...defaultBirth, ...(init.birth ?? {}), ...(init.gender && !init.birth ? { gender: init.gender } : {}),
+    // 紫微/九曜 hide the checkbox; a record saved with it set must reopen
+    // with the hour selectable so the visitor can correct it.
+    ...(HOUR_REQUIRED.includes(temple) ? { hourUnknown: false } : {}) })
   const [readingId, setReadingId] = useState<string | null>(initial?.id ?? null)
   // 月老廟 needs a second person. Defaults to the other gender purely as a
   // starting point — both rows are fully editable, a couple is whoever they are.
@@ -275,6 +338,26 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // just a chat window, and it was hidden behind a link nobody clicked.
   const [showChart, setShowChart] = useState(true)
   const [err, setErr] = useState<string | null>(null)
+  // A reopened visit whose saved inputs are no longer accepted (a 2 月 31 日
+  // saved before the date check, an unknown hour saved in 紫微): its stored
+  // chart was computed from an impossible input, so it is not shown; the
+  // visitor is asked to correct the details (audit F01/F02, Codex review).
+  const [savedProblem, setSavedProblem] = useState<string | null>(() => (initial ? subjectProblem(temple, init) : null))
+  useEffect(() => {
+    if (!initial || savedProblem || !REFRESHED.includes(temple) || (isQian(temple) && !init.birth)) return
+    let live = true
+    // Recompute, never save (the route's `refresh`): the row stays as it was.
+    fetch('/api/xtell/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...init, temple, refresh: true }) })
+      .then(async res => {
+        const d = await res.json().catch(() => ({}))
+        if (!live) return
+        if (!res.ok) { if (typeof d?.code === 'string') setSavedProblem(d.code); return }
+        setChart(d.chart); setMatch(d.match ?? null); setYear(d.year ?? null); setBazi(d.bazi ?? null); setEngine(d.engine ?? null)
+      })
+      .catch(() => { /* keep the saved chart; the boards still hide an unknown hour */ })
+    return () => { live = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Up to two masters. The default seat is the house pick — the latest good
   // text model (GPT-5.6 Sol) — preselected so the temple works with zero
@@ -407,12 +490,20 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     }
     try {
       const requestSubject = subject(n)
+      // The routes check the same things; checking here first keeps the
+      // message next to the form and in the visitor's language.
+      const problem = subjectProblem(temple, requestSubject, astroMode)
+      if (problem) throw new CodedError(problem, problem)
       const res = await fetch('/api/xtell/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestSubject),
       })
       const d = await res.json()
-      if (!res.ok) throw new Error(d?.error ?? 'failed')
+      if (!res.ok) throw new CodedError(d?.error ?? 'failed', d?.code)
+      // Details edited after a conversation make a new visit: its thread
+      // starts empty rather than continuing the old chart's.
+      if (readingId && typeof d.readingId === 'string' && d.readingId !== readingId) setTurns([])
+      setSavedProblem(null)
       if (temple === 'yixue') yixueSubject.current = requestSubject
       setChart(d.chart)
       setMatch(d.match ?? null)
@@ -426,7 +517,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
       return true
-    } catch (e: any) { setErr(String(e?.message ?? e)); if (isQian(temple)) setRitualBoth('drawn'); return false }
+    } catch (e: any) { setErr(errorText(t, e?.code, String(e?.message ?? e))); if (isQian(temple)) setRitualBoth('drawn'); return false }
     finally {
       if (temple === 'yixue') { yixueEntryPending.current = false; setYixueEntryBusy(false) }
     }
@@ -492,6 +583,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     else if (next.throws.length >= CONFIRM_THROWS) { setRitualBoth('confirmed'); void enter(next.n) }
   }
 
+  // 修改資料 (audit, product): back to the filled form. Casting again makes a
+  // new visit (the old one stays in history). A 籤 is drawn again, because
+  // the stick was confirmed for what was said at the altar.
+  const editDetails = () => {
+    setErr(null); setEntered(false)
+    if (isQian(temple)) { stickRef.current = null; setStick(null); setRitualBoth('idle') }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const send = async (fromButton = false) => {
     // Chart rooms allow a general reading. Teacher conversations require an
     // actual question; neither an empty click nor Enter may spend credits.
@@ -524,7 +624,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         })
         if (!res.ok || !res.body) {
           const d = await res.json().catch(() => ({}))
-          throw new Error(d?.error ?? `HTTP ${res.status}`)
+          throw new CodedError(d?.error ?? `HTTP ${res.status}`, d?.code)
         }
         const reader = res.body.getReader()
         const dec = new TextDecoder()
@@ -544,7 +644,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             if (type === 'error') { setErr(j.message ?? 'error'); doneAssistant(idx, 0) }
           }
         }
-      } catch (e: any) { setErr(String(e?.message ?? e)); doneAssistant(idx, 0) }
+      } catch (e: any) { setErr(errorText(t, e?.code, String(e?.message ?? e))); doneAssistant(idx, 0) }
     }))
     setBusy(false)
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
@@ -857,27 +957,34 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             )
           })()}
 
+          {savedProblem && (
+            <div role="alert" style={{ ...card, padding: '12px 14px', borderColor: 'var(--red)', display: 'grid', gap: 10 }}>
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t('xtell.saved.invalid').replace('{reason}', errorText(t, savedProblem, savedProblem))}</div>
+              <div><button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.edit')}</button></div>
+            </div>
+          )}
+
           {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
               is what the two of them came to see. The reading interprets it. */}
-          {match && <HeCard match={match} />}
+          {match && !savedProblem && <HeCard match={match} />}
 
           {/* The chart. Open by default, foldable for anyone who only wants
               the reading. */}
-          {showChart && chart && (
+          {showChart && chart && !savedProblem && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
-              {temple === 'bazi' ? <BaziBoard chart={chart} />
+              {temple === 'bazi' ? <BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
-                : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={bazi} year={year} />
+                : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={bazi} year={year} hourUnknown={bing.withBirth && !!birth.hourUnknown} />
                 : temple === 'xingming' ? <NameBoard chart={chart} />
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
-                : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
+                : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
                 : temple === 'yixue' ? <YixueBoard chart={chart} onExample={q => setInput(q)} />
                 : (
                   <div style={{ display: 'grid', gap: 14 }}>
-                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} /></div>
-                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><BaziBoard chart={chart.b} /></div>
+                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} hourUnknown={!!birth.hourUnknown} /></div>
+                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><BaziBoard chart={chart.b} hourUnknown={!!birth2.hourUnknown} /></div>
                   </div>
                 )}
               {engine && (
@@ -980,7 +1087,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {/* Composer — same shape as XDirect's. On the standalone site the
               block is sticky at the bottom, so the estimate line lives INSIDE
               it; placed after it, the line sat below the fold. */}
-          <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {!savedProblem && <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* What this consultation was cast from, and the way back to the
+              form, right where a paid question is written (audit: no visible
+              way to correct the details). */}
+          {temple !== 'yixue' && (() => {
+            const summary = subjectSummary(t, temple, subject())
+            return <div className="xtell-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted)' }}>
+              {summary && <span><span style={{ ...mono, color: 'var(--muted2)', marginRight: 6 }}>{t('xtell.subject.label')}</span>{summary}</span>}
+              <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>{t('xtell.edit')}</button>
+            </div>
+          })()}
           <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               value={input} onChange={e => setInput(e.target.value)}
@@ -1010,7 +1127,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </div>
           })()}
           {questionRequired && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.yixue.question.privacy')}</p>}
-          </div>
+          </div>}
         </div>
       )}
 
@@ -1056,20 +1173,24 @@ function HeCard({ match }: { match: any }) {
         <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.he.title')}</div>
         <span style={{ flex: 1 }} />
         <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 30, fontWeight: 800, color: colour, lineHeight: 1 }}>
-          {match.overall}
+          {match.range ? `${match.range[0]}–${match.range[1]}` : match.overall}
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{t(`xtell.he.band.${match.band}`)}</div>
       </div>
+      {/* What the number is, beside the number (audit: the weights explained
+          only at the bottom read like a verdict on the couple). */}
+      <p style={{ margin: '-4px 0 12px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.he.what')}</p>
+      {match.range && <p role="note" style={{ margin: '0 0 12px', fontSize: 11.5, color: 'var(--red)', lineHeight: 1.6 }}>{t('xtell.he.rangeNote')}</p>}
 
       <div style={{ display: 'grid', gap: 8 }}>
         {match.dimensions.map((d: any) => (
           <div key={d.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, auto) 1fr minmax(72px, auto)', gap: 10, alignItems: 'center' }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{d.label}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{tOr(t, `xtell.he.dim.${d.key}`, d.label)}{d.undecided ? <span style={{ color: 'var(--red)', fontWeight: 500, fontSize: 11 }}> · {t('xtell.bazi.undecided')}</span> : null}</div>
             <div style={{ height: 6, borderRadius: 999, background: 'var(--surface2)', overflow: 'hidden' }}>
               <div style={{ width: `${d.score}%`, height: '100%', background: rowColour(d.score), opacity: 0.8 }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'flex-end' }}>
-              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12.5, fontWeight: 700, color: rowColour(d.score) }}>{d.score}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12.5, fontWeight: 700, color: rowColour(d.score) }}>{d.range ? `${d.range[0]}–${d.range[1]}` : d.score}</span>
               <span style={{ ...mono, color: 'var(--muted2)', fontSize: 9.5 }}>×{d.weight}%</span>
             </div>
             <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--muted2)', marginTop: -4 }}>{d.detail}</div>
@@ -1090,7 +1211,7 @@ function HeCard({ match }: { match: any }) {
                 <span style={{ fontFamily: 'var(--font-mono), monospace', fontWeight: 700, minWidth: 62 }}>{y.year}</span>
                 <span style={{ ...mono, color: 'var(--muted2)', minWidth: 34 }}>{y.ganZhi}</span>
                 <span style={{ color: y.good ? 'var(--green)' : 'var(--red)', fontWeight: 600, minWidth: 56 }}>{y.kind}</span>
-                <span style={{ color: 'var(--muted)' }}>{y.note}</span>
+                <span style={{ color: 'var(--muted)' }}>{t(y.good ? 'xtell.he.year.good' : 'xtell.he.year.bad')}</span>
               </div>
             ))}
           </div>
@@ -1102,33 +1223,80 @@ function HeCard({ match }: { match: any }) {
   )
 }
 
-function BaziBoard({ chart }: { chart: any }) {
+/**
+ * The four pillars. An unknown hour (audit F02) shows no clock time and no
+ * 時柱, whatever the saved chart holds: a record saved before the fix still
+ * carries a noon 時柱, and `hourUnknown` from its subject hides it. On a 節
+ * day the pillars the date does not decide show both values, with the 節
+ * and its moment; 大運 ages are marked approximate, or left out when the
+ * month itself is undecided.
+ */
+function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: boolean }) {
   const t = useT()
+  const unknown = hourUnknown || chart.hourUnknown === true || !chart.pillars?.time
+  const d = chart.doubt
   const cols = [
     { key: 'year', label: t('xtell.p.year') }, { key: 'month', label: t('xtell.p.month') },
     { key: 'day', label: t('xtell.p.day') }, { key: 'time', label: t('xtell.p.time') },
   ]
+  const side = (i: 0 | 1) => [d?.year ? `${t('xtell.p.year')} ${d.year[i].ganZhi}` : '', d?.month ? `${t('xtell.p.month')} ${d.month[i].ganZhi}` : ''].filter(Boolean).join(t('xtell.list.sep'))
   return (
     <div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>{chart.solar} · {chart.lunar}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(80px, 1fr))', gap: 8, maxWidth: 560 }}>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+        {unknown ? `${String(chart.solar).slice(0, 10)} · ${t('xtell.hourunknown')}` : chart.solar} · {chart.lunar}
+      </div>
+      <div className="xtell-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, maxWidth: 560 }}>
         {cols.map(c => {
+          if (c.key === 'time' && unknown) return (
+            <div key="time" style={{ border: '1px dashed var(--border2)', borderRadius: 10, padding: '10px 8px', textAlign: 'center', color: 'var(--muted2)' }}>
+              <div style={{ fontSize: 10.5, marginBottom: 6 }}>{c.label}</div>
+              <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 700 }}>{t('xtell.p.timeUnknown')}</div>
+            </div>
+          )
           const p = chart.pillars[c.key]
+          const both = d?.[c.key] as Array<{ ganZhi: string; naYin: string }> | undefined
           return (
-            <div key={c.key} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 8px', textAlign: 'center', background: c.key === 'day' ? 'var(--surface2)' : 'transparent' }}>
-              <div style={{ fontSize: 10.5, color: 'var(--muted2)', marginBottom: 6 }}>{c.label} · {p.shiShen}</div>
-              <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 26, fontWeight: 800, letterSpacing: 4 }}>{p.ganZhi}</div>
-              <div style={{ fontSize: 10.5, color: 'var(--muted2)', marginTop: 6 }}>{p.naYin}</div>
-              <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>藏 {p.hideGan.join(' ')}</div>
+            <div key={c.key} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 8px', textAlign: 'center', background: c.key === 'day' ? 'var(--surface2)' : 'transparent', minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, color: both ? 'var(--red)' : 'var(--muted2)', marginBottom: 6 }}>{c.label} · {both ? t('xtell.bazi.undecided') : p.shiShen}</div>
+              <div style={{ fontFamily: 'var(--font-display), serif', fontSize: both ? 18 : 26, fontWeight: 800, letterSpacing: both ? 1 : 4 }}>{both ? `${both[0].ganZhi}／${both[1].ganZhi}` : p.ganZhi}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--muted2)', marginTop: 6 }}>{both ? `${both[0].naYin}／${both[1].naYin}` : p.naYin}</div>
+              {!both && <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{t('xtell.p.hidden')} {p.hideGan.join(' ')}</div>}
             </div>
           )
         })}
       </div>
-      {chart.daYun?.length > 0 && (
-        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
-          大運：{chart.daYun.map((d: any) => `${d.startAge}歲 ${d.ganZhi}`).join('　')}
+      {unknown && <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 8, lineHeight: 1.6 }}>{t('xtell.bazi.hourNote')}</div>}
+      {d && (
+        <div role="note" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.7, padding: '8px 10px', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--surface2)' }}>
+          {t('xtell.bazi.doubt').replace('{term}', d.term.name).replace('{time}', d.term.time).replace('{before}', side(0)).replace('{after}', side(1)).replace('{box}', t('xtell.hourunknown'))}
         </div>
       )}
+      {chart.daYun?.length > 0 ? (
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10, lineHeight: 1.7 }}>
+          {t('xtell.dayun')}：{chart.daYun.map((x: any) => t(unknown ? 'xtell.dayun.stepApprox' : 'xtell.dayun.step').replace('{n}', String(x.startAge)).replace('{gz}', x.ganZhi)).join('　')}
+          {unknown && <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.dayun.approx')}</div>}
+        </div>
+      ) : d ? <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 10 }}>{t('xtell.dayun.hidden')}</div> : null}
+    </div>
+  )
+}
+
+/** This year's 流年 against a chart (四面佛, and a 求籤 with a birth). An
+ *  undecided 年柱 gives the 太歲 relation both ways; with the hour unknown
+ *  the 大運 in force is approximate, or either of two near a change. */
+function LiuNianLine({ year }: { year: any }) {
+  const t = useT()
+  const rel = (kind: string, taiSui: string) => `${kind}${taiSui && taiSui !== '無' ? `（${taiSui}）` : ''}`
+  const vsYear = Array.isArray(year.yearChoices)
+    ? t('xtell.liunian.yearUndecided').replace('{list}', year.yearChoices.map((c: any) => t('xtell.liunian.ifYear').replace('{gz}', c.ganZhi).replace('{rel}', rel(c.yearBranch?.kind, c.taiSui))).join(t('xtell.list.sep')))
+    : rel(year.yearBranch?.kind, year.taiSui)
+  return (
+    <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
+      <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
+      {year.year} {year.ganZhi}　{t('xtell.liunian.vsDay')} <b>{year.shiShen}</b>　{t('xtell.liunian.vsDayBranch')} <b>{year.dayBranch?.kind}</b>　{t('xtell.liunian.vsYear')} <b>{vsYear}</b>
+      {Array.isArray(year.daYunChoices)
+        ? <>　{t('xtell.dayun')} <b>{year.daYunChoices.join('／')}</b> <span style={{ fontSize: 11 }}>（{t('xtell.dayun.approx')}）</span></>
+        : year.daYun ? <>　{t('xtell.dayun')} <b>{year.daYun}</b>{year.daYunApprox ? <span style={{ fontSize: 11 }}>（{t('xtell.dayun.approx')}）</span> : null}</> : null}
     </div>
   )
 }
@@ -1182,19 +1350,30 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
   allowUnknown?: boolean
 }) {
   const t = useT()
+  // Only real days are offered (audit F01). When a month or year change
+  // leaves the chosen day impossible (31 → February), the day is KEPT and
+  // flagged rather than silently moved to another date; entering is refused
+  // until the visitor picks again.
+  const maxDay = daysInMonth(value.y, value.m)
+  const dayBad = value.d > maxDay
+  const dayMsg = useId()
+  const years = birthYears()
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
       <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} style={sel} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
-        {Array.from({ length: 106 }, (_, i) => 2010 - i).map(y => <option key={y} value={y}>{y}</option>)}
+        {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
       </select>
       <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span></label>
       <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.month")}`} style={sel} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
         {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}</option>)}
       </select>
       <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span></label>
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.day")}`} style={sel} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
-        {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.day")}`} aria-invalid={dayBad || undefined} aria-describedby={dayBad ? dayMsg : undefined}
+        style={{ ...sel, ...(dayBad ? { borderColor: 'var(--red)' } : {}) }} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
+        {Array.from({ length: maxDay }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
+        {dayBad && <option value={value.d} disabled>{value.d} ✕</option>}
       </select>
       <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span></label>
       <span className="xtell-birth-time"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.hour")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
@@ -1202,7 +1381,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
       </select>
       :
       <select aria-label={`${label ?? ""} ${t("xtell.site.birth.minute")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
-        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
+        {MINUTES.map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
       </select>
       <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{value.hourUnknown ? '—' : shichenOf(value.h)}</span></span>
       {allowUnknown && (
@@ -1217,6 +1396,11 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
           {t(`xtell.${g}`)}
         </label>
       ))}
+      {dayBad && (
+        <span id={dayMsg} role="alert" style={{ flexBasis: '100%', color: 'var(--red)', fontSize: 12, lineHeight: 1.6 }}>
+          {t('xtell.birth.dayInvalid').replace('{y}', String(value.y)).replace('{m}', String(value.m)).replace('{d}', String(value.d))}
+        </span>
+      )}
     </div>
   )
 }
@@ -1236,6 +1420,9 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   const t = useT()
   const [bingOpen, setBingOpen] = useState(false)
   const locked = ritual === 'confirmed'
+  // A 稟告 birth that cannot be charted would fail only after the third
+  // 聖筊; it is caught before the tube is shaken instead.
+  const birthBad = bing.withBirth ? birthProblem(birth) : null
   const pill = (bg: string) => ({ padding: '10px 26px', borderRadius: 999, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' })
   const jiaoColour: Record<Jiao, string> = { 聖筊: 'var(--green)', 笑筊: 'var(--muted)', 陰筊: 'var(--red)' }
   const jiaoKey: Record<Jiao, string> = { 聖筊: 'sheng', 笑筊: 'xiao', 陰筊: 'yin' }
@@ -1293,11 +1480,12 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
           </div>
         )}
         <span style={{ flex: 1 }} />
-        {ritual === 'idle' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xtell.qian.draw')}</button>}
+        {ritual === 'idle' && <button onClick={onDraw} disabled={!!birthBad} style={{ ...pill('var(--red)'), opacity: birthBad ? 0.5 : 1, cursor: birthBad ? 'not-allowed' : 'pointer' }}>{t('xtell.qian.draw')}</button>}
         {ritual === 'drawn' && <button onClick={onThrow} style={pill('var(--white)')}>{t('xtell.qian.throw')} {stick?.throws.length ?? 0}/{CONFIRM_THROWS}</button>}
         {ritual === 'rejected' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xtell.qian.redraw')}</button>}
         {ritual === 'confirmed' && <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 700 }}>{t('xtell.qian.confirmed')}</span>}
       </div>
+      {ritual === 'idle' && birthBad && <div role="alert" style={{ fontSize: 12.5, color: 'var(--red)' }}>{errorText(t, `birth_${birthBad}`, birthBad)}</div>}
       {ritual === 'rejected' && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{t('xtell.qian.rejected')}</div>}
       {stick && ritual !== 'rejected' && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.qian.rule')}</div>}
     </div>
@@ -1306,7 +1494,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
 
 /** The stick, as the temple prints it: number, luck, story, the four lines,
  *  and every commentary the edition carries. All of it is text from disk. */
-function QianCard({ qian, temple, bazi, year }: { qian: any; temple: Temple; bazi?: any; year?: any }) {
+function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any; temple: Temple; bazi?: any; year?: any; hourUnknown?: boolean }) {
   const t = useT()
   // 關帝's edition grades each stick (大吉 … 下下); 媽祖's carries a 五行/direction
   // line instead, which is a hint, not a grade, so it stays neutral.
@@ -1336,13 +1524,8 @@ function QianCard({ qian, temple, bazi, year }: { qian: any; temple: Temple; baz
       {bazi && (
         <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
           <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.qian.bing.head')}</div>
-          <BaziBoard chart={bazi} />
-          {year && (
-            <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7, marginTop: 8 }}>
-              <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
-              {year.year} {year.ganZhi}　天干對日主 <b>{year.shiShen}</b>　地支對日支 <b>{year.dayBranch?.kind}</b>　對年支 <b>{year.yearBranch?.kind}</b>{year.taiSui !== '無' ? `（${year.taiSui}）` : ''}
-            </div>
-          )}
+          <BaziBoard chart={bazi} hourUnknown={hourUnknown} />
+          {year && <div style={{ marginTop: 8 }}><LiuNianLine year={year} /></div>}
         </div>
       )}
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xtell.qian.source.mazu' : 'xtell.qian.source')}</div>
@@ -1378,18 +1561,12 @@ function WishForm({ wishes, setWishes }: { wishes: Wishes; setWishes: (w: Wishes
 
 /** The 八字 board, this year's 流年 against it, and the four wishes as
  *  written — the same facts the keeper was handed. */
-function WishBoard({ chart, wishes, year }: { chart: any; wishes: Wishes; year: any }) {
+function WishBoard({ chart, wishes, year, hourUnknown = false }: { chart: any; wishes: Wishes; year: any; hourUnknown?: boolean }) {
   const t = useT()
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <BaziBoard chart={chart} />
-      {year && (
-        <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-          <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
-          {year.year} {year.ganZhi}　天干對日主 <b>{year.shiShen}</b>　地支對日支 <b>{year.dayBranch?.kind}</b>　對年支 <b>{year.yearBranch?.kind}</b>{year.taiSui !== '無' ? `（${year.taiSui}）` : ''}
-          {year.daYun ? <>　大運 <b>{year.daYun}</b></> : null}
-        </div>
-      )}
+      <BaziBoard chart={chart} hourUnknown={hourUnknown} />
+      {year && <LiuNianLine year={year} />}
       <div>
         <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.wishes.title')}</div>
         <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
@@ -2011,6 +2188,7 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
           )
         })}
       </div>
+      <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.saved.removeNote')}</p>
     </div>
   )
 }

@@ -3468,3 +3468,10 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-think i:nth-child(3) { animation-delay: 0.4s; }
 @keyframes xtell-think { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .xtell-think i { animation: none; opacity: 0.7; } }
+
+/* 八字 pillars: four across need about 344px, wider than a 390px phone's
+   card, so the 時柱 was clipped behind a sideways scroll (audit F06). Below
+   480px they sit 2 × 2 and every pillar is whole. */
+@media (max-width: 480px) {
+  .xtell-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}

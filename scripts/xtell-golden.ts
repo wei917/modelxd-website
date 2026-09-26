@@ -54,7 +54,7 @@ console.log('BaZi (lunar-typescript):')
 for (const c of CASES) {
   const ch = baziChart(c.b)
   const p = ch.pillars
-  eq(c.label, `${p.year.ganZhi} ${p.month.ganZhi} ${p.day.ganZhi} ${p.time.ganZhi}`, c.pillars)
+  eq(c.label, `${p.year.ganZhi} ${p.month.ganZhi} ${p.day.ganZhi} ${p.time?.ganZhi ?? '(unknown)'}`, c.pillars)
   eq('  day master', ch.dayMaster, c.dayMaster)
 }
 

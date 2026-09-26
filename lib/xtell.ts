@@ -21,6 +21,8 @@ import {
   type NatalChart, type BirthPlace,
 } from './astrology'
 import { placeOf } from './xtell-places'
+import { birthProblem } from './xtell-birth'
+export { birthProblem, type BirthProblem } from './xtell-birth'
 export { nameChart, nameFacts, validName, charInfo, ceziFacts, validChar } from './names'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -68,19 +70,19 @@ export const ENGINES: Record<Temple, string> = {
 export interface BirthInput {
   y: number; m: number; d: number; h: number; mi: number
   gender: 'male' | 'female'
-  /** validBirth() sets h/mi to noon when this is true; the engines that can
-   *  work without an hour (八字, 占星塔) read the flag, the rest hide it. */
+  /** validBirth() sets h/mi to noon when this is true, only so the engines
+   *  have an instant to compute from. The noon is never shown or handed to
+   *  a master as the birth time: 八字 drops the 時柱 and anything the hour
+   *  decides, 占星塔 reads the flag, and the rest do not offer it. */
   hourUnknown?: boolean
 }
 
+/** A real, supported birth (lib/xtell-birth.ts: a Gregorian date that exists,
+ *  1900 to today, a clock time unless the hour is unknown). Normalises an
+ *  unknown hour to noon, see BirthInput. */
 export function validBirth(b: any): b is BirthInput {
-  if (b && b.hourUnknown === true) { b.h = 12; b.mi = 0 }
-  return b && Number.isInteger(b.y) && b.y >= 1900 && b.y <= 2100
-    && Number.isInteger(b.m) && b.m >= 1 && b.m <= 12
-    && Number.isInteger(b.d) && b.d >= 1 && b.d <= 31
-    && Number.isInteger(b.h) && b.h >= 0 && b.h <= 23
-    && Number.isInteger(b.mi) && b.mi >= 0 && b.mi <= 59
-    && (b.gender === 'male' || b.gender === 'female')
+  if (b && typeof b === 'object' && b.hourUnknown === true) { b.h = 12; b.mi = 0 }
+  return birthProblem(b) === null
 }
 
 // ── 八字 ────────────────────────────────────────────────────────────────────
@@ -90,56 +92,134 @@ export function validBirth(b: any): b is BirthInput {
 // chart, once, so the board and the facts agree.
 const SHI_SHEN_TC: Record<string, string> = { 伤官: '傷官', 正财: '正財', 偏财: '偏財', 劫财: '劫財', 七杀: '七殺' }
 const tcShiShen = (s: string) => SHI_SHEN_TC[s] ?? s
+// The same for 納音, the lunar month and the 節 names (audit, Sep 26:
+// 「炉中火」「涧下水」 on a 繁體 page). Only these twelve of the thirty 納音
+// differ between the scripts.
+const NAYIN_TC: Record<string, string> = {
+  炉中火: '爐中火', 剑锋金: '劍鋒金', 山头火: '山頭火', 覆灯火: '覆燈火', 涧下水: '澗下水', 城头土: '城頭土',
+  大驿土: '大驛土', 白蜡金: '白蠟金', 钗钏金: '釵釧金', 杨柳木: '楊柳木', 霹雳火: '霹靂火', 长流水: '長流水',
+}
+const tcNaYin = (s: string) => NAYIN_TC[s] ?? s
+const tcLunar = (s: string) => s.replace(/腊/g, '臘').replace(/闰/g, '閏')
+/** The twelve 節 that begin a 月柱. getJieQiTable() keys the neighbouring
+ *  years' entries in pinyin, so those spellings are listed too. */
+const JIE_TC: Record<string, string> = {
+  立春: '立春', LI_CHUN: '立春', 惊蛰: '驚蟄', JING_ZHE: '驚蟄', 清明: '清明', 立夏: '立夏', 芒种: '芒種', 小暑: '小暑',
+  立秋: '立秋', 白露: '白露', 寒露: '寒露', 立冬: '立冬', 大雪: '大雪', DA_XUE: '大雪', 小寒: '小寒', XIAO_HAN: '小寒',
+}
+
+/** One value an undecided pillar can take. */
+export type PillarChoice = { ganZhi: string; naYin: string; wuXing: string }
+/**
+ * An unknown hour on a day a 節 begins (audit F02): the 月柱, and on 立春 the
+ * 年柱 too, change at that moment, so the date alone does not decide them.
+ * Both values are kept, [before the 節, after it], with the 節 and its
+ * moment (lunar-typescript's clock). The 日柱 follows the calendar date in
+ * this library's default (sect 2: 23:00–24:00 keeps the day), so it is
+ * never in doubt; checked in scripts/test-xtell-birth.ts.
+ */
+export type BaziDoubt = { term: { name: string; time: string }; year?: [PillarChoice, PillarChoice]; month?: [PillarChoice, PillarChoice] }
+
+function doubtOf(b: BirthInput): BaziDoubt | undefined {
+  const at = (h: number, mi: number) => Solar.fromYmdHms(b.y, b.m, b.d, h, mi, 0).getLunar().getEightChar()
+  const early = at(0, 0), late = at(23, 59)
+  const yearMoves = early.getYear() !== late.getYear()
+  const monthMoves = early.getMonth() !== late.getMonth()
+  if (!yearMoves && !monthMoves) return undefined
+  const choice = (e: typeof early, which: 'year' | 'month'): PillarChoice => which === 'year'
+    ? { ganZhi: e.getYear(), naYin: tcNaYin(e.getYearNaYin()), wuXing: e.getYearWuXing() }
+    : { ganZhi: e.getMonth(), naYin: tcNaYin(e.getMonthNaYin()), wuXing: e.getMonthWuXing() }
+  const ymd = `${b.y}-${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')}`
+  const table = Solar.fromYmd(b.y, b.m, b.d).getLunar().getJieQiTable() as Record<string, Solar>
+  const hit = Object.entries(table).find(([k, s]) => JIE_TC[k] && s.toYmd() === ymd)
+  return {
+    term: hit ? { name: JIE_TC[hit[0]], time: hit[1].toYmdHms().slice(11, 16) } : { name: '節', time: '' },
+    ...(yearMoves ? { year: [choice(early, 'year'), choice(late, 'year')] as [PillarChoice, PillarChoice] } : {}),
+    ...(monthMoves ? { month: [choice(early, 'month'), choice(late, 'month')] as [PillarChoice, PillarChoice] } : {}),
+  }
+}
 
 export function baziChart(b: BirthInput) {
-  const solar = Solar.fromYmdHms(b.y, b.m, b.d, b.h, b.mi, 0)
+  // An unknown hour is computed at noon only to have an instant. Nothing the
+  // hour decides leaves this function: no clock time, no 時柱, no 時柱 五行,
+  // and when a 節 falls that day, both readings of the pillars it moves.
+  const unknown = b.hourUnknown === true
+  const solar = Solar.fromYmdHms(b.y, b.m, b.d, unknown ? 12 : b.h, unknown ? 0 : b.mi, 0)
   const lunar = solar.getLunar()
   const e = lunar.getEightChar()
+  const doubt = unknown ? doubtOf(b) : undefined
 
-  // 大運 — first six decades. getYun takes 1 for male, 0 for female.
+  // 大運 — first six decades. getYun takes 1 for male, 0 for female. Its
+  // sequence starts from the 月柱 and runs by the 年干, so an undecided
+  // month leaves no sequence to show; with the hour merely unknown the start
+  // ages are approximate (the facts and the board say so).
   let daYun: Array<{ startAge: number; ganZhi: string }> = []
-  try {
-    daYun = e.getYun(b.gender === 'male' ? 1 : 0).getDaYun().slice(1, 7)
-      .map(y => ({ startAge: y.getStartAge(), ganZhi: y.getGanZhi() }))
-  } catch { /* 大運 is a bonus, never a blocker */ }
+  if (!doubt) {
+    try {
+      daYun = e.getYun(b.gender === 'male' ? 1 : 0).getDaYun().slice(1, 7)
+        .map(y => ({ startAge: y.getStartAge(), ganZhi: y.getGanZhi() }))
+    } catch { /* 大運 is a bonus, never a blocker */ }
+  }
 
   return {
-    solar: solar.toYmdHms(),
-    lunar: lunar.toString(),
+    solar: unknown ? solar.toYmd() : solar.toYmdHms(),
+    lunar: tcLunar(lunar.toString()),
+    ...(unknown ? { hourUnknown: true as const } : {}),
     pillars: {
-      year:  { ganZhi: e.getYear(),  naYin: e.getYearNaYin(),  shiShen: tcShiShen(e.getYearShiShenGan()),  hideGan: e.getYearHideGan() },
-      month: { ganZhi: e.getMonth(), naYin: e.getMonthNaYin(), shiShen: tcShiShen(e.getMonthShiShenGan()), hideGan: e.getMonthHideGan() },
-      day:   { ganZhi: e.getDay(),   naYin: e.getDayNaYin(),   shiShen: '日主',                 hideGan: e.getDayHideGan() },
-      time:  { ganZhi: e.getTime(),  naYin: e.getTimeNaYin(),  shiShen: tcShiShen(e.getTimeShiShenGan()),  hideGan: e.getTimeHideGan() },
+      year:  { ganZhi: e.getYear(),  naYin: tcNaYin(e.getYearNaYin()),  shiShen: tcShiShen(e.getYearShiShenGan()),  hideGan: e.getYearHideGan() },
+      month: { ganZhi: e.getMonth(), naYin: tcNaYin(e.getMonthNaYin()), shiShen: tcShiShen(e.getMonthShiShenGan()), hideGan: e.getMonthHideGan() },
+      day:   { ganZhi: e.getDay(),   naYin: tcNaYin(e.getDayNaYin()),   shiShen: '日主',                 hideGan: e.getDayHideGan() },
+      time:  unknown ? null : { ganZhi: e.getTime(), naYin: tcNaYin(e.getTimeNaYin()), shiShen: tcShiShen(e.getTimeShiShenGan()), hideGan: e.getTimeHideGan() },
     },
     dayMaster: e.getDayGan(),
-    wuXing: [e.getYearWuXing(), e.getMonthWuXing(), e.getDayWuXing(), e.getTimeWuXing()],
+    wuXing: unknown ? [e.getYearWuXing(), e.getMonthWuXing(), e.getDayWuXing()] : [e.getYearWuXing(), e.getMonthWuXing(), e.getDayWuXing(), e.getTimeWuXing()],
     daYun,
+    ...(doubt ? { doubt } : {}),
   }
 }
 
 export type BaziChart = ReturnType<typeof baziChart>
 
+/** 己卯或庚辰（未定） when the day does not decide the pillar. */
+function pillarOrChoices(c: BaziChart, k: 'year' | 'month'): string {
+  const d = c.doubt?.[k]
+  return d ? `${d[0].ganZhi}或${d[1].ganZhi}（未定）` : c.pillars[k].ganZhi
+}
+/** The 節 line the master needs when a pillar is undecided. */
+function doubtFacts(c: BaziChart): string {
+  const d = c.doubt
+  if (!d) return ''
+  const side = (i: 0 | 1) => [d.year ? `年柱 ${d.year[i].ganZhi}` : '', d.month ? `月柱 ${d.month[i].ganZhi}` : ''].filter(Boolean).join('、')
+  return `節氣交界：出生當天${d.term.time ? ` ${d.term.time} ` : ''}交${d.term.name}，時辰未知，無法判斷生在交節之前或之後。交節前為${side(0)}；交節後為${side(1)}。兩種可能都要照實說出，不可擇一斷言；若信眾記得大約時辰，請他補上後重新排盤。`
+}
+
 export function baziFacts(c: BaziChart, gender: string, hourUnknown = false): string {
-  if (hourUnknown) {
-    const p = c.pillars
+  const p = c.pillars
+  if (hourUnknown || c.hourUnknown || !p.time) {
+    const wx = [
+      c.doubt?.year ? `${c.doubt.year[0].wuXing}或${c.doubt.year[1].wuXing}` : c.wuXing[0],
+      c.doubt?.month ? `${c.doubt.month[0].wuXing}或${c.doubt.month[1].wuXing}` : c.wuXing[1],
+      c.wuXing[2],
+    ]
     return [
-      `出生（國曆）：${c.solar}；農曆：${c.lunar}`,
+      `出生（國曆）：${String(c.solar).slice(0, 10)}（時辰未知）；農曆：${c.lunar}`,
       `性別：${gender === 'male' ? '男' : '女'}`,
-      `時辰未知：僅排年月日三柱，時柱不論。`,
-      `三柱：年 ${p.year.ganZhi}、月 ${p.month.ganZhi}、日 ${p.day.ganZhi}　日主：${c.dayMaster}`,
-      `五行（干支）：${c.wuXing.slice(0, 3).join('，')}`,
-      c.daYun.length ? `大運（起歲為約略值，因時辰未知）：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
+      `時辰未知：只排年月日三柱，時柱及一切由時辰決定的判斷都不論。`,
+      `三柱：年 ${pillarOrChoices(c, 'year')}、月 ${pillarOrChoices(c, 'month')}、日 ${p.day.ganZhi}　日主：${c.dayMaster}`,
+      `五行（干支，不含時柱）：${wx.join('，')}`,
+      doubtFacts(c),
+      c.daYun.length ? `大運（起運歲數以正午推算，時辰未知，為約略值）：${c.daYun.map(d => `約${d.startAge}歲起 ${d.ganZhi}`).join('；')}`
+        : c.doubt ? `大運：月柱未定，大運的干支順序無法確定，系統不列，不可自行推算。` : '',
       `解讀時明確告知信眾：時辰未知會影響精細度，時柱所主之事（晚年、子女、內心底色）不宜細斷。`,
     ].filter(Boolean).join('\n')
   }
-  const p = c.pillars
+  const t = p.time
   return [
     `出生（國曆）：${c.solar}，${gender === 'male' ? '男' : '女'}`,
     `農曆：${c.lunar}`,
-    `四柱：年柱 ${p.year.ganZhi}（${p.year.naYin}，${p.year.shiShen}）· 月柱 ${p.month.ganZhi}（${p.month.naYin}，${p.month.shiShen}）· 日柱 ${p.day.ganZhi}（${p.day.naYin}）· 時柱 ${p.time.ganZhi}（${p.time.naYin}，${p.time.shiShen}）`,
+    `四柱：年柱 ${p.year.ganZhi}（${p.year.naYin}，${p.year.shiShen}）· 月柱 ${p.month.ganZhi}（${p.month.naYin}，${p.month.shiShen}）· 日柱 ${p.day.ganZhi}（${p.day.naYin}）· 時柱 ${t.ganZhi}（${t.naYin}，${t.shiShen}）`,
     `日主：${c.dayMaster}`,
-    `藏干：年 ${p.year.hideGan.join('、')}；月 ${p.month.hideGan.join('、')}；日 ${p.day.hideGan.join('、')}；時 ${p.time.hideGan.join('、')}`,
+    `藏干：年 ${p.year.hideGan.join('、')}；月 ${p.month.hideGan.join('、')}；日 ${p.day.hideGan.join('、')}；時 ${t.hideGan.join('、')}`,
     `五行（干支）：${c.wuXing.join('，')}`,
     c.daYun.length ? `大運：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
   ].filter(Boolean).join('\n')
@@ -293,51 +373,90 @@ export function stemRelation(x: string, y: string): { kind: string; score: numbe
   return { kind: '無特殊關係', score: 62 }
 }
 
-export type HeDimension = { key: string; label: string; weight: number; score: number; detail: string }
+/** `range` and `undecided` appear only when a birth date does not decide a
+ *  pillar the dimension reads (an unknown hour on a 節 day). */
+export type HeDimension = { key: string; label: string; weight: number; score: number; detail: string; range?: [number, number]; undecided?: true }
 export type HeYear = { year: number; ganZhi: string; who: 'a' | 'b' | 'both'; kind: string; good: boolean; note: string }
 export type HeMatch = {
   overall: number
+  /** Lowest and highest total when a pillar is undecided; `overall` is then
+   *  their midpoint and must not be shown alone. */
+  range?: [number, number]
   band: 'high' | 'good' | 'mixed' | 'work'
   dimensions: HeDimension[]
   years: HeYear[]
 }
 
-const elementsOf = (c: BaziChart) => new Set(c.wuXing.join('').split('').filter(Boolean))
-
 /**
- * The full 合盤. `hourUnknown` drops the 時柱 from the element spread only —
- * every weighted dimension reads 年/月/日, which the three known pillars cover.
+ * One way a birth date can be read for 合婚: the pillars the weights look
+ * at, and the elements of the pillars that are actually known. An unknown
+ * hour contributes no 時柱 — its noon placeholder must not add elements
+ * (audit F02, Codex: two 1985-07-20 births with unknown hours gained 水火
+ * from the placeholder and a false 5/5). A 節 day with an unknown hour gives
+ * two readings, before and after the 節; both are scored.
  */
-export function heMatch(a: BaziChart, b: BaziChart, fromYear: number): HeMatch {
-  const ad = a.pillars.day.ganZhi, bd = b.pillars.day.ganZhi
-  const ay = a.pillars.year.ganZhi, by = b.pillars.year.ganZhi
-  const am = a.pillars.month.ganZhi, bm = b.pillars.month.ganZhi
+type HeView = { year: string; month: string; day: string; dayMaster: string; elements: Set<string> }
+const elementSet = (parts: string[]) => new Set(parts.join('').split('').filter(Boolean))
+function heViews(c: BaziChart): HeView[] {
+  const p = c.pillars
+  const known = p.time ? c.wuXing : c.wuXing.slice(0, 3)
+  const base: HeView = { year: p.year.ganZhi, month: p.month.ganZhi, day: p.day.ganZhi, dayMaster: c.dayMaster, elements: elementSet(known) }
+  const d = c.doubt
+  if (!d) return [base]
+  return ([0, 1] as const).map(i => ({
+    ...base,
+    year: d.year?.[i].ganZhi ?? base.year,
+    month: d.month?.[i].ganZhi ?? base.month,
+    elements: elementSet([d.year?.[i].wuXing ?? c.wuXing[0], d.month?.[i].wuXing ?? c.wuXing[1], c.wuXing[2]]),
+  }))
+}
 
-  const dayBranch = branchRelation(ad[1], bd[1])
+function heScore(a: HeView, b: HeView): HeDimension[] {
+  const dayBranch = branchRelation(a.day[1], b.day[1])
   const dayStem = stemRelation(a.dayMaster, b.dayMaster)
-  const yearBranch = branchRelation(ay[1], by[1])
-  const monthBranch = branchRelation(am[1], bm[1])
+  const yearBranch = branchRelation(a.year[1], b.year[1])
+  const monthBranch = branchRelation(a.month[1], b.month[1])
 
   // 五行互補: how much of the five is covered once both charts are laid
   // together. Five out of five means whatever one lacks, the other carries.
-  const both = new Set([...elementsOf(a), ...elementsOf(b)])
+  const both = new Set([...a.elements, ...b.elements])
   const spread = 40 + Math.min(5, both.size) * 12
 
-  const dimensions: HeDimension[] = [
+  return [
     { key: 'dayBranch', label: '日支・夫妻宮', weight: 30, score: dayBranch.score,
-      detail: `${ad[1]} × ${bd[1]}　${dayBranch.kind}` },
+      detail: `${a.day[1]} × ${b.day[1]}　${dayBranch.kind}` },
     { key: 'dayStem', label: '日主・兩人本性', weight: 25, score: dayStem.score,
       detail: `${a.dayMaster} × ${b.dayMaster}　${dayStem.kind}` },
     { key: 'yearBranch', label: '生肖・年支', weight: 20, score: yearBranch.score,
-      detail: `${ZHI_SHENG_XIAO[ay[1]] ?? ay[1]} × ${ZHI_SHENG_XIAO[by[1]] ?? by[1]}　${yearBranch.kind}` },
+      detail: `${ZHI_SHENG_XIAO[a.year[1]] ?? a.year[1]} × ${ZHI_SHENG_XIAO[b.year[1]] ?? b.year[1]}　${yearBranch.kind}` },
     { key: 'monthBranch', label: '月支・家庭性情', weight: 15, score: monthBranch.score,
-      detail: `${am[1]} × ${bm[1]}　${monthBranch.kind}` },
+      detail: `${a.month[1]} × ${b.month[1]}　${monthBranch.kind}` },
     { key: 'spread', label: '五行互補', weight: 10, score: spread,
       detail: `兩盤合看涵蓋 ${[...both].join('、')}（${both.size}/5）` },
   ]
+}
+const totalOf = (dims: HeDimension[]) => Math.round(dims.reduce((sum, d) => sum + d.score * d.weight, 0) / 100)
+const bandOf = (n: number): HeMatch['band'] => n >= 82 ? 'high' : n >= 70 ? 'good' : n >= 58 ? 'mixed' : 'work'
 
-  const overall = Math.round(dimensions.reduce((sum, d) => sum + d.score * d.weight, 0) / 100)
-  const band: HeMatch['band'] = overall >= 82 ? 'high' : overall >= 70 ? 'good' : overall >= 58 ? 'mixed' : 'work'
+/**
+ * The full 合盤. Every reading of both dates is scored (at most 2 × 2); when
+ * they disagree the total is a range and each dimension that moved says
+ * so, rather than one of the readings being picked silently.
+ */
+export function heMatch(a: BaziChart, b: BaziChart, fromYear: number): HeMatch {
+  const readings = heViews(a).flatMap(va => heViews(b).map(vb => heScore(va, vb)))
+  const totals = readings.map(totalOf)
+  const lo = Math.min(...totals), hi = Math.max(...totals)
+  const dimensions: HeDimension[] = readings[0].map((d, i) => {
+    const all = readings.map(r => r[i])
+    const scores = all.map(x => x.score), details = [...new Set(all.map(x => x.detail))]
+    if (details.length === 1) return d
+    const min = Math.min(...scores), max = Math.max(...scores)
+    return { ...d, score: min, detail: details.join('　或　'), undecided: true, ...(min !== max ? { range: [min, max] as [number, number] } : {}) }
+  })
+  const overall = lo === hi ? lo : Math.round((lo + hi) / 2)
+  const band = bandOf(overall)
+  const ad = a.pillars.day.ganZhi, bd = b.pillars.day.ganZhi
 
   // ── The years ahead ───────────────────────────────────────────────────────
   // 流年地支 against each person's 日支 (夫妻宮). Only years that actually carry
@@ -361,29 +480,27 @@ export function heMatch(a: BaziChart, b: BaziChart, fromYear: number): HeMatch {
     })
   }
 
-  return { overall, band, dimensions, years }
+  return { overall, ...(lo !== hi ? { range: [lo, hi] as [number, number] } : {}), band, dimensions, years }
 }
 
 export function yuelaoFacts(a: BaziChart, aGender: string, b: BaziChart, bGender: string, match?: HeMatch): string {
-  const one = (c: BaziChart, g: string, label: string) => {
-    const p = c.pillars
-    return [
-      `${label}（${g === 'male' ? '男' : '女'}）：`,
-      `  出生（國曆）：${c.solar}；農曆：${c.lunar}`,
-      `  四柱：${p.year.ganZhi} ${p.month.ganZhi} ${p.day.ganZhi} ${p.time.ganZhi}　日主：${c.dayMaster}`,
-      `  五行（干支）：${c.wuXing.join('，')}`,
-      c.daYun.length ? `  大運：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
-    ].filter(Boolean).join('\n')
-  }
+  // Each person through the same facts as 八字廟, so an unknown hour is said
+  // the same way everywhere: no clock time, no 時柱, and both readings of a
+  // pillar the date does not decide.
+  const one = (c: BaziChart, g: string, label: string) =>
+    [`${label}：`, ...baziFacts(c, g).split('\n').map(x => `  ${x}`)].join('\n')
   const base = `${one(a, aGender, '第一位')}\n\n${one(b, bGender, '第二位')}`
   if (!match) return base
   // The visitor is looking at these exact numbers on screen. A master who
   // talks past them reads as broken, so they go in as facts, not suggestions.
-  const dims = match.dimensions.map(d => `  ${d.label}（權重 ${d.weight}）：${d.score} 分　${d.detail}`).join('\n')
+  const dims = match.dimensions.map(d => `  ${d.label}（權重 ${d.weight}）：${d.range ? `${d.range[0]}–${d.range[1]} 分` : `${d.score} 分`}${d.undecided ? '（未定）' : ''}　${d.detail}`).join('\n')
+  const total = match.range
+    ? `${match.range[0]}–${match.range[1]}（有一方時辰未知且生於節氣交界日，年／月柱未定，分數只能給範圍；說明時照實講範圍，不可只講其中一個數）`
+    : String(match.overall)
   const years = match.years.length
     ? match.years.map(y => `  ${y.year} ${y.ganZhi}：${y.kind}（${y.who === 'both' ? '兩人皆應' : y.who === 'a' ? '應第一位' : '應第二位'}）`).join('\n')
     : '  未來八年內，流年地支與雙方日支無明顯合沖。'
-  return `${base}\n\n系統已排好的合盤分數（信眾此刻正看著這張表，請以此為準，不要另給一組數字）：\n  總分：${match.overall}\n${dims}\n\n流年（未來八年，只列有合沖者）：\n${years}`
+  return `${base}\n\n系統已排好的合盤分數（信眾此刻正看著這張表，請以此為準，不要另給一組數字）：\n  總分：${total}\n${dims}\n\n流年（未來八年，只列有合沖者）：\n${years}\n\n分數的權重是本站依傳統合婚規則所定，是閱讀兩張命盤的一種方法，不是對兩人關係的驗證；講解時要說清楚。`
 }
 
 // ── 九曜廟：吠陀星盤 ────────────────────────────────────────────────────────
@@ -412,12 +529,10 @@ export const validPlace = (k: unknown) => placeOf(k) !== null
 //   today     transits against the natal chart, for THIS date
 //   year      the solar return plus secondary progressions
 //
-// Nothing is stored. `today` is the only mode that wants a chart to come
-// back tomorrow, and the client keeps that in the visitor's own browser
-// (localStorage) rather than here: a birth date, an exact time and a place is
-// the most identifying thing anyone types into this site, and XTell holds no
-// personal records at all today. A table only earns itself if the chart ever
-// has to follow someone across devices.
+// Every visit is saved to the visitor's own account (supabase/105, owner
+// Sep 24), like every temple. `today` additionally remembers the last birth
+// row in the visitor's browser (localStorage) so the daily room opens
+// filled in; that copy never leaves the browser.
 
 export type AstroMode = 'natal' | 'synastry' | 'today' | 'year'
 export const ASTRO_MODES: AstroMode[] = ['natal', 'synastry', 'today', 'year']
@@ -769,7 +884,24 @@ export type LiuNian = {
   yearBranch: BranchRelation // 流年地支 vs 年支（太歲）
   taiSui: string            // 值太歲 / 沖太歲 / 刑太歲 / 害太歲 / 合太歲 / 無
   daYun: string | null      // the 大運 in force
+  /** Hour unknown: the start ages are approximate, so the cycle in force is
+   *  only approximate, and near a change it may be either of two (Codex
+   *  review, Sep 26: 1990-01-01, 2026 printed a definite 癸酉). */
+  daYunApprox?: true
+  daYunChoices?: string[]
   age: number
+  /** Born on 立春 with the hour unknown: the 年柱 is undecided, so the 太歲
+   *  relation is given for both readings (before, after the 節). */
+  yearChoices?: Array<{ ganZhi: string; yearBranch: BranchRelation; taiSui: string }>
+}
+
+function taiSuiOf(zhi: string, yearZhi: string, rel: BranchRelation): string {
+  return zhi === yearZhi ? '值太歲'
+    : rel.kind === '六沖' ? '沖太歲'
+    : rel.kind === '相刑' ? '刑太歲'
+    : rel.kind === '相害' ? '害太歲'
+    : rel.kind === '六合' || rel.kind === '三合' ? '合太歲'
+    : '無'
 }
 
 export function liuNian(c: BaziChart, birthYear: number, year: number): LiuNian {
@@ -778,19 +910,24 @@ export function liuNian(c: BaziChart, birthYear: number, year: number): LiuNian 
   const gan = gz[0], zhi = gz[1]
   const dayZhi = c.pillars.day.ganZhi[1], yearZhi = c.pillars.year.ganZhi[1]
   const yearBranch = branchRelation(zhi, yearZhi)
-  const taiSui = zhi === yearZhi ? '值太歲'
-    : yearBranch.kind === '六沖' ? '沖太歲'
-    : yearBranch.kind === '相刑' ? '刑太歲'
-    : yearBranch.kind === '相害' ? '害太歲'
-    : yearBranch.kind === '六合' || yearBranch.kind === '三合' ? '合太歲'
-    : '無'
+  const taiSui = taiSuiOf(zhi, yearZhi, yearBranch)
   const age = year - birthYear
-  const daYun = c.daYun.filter(d => d.startAge <= age).slice(-1)[0]?.ganZhi ?? null
+  const inForce = (a: number) => c.daYun.filter(d => d.startAge <= a).slice(-1)[0]?.ganZhi ?? null
+  const daYun = inForce(age)
+  // An unknown hour moves the start ages by up to about a year either way.
+  const near = c.hourUnknown ? [...new Set([inForce(age - 1), daYun, inForce(age + 1)].filter((x): x is string => !!x))] : []
+  const yearChoices = c.doubt?.year?.map(p => {
+    const rel = branchRelation(zhi, p.ganZhi[1])
+    return { ganZhi: p.ganZhi, yearBranch: rel, taiSui: taiSuiOf(zhi, p.ganZhi[1], rel) }
+  })
   return {
     year, ganZhi: gz,
     shiShen: tcShiShen(LunarUtil.SHI_SHEN[c.dayMaster + gan] ?? '—'),
     dayBranch: branchRelation(zhi, dayZhi),
     yearBranch, taiSui, daYun, age,
+    ...(c.hourUnknown && daYun ? { daYunApprox: true as const } : {}),
+    ...(near.length > 1 ? { daYunChoices: near } : {}),
+    ...(yearChoices ? { yearChoices } : {}),
   }
 }
 
@@ -799,8 +936,11 @@ export function liuNianFacts(l: LiuNian): string {
     `今年流年：${l.year} ${l.ganZhi}年（虛歲約 ${l.age + 1}）`,
     `  流年天干對日主：${l.shiShen}`,
     `  流年地支對日支（夫妻宮）：${l.dayBranch.kind}`,
-    `  流年地支對年支：${l.yearBranch.kind}${l.taiSui !== '無' ? `（${l.taiSui}）` : ''}`,
-    l.daYun ? `  目前大運：${l.daYun}` : '',
+    l.yearChoices
+      ? `  流年地支對年支：年柱未定——${l.yearChoices.map(y => `若年柱為${y.ganZhi}，${y.yearBranch.kind}${y.taiSui !== '無' ? `（${y.taiSui}）` : ''}`).join('；')}`
+      : `  流年地支對年支：${l.yearBranch.kind}${l.taiSui !== '無' ? `（${l.taiSui}）` : ''}`,
+    l.daYunChoices ? `  目前大運：可能為${l.daYunChoices.join('或')}（時辰未知，交運年份只能約略推算，兩者都要說明）`
+      : l.daYun ? `  目前大運：${l.daYun}${l.daYunApprox ? '（時辰未知，起運歲數為約略值）' : ''}` : '',
   ].filter(Boolean).join('\n')
 }
 
