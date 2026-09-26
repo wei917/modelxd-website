@@ -74,6 +74,9 @@ export default function XCreateNav({ user }: { user: User | null }) {
   const { lang, setLang, t } = useLang()
   const { show } = useAuthModal()
   const initial = (user?.user_metadata?.full_name || user?.email || 'X').slice(0, 1).toUpperCase()
+  // The Google photo, as www's nav shows it; the initial only without one
+  // (owner, Sep 26: a letter read as "not updated after sign in").
+  const photo = typeof user?.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null
   return (
     <header className="xcs-top">
       <a href="#xcreate-main" className="xcs-skip" onClick={event => {
@@ -94,7 +97,7 @@ export default function XCreateNav({ user }: { user: User | null }) {
             {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
           </select>
           {user
-            ? <Link href="/profile" className="xcs-avatar" aria-label={t('profile.account')}><span aria-hidden="true">{initial}</span></Link>
+            ? <Link href="/profile" className="xcs-avatar" aria-label={t('profile.account')}>{photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <span aria-hidden="true">{initial}</span>}</Link>
             : <button type="button" className="xcs-signin" onClick={() => show()}>{t('auth.signin')}</button>}
         </div>
       </div>

@@ -96,6 +96,8 @@ html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
   font-weight: 600; font-size: 14px; text-decoration: none;
 }
 .xcs-avatar:hover { background: var(--xc-accent-soft); color: var(--xc-accent); }
+.xcs-avatar { overflow: hidden; }
+.xcs-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .xcs-signin {
   height: 34px; padding: 0 14px; border: 0; border-radius: 8px;
   background: var(--xc-accent); color: #fff; font: 600 13px var(--xc-font);
