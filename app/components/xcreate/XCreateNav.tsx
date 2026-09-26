@@ -23,10 +23,11 @@ const VIEWS: { view: XCreateView; href: string; label: string }[] = [
   { view: 'templates', href: '/?view=templates', label: 'xcreate.site.nav.templates' },
 ]
 
-/** The wordmark: the same in every language (Codex, Sep 26), X and the full
- *  stop in the accent. */
+/** The mark: the ModelXD logo beside "XCreate", the same in every language;
+ *  the X in the accent, as XTell's mark does it (owner, Sep 26: logo + text,
+ *  no full stop). */
 export function XCreateMark() {
-  return <span className="xcs-brand"><span className="xcs-accent">X</span>Create<span className="xcs-accent">.</span></span>
+  return <span className="xcs-brand"><img className="xcs-logo" src="/logo.png" alt="" width={26} height={26} /><span><span className="xcs-accent">X</span>Create</span></span>
 }
 
 function viewOf(param: string | null | undefined): XCreateView {
