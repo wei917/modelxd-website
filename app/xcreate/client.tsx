@@ -11,7 +11,12 @@ import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/Opt
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
-import { useT } from '../../lib/i18n'
+import { useAuthModal } from '../../lib/AuthModalContext'
+import { useLang } from '../../lib/i18n'
+import StandaloneLibrary from './StandaloneLibrary'
+import StandaloneTemplates from './StandaloneTemplates'
+import { xcreateStudioCopy } from './standalone-copy'
+import './standalone.css'
 import { useSite } from '../../lib/useSite'
 import { wwwHref } from '../../lib/site'
 import { discountFor } from '../../lib/xcreate-discount'
@@ -1014,10 +1019,15 @@ export default function CreateClient({ showcase = [] }: { showcase?: ShowcasePie
 }
 
 function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
-  useRequireAuth()
-  const t = useT()
+  const { lang, t } = useLang()
+  const copy = xcreateStudioCopy(lang)
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
   const site = useSite()       // XBoard and XDirect live on www only
+  const isStandalone = site === 'xcreate'
+  useRequireAuth(!isStandalone)
+  const { show: showAuth } = useAuthModal()
+  const viewParam = useSearchParams()?.get('view')
+  const standaloneView = viewParam === 'templates' || viewParam === 'creations' ? viewParam : 'create'
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -1890,7 +1900,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // when the bar doesn't already say so.
     if (data.job.xcreateId && typeof window !== 'undefined') {
       galleryLoadedRef.current = data.job.xcreateId
-      const want = `?id=${data.job.xcreateId}`
+      const currentView = new URLSearchParams(window.location.search).get('view')
+      const want = `?id=${data.job.xcreateId}${isStandalone && (currentView === 'templates' || currentView === 'creations') ? `&view=${currentView}` : ''}`
       if (window.location.search !== want) {
         const url = new URL(window.location.href)
         url.search = want
@@ -2114,6 +2125,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }, [userId])
 
   const generate = async () => {
+    if (isStandalone && !userId) { showAuth(); return }
     // Mirror canGenerate: video / image with an attachment is enough to
     // proceed even if the prompt is empty (image_to_video, image_to_image,
     // reference_frames, etc. animate / transform the input file with no
@@ -2198,7 +2210,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (newRowId && typeof window !== 'undefined') {
       galleryLoadedRef.current = newRowId  // don't let the ?id= loader re-open a run already live here
       const url = new URL(window.location.href)
+      const currentView = url.searchParams.get('view')
       url.search = `?id=${newRowId}`
+      if (isStandalone && (currentView === 'templates' || currentView === 'creations')) url.searchParams.set('view', currentView)
       window.history.replaceState({}, '', url.toString())
       window.dispatchEvent(new CustomEvent('xcreate:run-started', { detail: { id: newRowId, prompt, mode } }))
     }
@@ -2250,10 +2264,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         // ?id= points at nothing — put the URL back. (A RETRY keeps its
         // ?id=: that row exists and still resolves.) The optimistic history
         // entry corrects itself on Nav's next refresh.
-        if (!retryOfId && newRowId && typeof window !== 'undefined' && window.location.search === `?id=${newRowId}`) {
+        if (!retryOfId && newRowId && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('id') === newRowId) {
           urlClearedByCodeRef.current = true  // keep the refused run's state for editing
           const url = new URL(window.location.href)
-          url.search = ''
+          if (isStandalone) { url.searchParams.delete('id'); url.searchParams.delete('job') }
+          else url.search = ''
           window.history.replaceState({}, '', url.toString())
           galleryLoadedRef.current = null
         }
@@ -2507,6 +2522,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // Upload → source nodes → straight onto the canvas. Costs nothing: no
   // model runs here, the photos just become the board's roots.
   const createProductBoard = async () => {
+    if (isStandalone && !userId) { showAuth(); return }
     if (pbAtts.length === 0 || pbBusy) return
     setPbBusy(true)
     try {
@@ -2930,6 +2946,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }
 
   const applyTemplate = async (t: Template) => {
+    if (isStandalone && t.sampleUrl) {
+      const { data } = await createSupabaseBrowser().auth.getUser()
+      if (!data.user) { showAuth(`/?template=${encodeURIComponent(t.id)}`); return }
+    }
     // Block the mode-change effect from wiping the state we're setting.
     modeClearedRef.current = true
 
@@ -3091,14 +3111,27 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // clear didn't come from our own replaceState bookkeeping, reset to a
   // fresh composer.
   const prevIdParamRef = useRef<string | null>(searchIdParam)
+  const prevStandaloneViewRef = useRef(standaloneView)
   useEffect(() => {
     const prev = prevIdParamRef.current
+    const prevView = prevStandaloneViewRef.current
     prevIdParamRef.current = searchIdParam
-    if (searchIdParam || !prev) return
+    prevStandaloneViewRef.current = standaloneView
+    // The standalone navigation changes views, not the active creation.
+    // Restore its durable link when returning from Templates or My creations.
+    if (isStandalone && prevView !== 'create' && standaloneView === 'create' && !searchIdParam) {
+      if (xcreateId) {
+        const url = new URL(window.location.href)
+        url.searchParams.set('id', xcreateId)
+        window.history.replaceState({}, '', url.toString())
+      }
+      return
+    }
+    if (searchIdParam || !prev || (isStandalone && standaloneView !== 'create')) return
     if (urlClearedByCodeRef.current) { urlClearedByCodeRef.current = false; return }
     reset()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchIdParam])
+  }, [searchIdParam, isStandalone, standaloneView])
 
   // Load a saved creation back into the Create tab so the user can continue
   // chatting with any model from that run. `continueIdx` is the index into the
@@ -3447,6 +3480,231 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const promptComposer = (
+    <>
+{/* Prompt — framed composer. The labeled upload slots
+                    (ROSE/JACK/YOUR PHOTO…) render INSIDE the frame, above
+                    the borderless textarea (Pollo-style), so prompt +
+                    assets read as one unit. */}
+                <div ref={promptBoxRef} className="prompt-box framed" style={{
+                  opacity: isLocked ? 0.55 : 1,
+                  boxShadow: promptFlash ? '0 0 0 3px rgba(214,59,50,0.30)' : 'none',
+                  transition: 'box-shadow 0.4s ease, border-color 0.2s',
+                }}>
+                  {(() => {
+                    const activeTemplate = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
+                    const templateSlots = activeTemplate?.attachmentSlots
+                    // Template's named slots win (ROSE/JACK …); otherwise the
+                    // run's recipe decides the upload slots (works in text mode
+                    // too, e.g. image→text / pdf→text).
+                    let slots = (templateSlots && templateSlots.length > 0) ? templateSlots : recipeInputSlots(recipeMode)
+                    // Reference / edit slots scale with the selected models
+                    // (min of input_config.image.count; defaults 2 / 1).
+                    // Progressive disclosure: show filled slots + ONE empty
+                    // one — the next empty slot is the "add" affordance,
+                    // and the "up to N" note announces the capacity.
+                    if ((!templateSlots || templateSlots.length === 0) && refSlotCount > 0) {
+                      const isRefs = recipeMode === 'reference_frames'
+                      const filled = attachments.filter(a => (a.slotIndex ?? 0) < refSlotCount).length
+                      const visible = Math.min(filled + 1, refSlotCount)
+                      slots = Array.from({ length: visible }, (_, i) => ({
+                        label: isRefs ? `REFERENCE ${i + 1}` : `IMAGE ${i + 1}`,
+                        hint:  i === 0
+                          ? (isRefs ? 'A person or subject' : 'The main image to edit')
+                          : (isRefs ? 'Optional' : 'Optional — reference image'),
+                      }))
+                    }
+                    // Template slots also grow, reference_frames only: the
+                    // named slots are the default set; once ALL are filled,
+                    // reveal one more generic slot at a time up to the
+                    // models' shared capacity (refSlotCount). image_edit
+                    // templates stay fixed — their prompts assume an exact
+                    // input shape (e.g. Remove Background = 1 photo).
+                    else if (
+                      templateSlots && templateSlots.length > 0 &&
+                      recipeMode === 'reference_frames' &&
+                      refSlotCount > templateSlots.length
+                    ) {
+                      const filled = attachments.filter(a => (a.slotIndex ?? 0) < refSlotCount).length
+                      const visible = Math.max(
+                        templateSlots.length,
+                        Math.min(filled + 1, refSlotCount),
+                      )
+                      slots = Array.from({ length: visible }, (_, i) =>
+                        templateSlots[i] ?? { label: `IMAGE ${i + 1}`, hint: 'Optional' })
+                    }
+                    // Always-on attach slot: when the recipe needs no
+                    // upload, show one optional slot anyway. Dropping a
+                    // file there auto-switches the sub-mode (see
+                    // handleComposerAttachments).
+                    const generic = !slots || slots.length === 0
+                    if (generic) {
+                      slots = [{ label: 'ATTACH', hint: 'Optional' }]
+                    }
+                    // What the slots accept: recipe-specific media, or the
+                    // mode's full union for the generic slot.
+                    const IMG = 'image/jpeg,image/png,image/gif,image/webp'
+                    const VID = 'video/mp4,video/quicktime,video/webm'
+                    const accept =
+                      // Extensions + audio/*, not a bare MIME list: the
+                      // macOS picker maps MIME types unreliably and grays
+                      // out real MP3s (owner, Aug 10: "I can't select mp3").
+                      // Applies to the GENERIC slot too — the From-menu
+                      // path has no template, and its old text accept had
+                      // no audio at all, which was the actual lockout.
+                      recipeMode === 'audio_to_text' ? 'audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.webm'
+                      // Any decodable audio is fine — lib/audio-normalize
+                      // converts to wav/mp3 ≤15s in the browser before
+                      // upload (Wan 3.0's hard limits).
+                      : recipeMode === 'audio_to_video' ? 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.mp4'
+                      : !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
+                      : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
+                      // Reference video templates: images + any audio
+                      // (normalized to wav ≤15s client-side).
+                      : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/*,.mp3,.m4a,.aac,.wav`
+                      : !generic && (recipeMode === 'video_to_video' || recipeMode === 'extend_video' || recipeMode === 'video_to_text') ? VID
+                      : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
+                      // Generic video slot takes audio too — normalized
+                      // client-side; models without audio input reject the
+                      // attachment with a named error in alibaba.ts.
+                      : generic && mode === 'video' ? `${IMG},${VID},audio/*,.mp3,.m4a,.aac,.wav`
+                      : undefined
+                    const isFrames = recipeMode === 'start_end_frames'
+                    return (
+                      <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+                        <LabeledSlotsPicker
+                          slots={slots}
+                          attachments={attachments}
+                          onChange={handleComposerAttachments}
+                          disabled={isLocked}
+                          context="xcreate"
+                          arrows={isFrames}
+                          swappable={isFrames}
+                          compact
+                          accept={accept}
+                          audioMaxSeconds={mode === 'video' ? 15 : undefined}
+                          onPreview={a => { if (a.previewUrl) setLightbox(a.previewUrl) }}
+                        />
+                        {/* Region editing — offered only while a selected
+                            model can honour a mask (region_edit). The mask
+                            applies to the FIRST image; models without the
+                            capability run the same prompt as a plain edit. */}
+                        {regionEligible && !regionMask && (
+                          <button
+                            onClick={() => void openRegionEditor()}
+                            disabled={isLocked}
+                            title={`Paint the exact area to change — applies on: ${regionModels.map(m => m.display_name).join(', ')}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '5px 10px', borderRadius: 8, fontSize: 11,
+                              fontFamily: 'var(--mono)', letterSpacing: '0.04em',
+                              border: '1px dashed var(--border2)', background: 'transparent',
+                              color: 'var(--muted2)', cursor: isLocked ? 'default' : 'pointer',
+                              opacity: isLocked ? 0.4 : 1,
+                            }}
+                          >◐ Edit region</button>
+                        )}
+                        {regionEligible && regionMask && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px 3px 4px', borderRadius: 8, border: '1px solid var(--red)', background: 'var(--red-dim, #fde8e5)' }}>
+                            <img src={regionMask.preview} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
+                            <button
+                              onClick={() => void openRegionEditor()}
+                              disabled={isLocked}
+                              title="Edit the painted region"
+                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
+                            >region set</button>
+                            <button
+                              onClick={() => !isLocked && setRegionMask(null)}
+                              disabled={isLocked}
+                              aria-label="Remove region"
+                              style={{ background: 'none', border: 'none', padding: '0 2px', fontSize: 13, lineHeight: 1, color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
+                            >×</button>
+                          </span>
+                        )}
+                        {/* ("up to N images" capacity note removed July 2026
+                            per CC — slots just keep appearing until the cap;
+                            no announcement needed.) */}
+                        {refDropNotice && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#f59e0b', background: '#f59e0b14', border: '1px solid #f59e0b40', borderRadius: 8, padding: '3px 8px' }}>
+                            ⚠ {refDropNotice}
+                            <button onClick={() => setRefDropNotice(null)} aria-label="Dismiss"
+                              style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  {/* E-commerce platform row — only on product templates.
+                      A chip re-applies the template with that marketplace's
+                      listing conventions (ratio, background, fill, text
+                      policy, video length). */}
+                  {(() => {
+                    const tpl = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
+                    if (!tpl?.ecommerce) return null
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '12px 0 4px' }}>
+                        <span style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.08em', color: 'var(--muted)', textTransform: 'uppercase' as const }}>Platform</span>
+                        {PLATFORM_PRESETS.map(p => {
+                          const on = platformId === p.id
+                          const brand = p.brand ?? 'var(--red)'
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => !isLocked && applyPlatform(p.id)}
+                              disabled={isLocked}
+                              title={p.id === 'general' ? 'The template\'s own defaults' : `Re-apply this template with ${p.label}'s listing conventions`}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 7,
+                                height: 30, padding: '0 13px', borderRadius: 999,
+                                fontSize: 12.5, fontWeight: on ? 700 : 500,
+                                fontFamily: 'var(--font-body, inherit)',
+                                cursor: isLocked ? 'default' : 'pointer',
+                                border: '1.5px solid ' + (on ? brand : 'var(--border)'),
+                                background: on ? `color-mix(in srgb, ${brand} 9%, transparent)` : 'var(--surface)',
+                                color: on ? brand : 'var(--muted2)',
+                                boxShadow: on ? `0 1px 6px color-mix(in srgb, ${brand} 22%, transparent)` : 'none',
+                                transition: 'border-color .15s, background .15s, color .15s, box-shadow .15s',
+                                opacity: isLocked ? 0.5 : 1,
+                              }}
+                              onMouseEnter={e => { if (!isLocked && !on) (e.currentTarget as HTMLElement).style.borderColor = brand }}
+                              onMouseLeave={e => { if (!on) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                            >
+                              {p.logo
+                                ? <img src={p.logo} alt="" width={16} height={16} style={{ display: 'block', filter: on ? 'none' : 'grayscale(1) opacity(0.55)', transition: 'filter .15s' }} />
+                                : p.id === 'general'
+                                  ? <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>✦</span>
+                                  : null}
+                              <span>{p.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+                  <textarea id="xcreate-prompt" aria-label={copy.prompt} className="prompt-textarea"
+                    maxLength={8000}
+                    placeholder={t('xcreate.ph.' + mode)}
+                    value={prompt} onChange={e => setPrompt(e.target.value)}
+                    // Locked once a run starts. The user can still see what
+                    // prompt was used, but can't edit it until Start Over.
+                    disabled={isLocked}
+                    readOnly={isLocked}
+                    onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); if (canGenerate) generate() } }}
+                  />
+                  {/* Fill-in hint — INSIDE the prompt box (CC), shown while
+                      the prompt contains a {{placeholder}}. Distinctive
+                      double-brace delimiter can't false-fire on normal
+                      user text; disappears once the user replaces them.
+                      Defaults still generate fine untouched. */}
+                  {phase === 'setup' && /\{\{[^}]+\}\}/.test(prompt) && (
+                    <div style={{ padding: '0 16px 12px', fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
+                      ✏️ Replace the {'{{marked}}'} parts with your own words — or keep the defaults
+                    </div>
+                  )}
+                </div>
+    </>
+  )
+
   return (
     <>
       {lightbox && (
@@ -3535,16 +3793,18 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       )}
 
       <div className="xduel-page">
-        <div className="arena xcreate-arena">
+        <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
-          {/* In-page header: "// XCREATE" eyebrow + big headline (CC, July 20). */}
-          <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
-            <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
-          </div>
-
-          {/* (Gallery tab removed — moved to /profile under the XCreates
-              tab. XCreate is now single-purpose: the studio.) */}
+          {isStandalone ? <header className={`xcs-heading${standaloneView !== 'create' ? ' xcs-heading-wide' : ''}`}>
+            <p className="xcs-eyebrow">{copy.eyebrow}</p>
+            <h1>{standaloneView === 'templates' ? copy.templatesTitle : standaloneView === 'creations' ? copy.creationsTitle : copy.title}</h1>
+            <p>{standaloneView === 'templates' ? copy.templatesSubtitle : standaloneView === 'creations' ? copy.creationsSubtitle : copy.subtitle}</p>
+          </header> : <>
+            <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
+              <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
+            </div>
+          </>}
 
           {/* Error banner — surfaces ?id= load failures (row not found,
               row belongs to another user) so the user understands why
@@ -3582,7 +3842,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   if (typeof window !== 'undefined' && window.location.search) {
                     urlClearedByCodeRef.current = true
                     const url = new URL(window.location.href)
-                    url.search = ''
+                    if (isStandalone) { url.searchParams.delete('id'); url.searchParams.delete('job') }
+                    else url.search = ''
                     window.history.replaceState({}, '', url.toString())
                   }
                 }}
@@ -3597,7 +3858,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               composer = describe an edit + pick ANY edit-capable model.
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
-          {phase === 'workflow' ? (
+          {isStandalone && standaloneView === 'templates' ? (
+            <StandaloneTemplates showcase={showcase} disabled={isLocked}
+              onSelect={template => { if (!isLocked) { void applyTemplate(template); router.push('/', { scroll: true }) } }}
+              onNew={reset} />
+          ) : isStandalone && standaloneView === 'creations' ? <StandaloneLibrary onNew={reset} /> : phase === 'workflow' ? (
             <div>
               {/* Strip ⇄ canvas toggle. The canvas is the ComfyUI-style
                   board: nodes + wires + click-to-branch (CC, July 27). */}
@@ -3863,7 +4128,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
             ) : (
               /* ── SETUP / GENERATING / PICKING ── */
-              <>
+              <div className={isStandalone ? 'xcs-setup' : undefined}>
                 {/* Mode — clickable only during setup. Once a run has started
                     (generating / picking / chatting) the tabs lock; user must
                     Start Over to switch modes. Switching modes nukes any
@@ -3874,8 +4139,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     button opens a small list of the mode's sub-modes. */}
                 <div
                   ref={modeBlockRef}
+                  className={isStandalone ? 'xcs-mode-block' : undefined}
                   style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
                 >
+                  {isStandalone && <label className="xcs-mobile-mode">{t('xcreate.generate')}
+                    <select value={mode} disabled={isLocked} onChange={e => { setFromOpen(false); setMode(e.target.value as Mode); setActiveTemplateId(null) }}>
+                      {(['image', 'video', 'text', 'audio'] as Mode[]).map(m => <option key={m} value={m}>{t(`mode.${m}`)}</option>)}
+                    </select>
+                  </label>}
                   <div className="mode-row">
                     {/* Column 1 — "Generate:" + segmented mode group. */}
                     <div className="mode-col">
@@ -3931,11 +4202,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   </div>
                 </div>
 
+                {isStandalone && <div className="xcs-prompt-section">
+                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label><Link href="/?view=templates">{copy.useTemplate} ↗</Link></div>
+                  {promptComposer}
+                </div>}
+
                 {/* Model slots + per-model options */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                   <div className="field-label" style={{ marginBottom: 0 }}>{t('xcreate.selectmodels')}</div>
                   {/* Discount nudge (CC, July 20) — quiet grey hint. */}
-                  {activeModels.length < 4 && (
+                  {!isStandalone && activeModels.length < 4 && (
                     <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em' }}>
                       {t('xcreate.savemore')}
                     </span>
@@ -3947,7 +4223,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     setup we render all 4 slots so the user can fill them. */}
                 {(() => {
                   const isRunning = phase === 'generating' || phase === 'picking' || phase === 'chatting'
-                  const slotsToShow = isRunning ? [0, 1, 2, 3].filter(i => selectedModels[i]) : [0, 1, 2, 3]
+                  const filledSlots = [0, 1, 2, 3].filter(i => selectedModels[i])
+                  const nextEmpty = selectedModels.findIndex(model => !model)
+                  const slotsToShow = isRunning ? filledSlots : isStandalone ? [...filledSlots, ...(nextEmpty >= 0 ? [nextEmpty] : [])] : [0, 1, 2, 3]
                   const columnCount = slotsToShow.length
                   return (
                 <div className="xcreate-slot-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
@@ -3974,10 +4252,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         onMouseEnter={e => { if (!isLocked) { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--muted)' }}
                       >
-                        <span style={{ fontSize: 18 }}>+</span> {t('xcreate.modelslot').replace('{l}', LABELS[i])}
+                        <span style={{ fontSize: 18 }}>+</span> {isStandalone ? (activeModels.length ? copy.compareModel : copy.addModel) : t('xcreate.modelslot').replace('{l}', LABELS[i])}
                         {/* Discount tag - pinned to the top-right corner,
                             slightly overhanging like a price sticker. */}
-                        {teaser && (
+                        {!isStandalone && teaser && (
                           <span style={{
                             position: 'absolute', top: -8, right: -6,
                             fontSize: 9, fontWeight: 800, color: '#fff',
@@ -4080,6 +4358,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                               2nd model 10%, 3rd 15%, 4th 20% - so it survives
                               middle removals the same way the teasers do. */}
                           {(() => {
+                            if (isStandalone) return null
                             const filledRank = [0, 1, 2, 3].filter(j => j < i && selectedModels[j]).length + 1
                             return filledRank >= 2 && filledRank <= 4 && discountFor(filledRank) > 0 ? (
                               <span style={{
@@ -4103,8 +4382,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                             const match = model.display_name.match(/^(.*?)\s*(\([^)]*\))\s*$/)
                             const main = (match?.[1] ?? model.display_name).trim()
                             const sub = match?.[2]?.trim()
+                            const Name = isStandalone ? 'button' : 'div'
                             return (
-                              <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                              <Name type={isStandalone ? 'button' : undefined} disabled={isStandalone && isLocked}
+                                onClick={isStandalone ? e => { e.stopPropagation(); if (!isLocked) setPickerSlot(i) } : undefined}
+                                style={{ flex: 1, minWidth: 0, textAlign: isStandalone ? 'left' : 'center', ...(isStandalone ? { background: 'none', border: 'none', padding: '10px 0', font: 'inherit', cursor: isLocked ? 'default' : 'pointer' } : {}) }}>
                                 <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
                                   {main}
                                 </div>
@@ -4113,7 +4395,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                     {sub}
                                   </div>
                                 )}
-                              </div>
+                              </Name>
                             )
                           })()}
                           {hasOptions && (
@@ -4519,226 +4801,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* (Popular strip removed — it lives in the mode dropdown
                     now; the full catalog stays below the composer.) */}
 
-                {/* Prompt — framed composer. The labeled upload slots
-                    (ROSE/JACK/YOUR PHOTO…) render INSIDE the frame, above
-                    the borderless textarea (Pollo-style), so prompt +
-                    assets read as one unit. */}
-                <div ref={promptBoxRef} className="prompt-box framed" style={{
-                  opacity: isLocked ? 0.55 : 1,
-                  boxShadow: promptFlash ? '0 0 0 3px rgba(214,59,50,0.30)' : 'none',
-                  transition: 'box-shadow 0.4s ease, border-color 0.2s',
-                }}>
-                  {(() => {
-                    const activeTemplate = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
-                    const templateSlots = activeTemplate?.attachmentSlots
-                    // Template's named slots win (ROSE/JACK …); otherwise the
-                    // run's recipe decides the upload slots (works in text mode
-                    // too, e.g. image→text / pdf→text).
-                    let slots = (templateSlots && templateSlots.length > 0) ? templateSlots : recipeInputSlots(recipeMode)
-                    // Reference / edit slots scale with the selected models
-                    // (min of input_config.image.count; defaults 2 / 1).
-                    // Progressive disclosure: show filled slots + ONE empty
-                    // one — the next empty slot is the "add" affordance,
-                    // and the "up to N" note announces the capacity.
-                    if ((!templateSlots || templateSlots.length === 0) && refSlotCount > 0) {
-                      const isRefs = recipeMode === 'reference_frames'
-                      const filled = attachments.filter(a => (a.slotIndex ?? 0) < refSlotCount).length
-                      const visible = Math.min(filled + 1, refSlotCount)
-                      slots = Array.from({ length: visible }, (_, i) => ({
-                        label: isRefs ? `REFERENCE ${i + 1}` : `IMAGE ${i + 1}`,
-                        hint:  i === 0
-                          ? (isRefs ? 'A person or subject' : 'The main image to edit')
-                          : (isRefs ? 'Optional' : 'Optional — reference image'),
-                      }))
-                    }
-                    // Template slots also grow, reference_frames only: the
-                    // named slots are the default set; once ALL are filled,
-                    // reveal one more generic slot at a time up to the
-                    // models' shared capacity (refSlotCount). image_edit
-                    // templates stay fixed — their prompts assume an exact
-                    // input shape (e.g. Remove Background = 1 photo).
-                    else if (
-                      templateSlots && templateSlots.length > 0 &&
-                      recipeMode === 'reference_frames' &&
-                      refSlotCount > templateSlots.length
-                    ) {
-                      const filled = attachments.filter(a => (a.slotIndex ?? 0) < refSlotCount).length
-                      const visible = Math.max(
-                        templateSlots.length,
-                        Math.min(filled + 1, refSlotCount),
-                      )
-                      slots = Array.from({ length: visible }, (_, i) =>
-                        templateSlots[i] ?? { label: `IMAGE ${i + 1}`, hint: 'Optional' })
-                    }
-                    // Always-on attach slot: when the recipe needs no
-                    // upload, show one optional slot anyway. Dropping a
-                    // file there auto-switches the sub-mode (see
-                    // handleComposerAttachments).
-                    const generic = !slots || slots.length === 0
-                    if (generic) {
-                      slots = [{ label: 'ATTACH', hint: 'Optional' }]
-                    }
-                    // What the slots accept: recipe-specific media, or the
-                    // mode's full union for the generic slot.
-                    const IMG = 'image/jpeg,image/png,image/gif,image/webp'
-                    const VID = 'video/mp4,video/quicktime,video/webm'
-                    const accept =
-                      // Extensions + audio/*, not a bare MIME list: the
-                      // macOS picker maps MIME types unreliably and grays
-                      // out real MP3s (owner, Aug 10: "I can't select mp3").
-                      // Applies to the GENERIC slot too — the From-menu
-                      // path has no template, and its old text accept had
-                      // no audio at all, which was the actual lockout.
-                      recipeMode === 'audio_to_text' ? 'audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.webm'
-                      // Any decodable audio is fine — lib/audio-normalize
-                      // converts to wav/mp3 ≤15s in the browser before
-                      // upload (Wan 3.0's hard limits).
-                      : recipeMode === 'audio_to_video' ? 'audio/*,.mp3,.m4a,.aac,.wav,.ogg,.mp4'
-                      : !generic && recipeMode === 'pdf_to_text' ? 'application/pdf'
-                      : !generic && recipeMode === 'video_edit' ? `${VID},${IMG}`
-                      // Reference video templates: images + any audio
-                      // (normalized to wav ≤15s client-side).
-                      : !generic && recipeMode === 'reference_frames' && mode === 'video' ? `${IMG},audio/*,.mp3,.m4a,.aac,.wav`
-                      : !generic && (recipeMode === 'video_to_video' || recipeMode === 'extend_video' || recipeMode === 'video_to_text') ? VID
-                      : generic && mode === 'text' ? `${IMG},${VID},application/pdf,audio/*,.mp3,.m4a,.wav`
-                      // Generic video slot takes audio too — normalized
-                      // client-side; models without audio input reject the
-                      // attachment with a named error in alibaba.ts.
-                      : generic && mode === 'video' ? `${IMG},${VID},audio/*,.mp3,.m4a,.aac,.wav`
-                      : undefined
-                    const isFrames = recipeMode === 'start_end_frames'
-                    return (
-                      <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
-                        <LabeledSlotsPicker
-                          slots={slots}
-                          attachments={attachments}
-                          onChange={handleComposerAttachments}
-                          disabled={isLocked}
-                          context="xcreate"
-                          arrows={isFrames}
-                          swappable={isFrames}
-                          compact
-                          accept={accept}
-                          audioMaxSeconds={mode === 'video' ? 15 : undefined}
-                          onPreview={a => { if (a.previewUrl) setLightbox(a.previewUrl) }}
-                        />
-                        {/* Region editing — offered only while a selected
-                            model can honour a mask (region_edit). The mask
-                            applies to the FIRST image; models without the
-                            capability run the same prompt as a plain edit. */}
-                        {regionEligible && !regionMask && (
-                          <button
-                            onClick={() => void openRegionEditor()}
-                            disabled={isLocked}
-                            title={`Paint the exact area to change — applies on: ${regionModels.map(m => m.display_name).join(', ')}`}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 5,
-                              padding: '5px 10px', borderRadius: 8, fontSize: 11,
-                              fontFamily: 'var(--mono)', letterSpacing: '0.04em',
-                              border: '1px dashed var(--border2)', background: 'transparent',
-                              color: 'var(--muted2)', cursor: isLocked ? 'default' : 'pointer',
-                              opacity: isLocked ? 0.4 : 1,
-                            }}
-                          >◐ Edit region</button>
-                        )}
-                        {regionEligible && regionMask && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px 3px 4px', borderRadius: 8, border: '1px solid var(--red)', background: 'var(--red-dim, #fde8e5)' }}>
-                            <img src={regionMask.preview} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
-                            <button
-                              onClick={() => void openRegionEditor()}
-                              disabled={isLocked}
-                              title="Edit the painted region"
-                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
-                            >region set</button>
-                            <button
-                              onClick={() => !isLocked && setRegionMask(null)}
-                              disabled={isLocked}
-                              aria-label="Remove region"
-                              style={{ background: 'none', border: 'none', padding: '0 2px', fontSize: 13, lineHeight: 1, color: 'var(--red)', cursor: isLocked ? 'default' : 'pointer' }}
-                            >×</button>
-                          </span>
-                        )}
-                        {/* ("up to N images" capacity note removed July 2026
-                            per CC — slots just keep appearing until the cap;
-                            no announcement needed.) */}
-                        {refDropNotice && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#f59e0b', background: '#f59e0b14', border: '1px solid #f59e0b40', borderRadius: 8, padding: '3px 8px' }}>
-                            ⚠ {refDropNotice}
-                            <button onClick={() => setRefDropNotice(null)} aria-label="Dismiss"
-                              style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}>×</button>
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })()}
-                  {/* E-commerce platform row — only on product templates.
-                      A chip re-applies the template with that marketplace's
-                      listing conventions (ratio, background, fill, text
-                      policy, video length). */}
-                  {(() => {
-                    const tpl = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
-                    if (!tpl?.ecommerce) return null
-                    return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '12px 0 4px' }}>
-                        <span style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.08em', color: 'var(--muted)', textTransform: 'uppercase' as const }}>Platform</span>
-                        {PLATFORM_PRESETS.map(p => {
-                          const on = platformId === p.id
-                          const brand = p.brand ?? 'var(--red)'
-                          return (
-                            <button
-                              key={p.id}
-                              onClick={() => !isLocked && applyPlatform(p.id)}
-                              disabled={isLocked}
-                              title={p.id === 'general' ? 'The template\'s own defaults' : `Re-apply this template with ${p.label}'s listing conventions`}
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 7,
-                                height: 30, padding: '0 13px', borderRadius: 999,
-                                fontSize: 12.5, fontWeight: on ? 700 : 500,
-                                fontFamily: 'var(--font-body, inherit)',
-                                cursor: isLocked ? 'default' : 'pointer',
-                                border: '1.5px solid ' + (on ? brand : 'var(--border)'),
-                                background: on ? `color-mix(in srgb, ${brand} 9%, transparent)` : 'var(--surface)',
-                                color: on ? brand : 'var(--muted2)',
-                                boxShadow: on ? `0 1px 6px color-mix(in srgb, ${brand} 22%, transparent)` : 'none',
-                                transition: 'border-color .15s, background .15s, color .15s, box-shadow .15s',
-                                opacity: isLocked ? 0.5 : 1,
-                              }}
-                              onMouseEnter={e => { if (!isLocked && !on) (e.currentTarget as HTMLElement).style.borderColor = brand }}
-                              onMouseLeave={e => { if (!on) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
-                            >
-                              {p.logo
-                                ? <img src={p.logo} alt="" width={16} height={16} style={{ display: 'block', filter: on ? 'none' : 'grayscale(1) opacity(0.55)', transition: 'filter .15s' }} />
-                                : p.id === 'general'
-                                  ? <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>✦</span>
-                                  : null}
-                              <span>{p.label}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )
-                  })()}
-                  <textarea className="prompt-textarea"
-                    maxLength={8000}
-                    placeholder={t('xcreate.ph.' + mode)}
-                    value={prompt} onChange={e => setPrompt(e.target.value)}
-                    // Locked once a run starts. The user can still see what
-                    // prompt was used, but can't edit it until Start Over.
-                    disabled={isLocked}
-                    readOnly={isLocked}
-                    onKeyDown={e => { if (isSubmitEnter(e, { requireModifier: true })) { e.preventDefault(); if (canGenerate) generate() } }}
-                  />
-                  {/* Fill-in hint — INSIDE the prompt box (CC), shown while
-                      the prompt contains a {{placeholder}}. Distinctive
-                      double-brace delimiter can't false-fire on normal
-                      user text; disappears once the user replaces them.
-                      Defaults still generate fine untouched. */}
-                  {phase === 'setup' && /\{\{[^}]+\}\}/.test(prompt) && (
-                    <div style={{ padding: '0 16px 12px', fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
-                      ✏️ Replace the {'{{marked}}'} parts with your own words — or keep the defaults
-                    </div>
-                  )}
-                </div>
+                {!isStandalone && promptComposer}
 
                 {/* Actions row — OUTSIDE the prompt box (July 2026, CC):
                     sits just below the composer as a normal flex row, so it
@@ -4799,7 +4862,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </span>
                   )}
                   {/* Improve prompt: secondary, beside Generate (owner, Sep 16). */}
-                  {phase === 'setup' && refiner.action}
+                  {phase === 'setup' && (isStandalone && !userId ? <span className="xcs-auth-refiner" onClickCapture={e => { e.preventDefault(); e.stopPropagation(); showAuth() }}>{refiner.action}</span> : refiner.action)}
                   {phase === 'setup' && (
                     <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
                       {t('xcreate.generatebtn')}
@@ -4861,7 +4924,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     Clicking anything applies it and scrolls back up to the
                     flashing composer. */}
 
-                {phase === 'setup' && slots.length === 0 && (() => {
+                {!isStandalone && phase === 'setup' && slots.length === 0 && (() => {
                   // Category sections (Popular / Tools / Templates), each
                   // wrapped so EVERY card is visible — no horizontal
                   // scrolling (July 2026: CC prefers the full catalog on
@@ -4901,13 +4964,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     what this page is FOR, and the wall is what you browse
                     once you have not found one. Setup screen only — once
                     there are results, the results are the thing. */}
-                {phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
+                {!isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
                   <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
                 )}
 
                 {/* Results */}
                 {slots.length > 0 && (
-                  <div style={{ marginTop: 24 }}>
+                  <div className={isStandalone ? 'xcs-results' : undefined} style={{ marginTop: 24 }}>
                     {/* A single-model run has no contest — no vote header,
                         no Select button (owner, Aug 10). The output simply
                         stands; Start Over remains the way onward. */}
@@ -5149,7 +5212,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     })()}
                   </div>
                 )}
-              </>
+              </div>
             )}
         </div>
       </div>
