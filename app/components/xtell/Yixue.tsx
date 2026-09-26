@@ -14,7 +14,7 @@
 import type { CSSProperties } from 'react'
 import { useT } from '../../../lib/i18n'
 import {
-  HEXAGRAMS, lineLabel, bitOf, isMoving, LINE_KIND,
+  HEXAGRAMS, lineLabel, bitOf, isMoving, LINE_KIND, validLines,
   type Bit, type Coin, type LineValue,
 } from '../../../lib/yijing-core'
 
@@ -35,6 +35,40 @@ export function YixueQuestion({ value, onChange, disabled = false }: {
     </label>
     <p id="yixue-question-help" style={{ margin: 0, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.7 }}>{t('xtell.yixue.question.help')}</p>
     <p style={{ margin: 0, color: 'var(--muted2)', fontSize: 11.5, lineHeight: 1.7 }}>{t('xtell.yixue.question.prepare')}</p>
+    <p style={{ margin: 0, color: 'var(--muted2)', fontSize: 11.5, lineHeight: 1.7 }}>{t('xtell.yixue.question.privacy')}</p>
+  </div>
+}
+
+/** Recorded throws, in chronological/bottom-to-top order; never fill missing values. */
+export function YixueManualCast({ ask, setAsk, values, onChange, onSubmit, disabled, sel }: {
+  ask: string; setAsk: (value: string) => void
+  values: Array<LineValue | ''>; onChange: (values: Array<LineValue | ''>) => void
+  onSubmit: (values: LineValue[]) => void; disabled: boolean; sel: CSSProperties
+}) {
+  const t = useT()
+  const ready = ask.trim().length > 0 && validLines(values)
+  return <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, gap: 14 }}>
+    <p style={{ margin: 0, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.yixue.manual.help')}</p>
+    <label style={{ display: 'grid', gap: 6 }}>
+      <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.yixue.ask')}</span>
+      <input value={ask} maxLength={300} disabled={disabled} onChange={e => setAsk(e.target.value)}
+        placeholder={t('xtell.yixue.ask.ph')} style={{ ...sel, width: '100%', boxSizing: 'border-box', fontSize: 14 }} />
+    </label>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
+      {Array.from({ length: 6 }, (_, i) => <label key={i} style={{ display: 'grid', gridTemplateColumns: '92px minmax(0, 1fr)', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 12.5 }}>{t('xtell.yixue.manual.line').replace('{n}', String(i + 1))}</span>
+        <select value={values[i] ?? ''} disabled={disabled} style={{ ...sel, width: '100%', minWidth: 0 }}
+          onChange={e => onChange(values.map((v, n) => n === i ? (e.target.value === '' ? '' : Number(e.target.value) as LineValue) : v))}>
+          <option value="">{t('xtell.yixue.manual.choose')}</option>
+          {([6, 7, 8, 9] as const).map(v => <option key={v} value={v}>{t(`xtell.yixue.manual.value.${v}`)}</option>)}
+        </select>
+      </label>)}
+    </div>
+    <p style={{ margin: 0, color: 'var(--muted2)', fontSize: 11.5, lineHeight: 1.7 }}>{t('xtell.yixue.manual.free')}</p>
+    <button type="button" disabled={disabled || !ready} onClick={() => { if (!disabled && ask.trim() && validLines(values)) onSubmit([...values]) }}
+      style={{ justifySelf: 'end', padding: '10px 22px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', font: 'inherit', fontWeight: 700, fontSize: 13.5, opacity: disabled || !ready ? 0.5 : 1, cursor: disabled || !ready ? 'not-allowed' : 'pointer' }}>
+      {disabled ? '…' : t('xtell.yixue.manual.submit')}
+    </button>
   </div>
 }
 

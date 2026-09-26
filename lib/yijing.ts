@@ -5,8 +5,9 @@
 //            passage this cast reads (lib/yijing-core.ts decides it);
 //   lookup — any of the 64, read as text;
 //   ask    — no hexagram: the visitor is learning, and the teacher answers
-//            from the 十翼 passages lib/classics retrieves, plus the text of
-//            any hexagram the question names.
+//            from the 十翼 passages lib/classics retrieves, plus what the
+//            question points at (lib/yijing-retrieval): a hexagram it names,
+//            a line it quotes, or one of three indexed topics.
 //
 // The board payload and the facts carry the text VERBATIM from the corpus
 // (with its recorded corrections) and label it as original text; everything
@@ -18,6 +19,11 @@ import {
   castOf, readingRule, hexagram, lineLabel, LINE_KIND, validLines, validNumber, bitOf, isMoving,
   RULE_SOURCE, HEXAGRAMS, type LineValue, type Coin, type ReadingRule, type HexagramInfo,
 } from './yijing-core'
+import { yixueBookPassages } from './classics'
+import {
+  unit, phraseIndex, phrasesIn, unfoundQuotes, conceptsIn, conceptPassages,
+  type Unit, type PhraseIndex, type PhraseHit, type ConceptId,
+} from './yijing-retrieval'
 
 type Yao = { label: string; text: string; xiaoxiang: string }
 type Correction = { where: string; part: string; from: string; to: string; witness: string; reason: string }
@@ -185,27 +191,145 @@ function cnNumber(s: string): number {
   return d[s] ?? 0
 }
 
+// ── What a teacher question points at ──────────────────────────────────────
+
+let phrases: PhraseIndex | null = null
+/** Every quotable place in the corpus: each hexagram's 卦辭, 彖, 大象, 爻辭,
+ *  小象, 用九/六 and 文言 paragraphs, then the 十翼 passages. */
+function phraseIdx(): PhraseIndex {
+  if (phrases) return phrases
+  const units: Unit[] = []
+  for (const h of load().hexagrams) {
+    const at = { hex: h.n, name: h.name }, of = `${h.name}卦`
+    units.push(unit({ ...at, where: `${of} 卦辭`, text: h.judgment, match: h.name + h.judgment }))
+    units.push(unit({ ...at, where: `${of} 彖傳`, text: h.tuan }))
+    units.push(unit({ ...at, where: `${of} 大象`, text: h.daxiang }))
+    for (const y of h.yao) {
+      units.push(unit({ ...at, where: `${of} ${y.label}爻辭`, text: y.text, match: y.label + y.text }))
+      units.push(unit({ ...at, where: `${of} ${y.label}小象`, text: y.xiaoxiang }))
+    }
+    if (h.use) {
+      units.push(unit({ ...at, where: `${of} ${h.use.label}`, text: h.use.text, match: h.use.label + h.use.text }))
+      units.push(unit({ ...at, where: `${of} ${h.use.label}小象`, text: h.use.xiaoxiang }))
+    }
+    for (const para of (h.wenyan ?? '').split('\n').filter(Boolean)) units.push(unit({ ...at, where: `${of} 文言傳`, text: para }))
+  }
+  for (const p of yixueBookPassages()) units.push(unit({ where: p.book, text: p.text }))
+  return (phrases = phraseIndex(units))
+}
+
+type Grounding = { named: number[]; phrases: PhraseHit[]; concepts: ConceptId[]; unfound: string[] }
+function groundingOf(text: string): Grounding {
+  const idx = phraseIdx()
+  return { named: namedHexagrams(text), phrases: phrasesIn(text, idx), concepts: conceptsIn(text), unfound: unfoundQuotes(text, idx) }
+}
+const grounded = (g: Grounding) => g.named.length + g.phrases.length + g.concepts.length + g.unfound.length > 0
+
+const unitLines = (units: Unit[], cap: number): string[] => [
+  ...units.slice(0, cap).map(u => `- ${u.where}：「${u.text}」`),
+  ...(units.length > cap ? [`- 另見：${units.slice(cap).map(u => u.where).join('、')}`] : []),
+]
+/** 乾卦 初九爻辭、乾卦 文言傳（2處） */
+function places(units: Unit[]): string {
+  const count = new Map<string, number>()
+  for (const u of units) count.set(u.where, (count.get(u.where) ?? 0) + 1)
+  return [...count].map(([w, k]) => (k > 1 ? `${w}（${k}處）` : w)).join('、')
+}
+// The visitor's words go in “ ”, so 「 」 stays reserved for corpus text.
+const saidOf = (p: PhraseHit) => `“${p.said}”${p.spoken ? '（使用者以讀音寫出）' : ''}`
+
+/** Where each quoted line lives. A line inside ONE hexagram brings that
+ *  hexagram's whole text when the question is about the text (so "and the
+ *  next line?" can follow); in a question about the visitor's own situation
+ *  it brings only the places that contain it. A line found in several
+ *  hexagrams is listed everywhere it occurs, never credited to one. */
+function phraseSection(hits: PhraseHit[], recent: boolean, whole: boolean): string[] {
+  const out = ['以下是使用者引用的句子在經傳中的出處（系統逐字比對，可核對）。出處不是起卦，也不代表此人得到任何一卦。']
+  const shown = new Set<number>()
+  for (const p of hits) {
+    const inHex = p.units.filter(u => u.hex), inBooks = p.units.filter(u => !u.hex)
+    const hexes = [...new Set(inHex.map(u => u.hex!))]
+    if (hexes.length === 1) {
+      out.push(`使用者引用的${saidOf(p)}，在本站收錄的《周易》經傳中，卦內只見於${inHex[0].name}卦：${places(inHex)}${inBooks.length ? `；傳中另見於${places(inBooks)}` : ''}。`)
+      if (whole && shown.size < 2 && !shown.has(hexes[0])) {
+        shown.add(hexes[0])
+        out.push(textBlock(hexText(hexes[0]), recent ? '最近對話引用的句子所在的卦' : '問題引用的句子所在的卦', true))
+      } else if (!shown.has(hexes[0])) out.push(...unitLines(inHex, 8))
+      out.push(...unitLines(inBooks, 3))
+    } else if (hexes.length > 1) {
+      out.push(`使用者引用的${saidOf(p)}見於${hexes.length}個卦、共${p.units.length}處，不是某一卦獨有；除非使用者指定，不可說成出自某一卦：`)
+      out.push(...unitLines(p.units, 8))
+    } else {
+      out.push(`使用者引用的${saidOf(p)}見於：`)
+      out.push(...unitLines(inBooks, 3))
+    }
+  }
+  return out
+}
+
+/** With a named hexagram, a quoted line only gets a note: where ELSE it
+ *  occurs, or that it is not in the named hexagram at all. */
+function besideNamed(named: number[], hits: PhraseHit[]): string[] {
+  const out: string[] = []
+  for (const p of hits) {
+    const inside = p.units.filter(u => u.hex && named.includes(u.hex))
+    const outside = p.units.filter(u => !(u.hex && named.includes(u.hex)))
+    if (outside.length === 0) continue
+    if (inside.length) out.push(`所引${saidOf(p)}不只見於所點名的卦，另見於：${places(outside)}。不可說成某一卦獨有。`)
+    else out.push(`所引${saidOf(p)}不在所點名的卦中，而見於：`, ...unitLines(outside, 6))
+  }
+  return out
+}
+
+function conceptSection(ids: ConceptId[]): string[] {
+  const units = phraseIdx().units
+  return ids.flatMap(id => {
+    const c = conceptPassages(id, units)
+    if (c.lines.length === 0) return []
+    return [
+      `話題：${c.topic}。以下是常被引用的經傳段落，系統依關鍵詞從固定清單取出，出處可核對。只作閱讀材料與類比，不是起卦，也不代表此人的卦、爻或命運；切題才用，引用照錄並標出處。`,
+      ...c.lines.map(l => `- ${l.where}：「${l.quote}」`),
+    ]
+  })
+}
+
+// Every mode: 「」 after a labelled source is corpus text; nothing else is.
+const ORIGIN = `原文來源：${TEXT_SOURCE.title}（${TEXT_SOURCE.license}）。凡標明出處（卦名與部位，或篇名）之後的「」內文字都是原文，照錄，不可改字；使用者的話以“”標示，不是原文。`
+
 export function yixueFacts(body: any, question = '', history: ReadonlyArray<{ role: string; content: string }> = []): string {
   const mode = asYixueMode(body?.mode)
-  const origin = `原文來源：${TEXT_SOURCE.title}（${TEXT_SOURCE.license}）。以下「」內一律是原文，照錄，不可改字。`
+  const origin = ORIGIN
 
   if (mode === 'ask') {
-    let named = namedHexagrams(question)
-    const fromHistory = named.length === 0
-    // A follow-up may say only "what about its second line?". Recover the
-    // nearest user-named context, never an assistant's potentially wrong
-    // quotation. A newly named hexagram replaces the previous topic.
-    if (fromHistory) for (const turn of history.slice(-20).reverse()) {
-      if (turn.role !== 'user') continue
-      named = namedHexagrams(turn.content.slice(0, 8000))
-      if (named.length) break
+    // The question's own grounding wins: a named hexagram, a quoted line, an
+    // indexed topic, or a quotation the corpus lacks. Only a turn with none
+    // of these (「那它的六二呢？」「具體一點」) reuses the nearest user turn
+    // that had one, and the scan stops there: a recent career question is
+    // never skipped to revive an older hexagram. Assistant turns are never
+    // read, since their quotations may be wrong.
+    const now = groundingOf(question)
+    let g = now, recent = false
+    if (!grounded(now)) {
+      for (const turn of history.slice(-20).reverse()) {
+        if (turn.role !== 'user') continue
+        const past = groundingOf(turn.content.slice(0, 8000))
+        if (grounded(past)) { g = past; recent = true; break }
+      }
     }
+    const concepts = g.named.length ? [] : g.concepts
+    const hasText = g.named.length > 0 || g.phrases.length > 0
     return [
-      '來訪者正在問老師：可能是《易經》知識問題，也可能希望借經典觀點釐清具體處境。沒有起卦，也沒有為此人配定任何卦。個人背景只以使用者訊息與對話中明確提供的資料為準；不足時先追問，不可編造。',
-      ...(named.length ? [
-        ...(fromHistory ? ['本題沒有另指一卦；以下是最近使用者提到的卦，供追問參照，並非起卦結果。'] : []),
-        origin, ...named.map(n => textBlock(hexText(n), fromHistory ? '最近對話提到的卦' : '問題提到的卦', true)),
-      ] : ['問題沒有點名任何一卦。不可根據年資、年齡或其他背景替使用者指定本卦、動爻、之卦；引用卦例只能作為有出處的閱讀材料，不是此人的占卜結果。']),
+      '來訪者正在問老師：可能是《易經》知識問題，也可能希望借經典觀點釐清具體處境。沒有起卦，也沒有為此人配定任何卦。個人背景只以使用者訊息與對話中明確提供的資料為準，不可編造；資料不足時，先給不依賴未知事實的思考框架，再問一到三個會影響分析的具體問題。',
+      ...(now.named.length ? [] : ['問題沒有點名任何一卦。不可根據年資、年齡或其他背景替使用者指定本卦、動爻、之卦；引用卦例只能作為有出處的閱讀材料，不是此人的占卜結果。']),
+      ...(hasText || concepts.length ? [origin] : []),
+      ...(recent ? ['系統沒有在本題辨認出卦名、原句或已知話題；以下沿用最近一則有材料的使用者訊息，供追問參照，並非起卦結果。若使用者其實已換了話題，忽略這些沿用的材料。'] : []),
+      ...(g.named.length ? [
+        ...g.named.map(n => textBlock(hexText(n), recent ? '最近對話提到的卦' : '問題提到的卦', true)),
+        ...besideNamed(g.named, g.phrases),
+      ] : g.phrases.length ? phraseSection(g.phrases, recent, g.concepts.length === 0) : []),
+      ...g.unfound.map(q => `使用者用引號標出的“${q}”，在本站收錄的《周易》經傳中找不到逐字相同的句子；若它是後世成語或轉述，要照實說明，不可當成經文原句。`),
+      ...conceptSection(concepts),
+      ...(!hasText && !concepts.length ? ['系統沒有找到與這個問題對應的經文片語或固定段落。可以講一般觀念，但不可假裝有出處；需要原文時，請使用者點名一卦或引用原句。'] : []),
     ].join('\n')
   }
 
@@ -221,9 +345,14 @@ export function yixueFacts(body: any, question = '', history: ReadonlyArray<{ ro
   const throws = values.map((v, i) =>
     `  ${POS[i]}爻：${v}，${LINE_KIND[v]}（${bitOf(v) ? '陽' : '陰'}爻${isMoving(v) ? '，會變' : ''}）`)
   const movingLabels = c.moving.map(p => lineLabel(p, bitOf(values[p - 1])))
+  // Coin faces arrive only from the room's own throw. A cast made elsewhere
+  // supplies six values and nothing about how they were obtained.
+  const thrown = validCoins(body?.coins, values)
   return [
-    `所問之事：「${String(body.ask).trim().slice(0, 300)}」`,
-    '起卦方式：三枚硬幣擲六次，一面記三、一面記二，三枚相加；由下往上排：',
+    `所問之事：“${String(body.ask).trim().slice(0, 300)}”`,
+    thrown
+      ? '起卦方式：三枚硬幣擲六次，一面記三、一面記二，三枚相加；由下往上排：'
+      : '起卦方式：來訪者自行起卦後輸入的六個爻值（不是本站擲出；本站不知道所用的是硬幣、蓍草或其他方法）；由下往上排：',
     ...throws,
     `本卦：第${ben.n}卦 ${ben.name}（${ben.fullName}）`,
     `動爻：${movingLabels.length ? movingLabels.join('、') : '無（六爻皆不變）'}`,
@@ -236,6 +365,8 @@ export function yixueFacts(body: any, question = '', history: ReadonlyArray<{ ro
     origin,
     textBlock(ben, '本卦', ben.n <= 2),
     ...(c.moving.length ? [textBlock(zhi, '之卦', zhi.n <= 2)] : []),
-    '注意：這是三枚硬幣起卦，讀卦辭與爻辭；沒有排六爻納甲（世應、六親、納甲干支、六神），不可自行補上。',
+    thrown
+      ? '注意：這是三枚硬幣起卦，讀卦辭與爻辭；沒有排六爻納甲（世應、六親、納甲干支、六神），不可自行補上。'
+      : '注意：六個爻值由來訪者提供，本站只依上面的讀法選讀卦辭與爻辭；沒有排六爻納甲（世應、六親、納甲干支、六神），不可自行補上。',
   ].join('\n')
 }

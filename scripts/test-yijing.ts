@@ -159,7 +159,7 @@ check('an unspecified mode opens teacher questions without assigning a hexagram'
 check('unknown modes cannot silently enter another workflow', yixueInputError({ mode: 'invented' }) !== null)
 const situation = yixueFacts({ mode: 'ask', lines: [9, 9, 9, 9, 9, 9] }, '我工作三年，該轉職嗎？')
 check('personal context and stray line values do not assign a hexagram in teacher mode',
-  situation.includes('沒有起卦') && situation.includes('不足時先追問') && !situation.includes('第1卦 乾') && !situation.includes('本次應讀'))
+  situation.includes('沒有起卦') && situation.includes('思考框架') && !situation.includes('第1卦 乾') && !situation.includes('本次應讀'))
 for (const question of ['What does hexagram 4 mean?', 'Explain HEXAGRAM No. 4', '第四卦', '第４卦', '4番目の卦', '제4괘', '4번째 괘']) {
   check(`named reference: ${question}`, namedHexagrams(question).join(',') === '4')
 }
