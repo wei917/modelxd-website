@@ -56,9 +56,16 @@ const fmtUsd = (v: number) => v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
+import { throwCoins, valueOf, type Coin, type LineValue } from '../../lib/yijing-core'
+import { YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
+
+// 易學堂 has three rooms: cast a hexagram, look one up, or just ask the
+// teacher. Mirrors YIXUE_MODES in lib/yijing.ts (server-only file).
+const YIXUE_MODES = ['cast', 'lookup', 'ask'] as const
+type YixueMode = (typeof YIXUE_MODES)[number]
 /** A row of xtell_readings, as the room reopens it. */
 type SavedReading = { id: string; temple: string; subject: any; chart: any; extras: any; turns: any[] }
 
@@ -174,14 +181,15 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
 
         {!temple ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as Temple[]).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }} />
+                {/* 易學堂 has no ink-wash cover yet; its explorer portrait stands in. */}
+                <img src={k === 'yixue' ? '/xtell/approved/yixue-portrait.avif' : `/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', objectPosition: k === 'yixue' ? 'center 42%' : undefined, display: 'block' }} />
                 <div style={{ padding: '14px 18px 16px' }}>
                   <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>
@@ -225,8 +233,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // 關帝廟: the matter asked, and the ritual. The poem is never in the client
   // until the third 聖筊 — the server sends it with the chart response.
   const [ask, setAsk] = useState(init.ask ?? '')
-  const [stick, setStick] = useState<{ n: number; throws: Jiao[] } | null>(init.n ? { n: init.n, throws: ['聖筊', '聖筊', '聖筊'] } : null)
-  const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>(initial && init.n ? 'confirmed' : 'idle')
+  const [stick, setStick] = useState<{ n: number; throws: Jiao[] } | null>(isQian(temple) && init.n ? { n: init.n, throws: ['聖筊', '聖筊', '聖筊'] } : null)
+  const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>(initial && isQian(temple) && init.n ? 'confirmed' : 'idle')
   // 四面佛: one wish per face, plus the pledge.
   const [wishes, setWishes] = useState<Wishes>(init.wishes ?? {})
   // 姓名亭: surname + given name; 測字亭: one character (+ the shared `ask`).
@@ -236,7 +244,20 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
-  const [astroMode, setAstroMode] = useState<AstroMode>(init.mode ?? 'natal')
+  const [astroMode, setAstroMode] = useState<AstroMode>(temple === 'zhanxing' && init.mode ? init.mode : 'natal')
+  // 易學堂: the room, the cast so far (six line values and the coin faces
+  // behind them) and the hexagram picked in 查卦. The cast lives in a ref
+  // mirrored into state, like the 籤 ritual: two fast clicks inside one
+  // render must not both read the same five lines.
+  const [yixueMode, setYixueMode] = useState<YixueMode>(temple === 'yixue' && (YIXUE_MODES as readonly string[]).includes(init.mode) ? init.mode : 'cast')
+  const castRef = useRef<{ values: LineValue[]; coins: Coin[][] }>({
+    values: temple === 'yixue' && Array.isArray(init.lines) ? init.lines : [],
+    coins: temple === 'yixue' && Array.isArray(init.coins) ? init.coins : [],
+  })
+  const [cast, setCast] = useState(castRef.current)
+  const [castEntering, setCastEntering] = useState(false)
+  const [castFailed, setCastFailed] = useState(false)
+  const [lookupN, setLookupN] = useState<number | null>(temple === 'yixue' && Number.isInteger(init.n) ? init.n : null)
   const [place2, setPlace2] = useState(init.place2 ?? DEFAULT_PLACE)
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   const [engine, setEngine] = useState<string | null>(null)
@@ -330,6 +351,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}) }
     : temple === 'xingming' ? { temple, surname: surname.trim(), given: given.trim(), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
+    : temple === 'yixue' ? {
+        temple, mode: yixueMode,
+        ...(yixueMode === 'cast' ? { ask: ask.trim(), lines: castRef.current.values, coins: castRef.current.coins }
+          : yixueMode === 'lookup' ? { n: n ?? lookupN } : {}),
+      }
     : temple === 'simianfo' ? { temple, birth, wishes }
     : temple === 'navagraha' ? { temple, birth, place }
     : temple === 'zhanxing' ? {
@@ -356,7 +382,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     } catch { /* no memory is fine; the form still works */ }
   }, [temple])
 
-  const enter = async (n?: number) => {
+  const enter = async (n?: number): Promise<boolean> => {
     setErr(null)
     if (temple === 'zhanxing') {
       try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
@@ -379,8 +405,28 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       // ask is what they mean. Write the question for them but do NOT send it
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
-    } catch (e: any) { setErr(String(e?.message ?? e)); if (isQian(temple)) setRitualBoth('drawn') }
+      return true
+    } catch (e: any) { setErr(String(e?.message ?? e)); if (isQian(temple)) setRitualBoth('drawn'); return false }
   }
+
+  // 易學堂's cast: one click, three coins, one line, bottom up. The sixth
+  // line opens the hall. The browser's crypto source picks the faces, the
+  // same as the 籤 tube: nobody, including us, chooses the hexagram.
+  const enterCast = async () => {
+    setCastEntering(true); setCastFailed(false)
+    const ok = await enter()
+    setCastEntering(false)
+    if (!ok) setCastFailed(true)
+  }
+  const throwOnce = () => {
+    const c = castRef.current
+    if (c.values.length >= 6 || !ask.trim()) return
+    const faces = throwCoins(cryptoRand)
+    const next = { values: [...c.values, valueOf(faces)], coins: [...c.coins, faces] }
+    castRef.current = next; setCast(next); setErr(null)
+    if (next.values.length === 6) void enterCast()
+  }
+  const pickHexagram = (n: number) => { setLookupN(n); void enter(n) }
 
   // The ritual. Draw a stick, throw the blocks; three 聖筊 confirm and open
   // the hall, anything else sends the visitor back to the tube. Randomness is
@@ -562,7 +608,30 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               </span>
             </div>
           )}
-          {isQian(temple) ? (
+          {temple === 'yixue' && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {YIXUE_MODES.map(m => {
+                const on = yixueMode === m
+                return (
+                  <button key={m} type="button" aria-pressed={on} onClick={() => setYixueMode(m)} style={{
+                    padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 400,
+                    border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`,
+                    background: on ? 'var(--red)' : 'transparent', color: on ? '#fff' : 'var(--muted)',
+                  }}>{t(`xtell.yixue.mode.${m}`)}</button>
+                )
+              })}
+              <span style={{ flexBasis: '100%', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, marginTop: 2 }}>
+                {t(`xtell.yixue.mode.${yixueMode}.hint`)}
+              </span>
+            </div>
+          )}
+          {temple === 'yixue' ? (
+            yixueMode === 'cast'
+              ? <YixueRitual ask={ask} setAsk={setAsk} values={cast.values} coins={cast.coins} onThrow={throwOnce}
+                  onRetry={() => void enterCast()} entering={castEntering} failed={castFailed} sel={sel} />
+              : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} />
+              : null
+          ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks}
               bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
           ) : temple === 'xingming' ? (
@@ -608,14 +677,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>{t('xtell.place.note')}</span>
             </div>
           )}
-          {!isQian(temple) && (
+          {!isQian(temple) && !(temple === 'yixue' && yixueMode !== 'ask') && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' ? '' : t('xtell.solar.note')}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' ? '' : t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
               <button onClick={() => void enter()} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
                 fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
-              }}>{t('xtell.enter')}</button>
+              }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
             </div>
           )}
           {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
@@ -646,7 +715,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               </span>
             )}
             <button onClick={() => setShowChart(v => !v)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
-              {showChart ? t('xtell.hidechart') : t('xtell.viewchart')}
+              {showChart ? t(temple === 'yixue' ? 'xtell.yixue.hidechart' : 'xtell.hidechart') : t(temple === 'yixue' ? 'xtell.yixue.viewchart' : 'xtell.viewchart')}
             </button>
           </div>
 
@@ -747,6 +816,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
+                : temple === 'yixue' ? <YixueBoard chart={chart} onExample={q => setInput(q)} />
                 : (
                   <div style={{ display: 'grid', gap: 14 }}>
                     <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} /></div>
@@ -766,7 +836,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 120 }}>
             {turns.length === 0 && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-                {t(temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
+                {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'cast'}`
+                  : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
               </div>
             )}
             {initial && turns.length > 0 && (
@@ -1868,7 +1939,7 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
           return (
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
               <span style={{ flex: 1, minWidth: 200 }}>
-                <b>{r.title || t('xtell.saved.chartonly')}</b>
+                <b>{r.title || t(temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</b>
                 <span style={{ color: 'var(--muted2)', marginLeft: 8 }}>
                   {new Date(r.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}
                   {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : ''}
