@@ -275,7 +275,20 @@ engine independently and made the art.
   references across all five UI languages, script variants, and follow-up
   grounding from the nearest user-named hexagram. A newly named hexagram
   replaces the prior topic; assistant replies cannot invent the source target.
-- **Room** — `app/components/xtell/Yixue.tsx`: hexagrams are drawn from data
+- **Teacher conversation is the default** — new visits start with 問老師.
+  Visitors prepare an actual question or situation before choosing teachers
+  and reviewing the estimate; drafting or entering never invokes a paid
+  model. Empty teacher requests are rejected in both UI and API. Knowledge
+  questions get direct teaching; personal situations with missing context
+  call for one to three relevant follow-up questions before individual
+  analysis. User facts, sourced quotations and interpretation stay distinct.
+  There is no randomly assigned or profile-assigned hexagram in this mode.
+  Retrieval uses the visitor's current question and recent user turns.
+- **Optional practice** — casting is under the collapsed 傳統方法練習
+  disclosure, labelled 起卦練習. It teaches the traditional method and
+  does not claim the random symbols establish personal facts or predictions.
+  Existing cast records still reopen in their original mode.
+- **Practice room** — `app/components/xtell/Yixue.tsx`: hexagrams are drawn from data
   (SVG), never by an image model; the matter asked locks at the first throw
   (一事一占, with 蒙's 「初筮告，再三瀆」); the cast lives in a ref like the 籤
   ritual so fast clicks cannot lose a line; the sixth line enters the hall. A

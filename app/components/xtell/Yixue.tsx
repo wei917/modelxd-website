@@ -21,6 +21,23 @@ import {
 const mono: CSSProperties = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' }
 const quote: CSSProperties = { fontFamily: 'var(--font-display), serif', fontSize: 15, lineHeight: 1.75, color: 'var(--white)' }
 
+/** Prepare a real question before choosing a teacher. Nothing is sent here. */
+export function YixueQuestion({ value, onChange, disabled = false }: {
+  value: string; onChange: (value: string) => void; disabled?: boolean
+}) {
+  const t = useT()
+  return <div style={{ display: 'grid', gap: 10 }}>
+    <label style={{ display: 'grid', gap: 8 }}>
+      <span style={{ fontSize: 14, fontWeight: 700 }}>{t('xtell.yixue.question.label')}</span>
+      <textarea value={value} onChange={e => onChange(e.target.value)} disabled={disabled} maxLength={2000} rows={5}
+        placeholder={t('xtell.yixue.question.ph')} aria-describedby="yixue-question-help"
+        style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 14px', background: '#ffffff', color: 'var(--white)', font: 'inherit', fontSize: 14, lineHeight: 1.7, resize: 'vertical' }} />
+    </label>
+    <p id="yixue-question-help" style={{ margin: 0, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.7 }}>{t('xtell.yixue.question.help')}</p>
+    <p style={{ margin: 0, color: 'var(--muted2)', fontSize: 11.5, lineHeight: 1.7 }}>{t('xtell.yixue.question.prepare')}</p>
+  </div>
+}
+
 /** Six lines, top line drawn first. Moving lines get the classical marks:
  *  ○ for 老陽 (9), × for 老陰 (6). */
 export function HexagramGlyph({ lines, values, size = 44, highlight = [], label }: {
@@ -242,7 +259,7 @@ export function YixueBoard({ chart, onExample }: { chart: any; onExample?: (q: s
             }}>{t(`xtell.yixue.ex${i}`)}</button>
           ))}
         </div>
-        {legend}
+        <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.7 }}>{t('xtell.yixue.question.basis')}</div>
       </div>
     )
   }

@@ -47,9 +47,9 @@ export function hexText(n: number): HexText {
 
 // ── Inputs ─────────────────────────────────────────────────────────────────
 
-export const YIXUE_MODES = ['cast', 'lookup', 'ask'] as const
+export const YIXUE_MODES = ['ask', 'lookup', 'cast'] as const
 export type YixueMode = (typeof YIXUE_MODES)[number]
-export const asYixueMode = (v: unknown): YixueMode => ((YIXUE_MODES as readonly string[]).includes(v as string) ? (v as YixueMode) : 'cast')
+export const asYixueMode = (v: unknown): YixueMode => ((YIXUE_MODES as readonly string[]).includes(v as string) ? (v as YixueMode) : 'ask')
 
 /** The coin faces are optional and only for showing the throws again; when
  *  present they must add up to the lines they claim. */
@@ -60,6 +60,7 @@ export function validCoins(coins: unknown, lines: LineValue[]): coins is Coin[][
 
 /** Validates the room's input. Returns an error message, or null when fine. */
 export function yixueInputError(body: any): string | null {
+  if (body?.mode !== undefined && !(YIXUE_MODES as readonly unknown[]).includes(body.mode)) return 'unknown I Ching mode'
   const mode = asYixueMode(body?.mode)
   if (mode === 'cast') {
     if (!validLines(body?.lines)) return 'six line values (6–9) are required'
@@ -200,11 +201,11 @@ export function yixueFacts(body: any, question = '', history: ReadonlyArray<{ ro
       if (named.length) break
     }
     return [
-      '來訪者沒有起卦，只是來學《易經》。',
+      '來訪者正在問老師：可能是《易經》知識問題，也可能希望借經典觀點釐清具體處境。沒有起卦，也沒有為此人配定任何卦。個人背景只以使用者訊息與對話中明確提供的資料為準；不足時先追問，不可編造。',
       ...(named.length ? [
         ...(fromHistory ? ['本題沒有另指一卦；以下是最近使用者提到的卦，供追問參照，並非起卦結果。'] : []),
         origin, ...named.map(n => textBlock(hexText(n), fromHistory ? '最近對話提到的卦' : '問題提到的卦', true)),
-      ] : ['問題沒有點名任何一卦。']),
+      ] : ['問題沒有點名任何一卦。不可根據年資、年齡或其他背景替使用者指定本卦、動爻、之卦；引用卦例只能作為有出處的閱讀材料，不是此人的占卜結果。']),
     ].join('\n')
   }
 

@@ -60,14 +60,14 @@ import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, type Coin, type LineValue } from '../../lib/yijing-core'
-import { YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
+import { YixueQuestion, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
 
-// 易學堂 has three rooms: cast a hexagram, look one up, or just ask the
-// teacher. Mirrors YIXUE_MODES in lib/yijing.ts (server-only file).
-const YIXUE_MODES = ['cast', 'lookup', 'ask'] as const
+// Start with a question. Casting is an explicitly selected practice, never
+// a prerequisite for talking to the teacher. Mirrors the server modes.
+const YIXUE_MODES = ['ask', 'lookup', 'cast'] as const
 type YixueMode = (typeof YIXUE_MODES)[number]
 /** A row of xtell_readings, as the room reopens it. */
 type SavedReading = { id: string; temple: string; subject: any; chart: any; extras: any; turns: any[] }
@@ -252,7 +252,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // behind them) and the hexagram picked in 查卦. The cast lives in a ref
   // mirrored into state, like the 籤 ritual: two fast clicks inside one
   // render must not both read the same five lines.
-  const [yixueMode, setYixueMode] = useState<YixueMode>(temple === 'yixue' && (YIXUE_MODES as readonly string[]).includes(init.mode) ? init.mode : 'cast')
+  const [yixueMode, setYixueMode] = useState<YixueMode>(temple === 'yixue' && (YIXUE_MODES as readonly string[]).includes(init.mode) ? init.mode : 'ask')
   const castRef = useRef<{ values: LineValue[]; coins: Coin[][] }>({
     values: temple === 'yixue' && Array.isArray(init.lines) ? init.lines : [],
     coins: temple === 'yixue' && Array.isArray(init.coins) ? init.coins : [],
@@ -324,6 +324,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     ? { role: 'user', content: String(x.content ?? '') }
     : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
   const [input, setInput] = useState('')
+  const questionRequired = temple === 'yixue' && yixueMode === 'ask'
   const [busy, setBusy] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -391,6 +392,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   }, [temple])
 
   const enter = async (n?: number): Promise<boolean> => {
+    if (questionRequired && !input.trim()) return false
     if (temple === 'yixue') {
       if (yixueEntryPending.current) return false
       yixueEntryPending.current = true
@@ -476,11 +478,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   }
 
   const send = async (fromButton = false) => {
-    // The placeholder promises the question may be left empty: the button
-    // then asks for a general reading, in the visitor's language. Enter on an
-    // empty box stays a no-op so a stray key cannot spend credits.
+    // Chart rooms allow a general reading. Teacher conversations require an
+    // actual question; neither an empty click nor Enter may spend credits.
     const typed = input.trim()
-    if ((!typed && !fromButton) || busy || masters.length === 0) return
+    if ((!typed && (questionRequired || !fromButton)) || busy || masters.length === 0) return
     const q = typed || t('xtell.question.general')
     setInput(''); setBusy(true); setErr(null)
     setTurns(ts => [...ts, { role: 'user', content: q }])
@@ -632,7 +633,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           )}
           {temple === 'yixue' && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-              {YIXUE_MODES.map(m => {
+              {YIXUE_MODES.filter(m => m !== 'cast').map(m => {
                 const on = yixueMode === m
                 return (
                   <button key={m} type="button" aria-pressed={on} disabled={yixueEntryBusy}
@@ -643,6 +644,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                   }}>{t(`xtell.yixue.mode.${m}`)}</button>
                 )
               })}
+              <details style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--muted)' }}>
+                <summary style={{ cursor: 'pointer', padding: '7px 0' }}>{t('xtell.yixue.practice')}</summary>
+                <button type="button" disabled={yixueEntryBusy} aria-pressed={yixueMode === 'cast'}
+                  onClick={() => { if (!yixueEntryPending.current) setYixueMode('cast') }}
+                  style={{ padding: '7px 12px', border: '1px solid var(--border2)', borderRadius: 8, background: 'transparent', color: 'var(--white)', font: 'inherit', cursor: 'pointer' }}>
+                  {t('xtell.yixue.mode.cast')}
+                </button>
+              </details>
               <span style={{ flexBasis: '100%', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, marginTop: 2 }}>
                 {t(`xtell.yixue.mode.${yixueMode}.hint`)}
               </span>
@@ -653,7 +662,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               ? <YixueRitual ask={ask} setAsk={setAsk} values={cast.values} coins={cast.coins} onThrow={throwOnce}
                   onRetry={() => void enterCast()} entering={castEntering} failed={castFailed} sel={sel} />
               : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} disabled={yixueEntryBusy} />
-              : null
+              : <YixueQuestion value={input} onChange={setInput} disabled={yixueEntryBusy} />
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks}
               bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
@@ -704,7 +713,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' ? '' : t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
-              <button onClick={() => void enter()} disabled={temple === 'yixue' && yixueEntryBusy} style={{
+              <button onClick={() => void enter()} disabled={temple === 'yixue' && (yixueEntryBusy || !input.trim())} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
                 fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
               }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
@@ -738,7 +747,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               </span>
             )}
             <button onClick={() => setShowChart(v => !v)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
-              {showChart ? t(temple === 'yixue' ? 'xtell.yixue.hidechart' : 'xtell.hidechart') : t(temple === 'yixue' ? 'xtell.yixue.viewchart' : 'xtell.viewchart')}
+              {showChart ? t(questionRequired ? 'xtell.yixue.hidehelp' : temple === 'yixue' ? 'xtell.yixue.hidechart' : 'xtell.hidechart') : t(questionRequired ? 'xtell.yixue.viewhelp' : temple === 'yixue' ? 'xtell.yixue.viewchart' : 'xtell.viewchart')}
             </button>
           </div>
 
@@ -859,7 +868,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 120 }}>
             {turns.length === 0 && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-                {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'cast'}`
+                {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'ask'}`
                   : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
               </div>
             )}
@@ -951,14 +960,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <textarea
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
-              aria-label={t('xtell.question.ph')} placeholder={t('xtell.question.ph')}
+              aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')} placeholder={t(questionRequired ? 'xtell.yixue.question.ph' : 'xtell.question.ph')}
+              maxLength={temple === 'yixue' ? 2000 : undefined}
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
             />
-            <button aria-label={t('xtell.site.send')} onClick={() => void send(true)} disabled={busy} style={{
+            <button aria-label={t('xtell.site.send')} onClick={() => void send(true)} disabled={busy || (questionRequired && !input.trim())} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer',
-              opacity: busy ? 0.5 : 1,
+              opacity: busy || (questionRequired && !input.trim()) ? 0.5 : 1,
             }}>{busy ? '…' : '→'}</button>
           </div>
           {/* What this question will roughly cost, per master, before Send. */}
