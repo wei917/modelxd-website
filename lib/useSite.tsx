@@ -30,7 +30,7 @@ export function useSite(): Site {
   const provided = useContext(SiteContext)
   const [detected, setDetected] = useState<Site>('modelxd')
   useEffect(() => {
-    if (provided === null) setDetected(siteOfHost(window.location.hostname, readCookie(SITE_COOKIE)))
+    if (provided === null) setDetected(siteOfHost(window.location.host, readCookie(SITE_COOKIE)))
   }, [provided])
   return provided ?? detected
 }

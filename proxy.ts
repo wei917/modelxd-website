@@ -77,10 +77,14 @@ function isBypassed(pathname: string): boolean {
  *  header, so the headers are read first and nextUrl is the fallback. */
 function requestHost(req: NextRequest): string {
   const h = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.hostname
-  return h.split(',')[0].trim().replace(/:\d+$/, '').toLowerCase()
+  return h.split(',')[0].trim().toLowerCase()
 }
 
+/** Host without the port — the password gate matches production names. */
+const bareHost = (h: string) => h.replace(/:\d+$/, '')
+
 function xtellDoor(req: NextRequest): NextResponse | null {
+  // WITH the port: locally the port picks the shell (:3001 = XTell).
   const host = requestHost(req)
   const site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
   const headers = new Headers(req.headers)
@@ -100,11 +104,36 @@ function xtellDoor(req: NextRequest): NextResponse | null {
   return NextResponse.redirect(home)
 }
 
+/**
+ * `?site=xtell` / `?site=www` switches the local shell and REMEMBERS it,
+ * then redirects to the clean URL. The cookie had no off-switch: it was set
+ * by hand in devtools per lib/site.ts, nothing ever cleared it, and a stale
+ * one turned every later localhost visit into the temple street with
+ * /xcreate 302'ing to `/` for no visible reason (hit Sep 26).
+ *
+ * Ports would be tidier (:3001 = XTell, and siteOfHost honours that) but
+ * Next 16 refuses a second `next dev` in the same directory, so two ports
+ * mean two worktrees. This works with the one server everyone actually runs.
+ */
+function siteSwitch(req: NextRequest): NextResponse | null {
+  const want = req.nextUrl.searchParams.get('site')
+  if (want !== 'xtell' && want !== 'www' && want !== 'modelxd') return null
+  const url = req.nextUrl.clone()
+  url.searchParams.delete('site')
+  const res = NextResponse.redirect(url)
+  if (want === 'xtell') res.cookies.set(SITE_COOKIE, 'xtell', { path: '/', sameSite: 'lax' })
+  else res.cookies.set(SITE_COOKIE, '', { path: '/', maxAge: 0 })
+  return res
+}
+
 export async function proxy(req: NextRequest) {
+  const switched = siteSwitch(req)
+  if (switched) return switched
+
   // The XTell host is never behind the site password (like dev.), and every
   // request on every host gets the site header.
   const door = xtellDoor(req)
-  const host = requestHost(req)
+  const host = bareHost(requestHost(req))
   if (host !== 'modelxd.com' && host !== 'www.modelxd.com') return door ?? NextResponse.next()
 
   const sitePw = process.env.SITE_PASSWORD

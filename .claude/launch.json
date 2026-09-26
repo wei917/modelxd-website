@@ -17,6 +17,19 @@
       ]
     },
     {
+      "name": "modelxd-xtell-3001",
+      "url": "http://localhost:3001",
+      "port": 3001,
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3001"
+      ]
+    },
+    {
       "name": "modelxd-prod-3100",
       "url": "http://localhost:3100",
       "port": 3100,
@@ -27,6 +40,36 @@
         "--",
         "-p",
         "3100"
+      ]
+    },
+    {
+      "name": "modelxd-tgs-japan",
+      "url": "http://localhost:3200",
+      "port": 3200,
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/cwei/Documents/Claude/Projects/ModelXD/.claude/worktrees/tgs-japan",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3200"
+      ]
+    },
+    {
+      "name": "modelxd-xpersona-story",
+      "url": "http://localhost:3040",
+      "port": 3040,
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/cwei/Documents/Claude/Projects/ModelXD/.claude/worktrees/xpersona-story",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3040"
       ]
     }
   ]

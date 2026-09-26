@@ -12,10 +12,15 @@
 //     XTell host (no rewrite — see app/page.tsx for why).
 //   - Server components: `siteFromHeaders(await headers())`.
 //   - Client components: `useSite()` from lib/useSite.tsx, fed by the root
-//     layout's SiteProvider (server value, no first-paint flash). The cookie
-//     `modelxd_site=xtell` on localhost makes the proxy treat the request as
-//     the XTell host so the shell can be developed without DNS (set it from
-//     devtools: document.cookie = 'modelxd_site=xtell; path=/').
+//     layout's SiteProvider (server value, no first-paint flash).
+//   - LOCAL DEV: the PORT picks the shell — :3000 is www, :3001 is XTell
+//     (XTELL_LOCAL_PORT). Run both and keep a tab on each. This replaced
+//     the `modelxd_site=xtell` cookie as the everyday switch (owner, Sep 26:
+//     "why not localhost 3001?"): a cookie nothing clears turned every later
+//     visit to localhost into the temple street, and /xcreate 302'd to `/`
+//     with no clue why. The cookie still works, for Vercel preview URLs
+//     where you cannot choose a port; clear it with
+//     document.cookie = 'modelxd_site=; Max-Age=0; path=/'.
 //   - Routes ALLOWED on the XTell host are listed in XTELL_ROUTES; anything
 //     else is redirected to `/` by proxy.ts, so the XTell shell never has to
 //     hide a link defensively — the backend refuses the page.
@@ -32,11 +37,17 @@ export const SITE_COOKIE = 'modelxd_site'
 /** Pages the XTell host serves. Everything else 302s to `/` (which is the street). */
 export const XTELL_ROUTES = ['/xtell', '/profile', '/terms', '/privacy', '/login', '/auth', '/coming-soon']
 
+/** The dev port that serves the XTell shell. www is whatever else you run. */
+export const XTELL_LOCAL_PORT = '3001'
+
+/** `hostname` may carry a port ('localhost:3001'); a bare host is fine too. */
 export function siteOfHost(hostname: string, cookie?: string | null): Site {
-  if (XTELL_HOSTS.includes(hostname)) return 'xtell'
-  const local = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app') || hostname.startsWith('dev.')
-  if (local && cookie === 'xtell') return 'xtell'
-  return 'modelxd'
+  const [host, port] = hostname.split(':')
+  if (XTELL_HOSTS.includes(host)) return 'xtell'
+  const local = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.vercel.app') || host.startsWith('dev.')
+  if (!local) return 'modelxd'
+  if (port === XTELL_LOCAL_PORT) return 'xtell'
+  return cookie === 'xtell' ? 'xtell' : 'modelxd'
 }
 
 export function isXTellRoute(pathname: string): boolean {
