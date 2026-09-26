@@ -13,6 +13,7 @@ import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import XTellActivity from '../components/xtell/XTellActivity'
 import { XTellFooter } from '../components/xtell/XTellNav'
+import { XCreateAccountHead, XCreateAccountWelcome, XCreateCreationsLink } from '../components/xcreate/XCreateAccount'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -151,7 +152,11 @@ const DISPLAY_TIERS: { id: string; priceCents: number; label: string; descriptio
 function ModelXDProfileAuth() { useRequireAuth(); return null }
 
 export default function ProfilePage() {
-  const isXTell = useSite() === 'xtell'
+  const site = useSite()
+  const isXTell = site === 'xtell'
+  // xcreate.modelxd.com: the same wallet, plan and referral, but no
+  // per-surface tabs; the studio's My creations view holds the work.
+  const isXCreate = site === 'xcreate'
   const { show: showAuth } = useAuthModal()
   const { lang, setLang } = useLang()
   const t = useT()
@@ -368,7 +373,7 @@ export default function ProfilePage() {
     const client = sb()
     const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames') =>
       setTabsLoaded(prev => ({ ...prev, [k]: true }))
-    if (!isXTell && tab === 'duels') {
+    if (site === 'modelxd' && tab === 'duels') {
       // Try with deleted_at filter; fall back if column doesn't exist yet.
       client.from('duels').select('*').eq('user_id', user.id).is('deleted_at', null)
         .order('created_at', { ascending: false }).limit(50)
@@ -473,7 +478,7 @@ export default function ProfilePage() {
   // 200-row xcreate cache. Filter + pagination are now both client-side
   // so they intentionally don't appear here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, user, xcreateRefreshTick, showActivity, isXTell])
+  }, [tab, user, xcreateRefreshTick, showActivity, site])
 
   // Fetch the visible XCreate page from the server, which fetches + re-signs
   // ONLY that page's rows (one batched sign per bucket) and returns them
@@ -667,8 +672,10 @@ export default function ProfilePage() {
 
   if (!profile) return (
     <>
-      {isXTell ? <XTellAuthGate /> : <ModelXDProfileAuth />}
-      {isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
+      {/* XCreate's welcome carries its own Sign in button, so no dialog is
+          forced on it (see useRequireAuth on the ✕ loop). */}
+      {isXTell ? <XTellAuthGate /> : isXCreate ? null : <ModelXDProfileAuth />}
+      {isXCreate ? <XCreateAccountWelcome loading={!!user} onSignIn={() => showAuth('/profile')} /> : isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
         <h1 className="xtell-account-title">{t('xtell.site.account')}</h1>
         <p className="xtell-account-note">{t('xtell.site.authCopy')}</p>
         {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
@@ -762,9 +769,10 @@ export default function ProfilePage() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
-      <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
+      <div id={isXTell ? "xtell-main" : isXCreate ? "xcreate-main" : undefined} tabIndex={isXTell || isXCreate ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : isXCreate ? "xduel-page xcs-account" : "xduel-page"}>
         <div className="arena" style={{ maxWidth: 1040 }}>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
+          {isXCreate && <XCreateAccountHead />}
 
           {/* Eyebrow — ties the profile page into the same section-label
               motif used across XDuel / XCreate / landing. Gives the page
@@ -1279,7 +1287,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {isXTell ? <XTellActivity userId={user.id} /> : <>
+          {isXTell ? <XTellActivity userId={user.id} /> : isXCreate ? <XCreateCreationsLink /> : <>
           {/* Privacy summary — sits right above the content tabs so the
               public/private expectations frame what's below (CC, July 19). */}
           <div style={{

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC, Noto_Sans_JP } from 'next/font/google'
+import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC, Noto_Sans_JP, DM_Sans } from 'next/font/google'
 import { AuthModalProvider } from '../lib/AuthModalContext'
 import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
@@ -13,6 +13,7 @@ import { siteFromHeaders } from '../lib/site'
 import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
 import { SiteProvider } from '../lib/useSite'
+import { XCreateFooter } from './components/xcreate/XCreateNav'
 import './globals.css'
 
 // Barlow at body weights — used for paragraph copy and UI labels.
@@ -68,6 +69,25 @@ const notoJP = Noto_Sans_JP({
   display: 'swap',
 })
 
+// xcreate.modelxd.com's type (Sep 26): DM Sans for text, and a Barlow under
+// its own variable that the CJK rules in globals.css do not re-point, so
+// the wordmark and headings stay Latin Barlow in every language. The classes
+// go on <body> on that host only; preload is off so www never fetches them.
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-xc',
+  preload: false,
+  display: 'swap',
+})
+const barlowXCreate = Barlow({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-xc-display',
+  preload: false,
+  display: 'swap',
+})
+
 // Default title per front door: pages without their own metadata (the
 // client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
 // tab on the XTell and XCreate hosts.
@@ -99,7 +119,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const site = siteFromHeaders(await headers())
   return (
     <html lang="en" data-site={site}>
-      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}`}>
+      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}${site === 'xcreate' ? ` ${dmSans.variable} ${barlowXCreate.variable}` : ''}`}>
         <SiteProvider site={site}>
         <LangProvider>
           <AuthModalProvider>
@@ -109,6 +129,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="app-main">
                 <Omnibox />
                 {children}
+                {/* The XCreate shell's footer sits under every page on that
+                    host (studio, account, legal); XTell's pages carry their own. */}
+                {site === 'xcreate' && <XCreateFooter />}
               </div>
             </div>
             <AuthModal />

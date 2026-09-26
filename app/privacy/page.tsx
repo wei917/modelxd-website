@@ -1,4 +1,5 @@
 import LocaleSummary from '../components/LocaleSummary'
+import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // app/privacy/page.tsx — Privacy Policy (drafted July 20, 2026; CC to review
 // before beta). Static page, same layout language as /terms.
 
@@ -14,6 +15,7 @@ export default function PrivacyPage() {
     <main id="xtell-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Privacy</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
+      <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
         Last updated: September 14, 2026
       </p>

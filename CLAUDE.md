@@ -110,9 +110,13 @@ isn't entitled. All the actual UI is in `client.tsx`.
 
 **Own front door (Sep 26).** On `xcreate.modelxd.com` the studio is `/` (and
 `/xcreate`), beside profile/terms/login; nothing else is served there. The
-brand shell is Codex's. A link from the studio to a www-only page (XBoard,
-the legacy `?c=` → XDirect forward) goes through `wwwHref()`, or the door
-would bounce it home.
+studio's views are Codex's (`/` Create, `/?view=templates`,
+`/?view=creations`); the shell around them (top bar, footer, sign-in,
+account page, legal note) is `app/components/xcreate/*` with its own
+`xcreate-shell.css`, every rule scoped to `html[data-site="xcreate"]` because
+Nav loads it on every host. The `--xc-*` palette is defined there once. A
+link from the studio to a www-only page (XBoard, the legacy `?c=` → XDirect
+forward) goes through `wwwHref()`, or the door would bounce it home.
 
 **The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting
@@ -995,6 +999,12 @@ can sit at the table honestly. One act per request; the client loops.
 9. **Naming**: `/methodology` calls the system **XDRating** and links to
    `/xboard`, which is titled **XBoard**. The system/page split is intentional
    but reads oddly; nobody has decided whether to unify them.
+10. **The sign-in ✕ does nothing** on the 13 pages that call
+   `useRequireAuth()` (found Sep 26): `AuthModalProvider` hands out a new
+   `show()` every render, the hook's effect re-runs on it, and a stranger's
+   dialog reopens at once. Owner's call: make ✕ work (stable callbacks in the
+   provider) or say so honestly with `require()` (no ✕). `useRequireAuth(false)`
+   takes a page out of the loop; the XCreate account page does not call it.
 
 ## Packaging Convention
 
