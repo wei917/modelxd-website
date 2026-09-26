@@ -14,6 +14,8 @@ Built collaboratively by Codex and Claude Code's **XCreate page** task on Septem
 
 The XCreate host uses `/` for Studio, `/?view=templates` for Templates, and `/?view=creations` for Library. ModelXD's `/xcreate` retains its existing layout.
 
+The standalone studio opens in Video with the text-to-video recipe. Video is first in desktop and mobile output selectors, and Templates opens in its Video category. Explicit model/template links and saved projects retain their own modes.
+
 The standalone composer has a prompt before model selection, an 800px comfortable desktop width, two columns of chosen models, and wider results. Phones use one output selector and stacked model/result cards. Only one empty model slot is offered at a time, up to the existing four-model limit. The model picker wraps its metadata on small screens so names remain readable.
 
 Templates, tools, and the existing public showcase live on Templates. Its category selection is independent of the studio's mode, so browsing does not clear a draft. Applying a template uses the existing live catalog and template logic. Navigation preserves the active creation; polling preserves the selected view. New project explicitly resets the studio.
