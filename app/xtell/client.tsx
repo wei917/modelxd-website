@@ -258,6 +258,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [castEntering, setCastEntering] = useState(false)
   const [castFailed, setCastFailed] = useState(false)
   const [lookupN, setLookupN] = useState<number | null>(temple === 'yixue' && Number.isInteger(init.n) ? init.n : null)
+  const yixueEntryPending = useRef(false)
+  const [yixueEntryBusy, setYixueEntryBusy] = useState(false)
+  // The teacher must receive the same subject that produced the visible
+  // board, even if an entry control was changed while its request loaded.
+  const yixueSubject = useRef<Record<string, unknown> | null>(temple === 'yixue' && initial ? { temple, ...init } : null)
   const [place2, setPlace2] = useState(init.place2 ?? DEFAULT_PLACE)
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   const [engine, setEngine] = useState<string | null>(null)
@@ -383,17 +388,24 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   }, [temple])
 
   const enter = async (n?: number): Promise<boolean> => {
+    if (temple === 'yixue') {
+      if (yixueEntryPending.current) return false
+      yixueEntryPending.current = true
+      setYixueEntryBusy(true)
+    }
     setErr(null)
     if (temple === 'zhanxing') {
       try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
     }
     try {
+      const requestSubject = subject(n)
       const res = await fetch('/api/xtell/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subject(n)),
+        body: JSON.stringify(requestSubject),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error ?? 'failed')
+      if (temple === 'yixue') yixueSubject.current = requestSubject
       setChart(d.chart)
       setMatch(d.match ?? null)
       setYear(d.year ?? null)
@@ -407,12 +419,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
       return true
     } catch (e: any) { setErr(String(e?.message ?? e)); if (isQian(temple)) setRitualBoth('drawn'); return false }
+    finally {
+      if (temple === 'yixue') { yixueEntryPending.current = false; setYixueEntryBusy(false) }
+    }
   }
 
   // 易學堂's cast: one click, three coins, one line, bottom up. The sixth
   // line opens the hall. The browser's crypto source picks the faces, the
   // same as the 籤 tube: nobody, including us, chooses the hexagram.
   const enterCast = async () => {
+    if (yixueEntryPending.current) return
     setCastEntering(true); setCastFailed(false)
     const ok = await enter()
     setCastEntering(false)
@@ -420,13 +436,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   }
   const throwOnce = () => {
     const c = castRef.current
-    if (c.values.length >= 6 || !ask.trim()) return
+    if (yixueEntryPending.current || c.values.length >= 6 || !ask.trim()) return
     const faces = throwCoins(cryptoRand)
     const next = { values: [...c.values, valueOf(faces)], coins: [...c.coins, faces] }
     castRef.current = next; setCast(next); setErr(null)
     if (next.values.length === 6) void enterCast()
   }
-  const pickHexagram = (n: number) => { setLookupN(n); void enter(n) }
+  const pickHexagram = (n: number) => {
+    if (yixueEntryPending.current) return
+    setLookupN(n); void enter(n)
+  }
 
   // The ritual. Draw a stick, throw the blocks; three 聖筊 confirm and open
   // the hall, anything else sends the visitor back to the tube. Randomness is
@@ -478,7 +497,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...subject(), question: q, modelId: m.id, history, readingId, qid,
+            ...(temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid,
             search: optsOf(m).search && searchable(m),
             thinking: optsOf(m).thinking,
             lang,
@@ -613,7 +632,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               {YIXUE_MODES.map(m => {
                 const on = yixueMode === m
                 return (
-                  <button key={m} type="button" aria-pressed={on} onClick={() => setYixueMode(m)} style={{
+                  <button key={m} type="button" aria-pressed={on} disabled={yixueEntryBusy}
+                    onClick={() => { if (!yixueEntryPending.current) setYixueMode(m) }} style={{
                     padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 400,
                     border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`,
                     background: on ? 'var(--red)' : 'transparent', color: on ? '#fff' : 'var(--muted)',
@@ -629,7 +649,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             yixueMode === 'cast'
               ? <YixueRitual ask={ask} setAsk={setAsk} values={cast.values} coins={cast.coins} onThrow={throwOnce}
                   onRetry={() => void enterCast()} entering={castEntering} failed={castFailed} sel={sel} />
-              : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} />
+              : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} disabled={yixueEntryBusy} />
               : null
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks}
@@ -681,7 +701,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' ? '' : t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
-              <button onClick={() => void enter()} style={{
+              <button onClick={() => void enter()} disabled={temple === 'yixue' && yixueEntryBusy} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
                 fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
               }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>

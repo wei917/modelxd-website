@@ -124,14 +124,14 @@ export function YixueRitual({ ask, setAsk, values, coins, onThrow, onRetry, ente
 
 // ── 查卦 ────────────────────────────────────────────────────────────────────
 
-export function YixuePicker({ onPick, picked }: { onPick: (n: number) => void; picked: number | null }) {
+export function YixuePicker({ onPick, picked, disabled = false }: { onPick: (n: number) => void; picked: number | null; disabled?: boolean }) {
   const t = useT()
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.yixue.pick')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 6 }}>
         {HEXAGRAMS.map(h => (
-          <button key={h.n} type="button" onClick={() => onPick(h.n)} aria-label={`${h.n} ${h.name}（${h.fullName}）`}
+          <button key={h.n} type="button" onClick={() => onPick(h.n)} disabled={disabled} aria-label={`${h.n} ${h.name}（${h.fullName}）`}
             aria-pressed={picked === h.n}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '8px 4px 7px', cursor: 'pointer',
