@@ -62,7 +62,7 @@ import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
-import { describeVisit } from '../../lib/xtell-history'
+import { describeVisit, eraseReading } from '../../lib/xtell-history'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
@@ -2371,6 +2371,9 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
   const { lang, t } = useLang()
   const [rows, setRows] = useState<Array<SavedReading & { title: string | null; cost_cents: number; created_at: string }>>([])
   const [loaded, setLoaded] = useState(false)
+  // Deleting is permanent, so it asks once, in the row itself.
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [failed, setFailed] = useState<string | null>(null)
   const client = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
   useEffect(() => {
     let active = true
@@ -2387,8 +2390,9 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
     return () => { active = false }
   }, [temple])
   const remove = async (id: string) => {
-    const { error } = await client().from('xtell_readings').update({ deleted_at: new Date().toISOString() }).eq('id', id)
-    if (!error) setRows(rs => rs.filter(r => r.id !== id))
+    setConfirming(null)
+    if (await eraseReading(client(), id)) { setFailed(null); setRows(rs => rs.filter(r => r.id !== id)) }
+    else setFailed(id)
   }
   if (!loaded || rows.length === 0) return null
   return (
@@ -2411,8 +2415,17 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
                   {r.cost_cents > 0 ? `　$${(r.cost_cents / 100).toFixed(2)}` : ''}
                 </span>
               </span>
-              <button type="button" onClick={() => onResume(r)} style={{ padding: '5px 12px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
-              <button type="button" onClick={() => void remove(r.id)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
+              {confirming === r.id ? (
+                <span role="group" aria-label={t('xtell.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexBasis: '100%' }}>
+                  <span style={{ fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteConfirm')}</span>
+                  <button type="button" onClick={() => void remove(r.id)} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.deleteYes')}</button>
+                  <button type="button" onClick={() => setConfirming(null)} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.deleteNo')}</button>
+                </span>
+              ) : (<>
+                <button type="button" onClick={() => onResume(r)} style={{ padding: '5px 12px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
+                <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
+              </>)}
+              {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteFailed')}</span>}
             </div>
           )
         })}

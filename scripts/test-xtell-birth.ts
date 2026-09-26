@@ -11,7 +11,7 @@
 
 import { Solar } from 'lunar-typescript'
 import { birthProblem, daysInMonth, birthYears, latestBirthDate, BIRTH_MIN_YEAR } from '../lib/xtell-birth'
-import { describeVisit } from '../lib/xtell-history'
+import { describeVisit, eraseReading } from '../lib/xtell-history'
 import { validBirth, baziChart, baziFacts, heMatch, yuelaoFacts, liuNian, liuNianFacts, simianfoFacts, bingGaoFacts } from '../lib/xtell'
 
 let fails = 0
@@ -156,5 +156,21 @@ check('an unknown hour needs no clock time', birthProblem({ y: 1990, m: 1, d: 1,
   check('history: 月老 names both births', describeVisit(tt, 'yuelao', { birth: at(1990, 1, 1, 15, 25), birth2: unknown(1985, 7, 20, 'female') }).includes('×'))
 }
 
-console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
-process.exit(fails === 0 ? 0 : 1)
+// ── Deleting a visit really deletes it, and says so only when it did ────────
+// (async; these scripts run as CommonJS, so no top-level await)
+async function deletionChecks() {
+  const calls: string[] = []
+  const fake = (result: { data: any; error: any }) => ({
+    from: (table: string) => ({ delete: () => ({ eq: (k: string, v: string) => ({ select: (c: string) => { calls.push(`${table}.delete ${k}=${v} → ${c}`); return Promise.resolve(result) } }) }) }),
+  })
+  const ok = await eraseReading(fake({ data: [{ id: 'r1' }], error: null }), 'r1')
+  const none = await eraseReading(fake({ data: [], error: null }), 'r2')
+  const err = await eraseReading(fake({ data: null, error: { message: 'denied' } }), 'r3')
+  check('delete: a real DELETE on xtell_readings, reading the id back', calls[0] === 'xtell_readings.delete id=r1 → id')
+  check('delete: success only when exactly that row was deleted', ok === true && none === false && err === false)
+}
+
+deletionChecks().then(() => {
+  console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
+  process.exit(fails === 0 ? 0 : 1)
+}, e => { console.log('FAIL deletion checks threw', e); process.exit(1) })

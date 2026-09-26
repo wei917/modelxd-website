@@ -51,3 +51,16 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
       return born(t, s.birth)
   }
 }
+
+/**
+ * Erase a saved visit for good (owner, Sep 26: deleting means deleting; the
+ * lists used to set `deleted_at` and keep the row). The owner-delete policy
+ * of supabase/105 scopes it to the signed-in user's own rows. The deleted id
+ * is read back, so a delete that matched nothing (another user's row, one
+ * already gone, a missing policy) is reported as a failure, never shown as
+ * done. Account deletion still erases every row by cascade.
+ */
+export async function eraseReading(sb: any, id: string): Promise<boolean> {
+  const { data, error } = await sb.from('xtell_readings').delete().eq('id', id).select('id')
+  return !error && Array.isArray(data) && data.length === 1
+}
