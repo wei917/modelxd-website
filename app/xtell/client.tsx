@@ -401,6 +401,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [showChart, setShowChart] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [errCode, setErrCode] = useState<string | null>(null)
+  // The raw message and its code are kept, not a translated sentence, so a
+  // language switch retranslates an error already on screen (Codex review:
+  // it stayed in the old language). An uncoded provider message is shown as
+  // it came.
+  const fail = (raw: string, code?: string | null) => { setErr(raw); setErrCode(code ?? null) }
+  const clearErr = () => { setErr(null); setErrCode(null) }
+  const errShown = err ? errorText(t, errCode ?? undefined, err) : null
   const errId = useId()
   const errField = fieldOf(errCode)
   /** aria props for a field the current refusal is about. */
@@ -582,7 +589,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       yixueEntryPending.current = true
       setYixueEntryBusy(true)
     }
-    setErr(null); setErrCode(null)
+    clearErr()
     refreshToken.current++
     if (temple === 'zhanxing') {
       try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
@@ -620,7 +627,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
       return true
-    } catch (e: any) { setErr(errorText(t, e?.code, String(e?.message ?? e))); setErrCode(e?.code ?? null); if (isQian(temple)) setRitualBoth('drawn'); return false }
+    } catch (e: any) { fail(String(e?.message ?? e), e?.code); if (isQian(temple)) setRitualBoth('drawn'); return false }
     finally {
       if (temple === 'yixue') { yixueEntryPending.current = false; setYixueEntryBusy(false) }
     }
@@ -641,7 +648,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     if (yixueEntryPending.current || c.values.length >= 6 || !ask.trim()) return
     const faces = throwCoins(cryptoRand)
     const next = { values: [...c.values, valueOf(faces)], coins: [...c.coins, faces] }
-    castRef.current = next; setCast(next); setErr(null)
+    castRef.current = next; setCast(next); clearErr()
     if (next.values.length === 6) void enterCast()
   }
   const enterManualCast = (values: LineValue[]) => {
@@ -653,7 +660,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const chooseCastMethod = (method: 'coins' | 'manual') => {
     if (yixueEntryPending.current || method === castMethod) return
     const empty = { values: [] as LineValue[], coins: [] as Coin[][] }
-    castRef.current = empty; setCast(empty); setCastFailed(false); setErr(null)
+    castRef.current = empty; setCast(empty); setCastFailed(false); clearErr()
     setCastMethod(method)
   }
   const pickHexagram = (n: number) => {
@@ -674,7 +681,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const setRitualBoth = (r: 'idle' | 'drawn' | 'rejected' | 'confirmed') => { ritualRef.current = r; setRitual(r) }
   const draw = () => {
     const s = { n: drawQian(cryptoRand, temple === 'mazu' ? QIAN_COUNTS.mazu : QIAN_COUNTS.guandi), throws: [] as Jiao[] }
-    stickRef.current = s; setStick(s); setRitualBoth('drawn'); setErr(null)
+    stickRef.current = s; setStick(s); setRitualBoth('drawn'); clearErr()
   }
   const throwBlocks = () => {
     const s = stickRef.current
@@ -691,7 +698,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // the stick was confirmed for what was said at the altar.
   const editDetails = () => {
     refreshToken.current++
-    setErr(null); setEntered(false)
+    clearErr(); setEntered(false)
     if (isQian(temple)) { stickRef.current = null; setStick(null); setRitualBoth('idle') }
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -702,7 +709,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     const typed = input.trim()
     if ((!typed && (questionRequired || !fromButton)) || busy || masters.length === 0 || unverified || savedProblem) return
     const q = typed || t('xtell.question.general')
-    setInput(''); setBusy(true); setErr(null)
+    setInput(''); setBusy(true); clearErr()
     setTurns(ts => [...ts, { role: 'user', content: q }])
     // One id per question: every master's request carries it, the server
     // stores the question once (xtell_append_turns dedupes on it).
@@ -745,10 +752,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             const j = JSON.parse(data)
             if (type === 'delta') appendAssistant(idx, j.text)
             if (type === 'done') doneAssistant(idx, j.cost ?? 0)
-            if (type === 'error') { setErr(j.message ?? 'error'); doneAssistant(idx, 0) }
+            if (type === 'error') { fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
           }
         }
-      } catch (e: any) { setErr(errorText(t, e?.code, String(e?.message ?? e))); doneAssistant(idx, 0) }
+      } catch (e: any) { fail(String(e?.message ?? e), e?.code); doneAssistant(idx, 0) }
     }))
     setBusy(false)
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
@@ -949,7 +956,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
             </div>
           )}
-          {err && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
+          {errShown && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
           {/* This temple's saved visits (owner, Sep 24: history in each
               temple, not only on the account page). Continue reopens the
               room in place with chart and conversation. */}
@@ -1230,7 +1237,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <div ref={endRef} />
           </div>
 
-          {err && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
+          {errShown && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
 
           {/* Composer — same shape as XDirect's. On the standalone site the
               block is sticky at the bottom, so the estimate line lives INSIDE
