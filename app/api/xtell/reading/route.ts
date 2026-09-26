@@ -15,6 +15,7 @@ import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
+import { yixueFacts, yixueInputError } from '@/lib/yijing'
 
 const LOG = '[xtell/reading]'
 
@@ -43,6 +44,7 @@ const FACTS_HEAD: Record<string, string> = {
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
+  yixue:     '易學堂的情況、系統算定的卦與讀法，以及《周易》原文（照錄，勿更動）：',
 }
 
 function sse(event: string, data: object) {
@@ -65,6 +67,9 @@ export async function POST(req: Request) {
     if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
   } else if (temple === 'cezi') {
     if (!validChar(body?.ch) || !charInfo(body.ch)) return Response.json({ error: 'bad character' }, { status: 400 })
+  } else if (temple === 'yixue') {
+    const bad = yixueInputError(body)
+    if (bad) return Response.json({ error: bad }, { status: 400 })
   } else {
     if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
     if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
@@ -105,7 +110,11 @@ export async function POST(req: Request) {
 
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
-  const facts = temple === 'zhanxing'
+  const facts = temple === 'yixue'
+    // The cast is recomputed from the six line values; the text comes from
+    // disk. A learner's question names the hexagrams it wants shown.
+    ? yixueFacts(body, question)
+    : temple === 'zhanxing'
     ? zhanxingFacts(
         zhanxingChart(body.birth, body.place, asAstroMode(body?.mode),
           { b2: body.birth2, place2: body.place2, year: Number(body.year) || undefined }),

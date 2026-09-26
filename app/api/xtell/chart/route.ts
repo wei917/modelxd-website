@@ -11,10 +11,11 @@ export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
+import { yixueChart, yixueInputError } from '@/lib/yijing'
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -26,7 +27,7 @@ function subjectOf(body: any) {
 // RLS (supabase/105); the reading route appends the turns. A save failure
 // never blocks the chart — the visitor still gets what they came for and the
 // server log says why (typically: migration 105 not applied yet).
-async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string, temple: Temple, body: any, chart: unknown, extras: Record<string, unknown>) {
+async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string, temple: Temple, body: any, chart: unknown, extras: Record<string, unknown>, title?: string) {
   try {
     const clean = Object.fromEntries(Object.entries(extras).filter(([, v]) => v !== undefined))
     const subject = subjectOf(body)
@@ -49,7 +50,8 @@ async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId
       return reusable.id as string
     }
     const { data, error } = await sb.from('xtell_readings')
-      .insert({ user_id: userId, temple, subject, chart, extras: Object.keys(clean).length ? clean : null })
+      // A title given here stays: xtell_append_turns only fills an empty one.
+      .insert({ user_id: userId, temple, subject, chart, extras: Object.keys(clean).length ? clean : null, ...(title ? { title: title.slice(0, 80) } : {}) })
       .select('id').single()
     if (error) throw error
     return data.id as string
@@ -66,6 +68,22 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}))
   const temple = asTemple(body?.temple)
+
+  // 易學堂: no birth. A cast (six line values and the one matter asked), a
+  // lookup (a hexagram number) or a learner's visit with no hexagram. A cast
+  // is titled by its matter, so the history lists say what it was about.
+  if (temple === 'yixue') {
+    const bad = yixueInputError(body)
+    if (bad) return Response.json({ error: bad }, { status: 400 })
+    try {
+      const chart = yixueChart(body)
+      const readingId = await save(sb, user.id, temple, body, chart, {}, chart.mode === 'cast' ? chart.ask : undefined)
+      return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
+    } catch (e: any) {
+      console.error('[xtell/chart] yixue', e?.message ?? e)
+      return Response.json({ error: 'hexagram text unavailable' }, { status: 500 })
+    }
+  }
 
   if (isQianTemple(temple)) {
     if (!validQian(body?.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })

@@ -43,6 +43,9 @@ const SOURCES: Record<Temple, string[]> = {
   // signs would ground a Western reading in a Buddhist text about a different
   // system. An empty corpus is honest; a wrong one reads as authority.
   zhanxing: [],
+  // 易學堂: the 十翼 outside the hexagram pages (繫辭上下, 說卦, 序卦, 雜卦).
+  // 彖/象/文言 ride with each hexagram's own text in lib/yijing.ts.
+  yixue: ['zhouyi-xici-shang.txt', 'zhouyi-xici-xia.txt', 'zhouyi-shuogua.txt', 'zhouyi-xugua.txt', 'zhouyi-zagua.txt'],
 }
 
 type Passage = { book: string; text: string }
