@@ -7,18 +7,18 @@ Built collaboratively by Codex and Claude Code's **XCreate page** task on Septem
 - Claude's routing: `97e1644`.
 - Claude's shell: `c1c58bb` (equivalent cherry-pick `228ddeb` in the Codex checkout).
 - Codex checkout: `/Users/cwei/Documents/ModelXD_ChatGPT/xcreate-site`, branch `codex/xcreate-standalone`.
-- Local production preview: `http://127.0.0.1:3030`.
+- Local preview: `http://127.0.0.1:3030`.
 - No deployment, DNS, Supabase settings, schema changes, or paid generations were performed for this UI build.
 
 ## Behavior
 
-The XCreate host uses `/` for Create, `/?view=templates` for Templates, and `/?view=creations` for My creations. ModelXD's `/xcreate` retains its existing layout.
+The XCreate host uses `/` for Studio, `/?view=templates` for Templates, and `/?view=creations` for Library. ModelXD's `/xcreate` retains its existing layout.
 
 The standalone composer has a prompt before model selection, an 800px comfortable desktop width, two columns of chosen models, and wider results. Phones use one output selector and stacked model/result cards. Only one empty model slot is offered at a time, up to the existing four-model limit. The model picker wraps its metadata on small screens so names remain readable.
 
-Templates, tools, and the existing public showcase live on Templates. Its category selection is independent of the studio's mode, so browsing does not clear a draft. Applying a template uses the existing live catalog and template logic. Navigation preserves the active creation; polling preserves the selected view. New creation explicitly resets the studio.
+Templates, tools, and the existing public showcase live on Templates. Its category selection is independent of the studio's mode, so browsing does not clear a draft. Applying a template uses the existing live catalog and template logic. Navigation preserves the active creation; polling preserves the selected view. New project explicitly resets the studio.
 
-My creations reads the existing session-authenticated, paginated `/api/profile/xcreates` endpoint with its existing ownership filtering and signed media URLs. Cards reopen the existing `?id=` restore flow. No new database endpoint or public policy was added.
+Library reads the existing session-authenticated, paginated `/api/profile/xcreates` endpoint with its existing ownership filtering and signed media URLs. Cards reopen the existing `?id=` restore flow. No new database endpoint or public policy was added.
 
 Guests can browse the standalone UI. Generate, prompt improvement, creating a product board, and templates that upload a sample require sign-in. The API authentication and billing checks remain unchanged. The shared `useRequireAuth` default remains unchanged for other pages.
 
