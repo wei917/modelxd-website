@@ -66,9 +66,12 @@ html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
 }
 .xcs-home { display: inline-flex; align-items: center; color: var(--xc-ink); text-decoration: none; }
 .xcs-brand {
+  display: inline-flex; align-items: center; gap: 9px;
   font-family: var(--xc-display); font-weight: 700; font-size: 25px;
   letter-spacing: -1px; line-height: 1; white-space: nowrap; color: var(--xc-ink);
 }
+/* Sized in em so it scales with the wordmark (top bar, sign-in dialog). */
+.xcs-logo { width: 1.1em; height: 1.1em; border-radius: .24em; flex-shrink: 0; }
 .xcs-accent { color: var(--xc-accent); }
 .xcs-nav { display: flex; align-self: stretch; gap: 26px; }
 .xcs-nav a {
