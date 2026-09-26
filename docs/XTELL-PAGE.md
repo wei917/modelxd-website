@@ -239,8 +239,7 @@ ground a Western reading in a Buddhist text about a different system.
 ## 易學堂 (Sep 26)
 
 Owner: a learning hall where an AI teacher answers beginners; structured
-courses and videos come later (scripts for ten one-minute chapters exist in
-the conversation, not in the repo). Built with Codex, who reviewed the
+courses and videos come later (the ten one-minute intro-tour scripts, reviewed and corrected, are in `docs/XTELL-YIXUE-COURSE.md`). Built with Codex, who reviewed the
 engine independently and made the art.
 
 - **Corpus** — `scripts/fetch-zhouyi.ts` builds `content/yijing/zhouyi.json`
