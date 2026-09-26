@@ -3489,3 +3489,13 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
   .xtell-room[data-entered] .xtell-composer textarea { height: 76px; }
   .xtell-place-row { margin-left: 0 !important; }
 }
+
+/* Purpose chips above the temple menu (audit, product). A purpose dims the
+   temples that do not serve it; they stay clickable. */
+.xtell-purposes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 18px 0 10px; }
+.xtell-purposes-title { font: 13px/1.6 var(--xtell-serif); color: var(--xtell-secondary); margin-right: 4px; }
+.xtell-purpose { padding: 6px 13px; border-radius: 999px; border: 1px solid var(--xtell-rule); background: var(--xtell-white); color: var(--xtell-ink); font: inherit; font-size: 13px; cursor: pointer; }
+.xtell-purpose[aria-pressed="true"] { border-color: var(--xtell-vermilion); background: var(--xtell-tint); color: var(--xtell-vermilion); font-weight: 700; }
+.xtell-focus-choice.is-dim { opacity: .35; }
+.xtell-focus-choice.is-dim:hover, .xtell-focus-choice.is-dim:focus-visible { opacity: .8; }
+@media (max-width: 600px) { .xtell-purposes { padding-inline: 16px; } }

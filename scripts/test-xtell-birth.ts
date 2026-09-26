@@ -11,6 +11,7 @@
 
 import { Solar } from 'lunar-typescript'
 import { birthProblem, daysInMonth, birthYears, latestBirthDate, BIRTH_MIN_YEAR } from '../lib/xtell-birth'
+import { describeVisit } from '../lib/xtell-history'
 import { validBirth, baziChart, baziFacts, heMatch, yuelaoFacts, liuNian, liuNianFacts, simianfoFacts, bingGaoFacts } from '../lib/xtell'
 
 let fails = 0
@@ -140,6 +141,18 @@ check('an unknown hour needs no clock time', birthProblem({ y: 1990, m: 1, d: 1,
   const c = baziChart(at(1990, 1, 1, 15, 25))
   check('納音 in traditional script (澗下水, not 涧下水)', c.pillars.month.naYin === '澗下水' && !JSON.stringify(c).includes('涧'))
   check('lunar month in traditional script (臘月)', c.lunar.includes('臘') && !c.lunar.includes('腊'))
+}
+
+// ── History names (audit, product): what a saved visit was about ─────────────
+{
+  const tt = (k: string) => ({ 'xtell.hourunknown': 'HOUR?', 'xtell.history.stick': 'Stick {n}', 'xtell.yixue.mode.lookup': 'Lookup', 'xtell.yixue.mode.cast': 'Cast', 'xtell.yixue.mode.ask': 'Ask' } as Record<string, string>)[k] ?? k
+  const u = describeVisit(tt, 'bazi', { birth: unknown(1990, 1, 1) })
+  check('history: an unknown-hour visit says so, never a noon', u.includes('1990-01-01') && u.includes('HOUR?') && !u.includes('12:00'), u)
+  check('history: a known hour shows its time', describeVisit(tt, 'bazi', { birth: at(1990, 1, 1, 15, 25) }).includes('15:25'))
+  check('history: a stick is named by its number and matter', describeVisit(tt, 'guandi', { n: 87, ask: '這份新工作該不該接' }) === 'Stick 87 · 這份新工作該不該接')
+  check('history: 易學堂 lookup and cast name their hexagrams', describeVisit(tt, 'yixue', { mode: 'lookup', n: 1 }) === 'Lookup · 乾'
+    && describeVisit(tt, 'yixue', { mode: 'cast', lines: [9, 7, 7, 7, 7, 7] }) === 'Cast · 乾 → 姤')
+  check('history: 月老 names both births', describeVisit(tt, 'yuelao', { birth: at(1990, 1, 1, 15, 25), birth2: unknown(1985, 7, 20, 'female') }).includes('×'))
 }
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)

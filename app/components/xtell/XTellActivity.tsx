@@ -7,8 +7,9 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../../lib/i18n'
+import { describeVisit } from '../../../lib/xtell-history'
 
-type Saved = { id: string; temple: string; title: string | null; cost_cents: number; created_at: string; updated_at: string; turns: Array<{ role: string }> }
+type Saved = { id: string; temple: string; title: string | null; subject: any; cost_cents: number; created_at: string; updated_at: string; turns: Array<{ role: string }> }
 
 export default function XTellActivity({ userId, basePath = '/' }: { userId: string; basePath?: string }) {
   const { lang, t } = useLang()
@@ -22,7 +23,7 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
     void (async () => {
       try {
         const { data, error } = await client().from('xtell_readings')
-          .select('id, temple, title, cost_cents, created_at, updated_at, turns').eq('user_id', userId)
+          .select('id, temple, title, subject, cost_cents, created_at, updated_at, turns').eq('user_id', userId)
           .is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
         if (error) throw error
         if (active) { setRows((data ?? []) as Saved[]); setStatus('ready') }
@@ -45,7 +46,11 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
         return <li key={row.id}>
           <span>
             <strong>{t(`xtell.${row.temple}.name`)}</strong>
-            <span style={{ display: 'block', fontSize: 13 }}>{row.title || t(row.temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</span>
+            {/* Named by what it was about, not "chart only" for every row
+                (audit, product); the first question stays the title. */}
+            <span style={{ display: 'block', fontSize: 13 }}>{row.title || describeVisit(t, row.temple, row.subject) || t(row.temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</span>
+            {row.title && describeVisit(t, row.temple, row.subject) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{describeVisit(t, row.temple, row.subject)}</span>}
+            {!asked && (row.title || describeVisit(t, row.temple, row.subject)) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(row.temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</span>}
             <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {asked > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--muted2)' }}>{asked} {t('xtell.saved.turns')}</span>}
           </span>

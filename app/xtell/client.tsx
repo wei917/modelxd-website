@@ -18,7 +18,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
-import TempleStreet, { TEMPLES } from '../components/xtell/TempleStreet'
+import TempleStreet, { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
 import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { createBrowserClient } from '@supabase/ssr'
@@ -62,6 +62,7 @@ import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
+import { describeVisit } from '../../lib/xtell-history'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
@@ -100,6 +101,17 @@ const DEFAULT_MASTER = 'qwen3.8-flash'
 const MAX_SEATS = 4
 const LAYOUT_KEY = 'xtell:layout'
 const FALLBACK_MASTERS = ['qwen3.8-max', 'gpt-5.6-sol']
+// Three plain choices instead of a 26-row model list (audit, product): each
+// names the model it will seat and its estimate, and changes the first seat
+// only when pressed — never on its own, never replacing a chosen teacher
+// silently (Codex review). The first enabled model in each list is used;
+// the full picker stays one click away. Owner's call which models back
+// each preset; this is the one place to change it.
+const PRESETS: Array<{ key: 'light' | 'balanced' | 'deep'; models: string[] }> = [
+  { key: 'light', models: ['qwen3.8-flash'] },
+  { key: 'balanced', models: ['qwen3.8-max', 'gemini-3.8-flash'] },
+  { key: 'deep', models: ['gpt-5.6-sol', 'claude-opus-5-5'] },
+]
 
 const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' as const }
 const card = { border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)' }
@@ -198,6 +210,8 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const t = useT()
   const [temple, setTemple] = useState<Temple | null>(null)
   const [selectedTemple, setSelectedTemple] = useState<Temple>('bazi')
+  // www's card grid: the same purposes as the standalone street filter it.
+  const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
   // ?reading=<id> reopens a saved visit (supabase/105): the row is fetched
   // under the visitor's own session, the temple opens on it, and TempleRoom
   // starts from its subject, chart and turns instead of an empty form.
@@ -264,9 +278,20 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
         <h1 className="page-headline" style={{ marginBottom: 10 }}>{t('xtell.title')}</h1>
         <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.65, maxWidth: 700, margin: '0 0 34px' }}>{t('xtell.sub')}</p>
 
-        {!temple ? (
+        {!temple ? (<>
+          <div role="group" aria-label={t('xtell.purpose.title')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.purpose.title')}</span>
+            {([null, ...PURPOSES.map(p => p.key)] as Array<(typeof PURPOSES)[number]['key'] | null>).map(key => (
+              <button key={key ?? 'all'} type="button" aria-pressed={purpose === key} onClick={() => setPurpose(key)} style={{
+                padding: '6px 13px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer',
+                border: `1px solid ${purpose === key ? 'var(--red)' : 'var(--border2)'}`, background: purpose === key ? 'var(--surface2)' : 'transparent',
+                color: purpose === key ? 'var(--red)' : 'var(--white)', fontWeight: purpose === key ? 700 : 500,
+              }}>{t('xtell.purpose.' + (key ?? 'all'))}</button>
+            ))}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as Temple[]).map(k => (
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as Temple[])
+              .filter(k => !purpose || PURPOSES.find(p => p.key === purpose)!.temples.includes(k)).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
@@ -282,7 +307,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
               </div>
             ))}
           </div>
-        ) : (
+        </>) : (
           <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} onResume={resume} />
         )}
 
@@ -391,6 +416,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // text model (GPT-5.6 Sol) — preselected so the temple works with zero
   // configuration; the picker is there for people who care.
   const [masters, setMasters] = useState<PickerModel[]>([])
+  // Every model offered here, for the presets.
+  const [catalog, setCatalog] = useState<PickerModel[]>([])
   // The picker either adds a seat or replaces one (owner, Sep 24: the first
   // master must be changeable too, not only the second).
   const [picker, setPicker] = useState<null | { replace: string | null }>(null)
@@ -419,6 +446,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     if (window.innerWidth < 900) setLayout('tabs')
   }, [])
   const chooseLayout = (l: 'columns' | 'tabs') => { setLayout(l); try { localStorage.setItem(LAYOUT_KEY, l) } catch { /* ignore */ } }
+  /** A preset seats its model first; a teacher already seated moves to the
+   *  front instead of being seated twice. Only ever called from a click. */
+  const choosePreset = (m: PickerModel) => setMasters(ms => ms[0]?.id === m.id ? ms
+    : ms.some(x => x.id === m.id) ? [m, ...ms.filter(x => x.id !== m.id)]
+    : ms.length ? [m, ...ms.slice(1)] : [m])
   const levelsOf = (m: PickerModel): string[] => ((m.output_config?.text?.thinking_levels ?? []) as string[])
   const searchable = (m: PickerModel) => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search')
   const defaultThinking = (m: PickerModel): string | null => {
@@ -450,6 +482,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       .eq('enabled', true).contains('output_modalities', ['text'])
       .then(({ data }) => {
         const rows = (data ?? []).filter(r => !(r.blocked_features ?? []).includes('xtell'))
+        setCatalog(rows as PickerModel[])
         // A reopened reading re-seats the masters of its last round, in the
         // order they answered, so 繼續 with four teachers continues with the
         // same four (owner, Sep 24). A master since removed from the catalog
@@ -881,6 +914,31 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {(() => {
+            const offered = PRESETS.map(p => ({ key: p.key, model: p.models.map(n => catalog.find(r => r.model_name === n)).find(Boolean) }))
+              .filter((p): p is { key: typeof PRESETS[number]['key']; model: PickerModel } => !!p.model)
+            if (offered.length === 0 || savedProblem) return null
+            const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
+            return (
+              <div role="group" aria-label={t('xtell.preset.title')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ ...mono, color: 'var(--muted2)', marginRight: 2 }}>{t('xtell.preset.title')}</span>
+                {offered.map(({ key, model }) => {
+                  const on = masters[0]?.id === model.id
+                  const usd = estimateReadingUsd(model, defaultOpts(model), chars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
+                  return (
+                    <button key={key} type="button" aria-pressed={on} onClick={() => choosePreset(model)} disabled={busy} style={{
+                      padding: '6px 12px', borderRadius: 999, fontSize: 12, cursor: busy ? 'wait' : 'pointer',
+                      border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`, background: on ? 'var(--surface2)' : 'transparent', color: 'var(--white)',
+                    }}>
+                      <b>{t(`xtell.preset.${key}`)}</b> · {model.display_name}{usd != null ? ` · ~${fmtUsd(usd)}` : ''}
+                    </button>
+                  )
+                })}
+                <button type="button" onClick={() => setPicker({ replace: masters[0]?.id ?? null })} style={{ border: 'none', background: 'none', padding: '6px 4px', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.preset.all')}</button>
+                <span style={{ flexBasis: '100%', fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.preset.note')}</span>
+              </div>
+            )
+          })()}
           {/* Controls: add a seat, the reply layout, the chart toggle. */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {masters.length < MAX_SEATS && (
@@ -991,6 +1049,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t('xtell.saved.invalid').replace('{reason}', errorText(t, savedProblem, savedProblem))}</div>
               <div><button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.edit')}</button></div>
             </div>
+          )}
+
+          {/* What this result is and where a beginner starts, before the
+              term-dense detail; example questions until the first is sent. */}
+          {temple !== 'yixue' && chart && !savedProblem && (
+            <ResultGuide temple={temple} chart={chart} showExamples={turns.length === 0} onExample={q => setInput(q)} />
           )}
 
           {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
@@ -1131,7 +1195,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <textarea
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
-              aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')} placeholder={t(questionRequired ? 'xtell.yixue.question.ph' : 'xtell.question.ph')}
+              aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')}
+              placeholder={questionRequired ? t('xtell.yixue.question.ph') : temple === 'yixue' ? t('xtell.question.ph') : `${t('xtell.q.example')}${t(`xtell.q.${temple}.1`)}`}
               maxLength={temple === 'yixue' ? 2000 : undefined}
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
@@ -1175,6 +1240,50 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         />
       )}
     </div>
+  )
+}
+
+// ── 看懂這張盤 ──────────────────────────────────────────────────────────────
+// Audit (product): 紫微 and 九曜 opened straight into dense terms. Each
+// result now starts with what it is and where to start, plus one computed
+// fact where it is safe to state (日主; 命宮 and its stars; 上升 and the
+// Moon's 宿), and three questions that fit this temple. The examples fill
+// the question box; nothing is sent.
+const GAN_ELEMENT: Record<string, string> = { 甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水' }
+function ResultGuide({ temple, chart, onExample, showExamples }: { temple: Temple; chart: any; onExample: (q: string) => void; showExamples: boolean }) {
+  const t = useT()
+  const fact = (() => {
+    try {
+      if (temple === 'bazi' && GAN_ELEMENT[chart?.dayMaster]) return t('xtell.sum.bazi.fact').replace('{dm}', chart.dayMaster).replace('{el}', t(`xtell.el.${GAN_ELEMENT[chart.dayMaster]}`))
+      if (temple === 'ziwei') {
+        const p = chart?.palaces?.find((x: any) => x.name === '命宮')
+        if (p) return t('xtell.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
+      }
+      if (temple === 'navagraha' && chart?.lagna) {
+        const moon = chart.grahas?.find((g: any) => g.graha === 'Moon')
+        return t('xtell.sum.navagraha.fact').replace('{lagna}', RASI[chart.lagna.rasi][1]).replace('{nak}', moon ? `${NAKSHATRA[moon.nakshatra][1]}宿` : '—')
+      }
+    } catch { /* an older saved chart shape simply has no fact line */ }
+    return ''
+  })()
+  const questions = [1, 2, 3].map(i => t(`xtell.q.${temple}.${i}`))
+  return (
+    <section className="xtell-guide" aria-label={t('xtell.guide.title')} style={{ ...card, padding: '12px 16px', display: 'grid', gap: 6 }}>
+      <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.guide.title')}</div>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>{t(`xtell.sum.${temple}.what`)}{fact ? ` ${fact}` : ''}</p>
+      <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.7, color: 'var(--muted)' }}>{t(`xtell.sum.${temple}.look`)}</p>
+      {showExamples && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
+          <span style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xtell.guide.ask')}</span>
+          {questions.map(q => (
+            <button key={q} type="button" onClick={() => onExample(q)} aria-label={`${t('xtell.guide.fill')}: ${q}`} style={{
+              padding: '5px 11px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent',
+              color: 'var(--white)', fontSize: 12, lineHeight: 1.5, cursor: 'pointer', textAlign: 'left',
+            }}>{q}</button>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -1306,6 +1415,7 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
           {unknown && <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.dayun.approx')}</div>}
         </div>
       ) : d ? <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 10 }}>{t('xtell.dayun.hidden')}</div> : null}
+      {t('xtell.bazi.glossary') && <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.bazi.glossary')}</p>}
     </div>
   )
 }
@@ -1335,7 +1445,7 @@ function ZiweiBoard({ chart }: { chart: any }) {
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        {chart.solar} · {chart.lunar} {chart.time} · {chart.fiveElementsClass} · 命主 {chart.soul} · 身主 {chart.body}
+        {chart.solar} · {chart.lunar} {chart.time} · {chart.fiveElementsClass} · {t('xtell.ziwei.soul')} {chart.soul} · {t('xtell.ziwei.body')} {chart.body}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
         {chart.palaces.map((p: any) => (
@@ -1500,7 +1610,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
           <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800, letterSpacing: 2 }}>
             {t('xtell.qian.stick')} {stick.n} {t('xtell.qian.stickunit')}
           </div>
-        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.qian.rule')}</div>}
+        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.qian.rule')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t('xtell.qian.random')}</div></div>}
         {stick && (
           <div style={{ display: 'flex', gap: 6 }}>
             {Array.from({ length: CONFIRM_THROWS }, (_, i) => {
@@ -1539,7 +1649,7 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>第{qian.n}籤　{qian.ganZhi}</div>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{t('xtell.history.stick').replace('{n}', String(qian.n))}　{qian.ganZhi}</div>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: graded ? 18 : 14, fontWeight: graded ? 800 : 600, color: luckColour }}>{qian.luck}</div>
         {qian.story && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{qian.story}</div>}
       </div>
@@ -1654,7 +1764,7 @@ function NavagrahaBoard({ chart }: { chart: any }) {
         <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: 560 }}>
           <thead>
             <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
-              {['曜', '星座', '度', '宮', 'Nakshatra · pada', 'D9'].map(h => <th key={h} style={{ padding: '4px 10px 6px 0', fontWeight: 500 }}>{h}</th>)}
+              {[t('xtell.nav.col.graha'), t('xtell.nav.col.sign'), t('xtell.nav.col.deg'), t('xtell.nav.col.house'), 'Nakshatra · pada', 'D9'].map(h => <th key={h} style={{ padding: '4px 10px 6px 0', fontWeight: 500 }}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -2218,13 +2328,17 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
       <div style={{ display: 'grid', gap: 6 }}>
         {rows.map(r => {
           const asked = (r.turns ?? []).filter((x: any) => x.role === 'user').length
+          // Named by what it was about (the birth, the stick, the hexagram),
+          // with the first question as the title once one was asked.
+          const what = describeVisit(t, temple, r.subject)
           return (
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
               <span style={{ flex: 1, minWidth: 200 }}>
-                <b>{r.title || t(temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</b>
-                <span style={{ color: 'var(--muted2)', marginLeft: 8 }}>
+                <b>{r.title || what || t(temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</b>
+                {r.title && what && <span style={{ display: 'block', color: 'var(--muted2)', fontSize: 11.5 }}>{what}</span>}
+                <span style={{ color: 'var(--muted2)', marginLeft: r.title && what ? 0 : 8 }}>
                   {new Date(r.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}
-                  {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : ''}
+                  {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : `　${t(temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}`}
                   {r.cost_cents > 0 ? `　$${(r.cost_cents / 100).toFixed(2)}` : ''}
                 </span>
               </span>
