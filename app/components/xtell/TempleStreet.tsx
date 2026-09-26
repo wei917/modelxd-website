@@ -1,10 +1,10 @@
 'use client'
 
 import { useT } from '../../../lib/i18n'
-import { TempleArtwork, DISPLAY_TEMPLES, TEMPLE_ART, type TempleKey } from './TempleArtwork'
+import { TempleArtwork, DISPLAY_TEMPLES, artKind, type TempleKey } from './TempleArtwork'
 
 // Also used to validate room hashes. These are the existing API keys.
-export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi'] as const
+export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as const
 export type { TempleKey } from './TempleArtwork'
 
 export default function TempleStreet({ selected, onSelect, onEnter }: {
@@ -17,7 +17,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
   const qian = selected === 'mazu' || selected === 'guandi'
   return <section className="xtell-explorer" aria-label={t('xtell.site.choose')}>
     <div className="xtell-focus-hero">
-      <div className="xtell-focus-scene" data-kind={TEMPLE_ART[selected].index >= 5 ? 'object' : 'deity'}>
+      <div className="xtell-focus-scene" data-kind={artKind(selected)}>
         <TempleArtwork temple={selected} className="xtell-focus-portrait" label={name} />
       </div>
       <div className="xtell-focus-copy">
@@ -36,7 +36,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
           </button>
           <details className="xtell-focus-how" key={selected}>
             <summary>{t('xtell.site.focus.how')}</summary>
-            <p>{t(qian ? 'xtell.site.focus.howQian' : 'xtell.site.focus.howChart')}</p>
+            <p>{t(qian ? 'xtell.site.focus.howQian' : selected === 'yixue' ? 'xtell.site.focus.howYixue' : 'xtell.site.focus.howChart')}</p>
             <p>{t('xtell.site.focus.howReading')}</p>
           </details>
           <p className="xtell-focus-note">{t('xtell.site.focus.signin')}</p>

@@ -45,7 +45,7 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
         return <li key={row.id}>
           <span>
             <strong>{t(`xtell.${row.temple}.name`)}</strong>
-            <span style={{ display: 'block', fontSize: 13 }}>{row.title || t('xtell.saved.chartonly')}</span>
+            <span style={{ display: 'block', fontSize: 13 }}>{row.title || t(row.temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</span>
             <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {asked > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--muted2)' }}>{asked} {t('xtell.saved.turns')}</span>}
           </span>
