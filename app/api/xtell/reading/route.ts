@@ -15,7 +15,7 @@ import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
-import { yixueFacts, yixueInputError } from '@/lib/yijing'
+import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 
 const LOG = '[xtell/reading]'
 
@@ -44,7 +44,7 @@ const FACTS_HEAD: Record<string, string> = {
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
-  yixue:     '易學堂的情況、系統算定的卦與讀法，以及《周易》原文（照錄，勿更動）：',
+  yixue:     '易學堂的對話模式與可核對的經文材料（引用須照錄；僅起卦練習才有系統算定的卦）：',
 }
 
 function sse(event: string, data: object) {
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
   } else if (temple === 'yixue') {
     const bad = yixueInputError(body)
     if (bad) return Response.json({ error: bad }, { status: 400 })
+    if (asYixueMode(body?.mode) === 'ask' && !question.trim()) return Response.json({ error: 'write a question for the teacher' }, { status: 400 })
   } else {
     if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
     if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
@@ -164,6 +165,11 @@ export async function POST(req: Request) {
   // it — history is user/assistant turns only, capped so a long consultation
   // cannot smuggle an unbounded prompt.
   const messages = [...history, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
+  // Teacher questions retrieve on what the visitor actually said, not the
+  // generic mode instructions in the facts block. Include follow-up context.
+  const classicsQuery = temple === 'yixue' && asYixueMode(body?.mode) === 'ask'
+    ? [...history.filter(turn => turn.role === 'user').slice(-3).map(turn => turn.content), question].join(' ').slice(-2000)
+    : `${question} ${facts}`.slice(0, 2000)
 
   // Saved reading (supabase/105): the client passes the row id it got from
   // the chart route and a per-question id; both turns are appended through
@@ -218,7 +224,7 @@ export async function POST(req: Request) {
         [],
         { userId: user.id },
         {
-          system: `${MASTERS[temple]}${langLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, `${question} ${facts}`.slice(0, 2000))}`,
+          system: `${MASTERS[temple]}${langLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}`,
           search,
           thinking,
         },

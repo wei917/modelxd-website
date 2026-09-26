@@ -15,6 +15,8 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Temple } from './xtell'
+import { keyOf, segments } from './yijing-retrieval'
+import { HEXAGRAMS } from './yijing-core'
 
 const DIR = join(process.cwd(), 'content', 'classics')
 
@@ -52,10 +54,13 @@ type Passage = { book: string; text: string }
 
 const cache = new Map<string, Passage[]>()
 
-function passagesOf(file: string): Passage[] {
-  if (cache.has(file)) return cache.get(file)!
+// `min` drops fragments. The 易學堂 keeps every line (min 1): 序卦 and 雜卦
+// lines are short, and its phrase index must hold the whole text.
+function passagesOf(file: string, min = 24): Passage[] {
+  const id = `${file}:${min}`
+  if (cache.has(id)) return cache.get(id)!
   const path = join(DIR, file)
-  if (!existsSync(path)) { cache.set(file, []); return [] }
+  if (!existsSync(path)) { cache.set(id, []); return [] }
   const raw = readFileSync(path, 'utf-8')
   const [header, ...body] = raw.split('\n\n')
   const book = header.match(/《[^》]+》/)?.[0] ?? file
@@ -64,7 +69,7 @@ function passagesOf(file: string): Passage[] {
   const out: Passage[] = []
   for (const para of body.join('\n\n').split(/\n{2,}/)) {
     const p = para.trim()
-    if (p.length < 24) continue
+    if (p.length < min) continue
     if (p.length <= 420) { out.push({ book, text: p }); continue }
     for (const piece of p.split(/(?<=[。！？])/).reduce<string[]>((acc, s) => {
       const last = acc[acc.length - 1]
@@ -72,10 +77,10 @@ function passagesOf(file: string): Passage[] {
       else acc.push(s)
       return acc
     }, [])) {
-      if (piece.trim().length >= 24) out.push({ book, text: piece.trim() })
+      if (piece.trim().length >= min) out.push({ book, text: piece.trim() })
     }
   }
-  cache.set(file, out)
+  cache.set(id, out)
   return out
 }
 
@@ -93,6 +98,7 @@ function bigrams(s: string): Set<string> {
  * questionless "full reading" still retrieves on the chart's terms.
  */
 export function classicPassages(temple: Temple, query: string, limit = 3): Passage[] {
+  if (temple === 'yixue') return yixuePassages(query, limit)
   const q = bigrams(query)
   if (q.size === 0) return []
   const scored: Array<{ p: Passage; score: number }> = []
@@ -104,6 +110,61 @@ export function classicPassages(temple: Temple, query: string, limit = 3): Passa
       if (hit > 0) scored.push({ p, score: hit / Math.sqrt(pb.size) })
     }
   }
+  return scored.sort((a, b) => b.score - a.score).slice(0, limit).map(s => s.p)
+}
+
+/** Every 十翼 line and passage, for lib/yijing.ts's phrase index. */
+export const yixueBookPassages = (): Passage[] => SOURCES.yixue.flatMap(f => passagesOf(f, 1))
+
+// 易學堂 only. The 十翼 are short and full of words modern questions share
+// (天下, 君子, 可以, 之道), so one shared bigram proves nothing: under the
+// rule above, 「可以教我易經嗎」 matched 繫辭下 through 以教. Here:
+//   - both sides are folded (lib/yijing-retrieval), so simplified and
+//     Japanese questions match, and question bigrams stay inside one clause;
+//   - a bigram in more than COMMON passages distinguishes nothing;
+//   - a bigram with a grammar character (之, 以, 的 …), made only of numerals
+//     (「通勤二十分鐘」 must not reach 大衍之數), ending in 卦, or equal to a
+//     two-character hexagram name (家人, 同人, 大有, 大過 are also ordinary
+//     words; 說卦's 「為乾卦」 is the dry trigram) is WEAK;
+//   - a passage counts with two shared bigrams, at least one not weak, or
+//     with one strong bigram found in at most RARE passages (太極, 事業).
+// Every other temple keeps the rule above, unchanged.
+const COMMON = 12
+const RARE = 3
+const GLUE = new Set(keyOf('之乎者也矣焉哉而以其於為所是不可有無與則故此何如若乃且亦皆的了嗎呢在和或我你他她它們這那'))
+const NUMERALS = new Set(keyOf('〇一二三四五六七八九十百千萬兩'))
+const NAMES = new Set(HEXAGRAMS.filter(h => h.name.length === 2).map(h => keyOf(h.name)))
+const weak = (b: string) => [...b].some(c => GLUE.has(c)) || [...b].every(c => NUMERALS.has(c)) || b.endsWith('卦') || NAMES.has(b)
+let yixueStats: { passages: Passage[]; grams: Array<Set<string>>; df: Map<string, number> } | null = null
+
+function pairsOf(key: string, into: Set<string>) {
+  for (let i = 0; i + 1 < key.length; i++) into.add(key.slice(i, i + 2))
+}
+
+function yixuePassages(query: string, limit: number): Passage[] {
+  if (!yixueStats) {
+    const passages = yixueBookPassages()
+    const grams = passages.map(p => { const g = new Set<string>(); pairsOf(keyOf(p.text), g); return g })
+    const df = new Map<string, number>()
+    for (const g of grams) for (const b of g) df.set(b, (df.get(b) ?? 0) + 1)
+    yixueStats = { passages, grams, df }
+  }
+  const { passages, grams, df } = yixueStats
+  // Question bigrams never cross punctuation either: the facts' own label
+  // 「下卦離、上卦巽」 must not become 離上 and match 雜卦「離上，而坎下也」.
+  const q = new Set<string>()
+  for (const clause of query.split(/[\p{P}\p{Z}\s]+/u)) for (const seg of segments(clause)) pairsOf(seg.key, q)
+  const useful = [...q].filter(b => (df.get(b) ?? 0) > 0 && df.get(b)! <= COMMON)
+  if (useful.length === 0) return []
+  const scored: Array<{ p: Passage; score: number }> = []
+  passages.forEach((p, i) => {
+    const hit = useful.filter(b => grams[i].has(b))
+    const strong = hit.filter(b => !weak(b))
+    if ((hit.length >= 2 && strong.length >= 1) || strong.some(b => df.get(b)! <= RARE)) {
+      const weight = hit.reduce((s, b) => s + Math.log(passages.length / df.get(b)!), 0)
+      scored.push({ p, score: weight / Math.sqrt(grams[i].size) })
+    }
+  })
   return scored.sort((a, b) => b.score - a.score).slice(0, limit).map(s => s.p)
 }
 

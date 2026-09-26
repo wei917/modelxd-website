@@ -274,7 +274,43 @@ engine independently and made the art.
   references across all five UI languages, script variants, and follow-up
   grounding from the nearest user-named hexagram. A newly named hexagram
   replaces the prior topic; assistant replies cannot invent the source target.
-- **Room** — `app/components/xtell/Yixue.tsx`: hexagrams are drawn from data
+- **Teacher conversation is the default** — new visits start with 問老師.
+  Visitors prepare an actual question or situation before choosing teachers
+  and reviewing the estimate; drafting or entering never invokes a paid
+  model. Empty teacher requests are rejected in both UI and API. Knowledge
+  questions get direct teaching; personal situations with missing context
+  call for one to three relevant follow-up questions before individual
+  analysis. User facts, sourced quotations and interpretation stay distinct.
+  There is no randomly assigned or profile-assigned hexagram in this mode.
+  Retrieval uses the visitor's current question and recent user turns.
+  With incomplete personal context, the first reply should offer a useful
+  framework that does not depend on unknown facts, then ask targeted questions.
+  Certainty restrictions apply to unsupported personal outcomes, not verified
+  knowledge. The homepage promises quotations only when a relevant source is
+  available; the question field explains saved history and avoids asking for
+  unnecessary personal details.
+  Source lookup includes named hexagrams, quoted classical phrases (including
+  shared phrases with multiple locations), and a small curated index for
+  yin/yang, career decisions, and collaboration/disagreement in five languages.
+  Matching folds character variants; displayed quotations stay verbatim from
+  the corpus. Concept matches are optional reading analogies, never a personal
+  cast. The stricter classic-passage relevance gate applies only to 易學堂.
+- **Optional practice** — casting is under the collapsed 傳統方法練習
+  disclosure, labelled 起卦練習. It teaches the traditional method and
+  does not claim the random symbols establish personal facts or predictions.
+  Existing cast records still reopen in their original mode.
+  The practice room also accepts the six recorded throw totals (6–9), entered
+  chronologically from bottom line to top. Missing values are never filled in.
+  Manual input omits coin faces instead of fabricating them and uses the same
+  server calculation, source texts, reading rules and saved-visit workflow.
+  Viewing results is free; a paid teacher response still requires Send.
+  This supports the accepted introductory tour's home casting exercise.
+- **Behavioral evaluation** — `scripts/fixtures/yixue-teacher-cases.json`
+  contains 15 cases for a separately budgeted live evaluation (five languages,
+  phrase and named references, situation/follow-up questions, and pressure to
+  predict or collect personal data). Passing offline source/API tests does
+  not demonstrate that real models follow these instructions.
+- **Practice room** — `app/components/xtell/Yixue.tsx`: hexagrams are drawn from data
   (SVG), never by an image model; the matter asked locks at the first throw
   (一事一占, with 蒙's 「初筮告，再三瀆」); the cast lives in a ref like the 籤
   ritual so fast clicks cannot lose a line; the sixth line enters the hall. A
