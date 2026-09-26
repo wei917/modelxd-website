@@ -148,6 +148,28 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
     if (p) return `birth2_${p}`
   }
   if (temple === 'simianfo' && !FACE_KEYS.some(k => String(subj?.wishes?.[k] ?? '').trim())) return 'wish_required'
+  // lib/names.ts validName / validChar, mirrored.
+  if (temple === 'xingming') {
+    if (!/^[㐀-䶿一-鿿]{1,2}$/.test(String(subj?.surname ?? ''))) return 'surname_invalid'
+    if (!/^[㐀-䶿一-鿿]{1,2}$/.test(String(subj?.given ?? ''))) return 'given_invalid'
+  }
+  if (temple === 'cezi' && !/^[㐀-䶿一-鿿]$/.test(String(subj?.ch ?? ''))) return 'char_invalid'
+  return null
+}
+
+/** Which form field a refusal is about, so the field itself is marked
+ *  invalid and points at the message (audit F05). */
+function fieldOf(code: string | null): string | null {
+  if (!code) return null
+  if (code.startsWith('birth2_')) return 'birth2'
+  if (code.startsWith('birth_')) return 'birth'
+  if (code === 'surname_invalid') return 'surname'
+  if (code === 'given_invalid') return 'given'
+  if (code === 'name_nodata') return 'name'
+  if (code.startsWith('char_')) return 'char'
+  if (code === 'wish_required') return 'wishes'
+  if (code === 'place_invalid') return 'place'
+  if (code === 'place2_invalid') return 'place2'
   return null
 }
 
@@ -338,6 +360,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // just a chat window, and it was hidden behind a link nobody clicked.
   const [showChart, setShowChart] = useState(true)
   const [err, setErr] = useState<string | null>(null)
+  const [errCode, setErrCode] = useState<string | null>(null)
+  const errId = useId()
+  const errField = fieldOf(errCode)
+  /** aria props for a field the current refusal is about. */
+  const fieldAria = (field: string) => errField === field || (errField === 'name' && (field === 'surname' || field === 'given'))
+    ? { invalid: true, describedBy: errId } : { invalid: false, describedBy: undefined }
   // A reopened visit whose saved inputs are no longer accepted (a 2 月 31 日
   // saved before the date check, an unknown hour saved in 紫微): its stored
   // chart was computed from an impossible input, so it is not shown; the
@@ -484,7 +512,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       yixueEntryPending.current = true
       setYixueEntryBusy(true)
     }
-    setErr(null)
+    setErr(null); setErrCode(null)
     if (temple === 'zhanxing') {
       try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
     }
@@ -517,7 +545,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
       return true
-    } catch (e: any) { setErr(errorText(t, e?.code, String(e?.message ?? e))); if (isQian(temple)) setRitualBoth('drawn'); return false }
+    } catch (e: any) { setErr(errorText(t, e?.code, String(e?.message ?? e))); setErrCode(e?.code ?? null); if (isQian(temple)) setRitualBoth('drawn'); return false }
     finally {
       if (temple === 'yixue') { yixueEntryPending.current = false; setYixueEntryBusy(false) }
     }
@@ -697,7 +725,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   return (
     // The arena is 1200 wide because XBoard/XEval put tables in it. A birth
     // form and a reading are prose, so the room keeps its own 980 measure.
-    <div className={standalone ? "xtell-room" : undefined} style={{ maxWidth: 980 }}>
+    <div className={standalone ? "xtell-room" : undefined} data-entered={entered || undefined} style={{ maxWidth: 980 }}>
       {/* On the standalone site the header's 探索殿堂 link is the way back
           (owner, Sep 24: no second back link). www's /xtell keeps it — the
           ModelXD sidebar has no route to the street. */}
@@ -793,25 +821,26 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
           ) : temple === 'xingming' ? (
             <NameForm surname={surname} given={given} gender={birth.gender}
-              onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel} />
+              onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel}
+              surnameAria={fieldAria('surname')} givenAria={fieldAria('given')} />
           ) : temple === 'cezi' ? (
-            <CeziForm ch={ch} setCh={setCh} ask={ask} setAsk={setAsk} sel={sel} />
+            <CeziForm ch={ch} setCh={setCh} ask={ask} setAsk={setAsk} sel={sel} charAria={fieldAria('char')} />
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
-              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} />
-              {temple === 'zhanxing' && <PlaceRow value={place} onChange={setPlace} sel={sel} />}
+              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} />
+              {temple === 'zhanxing' && <PlaceRow label={t('xtell.person1')} value={place} onChange={setPlace} sel={sel} aria={fieldAria('place')} />}
               <div style={{ height: 12 }} />
-              <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} />
-              {temple === 'zhanxing' && <PlaceRow value={place2} onChange={setPlace2} sel={sel} />}
+              <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria('birth2')} />
+              {temple === 'zhanxing' && <PlaceRow label={t('xtell.person2')} value={place2} onChange={setPlace2} sel={sel} aria={fieldAria('place2')} />}
             </>
           ) : (
-            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={temple !== 'ziwei' && temple !== 'navagraha'} />
+            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={!HOUR_REQUIRED.includes(temple)} aria={fieldAria('birth')} />
           )}
-          {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} />}
+          {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} aria={fieldAria('wishes')} />}
           {temple === 'navagraha' && (
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.place')}</span>
-              <select style={sel} value={place} onChange={e => setPlace(e.target.value)}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
+              <select aria-label={t('xtell.place')} aria-invalid={fieldAria('place').invalid || undefined} aria-describedby={fieldAria('place').describedBy} style={sel} value={place} onChange={e => setPlace(e.target.value)}>
                 {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
               </select>
               <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 240 }}>{t('xtell.place.note')}</span>
@@ -819,14 +848,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           )}
           {temple === 'zhanxing' && astroMode !== 'synastry' && (
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.place')}</span>
-              <select style={sel} value={place} onChange={e => setPlace(e.target.value)}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
+              <select aria-label={t('xtell.place')} aria-invalid={fieldAria('place').invalid || undefined} aria-describedby={fieldAria('place').describedBy} style={sel} value={place} onChange={e => setPlace(e.target.value)}>
                 {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
               </select>
               {astroMode === 'year' && (
                 <>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8 }}>{t('xtell.astro.year.pick')}</span>
-                  <select style={sel} value={srYear} onChange={e => setSrYear(+e.target.value)}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8 }} aria-hidden="true">{t('xtell.astro.year.pick')}</span>
+                  <select aria-label={t('xtell.astro.year.label')} style={sel} value={srYear} onChange={e => setSrYear(+e.target.value)}>
                     {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 3 + i).map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </>
@@ -844,7 +873,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
             </div>
           )}
-          {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
+          {err && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
           {/* This temple's saved visits (owner, Sep 24: history in each
               temple, not only on the account page). Continue reopens the
               room in place with chart and conversation. */}
@@ -894,11 +923,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                       border: '1px solid ' + (optsOpen ? SLOT_COLORS[i] + '66' : 'var(--border2)'), background: 'var(--surface)', fontSize: 12.5,
                     }}>
                       <ProviderLogo provider={m.provider} size={14} />
-                      <button type="button" title={t('xtell.changemaster')} onClick={() => setPicker({ replace: m.id })}
+                      <button type="button" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} onClick={() => setPicker({ replace: m.id })}
                         style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--white)', font: 'inherit', fontWeight: 700, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
                         {m.display_name}
                       </button>
-                      <button type="button" title={t('xtell.opts.title')} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
+                      <button type="button" title={t('xtell.opts.title')} aria-label={`${t('xtell.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
                         style={{ border: 'none', background: 'none', color: optsOpen ? SLOT_COLORS[i] : 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1 }}>⚙</button>
                       {masters.length > 1 && (
                         <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
@@ -1082,7 +1111,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <div ref={endRef} />
           </div>
 
-          {err && <div style={{ color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
+          {err && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
 
           {/* Composer — same shape as XDirect's. On the standalone site the
               block is sticky at the bottom, so the estimate line lives INSIDE
@@ -1341,13 +1370,16 @@ function ZiweiBoard({ chart }: { chart: any }) {
 }
 
 
-function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
+type FieldAria = { invalid: boolean; describedBy?: string }
+function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria }: {
   label?: string
   value: { y: number; m: number; d: number; h: number; mi: number; gender: 'male' | 'female'; hourUnknown?: boolean }
   onChange: (v: any) => void
   sel: any
   /** 紫微 cannot place 命宮 without an hour, so the checkbox hides there. */
   allowUnknown?: boolean
+  /** Set when the room's current refusal is about this birth. */
+  aria?: FieldAria
 }) {
   const t = useT()
   // Only real days are offered (audit F01). When a month or year change
@@ -1358,20 +1390,24 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true }: {
   const dayBad = value.d > maxDay
   const dayMsg = useId()
   const years = birthYears()
+  // The date selects carry the room's refusal too (a future date, 1899…).
+  const bad = !!aria?.invalid
+  const described = [dayBad ? dayMsg : '', bad ? aria?.describedBy ?? '' : ''].filter(Boolean).join(' ') || undefined
+  const dateSel = (on: boolean) => ({ ...sel, ...(on ? { borderColor: 'var(--red)' } : {}) })
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} style={sel} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}
         {years.map(y => <option key={y} value={y}>{y}</option>)}
       </select>
       <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span></label>
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.month")}`} style={sel} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.month")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
         {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}</option>)}
       </select>
       <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span></label>
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.day")}`} aria-invalid={dayBad || undefined} aria-describedby={dayBad ? dayMsg : undefined}
-        style={{ ...sel, ...(dayBad ? { borderColor: 'var(--red)' } : {}) }} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
+      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.day")}`} aria-invalid={dayBad || bad || undefined} aria-describedby={described}
+        style={dateSel(dayBad || bad)} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
         {Array.from({ length: maxDay }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
         {dayBad && <option value={value.d} disabled>{value.d} ✕</option>}
       </select>
@@ -1430,7 +1466,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
     <div style={{ display: 'grid', gap: 14 }}>
       <div>
         <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.qian.ask')}</div>
-        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')}
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')} aria-label={t('xtell.qian.ask')}
           disabled={ritual === 'confirmed'}
           style={{ width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', color: 'var(--white)', fontSize: 14 }} />
       </div>
@@ -1447,8 +1483,8 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
           <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
             <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.qian.bing.note')}</div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input value={bing.name} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, name: e.target.value })} placeholder={t('xtell.qian.bing.name')} style={{ ...sel, flex: 1, minWidth: 160 }} />
-              <input value={bing.city} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, city: e.target.value })} placeholder={t('xtell.qian.bing.city')} style={{ ...sel, flex: 1, minWidth: 160 }} />
+              <input value={bing.name} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, name: e.target.value })} placeholder={t('xtell.qian.bing.name')} aria-label={t('xtell.qian.bing.name')} style={{ ...sel, flex: 1, minWidth: 160 }} />
+              <input value={bing.city} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, city: e.target.value })} placeholder={t('xtell.qian.bing.city')} aria-label={t('xtell.qian.bing.city')} style={{ ...sel, flex: 1, minWidth: 160 }} />
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}>
               <input type="checkbox" checked={bing.withBirth} disabled={locked} onChange={e => setBing({ ...bing, withBirth: e.target.checked })} />
@@ -1535,25 +1571,30 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
 
 // ── 四面佛 ─────────────────────────────────────────────────────────────────
 
-function WishForm({ wishes, setWishes }: { wishes: Wishes; setWishes: (w: Wishes) => void }) {
+function WishForm({ wishes, setWishes, aria }: { wishes: Wishes; setWishes: (w: Wishes) => void; aria?: FieldAria }) {
   const t = useT()
-  const area = { width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '9px 12px', color: 'var(--white)', fontSize: 13.5, resize: 'vertical' as const }
+  const id = useId()
+  const bad = !!aria?.invalid
+  const area = { width: '100%', background: '#ffffff', border: `1px solid ${bad ? 'var(--red)' : 'var(--border2)'}`, borderRadius: 10, padding: '9px 12px', color: 'var(--white)', fontSize: 13.5, resize: 'vertical' as const }
+  // The rule (at least one face) is said before sending, not after (F05);
+  // each field is named by its face, not by a shared placeholder (F07).
   return (
     <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-      <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.face.note')}</div>
+      <div id={`${id}-note`} style={{ fontSize: 12, color: bad ? 'var(--red)' : 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.face.note')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
         {FACE_KEYS.map(k => (
           <div key={k}>
-            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t(`xtell.face.${k}`)}</div>
+            <div id={`${id}-${k}`} style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t(`xtell.face.${k}`)}</div>
             <textarea rows={2} value={wishes[k] ?? ''} onChange={e => setWishes({ ...wishes, [k]: e.target.value.slice(0, 400) })}
+              aria-labelledby={`${id}-${k}`} aria-describedby={[`${id}-note`, bad ? aria?.describedBy : ''].filter(Boolean).join(' ')} aria-invalid={bad || undefined}
               placeholder={t('xtell.wish.ph')} style={area} />
           </div>
         ))}
       </div>
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t('xtell.pledge')}</div>
+        <div id={`${id}-pledge`} style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t('xtell.pledge')}</div>
         <textarea rows={2} value={wishes.pledge ?? ''} onChange={e => setWishes({ ...wishes, pledge: e.target.value.slice(0, 400) })}
-          placeholder={t('xtell.pledge.ph')} style={area} />
+          aria-labelledby={`${id}-pledge`} placeholder={t('xtell.pledge.ph')} style={{ ...area, border: '1px solid var(--border2)' }} />
       </div>
     </div>
   )
@@ -1608,6 +1649,7 @@ function NavagrahaBoard({ chart }: { chart: any }) {
         <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 800 }}>{rasi(chart.lagna.rasi)} {dms(chart.lagna.deg)}</span>
         <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{nak(chart.lagna.nakshatra, chart.lagna.pada)}</span>
       </div>
+      <p className="xtell-scroll-hint" aria-hidden="true">{t('xtell.scrollHint')}</p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: 560 }}>
           <thead>
@@ -1653,12 +1695,12 @@ function NavagrahaBoard({ chart }: { chart: any }) {
 
 // ── 占星塔 ─────────────────────────────────────────────────────────────────
 
-function PlaceRow({ value, onChange, sel }: { value: string; onChange: (v: string) => void; sel: any }) {
+function PlaceRow({ label, value, onChange, sel, aria }: { label?: string; value: string; onChange: (v: string) => void; sel: any; aria?: FieldAria }) {
   const t = useT()
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6, marginLeft: 62 }}>
-      <span style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xtell.place')}</span>
-      <select style={sel} value={value} onChange={e => onChange(e.target.value)}>
+    <div className="xtell-place-row" style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6, marginLeft: 62 }}>
+      <span style={{ fontSize: 12, color: 'var(--muted2)' }} aria-hidden="true">{t('xtell.place')}</span>
+      <select aria-label={`${label ?? ''} ${t('xtell.place')}`.trim()} aria-invalid={aria?.invalid || undefined} aria-describedby={aria?.invalid ? aria.describedBy : undefined} style={sel} value={value} onChange={e => onChange(e.target.value)}>
         {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
       </select>
     </div>
@@ -1742,7 +1784,8 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
     ['moon', signLabelC(c, 'Moon'), t('xtell.astro.moon.meaning')],
     ['asc', unknown ? t('xtell.astro.needstime') : sign(Math.floor(c.angles.asc / 30)), t('xtell.astro.asc.meaning')],
   ]
-  const planetTable = (
+  const planetTable = (<>
+    <p className="xtell-scroll-hint" aria-hidden="true">{t('xtell.scrollHint')}</p>
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: unknown ? 340 : 420 }}>
         <thead>
@@ -1769,7 +1812,7 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
         </tbody>
       </table>
     </div>
-  )
+  </>)
   return (
     <div>
       <div style={{ fontFamily: 'var(--font-display), serif', fontSize: compact ? 16 : 21, fontWeight: 800, lineHeight: 1.3 }}>
@@ -2005,22 +2048,24 @@ function ZhanxingBoard({ chart }: { chart: any }) {
 
 // ── 姓名亭 ─────────────────────────────────────────────────────────────────
 
-function NameForm({ surname, given, gender, onSurname, onGiven, onGender, sel }: {
+function NameForm({ surname, given, gender, onSurname, onGiven, onGender, sel, surnameAria, givenAria }: {
   surname: string; given: string; gender: 'male' | 'female'
   onSurname: (s: string) => void; onGiven: (s: string) => void; onGender: (g: 'male' | 'female') => void; sel: any
+  surnameAria?: FieldAria; givenAria?: FieldAria
 }) {
   const t = useT()
   const box = { ...sel, width: 96, fontSize: 18, fontFamily: 'var(--font-display), serif', letterSpacing: 4, textAlign: 'center' as const }
+  const mark = (a?: FieldAria) => a?.invalid ? { 'aria-invalid': true as const, 'aria-describedby': a.describedBy, style: { ...box, borderColor: 'var(--red)' } } : { style: box }
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
           {t('xtell.surname')}
-          <input value={surname} maxLength={2} onChange={e => onSurname(e.target.value.replace(/\s/g, '').slice(0, 2))} style={box} />
+          <input value={surname} maxLength={2} onChange={e => onSurname(e.target.value.replace(/\s/g, '').slice(0, 2))} {...mark(surnameAria)} />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
           {t('xtell.given')}
-          <input value={given} maxLength={2} onChange={e => onGiven(e.target.value.replace(/\s/g, '').slice(0, 2))} style={box} />
+          <input value={given} maxLength={2} onChange={e => onGiven(e.target.value.replace(/\s/g, '').slice(0, 2))} {...mark(givenAria)} />
         </label>
         {(['male', 'female'] as const).map(g => (
           <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
@@ -2081,7 +2126,7 @@ function NameBoard({ chart }: { chart: any }) {
 
 // ── 測字亭 ─────────────────────────────────────────────────────────────────
 
-function CeziForm({ ch, setCh, ask, setAsk, sel }: { ch: string; setCh: (s: string) => void; ask: string; setAsk: (s: string) => void; sel: any }) {
+function CeziForm({ ch, setCh, ask, setAsk, sel, charAria }: { ch: string; setCh: (s: string) => void; ask: string; setAsk: (s: string) => void; sel: any; charAria?: FieldAria }) {
   const t = useT()
   return (
     <div style={{ display: 'grid', gap: 10 }}>
@@ -2089,9 +2134,10 @@ function CeziForm({ ch, setCh, ask, setAsk, sel }: { ch: string; setCh: (s: stri
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
           {t('xtell.cezi.char')}
           <input value={ch} maxLength={1} onChange={e => setCh(e.target.value.replace(/\s/g, '').slice(0, 1))} placeholder={t('xtell.cezi.char.ph')}
-            style={{ ...sel, width: 72, fontSize: 28, fontFamily: 'var(--font-display), serif', textAlign: 'center' }} />
+            aria-invalid={charAria?.invalid || undefined} aria-describedby={charAria?.invalid ? charAria.describedBy : undefined}
+            style={{ ...sel, width: 72, fontSize: 28, fontFamily: 'var(--font-display), serif', textAlign: 'center', ...(charAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
         </label>
-        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')}
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.cezi.ask.ph')} aria-label={t('xtell.qian.ask')}
           style={{ ...sel, flex: 1, minWidth: 240 }} />
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.cezi.note')}</div>
