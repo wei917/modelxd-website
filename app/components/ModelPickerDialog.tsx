@@ -434,7 +434,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                   // some non-text input. If the model has any text-only mode
                   // (text_to_text / text_to_image / text_to_video), it can run
                   // without attachments and the badge is misleading.
-                  const TEXT_ONLY: ModelMode[] = ['text_to_text', 'text_to_image', 'text_to_video']
+                  const TEXT_ONLY: ModelMode[] = ['text_to_text', 'text_to_image', 'text_to_video', 'text_to_speech']
                   const declared  = (m.modes ?? []) as ModelMode[]
                   const hasModes  = declared.length > 0
                   const hasTextOnly = declared.some(x => TEXT_ONLY.includes(x))
