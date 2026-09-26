@@ -11,6 +11,7 @@ import { PageTitleProvider } from '../lib/PageTitleContext'
 import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
 import { xtellMetadata } from '../lib/xtell-meta'
+import { xcreateMetadata } from '../lib/xcreate-meta'
 import { SiteProvider } from '../lib/useSite'
 import './globals.css'
 
@@ -69,10 +70,12 @@ const notoJP = Noto_Sans_JP({
 
 // Default title per front door: pages without their own metadata (the
 // client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
-// tab on the XTell host.
+// tab on the XTell and XCreate hosts.
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
-  if (siteFromHeaders(h) === 'xtell') return xtellMetadata(h)
+  const site = siteFromHeaders(h)
+  if (site === 'xtell') return xtellMetadata(h)
+  if (site === 'xcreate') return xcreateMetadata(h)
   return {
     title: 'ModelXD',
     description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
@@ -90,7 +93,7 @@ export const viewport = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Which front door (www or xtell.modelxd.com) — stamped by proxy.ts. Read
+  // Which front door (www, xtell. or xcreate.modelxd.com) — stamped by proxy.ts. Read
   // here so the shell is right on the server render; this makes every route
   // dynamic, which they effectively were already (auth on nearly all).
   const site = siteFromHeaders(await headers())

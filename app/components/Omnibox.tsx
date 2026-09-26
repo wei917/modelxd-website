@@ -70,7 +70,9 @@ export default function Omnibox() {
   const { lang } = useLang()
   const router = useRouter()
   const pathname = usePathname() ?? ''
-  const onSurface = site !== 'xtell' && SURFACES.some(s => pathname === s || pathname.startsWith(s + '/'))
+  // www only: its rows are ModelXD surfaces and the site agent, which the
+  // XTell and XCreate hosts do not serve.
+  const onSurface = site === 'modelxd' && SURFACES.some(s => pathname === s || pathname.startsWith(s + '/'))
   const [open, setOpen]   = useState(false)
   const [q, setQ]         = useState('')
   const [sel, setSel]     = useState(0)
