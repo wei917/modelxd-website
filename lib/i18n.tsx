@@ -1430,7 +1430,7 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.yixue.daxiang':  { en: 'Great Image 大象', 'zh-Hant': '大象', 'zh-Hans': '大象', ja: '大象', ko: '대상' },
   'xtell.yixue.xiaoxiang':{ en: 'Small Image 小象', 'zh-Hant': '小象', 'zh-Hans': '小象', ja: '小象', ko: '소상' },
   'xtell.yixue.wenyan':   { en: 'Wenyan commentary 文言傳', 'zh-Hant': '文言傳', 'zh-Hans': '文言传', ja: '文言伝', ko: '문언전' },
-  'xtell.yixue.legend':   { en: 'Text in 「」 is the original Zhouyi. The hexagram and the passage to read are computed. The teacher\'s answers are interpretation.', 'zh-Hant': '「」內是《周易》原文；卦與讀法由系統算出；老師的回答是解讀。', 'zh-Hans': '「」内是《周易》原文；卦与读法由系统算出；老师的回答是解读。', ja: '「」内は周易の原文です。卦と読む箇所は計算によるもの、先生の回答は解釈です。', ko: '「」 안은 주역 원문입니다. 괘와 읽을 구절은 계산한 것이고, 선생님의 답은 해석입니다.' },
+  'xtell.yixue.legend':   { en: 'Text in 「」 is quoted from the source named beside it. The hexagram and reading selection are computed. The teacher\'s answers are interpretation.', 'zh-Hant': '「」內是引文，出處標在旁邊；卦與讀法由系統算出；老師的回答是解讀。', 'zh-Hans': '「」内是引文，出处标在旁边；卦与读法由系统算出；老师的回答是解读。', ja: '「」内は引用で、出典を併記しています。卦と読む箇所は計算によるもの、先生の回答は解釈です。', ko: '「」 안은 인용문이며 출처를 함께 표시합니다. 괘와 읽을 구절은 계산한 것이고, 선생님의 답은 해석입니다.' },
   'xtell.yixue.source':   { en: 'Original text: Wikisource 《周易》, public domain', 'zh-Hant': '原文：維基文庫《周易》（公有領域）', 'zh-Hans': '原文：维基文库《周易》（公有领域）', ja: '原文：ウィキソース『周易』（パブリックドメイン）', ko: '원문: 위키문헌 『주역』 (퍼블릭 도메인)' },
   'xtell.yixue.corrections': { en: '{n} correction(s) against other editions', 'zh-Hant': '依他本校訂 {n} 處', 'zh-Hans': '依他本校订 {n} 处', ja: '他本により {n} か所校訂', ko: '다른 판본에 따라 {n}곳 교정' },
   'xtell.yixue.examples': { en: 'You could ask:', 'zh-Hant': '可以這樣問：', 'zh-Hans': '可以这样问：', ja: 'たとえば：', ko: '이렇게 물어보세요:' },

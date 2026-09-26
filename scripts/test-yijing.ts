@@ -18,6 +18,7 @@ import {
   HEXAGRAMS, hexagram, hexagramOfLines, castOf, readingRule, lineLabel, valueOf,
   throwCoins, validLines, type LineValue, type Focus,
 } from '../lib/yijing-core'
+import { namedHexagrams, yixueFacts } from '../lib/yijing'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => {
@@ -151,6 +152,25 @@ for (const g of GOLDENS) {
   check('all 4096 casts resolve to texts that exist', ok)
 }
 check('hexagramOfLines round-trips', HEXAGRAMS.every(h => hexagramOfLines(h.lines).n === h.n))
+
+// Grounding must follow the learner's language and conversational topic.
+for (const question of ['What does hexagram 4 mean?', 'Explain HEXAGRAM No. 4', '第四卦', '第４卦', '4番目の卦', '제4괘', '4번째 괘']) {
+  check(`named reference: ${question}`, namedHexagrams(question).join(',') === '4')
+}
+check('two numeric references stay in question order', namedHexagrams('Compare hexagram 64 with hexagram 4.').join(',') === '64,4')
+check('two Chinese references are both grounded', namedHexagrams('第六十四卦和第四卦').join(',') === '64,4')
+check('Traditional and simplified names', namedHexagrams('無妄卦和随卦').join(',') === '25,17')
+check('ordinary and out-of-range numbers are not hexagrams', ['I am 64', 'hexagram 164', '164番の卦', '제164괘', '第六十五卦'].every(q => namedHexagrams(q).length === 0))
+const recent = [
+  { role: 'user', content: '請講解乾卦' },
+  { role: 'assistant', content: '談談坤卦。' },
+  { role: 'user', content: '第四卦的意思呢？' },
+]
+const followup = yixueFacts({ mode: 'ask' }, '那它的六二呢？', recent)
+check('follow-up restores canonical text of the nearest user-named hexagram', followup.includes('第4卦 蒙') && followup.includes('包蒙吉，納婦吉，子克家') && !followup.includes('第1卦 乾'))
+const changedTopic = yixueFacts({ mode: 'ask' }, '現在看未濟卦。', recent)
+check('explicit new topic replaces the old hexagram', changedTopic.includes('第64卦 未濟') && !changedTopic.includes('第4卦 蒙'))
+check('assistant text cannot introduce a grounding target', !yixueFacts({ mode: 'ask' }, '再解釋一下', [{ role: 'assistant', content: '乾卦' }]).includes('第1卦 乾'))
 
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
 process.exit(fails === 0 ? 0 : 1)

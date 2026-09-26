@@ -35,7 +35,7 @@ function serviceClient() {
 /** What a card draws before the reveal. Identity, price and this run's spend
  *  are all withheld; the answer, its media flags and how long it took are
  *  what the blind comparison is actually about. */
-export function redactSlots(slots: any): any[] {
+function redactSlots(slots: any): any[] {
   return (Array.isArray(slots) ? slots : []).map((s: any) => ({
     text:         s?.text ?? null,
     isImage:      s?.isImage ?? false,

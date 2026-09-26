@@ -39,17 +39,20 @@ import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/Opt
 // on. Search terms mirror XCreate's estimator. A ceiling, not a quote: the
 // receipt is the cost under each reply.
 const EST_PROMPT_TOKENS = 3000, EST_OUT_TOKENS = 800, EST_SEARCHES = 8, EST_READ_TOKENS = 30_000
+// 易學堂 can include both hexagrams and their 文言. Its longest measured
+// fixed cast prompt exceeds 4,200 characters before the language line.
+const EST_YIXUE_PROMPT_TOKENS = 5500
 function rateOf(r: any, level: string | null): number {
   if (r == null) return 0
   if (typeof r === 'number') return r
   if (level && r.by_level && typeof r.by_level[level] === 'number') return r.by_level[level]
   return typeof r.default === 'number' ? r.default : 0
 }
-function estimateReadingUsd(m: PickerModel, o: { thinking: string | null; search: boolean }, chars: number): number | null {
+function estimateReadingUsd(m: PickerModel, o: { thinking: string | null; search: boolean }, chars: number, promptTokens = EST_PROMPT_TOKENS): number | null {
   const p = m.model_pricing ?? {}, tk = p.tokens ?? {}
   const tin = rateOf(tk.text_input, o.thinking), tout = rateOf(tk.text_output, o.thinking)
   if (!tin && !tout) return null
-  const inTok = EST_PROMPT_TOKENS + chars + (o.search ? EST_READ_TOKENS : 0)
+  const inTok = promptTokens + chars + (o.search ? EST_READ_TOKENS : 0)
   return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + EST_OUT_TOKENS * tout) / 1_000_000
 }
 const fmtUsd = (v: number) => v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`
@@ -188,8 +191,8 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {/* 易學堂 has no ink-wash cover yet; its explorer portrait stands in. */}
-                <img src={k === 'yixue' ? '/xtell/approved/yixue-portrait.avif' : `/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', objectPosition: k === 'yixue' ? 'center 42%' : undefined, display: 'block' }} />
+                {/* Preserve the complete school illustration in the wide card. */}
+                <img src={k === 'yixue' ? '/xtell/approved/yixue-school-portrait.avif' : `/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: k === 'yixue' ? 'contain' : 'cover', background: k === 'yixue' ? '#faf6f0' : undefined, display: 'block' }} />
                 <div style={{ padding: '14px 18px 16px' }}>
                   <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>
@@ -258,6 +261,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [castEntering, setCastEntering] = useState(false)
   const [castFailed, setCastFailed] = useState(false)
   const [lookupN, setLookupN] = useState<number | null>(temple === 'yixue' && Number.isInteger(init.n) ? init.n : null)
+  const yixueEntryPending = useRef(false)
+  const [yixueEntryBusy, setYixueEntryBusy] = useState(false)
+  // The teacher must receive the same subject that produced the visible
+  // board, even if an entry control was changed while its request loaded.
+  const yixueSubject = useRef<Record<string, unknown> | null>(temple === 'yixue' && initial ? { temple, ...init } : null)
   const [place2, setPlace2] = useState(init.place2 ?? DEFAULT_PLACE)
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   const [engine, setEngine] = useState<string | null>(null)
@@ -383,17 +391,24 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   }, [temple])
 
   const enter = async (n?: number): Promise<boolean> => {
+    if (temple === 'yixue') {
+      if (yixueEntryPending.current) return false
+      yixueEntryPending.current = true
+      setYixueEntryBusy(true)
+    }
     setErr(null)
     if (temple === 'zhanxing') {
       try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
     }
     try {
+      const requestSubject = subject(n)
       const res = await fetch('/api/xtell/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subject(n)),
+        body: JSON.stringify(requestSubject),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d?.error ?? 'failed')
+      if (temple === 'yixue') yixueSubject.current = requestSubject
       setChart(d.chart)
       setMatch(d.match ?? null)
       setYear(d.year ?? null)
@@ -407,12 +422,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
       return true
     } catch (e: any) { setErr(String(e?.message ?? e)); if (isQian(temple)) setRitualBoth('drawn'); return false }
+    finally {
+      if (temple === 'yixue') { yixueEntryPending.current = false; setYixueEntryBusy(false) }
+    }
   }
 
   // 易學堂's cast: one click, three coins, one line, bottom up. The sixth
   // line opens the hall. The browser's crypto source picks the faces, the
   // same as the 籤 tube: nobody, including us, chooses the hexagram.
   const enterCast = async () => {
+    if (yixueEntryPending.current) return
     setCastEntering(true); setCastFailed(false)
     const ok = await enter()
     setCastEntering(false)
@@ -420,13 +439,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   }
   const throwOnce = () => {
     const c = castRef.current
-    if (c.values.length >= 6 || !ask.trim()) return
+    if (yixueEntryPending.current || c.values.length >= 6 || !ask.trim()) return
     const faces = throwCoins(cryptoRand)
     const next = { values: [...c.values, valueOf(faces)], coins: [...c.coins, faces] }
     castRef.current = next; setCast(next); setErr(null)
     if (next.values.length === 6) void enterCast()
   }
-  const pickHexagram = (n: number) => { setLookupN(n); void enter(n) }
+  const pickHexagram = (n: number) => {
+    if (yixueEntryPending.current) return
+    setLookupN(n); void enter(n)
+  }
 
   // The ritual. Draw a stick, throw the blocks; three 聖筊 confirm and open
   // the hall, anything else sends the visitor back to the tube. Randomness is
@@ -478,7 +500,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...subject(), question: q, modelId: m.id, history, readingId, qid,
+            ...(temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid,
             search: optsOf(m).search && searchable(m),
             thinking: optsOf(m).thinking,
             lang,
@@ -613,7 +635,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               {YIXUE_MODES.map(m => {
                 const on = yixueMode === m
                 return (
-                  <button key={m} type="button" aria-pressed={on} onClick={() => setYixueMode(m)} style={{
+                  <button key={m} type="button" aria-pressed={on} disabled={yixueEntryBusy}
+                    onClick={() => { if (!yixueEntryPending.current) setYixueMode(m) }} style={{
                     padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 400,
                     border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`,
                     background: on ? 'var(--red)' : 'transparent', color: on ? '#fff' : 'var(--muted)',
@@ -629,7 +652,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             yixueMode === 'cast'
               ? <YixueRitual ask={ask} setAsk={setAsk} values={cast.values} coins={cast.coins} onThrow={throwOnce}
                   onRetry={() => void enterCast()} entering={castEntering} failed={castFailed} sel={sel} />
-              : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} />
+              : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} disabled={yixueEntryBusy} />
               : null
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks}
@@ -681,7 +704,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' ? '' : t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
-              <button onClick={() => void enter()} style={{
+              <button onClick={() => void enter()} disabled={temple === 'yixue' && yixueEntryBusy} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
                 fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
               }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
@@ -942,7 +965,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {(() => {
             const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
             const known = masters
-              .map(m => ({ m, usd: estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars) }))
+              .map(m => ({ m, usd: estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS) }))
               .filter((p): p is { m: PickerModel; usd: number } => p.usd != null)
             if (known.length === 0) return null
             const total = known.reduce((s, p) => s + p.usd, 0)

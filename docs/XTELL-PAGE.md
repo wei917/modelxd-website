@@ -271,18 +271,27 @@ engine independently and made the art.
 - **Tests** — `scripts/test-yijing.ts` (in `npm run test:xtell`): 朱熹's own
   左傳/國語 casts (屯之比 … 穆姜 艮之隨, 蔡墨 乾之坤), the 乾/坤 前十/後十
   endpoints, Codex's ten independent cases verbatim, all 4096 casts
-  resolving to text that exists, the corpus against the table.
+  resolving to text that exists, the corpus against the table, numeric
+  references across all five UI languages, script variants, and follow-up
+  grounding from the nearest user-named hexagram. A newly named hexagram
+  replaces the prior topic; assistant replies cannot invent the source target.
 - **Room** — `app/components/xtell/Yixue.tsx`: hexagrams are drawn from data
   (SVG), never by an image model; the matter asked locks at the first throw
   (一事一占, with 蒙's 「初筮告，再三瀆」); the cast lives in a ref like the 籤
   ritual so fast clicks cannot lose a line; the sixth line enters the hall. A
   cast row is titled by its matter. Board: the rule quoted with its source
   link, the passages to read (lead marked), then each hexagram's full text
-  folded, with its Wikisource page, revision and corrections.
-- **Art** — Codex's standalone `public/xtell/approved/yixue-portrait.avif`
-  and `yixue-icon.avif` (six solid bars, three coins; decoration only). The
-  5×2 sheets are untouched: `TEMPLE_ART` takes `src` for a temple added after
-  them. www's street shows the portrait until an ink-wash cover exists.
+  folded, with its Wikisource page, revision and corrections. Entry controls
+  lock during the chart request, and teacher requests use the subject that
+  produced the accepted board, preventing a quick mode/picker change from
+  giving the teacher a different hexagram. The upfront estimate allows a
+  larger fixed prompt (5,500 input tokens) for two hexagrams and 文言.
+- **Art** — Owner-selected B 書院水墨: standalone
+  `public/xtell/approved/yixue-school-portrait.avif` and
+  `yixue-school-icon.avif` (ink-wash bagua and open book; decoration only).
+  The 5×2 sheets are untouched: `TEMPLE_ART` takes `src` for a temple added
+  after them. Both the explorer and www cards contain the complete portrait.
+  See `XTELL-YIXUE-ART.md` for source files and the trigram orientation review.
 
 ## The room flow (owner's design, Aug 30: "hide as much as possible")
 

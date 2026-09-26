@@ -108,12 +108,21 @@ export async function POST(req: Request) {
     ? houseDefault
     : (typeof body.thinking === 'string' && levels.includes(body.thinking) ? body.thinking : null)
 
+  // Bound history before deriving facts so an 易學堂 follow-up can retain
+  // the last user-named hexagram's canonical text.
+  const history: Array<{ role: 'user' | 'assistant'; content: string }> = Array.isArray(body?.history)
+    ? body.history
+        .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
+        .slice(-20)
+        .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 8000) }))
+    : []
+
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
   const facts = temple === 'yixue'
     // The cast is recomputed from the six line values; the text comes from
     // disk. A learner's question names the hexagrams it wants shown.
-    ? yixueFacts(body, question)
+    ? yixueFacts(body, question, history)
     : temple === 'zhanxing'
     ? zhanxingFacts(
         zhanxingChart(body.birth, body.place, asAstroMode(body?.mode),
@@ -154,12 +163,6 @@ export async function POST(req: Request) {
   // the conversation carries it natively, and the client can never overwrite
   // it — history is user/assistant turns only, capped so a long consultation
   // cannot smuggle an unbounded prompt.
-  const history: Array<{ role: 'user' | 'assistant'; content: string }> = Array.isArray(body?.history)
-    ? body.history
-        .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
-        .slice(-20)
-        .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 8000) }))
-    : []
   const messages = [...history, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
 
   // Saved reading (supabase/105): the client passes the row id it got from

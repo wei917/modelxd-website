@@ -17,7 +17,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
   const qian = selected === 'mazu' || selected === 'guandi'
   return <section className="xtell-explorer" aria-label={t('xtell.site.choose')}>
     <div className="xtell-focus-hero">
-      <div className="xtell-focus-scene" data-kind={artKind(selected)}>
+      <div className="xtell-focus-scene" data-kind={artKind(selected)} data-temple={selected}>
         <TempleArtwork temple={selected} className="xtell-focus-portrait" label={name} />
       </div>
       <div className="xtell-focus-copy">
