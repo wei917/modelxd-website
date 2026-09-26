@@ -244,15 +244,22 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   }, [standalone])
   useEffect(() => {
     if (!standalone) return
-    const sync = () => {
+    const sync = (navigated: boolean) => {
       const key = window.location.hash.slice(1) as Temple
-      if (!TEMPLES.includes(key)) setReadingParam(null)
+      // Only an actual navigation out of a visit (a hash change to no
+      // temple: the header's street link, Back) drops ?reading=. The first
+      // sync on mount never does: an account link arrives as /?reading=<id>
+      // with no hash yet, and clearing it there lost the visit before its
+      // row had even loaded (Codex retest: recast then reload opened the
+      // empty form). The row fetch sets the hash to its temple, which keeps it.
+      if (navigated && !TEMPLES.includes(key)) setReadingParam(null)
       setTemple(TEMPLES.includes(key) ? key : null)
       if (TEMPLES.includes(key)) setSelectedTemple(key)
     }
-    sync()
-    window.addEventListener('hashchange', sync)
-    return () => window.removeEventListener('hashchange', sync)
+    sync(false)
+    const onHash = () => sync(true)
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [standalone])
   // Resume from inside a temple (its history list): seed the room from the
   // saved row without a page load. Same path ?reading= takes.
@@ -1153,7 +1160,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
 
           {/* Conversation. */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 120 }}>
-            {turns.length === 0 && (
+            {turns.length === 0 && !savedProblem && !unverified && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
                 {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'ask'}`
                   : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
@@ -1468,7 +1475,7 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
       {unknown && <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 8, lineHeight: 1.6 }}>{t('xtell.bazi.hourNote')}</div>}
       {d && (
         <div role="note" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.7, padding: '8px 10px', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--surface2)' }}>
-          {t('xtell.bazi.doubt').replace('{term}', d.term.name).replace('{time}', d.term.time).replace('{before}', side(0)).replace('{after}', side(1)).replace('{box}', t('xtell.hourunknown'))}
+          {t('xtell.bazi.doubt').replace('{term}', d.term.name).replace('{time}', d.term.time).replace('{before}', side(0)).replace('{after}', side(1)).split('{box}').join(t('xtell.hourunknown'))}
         </div>
       )}
       {chart.daYun?.length > 0 ? (
