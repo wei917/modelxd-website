@@ -1045,9 +1045,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // banner can offer the top-up route instead of just saying no.
   const [needsTopUp,     setNeedsTopUp]     = useState(false)
   const [balanceCents,   setBalanceCents]   = useState<number | null>(null)
-  // Image by default — visual wow at a fraction of video's cost. Video
-  // stays the marketing star; text is the cheap third tab.
-  const [mode,           setMode]           = useState<Mode>('image')
+  // The standalone site's main offering is video; open directly into it.
+  const [mode,           setMode]           = useState<Mode>(isStandalone ? 'video' : 'image')
   const [prompt,         setPrompt]         = useState('')
   const [selectedModels, setSelectedModels] = useState<(SlotModel | null)[]>([null, null, null, null])
   const [slots,          setSlots]          = useState<SlotState[]>([])
@@ -1124,7 +1123,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // model-picker filtering and the input slots. Defaults to the first recipe
   // for the current output type. `catalog` holds the enabled models' modes so
   // we can hide recipes no model supports.
-  const [recipeMode, setRecipeMode] = useState<ModelMode>('text_to_image')  // matches the image default mode
+  const [recipeMode, setRecipeMode] = useState<ModelMode>(isStandalone ? 'text_to_video' : 'text_to_image')
   const [catalog, setCatalog] = useState<{ modes: ModelMode[]; output_modalities: string[] }[]>([])
 
   // validateOpts is the single source of truth for "what options are valid
@@ -4144,7 +4143,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 >
                   {isStandalone && <label className="xcs-mobile-mode">{t('xcreate.generate')}
                     <select value={mode} disabled={isLocked} onChange={e => { setFromOpen(false); setMode(e.target.value as Mode); setActiveTemplateId(null) }}>
-                      {(['image', 'video', 'text', 'audio'] as Mode[]).map(m => <option key={m} value={m}>{t(`mode.${m}`)}</option>)}
+                      {(['video', 'image', 'text', 'audio'] as Mode[]).map(m => <option key={m} value={m}>{t(`mode.${m}`)}</option>)}
                     </select>
                   </label>}
                   <div className="mode-row">
@@ -4152,7 +4151,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     <div className="mode-col">
                       <div className="field-label">{t('xcreate.generate')}</div>
                       <div className="mode-seg">
-                        {(['text', 'image', 'video', 'audio'] as Mode[]).map(m => (
+                        {((isStandalone ? ['video', 'image', 'text', 'audio'] : ['text', 'image', 'video', 'audio']) as Mode[]).map(m => (
                           <button key={m} className={`mode-seg-btn ${mode === m ? 'active' : ''}`}
                             disabled={isLocked}
                             onClick={() => {

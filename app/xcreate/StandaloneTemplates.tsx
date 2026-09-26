@@ -15,15 +15,15 @@ export default function StandaloneTemplates({ showcase, disabled, onSelect, onNe
   const { lang, t } = useLang()
   const copy = xcreateStudioCopy(lang)
   // Browsing a category must never clear the studio's current draft or run.
-  const [mode, setMode] = useState<'image' | 'video' | 'text' | 'audio'>('image')
+  const [mode, setMode] = useState<'image' | 'video' | 'text' | 'audio'>('video')
   const templates = XCREATE_TEMPLATES.filter(item => item.mode === mode)
   return <section className="xcs-templates">
     <div className="xcs-template-modes" aria-label={t('xcreate.generate')}>
-      {(['image', 'video', 'text', 'audio'] as const).map(value => <button key={value} type="button" aria-pressed={value === mode} onClick={() => setMode(value)}><ModeIcon m={value} />{t(`mode.${value}`)}</button>)}
+      {(['video', 'image', 'text', 'audio'] as const).map(value => <button key={value} type="button" aria-pressed={value === mode} onClick={() => setMode(value)}><ModeIcon m={value} />{t(`mode.${value}`)}</button>)}
     </div>
     <label className="xcs-mobile-mode">{t('xcreate.generate')}
       <select value={mode} onChange={e => setMode(e.target.value as typeof mode)}>
-        {(['image', 'video', 'text', 'audio'] as const).map(value => <option key={value} value={value}>{t(`mode.${value}`)}</option>)}
+        {(['video', 'image', 'text', 'audio'] as const).map(value => <option key={value} value={value}>{t(`mode.${value}`)}</option>)}
       </select>
     </label>
     {disabled && <div className="xcs-template-notice"><p>{copy.lockedTemplates}</p><button className="xcs-secondary" onClick={onNew}>{copy.newCreation}</button></div>}
