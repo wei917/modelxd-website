@@ -18,7 +18,8 @@
 // official doc's field names, and any 400 is surfaced verbatim so the
 // first real run either works or tells us exactly what to fix.
 
-import type { ModelInfo, Attachment, VideoResult } from './types'
+import type { ModelInfo, Attachment, VideoResult, SpeechResult } from './types'
+import { calcSpeechCost } from './pricing'
 
 const BASE = 'https://api.minimax.io/v2'
 
@@ -154,4 +155,63 @@ export async function generateVideo(
   const cost = duration * rate
   console.log(`${TAG} done bytes=${buffer.length} billed=${duration}s @${rate}/s cost=$${cost.toFixed(3)}`)
   return { buffer, mediaType: 'video/mp4', cost, durationSeconds: duration }
+}
+
+// ── text to speech (T2A v2) ─────────────────────────────────────────────────
+//
+// POST https://api.minimax.io/v1/t2a_v2 — note the **v1** prefix: the video
+// endpoints above are v2, and reusing BASE here sends TTS to a 404.
+//
+// Three things this endpoint does differently from every other provider we
+// talk to (docs read 2026-09-25):
+//   * audio comes back HEX-encoded, not base64 (`output_format: 'hex'`),
+//   * errors arrive inside a 200 at `base_resp.status_code` (0 = ok),
+//   * it reports its own billable character count in
+//     `extra_info.usage_characters` — that is what we bill, not our own
+//     count of the prompt, the same rule as Tripo's consumed_credit.
+// `output_format: 'url'` exists and is deliberately unused: that URL dies in
+// 24h and we persist nothing that expires (Common Pitfall #11).
+
+export async function generateSpeech(
+  model: ModelInfo,
+  text: string,
+  options?: { voice?: string | null; format?: string | null; speed?: number | null; language?: string | null },
+): Promise<SpeechResult> {
+  const TAG = `[minimax/${model.model_name}]`
+  const cfg = model.output_config?.audio ?? {}
+  const format = (options?.format ?? (cfg.formats ?? [])[0] ?? 'mp3').toLowerCase()
+  const voice = options?.voice ?? (cfg.voices ?? [])[0]?.id ?? 'English_expressive_narrator'
+  const body: Record<string, unknown> = {
+    model: model.model_name,
+    text,
+    stream: false,
+    output_format: 'hex',
+    language_boost: options?.language ?? 'auto',
+    voice_setting: { voice_id: voice, speed: options?.speed ?? 1, vol: 1, pitch: 0 },
+    audio_setting: { sample_rate: 32000, bitrate: 128000, format, channel: 1 },
+  }
+  console.log(`${TAG} t2a chars=${text.length} voice=${voice} format=${format}`)
+
+  const res = await fetch('https://api.minimax.io/v1/t2a_v2', { method: 'POST', headers: headers(), body: JSON.stringify(body) })
+  const json: any = await res.json().catch(() => ({}))
+  // A MiniMax failure is a 200 with a non-zero status_code; only a transport
+  // or auth problem reaches us as an HTTP error.
+  const br = json?.base_resp ?? {}
+  if (!res.ok || (br.status_code !== undefined && br.status_code !== 0)) {
+    throw new Error(`MiniMax TTS ${res.status} ${br.status_code ?? ''}: ${br.status_msg ?? JSON.stringify(json).slice(0, 300)}`)
+  }
+  const hex = json?.data?.audio
+  if (typeof hex !== 'string' || !hex) throw new Error('MiniMax TTS returned no audio.')
+  const buffer = Buffer.from(hex, 'hex')
+
+  const info = json?.extra_info ?? {}
+  const characters = Number(info.usage_characters ?? text.length)
+  const durationSeconds = Number(info.audio_length ?? 0) / 1000 || undefined
+  const cost = calcSpeechCost(model, { characters })
+  console.log(`${TAG} t2a ok bytes=${buffer.length} chars=${characters} dur=${durationSeconds ?? '?'}s cost=$${cost.toFixed(6)}`)
+  return {
+    buffer,
+    mediaType: format === 'wav' ? 'audio/wav' : format === 'flac' ? 'audio/flac' : format === 'opus' ? 'audio/opus' : 'audio/mpeg',
+    durationSeconds, cost, characters, usageMetadata: info,
+  }
 }

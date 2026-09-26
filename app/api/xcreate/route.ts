@@ -95,6 +95,14 @@ type SlotOpts = {
    *  song is laid over the cut afterwards, so a generated soundtrack is
    *  discarded either way. */
   generate_audio?: boolean | null
+  // audio (text to speech)
+  voice?:          string | null
+  format?:         string | null
+  speed?:          number | null
+  /** Gemini TTS: sustained delivery direction. */
+  style?:          string | null
+  /** MiniMax: language_boost hint. */
+  language?:       string | null
   /** Wan 3.0: reproducible take, [0, 2147483647]. */
   seed?:           number | null
   mode?:           string
@@ -171,7 +179,7 @@ async function runSlot(
   prompt:      string,
   attachments: providers.Attachment[],
   options:     SlotOpts,
-): Promise<{ text: string; isImage: boolean; isVideo: boolean; responseTime: number; cost: number; error?: string; errorRef?: string | null; responseId?: string; conversationHistory?: any[] } | null> {
+): Promise<{ text: string; isImage: boolean; isVideo: boolean; isAudio?: boolean; durationSeconds?: number | null; voice?: string | null; responseTime: number; cost: number; error?: string; errorRef?: string | null; responseId?: string; conversationHistory?: any[] } | null> {
   const start = Date.now()
   console.log(`${LOG} Slot[${index}] ${model.provider}/${model.model_name}`)
 
@@ -264,6 +272,47 @@ async function runSlot(
       const rt = Date.now() - start
       await patch({ text: fullText, streaming: false, done: true, cost: doneResult.cost, response_time: rt })
       return { text: fullText, isImage: false, isVideo: false, responseTime: rt, cost: doneResult.cost }
+    }
+
+    // Speech (migration 106). One provider call, no streaming: the file
+    // arrives whole. The slot carries a signed URL in `text` like video
+    // does, and `isAudio` on the xcreates slot tells the page to render a
+    // player — xcreate_job_slots has is_image/is_video booleans and no
+    // audio column, so the run's own mode is what the client keys on.
+    if (mode === 'audio') {
+      await patch({ streaming: true, progress: 15 })
+      const cfg = model.output_config?.audio ?? {}
+      const voice = typeof options.voice === 'string' ? options.voice : null
+      const format = typeof options.format === 'string' ? options.format : null
+      const result = await providers.generateSpeech(
+        model, prompt,
+        { voice, format, speed: options.speed ?? null, style: options.style ?? null, language: options.language ?? null },
+        callContext,
+      )
+      const ext = result.mediaType.includes('wav') ? 'wav'
+        : result.mediaType.includes('flac') ? 'flac'
+        : result.mediaType.includes('opus') || result.mediaType.includes('ogg') ? 'ogg'
+        : result.mediaType.includes('L16') || result.mediaType.includes('l16') ? 'pcm'
+        : 'mp3'
+      const path = `${userId}/${jobId}_slot${index}.${ext}`
+      console.log(`${LOG} Slot[${index}] uploading ${result.buffer.length} bytes (${result.mediaType}) to xcreate-ai-audio/${path}`)
+      await uploadWithRetry(sb, 'xcreate-ai-audio', path, result.buffer, result.mediaType)
+      const { data: signed, error: signErr } = await sb.storage.from('xcreate-ai-audio').createSignedUrl(path, 60 * 60 * 24)
+      if (signErr || !signed) throw new Error('Failed to create signed URL')
+
+      providers.logMediaUrl(result.requestId, {
+        provider: model.provider, model_name: model.model_name, model_id: model.id ?? null,
+        mode: 'audio', user_id: userId,
+      }, `xcreate-ai-audio/${path}`)
+
+      const rt = Date.now() - start
+      await patch({ text: signed.signedUrl, streaming: false, done: true, cost: result.cost, response_time: rt, progress: 100 })
+      console.log(`${LOG} Slot[${index}] spoke ${result.durationSeconds?.toFixed(1) ?? '?'}s with ${voice ?? (cfg.voices ?? [])[0]?.id ?? 'default'} ($${result.cost.toFixed(4)})`)
+      return {
+        text: signed.signedUrl, isImage: false, isVideo: false, isAudio: true,
+        durationSeconds: result.durationSeconds ?? null, voice: voice ?? null,
+        responseTime: rt, cost: result.cost,
+      }
     }
 
     if (mode === 'image') {
@@ -551,10 +600,10 @@ export async function POST(req: Request) {
   const outsOf = (m: ModelInfo): string[] => Array.isArray(m.output_modalities) ? m.output_modalities : []
   const wrongModality = models.filter(m => !outsOf(m).includes(mode))
   if (wrongModality.length > 0) {
-    const noun = (x: string) => x === 'video' ? 'video' : x === 'image' ? 'images' : 'text'
+    const noun = (x: string) => x === 'video' ? 'video' : x === 'image' ? 'images' : x === 'audio' ? 'speech' : 'text'
     const makes = (m: ModelInfo) => {
       const out = outsOf(m)
-      return out.includes('video') ? 'video' : out.includes('image') ? 'images' : out.includes('text') ? 'text' : 'nothing in this mode'
+      return out.includes('video') ? 'video' : out.includes('image') ? 'images' : out.includes('audio') ? 'speech' : out.includes('text') ? 'text' : 'nothing in this mode'
     }
     for (const m of wrongModality) {
       logRefusal(
@@ -659,7 +708,7 @@ export async function POST(req: Request) {
           + (SEARCH_READ_TOKENS / 1_000_000)
             * resolveTokenRate(m.model_pricing?.tokens?.text_input, o.thinking_level ?? null)
         : 0
-      return sum + searchEst + estimateCost(m, mode as 'text' | 'image' | 'video', {
+      return sum + searchEst + estimateCost(m, mode as 'text' | 'image' | 'video' | 'audio', {
         promptChars: typeof prompt === 'string' ? prompt.length : 0,
         quality:     o.quality,
         size:        o.size,
@@ -1018,6 +1067,9 @@ export async function POST(req: Request) {
     text:         results[i]?.text ?? null,
     isImage:      results[i]?.isImage ?? false,
     isVideo:      results[i]?.isVideo ?? false,
+    isAudio:      results[i]?.isAudio ?? false,
+    durationSeconds: results[i]?.durationSeconds ?? null,
+    voice:        results[i]?.voice ?? null,
     cost:         results[i]?.cost ?? 0,
     responseTime: results[i]?.responseTime ?? 0,
     error:        results[i]?.error ?? null,

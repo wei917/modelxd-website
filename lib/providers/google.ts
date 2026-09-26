@@ -7,15 +7,8 @@
 //   - Video: Veo via models.generateVideos (async operation + polling)
 
 import { GoogleGenAI, type Content, type Part } from '@google/genai'
-import type {
-  ModelInfo,
-  TextStreamCallbacks,
-  ImageResult,
-  VideoResult,
-  Attachment,
-  TextGenExtras,
-} from './types'
-import { calcTextCost, calcImageCost, calcVideoCost } from './pricing'
+import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras, SpeechResult } from './types'
+import { calcTextCost, calcImageCost, calcVideoCost, calcSpeechCost } from './pricing'
 import { logResponse } from './log'
 import { VARIATION_DIRECTIVES } from './types'
 
@@ -1121,4 +1114,90 @@ export async function generateImageFromVideoUrl(
     cost,
     extras:    images.slice(1),
   }
+}
+
+// ── text to speech (Gemini TTS, Interactions API) ───────────────────────────
+//
+// Gemini 3.8 TTS is documented ONLY on the Interactions API — a different
+// surface from the generateContentStream used everywhere else in this file,
+// and one the installed @google/genai (2.16) predates. Plain fetch, so the
+// SDK version can never silently decide whether speech works:
+//
+//   POST /v1beta/interactions   x-goog-api-key
+//   { model, input:[{type:'user_input',content:[{type:'text',text,
+//       annotations:[{type:'speech_metadata',style}]}]}],
+//     response_format:{type:'audio'}, generation_config:{speech_config:[{voice}]} }
+//
+// The unary response is a complete WAV (24 kHz mono 16-bit) in base64 —
+// 3.1 and earlier returned headerless PCM, so anything concatenating turns
+// must strip the 44-byte RIFF header rather than assume raw samples.
+//
+// Billing is audio OUTPUT tokens at 25 tokens per second. We prefer the
+// usage the API reports; when it reports none we derive seconds from the
+// WAV header and multiply, so an unreported response still bills honestly
+// rather than free.
+
+function wavSeconds(buf: Buffer): number | undefined {
+  if (buf.length < 44 || buf.toString('ascii', 0, 4) !== 'RIFF') return undefined
+  const byteRate = buf.readUInt32LE(28)
+  return byteRate > 0 ? (buf.length - 44) / byteRate : undefined
+}
+
+export async function generateSpeech(
+  model: ModelInfo,
+  text: string,
+  options?: { voice?: string | null; style?: string | null; format?: string | null },
+): Promise<SpeechResult> {
+  const TAG = `[google/${model.model_name}]`
+  const key = process.env.GOOGLE_AI_API_KEY
+  if (!key) throw new Error('GOOGLE_AI_API_KEY is not set')
+  const cfg = model.output_config?.audio ?? {}
+  const voice = options?.voice ?? (cfg.voices ?? [])[0]?.id ?? 'Kore'
+  const body = {
+    model: model.model_name,
+    input: [{
+      type: 'user_input',
+      content: [{
+        type: 'text',
+        text,
+        ...(options?.style ? { annotations: [{ type: 'speech_metadata', style: options.style }] } : {}),
+      }],
+    }],
+    response_format: { type: 'audio' },
+    generation_config: { speech_config: [{ voice }] },
+  }
+  console.log(`${TAG} tts chars=${text.length} voice=${voice}`)
+
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+  })
+  const json: any = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const msg = json?.error?.message ?? JSON.stringify(json).slice(0, 300)
+    throw new Error(`Gemini TTS ${res.status}: ${msg}`)
+  }
+  // The audio rides as base64 on a content part; the SDK surfaces it as
+  // output_audio.data, the wire as steps[].content[].data.
+  const parts: any[] = [
+    json?.output_audio,
+    ...((json?.steps ?? []).flatMap((st: any) => st?.content ?? [])),
+    ...((json?.output ?? []).flatMap((st: any) => st?.content ?? [])),
+  ].filter(Boolean)
+  const audio = parts.find(p => typeof p?.data === 'string' && p.data.length > 64)
+  if (!audio) throw new Error(`Gemini TTS returned no audio: ${JSON.stringify(json).slice(0, 300)}`)
+  const buffer = Buffer.from(audio.data, 'base64')
+  const mediaType = String(audio.mime_type ?? audio.mimeType ?? 'audio/wav').split(';')[0]
+
+  const usage = json?.usage ?? json?.usage_metadata ?? json?.usageMetadata ?? {}
+  const durationSeconds = wavSeconds(buffer)
+  const reportedAudio = Number(usage.output_audio_tokens ?? usage.candidates_token_count ?? usage.candidatesTokenCount ?? NaN)
+  const outputAudioTokens = Number.isFinite(reportedAudio) && reportedAudio > 0
+    ? reportedAudio
+    : Math.round((durationSeconds ?? 0) * 25)          // 25 audio tokens = 1 second
+  const inputTextTokens = Number(usage.input_tokens ?? usage.prompt_token_count ?? usage.promptTokenCount ?? 0) || Math.ceil(text.length / 4)
+  const cost = calcSpeechCost(model, { inputTextTokens, outputAudioTokens })
+  console.log(`${TAG} tts ok bytes=${buffer.length} dur=${durationSeconds?.toFixed(1) ?? '?'}s audioTok=${outputAudioTokens} cost=$${cost.toFixed(6)}`)
+  return { buffer, mediaType, durationSeconds, cost, characters: null, inputTextTokens, outputAudioTokens, usageMetadata: usage }
 }

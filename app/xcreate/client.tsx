@@ -35,7 +35,7 @@ import ModelPickerDialog from '../components/ModelPickerDialog'
 import { XCREATE_TEMPLATES, PLATFORM_PRESETS, type Template } from './templates'
 import { isSubmitEnter } from '../../lib/ime'
 
-type Mode = 'text' | 'image' | 'video'
+type Mode = 'text' | 'image' | 'video' | 'audio'
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting' | 'workflow'
 
 // Pricing + capabilities — see docs/ai_models-schema.md.
@@ -103,7 +103,8 @@ interface OutputConfig {
  *  `reference_frames` is dual-use — it produces an image output when the
  *  model's output_modalities include 'image' (Nano Banana / Gemini 3 Image
  *  with reference shots) and a video output for video-output models. */
-function modeMatchesMode(modePattern: string, m: 'text' | 'image' | 'video'): boolean {
+function modeMatchesMode(modePattern: string, m: Mode): boolean {
+  if (m === 'audio') return modePattern === 'text_to_speech'
   if (m === 'text')  return (
     modePattern === 'text_to_text'  ||
     modePattern === 'image_to_text' ||
@@ -193,6 +194,9 @@ interface Recipe {
   provide: string   // what the user supplies
 }
 const RECIPES: Record<Mode, Recipe[]> = {
+  audio: [
+    { id: 'text_to_speech', title: 'Text to Speech', recipe: 'TEXT → AUDIO', provide: 'a script' },
+  ],
   text: [
     { id: 'text_to_text',  title: 'Text to Text',  recipe: 'TEXT → TEXT',  provide: 'a prompt' },
     { id: 'image_to_text', title: 'Image to Text', recipe: 'IMAGE → TEXT', provide: '1 image + a prompt' },
@@ -409,6 +413,7 @@ type ModelMode =
   | 'video_edit'
   | 'extend_video'
   | 'audio_to_video'
+  | 'text_to_speech'
   | 'start_end_frames'
   | 'reference_frames'
 
@@ -438,6 +443,10 @@ interface SlotOptions {
    *  `output_config.video.audio`. null = provider default (Wan 3.0's own
    *  default is ON); false asks for a silent clip. */
   generate_audio?: boolean | null
+  /** Text to speech: the provider's voice id, and the container format.
+   *  null on both = take the first entry the model row lists. */
+  voice?: string | null
+  format?: string | null
   /** Number of outputs to generate. Only meaningful for image models that
    *  declare `output_config.image.max_count > 1`. Defaults to 1. */
   count: number | null
@@ -892,7 +901,7 @@ function Gallery({ userId, filterMode, onCounts, onOpen, limit = 40, compact = f
   // Recompute per-mode counts whenever items change so the parent's filter tabs
   // can show totals next to each mode.
   useEffect(() => {
-    const counts: Record<Mode, number> = { text: 0, image: 0, video: 0 }
+    const counts: Record<Mode, number> = { text: 0, image: 0, video: 0, audio: 0 }
     items.forEach(it => { if (it.mode in counts) counts[it.mode as Mode]++ })
     onCounts(counts)
     // Intentionally omit onCounts — it's expected to be stable enough.
@@ -1453,7 +1462,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       // 'image'), seated a model that could never produce what the mode
       // asks for, and every Generate died at the provider (Sep 16).
       const outs: string[] = Array.isArray((data as any).output_modalities) ? (data as any).output_modalities : []
-      const asked: Mode | null = (['text', 'image', 'video'] as const).includes(searchModeParam as Mode)
+      const asked: Mode | null = (['text', 'image', 'video', 'audio'] as const).includes(searchModeParam as Mode)
         ? (searchModeParam as Mode) : null
       const nextMode: Mode = asked && (outs.length === 0 || outs.includes(asked))
         ? asked
@@ -3866,7 +3875,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     <div className="mode-col">
                       <div className="field-label">{t('xcreate.generate')}</div>
                       <div className="mode-seg">
-                        {(['text', 'image', 'video'] as Mode[]).map(m => (
+                        {(['text', 'image', 'video', 'audio'] as Mode[]).map(m => (
                           <button key={m} className={`mode-seg-btn ${mode === m ? 'active' : ''}`}
                             disabled={isLocked}
                             onClick={() => {
@@ -3984,6 +3993,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     const imgQualities = mode === 'image' ? (model.output_config?.image?.qualities ?? []) : []
                     const imgSizes     = mode === 'image' ? (model.output_config?.image?.sizes ?? []) : []
                     const imgArs       = mode === 'image' ? (model.output_config?.image?.aspect_ratios ?? []) : []
+                    const audVoices    = mode === 'audio' ? ((model.output_config as any)?.audio?.voices ?? []) : []
+                    const audFormats   = mode === 'audio' ? ((model.output_config as any)?.audio?.formats ?? []) : []
                     const vidSizes     = mode === 'video' ? (model.output_config?.video?.sizes ?? []) : []
                     const vidArs       = mode === 'video' ? (model.output_config?.video?.aspect_ratios ?? []) : []
                     // Durations now live in `durations_by_resolution`, keyed by resolutions like
@@ -4158,9 +4169,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           // behavior unless the user explicitly overrides.
                           const showArV   = mode === 'video' && vidArs.length > 0
                           const showQual  = mode === 'image' && imgQualities.length > 1
+                          const showVoice = mode === 'audio' && audVoices.length > 0
+                          const showFormat = mode === 'audio' && audFormats.length > 1
                           const showThink = mode === 'text' && thinkLevels.length > 0
                           const showSearch = mode === 'text' && canSearch
-                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'count' | 'wm'> = []
+                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'format' | 'count' | 'wm'> = []
                           if (showThink)     groupsInOrder.push('think')
                           if (showSearch)    groupsInOrder.push('search')
                           if (showSizeV)     groupsInOrder.push('size_v')
@@ -4169,6 +4182,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           if (showSizeI)     groupsInOrder.push('size_i')
                           if (showArI)       groupsInOrder.push('ar_i')
                           if (showQual)      groupsInOrder.push('qual')
+                          if (showVoice)     groupsInOrder.push('voice')
+                          if (showFormat)    groupsInOrder.push('format')
                           if (showCount)     groupsInOrder.push('count')
                           if (showWatermark) groupsInOrder.push('wm')
                           const lastIdx = groupsInOrder.length - 1
@@ -4178,6 +4193,27 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                             <div style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px', pointerEvents: isLocked ? 'none' as const : 'auto' as const, opacity: isLocked ? 0.55 : 1 }}>
                               {/* Per-slot Mode pills removed — the processing
                                   recipe is now a single Layer-2 selector above. */}
+                              {/* Audio: voice. The row carries a curated list
+                                  (lib model row output_config.audio.voices);
+                                  the provider's full library is far larger. */}
+                              {showVoice && (
+                                <Group label={t('xcreate.voice')} last={isLast('voice')}>
+                                  {audVoices.map((v: any) => (
+                                    <Pill key={v.id} active={(opts.voice ?? audVoices[0]?.id) === v.id} onClick={() => updateSlotOpts(i, { voice: v.id })}>
+                                      {v.label ?? v.id}{v.language && v.language !== 'multi' ? ` · ${v.language}` : ''}
+                                    </Pill>
+                                  ))}
+                                </Group>
+                              )}
+                              {showFormat && (
+                                <Group label={t('xcreate.format')} last={isLast('format')}>
+                                  {audFormats.map((f: string) => (
+                                    <Pill key={f} active={(opts.format ?? audFormats[0]) === f} onClick={() => updateSlotOpts(i, { format: f })}>
+                                      {f.toUpperCase()}
+                                    </Pill>
+                                  ))}
+                                </Group>
+                              )}
                               {/* Text: Thinking / reasoning level */}
                               {showThink && (
                                 <Group label={t('xcreate.thinking')} last={isLast('think')}>
@@ -5001,6 +5037,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                     )}
                                   </div>
                                 )
+                                : mode === 'audio' && slot.text ? (
+                                    <div style={{ padding: 16 }}>
+                                      <audio src={slot.text} controls preload="metadata" style={{ width: '100%' }} />
+                                      <a href={slot.text} download style={{ display: 'inline-block', marginTop: 10, fontSize: 11.5, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>↓ download</a>
+                                    </div>
+                                  )
                                 : slot.isVideo ? <video src={slot.text} autoPlay loop muted playsInline controls style={{ display: 'block' }} />
                                 : slot.isImage ? (() => {
                                     // Multi-image slots store URLs newline-delimited

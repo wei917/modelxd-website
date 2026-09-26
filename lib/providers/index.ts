@@ -31,17 +31,9 @@ const NATIVE_PDF_TOKEN_LIMITS: Record<string, number> = {
   openai: 400_000,
   google: 1_000_000,
 }
-import type {
-  ModelInfo,
-  TextStreamCallbacks,
-  ImageResult,
-  VideoResult,
-  Attachment,
-  TextGenExtras,
-  JsonSchemaSpec,
-} from './types'
+import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras, JsonSchemaSpec, SpeechResult } from './types'
 
-export type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras, JsonSchemaSpec }
+export type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, SpeechResult, Attachment, TextGenExtras, JsonSchemaSpec }
 export { logMediaUrl }
 export { dehydrateHistory, rehydrateHistory, historyHasMarkers, historyHasInlineData } from './history-storage'
 export type { HistoryImageCandidate, StorageImageRef, DehydrateFallback } from './history-storage'
@@ -176,7 +168,7 @@ function assertSupported(model: ModelInfo): void {
 
 function descriptor(
   model: ModelInfo,
-  mode: 'text' | 'image' | 'video',
+  mode: 'text' | 'image' | 'video' | 'audio',
   context?: CallContext,
   thinkingLevel?: string | null,
 ) {
@@ -469,6 +461,61 @@ export async function generateVideo(
 // ── audio → text (transcription) ─────────────────────────────────────────────
 // OpenAI-only today (whisper-1). Same start/end call-log discipline as every
 // other invocation; cost is per audio minute from model_pricing.
+
+/**
+ * Text to speech. Two billing worlds behind one call (lib/providers/pricing
+ * calcSpeechCost): MiniMax bills the characters you send, Gemini bills the
+ * audio tokens it produces. The router logs it as mode 'audio' — allowed in
+ * provider_calls since migration 106.
+ */
+export interface SpeechOptions {
+  voice?:    string | null
+  format?:   string | null
+  speed?:    number | null
+  /** Gemini only: sustained delivery direction ("warm, unhurried"). */
+  style?:    string | null
+  /** MiniMax only: language_boost hint. */
+  language?: string | null
+}
+
+export async function generateSpeech(
+  model:    ModelInfo,
+  text:     string,
+  options?: SpeechOptions,
+  context?: CallContext,
+): Promise<SpeechResult & { requestId: string | null }> {
+  assertSupported(model)
+  const desc      = descriptor(model, 'audio', context)
+  const requestId = startCall(desc, { estimated_cost_usd: null })
+  const t0        = Date.now()
+  try {
+    let result: SpeechResult
+    if (model.provider === 'google') {
+      result = await google.generateSpeech(model, text, options)
+    } else if (model.provider === 'minimax') {
+      result = await minimax.generateSpeech(model, text, options)
+    } else {
+      noImplementation(model, 'text', ['google', 'minimax'])
+    }
+    endCall(requestId, desc, {
+      status:         'success',
+      latency_ms:     Date.now() - t0,
+      input_tokens:   result.inputTextTokens ?? null,
+      output_tokens:  result.outputAudioTokens ?? null,
+      cost_usd:       result.cost ?? null,
+      usage_metadata: result.usageMetadata ?? null,
+    })
+    return { ...result, requestId }
+  } catch (err) {
+    endCall(requestId, desc, {
+      status:        'failed',
+      latency_ms:    Date.now() - t0,
+      error_message: (err as Error).message?.slice(0, 1000) ?? 'unknown error',
+    })
+    if (err instanceof Error) (err as any).requestId = requestId
+    throw err
+  }
+}
 
 export type { TranscriptionResult } from './openai'
 

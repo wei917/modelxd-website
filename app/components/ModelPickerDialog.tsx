@@ -21,12 +21,13 @@ const createSupabaseBrowser = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
-export type Mode = 'text' | 'image' | 'video'
+export type Mode = 'text' | 'image' | 'video' | 'audio'
 
 export type ModelMode =
   | 'text_to_text' | 'image_to_text' | 'video_to_text' | 'audio_to_text' | 'pdf_to_text'
   | 'text_to_image' | 'image_edit' | 'region_edit'
   | 'text_to_video' | 'image_to_video' | 'video_to_video' | 'video_edit' | 'extend_video' | 'audio_to_video'
+  | 'text_to_speech'
   | 'start_end_frames' | 'reference_frames'
 
 /** Deliberately loose: both call sites have their own richer row types, and

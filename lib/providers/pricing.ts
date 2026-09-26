@@ -181,6 +181,50 @@ export function calcVideoCost(
   return perSec * seconds
 }
 
+// ── speech (text to speech) ─────────────────────────────────────────────────
+
+/**
+ * $ cost for one TTS generation. The two providers bill different things,
+ * so both terms are here and each row carries only the one it uses:
+ *
+ *  - CHARACTER-billed (MiniMax, xAI): `per_1m_characters`, counted on the
+ *    text you SEND. MiniMax reports its own `usage_characters` — always
+ *    prefer the provider's count over ours, the way Tripo's settle does.
+ *  - TOKEN-billed (Gemini TTS): `tokens.text_input` for the script plus
+ *    `tokens.audio_output` for the speech, where 25 audio tokens = 1 second.
+ *
+ * Returns 0 when the row carries no matching rate — undercount, never crash.
+ */
+export function calcSpeechCost(
+  model: ModelInfo,
+  usage: {
+    characters?:         number | null
+    inputTextTokens?:    number | null
+    outputAudioTokens?:  number | null
+  } = {},
+): number {
+  const p = pricing(model)
+  const t = p.tokens ?? {}
+  let cost = 0
+  if (typeof p.per_1m_characters === 'number' && (usage.characters ?? 0) > 0) {
+    cost += ((usage.characters ?? 0) / 1_000_000) * p.per_1m_characters
+  }
+  cost += ((usage.inputTextTokens   ?? 0) / 1_000_000) * resolveTokenRate(t.text_input)
+  cost += ((usage.outputAudioTokens ?? 0) / 1_000_000) * resolveTokenRate(t.audio_output)
+  return cost
+}
+
+/** Rough $/minute, for a price label before anything is generated: a
+ *  character-billed row needs a speaking rate, and 900 chars/min is the
+ *  usual English figure (CJK says far more per character, so this is a
+ *  ceiling there, not a promise). */
+export function speechPricePerMinute(model: ModelInfo): number {
+  const p = pricing(model)
+  if (typeof p.per_1m_characters === 'number') return (900 / 1_000_000) * p.per_1m_characters
+  const perSec = (25 / 1_000_000) * resolveTokenRate((p.tokens ?? {}).audio_output)
+  return perSec * 60
+}
+
 // ── presentation helpers ────────────────────────────────────────────────────
 
 /**
@@ -227,7 +271,7 @@ export function modePriceLabel(
  */
 export function estimateCost(
   model:  ModelInfo,
-  mode:   'text' | 'image' | 'video',
+  mode:   'text' | 'image' | 'video' | 'audio',
   opts: {
     promptChars?:  number     // text/image: prompt length in characters
     quality?:      string     // image: quality tier
@@ -240,6 +284,16 @@ export function estimateCost(
   const p = pricing(model)
   const t = p.tokens ?? {}
   const promptChars = opts.promptChars ?? 0
+
+  // Speech: character-billed rows are exact before the call (we know the
+  // script); token-billed rows are a guess from a speaking rate, because
+  // the bill depends on how long the model takes to say it. ~14 chars of
+  // English per second at 25 audio tokens/s.
+  if (mode === 'audio') {
+    if (typeof p.per_1m_characters === 'number') return (promptChars / 1_000_000) * p.per_1m_characters
+    const seconds = Math.max(1, promptChars / 14)
+    return calcSpeechCost(model, { inputTextTokens: Math.ceil(promptChars / 4), outputAudioTokens: Math.round(seconds * 25) })
+  }
 
   if (mode === 'text') {
     const tin  = resolveTokenRate(t.text_input)

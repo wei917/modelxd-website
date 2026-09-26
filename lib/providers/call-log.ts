@@ -16,7 +16,7 @@ interface CallDescriptor {
   provider:   string
   model_name: string
   model_id?:  string | null
-  mode:       'text' | 'image' | 'video'
+  mode:       'text' | 'image' | 'video' | 'audio'
   user_id?:   string | null
   /** Effort the call ran at, in the PROVIDER's own vocabulary (openai
    *  none|low|…|max, google minimal|…|high, alibaba thinking_true/false).

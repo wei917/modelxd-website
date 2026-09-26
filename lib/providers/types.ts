@@ -48,6 +48,10 @@ export interface ModelPricing {
   }
   per_image?:        Record<string, number>
   per_video_second?: Record<string, number>
+  /** $ per 1M INPUT characters. Text-to-speech providers split on this:
+   *  MiniMax and xAI bill the characters you send, Google bills the audio
+   *  tokens it produces (tokens.audio_output, 25 tokens = 1 second). */
+  per_1m_characters?: number
   /** $ per web-search call. See the note above. */
   per_search?:       number
 }
@@ -87,6 +91,8 @@ export type ModelMode =
   | 'video_edit'        // video + reference images → edited video (HappyHorse Video Edit)
   | 'extend_video'      // video → longer video, model continues the clip (Wan 2.7, Seedance 2.5, Veo 3.1)
   | 'audio_to_video'    // song/audio drives the performance (Wan 3.0 reference_audio; mp3/wav ≤15s)
+  // audio-output
+  | 'text_to_speech'    // text → spoken audio (Gemini TTS, MiniMax T2A)
   | 'start_end_frames'
   // shared (image / video)
   | 'reference_frames'
@@ -104,6 +110,14 @@ export interface InputConfig {
  * Wan 2.6 supporting any integer 3..15).
  */
 export type DurationSpec = number[] | { min: number; max: number }
+
+export interface AudioVoice {
+  /** Provider's own voice id — sent on the wire verbatim. */
+  id:        string
+  label?:    string
+  language?: string
+  gender?:   string
+}
 
 export interface OutputModalityConfig {
   /** Available pixel dimensions, e.g. ['1024x1024', '2048x2048']. */
@@ -145,6 +159,12 @@ export interface OutputModalityConfig {
     min_pixels?: number
     max_pixels?: number
   }
+  /** Audio output only: container formats the row offers, first = default. */
+  formats?:      string[]
+  /** Audio output only: the voices to show in the picker. */
+  voices?:       AudioVoice[]
+  /** Audio output only: speaking-rate bounds the provider accepts. */
+  speed_range?:  { min: number; max: number }
 }
 
 export interface OutputConfig {
@@ -210,6 +230,20 @@ export interface ImageResult {
   responseId?:           string
   // Google: full conversation history for multi-turn image editing
   conversationHistory?:  any[]
+}
+
+export interface SpeechResult {
+  buffer:          Buffer
+  mediaType:       string
+  /** Seconds of audio, when the provider reports it (MiniMax does). */
+  durationSeconds?: number
+  cost:            number
+  /** Characters billed — MiniMax reports its own count; we fall back to
+   *  the prompt length. Null on token-billed providers. */
+  characters?:     number | null
+  inputTextTokens?:  number | null
+  outputAudioTokens?: number | null
+  usageMetadata?:  any
 }
 
 export interface VideoResult {
