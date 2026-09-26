@@ -1,0 +1,101 @@
+/* The standalone studio is scoped so ModelXD keeps its existing layout. */
+html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding: 48px 40px 80px; outline: none; }
+.xcs-heading { max-width: 800px; margin: 0 auto 40px; }
+.xcs-heading-wide { max-width: 1180px; }
+.xcs-heading .xcs-eyebrow { margin: 0 0 14px; color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+.xcs-heading h1 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; margin: 0 0 14px; }
+.xcs-heading > p:last-child { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
+.xcs-setup > :not(.xcs-results) { max-width: 800px; width: 100%; margin-left: auto; margin-right: auto; }
+.xcs-setup .field-label { font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--white); }
+.xcs-setup .mode-row { align-items: end; justify-content: space-between; }
+.xcs-setup .mode-seg { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 4px; gap: 3px; }
+.xcs-setup .mode-seg-btn { min-height: 42px; min-width: 86px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; border-radius: 7px; }
+.xcs-setup .mode-seg-btn.active { background: var(--surface); color: var(--red); box-shadow: 0 1px 4px #0000000d; }
+.xcs-setup .recipe-crumb-btn { min-height: 44px; border-radius: 9px; font-family: inherit; }
+.xcs-mobile-mode { display: none; }
+.xcs-prompt-section { margin-bottom: 28px; }
+.xcs-field-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
+.xcs-field-heading a { color: var(--muted2); text-decoration: none; font-size: 12px; font-weight: 500; }
+.xcs-field-heading a:hover { color: var(--red); }
+.xcs-prompt-section .prompt-box.framed { border-radius: 14px; border: 1px solid var(--border2); background: var(--surface); }
+.xcs-prompt-section .prompt-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c0a; }
+.xcs-prompt-section .prompt-textarea { font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.65; min-height: 150px; padding: 20px; }
+html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+.xcs-setup .xcreate-slot-grid > [data-slot='empty'] { grid-column: 1 / -1; min-height: 52px; font-family: inherit; font-size: 13px !important; }
+.xcs-setup .xcreate-slot-grid > [data-slot='filled'] { min-width: 0; }
+.xcs-setup .xc-actions { padding-top: 16px; border-top: 1px solid var(--border); row-gap: 14px !important; }
+.xcs-setup .xc-actions .prompt-counter { margin-right: auto; white-space: normal; }
+.xcs-setup .btn-battle { min-height: 46px; padding: 12px 28px; border-radius: 9px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; }
+.xcs-auth-refiner { display: contents; }
+.xcs-results { width: 100%; padding-top: 20px; }
+.xcs-results .battle-card { min-width: 0; }
+.xcs-templates, .xcs-library { max-width: 1180px; margin: auto; }
+.xcs-template-modes { display: flex; gap: 6px; padding-bottom: 22px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
+.xcs-template-modes button { display: flex; align-items: center; gap: 7px; padding: 10px 20px; min-height: 44px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted2); font: inherit; cursor: pointer; }
+.xcs-template-modes button[aria-pressed='true'] { border-color: var(--border2); background: var(--surface); color: var(--red); }
+.xcs-template-section { margin: 32px 0; }
+.xcs-template-section h2 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+.xcs-template-notice { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px; border-radius: 10px; background: var(--surface2); font-size: 14px; }
+.xcs-library-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.xcs-filter-label { display: flex; align-items: center; gap: 12px; color: var(--muted2); font-size: 13px; }
+.xcs-filter-label select, .xcs-mobile-mode select { appearance: auto; min-height: 44px; border: 1px solid var(--border2); background: var(--surface); color: var(--white); border-radius: 9px; padding: 8px 14px; font: inherit; }
+.xcs-primary, .xcs-secondary, .xcs-pagination button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 18px; border: 1px solid var(--border2); border-radius: 9px; background: var(--surface); color: var(--white); text-decoration: none; font: inherit; font-size: 13px; cursor: pointer; }
+.xcs-primary { color: #fff; background: var(--red); border-color: var(--red); }
+.xcs-empty { text-align: center; padding: 72px 20px; color: var(--muted2); font-size: 15px; border: 1px dashed var(--border2); border-radius: 16px; line-height: 1.7; }
+.xcs-empty p { margin: 0 0 20px; }
+.xcs-library-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.xcs-creation { color: inherit; text-decoration: none; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); transition: border-color .2s; min-width: 0; }
+.xcs-creation:hover { border-color: var(--red); }
+.xcs-creation-preview { aspect-ratio: 4/3; background: var(--surface2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.xcs-creation-preview img, .xcs-creation-preview video { width: 100%; height: 100%; object-fit: cover; }
+.xcs-creation-preview > p { padding: 24px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.xcs-creation-preview > svg { width: 32px; height: 32px; color: var(--muted); }
+.xcs-creation-copy { padding: 18px; }
+.xcs-creation-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted2); }
+.xcs-creation-copy h2 { margin: 10px 0; font-size: 16px; line-height: 1.4; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.xcs-creation-copy > span { font-size: 12px; color: var(--muted2); }
+.xcs-pagination { display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: 30px; font-size: 13px; }
+.xcs-pagination button:disabled { opacity: .4; cursor: default; }
+.xcs-studio :is(button, a, select, textarea):focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
+@media (max-width: 760px) {
+  html[data-site='xcreate'] .xcs-studio { padding: 30px 20px 56px; }
+  .xcs-heading { margin-bottom: 30px; }
+  .xcs-heading h1 { font-size: 32px; }
+  .xcs-heading > p:last-child { font-size: 14px; }
+  .xcs-mobile-mode { display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-weight: 600; flex: 1; min-width: 0; }
+  .xcs-mobile-mode select { width: 100%; font-size: 16px; }
+  .xcs-mode-block { display: flex; align-items: end; gap: 12px; }
+  .xcs-mode-block .mode-row { flex: 1; min-width: 0; }
+  .xcs-mode-block .mode-row > .mode-col:first-child { display: none; }
+  .xcs-mode-block .mode-col { width: 100%; min-width: 0; }
+  .xcs-mode-block .recipe-crumb-btn { width: 100%; min-width: 0; font-size: 12px; white-space: normal; line-height: 1.3; }
+  .xcs-mode-block .from-menu { left: auto; right: 0; max-width: calc(100vw - 40px); }
+  html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .xcs-prompt-section .prompt-textarea { min-height: 138px; padding: 16px; }
+  .xcs-setup .xc-actions { gap: 12px !important; }
+  .xcs-setup .xc-actions .prompt-counter { flex-basis: 100%; }
+  .xcs-setup .xc-actions .btn-battle { flex: 1 1 140px; }
+  .xcs-template-modes { display: none; }
+  .xcs-templates > .xcs-mobile-mode { max-width: 240px; }
+  .xcs-template-notice { flex-direction: column; align-items: start; margin-top: 20px; }
+  .xcs-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .xcs-library-toolbar { align-items: center; flex-wrap: wrap; }
+  .xcs-results .battle-arena { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 420px) {
+  html[data-site='xcreate'] .xcs-studio { padding-left: 16px; padding-right: 16px; }
+  .xcs-heading h1 { font-size: 29px; }
+  .xcs-library-grid { grid-template-columns: minmax(0, 1fr); }
+  .xcs-field-heading { gap: 8px; }
+  html[data-site='xcreate'] .xcs-top-inner { gap: 0 8px; }
+  html[data-site='xcreate'] .xcs-actions { gap: 6px; }
+  html[data-site='xcreate'] .xcs-lang { max-width: 98px; }
+  html[data-site='xcreate'] .xcs-signin { padding: 0 10px; }
+}
+@media (max-width: 600px) {
+  html[data-site='xcreate'] .model-picker-dialog { max-height: 85vh !important; }
+  html[data-site='xcreate'] .model-picker-dialog input { min-width: 0; width: 100%; font-size: 16px !important; }
+  html[data-site='xcreate'] .model-picker-row { flex-wrap: wrap; gap: 8px !important; }
+  html[data-site='xcreate'] .model-picker-name { min-width: calc(100% - 64px) !important; }
+  html[data-site='xcreate'] .model-picker-name > div { white-space: normal !important; overflow-wrap: anywhere; }
+}

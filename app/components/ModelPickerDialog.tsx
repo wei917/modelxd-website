@@ -240,7 +240,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxWidth: 'calc(100vw - 32px)', maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+      <div className="model-picker-dialog" onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 14, width: 520, maxWidth: 'calc(100vw - 32px)', maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px' }}>
             <span style={{ color: 'var(--muted)' }}>⌕</span>
@@ -370,7 +370,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
             // as a status badge at the LEFT edge of the row (CC, July 20).
             const inSlots = slotIds.flatMap((id, i) => id === m.id ? ['ABCD'[i]] : [])
             return (
-              <div key={m.id}
+              <div className="model-picker-row" key={m.id}
                 onClick={() => onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config, input_config: m.input_config ?? null })}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
@@ -385,7 +385,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                   )}
                 </span>
                 <ProviderLogo provider={m.provider} size={18} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="model-picker-name" style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.display_name}
                   </div>
@@ -456,13 +456,13 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                 {'Doesn’t support '}{t('recipe.' + recipeMode)} ({hiddenFiltered.length})
               </div>
               {hiddenFiltered.map(m => (
-                <div key={m.id}
+                <div className="model-picker-row" key={m.id}
                   title={`${m.display_name} doesn't support ${t('recipe.' + recipeMode)}`}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', opacity: 0.45, cursor: 'default' }}
                 >
                   <span style={{ width: 18, flexShrink: 0 }} />
                   <ProviderLogo provider={m.provider} size={18} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="model-picker-name" style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {m.display_name}
                     </div>
