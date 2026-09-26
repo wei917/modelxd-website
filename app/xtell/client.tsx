@@ -39,17 +39,20 @@ import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/Opt
 // on. Search terms mirror XCreate's estimator. A ceiling, not a quote: the
 // receipt is the cost under each reply.
 const EST_PROMPT_TOKENS = 3000, EST_OUT_TOKENS = 800, EST_SEARCHES = 8, EST_READ_TOKENS = 30_000
+// 易學堂 can include both hexagrams and their 文言. Its longest measured
+// fixed cast prompt exceeds 4,200 characters before the language line.
+const EST_YIXUE_PROMPT_TOKENS = 5500
 function rateOf(r: any, level: string | null): number {
   if (r == null) return 0
   if (typeof r === 'number') return r
   if (level && r.by_level && typeof r.by_level[level] === 'number') return r.by_level[level]
   return typeof r.default === 'number' ? r.default : 0
 }
-function estimateReadingUsd(m: PickerModel, o: { thinking: string | null; search: boolean }, chars: number): number | null {
+function estimateReadingUsd(m: PickerModel, o: { thinking: string | null; search: boolean }, chars: number, promptTokens = EST_PROMPT_TOKENS): number | null {
   const p = m.model_pricing ?? {}, tk = p.tokens ?? {}
   const tin = rateOf(tk.text_input, o.thinking), tout = rateOf(tk.text_output, o.thinking)
   if (!tin && !tout) return null
-  const inTok = EST_PROMPT_TOKENS + chars + (o.search ? EST_READ_TOKENS : 0)
+  const inTok = promptTokens + chars + (o.search ? EST_READ_TOKENS : 0)
   return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + EST_OUT_TOKENS * tout) / 1_000_000
 }
 const fmtUsd = (v: number) => v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`
@@ -962,7 +965,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {(() => {
             const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
             const known = masters
-              .map(m => ({ m, usd: estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars) }))
+              .map(m => ({ m, usd: estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS) }))
               .filter((p): p is { m: PickerModel; usd: number } => p.usd != null)
             if (known.length === 0) return null
             const total = known.reduce((s, p) => s + p.usd, 0)
