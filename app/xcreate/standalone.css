@@ -19,6 +19,9 @@ html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding:
 .xcs-field-heading a:hover { color: var(--red); }
 .xcs-prompt-section .prompt-box.framed { border-radius: 14px; border: 1px solid var(--border2); background: var(--surface); }
 .xcs-prompt-section .prompt-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c0a; }
+/* The box's border is the focus mark; the studio-wide focus outline on the
+   textarea inside it drew a second ring 4px out (owner, Sep 26). */
+.xcs-prompt-section .prompt-textarea:focus-visible { outline: none; }
 .xcs-prompt-section .prompt-textarea { font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.65; min-height: 150px; padding: 20px; }
 html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important; }
 .xcs-setup .xcreate-slot-grid > [data-slot='empty'] { min-height: 52px; font-family: inherit; font-size: 13px !important; }
