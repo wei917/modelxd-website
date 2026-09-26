@@ -10,8 +10,8 @@
 // Auth: Bearer token via DASHSCOPE_API_KEY env var
 // Full API guide: docs/DASHSCOPE-API-GUIDE.md
 
-import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras } from './types'
-import { calcTextCost, calcImageCost, calcVideoCost } from './pricing'
+import type { ModelInfo, TextStreamCallbacks, ImageResult, VideoResult, Attachment, TextGenExtras, SpeechResult } from './types'
+import { calcTextCost, calcImageCost, calcVideoCost, calcSpeechCost } from './pricing'
 
 // Singapore international endpoint. Override via DASHSCOPE_BASE_URL for other regions:
 //   dashscope-us (Virginia), dashscope (China)
@@ -1129,4 +1129,69 @@ export async function transcribeAudio(
   const text = segments.length > 0 ? segments.map(s => `[${mm(s.start)}] ${s.text}`).join('\n') : rawText
   console.log(`${TAG} transcribed ${durationSeconds.toFixed(0)}s, ${segments.length} segments, $${cost.toFixed(4)}`)
   return { text, rawText, durationSeconds, cost, segments }
+}
+
+// ── text to speech (Qwen3-TTS) ──────────────────────────────────────────────
+//
+// POST /api/v1/services/aigc/multimodal-generation/generation with
+// { input: { text, voice, language_type } } — the same multimodal endpoint
+// the omni models use, not the async video pattern.
+//
+// Two things to know (probed live Sep 27):
+//   * the reply carries output.audio.URL, not bytes, and that URL EXPIRES
+//     (~24h, and it is plain http). We download it here and hand back the
+//     buffer, so nothing expiring is ever persisted (Common Pitfall #11).
+//   * usage.characters is Alibaba's own billable count and CJK counts
+//     DOUBLE: a 24-character 繁體 line billed 48. We bill their number.
+//
+// `instructions` is accepted only by the -instruct- models; the row's
+// model_name decides, so a style on a non-instruct row is dropped rather
+// than 400ing the run.
+export async function generateSpeech(
+  model: ModelInfo,
+  text: string,
+  options?: { voice?: string | null; style?: string | null; language?: string | null; format?: string | null },
+): Promise<SpeechResult> {
+  const TAG = `[alibaba/${model.model_name}]`
+  const cfg = (model.output_config as any)?.audio ?? {}
+  const voice = options?.voice ?? (cfg.voices ?? [])[0]?.id ?? 'Cherry'
+  const body: Record<string, unknown> = {
+    model: model.model_name,
+    input: {
+      text,
+      voice,
+      // Matching the text's language is Alibaba's own recommendation for
+      // correct pronunciation; 'Auto' when the caller says nothing.
+      language_type: options?.language ?? 'Auto',
+      ...(options?.style && /-instruct-/.test(model.model_name) ? { instructions: options.style } : {}),
+    },
+  }
+  console.log(`${TAG} tts chars=${text.length} voice=${voice} lang=${options?.language ?? 'Auto'}`)
+
+  const res = await fetch(`${BASE_URL}/api/v1/services/aigc/multimodal-generation/generation`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const json: any = await res.json().catch(() => ({}))
+  if (!res.ok || json?.code) {
+    throw new Error(`Qwen TTS ${res.status}: ${json?.message ?? json?.code ?? JSON.stringify(json).slice(0, 300)}`)
+  }
+  const url = json?.output?.audio?.url
+  const inline = json?.output?.audio?.data
+  let buffer: Buffer
+  if (typeof inline === 'string' && inline.length > 64) {
+    buffer = Buffer.from(inline, 'base64')
+  } else if (typeof url === 'string' && url) {
+    const dl = await fetch(url)
+    if (!dl.ok) throw new Error(`Qwen TTS: could not download the audio (${dl.status})`)
+    buffer = Buffer.from(await dl.arrayBuffer())
+  } else {
+    throw new Error(`Qwen TTS returned no audio: ${JSON.stringify(json).slice(0, 300)}`)
+  }
+
+  const characters = Number(json?.usage?.characters ?? text.length)
+  const cost = calcSpeechCost(model, { characters })
+  console.log(`${TAG} tts ok bytes=${buffer.length} billedChars=${characters} cost=$${cost.toFixed(6)}`)
+  return { buffer, mediaType: 'audio/wav', cost, characters, usageMetadata: json?.usage ?? null }
 }
