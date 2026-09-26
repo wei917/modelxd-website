@@ -148,17 +148,17 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.site.skip": {"en": "Skip to content", "zh-Hant": "跳到主要內容", "zh-Hans": "跳到主要内容", "ja": "本文へ移動", "ko": "본문으로 이동"},
   // ── xcreate.modelxd.com shell (nav, footer, sign-in, account; Sep 26).
   // The studio's own strings live under "── XCreate ──" further down. ──
-  'xcreate.site.nav.create':    { en: 'Create', 'zh-Hant': '創作', 'zh-Hans': '创作', ja: '作成', ko: '만들기' },
-  'xcreate.site.nav.creations': { en: 'My creations', 'zh-Hant': '我的作品', 'zh-Hans': '我的作品', ja: 'マイ作品', ko: '내 작품' },
+  'xcreate.site.nav.create':    { en: 'Studio', 'zh-Hant': '工作室', 'zh-Hans': '工作室', ja: 'スタジオ', ko: '스튜디오' },
+  'xcreate.site.nav.creations': { en: 'Library', 'zh-Hant': '作品庫', 'zh-Hans': '作品库', ja: 'ライブラリ', ko: '라이브러리' },
   'xcreate.site.nav.templates': { en: 'Templates', 'zh-Hant': '範本', 'zh-Hans': '模板', ja: 'テンプレート', ko: '템플릿' },
   'xcreate.site.navigation':    { en: 'XCreate navigation', 'zh-Hant': 'XCreate 導覽', 'zh-Hans': 'XCreate 导航', ja: 'XCreate ナビゲーション', ko: 'XCreate 탐색' },
   'xcreate.site.tagline':       { en: 'A little more possibility.', 'zh-Hant': '多一點可能。', 'zh-Hans': '多一点可能。', ja: '可能性を、もう少し。', ko: '가능성을 조금 더.' },
-  'xcreate.site.footnote':      { en: 'Private creations · One ModelXD account and balance', 'zh-Hant': '作品私人保存 · ModelXD 帳戶與點數共用', 'zh-Hans': '作品私人保存 · ModelXD 账户与点数共用', ja: '作品は非公開 · ModelXDのアカウントと残高を共用', ko: '작품은 비공개 · ModelXD 계정과 잔액 공용' },
+  'xcreate.site.footnote':      { en: 'Your work stays private · One ModelXD account and balance', 'zh-Hant': '作品私人保存 · ModelXD 帳戶與點數共用', 'zh-Hans': '作品私人保存 · ModelXD 账户与点数共用', ja: '作品は非公開 · ModelXDのアカウントと残高を共用', ko: '작품은 비공개 · ModelXD 계정과 잔액 공용' },
   'xcreate.site.authTitle':     { en: 'Sign in to XCreate', 'zh-Hant': '登入 XCreate', 'zh-Hans': '登录 XCreate', ja: 'XCreateにログイン', ko: 'XCreate에 로그인' },
   'xcreate.site.authCopy':      { en: 'Sign in with your ModelXD account. Your balance and plan work here too.', 'zh-Hant': '使用 ModelXD 帳戶登入，點數與會員方案在這裡一樣通用。', 'zh-Hans': '使用 ModelXD 账户登录，点数与会员方案在这里一样通用。', ja: 'ModelXDのアカウントでログイン。残高と会員プランはここでも使えます。', ko: 'ModelXD 계정으로 로그인하세요. 잔액과 요금제를 여기서도 쓸 수 있어요.' },
   'xcreate.site.accountNote':   { en: 'One account. The same balance and plan on XCreate and ModelXD.', 'zh-Hant': '同一個帳戶，XCreate 與 ModelXD 共用點數與方案。', 'zh-Hans': '同一个账户，XCreate 与 ModelXD 共用点数与方案。', ja: 'XCreateとModelXDは同じアカウント、同じ残高とプラン。', ko: 'XCreate와 ModelXD에서 같은 계정, 같은 잔액과 요금제를 사용합니다.' },
   'xcreate.site.creationsNote': { en: 'Everything you have made in XCreate, ready to reopen and continue.', 'zh-Hant': '你在 XCreate 做過的一切，隨時打開繼續。', 'zh-Hans': '你在 XCreate 做过的一切，随时打开继续。', ja: 'XCreateで作ったものすべて。いつでも開いて続きから。', ko: 'XCreate에서 만든 모든 것, 언제든 열어서 이어 갈 수 있어요.' },
-  'xcreate.site.openCreations': { en: 'Open My creations', 'zh-Hant': '打開我的作品', 'zh-Hans': '打开我的作品', ja: 'マイ作品を開く', ko: '내 작품 열기' },
+  'xcreate.site.openCreations': { en: 'Open Library', 'zh-Hant': '打開作品庫', 'zh-Hans': '打开作品库', ja: 'ライブラリを開く', ko: '라이브러리 열기' },
   'xcreate.site.legalNote':     { en: 'XCreate is a ModelXD service. This page applies to it.', 'zh-Hant': 'XCreate 是 ModelXD 的服務，本頁內容同樣適用。', 'zh-Hans': 'XCreate 是 ModelXD 的服务，本页内容同样适用。', ja: 'XCreateはModelXDのサービスです。このページの内容はXCreateにも適用されます。', ko: 'XCreate는 ModelXD의 서비스입니다. 이 페이지의 내용이 XCreate에도 적용됩니다.' },
   // ── Brand + nav ──
   // Landing: value snapshot bar + tier comparator (CC, July 25).
