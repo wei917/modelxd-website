@@ -4334,7 +4334,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       availableModes.length > 1 ||
                       imgQualities.length > 0 || imgSizes.length > 0 || imgArs.length > 0 ||
                       vidSizes.length > 0 || vidDurations.length > 0 || vidArs.length > 0 ||
-                      showWatermark || showCount || showAudio
+                      showWatermark || showCount || showAudio ||
+                      (isStandalone && (audVoices.length > 0 || audFormats.length > 1))
                     )
 
                     // Upfront USD estimate for this slot given its current
