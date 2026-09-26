@@ -7,6 +7,7 @@ import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
 import { XTellMark } from './xtell/XTellNav'
+import { XCreateMark } from './xcreate/XCreateNav'
 
 // Same glyphs as Nav's NavIcon (app/components/Nav.tsx) — keep in sync.
 function AuthFeatureIcon({ name }: { name: string }) {
@@ -20,14 +21,15 @@ function AuthFeatureIcon({ name }: { name: string }) {
   }
 }
 
-/** The XTell copy names ModelXD in every language; render that word as the
- *  mark + a link to the main site, so a newcomer sees whose account this is. */
-function brandLinked(copy: string) {
+/** The XTell and XCreate copy names ModelXD in every language; render that
+ *  word as the mark + a link to the main site, so a newcomer sees whose
+ *  account this is. */
+function brandLinked(copy: string, className = 'xtell-auth-maker') {
   const i = copy.indexOf('ModelXD')
   if (i < 0) return copy
   return <>
     {copy.slice(0, i)}
-    <a href="https://www.modelxd.com" target="_blank" rel="noopener" className="xtell-auth-maker">
+    <a href="https://www.modelxd.com" target="_blank" rel="noopener" className={className}>
       <img src="/logo.png" alt="" width={16} height={16} />ModelXD
     </a>
     {copy.slice(i + 'ModelXD'.length)}
@@ -35,7 +37,12 @@ function brandLinked(copy: string) {
 }
 
 export default function AuthModal() {
-  const isXTell = useSite() === 'xtell'
+  const site = useSite()
+  const isXTell = site === 'xtell'
+  const isXCreate = site === 'xcreate'
+  // The two standalone doors get a real dialog: focus trap, Escape, no
+  // scrolling underneath. www keeps its own behaviour.
+  const branded = isXTell || isXCreate
   const { open, nextPath, hide, required, release } = useAuthModal()
   const t = useT()
   const [loading, setLoading] = useState(false)
@@ -43,7 +50,7 @@ export default function AuthModal() {
   const dismiss = useRef(hide)
   dismiss.current = hide
   useEffect(() => {
-    if (!open || !isXTell) return
+    if (!open || !branded) return
     const before = document.activeElement as HTMLElement | null
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -59,7 +66,7 @@ export default function AuthModal() {
     }
     document.addEventListener('keydown', onKey)
     return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); before?.focus() }
-  }, [open, isXTell, required])
+  }, [open, branded, required])
 
   const handleLogin = async () => {
     setLoading(true)
@@ -181,14 +188,14 @@ export default function AuthModal() {
         .auth-feature-text strong { color: var(--white); font-weight: 500; }
       `}</style>
 
-      <div className={isXTell ? "auth-overlay xtell-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget && !required) hide() }}>
+      <div className={isXTell ? "auth-overlay xtell-auth" : isXCreate ? "auth-overlay xcreate-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget && !required) hide() }}>
         <div ref={dialogRef} className="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
           {/* A required dialog has no ✕ (owner, Sep 25). On the XTell host the
               way out is the link back to the explorer below the button. */}
           {!required && <button className="auth-close" aria-label={t('xtell.site.close')} onClick={hide}>✕</button>}
 
           <div className="auth-logo">
-            {isXTell ? <XTellMark /> : <>
+            {isXTell ? <XTellMark /> : isXCreate ? <XCreateMark /> : <>
             <Image src="/logo.png" alt="ModelXD" width={28} height={28} style={{ borderRadius: 6 }} />
             <span className="auth-logo-text">Model<span className="xd">XD</span></span>
             </>}
@@ -196,8 +203,9 @@ export default function AuthModal() {
 
           <div className="auth-divider" />
 
-          <div id="auth-title" className="auth-title">{isXTell ? t('xtell.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
+          <div id="auth-title" className="auth-title">{isXTell ? t('xtell.site.authTitle') : isXCreate ? t('xcreate.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
           {isXTell && <p className="auth-sub">{brandLinked(t('xtell.site.authCopy'))}</p>}
+          {isXCreate && <p className="auth-sub">{brandLinked(t('xcreate.site.authCopy'), 'xcs-auth-maker')}</p>}
 
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -226,7 +234,7 @@ export default function AuthModal() {
           )}
 
           <div className="auth-features">
-            {isXTell ? <p className="xtell-auth-credit">{t('xtell.site.authCredit')}</p> : <>
+            {isXTell ? <p className="xtell-auth-credit">{t('xtell.site.authCredit')}</p> : isXCreate ? <p className="xcs-auth-credit">{t('xtell.site.authCredit')}</p> : <>
             {[
               { icon: 'duel',   text: <><strong>XDuel</strong> — {t('auth.f.xduel')}</> },
               { icon: 'create', text: <><strong>XCreate</strong> — {t('auth.f.xcreate')}</> },

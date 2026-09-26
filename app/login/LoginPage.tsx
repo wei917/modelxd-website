@@ -5,9 +5,13 @@ import { useT } from '../../lib/i18n'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
+import { useSite } from '../../lib/useSite'
+import { XCreateMark } from '../components/xcreate/XCreateNav'
 
 export default function LoginPage() {
   const t = useT()
+  // On xcreate.modelxd.com the card wears the XCreate mark and copy.
+  const isXCreate = useSite() === 'xcreate'
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('from') || '/'
@@ -130,20 +134,22 @@ export default function LoginPage() {
         .auth-feature-text strong { color: var(--white); font-weight: 500; }
       `}</style>
 
-      <div className="auth-overlay" onClick={(e) => { if (e.target === e.currentTarget) router.back() }}>
+      <div className={isXCreate ? 'auth-overlay xcreate-auth' : 'auth-overlay'} onClick={(e) => { if (e.target === e.currentTarget) router.back() }}>
         <div className="auth-card">
           <button className="auth-close" onClick={() => router.back()}>✕</button>
 
           {/* Logo */}
           <div className="auth-logo">
+            {isXCreate ? <XCreateMark /> : <>
             <Image src="/logo.png" alt="ModelXD" width={28} height={28} style={{ borderRadius: 6 }} />
             <span className="auth-logo-text">Model<span className="xd">XD</span></span>
+            </>}
           </div>
 
           <div className="auth-divider" />
 
-          <div className="auth-title">{t('auth.titleprefix')} Model<span className="accent">XD</span></div>
-          <p className="auth-sub">{t('auth.free')}</p>
+          <div className="auth-title">{isXCreate ? t('xcreate.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
+          <p className="auth-sub">{isXCreate ? t('xcreate.site.authCopy') : t('auth.free')}</p>
 
           {/* Google button */}
           <button className="auth-google-btn" onClick={handleLogin} disabled={loading}>
@@ -159,7 +165,7 @@ export default function LoginPage() {
 
           {/* Feature list */}
           <div className="auth-features">
-            {[
+            {isXCreate ? <p className="xcs-auth-credit">{t('xtell.site.authCredit')}</p> : [
               { icon: '⚔️', text: <><strong>XDuel</strong> · {t('auth.f.xduel')}</> },
               { icon: '🗳️', text: <><strong>XVote</strong> · {t('auth.f.xvote')}</> },
               { icon: '✨', text: <><strong>XCreate</strong> · {t('auth.f.xcreate')}</> },

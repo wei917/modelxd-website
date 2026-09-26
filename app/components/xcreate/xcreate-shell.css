@@ -1,0 +1,198 @@
+/* app/components/xcreate/xcreate-shell.css — the xcreate.modelxd.com shell:
+   top bar, footer, sign-in dialog, account page, legal note.
+
+   Nav.tsx imports XCreateNav, so this file loads on EVERY host. Every rule is
+   therefore scoped to html[data-site="xcreate"] (stamped by the root layout
+   from the proxy's header) or to an .xcs- class only the XCreate shell
+   renders. www and XTell must not change by a pixel.
+
+   Palette and type follow the approved studio design (Codex, Sep 26). The
+   --xc-* tokens are defined once, here, on <html>, for the shell and the
+   studio alike. Light only, like the rest of the site. */
+
+html[data-site="xcreate"] {
+  --xc-bg: #faf9f6;
+  --xc-paper: #ffffff;
+  --xc-ink: #242724;
+  --xc-secondary: #696e68;
+  --xc-rule: #e2e5dd;
+  --xc-soft: #f1f2ec;
+  --xc-accent: #cd4236;
+  --xc-accent-soft: #fff0eb;
+  --xc-green: #38624e;
+  --xc-radius: 14px;
+  /* The shared pages (account, legal) are built on the www tokens; point
+     the page colour and the accent at the XCreate ones so they sit on the
+     same paper. --surface/--surface2 follow --bg (see globals.css). */
+  --bg: var(--xc-bg);
+  --red: var(--xc-accent);
+}
+
+/* Fonts are body-level variables (next/font classes on <body>, added by the
+   root layout on this host only): DM Sans for text, a Barlow that the CJK
+   rules in globals.css do not re-point, for the wordmark and headings. CJK
+   glyphs fall through to the language's Noto via --font-body. */
+html[data-site="xcreate"] body {
+  --xc-font: var(--font-xc, var(--font-body)), var(--font-body), sans-serif;
+  --xc-display: var(--font-xc-display, var(--font-display)), var(--font-display), sans-serif;
+  background: var(--xc-bg);
+  color: var(--xc-ink);
+  font-family: var(--xc-font);
+}
+
+/* One column: the top bar above the page, no sidebar, no mobile top bar
+   padding (globals.css reserves 60px for the www phone header). */
+html[data-site="xcreate"] .app-shell { display: block; }
+html[data-site="xcreate"] .app-main { padding-top: 0; }
+
+/* The system cursor, as on XTell: the red-dot cursor is www's signature. */
+html[data-site="xcreate"] body { cursor: auto; }
+html[data-site="xcreate"] .cursor,
+html[data-site="xcreate"] .cursor-ring { display: none !important; }
+html[data-site="xcreate"] :is(a, button, select, label, summary) { cursor: pointer; }
+html[data-site="xcreate"] :is(button, select):disabled { cursor: not-allowed; }
+html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+.xcs-top {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--xc-paper);
+  border-bottom: 1px solid var(--xc-rule);
+  font-family: var(--xc-font);
+}
+.xcs-top-inner {
+  max-width: 1240px; margin: 0 auto; min-height: 68px; padding: 0 28px;
+  display: flex; align-items: center; gap: 36px;
+}
+.xcs-home { display: inline-flex; align-items: center; color: var(--xc-ink); text-decoration: none; }
+.xcs-brand {
+  font-family: var(--xc-display); font-weight: 700; font-size: 25px;
+  letter-spacing: -1px; line-height: 1; white-space: nowrap; color: var(--xc-ink);
+}
+.xcs-accent { color: var(--xc-accent); }
+.xcs-nav { display: flex; align-self: stretch; gap: 26px; }
+.xcs-nav a {
+  position: relative; display: flex; align-items: center;
+  color: var(--xc-secondary); font-size: 14px; text-decoration: none; white-space: nowrap;
+}
+.xcs-nav a:hover { color: var(--xc-ink); }
+.xcs-nav a[aria-current="page"] { color: var(--xc-ink); font-weight: 600; }
+.xcs-nav a[aria-current="page"]::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--xc-accent);
+}
+.xcs-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.xcs-lang {
+  height: 34px; padding: 0 8px; border: 1px solid var(--xc-rule); border-radius: 8px;
+  background: var(--xc-paper); color: var(--xc-ink); font: 13px var(--xc-font);
+}
+.xcs-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--xc-soft); color: var(--xc-ink);
+  font-weight: 600; font-size: 14px; text-decoration: none;
+}
+.xcs-avatar:hover { background: var(--xc-accent-soft); color: var(--xc-accent); }
+.xcs-signin {
+  height: 34px; padding: 0 14px; border: 0; border-radius: 8px;
+  background: var(--xc-accent); color: #fff; font: 600 13px var(--xc-font);
+}
+.xcs-signin:hover { filter: brightness(.94); }
+.xcs-skip {
+  position: absolute; left: 16px; top: -60px; z-index: 200;
+  padding: 8px 12px; border-radius: 6px;
+  background: var(--xc-ink); color: #fff; font-size: 13px; text-decoration: none;
+}
+.xcs-skip:focus { top: 12px; }
+:is(.xcs-top, .xcs-footer, .xcs-account, .xcreate-auth) :is(a, button, select):focus-visible {
+  outline: 2px solid var(--xc-accent); outline-offset: 3px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.xcs-footer {
+  border-top: 1px solid var(--xc-rule);
+  color: var(--xc-secondary); font: 12px/1.6 var(--xc-font);
+}
+.xcs-footer-inner {
+  max-width: 1240px; margin: 0 auto; padding: 16px 28px 24px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px;
+}
+.xcs-footer p { margin: 0; }
+.xcs-footer nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+.xcs-footer a { color: var(--xc-secondary); text-decoration: none; }
+.xcs-footer a:hover { color: var(--xc-accent); }
+.xcs-maker a { display: inline-flex; align-items: center; gap: 5px; color: var(--xc-ink); font-weight: 600; }
+.xcs-maker img { border-radius: 4px; }
+
+/* ── Legal pages ─────────────────────────────────────────────────────── */
+.xcs-legal-note {
+  margin: 0 0 20px; padding: 10px 14px;
+  border: 1px solid var(--xc-rule); border-radius: 10px; background: var(--xc-paper);
+  color: var(--xc-secondary); font-size: 13px; line-height: 1.6;
+}
+
+/* ── Account page (app/profile/page.tsx on this host) ────────────────── */
+.xcs-account { font-family: var(--xc-font); }
+.xcs-eyebrow {
+  margin: 0 0 6px; color: var(--xc-secondary);
+  font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+}
+.xcs-account-title {
+  margin: 0 0 8px; font-family: var(--xc-display);
+  font-size: 34px; line-height: 1.12; font-weight: 600; letter-spacing: -1px; color: var(--xc-ink);
+}
+.xcs-account-note { margin: 0 0 28px; color: var(--xc-secondary); font-size: 14px; }
+.xcs-account-welcome { max-width: 560px; margin: 0 auto; padding: 72px 24px 96px; }
+.xcs-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 42px; padding: 0 18px; border: 0; border-radius: 9px;
+  background: var(--xc-accent); color: #fff; font: 600 14px var(--xc-font); text-decoration: none;
+}
+.xcs-button:hover { filter: brightness(.94); }
+.xcs-creations {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px;
+  padding: 20px 22px; margin-bottom: 36px;
+  border: 1px solid var(--xc-rule); border-radius: var(--xc-radius); background: var(--xc-paper);
+}
+.xcs-creations h2 { margin: 0 0 4px; font-family: var(--xc-display); font-size: 21px; font-weight: 600; letter-spacing: -.35px; color: var(--xc-ink); }
+.xcs-creations p { margin: 0; color: var(--xc-secondary); font-size: 13px; }
+
+/* ── Sign-in dialog (AuthModal / LoginPage with .xcreate-auth) ───────── */
+html[data-site="xcreate"] .xcreate-auth { background: rgba(36, 39, 36, .42); backdrop-filter: blur(8px); }
+html[data-site="xcreate"] .xcreate-auth .auth-card {
+  background: var(--xc-paper); border: 1px solid var(--xc-rule); border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(36, 39, 36, .16); font-family: var(--xc-font);
+}
+html[data-site="xcreate"] .xcreate-auth .auth-close { border-color: var(--xc-rule); color: var(--xc-secondary); border-radius: 8px; }
+html[data-site="xcreate"] .xcreate-auth .auth-logo { margin-bottom: 26px; }
+html[data-site="xcreate"] .xcreate-auth .auth-logo .xcs-brand { font-size: 30px; }
+html[data-site="xcreate"] .xcreate-auth .auth-divider { background: var(--xc-rule); }
+html[data-site="xcreate"] .xcreate-auth .auth-title {
+  font-family: var(--xc-display); font-size: 26px; font-weight: 600;
+  text-transform: none; letter-spacing: -.5px; color: var(--xc-ink);
+}
+html[data-site="xcreate"] .xcreate-auth .auth-sub { color: var(--xc-secondary); font-size: 14px; margin-bottom: 26px; }
+html[data-site="xcreate"] .xcreate-auth .auth-google-btn {
+  background: var(--xc-ink); color: #fff; border-radius: 10px;
+  font: 600 14px var(--xc-font); text-transform: none; letter-spacing: 0;
+}
+html[data-site="xcreate"] .xcreate-auth .auth-features { border-top-color: var(--xc-rule); padding-top: 20px; }
+.xcs-auth-credit { margin: 0; text-align: center; color: var(--xc-secondary); font-size: 12.5px; line-height: 1.6; }
+.xcs-auth-maker { display: inline-flex; align-items: center; gap: 4px; color: var(--xc-ink); font-weight: 600; text-decoration: none; vertical-align: -3px; }
+.xcs-auth-maker img { border-radius: 4px; }
+
+/* ── Phones ──────────────────────────────────────────────────────────── */
+@media (max-width: 650px) {
+  .xcs-top-inner { flex-wrap: wrap; gap: 0 12px; min-height: 0; padding: 8px 16px 0; }
+  .xcs-home { min-height: 44px; }
+  .xcs-nav { order: 3; flex-basis: 100%; justify-content: space-between; gap: 12px; }
+  .xcs-nav a { min-height: 44px; }
+  .xcs-lang { height: 40px; font-size: 16px; }
+  .xcs-avatar, .xcs-signin { height: 40px; }
+  .xcs-avatar { width: 40px; }
+  .xcs-footer-inner { flex-direction: column; align-items: flex-start; padding: 14px 16px 22px; }
+  .xcs-account-title { font-size: 29px; }
+  .xcs-account-welcome { padding: 48px 16px 72px; }
+  .xcs-creations { padding: 16px; }
+  .xcs-creations .xcs-button { width: 100%; min-height: 48px; }
+}

@@ -12,6 +12,7 @@ import ContactEmail from './ContactEmail'
 import BugReportLink from './BugReport'
 import { useSite } from '../../lib/useSite'
 import XTellNav from './xtell/XTellNav'
+import XCreateNav from './xcreate/XCreateNav'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
@@ -409,6 +410,7 @@ export default function Nav() {
   // requires the same hooks to run in the same order on every render,
   // or you get "Rendered fewer hooks than expected".
   if (site === 'xtell') return <XTellNav user={user} />
+  if (site === 'xcreate') return <XCreateNav user={user} />
   if (pathname === '/coming-soon') return null
 
   const handleProtectedClick = (e: React.MouseEvent, href: string, isProtected: boolean) => {
