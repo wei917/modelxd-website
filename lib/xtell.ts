@@ -133,7 +133,8 @@ function doubtOf(b: BirthInput): BaziDoubt | undefined {
   const table = Solar.fromYmd(b.y, b.m, b.d).getLunar().getJieQiTable() as Record<string, Solar>
   const hit = Object.entries(table).find(([k, s]) => JIE_TC[k] && s.toYmd() === ymd)
   return {
-    term: hit ? { name: JIE_TC[hit[0]], time: hit[1].toYmdHms().slice(11, 16) } : { name: '節', time: '' },
+    // To the second: 20:40:24, so 20:40 is not read as the side it is not on.
+    term: hit ? { name: JIE_TC[hit[0]], time: hit[1].toYmdHms().slice(11, 19) } : { name: '節', time: '' },
     ...(yearMoves ? { year: [choice(early, 'year'), choice(late, 'year')] as [PillarChoice, PillarChoice] } : {}),
     ...(monthMoves ? { month: [choice(early, 'month'), choice(late, 'month')] as [PillarChoice, PillarChoice] } : {}),
   }
@@ -190,7 +191,7 @@ function doubtFacts(c: BaziChart): string {
   const d = c.doubt
   if (!d) return ''
   const side = (i: 0 | 1) => [d.year ? `年柱 ${d.year[i].ganZhi}` : '', d.month ? `月柱 ${d.month[i].ganZhi}` : ''].filter(Boolean).join('、')
-  return `節氣交界：出生當天${d.term.time ? ` ${d.term.time} ` : ''}交${d.term.name}，時辰未知，無法判斷生在交節之前或之後。交節前為${side(0)}；交節後為${side(1)}。兩種可能都要照實說出，不可擇一斷言；若信眾記得大約時辰，請他補上後重新排盤。`
+  return `節氣交界：出生當天${d.term.time ? ` ${d.term.time} ` : ''}交${d.term.name}，時辰未知，無法判斷生在交節之前或之後。交節前為${side(0)}；交節後為${side(1)}。兩種可能都要照實說出，不可擇一斷言。只有信眾能確認出生時間在交節這一刻之前或之後，才可補上時間重新排盤；只是大約記得，仍屬未定。`
 }
 
 export function baziFacts(c: BaziChart, gender: string, hourUnknown = false): string {

@@ -3483,7 +3483,7 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 @media (max-width: 600px) {
   .xtell-scroll-hint { display: block; margin: 0 0 6px; font-size: 11px; color: var(--muted2); }
   .xtell-room[data-entered] .xtell-room-header p:not(.xtell-eyebrow) { display: none; }
-  .xtell-room[data-entered] .xtell-room-header img { width: 56px; height: 67px; }
+  .xtell-room[data-entered] .xtell-room-artwork { width: 56px; }
   .xtell-room[data-entered] .xtell-room-header h1 { font-size: 21px; margin-bottom: 0; }
   .xtell-room[data-entered] .xtell-room-steps { display: none; }
   .xtell-room[data-entered] .xtell-composer textarea { height: 76px; }

@@ -146,6 +146,19 @@ function errorText(t: (k: string) => string, code: string | undefined, raw: stri
 }
 class CodedError extends Error { constructor(message: string, readonly code?: string) { super(message) } }
 
+/** Keep ?reading= pointing at the visit on screen, so a reload reopens the
+ *  result the visitor just made rather than the record they started from
+ *  (Codex review: an edited 紫微 visit reloaded into its old correction
+ *  banner), and drop it when they leave the visit. */
+function setReadingParam(id: string | null) {
+  try {
+    const url = new URL(window.location.href)
+    if ((url.searchParams.get('reading') ?? null) === id) return
+    if (id) url.searchParams.set('reading', id); else url.searchParams.delete('reading')
+    window.history.replaceState(window.history.state, '', url)
+  } catch { /* the URL is a convenience; the visit itself is saved */ }
+}
+
 /** The same checks the routes make, run on a subject before it is sent, and
  *  on a saved subject before its chart is shown. Null when it is fine. */
 function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
@@ -233,6 +246,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     if (!standalone) return
     const sync = () => {
       const key = window.location.hash.slice(1) as Temple
+      if (!TEMPLES.includes(key)) setReadingParam(null)
       setTemple(TEMPLES.includes(key) ? key : null)
       if (TEMPLES.includes(key)) setSelectedTemple(key)
     }
@@ -243,6 +257,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   // Resume from inside a temple (its history list): seed the room from the
   // saved row without a page load. Same path ?reading= takes.
   const resume = (row: SavedReading) => {
+    setReadingParam(row.id)
     setSaved(row)
     setSelectedTemple(row.temple as Temple)
     if (standalone) window.location.hash = row.temple
@@ -260,7 +275,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={chooseTemple} /> : <>
         <XTellAuthGate />
-        <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); chooseTemple(null) }} standalone initial={saved?.temple === temple ? saved : null} onResume={resume} />
+        <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); chooseTemple(null) }} standalone initial={saved?.temple === temple ? saved : null} onResume={resume} />
       </>}
       <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
     </main>
@@ -308,7 +323,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
             ))}
           </div>
         </>) : (
-          <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} onResume={resume} />
+          <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} onResume={resume} />
         )}
 
         <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
@@ -396,19 +411,41 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // chart was computed from an impossible input, so it is not shown; the
   // visitor is asked to correct the details (audit F01/F02, Codex review).
   const [savedProblem, setSavedProblem] = useState<string | null>(() => (initial ? subjectProblem(temple, init) : null))
-  useEffect(() => {
-    if (!initial || savedProblem || !REFRESHED.includes(temple) || (isQian(temple) && !init.birth)) return
-    let live = true
+  // A saved visit cast with an unknown hour before the fix carries a noon
+  // 時柱, a 合盤 scored on it and no 節-day doubt; hiding the hour cell alone
+  // still shows those (Codex review, Sep 26). So such a board is not shown,
+  // and no paid question is taken, until the refresh has recomputed it. If
+  // the refresh cannot answer, the visitor gets Retry and 修改資料; the
+  // saved conversation stays on screen and in the row either way. A visit
+  // with every hour known shows its saved chart at once (still refreshed).
+  const refreshes = !!initial && REFRESHED.includes(temple) && !(isQian(temple) && !init.birth)
+  const staleRisk = refreshes && [init.birth, init.birth2].some((b: any) => b?.hourUnknown === true)
+  const [check, setCheck] = useState<'ok' | 'pending' | 'failed'>(() => (staleRisk && !savedProblem ? 'pending' : 'ok'))
+  const unverified = check !== 'ok'
+  // Bumped by every edit and every cast: a refresh of the saved subject that
+  // answers after the visitor has recast must not overwrite the new chart.
+  const refreshToken = useRef(0)
+  const refreshSaved = () => {
+    const token = ++refreshToken.current
+    if (staleRisk) setCheck('pending')
     // Recompute, never save (the route's `refresh`): the row stays as it was.
     fetch('/api/xtell/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...init, temple, refresh: true }) })
       .then(async res => {
         const d = await res.json().catch(() => ({}))
-        if (!live) return
-        if (!res.ok) { if (typeof d?.code === 'string') setSavedProblem(d.code); return }
+        if (token !== refreshToken.current) return
+        // A 4xx with a code is a verdict on the saved inputs (a date that
+        // does not exist, an unknown hour where one is required). A 5xx, an
+        // expired session or a network failure says nothing about the
+        // birthday, so it is offered again rather than called invalid.
+        if (res.status >= 400 && res.status < 500 && typeof d?.code === 'string') { setSavedProblem(d.code); setCheck('ok'); return }
+        if (!res.ok) { setCheck(staleRisk ? 'failed' : 'ok'); return }
         setChart(d.chart); setMatch(d.match ?? null); setYear(d.year ?? null); setBazi(d.bazi ?? null); setEngine(d.engine ?? null)
+        setCheck('ok')
       })
-      .catch(() => { /* keep the saved chart; the boards still hide an unknown hour */ })
-    return () => { live = false }
+      .catch(() => { if (token === refreshToken.current) setCheck(staleRisk ? 'failed' : 'ok') })
+  }
+  useEffect(() => {
+    if (refreshes && !savedProblem) refreshSaved()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -546,6 +583,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       setYixueEntryBusy(true)
     }
     setErr(null); setErrCode(null)
+    refreshToken.current++
     if (temple === 'zhanxing') {
       try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
     }
@@ -565,6 +603,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       // starts empty rather than continuing the old chart's.
       if (readingId && typeof d.readingId === 'string' && d.readingId !== readingId) setTurns([])
       setSavedProblem(null)
+      setCheck('ok')
+      // A reopened visit that was edited and cast again is a new visit: the
+      // address follows it (a fresh visit's address is left as it was).
+      if (typeof d.readingId === 'string' && new URLSearchParams(window.location.search).get('reading')) setReadingParam(d.readingId)
       if (temple === 'yixue') yixueSubject.current = requestSubject
       setChart(d.chart)
       setMatch(d.match ?? null)
@@ -648,6 +690,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // new visit (the old one stays in history). A 籤 is drawn again, because
   // the stick was confirmed for what was said at the altar.
   const editDetails = () => {
+    refreshToken.current++
     setErr(null); setEntered(false)
     if (isQian(temple)) { stickRef.current = null; setStick(null); setRitualBoth('idle') }
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -657,7 +700,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     // Chart rooms allow a general reading. Teacher conversations require an
     // actual question; neither an empty click nor Enter may spend credits.
     const typed = input.trim()
-    if ((!typed && (questionRequired || !fromButton)) || busy || masters.length === 0) return
+    if ((!typed && (questionRequired || !fromButton)) || busy || masters.length === 0 || unverified || savedProblem) return
     const q = typed || t('xtell.question.general')
     setInput(''); setBusy(true); setErr(null)
     setTurns(ts => [...ts, { role: 'user', content: q }])
@@ -917,7 +960,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {(() => {
             const offered = PRESETS.map(p => ({ key: p.key, model: p.models.map(n => catalog.find(r => r.model_name === n)).find(Boolean) }))
               .filter((p): p is { key: typeof PRESETS[number]['key']; model: PickerModel } => !!p.model)
-            if (offered.length === 0 || savedProblem) return null
+            if (offered.length === 0 || savedProblem || unverified) return null
             const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
             return (
               <div role="group" aria-label={t('xtell.preset.title')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1051,23 +1094,35 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </div>
           )}
 
+          {unverified && !savedProblem && (
+            <div role={check === 'failed' ? 'alert' : 'status'} style={{ ...card, padding: '12px 14px', display: 'grid', gap: 10, ...(check === 'failed' ? { borderColor: 'var(--red)' } : {}) }}>
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t(check === 'failed' ? 'xtell.saved.checkFailed' : 'xtell.saved.checking')}</div>
+              {check === 'failed' && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" onClick={refreshSaved} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.site.retry')}</button>
+                  <button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--white)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.edit')}</button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* What this result is and where a beginner starts, before the
               term-dense detail; example questions until the first is sent. */}
-          {temple !== 'yixue' && chart && !savedProblem && (
+          {temple !== 'yixue' && chart && !savedProblem && !unverified && (
             <ResultGuide temple={temple} chart={chart} showExamples={turns.length === 0} onExample={q => setInput(q)} />
           )}
 
           {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
               is what the two of them came to see. The reading interprets it. */}
-          {match && !savedProblem && <HeCard match={match} />}
+          {match && !savedProblem && !unverified && <HeCard match={match} />}
 
           {/* The chart. Open by default, foldable for anyone who only wants
               the reading. */}
-          {showChart && chart && !savedProblem && (
+          {showChart && chart && !savedProblem && (!unverified || isQian(temple)) && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
-                : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={bazi} year={year} hourUnknown={bing.withBirth && !!birth.hourUnknown} />
+                : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={unverified ? null : bazi} year={unverified ? null : year} hourUnknown={bing.withBirth && !!birth.hourUnknown} />
                 : temple === 'xingming' ? <NameBoard chart={chart} />
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
@@ -1180,7 +1235,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {/* Composer — same shape as XDirect's. On the standalone site the
               block is sticky at the bottom, so the estimate line lives INSIDE
               it; placed after it, the line sat below the fold. */}
-          {!savedProblem && <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {!savedProblem && !unverified && <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {/* What this consultation was cast from, and the way back to the
               form, right where a paid question is written (audit: no visible
               way to correct the details). */}

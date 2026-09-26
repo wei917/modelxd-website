@@ -63,12 +63,13 @@ check('an unknown hour needs no clock time', birthProblem({ y: 1990, m: 1, d: 1,
   const c = baziChart(unknown(2000, 2, 4))
   const d = c.doubt
   check('立春 day, unknown hour: both years and both months are kept',
-    d?.term.name === '立春' && d.term.time === '20:40'
+    d?.term.name === '立春' && d.term.time === '20:40:24'
     && d.year?.[0].ganZhi === '己卯' && d.year?.[1].ganZhi === '庚辰'
     && d.month?.[0].ganZhi === '丁丑' && d.month?.[1].ganZhi === '戊寅', JSON.stringify(d))
   check('…and no 大運 sequence is claimed', c.daYun.length === 0)
   const f = baziFacts(c, 'female')
   check('…and the facts give both readings, not one', f.includes('己卯或庚辰') && f.includes('丁丑或戊寅') && f.includes('交立春') && f.includes('大運：月柱未定'), f)
+  check('…and never say a rough memory settles it', f.includes('20:40:24') && f.includes('只是大約記得，仍屬未定') && !f.includes('即可確定'), f)
   const ln = liuNian(c, 2000, 2026)
   check('流年 against an undecided 年柱 is given both ways', ln.yearChoices?.length === 2 && liuNianFacts(ln).includes('年柱未定'))
 }
