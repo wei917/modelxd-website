@@ -12,6 +12,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useT } from '../../lib/i18n'
+import { useSite } from '../../lib/useSite'
+import { wwwHref } from '../../lib/site'
 import { discountFor } from '../../lib/xcreate-discount'
 import { decidePoll, newPollHealth, isJobPayload, RETRY_NOTE, POST_UNANSWERED_NOTE, POLL_TIMEOUT_MS, type PollHealth, type PollStatus } from '../../lib/xcreate-poll'
 import { normalizeAudioForVideo } from '../../lib/audio-normalize'
@@ -1015,6 +1017,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   useRequireAuth()
   const t = useT()
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
+  const site = useSite()       // XBoard and XDirect live on www only
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -3430,13 +3433,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // director now lives beside the canvas, so this page is purely the studio
   // again. The old entrances stay live as redirects — ?agent=1 and ?c=
   // permalinks forward with their query intact, so every link the site
-  // agent ever handed out keeps resolving.
+  // agent ever handed out keeps resolving. On the XCreate host they leave for
+  // www, which alone serves /xdirect (lib/site.ts).
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     if (p.get('agent') === '1' || p.get('c')) {
       p.delete('agent')
       const qs = p.toString()
-      router.replace(`/xdirect${qs ? `?${qs}` : ''}`)
+      const to = `/xdirect${qs ? `?${qs}` : ''}`
+      if (site === 'modelxd') router.replace(to)
+      else window.location.replace(wwwHref(site, to))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -3515,7 +3521,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 Start Over
               </button>
               <a
-                href="/xboard"
+                href={wwwHref(site, '/xboard')}
                 style={{
                   padding: '13px 26px', borderRadius: 10, border: '1px solid var(--border2)',
                   color: 'var(--white)', fontWeight: 700, fontSize: 14, textDecoration: 'none',

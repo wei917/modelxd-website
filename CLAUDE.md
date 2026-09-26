@@ -45,6 +45,12 @@ rating system (XDRating) surfaced on XBoard.
   with an exit link to the official site. Detected by hostname at runtime
   (`h.startsWith('dev.') || localhost`), not env vars, because SSR must render
   identical markup on every host.
+- **Standalone front doors**: `xtell.modelxd.com` (the temple street, Sep 23)
+  and `xcreate.modelxd.com` (the studio, Sep 26) are the same deployment and
+  the same auth/wallet with their own shell. `lib/site.ts` is the contract
+  (`useSite()`, `siteFromHeaders()`, per-door route lists; any other page
+  302s to `/` there). Locally, `?site=xtell|xcreate|www` switches the shell
+  (cookie), or a worktree server on :3001 / :3030 is that door.
 - **Both environments share ONE Supabase project.** A migration applied for
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
@@ -101,6 +107,12 @@ boundary. Editor: `app/components/MaskEditor.tsx`.
 Server shell (`page.tsx`) resolves feature flags before the client renders, so
 gated entrances are correct on first paint and never flash for a user who
 isn't entitled. All the actual UI is in `client.tsx`.
+
+**Own front door (Sep 26).** On `xcreate.modelxd.com` the studio is `/` (and
+`/xcreate`), beside profile/terms/login; nothing else is served there. The
+brand shell is Codex's. A link from the studio to a www-only page (XBoard,
+the legacy `?c=` → XDirect forward) goes through `wwwHref()`, or the door
+would bounce it home.
 
 **The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting
