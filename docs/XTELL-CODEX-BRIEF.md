@@ -199,3 +199,18 @@ Leave them as comments in your PR description or ask the owner to relay.
   `/tmp/xtell-claude-status.md` (kept current) and mirrored here: assets
   under `public/xtell/` with stable names and web sizes; the ten existing
   covers stay for www; send the final title string for the layout default.
+
+## Round four (Claude, Sep 26): 易學堂, the eleventh destination
+
+- **Art contract for any temple added after the 5×2 sheets.** Two standalone
+  files, never an edit to `portraits.avif` / `icons.avif`:
+  `public/xtell/approved/<key>-portrait.avif` (2:3, about 640 px wide; shown
+  `cover` in the portrait box) and `public/xtell/approved/<key>-icon.avif`
+  (square, 300 px, transparent background fine; shown `contain`). Register
+  them in `TEMPLE_ART` as `{ src: { portrait, icon }, caption, kind }`;
+  `kind` is `object` or `deity` (what the sheets derived from their row).
+- 易學堂's pair came from Codex's `yixue-portrait.png` (1024×1536) and
+  `yixue-icon.png` (1254²), encoded by Claude to 640×960 and 300×300 AVIF.
+- The menu is eleven columns on desktop and six on phones (two rows).
+- Release path: the 易學堂 commits are separable from the other local work on
+  `dev` and are cherry-picked onto a `main`-based checkout for review.

@@ -47,7 +47,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (10 live)
+## Temples (11 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -60,6 +60,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 測字亭 | 拆字 | `lib/names.ts` + 《測字秘牒》 | One character + the matter asked. Code gives the 康熙 radical, its strokes, the character's strokes and the radical's 五行 (common radicals only). **The decomposition is the master's**, and the prompt makes it spell every part out so the visitor can check it, because no license-clean IDS dataset exists (CHISE/cjkvi-ids are GPL). Classic: 清 程省《測字秘牒》 from Wikisource via `lib/classics`. Added Sep 22 |
 | 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
+| 易學堂 | 易經: 起卦 / 查卦 / 問老師 | `lib/yijing-core.ts` + `lib/yijing.ts` + `content/yijing/zhouyi.json` | A school, not a temple (Sep 26). Three coins thrown six times → 本卦, 動爻, 之卦, and 朱熹's rule for which passage to read; any of the 64 read in the original; or a learner's question with no cast. See "易學堂" below |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
@@ -235,6 +236,61 @@ classics are Ptolemy and Lilly, neither of which is in `content/classics`, and
 pointing it at 《宿曜經》 because that file mentions the twelve signs would
 ground a Western reading in a Buddhist text about a different system.
 
+## 易學堂 (Sep 26)
+
+Owner: a learning hall where an AI teacher answers beginners; structured
+courses and videos come later (scripts for ten one-minute chapters exist in
+the conversation, not in the repo). Built with Codex, who reviewed the
+engine independently and made the art.
+
+- **Corpus** — `scripts/fetch-zhouyi.ts` builds `content/yijing/zhouyi.json`
+  from 維基文庫《周易》 (public domain): 卦辭, 彖, 大象, six 爻辭 with 小象,
+  用九/用六, 文言 on 乾/坤, page revision ids. Every page must agree three
+  ways or the build fails: its own 第N卦, its 「X下Y上」 trigram line, and the
+  yin/yang pattern of its 爻 labels. The 十翼 remainder (繫辭上下, 說卦, 序卦,
+  雜卦, under `易傳/` because `周易/繫辭上` is a redirect) goes to
+  `content/classics/zhouyi-*.txt` for 問老師's retrieval.
+- **Corrections** — 42, the only edits, each in the JSON with a witness
+  edition: simplified slips (后/後, 系/係/繫, 丑/醜, 云/雲, 愿/願 …) found by
+  sending every distinct character through Wikisource's zh-hant converter and
+  reading each hit in context; two wrong characters (剛柔際也, 長裕而不設);
+  one broken phrase (剝：不利有攸往, Codex). Right-as-classical forms stay:
+  于, 无, 恒, 輿尸, 渙奔其机, 鴻漸于干, 辟難, 變化云為, and 后 = sovereign in
+  three 大象. The converter misses characters valid in both scripts (系 was
+  found by hand), so a new corpus needs the same context pass.
+- **The rule** — 朱熹《易學啟蒙·考變占第四》 as printed in 《性理大全書》卷十七,
+  quoted per case on the board. 彖辭 there means the 卦辭. Two and four
+  moving lines carry his own 「經傳無文，今以例推之」. Three moving lines:
+  both 卦辭, 本卦 = 貞, 之卦 = 悔, 前十卦主貞/後十卦主悔; the source names the
+  endpoints for 乾 and 坤 (玉齋胡氏), and for the other 62 the split (初爻
+  among the moving lines = 前十) is derived from the same 卦變圖 order. The
+  board, the facts and the code all say so. Six moving: 乾 用九, 坤 用六,
+  others the 之卦 卦辭.
+- **Not 納甲** — the three-coin throw is only a way to get six lines. No 世應,
+  六親, 納甲干支 or 六神 is computed, and the teacher is told not to add them.
+- **Tests** — `scripts/test-yijing.ts` (in `npm run test:xtell`): 朱熹's own
+  左傳/國語 casts (屯之比 … 穆姜 艮之隨, 蔡墨 乾之坤), the 乾/坤 前十/後十
+  endpoints, Codex's ten independent cases verbatim, all 4096 casts
+  resolving to text that exists, the corpus against the table, numeric
+  references across all five UI languages, script variants, and follow-up
+  grounding from the nearest user-named hexagram. A newly named hexagram
+  replaces the prior topic; assistant replies cannot invent the source target.
+- **Room** — `app/components/xtell/Yixue.tsx`: hexagrams are drawn from data
+  (SVG), never by an image model; the matter asked locks at the first throw
+  (一事一占, with 蒙's 「初筮告，再三瀆」); the cast lives in a ref like the 籤
+  ritual so fast clicks cannot lose a line; the sixth line enters the hall. A
+  cast row is titled by its matter. Board: the rule quoted with its source
+  link, the passages to read (lead marked), then each hexagram's full text
+  folded, with its Wikisource page, revision and corrections. Entry controls
+  lock during the chart request, and teacher requests use the subject that
+  produced the accepted board, preventing a quick mode/picker change from
+  giving the teacher a different hexagram. The upfront estimate allows a
+  larger fixed prompt (5,500 input tokens) for two hexagrams and 文言.
+- **Art** — Codex's standalone `public/xtell/approved/yixue-portrait.avif`
+  and `yixue-icon.avif` (six solid bars, three coins; decoration only). The
+  5×2 sheets are untouched: `TEMPLE_ART` takes `src` for a temple added after
+  them. www's street shows the portrait until an ink-wash cover exists.
+
 ## The room flow (owner's design, Aug 30: "hide as much as possible")
 
 1. Birth date + time + gender → **進廟**. The chart is computed at that moment
@@ -300,6 +356,12 @@ lib/astrology.ts            # Western engine: tropical positions, Placidus house
                             #   transits, secondary progressions, solar return, synastry + composite
 lib/xtell-places.ts         # curated birth places (lat/lon/IANA zone) for temples that need one
 lib/names.ts                # 姓名學 五格 + 81 數理 + 三才; 測字 character facts (server-only)
+lib/yijing-core.ts          # 易學堂 engine, client-safe: trigrams, King Wen table, coin cast,
+                            #   本卦/之卦, 朱熹's reading rule with its source sentences
+lib/yijing.ts               # 易學堂 server half: 周易 text, board payload, the teacher's facts
+content/yijing/zhouyi.json  # 64 hexagrams + 42 witnessed corrections (scripts/fetch-zhouyi.ts)
+app/components/xtell/Yixue.tsx  # hexagram glyph (SVG), coin ritual, 64 picker, board
+scripts/test-yijing.ts      # 易學堂 suite (in npm run test:xtell)
 content/names/kangxi.json   # char → [康熙筆畫, radical no] (built by scripts/build-kangxi-strokes.ts)
 content/names/radicals.json # radical no → [char, strokes]
 content/classics/cezimidie.txt  # 《測字秘牒》 — 測字亭's grounding text
@@ -343,6 +405,10 @@ Shared guardrails:
   never counts strokes itself.
 - 測字 extra: spell out every component of the decomposition; use only the
   character's real structure; one character, one question.
+- 易學堂 extra: a teacher, not a diviner. Original text in 「」 with its source,
+  everything else labelled as interpretation; never quotes text it was not
+  given; never recasts; says which passage the rule picks and why, with
+  朱熹's caveats; every term glossed for a beginner; no 納甲.
 - No medical/financial/legal directives. Ends with 僅供參考與娛樂.
 - 繁體中文 unless the visitor writes otherwise.
 

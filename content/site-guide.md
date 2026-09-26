@@ -297,7 +297,7 @@ comparable to GDPval-AA's leaderboard (different judges and anchors).
 
 ### XTell（X算命）— the temple street
 
-`/xtell`, signed-in. Five temples: **八字廟** (BaZi, four pillars),
+`/xtell`, signed-in. The temples include **八字廟** (BaZi, four pillars),
 **紫微斗數廟** (Zi Wei Dou Shu, twelve palaces), **月老廟** (Yue Lao —
 love and 合婚: enter TWO people's birth data and the master reads both
 charts together), **關帝廟** (Guan Di 靈籤: no birth data — draw a numbered
@@ -322,7 +322,15 @@ nearest city — give a sidereal Lahiri chart with the Lagna, the nine grahas
 in signs and whole-sign houses, the 27 nakshatras, the navamsa, and the
 Vimshottari dasha timeline; computed by our own engine on astronomy-engine
 and checked against Swiss Ephemeris; a Vedic Sun sign is usually one sign
-earlier than the Western one and that is the zodiac, not a bug). The honest split to
+earlier than the Western one and that is the zodiac, not a bug), and **易學堂**
+(the I Ching school: three rooms. 起卦 — write one matter, throw three coins
+six times on screen, and the hexagram, its changing lines, the resulting
+hexagram and WHICH passage to read are computed by 朱熹's rule from 《易學啟蒙》;
+查卦 — read any of the 64 hexagrams in the original 《周易》 from Wikisource,
+with every correction to the transcription listed; 問老師 — no casting, ask
+the teacher anything about the I Ching as a beginner. The teacher quotes
+the original in 「」 and labels everything else as interpretation. It is the
+three-coin method read through the text, not 六爻納甲). The honest split to
 explain when asked: the CHART is computed exactly by open calendar engines
 (lunar-typescript for 八字 — solar-term correct, so an early-January birth
 belongs to the previous 干支 year; iztro for 紫微) and is shown for the user
