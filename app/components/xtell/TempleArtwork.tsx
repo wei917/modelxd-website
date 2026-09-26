@@ -19,11 +19,10 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   navagraha: { index: 4, caption: 'NAVAGRAHA' }, bazi: { index: 5, caption: 'FOUR PILLARS' },
   ziwei: { index: 6, caption: 'ZI WEI DOU SHU' }, xingming: { index: 7, caption: 'NAME STUDY' },
   cezi: { index: 8, caption: 'CHARACTER READING' }, zhanxing: { index: 9, caption: 'ASTROLOGY' },
-  // Codex's standalone art, Sep 26 (provenance: artwork-prompts.md beside
-  // the originals in Codex's yixuetang-launch output): six solid bars on a
-  // tablet and three coins. Decoration only; the room draws real hexagrams
-  // from code.
-  yixue: { src: { portrait: '/xtell/approved/yixue-portrait.avif', icon: '/xtell/approved/yixue-icon.avif' }, caption: 'I CHING', kind: 'object' },
+  // Owner-selected B: ink-wash bagua and an open book. See
+  // docs/XTELL-YIXUE-ART.md for provenance and trigram review.
+  // Decoration only; the room draws real hexagrams from code.
+  yixue: { src: { portrait: '/xtell/approved/yixue-school-portrait.avif', icon: '/xtell/approved/yixue-school-icon.avif' }, caption: 'I CHING', kind: 'object' },
 }
 
 /** 'object' portraits (the lower sheet row, and 易學堂) sit differently from the deities. */
@@ -37,7 +36,7 @@ export function TempleArtwork({ temple, kind = 'portrait', className = '', label
 }) {
   const art = TEMPLE_ART[temple]
   const style: CSSProperties = art.src
-    ? { backgroundImage: `url('${art.src[kind]}')`, backgroundSize: kind === 'icon' ? 'contain' : 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: `url('${art.src[kind]}')`, backgroundSize: kind === 'icon' || temple === 'yixue' ? 'contain' : 'cover', backgroundPosition: 'center' }
     : { backgroundPosition: ((art.index % 5) * 25) + '% ' + (art.index < 5 ? '0%' : '100%') }
   return <span className={'xtell-artwork xtell-artwork-' + kind + ' ' + className} style={style}
     role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} />

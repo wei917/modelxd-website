@@ -211,6 +211,10 @@ Leave them as comments in your PR description or ask the owner to relay.
   `kind` is `object` or `deity` (what the sheets derived from their row).
 - 易學堂's pair came from Codex's `yixue-portrait.png` (1024×1536) and
   `yixue-icon.png` (1254²), encoded by Claude to 640×960 and 300×300 AVIF.
+- The owner subsequently selected B 書院水墨: the light-paper bagua and open
+  book replace that initial pair using versioned `yixue-school-*.avif`
+  assets. The complete portrait uses `contain` in both explorer and www
+  cards; see `XTELL-YIXUE-ART.md` for the final assets and geometry review.
 - The menu is eleven columns on desktop and six on phones (two rows).
 - Release path: the 易學堂 commits are separable from the other local work on
   `dev` and are cherry-picked onto a `main`-based checkout for review.

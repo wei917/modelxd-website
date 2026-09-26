@@ -191,8 +191,8 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {/* 易學堂 has no ink-wash cover yet; its explorer portrait stands in. */}
-                <img src={k === 'yixue' ? '/xtell/approved/yixue-portrait.avif' : `/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', objectPosition: k === 'yixue' ? 'center 42%' : undefined, display: 'block' }} />
+                {/* Preserve the complete school illustration in the wide card. */}
+                <img src={k === 'yixue' ? '/xtell/approved/yixue-school-portrait.avif' : `/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: k === 'yixue' ? 'contain' : 'cover', background: k === 'yixue' ? '#faf6f0' : undefined, display: 'block' }} />
                 <div style={{ padding: '14px 18px 16px' }}>
                   <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>

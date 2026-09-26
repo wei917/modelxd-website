@@ -286,10 +286,12 @@ engine independently and made the art.
   produced the accepted board, preventing a quick mode/picker change from
   giving the teacher a different hexagram. The upfront estimate allows a
   larger fixed prompt (5,500 input tokens) for two hexagrams and 文言.
-- **Art** — Codex's standalone `public/xtell/approved/yixue-portrait.avif`
-  and `yixue-icon.avif` (six solid bars, three coins; decoration only). The
-  5×2 sheets are untouched: `TEMPLE_ART` takes `src` for a temple added after
-  them. www's street shows the portrait until an ink-wash cover exists.
+- **Art** — Owner-selected B 書院水墨: standalone
+  `public/xtell/approved/yixue-school-portrait.avif` and
+  `yixue-school-icon.avif` (ink-wash bagua and open book; decoration only).
+  The 5×2 sheets are untouched: `TEMPLE_ART` takes `src` for a temple added
+  after them. Both the explorer and www cards contain the complete portrait.
+  See `XTELL-YIXUE-ART.md` for source files and the trigram orientation review.
 
 ## The room flow (owner's design, Aug 30: "hide as much as possible")
 
