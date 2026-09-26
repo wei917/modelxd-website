@@ -138,26 +138,43 @@ const ZHEN_HUI = '朱子云：「貞是事之始，悔是事之終；貞是事�
 
 // The corpus keeps Wikisource's forms (恒, 无妄, 遯); people in Taiwan type
 // 恆, 無妄 and 遁. Aliases for recognising a name only; the text is untouched.
-const ALIASES: Record<string, string[]> = { 恒: ['恆'], 无妄: ['無妄'], 遯: ['遁'] }
+const ALIASES: Record<string, string[]> = {
+  恒: ['恆'], 无妄: ['無妄'], 遯: ['遁'], 訟: ['讼'], 師: ['师'],
+  謙: ['谦'], 隨: ['随'], 蠱: ['蛊'], 臨: ['临'], 觀: ['观'],
+  賁: ['贲'], 剝: ['剥'], 復: ['复'], 頤: ['颐'],
+  大過: ['大过'], 離: ['离'], 大壯: ['大壮'], 晉: ['晋'],
+  損: ['损'], 漸: ['渐'], 歸妹: ['归妹'], 豐: ['丰'],
+  兌: ['兑'], 渙: ['涣'], 節: ['节'], 小過: ['小过'], 既濟: ['既济'], 未濟: ['未济'],
+}
 
 /** Hexagrams a learner's question names: 「蒙卦」, 「水雷屯」, 「第四卦」. At most two.
  *  「解卦」 is left out on purpose: it also means "to interpret a hexagram". */
 export function namedHexagrams(question: string): number[] {
-  const found: number[] = []
+  const text = question.normalize('NFKC')
+  const mentions: Array<{ n: number; at: number }> = []
   const byLength = [...HEXAGRAMS].sort((a, b) => b.name.length - a.name.length)
   for (const h of byLength) {
-    if (found.length >= 2) break
     const names = [h.name, ...(ALIASES[h.name] ?? [])]
     const fulls = names.map(nm => h.fullName.replace(h.name, nm))
-    const named = names.some(nm => nm !== '解' && question.includes(`${nm}卦`)) || fulls.some(f => question.includes(f))
-    if (named && !found.includes(h.n)) found.push(h.n)
+    const terms = [...names.filter(nm => nm !== '解').map(nm => `${nm}卦`), ...fulls]
+    for (const term of terms) {
+      const at = text.indexOf(term)
+      if (at >= 0) mentions.push({ n: h.n, at })
+    }
   }
-  const cn = question.match(/第([一二三四五六七八九十]+|\d{1,2})卦/)
-  if (cn && found.length < 2) {
-    const n = /\d/.test(cn[1]) ? Number(cn[1]) : cnNumber(cn[1])
-    if (validNumber(n) && !found.includes(n)) found.push(n)
+  // Numeric references in the site's five languages. NFKC also accepts
+  // full-width digits. Never treat a bare number (e.g. a year) as a hexagram.
+  const patterns = [
+    /第\s*([一二三四五六七八九十]+|\d{1,2})\s*卦/g,
+    /\bhexagrams?\s*(?:no\.?\s*|number\s*|#\s*)?(\d{1,2})(?!\d)\b/gi,
+    /(?<!\d)(\d{1,2})\s*番(?:目)?(?:の)?卦/g,
+    /(?<!\d)(?:제\s*)?(\d{1,2})\s*(?:번(?:째)?\s*)?괘/g,
+  ]
+  for (const pattern of patterns) for (const match of text.matchAll(pattern)) {
+    const n = /\d/.test(match[1]) ? Number(match[1]) : cnNumber(match[1])
+    if (validNumber(n)) mentions.push({ n, at: match.index })
   }
-  return found
+  return [...new Set(mentions.sort((a, b) => a.at - b.at).map(m => m.n))].slice(0, 2)
 }
 function cnNumber(s: string): number {
   const d: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 }
@@ -167,15 +184,27 @@ function cnNumber(s: string): number {
   return d[s] ?? 0
 }
 
-export function yixueFacts(body: any, question = ''): string {
+export function yixueFacts(body: any, question = '', history: ReadonlyArray<{ role: string; content: string }> = []): string {
   const mode = asYixueMode(body?.mode)
   const origin = `原文來源：${TEXT_SOURCE.title}（${TEXT_SOURCE.license}）。以下「」內一律是原文，照錄，不可改字。`
 
   if (mode === 'ask') {
-    const named = namedHexagrams(question)
+    let named = namedHexagrams(question)
+    const fromHistory = named.length === 0
+    // A follow-up may say only "what about its second line?". Recover the
+    // nearest user-named context, never an assistant's potentially wrong
+    // quotation. A newly named hexagram replaces the previous topic.
+    if (fromHistory) for (const turn of history.slice(-20).reverse()) {
+      if (turn.role !== 'user') continue
+      named = namedHexagrams(turn.content.slice(0, 8000))
+      if (named.length) break
+    }
     return [
       '來訪者沒有起卦，只是來學《易經》。',
-      ...(named.length ? [origin, ...named.map(n => textBlock(hexText(n), '問題提到的卦', true))] : ['問題沒有點名任何一卦。']),
+      ...(named.length ? [
+        ...(fromHistory ? ['本題沒有另指一卦；以下是最近使用者提到的卦，供追問參照，並非起卦結果。'] : []),
+        origin, ...named.map(n => textBlock(hexText(n), fromHistory ? '最近對話提到的卦' : '問題提到的卦', true)),
+      ] : ['問題沒有點名任何一卦。']),
     ].join('\n')
   }
 
