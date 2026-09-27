@@ -55,7 +55,8 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `107_drop_old_mode_checks.sql` (2026-09-26). Renamed
+  Latest applied: `110_trending_rank_range.sql` (2026-09-27; checked live:
+  positive rank CHECK, publish_trending_week EXECUTE for service_role only). Renamed
   tables keep their ORIGINAL constraint names (`creates_mode_check` on
   `xcreates`): look a constraint up in `pg_constraint` before dropping it
   by name, or `drop ... if exists` silently misses it (106 did).
@@ -828,7 +829,8 @@ WORLDLABS_API_KEY=                    # World Labs Marble (XWorld worlds); unset
 CRON_SECRET=                          # guards /api/cron/* and refit
 TRENDING_MONTHLY_BUDGET_USD=          # weekly trending search (Grok x_search); runs refused once
                                       #   the month's logged spend reaches it; unset = $10
-TRENDING_KINDS=                       # kinds the Monday search runs: video (default) or video,image
+TRENDING_KINDS=                       # kinds the Monday search runs: video,image (default) or video;
+                                      #   the models searched come from the catalog (lib/trending-models.ts)
 TRENDING_GROK_MODEL=                  # unset = grok-4.7
 SITE_AGENT_MODEL=                     # override the site agent's model
 XDIRECTOR_MODEL=                      # override the director's model

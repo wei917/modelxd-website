@@ -5,11 +5,12 @@
 //   week DESC, rank ASC NULLS LAST, likes DESC NULLS LAST, platform ASC, post_id ASC
 //
 // (platform, post_id) is unique (supabase/108), so it breaks every tie. A
-// cursor names the last row a page showed; the next page is every row that
+// cursor names the last row a page examined; the next page is every row that
 // comes strictly after it in that order, read with `.order()` calls, this
-// module's PostgREST `or` predicate and `limit + 1`. No offsets: a page never
-// repeats or skips a row when rows are published between calls (Codex review,
-// Sep 27). Pure: no I/O, so the predicate is tested on its own
+// module's PostgREST `or` predicate and bounded batches (pageFiltered). No
+// offsets: a page never repeats or skips a row when rows are published
+// between calls (Codex review, Sep 27). Pure: no I/O of its own, so the
+// predicate and the paging are tested on their own
 // (scripts/test-trending-cursor.ts).
 
 export type FeedKind = 'video' | 'image' | 'all'
@@ -75,9 +76,44 @@ export function toPostgrestOr(branches: Cond[][]): string {
   return branches.map(b => b.length === 1 ? one(b[0]) : `and(${b.map(one).join(',')})`).join(',')
 }
 
-// ── For tests: the same order and predicate in JS ────────────────────────────
-
 type Row = { week: string; rank: number | null; likes: number | null; platform: string; post_id: string }
+
+// ── Pages of the rows that pass a filter ─────────────────────────────────────
+
+/** Up to `limit` rows that pass `ok`, read along the feed order `scan` rows
+ *  at a time, at most `maxScans` times (Sep 27: a post whose models XCreate
+ *  doesn't offer stays in the table and is skipped). `next` is the key of the
+ *  last row EXAMINED, so the cursor moves past skipped rows as well as shown
+ *  ones; it is null only when no row is left. Out of scans, the page is what
+ *  was found so far, possibly nothing, and `next` carries on from there.
+ *  `read` returns the first `n` rows after a key and throws on failure. */
+export async function pageFiltered<R extends Row>(opts: {
+  after: CursorKey | null
+  limit: number
+  scan: number
+  maxScans: number
+  ok: (r: R) => boolean
+  read: (after: CursorKey | null, n: number) => Promise<R[]>
+}): Promise<{ rows: R[]; next: CursorKey | null }> {
+  const { limit, scan, maxScans, ok, read } = opts
+  const rows: R[] = []
+  let key = opts.after
+  let last: R | null = null
+  for (let i = 0; i < maxScans; i++) {
+    const batch = await read(key, scan)
+    for (const r of batch) {
+      // A full page and one more row to show: the next page starts there.
+      if (rows.length === limit && ok(r)) return { rows, next: last && keyOf(last) }
+      last = r
+      if (rows.length < limit && ok(r)) rows.push(r)
+    }
+    if (batch.length < scan) return { rows, next: null }
+    key = keyOf(batch[batch.length - 1])
+  }
+  return { rows, next: last && keyOf(last) }
+}
+
+// ── For tests: the same order and predicate in JS ────────────────────────────
 
 /** The database's ORDER BY, for checking pages against a full sort. */
 export function compareRows(a: Row, b: Row): number {

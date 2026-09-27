@@ -9,7 +9,7 @@
 // anything malformed or made for another kind.
 
 import assert from 'node:assert/strict'
-import { afterBranches, compareRows, decodeCursor, encodeCursor, keyOf, matchesBranches, toPostgrestOr, type CursorKey } from '../lib/trending-cursor'
+import { afterBranches, compareRows, decodeCursor, encodeCursor, keyOf, matchesBranches, pageFiltered, toPostgrestOr, type CursorKey } from '../lib/trending-cursor'
 
 type Row = { week: string; rank: number | null; likes: number | null; platform: string; post_id: string }
 const rows: Row[] = Array.from({ length: 1234 }, (_, i) => ({
@@ -56,4 +56,41 @@ assert.equal(decodeCursor(forge({ k: 'video', w: '2026-9-1', r: 3, l: 500, p: 'x
 assert.equal(decodeCursor(forge({ k: 'video', w: '2026-09-21', r: 1.5, l: 500, p: 'x', i: '1' }), 'video'), null, 'non-integer rank')
 assert.equal(decodeCursor(forge({ k: 'video', w: '2026-09-21', r: 3, l: 500, p: 'X,', i: '1' }), 'video'), null, 'bad platform')
 
-console.log(`PASS: ${rows.length} rows paged at 1/10/20 with nulls and ties, predicate text, cursor validation`)
+// Filtered pages (Sep 27): rows whose models XCreate doesn't offer stay in
+// the table and are skipped. Pages fill past skipped rows, the cursor moves
+// across them, a long run of them costs bounded reads and at worst an empty
+// page that still carries a cursor, and the pages together hold every
+// eligible row once, in order.
+async function filtered() {
+  const okIds = new Set(sorted.filter((_, i) => i % 3 !== 0 && !(i >= 300 && i < 900)).map(r => r.post_id))
+  const want = sorted.filter(r => okIds.has(r.post_id))
+  for (const [limit, scan, maxScans] of [[10, 50, 8], [10, 7, 2], [1, 3, 1], [20, 100, 1]]) {
+    let after: CursorKey | null = null
+    const got: Row[] = []
+    let pages = 0, empty = 0, reads = 0
+    do {
+      const page: { rows: Row[]; next: CursorKey | null } = await pageFiltered<Row>({
+        after, limit, scan, maxScans, ok: r => okIds.has(r.post_id),
+        read: async (key, n) => {
+          reads++
+          return (key ? rows.filter(r => matchesBranches(r, afterBranches(key))) : rows).sort(compareRows).slice(0, n)
+        },
+      })
+      assert.ok(page.rows.length <= limit, 'page within its limit')
+      if (page.rows.length === 0) empty++
+      got.push(...page.rows)
+      after = page.next
+      assert.ok(++pages < 5000, 'filtered paging never ends')
+    } while (after)
+    assert.equal(got.length, want.length, `limit ${limit} scan ${scan}x${maxScans}: every eligible row once`)
+    got.forEach((r, i) => assert.equal(r.post_id, want[i].post_id, `limit ${limit} scan ${scan}x${maxScans}: order at ${i}`))
+    assert.ok(reads <= pages * maxScans, 'bounded reads per page')
+    // A page looking for one more row can absorb part of the run, so an empty
+    // page is certain only when the run outlasts two pages' reads.
+    if (scan * maxScans * 2 < 600) assert.ok(empty > 0, 'a long skipped run gives an empty page with a cursor, not the end')
+  }
+}
+
+filtered().then(() => {
+  console.log(`PASS: ${rows.length} rows paged at 1/10/20 with nulls and ties, predicate text, cursor validation, filtered pages across skipped runs`)
+}).catch(err => { console.error(err); process.exit(1) })

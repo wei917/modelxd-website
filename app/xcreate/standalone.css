@@ -98,10 +98,7 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 /* Rendered at X's full width, scaled to the card by XEmbed. */
 .xcs-trend-embed-inner { width: 550px; transform-origin: 0 0; }
 .xcs-trend-embed .twitter-tweet { margin: 0 auto 8px !important; }
-.xcs-trend-meta { display: flex; align-items: center; gap: 10px; }
 .xcs-trend > p { margin: 0; font-size: 14px; line-height: 1.5; }
-.xcs-trend-models { display: flex; flex-wrap: wrap; gap: 6px; }
-.xcs-trend-models span { padding: 3px 9px; border: 1px solid var(--border2); border-radius: 999px; font-size: 11px; color: var(--muted2); }
 .xcs-trend-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 0 10px; }
 .xcs-trend-credit { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted2); text-decoration: none; }
 .xcs-trend-credit:hover { color: var(--red); }

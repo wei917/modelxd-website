@@ -4,9 +4,10 @@
 //   npx tsx scripts/run-trending.ts image
 //
 // Same code as the Monday cron and the admin page's "run" (lib/trending-job):
-// several Grok x_search calls on the house xAI key, candidates stored as
+// searches the most recent 30 days using several Grok x_search calls on the
+// house xAI key, candidates stored as
 // 'pending' for /admin/trending, the month's budget checked first. Costs
-// real money (~$0.25–0.80 per search, not cappable per call).
+// real money ($0.22 to $3.34 per search so far, not cappable per call).
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'

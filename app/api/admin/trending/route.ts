@@ -1,19 +1,28 @@
 // app/api/admin/trending/route.ts
 // Admin-only actions behind /admin/trending:
-//   { action: 'publish', week, ids }  the chosen rows of that week go live,
-//                                     ranked by likes per kind (20 max per
-//                                     kind); every other row of the week is
-//                                     hidden.
-//   { action: 'run', kind }           a search now, same code and monthly
-//                                     budget as the Monday cron (paid).
+//   { action: 'publish', week, ids, seen }
+//        the chosen rows of that week go live, ranked by likes per kind (up
+//        to TRENDING_LIVE_MAX per kind), and every other row of THAT week is
+//        hidden, in ONE transaction (publish_trending_week, supabase/110; the
+//        rule is lib/trending-publish.ts). `seen` is every row of the week the
+//        page showed: the database refuses when the week holds others, which
+//        would be hidden unseen. Other weeks are not touched, on purpose: the
+//        feed shows every live week.
+//   { action: 'run', kind }  a search now, same code and monthly budget as
+//        the Monday cron (paid).
 
 import { NextRequest, NextResponse } from 'next/server'
 import { assertAdmin } from '@/lib/admin'
 import { runTrending, serviceClient, type TrendKind } from '@/lib/trending-job'
+import { TRENDING_LIVE_MAX } from '@/app/xcreate/trending'
 
 export const maxDuration = 800
 
-const MAX_LIVE = 20
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** A list of row ids, bounded: the page never shows more than it loads. */
+const uuids = (v: unknown, max: number): v is string[] =>
+  Array.isArray(v) && v.length <= max && v.every(x => typeof x === 'string' && UUID.test(x))
+const ADMIN_ROWS = 1000   // what /admin/trending loads (app/admin/trending/page.tsx)
 
 export async function POST(req: NextRequest) {
   const guard = await assertAdmin()
@@ -33,30 +42,22 @@ export async function POST(req: NextRequest) {
 
   if (body.action === 'publish') {
     const week = String(body.week ?? '')
-    const ids: string[] = Array.isArray(body.ids) ? body.ids.map(String) : []
     if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return NextResponse.json({ error: 'bad week' }, { status: 400 })
+    // Bounded input: row uuids, the chosen at most a full week of both kinds.
+    if (!uuids(body.ids, 2 * TRENDING_LIVE_MAX)) return NextResponse.json({ error: 'bad ids' }, { status: 400 })
+    if (!uuids(body.seen, ADMIN_ROWS)) return NextResponse.json({ error: 'bad seen' }, { status: 400 })
 
-    const { data: rows, error } = await sb.from('trending_posts').select('id, kind, likes').eq('week', week)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    const chosen = new Set(ids)
-    const updates: { id: string; status: string; rank: number | null }[] = []
-    for (const kind of ['video', 'image']) {
-      const ofKind = (rows ?? []).filter(r => r.kind === kind)
-      const live = ofKind.filter(r => chosen.has(r.id)).sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
-      if (live.length > MAX_LIVE) {
-        return NextResponse.json({ error: `${live.length} ${kind} posts chosen; the list holds ${MAX_LIVE}.` }, { status: 400 })
-      }
-      live.forEach((r, i) => updates.push({ id: r.id, status: 'live', rank: i + 1 }))
-      ofKind.filter(r => !chosen.has(r.id)).forEach(r => updates.push({ id: r.id, status: 'hidden', rank: null }))
+    // Everything else (the week's rows, the per-kind limit, rows not shown)
+    // is checked inside the transaction, where nothing can change under it.
+    const { data, error } = await sb.rpc('publish_trending_week', {
+      p_week: week, p_ids: body.ids, p_seen: body.seen, p_max_live: TRENDING_LIVE_MAX,
+    })
+    if (error) {
+      const refused = /publish_trending_week:/.test(error.message)
+      return NextResponse.json({ error: error.message.replace(/^.*publish_trending_week: /, '') }, { status: refused ? 409 : 500 })
     }
-    const now = new Date().toISOString()
-    for (const u of updates) {
-      const { error: e } = await sb.from('trending_posts')
-        .update({ status: u.status, rank: u.rank, updated_at: now }).eq('id', u.id)
-      if (e) return NextResponse.json({ error: e.message }, { status: 500 })
-    }
-    return NextResponse.json({ live: updates.filter(u => u.status === 'live').length, hidden: updates.filter(u => u.status === 'hidden').length })
+    const res = Array.isArray(data) ? data[0] : data
+    return NextResponse.json({ live: res?.live ?? 0, hidden: res?.hidden ?? 0 })
   }
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })

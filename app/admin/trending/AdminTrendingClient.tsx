@@ -1,13 +1,15 @@
 'use client'
 
 // The review screen for the trending list: weeks newest first, each post
-// with its likes, models, our summary and whether it carries a preset.
+// with its likes, models, our summary, whether it carries a preset, and why
+// XCreate won't show it when it credits a model XCreate doesn't offer.
 // Tick up to 20 per kind and Publish: ticked rows go live ranked by likes,
 // the rest of that week is hidden. "Run search now" is the Monday job on
 // demand (paid, same monthly budget).
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { TRENDING_LIVE_MAX } from '@/app/xcreate/trending'
 
 export type AdminTrendRow = {
   id: string
@@ -27,10 +29,19 @@ export type AdminTrendRow = {
   created_at: string
 }
 
-const MAX_LIVE = 20
+const MAX_LIVE = TRENDING_LIVE_MAX
 const STATUS_COLOR: Record<AdminTrendRow['status'], string> = { live: 'var(--green)', pending: 'var(--red)', hidden: 'var(--muted)' }
 
-export default function AdminTrendingClient({ rows, spent, budget }: { rows: AdminTrendRow[]; spent: number; budget: number }) {
+export default function AdminTrendingClient({ rows, spent, budget, notShown, catalogError, partialWeek }: {
+  rows: AdminTrendRow[]
+  spent: number
+  budget: number
+  /** Row id → why XCreate won't show it (a model it doesn't offer). */
+  notShown: Record<string, string>
+  catalogError: string | null
+  /** The oldest week shown when the page couldn't load every row: not publishable here. */
+  partialWeek: string | null
+}) {
   const router = useRouter()
   const weeks = useMemo(() => [...new Set(rows.map(r => r.week))], [rows])
   const [picked, setPicked] = useState<Set<string>>(() => new Set(rows.filter(r => r.status === 'live').map(r => r.id)))
@@ -40,9 +51,12 @@ export default function AdminTrendingClient({ rows, spent, budget }: { rows: Adm
   const toggle = (id: string) => setPicked(p => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
 
   const publish = async (week: string) => {
-    const ids = rows.filter(r => r.week === week && picked.has(r.id)).map(r => r.id)
+    const ofWeek = rows.filter(r => r.week === week)
+    const ids = ofWeek.filter(r => picked.has(r.id)).map(r => r.id)
     setBusy(`publish:${week}`); setNote(null)
-    const res = await fetch('/api/admin/trending', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'publish', week, ids }) })
+    // `seen`: every row of the week on this page. The database refuses the
+    // publish when the week has others (they'd be hidden unseen): reload.
+    const res = await fetch('/api/admin/trending', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'publish', week, ids, seen: ofWeek.map(r => r.id) }) })
     const j = await res.json().catch(() => ({}))
     setBusy(null)
     setNote(res.ok ? `Week of ${week}: ${j.live} live, ${j.hidden} hidden.` : `Publish failed: ${j.error ?? res.status}`)
@@ -50,14 +64,15 @@ export default function AdminTrendingClient({ rows, spent, budget }: { rows: Adm
   }
 
   const run = async (kind: 'video' | 'image') => {
-    if (!confirm(`Run the ${kind} search now? Grok costs about $1–2 a run and can't be capped. This month: $${spent.toFixed(2)} of $${budget}.`)) return
+    if (!confirm(`Run the ${kind} search now? Grok's cost can't be capped: one search has cost $3.34, and a run is several searches. Logged this month: $${spent.toFixed(2)} of $${budget}.`)) return
     setBusy(`run:${kind}`); setNote('Searching X… this takes a few minutes.')
     const res = await fetch('/api/admin/trending', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'run', kind }) })
     const j = await res.json().catch(() => ({}))
     setBusy(null)
     if (!res.ok) { setNote(`Search failed: ${j.error ?? res.status}`); return }
     const r = j.report
-    setNote(`Found ${r.found}, added ${r.inserted} as pending, ${r.alreadyListed} already listed, ${r.dropped.length} dropped. Cost $${r.costUsd.toFixed(2)}.`
+    setNote(`Found ${r.found}, added ${r.inserted} as pending, ${r.alreadyListed} already listed, ${r.dropped.length} dropped. Cost $${r.costUsd.toFixed(2)}${r.costUnknown ? `, plus ${r.costUnknown} search${r.costUnknown === 1 ? '' : 'es'} with an unknown cost (check the xAI console)` : ''}.`
+      + (r.deferred?.length ? ` Deferred by the month's budget: ${r.deferred.join('; ')}.` : '')
       + (r.dropped.length ? ` Dropped: ${r.dropped.map((d: any) => `${d.url.split('/')[3] ?? d.url} (${d.reason})`).join('; ')}` : ''))
     router.refresh()
   }
@@ -69,8 +84,10 @@ export default function AdminTrendingClient({ rows, spent, budget }: { rows: Adm
     <h1 style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 34, fontWeight: 800, margin: '0 0 8px' }}>Trending on social media</h1>
     <p style={{ color: 'var(--muted2)', fontSize: 14, margin: '0 0 20px', lineHeight: 1.6 }}>
       The Monday search adds candidates as pending. Tick up to {MAX_LIVE} per kind and publish; the rest of that week is hidden.
-      XCreate shows the newest week that has live posts. Search spend this month: <b>${spent.toFixed(2)}</b> of ${budget}.
+      XCreate shows every week&apos;s live posts, newest first, except posts crediting a model it doesn&apos;t offer.
+      Search spend logged this month: <b>${spent.toFixed(2)}</b> of ${budget}.
     </p>
+    {catalogError && <p style={{ color: 'var(--red)', fontSize: 13, margin: '0 0 16px' }}>Couldn&apos;t read the catalog, so which posts XCreate can show is unknown: {catalogError}</p>}
     <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
       <button onClick={() => run('video')} disabled={!!busy} style={btn(false)}>{busy === 'run:video' ? 'Searching…' : 'Run video search now'}</button>
       <button onClick={() => run('image')} disabled={!!busy} style={btn(false)}>{busy === 'run:image' ? 'Searching…' : 'Run image search now'}</button>
@@ -86,11 +103,14 @@ export default function AdminTrendingClient({ rows, spent, budget }: { rows: Adm
           <h2 style={{ fontSize: 18, margin: 0 }}>Week of {week}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--muted2)' }}>
             <span>Picked: {count('video')} video, {count('image')} image</span>
-            <button onClick={() => publish(week)} disabled={!!busy || count('video') > MAX_LIVE || count('image') > MAX_LIVE} style={btn(true)}>
+            <button onClick={() => publish(week)} disabled={!!busy || week === partialWeek || count('video') > MAX_LIVE || count('image') > MAX_LIVE} style={btn(true)}>
               {busy === `publish:${week}` ? 'Publishing…' : 'Publish this week'}
             </button>
           </div>
         </div>
+        {week === partialWeek && <p style={{ color: 'var(--red)', fontSize: 12, margin: '0 0 10px' }}>
+          This page couldn&apos;t load every row of this week, so it can&apos;t be published from here: publishing hides every row that isn&apos;t ticked, including ones not shown.
+        </p>}
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           {ofWeek.map(r => <label key={r.id} style={{ display: 'grid', gridTemplateColumns: '28px 70px 1fr 220px', gap: 12, alignItems: 'start', padding: '12px 14px', borderTop: '1px solid var(--border)', fontSize: 13, cursor: 'pointer', background: picked.has(r.id) ? 'var(--surface2)' : 'transparent' }}>
             <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} style={{ marginTop: 3 }} />
@@ -102,6 +122,7 @@ export default function AdminTrendingClient({ rows, spent, budget }: { rows: Adm
             <div style={{ minWidth: 0 }}>
               <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'none', fontWeight: 600 }}>@{r.handle} ↗</a>
               <span style={{ color: 'var(--muted2)' }}> · {r.models.join(' + ')}</span>
+              {notShown[r.id] && <div style={{ marginTop: 4, color: 'var(--red)', fontSize: 12 }}>Not shown on XCreate: {notShown[r.id]}</div>}
               <div style={{ marginTop: 4, lineHeight: 1.5 }}>{r.summary?.en}</div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted2)', lineHeight: 1.5 }}>

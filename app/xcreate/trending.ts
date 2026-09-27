@@ -1,11 +1,13 @@
 // app/xcreate/trending.ts
 //
 // "Trending on social media" for XCreate's Studio and Templates tabs: the
-// most-liked AI videos and images whose creators shared the prompt, shown as
-// each platform's own embed, so a deleted post disappears on its own.
+// most-liked AI videos and images made with models XCreate offers, shown as
+// each platform's own embed, so a deleted post disappears on its own. A post
+// that shares its prompt also gets a preset button.
 //
-// The list lives in `trending_posts` (supabase/108), up to 20 per kind per
-// week, and reaches the page through /api/trending. trending-seed.json is the
+// The list lives in `trending_posts` (supabase/108, 110), up to
+// TRENDING_LIVE_MAX per kind per week, and reaches the page through
+// /api/trending. trending-seed.json is the
 // same seed the migration inserts (both generated from one script); the route
 // serves it only while 108 hasn't been run (or the read fails), so the
 // section never blanks.
@@ -13,6 +15,9 @@
 // What belongs on the list (owner, Sep 26): posts made with a video or image
 // model that NAME it. Never posts made through an LLM agent (Claude Opus
 // briefs), posts built on someone else's characters, or suggestive ones.
+// Since Sep 27 only models XCreate offers ("remove midjourney"): the route
+// skips a post crediting any other model (lib/trending-models.ts), the seed
+// included.
 
 import type { Lang } from '@/lib/i18n'
 import type { Template } from './templates'
@@ -44,9 +49,12 @@ export type TrendingPost = {
   preset: TrendingPreset | null             // null = no preset button
 }
 
-/** Posts kept live per kind per week (the admin page's limit), and the most
- *  one /api/trending page returns. */
+/** The most one /api/trending page returns: a request bound. */
 export const TRENDING_MAX = 20
+/** Posts one week can hold live per kind (/admin/trending's publish). It was
+ *  20, the page size, until the owner asked for the month's supply (Sep 27:
+ *  50+); migration 110 lifts the database's matching CHECK on rank. */
+export const TRENDING_LIVE_MAX = 200
 /** First page and each further page of the feed (owner, Sep 27: "at least 10
  *  ... infinite load"). */
 export const TRENDING_PAGE = 10

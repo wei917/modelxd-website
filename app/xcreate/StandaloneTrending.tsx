@@ -8,8 +8,9 @@
 //
 // X videos use X's video-only embed (twttr.widgets.createVideo): the post's
 // own text renders inside X's iframe at X's size, which nothing on our side
-// can restyle, so the card sets the creator credit, our summary and the
-// models in the site's type instead. Embeds are built into an empty div React
+// can restyle, so the card sets the creator credit and our summary in the
+// site's type instead (no model tags, owner, Sep 27: the feed only holds
+// models XCreate offers). Embeds are built into an empty div React
 // never touches, and only when the card nears the viewport: twenty at once is
 // twenty iframes and players. "Use this preset" hands the post to XCreate as
 // a template (prompt, model, recipe, duration) through the same applyTemplate
@@ -80,8 +81,9 @@ function XEmbed({ id, video }: { id: string; video: boolean }) {
   return <div ref={outer} className="xcs-trend-embed"><div ref={ref} className="xcs-trend-embed-inner" /></div>
 }
 
-type Feed = { posts: TrendingPost[]; cursor: string | null; loading: boolean; loaded: boolean; failed: boolean }
-const EMPTY: Feed = { posts: [], cursor: null, loading: true, loaded: false, failed: false }
+/** `added`: how many new posts the last page brought. */
+type Feed = { posts: TrendingPost[]; cursor: string | null; loading: boolean; loaded: boolean; failed: boolean; added: number }
+const EMPTY: Feed = { posts: [], cursor: null, loading: true, loaded: false, failed: false, added: 0 }
 
 export default function StandaloneTrending({ kind, onUse, disabled }: {
   /** One kind (Templates' tabs) or both (Studio). */
@@ -124,7 +126,7 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
           have.add(id)
           fresh.push(p)
         }
-        return { posts: [...f.posts, ...fresh], cursor: d.nextCursor ?? null, loading: false, loaded: true, failed: false }
+        return { posts: [...f.posts, ...fresh], cursor: d.nextCursor ?? null, loading: false, loaded: true, failed: false, added: fresh.length }
       })
     } catch {
       // No automatic retry: the button below retries when the reader asks.
@@ -157,6 +159,15 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
     return () => io.disconnect()
   }, [feed.cursor, feed.failed, feed.loading, fetchPage])
 
+  // A page can bring nothing and still have a cursor: the server skips posts
+  // whose models XCreate no longer offers and answers after a bounded read.
+  // With nothing shown yet there is no sentinel to scroll to (the section
+  // renders nothing), so go on from the cursor directly.
+  useEffect(() => {
+    if (feed.loading || feed.failed || !feed.cursor || feed.added > 0) return
+    void fetchPage(feed.cursor)
+  }, [feed.loading, feed.failed, feed.cursor, feed.added, fetchPage])
+
   if (!feed.loaded && feed.posts.length === 0) return null
   if (feed.posts.length === 0 && !feed.failed) return null
   const titleId = `xcs-trending-title-${kind}`
@@ -174,10 +185,7 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
       {feed.posts.map(post => {
         const preset = onUse ? presetTemplate(post, lang) : null
         return <article className="xcs-trend" key={`${post.platform}:${post.postId}`}>
-          {/* No rank number (owner, Sep 26): the order already says it. */}
-          <div className="xcs-trend-meta">
-            <div className="xcs-trend-models">{post.models.map(m => <span key={m}>{m}</span>)}</div>
-          </div>
+          {/* No rank number (owner, Sep 26) and no model tags (Sep 27). */}
           <p>{post.summary[lang] ?? post.summary.en}</p>
           {post.platform === 'x' && <XEmbed id={post.postId} video={post.kind === 'video'} />}
           <div className="xcs-trend-foot">
