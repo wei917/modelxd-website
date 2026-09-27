@@ -149,6 +149,8 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.site.brand": {"en": "XTell", "zh-Hant": "X先知", "zh-Hans": "X先知", "ja": "X占い", "ko": "X운세"},
   "xtell.site.tab": {"en": "XTell | Explore the temples", "zh-Hant": "X先知 | 探索殿堂", "zh-Hans": "X先知 | 探索殿堂", "ja": "X占い | 殿堂をめぐる", "ko": "X운세 | 전당 둘러보기"},
   "xtell.site.navigation": {"en": "XTell navigation", "zh-Hant": "X先知 導覽", "zh-Hans": "X先知 导航", "ja": "X占い ナビゲーション", "ko": "X운세 탐색"},
+  "xtell.site.templesPrev": {"en": "Previous temples", "zh-Hant": "前面的殿堂", "zh-Hans": "前面的殿堂", "ja": "前の殿堂", "ko": "이전 전당"},
+  "xtell.site.templesMore": {"en": "More temples", "zh-Hant": "更多殿堂", "zh-Hans": "更多殿堂", "ja": "ほかの殿堂", "ko": "더 많은 전당"},
   "xtell.site.skip": {"en": "Skip to content", "zh-Hant": "跳到主要內容", "zh-Hans": "跳到主要内容", "ja": "本文へ移動", "ko": "본문으로 이동"},
   // ── xcreate.modelxd.com shell (nav, footer, sign-in, account; Sep 26).
   // The studio's own strings live under "── XCreate ──" further down. ──

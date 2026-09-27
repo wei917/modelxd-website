@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
@@ -36,6 +36,32 @@ export default function XTellNav({ user }: { user: User | null }) {
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
   }, [pathname])
+  // When the row is wider than the bar (a narrow window, a phone), an arrow
+  // on the side that has more temples scrolls it, over a soft fade: without
+  // one, a mouse user cannot tell the rest exist (owner, Sep 27). Swiping
+  // and keyboard focus still scroll it too. The arrows are a pointer aid
+  // only; every temple link stays in the tab order and in the landmark.
+  const row = useRef<HTMLElement>(null)
+  const [more, setMore] = useState({ left: false, right: false })
+  useEffect(() => {
+    const el = row.current
+    if (!el) return
+    const check = () => setMore(m => {
+      const left = el.scrollLeft > 2, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
+      return m.left === left && m.right === right ? m : { left, right }
+    })
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', check); ro.disconnect() }
+  }, [lang])
+  // The temple you are in is never hidden past the edge.
+  useEffect(() => {
+    if (!activeTemple) return
+    row.current?.querySelector(`a[href="/#${activeTemple}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeTemple])
+  const scrollRow = (dir: 1 | -1) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
   // The tab title follows the language and the place: the explorer, a
   // temple (from the hash), the account page, the legal pages. The server's
   // metadata is already this language's explorer title (lib/xtell-meta.ts)
@@ -80,14 +106,20 @@ export default function XTellNav({ user }: { user: User | null }) {
         }}><XTellMark /></a>
         {/* Every temple, one compact row after the wordmark (owner, Sep 27).
             The avatar on the right IS the account link (owner, Sep 24). */}
-        <nav className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-          {DISPLAY_TEMPLES.map(key => <a key={key} href={'/#' + key}
-            aria-label={t('xtell.site.focus.' + key + '.name')}
-            aria-current={activeTemple === key ? 'page' : undefined}>
-            <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
-            <span>{t('xtell.site.focus.' + key + '.short')}</span>
-          </a>)}
-        </nav>
+        <div className="xtell-temple-wrap">
+          <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
+            {DISPLAY_TEMPLES.map(key => <a key={key} href={'/#' + key}
+              aria-label={t('xtell.site.focus.' + key + '.name')}
+              aria-current={activeTemple === key ? 'page' : undefined}>
+              <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
+              <span>{t('xtell.site.focus.' + key + '.short')}</span>
+            </a>)}
+          </nav>
+          {more.left && <button type="button" className="xtell-temple-arrow is-left" tabIndex={-1} aria-hidden="true"
+            title={t('xtell.site.templesPrev')} onClick={() => scrollRow(-1)}>‹</button>}
+          {more.right && <button type="button" className="xtell-temple-arrow is-right" tabIndex={-1} aria-hidden="true"
+            title={t('xtell.site.templesMore')} onClick={() => scrollRow(1)}>›</button>}
+        </div>
         <div className="xtell-nav-actions">
           {/* The Google photo, as XCreate's and www's navs show it; the
               initial only without one (owner, Sep 26). no-referrer: Google's
