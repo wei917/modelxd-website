@@ -25,6 +25,9 @@
 //   - /coming-soon              — the form itself
 //   - /api/site-auth            — the form's POST target
 //   - /api/stripe/webhook       — Stripe's webhook calls won't have the cookie
+//   - /api/visit                — the visit log, so a visit that lands on the
+//                                 password page (an ad pointed at www) still
+//                                 counts. It only records; it serves nothing.
 //   - /api/v1/*, /api/mcp       — machine endpoints with their OWN auth (an
 //                                 xd_ bearer key). A game server's SDK call
 //                                 cannot follow a redirect to a password
@@ -45,6 +48,7 @@ function isBypassed(pathname: string): boolean {
   if (pathname === '/coming-soon')          return true
   if (pathname === '/api/site-auth')        return true
   if (pathname === '/api/stripe/webhook')   return true
+  if (pathname === '/api/visit')            return true
   if (pathname.startsWith('/api/v1/'))      return true
   if (pathname === '/api/mcp')              return true
   // /api/v1/* and /api/mcp call these internally. The gate redirects a

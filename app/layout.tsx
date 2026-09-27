@@ -6,10 +6,12 @@ import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
 import Omnibox from './components/Omnibox'
 import GlobalCursor from './components/GlobalCursor'
+import VisitTracker from './components/VisitTracker'
 import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
+import { CONSENT_REGIONS, needsConsent } from '../lib/consent'
 import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
 import { SiteProvider } from '../lib/useSite'
@@ -119,9 +121,9 @@ export const viewport = {
 // config, Consent Mode denies ad and analytics storage by default in the
 // EEA, the UK and Switzerland, where prior consent is required and there is
 // no consent banner; Taiwan, Japan and everywhere else load the tag as
-// Google supplied it. Disclosed in /privacy §4.
+// Google supplied it (the region list is lib/consent.ts). Disclosed in
+// /privacy §4.
 const GOOGLE_ADS_ID = 'AW-18476997246'
-const CONSENT_REGIONS = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', 'NO', 'GB', 'CH']
 const GTAG_INIT = [
   'window.dataLayer = window.dataLayer || [];',
   'function gtag(){dataLayer.push(arguments);}',
@@ -142,6 +144,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // paint is already in the visitor's language and hydration matches.
   const lang = serverLang(h, site)
   const googleAds = process.env.VERCEL_ENV === 'production'
+  // The visit log (VisitTracker → /api/visit) stays off where consent is
+  // required. The route checks the same header again.
+  const logVisits = !needsConsent(h.get('x-vercel-ip-country'))
   return (
     <html lang={lang} data-site={site}>
       <head>
@@ -186,6 +191,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             self-hosted runs cost nothing. Enable also requires the dashboard
             toggle: project → Analytics → Enable. */}
         <Analytics />
+        {/* Our own visit log: time on site and the ad or link that brought
+            each visit (supabase/109_site_visits.sql). */}
+        {logVisits && <VisitTracker />}
       </body>
     </html>
   )

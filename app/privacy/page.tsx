@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: September 26, 2026
+        Last updated: September 27, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
@@ -74,6 +74,16 @@ export default function PrivacyPage() {
         (prompts, questions, birth details, readings) is sent to Google Ads,
         and we do not sell your data. You can limit Google ad personalization
         at adssettings.google.com.
+      </p>
+      <p style={S.p}>
+        We also keep our own visit log: the pages you open, how long the tab is
+        in front, the ad or link that brought you (Google&apos;s click ID,
+        campaign tags and the referring site), your country and city as seen
+        from your connection, and your device type. A first-party cookie
+        (modelxd_vid, one year) connects visits from the same browser, and a
+        visit is linked to your account while you are signed in. We do not
+        store your IP address. The visit log and its cookie are off in the
+        European Economic Area, the United Kingdom and Switzerland.
       </p>
 
       <h2 style={S.h2}>5. Retention &amp; Deletion</h2>

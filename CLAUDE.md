@@ -321,6 +321,7 @@ app/
     ├── features/               # Client-visible beta flags
     ├── skills/                 # Agent Skills listing
     ├── snapshot/  site-auth/
+    ├── visit/                  # Visit log (see Visit Log)
     ├── profile/{delete,delete-account,xcreates}
     ├── xcut/{projects,projects/[id],render,assets}
     ├── referral/{route,claim}  # code + status; claim attaches a signup
@@ -740,6 +741,19 @@ a new value would need a migration. Before this, a refused run existed only
 in stdout and a chat bubble, so debugging one meant unnesting jsonb out of
 `xdirector_conversations.bubbles` — which is exactly how the insufficient-credits
 case was found on Sep 3.
+
+## Visit Log (`site_visits`, Sep 27)
+
+Our own first-party analytics: how long people stay and which ad or link
+brought them. `VisitTracker.tsx` (root layout) reports to `/api/visit`, which
+writes one row per visit through `log_site_visit()` (migration 109). Active
+time = tab in front, pausing 5 minutes after the last input; the
+`modelxd_vid` cookie ties a browser's visits together, so a later sign-up
+traces back to its first ad click (`gclid`/`gbraid`/`wbraid`, `utm_*`). No
+IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`, shared with
+the Google Ads consent default). `/api/visit` bypasses the www password gate
+so ad clicks that land on `/coming-soon` still count. **Reports filter
+`env = 'production'`**; queries and definitions are in `docs/SITE-VISITS.md`.
 
 ## Admin
 
