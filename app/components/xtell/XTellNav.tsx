@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
-import { LANGS, useLang, type Lang } from '../../../lib/i18n'
+import { useLang } from '../../../lib/i18n'
 import { DISPLAY_TEMPLES, type TempleKey } from './TempleArtwork'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
@@ -23,7 +23,7 @@ export function XTellMark() {
 }
 
 export default function XTellNav({ user }: { user: User | null }) {
-  const { lang, setLang, t } = useLang()
+  const { lang, t } = useLang()
   const { show } = useAuthModal()
   const pathname = usePathname()
   // The tab title follows the language and the place: the explorer, a
@@ -75,9 +75,6 @@ export default function XTellNav({ user }: { user: User | null }) {
             }}>{t('xtell.site.street')}</a>
         </nav>
         <div className="xtell-nav-actions">
-          <select value={lang} onChange={e => setLang(e.target.value as Lang)} aria-label={t('xtell.site.language')}>
-            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-          </select>
           {/* The Google photo, as XCreate's and www's navs show it; the
               initial only without one (owner, Sep 26). no-referrer: Google's
               avatar host can refuse hotlinks that carry a referrer. */}
