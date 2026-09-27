@@ -1706,7 +1706,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setSlotOptions(prev => prev.map((v, idx) => idx === target
       ? validateOpts(m, mode, { mode: recipeMode, quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null })
       : v))
-    setOptsOpen(prev => prev.map((v, idx) => idx === target ? false : v))
+    // A new seat joins whatever state the others are in. Forcing it closed
+    // meant that adding a second model WHILE configuring the first hid the
+    // new one's settings until you went hunting for its ⚙ — and on a card
+    // that just appeared, the panel is exactly what you came for (owner,
+    // Sep 26). Nothing open = still collapsed, so the quiet default stands.
+    setOptsOpen(prev => {
+      const configuring = prev.some(Boolean)
+      return prev.map((v, idx) => idx === target ? configuring : v)
+    })
     setSlots([])  // clear any stale results from previous run
     setPhase('setup')
     setPickerSlot(null)
