@@ -28,7 +28,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { FALLBACK_TRENDING, TRENDING_MAX, TRENDING_PAGE, type TrendingPost } from '@/app/xcreate/trending'
 import { afterBranches, decodeCursor, encodeCursor, pageFiltered, toPostgrestOr, type CursorKey, type FeedKind } from '@/lib/trending-cursor'
-import { eligibility, loadSupport, presetUsable, type Support } from '@/lib/trending-models'
+import { eligibility, loadSupport, presetRunsOn, type Support } from '@/lib/trending-models'
 
 const HEADERS = { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' }
 const NO_STORE = { 'Cache-Control': 'no-store' }
@@ -43,9 +43,12 @@ type Row = {
   prompt: string | null; preset: TrendingPost['preset']; week: string; rank: number | null
 }
 
-/** The post as served: a preset that no longer runs loses its button. */
-const served = (p: TrendingPost, support: Support): TrendingPost =>
-  presetUsable(p.kind, p.preset, support) ? p : { ...p, preset: null }
+/** The post as served: a preset that no longer runs loses its button, and one
+ *  that does carries its model's name from the catalog, never a stored one. */
+const served = (p: TrendingPost, support: Support): TrendingPost => {
+  const modelName = presetRunsOn(p.kind, p.preset, support)
+  return p.preset && modelName ? { ...p, preset: { ...p.preset, modelName } } : { ...p, preset: null }
+}
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams

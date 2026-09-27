@@ -11,7 +11,7 @@
 
 import assert from 'node:assert/strict'
 import {
-  derivedName, eligibility, groupQuery, namesIn, otherGeneratorsIn, presetModel, presetUsable, searchGroups,
+  derivedName, eligibility, groupQuery, namesIn, otherGeneratorsIn, presetModel, presetRunsOn, searchGroups,
   supportFrom, usableKinds, type CatalogRow, type MediaKind,
 } from '../lib/trending-models'
 
@@ -181,13 +181,16 @@ assert.deepEqual(otherGeneratorsIn('Imagen 4 test', full), ['Imagen 4'])
 assert.deepEqual(otherGeneratorsIn('Kling 2.5 vs Seedance', full), ['Kling'])
 assert.deepEqual(otherGeneratorsIn('Pikachu on a runway', full), [])
 
-// Presets that no longer run.
-assert.equal(presetUsable('video', { model: 'seedance2_5', recipe: 'image_to_video' }, full), true)
-assert.equal(presetUsable('video', { model: 'seedance2_5', recipe: 'video_edit' }, full), false, 'recipe not offered')
-assert.equal(presetUsable('image', { model: 'seedance2_5', recipe: 'image_to_video' }, full), false, 'wrong kind')
-assert.equal(presetUsable('video', { model: 'gone', recipe: 'text_to_video' }, full), false, 'model gone')
-assert.equal(presetUsable('video', { model: 'seedance2_5', recipe: 'image_to_video' }, noSeedance), false, 'model disabled')
-assert.equal(presetUsable('video', null, full), false)
+// The model a preset runs on, named for the tag beside its button; none once
+// the preset no longer runs.
+assert.equal(presetRunsOn('video', { model: 'seedance2_5', recipe: 'image_to_video' }, full), 'Seedance 2.5')
+assert.equal(presetRunsOn('image', { model: 'gpt-image-2', recipe: 'image_edit' }, full), 'GPT Image 2')
+assert.equal(presetRunsOn('image', { model: 'gemini-3-pro-image', recipe: 'image_edit' }, full), 'Nano Banana Pro', 'the name before the alias')
+assert.equal(presetRunsOn('video', { model: 'seedance2_5', recipe: 'video_edit' }, full), null, 'recipe not offered')
+assert.equal(presetRunsOn('image', { model: 'seedance2_5', recipe: 'image_to_video' }, full), null, 'wrong kind')
+assert.equal(presetRunsOn('video', { model: 'gone', recipe: 'text_to_video' }, full), null, 'model gone')
+assert.equal(presetRunsOn('video', { model: 'seedance2_5', recipe: 'image_to_video' }, noSeedance), null, 'model disabled')
+assert.equal(presetRunsOn('video', null, full), null)
 
 // Which model a preset runs: an exact name first, then one variant, never
 // another version (Codex review, Sep 27: "GPT IMAGE 2" had matched

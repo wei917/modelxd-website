@@ -34,6 +34,7 @@ export type TrendingPreset = {
   duration?: number
   aspect?: string
   needsImage?: boolean                      // the creator started from their own picture; the user adds theirs
+  modelName?: string                        // the model's catalog name, added by /api/trending on every read
 }
 
 export type TrendingPost = {

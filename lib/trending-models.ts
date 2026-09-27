@@ -287,10 +287,15 @@ export function presetModel(models: readonly string[], recipe: string, catalog: 
   return null
 }
 
-/** A stored preset still runs: its model is usable for the post's kind and
- *  still offers the recipe (Codex review, Sep 27). */
-export function presetUsable(kind: MediaKind, preset: { model: string; recipe: string } | null | undefined, support: Support): boolean {
-  return !!preset && support.models.some(m => m.model_name === preset.model && m.kinds.includes(kind) && m.modes.includes(preset.recipe))
+/** The name of the model a stored preset runs on, for the tag beside its
+ *  button (owner, Sep 27: "you must know the model"): the catalog's display
+ *  name before any alias ("Nano Banana Pro - Gemini 3 Pro Image" is "Nano
+ *  Banana Pro"). Null once the preset no longer runs: its model is gone,
+ *  doesn't make the post's kind, or no longer offers the recipe (Codex
+ *  review, Sep 27). */
+export function presetRunsOn(kind: MediaKind, preset: { model: string; recipe: string } | null | undefined, support: Support): string | null {
+  const m = preset && support.models.find(m => m.model_name === preset.model && m.kinds.includes(kind) && m.modes.includes(preset.recipe))
+  return m ? m.display_name.split(' - ')[0].trim() : null
 }
 
 // ── searches ─────────────────────────────────────────────────────────────────

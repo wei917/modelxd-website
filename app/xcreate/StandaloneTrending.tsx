@@ -221,7 +221,9 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
             <a className="xcs-trend-open" href={post.url} target="_blank" rel="noopener noreferrer"
               aria-label={`${copy.open}: ${summary}`}><p>{summary}</p></a>
             {post.platform === 'x' && <XEmbed id={post.postId} video={post.kind === 'video'} />}
+            {/* The model the preset runs on, left of its button (owner, Sep 27). */}
             {preset && <div className="xcs-trend-foot">
+              {post.preset?.modelName && <span className="xcs-trend-model">{post.preset.modelName}</span>}
               <button type="button" className="xcs-trend-use" disabled={disabled}
                 onClick={() => onUse?.(preset)}>{copy.use}</button>
             </div>}
