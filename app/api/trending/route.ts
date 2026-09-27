@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   })
   const { data, error } = await sb
     .from('trending_posts')
-    .select('platform, post_id, handle, url, kind, models, likes, summary, week, rank')
+    .select('platform, post_id, handle, url, kind, models, likes, summary, prompt, preset, week, rank')
     .eq('kind', kind)
     .eq('status', 'live')
     .order('week', { ascending: false })
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     posts = data.filter(r => r.week === week).slice(0, TRENDING_MAX).map(r => ({
       platform: r.platform, postId: r.post_id, handle: r.handle, url: r.url, kind: r.kind,
       models: r.models ?? [], likes: r.likes, summary: r.summary ?? {},
+      prompt: r.prompt ?? null, preset: r.preset ?? null,
     }))
   }
 

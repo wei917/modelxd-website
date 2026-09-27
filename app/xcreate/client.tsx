@@ -4981,7 +4981,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     composer; Templates has all of them. Setup screen only, like
                     the wall above. Renders nothing for a mode with no posts. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
-                  <StandaloneTrending kind={mode} limit={STUDIO_SHOWN} moreHref="/?view=templates" />
+                  <StandaloneTrending kind={mode} limit={STUDIO_SHOWN} moreHref="/?view=templates"
+                    onUse={template => { void applyTemplate(template) }} />
                 )}
 
                 {/* Results */}

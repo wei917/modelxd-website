@@ -5,36 +5,45 @@
 // at the top of Templates, for the mode on screen (video or image). The list
 // comes from /api/trending (table trending_posts, supabase/108).
 //
-// X posts are X's own embed, built with twttr.widgets.createTweet into an
-// empty div React never touches, so widgets.js and React don't fight over
-// the same nodes, and only when the card nears the viewport: twenty embeds
-// at once is twenty iframes and players. The embed carries the creator's
-// name, text and live likes itself, so the card adds only what X can't:
-// rank, what it is, the models. Other platforms get a plain link until
-// their own embed is wired.
+// X videos use X's video-only embed (twttr.widgets.createVideo): the post's
+// own text renders inside X's iframe at X's size, which nothing on our side
+// can restyle, so the card sets the creator credit, our summary and the
+// models in the site's type instead. Embeds are built into an empty div React
+// never touches, and only when the card nears the viewport: twenty at once is
+// twenty iframes and players. "Use this preset" hands the post to XCreate as
+// a template (prompt, model, recipe, duration) through the same applyTemplate
+// every template uses. Other platforms get a plain link until their own
+// embed is wired.
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useLang } from '@/lib/i18n'
-import { TRENDING_COPY, type TrendingKind, type TrendingPost } from './trending'
+import type { Template } from './templates'
+import { TRENDING_COPY, presetTemplate, type TrendingKind, type TrendingPost } from './trending'
 
 declare global { interface Window { twttr?: any } }
 
 const READY_EVENT = 'xcs-twttr-ready'
 
-function XEmbed({ id }: { id: string }) {
+function XEmbed({ id, video }: { id: string; video: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = ref.current
     if (!el) return
     let near = false
     // Keyed on the element, not the effect run: dev StrictMode mounts twice
-    // and a second createTweet would stack a duplicate embed.
+    // and a second create call would stack a duplicate embed.
     const render = () => {
-      if (!near || !window.twttr?.widgets || el.dataset.tweet === id) return
+      const w = window.twttr?.widgets
+      if (!near || !w || el.dataset.tweet === id) return
       el.dataset.tweet = id
-      window.twttr.widgets.createTweet(id, el, { dnt: true, conversation: 'none' })
+      // mediaMaxWidth is what produced the video-only card on the first
+      // draft (a data-media-max-width blockquote); createVideo alone still
+      // rendered the whole post.
+      w.createTweet(id, el, video
+        ? { dnt: true, conversation: 'none', mediaMaxWidth: 550 }
+        : { dnt: true, conversation: 'none' })
     }
     const io = new IntersectionObserver(entries => {
       if (entries.some(e => e.isIntersecting)) { near = true; io.disconnect(); render() }
@@ -42,15 +51,18 @@ function XEmbed({ id }: { id: string }) {
     io.observe(el)
     window.addEventListener(READY_EVENT, render)
     return () => { io.disconnect(); window.removeEventListener(READY_EVENT, render) }
-  }, [id])
+  }, [id, video])
   return <div ref={ref} className="xcs-trend-embed" />
 }
 
-export default function StandaloneTrending({ kind, limit, moreHref }: {
+export default function StandaloneTrending({ kind, limit, moreHref, onUse, disabled }: {
   kind: TrendingKind
   /** Show only the first `limit` posts, with a link to `moreHref` for the rest. */
   limit?: number
   moreHref?: string
+  /** Apply a post's preset in XCreate; no button when absent. */
+  onUse?: (template: Template) => void
+  disabled?: boolean
 }) {
   const { lang } = useLang()
   const copy = TRENDING_COPY[lang] ?? TRENDING_COPY.en
@@ -81,16 +93,25 @@ export default function StandaloneTrending({ kind, limit, moreHref }: {
       </Link>}
     </div>
     <div className="xcs-trending-grid">
-      {shown.map((post, i) => <article className="xcs-trend" key={`${post.platform}:${post.postId}`}>
-        <div className="xcs-trend-meta">
-          <span className="xcs-trend-rank">{String(i + 1).padStart(2, '0')}</span>
-          <div className="xcs-trend-models">{post.models.map(m => <span key={m}>{m}</span>)}</div>
-        </div>
-        <p>{post.summary[lang] ?? post.summary.en}</p>
-        {post.platform === 'x'
-          ? <XEmbed id={post.postId} />
-          : <a className="xcs-trend-link" href={post.url} target="_blank" rel="noopener noreferrer">@{post.handle} <span aria-hidden="true">↗</span></a>}
-      </article>)}
+      {shown.map((post, i) => {
+        const preset = onUse ? presetTemplate(post, lang) : null
+        return <article className="xcs-trend" key={`${post.platform}:${post.postId}`}>
+          <div className="xcs-trend-meta">
+            <span className="xcs-trend-rank">{String(i + 1).padStart(2, '0')}</span>
+            <div className="xcs-trend-models">{post.models.map(m => <span key={m}>{m}</span>)}</div>
+          </div>
+          <p>{post.summary[lang] ?? post.summary.en}</p>
+          {post.platform === 'x' && <XEmbed id={post.postId} video={post.kind === 'video'} />}
+          <div className="xcs-trend-foot">
+            <a className="xcs-trend-credit" href={post.url} target="_blank" rel="noopener noreferrer">
+              {copy.by} @{post.handle} <span aria-hidden="true">↗</span>
+            </a>
+            {preset && <button type="button" className="xcs-trend-use" disabled={disabled}
+              onClick={() => onUse?.(preset)}>{copy.use}</button>}
+          </div>
+          {preset && post.preset?.needsImage && <p className="xcs-trend-note">{copy.needsImage}</p>}
+        </article>
+      })}
     </div>
   </section>
 }

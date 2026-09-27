@@ -28,7 +28,7 @@ export default function StandaloneTemplates({ showcase, disabled, onSelect, onNe
       </select>
     </label>
     {disabled && <div className="xcs-template-notice"><p>{copy.lockedTemplates}</p><button className="xcs-secondary" onClick={onNew}>{copy.newCreation}</button></div>}
-    {(mode === 'video' || mode === 'image') && <StandaloneTrending kind={mode} />}
+    {(mode === 'video' || mode === 'image') && <StandaloneTrending kind={mode} onUse={onSelect} disabled={disabled} />}
     {templates.length === 0 ? <p className="xcs-empty">{copy.emptyTemplates}</p> : [
       { title: t('xcreate.alltemplates'), items: templates.filter(item => item.kind !== 'tool') },
       { title: t('xcreate.alltools'), items: templates.filter(item => item.kind === 'tool') },
