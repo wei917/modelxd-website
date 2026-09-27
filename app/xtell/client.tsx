@@ -110,7 +110,10 @@ const FALLBACK_MASTERS = ['qwen3.8-max', 'gpt-5.6-sol']
 const PRESETS: Array<{ key: 'light' | 'balanced' | 'deep'; models: string[] }> = [
   { key: 'light', models: ['qwen3.8-flash'] },
   { key: 'balanced', models: ['qwen3.8-max', 'gemini-3.8-flash'] },
-  { key: 'deep', models: ['gpt-5.6-sol', 'claude-opus-5-5'] },
+  // Owner, Sep 26: GPT-6 Astra is the deep one, and only it: if Astra is
+  // not offered for XTell, the button is hidden rather than filled by
+  // another model.
+  { key: 'deep', models: ['gpt-6-astra'] },
 ]
 
 const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' as const }
