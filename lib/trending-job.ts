@@ -481,14 +481,17 @@ export async function ingestCandidates(sb: SupabaseClient, kind: TrendKind, post
     if (!summary.en) { report.dropped.push({ url, reason: 'no summary' }); continue }
 
     const prompt = typeof p.prompt_text === 'string' && p.prompt_text.trim() ? p.prompt_text.trim() : null
+    // The settings are kept even when the credited name fits no single model
+    // (owner, Sep 27): the feed picks the model when it serves the post.
     const recipe = recipeFor(kind, p)
     const model = recipe ? presetModel(models, recipe, catalog) : null
-    const preset = prompt && recipe && model && prompt.length <= PROMPT_CAP
+    const preset = prompt && recipe && prompt.length <= PROMPT_CAP
       ? {
-          model, recipe,
+          ...(model ? { model } : {}), recipe,
           ...(p.duration_seconds ? { duration: Math.round(p.duration_seconds) } : {}),
           ...(p.aspect_ratio ? { aspect: p.aspect_ratio } : {}),
           ...(p.needs === 'image' ? { needsImage: true } : {}),
+          ...(p.needs === 'image' && p.image_role ? { imageRole: p.image_role } : {}),
         }
       : null
 

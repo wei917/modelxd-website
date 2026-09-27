@@ -27,13 +27,16 @@ export type TrendingKind = 'video' | 'image'
 /** What a feed shows: one kind (Templates' tabs) or both (Studio). */
 export type TrendingFeedKind = TrendingKind | 'all'
 
-/** What "Use this preset" applies in XCreate. */
+/** What "Use this preset" applies in XCreate. Saved even when the credited
+ *  name fits no single model (owner, Sep 27): /api/trending picks the model
+ *  on every read, so a served preset always has one. */
 export type TrendingPreset = {
-  model: string                             // ai_models.model_name
+  model?: string                            // ai_models.model_name; absent = chosen from the post's `models` when served
   recipe: string                            // XCreate recipe: text_to_video, image_to_video, reference_frames…
   duration?: number
   aspect?: string
   needsImage?: boolean                      // the creator started from their own picture; the user adds theirs
+  imageRole?: 'first_frame' | 'character_reference'  // what that picture is for
   modelName?: string                        // the model's catalog name, added by /api/trending on every read
 }
 
@@ -66,7 +69,7 @@ export const FALLBACK_TRENDING = seed as TrendingPost[]
 /** The post as an XCreate template, so the preset goes through applyTemplate
  *  like any other: mode, recipe, prompt, model and per-slot options at once. */
 export function presetTemplate(post: TrendingPost, lang: Lang): Template | null {
-  if (!post.preset || !post.prompt) return null
+  if (!post.preset?.model || !post.prompt) return null
   return {
     id:                `trend-${post.platform}-${post.postId}`,
     emoji:             '',

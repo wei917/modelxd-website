@@ -181,16 +181,23 @@ assert.deepEqual(otherGeneratorsIn('Imagen 4 test', full), ['Imagen 4'])
 assert.deepEqual(otherGeneratorsIn('Kling 2.5 vs Seedance', full), ['Kling'])
 assert.deepEqual(otherGeneratorsIn('Pikachu on a runway', full), [])
 
-// The model a preset runs on, named for the tag beside its button; none once
-// the preset no longer runs.
-assert.equal(presetRunsOn('video', { model: 'seedance2_5', recipe: 'image_to_video' }, full), 'Seedance 2.5')
-assert.equal(presetRunsOn('image', { model: 'gpt-image-2', recipe: 'image_edit' }, full), 'GPT Image 2')
-assert.equal(presetRunsOn('image', { model: 'gemini-3-pro-image', recipe: 'image_edit' }, full), 'Nano Banana Pro', 'the name before the alias')
-assert.equal(presetRunsOn('video', { model: 'seedance2_5', recipe: 'video_edit' }, full), null, 'recipe not offered')
-assert.equal(presetRunsOn('image', { model: 'seedance2_5', recipe: 'image_to_video' }, full), null, 'wrong kind')
-assert.equal(presetRunsOn('video', { model: 'gone', recipe: 'text_to_video' }, full), null, 'model gone')
-assert.equal(presetRunsOn('video', { model: 'seedance2_5', recipe: 'image_to_video' }, noSeedance), null, 'model disabled')
-assert.equal(presetRunsOn('video', null, full), null)
+// The model a preset runs on now, named for the tag beside its button: the
+// stored one while it runs, else the one the credited names point to (settings
+// saved while the model was unclear); none once no model runs them.
+const runs = (kind: 'video' | 'image', models: string[], preset: { model?: string; recipe: string } | null, s = full) =>
+  presetRunsOn(kind, models, preset, s)
+assert.deepEqual(runs('video', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'image_to_video' }), { model: 'seedance2_5', name: 'Seedance 2.5' })
+assert.deepEqual(runs('image', ['GPT Image 2'], { model: 'gpt-image-2', recipe: 'image_edit' }), { model: 'gpt-image-2', name: 'GPT Image 2' })
+assert.deepEqual(runs('image', ['Nano Banana Pro'], { model: 'gemini-3-pro-image', recipe: 'image_edit' }), { model: 'gemini-3-pro-image', name: 'Nano Banana Pro' }, 'the name before the alias')
+assert.deepEqual(runs('image', ['GPT Image 2.5'], { recipe: 'image_edit' }), { model: 'gpt-image-2.5-flare', name: 'GPT Image 2.5 Flare' }, 'saved without a model: picked when served')
+assert.deepEqual(runs('video', ['Google veo 3.1'], { recipe: 'text_to_video' }), { model: 'veo-3.1-generate-preview', name: 'Veo 3.1 Preview' })
+assert.equal(runs('image', ['Grok Imagine'], { recipe: 'text_to_image' }), null, 'still two Grok image models')
+assert.deepEqual(runs('video', ['Seedance 2.5'], { model: 'gone', recipe: 'text_to_video' }), { model: 'seedance2_5', name: 'Seedance 2.5' }, 'a stored model gone: the credited name')
+assert.equal(runs('video', [], { model: 'gone', recipe: 'text_to_video' }), null, 'model gone, nothing credited')
+assert.equal(runs('video', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'video_edit' }), null, 'recipe not offered')
+assert.equal(runs('image', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'image_to_video' }), null, 'wrong kind')
+assert.equal(runs('video', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'image_to_video' }, noSeedance), null, 'model disabled')
+assert.equal(runs('video', ['Seedance 2.5'], null), null)
 
 // Which model a preset runs: an exact name first, then one variant, never
 // another version (Codex review, Sep 27: "GPT IMAGE 2" had matched
@@ -200,7 +207,8 @@ const videos = full.models.filter(m => m.kinds.includes('video'))
 const pick = (names: string[], recipe: string, cat = images) => presetModel(names, recipe, cat)
 assert.equal(pick(['GPT IMAGE 2'], 'text_to_image'), 'gpt-image-2')
 assert.equal(pick(['GPT image 2.0'], 'image_edit'), 'gpt-image-2')
-assert.equal(pick(['GPT Image 2.5'], 'text_to_image'), null, 'Flare or Sunburst: no guess')
+assert.equal(pick(['GPT Image 2.5'], 'text_to_image'), 'gpt-image-2.5-flare', 'plain 2.5 is Flare (owner, Sep 27)')
+assert.equal(pick(['GPT image 2.5'], 'image_edit'), 'gpt-image-2.5-flare')
 assert.equal(pick(['GPT Image 2.5 Flare'], 'text_to_image'), 'gpt-image-2.5-flare')
 assert.equal(pick(['gpt-image-2.5-sunburst'], 'text_to_image'), 'gpt-image-2.5-sunburst')
 assert.equal(pick(['GPT Image'], 'text_to_image'), null, 'no version named')
@@ -215,6 +223,8 @@ assert.equal(pick(['Grok Imagine'], 'text_to_image'), null, 'two Grok image mode
 assert.equal(pick(['Seedance 2.5'], 'image_to_video', videos), 'seedance2_5')
 assert.equal(pick(['Seedance 2.5 Pro'], 'text_to_video', videos), 'seedance2_5')
 assert.equal(pick(['Veo 3.1'], 'text_to_video', videos), 'veo-3.1-generate-preview')
+assert.equal(pick(['Google veo 3.1'], 'text_to_video', videos), 'veo-3.1-generate-preview', 'a maker in front')
+assert.equal(pick(['OpenAI GPT Image 2'], 'text_to_image'), 'gpt-image-2')
 assert.equal(pick(['Veo 3'], 'text_to_video', videos), null, 'Veo 3 is not 3.1')
 assert.equal(pick(['Hailuo H3'], 'text_to_video', videos), 'MiniMax-H3')
 assert.equal(pick(['Wan 2.7'], 'text_to_video', videos), 'wan2.7-t2v')

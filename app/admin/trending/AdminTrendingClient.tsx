@@ -22,7 +22,7 @@ export type AdminTrendRow = {
   likes: number | null
   summary: Record<string, string>
   prompt: string | null
-  preset: { model: string; recipe: string; duration?: number; aspect?: string; needsImage?: boolean } | null
+  preset: { model?: string; recipe: string; duration?: number; aspect?: string; needsImage?: boolean; imageRole?: string } | null
   week: string
   rank: number | null
   status: 'pending' | 'live' | 'hidden'
@@ -127,7 +127,7 @@ export default function AdminTrendingClient({ rows, spent, budget, notShown, cat
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted2)', lineHeight: 1.5 }}>
               {r.preset
-                ? <>Preset: {r.preset.model} · {r.preset.recipe}{r.preset.duration ? ` · ${r.preset.duration}s` : ''}{r.preset.needsImage ? ' · needs a picture' : ''}</>
+                ? <>Preset: {r.preset.model ?? 'model picked from the credited names'} · {r.preset.recipe}{r.preset.aspect ? ` · ${r.preset.aspect}` : ''}{r.preset.duration ? ` · ${r.preset.duration}s` : ''}{r.preset.needsImage ? ` · needs a picture${r.preset.imageRole ? ` (${r.preset.imageRole.replace('_', ' ')})` : ''}` : ''}</>
                 : <>No preset{r.prompt ? (r.prompt.length > 8000 ? ' (prompt over 8,000 chars)' : '') : ' (no prompt)'}</>}
               {r.prompt && <div>Prompt: {r.prompt.length.toLocaleString()} chars</div>}
             </div>

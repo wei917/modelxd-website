@@ -266,36 +266,57 @@ const aliasesOf = (c: PresetRow) => [c.model_name, ...c.display_name.split(' - '
 const addsVariant = (long: string, short: string) =>
   long.length > short.length && long.startsWith(short) && !/\d/.test(long[short.length])
 
+/** A name that fits several models, read as the one people using it most
+ *  likely ran (owner, Sep 27). "GPT Image 2.5" is Flare or Sunburst; ChatGPT's
+ *  everyday GPT Image 2.5 is Flare (OpenAI doesn't say so; its forum and
+ *  reviewers' tests do), and the tag beside the button names the model. */
+const PLAIN_NAMES = new Map([[normName('GPT Image 2.5'), 'gpt-image-2.5-flare']])
+
+/** A maker in front of the model's name ("Google veo 3.1"). */
+const MAKER = /^(?:google|openai|bytedance|alibaba|xai|runway)\s+/i
+
 /** The catalog model a preset runs: the first credited name that points at
- *  exactly one model able to run the recipe. An exact name wins ("GPT IMAGE
- *  2" is gpt-image-2; as a substring it had matched gpt-image-2.5-sunburst
- *  first, Codex review, Sep 27). Otherwise one model whose name only adds a
- *  variant word ("Veo 3.1" → Veo 3.1 Preview, "Seedance 2.5 Pro" → Seedance
- *  2.5), never another version ("Veo 3" is not 3.1). A name that fits two
- *  models ("GPT Image 2.5": Flare or Sunburst) gives no preset, not a guess. */
+ *  exactly one model able to run the recipe, with a maker in front of it
+ *  ignored. An exact name wins ("GPT IMAGE 2" is gpt-image-2; as a substring
+ *  it had matched gpt-image-2.5-sunburst first, Codex review, Sep 27).
+ *  Otherwise one model whose name only adds a variant word ("Veo 3.1" → Veo
+ *  3.1 Preview, "Seedance 2.5 Pro" → Seedance 2.5), never another version
+ *  ("Veo 3" is not 3.1). A name that fits several models gives no preset
+ *  unless PLAIN_NAMES reads it ("GPT Image 2.5" is Flare; "Grok Imagine" is
+ *  still two models). */
 export function presetModel(models: readonly string[], recipe: string, catalog: readonly PresetRow[]): string | null {
   const able = catalog.filter(c => (c.modes ?? []).includes(recipe))
-  for (const name of models.flatMap(namesIn)) {
-    const want = normName(name)
-    if (want.length < 3) continue
-    const exact = able.filter(c => aliasesOf(c).includes(want))
-    if (exact.length === 1) return exact[0].model_name
-    if (exact.length > 1) continue
-    const near = able.filter(c => aliasesOf(c).some(a => addsVariant(a, want) || addsVariant(want, a)))
-    if (near.length === 1) return near[0].model_name
+  for (const label of models.flatMap(namesIn)) {
+    for (const name of new Set([label, label.replace(MAKER, '')])) {
+      const want = normName(name)
+      if (want.length < 3) continue
+      const exact = able.filter(c => aliasesOf(c).includes(want))
+      if (exact.length === 1) return exact[0].model_name
+      const near = exact.length ? [] : able.filter(c => aliasesOf(c).some(a => addsVariant(a, want) || addsVariant(want, a)))
+      if (near.length === 1) return near[0].model_name
+      const plain = PLAIN_NAMES.get(want)
+      if (plain && [...exact, ...near].some(c => c.model_name === plain)) return plain
+    }
   }
   return null
 }
 
-/** The name of the model a stored preset runs on, for the tag beside its
- *  button (owner, Sep 27: "you must know the model"): the catalog's display
- *  name before any alias ("Nano Banana Pro - Gemini 3 Pro Image" is "Nano
- *  Banana Pro"). Null once the preset no longer runs: its model is gone,
- *  doesn't make the post's kind, or no longer offers the recipe (Codex
- *  review, Sep 27). */
-export function presetRunsOn(kind: MediaKind, preset: { model: string; recipe: string } | null | undefined, support: Support): string | null {
-  const m = preset && support.models.find(m => m.model_name === preset.model && m.kinds.includes(kind) && m.modes.includes(preset.recipe))
-  return m ? m.display_name.split(' - ')[0].trim() : null
+/** The model a stored preset runs on now, and its name for the tag beside
+ *  the button (owner, Sep 27: "you must know the model"). The stored model
+ *  while XCreate runs it for the post's kind and recipe; otherwise the one
+ *  the post's credited names point to (presetModel), which is how settings
+ *  saved while the model was unclear get one. Null when no model runs them
+ *  (Codex review, Sep 27): no button. The name is the catalog's, before any
+ *  alias ("Nano Banana Pro - Gemini 3 Pro Image" is "Nano Banana Pro"). */
+export function presetRunsOn(
+  kind: MediaKind, models: readonly string[],
+  preset: { model?: string | null; recipe: string } | null | undefined, support: Support,
+): { model: string; name: string } | null {
+  if (!preset) return null
+  const able = support.models.filter(m => m.kinds.includes(kind) && m.modes.includes(preset.recipe))
+  const id = able.some(m => m.model_name === preset.model) ? preset.model : presetModel(models, preset.recipe, able)
+  const m = id ? able.find(m => m.model_name === id) : undefined
+  return m ? { model: m.model_name, name: m.display_name.split(' - ')[0].trim() } : null
 }
 
 // ── searches ─────────────────────────────────────────────────────────────────

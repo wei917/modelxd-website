@@ -43,11 +43,12 @@ type Row = {
   prompt: string | null; preset: TrendingPost['preset']; week: string; rank: number | null
 }
 
-/** The post as served: a preset that no longer runs loses its button, and one
- *  that does carries its model's name from the catalog, never a stored one. */
+/** The post as served: a preset carries the model it runs on and that model's
+ *  catalog name (settings saved without a model get one from the post's
+ *  credited names); one no model runs loses its button. */
 const served = (p: TrendingPost, support: Support): TrendingPost => {
-  const modelName = presetRunsOn(p.kind, p.preset, support)
-  return p.preset && modelName ? { ...p, preset: { ...p.preset, modelName } } : { ...p, preset: null }
+  const runs = presetRunsOn(p.kind, p.models, p.preset, support)
+  return p.preset && runs ? { ...p, preset: { ...p.preset, model: runs.model, modelName: runs.name } } : { ...p, preset: null }
 }
 
 export async function GET(req: NextRequest) {
