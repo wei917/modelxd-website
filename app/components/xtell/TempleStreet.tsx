@@ -11,8 +11,8 @@ export type { TempleKey } from './TempleArtwork'
 /**
  * "What would you like help with?" (audit, product): a newcomer does not
  * know what separates 八字, 紫微 and 九曜, but knows what they came for.
- * Choosing a purpose highlights the temples that serve it and opens the
- * first; every temple keeps its name and stays one click away.
+ * Choosing a purpose previews the first matching temple; every temple
+ * stays one click away in the top navigation.
  */
 export const PURPOSES: Array<{ key: 'self' | 'love' | 'question' | 'ritual' | 'learn'; temples: TempleKey[] }> = [
   { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming'] },
@@ -29,7 +29,6 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
 }) {
   const t = useT()
   const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
-  const fits = (key: TempleKey) => !purpose || PURPOSES.find(p => p.key === purpose)!.temples.includes(key)
   const choosePurpose = (key: (typeof PURPOSES)[number]['key'] | null) => {
     setPurpose(key)
     const list = key ? PURPOSES.find(p => p.key === key)!.temples : []
@@ -72,12 +71,5 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
           {t('xtell.purpose.' + (key ?? 'all'))}
         </button>)}
     </div>
-    <nav className="xtell-focus-menu" aria-label={t('xtell.site.choose')}>
-      {DISPLAY_TEMPLES.map(key => <button type="button" key={key} className={'xtell-focus-choice' + (fits(key) ? '' : ' is-dim')}
-        aria-label={t('xtell.site.focus.' + key + '.name')} aria-pressed={selected === key} onClick={() => onSelect(key)}>
-        <TempleArtwork temple={key} kind="icon" className="xtell-focus-icon" />
-        <span className="xtell-focus-label">{t('xtell.site.focus.' + key + '.short')}</span>
-      </button>)}
-    </nav>
   </section>
 }
