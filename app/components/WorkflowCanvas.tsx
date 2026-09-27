@@ -34,12 +34,30 @@ function firstFrame(url: string | null | undefined): string | undefined {
   return url.includes('#') ? url : `${url}#t=0.1`
 }
 
+/** Audio has no picture. Loading an MP3 into an <img> fails, and the canvas
+ *  reads any failed thumbnail as "expired" (owner, Sep 26: an XCreate speech
+ *  result showed "expired" on the canvas). A speaker glyph instead; the node
+ *  plays in the canvas player. */
+function AudioGlyph() {
+  return (
+    <span aria-label="audio" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: '#c9cbd1', background: '#1d1f24' }}>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M19 5a10 10 0 0 1 0 14" />
+      </svg>
+      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.08em' }}>AUDIO</span>
+    </span>
+  )
+}
+
 export type NodeKind = 'source' | 'input' | 'video' | 'shot'
 
 export type CanvasNode = {
   id: string
   thumb: string | null
   isVideo: boolean
+  /** Speech/audio output (XCreate's Audio mode): drawn as AudioGlyph and
+   *  played in the canvas player, never loaded as a picture. */
+  isAudio?: boolean
   parentId: string | null
   parentIds?: string[]
   label?: string
@@ -308,7 +326,12 @@ function NodeActionPanel({ n, origin, onPlay, onClose, onDelete, onRegen, pick, 
     let dead = false
     setMeta({})
     if (!n.thumb) return
-    if (n.isVideo) {
+    if (n.isAudio) {
+      const a = new Audio()
+      a.preload = 'metadata'
+      a.onloadedmetadata = () => { if (!dead) setMeta(m => ({ ...m, dur: a.duration })) }
+      a.src = n.thumb
+    } else if (n.isVideo) {
       const v = document.createElement('video')
       v.preload = 'metadata'; v.muted = true
       v.onloadedmetadata = () => { if (!dead) setMeta(m => ({ ...m, w: v.videoWidth, h: v.videoHeight, dur: v.duration })) }
@@ -615,7 +638,7 @@ export default function WorkflowCanvas({
   // In-canvas playback + reference gallery. Rendered INSIDE the host
   // element, so they work in native fullscreen — closing them stays
   // fullscreen (owner, Aug 9: playback must never eject you from the board).
-  const [innerPlay, setInnerPlay] = useState<{ url: string; isVideo: boolean } | null>(null)
+  const [innerPlay, setInnerPlay] = useState<{ url: string; isVideo: boolean; isAudio?: boolean } | null>(null)
   const [gallery, setGallery] = useState<CanvasNode | null>(null)
   // ⇆ side-by-side compare (owner, Aug 9: "the canvas should be a wiring
   // tool"). Re-generate lives in the node's action panel and delegates to
@@ -645,7 +668,8 @@ export default function WorkflowCanvas({
   const play = (n: CanvasNode) => {
     setInfo(null)
     if (!n.thumb) return
-    if (isFs || !onPlay) setInnerPlay({ url: n.thumb, isVideo: n.isVideo })
+    // Audio always plays here: the host's player (onPlay) is picture/video.
+    if (isFs || !onPlay || n.isAudio) setInnerPlay({ url: n.thumb, isVideo: n.isVideo, isAudio: n.isAudio })
     else onPlay(n)
   }
 
@@ -1225,7 +1249,8 @@ export default function WorkflowCanvas({
                       </div>
                     )
                     : (n.thumb && !failed[n.thumb])
-                      ? (n.isVideo
+                      ? (n.isAudio ? <AudioGlyph />
+                        : n.isVideo
                         ? <video
                             src={n.thumb} muted playsInline
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -1498,12 +1523,13 @@ export default function WorkflowCanvas({
             {gallery.stack.map((s, si) => (
               <button
                 key={`${s.fileName}-${si}`}
-                onClick={() => s.url && setInnerPlay({ url: s.url, isVideo: s.mediaType.startsWith('video/') })}
+                onClick={() => s.url && setInnerPlay({ url: s.url, isVideo: s.mediaType.startsWith('video/'), isAudio: s.mediaType.startsWith('audio/') })}
                 style={{ border: '1px solid #33353b', borderRadius: 9, overflow: 'hidden', background: '#1d1f24', cursor: 'pointer', padding: 0, textAlign: 'left' }}
               >
                 <div style={{ height: 110, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {s.url
-                    ? (s.mediaType.startsWith('video/')
+                    ? (s.mediaType.startsWith('audio/') ? <AudioGlyph />
+                      : s.mediaType.startsWith('video/')
                       ? <video src={firstFrame(s.url)} preload="metadata" muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       // eslint-disable-next-line @next/next/no-img-element
                       : <img src={s.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
@@ -1580,7 +1606,8 @@ export default function WorkflowCanvas({
               <div key={n.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, gap: 8 }}>
                 <div style={{ flex: 1, background: '#000', borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
                   {n.thumb
-                    ? (n.isVideo
+                    ? (n.isAudio ? <audio src={n.thumb} controls preload="metadata" style={{ width: '90%' }} />
+                      : n.isVideo
                       ? <video src={n.thumb} controls autoPlay muted loop playsInline style={{ maxWidth: '100%', maxHeight: '100%' }} />
                       // eslint-disable-next-line @next/next/no-img-element
                       : <img src={n.thumb} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />)
@@ -1599,7 +1626,9 @@ export default function WorkflowCanvas({
       {/* In-canvas playback — closing it never exits board fullscreen. */}
       {innerPlay && (
         <div data-ui style={{ position: 'fixed', inset: 0, zIndex: 99330, background: 'rgba(0,0,0,0.93)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {innerPlay.isVideo
+          {innerPlay.isAudio
+            ? <audio src={innerPlay.url} controls autoPlay style={{ width: 'min(560px, 90%)' }} />
+            : innerPlay.isVideo
             ? <video src={innerPlay.url} controls autoPlay playsInline style={{ maxWidth: '94%', maxHeight: '90%' }} />
             // eslint-disable-next-line @next/next/no-img-element
             : <img src={innerPlay.url} alt="" style={{ maxWidth: '94%', maxHeight: '90%', objectFit: 'contain' }} />}
