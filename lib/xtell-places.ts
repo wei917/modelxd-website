@@ -70,3 +70,30 @@ export const PLACES: Place[] = [
 
 export const DEFAULT_PLACE = 'taipei'
 export const placeOf = (key: unknown): Place | null => PLACES.find(p => p.key === key) ?? null
+
+// ── The daily fortune's birth zone (owner, Sep 27: no city) ────────────────
+// The daily profile stores the zone the visitor was born in as 'tz:<IANA>'.
+// Profiles saved before Sep 27 name a city from the list above; its zone
+// stands in, and only those still carry coordinates.
+
+export const ZONE_PREFIX = 'tz:'
+
+/** The zone a daily profile's birth was in, or null if it names none. */
+export function birthZone(place: unknown): string | null {
+  if (typeof place !== 'string') return null
+  if (place.startsWith(ZONE_PREFIX)) {
+    const z = place.slice(ZONE_PREFIX.length)
+    try { new Intl.DateTimeFormat('en-US', { timeZone: z }); return z } catch { return null }
+  }
+  return placeOf(place)?.tz ?? null
+}
+
+/** Zones people are most often born in, for the form; any other IANA zone
+ *  the browser knows is offered after them. */
+export const COMMON_ZONES = [
+  'Asia/Taipei', 'Asia/Hong_Kong', 'Asia/Macau', 'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul', 'Asia/Singapore',
+  'Asia/Kuala_Lumpur', 'Asia/Bangkok', 'Asia/Ho_Chi_Minh', 'Asia/Manila', 'Asia/Jakarta', 'Asia/Kolkata', 'Asia/Dubai',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'America/New_York', 'America/Chicago', 'America/Denver',
+  'America/Los_Angeles', 'Pacific/Honolulu', 'America/Toronto', 'America/Vancouver', 'Australia/Sydney',
+  'Australia/Perth', 'Pacific/Auckland',
+]

@@ -584,7 +584,9 @@ from its own calculation, plus an optional paid follow-up per reading.
 - **Data** — `supabase/109_xtell_daily.sql` (**owner applies it BEFORE the
   deploy**; until then the routes answer 503 `daily_unavailable` and the
   section is hidden). `xtell_profiles` (one per user; birth `{y,m,d,h,mi,
-  hourUnknown?}`, no gender; birth place key; `fold` for a repeated hour;
+  hourUnknown?}`, no gender; the birth zone as `tz:<IANA>` (no city since
+  Sep 27, owner; older rows name a `PLACES` key and keep its coordinates);
+  `fold` for a repeated hour;
   display zone; `revision` from a global sequence, never reused, new on every
   birth/place/fold change; consent time + wording), `xtell_daily` (keyed by
   user, local date, display zone, profile revision, method, rules version,
@@ -657,6 +659,16 @@ same day and removed by the owner.)
   card's profile loads it holds its place; saved details that cannot be read
   are treated as none, so the card asks for them (owner: ask, never hide).
 - Tests: `npx tsx scripts/test-today.ts`.
+
+### Birth zone, not city (Sep 27)
+
+The daily form asks 「出生時的時區」 (the visitor's zone first, then
+`COMMON_ZONES`, then every IANA zone the browser knows) instead of a birth
+city. `birthZone()` in `lib/xtell-places.ts` reads either form. BaZi needs
+only the zone. The Western daily reading is planets only for a zone:
+transits to the natal ASC, MC and Fortune are dropped (`noPlace`), and the
+facts tell the teacher not to discuss the rising sign or houses. 九曜廟 and
+占星塔 keep their city list: the lagna and houses need the birth horizon.
 
 ## Golden charts (`npm run test:xtell`)
 

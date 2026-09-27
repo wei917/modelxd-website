@@ -18,7 +18,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useLang, useT, tOr } from '../../../lib/i18n'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../../lib/xtell-birth'
-import { PLACES, DEFAULT_PLACE, placeOf } from '../../../lib/xtell-places'
+import { placeOf, birthZone, ZONE_PREFIX, COMMON_ZONES } from '../../../lib/xtell-places'
 import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-time'
 import { PRESETS, EST_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, defaultThinking, type PresetModel } from '../../../lib/xtell-presets'
 
@@ -33,6 +33,15 @@ export type SavedDaily = { id: string; subject: any; chart: any; turns: any[] }
 
 const DISMISS_KEY = 'xtell.daily.reminder'
 const pad = (n: number) => String(n).padStart(2, '0')
+
+/** Zones for the two zone fields: the given ones first (the detected zone,
+ *  the saved one), then the common birth zones, then every other zone the
+ *  browser knows. */
+function zoneChoices(first: string[]): string[] {
+  let all: string[] = []
+  try { all = (Intl as any).supportedValuesOf?.('timeZone') ?? [] } catch { /* older browsers: the lists above */ }
+  return [...new Set([...first.filter(Boolean), ...COMMON_ZONES, ...all])]
+}
 
 function zoneLabel(tz: string, lang: string): string {
   try {
@@ -233,7 +242,7 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
       ) : (
         <>
           <div className="xtell-dy-profile">
-            <span>{t('xtell.dy.saved').replace('{birth}', born).replace('{place}', placeOf(profile?.place)?.label ?? '').replace('{tz}', zoneLabel(profile?.displayTz ?? '', lang))}</span>
+            <span>{t('xtell.dy.saved').replace('{birth}', born).replace('{place}', placeOf(profile?.place)?.label ?? zoneLabel(birthZone(profile?.place) ?? '', lang)).replace('{tz}', zoneLabel(profile?.displayTz ?? '', lang))}</span>
             <span className="xtell-dy-row">
               <button type="button" className="xtell-dy-link" onClick={() => { setConfirmDelete(false); setEditing(true) }}>{t('xtell.dy.edit')}</button>
               <button type="button" className="xtell-dy-link" onClick={() => setConfirmDelete(c => !c)}>{t('xtell.dy.delete')}</button>
@@ -274,7 +283,9 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
     const b = profile?.birth ?? r ?? { y: 1990, m: 1, d: 1, h: 12, mi: 0, hourUnknown: false }
     return {
       y: b.y, m: b.m, d: b.d, h: b.h, mi: b.mi, hourUnknown: b.hourUnknown === true,
-      place: profile?.place ?? (r?.place && placeOf(r.place) ? r.place : DEFAULT_PLACE),
+      // The zone of birth (owner, Sep 27: no city): a saved profile's, a
+      // remembered 占星塔 city's zone, or the visitor's own zone today.
+      birthTz: birthZone(profile?.place) ?? placeOf(r?.place)?.tz ?? detectedZone(),
       displayTz: profile?.displayTz ?? detectedZone(),
       fold: (profile?.fold ?? null) as 0 | 1 | null,
       consent: false,
@@ -284,9 +295,10 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
   const [err, setErr] = useState<string | null>(null)
   const set = (patch: Partial<typeof f>) => { setErr(null); setF(v => ({ ...v, ...patch })) }
   const days = daysInMonth(f.y, f.m)
-  const tz = placeOf(f.place)?.tz ?? 'Asia/Taipei'
+  const tz = f.birthTz
   const wall = f.hourUnknown ? null : resolveWallTime(f.y, f.m, f.d, f.h, f.mi, tz).kind
-  const zones = [...new Set([f.displayTz, detectedZone(), ...PLACES.map(p => p.tz)])].sort()
+  const birthZones = zoneChoices([f.birthTz, detectedZone()])
+  const zones = zoneChoices([f.displayTz, detectedZone()])
   const needsConsent = !profile
 
   const save = async () => {
@@ -298,7 +310,7 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
     try {
       const res = await fetch('/api/xtell/profile', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ birth: { y: f.y, m: f.m, d: f.d, h: f.h, mi: f.mi, ...(f.hourUnknown ? { hourUnknown: true } : {}) }, place: f.place, fold: wall === 'ambiguous' ? f.fold : null, displayTz: f.displayTz, consent: f.consent }),
+        body: JSON.stringify({ birth: { y: f.y, m: f.m, d: f.d, h: f.h, mi: f.mi, ...(f.hourUnknown ? { hourUnknown: true } : {}) }, place: ZONE_PREFIX + f.birthTz, fold: wall === 'ambiguous' ? f.fold : null, displayTz: f.displayTz, consent: f.consent }),
       })
       const d = await res.json().catch(() => null)
       if (g !== gen.current) return
@@ -325,7 +337,8 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
       </fieldset>
       <label className="xtell-dy-field">
         <span>{t('xtell.dy.form.place')}</span>
-        <select className={sel} value={f.place} onChange={e => set({ place: e.target.value, fold: null })}>{PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select>
+        <select className={sel} value={f.birthTz} onChange={e => set({ birthTz: e.target.value, fold: null })}>{birthZones.map(z => <option key={z} value={z}>{zoneLabel(z, lang)}</option>)}</select>
+        <small>{t('xtell.dy.form.placeHint')}</small>
       </label>
       {wall === 'gap' && <p className="xtell-dy-warn" role="alert">{t('xtell.dy.form.gap')}</p>}
       {wall === 'ambiguous' && (

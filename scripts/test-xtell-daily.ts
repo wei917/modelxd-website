@@ -85,6 +85,14 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   const none = westernFacts({ ...k, contacts: [] })
   check('no contacts: no "calm day", no event conclusion', !/平穩|平靜的一天|calm|quiet/i.test(none.replace('不代表生活平靜', '')) && none.includes('不代表生活平靜或有事'), none)
   check('each method\'s basis holds only that method', !('bazi' in (dailyBases(known, now) as any).western))
+  // Born in a zone, no city (owner, Sep 27): the planets only.
+  const zoned: daily.DailyProfile = { ...known, place: 'tz:Asia/Taipei' }
+  const z = dailyBases(zoned, now)
+  check('zone only: no rising sign, midheaven or Fortune contacts; the rest as with the city', z.western.noPlace === true && z.western.contacts.every(c => !['ASC', 'MC', 'Fortune'].includes(c.natal)) &&
+    JSON.stringify(z.western.contacts) === JSON.stringify(k.contacts.filter(c => !['ASC', 'MC', 'Fortune'].includes(c.natal)).concat(z.western.contacts.slice(k.contacts.filter(c => !['ASC', 'MC', 'Fortune'].includes(c.natal)).length))))
+  check('zone only: the facts say the planets only, no houses', westernFacts(z.western).includes('只看行星') && !westernFacts(k).includes('只看行星'))
+  check('zone only: the BaZi day is the same as with the city in that zone', JSON.stringify(z.bazi) === JSON.stringify(dailyBases(known, now).bazi))
+  check('hour unknown and zone only: approximate as before, not "no place"', !dailyBases({ ...unk, place: 'tz:Asia/Taipei' }, now).western.noPlace)
 }
 
 // ── Profile checks ─────────────────────────────────────────────────────────
@@ -97,6 +105,8 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('a DST gap is refused, a repeat needs a choice', la(2, 30, 2025, 3, 9) === 'birth_time_gap' && la(1, 30, 2025, 11, 2) === 'birth_time_ambiguous' && la(1, 30, 2025, 11, 2, 1) === null && la(1, 30, 2025, 11, 2, 7) === 'fold_invalid')
   check('unknown hour needs no time checks', profileProblem({ birth: { y: 2025, m: 3, d: 9, h: 2, mi: 30, hourUnknown: true }, place: 'la', displayTz: 'Asia/Taipei' }) === null)
   check('place and zone must be real', p({ y: 1990, m: 1, d: 1, h: 1, mi: 0 }, { place: 'atlantis' }) === 'place_invalid' && p({ y: 1990, m: 1, d: 1, h: 1, mi: 0 }, { displayTz: 'Mars/Olympus' }) === 'tz_invalid')
+  check('a birth zone of its own, no city: real zones only', p({ y: 1990, m: 1, d: 1, h: 1, mi: 0 }, { place: 'tz:Asia/Tokyo' }) === null && p({ y: 1990, m: 1, d: 1, h: 1, mi: 0 }, { place: 'tz:Mars/Olympus' }) === 'place_invalid' && p({ y: 1990, m: 1, d: 1, h: 1, mi: 0 }, { place: 'tz:' }) === 'place_invalid')
+  check('a birth zone applies DST like a city there', profileProblem({ birth: { y: 2025, m: 3, d: 9, h: 2, mi: 30 }, place: 'tz:America/Los_Angeles', displayTz: 'Asia/Taipei' }) === 'birth_time_gap' && profileProblem({ birth: { y: 2025, m: 11, d: 2, h: 1, mi: 30 }, place: 'tz:America/Los_Angeles', displayTz: 'Asia/Taipei' }) === 'birth_time_ambiguous')
 }
 
 // ── 占星塔's remembered birth keeps an unknown hour ─────────────────────────
@@ -229,6 +239,10 @@ async function routes() {
   check('saved with consent, for the SESSION user only; no gender kept; fold dropped when the time did not repeat', saved.status === 200 && db.profiles.has('user-a') && !db.profiles.has('user-b') && !('gender' in db.profiles.get('user-a').birth) && db.profiles.get('user-a').fold === null)
   const la = await json(await profileRoute.PUT(req('http://t/api/xtell/profile', 'PUT', { birth: { y: 2025, m: 11, d: 2, h: 1, mi: 30 }, place: 'la', displayTz: 'America/Los_Angeles', fold: 1 })))
   check('an edit needs no new consent; a repeated hour keeps its fold', la.status === 200 && db.profiles.get('user-a').fold === 1 && db.profiles.get('user-a').revision > saved.d.profile.revision)
+  const zoneLa = await json(await profileRoute.PUT(req('http://t/api/xtell/profile', 'PUT', { birth: { y: 2025, m: 11, d: 2, h: 1, mi: 30 }, place: 'tz:America/Los_Angeles', displayTz: 'America/Los_Angeles', fold: 0 })))
+  check('a birth zone with no city saves as given; a repeated hour there keeps its fold', zoneLa.status === 200 && db.profiles.get('user-a').birth_place === 'tz:America/Los_Angeles' && db.profiles.get('user-a').fold === 0 && zoneLa.d.profile.place === 'tz:America/Los_Angeles')
+  const zoneDay = await json(await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', { lang: 'zh-Hant' })))
+  check('the daily route reads a zone-only profile: both methods, the Western one planets only', zoneDay.status === 200 && !!zoneDay.d.methods?.western && !!zoneDay.d.methods?.bazi)
   await profileRoute.PUT(req('http://t/api/xtell/profile', 'PUT', { birth, place: 'taipei', displayTz: 'Asia/Taipei' }))
 
   houseCalls.length = 0

@@ -139,9 +139,10 @@ wants to cast.
 ### daily
 今日運勢 (the daily fortune), just below this guide, free every day. A
 signed-in visitor saves their birth details once, after ticking a consent
-box: the date (Gregorian), the time or "don't know", the birth place, and the
-time zone they are in today (it decides which date counts as today; it is
-separate from the birth place's zone). They can view, change or delete them
+box: the date (Gregorian), the time or "don't know", the time zone they were
+born in (no city is asked), and the time zone they are in today (it decides
+which date counts as today). The Western reading uses the planets only: the
+rising sign and houses would need the birth place. They can view, change or delete them
 there; deleting also removes the daily readings and the paid follow-up
 conversations about them, and nothing else. Each day shows two separate
 readings, each from its own calculation: Western astrology (today's

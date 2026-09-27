@@ -10,7 +10,7 @@
 // the model only explains what this file hands it.
 
 import { natalChart, transits, retrogrades, longitude, PLANET_ZH, SIGNS, type NatalChart, type Planet } from './astrology'
-import { placeOf, PLACES } from './xtell-places'
+import { placeOf, birthZone, PLACES } from './xtell-places'
 import { baziNatalZoned, liuRi, liuRiFacts, TONE, type DailyNatal, type LiuRi } from './xtell'
 import { momentProblem } from './xtell-birth'
 import { birthInstant, dayAnchor, localDateIn, validZone } from './xtell-time'
@@ -42,8 +42,9 @@ export type DailyProfile = {
 
 /**
  * Why a profile cannot be saved, or null. The same birth checks as every
- * temple (1900 to today, a real date), plus what the daily feature needs: a
- * known place (it gives the birth zone), a real display zone, and a birth
+ * temple (1900 to today, a real date), plus what the daily feature needs: the
+ * zone of birth ('tz:<zone>', or a listed city from before Sep 27), a real
+ * display zone, and a birth
  * time that happened exactly once in that zone, or the visitor's choice of
  * which of two.
  */
@@ -51,11 +52,11 @@ export function profileProblem(v: any): string | null {
   const birth = v?.birth
   const p = momentProblem(birth)
   if (p) return `birth_${p}`
-  if (!placeOf(v?.place)) return 'place_invalid'
+  if (!birthZone(v?.place)) return 'place_invalid'
   if (!validZone(v?.displayTz)) return 'tz_invalid'
   if (v?.fold !== undefined && v.fold !== null && v.fold !== 0 && v.fold !== 1) return 'fold_invalid'
   if (birth.hourUnknown === true) return null
-  const at = birthInstant(birth.y, birth.m, birth.d, birth.h, birth.mi, placeOf(v.place)!.tz, v?.fold ?? null)
+  const at = birthInstant(birth.y, birth.m, birth.d, birth.h, birth.mi, birthZone(v.place)!, v?.fold ?? null)
   return at.ok ? null : at.problem === 'gap' ? 'birth_time_gap' : 'birth_time_ambiguous'
 }
 
@@ -68,7 +69,7 @@ export function cleanBirth(b: any): DailyBirth {
 /** The birth instant, or null when the hour is unknown. */
 export function birthUtc(p: DailyProfile): number | null {
   if (p.birth.hourUnknown) return null
-  const at = birthInstant(p.birth.y, p.birth.m, p.birth.d, p.birth.h, p.birth.mi, placeOf(p.place)!.tz, p.fold)
+  const at = birthInstant(p.birth.y, p.birth.m, p.birth.d, p.birth.h, p.birth.mi, birthZone(p.place)!, p.fold)
   return at.ok ? at.utc : null
 }
 
@@ -81,13 +82,22 @@ export type WesternContact = {
    *  orb figure or timing is given for it (Codex review). */
   approx?: true
 }
-export type WesternDaily = { date: string; tz: string; anchor: string; moonSign: number; retro: Planet[]; contacts: WesternContact[]; hourUnknown: boolean }
+export type WesternDaily = {
+  date: string; tz: string; anchor: string; moonSign: number; retro: Planet[]; contacts: WesternContact[]; hourUnknown: boolean
+  /** Born in a zone, not a place (owner, Sep 27): the planets only; no
+   *  rising sign, midheaven or houses, which need the birth place's horizon. */
+  noPlace?: true
+}
 
 export function westernDaily(p: DailyProfile, date: string, anchor: number): WesternDaily {
-  const place = placeOf(p.place)!
+  // Only profiles from before Sep 27 name a city; planet positions are
+  // geocentric, so a zone alone gives them all, and the horizon-bound points
+  // (ASC, MC, Fortune) are dropped below instead of computed at 0°, 0°.
+  const city = placeOf(p.place)
+  const zone = birthZone(p.place)!
   const natal: NatalChart = natalChart({
     y: p.birth.y, m: p.birth.m, d: p.birth.d, h: p.birth.hourUnknown ? 12 : p.birth.h, mi: p.birth.hourUnknown ? 0 : p.birth.mi,
-    lat: place.lat, lon: place.lon, tz: place.tz, place: place.label,
+    lat: city?.lat ?? 0, lon: city?.lon ?? 0, tz: zone, place: city?.label ?? zone,
     ...(p.birth.hourUnknown ? { hourUnknown: true } : { utc: birthUtc(p) ?? undefined }),
   })
   const at = new Date(anchor)
@@ -99,7 +109,9 @@ export function westernDaily(p: DailyProfile, date: string, anchor: number): Wes
     return Math.abs(Date.parse(iso) - Date.parse(date)) <= 2 * 86400_000 ? iso : null
   }
   const approx = natal.hourUnknown === true
-  const contacts: WesternContact[] = transits(natal, at, 1).slice(0, 8).map(t => ({
+  const noPlace = !city && !approx
+  const HORIZON = new Set(['ASC', 'MC', 'Fortune'])
+  const contacts: WesternContact[] = transits(natal, at, 1).filter(t => !(noPlace && HORIZON.has(t.b))).slice(0, 8).map(t => ({
     transit: t.a as Planet, natal: t.b, aspect: t.name, zh: t.zh, orb: Math.round(t.orb * 100) / 100, applying: t.applying,
     exact: approx ? null : near(t.exact, t.a),
     ...(approx ? { approx: true as const } : {}),
@@ -108,6 +120,7 @@ export function westernDaily(p: DailyProfile, date: string, anchor: number): Wes
     date, tz: p.displayTz, anchor: at.toISOString(),
     moonSign: Math.floor(longitude('Moon', at) / 30),
     retro: retrogrades(at), contacts, hourUnknown: natal.hourUnknown === true,
+    ...(noPlace ? { noPlace: true as const } : {}),
   }
 }
 
@@ -124,6 +137,7 @@ export function westernFacts(w: WesternDaily): string {
           : `行運${pointZh(c.transit)}${c.zh}本命${pointZh(c.natal)}（差 ${c.orb.toFixed(1)}°，${c.applying ? '入相' : '出相'}${c.exact ? `，約 ${c.exact} 最準` : ''}）`).join('；')}。`
       : '在這個計算下，今天沒有 1° 以內的主要行運相位。這不代表生活平靜或有事，不可據此推論事件，也不要自行補造相位。',
     w.hourUnknown ? '時辰未知：本命以中午估算，不談上升、宮位與本命月亮；每個相位都只是可能，另一個出生時間可能多出或少掉某些相位，不給精確度數與時間。' : '',
+    w.noPlace ? '只知道出生時區、不知道出生地點：只看行星，不談上升、天頂、宮位與福點。' : '',
   ].filter(Boolean).join('\n')
 }
 
@@ -137,7 +151,7 @@ export type DailyBases = { date: string; tz: string; anchor: number; western: We
 export function dailyBases(p: DailyProfile, now: number = Date.now()): DailyBases {
   const date = localDateIn(p.displayTz, now)
   const anchor = dayAnchor(date, p.displayTz)
-  const natal = baziNatalZoned(p.birth, placeOf(p.place)!.tz, birthUtc(p))
+  const natal = baziNatalZoned(p.birth, birthZone(p.place)!, birthUtc(p))
   return { date, tz: p.displayTz, anchor, western: westernDaily(p, date, anchor), bazi: { natal, day: liuRi(natal, date, p.displayTz, anchor) } }
 }
 

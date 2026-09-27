@@ -5,8 +5,9 @@
 //   GET     the saved profile, or null
 //   PUT     save it: explicit consent to create it (checked in SQL, under the
 //           row lock, so a delete in between cannot be undone silently), the same date checks
-//           as every temple (no gender: v1 reads none), a birth place, a real
-//           display zone, and a clock time that happened exactly once there
+//           as every temple (no gender: v1 reads none), the zone of birth
+//           ('tz:<zone>'; no city since Sep 27), a real display zone, and
+//           a clock time that happened exactly once in that zone
 //           (or the visitor's choice of which of two)
 //   DELETE  the profile, its daily readings and their follow-up questions
 
@@ -16,7 +17,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
 import { profileProblem, cleanBirth, CONSENT_VERSION } from '@/lib/xtell-daily'
 import { resolveWallTime } from '@/lib/xtell-time'
-import { placeOf } from '@/lib/xtell-places'
+import { birthZone } from '@/lib/xtell-places'
 
 const unavailable = () => Response.json({ error: 'daily_unavailable' }, { status: 503 })
 
@@ -52,7 +53,7 @@ export async function PUT(req: Request) {
 
   const birth = cleanBirth(input.birth)
   // A repeated-hour choice means something only for a time that repeated.
-  const repeated = !birth.hourUnknown && resolveWallTime(birth.y, birth.m, birth.d, birth.h, birth.mi, placeOf(input.place)!.tz).kind === 'ambiguous'
+  const repeated = !birth.hourUnknown && resolveWallTime(birth.y, birth.m, birth.d, birth.h, birth.mi, birthZone(input.place)!).kind === 'ambiguous'
   // Nothing is kept before the visitor has said yes to keeping it: without
   // `consent` the function only edits an existing profile, never makes one.
   const { data: revision, error: saveError } = await xtellAdmin().rpc('xtell_profile_save', {
