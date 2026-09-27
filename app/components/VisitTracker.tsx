@@ -100,7 +100,12 @@ export default function VisitTracker() {
     const navType = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type
     let v = read()
     if (!v || now - v.lastInput > NEW_VISIT_MS) {
-      v = startVisit(now, pathname, navType !== 'reload' && navType !== 'back_forward')
+      // A reload or Back after a lapsed visit is not a new ad click. With no
+      // visit on record in this tab, though, the page is still the arrival:
+      // LANG_BOOT (lib/lang.ts) reloads once on landing for a visitor whose
+      // language was saved before the cookie existed.
+      const arrival = !v || (navType !== 'reload' && navType !== 'back_forward')
+      v = startVisit(now, pathname, arrival)
     } else if (!loadCounted) {
       v.pages += 1
       v.path = pathname
