@@ -15,6 +15,8 @@ import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
 import StandaloneLibrary from './StandaloneLibrary'
 import StandaloneTemplates from './StandaloneTemplates'
+import StandaloneTrending from './StandaloneTrending'
+import { STUDIO_SHOWN } from './trending'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
 import { useSite } from '../../lib/useSite'
@@ -4966,6 +4968,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     there are results, the results are the thing. */}
                 {!isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
                   <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
+                )}
+
+                {/* Trending on social media (Sep 26): the top of the week's most-
+                    liked AI posts that share their prompt, under the standalone
+                    composer; Templates has all of them. Setup screen only, like
+                    the wall above. Renders nothing for a mode with no posts. */}
+                {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
+                  <StandaloneTrending kind={mode} limit={STUDIO_SHOWN} moreHref="/?view=templates" />
                 )}
 
                 {/* Results */}
