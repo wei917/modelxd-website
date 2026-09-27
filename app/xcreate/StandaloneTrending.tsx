@@ -8,9 +8,9 @@
 //
 // X videos use X's video-only embed (twttr.widgets.createVideo): the post's
 // own text renders inside X's iframe at X's size, which nothing on our side
-// can restyle, so the card sets the creator credit and our summary in the
-// site's type instead (no model tags, owner, Sep 27: the feed only holds
-// models XCreate offers). Embeds are built into an empty div React
+// can restyle, so the card sets our summary in the site's type instead, and
+// the card opens the post on X (no model tags or author line, owner, Sep 27:
+// X's embed already names the author). Embeds are built into an empty div React
 // never touches, and only when the card nears the viewport: twenty at once is
 // twenty iframes and players. "Use this preset" hands the post to XCreate as
 // a template (prompt, model, recipe, duration) through the same applyTemplate
@@ -81,6 +81,32 @@ function XEmbed({ id, video }: { id: string; video: boolean }) {
   return <div ref={outer} className="xcs-trend-embed"><div ref={ref} className="xcs-trend-embed-inner" /></div>
 }
 
+/** Masonry (owner, Sep 27: "why you need to keep them the same height?"):
+ *  cards keep their own height in columns, dealt left to right (post i goes
+ *  to column i mod n) so the first row still reads most-liked first. CSS
+ *  columns would have run the order down each column (the Sep 26 complaint)
+ *  and reshuffled every card when a page loaded; here a new page only adds to
+ *  the bottoms. As many columns of MIN_COL as fit: four on a desktop studio,
+ *  one on a phone. */
+const MIN_COL = 260
+const GAP = 20
+function useColumns(): [(el: HTMLDivElement | null) => void, number] {
+  // Measured when the grid mounts; an update from a ref callback lands in the
+  // same commit, so the one-column first pass never paints.
+  const [cols, setCols] = useState(1)
+  const ro = useRef<ResizeObserver | null>(null)
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    ro.current?.disconnect()
+    ro.current = null
+    if (!el) return
+    const fit = () => setCols(Math.max(1, Math.floor((el.clientWidth + GAP) / (MIN_COL + GAP))))
+    fit()
+    ro.current = new ResizeObserver(fit)
+    ro.current.observe(el)
+  }, [])
+  return [ref, cols]
+}
+
 /** `added`: how many new posts the last page brought. */
 type Feed = { posts: TrendingPost[]; cursor: string | null; loading: boolean; loaded: boolean; failed: boolean; added: number }
 const EMPTY: Feed = { posts: [], cursor: null, loading: true, loaded: false, failed: false, added: 0 }
@@ -95,6 +121,7 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
   const { lang } = useLang()
   const copy = TRENDING_COPY[lang] ?? TRENDING_COPY.en
   const [feed, setFeed] = useState<Feed>(EMPTY)
+  const [gridRef, cols] = useColumns()
   const sentinel = useRef<HTMLDivElement>(null)
   // A page belongs to the kind it was asked for and to this mounted feed:
   // switching kind or unmounting bumps `gen` and aborts the request, so a late
@@ -181,23 +208,27 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
         <p>{copy[kind]}</p>
       </div>
     </div>
-    <div className="xcs-trending-grid">
-      {feed.posts.map(post => {
-        const preset = onUse ? presetTemplate(post, lang) : null
-        return <article className="xcs-trend" key={`${post.platform}:${post.postId}`}>
-          {/* No rank number (owner, Sep 26) and no model tags (Sep 27). */}
-          <p>{post.summary[lang] ?? post.summary.en}</p>
-          {post.platform === 'x' && <XEmbed id={post.postId} video={post.kind === 'video'} />}
-          <div className="xcs-trend-foot">
-            <a className="xcs-trend-credit" href={post.url} target="_blank" rel="noopener noreferrer">
-              {copy.by} @{post.handle} <span aria-hidden="true">↗</span>
-            </a>
-            {preset && <button type="button" className="xcs-trend-use" disabled={disabled}
-              onClick={() => onUse?.(preset)}>{copy.use}</button>}
-          </div>
-          {preset && post.preset?.needsImage && <p className="xcs-trend-note">{copy.needsImage}</p>}
-        </article>
-      })}
+    <div className="xcs-trending-grid" ref={gridRef}>
+      {Array.from({ length: cols }, (_, c) => <div className="xcs-trending-col" key={c}>
+        {feed.posts.filter((_, i) => i % cols === c).map(post => {
+          const preset = onUse ? presetTemplate(post, lang) : null
+          const summary = post.summary[lang] ?? post.summary.en ?? ''
+          return <article className="xcs-trend" key={`${post.platform}:${post.postId}`}>
+            {/* No rank number (owner, Sep 26), no model tags and no author line
+                (Sep 27): X's embed names the author, and the card itself opens
+                the post on X. The player and the preset button sit above that
+                link, so a video still plays in place. */}
+            <a className="xcs-trend-open" href={post.url} target="_blank" rel="noopener noreferrer"
+              aria-label={`${copy.open}: ${summary}`}><p>{summary}</p></a>
+            {post.platform === 'x' && <XEmbed id={post.postId} video={post.kind === 'video'} />}
+            {preset && <div className="xcs-trend-foot">
+              <button type="button" className="xcs-trend-use" disabled={disabled}
+                onClick={() => onUse?.(preset)}>{copy.use}</button>
+            </div>}
+            {preset && post.preset?.needsImage && <p className="xcs-trend-note">{copy.needsImage}</p>}
+          </article>
+        })}
+      </div>)}
     </div>
     <div ref={sentinel} className="xcs-trending-tail" aria-live="polite">
       {feed.failed && <p>{copy.failed}</p>}

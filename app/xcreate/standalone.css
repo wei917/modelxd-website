@@ -83,25 +83,28 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-trending-more:hover { text-decoration: underline; }
 .xcs-trending-head h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
 .xcs-trending-head p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted2); }
-/* Masonry via columns: embeds differ in height by hundreds of pixels (long
-   captions, quoted posts), and grid rows left tall gaps beside short ones. */
-/* A grid, not CSS columns (owner, Sep 26: "this layout is terrible"): columns
-   filled top to bottom, so the order ran down each column, and embeds of
-   different heights left ragged gaps. Rows now read left to right, every card
-   in a row is as tall as the tallest, and the credit + "use" row sits on each
-   card's bottom edge. */
-.xcs-trending-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; align-items: stretch; }
-.xcs-trend { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 12px 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-.xcs-trend-foot { margin-top: auto; }
-.xcs-trend > p:not(.xcs-trend-note) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.xcs-trend-embed { min-height: 170px; overflow: hidden; }
+/* Masonry (owner, Sep 27: "why you need to keep them the same height?").
+   StandaloneTrending deals the cards into columns left to right and each card
+   keeps its own height. The grid before made every card in a row as tall as
+   the tallest, leaving holes; CSS columns (Sep 26) ran the order down each
+   column instead of across. */
+.xcs-trending-grid { display: flex; gap: 20px; align-items: flex-start; }
+.xcs-trending-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+/* The whole card opens the post on X (one stretched link, no author line: X's
+   embed names the author). The player and the preset button sit above that
+   link, so a video plays in place and the button still works. */
+.xcs-trend { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 12px 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); transition: border-color .15s; }
+.xcs-trend:hover { border-color: var(--border2); }
+.xcs-trend:has(.xcs-trend-open:focus-visible) { outline: 2px solid var(--red); outline-offset: 2px; }
+.xcs-trend .xcs-trend-open:focus-visible { outline: none; }
+.xcs-trend-open { color: inherit; text-decoration: none; }
+.xcs-trend-open::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+.xcs-trend-open p { margin: 0; font-size: 14px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.xcs-trend-embed { position: relative; z-index: 1; min-height: 170px; overflow: hidden; }
 /* Rendered at X's full width, scaled to the card by XEmbed. */
 .xcs-trend-embed-inner { width: 550px; transform-origin: 0 0; }
 .xcs-trend-embed .twitter-tweet { margin: 0 auto 8px !important; }
-.xcs-trend > p { margin: 0; font-size: 14px; line-height: 1.5; }
-.xcs-trend-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 0 10px; }
-.xcs-trend-credit { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted2); text-decoration: none; }
-.xcs-trend-credit:hover { color: var(--red); }
+.xcs-trend-foot { position: relative; z-index: 1; display: flex; justify-content: flex-end; padding: 2px 0 10px; }
 .xcs-trend-use { flex-shrink: 0; min-height: 34px; padding: 6px 12px; border: 1px solid var(--red); border-radius: 8px; background: var(--red); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .xcs-trend-use:disabled { opacity: .5; cursor: default; }
 .xcs-trend > .xcs-trend-note { margin: -6px 0 10px; font-size: 11px; color: var(--muted2); text-align: right; }

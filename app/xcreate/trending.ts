@@ -81,7 +81,7 @@ export function presetTemplate(post: TrendingPost, lang: Lang): Template | null 
   }
 }
 
-type Copy = { title: string; loadMore: string; loading: string; end: string; failed: string; use: string; needsImage: string; by: string } & Record<TrendingFeedKind, string>
+type Copy = { title: string; loadMore: string; loading: string; end: string; failed: string; use: string; needsImage: string; open: string } & Record<TrendingFeedKind, string>
 
 export const TRENDING_COPY: Record<Lang, Copy> = {
   en: {
@@ -95,7 +95,7 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     failed: 'Could not load more posts.',
     use: 'Use this preset',
     needsImage: 'Then add your own picture',
-    by: 'by',
+    open: 'Open on X',
   },
   'zh-Hant': {
     title: '社群媒體熱門',
@@ -108,7 +108,7 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     failed: '無法載入更多貼文。',
     use: '套用這組設定',
     needsImage: '再加上你自己的圖片',
-    by: '作者',
+    open: '在 X 上開啟',
   },
   'zh-Hans': {
     title: '社交媒体热门',
@@ -121,7 +121,7 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     failed: '无法加载更多帖子。',
     use: '套用这组设置',
     needsImage: '再加上你自己的图片',
-    by: '作者',
+    open: '在 X 上打开',
   },
   ja: {
     title: 'SNS で話題',
@@ -134,7 +134,7 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     failed: '続きを読み込めませんでした。',
     use: 'このプリセットを使う',
     needsImage: 'あとで自分の画像を追加',
-    by: '作者',
+    open: 'Xで開く',
   },
   ko: {
     title: '소셜 미디어 인기',
@@ -147,6 +147,6 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     failed: '더 불러오지 못했어요.',
     use: '이 프리셋 사용',
     needsImage: '그다음 내 이미지를 추가하세요',
-    by: '제작',
+    open: 'X에서 열기',
   },
 }
