@@ -3637,6 +3637,8 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
    a phone. app/components/xtell/XTellToday.tsx. */
 .xtell-today { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; margin: 24px 0 16px; }
 .xtell-today > .xtell-dy { margin: 0; }
+/* No daily card (the service is unavailable): the other two share the row. */
+.xtell-today:not(:has(> .xtell-dy)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .xtell-today .xtell-dy-cards { grid-template-columns: minmax(0, 1fr); }
 .xtell-td { min-width: 0; padding: 18px 20px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-white); overflow-wrap: anywhere; }
 .xtell-td .xtell-dy-sub { margin: 4px 0 0; }
@@ -3664,7 +3666,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-today .xtell-dy-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
-  .xtell-today { grid-template-columns: minmax(0, 1fr); margin-top: 16px; padding-inline: 16px; }
+  .xtell-today, .xtell-today:not(:has(> .xtell-dy)) { grid-template-columns: minmax(0, 1fr); margin-top: 16px; padding-inline: 16px; }
   .xtell-today .xtell-dy-cards { grid-template-columns: minmax(0, 1fr); }
   .xtell-td { padding: 16px; }
 }

@@ -198,7 +198,15 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
     setPhase('none'); setNotice(t('xtell.dy.deleted'))
   }
 
-  if (phase === 'hidden' || phase === 'loading') return null
+  if (phase === 'hidden') return null
+  // The card's place in the street's 今日 row, held while the profile loads,
+  // so the row does not jump from two columns to three.
+  if (phase === 'loading') return (
+    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
+      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
+      <p className="xtell-dy-small">{t('common.loading')}</p>
+    </section>
+  )
   const born = profile ? `${profile.birth.y}-${pad(profile.birth.m)}-${pad(profile.birth.d)} ${profile.birth.hourUnknown ? t('xtell.hourunknown') : `${pad(profile.birth.h)}:${pad(profile.birth.mi)}`}` : ''
 
   return (
