@@ -11,7 +11,7 @@
 
 import { Solar } from 'lunar-typescript'
 import { birthProblem, daysInMonth, birthYears, latestBirthDate, BIRTH_MIN_YEAR } from '../lib/xtell-birth'
-import { describeVisit, eraseReading } from '../lib/xtell-history'
+import { describeVisit, eraseReading, notAskedKey } from '../lib/xtell-history'
 import { validBirth, baziChart, baziFacts, heMatch, yuelaoFacts, liuNian, liuNianFacts, simianfoFacts, bingGaoFacts } from '../lib/xtell'
 
 let fails = 0
@@ -153,6 +153,11 @@ check('an unknown hour needs no clock time', birthProblem({ y: 1990, m: 1, d: 1,
   check('history: a stick is named by its number and matter', describeVisit(tt, 'guandi', { n: 87, ask: '這份新工作該不該接' }) === 'Stick 87 · 這份新工作該不該接')
   check('history: 易學堂 lookup and cast name their hexagrams', describeVisit(tt, 'yixue', { mode: 'lookup', n: 1 }) === 'Lookup · 乾'
     && describeVisit(tt, 'yixue', { mode: 'cast', lines: [9, 7, 7, 7, 7, 7] }) === 'Cast · 乾 → 姤')
+  check('history: a visit with no question is named by its own workflow (籤, wishes, name, character; only charts 排盤)',
+    notAskedKey('guandi') === 'xtell.saved.notasked.qian' && notAskedKey('mazu') === 'xtell.saved.notasked.qian'
+    && notAskedKey('simianfo') === 'xtell.saved.notasked.wish' && notAskedKey('xingming') === 'xtell.saved.notasked.name'
+    && notAskedKey('cezi') === 'xtell.saved.notasked.char' && notAskedKey('yixue') === 'xtell.saved.chartonly.yixue'
+    && ['bazi', 'ziwei', 'yuelao', 'navagraha', 'zhanxing'].every(k => notAskedKey(k) === 'xtell.saved.chartonly'))
   check('history: 月老 names both births', describeVisit(tt, 'yuelao', { birth: at(1990, 1, 1, 15, 25), birth2: unknown(1985, 7, 20, 'female') }).includes('×'))
 }
 

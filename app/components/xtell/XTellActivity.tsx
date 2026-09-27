@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../../lib/i18n'
-import { describeVisit, eraseReading } from '../../../lib/xtell-history'
+import { describeVisit, eraseReading, notAskedKey } from '../../../lib/xtell-history'
 
 type Saved = { id: string; temple: string; title: string | null; subject: any; cost_cents: number; created_at: string; updated_at: string; turns: Array<{ role: string }> }
 
@@ -49,12 +49,14 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
         const asked = (row.turns ?? []).filter(x => x.role === 'user').length
         return <li key={row.id}>
           <span>
-            <strong>{t(`xtell.${row.temple}.name`)}</strong>
+            {/* Named as the explorer and the room name it (tester, Sep 26:
+                the list said 姓名亭／測字亭, the explorer 姓名學／測字). */}
+            <strong>{t(`xtell.site.focus.${row.temple}.name`)}</strong>
             {/* Named by what it was about, not "chart only" for every row
                 (audit, product); the first question stays the title. */}
-            <span style={{ display: 'block', fontSize: 13 }}>{row.title || describeVisit(t, row.temple, row.subject) || t(row.temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</span>
+            <span style={{ display: 'block', fontSize: 13 }}>{row.title || describeVisit(t, row.temple, row.subject) || t(notAskedKey(row.temple))}</span>
             {row.title && describeVisit(t, row.temple, row.subject) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{describeVisit(t, row.temple, row.subject)}</span>}
-            {!asked && (row.title || describeVisit(t, row.temple, row.subject)) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(row.temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</span>}
+            {!asked && (row.title || describeVisit(t, row.temple, row.subject)) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(notAskedKey(row.temple))}</span>}
             <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {asked > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--muted2)' }}>{asked} {t('xtell.saved.turns')}</span>}
           </span>

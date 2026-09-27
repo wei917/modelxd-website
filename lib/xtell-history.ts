@@ -53,6 +53,22 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
 }
 
 /**
+ * What a visit with no question yet is called, in the words of its own
+ * workflow (tester, Sep 26: 「只排了盤」 on a 籤 or on 四面佛's wishes is
+ * not what happened). Only the chart temples 排盤.
+ */
+export function notAskedKey(temple: string): string {
+  switch (temple) {
+    case 'guandi': case 'mazu': return 'xtell.saved.notasked.qian'
+    case 'simianfo': return 'xtell.saved.notasked.wish'
+    case 'xingming': return 'xtell.saved.notasked.name'
+    case 'cezi': return 'xtell.saved.notasked.char'
+    case 'yixue': return 'xtell.saved.chartonly.yixue'
+    default: return 'xtell.saved.chartonly'   // 八字, 紫微, 月老, 九曜, 占星
+  }
+}
+
+/**
  * Erase a saved visit for good (owner, Sep 26: deleting means deleting; the
  * lists used to set `deleted_at` and keep the row). The owner-delete policy
  * of supabase/105 scopes it to the signed-in user's own rows. The deleted id

@@ -62,7 +62,7 @@ import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
-import { describeVisit, eraseReading } from '../../lib/xtell-history'
+import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
@@ -2410,11 +2410,11 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
           return (
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
               <span style={{ flex: 1, minWidth: 200 }}>
-                <b>{r.title || what || t(temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}</b>
+                <b>{r.title || what || t(notAskedKey(temple))}</b>
                 {r.title && what && <span style={{ display: 'block', color: 'var(--muted2)', fontSize: 11.5 }}>{what}</span>}
                 <span style={{ color: 'var(--muted2)', marginLeft: r.title && what ? 0 : 8 }}>
                   {new Date(r.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}
-                  {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : `　${t(temple === 'yixue' ? 'xtell.saved.chartonly.yixue' : 'xtell.saved.chartonly')}`}
+                  {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : `　${t(notAskedKey(temple))}`}
                   {r.cost_cents > 0 ? `　$${(r.cost_cents / 100).toFixed(2)}` : ''}
                 </span>
               </span>
