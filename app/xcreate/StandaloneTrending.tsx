@@ -1,6 +1,6 @@
 'use client'
 
-// "Trending on social media" for the standalone studio (Sep 26): the top 6
+// "Trending on social media" for the standalone studio (Sep 26): the top 10
 // under the Studio composer with a link to the rest, all of them (up to 20)
 // at the top of Templates, for the mode on screen (video or image). The list
 // comes from /api/trending (table trending_posts, supabase/108).
@@ -93,11 +93,11 @@ export default function StandaloneTrending({ kind, limit, moreHref, onUse, disab
       </Link>}
     </div>
     <div className="xcs-trending-grid">
-      {shown.map((post, i) => {
+      {shown.map(post => {
         const preset = onUse ? presetTemplate(post, lang) : null
         return <article className="xcs-trend" key={`${post.platform}:${post.postId}`}>
+          {/* No rank number (owner, Sep 26): the order already says it. */}
           <div className="xcs-trend-meta">
-            <span className="xcs-trend-rank">{String(i + 1).padStart(2, '0')}</span>
             <div className="xcs-trend-models">{post.models.map(m => <span key={m}>{m}</span>)}</div>
           </div>
           <p>{post.summary[lang] ?? post.summary.en}</p>

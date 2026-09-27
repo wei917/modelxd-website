@@ -44,7 +44,7 @@ export type TrendingPost = {
 
 /** Posts kept per kind per week; Studio shows the first STUDIO_SHOWN. */
 export const TRENDING_MAX = 20
-export const STUDIO_SHOWN = 6
+export const STUDIO_SHOWN = 10   // owner, Sep 26: "load 10"
 
 // Week of Sep 21 (Grok x_search over Sep 19–26).
 export const FALLBACK_TRENDING = seed as TrendingPost[]
