@@ -52,6 +52,11 @@ html[data-site="xcreate"] .cursor-ring { display: none !important; }
 html[data-site="xcreate"] :is(a, button, select, label, summary) { cursor: pointer; }
 html[data-site="xcreate"] :is(button, select):disabled { cursor: not-allowed; }
 html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
+/* globals.css also hides the cursor on some non-interactive boxes that draw
+   the red dot instead. Of those, only .battle-card (the result cards) renders
+   on this host (checked Sep 26); without this the cursor vanished over
+   results, the audio player included, which inherits it. */
+html[data-site="xcreate"] .battle-card { cursor: auto; }
 
 /* ── Top bar ─────────────────────────────────────────────────────────── */
 .xcs-top {
