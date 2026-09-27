@@ -38,7 +38,8 @@ const pending = XTELL_FEATURES.filter(f => f.status === 'pending')
 check('catalog version is a dated version', /^\d{4}-\d{2}-\d{2}\.\d+$/.test(XTELL_CATALOG_VERSION))
 check('feature ids are unique', new Set(XTELL_FEATURES.map(f => f.id)).size === XTELL_FEATURES.length)
 check('every temple has a live feature', xtell.TEMPLES.every(t => live.some(f => f.temple === t)), xtell.TEMPLES.filter(t => !live.some(f => f.temple === t)).join())
-check('every live feature opens a room or the daily section, never both', live.every(f => !!f.temple !== (f.opens === 'daily')))
+check('every live feature opens a room or a street section, never both', live.every(f => !!f.temple !== !!f.opens))
+check('today\'s almanac and Panchang are free street cards with no teacher', ['almanac', 'panchang'].every(id => { const f = liveFeature(id); return !!f && f.opens === id && !f.temple && f.paid === null && f.people === 0 && same(f.free, [id]) }))
 check('every 占星塔 mode and every 易學堂 mode is a live feature',
   xtell.ASTRO_MODES.every(m => live.some(f => f.temple === 'zhanxing' && f.mode === m)) && yijing.YIXUE_MODES.every(m => live.some(f => f.temple === 'yixue' && f.mode === m)))
 check('a mode only where the room has modes, and a real one',
@@ -51,7 +52,7 @@ check('every label has all five languages', XTELL_FEATURES.every(f => f.label.ev
 check('the guide\'s own strings exist in five languages',
   Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).length >= 20 && Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string')))
 check('the matter field takes the question only where the room has one', same(live.filter(f => f.question === 'matter').map(f => f.id), ['guandi', 'mazu', 'cezi', 'yixue.cast']))
-check('every live feature offers a paid teacher and says what is free', live.every(f => f.paid === 'teacher' && Array.isArray(f.free)))
+check('every room and the daily fortune offer a paid teacher and say what is free', live.every(f => (f.temple || f.opens === 'daily' ? f.paid === 'teacher' : f.paid === null) && Array.isArray(f.free)))
 check('the fee rule says the daily fortune is free with no credit', /daily fortune are free/.test(FEE_RULE) && /no credit/.test(FEE_RULE))
 check('the fee rule the prompt uses names the free parts and the estimate', /free/i.test(FEE_RULE) && /estimate/i.test(FEE_RULE) && /pressing send/i.test(FEE_RULE))
 
@@ -242,7 +243,7 @@ function mem(): Storage & { data: Map<string, string> } {
   check('expired after the lifetime, and a future time is refused', readHandoff(s, 'bazi', now + HANDOFF_TTL_MS + 1) === null && readHandoff(s, 'bazi', now - 60_000) === null && !!readHandoff(s, 'bazi', now + HANDOFF_TTL_MS))
   s.setItem(HANDOFF_KEY, JSON.stringify({ v: '2020-01-01.1', feature: 'bazi', question: 'q', at: now }))
   check('another catalog version is refused', readHandoff(s, 'bazi', now) === null)
-  check('pending, unknown or non-room features are never written', !writeHandoff(s, 'courses', 'q', now) && !writeHandoff(s, 'daily', 'q', now) && !writeHandoff(s, 'bazi.secret', 'q', now))
+  check('pending, unknown or non-room features are never written', !writeHandoff(s, 'courses', 'q', now) && !writeHandoff(s, 'daily', 'q', now) && !writeHandoff(s, 'almanac', 'q', now) && !writeHandoff(s, 'panchang', 'q', now) && !writeHandoff(s, 'bazi.secret', 'q', now))
   s.setItem(HANDOFF_KEY, '{not json')
   check('a corrupt value is ignored', readHandoff(s, 'bazi', now) === null)
   const blocked = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') }, removeItem: () => { throw new Error('blocked') } } as any

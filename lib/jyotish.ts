@@ -110,6 +110,12 @@ function tropical(g: Graha, date: Date): number {
   return norm(A.Ecliptic(A.GeoVector(BODY[g]!, date, true)).elon)
 }
 
+/** Sidereal (Lahiri) longitude of a graha at a moment: the daily Panchang
+ *  (lib/panchang.ts) reads the Sun and Moon through this. */
+export function siderealLongitude(g: Graha, date: Date): number {
+  return norm(tropical(g, date) - lahiriAyanamsa(date))
+}
+
 /** Tropical ascendant from local sidereal time and latitude. */
 function ascendant(date: Date, lat: number, lon: number): number {
   const T = centuries(date)

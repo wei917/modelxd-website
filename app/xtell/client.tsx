@@ -18,7 +18,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
-import TempleStreet, { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
+import { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
 import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { createBrowserClient } from '@supabase/ssr'
@@ -41,6 +41,7 @@ import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-histor
 import { PRESETS, EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { type SavedDaily } from '../components/xtell/XTellDaily'
+import { AlmanacCard, PanchangCard } from '../components/xtell/XTellToday'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
@@ -187,7 +188,6 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
   const [temple, setTemple] = useState<Temple | null>(null)
-  const [selectedTemple, setSelectedTemple] = useState<Temple>('bazi')
   // www's card grid: the same purposes as the standalone street filter it.
   const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
   // ?reading=<id> reopens a saved visit (supabase/105): the row is fetched
@@ -213,7 +213,6 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
         if (data?.temple === 'daily') { setSavedDaily(data as SavedDaily); return }
         if (!data || !TEMPLES.includes(data.temple)) return
         setSaved(data as SavedReading)
-        setSelectedTemple(data.temple as Temple)
         if (standalone) window.location.hash = data.temple
         setTemple(data.temple as Temple)
       })
@@ -237,7 +236,6 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
         if (store) clearHandoff(store)
       }
       setTemple(TEMPLES.includes(key) ? key : null)
-      if (TEMPLES.includes(key)) setSelectedTemple(key)
       // The guide's suggestion for this room: the one just clicked (in
       // memory), or, on the first sync after a page load only, the stored
       // one (a reload, or back from signing in). Storage is only that
@@ -254,7 +252,6 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const resume = (row: SavedReading) => {
     setReadingParam(row.id)
     setSaved(row)
-    setSelectedTemple(row.temple as Temple)
     if (standalone) window.location.hash = row.temple
     setTemple(row.temple as Temple)
     window.scrollTo({ top: 0, behavior: 'instant' })
@@ -262,7 +259,6 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const chooseTemple = (key: Temple | null) => {
     if (standalone) window.location.hash = key ?? ''
     setTemple(key)
-    if (key) setSelectedTemple(key)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
   // A button in the guide's reply: open that room with its mode and the
@@ -270,6 +266,8 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const openFromGuide = (id: FeatureId, question: string | null) => {
     const feature = liveFeature(id)
     if (feature?.opens === 'daily') { setDailySignal(n => n + 1); return }
+    // Today's almanac and Panchang are cards on the street itself.
+    if (feature?.opens) { document.getElementById(`xtell-${feature.opens}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
     if (!feature?.temple) return
     const store = sessionStore()
     if (store) writeHandoff(store, feature.id, question)
@@ -277,14 +275,6 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     setReadingParam(null)
     setSaved(null)
     chooseTemple(feature.temple)
-  }
-  // The street's own Enter button: a visit of the visitor's choosing, so no
-  // guide suggestion comes along.
-  const enterFromStreet = (key: Temple) => {
-    const store = sessionStore()
-    if (store) clearHandoff(store)
-    setHandoff(null)
-    chooseTemple(key)
   }
   const leaveRoom = () => {
     const store = sessionStore()
@@ -298,9 +288,15 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   if (standalone) return <div className="xtell-site">
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <>
+        {/* Today first (owner, Sep 27): the daily fortune, the Chinese
+            almanac and the Indian calendar, side by side; then the guide.
+            The temples themselves are in the top bar. */}
+        <div className="xtell-today">
+          <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
+          <AlmanacCard />
+          <PanchangCard />
+        </div>
         <XTellAssistant onOpen={openFromGuide} />
-        <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
-        <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={enterFromStreet} />
       </> : <>
         <XTellAuthGate />
         <TempleRoom key={temple + (saved?.id ?? '') + (handoff?.feature.temple === temple ? handoff.feature.id : '')} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}

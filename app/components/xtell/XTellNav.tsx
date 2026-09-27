@@ -98,8 +98,7 @@ export default function XTellNav({ user }: { user: User | null }) {
       }}>{t('xtell.site.skip')}</a>
       <div className="xtell-nav-inner">
         {/* The wordmark is the way back to the street. Inside a temple it
-            clears the hash in place, so the street keeps showing the temple
-            just left instead of reloading to the default one. */}
+            clears the hash in place instead of reloading the page. */}
         <a href="/" aria-label="XTell" onClick={e => {
           const p = window.location.pathname
           if ((p === '/' || p === '/xtell') && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }

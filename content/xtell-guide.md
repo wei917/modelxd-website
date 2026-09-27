@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-27.2 -->
+<!-- xtell-guide version: 2026-09-27.3 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -137,7 +137,7 @@ wants to cast.
 ## On the street itself
 
 ### daily
-今日運勢 (the daily fortune), just below this guide, free every day. A
+今日運勢 (the daily fortune), the first card at the top of the street, free every day. A
 signed-in visitor saves their birth details once, after ticking a consent
 box: the date (Gregorian), the time or "don't know", the birth place, and the
 time zone they are in today (it decides which date counts as today; it is
@@ -152,6 +152,27 @@ reopened page shows the same reading for the same day. With the birth time
 unknown the readings still come, marked approximate where the time matters.
 Asking a teacher about a day's reading is paid, with the estimate shown
 before sending; the teacher sees only that day's calculation for that method.
+
+### almanac
+今日黃曆 (today's almanac, the farmer's almanac), a card at the top of the
+street beside the daily fortune; free, no birthday, no sign-in. It shows
+today's date in the visitor's own time zone with the lunar date and the
+day's stem-branch, what the day is traditionally good for (宜) and should
+avoid (忌), the animal the day clashes with and the direction of 煞, the day
+officer (建除) and the solar term; "more" adds the day spirit, the lunar
+mansion, the auspicious and baleful stars and the Pengzu taboos. It comes
+from the date alone. Tradition and reference, not a personal reading.
+
+### panchang
+印度今日 (today's Indian calendar, Panchang), a card at the top of the
+street; free, no birthday, no sign-in. It shows the tithi (lunar day, in the
+waxing or waning half), the Moon's nakshatra, yoga and karana as they are
+right now, each with when it ends, and the weekday's ruling planet. Sunrise,
+sunset and Rahu Kalam (a stretch of the day traditionally avoided for new
+beginnings) depend on the place, so they appear once the visitor chooses
+"use my location" (the browser asks) or picks a city; the choice stays in
+their browser only. For a personal Vedic chart: the Navagraha Temple
+(navagraha).
 
 ## Not live yet
 

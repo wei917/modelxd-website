@@ -45,7 +45,7 @@ export function cleanQuestion(q: unknown): string | null {
  *  not a live catalog feature or storage refuses (private mode). */
 export function writeHandoff(store: Store, feature: FeatureId | string, question: unknown, now = Date.now()): boolean {
   const f = liveFeature(feature)
-  // Rooms only: the daily section is on the street itself.
+  // Rooms only: the daily, almanac and Panchang cards are on the street itself.
   if (!f?.temple) return false
   const value: Stored = { v: XTELL_CATALOG_VERSION, feature: f.id, question: f.question ? cleanQuestion(question) : null, at: now }
   try { store.setItem(HANDOFF_KEY, JSON.stringify(value)); return true } catch { return false }

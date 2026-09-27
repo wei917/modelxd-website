@@ -633,6 +633,37 @@ from its own calculation, plus an optional paid follow-up per reading.
   hour (`rememberedBirth`), and deleting the profile clears it too.
 - Tests: `scripts/test-xtell-daily.ts` (in `npm run test:xtell`).
 
+## 今日 row on the street: 黃曆 and Panchang (Sep 27)
+
+The xtell.modelxd.com home page opens with three cards side by side (two
+columns under 1100px with the fortune on top, stacked on phones): 今日運勢
+(`XTellDaily`), 今日黃曆 and 印度今日 (`app/components/xtell/XTellToday.tsx`),
+then the guide. The temple showcase panel and its 「想解決什麼？」 chips are
+gone: the temples live in the top bar. Owner, Sep 27.
+
+- **黃曆** (`lib/xtell-almanac.ts`): lunar-typescript's almanac for the
+  visitor's local date: lunar date and 干支, 宜 / 忌 (first 8, "show all"),
+  沖 + 煞 direction, 建除 值日, the solar term and the next; folded away the
+  值神, 星宿, 吉神 / 凶煞 and 彭祖百忌. The library prints Simplified; 繁體,
+  ja and ko get Traditional through a table that covers the library's whole
+  almanac vocabulary (372 terms; the one ambiguous case 益后 → 益後 is a
+  phrase rule). English uses the library's English (one typo fixed).
+  Zodiac animals use Japanese and Korean names on those pages.
+- **Panchang** (`lib/panchang.ts`, Lahiri through `siderealLongitude` in
+  `lib/jyotish.ts`): tithi, nakshatra, yoga and karana as they are now, each
+  with its end time (hour steps + bisection), and the weekday's ruler. Sunrise,
+  sunset and Rahu Kalam (the textbook eighth of daylight by weekday) need a
+  place: **no default city** (owner). The card asks: "use my location"
+  (browser geolocation, rounded to 0.1°) or a city from `PLACES`; kept in
+  localStorage `xtell.today.place`, never sent. A picked city shows every time
+  on the card in that city's zone.
+- Both are computed in the browser after mount (no server route, no model,
+  no cost; a render-time date would break hydration). Catalog ids `almanac`
+  and `panchang` open these cards from the guide (`opens`), catalog 2026-09-27.3.
+- Tests: `npx tsx scripts/test-today.ts` (the 2026-09-27 page by hand,
+  400 days of 繁體 output, Purnima/Amavasya ending at astronomy-engine's full
+  and new moons, the nakshatra against the 九曜 chart, Rahu Kalam, polar night).
+
 ## Golden charts (`npm run test:xtell`)
 
 Frozen OBSERVED outputs (never hand-recalled — the first version froze two
