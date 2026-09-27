@@ -12,7 +12,7 @@ export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'navag
 // A temple added after the sheets (易學堂) brings its own two files instead,
 // so the approved sheets never change: `src` rather than `index`.
 type Art = { index: number; caption: string; kind?: undefined; src?: undefined }
-  | { src: { portrait: string; icon: string }; caption: string; kind: 'object' | 'deity'; index?: undefined }
+  | { src: { portrait: string; icon: string; iconClear: string }; caption: string; kind: 'object' | 'deity'; index?: undefined }
 export const TEMPLE_ART: Record<TempleKey, Art> = {
   mazu: { index: 0, caption: 'MAZU' }, guandi: { index: 1, caption: 'GUAN DI' },
   yuelao: { index: 2, caption: 'YUE LAO' }, simianfo: { index: 3, caption: 'BRAHMA' },
@@ -22,7 +22,7 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   // Owner-selected B: ink-wash bagua and an open book. See
   // docs/XTELL-YIXUE-ART.md for provenance and trigram review.
   // Decoration only; the room draws real hexagrams from code.
-  yixue: { src: { portrait: '/xtell/approved/yixue-school-portrait.avif', icon: '/xtell/approved/yixue-school-icon.avif' }, caption: 'I CHING', kind: 'object' },
+  yixue: { src: { portrait: '/xtell/approved/yixue-school-portrait.avif', icon: '/xtell/approved/yixue-school-icon.avif', iconClear: '/xtell/approved/yixue-school-icon-clear.avif' }, caption: 'I CHING', kind: 'object' },
 }
 
 /** 'object' portraits (the lower sheet row, and 易學堂) sit differently from the deities. */
@@ -31,13 +31,17 @@ export const artKind = (temple: TempleKey): 'object' | 'deity' => {
   return a.kind ?? ((a.index ?? 0) >= 5 ? 'object' : 'deity')
 }
 
-export function TempleArtwork({ temple, kind = 'portrait', className = '', label }: {
-  temple: TempleKey; kind?: 'portrait' | 'icon'; className?: string; label?: string
+/** `clear`: an icon without its paper square, for white surfaces (the top
+ *  bar). The same approved art with only the surrounding paper removed
+ *  (scripts/xtell-clear-icons.mjs); on paper, use the original. */
+export function TempleArtwork({ temple, kind = 'portrait', className = '', label, clear = false }: {
+  temple: TempleKey; kind?: 'portrait' | 'icon'; className?: string; label?: string; clear?: boolean
 }) {
   const art = TEMPLE_ART[temple]
+  const clearIcon = clear && kind === 'icon'
   const style: CSSProperties = art.src
-    ? { backgroundImage: `url('${art.src[kind]}')`, backgroundSize: kind === 'icon' || temple === 'yixue' ? 'contain' : 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: `url('${clearIcon ? art.src.iconClear : art.src[kind]}')`, backgroundSize: kind === 'icon' || temple === 'yixue' ? 'contain' : 'cover', backgroundPosition: 'center' }
     : { backgroundPosition: ((art.index % 5) * 25) + '% ' + (art.index < 5 ? '0%' : '100%') }
-  return <span className={'xtell-artwork xtell-artwork-' + kind + ' ' + className} style={style}
+  return <span className={'xtell-artwork xtell-artwork-' + kind + (clearIcon ? ' is-clear' : '') + ' ' + className} style={style}
     role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} />
 }

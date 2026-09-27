@@ -1,12 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, type TempleKey } from './TempleArtwork'
+
+/** DISPLAY_TEMPLES lists the computed methods first (八字 … 易學堂), then
+ *  the deity rooms from 月老 on; the bar marks where the rooms begin. */
+const FIRST_ROOM: TempleKey = 'yuelao'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -71,16 +75,26 @@ export default function XTellNav({ user }: { user: User | null }) {
         main.scrollIntoView({ block: 'start' })
       }}>{t('xtell.site.skip')}</a>
       <div className="xtell-nav-inner">
-        <a href="/" aria-label="XTell"><XTellMark /></a>
-        {/* The avatar on the right IS the account link; a second text link
-            said the same thing twice (owner, Sep 24). */}
+        {/* The wordmark is the way back to the street. Inside a temple it
+            clears the hash in place, so the street keeps showing the temple
+            just left instead of reloading to the default one. */}
+        <a href="/" aria-label="XTell" onClick={e => {
+          const p = window.location.pathname
+          if ((p === '/' || p === '/xtell') && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
+        }}><XTellMark /></a>
+        {/* Every temple, one compact row after the wordmark (owner, Sep 27):
+            the computed methods, a hairline, then the deity rooms. The
+            avatar on the right IS the account link (owner, Sep 24). */}
         <nav className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-          {DISPLAY_TEMPLES.map(key => <a key={key} href={'/#' + key}
-            aria-label={t('xtell.site.focus.' + key + '.name')}
-            aria-current={activeTemple === key ? 'page' : undefined}>
-            <TempleArtwork temple={key} kind="icon" className="xtell-nav-icon" />
-            <span>{t('xtell.site.focus.' + key + '.short')}</span>
-          </a>)}
+          {DISPLAY_TEMPLES.map(key => <Fragment key={key}>
+            {key === FIRST_ROOM && <span className="xtell-nav-sep" aria-hidden="true" />}
+            <a href={'/#' + key}
+              aria-label={t('xtell.site.focus.' + key + '.name')}
+              aria-current={activeTemple === key ? 'page' : undefined}>
+              <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
+              <span>{t('xtell.site.focus.' + key + '.short')}</span>
+            </a>
+          </Fragment>)}
         </nav>
         <div className="xtell-nav-actions">
           {/* The Google photo, as XCreate's and www's navs show it; the

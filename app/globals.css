@@ -3594,22 +3594,33 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
   .xtell-as-you, .xtell-as-reply { max-width: 100%; }
 }
 
-/* XTell: all temples live in one compact top navigation row. */
-html[data-site="xtell"] .xtell-nav-inner { max-width: none; padding: 8px 24px; gap: 20px; flex-wrap: nowrap; }
+/* XTell top bar (owner, Sep 27): every temple in one compact row after the
+   wordmark, inside the page's 1280px like everything else rather than
+   stretched to the screen's edges; items keep their natural width and the
+   account sits at the right. The icons are the clear versions (no paper
+   square on the white bar). A narrow window scrolls the row sideways. */
+html[data-site="xtell"] .xtell-nav-inner { max-width: 1280px; min-height: 64px; padding: 6px 32px; gap: 28px; flex-wrap: nowrap; }
 html[data-site="xtell"] .xtell-nav-inner > a { flex: none; }
 html[data-site="xtell"] .xtell-nav .xtell-focus-brand { font-size: 25px; }
-html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: 0; }
-.xtell-temple-nav { display: flex; flex: 1; min-width: 0; align-items: stretch; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
-.xtell-temple-nav a { flex: 1 0 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 6px; border-radius: 5px; border-bottom: 2px solid transparent; font-size: 12px; line-height: 1.4; white-space: nowrap; }
-.xtell-nav-icon { width: 34px; border-radius: 3px; }
-.xtell-temple-nav a:hover, .xtell-temple-nav a[aria-current="page"] { background: var(--xtell-tint); color: var(--xtell-vermilion); }
-.xtell-temple-nav a[aria-current="page"] { border-bottom-color: var(--xtell-vermilion); }
+html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
+.xtell-temple-nav { display: flex; align-items: stretch; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.xtell-temple-nav::-webkit-scrollbar { display: none; }
+.xtell-temple-nav a { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 50px; padding: 5px 7px 3px; border-radius: 6px 6px 0 0; border-bottom: 2px solid transparent; color: var(--xtell-ink); font-size: 12px; line-height: 1.3; white-space: nowrap; text-decoration: none; }
+.xtell-temple-nav a:hover { background: var(--xtell-tint); }
+.xtell-temple-nav a[aria-current="page"] { color: var(--xtell-vermilion); border-bottom-color: var(--xtell-vermilion); font-weight: 600; }
+.xtell-temple-nav a:focus-visible { outline: 2px solid var(--xtell-vermilion); outline-offset: -2px; }
+.xtell-nav-sep { flex: none; align-self: center; width: 1px; height: 34px; margin: 0 7px; background: var(--xtell-rule); }
+.xtell-nav-icon { width: 30px; }
+.xtell-artwork-icon.is-clear { background-image: url('/xtell/approved/icons-clear.avif'); }
 @media (max-width: 1100px) {
-  html[data-site="xtell"] .xtell-nav-inner { padding-inline: 12px; gap: 10px; }
-  .xtell-temple-nav a { flex-basis: 54px; padding-inline: 4px; }
+  html[data-site="xtell"] .xtell-nav-inner { padding-inline: 20px; gap: 16px; }
+  .xtell-temple-nav a { min-width: 44px; padding-inline: 5px; }
+  .xtell-nav-icon { width: 28px; }
+  .xtell-nav-sep { margin-inline: 4px; }
 }
 @media (max-width: 700px) {
   html[data-site="xtell"] .xtell-nav .xtell-focus-brand { font-size: 18px; }
-  html[data-site="xtell"] .xtell-nav-inner { gap: 8px; padding-inline: 8px; }
-  .xtell-temple-nav a { flex: 0 0 58px; }
+  html[data-site="xtell"] .xtell-nav-inner { min-height: 58px; padding: 4px 10px; gap: 8px; }
+  .xtell-temple-nav a { min-width: 46px; padding: 4px 4px 2px; font-size: 11px; }
+  .xtell-nav-icon { width: 26px; }
 }
