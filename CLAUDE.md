@@ -55,7 +55,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `105_xtell_readings.sql` (2026-09-24).
+  Latest applied: `107_drop_old_mode_checks.sql` (2026-09-26). Renamed
+  tables keep their ORIGINAL constraint names (`creates_mode_check` on
+  `xcreates`): look a constraint up in `pg_constraint` before dropping it
+  by name, or `drop ... if exists` silently misses it (106 did).
 
 ## The Surfaces
 
