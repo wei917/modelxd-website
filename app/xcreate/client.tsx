@@ -3837,8 +3837,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
           {isStandalone ? <header className={`xcs-heading${standaloneView !== 'create' ? ' xcs-heading-wide' : ''}`}>
-            <p className="xcs-eyebrow">{copy.eyebrow}</p>
-            <h1>{standaloneView === 'templates' ? copy.templatesTitle : standaloneView === 'creations' ? copy.creationsTitle : copy.title}</h1>
+            {/* Studio's title is www's own XCreate headline (owner, Sep 26: the
+                earlier slogan read as nothing); its eyebrow would repeat it. */}
+            {standaloneView !== 'create' && <p className="xcs-eyebrow">{copy.eyebrow}</p>}
+            <h1>{standaloneView === 'templates' ? copy.templatesTitle : standaloneView === 'creations' ? copy.creationsTitle : t('xcreate.subtitle')}</h1>
             <p>{standaloneView === 'templates' ? copy.templatesSubtitle : standaloneView === 'creations' ? copy.creationsSubtitle : copy.subtitle}</p>
           </header> : <>
             <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>

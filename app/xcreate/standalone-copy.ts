@@ -2,7 +2,6 @@ import type { Lang } from '@/lib/i18n'
 
 const en = {
   eyebrow: 'Your private AI studio',
-  title: 'One idea. More possibilities.',
   subtitle: 'Create with the models you choose. Keep what works for you.',
   templatesTitle: 'A head start for every idea.',
   templatesSubtitle: 'Choose a starting point. Make every detail your own.',
@@ -37,7 +36,7 @@ type Copy = typeof en
 const copy: Record<Lang, Copy> = {
   en,
   'zh-Hant': {
-    eyebrow: '你的私人 AI 創作室', title: '一個靈感，更多可能。', subtitle: '用你選擇的模型創作，留下適合你的成果。',
+    eyebrow: '你的私人 AI 創作室', subtitle: '用你選擇的模型創作，留下適合你的成果。',
     templatesTitle: '讓每個靈感，都有起點。', templatesSubtitle: '選擇範本，再把每個細節變成你的風格。',
     creationsTitle: '接著完成你的靈感。', creationsSubtitle: '從上次的進度繼續，作品只屬於你。',
     prompt: '你的提示詞', useTemplate: '使用範本', compare: '比較', continue: '繼續',
@@ -48,7 +47,7 @@ const copy: Record<Lang, Copy> = {
     lockedTemplates: '請先開始新專案，再套用範本。目前的生成會在背景繼續。', newCreation: '新專案',
   },
   'zh-Hans': {
-    eyebrow: '你的私人 AI 创作室', title: '一个灵感，更多可能。', subtitle: '用你选择的模型创作，留下适合你的成果。',
+    eyebrow: '你的私人 AI 创作室', subtitle: '用你选择的模型创作，留下适合你的成果。',
     templatesTitle: '让每个灵感，都有起点。', templatesSubtitle: '选择模板，再把每个细节变成你的风格。',
     creationsTitle: '接着完成你的灵感。', creationsSubtitle: '从上次的进度继续，作品只属于你。',
     prompt: '你的提示词', useTemplate: '使用模板', compare: '比较', continue: '继续',
@@ -59,7 +58,7 @@ const copy: Record<Lang, Copy> = {
     lockedTemplates: '请先开始新项目，再应用模板。目前的生成会在后台继续。', newCreation: '新项目',
   },
   ja: {
-    eyebrow: 'あなただけの AI スタジオ', title: '一つのアイデアから、広がる可能性。', subtitle: '選んだモデルでつくり、自分に合う結果を残す。',
+    eyebrow: 'あなただけの AI スタジオ', subtitle: '選んだモデルでつくり、自分に合う結果を残す。',
     templatesTitle: 'アイデアに、最初の一歩を。', templatesSubtitle: 'テンプレートを選んで、細部まで自分らしく。',
     creationsTitle: 'アイデアの続きを。', creationsSubtitle: '前回の続きから。作品はあなただけのものです。',
     prompt: 'プロンプト', useTemplate: 'テンプレートを使う', compare: '比較', continue: '続ける',
@@ -70,7 +69,7 @@ const copy: Record<Lang, Copy> = {
     lockedTemplates: 'テンプレートを使うには新しいプロジェクトを始めてください。現在の生成はバックグラウンドで続きます。', newCreation: '新しいプロジェクト',
   },
   ko: {
-    eyebrow: '나만의 AI 스튜디오', title: '하나의 아이디어, 더 많은 가능성.', subtitle: '원하는 모델로 만들고, 마음에 드는 결과를 남기세요.',
+    eyebrow: '나만의 AI 스튜디오', subtitle: '원하는 모델로 만들고, 마음에 드는 결과를 남기세요.',
     templatesTitle: '모든 아이디어에 시작점을.', templatesSubtitle: '템플릿을 고르고 세부 사항을 나만의 스타일로 바꾸세요.',
     creationsTitle: '아이디어를 이어가세요.', creationsSubtitle: '이전 작업부터 계속하세요. 작품은 비공개로 유지됩니다.',
     prompt: '프롬프트', useTemplate: '템플릿 사용', compare: '비교', continue: '계속',
