@@ -12,6 +12,7 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
+import { serverLang } from '../lib/lang'
 import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata, XCREATE_CANONICAL } from '../lib/xcreate-meta'
 import HomeClient from './HomeClient'
@@ -21,8 +22,8 @@ import XCreatePage from './xcreate/page'
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
   const site = siteFromHeaders(h)
-  if (site === 'xtell') return { ...xtellMetadata(h), alternates: { canonical: 'https://xtell.modelxd.com' } }
-  if (site === 'xcreate') return { ...xcreateMetadata(h), alternates: { canonical: XCREATE_CANONICAL } }
+  if (site === 'xtell') return { ...xtellMetadata(serverLang(h, site)), alternates: { canonical: 'https://xtell.modelxd.com' } }
+  if (site === 'xcreate') return { ...xcreateMetadata(serverLang(h, site)), alternates: { canonical: XCREATE_CANONICAL } }
   return {
     title: 'ModelXD',
     description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',

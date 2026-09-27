@@ -27,10 +27,10 @@ export default function XTellNav({ user }: { user: User | null }) {
   const { show } = useAuthModal()
   const pathname = usePathname()
   // The tab title follows the language and the place: the explorer, a
-  // temple (from the hash), the account page, the legal pages. Their own
-  // metadata (server, English) is the fallback the first paint shows.
-  // Next 16 streams the metadata <title> in after the shell has hydrated, so
-  // a title set once at mount gets overwritten — set it again shortly after.
+  // temple (from the hash), the account page, the legal pages. The server's
+  // metadata is already this language's explorer title (lib/xtell-meta.ts)
+  // and sits in <head> before first paint (next.config htmlLimitedBots), so
+  // nothing overwrites a title set here; no timed re-sets are needed.
   useEffect(() => {
     const brand = t('xtell.site.brand')
     const compute = () => {
@@ -45,9 +45,8 @@ export default function XTellNav({ user }: { user: User | null }) {
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
     apply()
-    const timers = [setTimeout(apply, 800), setTimeout(apply, 2500)]
     window.addEventListener('hashchange', apply)
-    return () => { timers.forEach(clearTimeout); window.removeEventListener('hashchange', apply) }
+    return () => window.removeEventListener('hashchange', apply)
   }, [lang, t, pathname])
   return (
     <header className="xtell-nav">

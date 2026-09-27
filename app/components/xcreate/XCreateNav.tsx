@@ -51,9 +51,8 @@ function LiveViews() {
   const pathname = usePathname()
   const view = viewOf(useSearchParams()?.get('view'))
   // The tab title follows the page, the view and the language. The server's
-  // title is the first paint's; Next 16 streams the metadata <title> in after
-  // hydration, so a title set once at mount is overwritten — set it again
-  // shortly after (the same fix XTellNav carries).
+  // title is the first paint's and sits in <head> before it (next.config
+  // htmlLimitedBots), so a title set here is not overwritten afterwards.
   useEffect(() => {
     const compute = () => {
       if (pathname === '/' || pathname === '/xcreate') return view === 'create' ? 'XCreate' : `${t('xcreate.site.nav.' + view)} | XCreate`
@@ -64,8 +63,6 @@ function LiveViews() {
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
     apply()
-    const timers = [setTimeout(apply, 800), setTimeout(apply, 2500)]
-    return () => timers.forEach(clearTimeout)
   }, [lang, t, pathname, view])
   return <Views view={view} />
 }

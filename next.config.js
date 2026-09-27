@@ -15,6 +15,13 @@ const nextConfig = {
   // XCut renders with ffmpeg-static's binary: keep the package out of the
   // bundle and trace the binary into the one function that spawns it.
   serverExternalPackages: ['ffmpeg-static'],
+  // Metadata in <head>, before first paint, for every visitor. By default
+  // Next 16 streams the <title> into <body> after the shell has hydrated,
+  // which overwrote the tab title the XTell/XCreate top bars had just set
+  // (they re-set it at 800 and 2500 ms to win). Every generateMetadata here
+  // only reads request headers (the door and lib/lang.ts's language), so
+  // waiting for it costs nothing.
+  htmlLimitedBots: /.*/,
   outputFileTracingIncludes: {
     '/api/xcut/render': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
   },

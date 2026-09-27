@@ -13,6 +13,7 @@ import { siteFromHeaders } from '../lib/site'
 import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
 import { SiteProvider } from '../lib/useSite'
+import { serverLang, LANG_BOOT } from '../lib/lang'
 import { XCreateFooter } from './components/xcreate/XCreateNav'
 import './globals.css'
 
@@ -90,12 +91,12 @@ const barlowXCreate = Barlow({
 
 // Default title per front door: pages without their own metadata (the
 // client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
-// tab on the XTell and XCreate hosts.
+// tab on the XTell and XCreate hosts. In the language the page renders in.
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
   const site = siteFromHeaders(h)
-  if (site === 'xtell') return xtellMetadata(h)
-  if (site === 'xcreate') return xcreateMetadata(h)
+  if (site === 'xtell') return xtellMetadata(serverLang(h, site))
+  if (site === 'xcreate') return xcreateMetadata(serverLang(h, site))
   return {
     title: 'ModelXD',
     description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
@@ -133,11 +134,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Which front door (www, xtell. or xcreate.modelxd.com) — stamped by proxy.ts. Read
   // here so the shell is right on the server render; this makes every route
   // dynamic, which they effectively were already (auth on nearly all).
-  const site = siteFromHeaders(await headers())
+  const h = await headers()
+  const site = siteFromHeaders(h)
+  // The language the whole page renders in, decided before anything is sent
+  // (lib/lang.ts: ?lang=, the saved choice, the browser's list). <html lang>,
+  // the title and LangProvider's first render all use it, so the first
+  // paint is already in the visitor's language and hydration matches.
+  const lang = serverLang(h, site)
   const googleAds = process.env.VERCEL_ENV === 'production'
   return (
-    <html lang="en" data-site={site}>
+    <html lang={lang} data-site={site}>
       <head>
+        {/* The first inline script in <head> (Next hoists its async chunks
+            and styles above it), so it runs before any of <body> is parsed:
+            a language saved only in localStorage (before the cookie existed)
+            becomes the cookie, with one reload if this page was rendered in
+            another language. */}
+        <script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} />
         {googleAds && <>
           {/* Google tag (gtag.js) */}
           <script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} />
@@ -146,7 +159,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}${site === 'xcreate' ? ` ${dmSans.variable} ${barlowXCreate.variable}` : ''}`}>
         <SiteProvider site={site}>
-        <LangProvider>
+        <LangProvider initial={lang}>
           <AuthModalProvider>
             <PageTitleProvider>
             <div className="app-shell">

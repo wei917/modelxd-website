@@ -9,13 +9,14 @@ import { headers } from 'next/headers'
 import CreateClient from './client'
 import { readShowcase } from '@/lib/showcase'
 import { siteFromHeaders } from '@/lib/site'
+import { serverLang } from '@/lib/lang'
 import { xcreateMetadata, XCREATE_CANONICAL } from '@/lib/xcreate-meta'
 
 // On the XCreate host, /xcreate is the same page as `/`: one canonical URL.
 // www keeps the layout's metadata, as before.
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
-  if (siteFromHeaders(h) === 'xcreate') return { ...xcreateMetadata(h), alternates: { canonical: XCREATE_CANONICAL } }
+  if (siteFromHeaders(h) === 'xcreate') return { ...xcreateMetadata(serverLang(h, 'xcreate')), alternates: { canonical: XCREATE_CANONICAL } }
   return {}
 }
 

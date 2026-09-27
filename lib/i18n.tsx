@@ -6,15 +6,19 @@
 // add a code to LANGS, fill in whatever strings you have in STRINGS,
 // missing keys silently render English.
 //
-// The language picker lives on the profile page; first-visit detection
-// follows the browser's preference list (see LangProvider). Choice
-// persists in localStorage and sets <html lang>.
+// Which language a page renders in is decided on the server (lib/lang.ts:
+// ?lang= > the saved choice > the browser's list, site-aware), stamped by
+// proxy.ts and rendered by the root layout into <html lang> and the title;
+// LangProvider starts from that same value, so the first paint is already
+// in the chosen language. The pickers (profile page, XTell and XCreate top
+// bars) save a choice to the `modelxd_lang` cookie and to localStorage.
 //
 // Use the `useT()` hook: `const t = useT()` then `t('nav.xduel')`.
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { LANG_STORAGE_KEY, clientLangInit, cookieLang, langCookie, type Lang } from './lang'
 
-export type Lang = 'en' | 'zh-Hant' | 'zh-Hans' | 'ja' | 'ko'
+export type { Lang } from './lang'
 
 /** Picker metadata — label is the language's own name (never translated). */
 export const LANGS: { code: Lang; label: string }[] = [
@@ -2134,81 +2138,50 @@ export const STRINGS: Record<string, Entry> = {
 interface LangCtx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string }
 const Ctx = createContext<LangCtx>({ lang: 'en', setLang: () => {}, t: (k) => k })
 
-const VALID_CODES = new Set<string>(LANGS.map(l => l.code))
-
-/** Map a BCP-47 browser tag to a supported Lang, or null if unsupported.
- *  Traditional and Simplified Chinese are DIFFERENT language settings:
- *  Hant script / TW / HK / MO → zh-Hant; every other zh → zh-Hans. */
-function langFromTag(tag: string): Lang | null {
-  const t = tag.toLowerCase()
-  if (t.startsWith('en')) return 'en'
-  if (t.startsWith('zh')) {
-    return (t.includes('hant') || t === 'zh-tw' || t === 'zh-hk' || t === 'zh-mo') ? 'zh-Hant' : 'zh-Hans'
-  }
-  if (t.startsWith('ja')) return 'ja'
-  if (t.startsWith('ko')) return 'ko'
-  return null
+/** Save a choice where the server (cookie) and older code (localStorage) read
+ *  it. Either store may be blocked; the choice then lasts for this page. */
+function saveLang(l: Lang) {
+  try { window.localStorage.setItem(LANG_STORAGE_KEY, l) } catch {}
+  try { document.cookie = langCookie(l, window.location.protocol === 'https:') } catch {}
 }
 
-export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('en')
+/** `initial` is the language the server rendered this page in (the root
+ *  layout passes it): the first render uses it, so SSR and hydration agree
+ *  and nothing switches after paint. */
+export function LangProvider({ initial = 'en', children }: { initial?: Lang; children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(initial)
 
   useEffect(() => {
-    // Priority: explicit user choice (persisted by the picker) → browser
-    // preference list, in the USER'S order, first supported language wins
-    // → English. Detection is NOT persisted, so users who never touched
-    // the picker keep following their browser settings.
-    // Explicit entry link, e.g. a QR code at an event: /?lang=ja. A query
-    // parameter does nothing unless code reads it, so it is read HERE and
-    // nowhere else. It outranks the saved choice, is persisted exactly like
-    // a picker choice, and is then dropped from the URL so a reload or a
-    // shared link does not keep forcing it (Sep 14).
-    try {
-      const url = new URL(window.location.href)
-      const q = url.searchParams.get('lang')
-      if (q && VALID_CODES.has(q)) {
-        setLangState(q as Lang)
-        document.documentElement.lang = q
-        try { window.localStorage.setItem('modelxd:lang', q) } catch {}
-        url.searchParams.delete('lang')
-        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
-        return
-      }
-    } catch {}
-    const savedRaw = typeof window !== 'undefined' ? window.localStorage.getItem('modelxd:lang') : null
-    // Migration: the old two-language toggle stored 'zh' (Traditional).
-    const saved = savedRaw === 'zh' ? 'zh-Hant' : savedRaw
-    if (saved && VALID_CODES.has(saved)) {
-      setLangState(saved as Lang)
-      document.documentElement.lang = saved
-      return
+    // On mount, only what the server could not do (lib/lang.ts
+    // clientLangInit): save a `?lang=` entry link like a picker choice and
+    // drop it from the URL (Sep 14: a reload or a shared link does not keep
+    // forcing it), keep localStorage in line with the cookie, and move a
+    // choice saved only in localStorage into the cookie. No second browser
+    // detection: the server's fallback stands, and detection is still never
+    // saved, so a visitor who never picks keeps following the browser.
+    let url: URL | null = null
+    try { url = new URL(window.location.href) } catch {}
+    let stored: string | null = null
+    try { stored = window.localStorage.getItem(LANG_STORAGE_KEY) } catch {}
+    let cookie: string | null = null
+    try { cookie = cookieLang(document.cookie) } catch {}
+    const init = clientLangInit({ initial, query: url?.searchParams.get('lang') ?? null, cookie, stored })
+    if (init.lang !== initial) {
+      setLangState(init.lang)
+      document.documentElement.lang = init.lang
     }
-    const prefs = (navigator.languages?.length ? navigator.languages : [navigator.language]) ?? []
-    // xtell.modelxd.com is for the Taiwan market (owner, Sep 24: the live
-    // site was coming up in English). On that host the browser list is
-    // consulted only for ja / ko / zh-Hans; everything else, including an
-    // English browser, gets 繁體. The picker and a saved choice still win.
-    const xtell = document.documentElement.dataset.site === 'xtell'
-    for (const tag of prefs) {
-      let match = langFromTag(tag ?? '')
-      if (!match) continue
-      if (xtell) {
-        if (match === 'en') continue
-        // A bare "zh" (no script, no region) means Traditional on this host;
-        // only an explicit Hans / CN / SG tag selects Simplified.
-        if (match === 'zh-Hans' && !/hans|-cn|-sg/.test((tag ?? '').toLowerCase())) match = 'zh-Hant'
-      }
-      setLangState(match)
-      document.documentElement.lang = match
-      return
+    if (init.save) saveLang(init.lang)
+    if (init.stripQuery && url) {
+      url.searchParams.delete('lang')
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
     }
-    if (xtell) { setLangState('zh-Hant'); document.documentElement.lang = 'zh-Hant'; return }
-    // No supported language in the list → English (the default state).
+    // Runs once, against the server's first render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const setLang = (l: Lang) => {
     setLangState(l)
-    try { window.localStorage.setItem('modelxd:lang', l) } catch {}
+    saveLang(l)
     if (typeof document !== 'undefined') document.documentElement.lang = l
   }
 

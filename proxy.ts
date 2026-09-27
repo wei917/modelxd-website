@@ -37,6 +37,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifySiteToken } from '@/lib/site-token'
 import { siteOfHost, isSiteRoute, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
+import { resolveLang, acceptTags, LANG_COOKIE, LANG_HEADER } from '@/lib/lang'
 
 const COOKIE_NAME = 'modelxd_site_unlocked'
 
@@ -90,6 +91,15 @@ function siteDoor(req: NextRequest): NextResponse {
   const site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
   const headers = new Headers(req.headers)
   headers.set(SITE_HEADER, site)
+  // The language this request renders in (lib/lang.ts): `?lang=`, then the
+  // saved cookie, then the browser's list for this door. Set, never
+  // appended, so a client cannot send its own value through.
+  headers.set(LANG_HEADER, resolveLang({
+    query: req.nextUrl.searchParams.get('lang'),
+    saved: req.cookies.get(LANG_COOKIE)?.value ?? null,
+    tags: acceptTags(req.headers.get('accept-language')),
+    site,
+  }))
   if (site === 'modelxd') return NextResponse.next({ request: { headers } })
 
   const pathname = req.nextUrl.pathname
@@ -145,14 +155,15 @@ export async function proxy(req: NextRequest) {
   // (CC, July 19) — so the same env file works everywhere.
 
   const pathname = req.nextUrl.pathname
-  if (isBypassed(pathname)) return NextResponse.next()
+  // `door` is NextResponse.next() carrying the site and language headers.
+  if (isBypassed(pathname)) return door
 
   // Verify the signed token. HMAC re-runs every request, so this IS
   // the per-request password check — if SITE_PASSWORD changes, every
   // existing token's signature stops matching.
   const cookie = req.cookies.get(COOKIE_NAME)?.value
   if (await verifySiteToken(sitePw, cookie)) {
-    return NextResponse.next()
+    return door
   }
 
   // Redirect to /coming-soon, preserving the original URL so we can
