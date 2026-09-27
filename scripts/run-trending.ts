@@ -26,4 +26,7 @@ async function main() {
   const report = await runTrending(kind)
   console.log(JSON.stringify(report, null, 2))
 }
-main().catch(err => { console.error(err); process.exit(1) })
+// provider_calls rows are sent in the background; give them a moment before
+// the process exits, or a failed run leaves only its 'start' rows (Sep 27).
+const flush = () => new Promise(r => setTimeout(r, 3000))
+main().then(flush).catch(async err => { console.error(err); await flush(); process.exit(1) })

@@ -100,6 +100,36 @@ Sort by likes, most first, at most ${CANDIDATES}. Summaries never quote the auth
 
 type GrokResult = { posts: GrokPost[]; costUsd: number; usage: any }
 
+/** The search is streamed so bytes keep flowing while Grok works. Sent as one
+ *  plain request, a search sat silent for over five minutes and Node's fetch
+ *  gives up on a response at 300s (Sep 27: all four searches of a run died
+ *  exactly there; xAI may still have billed them). Returns the final response
+ *  object carried by the `response.completed` event. */
+async function completedResponse(stream: ReadableStream<Uint8Array>): Promise<any> {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buf = '', completed: any = null, failure: string | null = null
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (value) buf += decoder.decode(value, { stream: true })
+    let cut: number
+    while ((cut = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, cut)
+      buf = buf.slice(cut + 2)
+      const line = block.split('\n').find(l => l.startsWith('data:'))
+      const data = line?.slice(5).trim()
+      if (!data || data === '[DONE]') continue
+      let ev: any
+      try { ev = JSON.parse(data) } catch { continue }
+      if (ev.type === 'response.completed') completed = ev.response
+      else if (ev.type === 'response.failed' || ev.type === 'error') failure = JSON.stringify(ev).slice(0, 300)
+    }
+    if (done) break
+  }
+  if (!completed) throw new Error(`xAI stream ended without a completed response${failure ? `: ${failure}` : ''}`)
+  return completed
+}
+
 async function searchX(kind: TrendKind, from: string, to: string, names: string, catchAll: boolean): Promise<GrokResult> {
   const key = process.env.XAI_API_KEY
   if (!key) throw new Error('XAI_API_KEY is not set')
@@ -115,11 +145,12 @@ async function searchX(kind: TrendKind, from: string, to: string, names: string,
         input: [{ role: 'user', content: searchPrompt(kind, from, to, names, catchAll) }],
         tools: [{ type: 'x_search', from_date: from, to_date: to, enable_image_understanding: false, enable_video_understanding: false }],
         max_output_tokens: 32000,
+        stream: true,
       }),
       signal: AbortSignal.timeout(9 * 60 * 1000),
     })
-    const body: any = await res.json()
-    if (!res.ok) throw new Error(`xAI ${res.status}: ${JSON.stringify(body).slice(0, 300)}`)
+    if (!res.ok || !res.body) throw new Error(`xAI ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    const body: any = await completedResponse(res.body)
     const u = body.usage ?? {}
     const costUsd = u.cost_in_usd_ticks != null ? u.cost_in_usd_ticks / 1e10 : 0
     endCall(requestId, desc, {
