@@ -5107,7 +5107,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   </div>
                                 )
                                 : mode === 'audio' && slot.text ? (
-                                    <div style={{ padding: 16 }}>
+                                    // Full width: .image-response is a centering flex box, and
+                                    // without a width this wrapper shrank to nothing, which
+                                    // collapses Chrome's player to its ⋮ menu (owner, Sep 26).
+                                    <div style={{ padding: 16, width: '100%', boxSizing: 'border-box' }}>
                                       <audio src={slot.text} controls preload="metadata" style={{ width: '100%' }} />
                                       <a href={slot.text} download style={{ display: 'inline-block', marginTop: 10, fontSize: 11.5, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>↓ download</a>
                                     </div>
