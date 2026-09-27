@@ -3185,7 +3185,7 @@ body:has(.xtell-nav) :is(input, textarea) { cursor: text; }
 body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--xtell-vermilion); outline-offset: 4px;
 }
-.xtell-nav { position: sticky; top: 0; z-index: 100; background: var(--xtell-paper); border-bottom: 1px solid var(--xtell-rule); }
+.xtell-nav { position: sticky; top: 0; z-index: 100; background: var(--xtell-white); border-bottom: 1px solid var(--xtell-rule); }
 .xtell-nav-inner { max-width: 1248px; margin: auto; min-height: 88px; padding: 12px 40px; display: flex; align-items: center; gap: 56px; }
 .xtell-nav a { color: inherit; text-decoration: none; }
 .xtell-brand { display: inline-flex; gap: 12px; align-items: center; font-family: var(--xtell-serif); font-size: 31px; letter-spacing: -.04em; line-height: 1; }
@@ -3239,7 +3239,6 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-footer a:hover { color: var(--xtell-vermilion); }
 .xtell-footer-brand { font: 23px var(--xtell-serif); color: var(--xtell-ink); }
 .xtell-footer-maker a { display: inline-flex; align-items: center; gap: 6px; color: var(--xtell-ink); }
-.xtell-footer-maker img { width: 18px; height: 18px; border-radius: 4px; }
 .xtell-auth-maker { display: inline-flex; align-items: center; gap: 5px; color: var(--xtell-ink); text-decoration: none; border-bottom: 1px solid var(--xtell-rule); }
 .xtell-auth-maker:hover { color: var(--xtell-vermilion); }
 .xtell-auth-maker img { width: 16px; height: 16px; border-radius: 4px; vertical-align: -3px; }
@@ -3266,7 +3265,7 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-composer-row > button { color: var(--xtell-white) !important; min-height: 48px; min-width: 48px; }
 .xtell-replies .markdown-body { font-size: 16px; line-height: 1.85; overflow-wrap: anywhere; }
 .xtell-replies > div > div:first-child { flex-wrap: wrap; }
-.xtell-auth .auth-card { max-width: 440px; background: var(--xtell-paper); border-radius: 9px; border-color: var(--xtell-rule); }
+.xtell-auth .auth-card { max-width: 440px; background: var(--xtell-white); border-radius: 9px; border-color: var(--xtell-rule); }
 .xtell-auth .auth-title { font: 30px/1.4 var(--xtell-serif); text-transform: none; letter-spacing: -.02em; margin-bottom: 15px; color: var(--xtell-ink); }
 .xtell-auth .auth-sub { font-size: 16px; color: var(--xtell-secondary); }
 .xtell-auth .auth-google-btn { cursor: pointer; background: var(--xtell-white); color: var(--xtell-ink); border: 1px solid var(--xtell-rule); border-radius: 5px; text-transform: none; letter-spacing: 0; font-size: 16px; }
@@ -3370,8 +3369,10 @@ html[data-site="xtell"] body, html[data-site="xtell"] .xtell-site, html[data-sit
   --xtell-scene: #ecdccf;
   --xtell-scene-ink: #624536;
 }
-.xtell-focus-brand { display: inline; font-size: 30px; letter-spacing: -.055em; }
-.xtell-focus-brand > span { color: var(--xtell-vermilion); }
+.xtell-focus-brand { display: inline-flex; align-items: center; gap: .3em; font-size: 30px; letter-spacing: -.055em; }
+.xtell-focus-brand .xtell-accent { color: var(--xtell-vermilion); }
+/* Sized in em so it scales with the wordmark (top bar, sign-in dialog). */
+.xtell-logo { width: 1.05em; height: 1.05em; border-radius: .22em; flex-shrink: 0; }
 html[data-site="xtell"] .xtell-nav-inner { min-height: 70px; max-width: 1280px; gap: 34px; padding: 10px 32px; }
 html[data-site="xtell"] .xtell-nav-links { gap: 26px; }
 html[data-site="xtell"] .xtell-nav-links a { font-size: 13px; min-height: 44px; }

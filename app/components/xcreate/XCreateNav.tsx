@@ -109,7 +109,7 @@ export function XCreateFooter() {
   const { t } = useLang()
   return <footer className="xcs-footer">
     <div className="xcs-footer-inner">
-      <p>{t('xcreate.site.tagline')} <span className="xcs-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener"><img src="/logo.png" alt="" width={16} height={16} />ModelXD <span aria-hidden="true">↗</span></a></span></p>
+      <p>{t('xcreate.site.tagline')} <span className="xcs-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD <span aria-hidden="true">↗</span></a></span></p>
       <nav aria-label={t('xtell.site.legal')}>
         <span>{t('xcreate.site.footnote')}</span>
         <Link href="/terms">{t('nav.terms')}</Link>

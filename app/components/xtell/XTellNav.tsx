@@ -13,7 +13,13 @@ import { DISPLAY_TEMPLES, type TempleKey } from './TempleArtwork'
 export function XTellMark() {
   const { t } = useLang()
   const brand = t('xtell.site.brand')
-  return <span className="xtell-brand xtell-focus-brand"><span>{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
+  // The ModelXD logo beside the name, as XCreate's mark does it (owner,
+  // Sep 26). The logo file has a white plate, so it sits only on white
+  // surfaces: the top bar and the sign-in card are white for that reason.
+  return <span className="xtell-brand xtell-focus-brand">
+    <img className="xtell-logo" src="/logo.png" alt="" width={30} height={30} />
+    <span><span className="xtell-accent">{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
+  </span>
 }
 
 export default function XTellNav({ user }: { user: User | null }) {
@@ -86,6 +92,6 @@ export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
     <div><span className="xtell-footer-brand">{t('xtell.site.brand')}</span><span>{t('xtell.site.entertainment')}</span></div>
-    <nav aria-label={t('xtell.site.legal')}><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener"><img src="/logo.png" alt="" width={18} height={18} />ModelXD</a></span></nav>
+    <nav aria-label={t('xtell.site.legal')}><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }

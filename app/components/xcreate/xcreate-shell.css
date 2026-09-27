@@ -127,7 +127,6 @@ html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
 .xcs-footer a { color: var(--xc-secondary); text-decoration: none; }
 .xcs-footer a:hover { color: var(--xc-accent); }
 .xcs-maker a { display: inline-flex; align-items: center; gap: 5px; color: var(--xc-ink); font-weight: 600; }
-.xcs-maker img { border-radius: 4px; }
 
 /* ── Legal pages ─────────────────────────────────────────────────────── */
 .xcs-legal-note {
