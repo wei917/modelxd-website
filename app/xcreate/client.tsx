@@ -7,6 +7,7 @@
 
 import Link from 'next/link'
 import { usePromptRefiner } from '../components/PromptRefiner'
+import { XCREATE_PROMPT_MAX } from '@/lib/xcreate-limits'
 import { OptPill, OptGroup, OptSelect, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -3722,7 +3723,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     )
                   })()}
                   <textarea id="xcreate-prompt" aria-label={copy.prompt} className="prompt-textarea"
-                    maxLength={8000}
+                    maxLength={XCREATE_PROMPT_MAX}
                     placeholder={t('xcreate.ph.' + mode)}
                     value={prompt} onChange={e => setPrompt(e.target.value)}
                     // Locked once a run starts. The user can still see what

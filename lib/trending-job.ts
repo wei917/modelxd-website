@@ -32,6 +32,7 @@ import {
   chatGptIsApp, eligibility, groupQuery, loadSupport, otherGeneratorsIn, presetModel, searchGroups,
   type Family, type MediaKind, type Support,
 } from './trending-models'
+import { XCREATE_PROMPT_MAX } from './xcreate-limits'
 
 export type TrendKind = MediaKind
 
@@ -40,8 +41,6 @@ const MONTHLY_BUDGET = Number(process.env.TRENDING_MONTHLY_BUDGET_USD || 10)
 const CANDIDATES     = 30
 /** Recent month = rolling 30-day search window (owner, Sep 27). */
 const SEARCH_LOOKBACK_DAYS = 30
-/** XCreate refuses longer prompts (app/api/xcreate/route.ts). */
-const PROMPT_CAP     = 8000
 const LANGS          = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
 
 export function serviceClient(): SupabaseClient {
@@ -485,7 +484,7 @@ export async function ingestCandidates(sb: SupabaseClient, kind: TrendKind, post
     // (owner, Sep 27): the feed picks the model when it serves the post.
     const recipe = recipeFor(kind, p)
     const model = recipe ? presetModel(models, recipe, catalog) : null
-    const preset = prompt && recipe && prompt.length <= PROMPT_CAP
+    const preset = prompt && recipe && prompt.length <= XCREATE_PROMPT_MAX
       ? {
           ...(model ? { model } : {}), recipe,
           ...(p.duration_seconds ? { duration: Math.round(p.duration_seconds) } : {}),

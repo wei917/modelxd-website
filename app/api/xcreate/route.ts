@@ -18,6 +18,7 @@ export const maxDuration = 800
 
 import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'
+import { XCREATE_PROMPT_MAX }           from '@/lib/xcreate-limits'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
 import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
@@ -577,10 +578,11 @@ export async function POST(req: Request) {
   if (promptTooShort && !promptIsOptional) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
   }
-  // Cap prompt size (client enforces maxLength=8000; this is the backstop).
-  // Long text belongs in a .txt attachment — folded server-side with a 200k-char guardrail.
-  if (typeof prompt === 'string' && prompt.length > 8000) {
-    return Response.json({ error: 'Prompt too long (max 8,000 characters) — attach long text as a .txt file instead.' }, { status: 400 })
+  // Cap prompt size (the prompt box enforces the same maxLength; this is the
+  // backstop). Longer text belongs in a .txt attachment, folded server-side
+  // with a 200k-char guardrail.
+  if (typeof prompt === 'string' && prompt.length > XCREATE_PROMPT_MAX) {
+    return Response.json({ error: `Prompt too long (max ${XCREATE_PROMPT_MAX.toLocaleString('en-US')} characters). Attach long text as a .txt file instead.` }, { status: 400 })
   }
   if (!Array.isArray(modelIds) || modelIds.length === 0) return Response.json({ error: 'No models specified' }, { status: 400 })
 

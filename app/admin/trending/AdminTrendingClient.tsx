@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { TRENDING_LIVE_MAX } from '@/app/xcreate/trending'
+import { XCREATE_PROMPT_MAX } from '@/lib/xcreate-limits'
 
 export type AdminTrendRow = {
   id: string
@@ -128,7 +129,7 @@ export default function AdminTrendingClient({ rows, spent, budget, notShown, cat
             <div style={{ fontSize: 12, color: 'var(--muted2)', lineHeight: 1.5 }}>
               {r.preset
                 ? <>Preset: {r.preset.model ?? 'model picked from the credited names'} · {r.preset.recipe}{r.preset.aspect ? ` · ${r.preset.aspect}` : ''}{r.preset.duration ? ` · ${r.preset.duration}s` : ''}{r.preset.needsImage ? ` · needs a picture${r.preset.imageRole ? ` (${r.preset.imageRole.replace('_', ' ')})` : ''}` : ''}</>
-                : <>No preset{r.prompt ? (r.prompt.length > 8000 ? ' (prompt over 8,000 chars)' : '') : ' (no prompt)'}</>}
+                : <>No preset{r.prompt ? (r.prompt.length > XCREATE_PROMPT_MAX ? ` (prompt over ${XCREATE_PROMPT_MAX.toLocaleString('en-US')} chars)` : '') : ' (no prompt)'}</>}
               {r.prompt && <div>Prompt: {r.prompt.length.toLocaleString()} chars</div>}
             </div>
           </label>)}
