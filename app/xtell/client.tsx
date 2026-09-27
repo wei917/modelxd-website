@@ -407,7 +407,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const yixueSubject = useRef<Record<string, unknown> | null>(temple === 'yixue' && initial ? { temple, ...init } : null)
   const [place2, setPlace2] = useState(init.place2 ?? DEFAULT_PLACE)
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
-  const [engine, setEngine] = useState<string | null>(null)
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
   const [showChart, setShowChart] = useState(true)
@@ -458,7 +457,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         // birthday, so it is offered again rather than called invalid.
         if (res.status >= 400 && res.status < 500 && typeof d?.code === 'string') { setSavedProblem(d.code); setCheck('ok'); return }
         if (!res.ok) { setCheck(staleRisk ? 'failed' : 'ok'); return }
-        setChart(d.chart); setMatch(d.match ?? null); setYear(d.year ?? null); setBazi(d.bazi ?? null); setChenggu(d.chenggu ?? null); setEngine(d.engine ?? null)
+        setChart(d.chart); setMatch(d.match ?? null); setYear(d.year ?? null); setBazi(d.bazi ?? null); setChenggu(d.chenggu ?? null)
         setCheck('ok')
       })
       .catch(() => { if (token === refreshToken.current) setCheck(staleRisk ? 'failed' : 'ok') })
@@ -632,7 +631,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       setYear(d.year ?? null)
       setBazi(d.bazi ?? null)
       setChenggu(d.chenggu ?? null)
-      setEngine(d.engine ?? null)
       setReadingId(typeof d.readingId === 'string' ? d.readingId : null)
       setEntered(true)
       // 月老廟: the scores land free and instantly, so the only thing left to
@@ -1155,12 +1153,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                     <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><BaziBoard chart={chart.b} hourUnknown={!!birth2.hourUnknown} /></div>
                   </div>
                 )}
-              {engine && (
-                <details style={{ marginTop: 10 }}>
-                  <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.engine')}</summary>
-                  <div style={{ ...mono, color: 'var(--muted2)', marginTop: 6 }}>{engine}</div>
-                </details>
-              )}
             </div>
           )}
 
@@ -1565,21 +1557,16 @@ function ChengguCard({ data }: { data: Chenggu }) {
           {fill(t(`xtell.cg.variant.${v.entry}`), { other: w(v.other), v1: w(v.v1), alt: v.total === null ? '' : fill(t('xtell.cg.variant.alt'), { other: w(v.other), w: w(v.total) }) })}
         </div>
       ))}
-      <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.rule')}</p>
+      <details style={{ marginTop: 10 }}>
+        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.method')}</summary>
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.rule')}</p>
+      </details>
       <details style={{ marginTop: 6 }}>
         <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.about.title')}</summary>
         <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.about')}</p>
-        {/* Where the table comes from (Codex review): the copies it was
-            compared with, grouped by how they weigh the two disputed entries. */}
-        <div style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.sources')}</div>
-        <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
-          {(['same', 'guihai', 'both'] as const).map(group => (
-            <li key={group}>
-              {t(`xtell.cg.src.${group}`)}{t('xtell.cg.option.sep')}
-              {CHENGGU_SOURCES.filter(src => (src.differs.length === 0 ? 'same' : src.differs.length === 2 ? 'both' : 'guihai') === group).map((src, i) => (
-                <span key={src.url}>{i > 0 && t('xtell.list.sep')}<a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{src.name}</a></span>
-              ))}
-            </li>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
+          {CHENGGU_SOURCES.filter(src => new URL(src.url).hostname !== 'github.com').map(src => (
+            <li key={src.url}><a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{src.name}</a></li>
           ))}
         </ul>
       </details>

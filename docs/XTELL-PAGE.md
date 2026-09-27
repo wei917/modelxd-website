@@ -355,8 +355,8 @@ engine independently and made the art.
    Nobody has to pick one to continue; 「只留這位老師」 drops the others for
    whoever wants to stop paying for them. A reopened reading re-seats the
    masters of its last round.
-3. `查看命盤` (dotted link) expands the full board for verification, with the
-   **engine provenance line** (`排盤引擎: lunar-typescript v1.8.6`).
+3. `查看命盤` expands the full board for verification. Package and engine
+   versions are retained internally and are not rendered in the UI.
 4. Per-seat settings (Sep 24, owner: configure each master like an XCreate
    slot, and follow XCreate's UI): a ⚙ on each chip opens the panels for ALL
    seated masters together, collapsed by default — one card per master in
@@ -493,8 +493,8 @@ route recomputes the facts from the birth and never reads a client value.
   yourchineseastrology.com) and lunar day 20 (v1 1兩5錢; 1兩 in
   hankwu61/lunarcalendar, suanzhun.net). A birth that uses either gets a
   note with the total **with only that entry changed** (hankwu61 changes
-  both, so no line claims to be "that version's" total). The card links the
-  compared copies (`CHENGGU_SOURCES`). A weight change = a new
+  both, so no line claims to be "that version's" total). The card links public explanatory sources; the full set of
+  compared copies stays in `CHENGGU_SOURCES`. A weight change = a new
   `CHENGGU_VERSION`.
 - **Calendar rules** (stated on the card and in the facts): year changes at
   正月初一, not 立春 (2000-02-04 23:00 is 己卯 here, 庚辰 on the board);
@@ -556,3 +556,7 @@ iztro.
 - ~~Persistence~~ — shipped Sep 24 (see "Saved readings"); 流年 refresh of an old chart is still open
 - Share cards for 批文; XDev MCP exposure of chart tools
 - More classics (淵海子平, 三命通會) as corpus grows
+
+## User-facing technical metadata (Sep 27)
+
+Package names, dependency versions and internal table version IDs stay in server metadata and development records; the UI does not render the engine payload. Chart copy describes relevant calculation conventions and limitations without implementation or validation-log details. 稱骨 offers collapsed 計算方式 and 查看來源, with public explanatory sources; the full source comparison remains in the internal module. This applies across all temples and five locales.
