@@ -636,8 +636,9 @@ from its own calculation, plus an optional paid follow-up per reading.
 ## 今日 row on the street: 今日運勢 and 黃曆 (Sep 27)
 
 The xtell.modelxd.com home page opens with the guide (welcome, ask
-anything), then two cards side by side (stacked on phones): 今日運勢
-(`XTellDaily`) and 今日黃曆 (`app/components/xtell/XTellToday.tsx`). The temple
+anything), then two cards side by side (stacked on phones): 今日黃曆
+(`app/components/xtell/XTellToday.tsx`) on the left, 今日運勢 (`XTellDaily`)
+on the right. The temple
 showcase panel and its 「想解決什麼？」 chips are gone: the temples live in
 the top bar. Owner, Sep 27. (An Indian-calendar Panchang card was built the
 same day and removed by the owner.)

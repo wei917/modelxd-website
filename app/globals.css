@@ -3631,8 +3631,9 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-nav-icon { width: 30px; }
 }
 
-/* XTell street: today's cards under the guide (owner, Sep 27): the daily
-   fortune and today's almanac (黃曆) side by side, stacked on a phone.
+/* XTell street: today's cards under the guide (owner, Sep 27): today's
+   almanac (黃曆) on the left, the daily fortune on the right; stacked on a
+   phone.
    app/components/xtell/XTellToday.tsx. */
 .xtell-today { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin: 0 0 16px; }
 .xtell-today > .xtell-dy { margin: 0; }

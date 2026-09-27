@@ -288,13 +288,13 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   if (standalone) return <div className="xtell-site">
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <>
-        {/* The guide first, then today (owner, Sep 27): the daily fortune
-            and the Chinese almanac side by side. The temples themselves are
-            in the top bar. */}
+        {/* The guide first, then today (owner, Sep 27): the Chinese almanac
+            on the left, the daily fortune on the right. The temples
+            themselves are in the top bar. */}
         <XTellAssistant onOpen={openFromGuide} />
         <div className="xtell-today">
-          <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
           <AlmanacCard />
+          <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
         </div>
       </> : <>
         <XTellAuthGate />
