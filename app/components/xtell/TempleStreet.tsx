@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useT } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, artKind, type TempleKey } from './TempleArtwork'
 
@@ -7,12 +8,33 @@ import { TempleArtwork, DISPLAY_TEMPLES, artKind, type TempleKey } from './Templ
 export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as const
 export type { TempleKey } from './TempleArtwork'
 
+/**
+ * "What would you like help with?" (audit, product): a newcomer does not
+ * know what separates 八字, 紫微 and 九曜, but knows what they came for.
+ * Choosing a purpose highlights the temples that serve it and opens the
+ * first; every temple keeps its name and stays one click away.
+ */
+export const PURPOSES: Array<{ key: 'self' | 'love' | 'question' | 'ritual' | 'learn'; temples: TempleKey[] }> = [
+  { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming'] },
+  { key: 'love', temples: ['yuelao', 'zhanxing'] },
+  { key: 'question', temples: ['yixue', 'cezi', 'guandi', 'mazu'] },
+  { key: 'ritual', temples: ['guandi', 'mazu', 'simianfo'] },
+  { key: 'learn', temples: ['yixue'] },
+]
+
 export default function TempleStreet({ selected, onSelect, onEnter }: {
   selected: TempleKey
   onSelect: (key: TempleKey) => void
   onEnter: (key: TempleKey) => void
 }) {
   const t = useT()
+  const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
+  const fits = (key: TempleKey) => !purpose || PURPOSES.find(p => p.key === purpose)!.temples.includes(key)
+  const choosePurpose = (key: (typeof PURPOSES)[number]['key'] | null) => {
+    setPurpose(key)
+    const list = key ? PURPOSES.find(p => p.key === key)!.temples : []
+    if (key && !list.includes(selected)) onSelect(DISPLAY_TEMPLES.find(k => list.includes(k))!)
+  }
   const name = t('xtell.site.focus.' + selected + '.name')
   const qian = selected === 'mazu' || selected === 'guandi'
   return <section className="xtell-explorer" aria-label={t('xtell.site.choose')}>
@@ -43,8 +65,15 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
         </div>
       </div>
     </div>
+    <div className="xtell-purposes" role="group" aria-label={t('xtell.purpose.title')}>
+      <span className="xtell-purposes-title">{t('xtell.purpose.title')}</span>
+      {([null, ...PURPOSES.map(p => p.key)] as Array<(typeof PURPOSES)[number]['key'] | null>).map(key =>
+        <button type="button" key={key ?? 'all'} className="xtell-purpose" aria-pressed={purpose === key} onClick={() => choosePurpose(key)}>
+          {t('xtell.purpose.' + (key ?? 'all'))}
+        </button>)}
+    </div>
     <nav className="xtell-focus-menu" aria-label={t('xtell.site.choose')}>
-      {DISPLAY_TEMPLES.map(key => <button type="button" key={key} className="xtell-focus-choice"
+      {DISPLAY_TEMPLES.map(key => <button type="button" key={key} className={'xtell-focus-choice' + (fits(key) ? '' : ' is-dim')}
         aria-label={t('xtell.site.focus.' + key + '.name')} aria-pressed={selected === key} onClick={() => onSelect(key)}>
         <TempleArtwork temple={key} kind="icon" className="xtell-focus-icon" />
         <span className="xtell-focus-label">{t('xtell.site.focus.' + key + '.short')}</span>

@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 
@@ -60,27 +60,43 @@ export async function POST(req: Request) {
   const temple = asTemple(body?.temple)
   const question = typeof body?.question === 'string' ? body.question.slice(0, 2000) : ''
   // 關帝廟's input is the stick number; everything else starts from a birth.
+  // Same codes as the chart route, so a saved visit whose inputs are no
+  // longer accepted (a 1990-02-31 saved before the date check) asks the
+  // visitor to correct them in their language instead of failing raw.
+  const refuse = (code: string, error: string) => Response.json({ error, code }, { status: 400 })
+  const badBirth = (b: unknown, who: 'birth' | 'birth2' = 'birth') => {
+    const problem = birthProblem(b)
+    return problem ? refuse(`${who}_${problem}`, `bad birth input${who === 'birth2' ? ' (second person)' : ''}: ${problem}`) : null
+  }
   if (isQianTemple(temple)) {
-    if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
-    if (body?.birth !== undefined && !validBirth(body.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
+    if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return refuse('stick_invalid', 'bad stick number')
+    if (body?.birth !== undefined) { const bad = badBirth(body.birth); if (bad) return bad; validBirth(body.birth) }
   } else if (temple === 'xingming') {
-    if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
+    if (!validName(body?.surname)) return refuse('surname_invalid', 'bad name')
+    if (!validName(body?.given)) return refuse('given_invalid', 'bad name')
   } else if (temple === 'cezi') {
-    if (!validChar(body?.ch) || !charInfo(body.ch)) return Response.json({ error: 'bad character' }, { status: 400 })
+    if (!validChar(body?.ch)) return refuse('char_invalid', 'bad character')
+    if (!charInfo(body.ch)) return refuse('char_nodata', 'bad character')
   } else if (temple === 'yixue') {
     const bad = yixueInputError(body)
     if (bad) return Response.json({ error: bad }, { status: 400 })
     if (asYixueMode(body?.mode) === 'ask' && !question.trim()) return Response.json({ error: 'write a question for the teacher' }, { status: 400 })
   } else {
-    if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
-    if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
-    if (temple === 'simianfo' && !validWishes(body?.wishes)) return Response.json({ error: 'write at least one wish' }, { status: 400 })
-    if (temple === 'navagraha' && !validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+    const bad = badBirth(body?.birth)
+    if (bad) return bad
+    // 紫微 and 九曜 have no unknown-hour reading (see the chart route).
+    if ((temple === 'ziwei' || temple === 'navagraha') && body.birth.hourUnknown === true) return refuse('birth_hour_required', 'this temple needs the birth hour')
+    validBirth(body.birth)   // normalises an unknown hour
+    if (temple === 'yuelao') { const bad2 = badBirth(body?.birth2, 'birth2'); if (bad2) return bad2; validBirth(body.birth2) }
+    if (temple === 'simianfo' && !validWishes(body?.wishes)) return refuse('wish_required', 'write at least one wish')
+    if (temple === 'navagraha' && !validPlace(body?.place)) return refuse('place_invalid', 'bad place')
     if (temple === 'zhanxing') {
-      if (!validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
-      if (asAstroMode(body?.mode) === 'synastry'
-        && (!validBirth(body?.birth2) || !validPlace(body?.place2))) {
-        return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
+      if (!validPlace(body?.place)) return refuse('place_invalid', 'bad place')
+      if (asAstroMode(body?.mode) === 'synastry') {
+        const bad2 = badBirth(body?.birth2, 'birth2')
+        if (bad2) return bad2
+        validBirth(body.birth2)
+        if (!validPlace(body?.place2)) return refuse('place2_invalid', 'bad place (second person)')
       }
     }
   }

@@ -1300,7 +1300,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // wfSelHero mirrors the node picked ON THE CANVAS so the hero + composer
   // can branch from any node, not just the newest step.
   const [wfView,       setWfView]       = useState<'strip' | 'canvas'>('strip')
-  const [wfSelHero,    setWfSelHero]    = useState<{ url: string | null; isVideo: boolean } | null>(null)
+  const [wfSelHero,    setWfSelHero]    = useState<{ url: string | null; isVideo: boolean; isAudio?: boolean } | null>(null)
   // ── Board editor (CC, July 28). The canvas is now an editor, so it needs
   // a SELECTION (plural — a product video takes the original photo and the
   // angles as reference images at once), the board it belongs to, and
@@ -2331,7 +2331,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         // Stored URLs carry a 24h TTL; older steps may 403 and fall back to
         // the numbered placeholder. Good enough for v1 — the CURRENT step is
         // always freshly signed by the gallery-restore path.
-        return { thumb: typeof s?.text === 'string' ? s.text.split('\n')[0] : null, isVideo: !!s?.isVideo }
+        return { thumb: typeof s?.text === 'string' ? s.text.split('\n')[0] : null, isVideo: !!s?.isVideo, isAudio: !!s?.isAudio }
       }
       // Board load with a graceful ladder for a partly-migrated database:
       //   board_id (groups several products)  →  root_id (one lineage)  →  self.
@@ -2401,6 +2401,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
             chosen: !!sl?.chosen,
             thumb: typeof sl?.text === 'string' ? sl.text.split('\n')[0] : null,
             isVideo: !!sl?.isVideo,
+            isAudio: !!sl?.isAudio,
             parentRowIds,
             parentId: null,
             parentIds: [],
@@ -2588,6 +2589,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         seen.add(id)
         inputNodes.push({
           id, thumb: a.url, isVideo: (a.mediaType || '').startsWith('video/'),
+          isAudio: (a.mediaType || '').startsWith('audio/'),
           parentId: null, parentIds: [], label: a.fileName,
           kind: 'input', attach: a,
         })
@@ -3896,7 +3898,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     if (!additive && n.status !== 'running' && n.rowId) {
                       setXcreateId(n.rowId)
                       setChosenIdx(n.slotIdx ?? 0)
-                      setWfSelHero({ url: n.thumb, isVideo: n.isVideo })
+                      setWfSelHero({ url: n.thumb, isVideo: n.isVideo, isAudio: n.isAudio })
                     }
                   }}
                   onClearSelection={() => setWfSel([])}
@@ -3932,10 +3934,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 const hs = slots[chosenIdx ?? 0]
                 const url = wfSelHero ? wfSelHero.url : (typeof hs?.text === 'string' ? hs.text.split('\n')[0] : null)
                 const vid = wfSelHero ? wfSelHero.isVideo : !!hs?.isVideo
+                // Speech has no picture: a player, not an <img> (Sep 26).
+                const aud = wfSelHero ? !!wfSelHero.isAudio : mode === 'audio'
                 if (!url) return null
                 return (
-                  <div style={{ marginBottom: 24, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border2)', background: '#000' }}>
-                    {vid
+                  <div style={{ marginBottom: 24, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border2)', background: aud ? 'var(--surface)' : '#000' }}>
+                    {aud
+                      ? <div style={{ padding: 16 }}><audio src={url} controls preload="metadata" style={{ width: '100%', display: 'block' }} /></div>
+                      : vid
                       ? <video src={url} autoPlay loop muted playsInline controls style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain' }} />
                       : <img src={url} alt="" onClick={() => setLightbox(url)} style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain', cursor: 'zoom-in' }} />}
                   </div>
@@ -5117,7 +5123,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   </div>
                                 )
                                 : mode === 'audio' && slot.text ? (
-                                    <div style={{ padding: 16 }}>
+                                    // Full width: .image-response is a centering flex box, and
+                                    // without a width this wrapper shrank to nothing, which
+                                    // collapses Chrome's player to its ⋮ menu (owner, Sep 26).
+                                    <div style={{ padding: 16, width: '100%', boxSizing: 'border-box' }}>
                                       <audio src={slot.text} controls preload="metadata" style={{ width: '100%' }} />
                                       <a href={slot.text} download style={{ display: 'inline-block', marginTop: 10, fontSize: 11.5, fontFamily: 'var(--mono)', color: 'var(--muted)' }}>↓ download</a>
                                     </div>

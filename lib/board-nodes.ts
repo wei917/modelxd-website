@@ -85,6 +85,7 @@ export function useBoardNodes(boardId: string | null) {
               chosen: !!sl?.chosen,
               thumb: typeof sl?.text === 'string' ? sl.text.split('\n')[0] : null,
               isVideo: !!sl?.isVideo,
+              isAudio: !!sl?.isAudio,
               inputPorts: Array.isArray(r.input_ports) ? r.input_ports : null,
               parentRowIds,
               parentId: null,
@@ -182,6 +183,7 @@ export function useBoardNodes(boardId: string | null) {
         if (inputNodes.some(n => n.id === id)) continue
         inputNodes.push({
           id, thumb: a.url ?? null, isVideo: (a.mediaType || '').startsWith('video/'),
+          isAudio: (a.mediaType || '').startsWith('audio/'),
           parentId: null, parentIds: [], label: a.fileName,
           kind: 'input', attach: a,
         })

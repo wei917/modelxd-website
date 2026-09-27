@@ -23,10 +23,11 @@ const VIEWS: { view: XCreateView; href: string; label: string }[] = [
   { view: 'templates', href: '/?view=templates', label: 'xcreate.site.nav.templates' },
 ]
 
-/** The wordmark: the same in every language (Codex, Sep 26), X and the full
- *  stop in the accent. */
+/** The mark: the ModelXD logo beside "XCreate", the same in every language;
+ *  the X in the accent, as XTell's mark does it (owner, Sep 26: logo + text,
+ *  no full stop). */
 export function XCreateMark() {
-  return <span className="xcs-brand"><span className="xcs-accent">X</span>Create<span className="xcs-accent">.</span></span>
+  return <span className="xcs-brand"><img className="xcs-logo" src="/logo.png" alt="" width={26} height={26} /><span><span className="xcs-accent">X</span>Create</span></span>
 }
 
 function viewOf(param: string | null | undefined): XCreateView {
@@ -73,6 +74,9 @@ export default function XCreateNav({ user }: { user: User | null }) {
   const { lang, setLang, t } = useLang()
   const { show } = useAuthModal()
   const initial = (user?.user_metadata?.full_name || user?.email || 'X').slice(0, 1).toUpperCase()
+  // The Google photo, as www's nav shows it; the initial only without one
+  // (owner, Sep 26: a letter read as "not updated after sign in").
+  const photo = typeof user?.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null
   return (
     <header className="xcs-top">
       <a href="#xcreate-main" className="xcs-skip" onClick={event => {
@@ -93,7 +97,7 @@ export default function XCreateNav({ user }: { user: User | null }) {
             {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
           </select>
           {user
-            ? <Link href="/profile" className="xcs-avatar" aria-label={t('profile.account')}><span aria-hidden="true">{initial}</span></Link>
+            ? <Link href="/profile" className="xcs-avatar" aria-label={t('profile.account')}>{photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <span aria-hidden="true">{initial}</span>}</Link>
             : <button type="button" className="xcs-signin" onClick={() => show()}>{t('auth.signin')}</button>}
         </div>
       </div>
@@ -105,7 +109,7 @@ export function XCreateFooter() {
   const { t } = useLang()
   return <footer className="xcs-footer">
     <div className="xcs-footer-inner">
-      <p>{t('xcreate.site.tagline')} <span className="xcs-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener"><img src="/logo.png" alt="" width={16} height={16} />ModelXD <span aria-hidden="true">↗</span></a></span></p>
+      <p>{t('xcreate.site.tagline')} <span className="xcs-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD <span aria-hidden="true">↗</span></a></span></p>
       <nav aria-label={t('xtell.site.legal')}>
         <span>{t('xcreate.site.footnote')}</span>
         <Link href="/terms">{t('nav.terms')}</Link>

@@ -52,6 +52,11 @@ html[data-site="xcreate"] .cursor-ring { display: none !important; }
 html[data-site="xcreate"] :is(a, button, select, label, summary) { cursor: pointer; }
 html[data-site="xcreate"] :is(button, select):disabled { cursor: not-allowed; }
 html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
+/* globals.css also hides the cursor on some non-interactive boxes that draw
+   the red dot instead. Of those, only .battle-card (the result cards) renders
+   on this host (checked Sep 26); without this the cursor vanished over
+   results, the audio player included, which inherits it. */
+html[data-site="xcreate"] .battle-card { cursor: auto; }
 
 /* ── Top bar ─────────────────────────────────────────────────────────── */
 .xcs-top {
@@ -66,9 +71,12 @@ html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
 }
 .xcs-home { display: inline-flex; align-items: center; color: var(--xc-ink); text-decoration: none; }
 .xcs-brand {
+  display: inline-flex; align-items: center; gap: 9px;
   font-family: var(--xc-display); font-weight: 700; font-size: 25px;
   letter-spacing: -1px; line-height: 1; white-space: nowrap; color: var(--xc-ink);
 }
+/* Sized in em so it scales with the wordmark (top bar, sign-in dialog). */
+.xcs-logo { width: 1.1em; height: 1.1em; border-radius: .24em; flex-shrink: 0; }
 .xcs-accent { color: var(--xc-accent); }
 .xcs-nav { display: flex; align-self: stretch; gap: 26px; }
 .xcs-nav a {
@@ -93,6 +101,8 @@ html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
   font-weight: 600; font-size: 14px; text-decoration: none;
 }
 .xcs-avatar:hover { background: var(--xc-accent-soft); color: var(--xc-accent); }
+.xcs-avatar { overflow: hidden; }
+.xcs-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .xcs-signin {
   height: 34px; padding: 0 14px; border: 0; border-radius: 8px;
   background: var(--xc-accent); color: #fff; font: 600 13px var(--xc-font);
@@ -122,7 +132,6 @@ html[data-site="xcreate"] :is(input, textarea) { cursor: text; }
 .xcs-footer a { color: var(--xc-secondary); text-decoration: none; }
 .xcs-footer a:hover { color: var(--xc-accent); }
 .xcs-maker a { display: inline-flex; align-items: center; gap: 5px; color: var(--xc-ink); font-weight: 600; }
-.xcs-maker img { border-radius: 4px; }
 
 /* ── Legal pages ─────────────────────────────────────────────────────── */
 .xcs-legal-note {

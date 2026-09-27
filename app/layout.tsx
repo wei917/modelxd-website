@@ -112,13 +112,38 @@ export const viewport = {
   viewportFit:   'cover',
 }
 
+// Google Ads tag (owner, Sep 26), on every page of every front door (www,
+// xtell., xcreate.), in <head> as Google specifies. Production deployments
+// only: localhost and the dev site must not count as ad traffic. Before the
+// config, Consent Mode denies ad and analytics storage by default in the
+// EEA, the UK and Switzerland, where prior consent is required and there is
+// no consent banner; Taiwan, Japan and everywhere else load the tag as
+// Google supplied it. Disclosed in /privacy §4.
+const GOOGLE_ADS_ID = 'AW-18476997246'
+const CONSENT_REGIONS = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', 'NO', 'GB', 'CH']
+const GTAG_INIT = [
+  'window.dataLayer = window.dataLayer || [];',
+  'function gtag(){dataLayer.push(arguments);}',
+  `gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', region: ${JSON.stringify(CONSENT_REGIONS)} });`,
+  "gtag('js', new Date());",
+  `gtag('config', '${GOOGLE_ADS_ID}');`,
+].join('\n')
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Which front door (www, xtell. or xcreate.modelxd.com) — stamped by proxy.ts. Read
   // here so the shell is right on the server render; this makes every route
   // dynamic, which they effectively were already (auth on nearly all).
   const site = siteFromHeaders(await headers())
+  const googleAds = process.env.VERCEL_ENV === 'production'
   return (
     <html lang="en" data-site={site}>
+      <head>
+        {googleAds && <>
+          {/* Google tag (gtag.js) */}
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} />
+          <script dangerouslySetInnerHTML={{ __html: GTAG_INIT }} />
+        </>}
+      </head>
       <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}${site === 'xcreate' ? ` ${dmSans.variable} ${barlowXCreate.variable}` : ''}`}>
         <SiteProvider site={site}>
         <LangProvider>

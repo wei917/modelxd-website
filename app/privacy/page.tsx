@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: September 14, 2026
+        Last updated: September 26, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
@@ -64,9 +64,16 @@ export default function PrivacyPage() {
 
       <h2 style={S.h2}>4. Cookies</h2>
       <p style={S.p}>
-        We use only essential cookies: your sign-in session and, on gated preview
-        domains, a site-access token. No advertising or cross-site tracking
-        cookies.
+        We use essential cookies: your sign-in session and, on gated preview
+        domains, a site-access token. We also use the Google Ads tag
+        (gtag.js) on our production sites to measure whether our ads bring
+        visitors. It sends Google the page you visit and technical details of
+        your browser, and it can set Google advertising cookies. In the
+        European Economic Area, the United Kingdom and Switzerland those
+        advertising and analytics cookies are off by default. Nothing you type
+        (prompts, questions, birth details, readings) is sent to Google Ads,
+        and we do not sell your data. You can limit Google ad personalization
+        at adssettings.google.com.
       </p>
 
       <h2 style={S.h2}>5. Retention &amp; Deletion</h2>

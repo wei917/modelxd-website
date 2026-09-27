@@ -19,9 +19,26 @@ html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding:
 .xcs-field-heading a:hover { color: var(--red); }
 .xcs-prompt-section .prompt-box.framed { border-radius: 14px; border: 1px solid var(--border2); background: var(--surface); }
 .xcs-prompt-section .prompt-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c0a; }
+/* The box's border is the focus mark; the studio-wide focus outline on the
+   textarea inside it drew a second ring 4px out (owner, Sep 26). */
+.xcs-prompt-section .prompt-textarea:focus-visible { outline: none; }
 .xcs-prompt-section .prompt-textarea { font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.65; min-height: 150px; padding: 20px; }
-html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
-.xcs-setup .xcreate-slot-grid > [data-slot='empty'] { grid-column: 1 / -1; min-height: 52px; font-family: inherit; font-size: 13px !important; }
+html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important; }
+.xcs-setup .xcreate-slot-grid > [data-slot='empty'] { min-height: 52px; font-family: inherit; font-size: 13px !important; }
+/* Model cards: one row on a wide desktop (the grid's inline column count:
+   the chosen models plus the "add" card, up to 4), two per row on a small
+   laptop or tablet, one per row on a phone (the 760px block below). The form
+   widens on wide screens so four cards keep their names readable
+   (owner, Sep 26: "up to 4 models in a row, not split in 2 rows"). */
+@media (max-width: 1099px) {
+  html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .xcs-setup .xcreate-slot-grid > [data-slot='empty'] { grid-column: 1 / -1; }
+}
+@media (min-width: 1100px) {
+  .xcs-heading:not(.xcs-heading-wide), .xcs-setup > :not(.xcs-results) { max-width: 1040px; }
+  /* Four results side by side too; www keeps its 2 x 2 for four. */
+  html[data-site='xcreate'] .xcs-results .battle-arena:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
 .xcs-setup .xcreate-slot-grid > [data-slot='filled'] { min-width: 0; }
 .xcs-setup .xc-actions { padding-top: 16px; border-top: 1px solid var(--border); row-gap: 14px !important; }
 .xcs-setup .xc-actions .prompt-counter { margin-right: auto; white-space: normal; }

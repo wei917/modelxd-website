@@ -10,8 +10,22 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
+import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
+
+// Every refusal carries a stable `code` the client turns into a sentence in
+// the visitor's language, next to the field it is about (audit F05: 「bad
+// name」 and 「write at least one wish」 reached a 繁體 page raw). `error`
+// stays English for logs and older clients.
+const refuse = (code: string, error: string, status = 400) => Response.json({ error, code }, { status })
+/** Temples whose chart cannot exist without the birth hour. */
+const HOUR_REQUIRED = new Set<Temple>(['ziwei', 'navagraha'])
+/** A birth that does not exist or cannot be charted (audit F01: 1990-02-31
+ *  was accepted). `who` is 'birth' or 'birth2', the field it names. */
+function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response | null {
+  const problem = birthProblem(b)
+  return problem ? refuse(`${who}_${problem}`, `bad birth input${who === 'birth2' ? ' (second person)' : ''}: ${problem}`) : null
+}
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
@@ -68,6 +82,13 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}))
   const temple = asTemple(body?.temple)
+  // `refresh`: a reopened visit asks for its chart again from its saved
+  // subject, so a record saved before an engine fix shows what the engine
+  // says now (an unknown hour without a 時柱, an impossible date refused).
+  // Nothing is written: the saved row, its chart and its turns stay as they
+  // are, and no second row is made.
+  const persist = body?.refresh !== true
+  const keep = (write: () => Promise<string | null>) => (persist ? write() : Promise.resolve(null))
 
   // 易學堂: no birth. A cast (six line values and the one matter asked), a
   // lookup (a hexagram number) or a learner's visit with no hexagram. A cast
@@ -77,7 +98,7 @@ export async function POST(req: Request) {
     if (bad) return Response.json({ error: bad }, { status: 400 })
     try {
       const chart = yixueChart(body)
-      const readingId = await save(sb, user.id, temple, body, chart, {}, chart.mode === 'cast' ? chart.ask : undefined)
+      const readingId = persist ? await save(sb, user.id, temple, body, chart, {}, chart.mode === 'cast' ? chart.ask : undefined) : null
       return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
     } catch (e: any) {
       console.error('[xtell/chart] yixue', e?.message ?? e)
@@ -86,47 +107,64 @@ export async function POST(req: Request) {
   }
 
   if (isQianTemple(temple)) {
-    if (!validQian(body?.n, temple)) return Response.json({ error: 'bad stick number' }, { status: 400 })
+    if (!validQian(body?.n, temple)) return refuse('stick_invalid', 'bad stick number')
     const qian = qianOf(body.n, temple)
-    if (!qian) return Response.json({ error: 'stick not in corpus' }, { status: 500 })
+    if (!qian) return refuse('stick_invalid', 'stick not in corpus', 500)
     // Optional 稟告: a birth turns into the same 八字 + 流年 the 四面佛 gets,
     // shown under the stick and handed to the master for reference.
-    if (body?.birth !== undefined && !validBirth(body.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
+    if (body?.birth !== undefined) {
+      const bad = birthRefusal(body.birth)
+      if (bad) return bad
+    }
     const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
     const year = bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : undefined
-    const readingId = await save(sb, user.id, temple, body, qian, { bazi: bz ?? undefined, year })
+    const readingId = await keep(() => save(sb, user.id, temple, body, qian, { bazi: bz ?? undefined, year }))
     return Response.json({ temple, chart: qian, bazi: bz ?? undefined, year, engine: ENGINES[temple], readingId })
   }
 
   // 姓名亭 and 測字亭 start from characters, not a birth.
   if (temple === 'xingming') {
-    if (!validName(body?.surname) || !validName(body?.given)) return Response.json({ error: 'bad name' }, { status: 400 })
+    if (!validName(body?.surname)) return refuse('surname_invalid', 'bad name')
+    if (!validName(body?.given)) return refuse('given_invalid', 'bad name')
     try {
       const chart = nameChart(body.surname, body.given)
-      const readingId = await save(sb, user.id, temple, body, chart, {})
+      const readingId = await keep(() => save(sb, user.id, temple, body, chart, {}))
       return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
-    } catch (e: any) { return Response.json({ error: e?.message ?? 'no stroke data' }, { status: 400 }) }
+    } catch (e: any) { return refuse('name_nodata', e?.message ?? 'no stroke data') }
   }
   if (temple === 'cezi') {
-    if (!validChar(body?.ch)) return Response.json({ error: 'write exactly one character' }, { status: 400 })
+    if (!validChar(body?.ch)) return refuse('char_invalid', 'write exactly one character')
     const info = charInfo(body.ch)
-    if (!info) return Response.json({ error: `no data for ${body.ch}` }, { status: 400 })
-    const readingId = await save(sb, user.id, temple, body, info, {})
+    if (!info) return refuse('char_nodata', `no data for ${body.ch}`)
+    const readingId = await keep(() => save(sb, user.id, temple, body, info, {}))
     return Response.json({ temple, chart: info, engine: ENGINES[temple], readingId })
   }
 
-  if (!validBirth(body?.birth)) return Response.json({ error: 'bad birth input' }, { status: 400 })
-  if (temple === 'yuelao' && !validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
-  if (temple === 'simianfo' && !validWishes(body?.wishes)) return Response.json({ error: 'write at least one wish' }, { status: 400 })
-  if (temple === 'navagraha' && !validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+  const badBirth = birthRefusal(body?.birth)
+  if (badBirth) return badBirth
+  // 紫微 places 命宮 by the 時辰 and 九曜 its 上升 by the minute: neither has
+  // an unknown-hour reading, and the form hides the checkbox there. The
+  // server says so too, rather than charting the noon placeholder (Codex
+  // review, Sep 26: a direct request with hourUnknown charted 紫微 at noon).
+  if (HOUR_REQUIRED.has(temple) && body.birth.hourUnknown === true) return refuse('birth_hour_required', 'this temple needs the birth hour')
+  validBirth(body.birth)   // normalises an unknown hour, see BirthInput
+  if (temple === 'yuelao') {
+    const bad = birthRefusal(body?.birth2, 'birth2')
+    if (bad) return bad
+    validBirth(body.birth2)
+  }
+  if (temple === 'simianfo' && !validWishes(body?.wishes)) return refuse('wish_required', 'write at least one wish')
+  if (temple === 'navagraha' && !validPlace(body?.place)) return refuse('place_invalid', 'bad place')
   // 占星塔 needs a place for the same reason 九曜廟 does — no houses without
   // one — and its 配對 room needs a whole second person.
   const mode = asAstroMode(body?.mode)
   if (temple === 'zhanxing') {
-    if (!validPlace(body?.place)) return Response.json({ error: 'bad place' }, { status: 400 })
+    if (!validPlace(body?.place)) return refuse('place_invalid', 'bad place')
     if (mode === 'synastry') {
-      if (!validBirth(body?.birth2)) return Response.json({ error: 'bad birth input (second person)' }, { status: 400 })
-      if (!validPlace(body?.place2)) return Response.json({ error: 'bad place (second person)' }, { status: 400 })
+      const bad = birthRefusal(body?.birth2, 'birth2')
+      if (bad) return bad
+      validBirth(body.birth2)
+      if (!validPlace(body?.place2)) return refuse('place2_invalid', 'bad place (second person)')
     }
   }
 
@@ -148,10 +186,10 @@ export async function POST(req: Request) {
     const year = temple === 'simianfo'
       ? liuNian(chart as any, body.birth.y, new Date().getFullYear())
       : undefined
-    const readingId = await save(sb, user.id, temple, body, chart, { match, year })
+    const readingId = await keep(() => save(sb, user.id, temple, body, chart, { match, year }))
     return Response.json({ temple, chart, match, year, engine: ENGINES[temple], readingId })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)
-    return Response.json({ error: 'chart computation failed' }, { status: 500 })
+    return refuse('chart_failed', 'chart computation failed', 500)
   }
 }
