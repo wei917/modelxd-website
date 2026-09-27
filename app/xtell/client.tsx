@@ -63,7 +63,7 @@ import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localSt
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
-import { weightText, monthZh, dayZh, ZHI_SPAN, CHENGGU_SOURCES, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
+import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
@@ -1557,19 +1557,6 @@ function ChengguCard({ data }: { data: Chenggu }) {
           {fill(t(`xtell.cg.variant.${v.entry}`), { other: w(v.other), v1: w(v.v1), alt: v.total === null ? '' : fill(t('xtell.cg.variant.alt'), { other: w(v.other), w: w(v.total) }) })}
         </div>
       ))}
-      <details style={{ marginTop: 10 }}>
-        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.method')}</summary>
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.rule')}</p>
-      </details>
-      <details style={{ marginTop: 6 }}>
-        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.about.title')}</summary>
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.about')}</p>
-        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
-          {CHENGGU_SOURCES.filter(src => new URL(src.url).hostname !== 'github.com').map(src => (
-            <li key={src.url}><a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{src.name}</a></li>
-          ))}
-        </ul>
-      </details>
     </section>
   )
 }
