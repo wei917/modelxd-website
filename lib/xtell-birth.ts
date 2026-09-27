@@ -37,9 +37,16 @@ export function birthYears(now: Date = new Date()): number[] {
 /** Why `b` is not a birth XTell can chart, or null when it is one. */
 export function birthProblem(b: any, now: Date = new Date()): BirthProblem | null {
   if (!b || typeof b !== 'object') return 'shape'
+  if (b.gender !== 'male' && b.gender !== 'female') return 'shape'
+  return momentProblem(b, now)
+}
+
+/** The same checks without gender: a real date and clock time (or an unknown
+ *  hour), 1900 to today. For the daily profile, which reads no gender. */
+export function momentProblem(b: any, now: Date = new Date()): BirthProblem | null {
+  if (!b || typeof b !== 'object') return 'shape'
   const { y, m, d } = b
   if (![y, m, d].every(Number.isInteger)) return 'shape'
-  if (b.gender !== 'male' && b.gender !== 'female') return 'shape'
   if (b.hourUnknown !== true
     && !(Number.isInteger(b.h) && b.h >= 0 && b.h <= 23 && Number.isInteger(b.mi) && b.mi >= 0 && b.mi <= 59)) return 'shape'
   if (m < 1 || m > 12) return 'shape'
@@ -48,4 +55,27 @@ export function birthProblem(b: any, now: Date = new Date()): BirthProblem | nul
   const top = latestBirthDate(now)
   if (y * 10000 + m * 100 + d > top.y * 10000 + top.m * 100 + top.d) return 'future'
   return null
+}
+
+/** Where 占星塔 keeps the last birth entered, so 今日 does not make the
+ *  visitor retype it every morning: in THEIR browser only (the visit itself
+ *  is saved to the account like every temple's, supabase/105), never synced.
+ *  Deleting the daily profile clears it too. */
+export const REMEMBER_KEY = 'xtell.zhanxing.birth'
+
+export type Remembered = { y: number; m: number; d: number; h: number; mi: number; hourUnknown: boolean; gender?: 'male' | 'female'; place?: string }
+
+/** The remembered birth, or null when there is none or it is not a real
+ *  birth. An unknown hour stays unknown: the restore used to drop the flag,
+ *  and the form came back with a clock time the visitor never gave (Codex
+ *  review, Sep 27). */
+export function rememberedBirth(raw: string | null, now: Date = new Date()): Remembered | null {
+  if (!raw) return null
+  let v: any
+  try { v = JSON.parse(raw) } catch { return null }
+  if (!v || typeof v !== 'object') return null
+  const hourUnknown = v.hourUnknown === true
+  const b = { y: v.y, m: v.m, d: v.d, h: hourUnknown ? 12 : v.h, mi: hourUnknown ? 0 : v.mi, hourUnknown }
+  if (momentProblem(b, now)) return null
+  return { ...b, ...(v.gender === 'male' || v.gender === 'female' ? { gender: v.gender } : {}), ...(typeof v.place === 'string' ? { place: v.place } : {}) }
 }

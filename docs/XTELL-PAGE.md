@@ -573,6 +573,66 @@ the guide's version and sections, and runs the assistant route with a
 stubbed model. When `daily` goes live (item 2), flip its status, give it a
 room, and bump the version.
 
+## 今日運勢 (free daily fortune, Sep 27)
+
+TODO item 2, built by Claude, reviewed by Codex (independent SQL, API,
+time/BaZi and UI checks). A section on the street (XTell door) below the
+guide: a signed-in visitor saves their birth details once, with consent, and
+gets two free readings every day, Western transits and the BaZi day, each
+from its own calculation, plus an optional paid follow-up per reading.
+
+- **Data** — `supabase/109_xtell_daily.sql` (**owner applies it BEFORE the
+  deploy**; until then the routes answer 503 `daily_unavailable` and the
+  section is hidden). `xtell_profiles` (one per user; birth `{y,m,d,h,mi,
+  hourUnknown?}`, no gender; birth place key; `fold` for a repeated hour;
+  display zone; `revision` from a global sequence, never reused, new on every
+  birth/place/fold change; consent time + wording), `xtell_daily` (keyed by
+  user, local date, display zone, profile revision, method, rules version,
+  language; 30 days), `xtell_daily_usage` (generations per user per UTC day:
+  the cap, which edits, deletes and zone changes cannot reset). No policies,
+  all grants revoked from public/anon/authenticated; server routes only, every
+  call bound to the session's user id. Functions (service role only):
+  `xtell_profile_save` (creates only with consent, under the row lock),
+  `xtell_profile_delete`, `xtell_daily_claim` / `xtell_daily_finish` (lease
+  + compare-and-set on token and revision: late work never overwrites a newer
+  profile or resurrects deleted data), `xtell_daily_followup` (under the same
+  lock, so a delete cannot leave a fresh follow-up behind). Proven on Postgres
+  with PGlite (33 checks: grants, dedup, stale lease, cooldown, edits and
+  deletes mid-generation, re-creation with a stale revision, cap, retention,
+  follow-ups); run `supabase/109`'s bottom checks after applying.
+- **Time** — `lib/xtell-time.ts`. "Today" is the date in the chosen display
+  zone; the day is computed at one anchor, local noon, never at request time.
+  Birth wall times are resolved against the zone's history: a DST gap is
+  refused, a repeated hour needs the visitor's choice (Taiwan to 1979, Korea
+  1987–88, the US and Europe).
+- **BaZi** — `baziNatalZoned` / `liuRi` in `lib/xtell.ts`: year and month
+  pillars from the birth instant on the library's 節 clock (UTC+8), so a
+  Seoul 04:30 on 2026-02-04 is still 乙巳 while Taipei's is 丙午; day and
+  hour from the local civil date and time; every 十神 against the LOCAL day
+  master; an unknown hour reads year/month across the civil day in the birth
+  zone and keeps both values when a 節 falls in it. No 大運 in v1.
+- **Western** — `westernDaily` in `lib/xtell-daily.ts`: transits at the
+  anchor within 1°, the Moon's sign, retrogrades. Hour unknown: every contact
+  approximate, no orb figure, no timing. No contacts is "nothing prominent
+  under this calculation", never "a calm day".
+- **Routes** — `/api/xtell/profile` (GET/PUT/DELETE), `/api/xtell/daily`
+  (POST: claim → house model → finish, per method; no wallet import; a
+  failure shows the basis and "not ready", never a paid reading),
+  `/api/xtell/daily/followup` (opens the paid visit), and the reading route's
+  `temple: 'daily'` branch (facts = that day's stored basis + free reading,
+  loaded by reference for the session user; 410 once the day is gone).
+  Model: `XTELL_DAILY_MODEL`, else the site agent's; max 700 tokens, no
+  thinking; logs never carry model text or profile fields.
+- **UI** — `app/components/xtell/XTellDaily.tsx`. Reminder (dismissible, per
+  browser), consent form, view/edit/delete (the confirmation names the
+  profile, all daily content and the paid follow-ups, and says other temple
+  history is untouched), two cards with "why this reading" localised in five
+  languages, and a paid follow-up keyed to its day's reading. A generation
+  counter drops every late answer after a sign-in, sign-out or delete; a new
+  local date reloads on focus. 占星塔's remembered birth now keeps an unknown
+  hour (`rememberedBirth`), and deleting the profile clears it too.
+- Tests: `scripts/test-xtell-daily.ts` (in `npm run test:xtell`).
+
 ## Golden charts (`npm run test:xtell`)
 
 Frozen OBSERVED outputs (never hand-recalled — the first version froze two

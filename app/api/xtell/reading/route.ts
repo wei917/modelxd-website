@@ -15,6 +15,9 @@ import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { baziChart, baziFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
+import { xtellAdmin } from '@/lib/xtell-admin'
+import { DAILY_METHODS, DAILY_TEACHER, westernFacts, type DailyMethod } from '@/lib/xtell-daily'
+import { liuRiFacts } from '@/lib/xtell'
 import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 
 const LOG = '[xtell/reading]'
@@ -57,6 +60,10 @@ export async function POST(req: Request) {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
+  // A paid follow-up about one of today's free readings (/api/xtell/daily).
+  // It has no chart of its own: its facts are that reading's stored basis,
+  // loaded below by reference and bound to this user.
+  const isDaily = body?.temple === 'daily'
   const temple = asTemple(body?.temple)
   const question = typeof body?.question === 'string' ? body.question.slice(0, 2000) : ''
   // 關帝廟's input is the stick number; everything else starts from a birth.
@@ -68,7 +75,10 @@ export async function POST(req: Request) {
     const problem = birthProblem(b)
     return problem ? refuse(`${who}_${problem}`, `bad birth input${who === 'birth2' ? ' (second person)' : ''}: ${problem}`) : null
   }
-  if (isQianTemple(temple)) {
+  if (isDaily) {
+    if (typeof body?.readingId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.readingId)) return refuse('daily_missing', 'daily follow-up needs its visit')
+    if (!question.trim()) return refuse('question_required', 'write a question for the teacher')
+  } else if (isQianTemple(temple)) {
     if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return refuse('stick_invalid', 'bad stick number')
     if (body?.birth !== undefined) { const bad = badBirth(body.birth); if (bad) return bad; validBirth(body.birth) }
   } else if (temple === 'xingming') {
@@ -134,9 +144,28 @@ export async function POST(req: Request) {
         .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 8000) }))
     : []
 
+  // The day's reading the follow-up is about: the visit row (the visitor's
+  // own, under their session) names it, and it is read with the service role
+  // bound to this user, status ready. What the teacher sees is what was
+  // computed and shown that day, never a basis sent by the client.
+  let daily: { method: DailyMethod; facts: string } | null = null
+  if (isDaily) {
+    const { data: visit } = await sb.from('xtell_readings').select('subject').eq('id', body.readingId).eq('user_id', user.id).eq('temple', 'daily').maybeSingle()
+    const dailyId = visit?.subject?.dailyId
+    const { data: row } = typeof dailyId === 'string'
+      ? await xtellAdmin().from('xtell_daily').select('method, basis, reading').eq('id', dailyId).eq('user_id', user.id).eq('status', 'ready').maybeSingle()
+      : { data: null }
+    if (!row || !(DAILY_METHODS as readonly string[]).includes(row.method) || !row.basis) return Response.json({ error: 'that day\'s reading is no longer kept', code: 'daily_expired' }, { status: 410 })
+    const method = row.method as DailyMethod
+    const basis = method === 'western' ? westernFacts(row.basis.western) : liuRiFacts(row.basis.bazi.natal, row.basis.bazi.day)
+    const r = row.reading ?? {}
+    const shown = [r.summary && `摘要：${r.summary}`, Array.isArray(r.themes) && r.themes.length && `留意：${r.themes.join('；')}`, r.reflect && `可思考：${r.reflect}`, r.why && `依據說明：${r.why}`].filter(Boolean).join('\n')
+    daily = { method, facts: `${basis}\n\n當天的免費解讀（信眾已看過）：\n${shown}` }
+  }
+
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
-  const facts = temple === 'yixue'
+  const facts = daily ? daily.facts : temple === 'yixue'
     // The cast is recomputed from the six line values; the text comes from
     // disk. A learner's question names the hexagrams it wants shown.
     ? yixueFacts(body, question, history)
@@ -184,7 +213,7 @@ export async function POST(req: Request) {
   const messages = [...history, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
   // Teacher questions retrieve on what the visitor actually said, not the
   // generic mode instructions in the facts block. Include follow-up context.
-  const classicsQuery = temple === 'yixue' && asYixueMode(body?.mode) === 'ask'
+  const classicsQuery = daily ? '' : temple === 'yixue' && asYixueMode(body?.mode) === 'ask'
     ? [...history.filter(turn => turn.role === 'user').slice(-3).map(turn => turn.content), question].join(' ').slice(-2000)
     : `${question} ${facts}`.slice(0, 2000)
 
@@ -223,8 +252,8 @@ export async function POST(req: Request) {
               await debitCredits({
                 userId: user.id, amountCents: cents,
                 referenceType: 'xtell', referenceId: (model as any).id ?? (model as any).model_name,
-                description: `XTell ${temple} reading (${(model as any).model_name})`,
-                metadata: { temple, modelName: (model as any).model_name, search, thinking },
+                description: `XTell ${daily ? 'daily' : temple} reading (${(model as any).model_name})`,
+                metadata: { temple: daily ? 'daily' : temple, modelName: (model as any).model_name, search, thinking },
               }).catch(err => {
                 if (err instanceof InsufficientCreditsError) console.warn(`${LOG} insufficient credits (${cents}¢)`)
                 else console.warn(`${LOG} debit failed:`, err)
@@ -241,7 +270,9 @@ export async function POST(req: Request) {
         [],
         { userId: user.id },
         {
-          system: `${MASTERS[temple]}${langLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}`,
+          system: daily
+            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}`
+            : `${MASTERS[temple]}${langLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}`,
           search,
           thinking,
         },

@@ -1,0 +1,102 @@
+// app/api/xtell/daily/route.ts — today's free fortune for the signed-in
+// visitor's saved profile: Western transits and the BaZi day, each computed
+// at the day's anchor and explained by the house model.
+//
+// Free, always: nothing here imports the wallet, and a failed generation
+// leaves the day's basis on screen with "not ready" rather than turning into
+// a paid reading. The owner pays for the writing, kept small by the cache:
+// one generation per user, local date, zone, profile version, method, rules
+// version and language, claimed through supabase/109 so two tabs or two
+// instances never write the same day twice, and capped per user per UTC day.
+
+export const runtime = 'nodejs'
+export const maxDuration = 60
+
+import { createSupabaseServer } from '@/lib/supabase-server'
+import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
+import { houseCall } from '@/lib/house-llm'
+import {
+  DAILY_METHODS, DAILY_RULES, asDailyLang, dailyBases, basisFacts, dailyBrief, parseDailyReading, profileProblem,
+  type DailyMethod, type DailyProfile, type DailyBases,
+} from '@/lib/xtell-daily'
+
+// The site agent's models unless XTELL_DAILY_MODEL says otherwise (the
+// visitor chose no model here, so a stand-in on failure is fine: house-llm).
+const MODELS = [process.env.XTELL_DAILY_MODEL, process.env.SITE_AGENT_MODEL, 'claude-sonnet-5', 'claude-haiku-4-5'].filter(Boolean) as string[]
+const LEASE = { staleSeconds: 120, cooldownSeconds: 600, maxPerDay: 16, keepDays: 30 }
+
+const hits = new Map<string, number[]>()
+function overLimit(ip: string): boolean {
+  const now = Date.now()
+  const recent = (hits.get(ip) ?? []).filter(t => now - t < 60_000)
+  recent.push(now)
+  hits.set(ip, recent)
+  if (hits.size > 5000) hits.clear()
+  return recent.length > 12
+}
+
+/** What a method's basis looks like stored and sent: the day, and only that
+ *  method's computed facts (never the other method's). */
+const basisOf = (m: DailyMethod, b: DailyBases) => ({ date: b.date, tz: b.tz, anchor: new Date(b.anchor).toISOString(), ...(m === 'western' ? { western: b.western } : { bazi: b.bazi }) })
+
+export async function POST(req: Request) {
+  const sb = await createSupabaseServer()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
+  if (overLimit(ip)) return Response.json({ error: 'rate_limited' }, { status: 429 })
+  const body = await req.json().catch(() => ({}))
+  const lang = asDailyLang(body?.lang)
+
+  const db = xtellAdmin()
+  const { data: row, error } = await db.from('xtell_profiles').select('birth, birth_place, fold, display_tz, revision').eq('user_id', user.id).maybeSingle()
+  if (error) return dailyMissing(error) ? Response.json({ error: 'daily_unavailable' }, { status: 503 }) : Response.json({ error: 'daily_failed' }, { status: 500 })
+  if (!row) return Response.json({ profile: null })
+  const profile: DailyProfile = { birth: row.birth, place: row.birth_place, fold: row.fold === 0 || row.fold === 1 ? row.fold : null, displayTz: row.display_tz, revision: row.revision }
+  const problem = profileProblem(profile)
+  if (problem) return Response.json({ profile: true, problem })
+
+  const bases = dailyBases(profile)
+  const one = async (m: DailyMethod) => {
+    const basis = basisOf(m, bases)
+    const token = crypto.randomUUID()
+    const { data: claimed, error: claimError } = await db.rpc('xtell_daily_claim', {
+      p_user: user.id, p_date: bases.date, p_tz: bases.tz, p_revision: profile.revision, p_method: m, p_rules: DAILY_RULES[m], p_lang: lang,
+      p_token: token, p_stale_seconds: LEASE.staleSeconds, p_cooldown_seconds: LEASE.cooldownSeconds, p_max_per_day: LEASE.maxPerDay, p_keep_days: LEASE.keepDays,
+    })
+    if (claimError) throw claimError
+    const c = Array.isArray(claimed) ? claimed[0] : claimed
+    if (!c) return { status: 'failed' as const, basis }
+    if (c.outcome === 'ready') return { status: 'ready' as const, id: c.row_id, basis: c.basis ?? basis, reading: c.reading }
+    if (c.outcome === 'gone') return { status: 'gone' as const }
+    if (c.outcome !== 'claimed') return { status: c.outcome as 'pending' | 'failed' | 'capped', basis }
+    let reading = null
+    try {
+      const resp = await houseCall({
+        tag: '[xtell/daily]', models: MODELS, maxTokens: 700, disableThinking: true,
+        system: dailyBrief(m, lang),
+        messages: [{ role: 'user', content: basisFacts(m, bases) }],
+      })
+      reading = parseDailyReading((resp?.content ?? []).filter((b: any) => b?.type === 'text').map((b: any) => b.text).join(''))
+      // Generic on purpose: never the model's text or the profile.
+      if (!reading) console.warn('[xtell/daily] unreadable reply')
+    } catch {
+      // Generic: a provider error can quote the request, and the request
+      // holds the visitor's chart (Codex review).
+      console.warn('[xtell/daily] no provider could answer')
+    }
+    const { data: written } = await db.rpc('xtell_daily_finish', {
+      p_user: user.id, p_id: c.row_id, p_token: token, p_revision: profile.revision, p_ok: !!reading, p_basis: basis, p_reading: reading,
+    })
+    if (written !== true) return { status: 'gone' as const }
+    return reading ? { status: 'ready' as const, id: c.row_id, basis, reading } : { status: 'failed' as const, basis }
+  }
+  try {
+    const [western, bazi] = await Promise.all(DAILY_METHODS.map(one))
+    return Response.json({ profile: true, date: bases.date, tz: bases.tz, revision: profile.revision, methods: { western, bazi } })
+  } catch (e: any) {
+    if (dailyMissing(e)) return Response.json({ error: 'daily_unavailable' }, { status: 503 })
+    console.warn('[xtell/daily] claim failed:', typeof e?.code === 'string' ? e.code : 'unknown')
+    return Response.json({ error: 'daily_failed' }, { status: 500 })
+  }
+}

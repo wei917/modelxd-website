@@ -31,25 +31,28 @@ const check = (name: string, cond: boolean, extra = '') => {
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
 const live = XTELL_FEATURES.filter(f => f.status === 'live')
+const rooms = live.filter(f => f.temple)
 const pending = XTELL_FEATURES.filter(f => f.status === 'pending')
 
 // ── The catalog ────────────────────────────────────────────────────────────
 check('catalog version is a dated version', /^\d{4}-\d{2}-\d{2}\.\d+$/.test(XTELL_CATALOG_VERSION))
 check('feature ids are unique', new Set(XTELL_FEATURES.map(f => f.id)).size === XTELL_FEATURES.length)
 check('every temple has a live feature', xtell.TEMPLES.every(t => live.some(f => f.temple === t)), xtell.TEMPLES.filter(t => !live.some(f => f.temple === t)).join())
+check('every live feature opens a room or the daily section, never both', live.every(f => !!f.temple !== (f.opens === 'daily')))
 check('every 占星塔 mode and every 易學堂 mode is a live feature',
   xtell.ASTRO_MODES.every(m => live.some(f => f.temple === 'zhanxing' && f.mode === m)) && yijing.YIXUE_MODES.every(m => live.some(f => f.temple === 'yixue' && f.mode === m)))
 check('a mode only where the room has modes, and a real one',
-  live.every(f => f.temple === 'zhanxing' ? (xtell.ASTRO_MODES as string[]).includes(f.mode ?? '') : f.temple === 'yixue' ? (yijing.YIXUE_MODES as readonly string[]).includes(f.mode ?? '') : f.mode === undefined))
+  rooms.every(f => f.temple === 'zhanxing' ? (xtell.ASTRO_MODES as string[]).includes(f.mode ?? '') : f.temple === 'yixue' ? (yijing.YIXUE_MODES as readonly string[]).includes(f.mode ?? '') : f.mode === undefined))
 check('the 稱骨 feature opens 八字廟', liveFeature('bazi.chenggu')?.temple === 'bazi')
-check('daily and courses are pending, open nothing', same(pending.map(f => f.id), ['daily', 'courses']) && pending.every(f => !f.temple && !f.mode && !liveFeature(f.id) && f.paid === null))
-check('unknown or pending ids are not live', !liveFeature('daily') && !liveFeature('bazi.secret') && !liveFeature('https://x.example') && !liveFeature(undefined) && !!featureOf('daily'))
+check('the daily fortune is live on the street (free, a paid follow-up); courses stay pending', liveFeature('daily')?.opens === 'daily' && !liveFeature('daily')?.temple && same(liveFeature('daily')?.free, ['daily']) && same(pending.map(f => f.id), ['courses']) && pending.every(f => !f.temple && !f.mode && !liveFeature(f.id) && f.paid === null))
+check('unknown or pending ids are not live', !liveFeature('courses') && !liveFeature('bazi.secret') && !liveFeature('https://x.example') && !liveFeature(undefined) && !!featureOf('courses'))
 check('every label has all five languages', XTELL_FEATURES.every(f => f.label.every(k => LANGS.every(l => typeof (STRINGS as any)[k]?.[l] === 'string' && (STRINGS as any)[k][l].trim()))),
   XTELL_FEATURES.flatMap(f => f.label).filter(k => !LANGS.every(l => (STRINGS as any)[k]?.[l])).join())
 check('the guide\'s own strings exist in five languages',
   Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).length >= 20 && Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string')))
 check('the matter field takes the question only where the room has one', same(live.filter(f => f.question === 'matter').map(f => f.id), ['guandi', 'mazu', 'cezi', 'yixue.cast']))
-check('every live room offers a paid teacher and says what is free', live.every(f => f.paid === 'teacher' && Array.isArray(f.free)))
+check('every live feature offers a paid teacher and says what is free', live.every(f => f.paid === 'teacher' && Array.isArray(f.free)))
+check('the fee rule says the daily fortune is free with no credit', /daily fortune are free/.test(FEE_RULE) && /no credit/.test(FEE_RULE))
 check('the fee rule the prompt uses names the free parts and the estimate', /free/i.test(FEE_RULE) && /estimate/i.test(FEE_RULE) && /pressing send/i.test(FEE_RULE))
 
 // ── The guide text ─────────────────────────────────────────────────────────
@@ -112,7 +115,7 @@ async function chartConsistency() {
     if (f.id === 'yixue.cast') s.lines = [7, 8, 9, 6, 7, 8]
     return { ...s, ...over }
   }
-  for (const f of live) {
+  for (const f of rooms) {
     const full = await cast(subject(f))
     check(`chart route accepts ${f.id} with what the catalog lists`, full.status === 200, JSON.stringify(full.d).slice(0, 160))
     if (f.hour) {
@@ -165,7 +168,7 @@ async function assistantRoute() {
   const sys = calls.at(-1)
   const stable = sys.system[0].text as string, tail = sys.system[1].text as string
   check('the prompt carries the catalog (version, every live id, the NOT LIVE list) and the fee rule',
-    stable.includes(XTELL_CATALOG_VERSION) && live.every(f => stable.includes(`- ${f.id} [LIVE]`)) && pending.every(f => stable.includes(`- ${f.id} [PENDING]`)) && stable.includes(FEE_RULE) && stable.includes('--- X先知 GUIDE ---'))
+    stable.includes(XTELL_CATALOG_VERSION) && live.every(f => stable.includes(`- ${f.id} [LIVE]`)) && pending.every(f => stable.includes(`- ${f.id} [PENDING]`)) && stable.includes(FEE_RULE) && stable.includes('--- X先知 GUIDE ---') && stable.includes('"daily"'))
   check('the stable part is cached; the language is the tail', sys.system[0].cache_control?.type === 'ephemeral' && tail.includes('Traditional Chinese') && sys.disableThinking === true && sys.maxTokens === 500)
   check('an unknown language falls back to 繁體', (await ask({ q: 'hi', lang: 'xx' }, '{"answer":"hi","actions":[]}')).status === 200 && calls.at(-1).system[1].text.includes('Traditional Chinese'))
   check('Japanese is asked for in Japanese', (await ask({ q: 'hi', lang: 'ja' })).status === 200 && calls.at(-1).system[1].text.includes('Japanese'))
@@ -173,7 +176,7 @@ async function assistantRoute() {
   const cg = await ask({ q: '我的八字幾兩幾錢', lang: 'zh-Hant' }, '{"answer":"稱骨在八字廟排盤後顯示。","actions":[{"feature":"bazi.chenggu","question":"我的八字幾兩幾錢？"}],"clarify":false,"offtopic":false}')
   check('稱骨 routes to bazi.chenggu with its prepared question', same(cg.d.actions, [{ feature: 'bazi.chenggu', question: '我的八字幾兩幾錢？' }]))
   const bad = await ask({ q: 'x', lang: 'en' }, JSON.stringify({ answer: 'a', actions: [
-    { feature: 'daily' }, { feature: 'bazi.secret' }, { feature: 'https://evil.example/x' }, { feature: 'javascript:alert(1)' },
+    { feature: 'courses' }, { feature: 'bazi.secret' }, { feature: 'https://evil.example/x' }, { feature: 'javascript:alert(1)' },
     { feature: 'ziwei', url: 'https://evil.example', route: '/admin', question: 'see https://evil.example' },
   ] }))
   check('pending, unknown, URL and javascript ids give no action; extra fields are never read', same(bad.d.actions, [{ feature: 'ziwei', question: null }]), JSON.stringify(bad.d.actions))
@@ -224,7 +227,7 @@ function mem(): Storage & { data: Map<string, string> } {
 {
   const now = 1_800_000_000_000
   let ok = true
-  for (const f of live) {
+  for (const f of rooms) {
     const s = mem()
     if (!writeHandoff(s, f.id, '問題', now)) { ok = false; continue }
     const h = readHandoff(s, f.temple!, now + 1000)
@@ -239,7 +242,7 @@ function mem(): Storage & { data: Map<string, string> } {
   check('expired after the lifetime, and a future time is refused', readHandoff(s, 'bazi', now + HANDOFF_TTL_MS + 1) === null && readHandoff(s, 'bazi', now - 60_000) === null && !!readHandoff(s, 'bazi', now + HANDOFF_TTL_MS))
   s.setItem(HANDOFF_KEY, JSON.stringify({ v: '2020-01-01.1', feature: 'bazi', question: 'q', at: now }))
   check('another catalog version is refused', readHandoff(s, 'bazi', now) === null)
-  check('pending or unknown features are never written', !writeHandoff(s, 'daily', 'q', now) && !writeHandoff(s, 'bazi.secret', 'q', now))
+  check('pending, unknown or non-room features are never written', !writeHandoff(s, 'courses', 'q', now) && !writeHandoff(s, 'daily', 'q', now) && !writeHandoff(s, 'bazi.secret', 'q', now))
   s.setItem(HANDOFF_KEY, '{not json')
   check('a corrupt value is ignored', readHandoff(s, 'bazi', now) === null)
   const blocked = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') }, removeItem: () => { throw new Error('blocked') } } as any
@@ -255,7 +258,7 @@ function mem(): Storage & { data: Map<string, string> } {
   const t = restoredThread(JSON.stringify([
     { role: 'user', text: 'hi' },
     { role: 'agent', text: 'a', v, actions: 'bazi' },
-    { role: 'agent', text: 'b', v, actions: [null, 7, { feature: 'bazi', question: 'https://x.example' }, { feature: 'daily' }, { feature: 'ziwei', question: 'ok' }, { feature: 'yuelao' }] },
+    { role: 'agent', text: 'b', v, actions: [null, 7, { feature: 'bazi', question: 'https://x.example' }, { feature: 'courses' }, { feature: 'ziwei', question: 'ok' }, { feature: 'yuelao' }] },
     { role: 'agent', text: 'c', v: 'old', actions: [{ feature: 'bazi' }] },
     { role: 'system', text: 'x' }, { role: 'agent', text: 42 }, null, 'str',
     { role: 'agent', text: 'long'.repeat(1000) },

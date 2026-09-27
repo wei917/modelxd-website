@@ -37,6 +37,8 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
       return `${s.surname ?? ''}${s.given ?? ''}`
     case 'cezi':
       return [s.ch ? `「${s.ch}」` : '', clip(s.ask)].filter(Boolean).join(' · ')
+    case 'daily':
+      return [typeof s.date === 'string' ? s.date : '', s.method === 'western' || s.method === 'bazi' ? t(`xtell.dy.${s.method}`) : ''].filter(Boolean).join(' · ')
     case 'yixue': {
       try {
         if (s.mode === 'lookup' && Number.isInteger(s.n)) return `${t('xtell.yixue.mode.lookup')} · ${hexagram(s.n).name}`

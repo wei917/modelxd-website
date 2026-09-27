@@ -292,6 +292,9 @@ async function routes() {
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
     '@/lib/xtell': xtell,
     '@/lib/classics': { classicsBlock: () => '' },
+    // The daily follow-up branch's modules; no temple path may touch them.
+    '@/lib/xtell-admin': { xtellAdmin: () => { throw new Error('the service role is not for temple readings') }, dailyMissing: () => false },
+    '@/lib/xtell-daily': require('../lib/xtell-daily'),
     '@/lib/yijing': yijing,
   })
   // '' unless THIS request reached the model: a refused one must not be

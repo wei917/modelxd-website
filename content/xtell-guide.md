@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-27.1 -->
+<!-- xtell-guide version: 2026-09-27.2 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -101,7 +101,8 @@ chart. Both birth dates and places are needed.
 
 ### zhanxing.today
 占星塔, today. Today's planets against the visitor's natal chart (the
-transits). This is the live way to look at "today" at X先知.
+transits), cast in the tower from details entered there, with a teacher to
+ask. For a free personal reading every day, see daily.
 
 ### zhanxing.year
 占星塔, the year. The solar return for a chosen year and the progressed Sun
@@ -133,13 +134,26 @@ on screen yourself; the hexagram, its changing lines, the resulting hexagram
 and which passage to read follow the classical rule. Only when the visitor
 wants to cast.
 
-## Not live yet
+## On the street itself
 
 ### daily
-Free daily fortune: a daily personal reading from both Western astrology and
-the BaZi day, each with its basis, for visitors who choose to save their
-birth details. Planned, not available yet. Today, the Astrology Tower's
-"Today" room (zhanxing.today) is the live option.
+今日運勢 (the daily fortune), just below this guide, free every day. A
+signed-in visitor saves their birth details once, after ticking a consent
+box: the date (Gregorian), the time or "don't know", the birth place, and the
+time zone they are in today (it decides which date counts as today; it is
+separate from the birth place's zone). They can view, change or delete them
+there; deleting also removes the daily readings and the paid follow-up
+conversations about them, and nothing else. Each day shows two separate
+readings, each from its own calculation: Western astrology (today's
+transits against the natal chart) and the BaZi day (today's day pillar
+against the natal pillars). Each has a short summary, things worth noticing,
+one thing to think about, and "why this reading" with the calculation. A
+reopened page shows the same reading for the same day. With the birth time
+unknown the readings still come, marked approximate where the time matters.
+Asking a teacher about a day's reading is paid, with the estimate shown
+before sending; the teacher sees only that day's calculation for that method.
+
+## Not live yet
 
 ### courses
 Learning centre: short lessons in Western astrology, Vedic astrology and
@@ -169,8 +183,9 @@ way to learn today.
 - **The I Ching.** Sixty-four hexagrams of six lines. A cast gives a primary
   hexagram, possibly changing lines, and a resulting hexagram; the classical
   rule says which passage to read.
-- **Unknown birth hour.** BaZi, the bone weight, Western natal charts and
-  matching still work with limits; Zi Wei and Vedic charts need the hour.
+- **Unknown birth hour.** BaZi, the bone weight, Western natal charts,
+  matching and the daily fortune still work with limits; Zi Wei and Vedic
+  charts need the hour.
 - **Calendar.** Birth dates are entered in the Gregorian calendar (國曆). A
   lunar birthday needs converting first.
 

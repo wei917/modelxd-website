@@ -286,7 +286,11 @@ export type NatalChart = {
   chartRuler: Planet | null
 }
 
-export type BirthPlace = { y: number; m: number; d: number; h: number; mi: number; lat: number; lon: number; tz: string; place: string; hourUnknown?: boolean }
+export type BirthPlace = { y: number; m: number; d: number; h: number; mi: number; lat: number; lon: number; tz: string; place: string; hourUnknown?: boolean
+  /** The birth instant (ms), when the caller has already resolved the wall
+   *  time against the zone's history (lib/xtell-time: a repeated hour needs
+   *  the visitor's choice). Otherwise the wall time is converted here. */
+  utc?: number }
 
 /** Longitude of every body plus the angles, for aspect work. */
 function pointMap(c: NatalChart): Record<string, number> {
@@ -317,7 +321,7 @@ export function localStamp(utc: string, tz: string): { stamp: string; offset: st
 }
 
 export function natalChart(input: BirthPlace): NatalChart {
-  const date = zonedToUtc(input.y, input.m, input.d, input.h, input.mi, input.tz)
+  const date = typeof input.utc === 'number' && !input.hourUnknown ? new Date(input.utc) : zonedToUtc(input.y, input.m, input.d, input.h, input.mi, input.tz)
   const h = houses(date, input.lat, input.lon)
 
   const dayBefore = new Date(date.getTime() - 43200000)

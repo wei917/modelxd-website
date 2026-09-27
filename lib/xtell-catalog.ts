@@ -18,7 +18,7 @@
 import type { Temple } from './xtell'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-27.1'
+export const XTELL_CATALOG_VERSION = '2026-09-27.2'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha'
@@ -38,6 +38,8 @@ export type Feature = {
   /** The room a live feature opens, and the mode it opens in. */
   temple?: Temple
   mode?: FeatureMode
+  /** A live feature that is not a room: 'daily' is the street's own section. */
+  opens?: 'daily'
   /** Birth records needed: none, one person, or two. */
   people: 0 | 1 | 2
   /** Whether an unknown birth hour is accepted; null when no birth is asked. */
@@ -48,7 +50,7 @@ export type Feature = {
   inputs: FeatureInput[]
   optional: FeatureInput[]
   /** What costs nothing, and whether asking a teacher is charged. */
-  free: Array<'chart' | 'draw' | 'lookup' | 'chenggu' | 'score'>
+  free: Array<'chart' | 'draw' | 'lookup' | 'chenggu' | 'score' | 'daily'>
   paid: 'teacher' | null
   /** Where a question prepared by the guide is placed: the teacher composer,
    *  or the field that names the matter (籤, 測字, 起卦). Never sent. */
@@ -113,9 +115,9 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'yixue.cast', status: 'live', temple: 'yixue', mode: 'cast', people: 0, hour: null, place: false, inputs: ['matter'], optional: [],
     free: ['chart'], paid: 'teacher', question: 'matter', label: [room('yixue'), 'xtell.yixue.mode.cast'],
     about: 'I Ching casting practice: the visitor names one matter and throws three coins six times themselves. Only when they ask to cast.' },
-  { id: 'daily', status: 'pending', people: 1, hour: 'optional', place: true, inputs: [], optional: [],
-    free: [], paid: null, question: null, label: ['xtell.as.feature.daily'],
-    about: 'Free daily personal fortune (Western astrology and BaZi day, each with its basis), for visitors who choose to save their birth details. Planned, NOT live yet.' },
+  { id: 'daily', status: 'live', opens: 'daily', people: 1, hour: 'optional', place: true, inputs: [], optional: [],
+    free: ['daily'], paid: 'teacher', question: null, label: ['xtell.as.feature.daily'],
+    about: 'Free daily personal fortune on the street: Western astrology transits and the BaZi day, each with its own basis, for signed-in visitors who save their birth details (with consent; date, time or unknown, birth place, today\'s zone; no credit needed). A follow-up question to a teacher is paid.' },
   { id: 'courses', status: 'pending', people: 0, hour: null, place: false, inputs: [], optional: [],
     free: [], paid: null, question: null, label: ['xtell.as.feature.courses'],
     about: 'A learning centre with short lessons (Western astrology, Vedic astrology, Laozi). Planned, NOT live yet; the I Ching school is the live way to learn today.' },
@@ -125,14 +127,15 @@ const BY_ID = new Map<string, Feature>(XTELL_FEATURES.map(f => [f.id, f]))
 
 /** The feature an id names, or null. */
 export const featureOf = (id: unknown): Feature | null => (typeof id === 'string' ? BY_ID.get(id) ?? null : null)
-/** A feature the guide may send someone to: live, with a room. */
+/** A feature the guide may send someone to: live, with a room or the
+ *  street's daily section. */
 export const liveFeature = (id: unknown): Feature | null => {
   const f = featureOf(id)
-  return f && f.status === 'live' && f.temple ? f : null
+  return f && f.status === 'live' && (f.temple || f.opens === 'daily') ? f : null
 }
 
 /** The fee rule every live feature follows, for the guide's prompt. */
-export const FEE_RULE = 'Charts, stick draws, hexagram look-ups, the bone weight and the matching score are free. Asking a teacher (an AI model the visitor picks) is charged per question at that model\'s listed price; the estimate is shown before sending, and nothing is sent without the visitor pressing send. New Google accounts start with US$10 of credit.'
+export const FEE_RULE = 'Charts, stick draws, hexagram look-ups, the bone weight, the matching score and the daily fortune are free (the daily fortune needs no credit at all). Asking a teacher (an AI model the visitor picks) is charged per question at that model\'s listed price; the estimate is shown before sending, and nothing is sent without the visitor pressing send. New Google accounts start with US$10 of credit.'
 
 /** The catalog as the guide's prompt reads it: one line per feature. */
 export function catalogForPrompt(): string {

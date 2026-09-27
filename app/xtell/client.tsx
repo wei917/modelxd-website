@@ -23,7 +23,7 @@ import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT, useLang, tOr } from '../../lib/i18n'
-import { birthProblem, daysInMonth, birthYears } from '../../lib/xtell-birth'
+import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../lib/xtell-birth'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
 import ReactMarkdown from 'react-markdown'
@@ -32,38 +32,15 @@ import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, type Jiao } from '../../lib/xtell-ritual'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
-// Upfront estimate per master, shown under the composer (Codex QA, Sep 25:
-// nothing said what a question would cost before Send). The system prompt
-// measured 1.6k–2.8k chars (八字 / 紫微: persona + facts + classics), and CJK
-// runs near one token per char, so 3,000 input tokens covers it, plus the
-// thread and the question; 800 output tokens is a full reading with thinking
-// on. Search terms mirror XCreate's estimator. A ceiling, not a quote: the
-// receipt is the cost under each reply.
-const EST_PROMPT_TOKENS = 3000, EST_OUT_TOKENS = 800, EST_SEARCHES = 8, EST_READ_TOKENS = 30_000
-// 易學堂 can include both hexagrams and their 文言. Its longest measured
-// fixed cast prompt exceeds 4,200 characters before the language line.
-const EST_YIXUE_PROMPT_TOKENS = 5500
-function rateOf(r: any, level: string | null): number {
-  if (r == null) return 0
-  if (typeof r === 'number') return r
-  if (level && r.by_level && typeof r.by_level[level] === 'number') return r.by_level[level]
-  return typeof r.default === 'number' ? r.default : 0
-}
-function estimateReadingUsd(m: PickerModel, o: { thinking: string | null; search: boolean }, chars: number, promptTokens = EST_PROMPT_TOKENS): number | null {
-  const p = m.model_pricing ?? {}, tk = p.tokens ?? {}
-  const tin = rateOf(tk.text_input, o.thinking), tout = rateOf(tk.text_output, o.thinking)
-  if (!tin && !tout) return null
-  const inTok = promptTokens + chars + (o.search ? EST_READ_TOKENS : 0)
-  return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + EST_OUT_TOKENS * tout) / 1_000_000
-}
-const fmtUsd = (v: number) => v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
+import { PRESETS, EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
+import XTellDaily, { type SavedDaily } from '../components/xtell/XTellDaily'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
@@ -86,12 +63,6 @@ type SavedReading = { id: string; temple: string; subject: any; chart: any; extr
 const ASTRO_MODES = ['natal', 'synastry', 'today', 'year'] as const
 type AstroMode = (typeof ASTRO_MODES)[number]
 
-// The visitor's own last birth row, so 今日 does not make them retype it
-// every morning. This copy stays in THEIR browser (the visit itself is saved
-// to their account like every temple's, supabase/105); cleared with the
-// browser, never synced.
-const REMEMBER_KEY = 'xtell.zhanxing.birth'
-
 // 四面佛's faces, clockwise. Mirrors FACES in lib/xtell.ts (server-only file).
 const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
 type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: string }
@@ -106,20 +77,6 @@ const DEFAULT_MASTER = 'qwen3.8-flash'
 const MAX_SEATS = 4
 const LAYOUT_KEY = 'xtell:layout'
 const FALLBACK_MASTERS = ['qwen3.8-max', 'gpt-5.6-sol']
-// Three plain choices instead of a 26-row model list (audit, product): each
-// names the model it will seat and its estimate, and changes the first seat
-// only when pressed — never on its own, never replacing a chosen teacher
-// silently (Codex review). The first enabled model in each list is used;
-// the full picker stays one click away. Owner's call which models back
-// each preset; this is the one place to change it.
-const PRESETS: Array<{ key: 'light' | 'balanced' | 'deep'; models: string[] }> = [
-  { key: 'light', models: ['qwen3.8-flash'] },
-  { key: 'balanced', models: ['qwen3.8-max', 'gemini-3.8-flash'] },
-  // Owner, Sep 26: GPT-6 Astra is the deep one, and only it: if Astra is
-  // not offered for XTell, the button is hidden rather than filled by
-  // another model.
-  { key: 'deep', models: ['gpt-6-astra'] },
-]
 
 const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' as const }
 const card = { border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)' }
@@ -242,12 +199,18 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   // tab's sessionStorage too (lib/xtell-handoff.ts), so it survives a reload
   // or the sign-in round trip; the room re-derives its mode from the catalog.
   const [handoff, setHandoff] = useState<Handoff | null>(null)
+  // The daily fortune on the street: the guide's "daily" button bumps the
+  // signal (scroll there, open the form); a saved follow-up about a day's
+  // reading, opened from history, is shown there too.
+  const [dailySignal, setDailySignal] = useState(0)
+  const [savedDaily, setSavedDaily] = useState<SavedDaily | null>(null)
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('reading')
     if (!id) return
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
     sb.from('xtell_readings').select('id, temple, subject, chart, extras, turns').eq('id', id).is('deleted_at', null).maybeSingle()
       .then(({ data }) => {
+        if (data?.temple === 'daily') { setSavedDaily(data as SavedDaily); return }
         if (!data || !TEMPLES.includes(data.temple)) return
         setSaved(data as SavedReading)
         setSelectedTemple(data.temple as Temple)
@@ -306,6 +269,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   // prepared question. Only a live catalog feature opens anything.
   const openFromGuide = (id: FeatureId, question: string | null) => {
     const feature = liveFeature(id)
+    if (feature?.opens === 'daily') { setDailySignal(n => n + 1); return }
     if (!feature?.temple) return
     const store = sessionStore()
     if (store) writeHandoff(store, feature.id, question)
@@ -335,6 +299,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <>
         <XTellAssistant onOpen={openFromGuide} />
+        <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
         <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={enterFromStreet} />
       </> : <>
         <XTellAuthGate />
@@ -565,13 +530,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const choosePreset = (m: PickerModel) => setMasters(ms => ms[0]?.id === m.id ? ms
     : ms.some(x => x.id === m.id) ? [m, ...ms.filter(x => x.id !== m.id)]
     : ms.length ? [m, ...ms.slice(1)] : [m])
-  const levelsOf = (m: PickerModel): string[] => ((m.output_config?.text?.thinking_levels ?? []) as string[])
   const searchable = (m: PickerModel) => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search')
-  const defaultThinking = (m: PickerModel): string | null => {
-    if (m.provider !== 'alibaba') return null
-    const want = m.model_name === 'qwen3.8-flash' ? 'thinking_true' : 'thinking_false'
-    return levelsOf(m).includes(want) ? want : null
-  }
   const defaultOpts = (m: PickerModel): SeatOpts => ({ thinking: defaultThinking(m), search: false })
   const optsOf = (m: PickerModel): SeatOpts => seatOpts[m.id] ?? defaultOpts(m)
   const setOpts = (m: PickerModel, patch: Partial<SeatOpts>) => setSeatOpts(o => ({ ...o, [m.id]: { ...optsOf(m), ...patch } }))
@@ -643,12 +602,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   useEffect(() => {
     if (temple !== 'zhanxing') return
     try {
-      const raw = localStorage.getItem(REMEMBER_KEY)
-      if (!raw) return
-      const v = JSON.parse(raw)
-      if (v && Number.isInteger(v.y)) {
-        setBirth(b => ({ ...b, y: v.y, m: v.m, d: v.d, h: v.h, mi: v.mi, gender: v.gender ?? b.gender }))
-        if (typeof v.place === 'string') setPlace(v.place)
+      const v = rememberedBirth(localStorage.getItem(REMEMBER_KEY))
+      if (v) {
+        setBirth(b => ({ ...b, y: v.y, m: v.m, d: v.d, h: v.h, mi: v.mi, hourUnknown: v.hourUnknown, gender: v.gender ?? b.gender }))
+        if (v.place) setPlace(v.place)
       }
     } catch { /* no memory is fine; the form still works */ }
   }, [temple])

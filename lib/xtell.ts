@@ -23,6 +23,7 @@ import {
 } from './astrology'
 import { placeOf } from './xtell-places'
 import { birthProblem } from './xtell-birth'
+import { resolveWallTime, inUtc8 } from './xtell-time'
 export { birthProblem, type BirthProblem } from './xtell-birth'
 import { weigh, zhiOfHour, weightText, lunarDateZh, monthZh, dayZh, CHENGGU_TABLE, type Chenggu, type ChengguLunar } from './xtell-chenggu'
 export { CHENGGU_VERSION, type Chenggu } from './xtell-chenggu'
@@ -279,6 +280,124 @@ export function chengguFacts(c: Chenggu): string {
     ...(c.variants ?? []).map(v => `  版本差異：${v.entry === 'guihai' ? '癸亥年' : '農曆二十日'}在本表為 ${w(v.v1)}，另有流通版本記為 ${w(v.other)}${v.total !== null ? `；只把這一項改為 ${w(v.other)}、其他各項不變時，總重是 ${w(v.total)}` : ''}。`),
     `  頁面白話主題（傳統意象，不是個人預測）：${(c.total !== null ? [c.total] : (c.options ?? []).map(o => o.total)).map(q => `${w(q)}：${chengguTheme(q) ?? '未收錄，不可杜撰'}`).join('；')}。`,
     `  稱骨是民間傳統算法，不是經過驗證的預測，不可說成定論，重量不代表人生好壞。只依上列白話主題解釋傳統意象；不要引述、補寫或改寫任何稱骨歌句，不可預言壽命、生育、財富或地位，也不要從歌訣要求改名、搬家或改信宗教。時辰未知時逐項說明，不可選定單一結果。信眾問到稱骨或幾兩幾錢時再談；一般解讀不必提。`,
+  ].filter(Boolean).join('\n')
+}
+
+// ── 每日運勢：八字流日 ─────────────────────────────────────────────────────────
+// The free daily fortune (app/api/xtell/daily) reads today's day pillar
+// against a SAVED birth profile, which, unlike the 八字廟 form, has a birth
+// place and so a zone. The pillars follow two clocks (Codex review):
+//  - year and month change at a 節, an instant; the calendar library keeps
+//    its 節 on UTC+8, so the birth instant is expressed on that clock for
+//    them. 2026 立春 is 04:02 in Taipei and 05:02 in Seoul: a Seoul 04:30
+//    birth is still 乙巳 year, a Taipei 04:30 birth is 丙午.
+//  - day and hour follow the local civil date and time, the site's
+//    convention everywhere (23:00 keeps the date).
+// Every 十神 is read against the LOCAL day master, never against the UTC+8
+// chart's own day, which differs near midnight. No 大運 here (not needed
+// for a day, and its start age would need its own review).
+
+export type DailyPillar = string | [string, string]
+export type DailyNatal = {
+  /** 日主: the local day's stem. */
+  dayMaster: string
+  pillars: { year: DailyPillar; month: DailyPillar; day: string; time: string | null }
+  hourUnknown: boolean
+}
+
+/** The instants a civil date spans in a zone: [its first instant, the next
+ *  date's first instant). A day may be 23 or 25 hours, and a zone that
+ *  skipped midnight starts the day at the first time that existed. */
+export function civilDay(y: number, m: number, d: number, tz: string): [number, number] {
+  const first = (yy: number, mm: number, dd: number): number => {
+    for (let min = 0; min < 240; min++) {
+      const w = resolveWallTime(yy, mm, dd, Math.floor(min / 60), min % 60, tz)
+      if (w.kind === 'exact') return w.utc
+      if (w.kind === 'ambiguous') return w.utc[0]
+    }
+    return Date.UTC(yy, mm - 1, dd)
+  }
+  const next = new Date(Date.UTC(y, m - 1, d + 1))
+  return [first(y, m, d), first(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate())]
+}
+
+/** Year and month pillars at an instant, on the 節 clock (UTC+8). */
+function yearMonthAt(at: number): { year: string; month: string } {
+  const p = inUtc8(at)
+  const e = Solar.fromYmdHms(p.y, p.m, p.d, p.h, p.mi, p.s).getLunar().getEightChar()
+  return { year: e.getYear(), month: e.getMonth() }
+}
+
+/**
+ * A birth with a place, charted for the daily fortune. `utc` is the birth
+ * instant (lib/xtell-time birthInstant: gaps refused, repeats chosen), or
+ * null when the hour is unknown, in which case year and month are read at
+ * both ends of the civil day in the birth zone and kept as a pair when a 節
+ * falls inside it.
+ */
+export function baziNatalZoned(b: { y: number; m: number; d: number; h: number; mi: number; hourUnknown?: boolean }, tz: string, utc: number | null): DailyNatal {
+  const unknown = b.hourUnknown === true || utc === null
+  const local = Solar.fromYmdHms(b.y, b.m, b.d, unknown ? 12 : b.h, unknown ? 0 : b.mi, 0).getLunar().getEightChar()
+  let year: DailyPillar, month: DailyPillar
+  if (!unknown) {
+    ({ year, month } = yearMonthAt(utc as number))
+  } else {
+    const [start, end] = civilDay(b.y, b.m, b.d, tz)
+    const a = yearMonthAt(start), z = yearMonthAt(end - 1000)
+    year = a.year === z.year ? a.year : [a.year, z.year]
+    month = a.month === z.month ? a.month : [a.month, z.month]
+  }
+  return {
+    dayMaster: local.getDayGan(),
+    pillars: { year, month, day: local.getDay(), time: unknown ? null : local.getTime() },
+    hourUnknown: unknown,
+  }
+}
+
+export type LiuRiRelation = { with: 'year' | 'month' | 'day' | 'time'; natal: string; kind: BranchRelation['kind']; undecided?: true }
+export type LiuRi = {
+  date: string
+  tz: string
+  day: string
+  dayShiShen: string
+  month: string
+  monthShiShen: string
+  year: string
+  yearShiShen: string
+  relations: LiuRiRelation[]
+  hourUnknown: boolean
+}
+
+/** 流日: the local date's day pillar against a natal chart, with the month
+ *  and year in force at the day's anchor (local noon, on the 節 clock). */
+export function liuRi(n: DailyNatal, date: string, tz: string, anchor: number): LiuRi {
+  const [y, m, d] = date.split('-').map(Number)
+  const day = Solar.fromYmd(y, m, d).getLunar().getDayInGanZhi()
+  const { year, month } = yearMonthAt(anchor)
+  const god = (gz: string) => tcShiShen(LunarUtil.SHI_SHEN[n.dayMaster + gz[0]] ?? '—')
+  const relations: LiuRiRelation[] = []
+  for (const k of ['year', 'month', 'day', 'time'] as const) {
+    const p = n.pillars[k]
+    if (p === null) continue
+    for (const gz of Array.isArray(p) ? p : [p]) {
+      relations.push({ with: k, natal: gz, kind: branchRelation(day[1], gz[1]).kind, ...(Array.isArray(p) ? { undecided: true as const } : {}) })
+    }
+  }
+  return { date, tz, day, dayShiShen: god(day), month, monthShiShen: god(month), year, yearShiShen: god(year), relations, hourUnknown: n.hourUnknown }
+}
+
+const PILLAR_ZH = { year: '年柱', month: '月柱', day: '日柱', time: '時柱' } as const
+/** The day's BaZi basis as the daily writer and the follow-up teacher read it. */
+export function liuRiFacts(n: DailyNatal, l: LiuRi): string {
+  const show = (p: DailyPillar) => Array.isArray(p) ? `${p[0]}或${p[1]}（出生當天交節、時辰未知，未定）` : p
+  const rel = l.relations.filter(r => r.kind !== '無特殊關係')
+  return [
+    `本命（依出生地時區；年、月依節氣時刻，日、時依當地日期與時間）：年柱 ${show(n.pillars.year)}、月柱 ${show(n.pillars.month)}、日柱 ${n.pillars.day}${n.pillars.time ? `、時柱 ${n.pillars.time}` : '（時辰未知，不論時柱）'}；日主 ${n.dayMaster}`,
+    `今日（${l.date}，${l.tz} 當地日期）：流日 ${l.day}，天干對日主為${l.dayShiShen}；流月 ${l.month}（${l.monthShiShen}）；流年 ${l.year}（${l.yearShiShen}）。`,
+    rel.length
+      ? `流日地支與本命：${rel.map(r => `${r.natal[1]}（${PILLAR_ZH[r.with]}${r.undecided ? '，未定之一' : ''}）${r.kind}`).join('；')}。`
+      : '流日地支與本命各柱沒有合、沖、刑、害。',
+    l.hourUnknown ? '時辰未知：只看年、月、日三柱，不談時柱所主之事。' : '',
   ].filter(Boolean).join('\n')
 }
 
@@ -696,7 +815,7 @@ const ASTRO_SIGNS = ['牡羊', '金牛', '雙子', '巨蟹', '獅子', '處女',
 // tendencies, never verdicts.
 // The 繁體 clause is for Qwen Flash, which let 进得来／性质／这一年 slip into
 // an otherwise Traditional reading (Sep 24).
-const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。以繁體中文回答時，全文一律繁體字，不得夾雜任何簡體字。'
+export const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。以繁體中文回答時，全文一律繁體字，不得夾雜任何簡體字。'
 
 export const MASTERS: Record<Temple, string> = {
   yuelao: `你是「月老廟」的駐廟老師，一位慈祥風趣、閱人無數的月老。兩位有緣人的八字命盤已由系統排好，附在訊息中。
