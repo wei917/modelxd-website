@@ -25,7 +25,7 @@ rating system (XDRating) surfaced on XBoard.
 - **Framework**: Next.js 16 App Router (React 18)
   - The Edge network gate is `proxy.ts` at the repo root — Next 16 renamed
     `middleware.ts` to `proxy.ts`. Same behavior, canonical name.
-- **Hosting**: Vercel (2 cron jobs in `vercel.json`)
+- **Hosting**: Vercel (3 cron jobs in `vercel.json`)
 - **Database + Auth**: Supabase (PostgreSQL + Google OAuth + anonymous sessions)
 - **Payments**: Stripe (credit top-ups)
 - **AI Providers**: 7 direct integrations — OpenAI, Google, Alibaba DashScope,
@@ -826,6 +826,10 @@ TRIPO_API_KEY=                        # Tripo3D proxy (/api/v1/tripo/*) — see 
                                       #   unset = those routes answer 503
 WORLDLABS_API_KEY=                    # World Labs Marble (XWorld worlds); unset = /api/xworld answers 503 for worlds
 CRON_SECRET=                          # guards /api/cron/* and refit
+TRENDING_MONTHLY_BUDGET_USD=          # weekly trending search (Grok x_search); runs refused once
+                                      #   the month's logged spend reaches it; unset = $10
+TRENDING_KINDS=                       # kinds the Monday search runs: video (default) or video,image
+TRENDING_GROK_MODEL=                  # unset = grok-4.7
 SITE_AGENT_MODEL=                     # override the site agent's model
 XDIRECTOR_MODEL=                      # override the director's model
 HOUSE_FALLBACK_MODEL=                 # OpenAI stand-in for house-paid calls;
