@@ -51,7 +51,7 @@ time for free. The models' job is the part with no right answer: the reading.
 
 | temple | method | engine | notes |
 |---|---|---|---|
-| 八字廟 | BaZi four pillars | `lunar-typescript` (MIT, zero deps) | 節氣-exact: year pillar turns at the 立春 INSTANT (20:40:24-level precision), 五虎遁/五鼠遁, 藏干, 十神, 納音, 大運 via `getYun(gender)` |
+| 八字廟 | BaZi four pillars | `lunar-typescript` (MIT, zero deps) | 節氣-exact: year pillar turns at the 立春 INSTANT (20:40:24-level precision), 五虎遁/五鼠遁, 藏干, 十神, 納音, 大運 via `getYun(gender)`. **稱骨 (Sep 27):** a 幾兩幾錢 card under the pillars, see "稱骨" below |
 | 紫微斗數廟 | Zi Wei Dou Shu | `iztro` (MIT) | 12 palaces, major/minor/adjective stars, brightness + 四化 (mutagen), 五行局, 命主/身主. Needs an exact hour — 命宮 cannot be placed without one. **運限 (Sep 24):** `a.horoscope(date)` gives the 大限 in force (natal palace + age range), this year's and next year's 流年, and the current 流月, each with its 命宮's natal palace, its 四化 by star, and the role→natal-palace map (流年官祿 = 本命 X 宮). Serialized in `ziweiFacts` and shown on the board; `ziweiChart(b, now)` takes the date so the golden suite freezes it. Before this both masters correctly said the chart had no 流年 |
 | 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
 | 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1. **稟告 (Sep 24, optional, both 籤 temples):** a collapsed block for 稱呼, 縣市 and a birth row; whatever is filled in goes to the master (`bingGaoFacts`), a birth adds the 八字 + this year's 流年 under the stick (same `liuNian` as 四面佛). Never an address; nothing stored. 籤是主、命是輔 is in both prompts |
@@ -388,6 +388,8 @@ app/api/xtell/reading/route.ts  # POST {temple, birth[, birth2], question, model
 lib/xtell.ts                # charts, facts serializers, ENGINES, MASTERS, validBirth,
                             #   關帝 corpus loader + guandiFacts, 四面佛 liuNian + simianfoFacts
 lib/xtell-ritual.ts         # client-safe ritual: drawQian / throwJiao / cryptoRand / CONFIRM_THROWS
+lib/xtell-chenggu.ts        # 稱骨 table v1 + weigh() + wording, client-safe (chengGu() is in lib/xtell.ts)
+scripts/test-xtell-chenggu.ts  # 稱骨 suite (in npm run test:xtell), routes included
 lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, nakshatra, Vimshottari, facts
 lib/astrology.ts            # Western engine: tropical positions, Placidus houses, aspects,
                             #   transits, secondary progressions, solar return, synastry + composite
@@ -472,6 +474,48 @@ serializes THREE pillars only, marks 大運 start-ages approximate, and orders
 the master to disclose the limit and keep 時柱-domain claims (晚年/子女/內心
 底色) soft. Idea from vedic-astro-skills' rectifier; a future rectifier
 temple (deduce the hour from life events) is on the backlog.
+
+## 稱骨 (八字幾兩幾錢, Sep 27)
+
+A card under the 八字 pillars: four table weights (lunar year 干支, lunar
+month, lunar day, 時辰) and their sum in 兩/錢. Implemented with Codex
+(independent review). `lib/xtell-chenggu.ts` (client-safe: table, `weigh()`,
+wording) + `chengGu()` / `chengguFacts()` in `lib/xtell.ts` (the calendar
+step). The chart route returns `chenggu` for 八字 only and saves it in the
+row's `extras`; a reopened visit recomputes it (`refresh`); the reading
+route recomputes the facts from the birth and never reads a client value.
+
+- **Table v1** = the commonly published table, compared entry by entry
+  (2026-09-27) with fatekeep.com/blog/2401, 易安居 zhouyi.cc, zhunsuan.org
+  and tt-qimen (all 114 match), 356.com.tw (matches but for two typos).
+  The two entries copies disagree on: 癸亥 year (v1 7錢; 6錢 in
+  fortune-assistant, hankwu61/lunarcalendar tools/chenggu.py, suanzhun.net,
+  yourchineseastrology.com) and lunar day 20 (v1 1兩5錢; 1兩 in
+  hankwu61/lunarcalendar, suanzhun.net). A birth that uses either gets a
+  note with the total **with only that entry changed** (hankwu61 changes
+  both, so no line claims to be "that version's" total). The card links the
+  compared copies (`CHENGGU_SOURCES`). A weight change = a new
+  `CHENGGU_VERSION`.
+- **Calendar rules** (stated on the card and in the facts): year changes at
+  正月初一, not 立春 (2000-02-04 23:00 is 己卯 here, 庚辰 on the board);
+  the lunar calendar month, not the 節 month; a leap month weighs as the
+  month it repeats (no split at the 16th); the date changes at 00:00, so
+  23:00–23:59 is that date's 子時, and the 23:00-turns-the-day total is
+  given beside it (`lateZi`); clock time as entered, no true-solar-time
+  correction; one table for men and women.
+- **Unknown hour:** no total. The year+month+day part and the discrete
+  totals the twelve 時辰 give, each with its 時辰 (1990-01-01: 32, 33, 34,
+  35, 36, 42, not "32–42").
+- **No verses.** No verified edition exists (zh.wikisource has none; the
+  copies disagree, and the verses differ for men and women), so none is
+  shown and the facts forbid the master to quote or write one. The facts
+  also say it is a folk method, not a tested prediction, and to bring it up
+  when asked rather than in every reading.
+- Tests: `scripts/test-xtell-chenggu.ts` (in `npm run test:xtell`): the
+  table against the published text, Codex's HKO cases, 立春 vs 正月初一,
+  leap months, 23:00/00:00 and every hour boundary, unknown hour, variants,
+  invalid dates, time-zone and sex invariance, and both routes run for real
+  with auth/DB/model faked.
 
 ## Golden charts (`npm run test:xtell`)
 

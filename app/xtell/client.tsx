@@ -63,6 +63,7 @@ import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localSt
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
+import { weightText, monthZh, dayZh, ZHI_SPAN, CHENGGU_SOURCES, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
@@ -366,6 +367,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [match, setMatch] = useState<any>(initial?.extras?.match ?? null)   // 月老廟's computed 合盤
   const [year, setYear] = useState<any>(initial?.extras?.year ?? null)     // 四面佛's (and an optional 稟告's) computed 流年
   const [bazi, setBazi] = useState<any>(initial?.extras?.bazi ?? null)     // 稟告 birth → 八字, shown under the stick
+  const [chenggu, setChenggu] = useState<Chenggu | null>(initial?.extras?.chenggu ?? null)   // 八字廟's 稱骨 weights
   // 關帝/媽祖 稟告: optional name, city, and whether to attach `birth`.
   const [bing, setBing] = useState({ name: init.name ?? '', city: init.city ?? '', withBirth: !!(init.birth && isQian(temple)) })
   // 關帝廟: the matter asked, and the ritual. The poem is never in the client
@@ -456,7 +458,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         // birthday, so it is offered again rather than called invalid.
         if (res.status >= 400 && res.status < 500 && typeof d?.code === 'string') { setSavedProblem(d.code); setCheck('ok'); return }
         if (!res.ok) { setCheck(staleRisk ? 'failed' : 'ok'); return }
-        setChart(d.chart); setMatch(d.match ?? null); setYear(d.year ?? null); setBazi(d.bazi ?? null); setEngine(d.engine ?? null)
+        setChart(d.chart); setMatch(d.match ?? null); setYear(d.year ?? null); setBazi(d.bazi ?? null); setChenggu(d.chenggu ?? null); setEngine(d.engine ?? null)
         setCheck('ok')
       })
       .catch(() => { if (token === refreshToken.current) setCheck(staleRisk ? 'failed' : 'ok') })
@@ -629,6 +631,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       setMatch(d.match ?? null)
       setYear(d.year ?? null)
       setBazi(d.bazi ?? null)
+      setChenggu(d.chenggu ?? null)
       setEngine(d.engine ?? null)
       setReadingId(typeof d.readingId === 'string' ? d.readingId : null)
       setEntered(true)
@@ -1137,7 +1140,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               the reading. */}
           {showChart && chart && !savedProblem && (!unverified || isQian(temple)) && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
-              {temple === 'bazi' ? <BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />
+              {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} />}</>
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
                 : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={unverified ? null : bazi} year={unverified ? null : year} hourUnknown={bing.withBirth && !!birth.hourUnknown} />
                 : temple === 'xingming' ? <NameBoard chart={chart} />
@@ -1338,7 +1341,8 @@ function ResultGuide({ temple, chart, onExample, showExamples }: { temple: Templ
     } catch { /* an older saved chart shape simply has no fact line */ }
     return ''
   })()
-  const questions = [1, 2, 3].map(i => t(`xtell.q.${temple}.${i}`))
+  // Three per temple; 八字廟 has a fourth, the way into its 稱骨 card.
+  const questions = [1, 2, 3, 4].map(i => t(`xtell.q.${temple}.${i}`)).filter(q => !q.startsWith('xtell.q.'))
   return (
     <section className="xtell-guide" aria-label={t('xtell.guide.title')} style={{ ...card, padding: '12px 16px', display: 'grid', gap: 6 }}>
       <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.guide.title')}</div>
@@ -1489,6 +1493,97 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
       ) : d ? <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 10 }}>{t('xtell.dayun.hidden')}</div> : null}
       {t('xtell.bazi.glossary') && <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.bazi.glossary')}</p>}
     </div>
+  )
+}
+
+/**
+ * 稱骨 (八字幾兩幾錢), under the pillars. Every number is the chart route's
+ * (lib/xtell-chenggu); this lays them out in the visitor's language, says
+ * which calendar rules produced them (the lunar New Year, not the 立春 the
+ * pillars above use) and never shows one total for an unknown hour: it
+ * lists the totals the twelve 時辰 could give instead.
+ */
+function ChengguCard({ data }: { data: Chenggu }) {
+  const t = useT()
+  const { lang } = useLang()
+  const titleId = useId()
+  if (!data?.lunar || !data?.weights) return null   // an unexpected saved shape
+  const w = (q: number) => weightText(q, lang)
+  const fill = (s: string, vars: Record<string, string>) => Object.entries(vars).reduce((acc, [k, v]) => acc.split(`{${k}}`).join(v), s)
+  const zh = lang === 'zh-Hant' || lang === 'zh-Hans'
+  const monthOf = (l: ChengguLunar) => zh ? `${l.leap ? (lang === 'zh-Hans' ? '闰' : '閏') : ''}${monthZh(l.month, lang)}`
+    : lang === 'ja' ? `${l.leap ? '閏' : ''}${l.month}月` : lang === 'ko' ? `${l.leap ? '윤' : ''}${l.month}월` : `${l.leap ? 'leap ' : ''}${l.month}`
+  const dayOf = (d: number) => zh ? dayZh(d) : lang === 'ja' ? `${d}日` : lang === 'ko' ? `${d}일` : String(d)
+  const hourOf = (z: keyof typeof ZHI_SPAN) => fill(t('xtell.cg.val.hour'), { zhi: z, span: ZHI_SPAN[z] })
+  const dateOf = (l: ChengguLunar) => fill(t('xtell.cg.date'), { gz: l.yearGanZhi, m: monthOf(l), d: dayOf(l.day) })
+  const L = data.lunar
+  const known = data.total !== null && data.zhi !== null
+  const rows = [
+    { key: 'year', label: t('xtell.cg.row.year'), value: L.yearGanZhi, qian: data.weights.year },
+    { key: 'month', label: t('xtell.cg.row.month'), value: `${monthOf(L)}${L.leap ? fill(t('xtell.cg.leapAs'), { cn: monthZh(L.month, lang), n: String(L.month) }) : ''}`, qian: data.weights.month },
+    { key: 'day', label: t('xtell.cg.row.day'), value: dayOf(L.day), qian: data.weights.day },
+    { key: 'hour', label: t('xtell.cg.row.hour'), value: data.zhi ? hourOf(data.zhi) : t('xtell.hourunknown'), qian: data.weights.hour },
+  ]
+  const note = { fontSize: 12, marginTop: 8, lineHeight: 1.7, padding: '8px 10px', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--surface2)' }
+  return (
+    <section aria-labelledby={titleId} className="xtell-chenggu" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+      <h3 id={titleId} style={{ ...mono, color: 'var(--muted2)', margin: 0, fontWeight: 600 }}>{t('xtell.cg.title')}</h3>
+      {known ? (
+        <p style={{ margin: '6px 0 0', fontFamily: 'var(--font-display), serif', fontSize: 26, fontWeight: 800, letterSpacing: 1 }}>{w(data.total as number)}</p>
+      ) : (
+        <div style={{ marginTop: 6 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t('xtell.cg.unknown.total')}</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.cg.unknown.lead')}</p>
+          <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12.5, lineHeight: 1.8 }}>
+            {(data.options ?? []).map(o => (
+              <li key={o.total}><b>{w(o.total)}</b>{t('xtell.cg.option.sep')}{o.zhi.map(hourOf).join(t('xtell.list.sep'))}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <details open style={{ marginTop: 8 }}>
+        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.parts')}</summary>
+        <table style={{ marginTop: 6, borderCollapse: 'collapse', fontSize: 12.5, width: '100%', maxWidth: 440 }}>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                <th scope="row" style={{ textAlign: 'left', fontWeight: 500, color: 'var(--muted2)', padding: '5px 10px 5px 0', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{r.label}</th>
+                <td style={{ padding: '5px 10px 5px 0' }}>{r.value}</td>
+                <td style={{ padding: '5px 0', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{r.qian === null ? '—' : w(r.qian)}</td>
+              </tr>
+            ))}
+            <tr>
+              <th scope="row" colSpan={2} style={{ textAlign: 'left', padding: '6px 10px 0 0' }}>{t(known ? 'xtell.cg.total' : 'xtell.cg.fixed')}</th>
+              <td style={{ padding: '6px 0 0', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700 }}>{w(known ? data.total as number : data.fixed)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+      {data.lateZi && <div role="note" style={note}>{fill(t('xtell.cg.lateZi'), { date: dateOf(data.lateZi.lunar), w: w(data.lateZi.total) })}</div>}
+      {(data.variants ?? []).map(v => (
+        <div key={v.entry} role="note" style={note}>
+          {fill(t(`xtell.cg.variant.${v.entry}`), { other: w(v.other), v1: w(v.v1), alt: v.total === null ? '' : fill(t('xtell.cg.variant.alt'), { other: w(v.other), w: w(v.total) }) })}
+        </div>
+      ))}
+      <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.rule')}</p>
+      <details style={{ marginTop: 6 }}>
+        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.about.title')}</summary>
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.about')}</p>
+        {/* Where the table comes from (Codex review): the copies it was
+            compared with, grouped by how they weigh the two disputed entries. */}
+        <div style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.cg.sources')}</div>
+        <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
+          {(['same', 'guihai', 'both'] as const).map(group => (
+            <li key={group}>
+              {t(`xtell.cg.src.${group}`)}{t('xtell.cg.option.sep')}
+              {CHENGGU_SOURCES.filter(src => (src.differs.length === 0 ? 'same' : src.differs.length === 2 ? 'both' : 'guihai') === group).map((src, i) => (
+                <span key={src.url}>{i > 0 && t('xtell.list.sep')}<a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{src.name}</a></span>
+              ))}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
   )
 }
 

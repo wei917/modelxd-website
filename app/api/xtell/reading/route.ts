@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 
@@ -174,7 +174,8 @@ export async function POST(req: Request) {
             const c = baziChart(body.birth)
             return simianfoFacts(c, body.birth.gender, body.birth?.hourUnknown === true, body.wishes, liuNian(c, body.birth.y, new Date().getFullYear()))
           })()
-          : baziFacts(baziChart(body.birth), body.birth.gender, body.birth?.hourUnknown === true)
+          // 八字廟: the pillars, then the 稱骨 weights from the same birth.
+          : `${baziFacts(baziChart(body.birth), body.birth.gender, body.birth?.hourUnknown === true)}\n\n${chengguFacts(chengGu(body.birth))}`
 
   // The chart rides in the SYSTEM slot with the master persona: every turn of
   // the conversation carries it natively, and the client can never overwrite

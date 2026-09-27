@@ -23,6 +23,8 @@ import {
 import { placeOf } from './xtell-places'
 import { birthProblem } from './xtell-birth'
 export { birthProblem, type BirthProblem } from './xtell-birth'
+import { weigh, zhiOfHour, weightText, lunarDateZh, monthZh, dayZh, CHENGGU_TABLE, type Chenggu, type ChengguLunar } from './xtell-chenggu'
+export { CHENGGU_VERSION, type Chenggu } from './xtell-chenggu'
 export { nameChart, nameFacts, validName, charInfo, ceziFacts, validChar } from './names'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -40,7 +42,7 @@ export function asTemple(v: unknown): Temple { return (TEMPLES as string[]).incl
 // names the engine that computed it, so a doubted 排盤 is checkable against
 // the exact library version rather than against "the site".
 export const ENGINES: Record<Temple, string> = {
-  bazi:   'lunar-typescript v1.8.6',
+  bazi:   'lunar-typescript v1.8.6 · 稱骨 通行本 v1',
   yuelao: 'lunar-typescript v1.8.6',
   ziwei:  'iztro v2.6.0',
   // 關帝廟 has no chart: the deterministic layer is the ritual (lib/xtell-ritual.ts)
@@ -223,6 +225,58 @@ export function baziFacts(c: BaziChart, gender: string, hourUnknown = false): st
     `藏干：年 ${p.year.hideGan.join('、')}；月 ${p.month.hideGan.join('、')}；日 ${p.day.hideGan.join('、')}；時 ${t.hideGan.join('、')}`,
     `五行（干支）：${c.wuXing.join('，')}`,
     c.daYun.length ? `大運：${c.daYun.map(d => `${d.startAge}歲起 ${d.ganZhi}`).join('；')}` : '',
+  ].filter(Boolean).join('\n')
+}
+
+// ── 稱骨 ────────────────────────────────────────────────────────────────────
+// The table and the rules are in lib/xtell-chenggu.ts; this is the one step
+// that needs the calendar. Year, month and day come from the calendar DATE
+// (the day turns at 00:00), so the hour never moves them; it picks only the
+// 時辰.
+
+/** The lunar date 稱骨 reads: the year by 正月初一 (not 立春, unlike the 年柱),
+ *  the calendar month (a leap month keeps its number, flagged), the day. */
+function chengguLunar(s: Solar): ChengguLunar {
+  const l = s.getLunar()
+  return { yearGanZhi: l.getYearInGanZhi(), month: Math.abs(l.getMonth()), leap: l.getMonth() < 0, day: l.getDay() }
+}
+
+/** 稱骨 for a birth validBirth() accepted. An unknown hour has no 時辰 and so
+ *  no total, never the noon placeholder's; a birth at 23:xx also carries the
+ *  total by the school that turns the day at 23:00. */
+export function chengGu(b: BirthInput): Chenggu {
+  const problem = birthProblem(b)
+  if (problem) throw new RangeError(`chengGu: ${problem}`)
+  const date = Solar.fromYmd(b.y, b.m, b.d)
+  const unknown = b.hourUnknown === true
+  const out = weigh(chengguLunar(date), unknown ? null : zhiOfHour(b.h))
+  if (unknown || b.h !== 23) return out
+  const next = weigh(chengguLunar(date.next(1)), '子')
+  return { ...out, lateZi: { lunar: next.lunar, weights: next.weights, total: next.total as number } }
+}
+
+/**
+ * The 稱骨 lines for the 八字 master: the weights and the sum as the card
+ * shows them, the rules they follow, and the limits. There is no verse text
+ * here to quote (no edition is verified), so the master is told not to
+ * supply one; the method is a folk tradition, not a tested prediction; and
+ * it waits until the visitor asks, so a reading of the pillars is not
+ * steered by it.
+ */
+export function chengguFacts(c: Chenggu): string {
+  const w = (q: number) => weightText(q)
+  const parts = (l: ChengguLunar, x: { year: number; month: number; day: number }) =>
+    `年 ${l.yearGanZhi} ${w(x.year)}＋月 ${l.leap ? `閏${monthZh(l.month)}（按${monthZh(l.month)}計）` : monthZh(l.month)} ${w(x.month)}＋日 ${dayZh(l.day)} ${w(x.day)}`
+  return [
+    `稱骨（八字幾兩幾錢）：重量表 ${CHENGGU_TABLE}，男女同表。算法：年以農曆正月初一換年（不是四柱所用的立春），月用農曆月份（不是節氣月），閏月按所閏的月份計，00:00 換日（23:00–23:59 仍算當天子時），依所填鐘錶時間，不做真太陽時校正。`,
+    c.total !== null && c.zhi
+      ? `  農曆 ${lunarDateZh(c.lunar)} ${c.zhi}時：${parts(c.lunar, c.weights)}＋時 ${c.zhi} ${w(c.weights.hour as number)}＝${w(c.total)}`
+      : `  農曆 ${lunarDateZh(c.lunar)}，時辰未知：${parts(c.lunar, c.weights)}，小計 ${w(c.fixed)}。時辰未定，總重只能是以下其中之一：${(c.options ?? []).map(o => `${w(o.total)}（${o.zhi.join('、')}時）`).join('；')}。不可給出單一總重，也不可把中午當作出生時辰。`,
+    c.lateZi ? `  晚子時另一說：以 23:00 換日的算法會算作次日 ${lunarDateZh(c.lateZi.lunar)} 子時：${parts(c.lateZi.lunar, c.lateZi.weights)}＋時 子 ${w(c.lateZi.weights.hour as number)}＝${w(c.lateZi.total)}。本站採 00:00 換日；兩種算法都要照實說明，不可只講一種。` : '',
+    // Each alternative changes only its own entry: a table that differs on
+    // both (hankwu61) is not what either line describes (Codex review).
+    ...(c.variants ?? []).map(v => `  版本差異：${v.entry === 'guihai' ? '癸亥年' : '農曆二十日'}在本表為 ${w(v.v1)}，另有流通版本記為 ${w(v.other)}${v.total !== null ? `；只把這一項改為 ${w(v.other)}、其他各項不變時，總重是 ${w(v.total)}` : ''}。`),
+    `  稱骨是民間傳統算法，不是經過驗證的預測，不可說成定論。本站沒有收錄稱骨歌（各版本文字不一，男命女命也不同，尚未查證）：不要引述、補寫或改寫任何稱骨歌句或「某兩某錢之命」的評語，只說明重量怎麼算、傳統上怎麼看待輕重。信眾問到稱骨或幾兩幾錢時再談；一般解讀不必提。`,
   ].filter(Boolean).join('\n')
 }
 

@@ -5,12 +5,12 @@
 //
 // 關帝廟 has no chart: the input is the stick number the ritual produced,
 // and the "chart" is the poem loaded from disk. 四面佛 is a 八字 chart plus
-// this year's 流年 read against it.
+// this year's 流年 read against it. 八字廟 also weighs the birth (稱骨).
 
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
+import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
 
 // Every refusal carries a stable `code` the client turns into a sentence in
@@ -186,8 +186,12 @@ export async function POST(req: Request) {
     const year = temple === 'simianfo'
       ? liuNian(chart as any, body.birth.y, new Date().getFullYear())
       : undefined
-    const readingId = await keep(() => save(sb, user.id, temple, body, chart, { match, year }))
-    return Response.json({ temple, chart, match, year, engine: ENGINES[temple], readingId })
+    // 八字廟: the same birth weighed by the 稱骨 table (lib/xtell-chenggu),
+    // shown under the pillars. Saved with the visit, and recomputed with
+    // the chart when it is reopened (`refresh`).
+    const chenggu = temple === 'bazi' ? chengGu(body.birth) : undefined
+    const readingId = await keep(() => save(sb, user.id, temple, body, chart, { match, year, chenggu }))
+    return Response.json({ temple, chart, match, year, chenggu, engine: ENGINES[temple], readingId })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)
     return refuse('chart_failed', 'chart computation failed', 500)
