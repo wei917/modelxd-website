@@ -85,7 +85,7 @@ export function presetTemplate(post: TrendingPost, lang: Lang): Template | null 
   }
 }
 
-type Copy = { title: string; loadMore: string; loading: string; end: string; failed: string; use: string; needsImage: string; open: string } & Record<TrendingFeedKind, string>
+type Copy = { title: string; loadMore: string; loading: string; end: string; failed: string; use: string; open: string } & Record<TrendingFeedKind, string>
 
 export const TRENDING_COPY: Record<Lang, Copy> = {
   en: {
@@ -98,7 +98,6 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     end: 'That is everything so far.',
     failed: 'Could not load more posts.',
     use: 'Use this preset',
-    needsImage: 'Then add your own picture',
     open: 'Open on X',
   },
   'zh-Hant': {
@@ -111,7 +110,6 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     end: '目前就是這些。',
     failed: '無法載入更多貼文。',
     use: '套用這組設定',
-    needsImage: '再加上你自己的圖片',
     open: '在 X 上開啟',
   },
   'zh-Hans': {
@@ -124,7 +122,6 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     end: '目前就是这些。',
     failed: '无法加载更多帖子。',
     use: '套用这组设置',
-    needsImage: '再加上你自己的图片',
     open: '在 X 上打开',
   },
   ja: {
@@ -137,7 +134,6 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     end: '現在はここまでです。',
     failed: '続きを読み込めませんでした。',
     use: 'このプリセットを使う',
-    needsImage: 'あとで自分の画像を追加',
     open: 'Xで開く',
   },
   ko: {
@@ -150,7 +146,6 @@ export const TRENDING_COPY: Record<Lang, Copy> = {
     end: '지금은 여기까지예요.',
     failed: '더 불러오지 못했어요.',
     use: '이 프리셋 사용',
-    needsImage: '그다음 내 이미지를 추가하세요',
     open: 'X에서 열기',
   },
 }

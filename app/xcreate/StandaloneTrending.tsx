@@ -227,7 +227,6 @@ export default function StandaloneTrending({ kind, onUse, disabled }: {
               <button type="button" className="xcs-trend-use" disabled={disabled}
                 onClick={() => onUse?.(preset)}>{copy.use}</button>
             </div>}
-            {preset && post.preset?.needsImage && <p className="xcs-trend-note">{copy.needsImage}</p>}
           </article>
         })}
       </div>)}
