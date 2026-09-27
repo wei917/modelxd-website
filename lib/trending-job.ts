@@ -73,11 +73,18 @@ const SEARCH_GROUPS: Record<TrendKind, string[]> = {
     '(Veo OR Sora OR Runway OR "Grok Imagine")',
     '(Wan OR HappyHorse OR Midjourney OR "AI video")',
   ],
-  image: ['("GPT Image" OR Midjourney OR "Nano Banana" OR Imagen OR Seedream OR Flux OR "Qwen Image" OR "AI art")'],
+  image: [
+    '("GPT Image" OR "Nano Banana" OR Imagen OR Seedream)',
+    '(Midjourney OR Flux OR "Qwen Image" OR "AI art")',
+  ],
 }
-/** Upper end of one search in the Sep 26 tests ($0.22–0.82), for the budget
- *  check a run makes before it spends anything. */
-const SEARCH_WORST_USD = 0.9
+/** What one search is assumed to cost when the log cannot say: a
+ *  conservative ESTIMATE from the Sep 26 tests ($0.22–0.82 observed), not a
+ *  cap. Grok's spend cannot be capped per call, so no bound here is a
+ *  guarantee; the budget check below is only as good as this estimate. */
+const SEARCH_EST_USD = 0.9
+/** One search's cap; see runTrendingKinds for the whole run's time budget. */
+const SEARCH_TIMEOUT_MS = 480_000
 
 function searchPrompt(kind: TrendKind, from: string, to: string, names: string, catchAll: boolean): string {
   const media = kind === 'video' ? 'AI-GENERATED VIDEO' : 'AI-GENERATED IMAGE'
@@ -147,7 +154,9 @@ async function searchX(kind: TrendKind, from: string, to: string, names: string,
         max_output_tokens: 32000,
         stream: true,
       }),
-      signal: AbortSignal.timeout(9 * 60 * 1000),
+      // Every search runs in parallel and must end inside the route's 800s
+      // with room left for the post checks (CHECK_BUDGET_MS) and writes.
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     })
     if (!res.ok || !res.body) throw new Error(`xAI ${res.status}: ${(await res.text()).slice(0, 300)}`)
     const body: any = await completedResponse(res.body)
@@ -208,6 +217,18 @@ async function postText(handle: string, id: string): Promise<string | null> {
  *  (Sep 26: @abxxai says "made this with Claude Opus 5.5 and Seedance 2.5"
  *  while Grok listed Seedance alone). */
 const LLM_MENTION = /\b(claude|opus|sonnet|chat\s*gpt|gpt[-\s]?5|codex|cursor|copilot|ai agent)\b/i
+/** A named image model. For image posts, ChatGPT beside one of these is the
+ *  app the model ran in ("GPT Image 2, generated on ChatGPT"), not an LLM
+ *  making the work (Codex review, Sep 27). The owner's rule is unchanged:
+ *  agent and LLM workflows stay out, and a post must still name the model. */
+const IMAGE_MODEL_NAME = /gpt[-\s]?image|dall[-\s·]?e|imagen|nano\s*banana|midjourney|flux|seedream|qwen[-\s]?image|ideogram|recraft/i
+const LLM_MENTION_BUT_CHATGPT = /\b(claude|opus|sonnet|gpt[-\s]?5|codex|cursor|copilot|ai agent)\b/i
+function namesImageModel(kind: TrendKind, models: string[]): boolean {
+  return kind === 'image' && models.some(m => IMAGE_MODEL_NAME.test(m))
+}
+function isChatGptApp(name: string): boolean {
+  return /^chat\s*gpt$/i.test(name.trim())
+}
 
 // ── presets ──────────────────────────────────────────────────────────────────
 
@@ -257,35 +278,92 @@ export type RunReport = {
   dropped: { url: string; reason: string }[]
 }
 
-async function monthSpend(sb: SupabaseClient, now: Date): Promise<number> {
+/** The month's trending spend as far as the log can tell, failing closed:
+ *  an unreadable log throws (no run). A search whose cost is unknown counts at
+ *  SEARCH_EST_USD, never as zero: one that started but never logged its end (a
+ *  run cut off before its log went out, Sep 27), and one that ended without a
+ *  cost. Start rows carry no job tag, so every unfinished call to the trending
+ *  model counts; that errs toward refusing. */
+export async function monthSpend(sb: SupabaseClient, now: Date): Promise<number> {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
-  const { data } = await sb.from('provider_calls').select('cost_usd')
+  const known = await sb.from('provider_calls').select('cost_usd')
     .eq('event', 'end').eq('provider', 'xai').eq('usage_metadata->>job', 'trending')
     .gte('created_at', start)
-  return (data ?? []).reduce((s, r: any) => s + (Number(r.cost_usd) || 0), 0)
+  if (known.error) throw new Error(`Trending budget unreadable: ${known.error.message}`)
+  const calls = await sb.from('provider_calls').select('request_id, event')
+    .eq('provider', 'xai').eq('model_name', GROK_MODEL).in('event', ['start', 'end'])
+    .gte('created_at', start)
+  if (calls.error) throw new Error(`Trending budget unreadable: ${calls.error.message}`)
+  const ended = new Set((calls.data ?? []).filter((r: any) => r.event === 'end').map((r: any) => r.request_id))
+  const orphans = (calls.data ?? []).filter((r: any) => r.event === 'start' && !ended.has(r.request_id)).length
+  const rows = (known.data ?? []) as { cost_usd: number | string | null }[]
+  const costOf = (r: { cost_usd: number | string | null }) => r.cost_usd == null ? NaN : Number(r.cost_usd)
+  const valid = (c: number) => Number.isFinite(c) && c >= 0
+  const logged = rows.reduce((sum, r) => valid(costOf(r)) ? sum + costOf(r) : sum, 0)
+  const noCost = rows.filter(r => !valid(costOf(r))).length   // null or unreadable
+  return logged + (noCost + orphans) * SEARCH_EST_USD
 }
 
-/** One kind, one search per SEARCH_GROUPS entry, candidates stored as
- *  'pending'. The searches run in parallel: one took up to ~220s in the
- *  Sep 26 tests, and in sequence they would outlast the route's 800s. Throws
- *  before any paid call when the run could push the month past its budget. */
-export async function runTrending(kind: TrendKind, now = new Date()): Promise<RunReport> {
+/** Every kind's searches at once (SEARCH_GROUPS), candidates stored as
+ *  'pending'. Time budget inside the routes' maxDuration of 800s: all searches
+ *  run in parallel and each aborts at SEARCH_TIMEOUT_MS (480s), then the post
+ *  checks get CHECK_BUDGET_MS (120s), then the inserts; kinds never run one
+ *  after another. One budget check covers the whole run and throws before
+ *  any paid call when its ESTIMATED cost (SEARCH_EST_USD a search) could pass
+ *  the month's budget; the actual cost can be higher. */
+export async function runTrendingKinds(kinds: TrendKind[], now = new Date()): Promise<{ reports: RunReport[]; errors: string[] }> {
   const sb = serviceClient()
   const spent = await monthSpend(sb, now)
-  const groups = SEARCH_GROUPS[kind]
-  if (spent + groups.length * SEARCH_WORST_USD > MONTHLY_BUDGET) {
-    throw new Error(`Trending search skipped: $${spent.toFixed(2)} spent this month; ${groups.length} searches could pass the $${MONTHLY_BUDGET} budget.`)
+  const searches = kinds.reduce((n, k) => n + SEARCH_GROUPS[k].length, 0)
+  if (spent + searches * SEARCH_EST_USD > MONTHLY_BUDGET) {
+    throw new Error(`Trending search skipped: about $${spent.toFixed(2)} spent this month (unknown costs counted at $${SEARCH_EST_USD} each); ${searches} more searches, estimated at $${(searches * SEARCH_EST_USD).toFixed(2)}, could pass the $${MONTHLY_BUDGET} budget.`)
   }
   const to = day(now)
   const from = day(new Date(now.getTime() - 7 * 86_400_000))
-  const results = await Promise.allSettled(groups.map((g, i) => searchX(kind, from, to, g, i === groups.length - 1)))
-  const ok = results.filter((r): r is PromiseFulfilledResult<GrokResult> => r.status === 'fulfilled').map(r => r.value)
-  if (ok.length === 0) throw (results[0] as PromiseRejectedResult).reason
-  // Most-liked first across the groups; ingest drops repeats by post id.
-  const posts = ok.flatMap(r => r.posts).sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
-  const costUsd = ok.reduce((sum, r) => sum + r.costUsd, 0)
-  const { report } = await ingestCandidates(sb, kind, posts, now)
-  return { ...report, from, to, costUsd }
+  const runs = await Promise.allSettled(kinds.map(async kind => {
+    const groups = SEARCH_GROUPS[kind]
+    const results = await Promise.allSettled(groups.map((g, i) => searchX(kind, from, to, g, i === groups.length - 1)))
+    const ok = results.filter((r): r is PromiseFulfilledResult<GrokResult> => r.status === 'fulfilled').map(r => r.value)
+    if (ok.length === 0) throw (results[0] as PromiseRejectedResult).reason
+    // Most-liked first across the groups; ingest drops repeats by post id.
+    const posts = ok.flatMap(r => r.posts).sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
+    const costUsd = ok.reduce((sum, r) => sum + r.costUsd, 0)
+    const { report } = await ingestCandidates(sb, kind, posts, now)
+    return { ...report, from, to, costUsd }
+  }))
+  const reports: RunReport[] = []
+  const errors: string[] = []
+  runs.forEach((r, i) => {
+    if (r.status === 'fulfilled') reports.push(r.value)
+    else errors.push(`${kinds[i]}: ${(r.reason as Error)?.message ?? r.reason}`)
+  })
+  return { reports, errors }
+}
+
+/** One kind (the admin page's "run"). */
+export async function runTrending(kind: TrendKind, now = new Date()): Promise<RunReport> {
+  const { reports, errors } = await runTrendingKinds([kind], now)
+  if (!reports.length) throw new Error(errors[0] ?? 'Trending search failed')
+  return reports[0]
+}
+
+/** Post checks run a few at a time and stop at a deadline, so a run with
+ *  many candidates still ends inside the route's 800s (Codex review, Sep 27).
+ *  A candidate not checked in time is dropped, never stored unverified. */
+const CHECK_CONCURRENCY = 6
+const CHECK_BUDGET_MS   = 120_000
+async function checkPosts(items: { handle: string; postId: string }[]): Promise<Map<string, string | null | 'unchecked'>> {
+  const out = new Map<string, string | null | 'unchecked'>()
+  const deadline = Date.now() + CHECK_BUDGET_MS
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const it = items[next++]
+      out.set(it.postId, Date.now() > deadline ? 'unchecked' : await postText(it.handle, it.postId))
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CHECK_CONCURRENCY, items.length) }, worker))
+  return out
 }
 
 /** Filter, verify and store Grok's candidates. Split from the search so it
@@ -300,6 +378,8 @@ export async function ingestCandidates(sb: SupabaseClient, kind: TrendKind, post
   const rows: any[] = []
   const seen = new Set<string>()
 
+  // Rules that need no network first; the post checks then run in a bounded pool.
+  const candidates: { p: GrokPost; url: string; handle: string; postId: string; models: string[] }[] = []
   for (const p of posts) {
     const url = String(p.url ?? '')
     const m = url.match(POST_URL)
@@ -309,10 +389,18 @@ export async function ingestCandidates(sb: SupabaseClient, kind: TrendKind, post
     seen.add(postId)
     const models = (p.models ?? []).map(s => String(s).trim()).filter(Boolean)
     if (models.length === 0) { report.dropped.push({ url, reason: 'names no model' }); continue }
-    if (models.some(isLlmName)) { report.dropped.push({ url, reason: `LLM or agent post (${models.join(', ')})` }); continue }
-    const text = await postText(handle, postId)
-    if (text === null) { report.dropped.push({ url, reason: 'post not found on X' }); continue }
-    if (LLM_MENTION.test(text)) { report.dropped.push({ url, reason: 'post credits an LLM or agent' }); continue }
+    const imageApp = namesImageModel(kind, models)
+    if (models.some(n => isLlmName(n) && !(imageApp && isChatGptApp(n)))) { report.dropped.push({ url, reason: `LLM or agent post (${models.join(', ')})` }); continue }
+    candidates.push({ p, url, handle, postId, models })
+  }
+  const texts = await checkPosts(candidates.map(c => ({ handle: c.handle, postId: c.postId })))
+
+  for (const { p, url, handle, postId, models } of candidates) {
+    const text = texts.get(postId)
+    if (text === 'unchecked') { report.dropped.push({ url, reason: 'not checked in time' }); continue }
+    if (text == null) { report.dropped.push({ url, reason: 'post not found on X' }); continue }
+    const mention = namesImageModel(kind, models) ? LLM_MENTION_BUT_CHATGPT : LLM_MENTION
+    if (mention.test(text)) { report.dropped.push({ url, reason: 'post credits an LLM or agent' }); continue }
 
     const summary: Record<string, string> = {}
     for (const l of LANGS) if (p.summary?.[l]) summary[l] = String(p.summary[l]).replace(/—/g, ', ').trim()
@@ -357,6 +445,8 @@ export async function ingestCandidates(sb: SupabaseClient, kind: TrendKind, post
 /** The kinds the weekly job searches. Images join when the owner turns them
  *  on (TRENDING_KINDS=video,image); the table and page already take them. */
 export function enabledKinds(): TrendKind[] {
-  const raw = (process.env.TRENDING_KINDS || 'video').split(',').map(s => s.trim())
+  // Images joined the default on Sep 27 (owner: "we should start to load
+  // popular image posts too"); TRENDING_KINDS still narrows it.
+  const raw = (process.env.TRENDING_KINDS || 'video,image').split(',').map(s => s.trim())
   return raw.filter((k): k is TrendKind => k === 'video' || k === 'image')
 }

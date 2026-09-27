@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:xtell": "tsx scripts/xtell-golden.ts && tsx scripts/test-astrology.ts && tsx scripts/test-yijing.ts && tsx scripts/test-yijing-retrieval.ts && tsx scripts/test-xtell-birth.ts && tsx scripts/test-xtell-chenggu.ts"
+    "test:xtell": "tsx scripts/xtell-golden.ts && tsx scripts/test-astrology.ts && tsx scripts/test-yijing.ts && tsx scripts/test-yijing-retrieval.ts && tsx scripts/test-xtell-birth.ts && tsx scripts/test-xtell-chenggu.ts",
+    "test:trending": "tsx scripts/test-trending-cursor.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.0",
