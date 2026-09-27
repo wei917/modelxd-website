@@ -41,7 +41,7 @@ import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-histor
 import { PRESETS, EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { type SavedDaily } from '../components/xtell/XTellDaily'
-import { AlmanacCard, PanchangCard } from '../components/xtell/XTellToday'
+import { AlmanacCard } from '../components/xtell/XTellToday'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
@@ -266,7 +266,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   const openFromGuide = (id: FeatureId, question: string | null) => {
     const feature = liveFeature(id)
     if (feature?.opens === 'daily') { setDailySignal(n => n + 1); return }
-    // Today's almanac and Panchang are cards on the street itself.
+    // Today's almanac is a card on the street itself.
     if (feature?.opens) { document.getElementById(`xtell-${feature.opens}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
     if (!feature?.temple) return
     const store = sessionStore()
@@ -288,13 +288,12 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   if (standalone) return <div className="xtell-site">
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
       {!temple ? <>
-        {/* Today first (owner, Sep 27): the daily fortune, the Chinese
-            almanac and the Indian calendar, side by side; then the guide.
-            The temples themselves are in the top bar. */}
+        {/* Today first (owner, Sep 27): the daily fortune and the Chinese
+            almanac side by side; then the guide. The temples themselves are
+            in the top bar. */}
         <div className="xtell-today">
           <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
           <AlmanacCard />
-          <PanchangCard />
         </div>
         <XTellAssistant onOpen={openFromGuide} />
       </> : <>

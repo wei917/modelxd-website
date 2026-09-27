@@ -24,7 +24,7 @@ export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha'
   | 'zhanxing.natal' | 'zhanxing.synastry' | 'zhanxing.today' | 'zhanxing.year'
   | 'xingming' | 'cezi' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast'
-  | 'daily' | 'almanac' | 'panchang' | 'courses'
+  | 'daily' | 'almanac' | 'courses'
 
 export type FeatureMode = 'natal' | 'synastry' | 'today' | 'year' | 'ask' | 'lookup' | 'cast'
 
@@ -39,8 +39,8 @@ export type Feature = {
   temple?: Temple
   mode?: FeatureMode
   /** A live feature that is not a room but a section of the street itself:
-   *  the daily fortune, today's almanac, today's Indian calendar. */
-  opens?: 'daily' | 'almanac' | 'panchang'
+   *  the daily fortune, today's almanac. */
+  opens?: 'daily' | 'almanac'
   /** Birth records needed: none, one person, or two. */
   people: 0 | 1 | 2
   /** Whether an unknown birth hour is accepted; null when no birth is asked. */
@@ -51,7 +51,7 @@ export type Feature = {
   inputs: FeatureInput[]
   optional: FeatureInput[]
   /** What costs nothing, and whether asking a teacher is charged. */
-  free: Array<'chart' | 'draw' | 'lookup' | 'chenggu' | 'score' | 'daily' | 'almanac' | 'panchang'>
+  free: Array<'chart' | 'draw' | 'lookup' | 'chenggu' | 'score' | 'daily' | 'almanac'>
   paid: 'teacher' | null
   /** Where a question prepared by the guide is placed: the teacher composer,
    *  or the field that names the matter (籤, 測字, 起卦). Never sent. */
@@ -122,9 +122,6 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'almanac', status: 'live', opens: 'almanac', people: 0, hour: null, place: false, inputs: [], optional: [],
     free: ['almanac'], paid: null, question: null, label: ['xtell.as.feature.almanac'],
     about: 'Today\'s Chinese almanac (黃曆, the farmer\'s almanac) as a card on the street: the lunar date and the day\'s stem-branch, what the day is good for (宜) and should avoid (忌), the clashing animal and 煞 direction, the day officer and the solar term, with the day spirits and Pengzu taboos folded away. From the date alone: free, no birthday, no sign-in. Tradition, for reference.' },
-  { id: 'panchang', status: 'live', opens: 'panchang', people: 0, hour: null, place: false, inputs: [], optional: [],
-    free: ['panchang'], paid: null, question: null, label: ['xtell.as.feature.panchang'],
-    about: 'Today\'s Indian calendar (Panchang) as a card on the street: the tithi (lunar day), the Moon\'s nakshatra, yoga and karana right now, each with when it ends, and the weekday\'s ruling planet. Sunrise, sunset and Rahu Kalam appear once the visitor shares their location or picks a city (kept in their browser only). Free, no birthday, no sign-in. For a personal Vedic chart, the Navagraha Temple.' },
   { id: 'courses', status: 'pending', people: 0, hour: null, place: false, inputs: [], optional: [],
     free: [], paid: null, question: null, label: ['xtell.as.feature.courses'],
     about: 'A learning centre with short lessons (Western astrology, Vedic astrology, Laozi). Planned, NOT live yet; the I Ching school is the live way to learn today.' },
@@ -142,7 +139,7 @@ export const liveFeature = (id: unknown): Feature | null => {
 }
 
 /** The fee rule every live feature follows, for the guide's prompt. */
-export const FEE_RULE = 'Charts, stick draws, hexagram look-ups, the bone weight, the matching score, today\'s almanac, today\'s Indian calendar and the daily fortune are free (the daily fortune needs no credit at all). Asking a teacher (an AI model the visitor picks) is charged per question at that model\'s listed price; the estimate is shown before sending, and nothing is sent without the visitor pressing send. New Google accounts start with US$10 of credit.'
+export const FEE_RULE = 'Charts, stick draws, hexagram look-ups, the bone weight, the matching score, today\'s almanac and the daily fortune are free (the daily fortune needs no credit at all). Asking a teacher (an AI model the visitor picks) is charged per question at that model\'s listed price; the estimate is shown before sending, and nothing is sent without the visitor pressing send. New Google accounts start with US$10 of credit.'
 
 /** The catalog as the guide's prompt reads it: one line per feature. */
 export function catalogForPrompt(): string {

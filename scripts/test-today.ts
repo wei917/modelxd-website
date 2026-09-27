@@ -1,15 +1,10 @@
-// scripts/test-today.ts — the street's "today" cards: the Chinese almanac
-// (lib/xtell-almanac.ts) and the Indian calendar (lib/panchang.ts).
-// Independent expectations: astronomy-engine's own full/new moon search for
-// the tithi boundaries, the 九曜 chart's nakshatra for the same instant, the
-// textbook Rahu Kalam rule, and the 2026-09-27 almanac page read by hand.
+// scripts/test-today.ts — the street's almanac card (lib/xtell-almanac.ts):
+// the 2026-09-27 page read by hand, and every term the library can print
+// in 繁體.
 //   npx tsx scripts/test-today.ts
 
-import * as A from 'astronomy-engine'
 import { LunarUtil } from 'lunar-typescript'
 import { almanacFor, toHant } from '../lib/xtell-almanac'
-import { panchangAt, sunDay, karanaName } from '../lib/panchang'
-import { jyotishChart } from '../lib/jyotish'
 import { STRINGS } from '../lib/i18n'
 
 let fails = 0
@@ -46,41 +41,10 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('400 days of 繁體 almanac: no simplified forms, no placeholders, never empty', !bad, bad)
 }
 
-// ── Panchang ───────────────────────────────────────────────────────────────
-{
-  // Purnima ends at the full moon and Amavasya at the new moon, by the
-  // tithi's own definition (the Moon–Sun angle reaching 180° and 360°).
-  let worst = 0, bad = ''
-  let t = new Date('2026-01-01T00:00:00Z')
-  for (let i = 0; i < 6; i++) {
-    const full = A.SearchMoonPhase(180, t, 40)!.date, fresh = A.SearchMoonPhase(0, full, 40)!.date
-    const p = panchangAt(new Date(full.getTime() - 2 * 3600_000)), q = panchangAt(new Date(fresh.getTime() - 2 * 3600_000))
-    if (p.tithi.name !== 'Purnima' || !p.tithi.waxing || q.tithi.name !== 'Amavasya' || q.tithi.waxing) bad = full.toISOString()
-    worst = Math.max(worst, Math.abs(p.tithi.ends.getTime() - full.getTime()), Math.abs(q.tithi.ends.getTime() - fresh.getTime()))
-    t = fresh
-  }
-  check('six months: Purnima ends at each full moon, Amavasya at each new moon, within a minute', !bad && worst < 60_000, `${bad} worst ${worst / 1000}s`)
-  const at = new Date('2026-09-27T04:00:00Z')
-  const chart = jyotishChart({ y: 2026, m: 9, d: 27, h: 12, mi: 0, lat: 25.03, lon: 121.57, tz: 'Asia/Taipei', place: 'taipei' })
-  check('the Moon\'s nakshatra matches the 九曜 chart for the same instant', panchangAt(at).nakshatra.index === chart.moonNakshatra)
-  const p = panchangAt(at)
-  check('every limb ends in the future, within about a day', [p.tithi, p.nakshatra, p.yoga, p.karana].every(l => l.ends > at && l.ends.getTime() - at.getTime() < 30 * 3600_000))
-  check('karana names: Kimstughna, the seven movable ones in turn, then the three fixed', karanaName(0) === 'Kimstughna' && karanaName(1) === 'Bava' && karanaName(7) === 'Vishti' && karanaName(8) === 'Bava' && karanaName(56) === 'Vishti' && karanaName(57) === 'Shakuni' && karanaName(58) === 'Chatushpada' && karanaName(59) === 'Naga')
-  const sun = sunDay('2026-09-27', 'Asia/Taipei', 25.03, 121.57)
-  const hm = (d: Date | null) => d ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' }).format(d) : ''
-  check('Taipei 2026-09-27: sunrise 05:44, sunset 17:45', hm(sun.sunrise) === '05:44' && hm(sun.sunset) === '17:45', `${hm(sun.sunrise)} ${hm(sun.sunset)}`)
-  check('Sunday\'s Rahu Kalam is the last eighth of daylight', sun.weekday === 0 && !!sun.rahu && sun.rahu[1].getTime() === sun.sunset!.getTime() && Math.abs((sun.sunset!.getTime() - sun.rahu[0].getTime()) * 8 - (sun.sunset!.getTime() - sun.sunrise!.getTime())) < 1000)
-  const mon = sunDay('2026-09-28', 'Asia/Taipei', 25.03, 121.57)
-  const eighth = (mon.sunset!.getTime() - mon.sunrise!.getTime()) / 8
-  check('Monday\'s is the second eighth', mon.weekday === 1 && Math.abs(mon.rahu![0].getTime() - (mon.sunrise!.getTime() + eighth)) < 1000)
-  check('polar night: no sunrise, no Rahu Kalam, no error', sunDay('2026-12-21', 'Arctic/Longyearbyen', 78.2, 15.6).rahu === null)
-}
-
 // ── Strings ────────────────────────────────────────────────────────────────
 {
   const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.today.'))
-  check(`${keys.length} card strings, all in five languages`, keys.length >= 45 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), keys.filter(k => !LANGS.every(l => (STRINGS as any)[k][l])).join())
-  check('the weekday rulers exist as planet names', ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'].every(p => LANGS.every(l => (STRINGS as any)[`xtell.pl.${p}`]?.[l])))
+  check(`${keys.length} card strings, all in five languages`, keys.length >= 18 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), keys.filter(k => !LANGS.every(l => (STRINGS as any)[k][l])).join())
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall today checks passed')

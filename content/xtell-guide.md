@@ -163,17 +163,6 @@ officer (建除) and the solar term; "more" adds the day spirit, the lunar
 mansion, the auspicious and baleful stars and the Pengzu taboos. It comes
 from the date alone. Tradition and reference, not a personal reading.
 
-### panchang
-印度今日 (today's Indian calendar, Panchang), a card at the top of the
-street; free, no birthday, no sign-in. It shows the tithi (lunar day, in the
-waxing or waning half), the Moon's nakshatra, yoga and karana as they are
-right now, each with when it ends, and the weekday's ruling planet. Sunrise,
-sunset and Rahu Kalam (a stretch of the day traditionally avoided for new
-beginnings) depend on the place, so they appear once the visitor chooses
-"use my location" (the browser asks) or picks a city; the choice stays in
-their browser only. For a personal Vedic chart: the Navagraha Temple
-(navagraha).
-
 ## Not live yet
 
 ### courses
