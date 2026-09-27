@@ -653,8 +653,8 @@ same day and removed by the owner.)
 - Computed in the browser after mount (no server route, no model, no cost;
   a render-time date would break hydration). Catalog id `almanac` opens the
   card from the guide (`opens`), catalog 2026-09-27.3. While the daily
-  card's profile loads it holds its place; if the daily service does not
-  answer, the card stays with "could not load" and a retry (never hidden).
+  card's profile loads it holds its place; saved details that cannot be read
+  are treated as none, so the card asks for them (owner: ask, never hide).
 - Tests: `npx tsx scripts/test-today.ts`.
 
 ## Golden charts (`npm run test:xtell`)
