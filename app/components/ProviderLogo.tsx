@@ -12,9 +12,13 @@
 // openai.svg is the blossom mark (from simple-icons v13, before the
 // icon was dropped upstream), black fill per OpenAI's own light-mode
 // usage. Nominative use: it labels OpenAI's models as theirs.
+// minimax.svg is NOT from simple-icons (there is no MiniMax icon
+// there): it is the waveform mark traced off MiniMax's own brand
+// lockup, kept as a stroked path so it stays crisp at 16px, with
+// their pink-to-orange gradient sampled from the same asset.
 // Unknown providers (or a missing file) render nothing.
 
-const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'modelxd']
+const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'minimax', 'modelxd']
 
 // Ours is the brand mark itself (the same PNG the Nav lockup uses), not a
 // simple-icons SVG — XEval lists ModelXD Autopilot alongside the vendors and
