@@ -61,17 +61,33 @@ export type GrokPost = {
   summary?: Record<string, string>
 }
 
-function searchPrompt(kind: TrendKind, from: string, to: string): string {
+/** One Grok search returns a handful of posts, never the CANDIDATES it is
+ *  asked for (Sep 26: one search, 5 survived the filters, against a list
+ *  meant to hold 20). So a run is several narrower searches, one per model
+ *  family, merged before the filters. The last group is the catch-all and
+ *  also runs the model-agnostic "prompt" query. */
+const SEARCH_GROUPS: Record<TrendKind, string[]> = {
+  video: [
+    'Seedance',
+    '(Kling OR Hailuo OR MiniMax)',
+    '(Veo OR Sora OR Runway OR "Grok Imagine")',
+    '(Wan OR HappyHorse OR Midjourney OR "AI video")',
+  ],
+  image: ['("GPT Image" OR Midjourney OR "Nano Banana" OR Imagen OR Seedream OR Flux OR "Qwen Image" OR "AI art")'],
+}
+/** Upper end of one search in the Sep 26 tests ($0.22–0.82), for the budget
+ *  check a run makes before it spends anything. */
+const SEARCH_WORST_USD = 0.9
+
+function searchPrompt(kind: TrendKind, from: string, to: string, names: string, catchAll: boolean): string {
   const media = kind === 'video' ? 'AI-GENERATED VIDEO' : 'AI-GENERATED IMAGE'
   const filter = kind === 'video' ? 'filter:videos' : 'filter:images'
-  const names = kind === 'video'
-    ? '(Seedance OR Kling OR Veo OR Hailuo OR MiniMax OR Wan OR "Grok Imagine" OR HappyHorse OR Runway OR "AI video")'
-    : '("GPT Image" OR Midjourney OR "Nano Banana" OR Imagen OR Seedream OR Flux OR "Qwen Image" OR "AI art")'
   return `Find the most-liked posts on X from ${from} to ${to} that contain an ${media} and share the PROMPT used to make it, in the post itself or in the author's own reply.
 
 Search with operators so the search filters for you, for example:
   ${names} prompt ${filter} min_faves:300 since:${from} until:${to}
-  "prompt" ${filter} min_faves:500 since:${from} until:${to}
+  ${names} ${filter} min_faves:1000 since:${from} until:${to}${catchAll ? `
+  "prompt" ${filter} min_faves:500 since:${from} until:${to}` : ''}
 Fetch the thread when the post says the prompt is below or in the replies.
 
 Keep only posts where the ${kind} was made with a NAMED ${kind} model and you found the author's full prompt text.
@@ -84,7 +100,7 @@ Sort by likes, most first, at most ${CANDIDATES}. Summaries never quote the auth
 
 type GrokResult = { posts: GrokPost[]; costUsd: number; usage: any }
 
-async function searchX(kind: TrendKind, from: string, to: string): Promise<GrokResult> {
+async function searchX(kind: TrendKind, from: string, to: string, names: string, catchAll: boolean): Promise<GrokResult> {
   const key = process.env.XAI_API_KEY
   if (!key) throw new Error('XAI_API_KEY is not set')
   const desc = { provider: 'xai', model_name: GROK_MODEL, mode: 'text' as const, user_id: null }
@@ -96,7 +112,7 @@ async function searchX(kind: TrendKind, from: string, to: string): Promise<GrokR
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: GROK_MODEL,
-        input: [{ role: 'user', content: searchPrompt(kind, from, to) }],
+        input: [{ role: 'user', content: searchPrompt(kind, from, to, names, catchAll) }],
         tools: [{ type: 'x_search', from_date: from, to_date: to, enable_image_understanding: false, enable_video_understanding: false }],
         max_output_tokens: 32000,
       }),
@@ -110,7 +126,7 @@ async function searchX(kind: TrendKind, from: string, to: string): Promise<GrokR
       status: 'success', latency_ms: Date.now() - t0, cost_usd: costUsd,
       input_tokens: u.input_tokens ?? null, output_tokens: u.output_tokens ?? null,
       cached_input_tokens: u.input_tokens_details?.cached_tokens ?? null,
-      usage_metadata: { job: 'trending', kind, from, to, tools: u.server_side_tool_usage_details ?? null },
+      usage_metadata: { job: 'trending', kind, from, to, group: names, tools: u.server_side_tool_usage_details ?? null },
     })
     const text = (body.output ?? []).flatMap((o: any) => o.content ?? [])
       .filter((c: any) => c.type === 'output_text').map((c: any) => c.text).join('\n')
@@ -120,7 +136,7 @@ async function searchX(kind: TrendKind, from: string, to: string): Promise<GrokR
     endCall(requestId, desc, {
       status: 'failed', latency_ms: Date.now() - t0,
       error_message: (err as Error).message?.slice(0, 500),
-      usage_metadata: { job: 'trending', kind, from, to },
+      usage_metadata: { job: 'trending', kind, from, to, group: names },
     })
     throw err
   }
@@ -218,17 +234,25 @@ async function monthSpend(sb: SupabaseClient, now: Date): Promise<number> {
   return (data ?? []).reduce((s, r: any) => s + (Number(r.cost_usd) || 0), 0)
 }
 
-/** One kind, one Grok search, candidates stored as 'pending'. Throws when
- *  the month's budget is spent, before any paid call. */
+/** One kind, one search per SEARCH_GROUPS entry, candidates stored as
+ *  'pending'. The searches run in parallel: one took up to ~220s in the
+ *  Sep 26 tests, and in sequence they would outlast the route's 800s. Throws
+ *  before any paid call when the run could push the month past its budget. */
 export async function runTrending(kind: TrendKind, now = new Date()): Promise<RunReport> {
   const sb = serviceClient()
   const spent = await monthSpend(sb, now)
-  if (spent >= MONTHLY_BUDGET) {
-    throw new Error(`Trending search skipped: $${spent.toFixed(2)} spent this month, budget $${MONTHLY_BUDGET}.`)
+  const groups = SEARCH_GROUPS[kind]
+  if (spent + groups.length * SEARCH_WORST_USD > MONTHLY_BUDGET) {
+    throw new Error(`Trending search skipped: $${spent.toFixed(2)} spent this month; ${groups.length} searches could pass the $${MONTHLY_BUDGET} budget.`)
   }
   const to = day(now)
   const from = day(new Date(now.getTime() - 7 * 86_400_000))
-  const { posts, costUsd } = await searchX(kind, from, to)
+  const results = await Promise.allSettled(groups.map((g, i) => searchX(kind, from, to, g, i === groups.length - 1)))
+  const ok = results.filter((r): r is PromiseFulfilledResult<GrokResult> => r.status === 'fulfilled').map(r => r.value)
+  if (ok.length === 0) throw (results[0] as PromiseRejectedResult).reason
+  // Most-liked first across the groups; ingest drops repeats by post id.
+  const posts = ok.flatMap(r => r.posts).sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
+  const costUsd = ok.reduce((sum, r) => sum + r.costUsd, 0)
   const { report } = await ingestCandidates(sb, kind, posts, now)
   return { ...report, from, to, costUsd }
 }
