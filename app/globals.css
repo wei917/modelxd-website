@@ -3609,14 +3609,12 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .xtell-temple-nav a:hover { background: var(--xtell-tint); }
 .xtell-temple-nav a[aria-current="page"] { color: var(--xtell-vermilion); border-bottom-color: var(--xtell-vermilion); font-weight: 600; }
 .xtell-temple-nav a:focus-visible { outline: 2px solid var(--xtell-vermilion); outline-offset: -2px; }
-.xtell-nav-sep { flex: none; align-self: center; width: 1px; height: 34px; margin: 0 7px; background: var(--xtell-rule); }
 .xtell-nav-icon { width: 30px; }
 .xtell-artwork-icon.is-clear { background-image: url('/xtell/approved/icons-clear.avif'); }
 @media (max-width: 1100px) {
   html[data-site="xtell"] .xtell-nav-inner { padding-inline: 20px; gap: 16px; }
   .xtell-temple-nav a { min-width: 44px; padding-inline: 5px; }
   .xtell-nav-icon { width: 28px; }
-  .xtell-nav-sep { margin-inline: 4px; }
 }
 @media (max-width: 700px) {
   html[data-site="xtell"] .xtell-nav .xtell-focus-brand { font-size: 18px; }
