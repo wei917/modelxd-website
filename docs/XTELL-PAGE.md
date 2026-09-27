@@ -389,6 +389,12 @@ lib/xtell.ts                # charts, facts serializers, ENGINES, MASTERS, valid
                             #   關帝 corpus loader + guandiFacts, 四面佛 liuNian + simianfoFacts
 lib/xtell-ritual.ts         # client-safe ritual: drawQian / throwJiao / cryptoRand / CONFIRM_THROWS
 lib/xtell-chenggu.ts        # 稱骨 table v1 + weigh() + wording, client-safe (chengGu() is in lib/xtell.ts)
+lib/xtell-catalog.ts        # versioned feature catalog: status, inputs, fees, labels (front-door guide)
+lib/xtell-handoff.ts        # guide button → room: feature id + prepared question in sessionStorage
+content/xtell-guide.md      # the front-door guide's knowledge (version = catalog version)
+app/api/xtell/assistant/route.ts  # POST {q, lang, history} → answer + catalog actions; house-paid
+app/components/xtell/XTellAssistant.tsx  # the guide above the street (XTell door only)
+scripts/test-xtell-assistant.ts  # catalog ↔ chart route, guide, assistant route, handoff
 scripts/test-xtell-chenggu.ts  # 稱骨 suite (in npm run test:xtell), routes included
 lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, nakshatra, Vimshottari, facts
 lib/astrology.ts            # Western engine: tropical positions, Placidus houses, aspects,
@@ -516,6 +522,56 @@ route recomputes the facts from the birth and never reads a client value.
   leap months, 23:00/00:00 and every hour boundary, unknown hour, variants,
   invalid dates, time-zone and sex invariance, and both routes run for real
   with auth/DB/model faked.
+
+## 入口導覽 (front-door guide) and the feature catalog (Sep 27)
+
+TODO item 1, built by Claude and reviewed by Codex. A guide above the temple
+street (XTell door only; www and its site agent are unchanged) answers
+questions about X先知 and the basics of the traditions, and opens the right
+room. It never computes anything personal and never sends a reading.
+
+- **Catalog** — `lib/xtell-catalog.ts`, versioned (`XTELL_CATALOG_VERSION`).
+  One entry per room or mode: live or pending, the room and mode it opens,
+  people (0/1/2), whether the hour is required, place, required and optional
+  inputs, what is free and that a teacher is paid, where a prepared question
+  goes (composer or the matter field), label keys. Live: the eleven temples,
+  every 占星塔 and 易學堂 mode, and `bazi.chenggu`. Pending: `daily` (item 2)
+  and `courses`.
+- **Knowledge** — `content/xtell-guide.md` (how visits work, one section per
+  catalog id, basic concepts). It states no prices or statuses: those come
+  from the catalog, rendered into the prompt (`catalogForPrompt`, `FEE_RULE`).
+- **Route** — `POST /api/xtell/assistant` `{ q, lang, history }` →
+  `{ answer, actions: [{ feature, question }], clarify, offtopic, version }`.
+  Public, house-paid through `houseCall` (the site agent's models, no
+  thinking, 500 tokens), 12/min/IP, question 500, history 8×1000, answer 700,
+  at most two actions. The model names catalog ids only; anything else it
+  writes (a URL, a route) is never read; pending or unknown ids give no
+  action; a decline gives none; output that is not the JSON asked for is a
+  502 `assistant_unreadable`, shown as a localised "please ask again".
+- **Handoff** — `lib/xtell-handoff.ts`. A click keeps `{ v, feature,
+  question, at }` in sessionStorage (30 min) and opens `#<temple>`; the room
+  and the mode are re-derived from the catalog, never read back. The room
+  pre-fills the question (composer, or the matter for 籤, 測字 and 起卦) and
+  shows it is not sent. Cleared on entering the room or leaving it. Kept in
+  memory too, so blocked storage still opens the right mode. Nothing is in
+  the URL but the temple.
+- **UI** — `app/components/xtell/XTellAssistant.tsx`: thread per tab
+  (restored entries are rebuilt and bounded), starter chips, catalog-built
+  buttons; start over, a language switch or leaving the street aborts the
+  request in flight and a token drops late replies.
+
+**Maintenance rule.** A feature added, changed or retired updates, in the
+same commit: its catalog entry (status, inputs, fees, labels in five
+languages), its `### <id>` section in `content/xtell-guide.md`, and
+`XTELL_CATALOG_VERSION` (the guide's version line must match). A feature is
+not delivered until the guide can describe it and open it.
+`scripts/test-xtell-assistant.ts` (in `npm run test:xtell`) holds this: it
+runs the real chart route for every live feature (full subject accepted;
+unknown hour refused exactly where the catalog says it is required; second
+person and place required where listed; optional matters optional), checks
+the guide's version and sections, and runs the assistant route with a
+stubbed model. When `daily` goes live (item 2), flip its status, give it a
+room, and bump the version.
 
 ## Golden charts (`npm run test:xtell`)
 

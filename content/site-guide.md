@@ -297,11 +297,13 @@ comparable to GDPval-AA's leaderboard (different judges and anchors).
 
 ### XTell（X算命）— the temple street
 
-`/xtell`, signed-in. The temples include **八字廟** (BaZi, four pillars;
+`/xtell`, signed-in; on xtell.modelxd.com a guide above the street answers
+questions about the temples and opens the right one. The temples include
+**八字廟** (BaZi, four pillars;
 its board also shows 稱骨, the folk "how many 兩 and 錢" bone weight from
-the lunar year, month, day and hour, with the table version and calendar
-rules on the card, a list of possible totals when the hour is unknown, and
-no verses),
+the lunar year, month, day and hour, placed on a light-to-heavy scale with
+its traditional theme, a list of possible totals when the hour is unknown,
+and a button that prepares a question for the teacher),
 **紫微斗數廟** (Zi Wei Dou Shu, twelve palaces), **月老廟** (Yue Lao —
 love and 合婚: enter TWO people's birth data and the master reads both
 charts together), **關帝廟** (Guan Di 靈籤: no birth data — draw a numbered

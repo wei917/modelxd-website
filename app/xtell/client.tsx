@@ -63,6 +63,9 @@ import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localSt
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
+import XTellAssistant from '../components/xtell/XTellAssistant'
+import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
+import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
@@ -234,6 +237,11 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   // under the visitor's own session, the temple opens on it, and TempleRoom
   // starts from its subject, chart and turns instead of an empty form.
   const [saved, setSaved] = useState<SavedReading | null>(null)
+  // The front-door guide's suggestion for the room being opened (standalone
+  // street only): the feature and the question it prepared. Kept in this
+  // tab's sessionStorage too (lib/xtell-handoff.ts), so it survives a reload
+  // or the sign-in round trip; the room re-derives its mode from the catalog.
+  const [handoff, setHandoff] = useState<Handoff | null>(null)
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('reading')
     if (!id) return
@@ -257,9 +265,21 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
       // with no hash yet, and clearing it there lost the visit before its
       // row had even loaded (Codex retest: recast then reload opened the
       // empty form). The row fetch sets the hash to its temple, which keeps it.
-      if (navigated && !TEMPLES.includes(key)) setReadingParam(null)
+      const store = sessionStore()
+      if (navigated && !TEMPLES.includes(key)) {
+        setReadingParam(null)
+        // Back on the street (the header link, Back): the suggestion was
+        // left behind, so a later visit to that room starts clean (Codex
+        // review: it re-filled the old question on a manual entry).
+        if (store) clearHandoff(store)
+      }
       setTemple(TEMPLES.includes(key) ? key : null)
       if (TEMPLES.includes(key)) setSelectedTemple(key)
+      // The guide's suggestion for this room: the one just clicked (in
+      // memory), or, on the first sync after a page load only, the stored
+      // one (a reload, or back from signing in). Storage is only that
+      // fallback; a navigation never revives it.
+      setHandoff(h => !TEMPLES.includes(key) ? null : h && h.feature.temple === key ? h : !navigated && store ? readHandoff(store, key) : null)
     }
     sync(false)
     const onHash = () => sync(true)
@@ -282,12 +302,44 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
     if (key) setSelectedTemple(key)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
+  // A button in the guide's reply: open that room with its mode and the
+  // prepared question. Only a live catalog feature opens anything.
+  const openFromGuide = (id: FeatureId, question: string | null) => {
+    const feature = liveFeature(id)
+    if (!feature?.temple) return
+    const store = sessionStore()
+    if (store) writeHandoff(store, feature.id, question)
+    setHandoff({ feature, question: feature.question ? cleanQuestion(question) : null })
+    setReadingParam(null)
+    setSaved(null)
+    chooseTemple(feature.temple)
+  }
+  // The street's own Enter button: a visit of the visitor's choosing, so no
+  // guide suggestion comes along.
+  const enterFromStreet = (key: Temple) => {
+    const store = sessionStore()
+    if (store) clearHandoff(store)
+    setHandoff(null)
+    chooseTemple(key)
+  }
+  const leaveRoom = () => {
+    const store = sessionStore()
+    if (store) clearHandoff(store)
+    setHandoff(null)
+    setReadingParam(null)
+    setSaved(null)
+    chooseTemple(null)
+  }
 
   if (standalone) return <div className="xtell-site">
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
-      {!temple ? <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={chooseTemple} /> : <>
+      {!temple ? <>
+        <XTellAssistant onOpen={openFromGuide} />
+        <TempleStreet selected={selectedTemple} onSelect={setSelectedTemple} onEnter={enterFromStreet} />
+      </> : <>
         <XTellAuthGate />
-        <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); chooseTemple(null) }} standalone initial={saved?.temple === temple ? saved : null} onResume={resume} />
+        <TempleRoom key={temple + (saved?.id ?? '') + (handoff?.feature.temple === temple ? handoff.feature.id : '')} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
+          handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
       <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
     </main>
@@ -344,7 +396,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   )
 }
 
-function TempleRoom({ temple, onBack, standalone = false, initial = null, onResume }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null; onResume?: (r: SavedReading) => void }) {
+function TempleRoom({ temple, onBack, standalone = false, initial = null, onResume, handoff = null }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null; onResume?: (r: SavedReading) => void; handoff?: Handoff | null }) {
   const t = useT()
   // The site language rides with every reading so the master answers in it
   // (owner, Sep 24) — a Japanese visitor pressing the Chinese pre-filled
@@ -373,7 +425,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [bing, setBing] = useState({ name: init.name ?? '', city: init.city ?? '', withBirth: !!(init.birth && isQian(temple)) })
   // 關帝廟: the matter asked, and the ritual. The poem is never in the client
   // until the third 聖筊 — the server sends it with the chart response.
-  const [ask, setAsk] = useState(init.ask ?? '')
+  // From the front-door guide: the question it prepared goes to the field
+  // the catalog names (the matter, or the teacher composer below). Only a
+  // handoff for this very room arrives here; nothing is sent.
+  const carried = handoff?.feature.temple === temple ? handoff : null
+  const [ask, setAsk] = useState(init.ask ?? (carried?.feature.question === 'matter' ? carried.question ?? '' : ''))
   const [stick, setStick] = useState<{ n: number; throws: Jiao[] } | null>(isQian(temple) && init.n ? { n: init.n, throws: ['聖筊', '聖筊', '聖筊'] } : null)
   const [ritual, setRitual] = useState<'idle' | 'drawn' | 'rejected' | 'confirmed'>(initial && isQian(temple) && init.n ? 'confirmed' : 'idle')
   // 四面佛: one wish per face, plus the pledge.
@@ -385,12 +441,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
-  const [astroMode, setAstroMode] = useState<AstroMode>(temple === 'zhanxing' && init.mode ? init.mode : 'natal')
+  const [astroMode, setAstroMode] = useState<AstroMode>(temple === 'zhanxing' && init.mode ? init.mode
+    : temple === 'zhanxing' && (ASTRO_MODES as readonly string[]).includes(carried?.feature.mode ?? '') ? carried!.feature.mode as AstroMode : 'natal')
   // 易學堂: the room, the cast so far (six line values and the coin faces
   // behind them) and the hexagram picked in 查卦. The cast lives in a ref
   // mirrored into state, like the 籤 ritual: two fast clicks inside one
   // render must not both read the same five lines.
-  const [yixueMode, setYixueMode] = useState<YixueMode>(temple === 'yixue' && (YIXUE_MODES as readonly string[]).includes(init.mode) ? init.mode : 'ask')
+  const [yixueMode, setYixueMode] = useState<YixueMode>(temple === 'yixue' && (YIXUE_MODES as readonly string[]).includes(init.mode) ? init.mode
+    : temple === 'yixue' && (YIXUE_MODES as readonly string[]).includes(carried?.feature.mode ?? '') ? carried!.feature.mode as YixueMode : 'ask')
   const castRef = useRef<{ values: LineValue[]; coins: Coin[][] }>({
     values: temple === 'yixue' && Array.isArray(init.lines) ? init.lines : [],
     coins: temple === 'yixue' && Array.isArray(init.coins) ? init.coins : [],
@@ -524,7 +582,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [turns, setTurns] = useState<Turn[]>(() => (initial?.turns ?? []).map((x: any) => x.role === 'user'
     ? { role: 'user', content: String(x.content ?? '') }
     : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(carried?.feature.question === 'composer' ? carried.question ?? '' : '')
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const questionRequired = temple === 'yixue' && yixueMode === 'ask'
   const [busy, setBusy] = useState(false)
@@ -635,6 +693,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       setChenggu(d.chenggu ?? null)
       setReadingId(typeof d.readingId === 'string' ? d.readingId : null)
       setEntered(true)
+      // The guide's suggestion has been used; a reload now reopens the visit.
+      const store = sessionStore()
+      if (store) clearHandoff(store)
       // 月老廟: the scores land free and instantly, so the only thing left to
       // ask is what they mean. Write the question for them but do NOT send it
       // — sending spends credits, and that stays a click the visitor makes.
@@ -845,6 +906,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       {!entered ? (
         <div className={standalone ? "xtell-entry-form" : undefined} style={{ ...card, padding: '18px 20px' }}>
           {standalone && <p className="xtell-form-note">{t('xtell.site.freeStep')}</p>}
+          {carried?.question && <p className="xtell-carried" role="note">{t('xtell.as.carried').replace('{q}', carried.question)}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
               second person and 流年 needs a year. */}
           {temple === 'zhanxing' && (
