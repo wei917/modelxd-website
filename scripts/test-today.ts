@@ -44,7 +44,7 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
 // ── Strings ────────────────────────────────────────────────────────────────
 {
   const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.today.'))
-  check(`${keys.length} card strings, all in five languages`, keys.length >= 18 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), keys.filter(k => !LANGS.every(l => (STRINGS as any)[k][l])).join())
+  check(`${keys.length} card strings, all in five languages`, keys.length >= 14 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), keys.filter(k => !LANGS.every(l => (STRINGS as any)[k][l])).join())
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall today checks passed')

@@ -297,11 +297,11 @@ comparable to GDPval-AA's leaderboard (different judges and anchors).
 
 ### XTell（X算命）— the temple street
 
-`/xtell`, signed-in; on xtell.modelxd.com the street opens with two free
+`/xtell`, signed-in; on xtell.modelxd.com the street opens with a guide that
+answers questions about the temples and opens the right one, then two free
 cards for today (a daily fortune, Western astrology and the BaZi day, once a
 signed-in visitor saves their birth details; today's Chinese almanac with
-宜/忌) and a guide below them that answers questions about the temples and
-opens the right one. The temples include
+宜/忌). The temples include
 **八字廟** (BaZi, four pillars;
 its board also shows 稱骨, the folk "how many 兩 and 錢" bone weight from
 the lunar year, month, day and hour, placed on a light-to-heavy scale with

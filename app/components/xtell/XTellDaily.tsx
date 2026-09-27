@@ -47,7 +47,7 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
   const { show: showSignIn } = useAuthModal()
   const titleId = useId()
   const sectionRef = useRef<HTMLElement>(null)
-  const [phase, setPhase] = useState<'loading' | 'hidden' | 'signedOut' | 'none' | 'ready'>('loading')
+  const [phase, setPhase] = useState<'loading' | 'unavailable' | 'signedOut' | 'none' | 'ready'>('loading')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -87,7 +87,7 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
     try {
       const res = await fetch('/api/xtell/daily', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: langRef.current }) })
       if (!current()) return
-      if (res.status === 503) { setPhase('hidden'); return }
+      if (res.status === 503) { setPhase('unavailable'); return }
       const d = await res.json().catch(() => null)
       if (!current()) return
       if (!res.ok || !d) { setDayError(true); return }
@@ -105,15 +105,15 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
     try {
       const res = await fetch('/api/xtell/profile')
       if (g !== gen.current) return
-      if (res.status === 503) { setPhase('hidden'); return }
+      if (res.status === 503) { setPhase('unavailable'); return }
       if (res.status === 401) { setPhase('signedOut'); return }
-      if (!res.ok) { setPhase('hidden'); return }
+      if (!res.ok) { setPhase('unavailable'); return }
       const d = await res.json()
       if (g !== gen.current) return
       setProfile(d.profile)
       setPhase(d.profile ? 'ready' : 'none')
       if (d.profile) void loadDay()
-    } catch { if (g === gen.current) setPhase('hidden') }
+    } catch { if (g === gen.current) setPhase('unavailable') }
   }
   /** Drop everything the previous account or profile showed, at once,
    *  including a reopened follow-up (its stream unmounts with it). */
@@ -198,13 +198,15 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
     setPhase('none'); setNotice(t('xtell.dy.deleted'))
   }
 
-  if (phase === 'hidden') return null
-  // The card's place in the street's 今日 row, held while the profile loads,
-  // so the row does not jump from two columns to three.
-  if (phase === 'loading') return (
-    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
+  // The card always keeps its place in the street's 今日 row (owner, Sep 27:
+  // nothing hidden): a title and a loading line while the profile loads, and
+  // a plain "could not load" with a retry when the service does not answer.
+  if (phase === 'loading' || phase === 'unavailable') return (
+    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} aria-busy={phase === 'loading'} ref={sectionRef}>
       <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
-      <p className="xtell-dy-small">{t('common.loading')}</p>
+      {phase === 'loading'
+        ? <p className="xtell-dy-small">{t('common.loading')}</p>
+        : <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => { setPhase('loading'); void loadProfile() }}>{t('xtell.dy.retry')}</button></p>}
     </section>
   )
   const born = profile ? `${profile.birth.y}-${pad(profile.birth.m)}-${pad(profile.birth.d)} ${profile.birth.hourUnknown ? t('xtell.hourunknown') : `${pad(profile.birth.h)}:${pad(profile.birth.mi)}`}` : ''

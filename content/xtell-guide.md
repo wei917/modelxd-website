@@ -137,7 +137,7 @@ wants to cast.
 ## On the street itself
 
 ### daily
-今日運勢 (the daily fortune), the first card at the top of the street, free every day. A
+今日運勢 (the daily fortune), just below this guide, free every day. A
 signed-in visitor saves their birth details once, after ticking a consent
 box: the date (Gregorian), the time or "don't know", the birth place, and the
 time zone they are in today (it decides which date counts as today; it is
@@ -154,13 +154,13 @@ Asking a teacher about a day's reading is paid, with the estimate shown
 before sending; the teacher sees only that day's calculation for that method.
 
 ### almanac
-今日黃曆 (today's almanac, the farmer's almanac), a card at the top of the
-street beside the daily fortune; free, no birthday, no sign-in. It shows
+今日黃曆 (today's almanac, the farmer's almanac), a card just below this
+guide beside the daily fortune; free, no birthday, no sign-in. It shows
 today's date in the visitor's own time zone with the lunar date and the
 day's stem-branch, what the day is traditionally good for (宜) and should
 avoid (忌), the animal the day clashes with and the direction of 煞, the day
-officer (建除) and the solar term; "more" adds the day spirit, the lunar
-mansion, the auspicious and baleful stars and the Pengzu taboos. It comes
+officer (建除), the solar term, the day spirit, the lunar mansion, the
+auspicious and baleful stars and the Pengzu taboos, all shown at once. It comes
 from the date alone. Tradition and reference, not a personal reading.
 
 ## Not live yet

@@ -3504,7 +3504,7 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 
 /* The front-door guide above the street (XTell door only). It explains and
    points the way; its buttons come from lib/xtell-catalog.ts. */
-.xtell-as { margin: 18px 0 16px; padding: 18px 20px 14px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-white); }
+.xtell-as { margin: 24px 0 16px; padding: 18px 20px 14px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-white); }
 .xtell-as-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .xtell-as-title { margin: 0; font: 500 19px/1.4 var(--xtell-serif); color: var(--xtell-ink); }
 .xtell-as-restart { min-height: 32px; border: 0; background: none; color: var(--xtell-secondary); font: inherit; font-size: 12.5px; cursor: pointer; }
@@ -3631,13 +3631,11 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-nav-icon { width: 30px; }
 }
 
-/* XTell street: today's cards (owner, Sep 27): the daily fortune and
-   today's almanac (黃曆) side by side, stacked on a phone.
+/* XTell street: today's cards under the guide (owner, Sep 27): the daily
+   fortune and today's almanac (黃曆) side by side, stacked on a phone.
    app/components/xtell/XTellToday.tsx. */
-.xtell-today { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin: 24px 0 16px; }
+.xtell-today { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin: 0 0 16px; }
 .xtell-today > .xtell-dy { margin: 0; }
-/* No daily card (the service is unavailable): the almanac takes the row. */
-.xtell-today:not(:has(> .xtell-dy)) { grid-template-columns: minmax(0, 1fr); }
 .xtell-td { min-width: 0; padding: 18px 20px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-white); overflow-wrap: anywhere; }
 .xtell-td .xtell-dy-sub { margin: 4px 0 0; }
 .xtell-td-date { display: grid; gap: 2px; margin: 12px 0 0; font-size: 13.5px; line-height: 1.6; }
@@ -3653,6 +3651,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-today .xtell-dy-cards { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 700px) {
-  .xtell-today, .xtell-today:not(:has(> .xtell-dy)) { grid-template-columns: minmax(0, 1fr); margin-top: 16px; padding-inline: 16px; }
+  .xtell-today { grid-template-columns: minmax(0, 1fr); padding-inline: 16px; }
   .xtell-td { padding: 16px; }
 }

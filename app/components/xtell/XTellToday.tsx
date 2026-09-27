@@ -14,7 +14,6 @@ import { useLang } from '../../../lib/i18n'
 import { almanacFor, type Almanac } from '../../../lib/xtell-almanac'
 import { detectedZone, localDateIn } from '../../../lib/xtell-time'
 
-const SHOWN = 8
 
 /** Refresh when the tab comes back: a new local day means a new almanac. */
 function useToday(): { date: string; tz: string } | null {
@@ -36,9 +35,7 @@ export function AlmanacCard() {
   const { lang, t } = useLang()
   const today = useToday()
   const [data, setData] = useState<Almanac | null>(null)
-  const [all, setAll] = useState(false)
   useEffect(() => { if (today) setData(almanacFor(today.date, lang)) }, [today?.date, lang]) // eslint-disable-line react-hooks/exhaustive-deps
-  const list = (xs: string[]) => all ? xs : xs.slice(0, SHOWN)
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
   return (
     <section id="xtell-almanac" className="xtell-td" aria-labelledby="xtell-almanac-title">
@@ -52,29 +49,19 @@ export function AlmanacCard() {
           <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}</span>
         </p>
         <dl className="xtell-td-yiji">
-          <div className="is-yi"><dt>{t('xtell.today.yi')}</dt><dd>{list(data.yi).join('、') || '—'}</dd></div>
-          <div className="is-ji"><dt>{t('xtell.today.ji')}</dt><dd>{list(data.ji).join('、') || '—'}</dd></div>
+          <div className="is-yi"><dt>{t('xtell.today.yi')}</dt><dd>{data.yi.join('、') || '—'}</dd></div>
+          <div className="is-ji"><dt>{t('xtell.today.ji')}</dt><dd>{data.ji.join('、') || '—'}</dd></div>
         </dl>
-        {(data.yi.length > SHOWN || data.ji.length > SHOWN) && (
-          <button type="button" className="xtell-dy-link" onClick={() => setAll(a => !a)} aria-expanded={all}>
-            {all ? t('xtell.today.showLess') : fill(t('xtell.today.showAll'), { n: data.yi.length + data.ji.length })}
-          </button>
-        )}
         <ul className="xtell-td-facts">
           <li>{fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })}</li>
           <li>{fill(t('xtell.today.zhiXing'), { x: data.zhiXing })}</li>
           <li>{fill(t('xtell.today.jieQi'), { now: data.jieQi.name, nowDate: md(data.jieQi.date), next: data.nextJieQi.name, nextDate: md(data.nextJieQi.date) })}</li>
+          <li>{fill(t('xtell.today.tianShen'), { x: data.tianShen.name, luck: t(data.tianShen.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
+          <li>{fill(t('xtell.today.xiu'), { x: data.xiu.name, luck: t(data.xiu.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
+          {data.jiShen.length > 0 && <li>{t('xtell.today.jiShen')}：{data.jiShen.join('、')}</li>}
+          {data.xiongSha.length > 0 && <li>{t('xtell.today.xiongSha')}：{data.xiongSha.join('、')}</li>}
+          <li>{t('xtell.today.pengZu')}：{data.pengZu.join('；')}</li>
         </ul>
-        <details className="xtell-dy-why">
-          <summary>{t('xtell.today.more')}</summary>
-          <ul className="xtell-td-facts">
-            <li>{fill(t('xtell.today.tianShen'), { x: data.tianShen.name, luck: t(data.tianShen.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
-            <li>{fill(t('xtell.today.xiu'), { x: data.xiu.name, luck: t(data.xiu.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
-            {data.jiShen.length > 0 && <li>{t('xtell.today.jiShen')}：{data.jiShen.join('、')}</li>}
-            {data.xiongSha.length > 0 && <li>{t('xtell.today.xiongSha')}：{data.xiongSha.join('、')}</li>}
-            <li>{t('xtell.today.pengZu')}：{data.pengZu.join('；')}</li>
-          </ul>
-        </details>
       </>}
     </section>
   )
