@@ -79,8 +79,13 @@ export default function XTellNav({ user }: { user: User | null }) {
           <select value={lang} onChange={e => setLang(e.target.value as Lang)} aria-label={t('xtell.site.language')}>
             {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
           </select>
+          {/* The Google photo, as XCreate's and www's navs show it; the
+              initial only without one (owner, Sep 26). no-referrer: Google's
+              avatar host can refuse hotlinks that carry a referrer. */}
           {user ? <Link href="/profile" className="xtell-account-link" aria-label={t('xtell.site.account')}>
-            <span aria-hidden="true">{(user.user_metadata?.full_name || user.email || 'X').slice(0, 1).toUpperCase()}</span>
+            {typeof user.user_metadata?.avatar_url === 'string' && user.user_metadata.avatar_url
+              ? <img src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />
+              : <span aria-hidden="true">{(user.user_metadata?.full_name || user.email || 'X').slice(0, 1).toUpperCase()}</span>}
           </Link> : <button className="xtell-button" onClick={() => show()}>{t('auth.signin')}</button>}
         </div>
       </div>

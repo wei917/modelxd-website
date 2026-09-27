@@ -3199,7 +3199,8 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-nav-actions select { max-width: 120px; border: 0; background: transparent; color: var(--xtell-secondary); font-size: 14px; padding: 10px 0; }
 .xtell-button { border: 1px solid var(--xtell-vermilion); background: var(--xtell-vermilion); color: var(--xtell-white); border-radius: 5px; padding: 11px 20px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .xtell-button:hover { filter: brightness(.94); }
-.xtell-account-link { display: grid; place-items: center; width: 39px; height: 39px; background: var(--xtell-tint); border: 1px solid var(--xtell-rule); border-radius: 50%; font-size: 16px; }
+.xtell-account-link { display: grid; place-items: center; width: 39px; height: 39px; background: var(--xtell-tint); border: 1px solid var(--xtell-rule); border-radius: 50%; font-size: 16px; overflow: hidden; }
+.xtell-account-link img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .xtell-skip { position: absolute; left: 16px; top: -100px; padding: 12px 20px; background: var(--xtell-white); border: 1px solid var(--xtell-vermilion); }
 .xtell-skip:focus { top: 10px; z-index: 10; }
 .xtell-site { --muted: var(--xtell-secondary); --muted2: var(--xtell-secondary); --red: var(--xtell-vermilion); --white: var(--xtell-ink); --border2: var(--xtell-rule); --surface: var(--xtell-white); --surface2: var(--xtell-tint); --bg: var(--xtell-paper); background: var(--xtell-paper); }
