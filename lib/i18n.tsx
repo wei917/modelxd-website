@@ -1856,6 +1856,8 @@ export const STRINGS: Record<string, Entry> = {
   'mode.audio': { en: 'Audio', 'zh-Hant': '語音', 'zh-Hans': '语音', ja: '音声', ko: '음성' },
   'xcreate.voice': { en: 'Voice', 'zh-Hant': '聲音', 'zh-Hans': '声音', ja: 'ボイス', ko: '목소리' },
   'xcreate.format': { en: 'Format', 'zh-Hant': '格式', 'zh-Hans': '格式', ja: 'フォーマット', ko: '형식' },
+  // The language the speech is READ in, not the site's language.
+  'xcreate.language': { en: 'Spoken language', 'zh-Hant': '朗讀語言', 'zh-Hans': '朗读语言', ja: '読み上げ言語', ko: '낭독 언어' },
   'xcreate.thinking':    { en: 'Thinking', 'zh-Hant': '思考深度', 'zh-Hans': '思考深度', ja: '思考レベル', ko: '추론 수준' },
   'xcreate.auto':        { en: 'Auto', 'zh-Hant': '自動', 'zh-Hans': '自动', ja: '自動', ko: '자동' },
   'xcreate.websearch':   { en: 'Web search', 'zh-Hant': '網路搜尋', 'zh-Hans': '网络搜索', ja: 'ウェブ検索', ko: '웹 검색' },

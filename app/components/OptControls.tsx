@@ -38,6 +38,48 @@ export function OptGroup({ label, children, last }: {
   )
 }
 
+/** An option whose list is too long to read as a row of pills. The Audio
+ *  tab's voices are the case it was built for: 26 on Gemini TTS, 11 on
+ *  MiniMax, and a wrapped pill grid that tall buries every setting under
+ *  it. Wears the slot colour the way a SELECTED pill does, because one of
+ *  these is always chosen — there is no empty state to show.
+ *
+ *  `group` buckets the options into <optgroup>s (voices by language) in
+ *  first-seen order. A single bucket renders flat: one heading over the
+ *  whole list names nothing. */
+export function OptSelect({ color, value, onChange, options }: {
+  color: string
+  value: string
+  onChange: (v: string) => void
+  options: Array<{ value: string; label: string; group?: string | null }>
+}) {
+  type Opt = typeof options[number]
+  const groups: Array<[string, Opt[]]> = []
+  for (const o of options) {
+    const key = o.group ?? ''
+    const hit = groups.find(g => g[0] === key)
+    if (hit) hit[1].push(o)
+    else groups.push([key, [o]])
+  }
+  // Options inherit the select's colour in some browsers, which makes the
+  // open list unreadable against its own white menu — set them back.
+  const optStyle = { color: 'var(--white)', background: '#ffffff' }
+  const opt = (o: Opt) => <option key={o.value} value={o.value} style={optStyle}>{o.label}</option>
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      style={{
+        flex: 1, width: '100%', maxWidth: '100%', boxSizing: 'border-box' as const,
+        padding: '7px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+        fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
+        background: color + '22', border: `1px solid ${color}66`, color,
+      }}>
+      {groups.length < 2
+        ? options.map(opt)
+        : groups.map(([g, os]) => <optgroup key={g} label={g || 'other'}>{os.map(opt)}</optgroup>)}
+    </select>
+  )
+}
+
 /** Thinking levels come from output_config.text.thinking_levels as the
  *  provider's own values. Most read fine as they are (low / high / xhigh);
  *  DashScope's boolean pair does not (Codex QA, Sep 25: raw thinking_true in

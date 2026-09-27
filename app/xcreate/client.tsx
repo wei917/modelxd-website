@@ -7,7 +7,7 @@
 
 import Link from 'next/link'
 import { usePromptRefiner } from '../components/PromptRefiner'
-import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
+import { OptPill, OptGroup, OptSelect, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -450,10 +450,13 @@ interface SlotOptions {
    *  `output_config.video.audio`. null = provider default (Wan 3.0's own
    *  default is ON); false asks for a silent clip. */
   generate_audio?: boolean | null
-  /** Text to speech: the provider's voice id, and the container format.
-   *  null on both = take the first entry the model row lists. */
+  /** Text to speech: the provider's voice id, the container format, and
+   *  the language the text is read AS (MiniMax `language_boost`, Alibaba
+   *  `language_type`; both auto-detect when unset).
+   *  null on each = take the first entry the model row lists. */
   voice?: string | null
   format?: string | null
+  language?: string | null
   /** Number of outputs to generate. Only meaningful for image models that
    *  declare `output_config.image.max_count > 1`. Defaults to 1. */
   count: number | null
@@ -1213,6 +1216,26 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         : (isTextOnlyInput ? (ars[0] ?? null) : null)
       // Watermark default = Off. Only ever true/false now.
       return { mode, quality: null, size, duration, aspect_ratio, watermark: opts.watermark === true ? true : false, count: null }
+    }
+    // Audio (text to speech). Without this branch audio fell through to the
+    // text return below, which builds a fresh object with no voice/language/
+    // format on it — so every pick was discarded the instant it was made and
+    // the control snapped back to its default (found Sep 26, in the browser,
+    // one field after the POST allow-list dropped the same three).
+    if (m === 'audio') {
+      const cfg      = (model.output_config as any)?.audio ?? {}
+      const voiceIds = (cfg.voices ?? []).map((v: any) => v.id)
+      const langIds  = (cfg.languages ?? []).map((l: any) => l.id)
+      const formats  = (cfg.formats ?? []) as string[]
+      const clamp = (want: unknown, allowed: string[]) =>
+        typeof want === 'string' && allowed.includes(want) ? want : (allowed[0] ?? null)
+      return {
+        mode, quality: null, size: null, duration: null, aspect_ratio: null,
+        watermark: null, count: null,
+        voice:    clamp(opts.voice, voiceIds),
+        language: clamp(opts.language, langIds),
+        format:   clamp(opts.format, formats),
+      }
     }
     // Text mode: no watermark concept. Thinking level clamps to the
     // model's declared set; null = Auto (provider default).
@@ -2193,6 +2216,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         // Same allow-list, same trap as the two above: a toggle that never
         // reaches the POST is a placebo.
         generate_audio: opts.generate_audio ?? null,
+        // And the same trap caught the Audio tab on day one (Sep 26): the
+        // voice and format pickers rendered, saved and were dropped here, so
+        // every run spoke in the row's first voice whatever you picked. If
+        // you add a control to the ⚙ panel, add it to THIS list too.
+        voice:          opts.voice ?? null,
+        format:         opts.format ?? null,
+        language:       opts.language ?? null,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }
@@ -4284,6 +4314,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     const imgArs       = mode === 'image' ? (model.output_config?.image?.aspect_ratios ?? []) : []
                     const audVoices    = mode === 'audio' ? ((model.output_config as any)?.audio?.voices ?? []) : []
                     const audFormats   = mode === 'audio' ? ((model.output_config as any)?.audio?.formats ?? []) : []
+                    const audLangs     = mode === 'audio' ? ((model.output_config as any)?.audio?.languages ?? []) : []
                     const vidSizes     = mode === 'video' ? (model.output_config?.video?.sizes ?? []) : []
                     const vidArs       = mode === 'video' ? (model.output_config?.video?.aspect_ratios ?? []) : []
                     // Durations now live in `durations_by_resolution`, keyed by resolutions like
@@ -4340,7 +4371,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       imgQualities.length > 0 || imgSizes.length > 0 || imgArs.length > 0 ||
                       vidSizes.length > 0 || vidDurations.length > 0 || vidArs.length > 0 ||
                       showWatermark || showCount || showAudio ||
-                      (isStandalone && (audVoices.length > 0 || audFormats.length > 1))
+                      // Not gated on the standalone door: the Audio tab is on www
+                      // too, and gating it there left the ⚙ off every speech card,
+                      // so voice/language/format were unreachable on the main site.
+                      audVoices.length > 0 || audLangs.length > 1 || audFormats.length > 1
                     )
 
                     // Upfront USD estimate for this slot given its current
@@ -4464,10 +4498,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           const showArV   = mode === 'video' && vidArs.length > 0
                           const showQual  = mode === 'image' && imgQualities.length > 1
                           const showVoice = mode === 'audio' && audVoices.length > 0
+                          const showLang  = mode === 'audio' && audLangs.length > 1
                           const showFormat = mode === 'audio' && audFormats.length > 1
                           const showThink = mode === 'text' && thinkLevels.length > 0
                           const showSearch = mode === 'text' && canSearch
-                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'format' | 'count' | 'wm'> = []
+                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'lang' | 'format' | 'count' | 'wm'> = []
                           if (showThink)     groupsInOrder.push('think')
                           if (showSearch)    groupsInOrder.push('search')
                           if (showSizeV)     groupsInOrder.push('size_v')
@@ -4477,6 +4512,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           if (showArI)       groupsInOrder.push('ar_i')
                           if (showQual)      groupsInOrder.push('qual')
                           if (showVoice)     groupsInOrder.push('voice')
+                          if (showLang)      groupsInOrder.push('lang')
                           if (showFormat)    groupsInOrder.push('format')
                           if (showCount)     groupsInOrder.push('count')
                           if (showWatermark) groupsInOrder.push('wm')
@@ -4492,11 +4528,36 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   the provider's full library is far larger. */}
                               {showVoice && (
                                 <Group label={t('xcreate.voice')} last={isLast('voice')}>
-                                  {audVoices.map((v: any) => (
-                                    <Pill key={v.id} active={(opts.voice ?? audVoices[0]?.id) === v.id} onClick={() => updateSlotOpts(i, { voice: v.id })}>
-                                      {v.label ?? v.id}{v.language && v.language !== 'multi' ? ` · ${v.language}` : ''}
-                                    </Pill>
-                                  ))}
+                                  <OptSelect
+                                    color={color}
+                                    value={opts.voice ?? audVoices[0]?.id}
+                                    onChange={v => updateSlotOpts(i, { voice: v })}
+                                    options={audVoices.map((v: any) => ({
+                                      value: v.id,
+                                      label: v.label ?? v.id,
+                                      // The language becomes the optgroup heading, so it
+                                      // is not repeated on every line the way the pills
+                                      // had to repeat it.
+                                      group: v.language ?? null,
+                                    }))}
+                                  />
+                                </Group>
+                              )}
+                              {/* Audio: the language the text is READ AS, not the
+                                  UI language — MiniMax's language_boost and
+                                  Alibaba's language_type. Both auto-detect by
+                                  default, so this only sharpens a case the model
+                                  would otherwise have to guess (a Japanese name in
+                                  an English line). Gemini TTS has no such knob and
+                                  declares no list, so the row stays hidden. */}
+                              {showLang && (
+                                <Group label={t('xcreate.language')} last={isLast('lang')}>
+                                  <OptSelect
+                                    color={color}
+                                    value={opts.language ?? audLangs[0]?.id}
+                                    onChange={v => updateSlotOpts(i, { language: v })}
+                                    options={audLangs.map((l: any) => ({ value: l.id, label: l.label ?? l.id }))}
+                                  />
                                 </Group>
                               )}
                               {showFormat && (

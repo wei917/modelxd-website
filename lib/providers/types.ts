@@ -119,6 +119,13 @@ export interface AudioVoice {
   gender?:   string
 }
 
+export interface AudioLanguage {
+  /** Provider's own value — sent on the wire verbatim. */
+  id:     string
+  /** Shown in the picker; the language's own name, so it reads in any UI locale. */
+  label?: string
+}
+
 export interface OutputModalityConfig {
   /** Available pixel dimensions, e.g. ['1024x1024', '2048x2048']. */
   sizes?:         string[]
@@ -163,6 +170,15 @@ export interface OutputModalityConfig {
   formats?:      string[]
   /** Audio output only: the voices to show in the picker. */
   voices?:       AudioVoice[]
+  /**
+   * Audio output only: the language the text should be read AS. Every
+   * provider that has this defaults to auto-detect and takes its own
+   * spelling on the wire (MiniMax `language_boost`, Alibaba
+   * `language_type`), so `id` is sent verbatim and the first entry is the
+   * auto default. Gemini TTS has no such parameter — it reads whatever it
+   * is given — so its row leaves this unset and the picker stays hidden.
+   */
+  languages?:    AudioLanguage[]
   /** Audio output only: speaking-rate bounds the provider accepts. */
   speed_range?:  { min: number; max: number }
 }
