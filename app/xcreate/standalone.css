@@ -94,7 +94,9 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-trend { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 12px 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .xcs-trend-foot { margin-top: auto; }
 .xcs-trend > p:not(.xcs-trend-note) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.xcs-trend-embed { min-height: 170px; }
+.xcs-trend-embed { min-height: 170px; overflow: hidden; }
+/* Rendered at X's full width, scaled to the card by XEmbed. */
+.xcs-trend-embed-inner { width: 550px; transform-origin: 0 0; }
 .xcs-trend-embed .twitter-tweet { margin: 0 auto 8px !important; }
 .xcs-trend-meta { display: flex; align-items: center; gap: 10px; }
 .xcs-trend > p { margin: 0; font-size: 14px; line-height: 1.5; }

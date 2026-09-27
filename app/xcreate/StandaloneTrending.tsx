@@ -26,11 +26,36 @@ declare global { interface Window { twttr?: any } }
 
 const READY_EVENT = 'xcs-twttr-ready'
 
+/** X's player draws its play button at a fixed size, which in a ~254px card
+ *  covered a third of it (owner, Sep 26: "the play button is too big"). The
+ *  embed renders at X's full width and the whole player is scaled down to
+ *  the card, so the button shrinks with the video. Clicks and fullscreen still
+ *  work: hit-testing follows the transform. */
+const EMBED_W = 550
+
 function XEmbed({ id, video }: { id: string; video: boolean }) {
+  const outer = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
+    const box = outer.current, el = ref.current
+    if (!box || !el) return
+    const fit = () => {
+      const scale = Math.min(1, box.clientWidth / EMBED_W)
+      el.style.transform = `scale(${scale})`
+      const h = el.scrollHeight
+      box.style.height = h ? `${Math.ceil(h * scale)}px` : ''
+      box.style.minHeight = h ? '0px' : ''
+    }
+    // The inner box's layout height changes when X sizes its iframe; the
+    // outer's width changes with the grid.
+    const ro = new ResizeObserver(fit)
+    ro.observe(box); ro.observe(el)
+    fit()
+    return () => ro.disconnect()
+  }, [])
+  useEffect(() => {
+    const box = outer.current, el = ref.current
+    if (!box || !el) return
     let near = false
     // Keyed on the element, not the effect run: dev StrictMode mounts twice
     // and a second create call would stack a duplicate embed.
@@ -48,11 +73,11 @@ function XEmbed({ id, video }: { id: string; video: boolean }) {
     const io = new IntersectionObserver(entries => {
       if (entries.some(e => e.isIntersecting)) { near = true; io.disconnect(); render() }
     }, { rootMargin: '800px 0px' })
-    io.observe(el)
+    io.observe(box)
     window.addEventListener(READY_EVENT, render)
     return () => { io.disconnect(); window.removeEventListener(READY_EVENT, render) }
   }, [id, video])
-  return <div ref={ref} className="xcs-trend-embed" />
+  return <div ref={outer} className="xcs-trend-embed"><div ref={ref} className="xcs-trend-embed-inner" /></div>
 }
 
 export default function StandaloneTrending({ kind, limit, moreHref, onUse, disabled }: {
