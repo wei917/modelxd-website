@@ -63,6 +63,7 @@ import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localSt
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
+import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
@@ -524,6 +525,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     ? { role: 'user', content: String(x.content ?? '') }
     : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
   const [input, setInput] = useState('')
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const questionRequired = temple === 'yixue' && yixueMode === 'ask'
   const [busy, setBusy] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
@@ -1138,7 +1140,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               the reading. */}
           {showChart && chart && !savedProblem && (!unverified || isQian(temple)) && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
-              {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} />}</>
+              {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
+                  setInput(question)
+                  composerRef.current?.focus()
+                  composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }} />}</>
                 : temple === 'ziwei' ? <ZiweiBoard chart={chart} />
                 : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={unverified ? null : bazi} year={unverified ? null : year} hourUnknown={bing.withBirth && !!birth.hourUnknown} />
                 : temple === 'xingming' ? <NameBoard chart={chart} />
@@ -1260,6 +1266,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           })()}
           <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
+              ref={composerRef}
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
               aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')}
@@ -1488,14 +1495,8 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
   )
 }
 
-/**
- * 稱骨 (八字幾兩幾錢), under the pillars. Every number is the chart route's
- * (lib/xtell-chenggu); this lays them out in the visitor's language, says
- * which calendar rules produced them (the lunar New Year, not the 立春 the
- * pillars above use) and never shows one total for an unknown hour: it
- * lists the totals the twelve 時辰 could give instead.
- */
-function ChengguCard({ data }: { data: Chenggu }) {
+/** Weight position and editorial themes; unknown hours retain discrete alternatives. */
+function ChengguCard({ data, onAsk, disabled }: { data: Chenggu; onAsk: (question: string) => void; disabled?: boolean }) {
   const t = useT()
   const { lang } = useLang()
   const titleId = useId()
@@ -1510,6 +1511,10 @@ function ChengguCard({ data }: { data: Chenggu }) {
   const dateOf = (l: ChengguLunar) => fill(t('xtell.cg.date'), { gz: l.yearGanZhi, m: monthOf(l), d: dayOf(l.day) })
   const L = data.lunar
   const known = data.total !== null && data.zhi !== null
+  const totals = known ? [data.total as number] : (data.options ?? []).map(o => o.total)
+  const markers = totals.filter(q => chengguTheme(q) !== null)
+  const theme = known ? chengguTheme(data.total as number, lang) : null
+  const values = totals.map(w).join(t('xtell.list.sep'))
   const rows = [
     { key: 'year', label: t('xtell.cg.row.year'), value: L.yearGanZhi, qian: data.weights.year },
     { key: 'month', label: t('xtell.cg.row.month'), value: `${monthOf(L)}${L.leap ? fill(t('xtell.cg.leapAs'), { cn: monthZh(L.month, lang), n: String(L.month) }) : ''}`, qian: data.weights.month },
@@ -1528,11 +1533,36 @@ function ChengguCard({ data }: { data: Chenggu }) {
           <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.cg.unknown.lead')}</p>
           <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12.5, lineHeight: 1.8 }}>
             {(data.options ?? []).map(o => (
-              <li key={o.total}><b>{w(o.total)}</b>{t('xtell.cg.option.sep')}{o.zhi.map(hourOf).join(t('xtell.list.sep'))}</li>
+              <li key={o.total}>
+                <b>{w(o.total)}</b>{t('xtell.cg.option.sep')}{o.zhi.map(hourOf).join(t('xtell.list.sep'))}
+                {chengguTheme(o.total, lang) && <div style={{ color: 'var(--muted)', fontSize: 12 }}>{fill(t('xtell.cg.theme'), { theme: chengguTheme(o.total, lang)! })}</div>}
+              </li>
             ))}
           </ul>
         </div>
       )}
+      {markers.length > 0 && <div style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 12, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.cg.position')}</div>
+        <div role="img" aria-label={fill(t('xtell.cg.scaleLabel'), { min: w(CHENGGU_MIN), max: w(CHENGGU_MAX), values })} style={{ padding: '0 6px' }}>
+          <div style={{ position: 'relative', height: 6, borderRadius: 3, background: 'var(--border2)' }}>
+            {markers.map(q => <span key={q} aria-hidden="true" style={{ position: 'absolute', left: `${(q - CHENGGU_MIN) / (CHENGGU_MAX - CHENGGU_MIN) * 100}%`, top: -3, width: 12, height: 12, transform: 'translateX(-50%)', borderRadius: '50%', background: 'var(--red)', border: '2px solid var(--surface)', boxSizing: 'border-box' }} />)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--muted)', lineHeight: 1.6 }}>
+          <div style={{ flex: 1 }}>{fill(t('xtell.cg.light'), { w: w(CHENGGU_MIN) })}<div>{t('xtell.cg.lightMeaning')}</div></div>
+          <div style={{ flex: 1, textAlign: 'right' }}>{fill(t('xtell.cg.heavy'), { w: w(CHENGGU_MAX) })}<div>{t('xtell.cg.heavyMeaning')}</div></div>
+        </div>
+      </div>}
+      {theme && <div style={{ marginTop: 12, lineHeight: 1.7, fontSize: 13 }}>
+        <strong>{t('xtell.cg.meaning')}</strong>
+        <p style={{ margin: '4px 0 0' }}>{fill(t('xtell.cg.theme'), { theme })}</p>
+      </div>}
+      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0', lineHeight: 1.6 }}>{t('xtell.cg.reflection')}</p>
+      <button type="button" aria-label={`${t('xtell.guide.fill')}: ${t('xtell.cg.ask')}`} disabled={disabled || totals.length === 0} onClick={() => onAsk(known
+        ? fill(t('xtell.cg.askPrompt'), { w: w(data.total as number) })
+        : fill(t('xtell.cg.askUnknown'), { values }))} style={{ padding: '8px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--red)', fontSize: 12, fontWeight: 600, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
+        {t('xtell.cg.ask')}
+      </button>
       <details open style={{ marginTop: 8 }}>
         <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.parts')}</summary>
         <table style={{ marginTop: 6, borderCollapse: 'collapse', fontSize: 12.5, width: '100%', maxWidth: 440 }}>

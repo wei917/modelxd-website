@@ -560,3 +560,17 @@ iztro.
 ## User-facing technical metadata (Sep 27)
 
 Package names, dependency versions and internal table version IDs stay in server metadata and development records; the UI does not render the engine payload. Chart copy describes relevant calculation conventions and limitations without implementation or validation-log details. Per the owner’s follow-up, 稱骨 no longer shows 計算方式 or 查看來源, including their explanatory text and links. Calculation rules and source comparisons remain internal. This applies across all temples and five locales.
+
+
+## 稱骨 result explanation (Sep 27)
+
+The result now includes a neutral 2兩1錢–7兩1錢 position scale, brief
+traditional themes for all 51 weights in five languages, and 請老師解讀.
+The scale is not a percentile or good/bad score. Unknown hours keep separate
+dots and descriptions for each possible total. The button fills and focuses
+the existing priced composer; it does not send or charge automatically.
+`lib/xtell-chenggu-reading.ts` holds editorial themes shared with the server's
+tutor facts. Internal reference: the original public-domain verses reproduced
+at https://www.deeporacle.ai/bazi/tools/chenggu, checked Sep 27. These are
+brief thematic descriptions, not quoted verses or personal predictions.
+No method/source sections are restored. The page states: 稱骨是民俗解讀，重量不代表人生好壞。

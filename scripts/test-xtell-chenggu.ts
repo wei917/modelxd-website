@@ -21,6 +21,7 @@ import {
   YEAR_QIAN, MONTH_QIAN, DAY_QIAN, HOUR_QIAN, VARIANTS, CHENGGU_SOURCES, CHENGGU_VERSION, ZHI,
   weigh, weightText, zhiOfHour, type Chenggu,
 } from '../lib/xtell-chenggu'
+import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../lib/xtell-chenggu-reading'
 import * as xtell from '../lib/xtell'
 import * as yijing from '../lib/yijing'
 const { chengGu, chengguFacts, validBirth } = xtell
@@ -207,6 +208,23 @@ check('a whole 兩 drops the 錢, a light one has no 兩', weightText(50) === '�
   check('leap-month facts say which month it counts as', leap.includes('閏二月（按二月計）') && leap.includes('＝三兩七錢'))
   const v = chengguFacts(chengGu(at(1983, 3, 4, 12, 0)))
   check('variant facts change one entry at a time and say so', (v.match(/只把這一項改為/g) ?? []).length === 2 && v.includes('總重是 三兩七錢') && v.includes('總重是 三兩三錢'), v)
+}
+
+// Editorial coverage and grounded tutor context, including non-monotonic themes.
+{
+  const languages = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
+  check('reading endpoints match arithmetic extremes',
+    [YEAR_QIAN, MONTH_QIAN, DAY_QIAN, HOUR_QIAN].reduce((n, table) => n + Math.min(...Object.values(table)), 0) === CHENGGU_MIN &&
+    [YEAR_QIAN, MONTH_QIAN, DAY_QIAN, HOUR_QIAN].reduce((n, table) => n + Math.max(...Object.values(table)), 0) === CHENGGU_MAX)
+  check('every weight has a theme in all five languages', Array.from({ length: 51 }, (_, i) => i + 21).every(q => languages.every(l => !!chengguTheme(q, l))))
+  check('invalid and fractional weights have no invented reading', [20, 72, 35.5, NaN, Infinity].every(q => chengguTheme(q) === null))
+  check('lightest and heaviest preserve distinct traditional themes', chengguTheme(21)!.includes('困頓') && chengguTheme(71)!.includes('公侯卿相'))
+  check('heavier is not automatically a better theme', chengguTheme(36)!.includes('順遂') && chengguTheme(37)!.includes('不定'))
+  const known = chengGu(at(2000, 2, 4, 23, 0))
+  check('teacher receives same editorial theme as the card', chengguFacts(known).includes(chengguTheme(known.total!)!))
+  const unknown = chengGu({ ...at(1990, 1, 1, 12, 0), hourUnknown: true })
+  const facts = chengguFacts(unknown)
+  check('teacher gets every unknown-hour theme, with no single choice', unknown.options!.every(o => facts.includes(chengguTheme(o.total)!)) && facts.includes('不可選定單一結果'))
 }
 
 // ── The routes: computed on the server, only in 八字廟 ──────────────────────

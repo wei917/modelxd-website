@@ -13,6 +13,7 @@
 // Server-only: both libraries are pure computation, but the prompts and the
 // master personas live here too, and those must not be client-editable.
 
+import { chengguTheme } from './xtell-chenggu-reading'
 import { Solar, LunarUtil } from 'lunar-typescript'
 import { jyotishChart, jyotishFacts, type JyotishChart } from './jyotish'
 import {
@@ -276,7 +277,8 @@ export function chengguFacts(c: Chenggu): string {
     // Each alternative changes only its own entry: a table that differs on
     // both (hankwu61) is not what either line describes (Codex review).
     ...(c.variants ?? []).map(v => `  版本差異：${v.entry === 'guihai' ? '癸亥年' : '農曆二十日'}在本表為 ${w(v.v1)}，另有流通版本記為 ${w(v.other)}${v.total !== null ? `；只把這一項改為 ${w(v.other)}、其他各項不變時，總重是 ${w(v.total)}` : ''}。`),
-    `  稱骨是民間傳統算法，不是經過驗證的預測，不可說成定論。本站沒有收錄稱骨歌（各版本文字不一，男命女命也不同，尚未查證）：不要引述、補寫或改寫任何稱骨歌句或「某兩某錢之命」的評語，只說明重量怎麼算、傳統上怎麼看待輕重。信眾問到稱骨或幾兩幾錢時再談；一般解讀不必提。`,
+    `  頁面白話主題（傳統意象，不是個人預測）：${(c.total !== null ? [c.total] : (c.options ?? []).map(o => o.total)).map(q => `${w(q)}：${chengguTheme(q) ?? '未收錄，不可杜撰'}`).join('；')}。`,
+    `  稱骨是民間傳統算法，不是經過驗證的預測，不可說成定論，重量不代表人生好壞。只依上列白話主題解釋傳統意象；不要引述、補寫或改寫任何稱骨歌句，不可預言壽命、生育、財富或地位，也不要從歌訣要求改名、搬家或改信宗教。時辰未知時逐項說明，不可選定單一結果。信眾問到稱骨或幾兩幾錢時再談；一般解讀不必提。`,
   ].filter(Boolean).join('\n')
 }
 
