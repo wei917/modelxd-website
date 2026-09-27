@@ -5,9 +5,11 @@
 //   2. The visitor's saved choice: the `modelxd_lang` cookie, which the
 //      server can read; before the cookie existed the choice lived only in
 //      localStorage (`modelxd:lang`), and it is still written there too.
-//   3. The browser's language list, site-aware: on the XTell door English is
-//      skipped and a bare "zh" means 繁體, with 繁體 as the default; elsewhere
-//      the first supported language wins, English otherwise.
+//   3. The browser's language, site-aware: on the XTell door only the
+//      browser's own language counts (the first in its list): Japanese,
+//      Korean or Simplified Chinese as themselves, anything else (English
+//      included) 繁體; elsewhere the first supported language in the list
+//      wins, English otherwise.
 //
 // Why here and not in LangProvider (Codex, Sep 27): the provider rendered
 // English on the server and first client pass, then read localStorage on
@@ -73,22 +75,26 @@ export function acceptTags(header: string | null | undefined): string[] {
     .map(x => x.tag)
 }
 
-/** The browser fallback, site-aware (unchanged from LangProvider's): on the
- *  XTell door (Taiwan market, owner Sep 24) the list is consulted only for
- *  ja / ko / zh-Hans, a bare "zh" means Traditional, and anything else,
- *  an English browser included, gets 繁體. Elsewhere the first supported
- *  language wins, English otherwise. */
+/** The browser fallback, site-aware. On the XTell door (Taiwan market,
+ *  owner Sep 24: an English browser gets 繁體) only the browser's own
+ *  language counts, the first in its list: ja / ko / zh-Hans as themselves
+ *  (a bare "zh" is Traditional), anything else 繁體. The rest of the list is
+ *  not searched (owner, Sep 27: an English Chrome whose list had Japanese
+ *  third came up in Japanese). Elsewhere the first supported language in
+ *  the list wins, English otherwise. */
 export function browserLang(tags: readonly string[], site: Site): Lang {
-  for (const tag of tags) {
-    let match = langFromTag(tag ?? '')
-    if (!match) continue
-    if (site === 'xtell') {
-      if (match === 'en') continue
-      if (match === 'zh-Hans' && !/hans|-cn|-sg/.test(tag.toLowerCase())) match = 'zh-Hant'
-    }
-    return match
+  if (site === 'xtell') {
+    const first = tags[0] ?? ''
+    const match = langFromTag(first)
+    if (match === 'ja' || match === 'ko') return match
+    if (match === 'zh-Hans' && /hans|-cn|-sg/.test(first.toLowerCase())) return 'zh-Hans'
+    return 'zh-Hant'
   }
-  return site === 'xtell' ? 'zh-Hant' : 'en'
+  for (const tag of tags) {
+    const match = langFromTag(tag ?? '')
+    if (match) return match
+  }
+  return 'en'
 }
 
 /** The rule: explicit query > saved choice > browser fallback. */

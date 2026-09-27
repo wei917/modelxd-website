@@ -3,7 +3,7 @@ import type { Lang } from './lang'
 
 /** Tab title + description for the XTell host, in the language the page
  *  renders in (lib/lang.ts `serverLang`: `?lang=`, the saved choice, then the
- *  browser's list, where XTell skips English and defaults to 繁體). English
+ *  browser's own language, where anything but ja / ko / zh-Hans is 繁體). English
  *  appears only as a saved or linked choice. The titles are the client's
  *  `xtell.site.tab` strings (scripts/test-lang.ts holds them equal), so the
  *  first paint's tab title is the one XTellNav keeps. Used by the root layout

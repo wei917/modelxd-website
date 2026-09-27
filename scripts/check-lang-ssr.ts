@@ -49,7 +49,8 @@ const expect = async (name: string, path: string, headers: Record<string, string
   // First visitors: the door's browser fallback.
   if (door === 'xtell') {
     await expect('first visit, Japanese browser', '/', ja, 'ja')
-    await expect('first visit, English browser (XTell skips English)', '/', { 'accept-language': 'en-US,en;q=0.9' }, 'zh-Hant')
+    await expect('first visit, English browser → 繁體', '/', { 'accept-language': 'en-US,en;q=0.9' }, 'zh-Hant')
+    await expect('first visit, English Chrome with Japanese third (owner, Sep 27)', '/', { 'accept-language': 'en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6' }, 'zh-Hant')
     await expect('first visit, Korean browser', '/', { 'accept-language': 'ko-KR,ko;q=0.9' }, 'ko')
     await expect('first visit, zh-CN browser', '/', { 'accept-language': 'zh-CN,zh;q=0.9' }, 'zh-Hans')
     await expect('first visit, bare zh', '/', { 'accept-language': 'zh' }, 'zh-Hant')

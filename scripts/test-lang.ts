@@ -31,9 +31,11 @@ check('Accept-Language: most preferred first, q=0 dropped, junk ignored',
   same(acceptTags('ja,en-US;q=0.9,en;q=0.8'), ['ja', 'en-US', 'en']) && same(acceptTags('en;q=0.5, ko'), ['ko', 'en']) &&
   same(acceptTags('zh-TW;q=0, ja;q=0.3'), ['ja']) && same(acceptTags(''), []) && same(acceptTags(null), []) && same(acceptTags(' , ;q=1,fr;q=abc'), []))
 const X = (...tags: string[]) => browserLang(tags, 'xtell')
-check('XTell fallback: English skipped, bare zh is 繁體, only Hans/CN/SG is 简体, default 繁體',
-  X('en-US') === 'zh-Hant' && X('en-US', 'ja') === 'ja' && X('zh') === 'zh-Hant' && X('zh-CN') === 'zh-Hans' && X('zh-SG') === 'zh-Hans' &&
+check('XTell fallback: the browser\'s own language only; bare zh is 繁體, only Hans/CN/SG is 简体, anything else 繁體',
+  X('en-US') === 'zh-Hant' && X('ja-JP', 'en') === 'ja' && X('zh') === 'zh-Hant' && X('zh-CN') === 'zh-Hans' && X('zh-SG') === 'zh-Hans' &&
   X('zh-Hans') === 'zh-Hans' && X('zh-HK') === 'zh-Hant' && X('ko-KR') === 'ko' && X() === 'zh-Hant' && X('fr') === 'zh-Hant')
+check('XTell: an English Chrome with Japanese later in its list gets 繁體 (owner, Sep 27)',
+  browserLang(acceptTags('en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6,pt;q=0.5,es;q=0.4'), 'xtell') === 'zh-Hant' && X('en-US', 'ja') === 'zh-Hant' && X('fr', 'ko') === 'zh-Hant' && X('pt', 'zh-CN') === 'zh-Hant')
 for (const site of ['modelxd', 'xcreate'] as const) {
   const W = (...tags: string[]) => browserLang(tags, site)
   check(`${site} fallback: first supported language, English otherwise`, W('en-US', 'ja') === 'en' && W('ja') === 'ja' && W('zh') === 'zh-Hans' && W('zh-TW') === 'zh-Hant' && W('fr') === 'en' && W('fr', 'ko') === 'ko' && W() === 'en')
@@ -46,7 +48,7 @@ check('an invalid saved value falls through to the browser', resolveLang({ saved
 // ── Server ─────────────────────────────────────────────────────────────────
 check('cookie parsing', cookieLang('a=1; modelxd_lang=ja; b=2') === 'ja' && cookieLang('modelxd_lang=ko') === 'ko' && cookieLang('xmodelxd_lang=ja') === null && cookieLang('') === null && cookieLang(null) === null)
 check('serverLang: the proxy\'s stamp first', serverLang(hdrs({ 'x-modelxd-lang': 'ko', cookie: 'modelxd_lang=ja', 'accept-language': 'en' }), 'modelxd') === 'ko')
-check('serverLang without a stamp: cookie, then Accept-Language for the door', serverLang(hdrs({ cookie: 'modelxd_lang=ja', 'accept-language': 'ko' }), 'xtell') === 'ja' && serverLang(hdrs({ 'accept-language': 'en-US,ja;q=0.5' }), 'xtell') === 'ja' && serverLang(hdrs({ 'accept-language': 'en-US' }), 'xtell') === 'zh-Hant' && serverLang(hdrs({}), 'modelxd') === 'en')
+check('serverLang without a stamp: cookie, then Accept-Language for the door', serverLang(hdrs({ cookie: 'modelxd_lang=ja', 'accept-language': 'ko' }), 'xtell') === 'ja' && serverLang(hdrs({ 'accept-language': 'ja,en-US;q=0.5' }), 'xtell') === 'ja' && serverLang(hdrs({ 'accept-language': 'en-US,ja;q=0.5' }), 'xtell') === 'zh-Hant' && serverLang(hdrs({ 'accept-language': 'en-US' }), 'xtell') === 'zh-Hant' && serverLang(hdrs({}), 'modelxd') === 'en')
 check('serverLang ignores a bad stamp', serverLang(hdrs({ 'x-modelxd-lang': '<script>', cookie: 'modelxd_lang=ja' }), 'modelxd') === 'ja')
 
 // ── Client mount step (LangProvider) ───────────────────────────────────────
