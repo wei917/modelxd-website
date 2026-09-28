@@ -43,16 +43,18 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Too many reports — give it an hour.' }, { status: 429 })
   }
 
-  // Screenshot: a data-URL PNG rendered client-side, previewed and
-  // consented-to by the user before it was sent.
+  // Screenshot: a data-URL image, previewed and consented-to by the user
+  // before it was sent: the page captured client-side (PNG), or an image
+  // the reporter attached, re-encoded in the browser (PNG or JPEG, Sep 27).
   let screenshotPath: string | null = null
   const shot = typeof body.screenshot === 'string' ? body.screenshot : null
-  if (shot && shot.startsWith('data:image/png;base64,')) {
-    const b64 = shot.slice('data:image/png;base64,'.length)
+  const kind = shot?.match(/^data:image\/(png|jpeg);base64,/)
+  if (shot && kind) {
+    const b64 = shot.slice(kind[0].length)
     const bytes = Buffer.from(b64, 'base64')
     if (bytes.length > 0 && bytes.length <= MAX_SHOT_BYTES) {
-      const path = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.png`
-      const { error } = await svc().storage.from('feedback').upload(path, bytes, { contentType: 'image/png' })
+      const path = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${kind[1] === 'jpeg' ? 'jpg' : 'png'}`
+      const { error } = await svc().storage.from('feedback').upload(path, bytes, { contentType: `image/${kind[1]}` })
       if (!error) screenshotPath = path
       else console.warn('[feedback] screenshot upload failed:', error.message)
     }

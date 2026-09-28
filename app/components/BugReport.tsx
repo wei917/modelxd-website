@@ -7,8 +7,40 @@
 // The capture is DOM-rendered (html-to-image, loaded on demand), so
 // there's no scary screen-share permission prompt; if it fails the
 // form still works without a screenshot.
+//
+// The page on screen is not always the one with the problem (owner,
+// Sep 27), so the reporter can attach their own image instead: a button,
+// paste, or drop. It replaces the capture (one image per report), and is
+// scaled down in the browser to fit the API's 4 MB.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+
+const MAX_SHOT_BYTES = 4 * 1024 * 1024
+const MAX_SIDE = 2000
+const bytesOf = (dataUrl: string) => Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4)
+
+/** An image file → a PNG or JPEG data URL no larger than the API takes, or
+ *  null when the browser cannot decode it (HEIC outside Safari, a broken
+ *  file). A PNG stays PNG when it fits; otherwise JPEG. */
+async function imageToDataUrl(file: File): Promise<string | null> {
+  const url = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = url
+    })
+    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight))
+    const c = document.createElement('canvas')
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale)); c.height = Math.max(1, Math.round(img.naturalHeight * scale))
+    const g = c.getContext('2d')
+    if (!g) return null
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height)
+    g.drawImage(img, 0, 0, c.width, c.height)
+    const tries = file.type === 'image/png' ? [() => c.toDataURL('image/png'), () => c.toDataURL('image/jpeg', 0.85), () => c.toDataURL('image/jpeg', 0.7)]
+      : [() => c.toDataURL('image/jpeg', 0.85), () => c.toDataURL('image/jpeg', 0.7)]
+    for (const make of tries) { const out = make(); if (bytesOf(out) <= MAX_SHOT_BYTES) return out }
+    return null
+  } catch { return null } finally { URL.revokeObjectURL(url) }
+}
 import { useT } from '../../lib/i18n'
 import ContactEmail from './ContactEmail'
 
@@ -20,9 +52,20 @@ export default function BugReportLink({ className, style }: { className?: string
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // 'page' = the capture of this page; 'yours' = an image the reporter attached.
+  const [shotKind, setShotKind] = useState<'page' | 'yours'>('page')
+  const [dragging, setDragging] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const attach = async (file: File | undefined | null) => {
+    if (!file || !file.type.startsWith('image/')) return
+    setErr(null)
+    const url = await imageToDataUrl(file)
+    if (!url) { setErr(t('fb.badImage')); return }
+    setShot(url); setShotKind('yours')
+  }
 
   const start = async () => {
-    setErr(null); setSent(false); setDesc('')
+    setErr(null); setSent(false); setDesc(''); setShotKind('page'); setDragging(false)
     // Capture FIRST — the page as the user sees it, no modal in frame.
     try {
       const { toPng } = await import('html-to-image')
@@ -31,7 +74,7 @@ export default function BugReportLink({ className, style }: { className?: string
         // The custom cursor overlay would photobomb every report.
         filter: (n: any) => !(n?.classList?.contains?.('cursor') || n?.classList?.contains?.('cursor-ring')),
       })
-      setShot(png.length <= 4_500_000 ? png : null)
+      setShot(bytesOf(png) <= MAX_SHOT_BYTES ? png : null)
     } catch { setShot(null) }
     setOpen(true)
   }
@@ -70,9 +113,14 @@ export default function BugReportLink({ className, style }: { className?: string
           onClick={() => !busy && setOpen(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 99500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
         >
-          <div onClick={e => e.stopPropagation()} style={{
+          <div onClick={e => e.stopPropagation()}
+            onPaste={e => { const f = Array.from(e.clipboardData?.files ?? []).find(x => x.type.startsWith('image/')); if (f) { e.preventDefault(); void attach(f) } }}
+            onDragOver={e => { if (Array.from(e.dataTransfer?.types ?? []).includes('Files')) { e.preventDefault(); setDragging(true) } }}
+            onDragLeave={e => { if (e.currentTarget === e.target) setDragging(false) }}
+            onDrop={e => { e.preventDefault(); setDragging(false); void attach(Array.from(e.dataTransfer?.files ?? []).find(x => x.type.startsWith('image/'))) }}
+            style={{
             width: 'min(480px, 94vw)', background: 'var(--bg)', borderRadius: 14,
-            border: '1px solid var(--border2)', padding: '20px 22px', boxShadow: '0 18px 60px rgba(0,0,0,0.25)',
+            border: `1px ${dragging ? 'dashed var(--red)' : 'solid var(--border2)'}`, padding: '20px 22px', boxShadow: '0 18px 60px rgba(0,0,0,0.25)',
           }}>
             <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-display), inherit', marginBottom: 12 }}>
               🐞 {t('fb.title')}
@@ -84,14 +132,25 @@ export default function BugReportLink({ className, style }: { className?: string
             ) : (
               <>
                 {shot && (
-                  <div style={{ position: 'relative', marginBottom: 12 }}>
-                    <img src={shot} alt="" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', objectPosition: 'top', borderRadius: 8, border: '1px solid var(--border)' }} />
-                    <button
-                      onClick={() => setShot(null)} aria-label="remove screenshot" title={t('fb.noshot')}
-                      style={{ position: 'absolute', top: 6, right: 6, border: 'none', borderRadius: 999, width: 24, height: 24, background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}
-                    >✕</button>
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginBottom: 4 }}>{t(shotKind === 'yours' ? 'fb.shotYours' : 'fb.shotPage')}</div>
+                    <div style={{ position: 'relative' }}>
+                      <img src={shot} alt="" style={{ width: '100%', maxHeight: 180, objectFit: shotKind === 'yours' ? 'contain' : 'cover', objectPosition: 'top', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)' }} />
+                      <button
+                        onClick={() => setShot(null)} aria-label={t('fb.noshot')} title={t('fb.noshot')}
+                        style={{ position: 'absolute', top: 6, right: 6, border: 'none', borderRadius: 999, width: 24, height: 24, background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}
+                      >✕</button>
+                    </div>
                   </div>
                 )}
+                {/* Another image instead: button, paste or drop. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: 12, color: 'var(--muted2)' }}>
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { void attach(e.target.files?.[0]); e.target.value = '' }} />
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={busy}
+                    style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid var(--border2)', background: 'none', color: 'var(--white)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >📎 {t(shot ? 'fb.replace' : 'fb.attach')}</button>
+                  <span>{t('fb.attachHint')}</span>
+                </div>
                 <textarea
                   autoFocus value={desc} onChange={e => setDesc(e.target.value)}
                   placeholder={t('fb.ph')} maxLength={4000} rows={4}
