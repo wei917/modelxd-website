@@ -3498,6 +3498,33 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-examples > button:hover { border-color: var(--xtell-vermilion, var(--red)); color: var(--xtell-vermilion, var(--red)); }
 .xtell-chart-fact { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--xtell-rule, var(--border2)); font-size: 13.5px; line-height: 1.7; color: var(--xtell-ink, var(--white)); }
 
+/* XTell: 「請一位老師」, the teacher picker (TeacherPicker, owner Sep 28). */
+.xtell-tp-backdrop { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px 12px; background: rgba(48, 45, 41, .45); }
+.xtell-tp { width: min(560px, 100%); max-height: min(760px, calc(100vh - 40px)); display: flex; flex-direction: column; background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, .25); overflow: hidden; color: var(--xtell-ink, var(--white)); }
+.xtell-tp-head { padding: 20px 22px 8px; }
+.xtell-tp-head h2 { margin: 0 0 4px; font: 500 22px/1.3 var(--xtell-serif, serif); }
+.xtell-tp-head p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--xtell-secondary, var(--muted)); }
+.xtell-tp-body { overflow-y: auto; padding: 4px 14px 8px; }
+.xtell-tp-body h3 { margin: 12px 8px 6px; font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--xtell-secondary, var(--muted)); }
+.xtell-tp-empty { margin: 16px 8px; font-size: 13px; color: var(--xtell-secondary, var(--muted)); }
+.xtell-room .xtell-tp-row, .xtell-tp-row { width: 100%; min-height: 0; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-bottom: 8px; padding: 12px 12px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 12px; background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.xtell-tp-row:hover:not(:disabled) { border-color: var(--xtell-vermilion, var(--red)); background: #fffaf5; }
+.xtell-tp-row:disabled { cursor: default; opacity: .55; }
+.xtell-tp-logo { display: grid; place-items: center; }
+.xtell-tp-main { min-width: 0; display: grid; gap: 2px; }
+.xtell-tp-name { font-size: 15px; font-weight: 700; }
+.xtell-tp-name small { margin-left: 6px; padding: 1px 7px; border: 1px solid var(--xtell-vermilion, var(--red)); border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--xtell-vermilion, var(--red)); vertical-align: 2px; }
+.xtell-tp-name small.is-muted { border-color: var(--xtell-rule, var(--border2)); color: var(--xtell-secondary, var(--muted)); }
+.xtell-tp-note { font-size: 12.5px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
+.xtell-tp-stats { display: grid; justify-items: end; gap: 2px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--xtell-secondary, var(--muted)); white-space: nowrap; }
+.xtell-tp-stats b { font-weight: 600; color: var(--xtell-ink, var(--white)); }
+.xtell-tp-foot { display: flex; justify-content: flex-end; padding: 12px 22px 16px; border-top: 1px solid var(--xtell-rule, var(--border2)); }
+.xtell-tp-foot button { min-height: 0; padding: 8px 18px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 999px; background: #fff; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+@media (max-width: 480px) {
+  .xtell-tp-row { grid-template-columns: 26px minmax(0, 1fr); }
+  .xtell-tp-stats { grid-column: 2; justify-items: start; grid-auto-flow: column; gap: 10px; }
+}
+
 /* XTell: a teacher's seat in a room (owner, Sep 27: "beautify it"). A small
    card: the provider's mark, the name in the middle (click to change
    teacher; the two sides are equal so it is the card's middle), and quiet

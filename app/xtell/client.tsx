@@ -25,7 +25,8 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useT, useLang, tOr } from '../../lib/i18n'
 import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../lib/xtell-birth'
 import { useRequireAuth } from '../../lib/useRequireAuth'
-import ModelPickerDialog, { type PickerModel } from '../components/ModelPickerDialog'
+import type { PickerModel } from '../components/ModelPickerDialog'
+import TeacherPicker from '../components/xtell/TeacherPicker'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
@@ -1443,9 +1444,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         </div>
       )}
 
+      {/* 「請一位老師」 (owner, Sep 28: the model browser was for developers). */}
       {picker && (
-        <ModelPickerDialog
-          mode="text" recipeMode="text_to_text" feature="xtell" slotIds={masters.filter(m => m.id !== picker.replace).map(m => m.id)}
+        <TeacherPicker
+          catalog={catalog} seated={masters.map(m => m.id)} replacing={picker.replace} defaultModel={DEFAULT_MASTER}
+          price={m => { const usd = estimateReadingUsd(m, { thinking: defaultThinking(m), search: false }, 0, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS); return usd == null ? null : fmtUsd(usd) }}
+          firstWord={m => firstWord(m, defaultThinking(m))}
           onSelect={m => {
             setMasters(ms => {
               if (ms.some(x => x.id === m.id)) return ms
