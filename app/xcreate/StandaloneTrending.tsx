@@ -6,16 +6,16 @@
 // live week newest first, loading on as the reader scrolls (owner, Sep 27:
 // "at least 10 ... infinite load").
 //
-// X videos use X's video-only embed (twttr.widgets.createVideo): the post's
-// own text renders inside X's iframe at X's size, which nothing on our side
-// can restyle, so the card sets our summary in the site's type instead, and
-// the card opens the post on X (no model tags or author line, owner, Sep 27:
-// X's embed already names the author). Embeds are built into an empty div React
-// never touches, and only when the card nears the viewport: twenty at once is
-// twenty iframes and players. "Use this preset" hands the post to XCreate as
-// a template (prompt, model, recipe, duration) through the same applyTemplate
-// every template uses. Other platforms get a plain link until their own
-// embed is wired.
+// X videos use X's video-only card (createTweet with mediaMaxWidth): the
+// post's own text renders inside X's iframe at X's size, which nothing on our
+// side can restyle, so the card sets our summary in the site's type instead,
+// and the card opens the post on X (no model tags or author line, owner, Sep
+// 27: X's embed already names the author). Embeds are built into an empty div
+// React never touches, and live only while the card is on screen or within
+// half a screen of it (LIVE_RANGE). "Use this preset" hands the post to
+// XCreate as a template (prompt, model, recipe, duration) through the same
+// applyTemplate every template uses. Other platforms get a plain link until
+// their own embed is wired.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Script from 'next/script'
@@ -34,6 +34,18 @@ const READY_EVENT = 'xcs-twttr-ready'
  *  work: hit-testing follows the transform. */
 const EMBED_W = 550
 
+/** Where an embed lives: the screen plus half a screen above and below. Each
+ *  X embed is X's own page in an iframe, and X's player downloads video
+ *  before anyone presses play: all 52 posts built and kept took ~890 MB of
+ *  memory and 53 MB of video (headless Chrome, Sep 28). The owner asked for
+ *  a screen each way, then "3 maybe too many?": at 4 columns that kept up to
+ *  31 alive, half a screen 23 with no card on screen ever waiting empty
+ *  (scrolling a screen a second), a quarter 18 with the first empty boxes,
+ *  the screen alone 13 with up to 3 empty at once. A card leaving the range
+ *  drops its embed and keeps its height, so nothing moves under the reader;
+ *  coming back builds it again. */
+const LIVE_RANGE = '50% 0px'
+
 function XEmbed({ id, video }: { id: string; video: boolean }) {
   const outer = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -43,6 +55,8 @@ function XEmbed({ id, video }: { id: string; video: boolean }) {
     const fit = () => {
       const scale = Math.min(1, box.clientWidth / EMBED_W)
       el.style.transform = `scale(${scale})`
+      // A dropped embed keeps the height it had.
+      if (!el.firstChild) return
       const h = el.scrollHeight
       box.style.height = h ? `${Math.ceil(h * scale)}px` : ''
       box.style.minHeight = h ? '0px' : ''
@@ -58,25 +72,40 @@ function XEmbed({ id, video }: { id: string; video: boolean }) {
     const box = outer.current, el = ref.current
     if (!box || !el) return
     let near = false
+    let gen = 0
     // Keyed on the element, not the effect run: dev StrictMode mounts twice
     // and a second create call would stack a duplicate embed.
-    const render = () => {
+    const build = () => {
       const w = window.twttr?.widgets
       if (!near || !w || el.dataset.tweet === id) return
       el.dataset.tweet = id
+      const mine = ++gen
       // mediaMaxWidth is what produced the video-only card on the first
       // draft (a data-media-max-width blockquote); createVideo alone still
       // rendered the whole post.
-      w.createTweet(id, el, video
+      Promise.resolve(w.createTweet(id, el, video
         ? { dnt: true, conversation: 'none', mediaMaxWidth: 550 }
-        : { dnt: true, conversation: 'none' })
+        : { dnt: true, conversation: 'none' })).then((node?: Element | null) => {
+        // Dropped before X finished: take out whatever it added late.
+        if (mine === gen || !node) return
+        let top: Element | null = node
+        while (top && top.parentElement !== el) top = top.parentElement
+        top?.remove()
+      })
+    }
+    const drop = () => {
+      if (el.dataset.tweet !== id) return
+      gen++
+      delete el.dataset.tweet
+      el.replaceChildren()
     }
     const io = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) { near = true; io.disconnect(); render() }
-    }, { rootMargin: '800px 0px' })
+      near = entries[entries.length - 1].isIntersecting
+      if (near) build(); else drop()
+    }, { rootMargin: LIVE_RANGE })
     io.observe(box)
-    window.addEventListener(READY_EVENT, render)
-    return () => { io.disconnect(); window.removeEventListener(READY_EVENT, render) }
+    window.addEventListener(READY_EVENT, build)
+    return () => { io.disconnect(); window.removeEventListener(READY_EVENT, build) }
   }, [id, video])
   return <div ref={outer} className="xcs-trend-embed"><div ref={ref} className="xcs-trend-embed-inner" /></div>
 }
