@@ -30,7 +30,9 @@ const VIEWS: { view: XCreateView; href: string; label: string }[] = [
 export function XCreateMark() {
   const { t } = useLang()
   const brand = t('xcreate.site.brand')
-  return <span className="xcs-brand"><img className="xcs-logo" src="/logo.png" alt="" width={26} height={26} /><span><span className="xcs-accent">{brand.slice(0, 1)}</span>{brand.slice(1)}</span></span>
+  // 64 px (3 KB), as XTell's mark: the site-wide logo.png is 520 px and 219
+  // KB, and the page preloads it (Sep 28).
+  return <span className="xcs-brand"><img className="xcs-logo" src="/xcreate/logo-64.png" alt="" width={26} height={26} /><span><span className="xcs-accent">{brand.slice(0, 1)}</span>{brand.slice(1)}</span></span>
 }
 
 function viewOf(param: string | null | undefined): XCreateView {

@@ -28,10 +28,32 @@ html[data-site="xcreate"] {
   --red: var(--xc-accent);
 }
 
-/* Fonts are body-level variables (next/font classes on <body>, added by the
-   root layout on this host only): DM Sans for text, a Barlow that the CJK
-   rules in globals.css do not re-point, for the wordmark and headings. CJK
-   glyphs fall through to the language's Noto via --font-body. */
+/* The phone's own fonts, as XTell's (owner, Sep 28: "no new font
+   download"). The door used DM Sans and Barlow for Latin and the language's
+   Noto for CJK: a phone in Traditional Chinese fetched 1.5 MB of Noto Sans TC
+   in 34 pieces before the page settled, Japanese 0.9 MB. These tokens beat
+   the next/font classes on <body> and the CJK rules in globals.css (the
+   [lang] here outranks `html[lang=…] body` in any stylesheet order), so no
+   font file is used on this host. The Latin fonts the root layout preloads
+   on every host still download (~160 KB, as on XTell); www is unchanged. */
+html[data-site="xcreate"][lang] body {
+  --font-zh: "PingFang TC", "Noto Sans CJK TC", "Source Han Sans TC", "Microsoft JhengHei", sans-serif;
+  --font-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Yu Gothic", "Meiryo", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--font-zh);
+  --font-display: var(--font-body);
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", var(--font-zh);
+  --font-xc: var(--font-body);
+  --font-xc-display: var(--font-body);
+  --font-logo: var(--font-body);
+}
+html[data-site="xcreate"][lang="zh-Hans"] body { --font-zh: "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+html[data-site="xcreate"][lang="ja"] body {
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--font-ja);
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", var(--font-ja);
+}
+html[data-site="xcreate"][lang="ko"] body { --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", sans-serif; }
+
+/* Text and display type for the shell and the studio, from the tokens above. */
 html[data-site="xcreate"] body {
   --xc-font: var(--font-xc, var(--font-body)), var(--font-body), sans-serif;
   --xc-display: var(--font-xc-display, var(--font-display)), var(--font-display), sans-serif;
