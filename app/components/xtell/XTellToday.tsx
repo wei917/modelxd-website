@@ -1,25 +1,29 @@
 'use client'
 // app/components/xtell/XTellToday.tsx — today's Chinese almanac (黃曆), the
 // card beside the daily fortune at the top of the street (owner, Sep 27).
-// Computed here in the browser from the visitor's own date: free, no
-// birthday, no sign-in, no model. (A Panchang card sat beside it for a day
-// and was removed by the owner.)
+// Free: no birthday, no sign-in, no model. (A Panchang card sat beside it
+// for a day and was removed by the owner.)
 //
-// Computed after mount, never during render: the server does not know the
-// visitor's date or zone, and a first render that disagreed with the
-// browser's would break hydration.
+// Computed on the server (lib/xtell-almanac-server.ts, Sep 28), never here:
+// the page arrives with the card filled in for the visitor's own day, from
+// the time zone their connection reports, so there is no 「載入中…」 and the
+// browser never downloads the calendar library. After mount the phone's own
+// zone decides: if its date (or the page's language) differs from what the
+// server drew, the right day comes from /api/xtell/almanac, and again when a
+// tab comes back on a new day.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../../lib/i18n'
-import { almanacFor, type Almanac } from '../../../lib/xtell-almanac'
+import type { Almanac } from '../../../lib/xtell-almanac'
 import { detectedZone, localDateIn } from '../../../lib/xtell-time'
 
 
-/** Refresh when the tab comes back: a new local day means a new almanac. */
-function useToday(): { date: string; tz: string } | null {
-  const [today, setToday] = useState<{ date: string; tz: string } | null>(null)
+/** The visitor's own date, read after mount and again when the tab comes
+ *  back (a new local day means a new almanac). Null before mount. */
+function useToday(): string | null {
+  const [today, setToday] = useState<string | null>(null)
   useEffect(() => {
-    const read = () => { const tz = detectedZone(); setToday(t => t && t.date === localDateIn(tz) && t.tz === tz ? t : { date: localDateIn(tz), tz }) }
+    const read = () => { const d = localDateIn(detectedZone()); setToday(t => t === d ? t : d) }
     read()
     const onShow = () => { if (document.visibilityState === 'visible') read() }
     document.addEventListener('visibilitychange', onShow)
@@ -31,11 +35,23 @@ function useToday(): { date: string; tz: string } | null {
 
 const fill = (s: string, vars: Record<string, string | number>) => Object.entries(vars).reduce((out, [k, v]) => out.split(`{${k}}`).join(String(v)), s)
 
-export function AlmanacCard() {
+/** `initial`: the server's almanac for this visitor's day in the page's
+ *  language, or null when the server could not tell the zone. */
+export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
   const { lang, t } = useLang()
   const today = useToday()
-  const [data, setData] = useState<Almanac | null>(null)
-  useEffect(() => { if (today) setData(almanacFor(today.date, lang)) }, [today?.date, lang]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [data, setData] = useState<Almanac | null>(initial)
+  // The language `data` is in: the page's, as the server drew it.
+  const dataLang = useRef(lang)
+  useEffect(() => {
+    if (!today || (data && data.date === today && dataLang.current === lang)) return
+    let live = true
+    fetch(`/api/xtell/almanac?date=${today}&lang=${encodeURIComponent(lang)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (live && d?.almanac) { dataLang.current = lang; setData(d.almanac) } })
+      .catch(() => {})
+    return () => { live = false }
+  }, [today, lang]) // eslint-disable-line react-hooks/exhaustive-deps
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
   return (
     <section id="xtell-almanac" className="xtell-td" aria-labelledby="xtell-almanac-title">

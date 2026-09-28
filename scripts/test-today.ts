@@ -5,6 +5,7 @@
 
 import { LunarUtil } from 'lunar-typescript'
 import { almanacFor, toHant } from '../lib/xtell-almanac'
+import { almanacWindow, cachedAlmanac, almanacForZone, validAlmanacDate } from '../lib/xtell-almanac-server'
 import { STRINGS } from '../lib/i18n'
 
 let fails = 0
@@ -41,11 +42,36 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('400 days of 繁體 almanac: no simplified forms, no placeholders, never empty', !bad, bad)
 }
 
+// ── Computed on the server, cached for the three live dates (Sep 28) ────────
+{
+  const now = Date.UTC(2026, 8, 27, 20, 0)   // 2026-09-27 20:00 UTC = 9/28 04:00 in Taipei
+  check('the window is the three dates anyone can be living', almanacWindow(now).join() === '2026-09-26,2026-09-27,2026-09-28')
+  const a1 = cachedAlmanac('2026-09-27', 'zh-Hant', now), a2 = cachedAlmanac('2026-09-27', 'zh-Hant', now)
+  check('a live date is computed once and kept', a1 === a2 && a1.dayGz === '甲辰')
+  check('a date outside the window is computed fresh, not kept', cachedAlmanac('2026-01-01', 'zh-Hant', now) !== cachedAlmanac('2026-01-01', 'zh-Hant', now))
+  check('Taipei is already on 9/28 while New York is on 9/27', almanacForZone('Asia/Taipei', 'zh-Hant', now)!.date === '2026-09-28' && almanacForZone('America/New_York', 'en', now)!.date === '2026-09-27')
+  check('Kiritimati (UTC+14) and Baker-adjacent Pago Pago (UTC-11) stay inside the window', almanacWindow(now).includes(almanacForZone('Pacific/Kiritimati', 'en', now)!.date) && almanacWindow(now).includes(almanacForZone('Pacific/Pago_Pago', 'en', now)!.date))
+  check('no zone, or a bad one: no almanac (the card asks the API)', almanacForZone(null, 'en', now) === null && almanacForZone('Mars/Olympus', 'en', now) === null)
+  check('the next UTC day drops the date that left the window', (() => { const later = now + 2 * 86_400_000; cachedAlmanac('2026-09-29', 'en', later); return cachedAlmanac('2026-09-27', 'zh-Hant', later) !== a1 })())
+  check('dates: real calendar days the library covers', validAlmanacDate('2026-09-28') && !validAlmanacDate('2026-02-30') && !validAlmanacDate('1850-01-01') && !validAlmanacDate('2026-9-28') && !validAlmanacDate(20260928))
+}
+
+// ── /api/xtell/almanac ─────────────────────────────────────────────────────
+async function route() {
+  const { GET } = await import('../app/api/xtell/almanac/route')
+  const get = async (q: string) => { const r = await GET(new Request(`http://t/api/xtell/almanac?${q}`)); return { status: r.status, cache: r.headers.get('cache-control') ?? '', d: await r.json() as any } }
+  const ok = await get('date=2026-09-27&lang=ja')
+  check('route: a day in a language, cacheable by the CDN', ok.status === 200 && ok.d.almanac.date === '2026-09-27' && ok.d.almanac.chong.animal === '犬' && /s-maxage=86400/.test(ok.cache))
+  check('route: a bad date or language is refused', (await get('date=2026-13-01&lang=en')).status === 400 && (await get('date=2026-09-27&lang=fr')).status === 400 && (await get('lang=en')).status === 400)
+}
+
 // ── Strings ────────────────────────────────────────────────────────────────
 {
   const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.today.'))
   check(`${keys.length} card strings, all in five languages`, keys.length >= 14 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), keys.filter(k => !LANGS.every(l => (STRINGS as any)[k][l])).join())
 }
 
-console.log(fails ? `\n${fails} FAILED` : '\nall today checks passed')
-if (fails) process.exit(1)
+route().then(() => {
+  console.log(fails ? `\n${fails} FAILED` : '\nall today checks passed')
+  if (fails) process.exit(1)
+}).catch(e => { console.error(e); process.exit(1) })

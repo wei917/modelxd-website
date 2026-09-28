@@ -4,6 +4,7 @@ import { siteFromHeaders } from '../../lib/site'
 import { serverLang } from '../../lib/lang'
 import { xtellMetadata } from '../../lib/xtell-meta'
 import XTellClient from './client'
+import { almanacForZone } from '../../lib/xtell-almanac-server'
 
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
@@ -15,5 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function XTellPage() {
-  return <XTellClient standalone={siteFromHeaders(await headers()) === 'xtell'} />
+  const h = await headers()
+  const site = siteFromHeaders(h)
+  // The 黃曆 card, filled in on the server (see app/page.tsx).
+  return <XTellClient standalone={site === 'xtell'} almanac={almanacForZone(h.get('x-vercel-ip-timezone'), serverLang(h, site))} />
 }
