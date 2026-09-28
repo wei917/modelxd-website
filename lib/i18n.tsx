@@ -135,7 +135,9 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.site.subtitle": {"en": "Life, love, or a question on your mind. Find a temple, take a seat, and let the conversation begin.", "zh-Hant": "問前程，問姻緣，或問心裡那件小事。選一間廟，坐下來，慢慢聊。", "zh-Hans": "问前程，问姻缘，或问心里那件小事。选一间庙，坐下来，慢慢聊。", "ja": "人生のこと、恋のこと、心にかかる小さなこと。お寺を選んで、ゆっくりお話ししましょう。", "ko": "인생, 사랑, 마음속 작은 질문까지. 사원을 골라 편하게 이야기를 시작해 보세요."},
   "xtell.site.title": {"en": "What brings you here?", "zh-Hant": "今天，想問點什麼？", "zh-Hans": "今天，想问点什么？", "ja": "今日は、何をたずねますか。", "ko": "오늘은 무엇이 궁금한가요?"},
   "xtell.site.eyebrow": {"en": "A moment for yourself", "zh-Hant": "留一點時間，聽聽自己", "zh-Hans": "留一点时间，听听自己", "ja": "自分と向き合うひととき", "ko": "나를 위한 잠깐의 시간"},
-  "xtell.site.entertainment": {"en": "For reflection and entertainment", "zh-Hant": "靜心參考，僅供娛樂", "zh-Hans": "静心参考，仅供娱乐", "ja": "自分を見つめる、娯楽のひととき", "ko": "성찰과 재미를 위한 공간"},
+  // The footer's one line (owner, Sep 28): the street's name and the disclaimer
+  // that used to sit above the footer, merged.
+  "xtell.site.footerNote": {"en": "XTell is for reflection and entertainment, not advice. For health, money or legal matters, talk to a professional. Readings are AI interpretations of a computed chart.", "zh-Hant": "X先知僅供靜心參考與娛樂，不構成任何建議；健康、財務、法律問題請諮詢專業人士。解讀為 AI 對排盤的詮釋。", "zh-Hans": "X先知仅供静心参考与娱乐，不构成任何建议；健康、财务、法律问题请咨询专业人士。解读为 AI 对排盘的诠释。", "ja": "X占いは内省と娯楽のためのもので、助言ではありません。健康・お金・法律のことは専門家にご相談ください。鑑定は計算された命盤へのAIによる解釈です。", "ko": "X운세는 성찰과 재미를 위한 것으로, 조언이 아닙니다. 건강·금전·법률 문제는 전문가와 상담하세요. 풀이는 계산된 명반에 대한 AI의 해석입니다."},
   "xtell.site.legal": {"en": "Legal information", "zh-Hant": "使用條款與隱私", "zh-Hans": "使用条款与隐私", "ja": "利用規約とプライバシー", "ko": "약관 및 개인정보"},
   "xtell.site.language": {"en": "Language", "zh-Hant": "語言", "zh-Hans": "语言", "ja": "言語", "ko": "언어"},
   "xtell.site.title.terms": {"en": "Terms of Service", "zh-Hant": "服務條款", "zh-Hans": "服务条款", "ja": "利用規約", "ko": "이용약관"},

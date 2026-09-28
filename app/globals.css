@@ -3233,12 +3233,11 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-street-note { margin: 38px 0 0; display: flex; align-items: center; gap: 23px; border-block: 1px solid var(--xtell-rule); padding: 25px 0; }
 .xtell-note-mark { font: 35px var(--xtell-serif); color: var(--xtell-vermilion); }
 .xtell-street-note p { font-size: 15px; color: var(--xtell-secondary); line-height: 1.75; max-width: 860px; margin: 0; }
-.xtell-disclaimer { max-width: 850px; color: var(--xtell-secondary); font-size: 12px; line-height: 1.75; margin: 26px 0 0; }
 .xtell-footer { max-width: 1168px; margin: auto; border-top: 1px solid var(--xtell-rule); padding: 24px 0 30px; display: flex; align-items: center; justify-content: space-between; gap: 24px; color: var(--xtell-secondary); font-size: 12px; }
 .xtell-footer > div, .xtell-footer nav { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
 .xtell-footer a { color: inherit; text-decoration: none; }
 .xtell-footer a:hover { color: var(--xtell-vermilion); }
-.xtell-footer-brand { font: 23px var(--xtell-serif); color: var(--xtell-ink); }
+.xtell-footer-note { flex: 1 1 360px; max-width: 640px; margin: 0; line-height: 1.7; }
 .xtell-footer-maker a { display: inline-flex; align-items: center; gap: 6px; color: var(--xtell-ink); }
 .xtell-auth-maker { display: inline-flex; align-items: center; gap: 5px; color: var(--xtell-ink); text-decoration: none; border-bottom: 1px solid var(--xtell-rule); }
 .xtell-auth-maker:hover { color: var(--xtell-vermilion); }
@@ -3387,7 +3386,7 @@ html[data-site="xtell"][lang="zh-Hans"] body { --font-zh: "PingFang SC", "Noto S
 html[data-site="xtell"][lang="ja"] body { --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--font-ja); --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", var(--font-ja); }
 html[data-site="xtell"][lang="ko"] body { --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", sans-serif; }
 /* Sized in em so it scales with the wordmark (top bar, sign-in dialog). */
-.xtell-logo { width: 1.05em; height: 1.05em; border-radius: .22em; flex-shrink: 0; }
+.xtell-logo { width: 1.3em; height: 1.3em; border-radius: .22em; flex-shrink: 0; }
 html[data-site="xtell"] .xtell-nav-inner { min-height: 70px; max-width: 1280px; gap: 34px; padding: 10px 32px; }
 html[data-site="xtell"] .xtell-nav-links { gap: 26px; }
 html[data-site="xtell"] .xtell-nav-links a { font-size: 13px; min-height: 44px; }
@@ -3433,7 +3432,6 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-focus-icon { width: min(56px, 100%); border-radius: 3px; }
 .xtell-focus-label { font-size: 12px; line-height: 1.4; min-height: 2.8em; display: flex; align-items: center; justify-content: center; overflow-wrap: anywhere; text-align: center; }
 .xtell-room-artwork { width: 120px; border-radius: 5px; }
-.xtell-explorer-container > .xtell-disclaimer { padding-inline: 0; }
 @media (max-width: 900px) {
   .xtell-focus-copy { padding: 32px; }
   .xtell-focus-enter { min-width: 180px; }
@@ -3471,7 +3469,6 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
   .xtell-focus-choice { min-height: 88px; padding: 7px 3px 8px; gap: 6px; }
   .xtell-focus-icon { width: min(48px, 100%); }
   .xtell-focus-label { font-size: 12px; min-height: 2.8em; }
-  .xtell-explorer-container > .xtell-disclaimer { padding-inline: 24px; }
   .xtell-room-artwork { width: 96px; }
 }
 @media (max-width: 350px) {

@@ -21,7 +21,7 @@ export function XTellMark() {
   return <span className="xtell-brand xtell-focus-brand">
     {/* 64 px (3 KB): the site-wide logo.png is 520 px and 219 KB, and a
         phone on 4G fetched it before the street painted (Sep 28). */}
-    <img className="xtell-logo" src="/xtell/logo-64.png" alt="" width={30} height={30} />
+    <img className="xtell-logo" src="/xtell/logo-64.png" alt="" width={32} height={32} />
     <span><span className="xtell-accent xtell-x">{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
   </span>
 }
@@ -141,7 +141,8 @@ export default function XTellNav({ user }: { user: User | null }) {
 export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
-    <div><span className="xtell-footer-brand"><span className="xtell-x">{t('xtell.site.brand').slice(0, 1)}</span>{t('xtell.site.brand').slice(1)}</span><span>{t('xtell.site.entertainment')}</span></div>
+    {/* The name and the disclaimer as one plain line (owner, Sep 28). */}
+    <p className="xtell-footer-note">{t('xtell.site.footerNote')}</p>
     {/* A way to reach us (owner, Sep 27: the street had none): the support
         address, shown as it is (Sep 28), and the bug report form, which
         works signed out too. */}

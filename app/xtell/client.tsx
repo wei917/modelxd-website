@@ -330,7 +330,6 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
           daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null}
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
-      <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
     </main>
     <XTellFooter />
   </div>
