@@ -10,20 +10,22 @@
 //
 // The page on screen is not always the one with the problem (owner,
 // Sep 27), so the reporter can attach their own image instead: a button,
-// paste, or drop. It replaces the capture (one image per report), and is
-// scaled down in the browser to fit the API's 4 MB.
+// paste, or drop, up to 10 MB (owner). It replaces the capture (one image
+// per report). Whatever is sent is scaled down in the browser first: a
+// Vercel function takes at most 4.5 MB of request, and base64 adds a third,
+// so the image that travels stays under 3 MB.
 
 import { useRef, useState } from 'react'
 
-const MAX_SHOT_BYTES = 4 * 1024 * 1024
+const MAX_FILE_BYTES = 10 * 1024 * 1024
+const MAX_SEND_BYTES = 3 * 1024 * 1024
 const MAX_SIDE = 2000
 const bytesOf = (dataUrl: string) => Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4)
 
-/** An image file → a PNG or JPEG data URL no larger than the API takes, or
- *  null when the browser cannot decode it (HEIC outside Safari, a broken
- *  file). A PNG stays PNG when it fits; otherwise JPEG. */
-async function imageToDataUrl(file: File): Promise<string | null> {
-  const url = URL.createObjectURL(file)
+/** An image (a blob or data URL) → a PNG or JPEG data URL small enough to
+ *  send, or null when the browser cannot decode it (HEIC outside Safari, a
+ *  broken file). A PNG stays PNG when it fits; otherwise JPEG. */
+async function fitImage(url: string, png: boolean): Promise<string | null> {
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = url
@@ -35,11 +37,15 @@ async function imageToDataUrl(file: File): Promise<string | null> {
     if (!g) return null
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height)
     g.drawImage(img, 0, 0, c.width, c.height)
-    const tries = file.type === 'image/png' ? [() => c.toDataURL('image/png'), () => c.toDataURL('image/jpeg', 0.85), () => c.toDataURL('image/jpeg', 0.7)]
+    const tries = png ? [() => c.toDataURL('image/png'), () => c.toDataURL('image/jpeg', 0.85), () => c.toDataURL('image/jpeg', 0.7)]
       : [() => c.toDataURL('image/jpeg', 0.85), () => c.toDataURL('image/jpeg', 0.7)]
-    for (const make of tries) { const out = make(); if (bytesOf(out) <= MAX_SHOT_BYTES) return out }
+    for (const make of tries) { const out = make(); if (bytesOf(out) <= MAX_SEND_BYTES) return out }
     return null
-  } catch { return null } finally { URL.revokeObjectURL(url) }
+  } catch { return null }
+}
+async function imageToDataUrl(file: File): Promise<string | null> {
+  const url = URL.createObjectURL(file)
+  try { return await fitImage(url, file.type === 'image/png') } finally { URL.revokeObjectURL(url) }
 }
 import { useT } from '../../lib/i18n'
 import ContactEmail from './ContactEmail'
@@ -59,6 +65,7 @@ export default function BugReportLink({ className, style }: { className?: string
   const attach = async (file: File | undefined | null) => {
     if (!file || !file.type.startsWith('image/')) return
     setErr(null)
+    if (file.size > MAX_FILE_BYTES) { setErr(t('fb.tooBig')); return }
     const url = await imageToDataUrl(file)
     if (!url) { setErr(t('fb.badImage')); return }
     setShot(url); setShotKind('yours')
@@ -74,7 +81,7 @@ export default function BugReportLink({ className, style }: { className?: string
         // The custom cursor overlay would photobomb every report.
         filter: (n: any) => !(n?.classList?.contains?.('cursor') || n?.classList?.contains?.('cursor-ring')),
       })
-      setShot(bytesOf(png) <= MAX_SHOT_BYTES ? png : null)
+      setShot(bytesOf(png) <= MAX_SEND_BYTES ? png : await fitImage(png, true))
     } catch { setShot(null) }
     setOpen(true)
   }

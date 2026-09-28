@@ -1171,6 +1171,7 @@ export const STRINGS: Record<string, Entry> = {
   "fb.shotPage": {"en": "Screenshot of this page", "zh-Hant": "目前畫面的截圖", "zh-Hans": "当前画面的截图", "ja": "このページのスクリーンショット", "ko": "현재 화면 스크린샷"},
   "fb.shotYours": {"en": "Your image", "zh-Hant": "你附加的圖片", "zh-Hans": "你附加的图片", "ja": "添付した画像", "ko": "첨부한 이미지"},
   "fb.badImage": {"en": "That image could not be read. Please try a PNG or JPG.", "zh-Hant": "無法讀取這張圖片，請改用 PNG 或 JPG。", "zh-Hans": "无法读取这张图片，请改用 PNG 或 JPG。", "ja": "この画像を読み込めませんでした。PNG か JPG でお試しください。", "ko": "이 이미지를 읽을 수 없습니다. PNG나 JPG로 시도해 주세요."},
+  "fb.tooBig": {"en": "Please attach an image under 10 MB.", "zh-Hant": "請附加 10MB 以內的圖片。", "zh-Hans": "请附加 10MB 以内的图片。", "ja": "10MB 以下の画像を添付してください。", "ko": "10MB 이하의 이미지를 첨부해 주세요."},
   'fb.or':            { en: 'Or write to us:', 'zh-Hant': '或直接寫信給我們：', 'zh-Hans': '或直接写信给我们：', ja: 'またはメールで：', ko: '또는 메일로:' },
   'home.eyebrow':     { en: 'AI apps that run winning models', 'zh-Hant': '跑勝出模型的 AI 應用', 'zh-Hans': '跑胜出模型的 AI 应用', ja: '勝ったモデルで動くAIアプリ', ko: '승리한 모델로 작동하는 AI 앱' },
   'auth.signin':      { en: 'Sign In',  'zh-Hant': '登入', 'zh-Hans': '登录', ja: 'ログイン',  ko: '로그인' },
