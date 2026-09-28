@@ -20,7 +20,6 @@ import { useAuthModal } from '../../../lib/AuthModalContext'
 import { daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../../lib/xtell-birth'
 import { placeOf, birthZone, ZONE_PREFIX, COMMON_ZONES } from '../../../lib/xtell-places'
 import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-time'
-import { PRESETS, EST_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, defaultThinking, type PresetModel } from '../../../lib/xtell-presets'
 
 type Method = 'western' | 'bazi'
 const METHODS: Method[] = ['western', 'bazi']
@@ -28,7 +27,6 @@ type Profile = { birth: { y: number; m: number; d: number; h: number; mi: number
 type Reading = { summary: string; themes: string[]; reflect: string; why: string }
 type MethodDay = { status: 'ready' | 'pending' | 'failed' | 'capped' | 'gone'; id?: string; basis?: any; reading?: Reading }
 type Day = { date: string; tz: string; methods: Record<Method, MethodDay> }
-type Teacher = PresetModel & { id: string; display_name: string; blocked_features?: string[] }
 export type SavedDaily = { id: string; subject: any; chart: any; turns: any[] }
 
 const DISMISS_KEY = 'xtell.daily.reminder'
@@ -50,7 +48,7 @@ function zoneLabel(tz: string, lang: string): string {
   } catch { return tz }
 }
 
-export default function XTellDaily({ openSignal, resume, onClearResume }: { openSignal: number; resume: SavedDaily | null; onClearResume?: () => void }) {
+export default function XTellDaily({ openSignal, onContinue }: { openSignal: number; onContinue: (row: SavedDaily) => void }) {
   const t = useT()
   const { lang } = useLang()
   const { show: showSignIn } = useAuthModal()
@@ -65,14 +63,6 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
   const [day, setDay] = useState<Day | null>(null)
   const [dayError, setDayError] = useState(false)
   const [dismissed, setDismissed] = useState(false)
-  // A saved follow-up opened from history is shown only after THIS section has
-  // read it again under the current session and generation: a history answer
-  // that arrives after a sign-out, an account switch or a delete finds nothing
-  // (or a stale generation) and shows nothing (Codex review).
-  const [shownResume, setShownResume] = useState<SavedDaily | null>(null)
-  // The latest callback, for handlers registered at mount (auth events).
-  const clearResume = useRef(onClearResume)
-  clearResume.current = onClearResume
   const dayToken = useRef(0)
   // Every answer is checked against the generation it was asked in: a sign-in,
   // a sign-out or a delete bumps it, so a late profile, day or save from
@@ -129,19 +119,7 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
   const reset = () => {
     gen.current++; dayToken.current++
     setProfile(null); setDay(null); setProblem(null); setEditing(false); setConfirmDelete(false); setDayError(false)
-    setShownResume(null)
-    clearResume.current?.()
   }
-  useEffect(() => {
-    setShownResume(null)
-    if (!resume?.id) return
-    const g = gen.current
-    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
-    sb.from('xtell_readings').select('id, temple, subject, chart, turns').eq('id', resume.id).eq('temple', 'daily').is('deleted_at', null).maybeSingle()
-      .then(({ data }: { data: any }) => { if (g === gen.current && data?.temple === 'daily') setShownResume(data as SavedDaily) })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resume?.id])
-
   useEffect(() => {
     try { setDismissed(localStorage.getItem(DISMISS_KEY) === '1') } catch { /* private mode */ }
     void loadProfile()
@@ -223,7 +201,6 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
         <h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>
         <p className="xtell-dy-sub">{t('xtell.dy.sub')}</p>
       </div>
-      {shownResume && phase !== 'signedOut' && <Resumed key={shownResume.id} row={shownResume} />}
       {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
 
       {editing ? (
@@ -261,7 +238,7 @@ export default function XTellDaily({ openSignal, resume, onClearResume }: { open
           {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
           {day && (
             <div className="xtell-dy-cards">
-              {METHODS.map(m => <MethodCard key={`${m}:${day.methods[m]?.id ?? day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} />)}
+              {METHODS.map(m => <MethodCard key={`${m}:${day.methods[m]?.id ?? day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
             </div>
           )}
         </>
@@ -415,7 +392,7 @@ function ReadingView({ reading }: { reading: Reading }) {
   )
 }
 
-function MethodCard({ method, day, data, onRetry }: { method: Method; day: Day; data: MethodDay; onRetry: () => void }) {
+function MethodCard({ method, day, data, onRetry, onContinue }: { method: Method; day: Day; data: MethodDay; onRetry: () => void; onContinue: (row: SavedDaily) => void }) {
   const t = useT()
   const { lang } = useLang()
   return (
@@ -436,140 +413,58 @@ function MethodCard({ method, day, data, onRetry }: { method: Method; day: Day; 
           <Basis method={method} basis={data.basis} />
         </details>
       )}
-      {data.status === 'ready' && data.id && <FollowUp key={data.id} dailyId={data.id} />}
+      {data.status === 'ready' && data.id && <ContinueInTemple method={method} dailyId={data.id} onContinue={onContinue} />}
     </article>
   )
 }
 
-// ── Paid follow-up ─────────────────────────────────────────────────────────
+// ── Asking a teacher about the day, in its temple ─────────────────────────
+// The paid follow-up is not a chat inside this card any more (owner, Sep 28:
+// "bring this to its temple"): the button opens 占星塔 (西洋占星) or 八字廟
+// (八字流日) with the day's reading at the top and the usual teacher seats
+// below (TempleRoom's `daily` mode). The visit is the same follow-up row as
+// before (xtell_daily_followup), so the teacher still sees exactly the
+// reading shown here.
 
-type Turn = { role: 'user' | 'assistant'; content: string; name?: string; cost?: number }
+/** The temple a day's reading continues in. */
+export const dailyTemple = (method: unknown): 'zhanxing' | 'bazi' => method === 'bazi' ? 'bazi' : 'zhanxing'
 
-function FollowUp({ dailyId, readingId: savedId = null, turns: savedTurns = [] }: { dailyId?: string; readingId?: string | null; turns?: Turn[] }) {
+function ContinueInTemple({ method, dailyId, onContinue }: { method: Method; dailyId: string; onContinue: (row: SavedDaily) => void }) {
   const t = useT()
-  const { lang } = useLang()
-  const [open, setOpen] = useState(savedTurns.length > 0)
-  const [teachers, setTeachers] = useState<Teacher[]>([])
-  const [pick, setPick] = useState<string | null>(null)
-  const [question, setQuestion] = useState('')
-  const [turns, setTurns] = useState<Turn[]>(savedTurns)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const readingId = useRef<string | null>(savedId)
-  // This composer belongs to one day's reading (it is keyed by it); when it
-  // goes (another day, an edited profile, a sign-out) its stream goes too.
-  const inflight = useRef<AbortController | null>(null)
-  const alive = useRef(true)
-  // Set in setup too: StrictMode runs setup, cleanup, setup (Codex review).
-  useEffect(() => { alive.current = true; return () => { alive.current = false; inflight.current?.abort() } }, [])
-
-  useEffect(() => {
-    if (!open || teachers.length) return
-    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
-    sb.from('ai_models').select('id, provider, model_name, display_name, model_pricing, output_config, blocked_features')
-      .eq('enabled', true).contains('output_modalities', ['text'])
-      .then(({ data }) => {
-        const rows = ((data ?? []) as Teacher[]).filter(r => !(r.blocked_features ?? []).includes('xtell'))
-        setTeachers(rows)
-        const first = PRESETS.map(p => p.models.map(n => rows.find(r => r.model_name === n)).find(Boolean)).find(Boolean)
-        if (first) setPick(p => p ?? first.id)
-      })
-  }, [open, teachers.length])
-
-  const offered = PRESETS.map(p => ({ key: p.key, model: p.models.map(n => teachers.find(r => r.model_name === n)).find(Boolean) }))
-    .filter((p): p is { key: typeof PRESETS[number]['key']; model: Teacher } => !!p.model)
-  const model = teachers.find(r => r.id === pick) ?? null
-  const chars = turns.reduce((n, x) => n + x.content.length, 0) + question.length
-  const estimate = model ? estimateReadingUsd(model, { thinking: defaultThinking(model), search: false }, chars, EST_PROMPT_TOKENS) : null
-
-  const send = async () => {
-    const q = question.trim()
-    if (!q || busy || !model) return
+  const go = async () => {
+    if (busy) return
     setBusy(true); setErr(null)
-    const ctrl = new AbortController()
-    inflight.current = ctrl
     try {
-      if (!readingId.current) {
-        const res = await fetch('/api/xtell/daily/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dailyId }), signal: ctrl.signal })
-        const d = await res.json().catch(() => null)
-        if (!alive.current) return
-        if (!res.ok || typeof d?.readingId !== 'string') { setErr(d?.code === 'daily_missing' ? 'xtell.dy.expired' : 'xtell.dy.askFailed'); return }
-        readingId.current = d.readingId
-      }
-      const history = turns.map(x => ({ role: x.role, content: x.content }))
-      setQuestion('')
-      setTurns(ts => [...ts, { role: 'user', content: q }, { role: 'assistant', content: '', name: model.display_name }])
-      const res = await fetch('/api/xtell/reading', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ temple: 'daily', readingId: readingId.current, qid: crypto.randomUUID(), question: q, modelId: model.id, history, thinking: defaultThinking(model), lang }),
-        signal: ctrl.signal,
-      })
-      if (!alive.current) return
-      if (!res.ok || !res.body) {
-        const d = await res.json().catch(() => ({}))
-        setTurns(ts => ts.slice(0, -2)); setQuestion(q)
-        setErr(d?.code === 'daily_expired' ? 'xtell.dy.expired' : 'xtell.dy.askFailed')
-        return
-      }
-      const reader = res.body.getReader(), dec = new TextDecoder()
-      let buf = ''
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done || !alive.current) break
-        buf += dec.decode(value, { stream: true })
-        const events = buf.split('\n\n'); buf = events.pop() ?? ''
-        for (const ev of events) {
-          const type = ev.match(/^event: (\w+)/m)?.[1], data = ev.match(/^data: (.*)$/m)?.[1]
-          if (!type || !data) continue
-          const j = JSON.parse(data)
-          if (type === 'delta') setTurns(ts => ts.map((x, i) => i === ts.length - 1 ? { ...x, content: x.content + j.text } : x))
-          if (type === 'done') setTurns(ts => ts.map((x, i) => i === ts.length - 1 ? { ...x, cost: j.cost ?? 0 } : x))
-          if (type === 'error') setErr('xtell.dy.askFailed')
-        }
-      }
-    } catch { if (alive.current) setErr('xtell.dy.askFailed') } finally { if (alive.current) setBusy(false) }
+      const res = await fetch('/api/xtell/daily/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dailyId }) })
+      const d = await res.json().catch(() => null)
+      if (!res.ok || typeof d?.readingId !== 'string') { setErr(d?.code === 'daily_missing' ? 'xtell.dy.expired' : 'xtell.dy.askFailed'); return }
+      const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+      const { data: row } = await sb.from('xtell_readings').select('id, temple, subject, chart, turns').eq('id', d.readingId).is('deleted_at', null).maybeSingle()
+      if (row?.temple !== 'daily') { setErr('xtell.dy.askFailed'); return }
+      onContinue(row as SavedDaily)
+    } catch { setErr('xtell.dy.askFailed') } finally { setBusy(false) }
   }
-
-  if (!open) return <button type="button" className="xtell-dy-ask" onClick={() => setOpen(true)}>{t('xtell.dy.ask')}</button>
-  return (
-    <div className="xtell-dy-follow">
-      <p className="xtell-dy-small">{t('xtell.dy.askNote')}</p>
-      {turns.map((x, i) => (
-        <div key={i} className={x.role === 'user' ? 'xtell-dy-q' : 'xtell-dy-a'}>
-          {x.role === 'assistant' && x.name && <span className="xtell-dy-muted">{x.name}{typeof x.cost === 'number' && x.cost > 0 ? ` · ${t('xtell.dy.cost').replace('{usd}', fmtUsd(x.cost))}` : ''}</span>}
-          <p>{x.content}</p>
-        </div>
-      ))}
-      {offered.length > 0 && (
-        <div className="xtell-dy-row" role="group" aria-label={t('xtell.preset.title')}>
-          {offered.map(({ key, model: m }) => (
-            <button key={key} type="button" aria-pressed={pick === m.id} className="xtell-dy-preset" onClick={() => setPick(m.id)} disabled={busy}>
-              <b>{t(`xtell.preset.${key}`)}</b> · {m.display_name}
-            </button>
-          ))}
-        </div>
-      )}
-      <textarea className="xtell-dy-input" rows={2} value={question} maxLength={2000} onChange={e => setQuestion(e.target.value)} placeholder={t('xtell.dy.askPh')} aria-label={t('xtell.dy.askPh')} disabled={busy} />
-      <div className="xtell-dy-row">
-        <button type="button" className="xtell-dy-primary" onClick={() => void send()} disabled={busy || !question.trim() || !model}>{t('xtell.dy.send')}</button>
-        {estimate != null && <span className="xtell-dy-muted">{t('xtell.dy.estimate').replace('{usd}', fmtUsd(estimate))}</span>}
-      </div>
-      {err && <p className="xtell-dy-warn" role="alert">{t(err)}</p>}
-    </div>
-  )
+  return <>
+    <button type="button" className="xtell-dy-ask" onClick={() => void go()} disabled={busy} aria-busy={busy || undefined}>
+      {t('xtell.dy.continueIn').replace('{temple}', t(`xtell.site.focus.${dailyTemple(method)}.name`))}
+    </button>
+    {err && <p className="xtell-dy-warn" role="alert">{t(err)}</p>}
+  </>
 }
 
-// ── A saved follow-up, reopened from history ───────────────────────────────
-
-function Resumed({ row }: { row: SavedDaily }) {
+/** A day's reading as its temple room shows it, above the teachers: the
+ *  free reading and, folded, why (the computed basis). */
+export function DailyBoard({ row }: { row: SavedDaily }) {
   const t = useT()
   const method: Method = row.subject?.method === 'bazi' ? 'bazi' : 'western'
-  const turns: Turn[] = (row.turns ?? []).map((x: any) => x.role === 'user'
-    ? { role: 'user' as const, content: String(x.content ?? '') }
-    : { role: 'assistant' as const, content: String(x.content ?? ''), name: x.name, cost: typeof x.cost === 'number' ? x.cost : undefined })
   return (
-    <article className="xtell-dy-card xtell-dy-resumed">
-      <header><h3>{t('xtell.dy.resumed').replace('{date}', String(row.subject?.date ?? '')).replace('{method}', t(`xtell.dy.${method}`))}</h3></header>
+    <article className="xtell-dy-board">
+      <header>
+        <h3>{t('xtell.dy.title')} · {t(`xtell.dy.${method}`)}</h3>
+        <span className="xtell-dy-muted">{String(row.subject?.date ?? '')}</span>
+      </header>
       {row.chart?.reading && <ReadingView reading={row.chart.reading} />}
       {row.chart?.basis && (
         <details className="xtell-dy-why">
@@ -578,7 +473,6 @@ function Resumed({ row }: { row: SavedDaily }) {
           <Basis method={method} basis={row.chart.basis} />
         </details>
       )}
-      <FollowUp readingId={row.id} turns={turns} />
     </article>
   )
 }

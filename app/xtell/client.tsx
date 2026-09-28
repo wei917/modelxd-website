@@ -40,7 +40,7 @@ import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } 
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
 import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
-import XTellDaily, { type SavedDaily } from '../components/xtell/XTellDaily'
+import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
@@ -74,6 +74,8 @@ type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: s
 // are the fallbacks if it ever leaves the catalog; the picker stays for
 // anyone who wants another seat or a 合參.
 const DEFAULT_MASTER = 'qwen3.8-flash'
+/** Temples a 今日運勢 follow-up continues in (dailyTemple). */
+const DAILY_HOME: Temple[] = ['zhanxing', 'bazi']
 /** A setting's label stays on one line; a crowded row of pills wraps
  *  instead (four teachers, Sep 27: 「自動」 broke into 自 / 動). */
 const nowrap: React.CSSProperties = { whiteSpace: 'nowrap' }
@@ -209,17 +211,27 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
   // or the sign-in round trip; the room re-derives its mode from the catalog.
   const [handoff, setHandoff] = useState<Handoff | null>(null)
   // The daily fortune on the street: the guide's "daily" button bumps the
-  // signal (scroll there, open the form); a saved follow-up about a day's
-  // reading, opened from history, is shown there too.
+  // signal (scroll there, open the form). Asking a teacher about a day's
+  // reading happens in that reading's temple (owner, Sep 28): 占星塔 for
+  // 西洋占星, 八字廟 for 八字流日, with the follow-up visit as `dailyRow`.
   const [dailySignal, setDailySignal] = useState(0)
-  const [savedDaily, setSavedDaily] = useState<SavedDaily | null>(null)
+  const [dailyRow, setDailyRow] = useState<SavedDaily | null>(null)
+  const openDaily = (row: SavedDaily) => {
+    const key = dailyTemple(row.subject?.method)
+    setReadingParam(row.id)
+    setSaved(null)
+    setDailyRow(row)
+    if (standalone) window.location.hash = key
+    setTemple(key)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('reading')
     if (!id) return
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
     sb.from('xtell_readings').select('id, temple, subject, chart, extras, turns').eq('id', id).is('deleted_at', null).maybeSingle()
       .then(({ data }) => {
-        if (data?.temple === 'daily') { setSavedDaily(data as SavedDaily); return }
+        if (data?.temple === 'daily') { openDaily(data as SavedDaily); return }
         if (!data || !TEMPLES.includes(data.temple)) return
         setSaved(data as SavedReading)
         if (standalone) window.location.hash = data.temple
@@ -239,6 +251,7 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
       const store = sessionStore()
       if (navigated && !TEMPLES.includes(key)) {
         setReadingParam(null)
+        setDailyRow(null)
         // Back on the street (the header link, Back): the suggestion was
         // left behind, so a later visit to that room starts clean (Codex
         // review: it re-filled the old question on a manual entry).
@@ -259,6 +272,8 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
   // Resume from inside a temple (its history list): seed the room from the
   // saved row without a page load. Same path ?reading= takes.
   const resume = (row: SavedReading) => {
+    if (row.temple === 'daily') { openDaily(row as unknown as SavedDaily); return }
+    setDailyRow(null)
     setReadingParam(row.id)
     setSaved(row)
     if (standalone) window.location.hash = row.temple
@@ -283,6 +298,7 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
     setHandoff({ feature, question: feature.question ? cleanQuestion(question) : null })
     setReadingParam(null)
     setSaved(null)
+    setDailyRow(null)
     chooseTemple(feature.temple)
   }
   const leaveRoom = () => {
@@ -291,6 +307,7 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
     setHandoff(null)
     setReadingParam(null)
     setSaved(null)
+    setDailyRow(null)
     chooseTemple(null)
   }
 
@@ -304,11 +321,12 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
         <div className="xtell-today">
           {/* Its own section, rendered on the server (AlmanacSection). */}
           {almanacSection ?? <AlmanacCard />}
-          <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
+          <XTellDaily openSignal={dailySignal} onContinue={openDaily} />
         </div>
       </> : <>
         <XTellAuthGate />
-        <TempleRoom key={temple + (saved?.id ?? '') + (handoff?.feature.temple === temple ? handoff.feature.id : '')} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
+        <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '') + (handoff?.feature.temple === temple ? handoff.feature.id : '')} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
+          daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null}
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
       <p className="xtell-disclaimer">{t('xtell.disclaimer')}</p>
@@ -357,7 +375,8 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
             ))}
           </div>
         </>) : (
-          <TempleRoom key={temple + (saved?.id ?? '')} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null} onResume={resume} />
+          <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '')} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); setDailyRow(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null}
+            daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null} onResume={resume} />
         )}
 
         <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
@@ -366,7 +385,11 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
   )
 }
 
-function TempleRoom({ temple, onBack, standalone = false, initial = null, onResume, handoff = null }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null; onResume?: (r: SavedReading) => void; handoff?: Handoff | null }) {
+/** `daily`: a day's 今日運勢 reading continued in its temple (owner, Sep 28):
+ *  the reading replaces the chart and the form, questions go to the reading
+ *  route as that day's follow-up (temple 'daily', the stored reading), and
+ *  the way back leads to the street. */
+function TempleRoom({ temple, onBack, standalone = false, initial = null, daily = null, onResume, handoff = null }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null; daily?: SavedDaily | null; onResume?: (r: SavedReading) => void; handoff?: Handoff | null }) {
   const t = useT()
   // The site language rides with every reading so the master answers in it
   // (owner, Sep 24) — a Japanese visitor pressing the Chinese pre-filled
@@ -381,11 +404,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     // 紫微/九曜 hide the checkbox; a record saved with it set must reopen
     // with the hour selectable so the visitor can correct it.
     ...(HOUR_REQUIRED.includes(temple) ? { hourUnknown: false } : {}) })
-  const [readingId, setReadingId] = useState<string | null>(initial?.id ?? null)
+  const [readingId, setReadingId] = useState<string | null>(initial?.id ?? daily?.id ?? null)
   // 月老廟 needs a second person. Defaults to the other gender purely as a
   // starting point — both rows are fully editable, a couple is whoever they are.
   const [birth2, setBirth2] = useState<typeof defaultBirth>({ ...defaultBirth, gender: 'female', ...(init.birth2 ?? {}) })
-  const [entered, setEntered] = useState(!!initial)
+  const [entered, setEntered] = useState(!!initial || !!daily)
   const [chart, setChart] = useState<any>(initial?.chart ?? null)
   const [match, setMatch] = useState<any>(initial?.extras?.match ?? null)   // 月老廟's computed 合盤
   const [year, setYear] = useState<any>(initial?.extras?.year ?? null)     // 四面佛's (and an optional 稟告's) computed 流年
@@ -566,7 +589,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   // question saved before this has neither and counts as asked of all.
   type Turn = { role: 'user'; content: string; to?: string[]; seats?: string[] } | { role: 'assistant'; content: string; modelId: string; name: string; provider: string; cost?: number }
   const idList = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined
-  const [turns, setTurns] = useState<Turn[]>(() => (initial?.turns ?? []).map((x: any) => x.role === 'user'
+  const [turns, setTurns] = useState<Turn[]>(() => ((initial ?? daily)?.turns ?? []).map((x: any) => x.role === 'user'
     ? { role: 'user', content: String(x.content ?? ''), to: idList(x.to), seats: idList(x.seats) }
     : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
   // Whom the next question goes to: null is every seated master. Picked
@@ -608,10 +631,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         // all four); a question saved before that re-seats whoever answered
         // it, in order (owner, Sep 24). A master since removed from the
         // catalog is simply not re-seated.
-        if (initial?.turns?.length) {
-          const lastUser = initial.turns.map((x: any) => x.role).lastIndexOf('user')
-          const ids: string[] = [...(idList(initial.turns[lastUser]?.seats) ?? [])]
-          if (!ids.length) for (const x of initial.turns.slice(lastUser + 1)) if (x.role === 'assistant' && x.modelId && !ids.includes(x.modelId)) ids.push(x.modelId)
+        const saved = (initial ?? daily)?.turns
+        if (saved?.length) {
+          const lastUser = saved.map((x: any) => x.role).lastIndexOf('user')
+          const ids: string[] = [...(idList(saved[lastUser]?.seats) ?? [])]
+          if (!ids.length) for (const x of saved.slice(lastUser + 1)) if (x.role === 'assistant' && x.modelId && !ids.includes(x.modelId)) ids.push(x.modelId)
           const seated = ids.map(id => rows.find(r => r.id === id)).filter(Boolean).slice(0, MAX_SEATS) as PickerModel[]
           if (seated.length) { setMasters(m => (m.length ? m : seated)); return }
         }
@@ -818,7 +842,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...(temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
+            ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
             // 解夢: the line numbers shown, used only when the visit was not saved.
             ...(temple === 'jiemeng' ? { entries: (Array.isArray(chart?.entries) ? chart.entries : []).map((e: any) => e.id) } : {}),
             search: optsOf(m).search && searchable(m),
@@ -1069,8 +1093,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               this visit was cast from (owner, Sep 27: "how do I go back?";
               it used to sit in the composer at the foot of the page). */}
           <div className="xtell-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--muted)', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-            <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.edit')}</button>
-            {temple !== 'yixue' && (() => {
+            {daily
+              ? <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.dy.back')}</button>
+              : <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.edit')}</button>}
+            {!daily && temple !== 'yixue' && (() => {
               const summary = subjectSummary(t, temple, subject())
               return summary ? <span style={{ minWidth: 0 }}>{summary}</span> : null
             })()}
@@ -1219,6 +1245,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               is what the two of them came to see. The reading interprets it. */}
           {match && !savedProblem && !unverified && <HeCard match={match} />}
 
+          {/* 今日運勢 continued here: the day's reading in place of a chart. */}
+          {daily && (
+            <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
+              <DailyBoard row={daily} />
+            </div>
+          )}
+
           {/* The chart, always shown (owner, Sep 27: no 收起命盤). */}
           {chart && !savedProblem && (!unverified || isQian(temple)) && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
@@ -1250,8 +1283,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
 
           {/* Conversation. Empty and without an intro line (解夢 before its
               first question), it takes no room. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: turns.length === 0 && temple === 'jiemeng' ? 0 : 120 }}>
-            {turns.length === 0 && !savedProblem && !unverified && temple !== 'jiemeng' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: turns.length === 0 && (temple === 'jiemeng' || daily) ? 0 : 120 }}>
+            {turns.length === 0 && !savedProblem && !unverified && temple !== 'jiemeng' && !daily && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
                 {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'ask'}`
                   : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
@@ -1362,7 +1395,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               is sent (owner, Sep 27: they were in a 「怎麼讀」 panel that
               mostly repeated the chart). A click fills the box; nothing is
               sent. 易學堂 has its own. */}
-          {temple !== 'yixue' && turns.length === 0 && chart && <ExampleQuestions temple={temple} onExample={q => { setInput(q); composerRef.current?.focus() }} />}
+          {!daily && temple !== 'yixue' && turns.length === 0 && chart && <ExampleQuestions temple={temple} onExample={q => { setInput(q); composerRef.current?.focus() }} />}
           {masters.length > 1 && (
             <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12 }}>
               <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.ask.to')}</span>
@@ -1381,7 +1414,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
               aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')}
-              placeholder={questionRequired ? t('xtell.yixue.question.ph') : temple === 'yixue' ? t('xtell.question.ph') : `${t('xtell.q.example')}${t(`xtell.q.${temple}.1`)}`}
+              placeholder={daily ? t('xtell.dy.askPh') : questionRequired ? t('xtell.yixue.question.ph') : temple === 'yixue' ? t('xtell.question.ph') : `${t('xtell.q.example')}${t(`xtell.q.${temple}.1`)}`}
               maxLength={temple === 'yixue' ? 2000 : undefined}
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
@@ -2638,9 +2671,12 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
       if (!user) { if (active) setLoaded(true); return }
       const { data } = await sb.from('xtell_readings')
         .select('id, temple, subject, chart, extras, turns, title, cost_cents, created_at')
-        .eq('user_id', user.id).eq('temple', temple).is('deleted_at', null)
-        .order('created_at', { ascending: false }).limit(5)
-      if (active) { setRows((data ?? []) as any); setLoaded(true) }
+        .eq('user_id', user.id).in('temple', DAILY_HOME.includes(temple) ? [temple, 'daily'] : [temple]).is('deleted_at', null)
+        .order('created_at', { ascending: false }).limit(12)
+      // 今日運勢 follow-ups live in the temple they were continued in:
+      // 西洋占星's in 占星塔, 八字流日's in 八字廟 (owner, Sep 28).
+      const mine = (data ?? []).filter((r: any) => r.temple === temple || dailyTemple(r.subject?.method) === temple).slice(0, 5)
+      if (active) { setRows(mine as any); setLoaded(true) }
     })()
     return () => { active = false }
   }, [temple])
@@ -2661,7 +2697,9 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
       <h2 id="xtell-history-title" style={{ ...mono, fontSize: 11, fontWeight: 600, color: 'var(--muted2)', margin: '0 0 4px' }}>{t('xtell.history.temple')}</h2>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {rows.map((r, i) => {
-          const title = r.title || describeVisit(t, temple, r.subject) || t(notAskedKey(temple))
+          const title = r.temple === 'daily'
+            ? t('xtell.dy.visit').replace('{date}', String(r.subject?.date ?? '')).replace('{method}', t(`xtell.dy.${r.subject?.method === 'bazi' ? 'bazi' : 'western'}`))
+            : r.title || describeVisit(t, temple, r.subject) || t(notAskedKey(temple))
           return (
             <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', fontSize: 13.5, borderTop: i ? '1px solid var(--border)' : 'none', flexWrap: confirming === r.id || failed === r.id ? 'wrap' : 'nowrap' }}>
               <span title={title} style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>

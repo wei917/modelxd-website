@@ -3625,8 +3625,11 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 /* 西洋占星 above 八字流日, never side by side (owner, Sep 28). */
 .xtell-dy-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 14px; }
 .xtell-dy-card { min-width: 0; padding: 14px 16px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-paper); font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
-.xtell-dy-card header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+/* The day's reading in its temple room (DailyBoard) reads like its card. */
+.xtell-dy-card header, .xtell-dy-board header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
 .xtell-dy-card h3 { margin: 0; font: 500 17px/1.4 var(--xtell-serif); }
+.xtell-dy-board { font-size: 14.5px; line-height: 1.8; overflow-wrap: anywhere; }
+.xtell-dy-board h3 { margin: 0; font: 500 19px/1.4 var(--xtell-serif); }
 .xtell-dy-resumed { margin-top: 12px; }
 .xtell-dy-summary { margin: 8px 0 6px; font-weight: 600; }
 .xtell-dy-label { margin: 10px 0 2px; font-size: 12px; font-weight: 700; color: var(--xtell-secondary); }
