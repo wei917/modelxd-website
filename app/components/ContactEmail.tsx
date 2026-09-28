@@ -10,14 +10,21 @@
 import { useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 
-const EMAIL = 'founder@modelxd.com'
+// support@ since Sep 28 (owner): an alias of the founder inbox, so the
+// public address no longer names a person.
+export const SUPPORT_EMAIL = 'support@modelxd.com'
+const EMAIL = SUPPORT_EMAIL
 
-export default function ContactEmail({ className, style }: { className?: string; style?: React.CSSProperties }) {
+/** `plain`: the address itself as the link, no copy and no flash (owner,
+ *  Sep 28: 「已複製 …」 read as a riddle). The XTell footer and the bug
+ *  form use it; www's sidebar keeps the label with copy-on-click. */
+export default function ContactEmail({ className, style, plain }: { className?: string; style?: React.CSSProperties; plain?: boolean }) {
   const t = useT()
   // The label STAYS "Contact Us" (owner, Aug 7) — the copy feedback is a
   // transient flash of the address, then the label comes back.
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  if (plain) return <a href={`mailto:${EMAIL}`} className={className} style={style}>{EMAIL}</a>
   return (
     <a
       href={`mailto:${EMAIL}`}

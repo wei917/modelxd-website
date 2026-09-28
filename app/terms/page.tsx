@@ -114,7 +114,7 @@ export default function TermsPage() {
       <h2 style={S.h2}>10. Contact</h2>
       <p style={S.p}>
         Questions about these Terms or the Service:{' '}
-        <a href="mailto:founder@modelxd.com" style={{ color: 'var(--red)' }}>founder@modelxd.com</a>.
+        <a href="mailto:support@modelxd.com" style={{ color: 'var(--red)' }}>support@modelxd.com</a>.
       </p>
     </main>
   )

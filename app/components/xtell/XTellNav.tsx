@@ -140,9 +140,9 @@ export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
     <div><span className="xtell-footer-brand">{t('xtell.site.brand')}</span><span>{t('xtell.site.entertainment')}</span></div>
-    {/* A way to reach us (owner, Sep 27: the street had none). The same
-        pieces as www's sidebar: the address, copied on click, and the bug
-        report form, which works signed out too. */}
-    <nav aria-label={t('xtell.site.legal')}><ContactEmail /><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    {/* A way to reach us (owner, Sep 27: the street had none): the support
+        address, shown as it is (Sep 28), and the bug report form, which
+        works signed out too. */}
+    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }

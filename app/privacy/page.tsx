@@ -93,7 +93,7 @@ export default function PrivacyPage() {
         account under Profile → Danger Zone — this permanently removes your
         account, content, uploaded files, and history. Aggregated, anonymous
         statistics (such as model vote totals) may be retained. You can also email{' '}
-        <a href="mailto:founder@modelxd.com" style={{ color: 'var(--red)' }}>founder@modelxd.com</a>{' '}
+        <a href="mailto:support@modelxd.com" style={{ color: 'var(--red)' }}>support@modelxd.com</a>{' '}
         to request deletion or a copy of your data.
       </p>
 
@@ -115,7 +115,7 @@ export default function PrivacyPage() {
       <p style={S.p}>
         We will post any material changes here with a new &quot;Last updated&quot; date.
         Questions:{' '}
-        <a href="mailto:founder@modelxd.com" style={{ color: 'var(--red)' }}>founder@modelxd.com</a>.
+        <a href="mailto:support@modelxd.com" style={{ color: 'var(--red)' }}>support@modelxd.com</a>.
       </p>
     </main>
   )

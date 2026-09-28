@@ -175,7 +175,7 @@ export default function BugReportLink({ className, style }: { className?: string
                 </div>
                 {err && <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {err}</div>}
                 <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted2)' }}>
-                  {t('fb.or')} <ContactEmail style={{ color: 'var(--muted)', fontWeight: 700 }} />
+                  {t('fb.or')} <ContactEmail plain style={{ color: 'var(--muted)', fontWeight: 700 }} />
                 </div>
               </>
             )}

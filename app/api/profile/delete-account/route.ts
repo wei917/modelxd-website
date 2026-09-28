@@ -123,7 +123,7 @@ export async function POST() {
   const { error: userErr } = await sb.auth.admin.deleteUser(user.id)
   if (userErr) {
     console.error(`${LOG} auth delete failed:`, userErr.message)
-    return Response.json({ error: 'Account data was removed but the sign-in record could not be deleted. Please contact founder@modelxd.com.' }, { status: 500 })
+    return Response.json({ error: 'Account data was removed but the sign-in record could not be deleted. Please contact support@modelxd.com.' }, { status: 500 })
   }
   console.log(`${LOG} done`)
   return Response.json({ ok: true })
