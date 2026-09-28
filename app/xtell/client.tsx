@@ -428,6 +428,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [lookupN, setLookupN] = useState<number | null>(temple === 'yixue' && Number.isInteger(init.n) ? init.n : null)
   const yixueEntryPending = useRef(false)
   const [yixueEntryBusy, setYixueEntryBusy] = useState(false)
+  // 進廟 in flight: the chart route, or 解夢's lookup (1-3 s). The form shows
+  // it moving (owner, Sep 27: "it shows nothing but freezed").
+  const [entering, setEntering] = useState(false)
+  const enteringRef = useRef(false)
   // The teacher must receive the same subject that produced the visible
   // board, even if an entry control was changed while its request loaded.
   const yixueSubject = useRef<Record<string, unknown> | null>(temple === 'yixue' && initial ? { temple, ...init } : null)
@@ -637,6 +641,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       yixueEntryPending.current = true
       setYixueEntryBusy(true)
     }
+    if (enteringRef.current) return false
+    enteringRef.current = true
+    setEntering(true)
     clearErr()
     refreshToken.current++
     if (temple === 'zhanxing') {
@@ -680,6 +687,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       return true
     } catch (e: any) { fail(String(e?.message ?? e), e?.code); if (isQian(temple)) setRitualBoth('drawn'); return false }
     finally {
+      enteringRef.current = false
+      setEntering(false)
       if (temple === 'yixue') { yixueEntryPending.current = false; setYixueEntryBusy(false) }
     }
   }
@@ -888,7 +897,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 
       {!entered ? (<>
-        <div className={standalone ? "xtell-entry-form" : undefined} style={{ ...card, padding: '18px 20px' }}>
+        <div className={standalone ? "xtell-entry-form" : undefined} aria-busy={entering || undefined} style={{ ...card, padding: '18px 20px', position: 'relative' }}>
+          {entering && <span className="xtell-entering-bar" aria-hidden="true" />}
           {carried?.question && <p className="xtell-carried" role="note">{t('xtell.as.carried').replace('{q}', carried.question)}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
               second person and 流年 needs a year. */}
@@ -1008,12 +1018,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           )}
           {!isQian(temple) && !(temple === 'yixue' && yixueMode !== 'ask') && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>
+              {entering
+                ? <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : 'xtell.entering.note')}</div>
+                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>}
               <span style={{ flex: 1 }} />
-              <button onClick={() => void enter()} disabled={temple === 'yixue' && (yixueEntryBusy || !input.trim())} style={{
-                padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
-                fontWeight: 700, fontSize: 13.5, cursor: questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
-              }}>{t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
+              <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
+                padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', minWidth: 112,
+                fontWeight: 700, fontSize: 13.5, cursor: entering ? 'wait' : questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: !entering && questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
+              }}>{entering
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="xtell-think is-light" aria-hidden="true"><i /><i /><i /></span>{t('xtell.entering')}</span>
+                : t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
             </div>
           )}
           {errShown && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
