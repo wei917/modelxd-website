@@ -1090,19 +1090,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, flexShrink: 0 }}>
                   {masters.map((m, i) => {
-                    const color = SLOT_COLORS[i], o = optsOf(m)
-                    const usd = estimateReadingUsd(m, { thinking: o.thinking, search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
+                    const color = SLOT_COLORS[i]
                     return (
                       <div key={m.id} className="xtell-seat" data-open={optsOpen || undefined}
                         style={optsOpen ? { borderColor: color + '80', boxShadow: `inset 3px 0 0 ${color}, 0 1px 2px rgba(60, 40, 20, .05)` } : undefined}>
                         <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>
                         <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} onClick={() => setPicker({ replace: m.id })}>
                           <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
-                          {(() => {
-                            const secs = firstWord(m, o.thinking)
-                            const bits = [usd != null ? t('xtell.seat.price').replace('{amount}', fmtUsd(usd)) : null, secs ? t('xtell.seat.ttft').replace('{s}', secs) : null].filter(Boolean)
-                            return bits.length ? <span className="xtell-seat-sub" title={secs ? t('xtell.seat.ttft.tip') : undefined}>{bits.join(' · ')}</span> : null
-                          })()}
                         </button>
                         <span className="xtell-seat-acts">
                         <button type="button" className="xtell-seat-act" title={t('xtell.opts.title')} aria-label={`${t('xtell.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
@@ -1176,6 +1170,20 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                                 <OptPill color={color} active={o.search} onClick={() => setOpts(m, { search: true })}><span style={nowrap}>{t('xcreate.on')}</span></OptPill>
                               </OptGroup>
                             )}
+                            {/* What these settings cost and how soon this
+                                teacher starts, following the chosen level
+                                (owner, Sep 27: here, not on the seat). */}
+                            {(() => {
+                              const usd = estimateReadingUsd(m, { thinking: o.thinking, search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
+                              const secs = firstWord(m, o.thinking)
+                              if (usd == null && !secs) return null
+                              return (
+                                <dl className="xtell-seat-stats">
+                                  {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsd(usd)}</dd></div>}
+                                  {secs && <div title={t('xtell.seat.ttft.tip')}><dt>{t('xtell.seat.ttftLabel')}</dt><dd>~{secs} {t('xtell.seat.sec')}</dd></div>}
+                                </dl>
+                              )
+                            })()}
                           </div>
                         )
                       })}

@@ -3471,10 +3471,10 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 
 /* XTell: a teacher's seat in a room (owner, Sep 27: "beautify it"). A small
    card: the provider's mark, the name in the middle (click to change
-   teacher; the two sides are equal so it is the card's middle), what a
-   question costs small along the bottom edge, and quiet icon buttons for
-   settings and removal. 再請一位老師 is the same card, dashed. */
-.xtell-seat { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; align-items: center; column-gap: 2px; min-width: 0; padding: 9px 5px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(60, 40, 20, .05); transition: border-color .15s, box-shadow .15s; }
+   teacher; the two sides are equal so it is the card's middle), and quiet
+   icon buttons for settings and removal. Price and first-word time live in
+   the settings cards (owner, Sep 27). 再請一位老師 is the same card, dashed. */
+.xtell-seat { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; align-items: center; column-gap: 2px; min-width: 0; padding: 8px 5px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(60, 40, 20, .05); transition: border-color .15s, box-shadow .15s; }
 .xtell-seat:hover { box-shadow: 0 3px 10px rgba(60, 40, 20, .08); }
 .xtell-seat-logo { justify-self: start; width: 30px; height: 32px; display: grid; place-items: center; }
 .xtell-room .xtell-seat-main, .xtell-seat-main { position: static; min-width: 0; min-height: 0; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: none; border-radius: 8px; background: none; cursor: pointer; font: inherit; color: var(--xtell-ink, var(--white)); text-align: center; }
@@ -3482,7 +3482,11 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-name { display: flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%; font-size: 13.5px; font-weight: 700; line-height: 1.3; }
 .xtell-seat-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .xtell-seat-name > svg { flex-shrink: 0; color: var(--xtell-secondary, var(--muted)); opacity: .7; }
-.xtell-seat-sub { position: absolute; left: 0; right: 0; bottom: 3px; font-family: var(--font-mono), monospace; font-size: 9px; line-height: 1; color: var(--xtell-secondary, var(--muted2)); text-align: center; white-space: nowrap; pointer-events: none; }
+/* Price and first-word time in each teacher's settings card. */
+.xtell-seat-stats { display: flex; gap: 18px; margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--xtell-rule, var(--border2)); }
+.xtell-seat-stats > div { display: flex; align-items: baseline; gap: 6px; }
+.xtell-seat-stats dt { font-size: 11px; font-weight: 600; color: var(--muted2); }
+.xtell-seat-stats dd { margin: 0; font-family: var(--font-mono), monospace; font-size: 12px; color: var(--xtell-ink, var(--white)); }
 .xtell-room .xtell-seat-act, .xtell-seat-act { flex-shrink: 0; width: 24px; height: 28px; min-height: 0; display: grid; place-items: center; padding: 0; border: none; border-radius: 8px; background: none; color: var(--xtell-secondary, var(--muted)); cursor: pointer; transition: background .15s, color .15s; }
 .xtell-seat-act:hover { background: var(--xtell-tint, var(--surface2)); color: var(--xtell-ink, var(--white)); }
 .xtell-seat-acts { justify-self: end; display: flex; gap: 2px; }

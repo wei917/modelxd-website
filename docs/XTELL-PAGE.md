@@ -392,8 +392,9 @@ estimate line.
 
 **Seats, Sep 27 (owner: "beautify it", "TTFT besides money").** Each seat is
 a small white card: the provider's mark, the name in the card's middle (the
-two sides are equal widths) with a ⌄ that opens the picker, and along the
-bottom edge, small, 「每題約 $… · 首字約 N 秒」. The first-word time comes
+two sides are equal widths) with a ⌄ that opens the picker. Price and speed
+are in that teacher's settings card (owner: not on the seat), under the
+options and following them: 「每題 ~$… 首字 ~N 秒」. The first-word time comes
 from `/api/xtell/speed`, which hands out `model_latency`'s medians (the
 table stays closed to browsers): the number at the seat's thinking level,
 or the measured range when that level was not measured (自動). Unmeasured
