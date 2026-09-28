@@ -20,7 +20,7 @@ export function XTellMark() {
   // surfaces: the top bar and the sign-in card are white for that reason.
   return <span className="xtell-brand xtell-focus-brand">
     <img className="xtell-logo" src="/logo.png" alt="" width={30} height={30} />
-    <span><span className="xtell-accent">{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
+    <span><span className="xtell-accent xtell-x">{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
   </span>
 }
 
@@ -139,7 +139,7 @@ export default function XTellNav({ user }: { user: User | null }) {
 export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
-    <div><span className="xtell-footer-brand">{t('xtell.site.brand')}</span><span>{t('xtell.site.entertainment')}</span></div>
+    <div><span className="xtell-footer-brand"><span className="xtell-x">{t('xtell.site.brand').slice(0, 1)}</span>{t('xtell.site.brand').slice(1)}</span><span>{t('xtell.site.entertainment')}</span></div>
     {/* A way to reach us (owner, Sep 27: the street had none): the support
         address, shown as it is (Sep 28), and the bug report form, which
         works signed out too. */}

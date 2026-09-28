@@ -3365,6 +3365,27 @@ html[data-site="xtell"] body, html[data-site="xtell"] .xtell-site, html[data-sit
 }
 .xtell-focus-brand { display: inline-flex; align-items: center; gap: .3em; font-size: 30px; letter-spacing: -.055em; }
 .xtell-focus-brand .xtell-accent { color: var(--xtell-vermilion); }
+/* The brand's X in the phone's own bold English font (SF Pro on iPhone,
+   Roboto on Android, Segoe UI on Windows); it was Georgia, which Android
+   does not have and which read as a different logo (owner, Sep 28). 先知
+   keeps the serif. No web font is loaded for it. */
+.xtell-x { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 800; letter-spacing: 0; margin-right: .04em; }
+
+/* XTell uses the phone's own fonts (Sep 28). A phone on 4G was downloading
+   1.5 MB of Noto Sans TC, in dozens of pieces, before the street finished;
+   Lighthouse (mid-range phone, 4G) put the first paint at 8.6 s and the
+   almanac at 17 s. These tokens override next/font's class on <body>, so
+   the web fonts are never requested on this host; www is unchanged. */
+html[data-site="xtell"] body {
+  --font-zh: "PingFang TC", "Noto Sans CJK TC", "Source Han Sans TC", "Microsoft JhengHei", sans-serif;
+  --font-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Yu Gothic", "Meiryo", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--font-zh);
+  --font-display: var(--font-body);
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", var(--font-zh);
+}
+html[data-site="xtell"][lang="zh-Hans"] body { --font-zh: "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+html[data-site="xtell"][lang="ja"] body { --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--font-ja); --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", var(--font-ja); }
+html[data-site="xtell"][lang="ko"] body { --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", sans-serif; }
 /* Sized in em so it scales with the wordmark (top bar, sign-in dialog). */
 .xtell-logo { width: 1.05em; height: 1.05em; border-radius: .22em; flex-shrink: 0; }
 html[data-site="xtell"] .xtell-nav-inner { min-height: 70px; max-width: 1280px; gap: 34px; padding: 10px 32px; }
