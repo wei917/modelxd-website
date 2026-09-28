@@ -19,7 +19,9 @@ export function XTellMark() {
   // Sep 26). The logo file has a white plate, so it sits only on white
   // surfaces: the top bar and the sign-in card are white for that reason.
   return <span className="xtell-brand xtell-focus-brand">
-    <img className="xtell-logo" src="/logo.png" alt="" width={30} height={30} />
+    {/* 64 px (3 KB): the site-wide logo.png is 520 px and 219 KB, and a
+        phone on 4G fetched it before the street painted (Sep 28). */}
+    <img className="xtell-logo" src="/xtell/logo-64.png" alt="" width={30} height={30} />
     <span><span className="xtell-accent xtell-x">{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
   </span>
 }
