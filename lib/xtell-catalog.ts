@@ -18,7 +18,7 @@
 import type { Temple } from './xtell'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-27.4'
+export const XTELL_CATALOG_VERSION = '2026-09-27.5'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha'
@@ -109,7 +109,7 @@ export const XTELL_FEATURES: readonly Feature[] = [
     about: 'Character reading (測字): write one Chinese character, and optionally the matter asked about; the teacher takes the character apart.' },
   { id: 'jiemeng', status: 'live', temple: 'jiemeng', people: 0, hour: null, place: false, inputs: ['dream'], optional: ['matter'],
     free: ['lookup'], paid: 'teacher', question: 'matter', label: [room('jiemeng')],
-    about: 'Dream reading (解夢, 周公解夢): write the dream, and optionally what you want to know; the matching lines of the classic folk dream book 周公解夢 are shown free, then the chosen teachers read the dream against those lines and your situation. A dream written in Chinese or Japanese kanji finds the book\'s lines; one in English or Korean finds none, and the teacher explains in general.' },
+    about: 'Dream reading (解夢, 周公解夢): write the dream, and optionally what you want to know; a quick AI picks the lines of the classic folk dream book 周公解夢 about what happens in the dream, shown free and quoted as written; then the chosen teachers read the dream against those lines and your situation. The dream may be written in any language. Up to 30 dreams a day.' },
   { id: 'yixue.ask', status: 'live', temple: 'yixue', mode: 'ask', people: 0, hour: null, place: false, inputs: ['question'], optional: [],
     free: [], paid: 'teacher', question: 'composer', label: [room('yixue'), 'xtell.yixue.mode.ask'],
     about: 'I Ching school, ask the teacher: learn the I Ching as a beginner; no hexagram is cast.' },

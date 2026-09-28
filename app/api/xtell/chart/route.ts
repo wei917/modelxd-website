@@ -12,7 +12,8 @@ export const runtime = 'nodejs'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
-import { dreamMatches, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
+import { dreamEntries, dreamProblem, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
+import { scanDream } from '@/lib/jiemeng-scan'
 
 // Every refusal carries a stable `code` the client turns into a sentence in
 // the visitor's language, next to the field it is about (audit F05: 「bad
@@ -107,16 +108,40 @@ export async function POST(req: Request) {
     }
   }
 
-  // 解夢: the dream as written, and the 《周公解夢》 lines it points at
-  // (lib/jiemeng.ts). Free: the lines are computed, the reading is paid.
-  // The visit is titled by the dream, so the history lists say which one.
+  // 解夢: the dream as written, and the 《周公解夢》 lines it points at,
+  // chosen by a quick model (lib/jiemeng-scan.ts) and checked against the
+  // book (lib/jiemeng.ts). Free to the visitor: the house pays the scan, the
+  // reading is paid. A dream this visitor has already looked up keeps its
+  // lines and costs nothing. At most SCANS_PER_DAY dream visits a day,
+  // counted from their own saved visits (a re-sent dream updates its row,
+  // it never frees a slot). Always saved, `refresh` or not, so every scan
+  // is counted. The visit is titled by the dream.
   if (temple === 'jiemeng') {
     const bad = dreamProblem(body?.dream)
     if (bad) return refuse(bad, bad === 'dream_required' ? 'write the dream' : 'the dream is too long')
     const dream = String(body.dream).trim()
     const ask = typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : ''
-    const chart = { dream, ask, entries: dreamMatches(dream) }
-    const readingId = await keep(() => save(sb, user.id, temple, { ...body, dream, ask }, chart, {}, dream.split('\n')[0]))
+    const { data: recent } = await sb.from('xtell_readings')
+      .select('chart, created_at').eq('user_id', user.id).eq('temple', 'jiemeng')
+      .order('created_at', { ascending: false }).limit(SCANS_PER_DAY + 20)
+    const rows = (recent ?? []) as Array<{ chart: any; created_at: string }>
+    const seen = rows.find(r => r.chart?.scan && r.chart?.dream === dream && Array.isArray(r.chart?.entries))
+    let entries, by: string
+    if (seen) {
+      entries = dreamEntries(seen.chart.entries.map((e: any) => e?.id))
+      by = seen.chart.scan
+    } else {
+      const dayAgo = Date.now() - 86_400_000
+      if (rows.filter(r => r.chart?.scan && Date.parse(r.created_at) > dayAgo).length >= SCANS_PER_DAY)
+        return refuse('dream_daily_limit', 'too many dreams looked up today', 429)
+      const scan = await scanDream(dream, user.id)
+      if (!scan) return refuse('dream_scan_failed', 'the dream book lookup is unavailable', 503)
+      entries = dreamEntries(scan.ids)
+      by = scan.model
+    }
+    // `scan` names the model that chose the lines.
+    const chart = { dream, ask, entries, scan: by }
+    const readingId = await save(sb, user.id, temple, { ...body, dream, ask }, chart, {}, dream.split('\n')[0])
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 

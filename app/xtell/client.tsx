@@ -792,6 +792,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...(temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
+            // 解夢: the line numbers shown, used only when the visit was not saved.
+            ...(temple === 'jiemeng' ? { entries: (Array.isArray(chart?.entries) ? chart.entries : []).map((e: any) => e.id) } : {}),
             search: optsOf(m).search && searchable(m),
             thinking: optsOf(m).thinking,
             lang,

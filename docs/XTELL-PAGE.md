@@ -62,7 +62,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
 | 易學堂 | 易經: 起卦 / 查卦 / 問老師 | `lib/yijing-core.ts` + `lib/yijing.ts` + `content/yijing/zhouyi.json` | A school, not a temple (Sep 26). Three coins thrown six times → 本卦, 動爻, 之卦, and 朱熹's rule for which passage to read; any of the 64 read in the original; or a learner's question with no cast. See "易學堂" below |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
-| 解夢 | 周公解夢 | `lib/jiemeng.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars) + an optional question. Code matches it against the book's 988 entries and shows the hits free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
+| 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -690,10 +690,10 @@ shows one teacher's thread. A reopened visit re-seats the last question's
 ## 解夢 (Sep 27)
 
 Owner: "add 解夢", then "if we just allow users to talk to AI, they can just
-talk to ChatGPT free". So the room is the book first: the dream is matched,
-by code, against 《周公解夢》 and the entries it finds are shown **free**,
-with no model call. Teachers are optional and paid, and they are given only
-the matched lines to quote.
+talk to ChatGPT free". So the room is the book first: the dream is read
+against 《周公解夢》 and the lines it points at are shown **free** (a quick
+house-paid model picks them, see below). Teachers are optional and paid, and
+they are given only those lines to quote.
 
 **The book.** Chinese Wikisource 《周公解夢》, revision 7907671
 (2026-07-11), `{{Pd-old}}`. A folk dream book traditionally attributed to
@@ -702,19 +702,45 @@ the matched lines to quote.
 (「被馬咬有祿位至」), 988 in all. `scripts/fetch-zhougong.mjs [revid]`
 rebuilds `content/jiemeng/zhougong.json` byte for byte, refuses a page that
 no longer carries `{{Pd-old}}`, and adds each entry's Simplified and
-Japanese-kanji form with OpenCC (tw→cn, tw→jp). OpenCC runs at build time
-only; it is not a dependency (`npm i --no-save opencc-js@1` or `NODE_PATH`).
+Japanese-kanji form with OpenCC (tw→cn, tw→jp; 简体 pages show the
+Simplified form; the Japanese form served the first, character-matching
+build and is now unused). OpenCC runs at build time only; it is not a
+dependency (`npm i --no-save opencc-js@1` or `NODE_PATH`).
 
-**The match** (`dreamMatches`, server only). The dream's CJK runs give
-two-character pairs and single characters (minus a STOP list of words any
-telling of a dream uses: 我 夢 見 看 到 子 …). Against each entry's image
-half (its first four or five characters) in all three forms: a pair scores
-6; a single character scores its IDF across the entry heads, ×1.5 in the
-first two positions (the entry's subject). Kept: score ≥ 4 and ≥ 0.55 of the
-best, at most 12, in book order. IDF is what stops a snake by the water from
-returning a dozen 水 lines. 夢見龍 / 梦见龙 / 竜の夢 find the same entries.
-A dream in English or Korean finds none, and the page and the teacher both
-say so: the teacher is told not to quote or invent the book then.
+**The lines: a quick model, not word matching** (owner, Sep 27: "your
+search results show a lot of unrelated lines … ask another quick AI to do a
+pre scan"). The first build matched characters (pairs and IDF-weighted
+singles against each entry's head); it pulled 開門 for 開心, 新衣 for 新娘,
+男子 for 男友, and only a dream about teeth came back clean. Now
+`lib/jiemeng-scan.ts` gives a quick model the whole book as a fixed system
+prompt (`scanSystem()`: the 27 section titles and all 988 lines, numbered,
+~11k tokens, so the provider caches it) and the dream as the message; it
+answers `{"ids": [...]}`, at most 8, most relevant first, empty when nothing
+fits. `scanIds()` keeps only whole numbers the book holds, so no line the
+book does not have can reach the page or a teacher. A dream in any language
+finds lines.
+
+- **Models** (house-paid; the visitor chose neither, so a failure moves to
+  another provider): GPT-6 Luna at reasoning `none`, then Gemini 3.1
+  Flash-Lite. Measured on nine dreams in four languages: Luna 1.1-2.8s,
+  $0.0011 the first call and $0.00012 once cached, zero to two lines, none
+  unrelated, but it missed 見嫁娶 for an ex's wedding; Flash-Lite 0.7-0.9s,
+  $0.0029 / $0.0011, found it. Qwen 3.8 Flash was tried as the fallback and
+  dropped (eight lines for a dream of a late grandmother cooking, half
+  unrelated). Both failing: 503 `dream_scan_failed`, "try again"; no
+  word-matched lines as a fallback.
+- **Reuse and cap** (chart route): a dream this visitor already looked up
+  keeps its lines, no second call. At most `SCANS_PER_DAY` (30) dream visits
+  a day, counted from their own `xtell_readings` rows with a `chart.scan`
+  (429 `dream_daily_limit`). A jiemeng chart is saved even with `refresh`,
+  so no scan goes uncounted. The chart records which model chose the lines
+  (`chart.scan`).
+- **Reading route**: the teacher gets the lines of the visitor's own saved
+  visit (by `readingId`, RLS-scoped); only when there is no saved visit are
+  the page's line numbers taken, each checked against the book and read from
+  disk, like a 籤 number.
+- Tests: `scripts/test-xtell-jiemeng.ts` (in `npm run test:xtell`), models
+  stubbed.
 
 **The teacher** (`MASTERS.jiemeng`, 解夢先生). Quotes only the attached
 entries, with their section; says plainly when a hit is beside the point

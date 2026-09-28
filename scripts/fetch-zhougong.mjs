@@ -4,9 +4,10 @@
 // The page is a folk dream book: an eight-line preface poem, then 27 themed
 // sections of seven-character entries, image then meaning (「被馬咬有祿位至」).
 // Each entry keeps its section and, beside the Traditional text, a
-// Simplified and a Japanese-kanji form (OpenCC, used here only, at build
-// time), so a dream written in any of the three finds the same entries. The
-// page revision is recorded so the file can be rebuilt byte for byte.
+// Simplified form (shown on 简体 pages) and a Japanese-kanji form (used by
+// the first, character-matching build; lines are now picked by a model, see
+// lib/jiemeng-scan.ts). OpenCC is used here only, at build time. The page
+// revision is recorded so the file can be rebuilt byte for byte.
 //
 //   npm i --no-save opencc-js@1 && node scripts/fetch-zhougong.mjs [revid]
 // (or with NODE_PATH pointing at an opencc-js install elsewhere)

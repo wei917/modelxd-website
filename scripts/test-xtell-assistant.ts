@@ -95,7 +95,7 @@ function fakeDb() {
 }
 
 async function chartConsistency() {
-  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/jiemeng': require('../lib/jiemeng') })
+  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
   const cast = async (body: any) => { const r = await chart(post('http://t/api/xtell/chart', { ...body, refresh: true })); return { status: r.status, d: await r.json() as any } }
   const one = { y: 1990, m: 1, d: 1, h: 15, mi: 0, gender: 'male' }, two = { y: 1992, m: 5, d: 5, h: 9, mi: 0, gender: 'female' }
   /** The smallest full subject the catalog says this feature needs. */

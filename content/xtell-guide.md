@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-27.4 -->
+<!-- xtell-guide version: 2026-09-27.5 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -122,14 +122,14 @@ components and reads them against the matter, showing every step.
 ### jiemeng
 周公解夢 (Dream Hall; 解夢 in the top bar). Write the dream as you remember
 it, and if you like, what you want to know or what is going on in your life.
-The site looks the dream up in 《周公解夢》, the classic folk dream book, and
-shows the matching lines free, each with its section (龍蛇禽獸等類 …). Then
-the chosen teachers read the dream against those lines and your situation;
-they quote only the lines found, say that 「主…吉／凶」 is what the old book
-says rather than a prediction, and suggest a doctor or counsellor for
-recurring nightmares. The book is in classical Chinese: a dream written in
-Chinese or Japanese kanji finds its lines, one in English or Korean does not
-(the teacher then explains in general).
+A quick AI reads the dream against 《周公解夢》, the classic folk dream
+book, and picks the lines about what actually happens in it; they are shown
+free and as written, each with its section (龍蛇禽獸等類 …). Then the chosen
+teachers read the dream against those lines and your situation; they quote
+only those lines, say that 「主…吉／凶」 is what the old book says rather
+than a prediction, and suggest a doctor or counsellor for recurring
+nightmares. The dream may be written in any language. Up to 30 dreams a day;
+a dream already looked up keeps its lines.
 
 ### yixue.ask
 易學堂 (I Ching Hall), ask the teacher. For learners: what a hexagram is,
