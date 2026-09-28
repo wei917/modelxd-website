@@ -226,7 +226,6 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
 
 export function DailyProfileSettings() {
   const t = useT()
-  const { lang } = useLang()
   const [state, setState] = useState<'loading' | 'none' | 'ready' | 'hidden'>('loading')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [editing, setEditing] = useState(false)
@@ -263,7 +262,6 @@ export function DailyProfileSettings() {
     setProfile(null); setState('none'); setNotice(t('xtell.dy.deleted'))
   }
   if (state === 'loading' || state === 'hidden') return null
-  const born = profile ? `${profile.birth.y}-${pad(profile.birth.m)}-${pad(profile.birth.d)} ${profile.birth.hourUnknown ? t('xtell.hourunknown') : `${pad(profile.birth.h)}:${pad(profile.birth.mi)}`}` : ''
   return (
     <section id="xtell-daily-settings" className="xtell-dy xtell-dy-account" aria-label={t('xtell.dy.settings')}>
       <div className="xtell-dy-head"><h2 className="xtell-dy-title">{t('xtell.dy.settings')}</h2></div>
@@ -274,7 +272,9 @@ export function DailyProfileSettings() {
         <p className="xtell-dy-small">{t('xtell.dy.remind')} <a className="xtell-dy-link" href="/#xtell-daily">{t('xtell.dy.start')}</a></p>
       ) : (<>
         <div className="xtell-dy-profile">
-          <span>{t('xtell.dy.saved').replace('{birth}', born).replace('{place}', placeOf(profile?.place)?.label ?? zoneLabel(birthZone(profile?.place) ?? '', lang)).replace('{tz}', zoneLabel(profile?.displayTz ?? '', lang))}</span>
+          {/* Hidden by default (owner, Sep 28): the birth and zones show
+              only in the form, after 修改. */}
+          <span>{t('xtell.dy.savedHidden')}</span>
           <span className="xtell-dy-row">
             <button type="button" className="xtell-dy-link" onClick={() => { setConfirmDelete(false); setEditing(true) }}>{t('xtell.dy.edit')}</button>
             <button type="button" className="xtell-dy-link" onClick={() => setConfirmDelete(c => !c)}>{t('xtell.dy.delete')}</button>

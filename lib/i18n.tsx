@@ -1533,7 +1533,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.dy.consent": {"en": "I agree to save these birth details to my account to calculate my free daily fortune. Only I can see them, and I can change or delete them at any time.", "zh-Hant": "我同意把這些出生資料存在我的帳戶，用來計算我的每日免費運勢。只有我看得到，隨時可以修改或刪除。", "zh-Hans": "我同意把这些出生资料保存在我的账户，用来计算我的每日免费运势。只有我看得到，随时可以修改或删除。", "ja": "この出生情報を自分のアカウントに保存し、毎日の無料運勢の計算に使うことに同意します。見られるのは自分だけで、いつでも変更・削除できます。", "ko": "이 출생 정보를 내 계정에 저장하여 매일 무료 운세 계산에 쓰는 데 동의합니다. 나만 볼 수 있고 언제든 수정하거나 삭제할 수 있습니다."},
   "xtell.dy.save": {"en": "Save", "zh-Hant": "儲存", "zh-Hans": "保存", "ja": "保存", "ko": "저장"},
   "xtell.dy.cancel": {"en": "Cancel", "zh-Hant": "取消", "zh-Hans": "取消", "ja": "キャンセル", "ko": "취소"},
-  "xtell.dy.saved": {"en": "Saved: {birth} · born in {place} · today's zone {tz}", "zh-Hant": "已儲存：{birth} · 出生時區 {place} · 今天時區 {tz}", "zh-Hans": "已保存：{birth} · 出生时区 {place} · 今天时区 {tz}", "ja": "保存済み：{birth} · 生まれたタイムゾーン {place} · 今日のタイムゾーン {tz}", "ko": "저장됨: {birth} · 태어난 시간대 {place} · 오늘 시간대 {tz}"},
+  "xtell.dy.savedHidden": {"en": "Saved (hidden; press Edit to see it)", "zh-Hant": "已儲存（已隱藏，按「修改」查看）", "zh-Hans": "已保存（已隐藏，按「修改」查看）", "ja": "保存済み（非表示。「変更」で表示）", "ko": "저장됨 (숨김, ‘수정’을 누르면 표시)"},
   "xtell.dy.edit": {"en": "Edit", "zh-Hant": "修改", "zh-Hans": "修改", "ja": "変更", "ko": "수정"},
   "xtell.dy.editBirth": {"en": "Change your saved birth details →", "zh-Hant": "修改出生資料 →", "zh-Hans": "修改出生资料 →", "ja": "出生情報を変更 →", "ko": "출생 정보 수정 →"},
   "xtell.dy.settings": {"en": "Today's fortune: your birth details", "zh-Hant": "今日運勢的出生資料", "zh-Hans": "今日运势的出生资料", "ja": "今日の運勢の出生情報", "ko": "오늘의 운세 출생 정보"},
