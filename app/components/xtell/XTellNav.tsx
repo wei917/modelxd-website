@@ -7,6 +7,8 @@ import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, type TempleKey } from './TempleArtwork'
+import ContactEmail from '../ContactEmail'
+import BugReportLink from '../BugReport'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -138,6 +140,9 @@ export function XTellFooter() {
   const { t } = useLang()
   return <footer className="xtell-footer">
     <div><span className="xtell-footer-brand">{t('xtell.site.brand')}</span><span>{t('xtell.site.entertainment')}</span></div>
-    <nav aria-label={t('xtell.site.legal')}><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    {/* A way to reach us (owner, Sep 27: the street had none). The same
+        pieces as www's sidebar: the address, copied on click, and the bug
+        report form, which works signed out too. */}
+    <nav aria-label={t('xtell.site.legal')}><ContactEmail /><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }

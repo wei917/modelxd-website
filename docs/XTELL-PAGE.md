@@ -29,6 +29,12 @@ sculptural portraits and screenprint icons, not the ink-wash covers; the
 ink-wash rule below still governs `/xtell` on www and every temple cover.
 The host is attached to Vercel's Production target, so it ships with `main`.
 
+**Reaching us (Sep 27).** The XTell footer carries 聯絡我們 (founder@modelxd.com,
+copied on click; `ContactEmail`) and 回報問題 (the bug report form with a page
+screenshot, stored in `feedback`, works signed out; `BugReport`), the same
+pieces as www's sidebar. Before this the street had no contact at all; the
+address was only inside the Terms and Privacy pages.
+
 ## The architecture rule (the one thing you must not break)
 
 **The model never computes the chart. Code computes the chart; the model only
