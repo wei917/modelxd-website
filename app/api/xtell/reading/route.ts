@@ -223,6 +223,12 @@ export async function POST(req: Request) {
   // at once cannot lose a write and the question is stored once.
   const readingId = typeof body?.readingId === 'string' && /^[0-9a-f-]{36}$/i.test(body.readingId) ? body.readingId : null
   const qid = typeof body?.qid === 'string' ? body.qid.slice(0, 40) : null
+  // Whom the question was for, and who was seated when it was asked (owner,
+  // Sep 27: ask one teacher, or some): kept on the stored question so a
+  // reopened visit rebuilds each teacher's own thread and labels a question
+  // that went to only some. Model ids only; anything else is dropped.
+  const ids = (v: unknown) => Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 8) : []
+  const to = ids(body?.to), seats = ids(body?.seats)
   let full = ''
 
   const stream = new ReadableStream({
@@ -242,7 +248,7 @@ export async function POST(req: Request) {
               const ts = new Date().toISOString()
               const { error } = await sb.rpc('xtell_append_turns', {
                 p_id: readingId,
-                p_user_turn: { role: 'user', content: question || '請為信眾做一次完整的解讀。', qid, ts },
+                p_user_turn: { role: 'user', content: question || '請為信眾做一次完整的解讀。', qid, ts, ...(to.length ? { to } : {}), ...(seats.length ? { seats } : {}) },
                 p_assistant_turn: { role: 'assistant', content: full, modelId: (model as any).id, name: (model as any).display_name ?? (model as any).model_name, provider: (model as any).provider, cost: r.cost ?? 0, qid, ts },
                 p_add_cents: cents,
               })

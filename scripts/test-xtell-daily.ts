@@ -211,10 +211,11 @@ function fakeDb() {
 async function routes() {
   const db = fakeDb()
   let user: { id: string } | null = { id: 'user-a' }
+  const rpcCalls: Array<{ name: string; a: any }> = []
   const session = {
     auth: { getUser: async () => ({ data: { user } }) },
     from: (t: string) => db.admin.from(t),
-    rpc: async () => ({ error: null }),
+    rpc: async (name: string, a: any) => { rpcCalls.push({ name, a }); return { error: null } },
   }
   const houseCalls: any[] = []
   let reply: string | (() => never) = JSON.stringify({ summary: 's', themes: ['a', 'b'], reflect: 'r', why: 'w' })
@@ -292,6 +293,17 @@ async function routes() {
   const sys = systems.at(-1) ?? ''
   check('follow-up: the teacher gets that day\'s stored basis and free reading, nothing the client sent', r1.status === 200 && sys.includes('占星塔的老師') && sys.includes('行運月亮在') && sys.includes('當天的免費解讀') && !sys.includes('fake'))
   check('follow-up needs a question and its visit', (await ask({ temple: 'daily', readingId: f1.d.readingId, question: '' })).status === 400 && (await ask({ temple: 'daily', question: 'x' })).status === 400)
+  // A question put to some of the table remembers whom it was for (owner,
+  // Sep 27): model ids only, the stored question carries them.
+  const A = '00000000-0000-4000-8000-00000000000a', B = '00000000-0000-4000-8000-00000000000b'
+  rpcCalls.length = 0
+  await ask({ temple: 'daily', readingId: f1.d.readingId, qid: 'q-to', question: '只問一位', to: [A, 'not-an-id', A], seats: [A, B, '<script>'] })
+  const stored = rpcCalls.find(c => c.name === 'xtell_append_turns')?.a?.p_user_turn
+  check('the stored question keeps to and seats, model ids only, once each', !!stored && JSON.stringify(stored.to) === JSON.stringify([A]) && JSON.stringify(stored.seats) === JSON.stringify([A, B]))
+  rpcCalls.length = 0
+  await ask({ temple: 'daily', readingId: f1.d.readingId, qid: 'q-all', question: '問全部' })
+  const plain = rpcCalls.find(c => c.name === 'xtell_append_turns')?.a?.p_user_turn
+  check('a question without them is stored as before', !!plain && !('to' in plain) && !('seats' in plain))
   db.dailyRows.length = 0
   check('a day no longer kept: 410, nothing sent', (await ask({ temple: 'daily', readingId: f1.d.readingId, question: 'x' })).status === 410)
 

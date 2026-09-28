@@ -530,12 +530,34 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const optsOf = (m: PickerModel): SeatOpts => seatOpts[m.id] ?? defaultOpts(m)
   const setOpts = (m: PickerModel, patch: Partial<SeatOpts>) => setSeatOpts(o => ({ ...o, [m.id]: { ...optsOf(m), ...patch } }))
 
-  // One shared conversation: the visitor speaks once, every seated master
-  // answers. Each master keeps its own private transcript server-side.
-  type Turn = { role: 'user'; content: string } | { role: 'assistant'; content: string; modelId: string; name: string; provider: string; cost?: number }
+  // One shared conversation. A question goes to every seated master or to
+  // the ones the visitor picks (owner, Sep 27); it remembers both (`to`, and
+  // `seats`: who was seated), so each master's thread holds only the
+  // questions put to it, and a reopened visit re-seats the same table. A
+  // question saved before this has neither and counts as asked of all.
+  type Turn = { role: 'user'; content: string; to?: string[]; seats?: string[] } | { role: 'assistant'; content: string; modelId: string; name: string; provider: string; cost?: number }
+  const idList = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined
   const [turns, setTurns] = useState<Turn[]>(() => (initial?.turns ?? []).map((x: any) => x.role === 'user'
-    ? { role: 'user', content: String(x.content ?? '') }
+    ? { role: 'user', content: String(x.content ?? ''), to: idList(x.to), seats: idList(x.seats) }
     : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
+  // Whom the next question goes to: null is every seated master. Picked
+  // ids no longer seated drop out; if none are left, it is everyone again.
+  const [askTo, setAskTo] = useState<string[] | null>(null)
+  const recipients = (() => {
+    const picked = (askTo ?? []).filter(id => masters.some(m => m.id === id))
+    return picked.length ? masters.filter(m => picked.includes(m.id)) : masters
+  })()
+  const askingAll = recipients.length === masters.length
+  const toggleAsk = (id: string) => setAskTo(() => {
+    const cur = recipients.map(m => m.id)
+    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]
+    return next.length === 0 || next.length === masters.length ? null : next
+  })
+  const askOnly = (id: string) => {
+    setAskTo([id])
+    composerRef.current?.focus()
+    composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
   const [input, setInput] = useState(carried?.feature.question === 'composer' ? carried.question ?? '' : '')
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const questionRequired = temple === 'yixue' && yixueMode === 'ask'
@@ -552,14 +574,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
       .then(({ data }) => {
         const rows = (data ?? []).filter(r => !(r.blocked_features ?? []).includes('xtell'))
         setCatalog(rows as PickerModel[])
-        // A reopened reading re-seats the masters of its last round, in the
-        // order they answered, so 繼續 with four teachers continues with the
-        // same four (owner, Sep 24). A master since removed from the catalog
-        // is simply not re-seated.
+        // A reopened reading re-seats the table of its last question (its
+        // `seats`, so a last question put to one teacher still brings back
+        // all four); a question saved before that re-seats whoever answered
+        // it, in order (owner, Sep 24). A master since removed from the
+        // catalog is simply not re-seated.
         if (initial?.turns?.length) {
           const lastUser = initial.turns.map((x: any) => x.role).lastIndexOf('user')
-          const ids: string[] = []
-          for (const x of initial.turns.slice(lastUser + 1)) if (x.role === 'assistant' && x.modelId && !ids.includes(x.modelId)) ids.push(x.modelId)
+          const ids: string[] = [...(idList(initial.turns[lastUser]?.seats) ?? [])]
+          if (!ids.length) for (const x of initial.turns.slice(lastUser + 1)) if (x.role === 'assistant' && x.modelId && !ids.includes(x.modelId)) ids.push(x.modelId)
           const seated = ids.map(id => rows.find(r => r.id === id)).filter(Boolean).slice(0, MAX_SEATS) as PickerModel[]
           if (seated.length) { setMasters(m => (m.length ? m : seated)); return }
         }
@@ -729,31 +752,38 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const chip = (on: boolean): React.CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12, cursor: busy ? 'default' : 'pointer',
+    border: '1px solid ' + (on ? 'var(--red)' : 'var(--border2)'), background: on ? 'var(--surface2)' : '#ffffff',
+    color: on ? 'var(--red)' : 'var(--muted)', fontWeight: on ? 700 : 500,
+  })
+
   const send = async (fromButton = false) => {
     // Chart rooms allow a general reading. Teacher conversations require an
     // actual question; neither an empty click nor Enter may spend credits.
     const typed = input.trim()
     if ((!typed && (questionRequired || !fromButton)) || busy || masters.length === 0 || unverified || savedProblem) return
     const q = typed || t('xtell.question.general')
+    const to = recipients.map(m => m.id), seats = masters.map(m => m.id)
     setInput(''); setBusy(true); clearErr()
-    setTurns(ts => [...ts, { role: 'user', content: q }])
+    setTurns(ts => [...ts, { role: 'user', content: q, to, seats }])
     // One id per question: every master's request carries it, the server
     // stores the question once (xtell_append_turns dedupes on it).
     const qid = crypto.randomUUID()
 
-    // All seated masters answer the same question concurrently; each gets its
-    // own history (its replies only) so two masters never contaminate each
-    // other's thread.
-    await Promise.all(masters.map(async m => {
+    // The chosen masters answer concurrently; each gets its own thread: the
+    // questions put to it and its own replies, so two masters never see each
+    // other's answers or a question they were not asked.
+    await Promise.all(recipients.map(async m => {
       const history = turnsRef.current
-        .filter(tn => tn.role === 'user' || (tn as any).modelId === m.id)
+        .filter(tn => tn.role === 'user' ? !tn.to || tn.to.includes(m.id) : tn.modelId === m.id)
         .map(tn => ({ role: tn.role, content: tn.content }))
       const idx = pushAssistant(m)
       try {
         const res = await fetch('/api/xtell/reading', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...(temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid,
+            ...(temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
             search: optsOf(m).search && searchable(m),
             thinking: optsOf(m).thinking,
             lang,
@@ -828,6 +858,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     return [...seen.values()]
   })()
   const activeTab = replyModels.some(m => m.id === tab) ? tab : (replyModels[0]?.id ?? null)
+  const nameOf = (id: string) => masters.find(m => m.id === id)?.display_name ?? replyModels.find(m => m.id === id)?.name ?? catalog.find(m => m.id === id)?.display_name ?? null
+  /** Put to only some of the table: the names it went to, else null. */
+  const toOnly = (tn: Turn) => tn.role === 'user' && tn.to && tn.seats && tn.to.length < tn.seats.length ? tn.to.map(nameOf).filter(Boolean).join('、') : null
 
   const sel = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 13 }
 
@@ -1206,11 +1239,20 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                 ))}
               </div>
             )}
-            {rounds(turns).map((round, ri) => (
+            {rounds(turns).map((round, ri) => {
+              // 分頁 shows one master's own thread: a question put to others
+              // only is not part of it.
+              const u = round.user as any
+              if (layout === 'tabs' && replyModels.length > 1 && u?.to && activeTab && !u.to.includes(activeTab)) return null
+              const only = round.user ? toOnly(round.user) : null
+              return (
               <div key={ri} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {round.user && (
-                  <div style={{ alignSelf: 'flex-end', maxWidth: '82%', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, whiteSpace: 'pre-wrap' }}>
-                    {round.user.content}
+                  <div style={{ alignSelf: 'flex-end', maxWidth: '82%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    {only && <span style={{ ...mono, fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.ask.toLabel').replace('{names}', only)}</span>}
+                    <div style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, whiteSpace: 'pre-wrap' }}>
+                      {round.user.content}
+                    </div>
                   </div>
                 )}
                 {round.replies.length > 0 && (() => {
@@ -1235,6 +1277,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                           )}
                           <span style={{ flex: 1 }} />
                           {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
+                            <button type="button" onClick={() => askOnly(tn.modelId)} disabled={busy}
+                              aria-label={`${t('xtell.ask.one')}: ${tn.name}`}
+                              style={{ border: '1px solid var(--border2)', background: 'none', color: 'var(--muted)', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
+                              {t('xtell.ask.one')}
+                            </button>
+                          )}
+                          {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
                             <button onClick={() => !busy && setMasters(ms => ms.filter(x => x.id === tn.modelId))}
                               disabled={busy}
                               style={{ border: '1px solid var(--red)', background: 'none', color: 'var(--red)', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
@@ -1256,7 +1305,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                   )
                 })()}
               </div>
-            ))}
+              )
+            })}
             <div ref={endRef} />
           </div>
 
@@ -1276,6 +1326,18 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>{t('xtell.edit')}</button>
             </div>
           })()}
+          {masters.length > 1 && (
+            <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12 }}>
+              <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.ask.to')}</span>
+              <button type="button" aria-pressed={askingAll} onClick={() => setAskTo(null)} disabled={busy} style={chip(askingAll)}>{t('xtell.ask.all')}</button>
+              {masters.map(m => {
+                const on = !askingAll && recipients.some(r => r.id === m.id)
+                return <button key={m.id} type="button" aria-pressed={on} onClick={() => askingAll ? setAskTo([m.id]) : toggleAsk(m.id)} disabled={busy} style={chip(on)}>
+                  <ProviderLogo provider={m.provider} size={12} /> {m.display_name}
+                </button>
+              })}
+            </div>
+          )}
           <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               ref={composerRef}
@@ -1296,7 +1358,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {/* What this question will roughly cost, per master, before Send. */}
           {(() => {
             const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
-            const known = masters
+            const known = recipients
               .map(m => ({ m, usd: estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS) }))
               .filter((p): p is { m: PickerModel; usd: number } => p.usd != null)
             if (known.length === 0) return null

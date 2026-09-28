@@ -670,6 +670,22 @@ transits to the natal ASC, MC and Fortune are dropped (`noPlace`), and the
 facts tell the teacher not to discuss the rising sign or houses. 九曜廟 and
 占星塔 keep their city list: the lagna and houses need the birth horizon.
 
+## Asking one teacher, or some (Sep 27)
+
+With more than one teacher seated, the composer shows 「問：」 chips: 全部老師
+(default) and each teacher. From 全部, a teacher chip picks only that one;
+otherwise chips toggle, and the last one off means everyone again. Each reply
+has 「追問這位」 (ask only this one, focus the box) beside 只留這位老師. The
+estimate counts only the chosen teachers.
+
+Each stored question carries `to` (who it was for) and `seats` (who was
+seated), model ids only, set by `/api/xtell/reading` on the question it
+stores once per `qid`. A teacher's history is the questions put to it plus its
+own replies (a question without `to`, saved before this, counts as asked of
+all). A question put to only some is labelled 「問：A、B」. The 分頁 layout
+shows one teacher's thread. A reopened visit re-seats the last question's
+`seats` (before this: whoever answered the last round).
+
 ## Golden charts (`npm run test:xtell`)
 
 Frozen OBSERVED outputs (never hand-recalled — the first version froze two
