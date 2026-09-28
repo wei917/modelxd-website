@@ -1518,6 +1518,8 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.dy.cancel": {"en": "Cancel", "zh-Hant": "取消", "zh-Hans": "取消", "ja": "キャンセル", "ko": "취소"},
   "xtell.dy.saved": {"en": "Saved: {birth} · born in {place} · today's zone {tz}", "zh-Hant": "已儲存：{birth} · 出生時區 {place} · 今天時區 {tz}", "zh-Hans": "已保存：{birth} · 出生时区 {place} · 今天时区 {tz}", "ja": "保存済み：{birth} · 生まれたタイムゾーン {place} · 今日のタイムゾーン {tz}", "ko": "저장됨: {birth} · 태어난 시간대 {place} · 오늘 시간대 {tz}"},
   "xtell.dy.edit": {"en": "Edit", "zh-Hant": "修改", "zh-Hans": "修改", "ja": "変更", "ko": "수정"},
+  "xtell.dy.editBirth": {"en": "Change your saved birth details →", "zh-Hant": "修改出生資料 →", "zh-Hans": "修改出生资料 →", "ja": "出生情報を変更 →", "ko": "출생 정보 수정 →"},
+  "xtell.dy.settings": {"en": "Today's fortune: your birth details", "zh-Hant": "今日運勢的出生資料", "zh-Hans": "今日运势的出生资料", "ja": "今日の運勢の出生情報", "ko": "오늘의 운세 출생 정보"},
   "xtell.dy.delete": {"en": "Delete", "zh-Hant": "刪除", "zh-Hans": "删除", "ja": "削除", "ko": "삭제"},
   "xtell.dy.deleteConfirm": {"en": "This permanently deletes your saved birth details, all your daily fortunes, and the paid conversations you had with teachers about them. Your other temple visits are not affected. This cannot be undone.", "zh-Hant": "將永久刪除：你儲存的出生資料、所有每日運勢內容，以及你就每日運勢向老師提問的付費對話紀錄。其他殿堂的紀錄不受影響。無法復原。", "zh-Hans": "将永久删除：你保存的出生资料、所有每日运势内容，以及你就每日运势向老师提问的付费对话记录。其他殿堂的记录不受影响。无法恢复。", "ja": "保存した出生情報、すべての毎日の運勢、それについて先生に質問した有料の会話記録を完全に削除します。ほかの殿堂の記録には影響しません。元に戻せません。", "ko": "저장한 출생 정보, 모든 매일 운세, 그리고 그에 관해 선생님께 질문한 유료 대화 기록을 영구 삭제합니다. 다른 전당 기록에는 영향이 없습니다. 되돌릴 수 없습니다."},
   "xtell.dy.deleteYes": {"en": "Delete permanently", "zh-Hant": "永久刪除", "zh-Hans": "永久删除", "ja": "完全に削除", "ko": "영구 삭제"},

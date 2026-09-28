@@ -58,7 +58,6 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
   const [profile, setProfile] = useState<Profile | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [day, setDay] = useState<Day | null>(null)
   const [dayError, setDayError] = useState(false)
@@ -118,7 +117,7 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
    *  including a reopened follow-up (its stream unmounts with it). */
   const reset = () => {
     gen.current++; dayToken.current++
-    setProfile(null); setDay(null); setProblem(null); setEditing(false); setConfirmDelete(false); setDayError(false)
+    setProfile(null); setDay(null); setProblem(null); setEditing(false); setDayError(false)
   }
   useEffect(() => {
     try { setDismissed(localStorage.getItem(DISMISS_KEY) === '1') } catch { /* private mode */ }
@@ -173,17 +172,6 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
     gen.current++
     setProfile(p); setEditing(false); setPhase('ready'); setProblem(null); setDay(null); void loadDay()
   }
-  const remove = async () => {
-    // Nothing from before the delete may repaint after it.
-    reset()
-    const g = gen.current
-    const res = await fetch('/api/xtell/profile', { method: 'DELETE' }).catch(() => null)
-    if (g !== gen.current) return
-    if (!res?.ok) { setNotice(t('xtell.dy.err.save')); void loadProfile(); return }
-    // The browser's own copy of the birth goes too (Codex review).
-    try { localStorage.removeItem(REMEMBER_KEY) } catch { /* ignore */ }
-    setPhase('none'); setNotice(t('xtell.dy.deleted'))
-  }
 
   // The card always keeps its place in the street's 今日 row (owner, Sep 27:
   // nothing hidden): its title and a loading line while the profile loads.
@@ -193,8 +181,6 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
       <p className="xtell-dy-small">{t('common.loading')}</p>
     </section>
   )
-  const born = profile ? `${profile.birth.y}-${pad(profile.birth.m)}-${pad(profile.birth.d)} ${profile.birth.hourUnknown ? t('xtell.hourunknown') : `${pad(profile.birth.h)}:${pad(profile.birth.mi)}`}` : ''
-
   return (
     <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} ref={sectionRef}>
       <div className="xtell-dy-head">
@@ -218,22 +204,8 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
             </div>
       ) : (
         <>
-          <div className="xtell-dy-profile">
-            <span>{t('xtell.dy.saved').replace('{birth}', born).replace('{place}', placeOf(profile?.place)?.label ?? zoneLabel(birthZone(profile?.place) ?? '', lang)).replace('{tz}', zoneLabel(profile?.displayTz ?? '', lang))}</span>
-            <span className="xtell-dy-row">
-              <button type="button" className="xtell-dy-link" onClick={() => { setConfirmDelete(false); setEditing(true) }}>{t('xtell.dy.edit')}</button>
-              <button type="button" className="xtell-dy-link" onClick={() => setConfirmDelete(c => !c)}>{t('xtell.dy.delete')}</button>
-            </span>
-          </div>
-          {confirmDelete && (
-            <div className="xtell-dy-confirm" role="alertdialog" aria-label={t('xtell.dy.delete')}>
-              <p>{t('xtell.dy.deleteConfirm')}</p>
-              <div className="xtell-dy-row">
-                <button type="button" className="xtell-dy-danger" onClick={() => void remove()}>{t('xtell.dy.deleteYes')}</button>
-                <button type="button" className="xtell-dy-secondary" onClick={() => setConfirmDelete(false)}>{t('xtell.dy.cancel')}</button>
-              </div>
-            </div>
-          )}
+          {/* The saved birth and zones are not shown here (owner, Sep 28):
+              they are changed or deleted on the account page. */}
           {problem && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.problem')} <button type="button" className="xtell-dy-link" onClick={() => setEditing(true)}>{t('xtell.dy.edit')}</button></p>}
           {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
           {day && (
@@ -241,8 +213,83 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
               {METHODS.map(m => <MethodCard key={`${m}:${day.methods[m]?.id ?? day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
             </div>
           )}
+          <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
         </>
       )}
+    </section>
+  )
+}
+
+// ── On the account page: the saved birth and zones ─────────────────────────
+// Shown and changed here, not on the street's card (owner, Sep 28). Same
+// form and the same delete as the card had: /api/xtell/profile.
+
+export function DailyProfileSettings() {
+  const t = useT()
+  const { lang } = useLang()
+  const [state, setState] = useState<'loading' | 'none' | 'ready' | 'hidden'>('loading')
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const gen = useRef(0)
+  const errText = (code: string) => {
+    const m = code.match(/^birth_(.+)$/)
+    return m ? tOr(t, `xtell.err.birth.${m[1]}`, t('xtell.dy.err.save')) : tOr(t, `xtell.err.${code}`, t('xtell.dy.err.save'))
+  }
+  const load = async () => {
+    const g = gen.current
+    const res = await fetch('/api/xtell/profile').catch(() => null)
+    if (g !== gen.current) return
+    if (!res || res.status === 401 || !res.ok) { setState('hidden'); return }
+    const d = await res.json().catch(() => null)
+    if (g !== gen.current) return
+    setProfile(d?.profile ?? null)
+    setState(d?.profile ? 'ready' : 'none')
+  }
+  useEffect(() => { void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Arrived from the street's 「修改出生資料」 link: scroll here once loaded.
+  useEffect(() => {
+    if ((state === 'ready' || state === 'none') && window.location.hash === '#xtell-daily-settings') document.getElementById('xtell-daily-settings')?.scrollIntoView({ block: 'start' })
+  }, [state])
+  const remove = async () => {
+    const g = ++gen.current
+    setConfirmDelete(false)
+    const res = await fetch('/api/xtell/profile', { method: 'DELETE' }).catch(() => null)
+    if (g !== gen.current) return
+    if (!res?.ok) { setNotice(t('xtell.dy.err.save')); void load(); return }
+    // The browser's own copy of the birth goes too (Codex review).
+    try { localStorage.removeItem(REMEMBER_KEY) } catch { /* ignore */ }
+    setProfile(null); setState('none'); setNotice(t('xtell.dy.deleted'))
+  }
+  if (state === 'loading' || state === 'hidden') return null
+  const born = profile ? `${profile.birth.y}-${pad(profile.birth.m)}-${pad(profile.birth.d)} ${profile.birth.hourUnknown ? t('xtell.hourunknown') : `${pad(profile.birth.h)}:${pad(profile.birth.mi)}`}` : ''
+  return (
+    <section id="xtell-daily-settings" className="xtell-dy xtell-dy-account" aria-label={t('xtell.dy.settings')}>
+      <div className="xtell-dy-head"><h2 className="xtell-dy-title">{t('xtell.dy.settings')}</h2></div>
+      {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
+      {editing ? (
+        <ProfileForm profile={profile} gen={gen} onSaved={(p, g) => { if (g !== gen.current) return; gen.current++; setProfile(p); setState('ready'); setEditing(false); setNotice(null) }} onCancel={() => setEditing(false)} errText={errText} />
+      ) : state === 'none' ? (
+        <p className="xtell-dy-small">{t('xtell.dy.remind')} <a className="xtell-dy-link" href="/#xtell-daily">{t('xtell.dy.start')}</a></p>
+      ) : (<>
+        <div className="xtell-dy-profile">
+          <span>{t('xtell.dy.saved').replace('{birth}', born).replace('{place}', placeOf(profile?.place)?.label ?? zoneLabel(birthZone(profile?.place) ?? '', lang)).replace('{tz}', zoneLabel(profile?.displayTz ?? '', lang))}</span>
+          <span className="xtell-dy-row">
+            <button type="button" className="xtell-dy-link" onClick={() => { setConfirmDelete(false); setEditing(true) }}>{t('xtell.dy.edit')}</button>
+            <button type="button" className="xtell-dy-link" onClick={() => setConfirmDelete(c => !c)}>{t('xtell.dy.delete')}</button>
+          </span>
+        </div>
+        {confirmDelete && (
+          <div className="xtell-dy-confirm" role="alertdialog" aria-label={t('xtell.dy.delete')}>
+            <p>{t('xtell.dy.deleteConfirm')}</p>
+            <div className="xtell-dy-row">
+              <button type="button" className="xtell-dy-danger" onClick={() => void remove()}>{t('xtell.dy.deleteYes')}</button>
+              <button type="button" className="xtell-dy-secondary" onClick={() => setConfirmDelete(false)}>{t('xtell.dy.cancel')}</button>
+            </div>
+          </div>
+        )}
+      </>)}
     </section>
   )
 }
