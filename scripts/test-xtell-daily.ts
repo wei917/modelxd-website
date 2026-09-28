@@ -222,7 +222,10 @@ async function routes() {
   const house = { houseCall: async (o: any) => { houseCalls.push(o); if (typeof reply === 'function') reply(); return { content: [{ type: 'text', text: reply }] } } }
   const common = { '@/lib/supabase-server': { createSupabaseServer: async () => session }, '@/lib/xtell-admin': { xtellAdmin: () => db.admin, dailyMissing: (e: any) => !!e && /PGRST20[25]|42P01/.test(e.code) } }
   const profileRoute = loadRoute('app/api/xtell/profile/route.ts', { ...common, '@/lib/xtell-daily': daily, '@/lib/xtell-time': time, '@/lib/xtell-places': places })
-  const dailyRoute = loadRoute('app/api/xtell/daily/route.ts', { ...common, '@/lib/house-llm': house, '@/lib/xtell-daily': daily })
+  // The writer (lib/xtell-daily-model.ts: Qwen, then the stand-in), recorded
+  // in the same shape the house call had.
+  const writer = { dailyText: async (o: any) => { const r = await house.houseCall({ system: o.system, messages: [{ role: 'user', content: o.content }] }); const text = r.content[0].text; return o.accept(text) ? text : null } }
+  const dailyRoute = loadRoute('app/api/xtell/daily/route.ts', { ...common, '@/lib/xtell-daily-model': writer, '@/lib/xtell-daily': daily })
   const followRoute = loadRoute('app/api/xtell/daily/followup/route.ts', common)
   const req = (url: string, method: string, body?: unknown, ip = '10.0.0.1') => new Request(url, { method, headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) })
   const json = async (r: Response) => ({ status: r.status, d: await r.json() as any })

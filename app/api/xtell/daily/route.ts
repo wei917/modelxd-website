@@ -14,15 +14,14 @@ export const maxDuration = 60
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
-import { houseCall } from '@/lib/house-llm'
+import { dailyText } from '@/lib/xtell-daily-model'
 import {
   DAILY_METHODS, DAILY_RULES, asDailyLang, dailyBases, basisFacts, dailyBrief, parseDailyReading, profileProblem,
   type DailyMethod, type DailyProfile, type DailyBases,
 } from '@/lib/xtell-daily'
 
-// The site agent's models unless XTELL_DAILY_MODEL says otherwise (the
-// visitor chose no model here, so a stand-in on failure is fine: house-llm).
-const MODELS = [process.env.XTELL_DAILY_MODEL, process.env.SITE_AGENT_MODEL, 'claude-sonnet-5', 'claude-haiku-4-5'].filter(Boolean) as string[]
+// The writer is Qwen 3.8 Flash, with a stand-in on failure: see
+// lib/xtell-daily-model.ts (the visitor chose no model here).
 const LEASE = { staleSeconds: 120, cooldownSeconds: 600, maxPerDay: 16, keepDays: 30 }
 
 const hits = new Map<string, number[]>()
@@ -72,14 +71,10 @@ export async function POST(req: Request) {
     if (c.outcome !== 'claimed') return { status: c.outcome as 'pending' | 'failed' | 'capped', basis }
     let reading = null
     try {
-      const resp = await houseCall({
-        tag: '[xtell/daily]', models: MODELS, maxTokens: 700, disableThinking: true,
-        system: dailyBrief(m, lang),
-        messages: [{ role: 'user', content: basisFacts(m, bases) }],
-      })
-      reading = parseDailyReading((resp?.content ?? []).filter((b: any) => b?.type === 'text').map((b: any) => b.text).join(''))
+      const text = await dailyText({ system: dailyBrief(m, lang), content: basisFacts(m, bases), userId: user.id, accept: t => !!parseDailyReading(t) })
+      reading = text ? parseDailyReading(text) : null
       // Generic on purpose: never the model's text or the profile.
-      if (!reading) console.warn('[xtell/daily] unreadable reply')
+      if (!reading) console.warn('[xtell/daily] no readable reply')
     } catch {
       // Generic: a provider error can quote the request, and the request
       // holds the visitor's chart (Codex review).
