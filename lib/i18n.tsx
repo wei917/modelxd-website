@@ -1377,6 +1377,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.he.note": {"en": "Calculated from both charts. Each row shows its contribution to the overall score.", "zh-Hant": "依兩張命盤計算，每一列都列出對總分的影響。", "zh-Hans": "依两张命盘计算，每一列都列出对总分的影响。", "ja": "二人の命式をもとに計算し、各項目が総合点にどう関わるかを示します。", "ko": "두 명식을 바탕으로 계산하며 각 항목이 총점에 미치는 영향을 표시합니다."},
   'xtell.title':       { en: 'The temple street', 'zh-Hant': '廟口一條街', 'zh-Hans': '庙口一条街', ja: '占いの参道', ko: '운세 거리' },
   'xtell.enter':       { en: 'Enter the temple', 'zh-Hant': '進廟', 'zh-Hans': '进庙', ja: '入廟する', ko: '입장' },
+  "xtell.seat.price": {"en": "~{amount} a question", "zh-Hant": "每題約 {amount}", "zh-Hans": "每题约 {amount}", "ja": "1問あたり約 {amount}", "ko": "질문당 약 {amount}"},
   "xtell.entering": {"en": "Entering", "zh-Hant": "進廟中", "zh-Hans": "进庙中", "ja": "入廟中", "ko": "입장 중"},
   "xtell.entering.note": {"en": "Just a moment…", "zh-Hant": "請稍候…", "zh-Hans": "请稍候…", "ja": "少々お待ちください…", "ko": "잠시만 기다려 주세요…"},
   "xtell.jiemeng.looking": {"en": "Searching 周公解夢 for your dream…", "zh-Hant": "正在翻閱《周公解夢》…", "zh-Hans": "正在翻阅《周公解梦》…", "ja": "『周公解夢』を調べています…", "ko": "『주공해몽』을 찾아보고 있습니다…"},

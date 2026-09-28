@@ -1063,35 +1063,40 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               Clicking a name opens the picker to REPLACE that seat; ⚙ opens
               every seat's settings; ✕ removes a seat while another remains. */}
           {(() => {
-            const cols = `repeat(${masters.length}, minmax(200px, 260px))`
+            const cols = `repeat(${masters.length}, minmax(200px, 264px))`
+            const seatChars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
             return (
               <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, flexShrink: 0 }}>
-                  {masters.map((m, i) => (
-                    <span key={m.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, minWidth: 0,
-                      border: '1px solid ' + (optsOpen ? SLOT_COLORS[i] + '66' : 'var(--border2)'), background: 'var(--surface)', fontSize: 12.5,
-                    }}>
-                      <ProviderLogo provider={m.provider} size={14} />
-                      <button type="button" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} onClick={() => setPicker({ replace: m.id })}
-                        style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--white)', font: 'inherit', fontWeight: 700, textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
-                        {m.display_name}
-                      </button>
-                      <button type="button" title={t('xtell.opts.title')} aria-label={`${t('xtell.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
-                        style={{ border: 'none', background: 'none', color: optsOpen ? SLOT_COLORS[i] : 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1 }}>⚙</button>
-                      {masters.length > 1 && (
-                        <button aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}
-                          style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
-                      )}
-                    </span>
-                  ))}
+                  {masters.map((m, i) => {
+                    const color = SLOT_COLORS[i], o = optsOf(m)
+                    const usd = estimateReadingUsd(m, { thinking: o.thinking, search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
+                    return (
+                      <div key={m.id} className="xtell-seat" data-open={optsOpen || undefined}
+                        style={optsOpen ? { borderColor: color + '80', boxShadow: `inset 3px 0 0 ${color}, 0 1px 2px rgba(60, 40, 20, .05)` } : undefined}>
+                        <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>
+                        <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} onClick={() => setPicker({ replace: m.id })}>
+                          <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+                          {usd != null && <span className="xtell-seat-sub">{t('xtell.seat.price').replace('{amount}', fmtUsd(usd))}</span>}
+                        </button>
+                        <button type="button" className="xtell-seat-act" title={t('xtell.opts.title')} aria-label={`${t('xtell.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
+                          style={optsOpen ? { color, background: color + '14' } : undefined}>
+                          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2.5 4.5h11M2.5 11.5h11" /><circle cx="6" cy="4.5" r="1.7" fill="#fff" /><circle cx="10.5" cy="11.5" r="1.7" fill="#fff" /></svg>
+                        </button>
+                        {masters.length > 1 && (
+                          <button type="button" className="xtell-seat-act" title={t('xtell.site.remove')} aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}>
+                            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 3l6 6M9 3l-6 6" /></svg>
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
                 {masters.length < MAX_SEATS && (
-                  <button onClick={() => setPicker({ replace: null })} style={{
-                    flexShrink: 0, padding: '7px 12px', borderRadius: 999, border: '1px dashed var(--border2)',
-                    background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}>＋ {t('xtell.addmaster')}</button>
+                  <button type="button" className="xtell-seat-add" onClick={() => setPicker({ replace: null })}>
+                    <span className="xtell-seat-plus" aria-hidden="true">＋</span>{t('xtell.addmaster')}
+                  </button>
                 )}
                 <span style={{ flex: 1 }} />
                 {(masters.length > 1 || replyModels.length > 1) && (
