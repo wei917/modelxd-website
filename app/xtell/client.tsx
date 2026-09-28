@@ -1011,8 +1011,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                     </button>
                   )
                 })}
-                <button type="button" onClick={() => setPicker({ replace: masters[0]?.id ?? null })} style={{ border: 'none', background: 'none', padding: '6px 4px', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.preset.all')}</button>
-                <span style={{ flexBasis: '100%', fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.preset.note')}</span>
               </div>
             )
           })()}

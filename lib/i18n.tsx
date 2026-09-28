@@ -1626,8 +1626,6 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.preset.light": {"en": "Quick", "zh-Hant": "輕快", "zh-Hans": "轻快", "ja": "軽快", "ko": "가볍게"},
   "xtell.preset.balanced": {"en": "Balanced", "zh-Hant": "均衡", "zh-Hans": "均衡", "ja": "バランス", "ko": "균형"},
   "xtell.preset.deep": {"en": "In depth", "zh-Hant": "深入", "zh-Hans": "深入", "ja": "じっくり", "ko": "깊이"},
-  "xtell.preset.all": {"en": "All teachers…", "zh-Hant": "全部老師…", "zh-Hans": "全部老师…", "ja": "すべての老師…", "ko": "모든 스승…"},
-  "xtell.preset.note": {"en": "Estimates are per question. A preset changes the teacher only when you press it.", "zh-Hant": "費用為每題預估；按下才會換老師。", "zh-Hans": "费用为每题预估；按下才会换老师。", "ja": "費用は一問あたりの目安です。押したときだけ老師が替わります。", "ko": "비용은 질문 하나 기준 예상입니다. 누를 때만 스승이 바뀝니다."},
   "xtell.qian.random": {"en": "The draw and the throws are simulated at random by your browser, following the temple's steps. The poem is a starting point for thinking, not a verdict on or a prediction of your situation.", "zh-Hant": "抽籤與擲筊由你的瀏覽器隨機模擬，照著廟裡的步驟進行；籤詩是思考的起點，不是對你處境的驗證或預測。", "zh-Hans": "抽签与掷筊由你的浏览器随机模拟，照着庙里的步骤进行；签诗是思考的起点，不是对你处境的验证或预测。", "ja": "籤と筊はブラウザがランダムに模擬し、廟の手順をなぞります。籤詩は考えるきっかけであり、あなたの状況の検証や予言ではありません。", "ko": "제비뽑기와 성배 던지기는 브라우저가 무작위로 흉내 내며 절의 절차를 따릅니다. 첨시는 생각의 출발점이지, 당신 상황에 대한 판정이나 예언이 아닙니다."},
   "xtell.history.stick": {"en": "Stick {n}", "zh-Hant": "第{n}籤", "zh-Hans": "第{n}签", "ja": "第{n}番", "ko": "{n}번 제비"},
   "xtell.ziwei.soul": {"en": "Soul star (命主)", "zh-Hant": "命主", "zh-Hans": "命主", "ja": "命主", "ko": "명주(命主)"},
