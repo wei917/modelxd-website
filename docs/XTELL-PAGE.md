@@ -390,6 +390,19 @@ full width, with ＋再請一位老師 right after the last seat and 並排 / �
 the end of the same row. The per-question cost stays in the composer's
 estimate line.
 
+**Seats, Sep 27 (owner: "beautify it", "TTFT besides money").** Each seat is
+a small white card: the provider's mark, the name in the card's middle (the
+two sides are equal widths) with a ⌄ that opens the picker, and along the
+bottom edge, small, 「每題約 $… · 首字約 N 秒」. The first-word time comes
+from `/api/xtell/speed`, which hands out `model_latency`'s medians (the
+table stays closed to browsers): the number at the seat's thinking level,
+or the measured range when that level was not measured (自動). Unmeasured
+models show the price alone. The six teachers the probe had missed (Qwen 3.8
+Flash, Opus 5.5, GPT-6 Sol and Luna, Gemini 3.8 Flash, Grok 4.7) were
+measured on Sep 27: 60 calls, $0.025, e.g. Luna@none 0.63 s, Qwen Flash
+0.88 s without thinking and 2.02 s with it. The probe's prompt is short, so a
+real reading starts somewhat later; the tooltip says so.
+
 ## Files
 
 ```

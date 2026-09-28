@@ -505,6 +505,26 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [masters, setMasters] = useState<PickerModel[]>([])
   // Every model offered here, for the presets.
   const [catalog, setCatalog] = useState<PickerModel[]>([])
+  // Measured seconds to a teacher's first word, per thinking level
+  // (/api/xtell/speed). Shown on the seats beside the price; a model nobody
+  // has measured shows the price alone.
+  const [speeds, setSpeeds] = useState<Record<string, Record<string, number>>>({})
+  useEffect(() => {
+    let live = true
+    fetch('/api/xtell/speed').then(r => r.ok ? r.json() : null).then(d => { if (live && d?.speeds) setSpeeds(d.speeds) }).catch(() => {})
+    return () => { live = false }
+  }, [])
+  /** The seat's first-word time: the measured number at its thinking level,
+   *  or the measured range when that level was not measured (自動 included). */
+  const firstWord = (m: PickerModel, level: string | null): string | null => {
+    const dots = speeds[m.id]
+    if (!dots) return null
+    if (level != null && dots[level] != null) return dots[level].toFixed(1)
+    const v = Object.values(dots)
+    if (v.length === 0) return null
+    const lo = Math.min(...v), hi = Math.max(...v)
+    return lo === hi ? lo.toFixed(1) : `${lo.toFixed(1)}–${hi.toFixed(1)}`
+  }
   // The picker either adds a seat or replaces one (owner, Sep 24: the first
   // master must be changeable too, not only the second).
   const [picker, setPicker] = useState<null | { replace: string | null }>(null)
@@ -1078,8 +1098,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                         <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>
                         <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} onClick={() => setPicker({ replace: m.id })}>
                           <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
-                          {usd != null && <span className="xtell-seat-sub">{t('xtell.seat.price').replace('{amount}', fmtUsd(usd))}</span>}
+                          {(() => {
+                            const secs = firstWord(m, o.thinking)
+                            const bits = [usd != null ? t('xtell.seat.price').replace('{amount}', fmtUsd(usd)) : null, secs ? t('xtell.seat.ttft').replace('{s}', secs) : null].filter(Boolean)
+                            return bits.length ? <span className="xtell-seat-sub" title={secs ? t('xtell.seat.ttft.tip') : undefined}>{bits.join(' · ')}</span> : null
+                          })()}
                         </button>
+                        <span className="xtell-seat-acts">
                         <button type="button" className="xtell-seat-act" title={t('xtell.opts.title')} aria-label={`${t('xtell.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
                           style={optsOpen ? { color, background: color + '14' } : undefined}>
                           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2.5 4.5h11M2.5 11.5h11" /><circle cx="6" cy="4.5" r="1.7" fill="#fff" /><circle cx="10.5" cy="11.5" r="1.7" fill="#fff" /></svg>
@@ -1089,6 +1114,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 3l6 6M9 3l-6 6" /></svg>
                           </button>
                         )}
+                        </span>
                       </div>
                     )
                   })}

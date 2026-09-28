@@ -1378,6 +1378,8 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.title':       { en: 'The temple street', 'zh-Hant': '廟口一條街', 'zh-Hans': '庙口一条街', ja: '占いの参道', ko: '운세 거리' },
   'xtell.enter':       { en: 'Enter the temple', 'zh-Hant': '進廟', 'zh-Hans': '进庙', ja: '入廟する', ko: '입장' },
   "xtell.seat.price": {"en": "~{amount} a question", "zh-Hant": "每題約 {amount}", "zh-Hans": "每题约 {amount}", "ja": "1問あたり約 {amount}", "ko": "질문당 약 {amount}"},
+  "xtell.seat.ttft": {"en": "first word ~{s}s", "zh-Hant": "首字約 {s} 秒", "zh-Hans": "首字约 {s} 秒", "ja": "最初の文字まで約 {s} 秒", "ko": "첫 글자까지 약 {s}초"},
+  "xtell.seat.ttft.tip": {"en": "Measured time until this teacher's first word appears (median of test runs with a short prompt; a full reading may start a little later).", "zh-Hant": "實測這位老師開始出字的時間（短提示多次測試的中位數；正式解讀可能稍晚一些）。", "zh-Hans": "实测这位老师开始出字的时间（短提示多次测试的中位数；正式解读可能稍晚一些）。", "ja": "この先生の最初の文字が出るまでの実測時間（短いプロンプトでの測定の中央値。実際の鑑定では少し遅くなることがあります）。", "ko": "이 스승의 첫 글자가 나오기까지 실측한 시간(짧은 프롬프트 테스트의 중앙값이며, 실제 풀이는 조금 더 걸릴 수 있습니다)."},
   "xtell.entering": {"en": "Entering", "zh-Hant": "進廟中", "zh-Hans": "进庙中", "ja": "入廟中", "ko": "입장 중"},
   "xtell.entering.note": {"en": "Just a moment…", "zh-Hant": "請稍候…", "zh-Hans": "请稍候…", "ja": "少々お待ちください…", "ko": "잠시만 기다려 주세요…"},
   "xtell.jiemeng.looking": {"en": "Searching 周公解夢 for your dream…", "zh-Hant": "正在翻閱《周公解夢》…", "zh-Hans": "正在翻阅《周公解梦》…", "ja": "『周公解夢』を調べています…", "ko": "『주공해몽』을 찾아보고 있습니다…"},
