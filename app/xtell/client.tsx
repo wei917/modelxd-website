@@ -887,7 +887,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         </header>
       </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 
-      {!entered ? (
+      {!entered ? (<>
         <div className={standalone ? "xtell-entry-form" : undefined} style={{ ...card, padding: '18px 20px' }}>
           {carried?.question && <p className="xtell-carried" role="note">{t('xtell.as.carried').replace('{q}', carried.question)}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
@@ -1017,12 +1017,13 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </div>
           )}
           {errShown && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
-          {/* This temple's saved visits (owner, Sep 24: history in each
-              temple, not only on the account page). Continue reopens the
-              room in place with chart and conversation. */}
-          {onResume && <TempleHistory temple={temple} onResume={onResume} />}
         </div>
-      ) : (
+        {/* This temple's saved visits (owner, Sep 24: history in each
+            temple, not only on the account page), in their own card under
+            the form (owner, Sep 27). Continue reopens the room in place with
+            chart and conversation. */}
+        {onResume && <TempleHistory temple={temple} onResume={onResume} />}
+      </>) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* The way back to the form, first thing in the room, with what
               this visit was cast from (owner, Sep 27: "how do I go back?";
@@ -2594,42 +2595,37 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
     else setFailed(id)
   }
   if (!loaded || rows.length === 0) return null
+  // One line per visit (owner, Sep 27: "too many info"): what it was about,
+  // when, Continue, Delete. Its own card under the form, rows ruled apart.
+  const when = (iso: string) => {
+    const d = new Date(iso)
+    return d.toLocaleString(lang, { ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }), month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  }
   return (
-    <div style={{ marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.history.temple')}</div>
-      <div style={{ display: 'grid', gap: 6 }}>
-        {rows.map(r => {
-          const asked = (r.turns ?? []).filter((x: any) => x.role === 'user').length
-          // Named by what it was about (the birth, the stick, the hexagram),
-          // with the first question as the title once one was asked.
-          const what = describeVisit(t, temple, r.subject)
+    <section aria-labelledby="xtell-history-title" className="xtell-history" style={{ ...card, marginTop: 16, padding: '14px 18px 6px' }}>
+      <h2 id="xtell-history-title" style={{ ...mono, fontSize: 11, fontWeight: 600, color: 'var(--muted2)', margin: '0 0 4px' }}>{t('xtell.history.temple')}</h2>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {rows.map((r, i) => {
+          const title = r.title || describeVisit(t, temple, r.subject) || t(notAskedKey(temple))
           return (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
-              <span style={{ flex: 1, minWidth: 200 }}>
-                <b>{r.title || what || t(notAskedKey(temple))}</b>
-                {r.title && what && <span style={{ display: 'block', color: 'var(--muted2)', fontSize: 11.5 }}>{what}</span>}
-                <span style={{ color: 'var(--muted2)', marginLeft: r.title && what ? 0 : 8 }}>
-                  {new Date(r.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}
-                  {asked > 0 ? `　${asked} ${t('xtell.saved.turns')}` : `　${t(notAskedKey(temple))}`}
-                  {r.cost_cents > 0 ? `　$${(r.cost_cents / 100).toFixed(2)}` : ''}
-                </span>
-              </span>
+            <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', fontSize: 13.5, borderTop: i ? '1px solid var(--border)' : 'none', flexWrap: confirming === r.id || failed === r.id ? 'wrap' : 'nowrap' }}>
+              <span title={title} style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
               {confirming === r.id ? (
-                <span role="group" aria-label={t('xtell.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexBasis: '100%' }}>
+                <span role="group" aria-label={t('xtell.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteConfirm')}</span>
                   <button type="button" onClick={() => void remove(r.id)} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.deleteYes')}</button>
                   <button type="button" onClick={() => setConfirming(null)} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.deleteNo')}</button>
                 </span>
               ) : (<>
-                <button type="button" onClick={() => onResume(r)} style={{ padding: '5px 12px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
-                <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
+                <span style={{ ...mono, fontSize: 11.5, color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{when(r.created_at)}</span>
+                <button type="button" onClick={() => onResume(r)} style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
+                <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
               </>)}
               {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteFailed')}</span>}
-            </div>
+            </li>
           )
         })}
-      </div>
-      <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.saved.removeNote')}</p>
-    </div>
+      </ul>
+    </section>
   )
 }

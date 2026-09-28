@@ -1733,7 +1733,6 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.liunian.vsYear": {"en": "vs year branch", "zh-Hant": "對年支", "zh-Hans": "对年支", "ja": "対年支", "ko": "대 연지"},
   "xtell.liunian.yearUndecided": {"en": "year pillar undecided: {list}", "zh-Hant": "年柱未定：{list}", "zh-Hans": "年柱未定：{list}", "ja": "年柱未定：{list}", "ko": "연주 미정: {list}"},
   "xtell.liunian.ifYear": {"en": "if {gz}, {rel}", "zh-Hant": "若為{gz}，{rel}", "zh-Hans": "若为{gz}，{rel}", "ja": "{gz}なら{rel}", "ko": "{gz}이면 {rel}"},
-  "xtell.saved.removeNote": {"en": "Deleting a visit erases its chart and conversation for good; it cannot be undone. Deleting your account erases every saved visit.", "zh-Hant": "刪除會永久清除這次紀錄的命盤與對話，無法復原；刪除帳戶會清除所有保存的紀錄。", "zh-Hans": "删除会永久清除这次记录的命盘与对话，无法复原；删除账户会清除所有保存的记录。", "ja": "削除すると、その記録の命盤と会話は完全に消え、元に戻せません。アカウントを削除すると、保存された記録はすべて消去されます。", "ko": "삭제하면 그 기록의 명반과 대화가 영구히 지워지며 되돌릴 수 없습니다. 계정을 삭제하면 저장된 기록이 모두 지워집니다."},
   'xtell.back':        { en: 'Back to the street', 'zh-Hant': '回到廟口', 'zh-Hans': '回到庙口', ja: '参道へ戻る', ko: '거리로 돌아가기' },
   'xtell.year':        { en: 'Y', 'zh-Hant': '年', 'zh-Hans': '年', ja: '年', ko: '년' },
   'xtell.month':       { en: 'M', 'zh-Hant': '月', 'zh-Hans': '月', ja: '月', ko: '월' },
