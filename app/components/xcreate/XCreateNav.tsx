@@ -23,11 +23,14 @@ const VIEWS: { view: XCreateView; href: string; label: string }[] = [
   { view: 'templates', href: '/?view=templates', label: 'xcreate.site.nav.templates' },
 ]
 
-/** The mark: the ModelXD logo beside "XCreate", the same in every language;
- *  the X in the accent, as XTell's mark does it (owner, Sep 26: logo + text,
+/** The mark: the ModelXD logo beside the name in the reader's language
+ *  (XCreate, X創作 / X创作, X作成, X창작; owner, Sep 28, as XTell is X先知),
+ *  the X in the accent as XTell's mark does it (owner, Sep 26: logo + text,
  *  no full stop). */
 export function XCreateMark() {
-  return <span className="xcs-brand"><img className="xcs-logo" src="/logo.png" alt="" width={26} height={26} /><span><span className="xcs-accent">X</span>Create</span></span>
+  const { t } = useLang()
+  const brand = t('xcreate.site.brand')
+  return <span className="xcs-brand"><img className="xcs-logo" src="/logo.png" alt="" width={26} height={26} /><span><span className="xcs-accent">{brand.slice(0, 1)}</span>{brand.slice(1)}</span></span>
 }
 
 function viewOf(param: string | null | undefined): XCreateView {
@@ -55,10 +58,11 @@ function LiveViews() {
   // htmlLimitedBots), so a title set here is not overwritten afterwards.
   useEffect(() => {
     const compute = () => {
-      if (pathname === '/' || pathname === '/xcreate') return view === 'create' ? 'XCreate' : `${t('xcreate.site.nav.' + view)} | XCreate`
-      if (pathname === '/profile') return `${t('profile.account')} | XCreate`
-      if (pathname === '/terms') return `${t('xtell.site.title.terms')} | XCreate`
-      if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | XCreate`
+      const brand = t('xcreate.site.brand')
+      if (pathname === '/' || pathname === '/xcreate') return view === 'create' ? brand : `${t('xcreate.site.nav.' + view)} | ${brand}`
+      if (pathname === '/profile') return `${t('profile.account')} | ${brand}`
+      if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
+      if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
       return null
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
@@ -87,7 +91,7 @@ export default function XCreateNav({ user }: { user: User | null }) {
         main.scrollIntoView({ block: 'start' })
       }}>{t('xtell.site.skip')}</a>
       <div className="xcs-top-inner">
-        <Link href="/" className="xcs-home" aria-label="XCreate"><XCreateMark /></Link>
+        <Link href="/" className="xcs-home" aria-label={t('xcreate.site.brand')}><XCreateMark /></Link>
         <Suspense fallback={<Views view={null} />}><LiveViews /></Suspense>
         <div className="xcs-actions">
           <select className="xcs-lang" value={lang} onChange={e => setLang(e.target.value as Lang)} aria-label={t('xtell.site.language')}>

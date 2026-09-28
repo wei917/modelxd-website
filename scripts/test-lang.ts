@@ -107,7 +107,8 @@ function boot(o: Boot) {
 
 // ── Titles: the server's first paint is the client's title ─────────────────
 check('XTell titles and descriptions exist in all five languages and equal xtell.site.tab', LANG_CODES.every(l => xtellMetadata(l).title === (STRINGS['xtell.site.tab'] as any)[l] && typeof xtellMetadata(l).description === 'string' && (xtellMetadata(l).description as string).length > 20))
-check('XCreate: the wordmark, and xcreate.subtitle as the description, in all five', LANG_CODES.every(l => xcreateMetadata(l).title === 'XCreate' && xcreateMetadata(l).description === (STRINGS['xcreate.subtitle'] as any)[l]))
+check('XCreate: the wordmark (xcreate.site.brand), and xcreate.subtitle as the description, in all five', LANG_CODES.every(l => xcreateMetadata(l).title === (STRINGS['xcreate.site.brand'] as any)[l] && xcreateMetadata(l).description === (STRINGS['xcreate.subtitle'] as any)[l]))
+check('XCreate: the door\'s name is the one www\'s nav gives it, in all five', LANG_CODES.every(l => (STRINGS['xcreate.site.brand'] as any)[l] === (STRINGS['nav.xcreate'] as any)[l]))
 
 // ── The pieces that must stay wired ────────────────────────────────────────
 {

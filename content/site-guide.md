@@ -58,7 +58,8 @@ that actually answered. If no replacement is available, the duel is marked
 failed and your daily quota is refunded.
 
 ### XCreate — `/xcreate`
-Your private studio. Pick up to four models and run the same prompt through
+Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
+Korean; its own front door is xcreate.modelxd.com. Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
 image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a

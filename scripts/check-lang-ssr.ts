@@ -15,7 +15,7 @@ const s = (k: string, l: Lang) => ((STRINGS[k] as any)[l] ?? STRINGS[k].en) as s
 
 // A string the door's first screen renders on the server, per language.
 const visible = (l: Lang) => door === 'xtell' ? s('xtell.site.focus.bazi.name', l) : door === 'xcreate' ? s('xcreate.subtitle', l) : s('nav.xduel', l)
-const title = (l: Lang) => door === 'xtell' ? s('xtell.site.tab', l) : door === 'xcreate' ? 'XCreate' : 'ModelXD'
+const title = (l: Lang) => door === 'xtell' ? s('xtell.site.tab', l) : door === 'xcreate' ? s('xcreate.site.brand', l) : 'ModelXD'
 
 async function page(path: string, headers: Record<string, string>) {
   const res = await fetch(base + path, { headers, redirect: 'manual' })

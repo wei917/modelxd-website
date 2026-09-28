@@ -10,7 +10,7 @@ import { useLang } from '../../../lib/i18n'
 export function XCreateAccountHead() {
   const { t } = useLang()
   return <>
-    <p className="xcs-eyebrow">XCreate</p>
+    <p className="xcs-eyebrow">{t('xcreate.site.brand')}</p>
     <h1 className="xcs-account-title">{t('profile.account')}</h1>
     <p className="xcs-account-note">{t('xcreate.site.accountNote')}</p>
   </>

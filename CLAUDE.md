@@ -113,7 +113,9 @@ gated entrances are correct on first paint and never flash for a user who
 isn't entitled. All the actual UI is in `client.tsx`.
 
 **Own front door (Sep 26).** On `xcreate.modelxd.com` the studio is `/` (and
-`/xcreate`), beside profile/terms/login; nothing else is served there. The
+`/xcreate`), beside profile/terms/login; nothing else is served there. Its
+name follows the language like XTell's X先知: X創作 / X创作 / X作成 / X창작
+(`xcreate.site.brand`, equal to www's `nav.xcreate`; Sep 28). The
 studio's views are Codex's (`/` Create, `/?view=templates`,
 `/?view=creations`); the shell around them (top bar, footer, sign-in,
 account page, legal note) is `app/components/xcreate/*` with its own
