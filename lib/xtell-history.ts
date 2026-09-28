@@ -37,6 +37,8 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
       return `${s.surname ?? ''}${s.given ?? ''}`
     case 'cezi':
       return [s.ch ? `「${s.ch}」` : '', clip(s.ask)].filter(Boolean).join(' · ')
+    case 'jiemeng':
+      return clip(String(s.dream ?? '').replace(/\s+/g, ' '))
     case 'daily':
       return [typeof s.date === 'string' ? s.date : '', s.method === 'western' || s.method === 'bazi' ? t(`xtell.dy.${s.method}`) : ''].filter(Boolean).join(' · ')
     case 'yixue': {
@@ -65,6 +67,7 @@ export function notAskedKey(temple: string): string {
     case 'simianfo': return 'xtell.saved.notasked.wish'
     case 'xingming': return 'xtell.saved.notasked.name'
     case 'cezi': return 'xtell.saved.notasked.char'
+    case 'jiemeng': return 'xtell.saved.notasked.dream'
     case 'yixue': return 'xtell.saved.chartonly.yixue'
     default: return 'xtell.saved.chartonly'   // 八字, 紫微, 月老, 九曜, 占星
   }

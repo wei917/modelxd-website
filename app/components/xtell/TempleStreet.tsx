@@ -5,7 +5,7 @@ import { useT } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, artKind, type TempleKey } from './TempleArtwork'
 
 // Also used to validate room hashes. These are the existing API keys.
-export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as const
+export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng'] as const
 export type { TempleKey } from './TempleArtwork'
 
 /**
@@ -17,7 +17,7 @@ export type { TempleKey } from './TempleArtwork'
 export const PURPOSES: Array<{ key: 'self' | 'love' | 'question' | 'ritual' | 'learn'; temples: TempleKey[] }> = [
   { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming'] },
   { key: 'love', temples: ['yuelao', 'zhanxing'] },
-  { key: 'question', temples: ['yixue', 'cezi', 'guandi', 'mazu'] },
+  { key: 'question', temples: ['yixue', 'cezi', 'jiemeng', 'guandi', 'mazu'] },
   { key: 'ritual', temples: ['guandi', 'mazu', 'simianfo'] },
   { key: 'learn', temples: ['yixue'] },
 ]

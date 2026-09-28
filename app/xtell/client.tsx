@@ -47,7 +47,7 @@ import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, t
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng'
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
 
 // Start with a question. Casting is an explicitly selected practice, never
@@ -89,6 +89,8 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => i)
 /** Temples whose chart cannot exist without the hour: 紫微 places 命宮 by
  *  it, 九曜 its 上升. The routes refuse an unknown hour for these too. */
 const HOUR_REQUIRED: Temple[] = ['ziwei', 'navagraha']
+/** lib/jiemeng.ts DREAM_MAX (that module reads the book from disk: server only). */
+const DREAM_MAX = 1500
 /** Temples whose saved chart is recomputed (without saving) when a visit is
  *  reopened, so a record saved before the unknown-hour fix shows no 時柱 and
  *  a correct 合盤. Charts that move with today's date (紫微 流年, 占星 今日)
@@ -128,7 +130,7 @@ function setReadingParam(id: string | null) {
 /** The same checks the routes make, run on a subject before it is sent, and
  *  on a saved subject before its chart is shown. Null when it is fine. */
 function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
-  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue'
+  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng'
   if (needsBirth || (isQian(temple) && subj?.birth)) {
     const p = birthProblem(subj?.birth)
     if (p) return `birth_${p}`
@@ -145,6 +147,8 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
     if (!/^[㐀-䶿一-鿿]{1,2}$/.test(String(subj?.given ?? ''))) return 'given_invalid'
   }
   if (temple === 'cezi' && !/^[㐀-䶿一-鿿]$/.test(String(subj?.ch ?? ''))) return 'char_invalid'
+  // lib/jiemeng.ts dreamProblem, mirrored.
+  if (temple === 'jiemeng') { const d = String(subj?.dream ?? ''); if (!d.trim()) return 'dream_required'; if (d.length > DREAM_MAX) return 'dream_too_long' }
   return null
 }
 
@@ -159,6 +163,7 @@ function fieldOf(code: string | null): string | null {
   if (code === 'name_nodata') return 'name'
   if (code.startsWith('char_')) return 'char'
   if (code === 'wish_required') return 'wishes'
+  if (code.startsWith('dream_')) return 'dream'
   if (code === 'place_invalid') return 'place'
   if (code === 'place2_invalid') return 'place2'
   return null
@@ -175,6 +180,7 @@ function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): st
   }
   if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xtell.${subj.gender}`)}`
   if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
+  if (temple === 'jiemeng') { const d = String(subj.dream ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
   if (isQian(temple)) return subj.ask ? String(subj.ask).slice(0, 60) : ''
   return `${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}`
 }
@@ -329,7 +335,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue'] as Temple[])
+            {(['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng'] as Temple[])
               .filter(k => !purpose || PURPOSES.find(p => p.key === purpose)!.temples.includes(k)).map(k => (
               <div key={k} role="link" tabIndex={0} onClick={() => setTemple(k)}
                 onKeyDown={e => { if (e.key === 'Enter') setTemple(k) }}
@@ -398,6 +404,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [surname, setSurname] = useState(init.surname ?? '')
   const [given, setGiven] = useState(init.given ?? '')
   const [ch, setCh] = useState(init.ch ?? '')
+  const [dream, setDream] = useState(init.dream ?? '')
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
@@ -598,6 +605,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}) }
     : temple === 'xingming' ? { temple, surname: surname.trim(), given: given.trim(), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
+    : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask }
     : temple === 'yixue' ? {
         temple, mode: yixueMode,
         ...(yixueMode === 'cast' ? { ask: ask.trim(), lines: castRef.current.values,
@@ -968,6 +976,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               surnameAria={fieldAria('surname')} givenAria={fieldAria('given')} />
           ) : temple === 'cezi' ? (
             <CeziForm ch={ch} setCh={setCh} ask={ask} setAsk={setAsk} sel={sel} charAria={fieldAria('char')} />
+          ) : temple === 'jiemeng' ? (
+            <DreamForm dream={dream} setDream={setDream} ask={ask} setAsk={setAsk} sel={sel} dreamAria={fieldAria('dream')} />
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
               <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} />
@@ -1008,7 +1018,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           )}
           {!isQian(temple) && !(temple === 'yixue' && yixueMode !== 'ask') && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' ? '' : t('xtell.solar.note')}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>
               <span style={{ flex: 1 }} />
               <button onClick={() => void enter()} disabled={temple === 'yixue' && (yixueEntryBusy || !input.trim())} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff',
@@ -1194,6 +1204,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                 : isQian(temple) ? <QianCard qian={chart} temple={temple} bazi={unverified ? null : bazi} year={unverified ? null : year} hourUnknown={bing.withBirth && !!birth.hourUnknown} />
                 : temple === 'xingming' ? <NameBoard chart={chart} />
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
+                : temple === 'jiemeng' ? <DreamBoard chart={chart} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
@@ -2513,6 +2524,56 @@ function CeziBoard({ info, ask }: { info: any; ask: string }) {
         </div>
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.cezi.source')}</div>
+    </div>
+  )
+}
+
+// ── 解夢 ────────────────────────────────────────────────────────────────────
+// The dream as the visitor tells it, and what they want to know. The book's
+// lines come back from the chart route (lib/jiemeng.ts), shown free.
+function DreamForm({ dream, setDream, ask, setAsk, sel, dreamAria }: { dream: string; setDream: (s: string) => void; ask: string; setAsk: (s: string) => void; sel: any; dreamAria?: FieldAria }) {
+  const t = useT()
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+        {t('xtell.jiemeng.dream')}
+        <textarea value={dream} rows={5} maxLength={DREAM_MAX} onChange={e => setDream(e.target.value.slice(0, DREAM_MAX))} placeholder={t('xtell.jiemeng.dream.ph')}
+          aria-invalid={dreamAria?.invalid || undefined} aria-describedby={dreamAria?.invalid ? dreamAria.describedBy : undefined}
+          style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400, lineHeight: 1.7, resize: 'vertical', ...(dreamAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
+      </label>
+      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.jiemeng.ask.ph')} aria-label={t('xtell.jiemeng.ask')}
+        style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.jiemeng.note')}</div>
+    </div>
+  )
+}
+
+function DreamBoard({ chart }: { chart: any }) {
+  const t = useT()
+  const { lang } = useLang()
+  const hans = lang === 'zh-Hans'
+  const entries: Array<{ id: number; section: string; sectionS: string; t: string; s: string }> = Array.isArray(chart?.entries) ? chart.entries : []
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.jiemeng.yours')}</div>
+        <div style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>{chart?.dream}</div>
+        {chart?.ask && <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.jiemeng.ask')}</span>{chart.ask}</div>}
+      </div>
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.jiemeng.found')}</div>
+        {entries.length ? (
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+            {entries.map(e => (
+              <li key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 15, lineHeight: 1.7 }}>
+                <span style={{ fontFamily: 'var(--font-display), serif', fontWeight: 700, letterSpacing: '.06em' }}>{hans ? e.s : e.t}</span>
+                <span style={{ ...mono, fontSize: 11, color: 'var(--muted2)' }}>〔{hans ? e.sectionS : e.section}〕</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.jiemeng.none')}</p>}
+        <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.jiemeng.caveat')}</p>
+      </div>
     </div>
   )
 }

@@ -106,6 +106,7 @@ function rules(): string {
     'I Ching use "yixue.ask". For the bone weight (稱骨, 幾兩幾錢) use "bazi.chenggu". For a personal',
     '"today" use "daily" (free, needs saved birth details); "zhanxing.today" is the tower\'s transit room.',
     'For 黃曆, 農民曆, 宜忌 or what today is good for, use "almanac" (a free card on the street, no birthday).',
+    'For a dream (解夢, 周公解夢, "I dreamed…"), use "jiemeng".',
     '',
     `## CATALOG (version ${XTELL_CATALOG_VERSION})`,
     catalogForPrompt(),

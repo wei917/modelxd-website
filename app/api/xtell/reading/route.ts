@@ -19,6 +19,7 @@ import { xtellAdmin } from '@/lib/xtell-admin'
 import { DAILY_METHODS, DAILY_TEACHER, westernFacts, type DailyMethod } from '@/lib/xtell-daily'
 import { liuRiFacts } from '@/lib/xtell'
 import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
+import { dreamMatches, dreamFacts, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
 
 const LOG = '[xtell/reading]'
 
@@ -48,6 +49,7 @@ const FACTS_HEAD: Record<string, string> = {
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
   yixue:     '易學堂的對話模式與可核對的經文材料（引用須照錄；僅起卦練習才有系統算定的卦）：',
+  jiemeng:   '來訪者的夢與《周公解夢》的相關條目（條目由系統比對，照錄引用）：',
 }
 
 function sse(event: string, data: object) {
@@ -87,6 +89,9 @@ export async function POST(req: Request) {
   } else if (temple === 'cezi') {
     if (!validChar(body?.ch)) return refuse('char_invalid', 'bad character')
     if (!charInfo(body.ch)) return refuse('char_nodata', 'bad character')
+  } else if (temple === 'jiemeng') {
+    const bad = dreamProblem(body?.dream)
+    if (bad) return refuse(bad, 'write the dream')
   } else if (temple === 'yixue') {
     const bad = yixueInputError(body)
     if (bad) return Response.json({ error: bad }, { status: 400 })
@@ -165,7 +170,11 @@ export async function POST(req: Request) {
 
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
-  const facts = daily ? daily.facts : temple === 'yixue'
+  const facts = daily ? daily.facts : temple === 'jiemeng'
+    // The book's lines are matched here again from the dream as written; a
+    // client's list of entries is never used.
+    ? (() => { const dream = String(body.dream).trim(); return dreamFacts(dream, typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : '', dreamMatches(dream)) })()
+    : temple === 'yixue'
     // The cast is recomputed from the six line values; the text comes from
     // disk. A learner's question names the hexagrams it wants shown.
     ? yixueFacts(body, question, history)

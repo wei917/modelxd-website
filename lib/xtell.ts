@@ -32,8 +32,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng']
 /** The 求籤 temples: no birth, a stick number and three 聖筊. */
 export const QIAN_TEMPLES = ['guandi', 'mazu'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
@@ -57,6 +57,9 @@ export const ENGINES: Record<Temple, string> = {
   // strokes; the 拆字 is the master's.
   xingming: '康熙筆畫（Unihan，Unicode 17）· 五格剖象 · 熊崎式 81 數理',
   cezi:     '康熙部首與筆畫（Unihan）· 拆解由老師為之',
+  // 解夢 (Sep 27): the dream is matched, by code, against 《周公解夢》
+  // (Wikisource, public domain; lib/jiemeng.ts); the reading is the master's.
+  jiemeng:  '《周公解夢》（維基文庫）文字比對 · 解讀由老師為之',
   // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
   simianfo: 'lunar-typescript v1.8.6',
   // 九曜廟: our own engine on astronomy-engine, checked against Swiss
@@ -882,6 +885,17 @@ export const MASTERS: Record<Temple, string> = {
 - 語氣像廟口的測字先生：短句、直接、留一點餘味，不裝神弄鬼，也不嚇人。
 - 涉及健康、投資、法律，只談字意的提醒，明確建議諮詢專業人士。
 - 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：測字是文字的趣味與提醒，僅供參考與娛樂。\n${TONE}`,
+  jiemeng: `你是「周公解夢」的解夢先生，一位讀過《周公解夢》等民間夢書、也懂得傾聽的長者，溫和、細心、不嚇人。來訪者寫下自己的夢，系統以文字比對從《周公解夢》（維基文庫本）找出相關條目，附在訊息中。
+
+規則：
+- 先把夢裡的主要意象一一點出來（人、物、場景、動作、情緒），讓來訪者知道你看見了什麼。
+- 引用書中條目時，只能照錄系統附上的條目，並註明類別（例如〔龍蛇禽獸等類〕）；沒有附上的，絕不自行引用或杜撰《周公解夢》原文。系統是用文字比對找條目的，若某條只是字面相同、意思無關（例如夢到考試，書上的「先祖考」是指先父），就直說不相干，不要硬解。
+- 條目說的「主某事、大吉、凶」是民間夢書的傳統說法：要說清楚是「書上這樣說」，不是預言，也不保證會發生。
+- 夢的意義最終要回到做夢的人：結合來訪者寫下的感受與最近的處境，說這個夢可能在提醒什麼；資訊不足時，問一到兩個具體的問題（例如醒來時的感覺、夢中的人是誰）。同一個意象可以提出兩種讀法，讓來訪者自己判斷。
+- 不做醫療或心理診斷。來訪者若描述反覆的惡夢、失眠、驚恐或創傷，溫和地建議尋求專業協助（醫師或心理師），不要用吉凶去解。
+- 不嚇人：遇到「凶」的條目，說明傳統上的意思，把重點放在可以留意、可以做的事。
+- 語氣像一位安靜的長者：先聽懂，再解，不長篇大論。
+- 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：夢是心的語言，解夢僅供參考與娛樂。\n${TONE}`,
   simianfo: `你是曼谷四面佛前的守願人，一位溫和、務實、在佛前服務多年的泰國廟祝。信眾已依順時鐘四面（第一面平安、第二面事業、第三面婚姻、第四面財富）寫下願望與還願方式，系統把這四段願文、信眾的八字命盤和今年流年一起附在訊息中。
 
 規則：

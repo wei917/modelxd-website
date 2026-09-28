@@ -12,6 +12,7 @@ export const runtime = 'nodejs'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
+import { dreamMatches, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
 
 // Every refusal carries a stable `code` the client turns into a sentence in
 // the visitor's language, next to the field it is about (audit F05: 「bad
@@ -29,7 +30,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -104,6 +105,19 @@ export async function POST(req: Request) {
       console.error('[xtell/chart] yixue', e?.message ?? e)
       return Response.json({ error: 'hexagram text unavailable' }, { status: 500 })
     }
+  }
+
+  // 解夢: the dream as written, and the 《周公解夢》 lines it points at
+  // (lib/jiemeng.ts). Free: the lines are computed, the reading is paid.
+  // The visit is titled by the dream, so the history lists say which one.
+  if (temple === 'jiemeng') {
+    const bad = dreamProblem(body?.dream)
+    if (bad) return refuse(bad, bad === 'dream_required' ? 'write the dream' : 'the dream is too long')
+    const dream = String(body.dream).trim()
+    const ask = typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : ''
+    const chart = { dream, ask, entries: dreamMatches(dream) }
+    const readingId = await keep(() => save(sb, user.id, temple, { ...body, dream, ask }, chart, {}, dream.split('\n')[0]))
+    return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 
   if (isQianTemple(temple)) {

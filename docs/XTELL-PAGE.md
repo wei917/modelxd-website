@@ -47,7 +47,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (11 live)
+## Temples (12 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -62,6 +62,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
 | 易學堂 | 易經: 起卦 / 查卦 / 問老師 | `lib/yijing-core.ts` + `lib/yijing.ts` + `content/yijing/zhouyi.json` | A school, not a temple (Sep 26). Three coins thrown six times → 本卦, 動爻, 之卦, and 朱熹's rule for which passage to read; any of the 64 read in the original; or a learner's question with no cast. See "易學堂" below |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
+| 解夢 | 周公解夢 | `lib/jiemeng.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars) + an optional question. Code matches it against the book's 988 entries and shows the hits free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -685,6 +686,58 @@ own replies (a question without `to`, saved before this, counts as asked of
 all). A question put to only some is labelled 「問：A、B」. The 分頁 layout
 shows one teacher's thread. A reopened visit re-seats the last question's
 `seats` (before this: whoever answered the last round).
+
+## 解夢 (Sep 27)
+
+Owner: "add 解夢", then "if we just allow users to talk to AI, they can just
+talk to ChatGPT free". So the room is the book first: the dream is matched,
+by code, against 《周公解夢》 and the entries it finds are shown **free**,
+with no model call. Teachers are optional and paid, and they are given only
+the matched lines to quote.
+
+**The book.** Chinese Wikisource 《周公解夢》, revision 7907671
+(2026-07-11), `{{Pd-old}}`. A folk dream book traditionally attributed to
+周公: an eight-line preface poem, then 27 themed sections (天地日月星辰 …
+龜鱉魚蝦昆蟲) of seven-character entries, image then meaning
+(「被馬咬有祿位至」), 988 in all. `scripts/fetch-zhougong.mjs [revid]`
+rebuilds `content/jiemeng/zhougong.json` byte for byte, refuses a page that
+no longer carries `{{Pd-old}}`, and adds each entry's Simplified and
+Japanese-kanji form with OpenCC (tw→cn, tw→jp). OpenCC runs at build time
+only; it is not a dependency (`npm i --no-save opencc-js@1` or `NODE_PATH`).
+
+**The match** (`dreamMatches`, server only). The dream's CJK runs give
+two-character pairs and single characters (minus a STOP list of words any
+telling of a dream uses: 我 夢 見 看 到 子 …). Against each entry's image
+half (its first four or five characters) in all three forms: a pair scores
+6; a single character scores its IDF across the entry heads, ×1.5 in the
+first two positions (the entry's subject). Kept: score ≥ 4 and ≥ 0.55 of the
+best, at most 12, in book order. IDF is what stops a snake by the water from
+returning a dozen 水 lines. 夢見龍 / 梦见龙 / 竜の夢 find the same entries.
+A dream in English or Korean finds none, and the page and the teacher both
+say so: the teacher is told not to quote or invent the book then.
+
+**The teacher** (`MASTERS.jiemeng`, 解夢先生). Quotes only the attached
+entries, with their section; says plainly when a hit is beside the point
+(先祖考 is a late father); presents 吉凶 as the book's saying, not a
+prediction; asks one or two questions about the dreamer's life; no medical or
+psychological diagnosis, and a recurring nightmare gets a gentle word about
+seeing a professional; never frightens; ends with the reference and
+entertainment note. The reading route re-matches the dream itself
+(`dreamMatches(dream)`), so a client cannot hand the teacher lines the book
+does not hold. `lib/classics.ts` has no 解夢 classic on purpose: the book is
+the grounding.
+
+**Saved visits** are titled with the dream's first line; history describes
+one by the clipped dream (`describeVisit`).
+
+**The icon** (owner: "a young lady dreaming, not an old man"): a young woman
+asleep on a porcelain pillow under a navy night circle, the dream cloud with
+the moon and 莊周's butterfly. Generated in XCreate (GPT Image 2.5 Sunburst,
+image edit, medium, 3 outputs, $0.068) against a style sheet cropped from
+`icons.avif` (媽祖, 九曜, 月老, 四面佛), picked for reading at 40px.
+`jiemeng-icon.avif` (300), `jiemeng-portrait.avif` (640), `jiemeng.jpg` (the
+www card, on the art's own paper #f8f4e9 so no square shows), and
+`jiemeng-icon-clear.avif` from `scripts/xtell-clear-icons.mjs`.
 
 ## Golden charts (`npm run test:xtell`)
 

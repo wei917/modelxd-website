@@ -1,12 +1,13 @@
 import type { CSSProperties } from 'react'
 
-export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue'
+export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng'
 // Menu order (owner, Sep 24: 有技術的放前面): the computed methods first —
 // 八字, 紫微, 西洋占星, 吠陀占星, 姓名, 測字 — then the deity rooms. The art
 // sheets keep their own five-by-two order via TEMPLE_ART below, so this list
 // is display order only.
-// 易學堂 (Sep 26) sits with the computed methods, after 測字.
-export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming', 'cezi', 'yixue', 'yuelao', 'guandi', 'mazu', 'simianfo']
+// 易學堂 (Sep 26) sits with the computed methods, after 測字; 解夢 (Sep 27),
+// a reading of the visitor's own words like 測字, after it.
+export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming', 'cezi', 'yixue', 'jiemeng', 'yuelao', 'guandi', 'mazu', 'simianfo']
 
 // Both approved image sheets use the same five-column, two-row ordering.
 // A temple added after the sheets (易學堂) brings its own two files instead,
@@ -23,6 +24,11 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   // docs/XTELL-YIXUE-ART.md for provenance and trigram review.
   // Decoration only; the room draws real hexagrams from code.
   yixue: { src: { portrait: '/xtell/approved/yixue-school-portrait.avif', icon: '/xtell/approved/yixue-school-icon.avif', iconClear: '/xtell/approved/yixue-school-icon-clear.avif' }, caption: 'I CHING', kind: 'object' },
+  // 解夢 (owner, Sep 27): a young woman asleep on a porcelain pillow, the
+  // dream cloud with the moon and 莊周's butterfly (an old scholar was the first
+  // draft; the owner asked for a young woman dreaming). Generated in XCreate (GPT Image
+  // 2.5) against the approved sheets as a style reference; see docs/XTELL-PAGE.md.
+  jiemeng: { src: { portrait: '/xtell/approved/jiemeng-portrait.avif', icon: '/xtell/approved/jiemeng-icon.avif', iconClear: '/xtell/approved/jiemeng-icon-clear.avif' }, caption: 'DREAMS', kind: 'deity' },
 }
 
 /** 'object' portraits (the lower sheet row, and 易學堂) sit differently from the deities. */
