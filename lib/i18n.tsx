@@ -149,6 +149,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.site.templesMore": {"en": "More temples", "zh-Hant": "更多殿堂", "zh-Hans": "更多殿堂", "ja": "ほかの殿堂", "ko": "더 많은 전당"},
   "xtell.today.almanac": {"en": "Today's almanac", "zh-Hant": "今日黃曆", "zh-Hans": "今日黄历", "ja": "今日の暦（黄暦）", "ko": "오늘의 황력"},
   "xtell.today.almanacSub": {"en": "The farmer's almanac for today: what the day suits, what to avoid, the clash and the solar term. From the date alone; for reference only.", "zh-Hant": "農民曆的宜忌、沖煞與節氣，依今天的日期推算，僅供參考。", "zh-Hans": "农民历的宜忌、冲煞与节气，依今天的日期推算，仅供参考。", "ja": "農民暦の宜・忌、沖煞と節気。今日の日付から算出、参考程度に。", "ko": "농민력의 의·기, 충살과 절기. 오늘 날짜로 계산하며 참고용입니다."},
+  "xtell.today.failed": {"en": "Today's almanac could not be loaded.", "zh-Hant": "黃曆暫時無法載入。", "zh-Hans": "黄历暂时无法载入。", "ja": "今日の暦を読み込めませんでした。", "ko": "오늘의 달력을 불러오지 못했습니다."},
   "xtell.today.lunar": {"en": "Lunar {date}", "zh-Hant": "農曆{date}", "zh-Hans": "农历{date}", "ja": "旧暦{date}", "ko": "음력 {date}"},
   "xtell.today.yearGz": {"en": "year {gz} ({animal})", "zh-Hant": "{gz}年（屬{animal}）", "zh-Hans": "{gz}年（属{animal}）", "ja": "{gz}年（{animal}年）", "ko": "{gz}년({animal}띠)"},
   "xtell.today.dayGz": {"en": "day {gz}", "zh-Hant": "{gz}日", "zh-Hans": "{gz}日", "ja": "{gz}日", "ko": "{gz}일"},

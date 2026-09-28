@@ -43,15 +43,24 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
   const [data, setData] = useState<Almanac | null>(initial)
   // The language `data` is in: the page's, as the server drew it.
   const dataLang = useRef(lang)
+  // The day could not be fetched (twice). With the server's day already on
+  // screen the card simply keeps it; with nothing, it says so and offers a
+  // retry instead of 「載入中…」 forever.
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (!today || (data && data.date === today && dataLang.current === lang)) return
     let live = true
-    fetch(`/api/xtell/almanac?date=${today}&lang=${encodeURIComponent(lang)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (live && d?.almanac) { dataLang.current = lang; setData(d.almanac) } })
-      .catch(() => {})
+    const get = () => fetch(`/api/xtell/almanac?date=${today}&lang=${encodeURIComponent(lang)}`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(d => { if (!d?.almanac) throw new Error('empty'); return d.almanac as Almanac })
+    setFailed(false)
+    get()
+      .catch(() => new Promise<Almanac>((resolve, reject) => setTimeout(() => get().then(resolve, reject), 1500)))
+      .then(a => { if (live) { dataLang.current = lang; setData(a) } })
+      .catch(() => { if (live) setFailed(true) })
     return () => { live = false }
-  }, [today, lang]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [today, lang, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
   return (
     <section id="xtell-almanac" className="xtell-td" aria-labelledby="xtell-almanac-title">
@@ -59,9 +68,11 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
         <h2 id="xtell-almanac-title" className="xtell-dy-title">{t('xtell.today.almanac')}</h2>
       </div>
       <p className="xtell-dy-sub">{t('xtell.today.almanacSub')}</p>
-      {!data ? <p className="xtell-dy-small">{t('common.loading')}</p> : <>
+      {!data ? (failed
+        ? <p className="xtell-dy-small" role="alert">{t('xtell.today.failed')} <button type="button" onClick={() => setAttempt(n => n + 1)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontWeight: 700, cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>{t('xtell.site.retry')}</button></p>
+        : <p className="xtell-dy-small">{t('common.loading')}</p>) : <>
         <p className="xtell-td-date">
-          <strong>{new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(`${data.date}T12:00:00Z`))}</strong>
+          <strong>{new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${data.date}T12:00:00Z`))}</strong>
           <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}</span>
         </p>
         <dl className="xtell-td-yiji">

@@ -45,10 +45,17 @@ export function cachedAlmanac(date: string, lang: Lang, now = Date.now()): Alman
 
 /** The almanac for a visitor's own day, from the time zone their
  *  connection reports (Vercel's x-vercel-ip-timezone), or null when there
- *  is none (local development): the card then asks /api/xtell/almanac. */
+ *  is none (local development) or it could not be computed: the card then
+ *  asks /api/xtell/almanac. Never throws: the street's page render calls
+ *  it, and a card that cannot be drawn must not take the page down. */
 export function almanacForZone(tz: string | null | undefined, lang: Lang, now = Date.now()): Almanac | null {
   if (!tz || !validZone(tz)) return null
-  return cachedAlmanac(localDateIn(tz, now), lang, now)
+  try {
+    return cachedAlmanac(localDateIn(tz, now), lang, now)
+  } catch (e: any) {
+    console.warn('[xtell/almanac] server render failed:', e?.message ?? e)
+    return null
+  }
 }
 
 /** A YYYY-MM-DD the calendar library covers. */

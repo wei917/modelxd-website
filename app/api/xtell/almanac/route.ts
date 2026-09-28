@@ -17,7 +17,13 @@ export async function GET(req: Request) {
   const lang = u.searchParams.get('lang') as Lang | null
   if (!validAlmanacDate(date)) return Response.json({ error: 'date must be YYYY-MM-DD between 1901 and 2099' }, { status: 400 })
   if (!lang || !LANG_CODES.includes(lang)) return Response.json({ error: 'unknown lang' }, { status: 400 })
-  return Response.json({ almanac: cachedAlmanac(date, lang) }, {
-    headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400' },
-  })
+  try {
+    return Response.json({ almanac: cachedAlmanac(date, lang) }, {
+      headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400' },
+    })
+  } catch (e: any) {
+    // Not cached: the card retries, and a later request may succeed.
+    console.warn('[xtell/almanac] failed:', date, lang, e?.message ?? e)
+    return Response.json({ error: 'almanac unavailable' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+  }
 }
