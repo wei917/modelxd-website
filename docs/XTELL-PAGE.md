@@ -810,6 +810,34 @@ image edit, medium, 3 outputs, $0.068) against a style sheet cropped from
 www card, on the art's own paper #f8f4e9 so no square shows), and
 `jiemeng-icon-clear.avif` from `scripts/xtell-clear-icons.mjs`.
 
+## 分享 (Share, Sep 28)
+
+One button beside a teacher's reply, a 籤, the 今日運勢 cards and the 黃曆
+opens a dialog with a 1080×1350 picture and a link.
+
+- **Drawn on the device** (`app/components/xtell/ShareButton.tsx`, canvas,
+  the phone's own fonts): no server, no model, nothing uploaded or published.
+  The dialog shows the picture before it leaves; a phone gets its share sheet
+  (`navigator.share` with the PNG), a computer downloads it and copies the link.
+- **What goes on it**: the temple's icon and name, the result, X先知, the
+  address, a QR code (`qrcode-generator`, MIT, loaded only on share). A reply
+  is cut to its opening ~150 characters (`shareExcerpt`, `lib/xtell-share.ts`);
+  headings and tables are left out, and **any clause holding a date or clock
+  time is dropped** (`dropDates`) so a teacher repeating the birth back cannot
+  put it on the picture. The question and the birth form never go on it.
+- **The link**: `https://xtell.modelxd.com/?t=<temple>&ref=<code>&utm_source=share`.
+  `?t=` becomes the room's hash on arrival (a link preview can read a query,
+  not a hash); `ref` is the sharer's referral code (signed-in only, from
+  `/api/referral`), parked by Nav as any referral link is; `utm_source=share`
+  is what the visit log counts. 今日運勢 and 黃曆 link to the street.
+- **Link previews**: `xtellMetadata(lang, temple)` gives `?t=` links the
+  temple's title and `public/xtell/og/<temple>.jpg`; other XTell pages get
+  `og/street.jpg`. The pictures are built once from the approved art by
+  `node scripts/xtell-og-images.mjs` (Songti TC from the Mac's fonts) and
+  committed; rerun it when the art changes.
+- Tests: `scripts/test-xtell-share.ts` (in `test:xtell`), preview names and
+  files in `scripts/test-lang.ts`.
+
 ## Golden charts (`npm run test:xtell`)
 
 Frozen OBSERVED outputs (never hand-recalled — the first version froze two

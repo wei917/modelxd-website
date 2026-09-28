@@ -89,6 +89,13 @@ export default function PrivacyPage() {
         XTell, your votes, your profile, and your credit history. Nothing in XTell is
         public: your readings, questions and birth details are visible only to you.
       </p>
+      <p style={S.p}>
+        When you share from XTell, the picture is made on your own device and we
+        do not upload or publish it; what you post, and where, is up to you. The
+        picture carries the result, not your birth details or your question. Its
+        link opens the temple and, when you are signed in, carries your referral
+        code and a tag that tells us a visit came from a share.
+      </p>
 
       <h2 style={S.h2}>4. Cookies</h2>
       <p style={S.p}>

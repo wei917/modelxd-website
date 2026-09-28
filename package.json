@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:xtell": "tsx scripts/xtell-golden.ts && tsx scripts/test-astrology.ts && tsx scripts/test-yijing.ts && tsx scripts/test-yijing-retrieval.ts && tsx scripts/test-xtell-birth.ts && tsx scripts/test-xtell-chenggu.ts && tsx scripts/test-xtell-assistant.ts && tsx scripts/test-xtell-daily.ts && tsx scripts/test-xtell-jiemeng.ts && tsx scripts/test-today.ts",
+    "test:xtell": "tsx scripts/xtell-golden.ts && tsx scripts/test-astrology.ts && tsx scripts/test-yijing.ts && tsx scripts/test-yijing-retrieval.ts && tsx scripts/test-xtell-birth.ts && tsx scripts/test-xtell-chenggu.ts && tsx scripts/test-xtell-assistant.ts && tsx scripts/test-xtell-daily.ts && tsx scripts/test-xtell-jiemeng.ts && tsx scripts/test-today.ts && tsx scripts/test-xtell-share.ts",
     "test:trending": "tsx scripts/test-trending-cursor.ts && tsx scripts/test-trending-models.ts && tsx scripts/test-trending-job.ts && tsx scripts/test-trending-publish.ts"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
     "lunar-typescript": "1.8.6",
     "next": "^16.2.3",
     "openai": "^6.34.0",
+    "qrcode-generator": "2.0.4",
     "react": "^18",
     "react-dom": "^18",
     "react-markdown": "^10.1.0",

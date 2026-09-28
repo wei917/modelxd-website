@@ -138,6 +138,20 @@ export const STRINGS: Record<string, Entry> = {
   // The footer's one line (owner, Sep 28): the street's name and the disclaimer
   // that used to sit above the footer, merged.
   "xtell.site.footerNote": {"en": "XTell is for reflection and entertainment, not advice. For health, money or legal matters, talk to a professional. Readings are AI interpretations of a computed chart.", "zh-Hant": "X先知僅供靜心參考與娛樂，不構成任何建議；健康、財務、法律問題請諮詢專業人士。解讀為 AI 對排盤的詮釋。", "zh-Hans": "X先知仅供静心参考与娱乐，不构成任何建议；健康、财务、法律问题请咨询专业人士。解读为 AI 对排盘的诠释。", "ja": "X占いは内省と娯楽のためのもので、助言ではありません。健康・お金・法律のことは専門家にご相談ください。鑑定は計算された命盤へのAIによる解釈です。", "ko": "X운세는 성찰과 재미를 위한 것으로, 조언이 아닙니다. 건강·금전·법률 문제는 전문가와 상담하세요. 풀이는 계산된 명반에 대한 AI의 해석입니다."},
+  // 分享 (owner, Sep 28): the share button, its dialog, and the words drawn on the picture.
+  "xtell.share.button": {"en": "Share", "zh-Hant": "分享", "zh-Hans": "分享", "ja": "シェア", "ko": "공유"},
+  "xtell.share.title": {"en": "Share this picture", "zh-Hant": "分享這張圖", "zh-Hans": "分享这张图", "ja": "画像をシェア", "ko": "이미지 공유"},
+  "xtell.share.notePrivate": {"en": "The picture leaves out your birth details and your questions. Have a look before you share it.", "zh-Hant": "圖片不含你的出生資料與提問；分享前請再看一眼。", "zh-Hans": "图片不含你的出生资料与提问；分享前请再看一眼。", "ja": "画像には出生情報や質問は入りません。シェアする前に一度ご確認ください。", "ko": "이미지에는 출생 정보와 질문이 들어가지 않습니다. 공유하기 전에 한 번 확인하세요."},
+  "xtell.share.noteRef": {"en": "The link carries your referral code: when a friend signs up and verifies a card, you each get $5 of credit.", "zh-Hant": "連結帶有你的推薦碼：朋友註冊並驗證卡片後，你們各得 $5 點數。", "zh-Hans": "链接带有你的推荐码：朋友注册并验证卡片后，你们各得 $5 点数。", "ja": "リンクにはあなたの紹介コードが付いています。友だちが登録してカードを認証すると、お互いに$5分のクレジットがもらえます。", "ko": "링크에 내 추천 코드가 들어 있습니다. 친구가 가입하고 카드를 인증하면 두 사람 모두 $5 크레딧을 받습니다."},
+  "xtell.share.making": {"en": "Making the picture…", "zh-Hant": "製作圖片中…", "zh-Hans": "制作图片中…", "ja": "画像を作成中…", "ko": "이미지 만드는 중…"},
+  "xtell.share.failed": {"en": "The picture could not be made.", "zh-Hant": "圖片沒有做出來。", "zh-Hans": "图片没有做出来。", "ja": "画像を作成できませんでした。", "ko": "이미지를 만들지 못했습니다."},
+  "xtell.share.send": {"en": "Share…", "zh-Hant": "分享…", "zh-Hans": "分享…", "ja": "シェア…", "ko": "공유…"},
+  "xtell.share.download": {"en": "Download picture", "zh-Hant": "下載圖片", "zh-Hans": "下载图片", "ja": "画像を保存", "ko": "이미지 저장"},
+  "xtell.share.copy": {"en": "Copy link", "zh-Hant": "複製連結", "zh-Hans": "复制链接", "ja": "リンクをコピー", "ko": "링크 복사"},
+  "xtell.share.copied": {"en": "Copied", "zh-Hant": "已複製", "zh-Hans": "已复制", "ja": "コピーしました", "ko": "복사됨"},
+  "xtell.share.close": {"en": "Close", "zh-Hant": "關閉", "zh-Hans": "关闭", "ja": "閉じる", "ko": "닫기"},
+  "xtell.share.tagline": {"en": "For reflection and entertainment", "zh-Hant": "僅供靜心參考與娛樂", "zh-Hans": "仅供静心参考与娱乐", "ja": "内省と娯楽のために", "ko": "성찰과 재미를 위해"},
+  "xtell.share.by": {"en": "Read by {name}", "zh-Hant": "解讀：{name}", "zh-Hans": "解读：{name}", "ja": "読み手：{name}", "ko": "풀이: {name}"},
   "xtell.site.legal": {"en": "Legal information", "zh-Hant": "使用條款與隱私", "zh-Hans": "使用条款与隐私", "ja": "利用規約とプライバシー", "ko": "약관 및 개인정보"},
   "xtell.site.language": {"en": "Language", "zh-Hant": "語言", "zh-Hans": "语言", "ja": "言語", "ko": "언어"},
   "xtell.site.title.terms": {"en": "Terms of Service", "zh-Hant": "服務條款", "zh-Hans": "服务条款", "ja": "利用規約", "ko": "이용약관"},

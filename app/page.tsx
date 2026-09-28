@@ -20,10 +20,12 @@ import XTellClient from './xtell/client'
 import { almanacSection } from './components/xtell/AlmanacSection'
 import XCreatePage from './xcreate/page'
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
   const h = await headers()
   const site = siteFromHeaders(h)
-  if (site === 'xtell') return { ...xtellMetadata(serverLang(h, site)), alternates: { canonical: 'https://xtell.modelxd.com' } }
+  // A shared link names its temple (?t=, lib/xtell-share.ts): the preview
+  // shows that temple.
+  if (site === 'xtell') { const t = (await searchParams).t; return { ...xtellMetadata(serverLang(h, site), typeof t === 'string' ? t : null), alternates: { canonical: 'https://xtell.modelxd.com' } } }
   if (site === 'xcreate') return { ...xcreateMetadata(serverLang(h, site)), alternates: { canonical: XCREATE_CANONICAL } }
   return {
     title: 'ModelXD',

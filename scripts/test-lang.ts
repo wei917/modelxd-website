@@ -14,7 +14,7 @@ import {
   cookieLang, serverLang, clientLangInit, langCookie, type Lang,
 } from '../lib/lang'
 import { STRINGS } from '../lib/i18n'
-import { xtellMetadata } from '../lib/xtell-meta'
+import { xtellMetadata, XTELL_TEMPLE_NAMES } from '../lib/xtell-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
 import { mintSiteToken } from '../lib/site-token'
 import { proxy } from '../proxy'
@@ -107,6 +107,9 @@ function boot(o: Boot) {
 
 // ── Titles: the server's first paint is the client's title ─────────────────
 check('XTell titles and descriptions exist in all five languages and equal xtell.site.tab', LANG_CODES.every(l => xtellMetadata(l).title === (STRINGS['xtell.site.tab'] as any)[l] && typeof xtellMetadata(l).description === 'string' && (xtellMetadata(l).description as string).length > 20))
+// Shared links (Sep 28): the preview's temple names are the client's own, and each has its picture.
+check('XTell preview names equal xtell.site.focus.<temple>.name in every language', Object.entries(XTELL_TEMPLE_NAMES).every(([k, names]) => LANG_CODES.every(l => names[l] === (STRINGS[`xtell.site.focus.${k}.name`] as any)?.[l])))
+check('every temple has a preview picture; an unknown ?t= gets the street', Object.keys(XTELL_TEMPLE_NAMES).every(k => fs.existsSync(`public/xtell/og/${k}.jpg`)) && fs.existsSync('public/xtell/og/street.jpg') && JSON.stringify(xtellMetadata('en', 'nope').openGraph).includes('/xtell/og/street.jpg') && xtellMetadata('zh-Hant', 'guandi').title === '關帝廟 | X先知')
 check('XCreate: the wordmark (xcreate.site.brand), and xcreate.subtitle as the description, in all five', LANG_CODES.every(l => xcreateMetadata(l).title === (STRINGS['xcreate.site.brand'] as any)[l] && xcreateMetadata(l).description === (STRINGS['xcreate.subtitle'] as any)[l]))
 check('XCreate: the door\'s name is the one www\'s nav gives it, in all five', LANG_CODES.every(l => (STRINGS['xcreate.site.brand'] as any)[l] === (STRINGS['nav.xcreate'] as any)[l]))
 

@@ -20,6 +20,8 @@ import { useAuthModal } from '../../../lib/AuthModalContext'
 import { daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../../lib/xtell-birth'
 import { placeOf, birthZone, ZONE_PREFIX, COMMON_ZONES } from '../../../lib/xtell-places'
 import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-time'
+import { dropDates } from '../../../lib/xtell-share'
+import { ShareButton } from './ShareButton'
 
 type Method = 'western' | 'bazi'
 const METHODS: Method[] = ['western', 'bazi']
@@ -447,6 +449,11 @@ function MethodCard({ method, day, data, onRetry, onContinue }: { method: Method
       <header>
         <h3>{t(`xtell.dy.${method}`)}</h3>
         <span className="xtell-dy-muted">{day.date} · {zoneLabel(day.tz, lang)}</span>
+        {data.status === 'ready' && data.reading && (() => { const r = data.reading; return (
+          <ShareButton className="xtell-dy-share" spec={() => ({ icon: dailyTemple(method), link: null, title: t('xtell.dy.title'),
+            kicker: `${t(`xtell.dy.${method}`)} · ${day.date}`, body: [dropDates(r.summary), r.themes.map(x => '・' + dropDates(x)).join('\n')],
+            style: 'prose', name: `xtell-today-${day.date}` })} />
+        ) })()}
       </header>
       {data.status === 'ready' && data.reading ? <ReadingView reading={data.reading} />
         : data.status === 'pending' || data.status === 'gone' ? <p className="xtell-dy-muted" role="status">{t('xtell.dy.pending')}</p>

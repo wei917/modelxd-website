@@ -43,6 +43,8 @@ import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd,
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
+import { ShareButton } from '../components/xtell/ShareButton'
+import { shareExcerpt } from '../../lib/xtell-share'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
@@ -265,6 +267,19 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
       // fallback; a navigation never revives it.
       setHandoff(h => !TEMPLES.includes(key) ? null : h && h.feature.temple === key ? h : !navigated && store ? readHandoff(store, key) : null)
     }
+    // A shared link (lib/xtell-share.ts) names its room as ?t=, which a link
+    // preview can read and a hash cannot. It becomes the hash the street
+    // already understands; ?ref= and utm_source stay for the referral and the
+    // visit log.
+    try {
+      const url = new URL(window.location.href)
+      const shared = url.searchParams.get('t') as Temple | null
+      if (shared !== null) {
+        url.searchParams.delete('t')
+        if (TEMPLES.includes(shared) && !url.hash) url.hash = shared
+        window.history.replaceState(window.history.state, '', url)
+      }
+    } catch { /* the room can still be chosen by hand */ }
     sync(false)
     const onHash = () => sync(true)
     window.addEventListener('hashchange', onHash)
@@ -1351,6 +1366,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                               style={{ ...mono, color: 'var(--muted2)', cursor: Math.round(tn.cost * 100) === 0 ? 'help' : undefined }}>· ${tn.cost.toFixed(4)}</span>
                           )}
                           <span style={{ flex: 1 }} />
+                          {/* 分享 (owner, Sep 28): a picture of this reply's
+                              opening, never the question or the birth. */}
+                          {tn.content && !busy && (
+                            <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
+                              kicker: t('xtell.share.by').replace('{name}', tn.name), body: shareExcerpt(tn.content), style: 'prose', name: `xtell-${temple}` })} />
+                          )}
                           {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
                             <button type="button" onClick={() => askOnly(tn.modelId)} disabled={busy}
                               aria-label={`${t('xtell.ask.one')}: ${tn.name}`}
@@ -1962,6 +1983,10 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{t('xtell.history.stick').replace('{n}', String(qian.n))}　{qian.ganZhi}</div>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: graded ? 18 : 14, fontWeight: graded ? 800 : 600, color: luckColour }}>{qian.luck}</div>
         {qian.story && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{qian.story}</div>}
+        <span style={{ flex: 1 }} />
+        <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
+          kicker: [t('xtell.history.stick').replace('{n}', String(qian.n)), qian.ganZhi, qian.luck].filter(Boolean).join('　'),
+          body: qian.poem, style: 'poem', name: `xtell-${temple}-${qian.n}` })} />
       </div>
       <div style={{ padding: '18px 16px', background: 'var(--surface2)', borderRadius: 10, textAlign: 'center' }}>
         {qian.poem.map((l: string, i: number) => (

@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../../lib/i18n'
 import type { Almanac } from '../../../lib/xtell-almanac'
 import { detectedZone, localDateIn } from '../../../lib/xtell-time'
+import { ShareButton } from './ShareButton'
 
 
 /** The visitor's own date, read after mount and again when the tab comes
@@ -62,17 +63,23 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
     return () => { live = false }
   }, [today, lang, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
+  const dateLabel = (ymd: string) => new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`))
   return (
     <section id="xtell-almanac" className="xtell-td" aria-labelledby="xtell-almanac-title">
       <div className="xtell-dy-head">
         <h2 id="xtell-almanac-title" className="xtell-dy-title">{t('xtell.today.almanac')}</h2>
+        {data && <ShareButton className="xtell-dy-share" spec={() => ({ icon: null, link: null, title: t('xtell.today.almanac'),
+          kicker: `${dateLabel(data.date)} · ${fill(t('xtell.today.lunar'), { date: data.lunarDate })}`,
+          body: [`${t('xtell.today.yi')}　${data.yi.join('、') || '—'}`, `${t('xtell.today.ji')}　${data.ji.join('、') || '—'}`,
+            fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })],
+          style: 'prose', name: `xtell-almanac-${data.date}` })} />}
       </div>
       <p className="xtell-dy-sub">{t('xtell.today.almanacSub')}</p>
       {!data ? (failed
         ? <p className="xtell-dy-small" role="alert">{t('xtell.today.failed')} <button type="button" onClick={() => setAttempt(n => n + 1)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontWeight: 700, cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>{t('xtell.site.retry')}</button></p>
         : <p className="xtell-dy-small">{t('common.loading')}</p>) : <>
         <p className="xtell-td-date">
-          <strong>{new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${data.date}T12:00:00Z`))}</strong>
+          <strong>{dateLabel(data.date)}</strong>
           <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}</span>
         </p>
         <dl className="xtell-td-yiji">
