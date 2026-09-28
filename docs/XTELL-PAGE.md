@@ -390,6 +390,17 @@ full width, with ＋再請一位老師 right after the last seat and 並排 / �
 the end of the same row. The per-question cost stays in the composer's
 estimate line.
 
+**No 「怎麼讀」 panel, Sep 27 (owner: "it seems redundant").** A result used
+to open with a guide card: what the result is, one computed fact, where to
+start, and three example questions. It mostly repeated the chart. Now the
+fact (日主; 命宮 and its stars; 上升 and the Moon's 宿: `chartFact`) heads the
+chart card for 八字 / 紫微 / 九曜, and the example questions
+(`ExampleQuestions`, `xtell.q.<temple>.*`) sit just above the question box
+until the first question; a click fills the box and focuses it, nothing is
+sent. 易學堂 keeps its own examples. 解夢 also lost its empty-conversation
+line (「上面是古老夢書的說法…」), which repeated the dream card; the other
+temples keep theirs.
+
 **Seats, Sep 27 (owner: "beautify it", "TTFT besides money").** Each seat is
 a small white card: the provider's mark, the name in the card's middle (the
 two sides are equal widths) with a ⌄ that opens the picker. Price and speed

@@ -3469,6 +3469,14 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 @media (prefers-reduced-motion: reduce) { .xtell-think i { animation: none; opacity: 0.7; } }
 .xtell-think.is-light i { background: #fff; }
 
+/* XTell: example questions above the question box, and the chart's one
+   starting fact (owner, Sep 27: these replaced the 「怎麼讀」 panel). */
+.xtell-examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.xtell-examples > span { color: var(--muted2); margin-right: 2px; }
+.xtell-room .xtell-examples > button, .xtell-examples > button { min-height: 0; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--xtell-rule, var(--border2)); background: #fff; color: var(--xtell-ink, var(--white)); font: inherit; font-size: 12.5px; line-height: 1.5; cursor: pointer; text-align: left; transition: border-color .15s, color .15s; }
+.xtell-examples > button:hover { border-color: var(--xtell-vermilion, var(--red)); color: var(--xtell-vermilion, var(--red)); }
+.xtell-chart-fact { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--xtell-rule, var(--border2)); font-size: 13.5px; line-height: 1.7; color: var(--xtell-ink, var(--white)); }
+
 /* XTell: a teacher's seat in a room (owner, Sep 27: "beautify it"). A small
    card: the provider's mark, the name in the middle (click to change
    teacher; the two sides are equal so it is the card's middle), and quiet

@@ -1213,11 +1213,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </div>
           )}
 
-          {/* What this result is and where a beginner starts, before the
-              term-dense detail; example questions until the first is sent. */}
-          {temple !== 'yixue' && chart && !savedProblem && !unverified && (
-            <ResultGuide temple={temple} chart={chart} showExamples={turns.length === 0} onExample={q => setInput(q)} />
-          )}
 
           {/* 月老廟's 合盤, above everything: it is free, it is computed, and it
               is what the two of them came to see. The reading interprets it. */}
@@ -1226,6 +1221,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           {/* The chart, always shown (owner, Sep 27: no 收起命盤). */}
           {chart && !savedProblem && (!unverified || isQian(temple)) && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
+              {/* Where a beginner starts, from the chart itself (日主, 命宮
+                  and its stars, 上升 and the Moon's 宿). */}
+              {(() => { const fact = chartFact(t, temple, chart); return fact ? <p className="xtell-chart-fact">{fact}</p> : null })()}
               {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
                   setInput(question)
                   composerRef.current?.focus()
@@ -1249,9 +1247,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
             </div>
           )}
 
-          {/* Conversation. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 120 }}>
-            {turns.length === 0 && !savedProblem && !unverified && (
+          {/* Conversation. Empty and without an intro line (解夢 before its
+              first question), it takes no room. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: turns.length === 0 && temple === 'jiemeng' ? 0 : 120 }}>
+            {turns.length === 0 && !savedProblem && !unverified && temple !== 'jiemeng' && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
                 {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'ask'}`
                   : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
@@ -1358,6 +1357,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               block is sticky at the bottom, so the estimate line lives INSIDE
               it; placed after it, the line sat below the fold. */}
           {!savedProblem && !unverified && <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* Example questions, right where one is written, until the first
+              is sent (owner, Sep 27: they were in a 「怎麼讀」 panel that
+              mostly repeated the chart). A click fills the box; nothing is
+              sent. 易學堂 has its own. */}
+          {temple !== 'yixue' && turns.length === 0 && chart && <ExampleQuestions temple={temple} onExample={q => { setInput(q); composerRef.current?.focus() }} />}
           {masters.length > 1 && (
             <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12 }}>
               <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.ask.to')}</span>
@@ -1423,48 +1427,40 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   )
 }
 
-// ── 看懂這張盤 ──────────────────────────────────────────────────────────────
-// Audit (product): 紫微 and 九曜 opened straight into dense terms. Each
-// result now starts with what it is and where to start, plus one computed
-// fact where it is safe to state (日主; 命宮 and its stars; 上升 and the
-// Moon's 宿), and three questions that fit this temple. The examples fill
-// the question box; nothing is sent.
+// ── Where to start ──────────────────────────────────────────────────────────
+// Audit (product): 紫微 and 九曜 opened straight into dense terms, so a result
+// says one computed fact where it is safe to state (日主; 命宮 and its stars;
+// 上升 and the Moon's 宿), at the top of the chart card, and offers three
+// questions that fit the temple above the question box. (Until Sep 27 both
+// sat in a 「怎麼讀」 panel with a line saying what the result was; the owner
+// found it repeated the chart.) The examples fill the box; nothing is sent.
 const GAN_ELEMENT: Record<string, string> = { 甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水' }
-function ResultGuide({ temple, chart, onExample, showExamples }: { temple: Temple; chart: any; onExample: (q: string) => void; showExamples: boolean }) {
+function chartFact(t: (k: string) => string, temple: Temple, chart: any): string {
+  try {
+    if (temple === 'bazi' && GAN_ELEMENT[chart?.dayMaster]) return t('xtell.sum.bazi.fact').replace('{dm}', chart.dayMaster).replace('{el}', t(`xtell.el.${GAN_ELEMENT[chart.dayMaster]}`))
+    if (temple === 'ziwei') {
+      const p = chart?.palaces?.find((x: any) => x.name === '命宮')
+      if (p) return t('xtell.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
+    }
+    if (temple === 'navagraha' && chart?.lagna) {
+      const moon = chart.grahas?.find((g: any) => g.graha === 'Moon')
+      return t('xtell.sum.navagraha.fact').replace('{lagna}', RASI[chart.lagna.rasi][1]).replace('{nak}', moon ? `${NAKSHATRA[moon.nakshatra][1]}宿` : '—')
+    }
+  } catch { /* an older saved chart shape simply has no fact line */ }
+  return ''
+}
+function ExampleQuestions({ temple, onExample }: { temple: Temple; onExample: (q: string) => void }) {
   const t = useT()
-  const fact = (() => {
-    try {
-      if (temple === 'bazi' && GAN_ELEMENT[chart?.dayMaster]) return t('xtell.sum.bazi.fact').replace('{dm}', chart.dayMaster).replace('{el}', t(`xtell.el.${GAN_ELEMENT[chart.dayMaster]}`))
-      if (temple === 'ziwei') {
-        const p = chart?.palaces?.find((x: any) => x.name === '命宮')
-        if (p) return t('xtell.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
-      }
-      if (temple === 'navagraha' && chart?.lagna) {
-        const moon = chart.grahas?.find((g: any) => g.graha === 'Moon')
-        return t('xtell.sum.navagraha.fact').replace('{lagna}', RASI[chart.lagna.rasi][1]).replace('{nak}', moon ? `${NAKSHATRA[moon.nakshatra][1]}宿` : '—')
-      }
-    } catch { /* an older saved chart shape simply has no fact line */ }
-    return ''
-  })()
   // Three per temple; 八字廟 has a fourth, the way into its 稱骨 card.
   const questions = [1, 2, 3, 4].map(i => t(`xtell.q.${temple}.${i}`)).filter(q => !q.startsWith('xtell.q.'))
+  if (questions.length === 0) return null
   return (
-    <section className="xtell-guide" aria-label={t('xtell.guide.title')} style={{ ...card, padding: '12px 16px', display: 'grid', gap: 6 }}>
-      <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.guide.title')}</div>
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>{t(`xtell.sum.${temple}.what`)}{fact ? ` ${fact}` : ''}</p>
-      <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.7, color: 'var(--muted)' }}>{t(`xtell.sum.${temple}.look`)}</p>
-      {showExamples && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
-          <span style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xtell.guide.ask')}</span>
-          {questions.map(q => (
-            <button key={q} type="button" onClick={() => onExample(q)} aria-label={`${t('xtell.guide.fill')}: ${q}`} style={{
-              padding: '5px 11px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent',
-              color: 'var(--white)', fontSize: 12, lineHeight: 1.5, cursor: 'pointer', textAlign: 'left',
-            }}>{q}</button>
-          ))}
-        </div>
-      )}
-    </section>
+    <div className="xtell-examples" role="group" aria-label={t('xtell.guide.ask')}>
+      <span>{t('xtell.guide.ask')}</span>
+      {questions.map(q => (
+        <button key={q} type="button" onClick={() => onExample(q)} aria-label={`${t('xtell.guide.fill')}: ${q}`}>{q}</button>
+      ))}
+    </div>
   )
 }
 
