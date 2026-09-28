@@ -126,7 +126,6 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.site.authTitle": {"en": "Come in. Take a seat.", "zh-Hant": "進來坐坐，慢慢聊。", "zh-Hans": "进来坐坐，慢慢聊。", "ja": "どうぞ、ゆっくり。", "ko": "편하게 앉아 이야기해요."},
   "xtell.site.remove": {"en": "Remove reader", "zh-Hant": "移除老師", "zh-Hans": "移除老师", "ja": "読み手を外す", "ko": "해석가 제거"},
   "xtell.site.send": {"en": "Send question", "zh-Hant": "送出問題", "zh-Hans": "送出问题", "ja": "質問を送信", "ko": "질문 보내기"},
-  "xtell.site.freeStep": {"en": "This step is free. Your reading begins only when you send a question.", "zh-Hant": "這一步免費。送出問題後，才會開始付費解讀。", "zh-Hans": "这一步免费。送出问题后，才会开始付费解读。", "ja": "このステップは無料です。質問を送信すると有料の解釈が始まります。", "ko": "이 단계는 무료입니다. 질문을 보내면 유료 해석이 시작됩니다."},
   "xtell.site.chart": {"en": "Your chart", "zh-Hant": "查看命盤", "zh-Hans": "查看命盘", "ja": "命盤を確認", "ko": "명반 확인"},
   "xtell.site.note": {"en": "Your chart is calculated, then interpreted by the AI reader you choose. Readings use your account credit only when you send a question.", "zh-Hant": "命盤先排好，再由你選的 AI 老師解讀。送出問題時才使用帳戶點數，不急，想好了再問。", "zh-Hans": "命盘先排好，再由你选的 AI 老师解读。送出问题时才使用账户点数，不急，想好了再问。", "ja": "命盤を作成したあと、選んだAIの読み手が解釈します。質問を送信したときだけ、アカウントのクレジットを使います。", "ko": "명반을 계산한 뒤 선택한 AI 해석가가 풀이합니다. 질문을 보낼 때만 계정 크레딧이 사용됩니다."},
   "xtell.site.visit": {"en": "Visit temple", "zh-Hant": "進廟看看", "zh-Hans": "进庙看看", "ja": "入ってみる", "ko": "들어가기"},

@@ -3251,7 +3251,6 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-room-header p:not(.xtell-eyebrow) { color: var(--xtell-secondary); font-size: 16px; line-height: 1.7; margin: 0; }
 .xtell-room-header .xtell-eyebrow { margin-bottom: 10px; }
 .xtell-entry-form { padding: 27px !important; border-radius: 8px !important; }
-.xtell-form-note { padding-bottom: 20px; margin: 0 0 22px; border-bottom: 1px solid var(--xtell-rule); font-size: 14px; line-height: 1.7; color: var(--xtell-secondary); }
 .xtell-room :is(input, select, textarea) { font-size: 16px !important; min-height: 44px; max-width: 100%; }
 .xtell-room input[type="checkbox"], .xtell-room input[type="radio"] { min-height: auto; }
 .xtell-room button { min-height: 40px; }

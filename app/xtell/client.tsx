@@ -889,7 +889,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
 
       {!entered ? (
         <div className={standalone ? "xtell-entry-form" : undefined} style={{ ...card, padding: '18px 20px' }}>
-          {standalone && <p className="xtell-form-note">{t('xtell.site.freeStep')}</p>}
           {carried?.question && <p className="xtell-carried" role="note">{t('xtell.as.carried').replace('{q}', carried.question)}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
               second person and 流年 needs a year. */}
