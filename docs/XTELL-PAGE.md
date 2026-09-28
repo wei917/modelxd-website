@@ -356,8 +356,9 @@ engine independently and made the art.
    Nobody has to pick one to continue; 「只留這位老師」 drops the others for
    whoever wants to stop paying for them. A reopened reading re-seats the
    masters of its last round.
-3. `查看命盤` expands the full board for verification. Package and engine
-   versions are retained internally and are not rendered in the UI.
+3. The chart is always shown under the result guide (owner, Sep 27: the
+   收起命盤 toggle is gone). Package and engine versions are retained
+   internally and are not rendered in the UI.
 4. Per-seat settings (Sep 24, owner: configure each master like an XCreate
    slot, and follow XCreate's UI): a ⚙ on each chip opens the panels for ALL
    seated masters together, collapsed by default — one card per master in
@@ -377,6 +378,17 @@ engine independently and made the art.
 
 No auto-send anywhere: an intro line is static text; nothing spends until the
 user types (same rule as XDirect's `?q=`).
+
+**Room chrome, Sep 27 (owner: "the UI is so confusing").** The 01 稟明資料 /
+02 查看結果 / 03 請老師解讀 step bar is gone (02 was lit before any teacher
+had answered). The way back to the form is the first line of the room:
+「← 修改資料」 with what the visit was cast from (`subjectSummary`); it used to
+sit in the composer at the foot of the page, where nobody found it. The
+輕快 / 均衡 / 深入 preset row is gone from the room (the daily card keeps its
+own); teachers are chosen on the seats: each seat is 200-260 px, not the
+full width, with ＋再請一位老師 right after the last seat and 並排 / 分頁 at
+the end of the same row. The per-question cost stays in the composer's
+estimate line.
 
 ## Files
 

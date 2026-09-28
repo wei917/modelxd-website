@@ -38,7 +38,7 @@ import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localSt
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
-import { PRESETS, EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
+import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
@@ -435,7 +435,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
-  const [showChart, setShowChart] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [errCode, setErrCode] = useState<string | null>(null)
   // The raw message and its code are kept, not a translated sentence, so a
@@ -527,11 +526,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
     if (window.innerWidth < 900) setLayout('tabs')
   }, [])
   const chooseLayout = (l: 'columns' | 'tabs') => { setLayout(l); try { localStorage.setItem(LAYOUT_KEY, l) } catch { /* ignore */ } }
-  /** A preset seats its model first; a teacher already seated moves to the
-   *  front instead of being seated twice. Only ever called from a click. */
-  const choosePreset = (m: PickerModel) => setMasters(ms => ms[0]?.id === m.id ? ms
-    : ms.some(x => x.id === m.id) ? [m, ...ms.filter(x => x.id !== m.id)]
-    : ms.length ? [m, ...ms.slice(1)] : [m])
   const searchable = (m: PickerModel) => ((m.output_config?.text?.capabilities ?? []) as string[]).includes('web_search')
   const defaultOpts = (m: PickerModel): SeatOpts => ({ thinking: defaultThinking(m), search: false })
   const optsOf = (m: PickerModel): SeatOpts => seatOpts[m.id] ?? defaultOpts(m)
@@ -891,11 +885,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
           <TempleArtwork temple={temple} kind="icon" className="xtell-room-artwork" />
           <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p><h1>{t(`xtell.site.focus.${temple}.name`)}</h1><p>{t(`xtell.site.focus.${temple}.description`)}</p></div>
         </header>
-        <ol className="xtell-room-steps" aria-label={t('xtell.site.navigation')}>
-          {/* 01 the form, 02 the chart until the first question is sent, 03
-              the conversation (owner, Sep 24: step 2 was never lit). */}
-          {['details', 'result', 'conversation'].map((step, i) => <li key={step} aria-current={(!entered && i === 0) || (entered && turns.length === 0 && i === 1) || (entered && turns.length > 0 && i === 2) ? 'step' : undefined}><span>{String(i + 1).padStart(2, '0')}</span>{t(`xtell.site.${step}`)}</li>)}
-        </ol>
       </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 
       {!entered ? (
@@ -1036,65 +1025,30 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {(() => {
-            const offered = PRESETS.map(p => ({ key: p.key, model: p.models.map(n => catalog.find(r => r.model_name === n)).find(Boolean) }))
-              .filter((p): p is { key: typeof PRESETS[number]['key']; model: PickerModel } => !!p.model)
-            if (offered.length === 0 || savedProblem || unverified) return null
-            const chars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
-            return (
-              <div role="group" aria-label={t('xtell.preset.title')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ ...mono, color: 'var(--muted2)', marginRight: 2 }}>{t('xtell.preset.title')}</span>
-                {offered.map(({ key, model }) => {
-                  const on = masters[0]?.id === model.id
-                  const usd = estimateReadingUsd(model, defaultOpts(model), chars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
-                  return (
-                    <button key={key} type="button" aria-pressed={on} onClick={() => choosePreset(model)} disabled={busy} style={{
-                      padding: '6px 12px', borderRadius: 999, fontSize: 12, cursor: busy ? 'wait' : 'pointer',
-                      border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`, background: on ? 'var(--surface2)' : 'transparent', color: 'var(--white)',
-                    }}>
-                      <b>{t(`xtell.preset.${key}`)}</b> · {model.display_name}{usd != null ? ` · ~${fmtUsd(usd)}` : ''}
-                    </button>
-                  )
-                })}
-              </div>
-            )
-          })()}
-          {/* Controls: add a seat, the reply layout, the chart toggle. */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {masters.length < MAX_SEATS && (
-              <button onClick={() => setPicker({ replace: null })} style={{
-                padding: '7px 12px', borderRadius: 999, border: '1px dashed var(--border2)',
-                background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer',
-              }}>＋ {t('xtell.addmaster')}</button>
-            )}
-            <span style={{ flex: 1 }} />
-            {(masters.length > 1 || replyModels.length > 1) && (
-              <span style={{ display: 'inline-flex', border: '1px solid var(--border2)', borderRadius: 999, overflow: 'hidden', fontSize: 11.5 }}>
-                {(['columns', 'tabs'] as const).map(l => (
-                  <button key={l} type="button" onClick={() => chooseLayout(l)} style={{
-                    border: 'none', padding: '5px 11px', cursor: 'pointer', fontWeight: layout === l ? 700 : 500,
-                    background: layout === l ? 'var(--surface2)' : 'transparent', color: layout === l ? 'var(--white)' : 'var(--muted)',
-                  }}>{t(`xtell.layout.${l}`)}</button>
-                ))}
-              </span>
-            )}
-            <button onClick={() => setShowChart(v => !v)} style={{ border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
-              {showChart ? t(questionRequired ? 'xtell.yixue.hidehelp' : temple === 'yixue' ? 'xtell.yixue.hidechart' : 'xtell.hidechart') : t(questionRequired ? 'xtell.yixue.viewhelp' : temple === 'yixue' ? 'xtell.yixue.viewchart' : 'xtell.viewchart')}
-            </button>
+          {/* The way back to the form, first thing in the room, with what
+              this visit was cast from (owner, Sep 27: "how do I go back?";
+              it used to sit in the composer at the foot of the page). */}
+          <div className="xtell-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--muted)', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+            <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.edit')}</button>
+            {temple !== 'yixue' && (() => {
+              const summary = subjectSummary(t, temple, subject())
+              return summary ? <span style={{ minWidth: 0 }}>{summary}</span> : null
+            })()}
           </div>
 
-          {/* Seats: one equal-width column per master, and the settings
-              cards sit in the SAME columns under their chips (owner, Sep 24:
-              same width, side by side, never stacked). Both rows share one
-              scroll frame, so on a phone four seats drag sideways together
-              instead of wrapping. Clicking a name opens the picker to
-              REPLACE that seat; ⚙ opens every seat's settings; ✕ removes a
-              seat while another remains. */}
+          {/* Teachers (owner, Sep 27): the seats at a fixed width, then
+              再請一位老師 beside them, then the reply layout; no preset row.
+              The settings cards sit in the SAME columns under their chips
+              (owner, Sep 24), and both rows share one scroll frame, so on a
+              phone the seats drag sideways together instead of wrapping.
+              Clicking a name opens the picker to REPLACE that seat; ⚙ opens
+              every seat's settings; ✕ removes a seat while another remains. */}
           {(() => {
-            const cols = `repeat(${masters.length}, minmax(${masters.length > 1 ? 210 : 0}px, 1fr))`
+            const cols = `repeat(${masters.length}, minmax(200px, 260px))`
             return (
               <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, flexShrink: 0 }}>
                   {masters.map((m, i) => (
                     <span key={m.id} style={{
                       display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, minWidth: 0,
@@ -1113,6 +1067,24 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                       )}
                     </span>
                   ))}
+                </div>
+                {masters.length < MAX_SEATS && (
+                  <button onClick={() => setPicker({ replace: null })} style={{
+                    flexShrink: 0, padding: '7px 12px', borderRadius: 999, border: '1px dashed var(--border2)',
+                    background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}>＋ {t('xtell.addmaster')}</button>
+                )}
+                <span style={{ flex: 1 }} />
+                {(masters.length > 1 || replyModels.length > 1) && (
+                  <span style={{ flexShrink: 0, display: 'inline-flex', border: '1px solid var(--border2)', borderRadius: 999, overflow: 'hidden', fontSize: 11.5 }}>
+                    {(['columns', 'tabs'] as const).map(l => (
+                      <button key={l} type="button" onClick={() => chooseLayout(l)} style={{
+                        border: 'none', padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: layout === l ? 700 : 500,
+                        background: layout === l ? 'var(--surface2)' : 'transparent', color: layout === l ? 'var(--white)' : 'var(--muted)',
+                      }}>{t(`xtell.layout.${l}`)}</button>
+                    ))}
+                  </span>
+                )}
                 </div>
 
                 {/* Settings, XCreate's cards, one per column. A master with
@@ -1193,9 +1165,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               is what the two of them came to see. The reading interprets it. */}
           {match && !savedProblem && !unverified && <HeCard match={match} />}
 
-          {/* The chart. Open by default, foldable for anyone who only wants
-              the reading. */}
-          {showChart && chart && !savedProblem && (!unverified || isQian(temple)) && (
+          {/* The chart, always shown (owner, Sep 27: no 收起命盤). */}
+          {chart && !savedProblem && (!unverified || isQian(temple)) && (
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
                   setInput(question)
@@ -1329,16 +1300,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
               block is sticky at the bottom, so the estimate line lives INSIDE
               it; placed after it, the line sat below the fold. */}
           {!savedProblem && !unverified && <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {/* What this consultation was cast from, and the way back to the
-              form, right where a paid question is written (audit: no visible
-              way to correct the details). */}
-          {temple !== 'yixue' && (() => {
-            const summary = subjectSummary(t, temple, subject())
-            return <div className="xtell-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted)' }}>
-              {summary && <span><span style={{ ...mono, color: 'var(--muted2)', marginRight: 6 }}>{t('xtell.subject.label')}</span>{summary}</span>}
-              <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>{t('xtell.edit')}</button>
-            </div>
-          })()}
           {masters.length > 1 && (
             <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12 }}>
               <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.ask.to')}</span>
