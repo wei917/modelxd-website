@@ -17,7 +17,7 @@ import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata, XCREATE_CANONICAL } from '../lib/xcreate-meta'
 import HomeClient from './HomeClient'
 import XTellClient from './xtell/client'
-import { almanacForZone } from '../lib/xtell-almanac-server'
+import { almanacSection } from './components/xtell/AlmanacSection'
 import XCreatePage from './xcreate/page'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,10 +34,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Page() {
   const h = await headers()
   const site = siteFromHeaders(h)
-  // The street's 黃曆 card, filled in on the server for the visitor's own
-  // day (their connection's time zone), so the browser needs no calendar
-  // library (lib/xtell-almanac-server.ts).
-  if (site === 'xtell') return <XTellClient almanac={almanacForZone(h.get('x-vercel-ip-timezone'), serverLang(h, site))} />
+  // The street's 黃曆 is its own section (AlmanacSection): computed on the
+  // server, in its own Suspense and error boundary.
+  if (site === 'xtell') return <XTellClient almanacSection={almanacSection()} />
   // The studio's own server shell, so `/` here reads the gallery on the
   // server exactly as /xcreate does.
   if (site === 'xcreate') return <XCreatePage />

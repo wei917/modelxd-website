@@ -42,7 +42,6 @@ import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd,
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
-import type { Almanac } from '../../lib/xtell-almanac'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
@@ -193,7 +192,7 @@ const shichenOf = (h: number) => ZHI[h === 23 ? 0 : Math.floor((h + 1) / 2) % 12
 
 function RequireTempleAuth() { useRequireAuth(); return null }
 
-export default function XTellClient({ standalone: standaloneOverride, almanac = null }: { standalone?: boolean; almanac?: Almanac | null }) {
+export default function XTellClient({ standalone: standaloneOverride, almanacSection }: { standalone?: boolean; almanacSection?: React.ReactNode }) {
   const site = useSite()
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
@@ -303,7 +302,8 @@ export default function XTellClient({ standalone: standaloneOverride, almanac = 
             themselves are in the top bar. */}
         <XTellAssistant onOpen={openFromGuide} />
         <div className="xtell-today">
-          <AlmanacCard initial={almanac} />
+          {/* Its own section, rendered on the server (AlmanacSection). */}
+          {almanacSection ?? <AlmanacCard />}
           <XTellDaily openSignal={dailySignal} resume={savedDaily} onClearResume={() => { if (savedDaily) setReadingParam(null); setSavedDaily(null) }} />
         </div>
       </> : <>
