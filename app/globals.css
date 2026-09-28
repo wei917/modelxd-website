@@ -3373,6 +3373,10 @@ html[data-site="xtell"] .xtell-nav-links a { font-size: 13px; min-height: 44px; 
 html[data-site="xtell"] .xtell-nav-links a[aria-current]::after { bottom: -10px; }
 html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-explorer-container { max-width: 1280px; padding: 0 32px 30px; }
+/* A temple room lines up with the top bar too: 1216 px of content (owner,
+   Sep 27: four teachers overflowed a narrower room). Phones keep the
+   container's own gutters. */
+@media (min-width: 1001px) { .xtell-room-container { max-width: 1280px; padding-inline: 32px; } }
 .xtell-explorer { padding-top: 24px; }
 .xtell-focus-hero { display: grid; grid-template-columns: 44% 56%; min-height: 554px; border: 1px solid var(--xtell-rule); border-bottom: 0; }
 .xtell-focus-scene { position: relative; overflow: hidden; min-height: 554px; background: var(--xtell-scene); }

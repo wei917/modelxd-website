@@ -74,6 +74,9 @@ type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: s
 // are the fallbacks if it ever leaves the catalog; the picker stays for
 // anyone who wants another seat or a 合參.
 const DEFAULT_MASTER = 'qwen3.8-flash'
+/** A setting's label stays on one line; a crowded row of pills wraps
+ *  instead (four teachers, Sep 27: 「自動」 broke into 自 / 動). */
+const nowrap: React.CSSProperties = { whiteSpace: 'nowrap' }
 // Up to four masters at once (owner, Sep 24). Every seat keeps its own thread.
 const MAX_SEATS = 4
 const LAYOUT_KEY = 'xtell:layout'
@@ -292,7 +295,7 @@ export default function XTellClient({ standalone: standaloneOverride }: { standa
   }
 
   if (standalone) return <div className="xtell-site">
-    <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : '')} tabIndex={-1}>
+    <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : ' xtell-room-container')} tabIndex={-1}>
       {!temple ? <>
         {/* The guide first, then today (owner, Sep 27): the Chinese almanac
             on the left, the daily fortune on the right. The temples
@@ -878,9 +881,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
   const sel = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 13 }
 
   return (
-    // The arena is 1200 wide because XBoard/XEval put tables in it. A birth
-    // form and a reading are prose, so the room keeps its own 980 measure.
-    <div className={standalone ? "xtell-room" : undefined} data-entered={entered || undefined} style={{ maxWidth: 980 }}>
+    // On www the room keeps a 980 measure inside the ModelXD arena. The
+    // standalone room uses the page's full width, the 1216 px of the top bar
+    // (owner, Sep 27: four teachers overflowed 980 px with space to spare on
+    // both sides).
+    <div className={standalone ? "xtell-room" : undefined} data-entered={entered || undefined} style={{ maxWidth: standalone ? 1216 : 980 }}>
       {/* On the standalone site the header's 探索殿堂 link is the way back
           (owner, Sep 24: no second back link). www's /xtell keeps it — the
           ModelXD sidebar has no route to the street. */}
@@ -1128,16 +1133,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, onResu
                             {groups.length === 0 && <div style={{ fontSize: 12, color: 'var(--muted2)' }}>—</div>}
                             {levels.length > 0 && (
                               <OptGroup label={t('xcreate.thinking')} last={isLast('think')}>
-                                <OptPill color={color} active={o.thinking == null} onClick={() => setOpts(m, { thinking: null })}>{t('xcreate.auto')}</OptPill>
+                                <OptPill color={color} active={o.thinking == null} onClick={() => setOpts(m, { thinking: null })}><span style={nowrap}>{t('xcreate.auto')}</span></OptPill>
                                 {levels.map(l => (
-                                  <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}>{thinkingLabel(l, t)}</OptPill>
+                                  <OptPill key={l} color={color} active={o.thinking === l} onClick={() => setOpts(m, { thinking: l })}><span style={nowrap}>{thinkingLabel(l, t)}</span></OptPill>
                                 ))}
                               </OptGroup>
                             )}
                             {searchable(m) && (
                               <OptGroup label={t('xcreate.websearch')} last={isLast('search')}>
-                                <OptPill color={color} active={!o.search} onClick={() => setOpts(m, { search: false })}>{t('xcreate.off')}</OptPill>
-                                <OptPill color={color} active={o.search} onClick={() => setOpts(m, { search: true })}>{t('xcreate.on')}</OptPill>
+                                <OptPill color={color} active={!o.search} onClick={() => setOpts(m, { search: false })}><span style={nowrap}>{t('xcreate.off')}</span></OptPill>
+                                <OptPill color={color} active={o.search} onClick={() => setOpts(m, { search: true })}><span style={nowrap}>{t('xcreate.on')}</span></OptPill>
                               </OptGroup>
                             )}
                           </div>
