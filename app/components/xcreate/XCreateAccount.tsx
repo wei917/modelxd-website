@@ -2,10 +2,12 @@
 // The account page on xcreate.modelxd.com (app/profile/page.tsx renders
 // these when useSite() is 'xcreate'). The wallet, plan, referral and
 // danger zone stay the shared ModelXD ones; the per-surface tabs give way
-// to the studio's own My creations view.
+// to the studio's Library, which lives here since the top bar became the
+// four types (owner, Sep 28: "library should be in profile page").
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useLang } from '../../../lib/i18n'
+import StandaloneLibrary from '../../xcreate/StandaloneLibrary'
 
 export function XCreateAccountHead() {
   const { t } = useLang()
@@ -25,13 +27,16 @@ export function XCreateAccountWelcome({ loading, onSignIn }: { loading: boolean;
   </main>
 }
 
-export function XCreateCreationsLink() {
+/** Everything the account has made: a card reopens it in the studio (?id=),
+ *  New opens a fresh studio. */
+export function XCreateLibrary() {
   const { t } = useLang()
+  const router = useRouter()
   return <section className="xcs-creations" aria-labelledby="xcs-creations-title">
-    <div>
+    <div className="xcs-creations-head">
       <h2 id="xcs-creations-title">{t('xcreate.site.nav.creations')}</h2>
       <p>{t('xcreate.site.creationsNote')}</p>
     </div>
-    <Link href="/?view=creations" className="xcs-button">{t('xcreate.site.openCreations')}</Link>
+    <StandaloneLibrary onNew={() => router.push('/')} />
   </section>
 }

@@ -1,8 +1,6 @@
 /* The standalone studio is scoped so ModelXD keeps its existing layout. */
 html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding: 48px 40px 80px; outline: none; }
 .xcs-heading { max-width: 800px; margin: 0 auto 40px; }
-.xcs-heading-wide { max-width: 1180px; }
-.xcs-heading .xcs-eyebrow { margin: 0 0 14px; color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
 .xcs-heading h1 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; margin: 0 0 14px; }
 .xcs-heading > p:last-child { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
 .xcs-setup > :not(.xcs-results) { max-width: 800px; width: 100%; margin-left: auto; margin-right: auto; }
@@ -12,7 +10,6 @@ html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding:
 .xcs-setup .mode-seg-btn { min-height: 42px; min-width: 86px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; border-radius: 7px; }
 .xcs-setup .mode-seg-btn.active { background: var(--surface); color: var(--red); box-shadow: 0 1px 4px #0000000d; }
 .xcs-setup .recipe-crumb-btn { min-height: 44px; border-radius: 9px; font-family: inherit; }
-.xcs-mobile-mode { display: none; }
 .xcs-prompt-section { margin-bottom: 28px; }
 .xcs-field-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .xcs-field-heading a { color: var(--muted2); text-decoration: none; font-size: 12px; font-weight: 500; }
@@ -35,7 +32,7 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-setup .xcreate-slot-grid > [data-slot='empty'] { grid-column: 1 / -1; }
 }
 @media (min-width: 1100px) {
-  .xcs-heading:not(.xcs-heading-wide), .xcs-setup > :not(.xcs-results) { max-width: 1040px; }
+  .xcs-heading, .xcs-setup > :not(.xcs-results) { max-width: 1040px; }
   /* Four results side by side too; www keeps its 2 x 2 for four. */
   html[data-site='xcreate'] .xcs-results .battle-arena:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
@@ -47,15 +44,13 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-results { width: 100%; padding-top: 20px; }
 .xcs-results .battle-card { min-width: 0; }
 .xcs-templates, .xcs-library { max-width: 1180px; margin: auto; }
-.xcs-template-modes { display: flex; gap: 6px; padding-bottom: 22px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
-.xcs-template-modes button { display: flex; align-items: center; gap: 7px; padding: 10px 20px; min-height: 44px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted2); font: inherit; cursor: pointer; }
-.xcs-template-modes button[aria-pressed='true'] { border-color: var(--border2); background: var(--surface); color: var(--red); }
+/* The templates under the composer (Sep 28), as wide as the trending feed. */
+.xcs-setup > .xcs-templates { max-width: 1180px; margin-top: 40px; scroll-margin-top: 84px; }
 .xcs-template-section { margin: 32px 0; }
 .xcs-template-section h2 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
-.xcs-template-notice { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px; border-radius: 10px; background: var(--surface2); font-size: 14px; }
 .xcs-library-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
 .xcs-filter-label { display: flex; align-items: center; gap: 12px; color: var(--muted2); font-size: 13px; }
-.xcs-filter-label select, .xcs-mobile-mode select { appearance: auto; min-height: 44px; border: 1px solid var(--border2); background: var(--surface); color: var(--white); border-radius: 9px; padding: 8px 14px; font: inherit; }
+.xcs-filter-label select { appearance: auto; min-height: 44px; border: 1px solid var(--border2); background: var(--surface); color: var(--white); border-radius: 9px; padding: 8px 14px; font: inherit; }
 .xcs-primary, .xcs-secondary, .xcs-pagination button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 18px; border: 1px solid var(--border2); border-radius: 9px; background: var(--surface); color: var(--white); text-decoration: none; font: inherit; font-size: 13px; cursor: pointer; }
 .xcs-primary { color: #fff; background: var(--red); border-color: var(--red); }
 .xcs-empty { text-align: center; padding: 72px 20px; color: var(--muted2); font-size: 15px; border: 1px dashed var(--border2); border-radius: 16px; line-height: 1.7; }
@@ -115,11 +110,8 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-heading { margin-bottom: 30px; }
   .xcs-heading h1 { font-size: 32px; }
   .xcs-heading > p:last-child { font-size: 14px; }
-  .xcs-mobile-mode { display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-weight: 600; flex: 1; min-width: 0; }
-  .xcs-mobile-mode select { width: 100%; font-size: 16px; }
   .xcs-mode-block { display: flex; align-items: end; gap: 12px; }
   .xcs-mode-block .mode-row { flex: 1; min-width: 0; }
-  .xcs-mode-block .mode-row > .mode-col:first-child { display: none; }
   .xcs-mode-block .mode-col { width: 100%; min-width: 0; }
   .xcs-mode-block .recipe-crumb-btn { width: 100%; min-width: 0; font-size: 12px; white-space: normal; line-height: 1.3; }
   .xcs-mode-block .from-menu { left: auto; right: 0; max-width: calc(100vw - 40px); }
@@ -128,9 +120,6 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-setup .xc-actions { gap: 12px !important; }
   .xcs-setup .xc-actions .prompt-counter { flex-basis: 100%; }
   .xcs-setup .xc-actions .btn-battle { flex: 1 1 140px; }
-  .xcs-template-modes { display: none; }
-  .xcs-templates > .xcs-mobile-mode { max-width: 240px; }
-  .xcs-template-notice { flex-direction: column; align-items: start; margin-top: 20px; }
   .xcs-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .xcs-library-toolbar { align-items: center; flex-wrap: wrap; }
   .xcs-results .battle-arena { grid-template-columns: minmax(0, 1fr) !important; }
@@ -140,9 +129,8 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-heading h1 { font-size: 29px; }
   .xcs-library-grid { grid-template-columns: minmax(0, 1fr); }
   .xcs-field-heading { gap: 8px; }
-  html[data-site='xcreate'] .xcs-top-inner { gap: 0 8px; }
+  html[data-site='xcreate'] .xcs-top-inner { gap: 6px; }
   html[data-site='xcreate'] .xcs-actions { gap: 6px; }
-  html[data-site='xcreate'] .xcs-lang { max-width: 98px; }
   html[data-site='xcreate'] .xcs-signin { padding: 0 10px; }
 }
 @media (max-width: 600px) {

@@ -189,7 +189,6 @@ export const STRINGS: Record<string, Entry> = {
   // in Chinese should be X創作?"): the names nav.xcreate already gave it on
   // www, held equal by scripts/test-lang.ts.
   'xcreate.site.brand':         { en: 'XCreate', 'zh-Hant': 'X創作', 'zh-Hans': 'X创作', ja: 'X作成', ko: 'X창작' },
-  'xcreate.site.nav.create':    { en: 'Studio', 'zh-Hant': '工作室', 'zh-Hans': '工作室', ja: 'スタジオ', ko: '스튜디오' },
   'xcreate.site.nav.creations': { en: 'Library', 'zh-Hant': '作品庫', 'zh-Hans': '作品库', ja: 'ライブラリ', ko: '라이브러리' },
   'xcreate.site.nav.templates': { en: 'Templates', 'zh-Hant': '範本', 'zh-Hans': '模板', ja: 'テンプレート', ko: '템플릿' },
   'xcreate.site.navigation':    { en: 'XCreate navigation', 'zh-Hant': 'X創作 導覽', 'zh-Hans': 'X创作 导航', ja: 'X作成 ナビゲーション', ko: 'X창작 탐색' },
@@ -199,7 +198,6 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.site.authCopy':      { en: 'Sign in with your ModelXD account. Your balance and plan work here too.', 'zh-Hant': '使用 ModelXD 帳戶登入，點數與會員方案在這裡一樣通用。', 'zh-Hans': '使用 ModelXD 账户登录，点数与会员方案在这里一样通用。', ja: 'ModelXDのアカウントでログイン。残高と会員プランはここでも使えます。', ko: 'ModelXD 계정으로 로그인하세요. 잔액과 요금제를 여기서도 쓸 수 있어요.' },
   'xcreate.site.accountNote':   { en: 'One account. The same balance and plan on XCreate and ModelXD.', 'zh-Hant': '同一個帳戶，X創作 與 ModelXD 共用點數與方案。', 'zh-Hans': '同一个账户，X创作 与 ModelXD 共用点数与方案。', ja: 'X作成とModelXDは同じアカウント、同じ残高とプラン。', ko: 'X창작과 ModelXD에서 같은 계정, 같은 잔액과 요금제를 사용합니다.' },
   'xcreate.site.creationsNote': { en: 'Everything you have made in XCreate, ready to reopen and continue.', 'zh-Hant': '你在 X創作 做過的一切，隨時打開繼續。', 'zh-Hans': '你在 X创作 做过的一切，随时打开继续。', ja: 'X作成で作ったものすべて。いつでも開いて続きから。', ko: 'X창작에서 만든 모든 것, 언제든 열어서 이어 갈 수 있어요.' },
-  'xcreate.site.openCreations': { en: 'Open Library', 'zh-Hant': '打開作品庫', 'zh-Hans': '打开作品库', ja: 'ライブラリを開く', ko: '라이브러리 열기' },
   'xcreate.site.legalNote':     { en: 'XCreate is a ModelXD service. This page applies to it.', 'zh-Hant': 'X創作 是 ModelXD 的服務，本頁內容同樣適用。', 'zh-Hans': 'X创作 是 ModelXD 的服务，本页内容同样适用。', ja: 'X作成はModelXDのサービスです。このページの内容はX作成にも適用されます。', ko: 'X창작은 ModelXD의 서비스입니다. 이 페이지의 내용이 X창작에도 적용됩니다.' },
   // ── Brand + nav ──
   // Landing: value snapshot bar + tier comparator (CC, July 25).

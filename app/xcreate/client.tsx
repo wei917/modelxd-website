@@ -14,8 +14,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
-import StandaloneLibrary from './StandaloneLibrary'
 import StandaloneTemplates from './StandaloneTemplates'
+import { isStudioType, onStudioTypeRequest, publishStudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
@@ -1031,8 +1031,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const isStandalone = site === 'xcreate'
   useRequireAuth(!isStandalone)
   const { show: showAuth } = useAuthModal()
+  // ?view= was the door's old navigation (Studio / Templates / Library); the
+  // top bar is the four types since Sep 28, and old links are redirected
+  // below. ?type= opens the studio on a type (a top-bar link followed from
+  // another page, or any link that wants one).
   const viewParam = useSearchParams()?.get('view')
-  const standaloneView = viewParam === 'templates' || viewParam === 'creations' ? viewParam : 'create'
+  const searchTypeParam = useSearchParams()?.get('type') ?? null
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -1932,8 +1936,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // when the bar doesn't already say so.
     if (data.job.xcreateId && typeof window !== 'undefined') {
       galleryLoadedRef.current = data.job.xcreateId
-      const currentView = new URLSearchParams(window.location.search).get('view')
-      const want = `?id=${data.job.xcreateId}${isStandalone && (currentView === 'templates' || currentView === 'creations') ? `&view=${currentView}` : ''}`
+      const want = `?id=${data.job.xcreateId}`
       if (window.location.search !== want) {
         const url = new URL(window.location.href)
         url.search = want
@@ -2249,9 +2252,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (newRowId && typeof window !== 'undefined') {
       galleryLoadedRef.current = newRowId  // don't let the ?id= loader re-open a run already live here
       const url = new URL(window.location.href)
-      const currentView = url.searchParams.get('view')
       url.search = `?id=${newRowId}`
-      if (isStandalone && (currentView === 'templates' || currentView === 'creations')) url.searchParams.set('view', currentView)
       window.history.replaceState({}, '', url.toString())
       window.dispatchEvent(new CustomEvent('xcreate:run-started', { detail: { id: newRowId, prompt, mode } }))
     }
@@ -3152,27 +3153,51 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // clear didn't come from our own replaceState bookkeeping, reset to a
   // fresh composer.
   const prevIdParamRef = useRef<string | null>(searchIdParam)
-  const prevStandaloneViewRef = useRef(standaloneView)
   useEffect(() => {
     const prev = prevIdParamRef.current
-    const prevView = prevStandaloneViewRef.current
     prevIdParamRef.current = searchIdParam
-    prevStandaloneViewRef.current = standaloneView
-    // The standalone navigation changes views, not the active creation.
-    // Restore its durable link when returning from Templates or My creations.
-    if (isStandalone && prevView !== 'create' && standaloneView === 'create' && !searchIdParam) {
-      if (xcreateId) {
-        const url = new URL(window.location.href)
-        url.searchParams.set('id', xcreateId)
-        window.history.replaceState({}, '', url.toString())
-      }
-      return
-    }
-    if (searchIdParam || !prev || (isStandalone && standaloneView !== 'create')) return
+    if (searchIdParam || !prev) return
     if (urlClearedByCodeRef.current) { urlClearedByCodeRef.current = false; return }
     reset()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchIdParam, isStandalone, standaloneView])
+  }, [searchIdParam])
+
+  // The door's top bar carries the four types (owner, Sep 28, as XTell's
+  // carries its temples). The studio publishes the type it is making and
+  // takes the bar's requests. With a run or its results on screen, a request
+  // opens a fresh composer in that type, as New does: the run goes on
+  // server-side and waits in the Library.
+  const switchType = (next: Mode) => {
+    setFromOpen(false)
+    if (phase !== 'setup' || slots.length > 0) reset()
+    if (next !== mode) { setMode(next); setActiveTemplateId(null) }
+  }
+  const switchTypeRef = useRef(switchType)
+  switchTypeRef.current = switchType
+  useEffect(() => {
+    if (!isStandalone) return
+    return onStudioTypeRequest(type => switchTypeRef.current(type))
+  }, [isStandalone])
+  useEffect(() => { if (isStandalone) publishStudioType(mode) }, [isStandalone, mode])
+  useEffect(() => () => publishStudioType(null), [])
+  // ?type= is a seed, consumed and stripped like ?model=.
+  useEffect(() => {
+    if (!isStandalone || !isStudioType(searchTypeParam)) return
+    switchTypeRef.current(searchTypeParam)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('type')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }, [isStandalone, searchTypeParam])
+  // Old ?view= links: the Library moved to the account page, the templates
+  // under the composer (Sep 28).
+  useEffect(() => {
+    if (!isStandalone || !viewParam) return
+    if (viewParam === 'creations') { router.replace('/profile'); return }
+    const url = new URL(window.location.href)
+    url.searchParams.delete('view')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+    if (viewParam === 'templates') requestAnimationFrame(() => document.getElementById('xcs-templates')?.scrollIntoView({ block: 'start' }))
+  }, [isStandalone, viewParam, router])
 
   // Load a saved creation back into the Create tab so the user can continue
   // chatting with any model from that run. `continueIdx` is the index into the
@@ -3836,12 +3861,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       <div className="xduel-page">
         <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
-          {isStandalone ? <header className={`xcs-heading${standaloneView !== 'create' ? ' xcs-heading-wide' : ''}`}>
+          {isStandalone ? <header className="xcs-heading">
             {/* Studio's title is www's own XCreate headline (owner, Sep 26: the
                 earlier slogan read as nothing); its eyebrow would repeat it. */}
-            {standaloneView !== 'create' && <p className="xcs-eyebrow">{copy.eyebrow}</p>}
-            <h1>{standaloneView === 'templates' ? copy.templatesTitle : standaloneView === 'creations' ? copy.creationsTitle : t('xcreate.subtitle')}</h1>
-            <p>{standaloneView === 'templates' ? copy.templatesSubtitle : standaloneView === 'creations' ? copy.creationsSubtitle : copy.subtitle}</p>
+            <h1>{t('xcreate.subtitle')}</h1>
+            <p>{copy.subtitle}</p>
           </header> : <>
             <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
@@ -3901,11 +3925,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               composer = describe an edit + pick ANY edit-capable model.
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
-          {isStandalone && standaloneView === 'templates' ? (
-            <StandaloneTemplates showcase={showcase} disabled={isLocked}
-              onSelect={template => { if (!isLocked) { void applyTemplate(template); router.push('/', { scroll: true }) } }}
-              onNew={reset} />
-          ) : isStandalone && standaloneView === 'creations' ? <StandaloneLibrary onNew={reset} /> : phase === 'workflow' ? (
+          {phase === 'workflow' ? (
             <div>
               {/* Strip ⇄ canvas toggle. The canvas is the ComfyUI-style
                   board: nodes + wires + click-to-branch (CC, July 27). */}
@@ -4189,17 +4209,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   className={isStandalone ? 'xcs-mode-block' : undefined}
                   style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
                 >
-                  {isStandalone && <label className="xcs-mobile-mode">{t('xcreate.generate')}
-                    <select value={mode} disabled={isLocked} onChange={e => { setFromOpen(false); setMode(e.target.value as Mode); setActiveTemplateId(null) }}>
-                      {(['video', 'image', 'text', 'audio'] as Mode[]).map(m => <option key={m} value={m}>{t(`mode.${m}`)}</option>)}
-                    </select>
-                  </label>}
                   <div className="mode-row">
-                    {/* Column 1 — "Generate:" + segmented mode group. */}
-                    <div className="mode-col">
+                    {/* Column 1 — "Generate:" + segmented mode group. The
+                        XCreate door has none: its top bar carries the types
+                        (owner, Sep 28). */}
+                    {!isStandalone && <div className="mode-col">
                       <div className="field-label">{t('xcreate.generate')}</div>
                       <div className="mode-seg">
-                        {((isStandalone ? ['video', 'image', 'text', 'audio'] : ['text', 'image', 'video', 'audio']) as Mode[]).map(m => (
+                        {(['text', 'image', 'video', 'audio'] as Mode[]).map(m => (
                           <button key={m} className={`mode-seg-btn ${mode === m ? 'active' : ''}`}
                             disabled={isLocked}
                             onClick={() => {
@@ -4213,7 +4230,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </div>}
 
                     {/* Column 2 — "From:" + small dropdown list of the
                         current mode's sub-modes. */}
@@ -4250,7 +4267,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 </div>
 
                 {isStandalone && <div className="xcs-prompt-section">
-                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label><Link href="/?view=templates">{copy.useTemplate} ↗</Link></div>
+                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label>
+                    {/* The templates are a section further down this page now (Sep 28). */}
+                    {phase === 'setup' && slots.length === 0 && XCREATE_TEMPLATES.some(item => item.mode === mode) && <a href="#xcs-templates" onClick={event => {
+                      const section = document.getElementById('xcs-templates')
+                      if (!section) return
+                      event.preventDefault()
+                      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }}>{copy.useTemplate} ↓</a>}
+                  </div>
                   {promptComposer}
                 </div>}
 
@@ -5047,12 +5072,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
                 )}
 
-                {/* Trending on social media (Sep 26): the top of the week's most-
-                    liked AI posts that share their prompt, under the standalone
-                    composer; Templates has all of them. Setup screen only, like
-                    the wall above. Renders nothing for a mode with no posts. */}
+                {/* The door's one page (Sep 28: the top bar carries the types):
+                    the templates for the current type, then what is trending
+                    on social media for it (Sep 26). Setup screen only, like the
+                    wall above; each renders nothing for a type it has none of. */}
+                {isStandalone && phase === 'setup' && slots.length === 0 && (
+                  <StandaloneTemplates mode={mode} onSelect={template => { void applyTemplate(template) }} />
+                )}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
-                  <StandaloneTrending kind="all"
+                  <StandaloneTrending kind={mode}
                     onUse={template => { void applyTemplate(template) }} />
                 )}
 

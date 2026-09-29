@@ -115,9 +115,12 @@ isn't entitled. All the actual UI is in `client.tsx`.
 **Own front door (Sep 26).** On `xcreate.modelxd.com` the studio is `/` (and
 `/xcreate`), beside profile/terms/login; nothing else is served there. Its
 name follows the language like XTell's X先知: X創作 / X创作 / X作成 / X창작
-(`xcreate.site.brand`, equal to www's `nav.xcreate`; Sep 28). The
-studio's views are Codex's (`/` Create, `/?view=templates`,
-`/?view=creations`); the shell around them (top bar, footer, sign-in,
+(`xcreate.site.brand`, equal to www's `nav.xcreate`; Sep 28). Since Sep 28
+the top bar carries the four types (Text, Image, Video, Audio) as XTell's
+carries its temples: the studio (Codex's) is the door's one page, with the
+templates for the chosen type under the composer, and the Library is on the
+account page (`studio-type.ts` links the bar and the studio; old `?view=`
+links redirect). The shell around it (top bar, footer, sign-in,
 account page, legal note) is `app/components/xcreate/*` with its own
 `xcreate-shell.css`, every rule scoped to `html[data-site="xcreate"]` because
 Nav loads it on every host. The `--xc-*` palette is defined there once. A

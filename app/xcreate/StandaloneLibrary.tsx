@@ -6,6 +6,9 @@ import { useAuthModal } from '@/lib/AuthModalContext'
 import { useLang } from '@/lib/i18n'
 import ModeIcon from '../components/ModeIcon'
 import { xcreateStudioCopy } from './standalone-copy'
+// The account page shows the Library without the studio, so it brings the
+// studio's stylesheet (every rule scoped to the XCreate door).
+import './standalone.css'
 
 type Mode = 'image' | 'video' | 'text' | 'audio'
 type Creation = {
@@ -50,7 +53,7 @@ export default function StandaloneLibrary({ onNew }: { onNew: () => void }) {
       <button className="xcs-secondary" onClick={onNew}>+ {copy.newCreation}</button>
     </div>
     {status === 'loading' && <p className="xcs-empty" role="status">{copy.loading}</p>}
-    {status === 'auth' && <div className="xcs-empty"><button className="xcs-primary" onClick={() => show('/?view=creations')}>{copy.signIn}</button></div>}
+    {status === 'auth' && <div className="xcs-empty"><button className="xcs-primary" onClick={() => show('/profile')}>{copy.signIn}</button></div>}
     {status === 'error' && <div className="xcs-empty" role="alert"><p>{copy.error}</p><button className="xcs-secondary" onClick={() => setRetry(n => n + 1)}>{copy.retry}</button></div>}
     {status === 'ready' && data && <>
       {data.rows.length === 0 ? <p className="xcs-empty">{filter === 'all' ? copy.empty : copy.emptyFilter}</p> : <div className="xcs-library-grid">

@@ -3,25 +3,22 @@
 // shared pages borrow on that host (the wordmark for the sign-in dialog, the
 // note on the legal pages). Nav.tsx swaps this in when useSite() is
 // 'xcreate'; the root layout renders the footer there. The studio itself is
-// app/xcreate/client.tsx (Codex). The views are URL state the studio owns:
-// `/` Create, `/?view=creations`, `/?view=templates` (Sep 26 contract).
+// app/xcreate/client.tsx (Codex). The top bar carries the four types the
+// studio makes, as XTell's carries its temples (owner, Sep 28: "do the same
+// as xtell"): the studio is the door's one page, with the templates under
+// its composer, and the Library lives on the account page. The language
+// picker moved there too, as on XTell.
 
 import Link from 'next/link'
-import { Suspense, useEffect } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
-import { LANGS, useLang, type Lang } from '../../../lib/i18n'
+import { useLang } from '../../../lib/i18n'
 import { useSite } from '../../../lib/useSite'
+import ModeIcon from '../ModeIcon'
+import { STUDIO_TYPES, requestStudioType, useStudioType } from './studio-type'
 import './xcreate-shell.css'
-
-export type XCreateView = 'create' | 'creations' | 'templates'
-
-const VIEWS: { view: XCreateView; href: string; label: string }[] = [
-  { view: 'create',    href: '/',               label: 'xcreate.site.nav.create' },
-  { view: 'creations', href: '/?view=creations', label: 'xcreate.site.nav.creations' },
-  { view: 'templates', href: '/?view=templates', label: 'xcreate.site.nav.templates' },
-]
 
 /** The mark: the ModelXD logo beside the name in the reader's language
  *  (XCreate, X創作 / X创作, X作成, X창작; owner, Sep 28, as XTell is X先知),
@@ -35,33 +32,53 @@ export function XCreateMark() {
   return <span className="xcs-brand"><img className="xcs-logo" src="/xcreate/logo-64.png" alt="" width={26} height={26} /><span><span className="xcs-accent">{brand.slice(0, 1)}</span>{brand.slice(1)}</span></span>
 }
 
-function viewOf(param: string | null | undefined): XCreateView {
-  return param === 'creations' || param === 'templates' ? param : 'create'
+/** The four types in one row, icon above the label, as XTell's temples:
+ *  sideways scroll with arrows when the row does not fit (a phone). The
+ *  studio's current type is marked; off the studio none is. On the studio a
+ *  click switches its type in place; elsewhere the link opens the studio on
+ *  that type (`/?type=`). */
+function Types() {
+  const { lang, t } = useLang()
+  const active = useStudioType()
+  const row = useRef<HTMLElement>(null)
+  const [more, setMore] = useState({ left: false, right: false })
+  useEffect(() => {
+    const el = row.current
+    if (!el) return
+    const check = () => setMore({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', check); ro.disconnect() }
+  }, [lang])
+  const scrollRow = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
+  return <div className="xcs-types-wrap">
+    <nav ref={row} className="xcs-types" aria-label={t('xcreate.site.navigation')}>
+      {STUDIO_TYPES.map(type => <Link key={type} href={`/?type=${type}`} aria-current={active === type ? 'page' : undefined}
+        onClick={event => {
+          if (active === null || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+          event.preventDefault()
+          requestStudioType(type)
+        }}>
+        <ModeIcon m={type} /><span>{t('mode.' + type)}</span>
+      </Link>)}
+    </nav>
+    {more.left && <button type="button" className="xcs-types-arrow is-left" tabIndex={-1} aria-hidden="true" onClick={() => scrollRow(-1)}>‹</button>}
+    {more.right && <button type="button" className="xcs-types-arrow is-right" tabIndex={-1} aria-hidden="true" onClick={() => scrollRow(1)}>›</button>}
+  </div>
 }
 
-/** Nav links + the tab title. Reads the query, so it renders under Suspense
- *  (a statically rendered page cannot know the query); the fallback is the
- *  same links with Create current. */
-function Views({ view }: { view: XCreateView | null }) {
-  const { t } = useLang()
-  const pathname = usePathname()
-  const studio = pathname === '/' || pathname === '/xcreate'
-  return <nav className="xcs-nav" aria-label={t('xcreate.site.navigation')}>
-    {VIEWS.map(v => <Link key={v.view} href={v.href} aria-current={studio && (view ?? 'create') === v.view ? 'page' : undefined}>{t(v.label)}</Link>)}
-  </nav>
-}
-
-function LiveViews() {
+/** The tab title follows the page and the language. The server's title is
+ *  the first paint's and sits in <head> before it (next.config
+ *  htmlLimitedBots), so a title set here is not overwritten afterwards. */
+function useTabTitle() {
   const { lang, t } = useLang()
   const pathname = usePathname()
-  const view = viewOf(useSearchParams()?.get('view'))
-  // The tab title follows the page, the view and the language. The server's
-  // title is the first paint's and sits in <head> before it (next.config
-  // htmlLimitedBots), so a title set here is not overwritten afterwards.
   useEffect(() => {
     const compute = () => {
       const brand = t('xcreate.site.brand')
-      if (pathname === '/' || pathname === '/xcreate') return view === 'create' ? brand : `${t('xcreate.site.nav.' + view)} | ${brand}`
+      if (pathname === '/' || pathname === '/xcreate') return brand
       if (pathname === '/profile') return `${t('profile.account')} | ${brand}`
       if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
       if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
@@ -69,13 +86,13 @@ function LiveViews() {
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
     apply()
-  }, [lang, t, pathname, view])
-  return <Views view={view} />
+  }, [lang, t, pathname])
 }
 
 export default function XCreateNav({ user }: { user: User | null }) {
-  const { lang, setLang, t } = useLang()
+  const { t } = useLang()
   const { show } = useAuthModal()
+  useTabTitle()
   const initial = (user?.user_metadata?.full_name || user?.email || 'X').slice(0, 1).toUpperCase()
   // The Google photo, as www's nav shows it; the initial only without one
   // (owner, Sep 26: a letter read as "not updated after sign in").
@@ -94,11 +111,8 @@ export default function XCreateNav({ user }: { user: User | null }) {
       }}>{t('xtell.site.skip')}</a>
       <div className="xcs-top-inner">
         <Link href="/" className="xcs-home" aria-label={t('xcreate.site.brand')}><XCreateMark /></Link>
-        <Suspense fallback={<Views view={null} />}><LiveViews /></Suspense>
+        <Types />
         <div className="xcs-actions">
-          <select className="xcs-lang" value={lang} onChange={e => setLang(e.target.value as Lang)} aria-label={t('xtell.site.language')}>
-            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-          </select>
           {user
             ? <Link href="/profile" className="xcs-avatar" aria-label={t('profile.account')}>{photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <span aria-hidden="true">{initial}</span>}</Link>
             : <button type="button" className="xcs-signin" onClick={() => show()}>{t('auth.signin')}</button>}

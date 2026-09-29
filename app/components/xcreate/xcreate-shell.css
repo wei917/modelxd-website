@@ -100,22 +100,33 @@ html[data-site="xcreate"] .battle-card { cursor: auto; }
 /* Sized in em so it scales with the wordmark (top bar, sign-in dialog). */
 .xcs-logo { width: 1.1em; height: 1.1em; border-radius: .24em; flex-shrink: 0; }
 .xcs-accent { color: var(--xc-accent); }
-.xcs-nav { display: flex; align-self: stretch; gap: 26px; }
-.xcs-nav a {
-  position: relative; display: flex; align-items: center;
-  color: var(--xc-secondary); font-size: 14px; text-decoration: none; white-space: nowrap;
+/* The four types, one row of icon over label, as XTell's temples (Sep 28).
+   The row scrolls sideways when it does not fit, with arrows at its edges
+   for a pointer; the current type wears the accent and an underline. */
+.xcs-home { flex: none; }
+.xcs-types-wrap { position: relative; display: flex; align-self: stretch; min-width: 0; }
+.xcs-types {
+  display: flex; align-items: stretch; gap: 6px; min-width: 0;
+  overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth;
 }
-.xcs-nav a:hover { color: var(--xc-ink); }
-.xcs-nav a[aria-current="page"] { color: var(--xc-ink); font-weight: 600; }
-.xcs-nav a[aria-current="page"]::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
-  background: var(--xc-accent);
+.xcs-types::-webkit-scrollbar { display: none; }
+.xcs-types a {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  min-width: 64px; padding: 8px 10px 6px; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0;
+  color: var(--xc-secondary); font-size: 13px; line-height: 1.2; text-decoration: none; white-space: nowrap;
 }
-.xcs-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-.xcs-lang {
-  height: 34px; padding: 0 8px; border: 1px solid var(--xc-rule); border-radius: 8px;
-  background: var(--xc-paper); color: var(--xc-ink); font: 13px var(--xc-font);
+.xcs-types a svg { width: 24px; height: 24px; }
+.xcs-types a:hover { color: var(--xc-ink); background: var(--xc-soft); }
+.xcs-types a[aria-current="page"] { color: var(--xc-accent); border-bottom-color: var(--xc-accent); font-weight: 600; }
+.xcs-types a:focus-visible { outline: 2px solid var(--xc-accent); outline-offset: -2px; }
+.xcs-types-arrow {
+  position: absolute; top: 0; bottom: 0; width: 34px; padding: 0; border: 0;
+  font: 24px/1 var(--xc-font); color: var(--xc-secondary); cursor: pointer;
 }
+.xcs-types-arrow.is-left { left: 0; text-align: left; background: linear-gradient(to right, var(--xc-paper) 55%, transparent); }
+.xcs-types-arrow.is-right { right: 0; text-align: right; background: linear-gradient(to left, var(--xc-paper) 55%, transparent); }
+.xcs-types-arrow:hover { color: var(--xc-accent); }
+.xcs-actions { flex: none; display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .xcs-avatar {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
   display: grid; place-items: center;
@@ -180,11 +191,10 @@ html[data-site="xcreate"] .battle-card { cursor: auto; }
   background: var(--xc-accent); color: #fff; font: 600 14px var(--xc-font); text-decoration: none;
 }
 .xcs-button:hover { filter: brightness(.94); }
-.xcs-creations {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px;
-  padding: 20px 22px; margin-bottom: 36px;
-  border: 1px solid var(--xc-rule); border-radius: var(--xc-radius); background: var(--xc-paper);
-}
+/* The Library on the account page: a heading, then the studio's own
+   Library (toolbar, cards, pages). */
+.xcs-creations { margin-bottom: 36px; }
+.xcs-creations-head { margin-bottom: 18px; }
 .xcs-creations h2 { margin: 0 0 4px; font-family: var(--xc-display); font-size: 21px; font-weight: 600; letter-spacing: -.35px; color: var(--xc-ink); }
 .xcs-creations p { margin: 0; color: var(--xc-secondary); font-size: 13px; }
 
@@ -214,16 +224,16 @@ html[data-site="xcreate"] .xcreate-auth .auth-features { border-top-color: var(-
 
 /* ── Phones ──────────────────────────────────────────────────────────── */
 @media (max-width: 650px) {
-  .xcs-top-inner { flex-wrap: wrap; gap: 0 12px; min-height: 0; padding: 8px 16px 0; }
+  /* One row on a phone too, as XTell's: the types scroll if they must. */
+  .xcs-top-inner { gap: 8px; min-height: 58px; padding: 0 10px; }
   .xcs-home { min-height: 44px; }
-  .xcs-nav { order: 3; flex-basis: 100%; justify-content: space-between; gap: 12px; }
-  .xcs-nav a { min-height: 44px; }
-  .xcs-lang { height: 40px; font-size: 16px; }
+  .xcs-brand { font-size: 20px; gap: 7px; }
+  .xcs-types { gap: 2px; }
+  .xcs-types a { min-width: 48px; padding: 6px 5px 4px; gap: 4px; font-size: 11px; }
+  .xcs-types a svg { width: 22px; height: 22px; }
   .xcs-avatar, .xcs-signin { height: 40px; }
   .xcs-avatar { width: 40px; }
   .xcs-footer-inner { flex-direction: column; align-items: flex-start; padding: 14px 16px 22px; }
   .xcs-account-title { font-size: 29px; }
   .xcs-account-welcome { padding: 48px 16px 72px; }
-  .xcs-creations { padding: 16px; }
-  .xcs-creations .xcs-button { width: 100%; min-height: 48px; }
 }
