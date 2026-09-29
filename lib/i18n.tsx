@@ -1275,6 +1275,8 @@ export const STRINGS: Record<string, Entry> = {
   'nav.lang':          { en: 'Language', 'zh-Hant': '語言', 'zh-Hans': '语言', ja: '言語', ko: '언어' },
   'nav.terms':        { en: 'Terms', 'zh-Hant': '服務條款', 'zh-Hans': '服务条款', ja: '利用規約', ko: '이용약관' },
   'nav.privacy':      { en: 'Privacy', 'zh-Hant': '隱私政策', 'zh-Hans': '隐私政策', ja: 'プライバシー', ko: '개인정보처리방침' },
+  // Japan's 特定商取引法 disclosure (Sep 29), linked on every door.
+  'nav.tokushoho':    { en: 'Japan legal notice', 'zh-Hant': '特定商取引法標示', 'zh-Hans': '特定商取引法标示', ja: '特定商取引法に基づく表記', ko: '특정상거래법 표기' },
   'nav.contact':      { en: 'Contact Us', 'zh-Hant': '聯絡我們', 'zh-Hans': '联系我们', ja: 'お問い合わせ', ko: '문의하기' },
   'nav.bug':          { en: 'Report a Bug', 'zh-Hant': '回報問題', 'zh-Hans': '报告问题', ja: 'バグを報告', ko: '버그 신고' },
   'contact.copiedfmt': { en: 'email {e} copied', 'zh-Hant': '已複製 {e}', 'zh-Hans': '已复制 {e}', ja: '{e} をコピーしました', ko: '{e} 복사됨' },

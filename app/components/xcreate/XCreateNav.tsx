@@ -82,6 +82,7 @@ function useTabTitle() {
       if (pathname === '/profile') return `${t('profile.account')} | ${brand}`
       if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
       if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
+      if (pathname === '/tokushoho') return `${t('nav.tokushoho')} | ${brand}`
       return null
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
@@ -131,6 +132,7 @@ export function XCreateFooter() {
         <span>{t('xcreate.site.footnote')}</span>
         <Link href="/terms">{t('nav.terms')}</Link>
         <Link href="/privacy">{t('nav.privacy')}</Link>
+        <Link href="/tokushoho">{t('nav.tokushoho')}</Link>
       </nav>
     </div>
   </footer>

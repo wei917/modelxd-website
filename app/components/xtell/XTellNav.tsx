@@ -81,6 +81,7 @@ export default function XTellNav({ user }: { user: User | null }) {
       if (pathname === '/profile') return `${t('xtell.site.account')} | ${brand}`
       if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
       if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
+      if (pathname === '/tokushoho') return `${t('nav.tokushoho')} | ${brand}`
       return null
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
@@ -146,6 +147,6 @@ export function XTellFooter() {
     {/* A way to reach us (owner, Sep 27: the street had none): the support
         address, shown as it is (Sep 28), and the bug report form, which
         works signed out too. */}
-    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }

@@ -783,6 +783,7 @@ export default function Nav() {
       <div className="nav-foot">
         <Link href="/terms" className={pathname === '/terms' ? 'active' : ''}>{t('nav.terms')}</Link>
         <Link href="/privacy" className={pathname === '/privacy' ? 'active' : ''}>{t('nav.privacy')}</Link>
+        <Link href="/tokushoho" className={pathname === '/tokushoho' ? 'active' : ''}>{t('nav.tokushoho')}</Link>
         <ContactEmail />
         <BugReportLink />
       </div>
@@ -833,6 +834,7 @@ export default function Nav() {
         <div className="nav-foot" style={{ marginTop: 8 }}>
           <Link href="/terms">{t('nav.terms')}</Link>
           <Link href="/privacy">{t('nav.privacy')}</Link>
+          <Link href="/tokushoho">{t('nav.tokushoho')}</Link>
           <ContactEmail />
         <BugReportLink />
         </div>

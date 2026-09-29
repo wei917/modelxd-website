@@ -39,10 +39,10 @@ export const SITE_HEADER = 'x-modelxd-site'
 export const SITE_COOKIE = 'modelxd_site'
 
 /** Pages the XTell host serves. Everything else 302s to `/` (which is the street). */
-export const XTELL_ROUTES = ['/xtell', '/profile', '/terms', '/privacy', '/login', '/auth', '/coming-soon']
+export const XTELL_ROUTES = ['/xtell', '/profile', '/terms', '/privacy', '/tokushoho', '/login', '/auth', '/coming-soon']
 
 /** Pages the XCreate host serves. Everything else 302s to `/` (which is the studio). */
-export const XCREATE_ROUTES = ['/xcreate', '/profile', '/terms', '/privacy', '/login', '/auth', '/coming-soon']
+export const XCREATE_ROUTES = ['/xcreate', '/profile', '/terms', '/privacy', '/tokushoho', '/login', '/auth', '/coming-soon']
 
 const ROUTES: Record<Exclude<Site, 'modelxd'>, string[]> = { xtell: XTELL_ROUTES, xcreate: XCREATE_ROUTES }
 
