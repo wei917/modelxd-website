@@ -43,11 +43,7 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-auth-refiner { display: contents; }
 .xcs-results { width: 100%; padding-top: 20px; }
 .xcs-results .battle-card { min-width: 0; }
-.xcs-templates, .xcs-library { max-width: 1180px; margin: auto; }
-/* The tools under the composer (Sep 28), as wide as the trending feed. */
-.xcs-setup > .xcs-templates { max-width: 1180px; margin-top: 40px; scroll-margin-top: 84px; }
-.xcs-template-section { margin: 32px 0; }
-.xcs-template-section h2 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+.xcs-library { max-width: 1180px; margin: auto; }
 .xcs-library-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
 .xcs-filter-label { display: flex; align-items: center; gap: 12px; color: var(--muted2); font-size: 13px; }
 .xcs-filter-label select { appearance: auto; min-height: 44px; border: 1px solid var(--border2); background: var(--surface); color: var(--white); border-radius: 9px; padding: 8px 14px; font: inherit; }

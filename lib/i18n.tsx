@@ -288,7 +288,6 @@ export const STRINGS: Record<string, Entry> = {
   // www, held equal by scripts/test-lang.ts.
   'xcreate.site.brand':         { en: 'XCreate', 'zh-Hant': 'X創作', 'zh-Hans': 'X创作', ja: 'X作成', ko: 'X창작' },
   'xcreate.site.nav.creations': { en: 'Library', 'zh-Hant': '作品庫', 'zh-Hans': '作品库', ja: 'ライブラリ', ko: '라이브러리' },
-  'xcreate.site.nav.templates': { en: 'Templates', 'zh-Hant': '範本', 'zh-Hans': '模板', ja: 'テンプレート', ko: '템플릿' },
   'xcreate.site.navigation':    { en: 'XCreate navigation', 'zh-Hant': 'X創作 導覽', 'zh-Hans': 'X创作 导航', ja: 'X作成 ナビゲーション', ko: 'X창작 탐색' },
   'xcreate.site.tagline':       { en: 'A little more possibility.', 'zh-Hant': '多一點可能。', 'zh-Hans': '多一点可能。', ja: '可能性を、もう少し。', ko: '가능성을 조금 더.' },
   'xcreate.site.footnote':      { en: 'Your work stays private · One ModelXD account and balance', 'zh-Hant': '作品私人保存 · ModelXD 帳戶與點數共用', 'zh-Hans': '作品私人保存 · ModelXD 账户与点数共用', ja: '作品は非公開 · ModelXDのアカウントと残高を共用', ko: '작품은 비공개 · ModelXD 계정과 잔액 공용' },

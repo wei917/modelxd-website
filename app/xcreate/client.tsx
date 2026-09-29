@@ -14,7 +14,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
-import StandaloneTools from './StandaloneTools'
 import { isStudioType, onStudioTypeRequest, publishStudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import { xcreateStudioCopy } from './standalone-copy'
@@ -3192,14 +3191,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }, [isStandalone, searchTypeParam])
   // Old ?view= links: the Library moved to the account page; Templates lands
-  // on the studio, at its tools when the type has some (Sep 28).
+  // on the studio (the templates and tools were taken off it, Sep 28).
   useEffect(() => {
     if (!isStandalone || !viewParam) return
     if (viewParam === 'creations') { router.replace('/profile'); return }
     const url = new URL(window.location.href)
     url.searchParams.delete('view')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-    if (viewParam === 'templates') requestAnimationFrame(() => document.getElementById('xcs-tools')?.scrollIntoView({ block: 'start' }))
   }, [isStandalone, viewParam, router])
 
   // Load a saved creation back into the Create tab so the user can continue
@@ -5067,13 +5065,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 )}
 
                 {/* The door's one page (Sep 28: the top bar carries the types):
-                    the tools for the current type (the templates were taken
-                    off, owner, Sep 28), then what is trending on social media
-                    for it (Sep 26). Setup screen only, like the wall above;
-                    each renders nothing for a type it has none of. */}
-                {isStandalone && phase === 'setup' && slots.length === 0 && (
-                  <StandaloneTools mode={mode} onSelect={template => { void applyTemplate(template) }} />
-                )}
+                    under the composer, only what is trending on social media
+                    for the current type (Sep 26); the templates and then the
+                    tools were taken off (owner, Sep 28: "remove 範本 section",
+                    "remove 工具 in image creation as well"). Setup screen
+                    only, like the wall above. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
                   <StandaloneTrending kind={mode}
                     onUse={template => { void applyTemplate(template) }} />
