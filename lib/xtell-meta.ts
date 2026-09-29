@@ -23,7 +23,7 @@ const XTELL_META: Record<Lang, Metadata> = {
 export const XTELL_TEMPLE_NAMES: Record<string, Record<Lang, string>> = {
   bazi: {"en": "BaZi Temple", "zh-Hant": "八字廟", "zh-Hans": "八字庙", "ja": "八字廟", "ko": "팔자묘"},
   ziwei: {"en": "Zi Wei Temple", "zh-Hant": "紫微斗數廟", "zh-Hans": "紫微斗数庙", "ja": "紫微斗数廟", "ko": "자미두수묘"},
-  yuelao: {"en": "Yue Lao Temple", "zh-Hant": "月老廟", "zh-Hans": "月老庙", "ja": "月老廟", "ko": "월하노인묘"},
+  yuelao: {"en": "Yue Lao Temple", "zh-Hant": "月老廟", "zh-Hans": "月老庙", "ja": "月老廟", "ko": "월하노인 궁합"},
   guandi: {"en": "Guan Di Temple", "zh-Hant": "關帝廟", "zh-Hans": "关帝庙", "ja": "関帝廟", "ko": "관제묘"},
   mazu: {"en": "Mazu Temple", "zh-Hant": "媽祖廟", "zh-Hans": "妈祖庙", "ja": "媽祖廟", "ko": "마조묘"},
   simianfo: {"en": "Four-Faced Buddha", "zh-Hant": "四面佛", "zh-Hans": "四面佛", "ja": "四面仏", "ko": "사면불"},

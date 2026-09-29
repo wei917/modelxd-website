@@ -12,7 +12,7 @@
 
 import { baziChart, ziweiChart, liuNian, guandiQian, qianCorpus, validQian, validWishes } from '../lib/xtell'
 import { drawQian, throwJiao } from '../lib/xtell-ritual'
-import { nameChart, charInfo, shuli } from '../lib/names'
+import { nameChart, charInfo, shuli, validName } from '../lib/names'
 import { jyotishChart, lahiriAyanamsa, NAKSHATRA, RASI } from '../lib/jyotish'
 
 let failures = 0
@@ -119,6 +119,13 @@ const oy = nameChart('歐陽', '菲')
 eq('歐陽菲 五格 (double surname, single given)', Object.values(oy.ge).map(g => `${g.label}${g.n}`).join(' '), '天格32 人格31 地格15 外格16 總格46')
 const lin = nameChart('林', '安')
 eq('林安 五格 (single/single → 外格 2)', Object.values(lin.ge).map(g => `${g.label}${g.n}`).join(' '), '天格9 人格14 地格7 外格2 總格14')
+// Japan and Korea (Sep 28): three characters a side, 々 as the character it
+// repeats (佐 7 佐 7 木 4 | 由 5 紀 9 子 3), 新字體 as written.
+const jp = nameChart('佐々木', '由紀子')
+eq('佐々木由紀子 五格 (three and three, 々 = 佐)', Object.values(jp.ge).map(g => `${g.label}${g.n}`).join(' '), '天格18 人格9 地格17 外格26 總格35')
+eq('  々 keeps its face, counts as 佐', `${jp.surname[1].ch}${jp.surname[1].strokes}`, '々7')
+eq('names: 1–3 characters, kanji/hanja; 々 never first; no kana, Hangul or four', [validName('王'), validName('歐陽'), validName('長谷川'), validName('由紀子'), validName('々木'), validName('さくら'), validName('이지은'), validName('王大明德')].join(' '), 'true true true true false false false false')
+eq('新字體 counted as written: 沢 桜', strokesOf('沢桜'), '8 10')
 eq('81 數理 wraps: 81 還元 吉, 82 → 2 凶', `${shuli(81).name}${shuli(81).luck} ${shuli(82).n}${shuli(82).luck}`, '還元吉 2凶')
 eq('測字 facts: 林 is 木部 8 畫', `${charInfo('林')!.radical} ${charInfo('林')!.strokes}`, '木 8')
 

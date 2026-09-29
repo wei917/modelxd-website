@@ -151,8 +151,8 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
   if (temple === 'simianfo' && !FACE_KEYS.some(k => String(subj?.wishes?.[k] ?? '').trim())) return 'wish_required'
   // lib/names.ts validName / validChar, mirrored.
   if (temple === 'xingming') {
-    if (!/^[㐀-䶿一-鿿]{1,2}$/.test(String(subj?.surname ?? ''))) return 'surname_invalid'
-    if (!/^[㐀-䶿一-鿿]{1,2}$/.test(String(subj?.given ?? ''))) return 'given_invalid'
+    if (!/^[㐀-䶿一-鿿][㐀-䶿一-鿿々]{0,2}$/.test(String(subj?.surname ?? ''))) return 'surname_invalid'
+    if (!/^[㐀-䶿一-鿿][㐀-䶿一-鿿々]{0,2}$/.test(String(subj?.given ?? ''))) return 'given_invalid'
   }
   if (temple === 'cezi' && !/^[㐀-䶿一-鿿]$/.test(String(subj?.ch ?? ''))) return 'char_invalid'
   // lib/jiemeng.ts dreamProblem, mirrored.
@@ -664,7 +664,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
     isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}) }
-    : temple === 'xingming' ? { temple, surname: surname.trim(), given: given.trim(), gender: birth.gender }
+    : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask }
     : temple === 'yixue' ? {
@@ -2506,11 +2506,14 @@ function NameForm({ surname, given, gender, onSurname, onGiven, onGender, sel, s
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
           {t('xtell.surname')}
-          <input value={surname} maxLength={2} onChange={e => onSurname(e.target.value.replace(/\s/g, '').slice(0, 2))} {...mark(surnameAria)} />
+          {/* No length cap while typing: a Japanese or Korean IME holds the
+              reading (さとう, 3 kana) before it becomes 佐藤, and cutting it at
+              the limit broke the conversion. The length is checked on send. */}
+          <input value={surname} onChange={e => onSurname(e.target.value)} {...mark(surnameAria)} />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
           {t('xtell.given')}
-          <input value={given} maxLength={2} onChange={e => onGiven(e.target.value.replace(/\s/g, '').slice(0, 2))} {...mark(givenAria)} />
+          <input value={given} onChange={e => onGiven(e.target.value)} {...mark(givenAria)} />
         </label>
         {(['male', 'female'] as const).map(g => (
           <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>

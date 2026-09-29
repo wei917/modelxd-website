@@ -107,19 +107,37 @@ export type NameChart = {
   sancai: { tian: string; ren: string; di: string; tianRen: string; renDi: string; label: string }
 }
 
+/** One to three characters (owner, Sep 28: Japan and Korea): Chinese names,
+ *  Japanese three-kanji surnames and given names (長谷川, 由紀子), Korean names
+ *  in 漢字. 々 repeats the character before it, so it cannot come first.
+ *  Kana and Hangul are not read: their stroke conventions differ by school. */
 export function validName(s: unknown): s is string {
-  return typeof s === 'string' && /^[㐀-䶿一-鿿]{1,2}$/.test(s)
+  return typeof s === 'string' && /^[㐀-䶿一-鿿][㐀-䶿一-鿿々]{0,2}$/.test(s)
+}
+
+/** Each character's info; 々 takes the strokes of the character it repeats
+ *  (佐々木 is 佐 佐 木), as 熊崎式 counts it, and keeps its own face. */
+function namePart(s: string): Array<CharInfo | null> {
+  const out: Array<CharInfo | null> = []
+  for (const ch of s) {
+    const prev = out[out.length - 1]
+    out.push(ch === '々' ? (prev ? { ...prev, ch: '々' } : null) : charInfo(ch))
+  }
+  return out
 }
 
 export function nameChart(surname: string, given: string): NameChart {
-  const sn = [...surname].map(charInfo), gv = [...given].map(charInfo)
+  const sn = namePart(surname), gv = namePart(given)
   const missing = [...sn, ...gv].findIndex(c => !c)
   if (missing >= 0) throw new Error(`no stroke data for ${[...surname, ...given][missing]}`)
   const S = sn.map(c => c!.strokes), G = gv.map(c => c!.strokes)
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
   const singleSurname = S.length === 1, singleGiven = G.length === 1
-  const tian = singleSurname ? S[0] + 1 : S[0] + S[1]
+  // 熊崎式 with any length: 天格 the whole surname, 地格 the whole given
+  // name (a single character adds 1), 人格 where the two meet.
+  const tian = singleSurname ? S[0] + 1 : sum(S)
   const ren = S[S.length - 1] + G[0]
-  const di = singleGiven ? G[0] + 1 : G[0] + G[1]
+  const di = singleGiven ? G[0] + 1 : sum(G)
   const zong = [...S, ...G].reduce((a, b) => a + b, 0)
   const wai = zong - ren + (singleSurname ? 1 : 0) + (singleGiven ? 1 : 0)
   const mk = (key: string, label: string, n: number): Ge => ({ key, label, n, wuxing: wuxingOfNumber(n), shuli: shuli(n) })
@@ -139,6 +157,8 @@ export function nameFacts(c: NameChart, gender: string): string {
   return [
     `姓名：${c.surname.map(x => x.ch).join('')}${c.given.map(x => x.ch).join('')}${gender ? `（${gender === 'male' ? '男' : '女'}）` : ''}`,
     `康熙筆畫：${chars}`,
+    ...([...c.surname, ...c.given].some(x => x.ch === '々') ? ['「々」依所重複之字計畫。'] : []),
+    `筆畫依所寫字形計（日本新字體如沢、桜照寫法計，不換回舊字體；三字姓或三字名依熊崎式加總）。`,
     `五格（五格剖象法，筆畫依康熙字典部首原形，數字一至十以數值計）：`,
     ge,
     `三才：天${c.sancai.tian} 人${c.sancai.ren} 地${c.sancai.di}　天→人 ${c.sancai.tianRen}，人→地 ${c.sancai.renDi}　${c.sancai.label}`,
