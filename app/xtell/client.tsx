@@ -216,6 +216,8 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
   // under the visitor's own session, the temple opens on it, and TempleRoom
   // starts from its subject, chart and turns instead of an empty form.
   const [saved, setSaved] = useState<SavedReading | null>(null)
+  // Bumped by every Continue, so the room remounts even for the visit already on screen.
+  const [opened, setOpened] = useState(0)
   // The front-door guide's suggestion for the room being opened (standalone
   // street only): the feature and the question it prepared. Kept in this
   // tab's sessionStorage too (lib/xtell-handoff.ts), so it survives a reload
@@ -296,6 +298,9 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
   // Resume from inside a temple (its history list): seed the room from the
   // saved row without a page load. Same path ?reading= takes.
   const resume = (row: SavedReading) => {
+    // Every Continue opens the visit afresh (owner bug, Sep 28: after 修改資料,
+    // Continue on the same visit did nothing, the room key was unchanged).
+    setOpened(n => n + 1)
     if (row.temple === 'daily') { openDaily(row as unknown as SavedDaily); return }
     setDailyRow(null)
     setReadingParam(row.id)
@@ -349,7 +354,7 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
         </div>
       </> : <>
         <XTellAuthGate />
-        <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '') + (handoff?.feature.temple === temple ? handoff.feature.id : '')} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
+        <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '') + (handoff?.feature.temple === temple ? handoff.feature.id : '') + `:${opened}`} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
           daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null}
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
@@ -398,7 +403,7 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
             ))}
           </div>
         </>) : (
-          <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '')} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); setDailyRow(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null}
+          <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '') + `:${opened}`} temple={temple} onBack={() => { setReadingParam(null); setSaved(null); setDailyRow(null); setTemple(null) }} initial={saved?.temple === temple ? saved : null}
             daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null} onResume={resume} />
         )}
 
@@ -854,6 +859,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // new visit (the old one stays in history). A 籤 is drawn again, because
   // the stick was confirmed for what was said at the altar.
   const editDetails = () => {
+    // Back at the form, the page is no longer that visit: the address says so
+    // (owner, Sep 28), and a reload opens the form, not the old conversation.
+    setReadingParam(null)
     refreshToken.current++
     clearErr(); setEntered(false)
     if (isQian(temple)) { stickRef.current = null; setStick(null); setRitualBoth('idle') }
