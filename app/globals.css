@@ -3499,6 +3499,12 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 /* 分享 (Sep 28): the small button beside a result, and its dialog (the
    picker's frame, .xtell-tp). */
 .xtell-share-btn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--xtell-rule, var(--border2)); background: #fff; color: var(--xtell-secondary, var(--muted)); border-radius: 999px; padding: 3px 11px; font: inherit; font-size: 12px; font-weight: 600; line-height: 1.5; cursor: pointer; white-space: nowrap; }
+/* 改名 (Sep 28): renaming a saved visit in place. */
+.xtell-rename { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; margin-top: 4px; }
+.xtell-rename input { flex: 1 1 220px; min-width: 0; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 14px; background: #fff; color: var(--xtell-ink, var(--white)); }
+.xtell-rename-save { border: none; background: var(--xtell-vermilion, var(--red)); color: #fff; border-radius: 999px; padding: 7px 16px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.xtell-rename-cancel { border: none; background: none; color: var(--muted2); font: inherit; font-size: 12.5px; cursor: pointer; text-decoration: underline dotted; }
+.xtell-rename [role=alert] { flex-basis: 100%; font-size: 12px; color: var(--xtell-vermilion, var(--red)); }
 /* 幸運餅乾 (Sep 28): the paper slip. */
 .xtell-cookie-slip { position: relative; margin: 4px auto; max-width: 520px; width: 100%; box-sizing: border-box; background: #fffdf7; border: 1px solid var(--xtell-rule, var(--border2)); border-left: 6px solid var(--xtell-vermilion, var(--red)); border-radius: 4px; padding: 18px 22px; box-shadow: 0 2px 10px rgba(0, 0, 0, .06); }
 .xtell-cookie-slip p { margin: 0; font-family: var(--xtell-serif, serif); font-size: 21px; line-height: 1.6; text-align: center; color: var(--xtell-ink, var(--white)); }

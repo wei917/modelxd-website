@@ -40,7 +40,8 @@ import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
-import { describeVisit, eraseReading, notAskedKey } from '../../lib/xtell-history'
+import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../lib/xtell-history'
+import { TitleEditor } from '../components/xtell/TitleEditor'
 import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
@@ -2926,6 +2927,8 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
   // Deleting is permanent, so it asks once, in the row itself.
   const [confirming, setConfirming] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
+  // 改名 (owner, Sep 28): the row being renamed, edited in place.
+  const [renaming, setRenaming] = useState<string | null>(null)
   const client = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
   useEffect(() => {
     let active = true
@@ -2949,6 +2952,12 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
     if (await eraseReading(client(), id)) { setFailed(null); setRows(rs => rs.filter(r => r.id !== id)) }
     else setFailed(id)
   }
+  const rename = async (id: string, text: string) => {
+    if (!(await renameReading(client(), id, text))) return false
+    setRows(rs => rs.map(r => (r.id === id ? { ...r, title: cleanTitle(text) } : r)))
+    setRenaming(null)
+    return true
+  }
   if (!loaded || rows.length === 0) return null
   // One line per visit (owner, Sep 27: "too many info"): what it was about,
   // when, Continue, Delete. Its own card under the form, rows ruled apart.
@@ -2963,7 +2972,12 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
         {rows.map((r, i) => {
           const title = r.temple === 'daily'
             ? t('xtell.dy.visit').replace('{date}', String(r.subject?.date ?? '')).replace('{method}', t(`xtell.dy.${r.subject?.method === 'bazi' ? 'bazi' : 'western'}`))
-            : r.title || describeVisit(t, temple, r.subject) || t(notAskedKey(temple))
+            : r.title || firstAsk(r.turns) || describeVisit(t, temple, r.subject) || t(notAskedKey(temple))
+          if (renaming === r.id) return (
+            <li key={r.id} style={{ padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+              <TitleEditor value={r.title ?? ''} onSave={text => rename(r.id, text)} onCancel={() => setRenaming(null)} />
+            </li>
+          )
           return (
             <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', fontSize: 13.5, borderTop: i ? '1px solid var(--border)' : 'none', flexWrap: confirming === r.id || failed === r.id ? 'wrap' : 'nowrap' }}>
               <span title={title} style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
@@ -2976,6 +2990,7 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
               ) : (<>
                 <span style={{ ...mono, fontSize: 11.5, color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{when(r.created_at)}</span>
                 <button type="button" onClick={() => onResume(r)} style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
+                {r.temple !== 'daily' && <button type="button" onClick={() => { setConfirming(null); setRenaming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.rename')}</button>}
                 <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
               </>)}
               {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteFailed')}</span>}

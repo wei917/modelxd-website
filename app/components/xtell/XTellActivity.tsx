@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../../lib/i18n'
-import { describeVisit, eraseReading, notAskedKey } from '../../../lib/xtell-history'
+import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../../lib/xtell-history'
+import { TitleEditor } from './TitleEditor'
 
 type Saved = { id: string; temple: string; title: string | null; subject: any; cost_cents: number; created_at: string; updated_at: string; turns: Array<{ role: string }> }
 
@@ -19,6 +20,8 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
   // Deleting is permanent, so it asks once, in the row itself.
   const [confirming, setConfirming] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
+  // 改名 (owner, Sep 28): the row being renamed, edited in place.
+  const [renaming, setRenaming] = useState<string | null>(null)
   const client = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
   useEffect(() => {
     let active = true
@@ -39,6 +42,12 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
     if (await eraseReading(client(), id)) { setFailed(null); setRows(rs => rs.filter(r => r.id !== id)) }
     else setFailed(id)
   }
+  const rename = async (id: string, text: string) => {
+    if (!(await renameReading(client(), id, text))) return false
+    setRows(rs => rs.map(r => (r.id === id ? { ...r, title: cleanTitle(text) } : r)))
+    setRenaming(null)
+    return true
+  }
   return <section id="xtell-activity" className="xtell-activity" aria-labelledby="xtell-activity-title">
     <div className="xtell-section-heading"><h2 id="xtell-activity-title">{t('xtell.site.history')}</h2><span>XTell</span></div>
     <p className="xtell-account-note">{t('xtell.site.historyNote')}</p>
@@ -47,6 +56,11 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
       : rows.length === 0 ? <div className="xtell-history-empty"><p>{t('xtell.site.historyEmpty')}</p><a className="xtell-text-link" href={basePath}>{t('xtell.site.street')} <span aria-hidden="true">↗</span></a></div>
       : <ul className="xtell-history-list">{rows.map(row => {
         const asked = (row.turns ?? []).filter(x => x.role === 'user').length
+        const named = row.title || firstAsk(row.turns)
+        if (renaming === row.id) return <li key={row.id} style={{ display: 'block' }}>
+          <strong>{t(`xtell.site.focus.${row.temple}.name`)}</strong>
+          <TitleEditor value={row.title ?? ''} onSave={text => rename(row.id, text)} onCancel={() => setRenaming(null)} />
+        </li>
         return <li key={row.id}>
           <span>
             {/* Named as the explorer and the room name it (tester, Sep 26:
@@ -54,9 +68,9 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
             <strong>{t(`xtell.site.focus.${row.temple}.name`)}</strong>
             {/* Named by what it was about, not "chart only" for every row
                 (audit, product); the first question stays the title. */}
-            <span style={{ display: 'block', fontSize: 13 }}>{row.title || describeVisit(t, row.temple, row.subject) || t(notAskedKey(row.temple))}</span>
-            {row.title && describeVisit(t, row.temple, row.subject) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{describeVisit(t, row.temple, row.subject)}</span>}
-            {!asked && (row.title || describeVisit(t, row.temple, row.subject)) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(notAskedKey(row.temple))}</span>}
+            <span style={{ display: 'block', fontSize: 13 }}>{named || describeVisit(t, row.temple, row.subject) || t(notAskedKey(row.temple))}</span>
+            {named && describeVisit(t, row.temple, row.subject) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{describeVisit(t, row.temple, row.subject)}</span>}
+            {!asked && (named || describeVisit(t, row.temple, row.subject)) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(notAskedKey(row.temple))}</span>}
             <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {asked > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--muted2)' }}>{asked} {t('xtell.saved.turns')}</span>}
           </span>
@@ -70,6 +84,7 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
               </span>
             ) : (<>
               <a className="xtell-button" href={`${basePath}?reading=${row.id}`}>{t('xtell.saved.continue')}</a>
+              {row.temple !== 'daily' && <button type="button" className="xtell-text-link" onClick={() => { setConfirming(null); setRenaming(row.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>{t('xtell.saved.rename')}</button>}
               <button type="button" className="xtell-text-link" onClick={() => { setFailed(null); setConfirming(row.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>{t('xtell.saved.delete')}</button>
             </>)}
             {failed === row.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--xtell-vermilion, var(--red))', textAlign: 'right' }}>{t('xtell.saved.deleteFailed')}</span>}

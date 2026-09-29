@@ -735,6 +735,18 @@ all). A question put to only some is labelled 「問：A、B」. The 分頁 layo
 shows one teacher's thread. A reopened visit re-seats the last question's
 `seats` (before this: whoever answered the last round).
 
+### 改名 (Sep 28)
+
+Both history lists (the room's 「你在這裡的紀錄」 and the account page) offer
+改名 beside 繼續/刪除: the title becomes an input (Enter or 儲存 keeps it,
+Esc or 取消 leaves it). At most 80 characters, the same limit as the
+automatic title (the first question, cut by `xtell_append_turns`); an empty
+name writes null and the list shows the first question again
+(`firstAsk`), else what the room titles by. Written through the visitor's
+own session (owner-update RLS, no migration); a later question never
+overwrites a chosen name (the append keeps a title it finds). 今日運勢
+follow-up rows are not renamable: their list label is built from the date.
+
 ### 追加老師 (Sep 28)
 
 Under the latest question: a seated teacher who has not answered it gets

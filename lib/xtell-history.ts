@@ -91,3 +91,31 @@ export async function eraseReading(sb: any, id: string): Promise<boolean> {
   const { data, error } = await sb.from('xtell_readings').delete().eq('id', id).select('id')
   return !error && Array.isArray(data) && data.length === 1
 }
+
+// ── Renaming a visit (owner, Sep 28) ─────────────────────────────────────────
+// A visit is titled automatically (its first question, cut at 80 characters by
+// xtell_append_turns, or what the room titles it by). The visitor may give it
+// their own name, at most TITLE_MAX characters, the same limit as the
+// automatic one; an empty name goes back to the automatic title. A later
+// question never overwrites a chosen name (the append keeps a title it finds).
+
+export const TITLE_MAX = 80
+
+/** The name as it will be kept: whitespace folded, cut to TITLE_MAX; empty is null. */
+export function cleanTitle(s: unknown): string | null {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim()
+  return t ? [...t].slice(0, TITLE_MAX).join('') : null
+}
+
+/** The automatic title a cleared name goes back to: the first question asked. */
+export function firstAsk(turns: unknown): string | null {
+  const u = Array.isArray(turns) ? turns.find((x: any) => x?.role === 'user' && typeof x.content === 'string' && x.content.trim()) : null
+  return u ? [...String((u as any).content).trim()].slice(0, TITLE_MAX).join('') : null
+}
+
+/** Rename a visit through the visitor's own session (the owner-update policy
+ *  of supabase/105). Read back, so a rename that matched nothing is a failure. */
+export async function renameReading(sb: any, id: string, title: string | null): Promise<boolean> {
+  const { data, error } = await sb.from('xtell_readings').update({ title: cleanTitle(title) }).eq('id', id).select('id')
+  return !error && Array.isArray(data) && data.length === 1
+}
