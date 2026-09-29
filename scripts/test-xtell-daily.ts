@@ -142,6 +142,36 @@ function loadRoute(file: string, modules: Record<string, unknown>) {
   return exports
 }
 
+// ── The writer streams (Sep 29) ────────────────────────────────────────────
+async function writerStreams() {
+  const load = (qwen: (cb: any) => void, stand: string | null) => {
+    const houseCalls: any[] = []
+    const js = ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', 'lib/xtell-daily-model.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText
+    const exports: any = {}
+    const modules: Record<string, unknown> = {
+      '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any) => { qwen(cb) } },
+      '@/lib/models': { getModelByProviderName: async () => ({ enabled: true }) },
+      '@/lib/house-llm': { houseCall: async (o: any) => { houseCalls.push(o); return { content: stand === null ? [] : [{ type: 'text', text: stand }] } } },
+    }
+    vm.runInNewContext(js, { exports, console: { ...console, warn: () => {} }, process, setTimeout, clearTimeout, require: (n: string) => modules[n] }, { filename: 'xtell-daily-model.ts' })
+    return { dailyText: exports.dailyText, houseCalls }
+  }
+  const good = '{"note":"好"}', ok = (t: string) => t === good
+  const run = async (qwen: (cb: any) => void, stand: string | null) => {
+    const w = load(qwen, stand), seen: string[] = []
+    const text = await w.dailyText({ system: 's', content: 'c', userId: 'u', accept: ok, onDelta: (d: string) => seen.push(d), onRestart: () => seen.push('<restart>') })
+    return { text, seen, house: w.houseCalls.length }
+  }
+  const a = await run(cb => { cb.onDelta('{"note"'); cb.onDelta(':"好"}'); cb.onDone() }, 'unused')
+  check('writer: Qwen\'s words pass through as they come; no stand-in', a.text === good && a.seen.join('|') === '{"note"|:"好"}' && a.house === 0)
+  const b = await run(cb => { cb.onDelta('{"note":"lucky 7"}'); cb.onDone() }, good)
+  check('writer: a turned-down reply says restart, then the stand-in\'s whole reply', b.text === good && b.seen.join('|') === '{"note":"lucky 7"}|<restart>|' + good && b.house === 1)
+  const c = await run(cb => { cb.onError(new Error('down')); cb.onDelta('late words') }, good)
+  check('writer: nothing streamed before a failure, no restart; late words never reach the page', c.text === good && c.seen.join('|') === good && c.house === 1)
+  const d = await run(cb => { cb.onDelta('{"no'); cb.onError(new Error('down')) }, null)
+  check('writer: both fail: restart, then nothing more, null', d.text === null && d.seen.join('|') === '{"no|<restart>' && d.house === 1)
+}
+
 /** supabase/109 in memory: the same outcomes as the SQL (proven on PGlite). */
 function fakeDb() {
   let seq = 0
@@ -224,8 +254,18 @@ async function routes() {
   const profileRoute = loadRoute('app/api/xtell/profile/route.ts', { ...common, '@/lib/xtell-daily': daily, '@/lib/xtell-time': time, '@/lib/xtell-places': places })
   // The writer (lib/xtell-daily-model.ts: Qwen, then the stand-in), recorded
   // in the same shape the house call had.
-  const writer = { dailyText: async (o: any) => { const r = await house.houseCall({ system: o.system, messages: [{ role: 'user', content: o.content }] }); const text = r.content[0].text; return o.accept(text) ? text : null } }
-  const dailyRoute = loadRoute('app/api/xtell/daily/route.ts', { ...common, '@/lib/xtell-daily-model': writer, '@/lib/xtell-daily': daily })
+  // Streamed in two pieces when the route listens (Sep 29).
+  const writer = { dailyText: async (o: any) => {
+    const r = await house.houseCall({ system: o.system, messages: [{ role: 'user', content: o.content }] }); const text = r.content[0].text as string
+    if (!o.accept(text)) return null
+    o.onDelta?.(text.slice(0, 9)); o.onDelta?.(text.slice(9))
+    return text
+  } }
+  const afters: Promise<unknown>[] = []
+  const dailyRoute = loadRoute('app/api/xtell/daily/route.ts', {
+    ...common, '@/lib/xtell-daily-model': writer, '@/lib/xtell-daily': daily,
+    'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, '@/lib/partial-json': require('../lib/partial-json'),
+  })
   const followRoute = loadRoute('app/api/xtell/daily/followup/route.ts', common)
   const req = (url: string, method: string, body?: unknown, ip = '10.0.0.1') => new Request(url, { method, headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) })
   const json = async (r: Response) => ({ status: r.status, d: await r.json() as any })
@@ -235,6 +275,7 @@ async function routes() {
   check('signed out: profile and daily say 401', (await profileRoute.GET()).status === 401 && (await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', {}))).status === 401)
   user = { id: 'user-a' }
   check('no profile yet', (await json(await profileRoute.GET())).d.profile === null && (await json(await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', { lang: 'zh-Hant' })))).d.profile === null)
+  check('no profile yet, asked for a stream: still one plain answer', (await json(await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', { lang: 'zh-Hant', stream: true }, '10.0.0.2')))).d.profile === null)
   const noConsent = await json(await profileRoute.PUT(req('http://t/api/xtell/profile', 'PUT', { birth, place: 'taipei', displayTz: 'Asia/Taipei' })))
   check('first save without consent: refused, nothing stored', noConsent.status === 400 && noConsent.d.code === 'consent_required' && db.profiles.size === 0)
   const bad = await json(await profileRoute.PUT(req('http://t/api/xtell/profile', 'PUT', { birth: { ...birth, d: 31, m: 2 }, place: 'taipei', displayTz: 'Asia/Taipei', consent: true })))
@@ -270,6 +311,35 @@ async function routes() {
   const d4 = await json(await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', { lang: 'zh-Hant' })))
   check('provider down: "failed", basis shown', d4.d.methods.bazi.status === 'failed' && !!d4.d.methods.bazi.basis)
   reply = JSON.stringify({ summary: 's', themes: ['a'], reflect: 'r', why: 'w' })
+
+  // Streaming (Sep 29): each card shows its basis at once and its words as
+  // they are written; the checked reading still comes last. An older page
+  // that does not ask for a stream gets one JSON answer (all of the above).
+  await profileRoute.PUT(req('http://t/api/xtell/profile', 'PUT', { birth: { ...birth, h: 19 }, place: 'taipei', displayTz: 'Asia/Taipei' }))
+  houseCalls.length = 0
+  // Its own address: the route allows twelve a minute from one.
+  const sres = await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', { lang: 'zh-Hant', stream: true }, '10.0.0.2'))
+  const events: any[] = (await sres.text()).trim().split('\n').map((l: string) => JSON.parse(l))
+  const of = (m: string) => events.filter(e => e.m === m)
+  check('stream: newline JSON, the day first', (sres.headers.get('content-type') ?? '').includes('ndjson') && events[0].t === 'day' && events[0].profile === true && typeof events[0].date === 'string')
+  check('stream: each method shows its basis, streams its words, then ends ready', ['western', 'bazi'].every(m => {
+    const e = of(m), w = e.findIndex(x => x.t === 'writing'), end = e.findIndex(x => x.t === 'm')
+    const words = e.filter(x => x.t === 'd')
+    return w >= 0 && !!e[w].basis?.[m] && words.length === 2 && words.map(x => x.d).join('') === reply && end > e.lastIndexOf(words[1]) && e[end].data.status === 'ready' && e[end].data.reading?.summary === 's'
+  }), JSON.stringify(events).slice(0, 300))
+  check('stream: written once each, and the function is held open for it', houseCalls.length === 2 && afters.length >= 1)
+  const partial = require('../lib/partial-json')
+  const pf = (x: string) => JSON.stringify(partial.partialFields(x))
+  check('draft reader: whole, cut mid-string, mid-key, mid-list, escapes, a fence before it',
+    pf(reply) === JSON.stringify({ summary: 's', themes: ['a'], reflect: 'r', why: 'w' })
+    && pf('{"summary": "今天可以慢') === JSON.stringify({ summary: '今天可以慢' })
+    && pf('{"summary":"a","them') === JSON.stringify({ summary: 'a' })
+    && pf('{"summary":"a","themes":["x","y') === JSON.stringify({ summary: 'a', themes: ['x', 'y'] })
+    && pf('{"note":"line\\n\\"q\\" \\u6c34') === JSON.stringify({ note: 'line\n"q" 水' })
+    && pf('{"note":"half \\u6c') === JSON.stringify({ note: 'half ' })
+    && pf('```json\n{"note":"x"}') === JSON.stringify({ note: 'x' }) && pf('no json yet') === '{}', pf('{"note":"line\\n\\"q\\" \\u6c34'))
+  const again: any[] = (await (await dailyRoute.POST(req('http://t/api/xtell/daily', 'POST', { lang: 'zh-Hant', stream: true }, '10.0.0.2'))).text()).trim().split('\n').map((l: string) => JSON.parse(l))
+  check('stream: reopened, the saved reading at once, nothing rewritten', houseCalls.length === 2 && !again.some(e => e.t === 'writing' || e.t === 'd') && again.filter(e => e.t === 'm').every(e => e.data.status === 'ready'))
   check('the daily route never loads the wallet', !fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/daily/route.ts'), 'utf8').includes('credits'))
   check('every service-role call names the session user', db.calls.filter(c => c.name !== 'select').every(c => c.a.p_user === 'user-a') && db.calls.filter(c => c.name === 'select' && c.table === 'xtell_profiles').every(c => c.filters.some((f: any) => f[0] === 'user_id' && f[1] === 'user-a')))
 
@@ -323,7 +393,7 @@ async function routes() {
   check('the 13th daily request in a minute from one address → 429', statuses.slice(0, 12).every(s => s === 200) && statuses[12] === 429)
 }
 
-routes().catch(e => { fails++; console.log('FAIL threw', e?.stack ?? e) }).then(() => {
+writerStreams().then(routes).catch(e => { fails++; console.log("FAIL threw", e?.stack ?? e) }).then(() => {
   console.log(fails ? `\n${fails} FAILED` : '\nall daily checks passed')
   if (fails) process.exit(1)
 })

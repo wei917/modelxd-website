@@ -3697,6 +3697,17 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-dy-consent input { margin-top: 4px; }
 /* 西洋占星 above 八字流日, never side by side (owner, Sep 28). */
 .xtell-dy-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+/* The free pages' wait (Sep 29): a thin bar on the clock, and a caret at the
+   end of text that is still being written. */
+.xtell-wait { display: grid; gap: 6px; margin: 2px 0 10px; animation: xtell-wait-in .3s ease .25s both; }
+.xtell-wait-label { margin: 0; font-size: 12.5px; color: var(--xtell-secondary, var(--muted)); }
+.xtell-wait-label span { font-variant-numeric: tabular-nums; color: var(--muted2); }
+.xtell-wait-track { height: 3px; border-radius: 2px; background: var(--xtell-rule, var(--border2)); overflow: hidden; }
+.xtell-wait-fill { height: 100%; background: var(--xtell-vermilion, var(--red)); transition: width .3s linear; }
+.xtell-caret::after { content: '▍'; margin-left: 1px; color: var(--xtell-vermilion, var(--red)); animation: xtell-caret 1s steps(2) infinite; }
+@keyframes xtell-wait-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes xtell-caret { 50% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .xtell-wait { animation: none } .xtell-wait-fill { transition: none } .xtell-caret::after { animation: none } }
 .xtell-dy-card { min-width: 0; padding: 14px 16px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-paper); font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
 /* The day's reading in its temple room (DailyBoard) reads like its card. */
 .xtell-dy-card header, .xtell-dy-board header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }

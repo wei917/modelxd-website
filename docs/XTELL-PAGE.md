@@ -73,7 +73,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
 | 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xtell-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, one 聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28 |
 | 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xtell/tarot/` | The browser shuffles the 78 (Fisher–Yates, crypto) and deals 1 or 3 (past/present/future), each upright/reversed at even odds; only ids travel. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
-| 幸運餅乾 | Fortune cookie | `lib/xtell-cookie.ts`, `lib/xtell-cookie-fortunes.ts`, `content/cookie/fortunes.json` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. **The slips are real fortune-cookie fortunes** (owner, Sep 28): 206 of the 254 in reggi/fortune-cookie (MIT, © 2022 Thomas Reggi, pinned; `scripts/build-cookie-fortunes.mjs` drops duplicates, numbers, jokes, garbled lines and health/windfall/lawsuit predictions, fixes typos keeping `orig`), translated by ModelXD (`content/cookie/translations.json`; 简中 by OpenCC). A quick house model (Qwen 3.8 Flash via `dailyText`) sees the whole numbered list and names the **10 that fit best** plus the meal's taste; **one of the 10 is drawn at random** on the server; a second call writes the note under it (optional: a slip without a note still shows). No digits anywhere. **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own rows by `subject->>meal`; every crack its own row (`crack` id). Never re-cracked on a refresh. All five languages of the slip are saved, so a language switch reads right; the English original shows under it. Added Sep 28 |
+| 幸運餅乾 | Fortune cookie | `lib/xtell-cookie.ts`, `lib/xtell-cookie-fortunes.ts`, `content/cookie/fortunes.json` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. **The slips are real fortune-cookie fortunes** (owner, Sep 28): 206 of the 254 in reggi/fortune-cookie (MIT, © 2022 Thomas Reggi, pinned; `scripts/build-cookie-fortunes.mjs` drops duplicates, numbers, jokes, garbled lines and health/windfall/lawsuit predictions, fixes typos keeping `orig`), translated by ModelXD (`content/cookie/translations.json`; 简中 by OpenCC). A quick house model (Qwen 3.8 Flash via `dailyText`) sees the whole numbered list and names the **10 that fit best** plus the meal's taste; **one of the 10 is drawn at random** on the server, and the slip is returned at once; the note under it is written after, streamed by `/api/xtell/cookie/note` (Sep 29), once per cookie (`notePending`, lowered in the same UPDATE that checks it; a second tab is told it is being written and asks again), in the slip's language (`noteLang`), and saved even if the reader leaves (optional: a slip without a note still shows). No digits anywhere. **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own rows by `subject->>meal`; every crack its own row (`crack` id). Never re-cracked on a refresh. All five languages of the slip are saved, so a language switch reads right; the English original shows under it. Added Sep 28 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -683,6 +683,28 @@ from its own calculation, plus an optional paid follow-up per reading.
   local date reloads on focus. 占星塔's remembered birth now keeps an unknown
   hour (`rememberedBirth`), and deleting the profile clears it too.
 - Tests: `scripts/test-xtell-daily.ts` (in `npm run test:xtell`).
+
+## The free pages stream (Sep 29)
+
+A tester found 今日運勢 silent for 20–30 s. Measured from `provider_calls`:
+each reading is ~700 tokens from Qwen 3.8 Flash, 15–19 s, and the page
+waited for BOTH before showing anything. Now:
+
+- `/api/xtell/daily` streams newline JSON when the page sends
+  `stream: true` (`day`, then per method `writing` + basis, `d` words,
+  `restart` if Qwen's reply is turned down and the stand-in writes, and the
+  final checked `m`). Each card fills in on its own; a page open from before
+  gets the old single JSON answer. `dailyText` takes `onDelta`/`onRestart`;
+  words a timed-out Qwen stream sends later never reach the page.
+- `lib/partial-json.ts` reads the half-written JSON for display
+  (`partialFields`), plus `readNdjson` and `ndjsonResponse` (holds the
+  function open with Next's `after`, so the reading is saved even when the
+  reader leaves).
+- `WaitBar` (`app/components/xtell/WaitBar.tsx`): a thin bar and "約 N 秒"
+  until the first words; seconds are measured (`WAIT_SECONDS`: daily 20,
+  cookie pick 5, cookie note 6, 解夢 scan 4). Also on the 解夢 and 幸運餅乾
+  entries.
+- 幸運餅乾: the slip shows right after the pick; the note streams under it.
 
 ## 今日 row on the street: 今日運勢 and 黃曆 (Sep 27)
 

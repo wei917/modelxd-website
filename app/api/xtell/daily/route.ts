@@ -12,7 +12,9 @@
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
+import { after } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { ndjsonResponse } from '@/lib/partial-json'
 import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
 import { dailyText } from '@/lib/xtell-daily-model'
 import {
@@ -56,7 +58,8 @@ export async function POST(req: Request) {
   if (problem) return Response.json({ profile: true, problem })
 
   const bases = dailyBases(profile)
-  const one = async (m: DailyMethod) => {
+  type Emit = (e: Record<string, unknown>) => void
+  const one = async (m: DailyMethod, emit?: Emit) => {
     const basis = basisOf(m, bases)
     const token = crypto.randomUUID()
     const { data: claimed, error: claimError } = await db.rpc('xtell_daily_claim', {
@@ -69,9 +72,15 @@ export async function POST(req: Request) {
     if (c.outcome === 'ready') return { status: 'ready' as const, id: c.row_id, basis: c.basis ?? basis, reading: c.reading }
     if (c.outcome === 'gone') return { status: 'gone' as const }
     if (c.outcome !== 'claimed') return { status: c.outcome as 'pending' | 'failed' | 'capped', basis }
+    // Streaming (Sep 29): the card shows the basis at once and the reading
+    // as it is written; the saved, checked reading still comes last.
+    emit?.({ t: 'writing', m, basis })
     let reading = null
     try {
-      const text = await dailyText({ system: dailyBrief(m, lang), content: basisFacts(m, bases), userId: user.id, accept: t => !!parseDailyReading(t) })
+      const text = await dailyText({
+        system: dailyBrief(m, lang), content: basisFacts(m, bases), userId: user.id, accept: t => !!parseDailyReading(t),
+        onDelta: emit && (d => emit({ t: 'd', m, d })), onRestart: emit && (() => emit({ t: 'restart', m })),
+      })
       reading = text ? parseDailyReading(text) : null
       // Generic on purpose: never the model's text or the profile.
       if (!reading) console.warn('[xtell/daily] no readable reply')
@@ -86,12 +95,26 @@ export async function POST(req: Request) {
     if (written !== true) return { status: 'gone' as const }
     return reading ? { status: 'ready' as const, id: c.row_id, basis, reading } : { status: 'failed' as const, basis }
   }
+  const failure = (e: any) => {
+    if (dailyMissing(e)) return 'daily_unavailable'
+    console.warn('[xtell/daily] claim failed:', typeof e?.code === 'string' ? e.code : 'unknown')
+    return 'daily_failed'
+  }
+  // The page asks for a stream (Sep 29); an older page still open in a tab
+  // asks without, and gets the whole day as one answer, as before.
+  if (body?.stream === true) {
+    return ndjsonResponse(async emit => {
+      emit({ t: 'day', profile: true, date: bases.date, tz: bases.tz, revision: profile.revision })
+      await Promise.all(DAILY_METHODS.map(async m => {
+        try { emit({ t: 'm', m, data: await one(m, emit) }) } catch (e) { emit({ t: 'm', m, error: failure(e) }) }
+      }))
+    }, p => after(p))
+  }
   try {
-    const [western, bazi] = await Promise.all(DAILY_METHODS.map(one))
+    const [western, bazi] = await Promise.all(DAILY_METHODS.map(m => one(m)))
     return Response.json({ profile: true, date: bases.date, tz: bases.tz, revision: profile.revision, methods: { western, bazi } })
   } catch (e: any) {
-    if (dailyMissing(e)) return Response.json({ error: 'daily_unavailable' }, { status: 503 })
-    console.warn('[xtell/daily] claim failed:', typeof e?.code === 'string' ? e.code : 'unknown')
-    return Response.json({ error: 'daily_failed' }, { status: 500 })
+    const code = failure(e)
+    return Response.json({ error: code }, { status: code === 'daily_unavailable' ? 503 : 500 })
   }
 }

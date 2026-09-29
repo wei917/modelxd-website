@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES, asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
-import { cookieProblem, mealOf, mealKey, shichenOf, cookieFacts, pickBrief, parsePick, noteBrief, parseNote, FREE_PER_MEAL, EXTRA_CENTS, ASK_MAX as COOKIE_ASK_MAX } from '@/lib/xtell-cookie'
+import { cookieProblem, mealOf, mealKey, shichenOf, cookieFacts, pickBrief, parsePick, FREE_PER_MEAL, EXTRA_CENTS, ASK_MAX as COOKIE_ASK_MAX } from '@/lib/xtell-cookie'
 import { cookieFortunes, fortuneOf, fortuneTexts } from '@/lib/xtell-cookie-fortunes'
 import { dailyText } from '@/lib/xtell-daily-model'
 import { debitCredits, grantCredits, InsufficientCreditsError } from '@/lib/credits'
@@ -180,8 +180,10 @@ export async function POST(req: Request) {
     const facts = cookieFacts({ food, ask, meal, dayGz })
     // 1. The quick model names the taste and the PICK_TOP fortunes that fit
     //    best; 2. one of them is drawn at random here (a cookie keeps its
-    //    chance); 3. the model writes the note for that slip. A missing note
-    //    is not a failure: the slip is what the visitor came for.
+    //    chance); 3. the note for that slip is written after, streamed by
+    //    /api/xtell/cookie/note (Sep 29: the slip shows the moment it is
+    //    drawn). A missing note is not a failure: the slip is what the
+    //    visitor came for.
     const list = cookieFortunes()
     const valid = (id: number) => list.some(f => f.id === id)
     const pickText = await dailyText({ system: pickBrief(list), content: facts, userId: user.id, accept: t => !!parsePick(t, valid) }).catch(() => null)
@@ -193,9 +195,8 @@ export async function POST(req: Request) {
     }
     const texts = fortuneTexts(slip)
     const fortune = (texts as Record<string, string>)[lang] ?? texts['zh-Hant']
-    const noteText = await dailyText({ system: noteBrief(lang), content: `${facts}\n主味：${pick.flavor}（五行屬${pick.element}）\n餅乾裡的紙條：「${fortune}」（原文：${slip.en}）`, userId: user.id, accept: t => !!parseNote(t) }).catch(() => null)
-    const note = noteText ? parseNote(noteText) : null
-    const chart = { food, ask, meal: { ...meal, key }, shichen: shichenOf(meal.hour), dayGz, flavor: pick.flavor, element: pick.element, fortuneId: slip.id, fortune, fortunes: texts, note, charged: cents }
+    // `notePending`: the note is still to be written, once, in `noteLang`.
+    const chart = { food, ask, meal: { ...meal, key }, shichen: shichenOf(meal.hour), dayGz, flavor: pick.flavor, element: pick.element, fortuneId: slip.id, fortune, fortunes: texts, note: null, notePending: true, noteLang: texts[lang as keyof typeof texts] ? lang : 'zh-Hant', charged: cents }
     // `crack`: every cookie is its own visit. Without it, save() would hand
     // back an earlier row with the same meal and no questions, and the meal's
     // count (and the charge from the third) would never move.

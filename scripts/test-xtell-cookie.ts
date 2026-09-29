@@ -47,11 +47,11 @@ function loadRoute(file: string, modules: Record<string, unknown>) {
   return exports
 }
 
-function world(opts: { reply?: string | null; note?: string | null; balance?: number } = {}) {
+function world(opts: { reply?: string | null; note?: string | null; balance?: number; restart?: boolean } = {}) {
   const rows: any[] = [], debits: number[] = [], grants: number[] = []
   let balance = opts.balance ?? 100
   class InsufficientCreditsError extends Error {}
-  const pick = (r: any, k: string) => k === 'subject->>meal' ? r.subject?.meal : r[k]
+  const pick = (r: any, k: string) => k === 'subject->>meal' ? r.subject?.meal : k === 'chart->>notePending' ? String(r.chart?.notePending) : r[k]
   const db = {
     auth: { getUser: async () => ({ data: { user: { id: 'user-a' } } }) },
     from(_table: string) {
@@ -68,7 +68,7 @@ function world(opts: { reply?: string | null; note?: string | null; balance?: nu
           const mine = rows.filter(r => filters.every(([k, v]) => pick(r, k) === v))
           let out: any
           if (op === 'insert') { const id = `00000000-0000-4000-8000-${String(rows.length + 1).padStart(12, '0')}`; rows.push({ id, ...values }); out = { data: { id }, error: null } }
-          else if (op === 'update') out = { data: null, error: null }
+          else if (op === 'update') { for (const r of mine) Object.assign(r, values); out = { data: mine.map(r => ({ id: r.id })), error: null } }
           else if (head) out = { count: mine.length, data: null, error: null }
           else out = single ? { data: mine[0] ?? null, error: null } : { data: mine, error: null }
           return Promise.resolve(out).then(resolve, reject)
@@ -79,10 +79,35 @@ function world(opts: { reply?: string | null; note?: string | null; balance?: nu
   }
   const pickReply = opts.reply === undefined ? '{"flavor":"鹹","ids":[52,243,48,50,30,12,8,1,2,4]}' : opts.reply
   const noteReply = opts.note === undefined ? '{"note":"這一餐主味鹹，鹹屬水；午時正旺，好消息就像水一樣會流過來。"}' : opts.note
+  // The quick writer: the pick whole; the note streamed in two pieces (and,
+  // with `restart`, a turned-down first reply before it, as Qwen then the
+  // stand-in would).
+  const noteCalls: any[] = []
+  const writer = { dailyText: async (o: any) => {
+    if (/You choose fortune-cookie slips/.test(o.system)) return pickReply && o.accept(pickReply) ? pickReply : null
+    noteCalls.push(o)
+    if (opts.restart) { o.onDelta?.('{"note":"lucky 7'); o.onRestart?.() }
+    if (!noteReply || !o.accept(noteReply)) return null
+    o.onDelta?.(noteReply.slice(0, 12)); o.onDelta?.(noteReply.slice(12))
+    return noteReply
+  } }
+  const afters: Promise<unknown>[] = []
+  const NOTE = loadRoute('app/api/xtell/cookie/note/route.ts', {
+    'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } },
+    '@/lib/supabase-server': { createSupabaseServer: async () => db }, '@/lib/xtell-admin': { xtellAdmin: () => db },
+    '@/lib/xtell-daily-model': writer, '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/partial-json': require('../lib/partial-json'),
+  }).POST
+  const note = async (readingId: unknown) => {
+    const r = await NOTE(new Request('http://t/api/xtell/cookie/note', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ readingId }) }))
+    const type = r.headers.get('content-type') ?? ''
+    const text = await r.text()
+    const events: any[] = type.includes('ndjson') ? text.trim().split('\n').map((l: string) => JSON.parse(l)) : []
+    return { status: r.status, stream: type.includes('ndjson'), events, d: type.includes('ndjson') ? null : JSON.parse(text) }
+  }
   const POST = loadRoute('app/api/xtell/chart/route.ts', {
     '@/lib/supabase-server': { createSupabaseServer: async () => db }, '@/lib/xtell': xtell, '@/lib/yijing': require('../lib/yijing'),
     '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'),
-    '@/lib/xtell-daily-model': { dailyText: async (o: any) => { const r = /You choose fortune-cookie slips/.test(o.system) ? pickReply : noteReply; return r && o.accept(r) ? r : null } },
+    '@/lib/xtell-daily-model': writer,
     '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'),
     '@/lib/credits': {
       InsufficientCreditsError,
@@ -92,7 +117,7 @@ function world(opts: { reply?: string | null; note?: string | null; balance?: nu
     '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => null },
   }).POST
   const crack = async (body: any) => { const r = await POST(new Request('http://t/api/xtell/chart', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ temple: 'cookie', lang: 'zh-Hant', ...body }) })); return { status: r.status, d: await r.json() as any } }
-  return { rows, debits, grants, crack, balance: () => balance }
+  return { rows, debits, grants, crack, note, noteCalls, afters, balance: () => balance }
 }
 
 async function route() {
@@ -103,13 +128,35 @@ async function route() {
   check('the third is charged one cent, before the model runs', c3.status === 200 && c3.d.chart.charged === 1 && w.debits.join() === '1')
   check('each cookie is its own saved visit, titled by its slip', w.rows.length === 3 && new Set(w.rows.map(r => r.subject.crack)).size === 3 && w.rows.every(r => r.subject.meal === '2026-09-28|lunch' && r.title === r.chart.fortune))
   check('the slip is one of the ten chosen, a real fortune, in the page language and all five', [52, 243, 48, 50, 30, 12, 8, 1, 2, 4].includes(c1.d.chart.fortuneId) && c1.d.chart.fortune === list.find(f => f.id === c1.d.chart.fortuneId)!['zh-Hant'] && Object.keys(c1.d.chart.fortunes).length === 5)
-  check('the slip carries the meal, the 時辰, the day, the element and the note', c1.d.chart.shichen === '午時' && c1.d.chart.meal.slot === 'lunch' && c1.d.chart.element === '水' && typeof c1.d.chart.dayGz === 'string' && /鹹屬水/.test(c1.d.chart.note))
+  check('the slip carries the meal, the 時辰, the day and the element; its note is still to come', c1.d.chart.shichen === '午時' && c1.d.chart.meal.slot === 'lunch' && c1.d.chart.element === '水' && typeof c1.d.chart.dayGz === 'string' && c1.d.chart.note === null && c1.d.chart.notePending === true && c1.d.chart.noteLang === 'zh-Hant')
+  check('the slip comes back before any note is written', w.noteCalls.length === 0)
   const many = world({ balance: 1000 }); const drawn = new Set<number>()
   for (let i = 0; i < 40; i++) { const c = await many.crack({ ...meal, mealAt: `2026-${String(1 + (i % 12)).padStart(2, '0')}-10T12:30` }); drawn.add(c.d.chart.fortuneId) }
   check('one of the ten is drawn at random: different slips turn up', drawn.size >= 4, String(drawn.size))
+
+  // The note (Sep 29): streamed after the slip, written once, saved.
+  const n1 = await w.note(c1.d.readingId)
+  const deltas = n1.events.filter(e => e.t === 'd').map(e => e.d).join('')
+  const row1 = w.rows.find(r => r.id === c1.d.readingId)
+  check('the note streams: its words, then the checked note', n1.status === 200 && n1.stream && deltas.includes('鹹屬水') && n1.events.at(-1)?.t === 'done' && /鹹屬水/.test(n1.events.at(-1)?.note), JSON.stringify(n1.events).slice(0, 200))
+  check('the note is saved on the cookie, and asked for once', /鹹屬水/.test(row1.chart.note) && row1.chart.notePending === false && w.noteCalls.length === 1 && w.afters.length === 1)
+  check('its writer gets the meal, the taste and the slip, in the slip\'s language', /牛肉麵/.test(w.noteCalls[0].content) && w.noteCalls[0].content.includes(c1.d.chart.fortune) && w.noteCalls[0].content.includes('水') && /繁體中文/.test(w.noteCalls[0].system))
+  const n2 = await w.note(c1.d.readingId)
+  check('asked again: the saved note, nothing rewritten', !n2.stream && /鹹屬水/.test(n2.d.note) && n2.d.writing === false && w.noteCalls.length === 1)
+  const busy = w.rows.find(r => r.id === c2.d.readingId)
+  busy.chart = { ...busy.chart, notePending: false, noteStarted: new Date().toISOString() }
+  const n3 = await w.note(c2.d.readingId)
+  check('a second tab while it is being written: told to wait, no second writer', !n3.stream && n3.d.writing === true && n3.d.note === null && w.noteCalls.length === 1)
+  check('a bad or unknown visit: nothing', (await w.note('nope')).status === 400 && (await w.note('00000000-0000-4000-8000-000000000999')).status === 404)
   const noNote = world({ note: 'lucky 7' })
   const nn = await noNote.crack(meal)
-  check('no usable note: the slip still comes, without a note', nn.status === 200 && nn.d.chart.note === null && typeof nn.d.chart.fortune === 'string')
+  const nnote = await noNote.note(nn.d.readingId)
+  check('no usable note: the slip stays, the note ends empty and is not tried again', nn.status === 200 && typeof nn.d.chart.fortune === 'string' && nnote.events.at(-1)?.note === null && noNote.rows[0].chart.note === null && noNote.rows[0].chart.notePending === false)
+  const re = world({ restart: true })
+  const rc = await re.crack(meal)
+  const rn = await re.note(rc.d.readingId)
+  const at = rn.events.findIndex(e => e.t === 'restart')
+  check('a turned-down first reply: the page is told to start over, then the stand-in\'s words', at > 0 && rn.events.slice(at + 1).filter(e => e.t === 'd').map(e => e.d).join('').includes('鹹屬水') && /鹹屬水/.test(rn.events.at(-1)?.note))
   const dinner = await w.crack({ ...meal, mealAt: '2026-09-28T19:00' })
   check('another meal starts free again', dinner.status === 200 && dinner.d.chart.charged === 0)
 

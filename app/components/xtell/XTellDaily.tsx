@@ -22,12 +22,16 @@ import { placeOf, birthZone, ZONE_PREFIX, COMMON_ZONES } from '../../../lib/xtel
 import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-time'
 import { dropDates } from '../../../lib/xtell-share'
 import { ShareButton } from './ShareButton'
+import { WaitBar, WAIT_SECONDS } from './WaitBar'
+import { partialFields, readNdjson } from '../../../lib/partial-json'
 
 type Method = 'western' | 'bazi'
 const METHODS: Method[] = ['western', 'bazi']
 type Profile = { birth: { y: number; m: number; d: number; h: number; mi: number; hourUnknown?: boolean }; place: string; fold: 0 | 1 | null; displayTz: string; revision: number }
 type Reading = { summary: string; themes: string[]; reflect: string; why: string }
-type MethodDay = { status: 'ready' | 'pending' | 'failed' | 'capped' | 'gone'; id?: string; basis?: any; reading?: Reading }
+// 'writing': this request is writing it now, and `draft` is the reply so far
+// (Sep 29: the free reading streams instead of arriving all at once).
+type MethodDay = { status: 'ready' | 'pending' | 'failed' | 'capped' | 'gone' | 'writing'; id?: string; basis?: any; reading?: Reading; draft?: string }
 type Day = { date: string; tz: string; methods: Record<Method, MethodDay> }
 export type SavedDaily = { id: string; subject: any; chart: any; turns: any[] }
 
@@ -84,9 +88,41 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
     const mine = ++dayToken.current, g = gen.current
     const current = () => mine === dayToken.current && g === gen.current
     setDayError(false)
+    const again = (methods: Record<string, MethodDay | undefined>) => {
+      const waiting = METHODS.some(m => methods[m]?.status === 'pending' || methods[m]?.status === 'gone')
+      if (waiting && attempt < 8) setTimeout(() => { if (current()) void loadDay(attempt + 1) }, 3000)
+    }
     try {
-      const res = await fetch('/api/xtell/daily', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: langRef.current }) })
+      const res = await fetch('/api/xtell/daily', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: langRef.current, stream: true }) })
       if (!current()) return
+      // The day streams: each card fills in as its own reading is written.
+      // Anything else (no profile, a problem, an error) is one JSON answer.
+      if (res.ok && (res.headers.get('content-type') ?? '').includes('ndjson')) {
+        let methods: Record<string, MethodDay> = {}
+        let head: { date: string; tz: string } | null = null
+        const paint = () => { if (head && current()) setDay({ date: head.date, tz: head.tz, methods: { ...methods } as Day['methods'] }) }
+        await readNdjson(res, e => {
+          if (!current()) return
+          if (e.t === 'day') {
+            head = { date: e.date, tz: e.tz }
+            methods = Object.fromEntries(METHODS.map(m => [m, { status: 'writing', draft: '' } as MethodDay]))
+            setProblem(null)
+          } else if (e.t === 'writing') methods[e.m] = { status: 'writing', basis: e.basis, draft: '' }
+          else if (e.t === 'd' && methods[e.m]?.status === 'writing') methods[e.m] = { ...methods[e.m], draft: (methods[e.m].draft ?? '') + e.d }
+          else if (e.t === 'restart' && methods[e.m]) methods[e.m] = { ...methods[e.m], draft: '' }
+          else if (e.t === 'm') methods[e.m] = e.data ?? { status: 'failed' }
+          else return
+          paint()
+        })
+        if (!current()) return
+        if (!head) { setDayError(true); return }
+        // A stream cut off mid-way: the server keeps writing and saves it, so
+        // what was still being written is waiting now, and is asked for again.
+        for (const m of METHODS) if (methods[m]?.status === 'writing') methods[m] = { status: 'pending', basis: methods[m].basis }
+        paint()
+        again(methods)
+        return
+      }
       const d = await res.json().catch(() => null)
       if (!current()) return
       if (!res.ok || !d) { setDayError(true); return }
@@ -94,8 +130,7 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
       if (d.problem) { setProblem(d.problem); setDay(null); return }
       setProblem(null)
       setDay({ date: d.date, tz: d.tz, methods: d.methods })
-      const waiting = METHODS.some(m => d.methods?.[m]?.status === 'pending' || d.methods?.[m]?.status === 'gone')
-      if (waiting && attempt < 8) setTimeout(() => { if (current()) void loadDay(attempt + 1) }, 3000)
+      again(d.methods ?? {})
     } catch { if (current()) setDayError(true) }
   }
 
@@ -212,7 +247,7 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
           {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
           {day && (
             <div className="xtell-dy-cards">
-              {METHODS.map(m => <MethodCard key={`${m}:${day.methods[m]?.id ?? day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
+              {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
             </div>
           )}
           <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
@@ -441,9 +476,36 @@ function ReadingView({ reading }: { reading: Reading }) {
   )
 }
 
+/** The reading while it is being written: the fields so far, a caret at the
+ *  end of the one being written. The finished reading replaces it. */
+function DraftView({ f }: { f: ReturnType<typeof partialFields> }) {
+  const t = useT()
+  const text = (v: unknown) => typeof v === 'string' ? v.trim() : ''
+  const summary = text(f.summary), reflect = text(f.reflect)
+  const themes = Array.isArray(f.themes) ? f.themes.map(x => x.trim()).filter(Boolean) : []
+  // The caret sits on the last visible field; `why` is folded below.
+  const at = f.why !== undefined ? 'why' : reflect ? 'reflect' : themes.length ? 'themes' : 'summary'
+  const caret = (on: boolean) => on ? 'xtell-caret' : undefined
+  return (
+    <>
+      {summary && <p className={['xtell-dy-summary', caret(at === 'summary')].filter(Boolean).join(' ')}>{summary}</p>}
+      {themes.length > 0 && <>
+        <p className="xtell-dy-label">{t('xtell.dy.themes')}</p>
+        <ul className="xtell-dy-themes">{themes.map((x, i) => <li key={i} className={caret(at === 'themes' && i === themes.length - 1)}>{x}</li>)}</ul>
+      </>}
+      {reflect && <>
+        <p className="xtell-dy-label">{t('xtell.dy.reflect')}</p>
+        <p className={caret(at === 'reflect')}>{reflect}</p>
+      </>}
+    </>
+  )
+}
+
 function MethodCard({ method, day, data, onRetry, onContinue }: { method: Method; day: Day; data: MethodDay; onRetry: () => void; onContinue: (row: SavedDaily) => void }) {
   const t = useT()
   const { lang } = useLang()
+  const draftFields = data.status === 'writing' && data.draft ? partialFields(data.draft) : null
+  const why = data.reading?.why ?? (typeof draftFields?.why === 'string' ? draftFields.why.trim() : '')
   return (
     <article className="xtell-dy-card">
       <header>
@@ -455,19 +517,25 @@ function MethodCard({ method, day, data, onRetry, onContinue }: { method: Method
             style: 'prose', name: `xtell-today-${day.date}` })} />
         ) })()}
       </header>
+      {/* Until the first words arrive: the bar and the estimate. After: the
+          bar alone, while the words themselves show the progress. */}
+      {(data.status === 'writing' || data.status === 'pending' || data.status === 'gone') && (
+        <WaitBar seconds={WAIT_SECONDS.daily} label={draftFields && typeof draftFields.summary === 'string' && draftFields.summary.trim() ? undefined : t('xtell.dy.pending')} />
+      )}
       {data.status === 'ready' && data.reading ? <ReadingView reading={data.reading} />
-        : data.status === 'pending' || data.status === 'gone' ? <p className="xtell-dy-muted" role="status">{t('xtell.dy.pending')}</p>
+        : data.status === 'writing' ? (draftFields && <DraftView f={draftFields} />)
+        : data.status === 'pending' || data.status === 'gone' ? null
         : data.status === 'capped' ? <p className="xtell-dy-muted">{t('xtell.dy.capped')}</p>
         : <p className="xtell-dy-muted">{t('xtell.dy.failed')} <button type="button" className="xtell-dy-link" onClick={onRetry}>{t('xtell.dy.retry')}</button></p>}
       {data.basis && (
         <details className="xtell-dy-why">
           <summary>{t('xtell.dy.why')}</summary>
-          {data.reading?.why && <p>{data.reading.why}</p>}
+          {why && <p>{why}</p>}
           <p className="xtell-dy-label">{t('xtell.dy.basis')}</p>
           <Basis method={method} basis={data.basis} />
         </details>
       )}
-      {data.status === 'ready' && data.id && <ContinueInTemple method={method} dailyId={data.id} onContinue={onContinue} />}
+      {data.status === 'ready' && data.id && <ContinueInTemple key={data.id} method={method} dailyId={data.id} onContinue={onContinue} />}
     </article>
   )
 }
