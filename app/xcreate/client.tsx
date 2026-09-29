@@ -1106,17 +1106,20 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // the mode-change effect handles that). The "From:" button opens a
   // small dropdown list of the current mode's sub-modes.
   const [fromOpen, setFromOpen] = useState(false)
-  const modeBlockRef = useRef<HTMLDivElement | null>(null)
+  // Inside = the From button and its menu. It was the whole mode block, so a
+  // press in the row's empty right half left the menu open (owner, Sep 28;
+  // the door's row lost its Generate buttons). Pointer events cover a tap.
+  const fromRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!fromOpen) return
-    const onDown = (e: MouseEvent) => {
-      if (!modeBlockRef.current?.contains(e.target as Node)) setFromOpen(false)
+    const onDown = (e: PointerEvent) => {
+      if (!fromRef.current?.contains(e.target as Node)) setFromOpen(false)
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFromOpen(false) }
-    document.addEventListener('mousedown', onDown)
+    document.addEventListener('pointerdown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {
-      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
     }
   }, [fromOpen])
@@ -4205,7 +4208,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     it immediately (first sub-mode as default); the From
                     button opens a small list of the mode's sub-modes. */}
                 <div
-                  ref={modeBlockRef}
                   className={isStandalone ? 'xcs-mode-block' : undefined}
                   style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
                 >
@@ -4234,7 +4236,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
                     {/* Column 2 — "From:" + small dropdown list of the
                         current mode's sub-modes. */}
-                    <div className="mode-col" style={{ position: 'relative' as const }}>
+                    <div className="mode-col" ref={fromRef} style={{ position: 'relative' as const }}>
                       <div className="field-label">{t('xcreate.from')}</div>
                       <button type="button" className="recipe-crumb-btn" disabled={isLocked}
                         aria-haspopup="listbox" aria-expanded={fromOpen}
