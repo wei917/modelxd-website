@@ -3,6 +3,8 @@
 // the daily fortune's follow-up (XTellDaily). One place, so both show the same
 // teachers and the same price before anything is sent. Client-safe.
 
+import { yenApprox } from './plans'
+
 /** What these helpers read from an ai_models row (a PickerModel fits). */
 export type PresetModel = { model_name: string; provider: string; model_pricing?: any; output_config?: any }
 
@@ -13,7 +15,21 @@ export type PresetModel = { model_name: string; provider: string; model_pricing?
 // thread and the question; 800 output tokens is a full reading with thinking
 // on. Search terms mirror XCreate's estimator. A ceiling, not a quote: the
 // receipt is the cost under each reply.
-export const EST_PROMPT_TOKENS = 3000, EST_OUT_TOKENS = 800, EST_SEARCHES = 8, EST_READ_TOKENS = 30_000
+// EST_OUT_TOKENS: an answer under the 1000-字 rule, measured Sep 29 on Qwen
+// 3.8 Flash with thinking off (1,041 to 1,148 output tokens; it was 800,
+// which a tester found 6x low while thinking was the default). A thinking
+// level other than the lowest adds EST_THINK_TOKENS, since thinking does not
+// shrink with the answer: Flash with thinking on, Sep 25-29, wrote a median
+// ~3,900 output tokens and a long tail to 15,600 (a 塔羅 answer: 9,728 for
+// ~2,500 visible). 4,000 sits near that mean: typical readings come in under
+// the estimate, the longest still over it. Other models reason by their own
+// amounts; this is the one measured figure.
+export const EST_PROMPT_TOKENS = 3000, EST_OUT_TOKENS = 1200, EST_SEARCHES = 8, EST_READ_TOKENS = 30_000
+export const EST_THINK_TOKENS = 4000
+const QUIET_LEVELS = new Set(['none', 'minimal', 'low', 'thinking_false'])
+/** Whether a seat's level makes the model reason before it answers. Auto
+ *  (null) is the provider's own default and is not counted. */
+export const reasons = (level: string | null): boolean => level != null && !QUIET_LEVELS.has(level)
 // 易學堂 can include both hexagrams and their 文言. Its longest measured
 // fixed cast prompt exceeds 4,200 characters before the language line.
 export const EST_YIXUE_PROMPT_TOKENS = 5500
@@ -28,9 +44,13 @@ export function estimateReadingUsd(m: PresetModel, o: { thinking: string | null;
   const tin = rateOf(tk.text_input, o.thinking), tout = rateOf(tk.text_output, o.thinking)
   if (!tin && !tout) return null
   const inTok = promptTokens + chars + (o.search ? EST_READ_TOKENS : 0)
-  return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + EST_OUT_TOKENS * tout) / 1_000_000
+  const outTok = EST_OUT_TOKENS + (reasons(o.thinking) ? EST_THINK_TOKENS : 0)
+  return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + outTok * tout) / 1_000_000
 }
 export const fmtUsd = (v: number) => v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`
+/** A USD amount as the page shows it: with an approximate yen amount on
+ *  Japanese pages (Sep 29, lib/plans.ts's rate). */
+export const fmtUsdFor = (v: number, lang: string) => lang === 'ja' ? `${fmtUsd(v)}（${yenApprox(v)}）` : fmtUsd(v)
 
 // Three plain choices instead of a 26-row model list (audit, product): each
 // names the model it will seat and its estimate, and changes the first seat

@@ -9,6 +9,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../../lib/i18n'
 import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../../lib/xtell-history'
 import { TitleEditor } from './TitleEditor'
+import { yenApprox } from '../../../lib/plans'
 
 type Saved = { id: string; temple: string; title: string | null; subject: any; cost_cents: number; created_at: string; updated_at: string; turns: Array<{ role: string }> }
 
@@ -75,7 +76,7 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
             {asked > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--muted2)' }}>{asked} {t('xtell.saved.turns')}</span>}
           </span>
           <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {row.cost_cents > 0 && <span className="xtell-history-amount">{new Intl.NumberFormat(lang, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(row.cost_cents / 100)}</span>}
+            {row.cost_cents > 0 && <span className="xtell-history-amount">{new Intl.NumberFormat(lang, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(row.cost_cents / 100)}{lang === 'ja' ? `（${yenApprox(row.cost_cents / 100)}）` : ''}</span>}
             {confirming === row.id ? (
               <span role="group" aria-label={t('xtell.saved.deleteConfirm')} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <span style={{ fontSize: 12, color: 'var(--xtell-vermilion, var(--red))' }}>{t('xtell.saved.deleteConfirm')}</span>

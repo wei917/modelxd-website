@@ -53,3 +53,18 @@ export function planPriceLabel(cur: PlanCurrency): string {
   if (cur === 'jpy') return `¥${PLAN.prices.jpy}`
   return `$${(PLAN.prices.usd / 100).toFixed(2)}`
 }
+
+/** Yen per US dollar for an approximate amount shown beside a USD price on
+ *  Japanese pages (Sep 29: a Japanese tester asked for yen). Taken from the
+ *  plan's own prices (¥749 for $4.99), so the site quotes one rate
+ *  everywhere; nothing is charged at it (credit stays in USD). */
+export const JPY_PER_USD = PLAN.prices.jpy / (PLAN.prices.usd / 100)
+
+/** "約1,501円", "約0.2円", "0.1円未満": a USD amount in yen, for display. */
+export function yenApprox(usd: number): string {
+  const yen = usd * JPY_PER_USD
+  if (!(yen > 0)) return '0円'
+  if (yen < 0.1) return '0.1円未満'
+  if (yen < 10) return `約${(Math.round(yen * 10) / 10).toFixed(1).replace(/\.0$/, '')}円`
+  return `約${Math.round(yen).toLocaleString('ja-JP')}円`
+}

@@ -7,10 +7,12 @@
 // All of it comes from the calendar library the temples already use
 // (lunar-typescript, 6tail's almanac tables), from the date alone: no
 // birthday, no location, no model, free. It prints Simplified Chinese (and
-// English for some fields); 繁體, Japanese and Korean pages get the
-// Traditional forms through the table below, which covers every character
-// the library's almanac vocabulary can print (scripts/test-today.ts holds
-// that). English pages get the library's English where it has one.
+// English for some fields); 繁體 pages get the Traditional forms through the
+// table below, which covers every character the library's almanac
+// vocabulary can print (scripts/test-today.ts holds that). Japanese and
+// Korean pages get the 宜忌, 彭祖百忌, solar terms and 十二直 in their own
+// language (lib/xtell-almanac-terms.ts, Sep 29); English pages the library's
+// English where it has one and 彭祖百忌 from the same file.
 //
 // Client-safe and synchronous. The library's language switch is global;
 // it is flipped and restored inside one synchronous call, so nothing else
@@ -18,6 +20,7 @@
 
 import { Solar, I18n } from 'lunar-typescript'
 import type { Lang } from './lang'
+import { YIJI, PENGZU, JIEQI_JA, JIEQI_KO, ZHIXING_JA, ZHIXING_KO, SHA_KO } from './xtell-almanac-terms'
 
 /** Simplified → Traditional for the almanac's vocabulary. Character by
  *  character is safe here except where one simplified form stands for two
@@ -96,6 +99,30 @@ export function almanacFor(date: string, lang: Lang): Almanac {
     nextJieQi: { name: zh(next.getName()), date: next.getSolar().toYmd() },
   }
   const month = lunar.getMonthInChinese(), day = lunar.getDayInChinese()
+  if (lang === 'ja' || lang === 'ko') {
+    // In the page's language (Sep 29, a Japanese tester: 「祭祀、冠笄、餘事勿取」
+    // meant nothing there): the 宜忌 activities, 彭祖百忌, the solar terms
+    // and 十二直 from lib/xtell-almanac-terms.ts. The 吉神 / 凶煞 lists stay
+    // on Chinese pages: spirit names say nothing, translated or not.
+    const word = (x: string) => YIJI[x]?.[lang] ?? x
+    const term = (x: string) => (lang === 'ja' ? JIEQI_JA[x] : JIEQI_KO[x]) ?? x
+    const zhi = zh(lunar.getZhiXing())
+    return {
+      ...base,
+      lunarDate: zh(`${month}月${day}`),
+      animal: animalIn(zh(lunar.getYearShengXiao()), lang),
+      yi: clean(lunar.getDayYi()).map(zh).map(word),
+      ji: clean(lunar.getDayJi()).map(zh).map(word),
+      chong: { animal: animalIn(zh(lunar.getDayChongShengXiao()), lang), ganzhi: lunar.getDayChongGan() + lunar.getDayChong() },
+      sha: lang === 'ko' ? SHA_KO[zh(lunar.getDaySha())] ?? zh(lunar.getDaySha()) : zh(lunar.getDaySha()),
+      zhiXing: (lang === 'ja' ? ZHIXING_JA[zhi] : ZHIXING_KO[zhi]) ?? zhi,
+      xiu: { name: zh(lunar.getXiu()), lucky: lunar.getXiuLuck() === '吉' },
+      jiShen: [], xiongSha: [],
+      pengZu: base.pengZu.map(l => PENGZU[l]?.[lang] ?? l) as [string, string],
+      jieQi: { ...base.jieQi, name: term(base.jieQi.name) },
+      nextJieQi: { ...base.nextJieQi, name: term(base.nextJieQi.name) },
+    }
+  }
   if (lang !== 'en') {
     return {
       ...base,
@@ -128,6 +155,9 @@ export function almanacFor(date: string, lang: Lang): Almanac {
       zhiXing: lunar.getZhiXing(),
       xiu: { name: lunar.getXiu(), lucky: xiuLucky },
       tianShen: base.tianShen,
+      // As on Japanese and Korean pages: 彭祖百忌 in English, no spirit lists.
+      jiShen: [], xiongSha: [],
+      pengZu: base.pengZu.map(l => PENGZU[l]?.en ?? l) as [string, string],
     }
   } finally {
     I18n.setLanguage('chs')

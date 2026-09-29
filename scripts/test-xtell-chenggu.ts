@@ -261,7 +261,7 @@ const post = (url: string, body: unknown) => new Request(url, { method: 'POST', 
 
 async function routes() {
   const { db, inserted } = fakeDb()
-  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => db }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
+  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => db }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
   const cast = async (body: any) => { const r = await chart(post('http://t/api/xtell/chart', body)); return { status: r.status, d: await r.json() as any } }
 
   const a = await cast({ temple: 'bazi', birth: at(2000, 2, 4, 23, 0), chenggu: { total: 99 } })
@@ -296,7 +296,7 @@ async function routes() {
     '@/lib/xtell-admin': { xtellAdmin: () => { throw new Error('the service role is not for temple readings') }, dailyMissing: () => false },
     '@/lib/xtell-daily': require('../lib/xtell-daily'),
     '@/lib/yijing': yijing,
-    '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/jiemeng': require('../lib/jiemeng'),
+    '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': require('../lib/jiemeng'),
   })
   // '' unless THIS request reached the model: a refused one must not be
   // judged by the previous request's prompt.

@@ -130,6 +130,16 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('catalog: daily is live and free', catalog.liveFeature('daily')?.opens === 'daily' && catalog.XTELL_CATALOG_VERSION === '2026-09-28.2')
   const qwen = (name: string) => ({ provider: 'alibaba', model_name: name, output_config: { text: { thinking_levels: ['thinking_true', 'thinking_false'] } } })
   check('Qwen starts with thinking off, Flash too (Sep 29); others keep their own default', presets.defaultThinking(qwen('qwen3.8-flash')) === 'thinking_false' && presets.defaultThinking(qwen('qwen3.8-max')) === 'thinking_false' && presets.defaultThinking({ provider: 'openai', model_name: 'gpt-6-luna' }) === null)
+  {
+    // The estimate (Sep 29): a tester was quoted $0.0008 and charged $0.0047.
+    const flash = { provider: 'alibaba', model_name: 'qwen3.8-flash', model_pricing: { tokens: { text_input: 0.15, text_output: 0.47 } }, output_config: { text: { thinking_levels: ['thinking_true', 'thinking_false'] } } }
+    const off = presets.estimateReadingUsd(flash, { thinking: 'thinking_false', search: false }, 0)!
+    const on = presets.estimateReadingUsd(flash, { thinking: 'thinking_true', search: false }, 0)!
+    const at = (inTok: number, outTok: number) => (inTok * 0.15 + outTok * 0.47) / 1e6
+    check('estimate, thinking off: near the measured answers after the length rule (at most 15% under, 40% over)', [at(2819, 1041), at(1714, 1085), at(3934, 1148)].every(real => off >= real * 0.85 && off <= real * 1.4), String(off))
+    check('estimate, thinking on: above a median thinking answer, and more than 2x off', on > at(3000, 3938) && on > 2 * off && on < 0.005, String(on))
+    check('Auto (the provider default) and the lowest levels add no thinking', presets.reasons(null) === false && ['none', 'minimal', 'low', 'thinking_false'].every(l => !presets.reasons(l)) && presets.reasons('high') && presets.reasons('max'))
+  }
   check('presets moved, not changed: deep is GPT-6 Astra only', same(presets.PRESETS.find(p => p.key === 'deep')?.models, ['gpt-6-astra']))
 }
 
@@ -361,7 +371,7 @@ async function routes() {
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
     '@/lib/credits': { debitCredits: async () => {}, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
-    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': require('../lib/yijing'), '@/lib/xtell-daily': daily, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/jiemeng': require('../lib/jiemeng'),
+    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': require('../lib/yijing'), '@/lib/xtell-daily': daily, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': require('../lib/jiemeng'),
   })
   const ask = async (body: any) => { const r = await reading.POST(req('http://t/api/xtell/reading', 'POST', { modelId: 'm1', ...body })); return { status: r.status, text: await r.text() } }
   const r1 = await ask({ temple: 'daily', readingId: f1.d.readingId, question: '今天適合談加薪嗎？', basis: { western: { contacts: [{ transit: 'Pluto', natal: 'Sun' }] } }, chart: 'fake' })

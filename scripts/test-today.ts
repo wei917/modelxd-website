@@ -5,6 +5,7 @@
 
 import { LunarUtil } from 'lunar-typescript'
 import { almanacFor, toHant } from '../lib/xtell-almanac'
+import { YIJI, PENGZU, JIEQI_KO, ZHIXING_KO } from '../lib/xtell-almanac-terms'
 import { almanacWindow, cachedAlmanac, almanacForZone, validAlmanacDate } from '../lib/xtell-almanac-server'
 import { STRINGS } from '../lib/i18n'
 
@@ -23,6 +24,29 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('简体 pages keep the library\'s own forms', hans.yi.includes('纳采') && hans.ji.includes('开市') && hans.jiShen.includes('母仓'))
   const en = almanacFor('2026-09-27', 'en')
   check('English: the library\'s English, its misspelling fixed', en.yi.includes('Marriage') && en.yi.includes('Consecration') && !en.yi.includes('Consecretion') && en.chong.animal === 'Dog' && en.sha === 'South' && en.lunarDate === '8/17' && en.animal === 'Horse')
+  // Japanese, Korean and English pages (Sep 29): no raw Chinese almanac terms.
+  const terms = [...new Set(LunarUtil.YI_JI.filter(w => w && !/[.{}]/.test(w)).map(toHant))].filter(w => w !== '無')
+  const noJaKo = terms.filter(w => !YIJI[w]?.ja?.trim() || !YIJI[w]?.ko?.trim())
+  check(`every one of the ${terms.length} 宜忌 terms has Japanese and Korean`, noJaKo.length === 0 && terms.length >= 140, noJaKo.join(' '))
+  const lines = [...LunarUtil.PENGZU_GAN, ...LunarUtil.PENGZU_ZHI].filter(Boolean).map(toHant)
+  check(`all ${lines.length} 彭祖百忌 lines in Japanese, Korean and English`, lines.length === 22 && lines.every(l => PENGZU[l]?.ja && PENGZU[l]?.ko && PENGZU[l]?.en))
+  check('the 24 solar terms and 12 day officers in Hangul', LunarUtil.JIE_QI.filter(Boolean).map(toHant).every(j => JIEQI_KO[j]) && LunarUtil.ZHI_XING.filter(Boolean).map(toHant).every(z => ZHIXING_KO[z]))
+  const ja = almanacFor('2026-09-27', 'ja'), ko = almanacFor('2026-09-27', 'ko')
+  check('Japanese 2026-09-27: 結婚, 結納 … 開店・仕事始め; 彭祖 as sayings; no spirit lists', ja.yi.includes('結婚') && ja.yi.includes('結納') && ja.ji.includes('開店・仕事始め') && ja.pengZu[0] === '甲の日は倉を開けない（財が散る）' && ja.jiShen.length === 0 && ja.xiongSha.length === 0, JSON.stringify(ja.yi))
+  check('Korean 2026-09-27: 결혼 … 개업, 추분 → 한로, 위, 남쪽', ko.yi.includes('결혼') && ko.ji.includes('개업') && ko.jieQi.name === '추분' && ko.nextJieQi.name === '한로' && ko.zhiXing === '위' && ko.sha === '남')
+  check('English 彭祖百忌 in English; no spirit lists', en.pengZu[0].startsWith('A 甲 day') && en.jiShen.length === 0 && en.xiongSha.length === 0)
+  check('a Japanese calendar\'s forms: 啓蟄, 十二直 納', almanacFor('2026-03-06', 'ja').jieQi.name === '啓蟄' && Array.from({ length: 14 }, (_, i) => almanacFor(`2026-10-${String(i + 1).padStart(2, '0')}`, 'ja').zhiXing).includes('納'))
+  {
+    const jaWords = new Set(Object.values(YIJI).map(v => v.ja)), koWords = new Set(Object.values(YIJI).map(v => v.ko))
+    const jaLines = new Set(Object.values(PENGZU).map(v => v.ja)), koLines = new Set(Object.values(PENGZU).map(v => v.ko))
+    let raw = ''
+    for (let i = 0; i < 400 && !raw; i++) {
+      const d = new Date(Date.UTC(2026, 0, 1) + i * 86400_000).toISOString().slice(0, 10)
+      const j = almanacFor(d, 'ja'), k = almanacFor(d, 'ko')
+      if (![...j.yi, ...j.ji].every(w => jaWords.has(w)) || ![...k.yi, ...k.ji].every(w => koWords.has(w)) || !j.pengZu.every(l => jaLines.has(l)) || !k.pengZu.every(l => koLines.has(l))) raw = d
+    }
+    check('400 days of Japanese and Korean almanacs: every 宜忌 and 彭祖 line translated', !raw, raw)
+  }
   check('Japanese and Korean name the animals their own way', almanacFor('2026-09-27', 'ja').chong.animal === '犬' && almanacFor('2026-09-27', 'ko').chong.animal === '개' && almanacFor('2026-09-27', 'ko').animal === '말')
   check('a leap month is marked', almanacFor('2025-07-30', 'zh-Hant').lunarDate.startsWith('閏六月') && almanacFor('2025-07-30', 'en').lunarDate.startsWith('leap 6/'))
   check('where one simplified form is two traditional ones', toHant('益后') === '益後' && toHant('天后') === '天后' && toHant('理发') === '理髮' && toHant('馀事勿取') === '餘事勿取' && toHant('谷雨') === '穀雨' && toHant('复日') === '復日' && toHant('己不破券二比并亡') === '己不破券二比並亡')

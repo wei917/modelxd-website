@@ -42,7 +42,7 @@ import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../.
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../lib/xtell-history'
 import { TitleEditor } from '../components/xtell/TitleEditor'
-import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsd, levelsOf, defaultThinking } from '../../lib/xtell-presets'
+import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
@@ -1319,7 +1319,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                               if (usd == null && !secs) return null
                               return (
                                 <dl className="xtell-seat-stats">
-                                  {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsd(usd)}</dd></div>}
+                                  {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsdFor(usd, lang)}</dd></div>}
                                   {secs && <div title={t('xtell.seat.ttft.tip')}><dt>{t('xtell.seat.ttftLabel')}</dt><dd>~{secs} {t('xtell.seat.sec')}</dd></div>}
                                 </dl>
                               )
@@ -1425,7 +1425,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   }}>
                     <ProviderLogo provider={m.provider} size={13} />
                     {m.name}
-                    {m.cost > 0 && <span style={{ ...mono, fontSize: 9.5 }}>${m.cost.toFixed(3)}</span>}
+                    {m.cost > 0 && <span style={{ ...mono, fontSize: 9.5 }}>{fmtUsdFor(m.cost, lang)}</span>}
                   </button>
                 ))}
               </div>
@@ -1465,7 +1465,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                             // reading route, as on every surface), so a reply under
                             // half a cent shows its list cost but deducted nothing.
                             <span title={Math.round(tn.cost * 100) === 0 ? t('xtell.cost.subcent') : undefined}
-                              style={{ ...mono, color: 'var(--muted2)', cursor: Math.round(tn.cost * 100) === 0 ? 'help' : undefined }}>· ${tn.cost.toFixed(4)}</span>
+                              style={{ ...mono, color: 'var(--muted2)', cursor: Math.round(tn.cost * 100) === 0 ? 'help' : undefined }}>· {fmtUsdFor(tn.cost, lang)}</span>
                           )}
                           <span style={{ flex: 1 }} />
                           {/* 分享 (owner, Sep 28): a picture of this reply's
@@ -1514,7 +1514,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                       {waiting.map(m => {
                         const usd = usdOf(m)
                         return <button key={m.id} type="button" className="xtell-join-btn" disabled={joining.includes(m.id)} onClick={() => void join(m)}>
-                          {t('xtell.join.one').replace('{name}', m.display_name)}{usd != null && <small>{fmtUsd(usd)}</small>}
+                          {t('xtell.join.one').replace('{name}', m.display_name)}{usd != null && <small>{fmtUsdFor(usd, lang)}</small>}
                         </button>
                       })}
                       {masters.length < MAX_SEATS && <button type="button" className="xtell-join-btn is-add" onClick={() => setPicker({ replace: null, join: true })}>{t('xtell.join.add')}</button>}
@@ -1577,8 +1577,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             if (known.length === 0) return null
             const total = known.reduce((s, p) => s + p.usd, 0)
             return <div style={{ ...mono, fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>
-              {t('xtell.estimate').replace('{amount}', fmtUsd(total))}
-              {known.length > 1 && <> · {known.map(p => `${p.m.display_name} ${fmtUsd(p.usd)}`).join(' · ')}</>}
+              {t('xtell.estimate').replace('{amount}', fmtUsdFor(total, lang))}
+              {known.length > 1 && <> · {known.map(p => `${p.m.display_name} ${fmtUsdFor(p.usd, lang)}`).join(' · ')}</>}
             </div>
           })()}
           {questionRequired && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.yixue.question.privacy')}</p>}
@@ -1590,7 +1590,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       {picker && (
         <TeacherPicker
           catalog={catalog} seated={masters.map(m => m.id)} replacing={picker.replace} defaultModel={DEFAULT_MASTER}
-          price={m => { const usd = estimateReadingUsd(m, { thinking: defaultThinking(m), search: false }, 0, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS); return usd == null ? null : fmtUsd(usd) }}
+          price={m => { const usd = estimateReadingUsd(m, { thinking: defaultThinking(m), search: false }, 0, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS); return usd == null ? null : fmtUsdFor(usd, lang) }}
           firstWord={m => firstWord(m, defaultThinking(m))}
           onSelect={m => {
             setMasters(ms => {

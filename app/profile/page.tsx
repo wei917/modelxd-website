@@ -15,6 +15,7 @@ import XTellActivity from '../components/xtell/XTellActivity'
 import { DailyProfileSettings } from '../components/xtell/XTellDaily'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { XCreateAccountHead, XCreateAccountWelcome, XCreateLibrary } from '../components/xcreate/XCreateAccount'
+import { yenApprox } from '../../lib/plans'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -997,7 +998,7 @@ export default function ProfilePage() {
                       </div>
                       {/* The renewal terms sit next to the button that agrees
                           to them, not behind a link. */}
-                      <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 6, lineHeight: 1.6 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 6, lineHeight: 1.65 }}>
                         {t('profile.plan.fine')}
                       </div>
                     </>
@@ -2120,7 +2121,7 @@ export default function ProfilePage() {
                 color: 'var(--red)', fontWeight: 600,
               }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)' }} />
-                Top up · USD
+                {t('profile.topup.kicker')}
               </div>
               <button
                 onClick={() => !checkoutTier && setCheckoutOpen(false)}
@@ -2143,24 +2144,24 @@ export default function ProfilePage() {
               fontFamily: 'var(--font-body), sans-serif',
               letterSpacing: '-0.01em', lineHeight: 1.05,
             }}>
-              Add credits
+              {t('profile.topup.title')}
             </h2>
             <div style={{
               fontSize: 12, color: 'var(--muted2)', marginBottom: 22, lineHeight: 1.6,
               fontFamily: 'var(--font-body), sans-serif',
             }}>
-              Pick a top-up amount. You&apos;ll be redirected to Stripe to pay.
+              {t('profile.topup.sub')}
             </div>
 
             {/* Tier grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-              {DISPLAY_TIERS.map((t) => {
-                const isSelected = pickedTier === t.id
+              {DISPLAY_TIERS.map((tr) => {
+                const isSelected = pickedTier === tr.id
                 const isDimmed = checkoutTier !== null && !isSelected
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => setPickedTier(t.id)}
+                    key={tr.id}
+                    onClick={() => setPickedTier(tr.id)}
                     disabled={!!checkoutTier}
                     style={{
                       textAlign: 'left' as const,
@@ -2197,15 +2198,17 @@ export default function ProfilePage() {
                       letterSpacing: '-0.02em', lineHeight: 1,
                       marginBottom: 6,
                     }}>
-                      {t.label}
+                      {tr.label}
                     </div>
+                    {/* Japanese pages: the amount in yen too (Sep 29). */}
+                    {lang === 'ja' && <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>{yenApprox(tr.priceCents / 100)}</div>}
                     <div style={{
                       fontSize: 10.5, color: 'var(--muted2)',
                       fontFamily: 'var(--font-mono), monospace',
                       letterSpacing: '0.06em', textTransform: 'uppercase' as const,
                       lineHeight: 1.4,
                     }}>
-                      {t.description}
+                      {t(`profile.topup.tier.${tr.id}`)}
                     </div>
                   </button>
                 )
@@ -2271,7 +2274,7 @@ export default function ProfilePage() {
                   fontFamily: 'var(--font-mono), monospace',
                   letterSpacing: '0.06em', textTransform: 'uppercase' as const, lineHeight: 1.4,
                 }}>
-                  Custom — $1 to $1000
+                  {t('profile.topup.custom')}
                 </div>
               </div>
             </div>
@@ -2280,7 +2283,7 @@ export default function ProfilePage() {
                 appears only for gifts. Server verifies the account exists. */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', gap: 8 }}>
-                {([['self', 'For myself'], ['other', '🎁 For someone else']] as const).map(([mode, label]) => (
+                {([['self', t('profile.topup.self')], ['other', t('profile.topup.other')]] as const).map(([mode, label]) => (
                   <button
                     key={mode}
                     type="button"
@@ -2306,7 +2309,7 @@ export default function ProfilePage() {
                     type="email"
                     value={giftEmail}
                     onChange={e => setGiftEmail(e.target.value)}
-                    placeholder="their-email@example.com — must have a ModelXD account"
+                    placeholder={t('profile.topup.giftEmail')}
                     disabled={!!checkoutTier}
                     style={{
                       width: '100%', padding: '10px 12px', borderRadius: 7,
@@ -2317,7 +2320,7 @@ export default function ProfilePage() {
                   />
                   {giftEmail.trim() && (
                     <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 6 }}>
-                      Your card, their balance — credits go to {giftEmail.trim()}.
+                      {t('profile.topup.giftNote').replace('{email}', giftEmail.trim())}
                     </div>
                   )}
                 </div>
@@ -2333,7 +2336,7 @@ export default function ProfilePage() {
               const cents = pickedTier === 'custom' ? customCents : (tier?.priceCents ?? 0)
               const ready = !checkoutTier && (pickedTier === 'custom' ? customValid : !!tier)
               const amount = cents > 0 && (pickedTier !== 'custom' || customValid)
-                ? `$${(cents / 100).toLocaleString()}`
+                ? `$${(cents / 100).toLocaleString()}${lang === 'ja' ? `（${yenApprox(cents / 100)}）` : ''}`
                 : ''
               return (
                 <button
@@ -2358,10 +2361,10 @@ export default function ProfilePage() {
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
                 >
                   {checkoutTier
-                    ? 'Redirecting…'
+                    ? t('profile.topup.redirecting')
                     : pickedTier === 'custom' && !customValid
-                      ? 'Enter $1 – $1000'
-                      : `Pay ${amount} →`}
+                      ? t('profile.topup.enter')
+                      : t('profile.topup.pay').replace('{amount}', amount)}
                 </button>
               )
             })()}
@@ -2380,19 +2383,19 @@ export default function ProfilePage() {
                   background: 'var(--red)', marginRight: 8, verticalAlign: 'middle',
                   animation: 'pulse 1.2s ease-in-out infinite',
                 }} />
-                Redirecting to Stripe
+                {t('profile.topup.toStripe')}
               </div>
             )}
 
             {!checkoutTier && (
               <div style={{
                 marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--border)',
-                fontSize: 9, color: 'var(--muted2)',
-                fontFamily: 'var(--font-mono), monospace',
-                letterSpacing: '0.14em', textTransform: 'uppercase' as const,
+                fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6,
                 textAlign: 'center' as const,
               }}>
-                Secure payment via Stripe · No subscription
+                {/* One-time, and the refund rule, beside the button that pays
+                    (Sep 29: a Japanese tester asked for the terms in plain view). */}
+                {t('profile.topup.fine')}
               </div>
             )}
           </div>

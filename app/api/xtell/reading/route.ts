@@ -23,6 +23,7 @@ import { dreamEntries, dreamFacts, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
 import { asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieFacts } from '@/lib/xtell-cookie'
+import { chineseLeak, leaksChinese } from '@/lib/xtell-lang-check'
 
 const LOG = '[xtell/reading]'
 
@@ -32,11 +33,28 @@ const LOG = '[xtell/reading]'
 const LANG_LINE: Record<string, string> = {
   'zh-Hant': '回答語言：繁體中文，全文不得夾雜簡體字。',
   'zh-Hans': '回答语言：简体中文。',
-  'ja': '回答言語：日本語。命理の術語は漢字表記を残し、必要なら短い説明を添えること（例：日主（にっしゅ）、流年（りゅうねん））。',
+  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に読みか短い説明を添える（例：日主（にっしゅ）、流年（りゅうねん））。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける。',
   'ko': '답변 언어: 한국어. 명리 용어는 한자를 병기하고 필요하면 짧은 설명을 덧붙일 것 (예: 일주(日主), 유년(流年)).',
   'en': 'Answer in English. Keep the Chinese terms in parentheses the first time each appears (e.g. day master 日主, the year\'s flow 流年) and do not translate proper names of stars or palaces without also giving the Chinese.',
 }
-const langLine = (v: unknown) => (typeof v === 'string' && LANG_LINE[v]) ? `\n\n${LANG_LINE[v]} 若信眾以其他語言提問，改用信眾的語言。` : ''
+// "Answer in the visitor's language if they write in another", said in the
+// page's language: a Chinese clause here pulled Japanese answers toward
+// Chinese (Sep 29).
+const SWITCH_LINE: Record<string, string> = {
+  'ja': '相談者が日本語以外の言語で書いた場合だけ、その言語で答える。',
+  'ko': '상담자가 다른 언어로 물었을 때만 그 언어로 답한다.',
+  'en': 'Only if the visitor writes in another language, answer in theirs.',
+}
+const langLine = (v: unknown) => (typeof v === 'string' && LANG_LINE[v]) ? `\n\n${LANG_LINE[v]} ${SWITCH_LINE[v] ?? '若信眾以其他語言提問，改用信眾的語言。'}` : ''
+// The chart facts and classics are Chinese and come last, right before the
+// answer; on a Japanese, Korean or English page the language is restated
+// after them (Sep 29: Chinese prose leaked into Japanese answers).
+const CLOSING_LINE: Record<string, string> = {
+  'ja': '（最終確認：上の資料は中国語ですが、回答はすべて日本語で書くこと。中国語の文を混ぜないこと。）',
+  'ko': '(최종 확인: 위 자료는 중국어지만, 답변은 모두 한국어로 쓸 것. 중국어 문장을 섞지 말 것.)',
+  'en': '(Final check: the material above is in Chinese; write the whole answer in English.)',
+}
+const closingLine = (v: unknown) => (typeof v === 'string' && CLOSING_LINE[v]) ? `\n\n${CLOSING_LINE[v]}` : ''
 
 // How long an answer may be (owner, Sep 29: a tester's 塔羅 answer ran to
 // ~3,300 characters and said the same advice in several sections). 1000 字
@@ -301,6 +319,13 @@ export async function POST(req: Request) {
           // live test lost exactly one appended turn that way (Sep 24).
           onDone: async (r) => {
             const cents = Math.round((r.cost ?? 0) * 100)
+            // Measured, not yet acted on (Sep 29): how often a Japanese
+            // answer carries Chinese prose, per model. Characters only,
+            // never the answer.
+            if (body?.lang === 'ja' && leaksChinese(full)) {
+              const leak = chineseLeak(full)
+              console.warn(`${LOG} Chinese in a Japanese answer: ${(model as any).model_name}, ${leak.count} chars (${leak.sample})`)
+            }
             if (readingId && qid) {
               const ts = new Date().toISOString()
               const { error } = await sb.rpc('xtell_append_turns', {
@@ -334,8 +359,8 @@ export async function POST(req: Request) {
         { userId: user.id },
         {
           system: daily
-            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}`
-            : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}`,
+            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${closingLine(body?.lang)}`
+            : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${closingLine(body?.lang)}`,
           search,
           thinking,
         },
