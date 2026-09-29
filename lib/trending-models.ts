@@ -301,20 +301,57 @@ export function presetModel(models: readonly string[], recipe: string, catalog: 
   return null
 }
 
+/** A model's version: the first number in its id ("seedance2_5" → 2.5,
+ *  "veo-3.1-generate-preview" → 3.1, "MiniMax-H3" → 3) or in a credited
+ *  name ("Seedance 2.0" → 2, "Hailuo 02" → 2), or null. Ids, not display
+ *  names: "Nano Banana 2 - Gemini 3.1 Flash Image" mixes two numberings. */
+const versionOf = (s: string): number | null => {
+  const m = s.replace(/_/g, '.').match(/(\d+(?:\.\d+)?)/)
+  return m ? Number(m[1]) : null
+}
+
+/** A newer model of a credited name's family (owner, Sep 28: "when you apply
+ *  settings, newer version of the model family should be ok"), for when no
+ *  offered model is the one credited: "Seedance 2.0" runs on Seedance 2.5,
+ *  "Veo 3" on Veo 3.1, "Wan 2.2" on Wan 3.0. The newest the recipe allows,
+ *  never an older one ("Seedance 3.0" gets nothing while 2.5 is newest); an
+ *  unversioned credit takes the newest. Several models tied at the newest
+ *  version give none unless PLAIN_NAMES reads it. */
+function newerInFamily(models: readonly string[], able: readonly UsableModel[], support: Support): string | null {
+  for (const label of models.flatMap(namesIn)) {
+    const fam = familyOf(label, support)
+    if (!fam) continue
+    const want = versionOf(label)
+    const mine = able.filter(m => fam.models.includes(m.model_name))
+      .map(m => ({ id: m.model_name, v: versionOf(m.model_name) }))
+      .filter(x => want == null || (x.v != null && x.v >= want))
+    if (!mine.length) continue
+    const top = Math.max(...mine.map(x => x.v ?? -1))
+    const newest = mine.filter(x => (x.v ?? -1) === top)
+    if (newest.length === 1) return newest[0].id
+    const plain = PLAIN_NAMES.get(normName(`${fam.name} ${top}`))
+    if (plain && newest.some(x => x.id === plain)) return plain
+  }
+  return null
+}
+
 /** The model a stored preset runs on now, and its name for the tag beside
  *  the button (owner, Sep 27: "you must know the model"). The stored model
  *  while XCreate runs it for the post's kind and recipe; otherwise the one
  *  the post's credited names point to (presetModel), which is how settings
- *  saved while the model was unclear get one. Null when no model runs them
- *  (Codex review, Sep 27): no button. The name is the catalog's, before any
- *  alias ("Nano Banana Pro - Gemini 3 Pro Image" is "Nano Banana Pro"). */
+ *  saved while the model was unclear get one; otherwise a newer model of the
+ *  credited family (newerInFamily). Null when no model runs them (Codex
+ *  review, Sep 27): no button. The name is the catalog's, before any alias
+ *  ("Nano Banana Pro - Gemini 3 Pro Image" is "Nano Banana Pro"). */
 export function presetRunsOn(
   kind: MediaKind, models: readonly string[],
   preset: { model?: string | null; recipe: string } | null | undefined, support: Support,
 ): { model: string; name: string } | null {
   if (!preset) return null
   const able = support.models.filter(m => m.kinds.includes(kind) && m.modes.includes(preset.recipe))
-  const id = able.some(m => m.model_name === preset.model) ? preset.model : presetModel(models, preset.recipe, able)
+  const id = able.some(m => m.model_name === preset.model)
+    ? preset.model
+    : presetModel(models, preset.recipe, able) ?? newerInFamily(models, able, support)
   const m = id ? able.find(m => m.model_name === id) : undefined
   return m ? { model: m.model_name, name: m.display_name.split(' - ')[0].trim() } : null
 }

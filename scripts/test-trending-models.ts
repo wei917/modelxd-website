@@ -191,13 +191,26 @@ assert.deepEqual(runs('image', ['GPT Image 2'], { model: 'gpt-image-2', recipe: 
 assert.deepEqual(runs('image', ['Nano Banana Pro'], { model: 'gemini-3-pro-image', recipe: 'image_edit' }), { model: 'gemini-3-pro-image', name: 'Nano Banana Pro' }, 'the name before the alias')
 assert.deepEqual(runs('image', ['GPT Image 2.5'], { recipe: 'image_edit' }), { model: 'gpt-image-2.5-flare', name: 'GPT Image 2.5 Flare' }, 'saved without a model: picked when served')
 assert.deepEqual(runs('video', ['Google veo 3.1'], { recipe: 'text_to_video' }), { model: 'veo-3.1-generate-preview', name: 'Veo 3.1 Preview' })
-assert.equal(runs('image', ['Grok Imagine'], { recipe: 'text_to_image' }), null, 'still two Grok image models')
+assert.deepEqual(runs('image', ['Grok Imagine'], { recipe: 'text_to_image' }), { model: 'grok-imagine-image-2.0', name: 'Grok Imagine Image 2.0' }, 'two Grok image models: the newer (owner, Sep 28)')
 assert.deepEqual(runs('video', ['Seedance 2.5'], { model: 'gone', recipe: 'text_to_video' }), { model: 'seedance2_5', name: 'Seedance 2.5' }, 'a stored model gone: the credited name')
 assert.equal(runs('video', [], { model: 'gone', recipe: 'text_to_video' }), null, 'model gone, nothing credited')
 assert.equal(runs('video', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'video_edit' }), null, 'recipe not offered')
 assert.equal(runs('image', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'image_to_video' }), null, 'wrong kind')
 assert.equal(runs('video', ['Seedance 2.5'], { model: 'seedance2_5', recipe: 'image_to_video' }, noSeedance), null, 'model disabled')
 assert.equal(runs('video', ['Seedance 2.5'], null), null)
+
+// A newer model of the credited family when the credited one isn't offered
+// (owner, Sep 28), never an older one.
+assert.deepEqual(runs('video', ['Seedance 2.0'], { recipe: 'text_to_video' }), { model: 'seedance2_5', name: 'Seedance 2.5' })
+assert.deepEqual(runs('video', ['Veo 3'], { recipe: 'text_to_video' }), { model: 'veo-3.1-generate-preview', name: 'Veo 3.1 Preview' })
+assert.deepEqual(runs('video', ['Wan 2.2'], { recipe: 'text_to_video' }), { model: 'wan3.0-video', name: 'Wan 3.0' }, 'the newest the recipe allows')
+assert.deepEqual(runs('video', ['Hailuo 02'], { recipe: 'image_to_video' }), { model: 'MiniMax-H3', name: 'MiniMax H3' })
+assert.deepEqual(runs('video', ['Runway Gen-3 Alpha'], { recipe: 'text_to_video' }), { model: 'gen4.5', name: 'Runway Gen-4.5' })
+assert.deepEqual(runs('image', ['GPT Image 1'], { recipe: 'text_to_image' }), { model: 'gpt-image-2.5-flare', name: 'GPT Image 2.5 Flare' }, 'a tie at the newest: PLAIN_NAMES')
+assert.deepEqual(runs('video', ['HappyHorse 1.0'], { recipe: 'text_to_video' }), { model: 'happyhorse-1.0-t2v', name: 'HappyHorse 1.0 Text to Video' }, 'offered: the credited version, not the newer')
+assert.equal(runs('video', ['Seedance 3.0'], { recipe: 'text_to_video' }), null, 'never an older model')
+assert.equal(runs('video', ['Kling 2.1'], { recipe: 'text_to_video' }), null, 'not a family XCreate offers')
+assert.equal(runs('image', ['Nano Banana 1'], { recipe: 'text_to_image' }), null, 'two Gemini 3.1 image models tie: none')
 
 // Which model a preset runs: an exact name first, then one variant, never
 // another version (Codex review, Sep 27: "GPT IMAGE 2" had matched
