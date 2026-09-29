@@ -10,7 +10,8 @@ import * as ts from 'typescript'
 import vm from 'node:vm'
 import fs from 'node:fs'
 import path from 'node:path'
-import { mealOf, mealKey, parseCookie, cookieProblem, cookieFacts, FLAVOR_ELEMENT } from '../lib/xtell-cookie'
+import { mealOf, mealKey, cookieProblem, cookieFacts, FLAVOR_ELEMENT, parsePick, parseNote, pickBrief, PICK_TOP } from '../lib/xtell-cookie'
+import { cookieFortunes } from '../lib/xtell-cookie-fortunes'
 import * as xtell from '../lib/xtell'
 import { STRINGS } from '../lib/i18n'
 
@@ -22,9 +23,16 @@ check('meals by the hour: breakfast, lunch, tea, dinner, late', ['07:30', '12:00
 check('a snack at 01:10 belongs to the evening before', mealKey(mealOf('2026-09-29T01:10')!) === '2026-09-28|late')
 check('no meal at an impossible time', mealOf('2026-02-30T12:00') === null && mealOf('2026-09-28 12:00') === null && mealOf('2026-09-28T24:00') === null && mealOf(12) === null)
 check('what was eaten is required, and short', cookieProblem('', '2026-09-28T12:00') === 'food_required' && cookieProblem('x'.repeat(201), '2026-09-28T12:00') === 'food_too_long' && cookieProblem('麵', 'noon') === 'meal_time_invalid' && cookieProblem('麵', '2026-09-28T12:00') === null)
-check('the slip: a known taste gives its element', JSON.stringify(parseCookie('{"flavor":"鹹","fortune":"鹹香一口，心安一整天。","note":"鹹屬水。"}')) === JSON.stringify({ fortune: '鹹香一口，心安一整天。', note: '鹹屬水。', flavor: '鹹', element: '水' }))
-check('no lucky numbers: a digit anywhere and the slip is refused', parseCookie('{"flavor":"甘","fortune":"幸運數字 7","note":"甘屬土。"}') === null && parseCookie('{"flavor":"甘","fortune":"好事將近","note":"第８天"}') === null)
-check('an unknown taste, or not JSON, is refused', parseCookie('{"flavor":"鮮","fortune":"好","note":"好"}') === null && parseCookie('not json') === null)
+// The slips: real fortunes, chosen by the model, one of the best drawn here.
+const list = cookieFortunes()
+const ids = new Set(list.map(f => f.id))
+check('206 real fortunes, in five languages, none with a number', list.length === 206 && list.every(f => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => (f as any)[l]?.trim() && !/[0-9０-９]/.test((f as any)[l]))))
+check('the source and its MIT licence travel with the list', (() => { const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'content', 'cookie', 'fortunes.json'), 'utf8')); return j.source.licence === 'MIT' && /Thomas Reggi/.test(j.source.copyright) && fs.readFileSync(path.join(__dirname, '..', j.source.licenceFile), 'utf8').startsWith('MIT License') })())
+check('the chooser sees every fortune, numbered', (() => { const b = pickBrief(list); return list.every(f => b.includes(`${f.id} ${f.en}`)) })())
+const pk = parsePick('{"flavor":"鹹","ids":[52, "243", 52, 9999, 48, 50, 30, 12, 8, 1, 2, 4, 5]}', id => ids.has(id))
+check(`a pick: the taste's element, real numbers only, no repeats, at most ${PICK_TOP}`, !!pk && pk.element === '水' && pk.ids.length === PICK_TOP && pk.ids[0] === 52 && pk.ids[1] === 243 && !pk.ids.includes(9999))
+check('a pick with an unknown taste, or no real number, is refused', parsePick('{"flavor":"鮮","ids":[52]}', id => ids.has(id)) === null && parsePick('{"flavor":"甘","ids":[9999]}', id => ids.has(id)) === null && parsePick('nope', () => true) === null)
+check('the note: no digits (no lucky numbers)', parseNote('{"note":"鹹屬水。"}') === '鹹屬水。' && parseNote('{"note":"第８天"}') === null && parseNote('{"note":"lucky 7"}') === null)
 check('five tastes, five elements', Object.entries(FLAVOR_ELEMENT).map(([k, v]) => k + v).join('') === '酸木苦火甘土辛金鹹水')
 check('the writer gets the meal, the 時辰 and the day', (() => { const f = cookieFacts({ food: '牛肉麵', ask: '', meal: mealOf('2026-09-28T12:30')!, dayGz: '乙巳' }); return f.includes('牛肉麵') && f.includes('午餐') && f.includes('午時') && f.includes('乙巳日') })())
 
@@ -39,7 +47,7 @@ function loadRoute(file: string, modules: Record<string, unknown>) {
   return exports
 }
 
-function world(opts: { reply?: string | null; balance?: number } = {}) {
+function world(opts: { reply?: string | null; note?: string | null; balance?: number } = {}) {
   const rows: any[] = [], debits: number[] = [], grants: number[] = []
   let balance = opts.balance ?? 100
   class InsufficientCreditsError extends Error {}
@@ -69,11 +77,13 @@ function world(opts: { reply?: string | null; balance?: number } = {}) {
       return q
     },
   }
-  const reply = opts.reply === undefined ? '{"flavor":"鹹","fortune":"你很快會收到一個好消息。","note":"這一餐主味鹹，鹹屬水；午時正旺，好消息就像水一樣會流過來。"}' : opts.reply
+  const pickReply = opts.reply === undefined ? '{"flavor":"鹹","ids":[52,243,48,50,30,12,8,1,2,4]}' : opts.reply
+  const noteReply = opts.note === undefined ? '{"note":"這一餐主味鹹，鹹屬水；午時正旺，好消息就像水一樣會流過來。"}' : opts.note
   const POST = loadRoute('app/api/xtell/chart/route.ts', {
     '@/lib/supabase-server': { createSupabaseServer: async () => db }, '@/lib/xtell': xtell, '@/lib/yijing': require('../lib/yijing'),
     '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'),
-    '@/lib/xtell-daily-model': { dailyText: async (o: any) => (reply && o.accept(reply) ? reply : null) },
+    '@/lib/xtell-daily-model': { dailyText: async (o: any) => { const r = /You choose fortune-cookie slips/.test(o.system) ? pickReply : noteReply; return r && o.accept(r) ? r : null } },
+    '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'),
     '@/lib/credits': {
       InsufficientCreditsError,
       debitCredits: async (o: any) => { if (balance < o.amountCents) throw new InsufficientCreditsError('insufficient_credits'); balance -= o.amountCents; debits.push(o.amountCents); return balance },
@@ -91,8 +101,15 @@ async function route() {
   const c1 = await w.crack(meal), c2 = await w.crack(meal), c3 = await w.crack(meal)
   check('the first two cookies of a meal are free', c1.status === 200 && c2.status === 200 && c1.d.chart.charged === 0 && c2.d.chart.charged === 0, `${c1.status} ${c2.status}`)
   check('the third is charged one cent, before the model runs', c3.status === 200 && c3.d.chart.charged === 1 && w.debits.join() === '1')
-  check('each cookie is its own saved visit, titled by its slip (same meal, same words)', w.rows.length === 3 && new Set(w.rows.map(r => r.subject.crack)).size === 3 && w.rows.every(r => r.subject.meal === '2026-09-28|lunch' && r.title === '你很快會收到一個好消息。'))
-  check('the slip carries the meal, the 時辰, the day and the element', c1.d.chart.shichen === '午時' && c1.d.chart.meal.slot === 'lunch' && c1.d.chart.element === '水' && typeof c1.d.chart.dayGz === 'string')
+  check('each cookie is its own saved visit, titled by its slip', w.rows.length === 3 && new Set(w.rows.map(r => r.subject.crack)).size === 3 && w.rows.every(r => r.subject.meal === '2026-09-28|lunch' && r.title === r.chart.fortune))
+  check('the slip is one of the ten chosen, a real fortune, in the page language and all five', [52, 243, 48, 50, 30, 12, 8, 1, 2, 4].includes(c1.d.chart.fortuneId) && c1.d.chart.fortune === list.find(f => f.id === c1.d.chart.fortuneId)!['zh-Hant'] && Object.keys(c1.d.chart.fortunes).length === 5)
+  check('the slip carries the meal, the 時辰, the day, the element and the note', c1.d.chart.shichen === '午時' && c1.d.chart.meal.slot === 'lunch' && c1.d.chart.element === '水' && typeof c1.d.chart.dayGz === 'string' && /鹹屬水/.test(c1.d.chart.note))
+  const many = world({ balance: 1000 }); const drawn = new Set<number>()
+  for (let i = 0; i < 40; i++) { const c = await many.crack({ ...meal, mealAt: `2026-${String(1 + (i % 12)).padStart(2, '0')}-10T12:30` }); drawn.add(c.d.chart.fortuneId) }
+  check('one of the ten is drawn at random: different slips turn up', drawn.size >= 4, String(drawn.size))
+  const noNote = world({ note: 'lucky 7' })
+  const nn = await noNote.crack(meal)
+  check('no usable note: the slip still comes, without a note', nn.status === 200 && nn.d.chart.note === null && typeof nn.d.chart.fortune === 'string')
   const dinner = await w.crack({ ...meal, mealAt: '2026-09-28T19:00' })
   check('another meal starts free again', dinner.status === 200 && dinner.d.chart.charged === 0)
 
@@ -101,7 +118,7 @@ async function route() {
   const p3 = await poor.crack(meal)
   check('an empty balance: the third is refused, nothing written', p3.status === 402 && p3.d.code === 'no_credits' && poor.rows.length === 2)
 
-  const broken = world({ reply: '幸運數字 7' })
+  const broken = world({ reply: '{"flavor":"甘","ids":[99999]}' })
   await broken.crack(meal)
   const b1 = await broken.crack(meal)
   check('no slip: refused, and nothing saved', b1.status === 502 && b1.d.code === 'cookie_failed' && broken.rows.length === 0)

@@ -12,7 +12,8 @@ export const runtime = 'nodejs'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES, asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
-import { cookieProblem, mealOf, mealKey, shichenOf, cookieBrief, cookieFacts, parseCookie, FREE_PER_MEAL, EXTRA_CENTS, ASK_MAX as COOKIE_ASK_MAX } from '@/lib/xtell-cookie'
+import { cookieProblem, mealOf, mealKey, shichenOf, cookieFacts, pickBrief, parsePick, noteBrief, parseNote, FREE_PER_MEAL, EXTRA_CENTS, ASK_MAX as COOKIE_ASK_MAX } from '@/lib/xtell-cookie'
+import { cookieFortunes, fortuneOf, fortuneTexts } from '@/lib/xtell-cookie-fortunes'
 import { dailyText } from '@/lib/xtell-daily-model'
 import { debitCredits, grantCredits, InsufficientCreditsError } from '@/lib/credits'
 import { almanacFor } from '@/lib/xtell-almanac'
@@ -176,17 +177,29 @@ export async function POST(req: Request) {
     }
     const dayGz = (() => { try { return almanacFor(meal.date, 'zh-Hant').dayGz } catch { return null } })()
     const lang = typeof body?.lang === 'string' ? body.lang : 'zh-Hant'
-    const text = await dailyText({ system: cookieBrief(lang), content: cookieFacts({ food, ask, meal, dayGz }), userId: user.id, accept: t => !!parseCookie(t) }).catch(() => null)
-    const cookie = text ? parseCookie(text) : null
-    if (!cookie) {
+    const facts = cookieFacts({ food, ask, meal, dayGz })
+    // 1. The quick model names the taste and the PICK_TOP fortunes that fit
+    //    best; 2. one of them is drawn at random here (a cookie keeps its
+    //    chance); 3. the model writes the note for that slip. A missing note
+    //    is not a failure: the slip is what the visitor came for.
+    const list = cookieFortunes()
+    const valid = (id: number) => list.some(f => f.id === id)
+    const pickText = await dailyText({ system: pickBrief(list), content: facts, userId: user.id, accept: t => !!parsePick(t, valid) }).catch(() => null)
+    const pick = pickText ? parsePick(pickText, valid) : null
+    const slip = pick ? fortuneOf(pick.ids[crypto.getRandomValues(new Uint32Array(1))[0] % pick.ids.length]) : null
+    if (!pick || !slip) {
       if (cents) await grantCredits({ userId: user.id, amountCents: cents, kind: 'refund', referenceType: 'xtell', referenceId: 'cookie', description: 'XTell fortune cookie refund (no slip)' }).catch(() => null)
       return refuse('cookie_failed', 'the cookie could not be cracked', 502)
     }
-    const chart = { food, ask, meal: { ...meal, key }, shichen: shichenOf(meal.hour), dayGz, ...cookie, charged: cents }
+    const texts = fortuneTexts(slip)
+    const fortune = (texts as Record<string, string>)[lang] ?? texts['zh-Hant']
+    const noteText = await dailyText({ system: noteBrief(lang), content: `${facts}\n主味：${pick.flavor}（五行屬${pick.element}）\n餅乾裡的紙條：「${fortune}」（原文：${slip.en}）`, userId: user.id, accept: t => !!parseNote(t) }).catch(() => null)
+    const note = noteText ? parseNote(noteText) : null
+    const chart = { food, ask, meal: { ...meal, key }, shichen: shichenOf(meal.hour), dayGz, flavor: pick.flavor, element: pick.element, fortuneId: slip.id, fortune, fortunes: texts, note, charged: cents }
     // `crack`: every cookie is its own visit. Without it, save() would hand
     // back an earlier row with the same meal and no questions, and the meal's
     // count (and the charge from the third) would never move.
-    const readingId = await save(sb, user.id, temple, { food, ask, mealAt: body.mealAt, meal: key, crack: crypto.randomUUID() }, chart, {}, cookie.fortune)
+    const readingId = await save(sb, user.id, temple, { food, ask, mealAt: body.mealAt, meal: key, crack: crypto.randomUUID() }, chart, {}, fortune)
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 

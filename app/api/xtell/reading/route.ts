@@ -203,7 +203,7 @@ export async function POST(req: Request) {
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
   const facts = daily ? daily.facts : temple === 'cookie'
-    ? `${cookieFacts({ food: String(cookieChart.food ?? ''), ask: String(cookieChart.ask ?? ''), meal: cookieChart.meal, dayGz: cookieChart.dayGz ?? null })}\n主味：${cookieChart.flavor}（五行屬${cookieChart.element}）\n幸運餅乾的籤語（照錄）：「${cookieChart.fortune}」\n當時的小解說：${cookieChart.note}`
+    ? `${cookieFacts({ food: String(cookieChart.food ?? ''), ask: String(cookieChart.ask ?? ''), meal: cookieChart.meal, dayGz: cookieChart.dayGz ?? null })}\n主味：${cookieChart.flavor}（五行屬${cookieChart.element}）\n幸運餅乾的籤語（照錄）：「${cookieChart.fortune}」${cookieChart.note ? `\n當時的小解說：${cookieChart.note}` : ''}`
     : temple === 'jiemeng'
     ? dreamFacts(String(body.dream).trim(), typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : '', dreamEntries(dreamLines))
     : temple === 'yixue'

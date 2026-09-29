@@ -2843,8 +2843,10 @@ function CookieForm({ food, setFood, mealAt, setMealAt, ask, setAsk, sel, foodAr
 }
 
 function CookieBoard({ chart }: { chart: any }) {
-  const t = useT()
+  const { lang, t } = useLang()
   if (!chart?.fortune) return null
+  // The slip in the page's language (all five are saved with the cookie).
+  const fortune: string = chart.fortunes?.[lang] ?? chart.fortune
   const facts = [t(`xtell.cookie.slot.${chart.meal?.slot ?? 'lunch'}`), chart.shichen, chart.dayGz ? `${chart.dayGz}日` : '', t('xtell.cookie.flavor').replace('{flavor}', chart.flavor).replace('{element}', chart.element)].filter(Boolean).join(' · ')
   return (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -2852,19 +2854,21 @@ function CookieBoard({ chart }: { chart: any }) {
         <span style={{ fontSize: 13 }}>{chart.food}</span>
         <span style={{ flex: 1 }} />
         <ShareButton spec={() => ({ icon: 'cookie', link: 'cookie', title: t('xtell.site.focus.cookie.name'), kicker: facts,
-          body: [chart.fortune, chart.note], style: 'prose', name: 'xtell-cookie' })} />
+          body: [fortune, ...(chart.note ? [chart.note] : [])], style: 'prose', name: 'xtell-cookie' })} />
       </div>
       <div className="xtell-cookie-slip">
-        <p>{chart.fortune}</p>
+        <p>{fortune}</p>
+        {lang !== 'en' && chart.fortunes?.en && <p className="xtell-cookie-en" lang="en">{chart.fortunes.en}</p>}
       </div>
       {/* The slip is a classic fortune; this meal's taste, element, hour and
           day are in the note under it (owner, Sep 28). */}
-      <div>
+      {chart.note && <div>
         <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.cookie.noteLabel')}</div>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
-      </div>
+      </div>}
       <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
       {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}
+      {chart.fortuneId != null && <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.cookie.source')}</div>}
     </div>
   )
 }
