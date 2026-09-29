@@ -127,7 +127,7 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('daily strings in all five languages', keys.length >= 100 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), String(keys.length))
   check('user copy has no engine, library or source wording', !keys.some(k => /lunar-typescript|astronomy-engine|Swiss|library|engine|ephemeris/i.test(JSON.stringify((STRINGS as any)[k]))))
   check('the delete confirmation names what goes, and what does not', LANGS.every(l => (STRINGS as any)['xtell.dy.deleteConfirm'][l].length > 20) && /birth details/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /paid conversations/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /other temple visits are not affected/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /cannot be undone/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en))
-  check('catalog: daily is live and free', catalog.liveFeature('daily')?.opens === 'daily' && catalog.XTELL_CATALOG_VERSION === '2026-09-28.2')
+  check('catalog: daily is live and free', catalog.liveFeature('daily')?.opens === 'daily' && catalog.XTELL_CATALOG_VERSION === '2026-09-29.1')
   const qwen = (name: string) => ({ provider: 'alibaba', model_name: name, output_config: { text: { thinking_levels: ['thinking_true', 'thinking_false'] } } })
   check('Qwen starts with thinking off, Flash too (Sep 29); others keep their own default', presets.defaultThinking(qwen('qwen3.8-flash')) === 'thinking_false' && presets.defaultThinking(qwen('qwen3.8-max')) === 'thinking_false' && presets.defaultThinking({ provider: 'openai', model_name: 'gpt-6-luna' }) === null)
   {
@@ -371,7 +371,7 @@ async function routes() {
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
     '@/lib/credits': { debitCredits: async () => {}, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
-    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': require('../lib/yijing'), '@/lib/xtell-daily': daily, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': require('../lib/jiemeng'),
+    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': require('../lib/yijing'), '@/lib/xtell-daily': daily, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': require('../lib/jiemeng'),
   })
   const ask = async (body: any) => { const r = await reading.POST(req('http://t/api/xtell/reading', 'POST', { modelId: 'm1', ...body })); return { status: r.status, text: await r.text() } }
   const r1 = await ask({ temple: 'daily', readingId: f1.d.readingId, question: '今天適合談加薪嗎？', basis: { western: { contacts: [{ transit: 'Pluto', natal: 'Sun' }] } }, chart: 'fake' })

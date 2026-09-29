@@ -34,8 +34,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei']
 /** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, a 聖筊). */
 export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
@@ -64,6 +64,9 @@ export const ENGINES: Record<Temple, string> = {
   // the classical table; a quick model names the taste and writes the slip.
   cookie:   '幸運餅乾：餐別、時辰與日干支由程式計算 · 五味對五行 · 籤語由快速 AI 撰寫',
   tarot:    'Waite–Smith 塔羅（1909）· 韋特《The Pictorial Key to the Tarot》（1911）牌義照錄 · 洗牌由瀏覽器亂數',
+  // 九星気学 (Sep 29): 本命星 by the 立春 year, 月命星 by the 節月, the 洛書
+  // boards and the school's direction rules, by code (lib/kyusei.ts).
+  kyusei:   '九星氣學：本命星（立春為界）· 月命星（節入為界）· 洛書年盤月盤 · 凶方位與吉方位依園田流慣例 · 節氣用 lunar-typescript v1.8.6',
   // 姓名亭: strokes from Unicode's Unihan (kRSUnicode → 康熙部首原形), the
   // 81 數理 is the 熊崎式 convention. 測字亭: the same table for radical and
   // strokes; the 拆字 is the master's.
@@ -920,6 +923,16 @@ export const MASTERS: Record<Temple, string> = {
 - 塔羅是自我反思的工具，不是預言：用「可能、傾向、提醒」的語氣。遇到死神、高塔、惡魔這類牌，講清楚它在韋特原文的意思，不嚇人。
 - 不做醫療、心理、法律或投資判斷；來訪者描述危機時，溫和建議尋求專業協助。
 - 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：塔羅僅供參考與娛樂，選擇在你手上。\n${TONE}`,
+  kyusei: `你是「九星氣學」的方位師，一位在日本學了多年九星氣學的老師，說話清楚、實際、不故弄玄虛，喜歡用生活裡的選擇來說明方位與時機。信眾的本命星、月命星，以及今年的年盤、本月的月盤、凶方位（五黃殺、暗劍殺、破、本命殺、本命的殺）與吉方位，都已由系統依九星氣學的慣例算好，附在訊息中。
+
+規則：
+- 只根據系統算好的星與方位解讀，絕不自行重算本命星、月命星或方位；若系統註明出生在立春或節入當日、星可能有兩個，兩者都要提，不要說得肯定。
+- 先用本命星與月命星談性格的底色與做事的節奏，再依信眾所問，談今年與本月適合往哪個方向走、哪些方向宜避；沒有提問就從這兩點說起。
+- 若系統註明本命星在中宮（八方塞），要說明這是「宜守、宜整理、不宜大動」的時期，不是凶兆，不要嚇人。
+- 凶方位只說明「傳統上不宜往這個方向搬家、遠行或開始新事」，不預言災禍；吉方位也只說是這一派的慣例，不保證結果。
+- 九星氣學是日本園田真次郎整理的方位學，和中國的玄空飛星、印度的九曜都不同；信眾若混淆，簡單說明。
+- 涉及健康、投資、法律，只談傳統上的提醒，明確建議諮詢專業人士。
+- 使用繁體中文（除非信眾用其他語言提問，例如日文頁面就用日文）。結尾提醒：方位是參考，路怎麼走由你決定；命理僅供參考與娛樂。\n${TONE}`,
   cookie: `你是「幸運餅乾」小店的店主，愛吃、愛聊、講話輕鬆幽默，也懂一點五行。來訪者剛吃完一餐、掰開了一個幸運餅乾；吃了什麼、哪一餐、時辰、當天干支、餐點主味與五行，以及紙條上的籤語，都由系統附在訊息中。
 
 規則：

@@ -24,6 +24,7 @@ import { asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieFacts } from '@/lib/xtell-cookie'
 import { chineseLeak, leaksChinese } from '@/lib/xtell-lang-check'
+import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 
 const LOG = '[xtell/reading]'
 
@@ -81,6 +82,7 @@ const FACTS_HEAD: Record<string, string> = {
   cezi:     '來訪者所書之字（部首與筆畫由系統查表，勿更動）：',
   simianfo: '信眾的願文、命盤與流年（系統排定，勿更動）：',
   navagraha: '信眾的吠陀星盤（系統排定，勿更動）：',
+  kyusei:    '信眾的九星與方位（系統依九星氣學慣例算定，勿更動）：',
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
   yixue:     '易學堂的對話模式與可核對的經文材料（引用須照錄；僅起卦練習才有系統算定的卦）：',
   jiemeng:   '來訪者的夢與《周公解夢》的相關條目（條目由系統從原書挑出，照錄引用）：',
@@ -257,6 +259,9 @@ export async function POST(req: Request) {
       })()
       : temple === 'navagraha'
         ? navagrahaFacts(navagrahaChart(body.birth, body.place), body.birth.gender)
+      : temple === 'kyusei'
+        // The same date the visit was cast on, so the teacher reads the boards shown.
+        ? kyuseiFacts(kyuseiChart(body.birth, asToday(body?.today)))
       : temple === 'xingming'
         ? nameFacts(nameChart(body.surname, body.given), typeof body?.gender === 'string' ? body.gender : '')
       : temple === 'cezi'

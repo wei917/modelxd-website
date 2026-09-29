@@ -108,6 +108,7 @@ function rules(): string {
     'For 黃曆, 農民曆, 宜忌 or what today is good for, use "almanac" (a free card on the street, no birthday).',
     'For a dream (解夢, 周公解夢, "I dreamed…"), use "jiemeng".',
     'For Guanyin (觀音, 観音, おみくじ at a Guanyin/Kannon temple), use "guanyin"; for tarot (塔羅, タロット, 타로), use "tarot"; for a fortune cookie (幸運餅乾, フォーチュンクッキー, 포춘 쿠키, what I just ate), use "cookie".',
+    'For Nine Star Ki (九星気学, 九星氣學, 本命星, 吉方位, 方位, a good direction to move or travel), use "kyusei"; it is not "navagraha" (Indian 九曜).',
     '',
     `## CATALOG (version ${XTELL_CATALOG_VERSION})`,
     catalogForPrompt(),

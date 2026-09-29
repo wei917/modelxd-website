@@ -18,10 +18,10 @@
 import type { Temple } from './xtell'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-28.2'
+export const XTELL_CATALOG_VERSION = '2026-09-29.1'
 
 export type FeatureId =
-  | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha'
+  | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'kyusei'
   | 'zhanxing.natal' | 'zhanxing.synastry' | 'zhanxing.today' | 'zhanxing.year'
   | 'xingming' | 'cezi' | 'jiemeng' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot' | 'cookie'
   | 'daily' | 'almanac' | 'courses'
@@ -98,6 +98,9 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'navagraha', status: 'live', temple: 'navagraha', people: 1, hour: 'required', place: true, inputs: [], optional: [],
     free: ['chart'], paid: 'teacher', question: 'composer', label: [room('navagraha')],
     about: 'Vedic (Jyotish) astrology: sidereal chart with the ascendant, nine grahas, nakshatras and the dasha timeline. Needs the birth hour and place.' },
+  { id: 'kyusei', status: 'live', temple: 'kyusei', people: 1, hour: 'optional', place: false, inputs: [], optional: [],
+    free: ['chart'], paid: 'teacher', question: 'composer', label: [room('kyusei')],
+    about: 'Nine Star Ki (九星気学, the Japanese school of Sonoda Shinjirō): the year star and month star from the birth date, and this year\'s and month\'s boards with the directions to favour and avoid (moves, trips). Not the Indian nine planets (navagraha) and not Chinese flying stars.' },
   { id: 'zhanxing.natal', status: 'live', temple: 'zhanxing', mode: 'natal', people: 1, hour: 'optional', place: true, inputs: [], optional: [],
     free: ['chart'], paid: 'teacher', question: 'composer', label: [room('zhanxing'), 'xtell.astro.natal'],
     about: 'Western astrology natal chart: signs, houses and aspects. Without the hour, no ascendant or houses.' },

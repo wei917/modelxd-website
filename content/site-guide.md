@@ -345,7 +345,10 @@ nearest city — give a sidereal Lahiri chart with the Lagna, the nine grahas
 in signs and whole-sign houses, the 27 nakshatras, the navamsa, and the
 Vimshottari dasha timeline; computed by our own engine on astronomy-engine
 and checked against Swiss Ephemeris; a Vedic Sun sign is usually one sign
-earlier than the Western one and that is the zodiac, not a bug), and **易學堂**
+earlier than the Western one and that is the zodiac, not a bug), **九星気学**
+(Nine Star Ki, the Japanese school of 園田真次郎: the birth date gives the
+本命星 and 月命星, and the page shows this year's and month's boards with the
+directions to favour and to avoid for a move or a trip; it is not 九曜), and **易學堂**
 (the I Ching school: three rooms. 起卦 — write one matter, throw three coins
 six times on screen, and the hexagram, its changing lines, the resulting
 hexagram and WHICH passage to read are computed by 朱熹's rule from 《易學啟蒙》;

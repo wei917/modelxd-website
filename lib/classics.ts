@@ -40,6 +40,7 @@ const SOURCES: Record<Temple, string[]> = {
   guanyin:  [],
   tarot:    [],
   cookie:   [],
+  kyusei:   [],
   // 四面佛 reads the visitor's 八字 against the four faces.
   simianfo: ['ditiansui.txt'],
   // 九曜廟: the Tang 《宿曜經》 (Amoghavajra), the text that carried the

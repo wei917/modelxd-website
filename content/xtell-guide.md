@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-28.2 -->
+<!-- xtell-guide version: 2026-09-29.1 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -118,6 +118,14 @@ BaZi and this year's flow. It is making a wish, not fortune-telling.
 place give the ascendant, the nine grahas in signs and whole-sign houses, the
 27 lunar mansions (nakshatras), the navamsa chart and the dasha timeline. The
 hour and place are required.
+
+### kyusei
+九星気学 (Nine Star Ki), the Japanese school of 園田真次郎. The birth date
+(hour optional) gives the 本命星 (year star, the year turning at 立春) and
+月命星 (month star), and the page shows this year's and this month's 九星
+boards with the unlucky directions (五黄殺, 暗剣殺, 破, 本命殺, 本命的殺) and
+the lucky ones, for choosing a direction to move or travel. Free; a teacher
+reading is paid. It is not 九曜 (Indian astrology) and not 玄空飛星.
 
 ### zhanxing.natal
 占星塔 (Astrology Tower), natal chart. Sun, Moon and planets in the twelve

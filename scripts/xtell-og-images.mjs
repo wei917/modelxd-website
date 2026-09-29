@@ -16,13 +16,14 @@ const PAPER = '#faf9f6', INK = '#292b29', SECONDARY = '#656761', RULE = '#dedfd8
 
 // The approved sheets' five-by-two order (TempleArtwork.tsx TEMPLE_ART).
 const SHEET = { mazu: 0, guandi: 1, yuelao: 2, simianfo: 3, navagraha: 4, bazi: 5, ziwei: 6, xingming: 7, cezi: 8, zhanxing: 9 }
-const OWN = { yixue: 'yixue-school', jiemeng: 'jiemeng', guanyin: 'guanyin', tarot: 'tarot', cookie: 'cookie' }
+const OWN = { yixue: 'yixue-school', jiemeng: 'jiemeng', guanyin: 'guanyin', tarot: 'tarot', cookie: 'cookie', kyusei: 'kyusei' }
 const NAMES = {
   bazi: ['八字廟', 'BaZi Temple'], ziwei: ['紫微斗數廟', 'Zi Wei Temple'], yuelao: ['月老廟', 'Yue Lao Temple'],
   guandi: ['關帝廟', 'Guan Di Temple'], mazu: ['媽祖廟', 'Mazu Temple'], simianfo: ['四面佛', 'Four-Faced Buddha'],
   navagraha: ['九曜廟', 'Navagraha Temple'], zhanxing: ['占星塔', 'Astrology Tower'], xingming: ['姓名學', 'Name Study'],
   cezi: ['測字', 'Character Reading'], yixue: ['易學堂', 'I Ching Hall'], jiemeng: ['周公解夢', 'Dream Hall'],
   guanyin: ['觀音廟', 'Guanyin Temple'], tarot: ['塔羅館', 'Tarot Parlour'], cookie: ['幸運餅乾', 'Fortune Cookie'],
+  kyusei: ['九星氣學', 'Nine Star Ki'],
 }
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
@@ -34,7 +35,7 @@ async function tile(sheet, index) {
 
 // Square object art (塔羅's fanned cards) is fitted whole on its own paper;
 // everything else fills the column.
-const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee' }
+const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee', kyusei: '#faf6ed' }
 async function portrait(key) {
   const img = key in SHEET ? await tile('portraits.avif', SHEET[key]) : sharp(`${A}/${OWN[key]}-portrait.avif`)
   return key in FIT_WHOLE
@@ -67,6 +68,7 @@ async function temple(key) {
 
 async function street() {
   // Every temple's icon, two rows of eight, under the name.
+  // 九星氣學 joins this picture when its generated art replaces the interim grid.
   const order = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'xingming', 'cezi', 'yixue', 'jiemeng', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
   const S = 100, GAP = 22, left = (W - (8 * S + 7 * GAP)) / 2
   const icons = await Promise.all(order.map(async (key, i) => {

@@ -48,6 +48,7 @@ import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../compone
 import { AlmanacCard } from '../components/xtell/XTellToday'
 import { ShareButton } from '../components/xtell/ShareButton'
 import { WaitBar, WAIT_SECONDS } from '../components/xtell/WaitBar'
+import { kyWords, STAR_COLOR, STAR_LIGHT, BOARD_LAYOUT } from '../../lib/kyusei-words'
 import { partialFields, readNdjson } from '../../lib/partial-json'
 import { shareExcerpt } from '../../lib/xtell-share'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
@@ -55,7 +56,7 @@ import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, t
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei'
 /** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
 const localNow = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu' || t === 'guanyin'
@@ -474,6 +475,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // 幸運餅乾: what was eaten, and when (the phone's local time, editable).
   const [food, setFood] = useState<string>(init.food ?? '')
   const [mealAt, setMealAt] = useState<string>(typeof init.mealAt === 'string' ? init.mealAt : localNow())
+  // 九星気学: a reopened visit keeps the date it was cast on.
+  const [kyToday] = useState<string>(typeof init.today === 'string' ? init.today : localNow().slice(0, 10))
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
@@ -708,6 +711,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       }
     : temple === 'simianfo' ? { temple, birth, wishes }
     : temple === 'navagraha' ? { temple, birth, place }
+    // 九星気学: the visitor's local date, so the boards are this year's and month's where they are.
+    : temple === 'kyusei' ? { temple, birth, today: kyToday }
     : temple === 'zhanxing' ? {
         temple, birth, place, mode: astroMode,
         ...(astroMode === 'synastry' ? { birth2, place2 } : {}),
@@ -1370,7 +1375,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               {/* Where a beginner starts, from the chart itself (日主, 命宮
                   and its stars, 上升 and the Moon's 宿). */}
-              {(() => { const fact = chartFact(t, temple, chart); return fact ? <p className="xtell-chart-fact">{fact}</p> : null })()}
+              {(() => { const fact = chartFact(t, temple, chart, lang); return fact ? <p className="xtell-chart-fact">{fact}</p> : null })()}
               {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
                   setInput(question)
                   composerRef.current?.focus()
@@ -1386,6 +1391,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     onNote={(note, fortune) => setChart((c: any) => c?.fortune === fortune ? { ...c, note, notePending: false } : c)} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
+                : temple === 'kyusei' ? <KyuseiBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
                 : temple === 'yixue' ? <YixueBoard chart={chart} onExample={q => setInput(q)} />
                 : (
@@ -1617,12 +1623,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
 // sat in a 「怎麼讀」 panel with a line saying what the result was; the owner
 // found it repeated the chart.) The examples fill the box; nothing is sent.
 const GAN_ELEMENT: Record<string, string> = { 甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水' }
-function chartFact(t: (k: string) => string, temple: Temple, chart: any): string {
+function chartFact(t: (k: string) => string, temple: Temple, chart: any, lang: string): string {
   try {
     if (temple === 'bazi' && GAN_ELEMENT[chart?.dayMaster]) return t('xtell.sum.bazi.fact').replace('{dm}', chart.dayMaster).replace('{el}', t(`xtell.el.${GAN_ELEMENT[chart.dayMaster]}`))
     if (temple === 'ziwei') {
       const p = chart?.palaces?.find((x: any) => x.name === '命宮')
       if (p) return t('xtell.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
+    }
+    if (temple === 'kyusei' && chart?.honmei) {
+      const w = kyWords(lang)
+      return t('xtell.sum.kyusei.fact').replace('{h}', w.star[chart.honmei]).replace('{g}', w.star[chart.getsumei])
     }
     if (temple === 'navagraha' && chart?.lagna) {
       const moon = chart.grahas?.find((g: any) => g.graha === 'Moon')
@@ -2204,6 +2214,67 @@ function WishBoard({ chart, wishes, year, hourUnknown = false }: { chart: any; w
 
 /** Lagna, the nine grahas (sign, degree, house, nakshatra-pada, D9), and
  *  the Vimshottari timeline. Every value came out of lib/jyotish.ts. */
+/** 九星気学 (Sep 29): the stars, then this year's or month's board as a
+ *  Japanese 九星 chart draws it (南 on top), each direction marked with the
+ *  school's unlucky names or as good; the numbers come from lib/kyusei.ts. */
+function KyuseiBoard({ chart }: { chart: any }) {
+  const { lang, t } = useLang()
+  const [which, setWhich] = useState<'year' | 'month'>('year')
+  if (!chart?.honmei || !chart?.year) return null
+  const w = kyWords(lang)
+  const d = chart[which]
+  const disc = (n: number, size: number) => (
+    <span className="xtell-ky-disc" style={{ width: size, height: size, background: STAR_COLOR[n], color: STAR_LIGHT[n] || n === 5 ? '#2b2622' : '#faf6ed', border: STAR_LIGHT[n] ? '1.5px solid #2b2622' : 'none', fontSize: size * 0.42 }}>{w.short[n].slice(0, lang === 'en' ? 1 : 1)}</span>
+  )
+  const tags = (dir: string): Array<{ k: string; bad: boolean }> => {
+    const out: Array<{ k: string; bad: boolean }> = []
+    for (const k of ['goou', 'anken', 'ha', 'honmei', 'honmeiTeki'] as const) if (d[k] === dir) out.push({ k, bad: true })
+    if (!out.length && d.best?.includes(dir)) out.push({ k: 'best', bad: false })
+    else if (!out.length && d.good?.includes(dir)) out.push({ k: 'good', bad: false })
+    return out
+  }
+  const list = (dirs: string[]) => dirs.length ? dirs.map(x => w.dir[x as keyof typeof w.dir]).join(lang === 'en' ? ', ' : '・') : t('xtell.ky.none')
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div className="xtell-ky-stars">
+        <div>{disc(chart.honmei, 34)}<span><small>{t('xtell.ky.honmei')}</small>{w.star[chart.honmei]}</span></div>
+        <div>{disc(chart.getsumei, 34)}<span><small>{t('xtell.ky.getsumei')}</small>{w.star[chart.getsumei]}</span></div>
+      </div>
+      {chart.boundary?.year ? <p className="xtell-ky-note">{t('xtell.ky.boundaryYear').replace('{alt}', w.star[chart.boundary.year])}</p> : null}
+      {chart.boundary?.month ? <p className="xtell-ky-note">{t('xtell.ky.boundaryMonth').replace('{alt}', w.star[chart.boundary.month])}</p> : null}
+      <div className="xtell-ky-tabs" role="tablist">
+        {(['year', 'month'] as const).map(k => (
+          <button key={k} type="button" role="tab" aria-selected={which === k} onClick={() => setWhich(k)}>{t(`xtell.ky.${k}`)}</button>
+        ))}
+        <span className="xtell-ky-asof">{t('xtell.ky.asOf').replace('{date}', chart.today)}</span>
+      </div>
+      <div className="xtell-ky-board" role="table" aria-label={t(`xtell.ky.${which}`)}>
+        {BOARD_LAYOUT.map((row, i) => (
+          <div key={i} role="row" className="xtell-ky-row">
+            {row.map(dir => {
+              const n = d.board[dir]
+              const tg = dir === 'C' ? [] : tags(dir)
+              return (
+                <div key={dir} role="cell" className={['xtell-ky-cell', dir === 'C' ? 'is-center' : '', tg.some(x => x.bad) ? 'is-bad' : tg.length ? 'is-good' : '', n === chart.honmei ? 'is-own' : ''].filter(Boolean).join(' ')}>
+                  <span className="xtell-ky-dir">{w.dir[dir]}</span>
+                  {disc(n, 30)}
+                  <span className="xtell-ky-name">{w.short[n]}</span>
+                  {tg.map(x => <span key={x.k} className={x.bad ? 'xtell-ky-tag is-bad' : 'xtell-ky-tag is-good'}>{w.tag[x.k as keyof typeof w.tag]}</span>)}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+      <dl className="xtell-ky-sum">
+        <div><dt>{t('xtell.ky.bad')}</dt><dd>{list(d.bad ?? [])}</dd></div>
+        <div><dt>{t('xtell.ky.good')}</dt><dd>{d.blocked ? t('xtell.ky.blocked') : list(d.good ?? [])}</dd></div>
+      </dl>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.ky.note')}</p>
+    </div>
+  )
+}
+
 function NavagrahaBoard({ chart }: { chart: any }) {
   const t = useT()
   const dms = (d: number) => `${Math.floor(d)}°${String(Math.round((d % 1) * 60)).padStart(2, '0')}'`

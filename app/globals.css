@@ -3709,6 +3709,33 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 @keyframes xtell-caret { 50% { opacity: 0 } }
 @media (prefers-reduced-motion: reduce) { .xtell-wait { animation: none } .xtell-wait-fill { transition: none } .xtell-caret::after { animation: none } }
 .xtell-td-lucky { margin: 6px 0 10px; font-size: 13.5px; font-weight: 700; color: var(--xtell-vermilion, var(--red)); line-height: 1.6; }
+/* 九星気学's board (Sep 29): 南 on top, a disc per star, the school's marks. */
+.xtell-ky-stars { display: flex; gap: 18px; flex-wrap: wrap; }
+.xtell-ky-stars > div { display: flex; align-items: center; gap: 10px; }
+.xtell-ky-stars span { display: grid; font-size: 15px; font-weight: 700; line-height: 1.3; }
+.xtell-ky-stars small { font-size: 11px; font-weight: 500; color: var(--muted2); }
+.xtell-ky-disc { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 700; flex: none; font-family: var(--font-display, serif); box-sizing: border-box; }
+.xtell-ky-note { margin: 0; font-size: 12.5px; color: var(--xtell-vermilion, var(--red)); line-height: 1.6; }
+.xtell-ky-tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.xtell-ky-tabs button { padding: 6px 13px; border-radius: 999px; font-size: 12.5px; border: 1px solid var(--border2); background: transparent; color: var(--white); cursor: pointer; }
+.xtell-ky-tabs button[aria-selected="true"] { border-color: var(--red); color: var(--red); font-weight: 700; background: var(--surface2); }
+.xtell-ky-asof { margin-left: auto; font-size: 11.5px; color: var(--muted2); }
+.xtell-ky-board { display: grid; gap: 6px; max-width: 420px; width: 100%; margin: 0 auto; }
+.xtell-ky-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.xtell-ky-cell { display: grid; justify-items: center; align-content: start; gap: 3px; padding: 8px 4px 10px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 8px; background: var(--xtell-paper, var(--surface)); min-height: 104px; text-align: center; }
+.xtell-ky-cell.is-center { background: var(--surface2); }
+.xtell-ky-cell.is-bad { border-color: var(--xtell-vermilion, var(--red)); }
+.xtell-ky-cell.is-good { border-color: #4f8a4a; }
+.xtell-ky-cell.is-own .xtell-ky-name { text-decoration: underline; text-underline-offset: 3px; }
+.xtell-ky-dir { font-size: 11px; color: var(--muted2); font-weight: 700; letter-spacing: .04em; }
+.xtell-ky-name { font-size: 12.5px; font-weight: 700; }
+.xtell-ky-tag { font-size: 10.5px; line-height: 1.3; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
+.xtell-ky-tag.is-bad { background: var(--xtell-vermilion, var(--red)); color: #fff; }
+.xtell-ky-tag.is-good { background: #4f8a4a; color: #fff; }
+.xtell-ky-sum { display: grid; gap: 6px; margin: 0; }
+.xtell-ky-sum > div { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; }
+.xtell-ky-sum dt { font-size: 12px; font-weight: 800; }
+.xtell-ky-sum dd { margin: 0; font-size: 13.5px; line-height: 1.6; }
 .xtell-dy-card { min-width: 0; padding: 14px 16px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-paper); font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
 /* The day's reading in its temple room (DailyBoard) reads like its card. */
 .xtell-dy-card header, .xtell-dy-board header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
