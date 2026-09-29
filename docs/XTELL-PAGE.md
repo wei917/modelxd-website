@@ -393,7 +393,7 @@ user types (same rule as XDirect's `?q=`).
 **Room chrome, Sep 27 (owner: "the UI is so confusing").** The 01 稟明資料 /
 02 查看結果 / 03 請老師解讀 step bar is gone (02 was lit before any teacher
 had answered). The way back to the form is the first line of the room:
-「← 修改資料」 with what the visit was cast from (`subjectSummary`); it used to
+「← 返回」 (「← 修改資料」 until Sep 28) with what the visit was cast from (`subjectSummary`); it used to
 sit in the composer at the foot of the page, where nobody found it. The
 輕快 / 均衡 / 深入 preset row is gone from the room (the daily card keeps its
 own); teachers are chosen on the seats: each seat is 200-260 px, not the

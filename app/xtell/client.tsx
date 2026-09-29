@@ -1196,7 +1196,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           <div className="xtell-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--muted)', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
             {daily
               ? <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.dy.back')}</button>
-              : <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.edit')}</button>}
+              // 「返回」, not 「修改資料」 (owner, Sep 28): it goes back to the form.
+              : <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.goBack')}</button>}
             {!daily && temple !== 'yixue' && (() => {
               const summary = subjectSummary(t, temple, subject())
               return summary ? <span style={{ minWidth: 0 }}>{summary}</span> : null

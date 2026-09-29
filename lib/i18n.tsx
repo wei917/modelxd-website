@@ -1821,6 +1821,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.saved.notasked.name": {"en": "Strokes counted, no reading yet", "zh-Hant": "只算了筆畫，還沒請老師", "zh-Hans": "只算了笔画，还没请老师", "ja": "画数のみ、鑑定はまだ", "ko": "획수만 세고 아직 풀이 없음"},
   "xtell.saved.notasked.char": {"en": "Character written, no reading yet", "zh-Hant": "只寫了字，還沒請老師", "zh-Hans": "只写了字，还没请老师", "ja": "字のみ、鑑定はまだ", "ko": "글자만 쓰고 아직 풀이 없음"},
   "xtell.edit": {"en": "Edit details", "zh-Hant": "修改資料", "zh-Hans": "修改资料", "ja": "入力を修正", "ko": "정보 수정"},
+  "xtell.goBack": {"en": "Go back", "zh-Hant": "返回", "zh-Hans": "返回", "ja": "戻る", "ko": "뒤로"},
   "xtell.birth.dayInvalid": {"en": "{y}-{m} has no day {d}. Please choose the day again.", "zh-Hant": "{y} 年 {m} 月沒有 {d} 日，請重新選擇日期。", "zh-Hans": "{y} 年 {m} 月没有 {d} 日，请重新选择日期。", "ja": "{y}年{m}月に{d}日はありません。日付を選び直してください。", "ko": "{y}년 {m}월에는 {d}일이 없습니다. 날짜를 다시 선택해 주세요."},
   "xtell.p.timeUnknown": {"en": "Unknown", "zh-Hant": "未知", "zh-Hans": "未知", "ja": "不明", "ko": "모름"},
   "xtell.bazi.hourNote": {"en": "Hour unknown: the hour pillar is left out, and nothing that depends on the hour is used.", "zh-Hant": "時辰未知：不排時柱，凡由時辰決定的判斷都不採用。", "zh-Hans": "时辰未知：不排时柱，凡由时辰决定的判断都不采用。", "ja": "時刻不明：時柱は立てず、時刻で決まる判断は用いません。", "ko": "시각 모름: 시주는 세우지 않고, 시각으로 정해지는 판단은 쓰지 않습니다."},
