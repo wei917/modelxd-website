@@ -3499,6 +3499,13 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 /* 分享 (Sep 28): the small button beside a result, and its dialog (the
    picker's frame, .xtell-tp). */
 .xtell-share-btn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--xtell-rule, var(--border2)); background: #fff; color: var(--xtell-secondary, var(--muted)); border-radius: 999px; padding: 3px 11px; font: inherit; font-size: 12px; font-weight: 600; line-height: 1.5; cursor: pointer; white-space: nowrap; }
+/* 追加老師 (Sep 28): under the latest question. */
+.xtell-join { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.xtell-join-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px dashed var(--xtell-vermilion, var(--red)); background: #fff; color: var(--xtell-vermilion, var(--red)); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.xtell-join-btn small { font-weight: 400; color: var(--muted2); font-family: var(--font-mono), monospace; font-size: 11px; }
+.xtell-join-btn.is-add { border-style: solid; border-color: var(--border2); color: var(--white); }
+.xtell-join-btn:disabled { opacity: .5; cursor: wait; }
+.xtell-join > span { font-size: 11.5px; color: var(--muted2); flex-basis: 100%; }
 /* 塔羅 (Sep 28): the spread choice, the deal button, and the laid cards. */
 .xtell-tarot-spread { display: inline-grid; gap: 2px; text-align: left; border: 1px solid var(--border2); background: #fff; border-radius: 10px; padding: 8px 14px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; color: var(--white); }
 .xtell-tarot-spread small { font-size: 11px; font-weight: 400; color: var(--muted2); }

@@ -734,6 +734,19 @@ all). A question put to only some is labelled 「問：A、B」. The 分頁 layo
 shows one teacher's thread. A reopened visit re-seats the last question's
 `seats` (before this: whoever answered the last round).
 
+### 追加老師 (Sep 28)
+
+Under the latest question: a seated teacher who has not answered it gets
+「請 X 也回答這一題」 (with its price), and 「＋ 追加老師回答這一題」 opens the
+picker, seats the choice and asks it at once. It works while the others are
+still thinking; the request reuses the question's `qid`, so
+`xtell_append_turns` stores the question once and appends the reply (no
+migration). Only the latest question can be joined, and no new question can
+be sent while a joined teacher answers, so replies always land under their
+question. A joined teacher's thread (`threadOf`) includes the questions it
+answered; the 「只問 X」 label and the 分頁 tabs count it. Owner: once asked,
+an answer cannot be cancelled mid-way (said on the button row).
+
 ## 解夢 (Sep 27)
 
 Owner: "add 解夢", then "if we just allow users to talk to AI, they can just

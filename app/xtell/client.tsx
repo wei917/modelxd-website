@@ -575,7 +575,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   }
   // The picker either adds a seat or replaces one (owner, Sep 24: the first
   // master must be changeable too, not only the second).
-  const [picker, setPicker] = useState<null | { replace: string | null }>(null)
+  const [picker, setPicker] = useState<null | { replace: string | null; join?: boolean }>(null)
   // Per-seat settings, the way XCreate configures each slot: thinking level
   // (from the row's declared levels) and web search (where the row declares
   // the capability). Defaults are computed, so an untouched seat needs no
@@ -611,10 +611,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // `seats`: who was seated), so each master's thread holds only the
   // questions put to it, and a reopened visit re-seats the same table. A
   // question saved before this has neither and counts as asked of all.
-  type Turn = { role: 'user'; content: string; to?: string[]; seats?: string[] } | { role: 'assistant'; content: string; modelId: string; name: string; provider: string; cost?: number }
+  type Turn = { role: 'user'; content: string; to?: string[]; seats?: string[]; qid?: string } | { role: 'assistant'; content: string; modelId: string; name: string; provider: string; cost?: number }
   const idList = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined
   const [turns, setTurns] = useState<Turn[]>(() => ((initial ?? daily)?.turns ?? []).map((x: any) => x.role === 'user'
-    ? { role: 'user', content: String(x.content ?? ''), to: idList(x.to), seats: idList(x.seats) }
+    ? { role: 'user', content: String(x.content ?? ''), to: idList(x.to), seats: idList(x.seats), qid: typeof x.qid === 'string' ? x.qid : undefined }
     : { role: 'assistant', content: String(x.content ?? ''), modelId: x.modelId ?? '', name: x.name ?? '', provider: x.provider ?? '', cost: typeof x.cost === 'number' ? x.cost : undefined }))
   // Whom the next question goes to: null is every seated master. Picked
   // ids no longer seated drop out; if none are left, it is everyone again.
@@ -638,6 +638,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const questionRequired = temple === 'yixue' && yixueMode === 'ask'
   const [busy, setBusy] = useState(false)
+  // Teachers added to the latest question after it was asked (owner, Sep 28:
+  // 追加老師). While one is answering, no new question can be sent, so its
+  // reply lands under the question it answers.
+  const [joining, setJoining] = useState<string[]>([])
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -852,65 +856,99 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     color: on ? 'var(--red)' : 'var(--muted)', fontWeight: on ? 700 : 500,
   })
 
+  /** One teacher's thread: the questions put to it (or that it answered after
+   *  joining) and its own replies, never another teacher's. */
+  const threadOf = (ts: Turn[], id: string) => {
+    const out: Array<{ role: 'user' | 'assistant'; content: string }> = []
+    for (let i = 0; i < ts.length; i++) {
+      const tn = ts[i]
+      if (tn.role === 'assistant') { if (tn.modelId === id) out.push({ role: 'assistant', content: tn.content }); continue }
+      let answered = false
+      for (let j = i + 1; j < ts.length && ts[j].role === 'assistant'; j++) if ((ts[j] as any).modelId === id) answered = true
+      if (!tn.to || tn.to.includes(id) || answered) out.push({ role: 'user', content: tn.content })
+    }
+    return out
+  }
+
+  /** Ask one teacher one question and stream the reply into a new bubble.
+   *  `history` is that teacher's thread before the question. */
+  const askTeacher = async (m: PickerModel, q: string, qid: string, to: string[], seats: string[], history: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+    const idx = pushAssistant(m)
+    try {
+      const res = await fetch('/api/xtell/reading', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
+          // 解夢: the line numbers shown, used only when the visit was not saved.
+          ...(temple === 'jiemeng' ? { entries: (Array.isArray(chart?.entries) ? chart.entries : []).map((e: any) => e.id) } : {}),
+          search: optsOf(m).search && searchable(m),
+          thinking: optsOf(m).thinking,
+          lang,
+        }),
+      })
+      if (!res.ok || !res.body) {
+        const d = await res.json().catch(() => ({}))
+        throw new CodedError(d?.error ?? `HTTP ${res.status}`, d?.code)
+      }
+      const reader = res.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        const events = buf.split('\n\n'); buf = events.pop() ?? ''
+        for (const ev of events) {
+          const type = ev.match(/^event: (\w+)/m)?.[1]
+          const data = ev.match(/^data: (.*)$/m)?.[1]
+          if (!type || !data) continue
+          const j = JSON.parse(data)
+          if (type === 'delta') appendAssistant(idx, j.text)
+          if (type === 'done') doneAssistant(idx, j.cost ?? 0)
+          if (type === 'error') { fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
+        }
+      }
+    } catch (e: any) { fail(String(e?.message ?? e), e?.code); doneAssistant(idx, 0) }
+  }
+
   const send = async (fromButton = false) => {
     // Chart rooms allow a general reading. Teacher conversations require an
     // actual question; neither an empty click nor Enter may spend credits.
     const typed = input.trim()
-    if ((!typed && (questionRequired || !fromButton)) || busy || masters.length === 0 || unverified || savedProblem) return
+    if ((!typed && (questionRequired || !fromButton)) || busy || joining.length > 0 || masters.length === 0 || unverified || savedProblem) return
     const q = typed || t('xtell.question.general')
     const to = recipients.map(m => m.id), seats = masters.map(m => m.id)
-    setInput(''); setBusy(true); clearErr()
-    setTurns(ts => [...ts, { role: 'user', content: q, to, seats }])
     // One id per question: every master's request carries it, the server
     // stores the question once (xtell_append_turns dedupes on it).
     const qid = crypto.randomUUID()
-
+    setInput(''); setBusy(true); clearErr()
+    const before = turnsRef.current
+    setTurns(ts => [...ts, { role: 'user', content: q, to, seats, qid }])
     // The chosen masters answer concurrently; each gets its own thread: the
     // questions put to it and its own replies, so two masters never see each
     // other's answers or a question they were not asked.
-    await Promise.all(recipients.map(async m => {
-      const history = turnsRef.current
-        .filter(tn => tn.role === 'user' ? !tn.to || tn.to.includes(m.id) : tn.modelId === m.id)
-        .map(tn => ({ role: tn.role, content: tn.content }))
-      const idx = pushAssistant(m)
-      try {
-        const res = await fetch('/api/xtell/reading', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
-            // 解夢: the line numbers shown, used only when the visit was not saved.
-            ...(temple === 'jiemeng' ? { entries: (Array.isArray(chart?.entries) ? chart.entries : []).map((e: any) => e.id) } : {}),
-            search: optsOf(m).search && searchable(m),
-            thinking: optsOf(m).thinking,
-            lang,
-          }),
-        })
-        if (!res.ok || !res.body) {
-          const d = await res.json().catch(() => ({}))
-          throw new CodedError(d?.error ?? `HTTP ${res.status}`, d?.code)
-        }
-        const reader = res.body.getReader()
-        const dec = new TextDecoder()
-        let buf = ''
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buf += dec.decode(value, { stream: true })
-          const events = buf.split('\n\n'); buf = events.pop() ?? ''
-          for (const ev of events) {
-            const type = ev.match(/^event: (\w+)/m)?.[1]
-            const data = ev.match(/^data: (.*)$/m)?.[1]
-            if (!type || !data) continue
-            const j = JSON.parse(data)
-            if (type === 'delta') appendAssistant(idx, j.text)
-            if (type === 'done') doneAssistant(idx, j.cost ?? 0)
-            if (type === 'error') { fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
-          }
-        }
-      } catch (e: any) { fail(String(e?.message ?? e), e?.code); doneAssistant(idx, 0) }
-    }))
+    await Promise.all(recipients.map(m => askTeacher(m, q, qid, to, seats, threadOf(before, m.id))))
     setBusy(false)
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  }
+
+  // 追加老師 (owner, Sep 28): a teacher who has not answered the latest
+  // question answers it now, alone, under the same question, even while the
+  // others are still thinking. The same qid, so the question is not stored
+  // twice. Once asked it runs to the end: there is no cancelling mid-way.
+  const lastUserIdx = (() => { for (let i = turns.length - 1; i >= 0; i--) if (turns[i].role === 'user') return i; return -1 })()
+  const lastUser = lastUserIdx >= 0 ? turns[lastUserIdx] as Extract<Turn, { role: 'user' }> : null
+  const answeredLast = new Set(turns.slice(lastUserIdx + 1).map(tn => (tn as any).modelId as string).filter(Boolean))
+  const canJoin = !!lastUser?.qid && !unverified && !savedProblem
+  const join = async (m: PickerModel) => {
+    const ts = turnsRef.current
+    let at = -1
+    for (let i = ts.length - 1; i >= 0; i--) if (ts[i].role === 'user') { at = i; break }
+    const u = at >= 0 ? ts[at] as Extract<Turn, { role: 'user' }> : null
+    if (!u?.qid || joining.includes(m.id) || ts.slice(at + 1).some(tn => (tn as any).modelId === m.id)) return
+    setJoining(js => [...js, m.id]); clearErr()
+    await askTeacher(m, u.content, u.qid, u.to ?? [], u.seats ?? masters.map(x => x.id), threadOf(ts.slice(0, at), m.id))
+    setJoining(js => js.filter(x => x !== m.id))
   }
 
   // Refs so concurrent streams append into the right bubbles without racing
@@ -956,7 +994,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const activeTab = replyModels.some(m => m.id === tab) ? tab : (replyModels[0]?.id ?? null)
   const nameOf = (id: string) => masters.find(m => m.id === id)?.display_name ?? replyModels.find(m => m.id === id)?.name ?? catalog.find(m => m.id === id)?.display_name ?? null
   /** Put to only some of the table: the names it went to, else null. */
-  const toOnly = (tn: Turn) => tn.role === 'user' && tn.to && tn.seats && tn.to.length < tn.seats.length ? tn.to.map(nameOf).filter(Boolean).join('、') : null
+  const toOnly = (tn: Turn, replies: Turn[] = []) => {
+    if (tn.role !== 'user' || !tn.to || !tn.seats) return null
+    // A teacher who joined later answered it too (追加老師).
+    const who = [...new Set([...tn.to, ...replies.map(r => (r as any).modelId as string).filter(Boolean)])]
+    return who.length < tn.seats.length ? who.map(nameOf).filter(Boolean).join('、') : null
+  }
 
   const sel = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--white)', fontSize: 13 }
 
@@ -1356,8 +1399,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               // 分頁 shows one master's own thread: a question put to others
               // only is not part of it.
               const u = round.user as any
-              if (layout === 'tabs' && replyModels.length > 1 && u?.to && activeTab && !u.to.includes(activeTab)) return null
-              const only = round.user ? toOnly(round.user) : null
+              if (layout === 'tabs' && replyModels.length > 1 && u?.to && activeTab && !u.to.includes(activeTab)
+                && !round.replies.some((r: any) => r.modelId === activeTab)) return null   // unless it joined (追加老師)
+              const only = round.user ? toOnly(round.user, round.replies) : null
               return (
               <div key={ri} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {round.user && (
@@ -1423,6 +1467,26 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   </div>
                   )
                 })()}
+                {/* 追加老師: only under the latest question. A seated teacher who
+                    has not answered it gets a button; or add a new one here. */}
+                {ri === rounds(turns).length - 1 && round.user && canJoin && (() => {
+                  const chars = turns.reduce((n, tn) => n + tn.content.length, 0)
+                  const usdOf = (m: PickerModel) => estimateReadingUsd(m, { thinking: optsOf(m).thinking, search: optsOf(m).search && searchable(m) }, chars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
+                  const waiting = masters.filter(m => !answeredLast.has(m.id))
+                  if (waiting.length === 0 && masters.length >= MAX_SEATS) return null
+                  return (
+                    <div className="xtell-join" role="group" aria-label={t('xtell.join.label')}>
+                      {waiting.map(m => {
+                        const usd = usdOf(m)
+                        return <button key={m.id} type="button" className="xtell-join-btn" disabled={joining.includes(m.id)} onClick={() => void join(m)}>
+                          {t('xtell.join.one').replace('{name}', m.display_name)}{usd != null && <small>{fmtUsd(usd)}</small>}
+                        </button>
+                      })}
+                      {masters.length < MAX_SEATS && <button type="button" className="xtell-join-btn is-add" onClick={() => setPicker({ replace: null, join: true })}>{t('xtell.join.add')}</button>}
+                      <span>{t('xtell.join.note')}</span>
+                    </div>
+                  )
+                })()}
               </div>
               )
             })}
@@ -1463,7 +1527,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
             />
-            <button aria-label={t('xtell.site.send')} onClick={() => void send(true)} disabled={busy || (questionRequired && !input.trim())} style={{
+            <button aria-label={t('xtell.site.send')} onClick={() => void send(true)} disabled={busy || joining.length > 0 || (questionRequired && !input.trim())} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer',
               opacity: busy || (questionRequired && !input.trim()) ? 0.5 : 1,
@@ -1499,6 +1563,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               if (picker.replace) return ms.map(x => (x.id === picker.replace ? m : x))
               return ms.length >= MAX_SEATS ? ms : [...ms, m]
             })
+            // Picked from 「追加老師」: seated, and answers the latest question now.
+            if (picker.join) void join(m)
             setPicker(null)
           }}
           onClose={() => setPicker(null)}
