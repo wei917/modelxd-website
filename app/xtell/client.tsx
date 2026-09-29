@@ -2927,7 +2927,7 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
   // Deleting is permanent, so it asks once, in the row itself.
   const [confirming, setConfirming] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
-  // 改名 (owner, Sep 28): the row being renamed, edited in place.
+  // 改標題 (owner, Sep 28): the row being renamed, edited in place.
   const [renaming, setRenaming] = useState<string | null>(null)
   const client = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
   useEffect(() => {

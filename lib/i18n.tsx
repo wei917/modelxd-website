@@ -226,12 +226,12 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.err.cookie_failed": {"en": "The cookie would not crack. Nothing was charged; please try again.", "zh-Hant": "餅乾沒有掰開，沒有扣點，請再試一次。", "zh-Hans": "饼干没有掰开，没有扣点，请再试一次。", "ja": "クッキーが割れませんでした。料金はかかっていません。もう一度お試しください。", "ko": "쿠키가 열리지 않았습니다. 요금은 없습니다. 다시 시도해 주세요."},
   "xtell.err.cookie_refresh": {"en": "A cookie is only cracked once.", "zh-Hant": "餅乾只會掰一次。", "zh-Hans": "饼干只会掰一次。", "ja": "クッキーは一度だけ割れます。", "ko": "쿠키는 한 번만 열립니다."},
   "xtell.err.cookie_missing": {"en": "That cookie is no longer saved.", "zh-Hant": "找不到這個餅乾的紀錄。", "zh-Hans": "找不到这个饼干的记录。", "ja": "このクッキーの記録が見つかりません。", "ko": "이 쿠키 기록을 찾을 수 없습니다."},
-  // 改名 (owner, Sep 28).
-  "xtell.saved.rename": {"en": "Rename", "zh-Hant": "改名", "zh-Hans": "改名", "ja": "名前を変更", "ko": "이름 바꾸기"},
+  // 改標題 (owner, Sep 28: 「改標題」, not 「改名」).
+  "xtell.saved.rename": {"en": "Change title", "zh-Hant": "改標題", "zh-Hans": "改标题", "ja": "タイトルを変更", "ko": "제목 바꾸기"},
   "xtell.saved.renameSave": {"en": "Save", "zh-Hant": "儲存", "zh-Hans": "保存", "ja": "保存", "ko": "저장"},
   "xtell.saved.renameCancel": {"en": "Cancel", "zh-Hant": "取消", "zh-Hans": "取消", "ja": "キャンセル", "ko": "취소"},
   "xtell.saved.renamePh": {"en": "Leave empty to use the automatic title", "zh-Hant": "留空＝恢復自動標題", "zh-Hans": "留空＝恢复自动标题", "ja": "空欄にすると自動のタイトルに戻ります", "ko": "비워 두면 자동 제목으로 돌아갑니다"},
-  "xtell.saved.renameFailed": {"en": "The new name was not saved. Please try again.", "zh-Hant": "改名沒有成功，請再試一次。", "zh-Hans": "改名没有成功，请再试一次。", "ja": "名前を変更できませんでした。もう一度お試しください。", "ko": "이름을 바꾸지 못했습니다. 다시 시도해 주세요."},
+  "xtell.saved.renameFailed": {"en": "The new title was not saved. Please try again.", "zh-Hant": "標題沒有改成功，請再試一次。", "zh-Hans": "标题没有改成功，请再试一次。", "ja": "タイトルを変更できませんでした。もう一度お試しください。", "ko": "제목을 바꾸지 못했습니다. 다시 시도해 주세요."},
   "xtell.site.footerNote": {"en": "XTell is for reflection and entertainment, not advice. For health, money or legal matters, talk to a professional. Readings are AI interpretations of a computed chart.", "zh-Hant": "X先知僅供靜心參考與娛樂，不構成任何建議；健康、財務、法律問題請諮詢專業人士。解讀為 AI 對排盤的詮釋。", "zh-Hans": "X先知仅供静心参考与娱乐，不构成任何建议；健康、财务、法律问题请咨询专业人士。解读为 AI 对排盘的诠释。", "ja": "X占いは内省と娯楽のためのもので、助言ではありません。健康・お金・法律のことは専門家にご相談ください。鑑定は計算された命盤へのAIによる解釈です。", "ko": "X운세는 성찰과 재미를 위한 것으로, 조언이 아닙니다. 건강·금전·법률 문제는 전문가와 상담하세요. 풀이는 계산된 명반에 대한 AI의 해석입니다."},
   // 分享 (owner, Sep 28): the share button, its dialog, and the words drawn on the picture.
   "xtell.share.button": {"en": "Share", "zh-Hant": "分享", "zh-Hans": "分享", "ja": "シェア", "ko": "공유"},
