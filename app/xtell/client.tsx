@@ -47,6 +47,8 @@ import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
 import { ShareButton } from '../components/xtell/ShareButton'
+import { WaitBar, WAIT_SECONDS } from '../components/xtell/WaitBar'
+import { partialFields, readNdjson } from '../../lib/partial-json'
 import { shareExcerpt } from '../../lib/xtell-share'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
@@ -1171,9 +1173,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           {!isQian(temple) && temple !== 'tarot' && !(temple === 'yixue' && yixueMode !== 'ask') && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               {entering
-                ? <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : temple === 'cookie' ? 'xtell.cookie.cracking' : 'xtell.entering.note')}</div>
+                // The two entries that wait on a quick model say how long
+                // (Sep 29); the others are computed here in a moment.
+                ? temple === 'jiemeng' || temple === 'cookie'
+                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : 'xtell.cookie.cracking')} /></div>
+                  : <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.entering.note')}</div>
                 : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'cookie' ? t('xtell.cookie.price') : temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>}
-              <span style={{ flex: 1 }} />
+              {/* The wait bar takes the whole row beside the button. */}
+              {!(entering && (temple === 'jiemeng' || temple === 'cookie')) && <span style={{ flex: 1 }} />}
               <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', minWidth: 112,
                 fontWeight: 700, fontSize: 13.5, cursor: entering ? 'wait' : questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: !entering && questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
@@ -1372,7 +1379,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'jiemeng' ? <DreamBoard chart={chart} />
                 : temple === 'tarot' ? <TarotBoard chart={chart} />
-                : temple === 'cookie' ? <CookieBoard chart={chart} />
+                : temple === 'cookie' ? <CookieBoard chart={chart} readingId={readingId}
+                    onNote={(note, fortune) => setChart((c: any) => c?.fortune === fortune ? { ...c, note, notePending: false } : c)} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
@@ -2842,9 +2850,48 @@ function CookieForm({ food, setFood, mealAt, setMealAt, ask, setAsk, sel, foodAr
   )
 }
 
-function CookieBoard({ chart }: { chart: any }) {
+function CookieBoard({ chart, readingId, onNote }: { chart: any; readingId: string | null; onNote: (note: string | null, fortune: string) => void }) {
   const { lang, t } = useLang()
+  // The note is written after the slip is drawn (Sep 29) and streams in
+  // here; a visit reopened before it was written asks for it then.
+  const due = !!readingId && chart?.notePending === true && !chart?.note
+  const [draft, setDraft] = useState('')
+  useEffect(() => {
+    if (!due) return
+    let alive = true
+    const ctl = new AbortController()
+    const fortune = chart.fortune
+    const finish = (note: string | null) => { if (alive) onNote(note, fortune) }
+    void (async () => {
+      setDraft('')
+      // Another tab (or React's double effect in dev) may be writing it:
+      // then the route says so and the saved note is asked for again.
+      for (let tries = 0; tries < 8 && alive; tries++) {
+        try {
+          const res = await fetch('/api/xtell/cookie/note', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ readingId }), signal: ctl.signal })
+          if (!res.ok) return finish(null)
+          if ((res.headers.get('content-type') ?? '').includes('ndjson')) {
+            let raw = '', note: string | null = null
+            await readNdjson(res, e => {
+              if (!alive) return
+              if (e.t === 'd') { raw += e.d; setDraft(raw) }
+              else if (e.t === 'restart') { raw = ''; setDraft('') }
+              else if (e.t === 'done') note = typeof e.note === 'string' ? e.note : null
+            })
+            return finish(note)
+          }
+          const d = await res.json().catch(() => null)
+          if (!d?.writing) return finish(typeof d?.note === 'string' ? d.note : null)
+          await new Promise(r => setTimeout(r, 3000))
+        } catch { return finish(null) }
+      }
+      finish(null)
+    })()
+    return () => { alive = false; ctl.abort() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [due, readingId])
   if (!chart?.fortune) return null
+  const noteDraft = due ? String(partialFields(draft).note ?? '').trim() : ''
   // The slip in the page's language (all five are saved with the cookie).
   const fortune: string = chart.fortunes?.[lang] ?? chart.fortune
   const facts = [t(`xtell.cookie.slot.${chart.meal?.slot ?? 'lunch'}`), chart.shichen, chart.dayGz ? `${chart.dayGz}日` : '', t('xtell.cookie.flavor').replace('{flavor}', chart.flavor).replace('{element}', chart.element)].filter(Boolean).join(' · ')
@@ -2862,9 +2909,11 @@ function CookieBoard({ chart }: { chart: any }) {
       </div>
       {/* The slip is a classic fortune; this meal's taste, element, hour and
           day are in the note under it (owner, Sep 28). */}
-      {chart.note && <div>
+      {(chart.note || due) && <div>
         <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.cookie.noteLabel')}</div>
-        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
+        {chart.note ? <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
+          : noteDraft ? <p className="xtell-caret" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{noteDraft}</p>
+          : <WaitBar seconds={WAIT_SECONDS.note} label={t('xtell.cookie.noteWriting')} />}
       </div>}
       <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
       {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}

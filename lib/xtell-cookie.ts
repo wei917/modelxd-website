@@ -105,6 +105,14 @@ export function noteBrief(lang: string): string {
   ].join('\n')
 }
 
+/** What the note's writer is told about one saved cookie: the meal, the
+ *  taste the pick named, and the slip that was drawn (as shown, and the
+ *  English original). */
+export function noteFacts(chart: any): string {
+  const facts = cookieFacts({ food: String(chart?.food ?? ''), ask: String(chart?.ask ?? ''), meal: chart?.meal, dayGz: chart?.dayGz ?? null })
+  return `${facts}\n主味：${chart?.flavor}（五行屬${chart?.element}）\n餅乾裡的紙條：「${chart?.fortune}」（原文：${chart?.fortunes?.en ?? ''}）`
+}
+
 /** The note, or null: present, short, and no digits anywhere (no lucky numbers). */
 export function parseNote(text: string): string | null {
   const m = String(text ?? '').match(/\{[\s\S]*\}/)

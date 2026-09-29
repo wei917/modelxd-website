@@ -1661,6 +1661,8 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.dy.reflect": {"en": "Something to think about", "zh-Hant": "可以想想", "zh-Hans": "可以想想", "ja": "考えてみたいこと", "ko": "생각해 볼 것"},
   "xtell.dy.why": {"en": "Why this reading", "zh-Hant": "為什麼這樣解讀", "zh-Hans": "为什么这样解读", "ja": "なぜこの読み方か", "ko": "왜 이렇게 풀이했나"},
   "xtell.dy.basis": {"en": "Today's calculation", "zh-Hant": "今天的計算", "zh-Hans": "今天的计算", "ja": "今日の計算", "ko": "오늘의 계산"},
+  "xtell.wait.about": {"en": " · about {s} seconds", "zh-Hant": "　約 {s} 秒", "zh-Hans": "　约 {s} 秒", "ja": "　約{s}秒", "ko": " · 약 {s}초"},
+  "xtell.cookie.noteWriting": {"en": "Writing a note for this meal…", "zh-Hant": "正在寫這一餐的小解說…", "zh-Hans": "正在写这一餐的小解说…", "ja": "この食事のひとこと解説を書いています…", "ko": "이 끼니 이야기를 쓰는 중…"},
   "xtell.dy.pending": {"en": "Preparing today's reading…", "zh-Hant": "正在準備今天的解讀…", "zh-Hans": "正在准备今天的解读…", "ja": "今日の読み解きを準備中…", "ko": "오늘의 풀이를 준비하는 중…"},
   "xtell.dy.failed": {"en": "Today's reading could not be written just now. The calculation is below; please try again later.", "zh-Hant": "今天的解讀暫時無法產生，計算結果在下方，請稍後再試。", "zh-Hans": "今天的解读暂时无法生成，计算结果在下方，请稍后再试。", "ja": "今日の読み解きをいま作れませんでした。計算結果は下にあります。のちほどお試しください。", "ko": "오늘의 풀이를 지금은 만들 수 없어요. 계산 결과는 아래에 있으니 나중에 다시 시도해 주세요."},
   "xtell.dy.capped": {"en": "Today's readings have been rewritten too many times; they will be back tomorrow.", "zh-Hant": "今天重新產生解讀的次數已達上限，明天再回來看。", "zh-Hans": "今天重新生成解读的次数已达上限，明天再回来看。", "ja": "今日の読み解きの作り直しが上限に達しました。明日またどうぞ。", "ko": "오늘 풀이를 다시 만드는 횟수가 한도에 도달했어요. 내일 다시 와 주세요."},
