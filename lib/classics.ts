@@ -35,6 +35,10 @@ const SOURCES: Record<Temple, string[]> = {
   cezi:     ['cezimidie.txt'],
   // 解夢: its book's lines ride with the dream (lib/jiemeng.ts dreamFacts).
   jiemeng:  [],
+  // 觀音廟: the stick is its own text. 塔羅: Waite's meaning rides with each
+  // card (lib/tarot.ts tarotFacts).
+  guanyin:  [],
+  tarot:    [],
   // 四面佛 reads the visitor's 八字 against the four faces.
   simianfo: ['ditiansui.txt'],
   // 九曜廟: the Tang 《宿曜經》 (Amoghavajra), the text that carried the

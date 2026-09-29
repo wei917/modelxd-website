@@ -51,7 +51,7 @@ check('every label has all five languages', XTELL_FEATURES.every(f => f.label.ev
   XTELL_FEATURES.flatMap(f => f.label).filter(k => !LANGS.every(l => (STRINGS as any)[k]?.[l])).join())
 check('the guide\'s own strings exist in five languages',
   Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).length >= 20 && Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string')))
-check('the matter field takes the question only where the room has one', same(live.filter(f => f.question === 'matter').map(f => f.id), ['guandi', 'mazu', 'cezi', 'jiemeng', 'yixue.cast']))
+check('the matter field takes the question only where the room has one', same(live.filter(f => f.question === 'matter').map(f => f.id), ['guandi', 'mazu', 'guanyin', 'tarot', 'cezi', 'jiemeng', 'yixue.cast']))
 check('every room and the daily fortune offer a paid teacher and say what is free', live.every(f => (f.temple || f.opens === 'daily' ? f.paid === 'teacher' : f.paid === null) && Array.isArray(f.free)))
 check('the fee rule says the daily fortune is free with no credit', /daily fortune are free/.test(FEE_RULE) && /no credit/.test(FEE_RULE))
 check('the fee rule the prompt uses names the free parts and the estimate', /free/i.test(FEE_RULE) && /estimate/i.test(FEE_RULE) && /pressing send/i.test(FEE_RULE))
@@ -95,7 +95,7 @@ function fakeDb() {
 }
 
 async function chartConsistency() {
-  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
+  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
   const cast = async (body: any) => { const r = await chart(post('http://t/api/xtell/chart', { ...body, refresh: true })); return { status: r.status, d: await r.json() as any } }
   const one = { y: 1990, m: 1, d: 1, h: 15, mi: 0, gender: 'male' }, two = { y: 1992, m: 5, d: 5, h: 9, mi: 0, gender: 'female' }
   /** The smallest full subject the catalog says this feature needs. */
@@ -104,7 +104,8 @@ async function chartConsistency() {
     if (f.people >= 1) s.birth = { ...one }
     if (f.people === 2) s.birth2 = { ...two }
     if (f.place) { s.place = 'taipei'; if (f.people === 2) s.place2 = 'tokyo' }
-    if (f.temple === 'guandi' || f.temple === 'mazu') s.n = 1
+    if (f.temple === 'guandi' || f.temple === 'mazu' || f.temple === 'guanyin') s.n = 1
+    if (f.temple === 'tarot') { s.spread = 'one'; s.picks = [{ id: 'major-00', reversed: false }] }
     for (const i of f.inputs) {
       if (i === 'wishes') s.wishes = { career: '升遷' }
       if (i === 'name') { s.surname = '王'; s.given = '小明' }

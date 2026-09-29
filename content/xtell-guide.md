@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-27.5 -->
+<!-- xtell-guide version: 2026-09-28.1 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -77,6 +77,26 @@ be added for context but are not needed.
 sticks, each named by a stem-branch pair; strong on travel, safety, home and
 trade.
 
+### guanyin
+觀音廟 (Guanyin Temple). Hold one matter in mind (writing it down is
+optional) and draw one of a hundred sticks, then read its poem for that
+matter. 觀音廟 is the general name for a Guanyin temple, not any one real
+temple: never say the sticks come from a named temple. On Chinese, Korean
+and English pages the sticks are the 觀音一百籤 used across Taiwan
+(seven-character poems), confirmed with three sacred block throws as at
+關帝廟; on Japanese pages they are 元三大師's hundred five-character poems
+(graded 大吉 to 凶), the set Japanese おみくじ come from, drawn with no
+blocks. A name, city and birth date can be
+added for context. A gentle room for worries, family and peace of mind.
+
+### tarot
+塔羅 (Tarot). Write what you want to know, choose one card (an answer) or
+three (past, present, future), and shuffle; the cards are drawn by the
+browser's own randomness, each upright or reversed. They are the original
+1909 Waite–Smith cards, shown free with A. E. Waite's own meaning for each
+(in English, from his 1911 book). Then the chosen teachers read the cards for
+your question. Tarot here is for reflection, not prediction.
+
 ### simianfo
 四面佛 (Four-Faced Buddha). Write a wish to at least one of the four faces
 (safety, career, marriage, wealth, clockwise), and if you like, how you will
@@ -109,7 +129,9 @@ ask. For a free personal reading every day, see daily.
 and Moon.
 
 ### xingming
-姓名學 (Name Study). A surname and given name in traditional characters: the
+姓名學 (Name Study). A surname and given name, one to three characters each,
+in traditional Chinese characters, Japanese kanji or Korean hanja (not kana
+or Hangul; 々 counts as the character it repeats): the
 stroke counts, the five grids (天格, 人格, 地格, 外格, 總格), the traditional
 81-number meanings and the balance of the three talents. The teacher reads
 them and does not push a name change.

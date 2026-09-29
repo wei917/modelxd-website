@@ -107,6 +107,7 @@ function rules(): string {
     '"today" use "daily" (free, needs saved birth details); "zhanxing.today" is the tower\'s transit room.',
     'For 黃曆, 農民曆, 宜忌 or what today is good for, use "almanac" (a free card on the street, no birthday).',
     'For a dream (解夢, 周公解夢, "I dreamed…"), use "jiemeng".',
+    'For Guanyin (觀音, 観音, おみくじ at a Guanyin/Kannon temple), use "guanyin"; for tarot (塔羅, タロット, 타로), use "tarot".',
     '',
     `## CATALOG (version ${XTELL_CATALOG_VERSION})`,
     catalogForPrompt(),

@@ -5,7 +5,7 @@ import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, displayTemples, artKind, type TempleKey } from './TempleArtwork'
 
 // Also used to validate room hashes. These are the existing API keys.
-export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng'] as const
+export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot'] as const
 export type { TempleKey } from './TempleArtwork'
 
 /**
@@ -16,9 +16,9 @@ export type { TempleKey } from './TempleArtwork'
  */
 export const PURPOSES: Array<{ key: 'self' | 'love' | 'question' | 'ritual' | 'learn'; temples: TempleKey[] }> = [
   { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming'] },
-  { key: 'love', temples: ['yuelao', 'zhanxing'] },
-  { key: 'question', temples: ['yixue', 'cezi', 'jiemeng', 'guandi', 'mazu'] },
-  { key: 'ritual', temples: ['guandi', 'mazu', 'simianfo'] },
+  { key: 'love', temples: ['yuelao', 'zhanxing', 'tarot'] },
+  { key: 'question', temples: ['tarot', 'yixue', 'cezi', 'jiemeng', 'guanyin', 'guandi', 'mazu'] },
+  { key: 'ritual', temples: ['guanyin', 'guandi', 'mazu', 'simianfo'] },
   { key: 'learn', temples: ['yixue'] },
 ]
 
@@ -35,7 +35,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
     if (key && !list.includes(selected)) onSelect(displayTemples(lang).find(k => list.includes(k))!)
   }
   const name = t('xtell.site.focus.' + selected + '.name')
-  const qian = selected === 'mazu' || selected === 'guandi'
+  const qian = selected === 'mazu' || selected === 'guandi' || selected === 'guanyin'
   return <section className="xtell-explorer" aria-label={t('xtell.site.choose')}>
     <div className="xtell-focus-hero">
       <div className="xtell-focus-scene" data-kind={artKind(selected)} data-temple={selected}>
@@ -57,7 +57,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
           </button>
           <details className="xtell-focus-how" key={selected}>
             <summary>{t('xtell.site.focus.how')}</summary>
-            <p>{t(qian ? 'xtell.site.focus.howQian' : selected === 'yixue' ? 'xtell.site.focus.howYixue' : 'xtell.site.focus.howChart')}</p>
+            <p>{t(qian ? 'xtell.site.focus.howQian' : selected === 'yixue' ? 'xtell.site.focus.howYixue' : selected === 'tarot' ? 'xtell.site.focus.howTarot' : 'xtell.site.focus.howChart')}</p>
             <p>{t('xtell.site.focus.howReading')}</p>
           </details>
           <p className="xtell-focus-note">{t('xtell.site.focus.signin')}</p>

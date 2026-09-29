@@ -55,7 +55,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (12 live)
+## Temples (14 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -64,13 +64,15 @@ time for free. The models' job is the part with no right answer: the reading.
 | 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
 | 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xtell-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **three 聖筊 in a row** (笑/陰 → redraw). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1. **稟告 (Sep 24, optional, both 籤 temples):** a collapsed block for 稱呼, 縣市 and a birth row; whatever is filled in goes to the master (`bingGaoFacts`), a birth adds the 八字 + this year's 流年 under the stick (same `liuNian` as 四面佛). Never an address; nothing stored. 籤是主、命是輔 is in both prompts |
 | 媽祖廟 | 六十甲子籤 (求籤 + 擲筊) | `content/qian/mazu.json` + `lib/xtell-ritual.ts` | Same ritual as 關帝廟 with a 60-stick tube (`QIAN_COUNTS`). Wikisource《天上聖母六十甲子籤》, the set used at 鎮瀾宮/朝天宮: 甲子 label, a 五行/season/direction line (shown neutral, it is a hint not a grade), four lines, 卦頭故事. No per-topic 解曰 in this edition, and the master is told so. Added Sep 22 |
-| 姓名亭 | 姓名學 (五格剖象) | `lib/names.ts` + `content/names/kangxi.json` | Surname + given name (1–2 chars each, 繁體). 康熙筆畫 from Unicode Unihan `kRSUnicode` at the radical's FULL form (氵=水 4, 艹=艸 6, 阝=阜 8/邑 7, 月=肉 6, 王=玉 5−1=4), numerals by value. 天/人/地/外/總格, 熊崎式 81 數理 (吉/半吉/凶, wraps by −80), 三才 五行 生剋. Master never counts strokes; a second name goes back through the form. Added Sep 22 |
+| 姓名亭 | 姓名學 (五格剖象) | `lib/names.ts` + `content/names/kangxi.json` | Surname + given name (**1–3 chars each since Sep 28**: Chinese, Japanese kanji, Korean hanja; 々 = the character it repeats; 新字體 as written; no kana/Hangul; inputs never cut while an IME composes). 康熙筆畫 from Unicode Unihan `kRSUnicode` at the radical's FULL form (氵=水 4, 艹=艸 6, 阝=阜 8/邑 7, 月=肉 6, 王=玉 5−1=4), numerals by value. 天/人/地/外/總格, 熊崎式 81 數理 (吉/半吉/凶, wraps by −80), 三才 五行 生剋. Master never counts strokes; a second name goes back through the form. Added Sep 22 |
 | 測字亭 | 拆字 | `lib/names.ts` + 《測字秘牒》 | One character + the matter asked. Code gives the 康熙 radical, its strokes, the character's strokes and the radical's 五行 (common radicals only). **The decomposition is the master's**, and the prompt makes it spell every part out so the visitor can check it, because no license-clean IDS dataset exists (CHISE/cjkvi-ids are GPL). Classic: 清 程省《測字秘牒》 from Wikisource via `lib/classics`. Added Sep 22 |
 | 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
 | 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xtell-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
 | 易學堂 | 易經: 起卦 / 查卦 / 問老師 | `lib/yijing-core.ts` + `lib/yijing.ts` + `content/yijing/zhouyi.json` | A school, not a temple (Sep 26). Three coins thrown six times → 本卦, 動爻, 之卦, and 朱熹's rule for which passage to read; any of the 64 read in the original; or a learner's question with no cast. See "易學堂" below |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
 | 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
+| 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xtell-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, 三聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28 |
+| 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xtell/tarot/` | The browser shuffles the 78 (Fisher–Yates, crypto) and deals 1 or 3 (past/present/future), each upright/reversed at even odds; only ids travel. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -809,6 +811,21 @@ image edit, medium, 3 outputs, $0.068) against a style sheet cropped from
 `jiemeng-icon.avif` (300), `jiemeng-portrait.avif` (640), `jiemeng.jpg` (the
 www card, on the art's own paper #f8f4e9 so no square shows), and
 `jiemeng-icon-clear.avif` from `scripts/xtell-clear-icons.mjs`.
+
+## Each market's order (Sep 28)
+
+`displayTemples(lang)` (TempleArtwork.tsx): every temple in every language,
+only the order changes. 日本語: 占星, 塔羅, 八字, 觀音, 月老, 解夢, 姓名, 易經,
+紫微, 關帝, 媽祖, 九曜, 四面佛, 測字. 한국어: 八字 (사주), 月老 (labelled 궁합),
+塔羅, 占星, 解夢, 姓名, 易經, 紫微, 觀音, 關帝, 媽祖, 九曜, 四面佛, 測字.
+Chinese and English: the owner's order with 塔羅 after 占星 and 觀音 leading
+the deity rooms.
+
+**Icons (觀音, 塔羅):** generated in XCreate (GPT Image 2.5 Sunburst, image
+edit, medium, 3 outputs each, $0.067 each) against style sheets cropped from
+`icons.avif` (deities: 媽祖, 九曜, 月老, 四面佛; objects: 八字, 紫微, 占星,
+測字), picked for reading at 40–48 px. `*-icon.avif` (300), `*-portrait.avif`
+(640), `*-icon-clear.avif` from `scripts/xtell-clear-icons.mjs`.
 
 ## 分享 (Share, Sep 28)
 

@@ -18,12 +18,12 @@
 import type { Temple } from './xtell'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-27.5'
+export const XTELL_CATALOG_VERSION = '2026-09-28.1'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha'
   | 'zhanxing.natal' | 'zhanxing.synastry' | 'zhanxing.today' | 'zhanxing.year'
-  | 'xingming' | 'cezi' | 'jiemeng' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast'
+  | 'xingming' | 'cezi' | 'jiemeng' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot'
   | 'daily' | 'almanac' | 'courses'
 
 export type FeatureMode = 'natal' | 'synastry' | 'today' | 'year' | 'ask' | 'lookup' | 'cast'
@@ -83,6 +83,12 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'mazu', status: 'live', temple: 'mazu', people: 0, hour: null, place: false, inputs: [], optional: ['matter', 'name', 'birth'],
     free: ['draw'], paid: 'teacher', question: 'matter', label: [room('mazu')],
     about: 'Mazu sixty-stick oracle: the same draw and block ritual; strong on travel, safety, home and trade.' },
+  { id: 'guanyin', status: 'live', temple: 'guanyin', people: 0, hour: null, place: false, inputs: [], optional: ['matter', 'name', 'birth'],
+    free: ['draw'], paid: 'teacher', question: 'matter', label: [room('guanyin')],
+    about: 'Guanyin temple oracle stick (觀音靈籤; 觀音廟 is the general name, not any one real temple): draw one of a hundred sticks and read its poem. Chinese, Korean and English pages draw from the 觀音一百籤 used across Taiwan and confirm with three block throws; Japanese pages draw from Ganzan Daishi\'s hundred Kannon poems (元三大師 觀音百籤), the origin of Japanese omikuji, with no blocks. Never name a real temple. Gentle; good for any worry, family, peace of mind.' },
+  { id: 'tarot', status: 'live', temple: 'tarot', people: 0, hour: null, place: false, inputs: [], optional: ['matter'],
+    free: ['draw'], paid: 'teacher', question: 'matter', label: [room('tarot')],
+    about: 'Tarot (塔羅): write what you want to know, choose one card or three (past, present, future), and shuffle; the 1909 Waite–Smith cards are shown free, upright or reversed, with Waite\'s own meanings; the chosen teachers then read them. For love, choices, how things stand.' },
   { id: 'simianfo', status: 'live', temple: 'simianfo', people: 1, hour: 'optional', place: false, inputs: ['wishes'], optional: [],
     free: ['chart'], paid: 'teacher', question: 'composer', label: [room('simianfo')],
     about: 'Four-Faced Buddha: write a wish to at least one of the four faces (safety, career, marriage, wealth), optionally a pledge; the keeper reads which face this year favours from the visitor\'s BaZi. Wishing, not fortune-telling.' },
@@ -103,7 +109,7 @@ export const XTELL_FEATURES: readonly Feature[] = [
     about: 'The year ahead in Western astrology: solar return and progressions for a chosen year.' },
   { id: 'xingming', status: 'live', temple: 'xingming', people: 0, hour: null, place: false, inputs: ['name', 'gender'], optional: [],
     free: ['chart'], paid: 'teacher', question: 'composer', label: [room('xingming')],
-    about: 'Name study (姓名學): strokes and the five grids of a Chinese surname and given name.' },
+    about: 'Name study (姓名學): strokes and the five grids of a surname and given name, 1 to 3 characters each: Chinese names, Japanese names in kanji, Korean names in hanja (not kana or Hangul).' },
   { id: 'cezi', status: 'live', temple: 'cezi', people: 0, hour: null, place: false, inputs: ['character'], optional: ['matter'],
     free: ['chart'], paid: 'teacher', question: 'matter', label: [room('cezi')],
     about: 'Character reading (測字): write one Chinese character, and optionally the matter asked about; the teacher takes the character apart.' },

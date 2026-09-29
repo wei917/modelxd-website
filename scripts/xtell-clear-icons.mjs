@@ -11,7 +11,8 @@
 // no cream fringe on white or on the hover tint. The originals stay in use
 // wherever the icons sit on paper (the room headers).
 //
-//   node scripts/xtell-clear-icons.mjs   → icons-clear.avif, yixue-school-icon-clear.avif, jiemeng-icon-clear.avif
+//   node scripts/xtell-clear-icons.mjs   → icons-clear.avif, yixue-school-icon-clear.avif, jiemeng-icon-clear.avif,
+//                                           guanyin-icon-clear.avif, tarot-icon-clear.avif
 
 import sharp from 'sharp'
 
@@ -65,3 +66,5 @@ async function clear(src, out, tile) {
 await clear('icons.avif', 'icons-clear.avif', 300)
 await clear('yixue-school-icon.avif', 'yixue-school-icon-clear.avif', 300)
 await clear('jiemeng-icon.avif', 'jiemeng-icon-clear.avif', 300)
+await clear('guanyin-icon.avif', 'guanyin-icon-clear.avif', 300)
+await clear('tarot-icon.avif', 'tarot-icon-clear.avif', 300)

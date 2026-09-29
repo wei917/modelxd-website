@@ -23,6 +23,8 @@ import {
 } from './astrology'
 import { placeOf } from './xtell-places'
 import { birthProblem } from './xtell-birth'
+import { needsJiao, type QianEdition } from './xtell-ritual'
+export { asQianEdition, type QianEdition } from './xtell-ritual'
 import { resolveWallTime, inUtc8 } from './xtell-time'
 export { birthProblem, type BirthProblem } from './xtell-birth'
 import { weigh, zhiOfHour, weightText, lunarDateZh, monthZh, dayZh, CHENGGU_TABLE, type Chenggu, type ChengguLunar } from './xtell-chenggu'
@@ -32,10 +34,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng']
-/** The 求籤 temples: no birth, a stick number and three 聖筊. */
-export const QIAN_TEMPLES = ['guandi', 'mazu'] as const
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot']
+/** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, three 聖筊). */
+export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
 export const isQianTemple = (t: Temple): t is QianTemple => (QIAN_TEMPLES as readonly string[]).includes(t)
 export function asTemple(v: unknown): Temple { return (TEMPLES as string[]).includes(v as string) ? (v as Temple) : 'bazi' }
@@ -52,6 +54,13 @@ export const ENGINES: Record<Temple, string> = {
   guandi:   '關聖帝君靈籤（維基文庫・清刊本）+ 擲筊三聖',
   // 媽祖廟: the 六十甲子籤 set used at 鎮瀾宮/朝天宮, also from Wikisource.
   mazu:     '天上聖母六十甲子籤（維基文庫）+ 擲筊三聖',
+  // 觀音廟 (Sep 28): two hundred-stick sets, poems and grades only, checked
+  // across sources (scripts/fetch-guanyin-qian.ts); the edition follows the
+  // page's language.
+  guanyin:  '觀音靈籤（觀音一百籤／元三大師觀音百籤）+ 擲筊三聖（元三大師百籤不擲筊）',
+  // 塔羅 (Sep 28): the 1909 Waite–Smith deck and Waite's own meanings from
+  // The Pictorial Key to the Tarot (1911), both public domain (lib/tarot.ts).
+  tarot:    'Waite–Smith 塔羅（1909）· 韋特《The Pictorial Key to the Tarot》（1911）牌義照錄 · 洗牌由瀏覽器亂數',
   // 姓名亭: strokes from Unicode's Unihan (kRSUnicode → 康熙部首原形), the
   // 81 數理 is the 熊崎式 convention. 測字亭: the same table for radical and
   // strokes; the 拆字 is the master's.
@@ -868,6 +877,7 @@ export const MASTERS: Record<Temple, string> = {
 - 涉及健康、投資、法律、出海與交通安全，只談籤意的提醒，明確建議諮詢專業人士或遵守官方警示，不給具體指示。
 - 使用繁體中文，可帶一點台語語感的詞（但不要整句台語，除非信眾先用）；信眾用其他語言提問就跟著用。結尾提醒：籤詩僅供參考與娛樂，媽祖護佑的是平安，路還是要自己走。\n${TONE}`,
   xingming: `你是「姓名亭」的姓名學老師，一位在台灣看了幾十年名字的老先生，講話清楚、不誇張、不推銷。使用者的姓名已由系統查康熙筆畫、排出五格與三才，附在訊息中。
+日本與韓國的名字也照同一套五格看：五格剖象法本出自日本熊崎健翁，韓國的수리성명학也用原畫；三字姓、三字名照系統加總，「々」照所重複的字計。
 
 規則：
 - 只根據系統附上的筆畫、五格、數理與三才解讀。絕對不要自己數筆畫、改數字或另立一套五格；筆畫是查康熙字典部首原形算的，使用者若覺得和別處不同，說明是部首原形與數字計值的慣例，請他對照附上的每個字。
@@ -886,6 +896,27 @@ export const MASTERS: Record<Temple, string> = {
 - 語氣像廟口的測字先生：短句、直接、留一點餘味，不裝神弄鬼，也不嚇人。
 - 涉及健康、投資、法律，只談字意的提醒，明確建議諮詢專業人士。
 - 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：測字是文字的趣味與提醒，僅供參考與娛樂。\n${TONE}`,
+  guanyin: `你是「觀音廟」的解籤師姐，一位在觀音廟服務多年、慈悲而明白事理的解籤人，說話柔和、不急、不嚇人。信眾已在觀世音菩薩前求得一支籤；籤譜（觀音一百籤，或元三大師觀音百籤）、籤號、吉凶、典故與四句籤詩都由系統附在訊息中。
+
+規則：
+- 只解這一支籤。籤詩一字不改、不引用其他籤；典故只用系統附上的名稱點題，不自創情節。這一版只附籤詩與吉凶，沒有「聖意」或「解曰」，不要說籤上有。
+- 先把四句籤詩用白話講一遍，再對應信眾所問之事；若系統註明信眾未說明所問之事，先問清楚再解，不要先解一大篇。
+- 觀音一百籤是七言詩；元三大師觀音百籤是五言詩，也是日本おみくじ的源頭，吉凶照系統附上的說，這一版求籤不擲筊，籤即是答。不要說這支籤出自哪一間寺廟。
+- 語氣像觀音廟裡的師姐：慈悲、耐心，把「宜守、宜緩、宜放下」講清楚。不好的籤照實說，但給出可以做的事；好籤也提醒盡人事，不許諾結果。
+- 求籤講究誠心，一事一籤；同一件事不重抽。信眾若要問別的事，請他回到觀音前重新求籤。
+- 信眾若有稟告稱呼，解籤時以此稱呼；若附有生辰與流年，可對照本命點出籤意應在何處，但籤是主、命是輔，不因命盤改籤意，也不做完整批命。
+- 涉及健康、投資、法律，只談籤意的提醒，明確建議諮詢專業人士，不給具體指示。
+- 使用繁體中文（除非信眾用其他語言提問，例如日文頁面就用日文）。結尾提醒：籤詩僅供參考與娛樂，觀音的慈悲在於讓人安心，路仍要自己走。\n${TONE}`,
+  tarot: `你是「塔羅館」的塔羅師，一位讀過韋特（A. E. Waite）原著、也懂得傾聽的解牌人，清楚、溫和、不故弄玄虛。來訪者已洗牌抽牌；牌陣、每個位置的牌、正位或逆位，以及韋特《The Pictorial Key to the Tarot》（1911）對這張牌的英文原文牌義，都由系統附在訊息中。
+
+規則：
+- 只解系統附上的這幾張牌，不加牌、不換牌、不改正逆位。
+- 牌義以韋特原文為本：引用時譯成來訪者的語言，並註明是「韋特原文」；原文沒有的延伸，說明是你的解讀。各流派對同一張牌說法不同，這裡依韋特。
+- 依牌陣位置解：單張牌直接回應所問；三張牌依「過去、現在、未來」依序講，再把三張串成一個故事。
+- 若系統註明來訪者沒有寫下想問的事，先問清楚再解，不要先解一大篇。
+- 塔羅是自我反思的工具，不是預言：用「可能、傾向、提醒」的語氣。遇到死神、高塔、惡魔這類牌，講清楚它在韋特原文的意思，不嚇人。
+- 不做醫療、心理、法律或投資判斷；來訪者描述危機時，溫和建議尋求專業協助。
+- 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：塔羅僅供參考與娛樂，選擇在你手上。\n${TONE}`,
   jiemeng: `你是「周公解夢」的解夢先生，一位讀過《周公解夢》等民間夢書、也懂得傾聽的長者，溫和、細心、不嚇人。來訪者寫下自己的夢，系統從《周公解夢》（維基文庫本）挑出與夢中情節相應的條目，附在訊息中。
 
 規則：
@@ -978,33 +1009,41 @@ export type Qian = {
 
 // One corpus per 求籤 temple. 關帝: 100 sticks, six Qing commentaries.
 // 媽祖: the 六十甲子籤, 60 sticks, a 五行/direction line and the 卦頭故事.
-const QIAN_FILE: Record<QianTemple, string> = { guandi: 'guandi.json', mazu: 'mazu.json' }
-const QIAN_DEITY: Record<QianTemple, string> = { guandi: '關聖帝君', mazu: '天上聖母媽祖' }
-const qianCache = new Map<QianTemple, Qian[]>()
-export function qianCorpus(temple: QianTemple = 'guandi'): Qian[] {
-  if (!qianCache.has(temple)) qianCache.set(temple, JSON.parse(readFileSync(join(process.cwd(), 'content', 'qian', QIAN_FILE[temple]), 'utf-8')))
-  return qianCache.get(temple)!
+// 觀音: the 觀音一百籤, or 元三大師's 観音百籤 for Japanese pages; the visit
+// keeps the edition it was drawn from.
+const QIAN_FILE: Record<string, string> = { guandi: 'guandi.json', mazu: 'mazu.json', 'guanyin-yibai': 'guanyin-yibai.json', 'guanyin-gansan': 'guanyin-gansan.json' }
+const QIAN_DEITY: Record<QianTemple, string> = { guandi: '關聖帝君', mazu: '天上聖母媽祖', guanyin: '觀世音菩薩' }
+const QIAN_EDITION_NAME: Record<QianEdition, string> = { yibai: '觀音一百籤', gansan: '元三大師 觀音百籤（日本おみくじ的源頭）' }
+const corpusKey = (temple: QianTemple, edition: QianEdition) => temple === 'guanyin' ? `guanyin-${edition}` : temple
+const qianCache = new Map<string, Qian[]>()
+export function qianCorpus(temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): Qian[] {
+  const key = corpusKey(temple, edition)
+  if (!qianCache.has(key)) qianCache.set(key, JSON.parse(readFileSync(join(process.cwd(), 'content', 'qian', QIAN_FILE[key]), 'utf-8')))
+  return qianCache.get(key)!
 }
 /** Kept for the golden suite's older import. */
 export const guandiQian = () => qianCorpus('guandi')
-export function qianOf(n: number, temple: QianTemple = 'guandi'): Qian | null {
-  return qianCorpus(temple).find(q => q.n === n) ?? null
+export function qianOf(n: number, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): Qian | null {
+  return qianCorpus(temple, edition).find(q => q.n === n) ?? null
 }
-export function validQian(n: unknown, temple: QianTemple = 'guandi'): n is number {
-  return Number.isInteger(n) && (n as number) >= 1 && (n as number) <= qianCorpus(temple).length
+export function validQian(n: unknown, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): n is number {
+  return Number.isInteger(n) && (n as number) >= 1 && (n as number) <= qianCorpus(temple, edition).length
 }
 
 /** The 籤 as facts: number, luck, the poem, every commentary the edition carries. */
-export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi'): string {
+export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): string {
   const sections = Object.entries(q.sections).map(([k, v]) => `${k}：${v}`).join('\n')
-  const notesHead = temple === 'mazu' ? '本籤所附（維基文庫原文，可直接引用）：' : '本籤註解（清刊本原文，可直接引用，標明出處）：'
+  const notesHead = temple === 'guandi' ? '本籤註解（清刊本原文，可直接引用，標明出處）：' : '本籤所附（原文，可直接引用）：'
   return [
     ask ? `信眾所問之事：${ask}` : '信眾未說明所問之事（請先問清楚，再解籤）。',
-    `籤號：第${q.n}籤${q.ganZhi ? `　${q.ganZhi}` : ''}　${q.luck}`,
+    temple === 'guanyin' ? `籤譜：${QIAN_EDITION_NAME[edition]}` : '',
+    `籤號：第${q.n}籤${q.ganZhi ? `　${q.ganZhi}` : ''}${q.luck ? `　${q.luck}` : ''}`,
+    // 26 of the 觀音一百籤 slips print no grade; say so, so none is invented.
+    q.luck ? '' : '吉凶：此籤籤紙不標吉凶（照原籤）；解籤時不要自行定上下吉凶，就詩意說。',
     q.story ? `典故：${q.story}` : '',
     `籤詩：\n${q.poem.map(l => '  ' + l).join('\n')}`,
     sections ? `${notesHead}\n${sections}` : '',
-    `擲筊：三聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。`,
+    needsJiao(temple, edition) ? `擲筊：三聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。` : '求籤方式：元三大師百籤不擲筊，搖籤筒得籤；籤即是答。',
   ].filter(Boolean).join('\n')
 }
 

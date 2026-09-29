@@ -1,6 +1,6 @@
 // lib/xtell-ritual.ts — the 求籤 ritual, pure and client-safe.
 //
-// 關帝廟 and 媽祖廟 have no chart to compute; their deterministic layer is the RITUAL:
+// 關帝廟, 媽祖廟 and 觀音廟 have no chart to compute; their deterministic layer is the RITUAL:
 // draw a numbered stick, then throw the crescent blocks (筊杯) until the
 // deity confirms with three 聖筊 in a row. The poem text itself lives on the
 // server (lib/xtell.ts, content/qian/guandi.json) and is fetched only after
@@ -12,7 +12,15 @@
 
 /** Sticks per tube. 關帝 uses the 一百籤 set, 媽祖 the 六十甲子籤. */
 export const QIAN_COUNT = 100
-export const QIAN_COUNTS = { guandi: 100, mazu: 60 } as const
+export const QIAN_COUNTS = { guandi: 100, mazu: 60, guanyin: 100 } as const
+/** 觀音廟's two sets (Sep 28): the 觀音一百籤 used across Taiwan's 觀音 temples
+ *  ('yibai'), and 元三大師's 觀音百籤 ('gansan'), where Japanese おみくじ come
+ *  from, for Japanese pages. Both are a hundred; 元三大師's is drawn with no 筊.
+ *  觀音廟 is the general name: no real temple is claimed (owner, Sep 28). */
+export type QianEdition = 'yibai' | 'gansan'
+export const asQianEdition = (v: unknown): QianEdition => v === 'gansan' ? 'gansan' : 'yibai'
+/** Does this draw ask for three 聖筊? Not for 元三大師's set: the stick is the answer. */
+export const needsJiao = (temple: string, edition: QianEdition) => !(temple === 'guanyin' && edition === 'gansan')
 export type QianTemple = keyof typeof QIAN_COUNTS
 
 export type Jiao = '聖筊' | '笑筊' | '陰筊'

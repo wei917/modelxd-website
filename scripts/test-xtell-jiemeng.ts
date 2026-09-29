@@ -87,7 +87,7 @@ async function routes() {
   const chartRoute = (rows: any[]) => {
     const f = fakeDb(rows)
     const POST = loadRoute('app/api/xtell/chart/route.ts', {
-      '@/lib/supabase-server': { createSupabaseServer: async () => f.db }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/jiemeng': jm,
+      '@/lib/supabase-server': { createSupabaseServer: async () => f.db }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/jiemeng': jm,
       '@/lib/jiemeng-scan': { scanDream: async (dream: string, userId: string) => { scans.push(`${userId}:${dream}`); return answer } },
     }).POST
     return { ...f, cast: async (body: any) => { const r = await POST(post('http://t/api/xtell/chart', { temple: 'jiemeng', ...body })); return { status: r.status, d: await r.json() as any } } }
@@ -137,7 +137,7 @@ async function routes() {
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
     '@/lib/credits': { debitCredits: async () => {}, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
-    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/jiemeng': jm,
+    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/jiemeng': jm,
   }).POST
   const ask = async (rows: any[], body: any) => { const r = await readingRoute(rows)(post('http://t/api/xtell/reading', { temple: 'jiemeng', modelId: 'm1', question: '這個夢在說什麼？', dream: '夢見蛇', ...body })); await r.text(); return { status: r.status, sys: systems.at(-1) ?? '' } }
   const s1 = await ask([row('夢見蛇', [40], 1, { id: visitId })], { readingId: visitId, entries: [500, 501] })

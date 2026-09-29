@@ -30,7 +30,8 @@ import TeacherPicker from '../components/xtell/TeacherPicker'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
-import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, type Jiao } from '../../lib/xtell-ritual'
+import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, asQianEdition, needsJiao, type Jiao, type QianEdition } from '../../lib/xtell-ritual'
+import { drawTarot, asSpread, SPREADS, type TarotPick, type TarotSpread } from '../../lib/tarot-draw'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
@@ -50,8 +51,8 @@ import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, t
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng'
-const isQian = (t: Temple) => t === 'guandi' || t === 'mazu'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot'
+const isQian = (t: Temple) => t === 'guandi' || t === 'mazu' || t === 'guanyin'
 
 // Start with a question. Casting is an explicitly selected practice, never
 // a prerequisite for talking to the teacher. Mirrors the server modes.
@@ -138,7 +139,7 @@ function setReadingParam(id: string | null) {
 /** The same checks the routes make, run on a subject before it is sent, and
  *  on a saved subject before its chart is shown. Null when it is fine. */
 function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
-  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng'
+  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'tarot'
   if (needsBirth || (isQian(temple) && subj?.birth)) {
     const p = birthProblem(subj?.birth)
     if (p) return `birth_${p}`
@@ -189,7 +190,7 @@ function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): st
   if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xtell.${subj.gender}`)}`
   if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
   if (temple === 'jiemeng') { const d = String(subj.dream ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
-  if (isQian(temple)) return subj.ask ? String(subj.ask).slice(0, 60) : ''
+  if (isQian(temple) || temple === 'tarot') return subj.ask ? String(subj.ask).slice(0, 60) : ''
   return `${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}`
 }
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
@@ -414,6 +415,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // A reopened reading seeds every input from its saved subject, so the
   // requests it sends next are byte-for-byte what the original visit sent.
   const init = initial?.subject ?? {}
+  // 觀音廟 draws from 元三大師's 觀音百籤 on Japanese pages and the 觀音一百籤
+  // elsewhere; a reopened visit keeps the set it was drawn from. 元三大師's set
+  // throws no 筊.
+  const edition: QianEdition = asQianEdition(init.edition ?? (lang === 'ja' ? 'gansan' : 'yibai'))
+  const jiao = needsJiao(temple, edition)
+  // 塔羅: the spread, and the cards the browser dealt (only their ids travel).
+  const [spread, setSpread] = useState<TarotSpread>(asSpread(init.spread))
+  const picksRef = useRef<TarotPick[] | null>(Array.isArray(init.picks) ? init.picks : null)
   const defaultBirth = { y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false }
   const [birth, setBirth] = useState<typeof defaultBirth>({ ...defaultBirth, ...(init.birth ?? {}), ...(init.gender && !init.birth ? { gender: init.gender } : {}),
     // 紫微/九曜 hide the checkbox; a record saved with it set must reopen
@@ -663,7 +672,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   /** What identifies this consultation, per temple: birth(s), a stick
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
-    isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}) }
+    isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}), ...(temple === 'guanyin' ? { edition } : {}) }
+    : temple === 'tarot' ? { temple, spread, picks: picksRef.current, ask: ask.trim() }
     : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask }
@@ -748,7 +758,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       // — sending spends credits, and that stays a click the visitor makes.
       if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
       return true
-    } catch (e: any) { fail(String(e?.message ?? e), e?.code); if (isQian(temple)) setRitualBoth('drawn'); return false }
+    } catch (e: any) { fail(String(e?.message ?? e), e?.code); if (isQian(temple)) setRitualBoth(jiao ? 'drawn' : 'idle'); if (temple === 'tarot') picksRef.current = null; return false }
     finally {
       enteringRef.current = false
       setEntering(false)
@@ -803,8 +813,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const ritualRef = useRef<'idle' | 'drawn' | 'rejected' | 'confirmed'>(initial && init.n ? 'confirmed' : 'idle')
   const setRitualBoth = (r: 'idle' | 'drawn' | 'rejected' | 'confirmed') => { ritualRef.current = r; setRitual(r) }
   const draw = () => {
-    const s = { n: drawQian(cryptoRand, temple === 'mazu' ? QIAN_COUNTS.mazu : QIAN_COUNTS.guandi), throws: [] as Jiao[] }
-    stickRef.current = s; setStick(s); setRitualBoth('drawn'); clearErr()
+    const s = { n: drawQian(cryptoRand, temple === 'mazu' ? QIAN_COUNTS.mazu : temple === 'guanyin' ? QIAN_COUNTS.guanyin : QIAN_COUNTS.guandi), throws: [] as Jiao[] }
+    stickRef.current = s; setStick(s); clearErr()
+    // 元三大師's set: the stick is the answer; nothing to throw.
+    if (!jiao) { setRitualBoth('confirmed'); void enter(s.n); return }
+    setRitualBoth('drawn')
+  }
+  // 塔羅: shuffle and deal in the browser, then lay the cards.
+  const dealCards = () => {
+    if (enteringRef.current) return
+    picksRef.current = drawTarot(cryptoRand, SPREADS[spread].length)
+    void enter()
   }
   const throwBlocks = () => {
     const s = stickRef.current
@@ -823,6 +842,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     refreshToken.current++
     clearErr(); setEntered(false)
     if (isQian(temple)) { stickRef.current = null; setStick(null); setRitualBoth('idle') }
+    if (temple === 'tarot') picksRef.current = null
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -1032,8 +1052,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 </div>
               : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} disabled={yixueEntryBusy} />
               : <YixueQuestion value={input} onChange={setInput} disabled={yixueEntryBusy} />
+          ) : temple === 'tarot' ? (
+            <TarotPanel ask={ask} setAsk={setAsk} spread={spread} setSpread={setSpread} onDeal={dealCards} entering={entering} sel={sel} />
           ) : isQian(temple) ? (
-            <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks}
+            <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} jiao={jiao}
               bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
           ) : temple === 'xingming' ? (
             <NameForm surname={surname} given={given} gender={birth.gender}
@@ -1081,7 +1103,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>{t('xtell.place.note')}</span>
             </div>
           )}
-          {!isQian(temple) && !(temple === 'yixue' && yixueMode !== 'ask') && (
+          {!isQian(temple) && temple !== 'tarot' && !(temple === 'yixue' && yixueMode !== 'ask') && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               {entering
                 ? <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : 'xtell.entering.note')}</div>
@@ -1283,6 +1305,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'xingming' ? <NameBoard chart={chart} />
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'jiemeng' ? <DreamBoard chart={chart} />
+                : temple === 'tarot' ? <TarotBoard chart={chart} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
@@ -1886,13 +1909,15 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria }: {
 // ── 關帝廟 ─────────────────────────────────────────────────────────────────
 
 /** 稟明事由, then the tube and the blocks. */
-function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel }: {
+function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel, jiao = true }: {
   ask: string; setAsk: (s: string) => void
   stick: { n: number; throws: Jiao[] } | null
   ritual: 'idle' | 'drawn' | 'rejected' | 'confirmed'
   onDraw: () => void; onThrow: () => void
   bing: { name: string; city: string; withBirth: boolean }; setBing: (b: { name: string; city: string; withBirth: boolean }) => void
   birth: any; setBirth: (b: any) => void; sel: any
+  /** false for 元三大師's set: draw once, no 筊. */
+  jiao?: boolean
 }) {
   const t = useT()
   const [bingOpen, setBingOpen] = useState(false)
@@ -1941,8 +1966,8 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
           <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800, letterSpacing: 2 }}>
             {t('xtell.qian.stick')} {stick.n} {t('xtell.qian.stickunit')}
           </div>
-        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.qian.rule')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t('xtell.qian.random')}</div></div>}
-        {stick && (
+        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t(jiao ? 'xtell.qian.rule' : 'xtell.qian.rule.omikuji')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t('xtell.qian.random')}</div></div>}
+        {stick && jiao && (
           <div style={{ display: 'flex', gap: 6 }}>
             {Array.from({ length: CONFIRM_THROWS }, (_, i) => {
               const j = stick.throws[i]
@@ -1960,11 +1985,11 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
         {ritual === 'idle' && <button onClick={onDraw} disabled={!!birthBad} style={{ ...pill('var(--red)'), opacity: birthBad ? 0.5 : 1, cursor: birthBad ? 'not-allowed' : 'pointer' }}>{t('xtell.qian.draw')}</button>}
         {ritual === 'drawn' && <button onClick={onThrow} style={pill('var(--white)')}>{t('xtell.qian.throw')} {stick?.throws.length ?? 0}/{CONFIRM_THROWS}</button>}
         {ritual === 'rejected' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xtell.qian.redraw')}</button>}
-        {ritual === 'confirmed' && <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 700 }}>{t('xtell.qian.confirmed')}</span>}
+        {ritual === 'confirmed' && jiao && <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 700 }}>{t('xtell.qian.confirmed')}</span>}
       </div>
       {ritual === 'idle' && birthBad && <div role="alert" style={{ fontSize: 12.5, color: 'var(--red)' }}>{errorText(t, `birth_${birthBad}`, birthBad)}</div>}
       {ritual === 'rejected' && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{t('xtell.qian.rejected')}</div>}
-      {stick && ritual !== 'rejected' && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.qian.rule')}</div>}
+      {stick && jiao && ritual !== 'rejected' && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.qian.rule')}</div>}
     </div>
   )
 }
@@ -1976,7 +2001,8 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
   // 關帝's edition grades each stick (大吉 … 下下); 媽祖's carries a 五行/direction
   // line instead, which is a hint, not a grade, so it stays neutral.
   const graded = temple !== 'mazu'
-  const luckColour = !graded ? 'var(--muted)' : /上|大/.test(qian.luck) ? 'var(--score-elite)' : /中/.test(qian.luck) ? 'var(--score-fair)' : 'var(--score-poor)'
+  // 凶/下 poor, 上/大 good, everything between (中, 吉, 半吉, 末吉 …) fair.
+  const luckColour = !graded ? 'var(--muted)' : /凶|下/.test(qian.luck) ? 'var(--score-poor)' : /上|大/.test(qian.luck) ? 'var(--score-elite)' : 'var(--score-fair)'
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -1993,7 +2019,7 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
           <div key={i} style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 700, letterSpacing: 3, lineHeight: 1.8 }}>{l}</div>
         ))}
       </div>
-      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xtell.qian.notes.mazu' : 'xtell.qian.notes')}</div>
+      {Object.keys(qian.sections ?? {}).length > 0 && <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xtell.qian.notes.mazu' : 'xtell.qian.notes')}</div>}
       <div style={{ display: 'grid', gap: 10 }}>
         {Object.entries(qian.sections as Record<string, string>).map(([name, text]) => (
           <div key={name} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 10, fontSize: 13, lineHeight: 1.7 }}>
@@ -2009,7 +2035,7 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
           {year && <div style={{ marginTop: 8 }}><LiuNianLine year={year} /></div>}
         </div>
       )}
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xtell.qian.source.mazu' : 'xtell.qian.source')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xtell.qian.source.mazu' : temple === 'guanyin' ? `xtell.qian.source.guanyin.${asQianEdition(qian.edition)}` : 'xtell.qian.source')}</div>
     </div>
   )
 }
@@ -2626,6 +2652,76 @@ function DreamForm({ dream, setDream, ask, setAsk, sel, dreamAria }: { dream: st
       <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.jiemeng.ask.ph')} aria-label={t('xtell.jiemeng.ask')}
         style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
       <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.jiemeng.note')}</div>
+    </div>
+  )
+}
+
+// ── 塔羅 (Sep 28) ─────────────────────────────────────────────────────────────
+// The browser deals (lib/tarot-draw.ts); the server lays the cards with their
+// names, pictures and Waite's meaning for the way each landed (lib/tarot.ts).
+
+function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel }: {
+  ask: string; setAsk: (s: string) => void; spread: TarotSpread; setSpread: (s: TarotSpread) => void
+  onDeal: () => void; entering: boolean; sel: any
+}) {
+  const t = useT()
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+        {t('xtell.tarot.ask')}
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.tarot.ask.ph')} disabled={entering}
+          style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400 }} />
+      </label>
+      <div role="radiogroup" aria-label={t('xtell.tarot.spread')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, marginRight: 4 }}>{t('xtell.tarot.spread')}</span>
+        {(['one', 'three'] as const).map(k => (
+          <button key={k} type="button" role="radio" aria-checked={spread === k} disabled={entering} onClick={() => setSpread(k)}
+            className={'xtell-tarot-spread' + (spread === k ? ' is-on' : '')}>
+            {t(`xtell.tarot.spread.${k}`)}<small>{SPREADS[k].map(p => t(`xtell.tarot.pos.${p}`)).join(' · ')}</small>
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, flex: 1, minWidth: 220 }}>{t('xtell.tarot.note')}</span>
+        <button type="button" onClick={onDeal} disabled={entering} aria-busy={entering || undefined} className="xtell-tarot-deal">
+          {entering ? t('xtell.tarot.drawing') : t('xtell.tarot.draw')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TarotBoard({ chart }: { chart: any }) {
+  const t = useT()
+  const { lang } = useLang()
+  const cards: Array<{ id: string; reversed: boolean; position: string; names: Record<string, string>; image: string; meaning: string }> = Array.isArray(chart?.cards) ? chart.cards : []
+  const name = (c: { names: Record<string, string> }) => c.names?.[lang] ?? c.names?.en ?? ''
+  const turn = (c: { reversed: boolean }) => t(c.reversed ? 'xtell.tarot.reversed' : 'xtell.tarot.upright')
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ ...mono, color: 'var(--muted2)' }}>{t(`xtell.tarot.spread.${chart?.spread === 'three' ? 'three' : 'one'}`)}</span>
+        {chart?.ask && <span style={{ fontSize: 13 }}>{chart.ask}</span>}
+        <span style={{ flex: 1 }} />
+        {cards.length > 0 && <ShareButton spec={() => ({ icon: 'tarot', link: 'tarot', title: t('xtell.site.focus.tarot.name'),
+          kicker: t(`xtell.tarot.spread.${chart?.spread === 'three' ? 'three' : 'one'}`),
+          body: cards.map(c => `${t(`xtell.tarot.pos.${c.position}`)}　${name(c)}（${turn(c)}）`), style: 'prose', name: 'xtell-tarot' })} />}
+      </div>
+      <div className={'xtell-tarot-cards' + (cards.length > 1 ? ' is-three' : '')}>
+        {cards.map(c => (
+          <figure key={c.id} className="xtell-tarot-card">
+            <figcaption>{t(`xtell.tarot.pos.${c.position}`)}</figcaption>
+            <img src={c.image} alt={name(c)} className={c.reversed ? 'is-reversed' : undefined} loading="lazy" />
+            <strong>{name(c)}</strong>
+            <span className={c.reversed ? 'is-reversed' : undefined}>{turn(c)}</span>
+            <details>
+              <summary>{t('xtell.tarot.meaning')}</summary>
+              <p lang="en">{c.meaning}</p>
+            </details>
+          </figure>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.tarot.source')}</div>
     </div>
   )
 }

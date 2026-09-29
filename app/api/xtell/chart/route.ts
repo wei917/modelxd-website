@@ -10,7 +10,8 @@
 export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES } from '@/lib/xtell'
+import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES, asQianEdition } from '@/lib/xtell'
+import { asSpread, validPicks, tarotChart, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamProblem, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
 import { scanDream } from '@/lib/jiemeng-scan'
@@ -31,7 +32,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'edition', 'spread', 'picks'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -145,9 +146,22 @@ export async function POST(req: Request) {
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 
+  // 塔羅 (Sep 28): the browser shuffled and drew; the ids are checked and the
+  // cards laid here, with Waite's meaning for the way each one landed.
+  if (temple === 'tarot') {
+    const spread = asSpread(body?.spread)
+    if (!validPicks(spread, body?.picks)) return refuse('cards_invalid', 'bad draw')
+    const ask = typeof body?.ask === 'string' ? body.ask.trim().slice(0, TAROT_ASK_MAX) : ''
+    const chart = tarotChart(spread, body.picks, ask)
+    const readingId = await keep(() => save(sb, user.id, temple, { ...body, spread, ask }, chart, {}, ask || undefined))
+    return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
+  }
+
   if (isQianTemple(temple)) {
-    if (!validQian(body?.n, temple)) return refuse('stick_invalid', 'bad stick number')
-    const qian = qianOf(body.n, temple)
+    // 觀音廟 draws from the 觀音一百籤 or 元三大師's 觀音百籤 (the page's language picks).
+    const edition = asQianEdition(body?.edition)
+    if (!validQian(body?.n, temple, edition)) return refuse('stick_invalid', 'bad stick number')
+    const qian = qianOf(body.n, temple, edition)
     if (!qian) return refuse('stick_invalid', 'stick not in corpus', 500)
     // Optional 稟告: a birth turns into the same 八字 + 流年 the 四面佛 gets,
     // shown under the stick and handed to the master for reference.
@@ -157,8 +171,10 @@ export async function POST(req: Request) {
     }
     const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
     const year = bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : undefined
-    const readingId = await keep(() => save(sb, user.id, temple, body, qian, { bazi: bz ?? undefined, year }))
-    return Response.json({ temple, chart: qian, bazi: bz ?? undefined, year, engine: ENGINES[temple], readingId })
+    const saved = temple === 'guanyin' ? { ...body, edition } : body
+    const chart = temple === 'guanyin' ? { ...qian, edition } : qian
+    const readingId = await keep(() => save(sb, user.id, temple, saved, chart, { bazi: bz ?? undefined, year }))
+    return Response.json({ temple, chart, bazi: bz ?? undefined, year, engine: ENGINES[temple], readingId })
   }
 
   // 姓名亭 and 測字亭 start from characters, not a birth.

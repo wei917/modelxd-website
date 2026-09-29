@@ -10,7 +10,7 @@
 // fails loudly — a silently shifted 排盤 is the one bug users would never
 // forgive, and the one we could never detect from prose.
 
-import { baziChart, ziweiChart, liuNian, guandiQian, qianCorpus, validQian, validWishes } from '../lib/xtell'
+import { baziChart, ziweiChart, liuNian, guandiQian, qianCorpus, validQian, validWishes, guandiFacts } from '../lib/xtell'
 import { drawQian, throwJiao } from '../lib/xtell-ritual'
 import { nameChart, charInfo, shuli, validName } from '../lib/names'
 import { jyotishChart, lahiriAyanamsa, NAKSHATRA, RASI } from '../lib/jyotish'
@@ -128,6 +128,29 @@ eq('names: 1–3 characters, kanji/hanja; 々 never first; no kana, Hangul or fo
 eq('新字體 counted as written: 沢 桜', strokesOf('沢桜'), '8 10')
 eq('81 數理 wraps: 81 還元 吉, 82 → 2 凶', `${shuli(81).name}${shuli(81).luck} ${shuli(82).n}${shuli(82).luck}`, '還元吉 2凶')
 eq('測字 facts: 林 is 木部 8 畫', `${charInfo('林')!.radical} ${charInfo('林')!.strokes}`, '木 8')
+
+// ── 觀音廟 (Sep 28) ─────────────────────────────────────────────────────────
+// Two hundred-stick sets (scripts/fetch-guanyin-qian.ts): the 觀音一百籤
+// (seven characters a line; 26 slips print no grade) and 元三大師's 觀音百籤
+// (five characters, graded to the published split). Frozen from the build.
+// 觀音廟 is the general name: no real temple is named on the site.
+console.log('\n觀音廟 (籤):')
+{
+  const ls = qianCorpus('guanyin', 'yibai'), ss = qianCorpus('guanyin', 'gansan')
+  eq('both sets: 100 sticks, four lines, 7 and 5 characters', [ls.length, ss.length, ls.every(q => q.poem.length === 4 && q.poem.every(l => [...l].length === 7)), ss.every(q => q.poem.length === 4 && q.poem.every(l => [...l].length === 5))].join(' '), '100 100 true true')
+  eq('一百籤 1', `${ls[0].luck} ${ls[0].story} ${ls[0].poem.join('/')}`, '上上 宋太祖黃袍加身 天開地闢結良緣/日吉時良萬事全/若得此籤非小可/人行中正帝王宣')
+  eq('一百籤 50', `${ls[49].luck} ${ls[49].story} ${ls[49].poem.join('/')}`, '大吉 三寶太監下西洋 五湖四海盡行船/高掛風帆把舵堅/幸得順風隨所至/滿船寶貝稱心田')
+  eq('一百籤 100: no grade on the slip', `[${ls[99].luck}] ${ls[99].story} ${ls[99].poem.join('/')}`, '[] 楚襄王陽臺夢醒 欲就東兮欲就西/逢人說事轉痴迷/登山不見神仙面/莫若歸休更勿提')
+  eq('一百籤: 26 slips print no grade', String(ls.filter(q => !q.luck).length), '26')
+  eq('元三大師 1', `${ss[0].luck} ${ss[0].poem.join('/')}`, '大吉 七寶浮圖塔/高峯頂上安/衆人皆仰望/莫作等閑看')
+  eq('元三大師 50', `${ss[49].luck} ${ss[49].poem.join('/')}`, '吉 有達宜更變/重山利政逢/前途相偶合/財祿保亨通')
+  const split = ['大吉', '吉', '半吉', '小吉', '末小吉', '末吉', '凶'].map(g => ss.filter(q => q.luck === g).length).join(' ')
+  eq('元三大師: the published split 17 / 35 / 5 / 4 / 3 / 6 / 30', split, '17 35 5 4 3 6 30')
+  const f = guandiFacts(ls[99], '', 'guanyin', 'yibai')
+  eq('facts: the set named, no temple; a gradeless slip says so', `${f.includes('籤譜：觀音一百籤') && !/龍山寺|淺草寺/.test(f)} ${f.includes('不標吉凶')} ${f.includes('擲筊')}`, 'true true true')
+  const g = guandiFacts(ss[0], '', 'guanyin', 'gansan')
+  eq('facts: the 元三大師 set throws no 筊, no temple named', `${g.includes('元三大師 觀音百籤') && !/龍山寺|淺草寺/.test(g)} ${g.includes('不擲筊')} ${g.includes('三聖筊')}`, 'true true false')
+}
 
 // ── 四面佛 ─────────────────────────────────────────────────────────────────
 // 流年 2026 丙午 against the 1990-01-01 chart (日主 丙, 日支 寅, 年支 巳):

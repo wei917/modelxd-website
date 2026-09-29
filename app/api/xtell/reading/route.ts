@@ -20,6 +20,8 @@ import { DAILY_METHODS, DAILY_TEACHER, westernFacts, type DailyMethod } from '@/
 import { liuRiFacts } from '@/lib/xtell'
 import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamFacts, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
+import { asQianEdition } from '@/lib/xtell'
+import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 
 const LOG = '[xtell/reading]'
 
@@ -50,6 +52,8 @@ const FACTS_HEAD: Record<string, string> = {
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
   yixue:     '易學堂的對話模式與可核對的經文材料（引用須照錄；僅起卦練習才有系統算定的卦）：',
   jiemeng:   '來訪者的夢與《周公解夢》的相關條目（條目由系統從原書挑出，照錄引用）：',
+  guanyin:   '信眾求得的觀音籤（系統從籤筒抽出；籤譜與籤文照錄，勿更動）：',
+  tarot:     '來訪者抽出的塔羅牌（系統依瀏覽器洗牌結果排定；牌義照錄韋特原文，勿更動）：',
 }
 
 function sse(event: string, data: object) {
@@ -80,8 +84,11 @@ export async function POST(req: Request) {
   if (isDaily) {
     if (typeof body?.readingId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.readingId)) return refuse('daily_missing', 'daily follow-up needs its visit')
     if (!question.trim()) return refuse('question_required', 'write a question for the teacher')
+  } else if (temple === 'tarot') {
+    if (!validPicks(asSpread(body?.spread), body?.picks)) return refuse('cards_invalid', 'bad draw')
   } else if (isQianTemple(temple)) {
-    if (!validQian(body?.n, temple) || !qianOf(body.n, temple)) return refuse('stick_invalid', 'bad stick number')
+    const edition = asQianEdition(body?.edition)
+    if (!validQian(body?.n, temple, edition) || !qianOf(body.n, temple, edition)) return refuse('stick_invalid', 'bad stick number')
     if (body?.birth !== undefined) { const bad = badBirth(body.birth); if (bad) return bad; validBirth(body.birth) }
   } else if (temple === 'xingming') {
     if (!validName(body?.surname)) return refuse('surname_invalid', 'bad name')
@@ -208,10 +215,14 @@ export async function POST(req: Request) {
         ? nameFacts(nameChart(body.surname, body.given), typeof body?.gender === 'string' ? body.gender : '')
       : temple === 'cezi'
         ? ceziFacts(charInfo(body.ch)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '')
+      : temple === 'tarot'
+        // The cards are laid again from their ids; the client's copy is never used.
+        ? tarotFacts(tarotChart(asSpread(body.spread), body.picks, typeof body?.ask === 'string' ? body.ask.slice(0, TAROT_ASK_MAX) : ''))
       : isQianTemple(temple)
         // The poem comes from disk by number; the client's copy is never used.
         ? (() => {
-          const base = guandiFacts(qianOf(body.n, temple)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple)
+          const edition = asQianEdition(body?.edition)
+          const base = guandiFacts(qianOf(body.n, temple, edition)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple, edition)
           const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
           const extra = bingGaoFacts(validBingGao(body), bz, body?.birth?.gender ?? '', body?.birth?.hourUnknown === true, bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : null)
           return extra ? `${base}\n\n${extra}` : base

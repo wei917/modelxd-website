@@ -1,0 +1,1250 @@
+[
+  {
+    "id": "major-00",
+    "arcana": "major",
+    "suit": null,
+    "rank": 0,
+    "names": {
+      "en": "The Fool",
+      "zh-Hant": "愚者",
+      "zh-Hans": "愚人",
+      "ja": "愚者",
+      "ko": "바보"
+    },
+    "upright": "Folly, mania, extravagance, intoxication, delirium, frenzy, bewrayment.",
+    "reversed": "Negligence, absence, distribution, carelessness, apathy, nullity, vanity.",
+    "image": "/xtell/tarot/major-00.webp"
+  },
+  {
+    "id": "major-01",
+    "arcana": "major",
+    "suit": null,
+    "rank": 1,
+    "names": {
+      "en": "The Magician",
+      "zh-Hant": "魔術師",
+      "zh-Hans": "魔术师",
+      "ja": "魔術師",
+      "ko": "마법사"
+    },
+    "upright": "Skill, diplomacy, address, subtlety; sickness, pain, loss, disaster, snares of enemies; self-confidence, will; the Querent, if male.",
+    "reversed": "Physician, Magus, mental disease, disgrace, disquiet.",
+    "image": "/xtell/tarot/major-01.webp"
+  },
+  {
+    "id": "major-02",
+    "arcana": "major",
+    "suit": null,
+    "rank": 2,
+    "names": {
+      "en": "The High Priestess",
+      "zh-Hant": "女祭司",
+      "zh-Hans": "女祭司",
+      "ja": "女教皇",
+      "ko": "여사제"
+    },
+    "upright": "Secrets, mystery, the future as yet unrevealed; the woman who interests the Querent, if male; the Querent herself, if female; silence, tenacity; mystery, wisdom, science.",
+    "reversed": "Passion, moral or physical ardour, conceit, surface knowledge.",
+    "image": "/xtell/tarot/major-02.webp"
+  },
+  {
+    "id": "major-03",
+    "arcana": "major",
+    "suit": null,
+    "rank": 3,
+    "names": {
+      "en": "The Empress",
+      "zh-Hant": "皇后",
+      "zh-Hans": "皇后",
+      "ja": "女帝",
+      "ko": "여황제"
+    },
+    "upright": "Fruitfulness, action, initiative, length of days; the unknown, clandestine; also difficulty, doubt, ignorance.",
+    "reversed": "Light, truth, the unravelling of involved matters, public rejoicings; according to another reading, vacillation.",
+    "image": "/xtell/tarot/major-03.webp"
+  },
+  {
+    "id": "major-04",
+    "arcana": "major",
+    "suit": null,
+    "rank": 4,
+    "names": {
+      "en": "The Emperor",
+      "zh-Hant": "皇帝",
+      "zh-Hans": "皇帝",
+      "ja": "皇帝",
+      "ko": "황제"
+    },
+    "upright": "Stability, power, protection, realization; a great person; aid, reason, conviction; also authority and will.",
+    "reversed": "Benevolence, compassion, credit; also confusion to enemies, obstruction, immaturity.",
+    "image": "/xtell/tarot/major-04.webp"
+  },
+  {
+    "id": "major-05",
+    "arcana": "major",
+    "suit": null,
+    "rank": 5,
+    "names": {
+      "en": "The Hierophant",
+      "zh-Hant": "教皇",
+      "zh-Hans": "教皇",
+      "ja": "法王",
+      "ko": "교황"
+    },
+    "upright": "Marriage, alliance, captivity, servitude; by another account, mercy and goodness; inspiration; the man to whom the Querent has recourse.",
+    "reversed": "Society, good understanding, concord, over-kindness, weakness.",
+    "image": "/xtell/tarot/major-05.webp"
+  },
+  {
+    "id": "major-06",
+    "arcana": "major",
+    "suit": null,
+    "rank": 6,
+    "names": {
+      "en": "The Lovers",
+      "zh-Hant": "戀人",
+      "zh-Hans": "恋人",
+      "ja": "恋人",
+      "ko": "연인"
+    },
+    "upright": "Attraction, love, beauty, trials overcome.",
+    "reversed": "Failure, foolish designs. Another account speaks of marriage frustrated and contrarieties of all kinds.",
+    "image": "/xtell/tarot/major-06.webp"
+  },
+  {
+    "id": "major-07",
+    "arcana": "major",
+    "suit": null,
+    "rank": 7,
+    "names": {
+      "en": "The Chariot",
+      "zh-Hant": "戰車",
+      "zh-Hans": "战车",
+      "ja": "戦車",
+      "ko": "전차"
+    },
+    "upright": "Succour, providence; also war, triumph, presumption, vengeance, trouble.",
+    "reversed": "Riot, quarrel, dispute, litigation, defeat.",
+    "image": "/xtell/tarot/major-07.webp"
+  },
+  {
+    "id": "major-08",
+    "arcana": "major",
+    "suit": null,
+    "rank": 8,
+    "names": {
+      "en": "Strength",
+      "zh-Hant": "力量",
+      "zh-Hans": "力量",
+      "ja": "力",
+      "ko": "힘"
+    },
+    "upright": "Power, energy, action, courage, magnanimity; also complete success and honours.",
+    "reversed": "Despotism, abuse of power, weakness, discord, sometimes even disgrace.",
+    "image": "/xtell/tarot/major-08.webp"
+  },
+  {
+    "id": "major-09",
+    "arcana": "major",
+    "suit": null,
+    "rank": 9,
+    "names": {
+      "en": "The Hermit",
+      "zh-Hant": "隱者",
+      "zh-Hans": "隐士",
+      "ja": "隠者",
+      "ko": "은둔자"
+    },
+    "upright": "Prudence, circumspection; also and especially treason, dissimulation, roguery, corruption.",
+    "reversed": "Concealment, disguise, policy, fear, unreasoned caution.",
+    "image": "/xtell/tarot/major-09.webp"
+  },
+  {
+    "id": "major-10",
+    "arcana": "major",
+    "suit": null,
+    "rank": 10,
+    "names": {
+      "en": "Wheel of Fortune",
+      "zh-Hant": "命運之輪",
+      "zh-Hans": "命运之轮",
+      "ja": "運命の輪",
+      "ko": "운명의 수레바퀴"
+    },
+    "upright": "Destiny, fortune, success, elevation, luck, felicity.",
+    "reversed": "Increase, abundance, superfluity.",
+    "image": "/xtell/tarot/major-10.webp"
+  },
+  {
+    "id": "major-11",
+    "arcana": "major",
+    "suit": null,
+    "rank": 11,
+    "names": {
+      "en": "Justice",
+      "zh-Hant": "正義",
+      "zh-Hans": "正义",
+      "ja": "正義",
+      "ko": "정의"
+    },
+    "upright": "Equity, rightness, probity, executive; triumph of the deserving side in law.",
+    "reversed": "Law in all its departments, legal complications, bigotry, bias, excessive severity.",
+    "image": "/xtell/tarot/major-11.webp"
+  },
+  {
+    "id": "major-12",
+    "arcana": "major",
+    "suit": null,
+    "rank": 12,
+    "names": {
+      "en": "The Hanged Man",
+      "zh-Hant": "倒吊人",
+      "zh-Hans": "倒吊人",
+      "ja": "吊るされた男",
+      "ko": "매달린 사람"
+    },
+    "upright": "Wisdom, circumspection, discernment, trials, sacrifice, intuition, divination, prophecy.",
+    "reversed": "Selfishness, the crowd, body politic.",
+    "image": "/xtell/tarot/major-12.webp"
+  },
+  {
+    "id": "major-13",
+    "arcana": "major",
+    "suit": null,
+    "rank": 13,
+    "names": {
+      "en": "Death",
+      "zh-Hant": "死神",
+      "zh-Hans": "死神",
+      "ja": "死神",
+      "ko": "죽음"
+    },
+    "upright": "End, mortality, destruction, corruption; also, for a man, the loss of a benefactor; for a woman, many contrarieties; for a maid, failure of marriage projects.",
+    "reversed": "Inertia, sleep, lethargy, petrifaction, somnambulism; hope destroyed.",
+    "image": "/xtell/tarot/major-13.webp"
+  },
+  {
+    "id": "major-14",
+    "arcana": "major",
+    "suit": null,
+    "rank": 14,
+    "names": {
+      "en": "Temperance",
+      "zh-Hant": "節制",
+      "zh-Hans": "节制",
+      "ja": "節制",
+      "ko": "절제"
+    },
+    "upright": "Economy, moderation, frugality, management, accommodation.",
+    "reversed": "Things connected with churches, religions, sects, the priesthood, sometimes even the priest who will marry the Querent; also disunion, unfortunate combinations, competing interests.",
+    "image": "/xtell/tarot/major-14.webp"
+  },
+  {
+    "id": "major-15",
+    "arcana": "major",
+    "suit": null,
+    "rank": 15,
+    "names": {
+      "en": "The Devil",
+      "zh-Hant": "惡魔",
+      "zh-Hans": "恶魔",
+      "ja": "悪魔",
+      "ko": "악마"
+    },
+    "upright": "Ravage, violence, vehemence, extraordinary efforts, force, fatality; that which is predestined but is not for this reason evil.",
+    "reversed": "Evil fatality, weakness, pettiness, blindness.",
+    "image": "/xtell/tarot/major-15.webp"
+  },
+  {
+    "id": "major-16",
+    "arcana": "major",
+    "suit": null,
+    "rank": 16,
+    "names": {
+      "en": "The Tower",
+      "zh-Hant": "高塔",
+      "zh-Hans": "高塔",
+      "ja": "塔",
+      "ko": "탑"
+    },
+    "upright": "Misery, distress, indigence, adversity, calamity, disgrace, deception, ruin. It is a card in particular of unforeseen catastrophe.",
+    "reversed": "According to one account, the same in a lesser degree; also oppression, imprisonment, tyranny.",
+    "image": "/xtell/tarot/major-16.webp"
+  },
+  {
+    "id": "major-17",
+    "arcana": "major",
+    "suit": null,
+    "rank": 17,
+    "names": {
+      "en": "The Star",
+      "zh-Hant": "星星",
+      "zh-Hans": "星星",
+      "ja": "星",
+      "ko": "별"
+    },
+    "upright": "Loss, theft, privation, abandonment; another reading says—hope and bright prospects,",
+    "reversed": "Arrogance, haughtiness, impotence.",
+    "image": "/xtell/tarot/major-17.webp"
+  },
+  {
+    "id": "major-18",
+    "arcana": "major",
+    "suit": null,
+    "rank": 18,
+    "names": {
+      "en": "The Moon",
+      "zh-Hant": "月亮",
+      "zh-Hans": "月亮",
+      "ja": "月",
+      "ko": "달"
+    },
+    "upright": "Hidden enemies, danger, calumny, darkness, terror, deception, occult forces, error.",
+    "reversed": "Instability, inconstancy, silence, lesser degrees of deception and error.",
+    "image": "/xtell/tarot/major-18.webp"
+  },
+  {
+    "id": "major-19",
+    "arcana": "major",
+    "suit": null,
+    "rank": 19,
+    "names": {
+      "en": "The Sun",
+      "zh-Hant": "太陽",
+      "zh-Hans": "太阳",
+      "ja": "太陽",
+      "ko": "태양"
+    },
+    "upright": "Material happiness, fortunate marriage, contentment.",
+    "reversed": "The same in a lesser sense.",
+    "image": "/xtell/tarot/major-19.webp"
+  },
+  {
+    "id": "major-20",
+    "arcana": "major",
+    "suit": null,
+    "rank": 20,
+    "names": {
+      "en": "Judgement",
+      "zh-Hant": "審判",
+      "zh-Hans": "审判",
+      "ja": "審判",
+      "ko": "심판"
+    },
+    "upright": "Change of position, renewal, outcome. Another account specifies total loss though lawsuit.",
+    "reversed": "Weakness, pusillanimity, simplicity; also deliberation, decision, sentence.",
+    "image": "/xtell/tarot/major-20.webp"
+  },
+  {
+    "id": "major-21",
+    "arcana": "major",
+    "suit": null,
+    "rank": 21,
+    "names": {
+      "en": "The World",
+      "zh-Hant": "世界",
+      "zh-Hans": "世界",
+      "ja": "世界",
+      "ko": "세계"
+    },
+    "upright": "Assured success, recompense, voyage, route, emigration, flight, change of place.",
+    "reversed": "Inertia, fixity, stagnation, permanence.",
+    "image": "/xtell/tarot/major-21.webp"
+  },
+  {
+    "id": "wands-01",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 1,
+    "names": {
+      "en": "Ace of Wands",
+      "zh-Hant": "權杖一",
+      "zh-Hans": "权杖一",
+      "ja": "ワンドのエース",
+      "ko": "완드 에이스"
+    },
+    "upright": "Creation, invention, enterprise, the powers which result in these; principle, beginning, source; birth, family, origin, and in a sense the virility which is behind them; the starting point of enterprises; according to another account, money, fortune, inheritance.",
+    "reversed": "Fall, decadence, ruin, perdition, to perish; also a certain clouded joy.",
+    "image": "/xtell/tarot/wands-01.webp"
+  },
+  {
+    "id": "wands-02",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 2,
+    "names": {
+      "en": "Two of Wands",
+      "zh-Hant": "權杖二",
+      "zh-Hans": "权杖二",
+      "ja": "ワンドの2",
+      "ko": "완드 2"
+    },
+    "upright": "Between the alternative readings there is no marriage possible; on the one hand, riches, fortune, magnificence; on the other, physical suffering, disease, chagrin, sadness, mortification. The design gives one suggestion; here is a lord overlooking his dominion and alternately contemplating a globe; it looks like the malady, the mortification, the sadness of Alexander amidst the grandeur of this world's wealth.",
+    "reversed": "Surprise, wonder, enchantment, emotion, trouble, fear.",
+    "image": "/xtell/tarot/wands-02.webp"
+  },
+  {
+    "id": "wands-03",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 3,
+    "names": {
+      "en": "Three of Wands",
+      "zh-Hant": "權杖三",
+      "zh-Hans": "权杖三",
+      "ja": "ワンドの3",
+      "ko": "완드 3"
+    },
+    "upright": "He symbolizes established strength, enterprise, effort, trade, commerce, discovery; those are his ships, bearing his merchandise, which are sailing over the sea. The card also signifies able co-operation in business, as if the successful merchant prince were looking from his side towards yours with a view to help you.",
+    "reversed": "The end of troubles, suspension or cessation of adversity, toil and disappointment.",
+    "image": "/xtell/tarot/wands-03.webp"
+  },
+  {
+    "id": "wands-04",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 4,
+    "names": {
+      "en": "Four of Wands",
+      "zh-Hant": "權杖四",
+      "zh-Hans": "权杖四",
+      "ja": "ワンドの4",
+      "ko": "완드 4"
+    },
+    "upright": "They are for once almost on the surface—country life, haven of refuge, a species of domestic harvest-home, repose, concord, harmony, prosperity, peace, and the perfected work of these.",
+    "reversed": "The meaning remains unaltered; it is prosperity, increase, felicity, beauty, embellishment.",
+    "image": "/xtell/tarot/wands-04.webp"
+  },
+  {
+    "id": "wands-05",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 5,
+    "names": {
+      "en": "Five of Wands",
+      "zh-Hant": "權杖五",
+      "zh-Hans": "权杖五",
+      "ja": "ワンドの5",
+      "ko": "완드 5"
+    },
+    "upright": "Imitation, as, for example, sham fight, but also the strenuous competition and struggle of the search after riches and fortune. In this sense it connects with the battle of life. Hence some attributions say that it is a card of gold, gain, opulence.",
+    "reversed": "Litigation, disputes, trickery, contradiction.",
+    "image": "/xtell/tarot/wands-05.webp"
+  },
+  {
+    "id": "wands-06",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 6,
+    "names": {
+      "en": "Six of Wands",
+      "zh-Hant": "權杖六",
+      "zh-Hans": "权杖六",
+      "ja": "ワンドの6",
+      "ko": "완드 6"
+    },
+    "upright": "The card has been so designed that it can cover several significations; on the surface, it is a victor triumphing, but it is also great news, such as might be carried in state by the King's courier; it is expectation crowned with its own desire, the crown of hope, and so forth.",
+    "reversed": "Apprehension, fear, as of a victorious enemy at the gate; treachery, disloyalty, as of gates being opened to the enemy; also indefinite delay.",
+    "image": "/xtell/tarot/wands-06.webp"
+  },
+  {
+    "id": "wands-07",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 7,
+    "names": {
+      "en": "Seven of Wands",
+      "zh-Hant": "權杖七",
+      "zh-Hans": "权杖七",
+      "ja": "ワンドの7",
+      "ko": "완드 7"
+    },
+    "upright": "It is a card of valour, for, on the surface, six are attacking one, who has, however, the vantage position. On the intellectual plane, it signifies discussion, wordy strife; in business—negotiations, war of trade, barter, competition. It is further a card of success, for the combatant is on the top and his enemies may be unable to reach him.",
+    "reversed": "Perplexity, embarrassments, anxiety. It is also a caution against indecision.",
+    "image": "/xtell/tarot/wands-07.webp"
+  },
+  {
+    "id": "wands-08",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 8,
+    "names": {
+      "en": "Eight of Wands",
+      "zh-Hant": "權杖八",
+      "zh-Hans": "权杖八",
+      "ja": "ワンドの8",
+      "ko": "완드 8"
+    },
+    "upright": "Activity in undertakings, the path of such activity, swiftness, as that of an express messenger; great haste, great hope, speed towards an end which promises assured felicity; generally, that which is on the move; also the arrows of love.",
+    "reversed": "Arrows of jealousy, internal dispute, stingings of conscience, quarrels; and domestic disputes for persons who are married.",
+    "image": "/xtell/tarot/wands-08.webp"
+  },
+  {
+    "id": "wands-09",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 9,
+    "names": {
+      "en": "Nine of Wands",
+      "zh-Hant": "權杖九",
+      "zh-Hans": "权杖九",
+      "ja": "ワンドの9",
+      "ko": "완드 9"
+    },
+    "upright": "The card signifies strength in opposition. If attacked, the person will meet an onslaught boldly; and his build shews that he may prove a formidable antagonist. With this main significance there are all its possible adjuncts—delay, suspension, adjournment.",
+    "reversed": "Obstacles, adversity, calamity.",
+    "image": "/xtell/tarot/wands-09.webp"
+  },
+  {
+    "id": "wands-10",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 10,
+    "names": {
+      "en": "Ten of Wands",
+      "zh-Hant": "權杖十",
+      "zh-Hans": "权杖十",
+      "ja": "ワンドの10",
+      "ko": "완드 10"
+    },
+    "upright": "A card of many significances, and some of the readings cannot be harmonized. I set aside that which connects it with honour and good faith. The chief meaning is oppression simply, but it is also fortune, gain, any kind of success, and then it is the oppression of these things. It is also a card of false-seeming, disguise, perfidy. The place which the figure is approaching may suffer from the rods that he carries. Success is stultified if the Nine of Swords follows, and if it is a question of a lawsuit, there will be certain loss.",
+    "reversed": "Contrarieties, difficulties, intrigues, and their analogies.",
+    "image": "/xtell/tarot/wands-10.webp"
+  },
+  {
+    "id": "wands-11",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 11,
+    "names": {
+      "en": "Page of Wands",
+      "zh-Hant": "權杖侍者",
+      "zh-Hans": "权杖侍从",
+      "ja": "ワンドのペイジ",
+      "ko": "완드 페이지"
+    },
+    "upright": "Dark young man, faithful, a lover, an envoy, a postman. Beside a man, he will bear favourable testimony concerning him. A dangerous rival, if followed by the Page of Cups. Has the chief qualities of his suit. He may signify family intelligence.",
+    "reversed": "Anecdotes, announcements, evil news. Also indecision and the instability which accompanies it.",
+    "image": "/xtell/tarot/wands-11.webp"
+  },
+  {
+    "id": "wands-12",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 12,
+    "names": {
+      "en": "Knight of Wands",
+      "zh-Hant": "權杖騎士",
+      "zh-Hans": "权杖骑士",
+      "ja": "ワンドのナイト",
+      "ko": "완드 나이트"
+    },
+    "upright": "Departure, absence, flight, emigration. A dark young man, friendly. Change of residence.",
+    "reversed": "Rupture, division, interruption, discord.",
+    "image": "/xtell/tarot/wands-12.webp"
+  },
+  {
+    "id": "wands-13",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 13,
+    "names": {
+      "en": "Queen of Wands",
+      "zh-Hant": "權杖皇后",
+      "zh-Hans": "权杖王后",
+      "ja": "ワンドのクイーン",
+      "ko": "완드 퀸"
+    },
+    "upright": "A dark woman, countrywoman, friendly, chaste, loving, honourable. If the card beside her signifies a man, she is well disposed towards him; if a woman, she is interested in the Querent. Also, love of money, or a certain success in business.",
+    "reversed": "Good, economical, obliging, serviceable. Signifies also—but in certain positions and in the neighbourhood of other cards tending in such directions—opposition, jealousy, even deceit and infidelity.",
+    "image": "/xtell/tarot/wands-13.webp"
+  },
+  {
+    "id": "wands-14",
+    "arcana": "minor",
+    "suit": "wands",
+    "rank": 14,
+    "names": {
+      "en": "King of Wands",
+      "zh-Hant": "權杖國王",
+      "zh-Hans": "权杖国王",
+      "ja": "ワンドのキング",
+      "ko": "완드 킹"
+    },
+    "upright": "Dark man, friendly, countryman, generally married, honest and conscientious. The card always signifies honesty, and may mean news concerning an unexpected heritage to fall in before very long.",
+    "reversed": "Good, but severe; austere, yet tolerant.",
+    "image": "/xtell/tarot/wands-14.webp"
+  },
+  {
+    "id": "cups-01",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 1,
+    "names": {
+      "en": "Ace of Cups",
+      "zh-Hant": "聖杯一",
+      "zh-Hans": "圣杯一",
+      "ja": "カップのエース",
+      "ko": "컵 에이스"
+    },
+    "upright": "House of the true heart, joy, content, abode, nourishment, abundance, fertility; Holy Table, felicity hereof.",
+    "reversed": "House of the false heart, mutation, instability, revolution.",
+    "image": "/xtell/tarot/cups-01.webp"
+  },
+  {
+    "id": "cups-02",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 2,
+    "names": {
+      "en": "Two of Cups",
+      "zh-Hant": "聖杯二",
+      "zh-Hans": "圣杯二",
+      "ja": "カップの2",
+      "ko": "컵 2"
+    },
+    "upright": "Love, passion, friendship, affinity, union, concord, sympathy, the interrelation of the sexes, and—as a suggestion apart from all offices of divination—that desire which is not in Nature, but by which Nature is sanctified.",
+    "reversed": "Passion.",
+    "image": "/xtell/tarot/cups-02.webp"
+  },
+  {
+    "id": "cups-03",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 3,
+    "names": {
+      "en": "Three of Cups",
+      "zh-Hant": "聖杯三",
+      "zh-Hans": "圣杯三",
+      "ja": "カップの3",
+      "ko": "컵 3"
+    },
+    "upright": "The conclusion of any matter in plenty, perfection and merriment; happy issue, victory, fulfilment, solace, healing.",
+    "reversed": "Expedition, dispatch, achievement, end. It signifies also the side of excess in physical enjoyment, and the pleasures of the senses.",
+    "image": "/xtell/tarot/cups-03.webp"
+  },
+  {
+    "id": "cups-04",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 4,
+    "names": {
+      "en": "Four of Cups",
+      "zh-Hant": "聖杯四",
+      "zh-Hans": "圣杯四",
+      "ja": "カップの4",
+      "ko": "컵 4"
+    },
+    "upright": "Weariness, disgust, aversion, imaginary vexations, as if the wine of this world had caused satiety only; another wine, as if a fairy gift, is now offered the wastrel, but he sees no consolation therein. This is also a card of blended pleasure.",
+    "reversed": "Novelty, presage, new instruction, new relations.",
+    "image": "/xtell/tarot/cups-04.webp"
+  },
+  {
+    "id": "cups-05",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 5,
+    "names": {
+      "en": "Five of Cups",
+      "zh-Hant": "聖杯五",
+      "zh-Hans": "圣杯五",
+      "ja": "カップの5",
+      "ko": "컵 5"
+    },
+    "upright": "It is a card of loss, but something remains over; three have been taken, but two are left; it is a card of inheritance, patrimony, transmission, but not corresponding to expectations; with some interpreters it is a card of marriage, but not without bitterness or frustration.",
+    "reversed": "News, alliances, affinity, consanguinity, ancestry, return, false projects.",
+    "image": "/xtell/tarot/cups-05.webp"
+  },
+  {
+    "id": "cups-06",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 6,
+    "names": {
+      "en": "Six of Cups",
+      "zh-Hant": "聖杯六",
+      "zh-Hans": "圣杯六",
+      "ja": "カップの6",
+      "ko": "컵 6"
+    },
+    "upright": "A card of the past and of memories, looking back, as—for example—on childhood; happiness, enjoyment, but coming rather from the past; things that have vanished. Another reading reverses this, giving new relations, new knowledge, new environment, and then the children are disporting in an unfamiliar precinct.",
+    "reversed": "The future, renewal, that which will come to pass presently.",
+    "image": "/xtell/tarot/cups-06.webp"
+  },
+  {
+    "id": "cups-07",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 7,
+    "names": {
+      "en": "Seven of Cups",
+      "zh-Hant": "聖杯七",
+      "zh-Hans": "圣杯七",
+      "ja": "カップの7",
+      "ko": "컵 7"
+    },
+    "upright": "Fairy favours, images of reflection, sentiment, imagination, things seen in the glass of contemplation; some attainment in these degrees, but nothing permanent or substantial is suggested.",
+    "reversed": "Desire, will, determination, project.",
+    "image": "/xtell/tarot/cups-07.webp"
+  },
+  {
+    "id": "cups-08",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 8,
+    "names": {
+      "en": "Eight of Cups",
+      "zh-Hant": "聖杯八",
+      "zh-Hans": "圣杯八",
+      "ja": "カップの8",
+      "ko": "컵 8"
+    },
+    "upright": "The card speaks for itself on the surface, but other readings are entirely antithetical—giving joy, mildness, timidity, honour, modesty. In practice, it is usually found that the card shews the decline of a matter, or that a matter which has been thought to be important is really of slight consequence—either for good or evil.",
+    "reversed": "Great joy, happiness, feasting.",
+    "image": "/xtell/tarot/cups-08.webp"
+  },
+  {
+    "id": "cups-09",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 9,
+    "names": {
+      "en": "Nine of Cups",
+      "zh-Hant": "聖杯九",
+      "zh-Hans": "圣杯九",
+      "ja": "カップの9",
+      "ko": "컵 9"
+    },
+    "upright": "Concord, contentment, physical bien-être; also victory, success, advantage; satisfaction for the Querent or person for whom the consultation is made.",
+    "reversed": "Truth, loyalty, liberty; but the readings vary and include mistakes, imperfections, etc.",
+    "image": "/xtell/tarot/cups-09.webp"
+  },
+  {
+    "id": "cups-10",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 10,
+    "names": {
+      "en": "Ten of Cups",
+      "zh-Hant": "聖杯十",
+      "zh-Hans": "圣杯十",
+      "ja": "カップの10",
+      "ko": "컵 10"
+    },
+    "upright": "Contentment, repose of the entire heart; the perfection of that state; also perfection of human love and friendship; if with several picture-cards, a person who is taking charge of the Querent's interests; also the town, village or country inhabited by the Querent.",
+    "reversed": "Repose of the false heart, indignation, violence.",
+    "image": "/xtell/tarot/cups-10.webp"
+  },
+  {
+    "id": "cups-11",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 11,
+    "names": {
+      "en": "Page of Cups",
+      "zh-Hant": "聖杯侍者",
+      "zh-Hans": "圣杯侍从",
+      "ja": "カップのペイジ",
+      "ko": "컵 페이지"
+    },
+    "upright": "Fair young man, one impelled to render service and with whom the Querent will be connected; a studious youth; news, message; application, reflection, meditation; also these things directed to business.",
+    "reversed": "Taste, inclination, attachment, seduction, deception, artifice.",
+    "image": "/xtell/tarot/cups-11.webp"
+  },
+  {
+    "id": "cups-12",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 12,
+    "names": {
+      "en": "Knight of Cups",
+      "zh-Hant": "聖杯騎士",
+      "zh-Hans": "圣杯骑士",
+      "ja": "カップのナイト",
+      "ko": "컵 나이트"
+    },
+    "upright": "Arrival, approach—sometimes that of a messenger; advances, proposition, demeanour, invitation, incitement.",
+    "reversed": "Trickery, artifice, subtlety, swindling, duplicity, fraud.",
+    "image": "/xtell/tarot/cups-12.webp"
+  },
+  {
+    "id": "cups-13",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 13,
+    "names": {
+      "en": "Queen of Cups",
+      "zh-Hant": "聖杯皇后",
+      "zh-Hans": "圣杯王后",
+      "ja": "カップのクイーン",
+      "ko": "컵 퀸"
+    },
+    "upright": "Good, fair woman; honest, devoted woman, who will do service to the Querent; loving intelligence, and hence the gift of vision; success, happiness, pleasure; also wisdom, virtue; a perfect spouse and a good mother.",
+    "reversed": "The accounts vary; good woman; otherwise, distinguished woman but one not to be trusted; perverse woman; vice, dishonour, depravity.",
+    "image": "/xtell/tarot/cups-13.webp"
+  },
+  {
+    "id": "cups-14",
+    "arcana": "minor",
+    "suit": "cups",
+    "rank": 14,
+    "names": {
+      "en": "King of Cups",
+      "zh-Hant": "聖杯國王",
+      "zh-Hans": "圣杯国王",
+      "ja": "カップのキング",
+      "ko": "컵 킹"
+    },
+    "upright": "Fair man, man of business, law, or divinity; responsible, disposed to oblige the Querent; also equity, art and science, including those who profess science, law and art; creative intelligence.",
+    "reversed": "Dishonest, double-dealing man; roguery, exaction, injustice, vice, scandal, pillage, considerable loss.",
+    "image": "/xtell/tarot/cups-14.webp"
+  },
+  {
+    "id": "swords-01",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 1,
+    "names": {
+      "en": "Ace of Swords",
+      "zh-Hant": "寶劍一",
+      "zh-Hans": "宝剑一",
+      "ja": "ソードのエース",
+      "ko": "소드 에이스"
+    },
+    "upright": "Triumph, the excessive degree in everything, conquest, triumph of force. It is a card of great force, in love as well as in hatred. The crown may carry a much higher significance than comes usually within the sphere of fortune-telling.",
+    "reversed": "The same, but the results are disastrous; another account says—conception, childbirth, augmentation, multiplicity.",
+    "image": "/xtell/tarot/swords-01.webp"
+  },
+  {
+    "id": "swords-02",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 2,
+    "names": {
+      "en": "Two of Swords",
+      "zh-Hant": "寶劍二",
+      "zh-Hans": "宝剑二",
+      "ja": "ソードの2",
+      "ko": "소드 2"
+    },
+    "upright": "Conformity and the equipoise which it suggests, courage, friendship, concord in a state of arms; another reading gives tenderness, affection, intimacy. The suggestion of harmony and other favourable readings must be considered in a qualified manner, as Swords generally are not symbolical of beneficent forces in human affairs.",
+    "reversed": "Imposture, falsehood, duplicity, disloyalty.",
+    "image": "/xtell/tarot/swords-02.webp"
+  },
+  {
+    "id": "swords-03",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 3,
+    "names": {
+      "en": "Three of Swords",
+      "zh-Hant": "寶劍三",
+      "zh-Hans": "宝剑三",
+      "ja": "ソードの3",
+      "ko": "소드 3"
+    },
+    "upright": "Removal, absence, delay, division, rupture, dispersion, and all that the design signifies naturally, being too simple and obvious to call for specific enumeration.",
+    "reversed": "Mental alienation, error, loss, distraction, disorder, confusion.",
+    "image": "/xtell/tarot/swords-03.webp"
+  },
+  {
+    "id": "swords-04",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 4,
+    "names": {
+      "en": "Four of Swords",
+      "zh-Hant": "寶劍四",
+      "zh-Hans": "宝剑四",
+      "ja": "ソードの4",
+      "ko": "소드 4"
+    },
+    "upright": "Vigilance, retreat, solitude, hermit's repose, exile, tomb and coffin. It is these last that have suggested the design.",
+    "reversed": "Wise administration, circumspection, economy, avarice, precaution, testament.",
+    "image": "/xtell/tarot/swords-04.webp"
+  },
+  {
+    "id": "swords-05",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 5,
+    "names": {
+      "en": "Five of Swords",
+      "zh-Hant": "寶劍五",
+      "zh-Hans": "宝剑五",
+      "ja": "ソードの5",
+      "ko": "소드 5"
+    },
+    "upright": "Degradation, destruction, revocation, infamy, dishonour, loss, with the variants and analogues of these.",
+    "reversed": "The same; burial and obsequies.",
+    "image": "/xtell/tarot/swords-05.webp"
+  },
+  {
+    "id": "swords-06",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 6,
+    "names": {
+      "en": "Six of Swords",
+      "zh-Hant": "寶劍六",
+      "zh-Hans": "宝剑六",
+      "ja": "ソードの6",
+      "ko": "소드 6"
+    },
+    "upright": "Journey by water, route, way, envoy, commissionary, expedient.",
+    "reversed": "Declaration, confession, publicity; one account says that it is a proposal of love.",
+    "image": "/xtell/tarot/swords-06.webp"
+  },
+  {
+    "id": "swords-07",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 7,
+    "names": {
+      "en": "Seven of Swords",
+      "zh-Hant": "寶劍七",
+      "zh-Hans": "宝剑七",
+      "ja": "ソードの7",
+      "ko": "소드 7"
+    },
+    "upright": "Design, attempt, wish, hope, confidence; also quarrelling, a plan that may fail, annoyance. The design is uncertain in its import, because the significations are widely at variance with each other.",
+    "reversed": "Good advice, counsel, instruction, slander, babbling.",
+    "image": "/xtell/tarot/swords-07.webp"
+  },
+  {
+    "id": "swords-08",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 8,
+    "names": {
+      "en": "Eight of Swords",
+      "zh-Hant": "寶劍八",
+      "zh-Hans": "宝剑八",
+      "ja": "ソードの8",
+      "ko": "소드 8"
+    },
+    "upright": "Bad news, violent chagrin, crisis, censure, power in trammels, conflict, calumny; also sickness.",
+    "reversed": "Disquiet, difficulty, opposition, accident, treachery; what is unforeseen; fatality.",
+    "image": "/xtell/tarot/swords-08.webp"
+  },
+  {
+    "id": "swords-09",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 9,
+    "names": {
+      "en": "Nine of Swords",
+      "zh-Hant": "寶劍九",
+      "zh-Hans": "宝剑九",
+      "ja": "ソードの9",
+      "ko": "소드 9"
+    },
+    "upright": "Death, failure, miscarriage, delay, deception, disappointment, despair.",
+    "reversed": "Imprisonment, suspicion, doubt, reasonable fear, shame.",
+    "image": "/xtell/tarot/swords-09.webp"
+  },
+  {
+    "id": "swords-10",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 10,
+    "names": {
+      "en": "Ten of Swords",
+      "zh-Hant": "寶劍十",
+      "zh-Hans": "宝剑十",
+      "ja": "ソードの10",
+      "ko": "소드 10"
+    },
+    "upright": "Whatsoever is intimated by the design; also pain, affliction, tears, sadness, desolation. It is not especially a card of violent death.",
+    "reversed": "Advantage, profit, success, favour, but none of these are permanent; also power and authority.",
+    "image": "/xtell/tarot/swords-10.webp"
+  },
+  {
+    "id": "swords-11",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 11,
+    "names": {
+      "en": "Page of Swords",
+      "zh-Hant": "寶劍侍者",
+      "zh-Hans": "宝剑侍从",
+      "ja": "ソードのペイジ",
+      "ko": "소드 페이지"
+    },
+    "upright": "Authority, overseeing, secret service, vigilance, spying, examination, and the qualities thereto belonging.",
+    "reversed": "More evil side of these qualities; what is unforeseen, unprepared state; sickness is also intimated.",
+    "image": "/xtell/tarot/swords-11.webp"
+  },
+  {
+    "id": "swords-12",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 12,
+    "names": {
+      "en": "Knight of Swords",
+      "zh-Hant": "寶劍騎士",
+      "zh-Hans": "宝剑骑士",
+      "ja": "ソードのナイト",
+      "ko": "소드 나이트"
+    },
+    "upright": "Skill, bravery, capacity, defence, address, enmity, wrath, war, destruction, opposition, resistance, ruin. There is therefore a sense in which the card signifies death, but it carries this meaning only in its proximity to other cards of fatality.",
+    "reversed": "Imprudence, incapacity, extravagance.",
+    "image": "/xtell/tarot/swords-12.webp"
+  },
+  {
+    "id": "swords-13",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 13,
+    "names": {
+      "en": "Queen of Swords",
+      "zh-Hant": "寶劍皇后",
+      "zh-Hans": "宝剑王后",
+      "ja": "ソードのクイーン",
+      "ko": "소드 퀸"
+    },
+    "upright": "Widowhood, female sadness and embarrassment, absence, sterility, mourning, privation, separation.",
+    "reversed": "Malice, bigotry, artifice, prudery, bale, deceit.",
+    "image": "/xtell/tarot/swords-13.webp"
+  },
+  {
+    "id": "swords-14",
+    "arcana": "minor",
+    "suit": "swords",
+    "rank": 14,
+    "names": {
+      "en": "King of Swords",
+      "zh-Hant": "寶劍國王",
+      "zh-Hans": "宝剑国王",
+      "ja": "ソードのキング",
+      "ko": "소드 킹"
+    },
+    "upright": "Whatsoever arises out of the idea of judgment and all its connexions—power, command, authority, militant intelligence, law, offices of the crown, and so forth.",
+    "reversed": "Cruelty, perversity, barbarity, perfidy, evil intention.",
+    "image": "/xtell/tarot/swords-14.webp"
+  },
+  {
+    "id": "pentacles-01",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 1,
+    "names": {
+      "en": "Ace of Pentacles",
+      "zh-Hant": "錢幣一",
+      "zh-Hans": "星币一",
+      "ja": "ペンタクルのエース",
+      "ko": "펜타클 에이스"
+    },
+    "upright": "Perfect contentment, felicity, ecstasy; also speedy intelligence; gold.",
+    "reversed": "The evil side of wealth, bad intelligence; also great riches. In any case it shews prosperity, comfortable material conditions, but whether these are of advantage to the possessor will depend on whether the card is reversed or not.",
+    "image": "/xtell/tarot/pentacles-01.webp"
+  },
+  {
+    "id": "pentacles-02",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 2,
+    "names": {
+      "en": "Two of Pentacles",
+      "zh-Hant": "錢幣二",
+      "zh-Hans": "星币二",
+      "ja": "ペンタクルの2",
+      "ko": "펜타클 2"
+    },
+    "upright": "On the one hand it is represented as a card of gaiety, recreation and its connexions, which is the subject of the design; but it is read also as news and messages in writing, as obstacles, agitation, trouble, embroilment.",
+    "reversed": "Enforced gaiety, simulated enjoyment, literal sense, handwriting, composition, letters of exchange.",
+    "image": "/xtell/tarot/pentacles-02.webp"
+  },
+  {
+    "id": "pentacles-03",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 3,
+    "names": {
+      "en": "Three of Pentacles",
+      "zh-Hant": "錢幣三",
+      "zh-Hans": "星币三",
+      "ja": "ペンタクルの3",
+      "ko": "펜타클 3"
+    },
+    "upright": "Métier, trade, skilled labour; usually, however, regarded as a card of nobility, aristocracy, renown, glory.",
+    "reversed": "Mediocrity, in work and otherwise, puerility, pettiness, weakness.",
+    "image": "/xtell/tarot/pentacles-03.webp"
+  },
+  {
+    "id": "pentacles-04",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 4,
+    "names": {
+      "en": "Four of Pentacles",
+      "zh-Hant": "錢幣四",
+      "zh-Hans": "星币四",
+      "ja": "ペンタクルの4",
+      "ko": "펜타클 4"
+    },
+    "upright": "The surety of possessions, cleaving to that which one has, gift, legacy, inheritance.",
+    "reversed": "Suspense, delay, opposition.",
+    "image": "/xtell/tarot/pentacles-04.webp"
+  },
+  {
+    "id": "pentacles-05",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 5,
+    "names": {
+      "en": "Five of Pentacles",
+      "zh-Hant": "錢幣五",
+      "zh-Hans": "星币五",
+      "ja": "ペンタクルの5",
+      "ko": "펜타클 5"
+    },
+    "upright": "The card foretells material trouble above all, whether in the form illustrated—that is, destitution—or otherwise. For some cartomancists, it is a card of love and lovers—wife, husband, friend, mistress; also concordance, affinities. These alternatives cannot be harmonized.",
+    "reversed": "Disorder, chaos, ruin, discord, profligacy.",
+    "image": "/xtell/tarot/pentacles-05.webp"
+  },
+  {
+    "id": "pentacles-06",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 6,
+    "names": {
+      "en": "Six of Pentacles",
+      "zh-Hant": "錢幣六",
+      "zh-Hans": "星币六",
+      "ja": "ペンタクルの6",
+      "ko": "펜타클 6"
+    },
+    "upright": "Presents, gifts, gratification; another account says attention, vigilance; now is the accepted time, present prosperity, etc.",
+    "reversed": "Desire, cupidity, envy, jealousy, illusion.",
+    "image": "/xtell/tarot/pentacles-06.webp"
+  },
+  {
+    "id": "pentacles-07",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 7,
+    "names": {
+      "en": "Seven of Pentacles",
+      "zh-Hant": "錢幣七",
+      "zh-Hans": "星币七",
+      "ja": "ペンタクルの7",
+      "ko": "펜타클 7"
+    },
+    "upright": "These are exceedingly contradictory; in the main, it is a card of money, business, barter; but one reading gives altercation, quarrel—and another innocence, ingenuity, purgation.",
+    "reversed": "Cause for anxiety regarding money which it may be proposed to lend.",
+    "image": "/xtell/tarot/pentacles-07.webp"
+  },
+  {
+    "id": "pentacles-08",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 8,
+    "names": {
+      "en": "Eight of Pentacles",
+      "zh-Hant": "錢幣八",
+      "zh-Hans": "星币八",
+      "ja": "ペンタクルの8",
+      "ko": "펜타클 8"
+    },
+    "upright": "Work, employment, commission, craftsmanship, skill in craft and business, perhaps in the preparatory stage.",
+    "reversed": "Voided ambition, vanity, cupidity, exaction, usury. It may also signify the possession of skill, in the sense of the ingenious mind turned to cunning and intrigue.",
+    "image": "/xtell/tarot/pentacles-08.webp"
+  },
+  {
+    "id": "pentacles-09",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 9,
+    "names": {
+      "en": "Nine of Pentacles",
+      "zh-Hant": "錢幣九",
+      "zh-Hans": "星币九",
+      "ja": "ペンタクルの9",
+      "ko": "펜타클 9"
+    },
+    "upright": "Prudence, safety, success, accomplishment, certitude, discernment.",
+    "reversed": "Roguery, deception, voided project, bad faith.",
+    "image": "/xtell/tarot/pentacles-09.webp"
+  },
+  {
+    "id": "pentacles-10",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 10,
+    "names": {
+      "en": "Ten of Pentacles",
+      "zh-Hant": "錢幣十",
+      "zh-Hans": "星币十",
+      "ja": "ペンタクルの10",
+      "ko": "펜타클 10"
+    },
+    "upright": "Gain, riches; family matters, archives, extraction, the abode of a family.",
+    "reversed": "Chance, fatality, loss, robbery, games of hazard; sometimes gift, dowry, pension.",
+    "image": "/xtell/tarot/pentacles-10.webp"
+  },
+  {
+    "id": "pentacles-11",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 11,
+    "names": {
+      "en": "Page of Pentacles",
+      "zh-Hant": "錢幣侍者",
+      "zh-Hans": "星币侍从",
+      "ja": "ペンタクルのペイジ",
+      "ko": "펜타클 페이지"
+    },
+    "upright": "Application, study, scholarship, reflection; another reading says news, messages and the bringer thereof; also rule, management.",
+    "reversed": "Prodigality, dissipation, liberality. luxury; unfavourable news.",
+    "image": "/xtell/tarot/pentacles-11.webp"
+  },
+  {
+    "id": "pentacles-12",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 12,
+    "names": {
+      "en": "Knight of Pentacles",
+      "zh-Hant": "錢幣騎士",
+      "zh-Hans": "星币骑士",
+      "ja": "ペンタクルのナイト",
+      "ko": "펜타클 나이트"
+    },
+    "upright": "Utility, serviceableness, interest, responsibility, rectitude—all on the normal and external plane.",
+    "reversed": "inertia, idleness, repose of that kind, stagnation; also placidity, discouragement, carelessness.",
+    "image": "/xtell/tarot/pentacles-12.webp"
+  },
+  {
+    "id": "pentacles-13",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 13,
+    "names": {
+      "en": "Queen of Pentacles",
+      "zh-Hant": "錢幣皇后",
+      "zh-Hans": "星币王后",
+      "ja": "ペンタクルのクイーン",
+      "ko": "펜타클 퀸"
+    },
+    "upright": "Opulence, generosity, magnificence, security, liberty.",
+    "reversed": "Evil, suspicion, suspense, fear, mistrust.",
+    "image": "/xtell/tarot/pentacles-13.webp"
+  },
+  {
+    "id": "pentacles-14",
+    "arcana": "minor",
+    "suit": "pentacles",
+    "rank": 14,
+    "names": {
+      "en": "King of Pentacles",
+      "zh-Hant": "錢幣國王",
+      "zh-Hans": "星币国王",
+      "ja": "ペンタクルのキング",
+      "ko": "펜타클 킹"
+    },
+    "upright": "Valour, realizing intelligence, business and normal intellectual aptitude, sometimes mathematical gifts and attainments of this kind; success in these paths.",
+    "reversed": "Vice, weakness, ugliness, perversity, corruption, peril.",
+    "image": "/xtell/tarot/pentacles-14.webp"
+  }
+]

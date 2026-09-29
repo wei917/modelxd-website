@@ -318,10 +318,18 @@ master explains that one poem using the Qing-edition commentaries; the
 hundred poems are the public-domain 關聖帝君靈籤 from Wikisource), **媽祖廟**
 (the same draw-and-blocks ritual with Mazu's sixty 甲子 sticks, the set used
 at 鎮瀾宮 and 朝天宮; strong on travel, safety, home and trade), **姓名亭**
-(姓名學: type a surname and given name in traditional characters; the 康熙
+(姓名學: type a surname and given name, one to three characters each, in
+traditional Chinese, Japanese kanji or Korean hanja; the 康熙
 strokes come from Unicode's own data and are shown per character, then the
 five grids 天格/人格/地格/外格/總格, the 81-number 吉凶 convention and the
 三才 balance; the master reads them and will not push a name change),
+**觀音廟** (Guanyin 籤, 觀音廟 being the general name, not a real temple:
+draw one of a hundred sticks; Chinese pages use the 觀音一百籤 and confirm
+it with three 聖筊, Japanese pages 元三大師's hundred poems, where Japanese
+omikuji come from, with no blocks),
+**塔羅館** (tarot: write a question, draw one card or three for past, present
+and future, shuffled by your own browser; the original 1909 Waite–Smith cards
+and Waite's own meanings are shown free, then a teacher reads them),
 **測字亭** (glyphomancy: write one character and one question; the radical
 and strokes are looked up, the master takes the character apart the old way
 and shows every part, with the Qing classic 《測字秘牒》 at hand), and

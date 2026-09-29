@@ -3499,6 +3499,25 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 /* 分享 (Sep 28): the small button beside a result, and its dialog (the
    picker's frame, .xtell-tp). */
 .xtell-share-btn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--xtell-rule, var(--border2)); background: #fff; color: var(--xtell-secondary, var(--muted)); border-radius: 999px; padding: 3px 11px; font: inherit; font-size: 12px; font-weight: 600; line-height: 1.5; cursor: pointer; white-space: nowrap; }
+/* 塔羅 (Sep 28): the spread choice, the deal button, and the laid cards. */
+.xtell-tarot-spread { display: inline-grid; gap: 2px; text-align: left; border: 1px solid var(--border2); background: #fff; border-radius: 10px; padding: 8px 14px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; color: var(--white); }
+.xtell-tarot-spread small { font-size: 11px; font-weight: 400; color: var(--muted2); }
+.xtell-tarot-spread.is-on { border-color: var(--red); background: var(--red-dim, var(--surface2)); color: var(--red); }
+.xtell-tarot-deal { padding: 10px 26px; border-radius: 999px; border: none; background: var(--red); color: #fff; font-weight: 700; font-size: 13.5px; cursor: pointer; min-width: 132px; }
+.xtell-tarot-deal:disabled { cursor: wait; opacity: .7; }
+.xtell-tarot-cards { display: grid; grid-template-columns: minmax(0, 220px); justify-content: center; gap: 14px; }
+.xtell-tarot-cards.is-three { grid-template-columns: repeat(3, minmax(0, 200px)); }
+.xtell-tarot-card { margin: 0; display: grid; justify-items: center; gap: 6px; text-align: center; min-width: 0; }
+.xtell-tarot-card figcaption { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--muted2); }
+.xtell-tarot-card img { width: 100%; height: auto; aspect-ratio: 360 / 620; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, .14); background: #f3efe6; }
+.xtell-tarot-card img.is-reversed { transform: rotate(180deg); }
+.xtell-tarot-card strong { font-size: 14.5px; line-height: 1.35; }
+.xtell-tarot-card span { font-size: 12px; color: var(--muted); }
+.xtell-tarot-card span.is-reversed { color: var(--red); }
+.xtell-tarot-card details { width: 100%; text-align: left; font-size: 12px; color: var(--muted); }
+.xtell-tarot-card summary { cursor: pointer; text-align: center; }
+.xtell-tarot-card details p { margin: 6px 0 0; line-height: 1.6; }
+@media (max-width: 560px) { .xtell-tarot-cards.is-three { gap: 8px; } .xtell-tarot-card strong { font-size: 12.5px; } }
 .xtell-dy-head .xtell-share-btn, .xtell-share-btn.xtell-dy-share { margin-left: auto; align-self: center; }
 .xtell-share-btn:hover { border-color: var(--xtell-vermilion, var(--red)); color: var(--xtell-vermilion, var(--red)); }
 .xtell-share { width: min(520px, 100%); }
