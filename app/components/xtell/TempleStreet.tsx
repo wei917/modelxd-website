@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useT } from '../../../lib/i18n'
-import { TempleArtwork, DISPLAY_TEMPLES, artKind, type TempleKey } from './TempleArtwork'
+import { useLang } from '../../../lib/i18n'
+import { TempleArtwork, displayTemples, artKind, type TempleKey } from './TempleArtwork'
 
 // Also used to validate room hashes. These are the existing API keys.
 export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng'] as const
@@ -27,12 +27,12 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
   onSelect: (key: TempleKey) => void
   onEnter: (key: TempleKey) => void
 }) {
-  const t = useT()
+  const { lang, t } = useLang()
   const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
   const choosePurpose = (key: (typeof PURPOSES)[number]['key'] | null) => {
     setPurpose(key)
     const list = key ? PURPOSES.find(p => p.key === key)!.temples : []
-    if (key && !list.includes(selected)) onSelect(DISPLAY_TEMPLES.find(k => list.includes(k))!)
+    if (key && !list.includes(selected)) onSelect(displayTemples(lang).find(k => list.includes(k))!)
   }
   const name = t('xtell.site.focus.' + selected + '.name')
   const qian = selected === 'mazu' || selected === 'guandi'

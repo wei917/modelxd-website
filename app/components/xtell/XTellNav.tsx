@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { useLang } from '../../../lib/i18n'
-import { TempleArtwork, DISPLAY_TEMPLES, type TempleKey } from './TempleArtwork'
+import { TempleArtwork, DISPLAY_TEMPLES, displayTemples, type TempleKey } from './TempleArtwork'
 import ContactEmail from '../ContactEmail'
 import BugReportLink from '../BugReport'
 
@@ -111,7 +111,7 @@ export default function XTellNav({ user }: { user: User | null }) {
             The avatar on the right IS the account link (owner, Sep 24). */}
         <div className="xtell-temple-wrap">
           <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-            {DISPLAY_TEMPLES.map(key => <a key={key} href={'/#' + key}
+            {displayTemples(lang).map(key => <a key={key} href={'/#' + key}
               aria-label={t('xtell.site.focus.' + key + '.name')}
               aria-current={activeTemple === key ? 'page' : undefined}>
               <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />

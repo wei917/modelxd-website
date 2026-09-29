@@ -9,6 +9,17 @@ export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simia
 // a reading of the visitor's own words like 測字, after it.
 export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming', 'cezi', 'yixue', 'jiemeng', 'yuelao', 'guandi', 'mazu', 'simianfo']
 
+// Each market's own order (owner, Sep 28: "for each market, a list and
+// order"). Every temple is in every list; only the order changes. Japan
+// leads with 星座 and 四柱推命, then 縁結び and 夢占い, and puts the rooms
+// Japanese visitors rarely know (九曜, 四面佛, 測字) last. Korea leads with
+// 사주 and 궁합. Chinese and English keep the order above.
+const ORDER_JA: TempleKey[] = ['zhanxing', 'bazi', 'yuelao', 'jiemeng', 'xingming', 'yixue', 'ziwei', 'guandi', 'mazu', 'navagraha', 'simianfo', 'cezi']
+const ORDER_KO: TempleKey[] = ['bazi', 'yuelao', 'zhanxing', 'jiemeng', 'xingming', 'yixue', 'ziwei', 'guandi', 'mazu', 'navagraha', 'simianfo', 'cezi']
+export function displayTemples(lang: string): TempleKey[] {
+  return lang === 'ja' ? ORDER_JA : lang === 'ko' ? ORDER_KO : DISPLAY_TEMPLES
+}
+
 // Both approved image sheets use the same five-column, two-row ordering.
 // A temple added after the sheets (易學堂) brings its own two files instead,
 // so the approved sheets never change: `src` rather than `index`.
