@@ -7,8 +7,8 @@ draft of what it would say, built from how the site actually charges today
 (lib/stripe.ts, lib/plans.ts, the Terms). **Not published.** Someone
 qualified in Japanese consumer law should confirm it before it goes live.
 
-The owner does not want the responsible person, address or phone on the
-page (Sep 29). As we understand 特定商取引法 第11条 ただし書, those may be
+The owner does not want the responsible person or phone on the page
+(Sep 29); the address is the LLC's business address, given by the owner. As we understand 特定商取引法 第11条 ただし書, those may be
 left off when the page says they will be disclosed promptly on request;
 if a customer asks, a responsible person's name, an address and a phone
 number must then actually be sent. That reading is what needs confirming.
@@ -17,7 +17,7 @@ number must then actually be sent. That reading is what needs confirming.
 |---|---|
 | 販売業者 | ModelXD LLC (owner, Sep 29) |
 | 運営統括責任者 | 請求があった場合には、遅滞なく電子メールにて開示いたします。 |
-| 所在地 | 請求があった場合には、遅滞なく電子メールにて開示いたします。 |
+| 所在地 | 5830 E 2nd St, Ste 7000 #33449, Casper, Wyoming 82609, United States（アメリカ合衆国） |
 | 電話番号 | 請求があった場合には、遅滞なく電子メールにて開示いたします。 |
 | メールアドレス | support@modelxd.com |
 | 販売価格 | 各サービスの画面に、実行前の目安として表示します（米ドル建て、日本語ページでは円の概算を併記）。クレジットの購入は $10・$20・$100、または $1〜$1,000 の任意の金額。月額プランは日本では ¥749／月。 |
