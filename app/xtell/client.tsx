@@ -158,8 +158,8 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
   if (temple === 'simianfo' && !FACE_KEYS.some(k => String(subj?.wishes?.[k] ?? '').trim())) return 'wish_required'
   // lib/names.ts validName / validChar, mirrored.
   if (temple === 'xingming') {
-    if (!/^[㐀-䶿一-鿿][㐀-䶿一-鿿々]{0,2}$/.test(String(subj?.surname ?? ''))) return 'surname_invalid'
-    if (!/^[㐀-䶿一-鿿][㐀-䶿一-鿿々]{0,2}$/.test(String(subj?.given ?? ''))) return 'given_invalid'
+    if (!/^[㐀-䶿一-鿿ぁ-ゖァ-ヺ][㐀-䶿一-鿿々ぁ-ゖァ-ヺー]{0,3}$/.test(String(subj?.surname ?? ''))) return 'surname_invalid'
+    if (!/^[㐀-䶿一-鿿ぁ-ゖァ-ヺ][㐀-䶿一-鿿々ぁ-ゖァ-ヺー]{0,3}$/.test(String(subj?.given ?? ''))) return 'given_invalid'
   }
   if (temple === 'cezi' && !/^[㐀-䶿一-鿿]$/.test(String(subj?.ch ?? ''))) return 'char_invalid'
   // lib/jiemeng.ts dreamProblem, mirrored.
@@ -2669,7 +2669,7 @@ function NameBoard({ chart }: { chart: any }) {
           <div key={i} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', textAlign: 'center', minWidth: 72 }}>
             <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800 }}>{c.ch}</div>
             <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 700 }}>{c.strokes}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{c.radical}部</div>
+            <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{c.kana ? t('xtell.name.kana') : `${c.radical}部`}</div>
           </div>
         ))}
       </div>

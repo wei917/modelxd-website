@@ -30,7 +30,28 @@ function tables() {
   return { strokes: strokeTable!, radicals: radicalTable! }
 }
 
-export type CharInfo = { ch: string; strokes: number; radical: string; radicalNo: number; radicalStrokes: number }
+export type CharInfo = { ch: string; strokes: number; radical: string; radicalNo: number; radicalStrokes: number; kana?: true }
+
+// ── かな (Sep 29, a reviewer: many Japanese given names are kana) ──────────
+// Kana counts differ by school; this is the table of the modern stroke
+// order most Japanese naming sites print (e.g. 吉元式's 「正しいひらがな表・
+// カタカナ表」: な 4, そ 1, ほ 4; the older order gives な 5, ほ 5). A
+// voiced mark 「゛」 adds 2, 「゜」 adds 1; small kana count as full size;
+// the long mark ー is 1. The master and the page both say it is a convention.
+const KANA_STROKES: Record<string, number> = Object.fromEntries([
+  ...'あ3い2う2え2お3か3き4く1け3こ2さ3し1す2せ3そ1た4ち2つ1て1と2な4に3ぬ2ね2の1は3ひ1ふ4へ1ほ4ま3み2む3め2も3や3ゆ2よ2ら2り2る1れ2ろ1わ2を3ん1'.match(/\D\d/g)!,
+  ...'ア2イ2ウ3エ3オ3カ2キ3ク2ケ3コ2サ3シ3ス2セ2ソ2タ3チ3ツ3テ3ト2ナ2ニ2ヌ2ネ4ノ1ハ2ヒ2フ1ヘ1ホ4マ2ミ3ム2メ2モ3ヤ2ユ2ヨ3ラ2リ2ル2レ1ロ3ワ2ヲ3ン2ー1'.match(/\D\d/g)!,
+].map(p => [p[0], Number(p[1])]))
+const SMALL: Record<string, string> = { ぁ: 'あ', ぃ: 'い', ぅ: 'う', ぇ: 'え', ぉ: 'お', っ: 'つ', ゃ: 'や', ゅ: 'ゆ', ょ: 'よ', ゎ: 'わ', ァ: 'ア', ィ: 'イ', ゥ: 'ウ', ェ: 'エ', ォ: 'オ', ッ: 'ツ', ャ: 'ヤ', ュ: 'ユ', ョ: 'ヨ', ヮ: 'ワ' }
+/** A kana's strokes by that table, or null for anything else. */
+export function kanaInfo(ch: string): CharInfo | null {
+  const [base, mark] = [...ch.normalize('NFD')]
+  const plain = SMALL[base] ?? base
+  const n = KANA_STROKES[plain]
+  if (n == null) return null
+  const extra = mark === '\u3099' ? 2 : mark === '\u309A' ? 1 : 0
+  return { ch, strokes: n + extra, radical: '', radicalNo: 0, radicalStrokes: 0, kana: true }
+}
 
 export function charInfo(ch: string): CharInfo | null {
   const { strokes, radicals } = tables()
@@ -107,12 +128,13 @@ export type NameChart = {
   sancai: { tian: string; ren: string; di: string; tianRen: string; renDi: string; label: string }
 }
 
-/** One to three characters (owner, Sep 28: Japan and Korea): Chinese names,
- *  Japanese three-kanji surnames and given names (長谷川, 由紀子), Korean names
- *  in 漢字. 々 repeats the character before it, so it cannot come first.
- *  Kana and Hangul are not read: their stroke conventions differ by school. */
+/** One to four characters (owner, Sep 28: Japan and Korea; Sep 29: four-kanji
+ *  surnames like 勅使河原 and kana given names like さくら): Chinese names,
+ *  Japanese kanji or kana, Korean names in 漢字. 々 and ー follow a character,
+ *  so neither can come first. Hangul is not read. */
+export const NAME_RX = /^[㐀-䶿一-鿿ぁ-ゖァ-ヺ][㐀-䶿一-鿿々ぁ-ゖァ-ヺー]{0,3}$/
 export function validName(s: unknown): s is string {
-  return typeof s === 'string' && /^[㐀-䶿一-鿿][㐀-䶿一-鿿々]{0,2}$/.test(s)
+  return typeof s === 'string' && NAME_RX.test(s)
 }
 
 /** Each character's info; 々 takes the strokes of the character it repeats
@@ -121,7 +143,7 @@ function namePart(s: string): Array<CharInfo | null> {
   const out: Array<CharInfo | null> = []
   for (const ch of s) {
     const prev = out[out.length - 1]
-    out.push(ch === '々' ? (prev ? { ...prev, ch: '々' } : null) : charInfo(ch))
+    out.push(ch === '々' ? (prev ? { ...prev, ch: '々' } : null) : charInfo(ch) ?? kanaInfo(ch))
   }
   return out
 }
@@ -152,12 +174,13 @@ export function nameChart(surname: string, given: string): NameChart {
 }
 
 export function nameFacts(c: NameChart, gender: string): string {
-  const chars = [...c.surname, ...c.given].map(x => `${x.ch}（${x.strokes}畫，${x.radical}部）`).join(' ')
+  const chars = [...c.surname, ...c.given].map(x => `${x.ch}（${x.strokes}畫，${x.kana ? '假名' : `${x.radical}部`}）`).join(' ')
   const ge = Object.values(c.ge).map(g => `  ${g.label} ${g.n}：${g.wuxing}　${g.shuli.n}數「${g.shuli.name}」${g.shuli.luck}${g.n !== g.shuli.n ? `（${g.n} 減 80 取 ${g.shuli.n}）` : ''}`).join('\n')
   return [
     `姓名：${c.surname.map(x => x.ch).join('')}${c.given.map(x => x.ch).join('')}${gender ? `（${gender === 'male' ? '男' : '女'}）` : ''}`,
     `康熙筆畫：${chars}`,
     ...([...c.surname, ...c.given].some(x => x.ch === '々') ? ['「々」依所重複之字計畫。'] : []),
+    ...([...c.surname, ...c.given].some(x => x.kana) ? ['日文假名依現行筆順的通行表計畫（濁點加 2、半濁點加 1、小寫同大寫、長音符 1）；假名筆畫各流派算法不一，這是慣例不是定律。'] : []),
     `筆畫依所寫字形計（日本新字體如沢、桜照寫法計，不換回舊字體；三字姓或三字名依熊崎式加總）。`,
     `五格（五格剖象法，筆畫依康熙字典部首原形，數字一至十以數值計）：`,
     ge,

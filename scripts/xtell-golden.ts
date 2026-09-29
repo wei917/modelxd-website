@@ -12,7 +12,7 @@
 
 import { baziChart, ziweiChart, liuNian, guandiQian, qianCorpus, validQian, validWishes, guandiFacts } from '../lib/xtell'
 import { drawQian, throwJiao } from '../lib/xtell-ritual'
-import { nameChart, charInfo, shuli, validName } from '../lib/names'
+import { nameChart, charInfo, kanaInfo, shuli, validName } from '../lib/names'
 import { jyotishChart, lahiriAyanamsa, NAKSHATRA, RASI } from '../lib/jyotish'
 
 let failures = 0
@@ -124,7 +124,11 @@ eq('林安 五格 (single/single → 外格 2)', Object.values(lin.ge).map(g => 
 const jp = nameChart('佐々木', '由紀子')
 eq('佐々木由紀子 五格 (three and three, 々 = 佐)', Object.values(jp.ge).map(g => `${g.label}${g.n}`).join(' '), '天格18 人格9 地格17 外格26 總格35')
 eq('  々 keeps its face, counts as 佐', `${jp.surname[1].ch}${jp.surname[1].strokes}`, '々7')
-eq('names: 1–3 characters, kanji/hanja; 々 never first; no kana, Hangul or four', [validName('王'), validName('歐陽'), validName('長谷川'), validName('由紀子'), validName('々木'), validName('さくら'), validName('이지은'), validName('王大明德')].join(' '), 'true true true true false false false false')
+eq('names: 1–4 characters, kanji/hanja or kana; 々 and ー never first; no Hangul or five', [validName('王'), validName('歐陽'), validName('長谷川'), validName('由紀子'), validName('勅使河原'), validName('さくら'), validName('ユーコ'), validName('々木'), validName('ーコ'), validName('이지은'), validName('王大明德仁')].join(' '), 'true true true true true true true false false false false')
+// Kana (Sep 29): the modern-order table, ゛ +2, ゜ +1, small = full, ー 1.
+const kana = nameChart('勅使河原', 'しずか')
+eq('勅使河原しずか: four-kanji surname, kana given (し1 ず4 か3)', [...kana.surname, ...kana.given].map(c => `${c.ch}${c.strokes}`).join(' ') + ' | ' + Object.values(kana.ge).map(g => `${g.label}${g.n}`).join(' '), '勅9 使8 河9 原10 し1 ず4 か3 | 天格36 人格11 地格8 外格33 總格44')
+eq('  kana marks: パ3 ぽ5 っ1 ヴ5 ー1, and no radical', String(kanaInfo('パ')!.strokes) + ' ' + [nameChart('田', 'ぽっヴー').given.map(c => c.strokes).join(' ')] + ' ' + String(nameChart('田', 'パ').given[0].kana), '3 5 1 5 1 true')
 eq('新字體 counted as written: 沢 桜', strokesOf('沢桜'), '8 10')
 eq('81 數理 wraps: 81 還元 吉, 82 → 2 凶', `${shuli(81).name}${shuli(81).luck} ${shuli(82).n}${shuli(82).luck}`, '還元吉 2凶')
 eq('測字 facts: 林 is 木部 8 畫', `${charInfo('林')!.radical} ${charInfo('林')!.strokes}`, '木 8')
