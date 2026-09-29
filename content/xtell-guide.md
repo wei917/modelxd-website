@@ -67,8 +67,8 @@ pairing it read. Either hour may be unknown.
 
 ### guandi
 關帝廟 (Guan Di Temple). Hold one matter in mind (writing it down is
-optional), draw a numbered stick, then throw the two crescent blocks: three "sacred" throws in a row (one flat side, one
-round side up) confirm the stick, otherwise draw again. The poem and its old
+optional), draw a numbered stick, then throw the two crescent blocks: one "sacred"
+throw (one flat side, one round side up) confirms the stick, otherwise draw again. The poem and its old
 commentaries are then read for that matter. A name, city and birth date can
 be added for context but are not needed.
 
@@ -83,7 +83,7 @@ optional) and draw one of a hundred sticks, then read its poem for that
 matter. 觀音廟 is the general name for a Guanyin temple, not any one real
 temple: never say the sticks come from a named temple. On Chinese, Korean
 and English pages the sticks are the 觀音一百籤 used across Taiwan
-(seven-character poems), confirmed with three sacred block throws as at
+(seven-character poems), confirmed with one sacred block throw as at
 關帝廟; on Japanese pages they are 元三大師's hundred five-character poems
 (graded 大吉 to 凶), the set Japanese おみくじ come from, drawn with no
 blocks. A name, city and birth date can be

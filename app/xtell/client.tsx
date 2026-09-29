@@ -805,7 +805,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     setLookupN(n); void enter(n)
   }
 
-  // The ritual. Draw a stick, throw the blocks; three 聖筊 confirm and open
+  // The ritual. Draw a stick, throw the blocks; a 聖筊 confirms and opens
   // the hall, anything else sends the visitor back to the tube. Randomness is
   // the browser's crypto source — nobody, including us, picks the stick.
   //

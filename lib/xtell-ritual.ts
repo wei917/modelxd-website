@@ -2,7 +2,7 @@
 //
 // 關帝廟, 媽祖廟 and 觀音廟 have no chart to compute; their deterministic layer is the RITUAL:
 // draw a numbered stick, then throw the crescent blocks (筊杯) until the
-// deity confirms with three 聖筊 in a row. The poem text itself lives on the
+// deity confirms with a 聖筊 (owner, Sep 28: one, not three in a row). The poem text itself lives on the
 // server (lib/xtell.ts, content/qian/guandi.json) and is fetched only after
 // the third 聖筊 — the client never holds the corpus, so the number is the
 // only thing that travels, exactly like a birth date.
@@ -19,7 +19,7 @@ export const QIAN_COUNTS = { guandi: 100, mazu: 60, guanyin: 100 } as const
  *  觀音廟 is the general name: no real temple is claimed (owner, Sep 28). */
 export type QianEdition = 'yibai' | 'gansan'
 export const asQianEdition = (v: unknown): QianEdition => v === 'gansan' ? 'gansan' : 'yibai'
-/** Does this draw ask for three 聖筊? Not for 元三大師's set: the stick is the answer. */
+/** Does this draw ask for a 聖筊? Not for 元三大師's set: the stick is the answer. */
 export const needsJiao = (temple: string, edition: QianEdition) => !(temple === 'guanyin' && edition === 'gansan')
 export type QianTemple = keyof typeof QIAN_COUNTS
 
@@ -38,9 +38,10 @@ export function drawQian(rand: () => number, count: number = QIAN_COUNT): number
   return 1 + Math.floor(Math.min(0.999999, Math.max(0, rand())) * count)
 }
 
-/** Three 聖筊 in a row confirm the stick (三聖筊為允); any other block
+/** One 聖筊 confirms the stick (聖筊為允; owner, Sep 28: three in a row meant
+ *  eight sticks on average, one is what many temples ask); any other block
  *  rejects it and the visitor draws again. */
-export const CONFIRM_THROWS = 3
+export const CONFIRM_THROWS = 1
 
 /** Uniform [0,1) from the Web Crypto API, for the browser and Node alike. */
 export function cryptoRand(): number {

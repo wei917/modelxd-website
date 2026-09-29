@@ -149,7 +149,7 @@ console.log('\n觀音廟 (籤):')
   const f = guandiFacts(ls[99], '', 'guanyin', 'yibai')
   eq('facts: the set named, no temple; a gradeless slip says so', `${f.includes('籤譜：觀音一百籤') && !/龍山寺|淺草寺/.test(f)} ${f.includes('不標吉凶')} ${f.includes('擲筊')}`, 'true true true')
   const g = guandiFacts(ss[0], '', 'guanyin', 'gansan')
-  eq('facts: the 元三大師 set throws no 筊, no temple named', `${g.includes('元三大師 觀音百籤') && !/龍山寺|淺草寺/.test(g)} ${g.includes('不擲筊')} ${g.includes('三聖筊')}`, 'true true false')
+  eq('facts: the 元三大師 set throws no 筊, no temple named', `${g.includes('元三大師 觀音百籤') && !/龍山寺|淺草寺/.test(g)} ${g.includes('不擲筊')} ${g.includes('聖筊為允')}`, 'true true false')
 }
 
 // ── 四面佛 ─────────────────────────────────────────────────────────────────

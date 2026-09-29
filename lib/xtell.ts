@@ -36,7 +36,7 @@ import { astro } from 'iztro'
 
 export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot'
 export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot']
-/** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, three 聖筊). */
+/** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, a 聖筊). */
 export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
 export const isQianTemple = (t: Temple): t is QianTemple => (QIAN_TEMPLES as readonly string[]).includes(t)
@@ -51,13 +51,13 @@ export const ENGINES: Record<Temple, string> = {
   ziwei:  'iztro v2.6.0',
   // 關帝廟 has no chart: the deterministic layer is the ritual (lib/xtell-ritual.ts)
   // and the poem text, a public-domain 清刊本 from Wikisource.
-  guandi:   '關聖帝君靈籤（維基文庫・清刊本）+ 擲筊三聖',
+  guandi:   '關聖帝君靈籤（維基文庫・清刊本）+ 擲筊聖筊',
   // 媽祖廟: the 六十甲子籤 set used at 鎮瀾宮/朝天宮, also from Wikisource.
-  mazu:     '天上聖母六十甲子籤（維基文庫）+ 擲筊三聖',
+  mazu:     '天上聖母六十甲子籤（維基文庫）+ 擲筊聖筊',
   // 觀音廟 (Sep 28): two hundred-stick sets, poems and grades only, checked
   // across sources (scripts/fetch-guanyin-qian.ts); the edition follows the
   // page's language.
-  guanyin:  '觀音靈籤（觀音一百籤／元三大師觀音百籤）+ 擲筊三聖（元三大師百籤不擲筊）',
+  guanyin:  '觀音靈籤（觀音一百籤／元三大師觀音百籤）+ 擲筊聖筊（元三大師百籤不擲筊）',
   // 塔羅 (Sep 28): the 1909 Waite–Smith deck and Waite's own meanings from
   // The Pictorial Key to the Tarot (1911), both public domain (lib/tarot.ts).
   tarot:    'Waite–Smith 塔羅（1909）· 韋特《The Pictorial Key to the Tarot》（1911）牌義照錄 · 洗牌由瀏覽器亂數',
@@ -990,7 +990,7 @@ export const MASTERS: Record<Temple, string> = {
 // ── 關帝廟：靈籤 ─────────────────────────────────────────────────────────────
 //
 // No chart here. The deterministic layer is the ritual (lib/xtell-ritual.ts:
-// a numbered stick, three 聖筊 to confirm) and the TEXT: 《關聖帝君靈籤》
+// a numbered stick, a 聖筊 to confirm) and the TEXT: 《關聖帝君靈籤》
 // 一百首 from Wikisource, a public-domain 清刊本 with its six commentaries
 // (聖意, 東坡解, 碧仙註, 解曰, 釋義, 占驗). The commentaries are the classic
 // the master quotes — 一籤一書 — so the classics retriever has nothing to
@@ -1043,7 +1043,7 @@ export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi',
     q.story ? `典故：${q.story}` : '',
     `籤詩：\n${q.poem.map(l => '  ' + l).join('\n')}`,
     sections ? `${notesHead}\n${sections}` : '',
-    needsJiao(temple, edition) ? `擲筊：三聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。` : '求籤方式：元三大師百籤不擲筊，搖籤筒得籤；籤即是答。',
+    needsJiao(temple, edition) ? `擲筊：聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。` : '求籤方式：元三大師百籤不擲筊，搖籤筒得籤；籤即是答。',
   ].filter(Boolean).join('\n')
 }
 
