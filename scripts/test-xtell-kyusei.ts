@@ -38,6 +38,6 @@ check(`${keys.length} 九星 strings, all in five languages`, keys.length >= 25 
 check('the guide can open it', liveFeature('kyusei')?.temple === 'kyusei')
 const chartRoute = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/chart/route.ts'), 'utf8')
 const readingRoute = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/reading/route.ts'), 'utf8')
-check('the chart and the teacher use the same visit date', chartRoute.includes("kyuseiChart(body.birth, (body.today = asToday(body?.today)))") && readingRoute.includes('kyuseiFacts(kyuseiChart(body.birth, asToday(body?.today)))') && chartRoute.includes("'crack', 'today'] as const"))
+check('the chart and the teacher use the same visit date', chartRoute.includes("kyuseiChart(body.birth, (body.today = asToday(body?.today)))") && readingRoute.includes('kyuseiFacts(kyuseiChart(body.birth, asToday(body?.today)))') && chartRoute.includes("'crack', 'today'"))
 console.log(fails ? `\n${fails} FAILED` : '\nall 九星 checks passed')
 if (fails) process.exit(1)

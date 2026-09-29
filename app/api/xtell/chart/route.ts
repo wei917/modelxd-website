@@ -21,6 +21,7 @@ import { yixueChart, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamProblem, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
 import { scanDream } from '@/lib/jiemeng-scan'
 import { kyuseiChart, asToday } from '@/lib/kyusei'
+import { sukuyoChart, asPartnerDate } from '@/lib/sukuyo'
 
 // Every refusal carries a stable `code` the client turns into a sentence in
 // the visitor's language, next to the field it is about (audit F05: 「bad
@@ -38,7 +39,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -290,6 +291,8 @@ export async function POST(req: Request) {
       : temple === 'navagraha' ? navagrahaChart(body.birth, body.place)
       // 九星気学: the boards are this year's and month's, as of the visit's date.
       : temple === 'kyusei' ? kyuseiChart(body.birth, (body.today = asToday(body?.today)))
+      // 宿曜: today's 宿 as of the visit's date, and a partner's if one was given.
+      : temple === 'sukuyo' ? sukuyoChart(body.birth, (body.today = asToday(body?.today)), (body.partner = asPartnerDate(body?.partner) ?? undefined))
       : temple === 'yuelao' ? { a: baziChart(body.birth), b: baziChart(body.birth2) }
       : baziChart(body.birth)
     // 月老廟 also gets its 合盤 here, because it is the same kind of thing as a

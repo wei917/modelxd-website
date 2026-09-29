@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-29.1 -->
+<!-- xtell-guide version: 2026-09-29.2 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -118,6 +118,14 @@ BaZi and this year's flow. It is making a wish, not fortune-telling.
 place give the ascendant, the nine grahas in signs and whole-sign houses, the
 27 lunar mansions (nakshatras), the navamsa chart and the dasha timeline. The
 hour and place are required.
+
+### sukuyo
+宿曜占星術 (Sukuyō astrology), said to have come to Japan with 空海. The birth
+date gives the 本命宿 among the 27 lunar mansions by the lunar calendar; the
+page shows what today is to it (三九の秘法: 栄 衰 安 危 成 壊 友 親, 命 業 胎)
+and, with an optional partner birthday, the two people's relation (栄親, 友衰,
+安壊, 危成, 命, 業胎). Free; a teacher reading is paid. It is not 九曜 (the
+Vedic chart).
 
 ### kyusei
 九星気学 (Nine Star Ki), the Japanese school of 園田真次郎. The birth date

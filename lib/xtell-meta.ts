@@ -37,6 +37,7 @@ export const XTELL_TEMPLE_NAMES: Record<string, Record<Lang, string>> = {
   cookie: {"en": "Fortune Cookie", "zh-Hant": "幸運餅乾", "zh-Hans": "幸运饼干", "ja": "フォーチュンクッキー", "ko": "포춘 쿠키"},
   tarot: {"en": "Tarot Parlour", "zh-Hant": "塔羅館", "zh-Hans": "塔罗馆", "ja": "タロットの館", "ko": "타로 하우스"},
   kyusei: {"en": "Nine Star Ki", "zh-Hant": "九星氣學", "zh-Hans": "九星气学", "ja": "九星気学", "ko": "구성기학"},
+  sukuyo: {"en": "Sukuyō Astrology", "zh-Hant": "宿曜占星", "zh-Hans": "宿曜占星", "ja": "宿曜占星術", "ko": "숙요점성술"},
 }
 const BRAND: Record<Lang, string> = { en: 'XTell', 'zh-Hant': 'X先知', 'zh-Hans': 'X先知', ja: 'X占い', ko: 'X운세' }
 

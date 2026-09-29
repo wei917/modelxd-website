@@ -33,6 +33,8 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
       return [born(t, s.birth), placeOf(s.place)].filter(Boolean).join(' · ')
     case 'kyusei':
       return born(t, s.birth)
+    case 'sukuyo':
+      return [born(t, s.birth), typeof s.partner === 'string' ? `× ${s.partner}` : ''].filter(Boolean).join(' ')
     case 'cookie':
       return clip(String(s.food ?? '').replace(/\s+/g, ' '))
     case 'tarot':
@@ -72,6 +74,7 @@ export function notAskedKey(temple: string): string {
     case 'guandi': case 'mazu': case 'guanyin': return 'xtell.saved.notasked.qian'
     case 'tarot': return 'xtell.saved.notasked.tarot'
     case 'kyusei': return 'xtell.saved.notasked.kyusei'
+    case 'sukuyo': return 'xtell.saved.notasked.sukuyo'
     case 'cookie': return 'xtell.saved.notasked.cookie'
     case 'simianfo': return 'xtell.saved.notasked.wish'
     case 'xingming': return 'xtell.saved.notasked.name'

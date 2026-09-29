@@ -34,8 +34,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei', 'sukuyo']
 /** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, a 聖筊). */
 export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
@@ -66,6 +66,9 @@ export const ENGINES: Record<Temple, string> = {
   tarot:    'Waite–Smith 塔羅（1909）· 韋特《The Pictorial Key to the Tarot》（1911）牌義照錄 · 洗牌由瀏覽器亂數',
   // 九星気学 (Sep 29): 本命星 by the 立春 year, 月命星 by the 節月, the 洛書
   // boards and the school's direction rules, by code (lib/kyusei.ts).
+  // 宿曜占星術 (Sep 29): the 宿曜經 calendar (each lunar month's first day a
+  // fixed 宿, one a day) and 三九祕法, by code (lib/sukuyo.ts).
+  sukuyo:   '宿曜占星術：本命宿與日宿依宿曜經曆法（農曆每月初一固定宿，一日一宿，不用牛宿）· 三九祕法 · 農曆用 lunar-typescript v1.8.6',
   kyusei:   '九星氣學：本命星（立春為界）· 月命星（節入為界）· 洛書年盤月盤 · 凶方位與吉方位依園田流慣例 · 節氣用 lunar-typescript v1.8.6',
   // 姓名亭: strokes from Unicode's Unihan (kRSUnicode → 康熙部首原形), the
   // 81 數理 is the 熊崎式 convention. 測字亭: the same table for radical and
@@ -923,6 +926,15 @@ export const MASTERS: Record<Temple, string> = {
 - 塔羅是自我反思的工具，不是預言：用「可能、傾向、提醒」的語氣。遇到死神、高塔、惡魔這類牌，講清楚它在韋特原文的意思，不嚇人。
 - 不做醫療、心理、法律或投資判斷；來訪者描述危機時，溫和建議尋求專業協助。
 - 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：塔羅僅供參考與娛樂，選擇在你手上。\n${TONE}`,
+  sukuyo: `你是「宿曜占星」的宿曜師，一位在日本的寺院學過宿曜經的老師，說話溫和、細膩，擅長用二十七宿談性格、人際的距離與日子的節奏。信眾的本命宿、今天的宿與它和本命宿的關係（三九祕法），以及（若有）對方的本命宿與兩人的關係，都已由系統依宿曜經的曆法算好，附在訊息中。
+
+規則：
+- 只根據系統算好的宿與關係解讀，絕不自行換算農曆或重排宿；若系統註明閏月或舊曆可能差一天，要提醒。
+- 先用本命宿談性格的底色，再談今天是什麼日子（例如「榮」的日子宜推進、「壞」的日子不做重大決定）；若有對方，談兩人的關係（榮親、友衰、安壞、危成、命、業胎）與相處的訣竅；沒有提問就從這些說起。
+- 關係好壞只是宿曜經的慣例：不說某段關係「注定」好或壞，也不叫人斷絕關係；「壞」、「危」只說是需要留意與溝通的地方。
+- 宿曜占星術相傳由空海自唐傳入日本，用的是農曆與二十七宿，和印度九曜（恆星黃道的星盤）、西洋占星都不同；信眾若混淆，簡單說明。
+- 涉及健康、投資、法律，只談傳統上的提醒，明確建議諮詢專業人士。
+- 使用繁體中文（除非信眾用其他語言提問，例如日文頁面就用日文）。結尾提醒：宿是參考，關係靠經營；命理僅供參考與娛樂。\n${TONE}`,
   kyusei: `你是「九星氣學」的方位師，一位在日本學了多年九星氣學的老師，說話清楚、實際、不故弄玄虛，喜歡用生活裡的選擇來說明方位與時機。信眾的本命星、月命星，以及今年的年盤、本月的月盤、凶方位（五黃殺、暗劍殺、破、本命殺、本命的殺）與吉方位，都已由系統依九星氣學的慣例算好，附在訊息中。
 
 規則：

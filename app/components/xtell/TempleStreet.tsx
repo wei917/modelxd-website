@@ -5,7 +5,7 @@ import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, displayTemples, artKind, type TempleKey } from './TempleArtwork'
 
 // Also used to validate room hashes. These are the existing API keys.
-export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei'] as const
+export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei', 'sukuyo'] as const
 export type { TempleKey } from './TempleArtwork'
 
 /**
@@ -15,8 +15,8 @@ export type { TempleKey } from './TempleArtwork'
  * stays one click away in the top navigation.
  */
 export const PURPOSES: Array<{ key: 'self' | 'love' | 'question' | 'ritual' | 'learn'; temples: TempleKey[] }> = [
-  { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'kyusei', 'xingming'] },
-  { key: 'love', temples: ['yuelao', 'zhanxing', 'tarot'] },
+  { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'kyusei', 'sukuyo', 'xingming'] },
+  { key: 'love', temples: ['yuelao', 'zhanxing', 'tarot', 'sukuyo'] },
   { key: 'question', temples: ['tarot', 'yixue', 'cezi', 'jiemeng', 'cookie', 'guanyin', 'guandi', 'mazu'] },
   { key: 'ritual', temples: ['guanyin', 'guandi', 'mazu', 'simianfo'] },
   { key: 'learn', temples: ['yixue'] },

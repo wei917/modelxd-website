@@ -49,6 +49,7 @@ import { AlmanacCard } from '../components/xtell/XTellToday'
 import { ShareButton } from '../components/xtell/ShareButton'
 import { WaitBar, WAIT_SECONDS } from '../components/xtell/WaitBar'
 import { kyWords, STAR_COLOR, STAR_LIGHT, BOARD_LAYOUT } from '../../lib/kyusei-words'
+import { skWords, GOOD_DAY, HARD_DAY } from '../../lib/sukuyo-words'
 import { partialFields, readNdjson } from '../../lib/partial-json'
 import { shareExcerpt } from '../../lib/xtell-share'
 import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
@@ -56,7 +57,7 @@ import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, t
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo'
 /** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
 const localNow = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu' || t === 'guanyin'
@@ -477,6 +478,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const [mealAt, setMealAt] = useState<string>(typeof init.mealAt === 'string' ? init.mealAt : localNow())
   // 九星気学: a reopened visit keeps the date it was cast on.
   const [kyToday] = useState<string>(typeof init.today === 'string' ? init.today : localNow().slice(0, 10))
+  // 宿曜: an optional partner's birth date, for the two people's relation.
+  const [partnerDate, setPartnerDate] = useState<string>(typeof init.partner === 'string' ? init.partner : '')
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
@@ -713,6 +716,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     : temple === 'navagraha' ? { temple, birth, place }
     // 九星気学: the visitor's local date, so the boards are this year's and month's where they are.
     : temple === 'kyusei' ? { temple, birth, today: kyToday }
+    : temple === 'sukuyo' ? { temple, birth, today: kyToday, ...(partnerDate ? { partner: partnerDate } : {}) }
     : temple === 'zhanxing' ? {
         temple, birth, place, mode: astroMode,
         ...(astroMode === 'synastry' ? { birth2, place2 } : {}),
@@ -1149,6 +1153,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={!HOUR_REQUIRED.includes(temple)} aria={fieldAria('birth')} />
           )}
           {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} aria={fieldAria('wishes')} />}
+          {temple === 'sukuyo' && (
+            <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <label htmlFor="xtell-sk-partner" style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.sk.partner')}</label>
+              <input id="xtell-sk-partner" type="date" value={partnerDate} min="1900-01-01" max={kyToday} onChange={e => setPartnerDate(e.target.value)} style={sel} />
+              {partnerDate && <button type="button" onClick={() => setPartnerDate('')} style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}>{t('xtell.sk.partnerClear')}</button>}
+              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: '1 1 100%' }}>{t('xtell.sk.partnerNote')}</span>
+            </div>
+          )}
           {temple === 'navagraha' && (
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
@@ -1392,6 +1404,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'kyusei' ? <KyuseiBoard chart={chart} />
+                : temple === 'sukuyo' ? <SukuyoBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
                 : temple === 'yixue' ? <YixueBoard chart={chart} onExample={q => setInput(q)} />
                 : (
@@ -1629,6 +1642,10 @@ function chartFact(t: (k: string) => string, temple: Temple, chart: any, lang: s
     if (temple === 'ziwei') {
       const p = chart?.palaces?.find((x: any) => x.name === '命宮')
       if (p) return t('xtell.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
+    }
+    if (temple === 'sukuyo' && chart?.own) {
+      const w = skWords(lang)
+      return t('xtell.sum.sukuyo.fact').replace('{own}', w.shuku[chart.own.index]).replace('{day}', w.shuku[chart.day.index]).replace('{rel}', w.rel[chart.day.relation as keyof typeof w.rel])
     }
     if (temple === 'kyusei' && chart?.honmei) {
       const w = kyWords(lang)
@@ -2214,6 +2231,63 @@ function WishBoard({ chart, wishes, year, hourUnknown = false }: { chart: any; w
 
 /** Lagna, the nine grahas (sign, degree, house, nakshatra-pada, D9), and
  *  the Vimshottari timeline. Every value came out of lib/jyotish.ts. */
+/** 宿曜占星術 (Sep 29): the 本命宿, today's 宿 and what it is to it, a
+ *  partner's relation if one was given, and the 三九 table of all twenty-
+ *  seven as seen from one's own; the numbers come from lib/sukuyo.ts. */
+const SHUKU_ONE: Record<string, string[]> = {
+  ko: ['묘', '필', '자', '삼', '정', '귀', '류', '성', '장', '익', '진', '각', '항', '저', '방', '심', '미', '기', '두', '여', '허', '위', '실', '벽', '규', '루', '위'],
+  'zh-Hans': ['昴', '毕', '觜', '参', '井', '鬼', '柳', '星', '张', '翼', '轸', '角', '亢', '氐', '房', '心', '尾', '箕', '斗', '女', '虚', '危', '室', '壁', '奎', '娄', '胃'],
+  'zh-Hant': ['昴', '畢', '觜', '參', '井', '鬼', '柳', '星', '張', '翼', '軫', '角', '亢', '氐', '房', '心', '尾', '箕', '斗', '女', '虛', '危', '室', '壁', '奎', '婁', '胃'],
+  ja: ['昴', '畢', '觜', '参', '井', '鬼', '柳', '星', '張', '翼', '軫', '角', '亢', '氐', '房', '心', '尾', '箕', '斗', '女', '虚', '危', '室', '壁', '奎', '婁', '胃'],
+}
+function SukuyoBoard({ chart }: { chart: any }) {
+  const { lang, t } = useLang()
+  if (!chart?.own || !chart?.ring) return null
+  const w = skWords(lang)
+  const one = SHUKU_ONE[lang] ?? SHUKU_ONE.ja
+  const rel = (r: string) => w.rel[r as keyof typeof w.rel] ?? r
+  const tone = (r: string) => GOOD_DAY.has(r) ? 'is-good' : HARD_DAY.has(r) ? 'is-hard' : 'is-plain'
+  const lunar = (x: any) => t('xtell.sk.lunar').replace('{leap}', x.leap ? t('xtell.sk.leapMark') : '').replace('{m}', String(x.month)).replace('{d}', String(x.day))
+  // The 三九 table: from one's own 宿, three rows of nine (一九, 二九, 三九).
+  const rows = [0, 1, 2].map(r => Array.from({ length: 9 }, (_, i) => (chart.own.index + r * 9 + i) % 27))
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="xtell-sk-head">
+        <div><small>{t('xtell.sk.own')}</small><strong>{w.shuku[chart.own.index]}</strong><span>{lunar(chart.own.lunar)}</span></div>
+        <div><small>{t('xtell.sk.today').replace('{date}', chart.today)}</small><strong>{w.shuku[chart.day.index]}</strong>
+          <span className={`xtell-sk-rel ${tone(chart.day.relation)}`}>{t('xtell.sk.dayOf').replace('{rel}', rel(chart.day.relation))}</span></div>
+      </div>
+      <p className="xtell-sk-meaning">{t(`xtell.sk.day.${chart.day.relation}`)}</p>
+      {chart.own.lunar.leap && <p className="xtell-ky-note">{t('xtell.sk.leap')}</p>}
+      {chart.partner && (
+        <div className="xtell-sk-partner">
+          <div><small>{t('xtell.sk.partnerOwn')}</small><strong>{w.shuku[chart.partner.index]}</strong><span>{chart.partner.date}</span></div>
+          <div><small>{t('xtell.sk.pair')}</small><strong>{w.pair[chart.partner.pair] ?? chart.partner.pair}</strong>
+            <span>{t('xtell.sk.fromMe').replace('{rel}', rel(chart.partner.fromMe))} · {t('xtell.sk.fromThem').replace('{rel}', rel(chart.partner.fromThem))}</span></div>
+        </div>
+      )}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>{t('xtell.sk.ring')}</div>
+        <div className="xtell-sk-table" role="table" aria-label={t('xtell.sk.ring')}>
+          {rows.map((row, r) => (
+            <div key={r} role="row" className="xtell-sk-row">
+              {row.map(i => (
+                <div key={i} role="cell" className={['xtell-sk-cell', tone(chart.ring[i]), i === chart.own.index ? 'is-own' : '', i === chart.day.index ? 'is-today' : '', chart.partner?.index === i ? 'is-partner' : ''].filter(Boolean).join(' ')}
+                  title={`${w.shuku[i]} · ${rel(chart.ring[i])}`}>
+                  <span className="xtell-sk-shuku">{one[i]}</span>
+                  <span className="xtell-sk-r">{rel(chart.ring[i])}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sk.legend')}</p>
+      </div>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sk.note')}</p>
+    </div>
+  )
+}
+
 /** 九星気学 (Sep 29): the stars, then this year's or month's board as a
  *  Japanese 九星 chart draws it (南 on top), each direction marked with the
  *  school's unlucky names or as good; the numbers come from lib/kyusei.ts. */
