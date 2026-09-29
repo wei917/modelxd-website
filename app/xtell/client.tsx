@@ -2857,7 +2857,12 @@ function CookieBoard({ chart }: { chart: any }) {
       <div className="xtell-cookie-slip">
         <p>{chart.fortune}</p>
       </div>
-      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
+      {/* The slip is a classic fortune; this meal's taste, element, hour and
+          day are in the note under it (owner, Sep 28). */}
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.cookie.noteLabel')}</div>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
+      </div>
       <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
       {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}
     </div>

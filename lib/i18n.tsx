@@ -209,6 +209,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.cookie.cracking": {"en": "Cracking the cookie…", "zh-Hant": "正在掰開餅乾…", "zh-Hans": "正在掰开饼干…", "ja": "クッキーを割っています…", "ko": "쿠키를 쪼개는 중…"},
   "xtell.cookie.price": {"en": "Two cookies a meal are free; from the third, each costs one cent.", "zh-Hant": "每一餐前兩個免費；第三個起每個 1 美分。", "zh-Hans": "每一餐前两个免费；第三个起每个 1 美分。", "ja": "一食につき二つまで無料、三つ目からは一つ1セント。", "ko": "한 끼에 두 개까지 무료, 세 번째부터 하나에 1센트."},
   "xtell.cookie.charged": {"en": "This was a third or later cookie for the meal: one cent was charged.", "zh-Hant": "這是這一餐第三個以後的餅乾，扣了 1 美分。", "zh-Hans": "这是这一餐第三个以后的饼干，扣了 1 美分。", "ja": "この食事の三つ目以降のクッキーなので、1セントかかりました。", "ko": "이 끼니의 세 번째 이후 쿠키라 1센트가 차감되었습니다."},
+  "xtell.cookie.noteLabel": {"en": "About this meal", "zh-Hant": "這一餐的小解說", "zh-Hans": "这一餐的小解说", "ja": "この食事のひとこと解説", "ko": "이 끼니 이야기"},
   "xtell.cookie.flavor": {"en": "{flavor} taste · {element}", "zh-Hant": "主味{flavor} · 五行屬{element}", "zh-Hans": "主味{flavor} · 五行属{element}", "ja": "主な味は{flavor} · 五行は{element}", "ko": "주된 맛 {flavor} · 오행 {element}"},
   "xtell.cookie.slot.breakfast": {"en": "Breakfast", "zh-Hant": "早餐", "zh-Hans": "早餐", "ja": "朝食", "ko": "아침"},
   "xtell.cookie.slot.lunch": {"en": "Lunch", "zh-Hant": "午餐", "zh-Hans": "午餐", "ja": "昼食", "ko": "점심"},

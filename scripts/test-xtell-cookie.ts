@@ -69,7 +69,7 @@ function world(opts: { reply?: string | null; balance?: number } = {}) {
       return q
     },
   }
-  const reply = opts.reply === undefined ? '{"flavor":"鹹","fortune":"鹹香一口，心安一整天。","note":"鹹屬水，午時正旺。"}' : opts.reply
+  const reply = opts.reply === undefined ? '{"flavor":"鹹","fortune":"你很快會收到一個好消息。","note":"這一餐主味鹹，鹹屬水；午時正旺，好消息就像水一樣會流過來。"}' : opts.reply
   const POST = loadRoute('app/api/xtell/chart/route.ts', {
     '@/lib/supabase-server': { createSupabaseServer: async () => db }, '@/lib/xtell': xtell, '@/lib/yijing': require('../lib/yijing'),
     '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'),
@@ -91,7 +91,7 @@ async function route() {
   const c1 = await w.crack(meal), c2 = await w.crack(meal), c3 = await w.crack(meal)
   check('the first two cookies of a meal are free', c1.status === 200 && c2.status === 200 && c1.d.chart.charged === 0 && c2.d.chart.charged === 0, `${c1.status} ${c2.status}`)
   check('the third is charged one cent, before the model runs', c3.status === 200 && c3.d.chart.charged === 1 && w.debits.join() === '1')
-  check('each cookie is its own saved visit, titled by its slip (same meal, same words)', w.rows.length === 3 && new Set(w.rows.map(r => r.subject.crack)).size === 3 && w.rows.every(r => r.subject.meal === '2026-09-28|lunch' && r.title === '鹹香一口，心安一整天。'))
+  check('each cookie is its own saved visit, titled by its slip (same meal, same words)', w.rows.length === 3 && new Set(w.rows.map(r => r.subject.crack)).size === 3 && w.rows.every(r => r.subject.meal === '2026-09-28|lunch' && r.title === '你很快會收到一個好消息。'))
   check('the slip carries the meal, the 時辰, the day and the element', c1.d.chart.shichen === '午時' && c1.d.chart.meal.slot === 'lunch' && c1.d.chart.element === '水' && typeof c1.d.chart.dayGz === 'string')
   const dinner = await w.crack({ ...meal, mealAt: '2026-09-28T19:00' })
   check('another meal starts free again', dinner.status === 200 && dinner.d.chart.charged === 0)
