@@ -21,7 +21,8 @@ import './standalone.css'
 import { useSite } from '../../lib/useSite'
 import { wwwHref } from '../../lib/site'
 import { discountFor } from '../../lib/xcreate-discount'
-import { decidePoll, newPollHealth, isJobPayload, RETRY_NOTE, POST_UNANSWERED_NOTE, POLL_TIMEOUT_MS, type PollHealth, type PollStatus } from '../../lib/xcreate-poll'
+import { estimateCost } from '../../lib/providers/pricing'
+import { decidePoll, newPollHealth, isJobPayload, RETRY_NOTE, POST_UNANSWERED_NOTE, POLL_TIMEOUT_MS, FIRST_POLL_DELAY_MS, MISSING_BACKOFF_MS, type PollHealth, type PollStatus } from '../../lib/xcreate-poll'
 import { normalizeAudioForVideo } from '../../lib/audio-normalize'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
@@ -629,7 +630,45 @@ function estimateSlotDollars(
     const seconds = opts?.duration ?? 1
     return perSecond * seconds
   }
+  // Speech had no estimate here, so the audio studio showed no price before
+  // a run (tester, Sep 28). This is the server's own estimate
+  // (lib/providers/pricing.ts), the figure it reserves: exact for rows
+  // billed per character, a speaking-rate guess for token-billed ones.
+  // Nothing to quote before there is a script.
+  if (m === 'audio') {
+    if (promptLen === 0) return null
+    const est = estimateCost(model as any, 'audio', { promptChars: promptLen })
+    return est > 0 ? est : null
+  }
   return null
+}
+
+// ── Speech voice ──────────────────────────────────────────────────────────
+// A voice the user has not picked follows the language the script is read
+// in: the English page opened on MiniMax's Mandarin "News Anchor", the row's
+// first voice (tester, Sep 28). The spoken-language pick wins, then the
+// script's own letters, then the page's language.
+type SpeechLang = 'zh' | 'yue' | 'en' | 'ja' | 'ko'
+const SPOKEN_LANGUAGE: Record<string, SpeechLang> = { chinese: 'zh', 'chinese,yue': 'yue', english: 'en', japanese: 'ja', korean: 'ko' }
+const PAGE_SPEECH: Record<string, SpeechLang> = { en: 'en', 'zh-Hant': 'zh', 'zh-Hans': 'zh', ja: 'ja', ko: 'ko' }
+
+/** Kana reads as Japanese and hangul as Korean before Han, which both
+ *  borrow; Latin letters alone read as English. Null before any text. */
+function scriptLanguage(text: string): SpeechLang | null {
+  if (/[\u3040-\u30ff]/.test(text)) return 'ja'
+  if (/[\uac00-\ud7af]/.test(text)) return 'ko'
+  if (/[\u3400-\u9fff]/.test(text)) return 'zh'
+  if (/[a-z]/i.test(text)) return 'en'
+  return null
+}
+
+/** The voice an unpicked slot speaks in: the row's first voice in the target
+ *  language, else a multilingual one, else the row's first. Rows tag voices
+ *  "zh", "en-US", "zh/en/ja/ko" or "multi". */
+function autoVoice(voices: { id: string; language?: string | null }[], spoken: string | null | undefined, script: string, pageLang: string): string | null {
+  const target = (spoken && SPOKEN_LANGUAGE[spoken.toLowerCase()]) || scriptLanguage(script) || PAGE_SPEECH[pageLang] || 'en'
+  const langsOf = (v: { language?: string | null }) => String(v.language ?? '').toLowerCase().split(/[\/,]/).map(s => s.trim().split('-')[0])
+  return (voices.find(v => langsOf(v).includes(target)) ?? voices.find(v => langsOf(v).includes('multi')) ?? voices[0])?.id ?? null
 }
 
 // Format a USD amount for display. Picks a decimal count that keeps sub-cent
@@ -1029,7 +1068,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const site = useSite()       // XBoard and XDirect live on www only
   const isStandalone = site === 'xcreate'
   useRequireAuth(!isStandalone)
-  const { show: showAuth } = useAuthModal()
+  const { show: showAuth, open: authOpen } = useAuthModal()
   // ?view= was the door's old navigation (Studio / Templates / Library); the
   // top bar is the four types since Sep 28, and old links are redirected
   // below. ?type= opens the studio on a type (a top-bar link followed from
@@ -1240,7 +1279,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       return {
         mode, quality: null, size: null, duration: null, aspect_ratio: null,
         watermark: null, count: null,
-        voice:    clamp(opts.voice, voiceIds),
+        // null = not picked: the voice follows the script (autoVoice), and is
+        // resolved where it shows and where it is sent.
+        voice:    typeof opts.voice === 'string' && voiceIds.includes(opts.voice) ? opts.voice : null,
         language: clamp(opts.language, langIds),
         format:   clamp(opts.format, formats),
       }
@@ -1619,6 +1660,69 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setSlotOptions([null, null, null, null])
     setRecipeMode(RECIPES[mode][0].id)  // reset Layer 2 to the first recipe
   }, [mode])
+
+  // Sign-in keeps the studio (tester, Sep 28: "I was on Image before login.
+  // After Google sign-in, the app returned to the default Video workflow").
+  // Google's round trip reloads the page, so on the door the draft rides in
+  // this tab's sessionStorage from the moment the sign-in dialog opens, and
+  // comes back once. Attachments are local files not uploaded yet, so they
+  // cannot ride along. Declared after the mode reset above, so that effect's
+  // first run cannot undo the restore.
+  const DRAFT_KEY = 'xcreate.signin-draft'
+  const draftCheckedRef = useRef(false)
+  useEffect(() => {
+    if (!isStandalone || draftCheckedRef.current) return
+    draftCheckedRef.current = true
+    let draft: any = null
+    try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null'); sessionStorage.removeItem(DRAFT_KEY) } catch { return }
+    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode)) return
+    // A link that names what to open outranks the draft.
+    const params = new URLSearchParams(window.location.search)
+    if (['id', 'job', 'template', 'model', 'type'].some(k => params.has(k))) return
+    const nextMode: Mode = draft.mode
+    const recipe = RECIPES[nextMode].some(r => r.id === draft.recipeMode) ? draft.recipeMode as ModelMode : RECIPES[nextMode][0].id
+    if (nextMode !== mode) modeClearedRef.current = true
+    setMode(nextMode)
+    setRecipeMode(recipe)
+    if (typeof draft.prompt === 'string') setPrompt(draft.prompt)
+    if (typeof draft.templateId === 'string') setActiveTemplateId(draft.templateId)
+    const names: string[] = (Array.isArray(draft.models) ? draft.models : []).filter((n: unknown): n is string => typeof n === 'string')
+    if (!names.length) return
+    createSupabaseBrowser().from('ai_models')
+      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+      .eq('enabled', true).in('model_name', names)
+      .then(({ data }) => {
+        const byName = new Map((data ?? []).map((row: any) => [row.model_name, row]))
+        const seated: (SlotModel | null)[] = [0, 1, 2, 3].map(i => {
+          const row: any = byName.get(draft.models?.[i])
+          return row ? {
+            id: row.id, provider: row.provider, model_name: row.model_name,
+            display_name: row.display_name, modes: (row.modes ?? []) as ModelMode[],
+            model_pricing: row.model_pricing, output_config: row.output_config, input_config: row.input_config ?? null,
+          } : null
+        })
+        if (!seated.some(Boolean)) return
+        setSelectedModels(seated)
+        setSlotOptions(seated.map((m, i) => m ? validateOpts(m, nextMode, {
+          quality: null, size: null, duration: null, aspect_ratio: null, watermark: false, count: null,
+          ...(draft.options?.[i] ?? {}), mode: recipe,
+        }) : null))
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStandalone])
+  useEffect(() => {
+    if (!isStandalone || userId) return
+    try {
+      if (!authOpen) { sessionStorage.removeItem(DRAFT_KEY); return }
+      if (phase !== 'setup') return
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        v: 1, at: Date.now(), mode, recipeMode, prompt, templateId: activeTemplateId,
+        models: selectedModels.map(m => m?.model_name ?? null), options: slotOptions,
+      }))
+    } catch { /* storage off: the studio opens fresh after sign-in, as before */ }
+    // A snapshot when the dialog opens (it is modal: nothing changes under it).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStandalone, authOpen])
 
   // Load enabled models' modes once so the recipe picker can hide recipes that
   // no enabled model supports (avoids dead-end selections).
@@ -2044,15 +2148,18 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     applyJobData(data)
   }
 
-  const startPolling = (id: string) => {
+  /** `fresh`: a run this tab just started, whose job row the server writes
+   *  only after its checks and uploads, so the first poll waits a moment. */
+  const startPolling = (id: string, fresh = false) => {
     stopPolling()
     pollHealthRef.current = newPollHealth()
+    if (fresh) pollHealthRef.current.nextAllowedAt = Date.now() + FIRST_POLL_DELAY_MS
     // The in-flight lock is NOT reset here: a previous job's request may
     // still be running (bounded to 15s); its answer is ignored as stale and
     // its own cleanup releases the lock, after which this job's ticks run.
     activeJobRef.current = id
     setJobId(id)
-    // Poll immediately, then every 1s
+    // Poll now (a fresh run's first poll is held back above), then every 1s
     pollOnce(id)
     pollTimerRef.current = setInterval(() => pollOnce(id), 1000)
   }
@@ -2235,7 +2342,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         // voice and format pickers rendered, saved and were dropped here, so
         // every run spoke in the row's first voice whatever you picked. If
         // you add a control to the ⚙ panel, add it to THIS list too.
-        voice:          opts.voice ?? null,
+        voice:          opts.voice ?? (mode === 'audio' ? autoVoice((m.output_config as any)?.audio?.voices ?? [], opts.language, prompt, lang) : null),
         format:         opts.format ?? null,
         language:       opts.language ?? null,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
@@ -2337,9 +2444,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         setLoadError(POST_UNANSWERED_NOTE)
       })
 
-    // Begin polling right away. First couple of polls may 404 until the
-    // server has inserted the job row — pollOnce handles 404 gracefully.
-    startPolling(newJobId)
+    // Begin polling. The job row appears only once the server has checked,
+    // reserved and uploaded; the first poll waits and a 404 backs off.
+    startPolling(newJobId, true)
   }
 
   // Workflow chain + edit-capable model list. Chain fetch tolerates a
@@ -2535,7 +2642,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         }
       })
       .catch(err => console.warn('[xcreate] step POST failed:', err))
-    startPolling(newJobId)
+    startPolling(newJobId, true)
   }
 
   const reloadBoard = () => setWfReload(n => n + 1)
@@ -2652,14 +2759,26 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setBatchRuns(prev => prev.map(r => r.jobId === jobId ? { ...r, ...patch } : r))
 
   // One interval drives every in-flight batch item; it dies when the last
-  // item settles.
+  // item settles. An item is polled only once its request has gone out and
+  // its job row has had a moment to appear, and a 404 backs it off: the
+  // starts are staggered 600ms apart and each row is written after the
+  // server's checks and upload, so polling every item from the first tick
+  // filled the console with 404s (tester, Sep 28).
   const batchActive = batchRuns.some(r => r.status === 'running')
+  const batchPollRef = useRef(new Map<string, { sentAt: number; nextAt: number }>())
   useEffect(() => {
     if (!batchActive) return
     const iv = setInterval(async () => {
       for (const r of batchRunsRef.current.filter(x => x.status === 'running')) {
+        const due = batchPollRef.current.get(r.jobId)
+        if (!due || Date.now() < due.nextAt) continue
         try {
           const res = await fetch(`/api/xcreate/job/${r.jobId}`, { cache: 'no-store' })
+          if (res.status === 404) {
+            const now = Date.now()
+            due.nextAt = now + Math.min(MISSING_BACKOFF_MS, Math.max(3000, Math.floor((now - due.sentAt) / 2)))
+            continue
+          }
           if (!res.ok) continue
           const d = await res.json()
           const s = (d.slots ?? [])[0]
@@ -2698,6 +2817,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       // Staggered starts: ten simultaneous provider calls is a throttling
       // invitation; 600ms apart keeps the queue civil.
       setTimeout(() => {
+        const sentAt = Date.now()
+        batchPollRef.current.set(runs[i].jobId, { sentAt, nextAt: sentAt + FIRST_POLL_DELAY_MS * 2 })
         fetch('/api/xcreate', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4559,7 +4680,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                 <Group label={t('xcreate.voice')} last={isLast('voice')}>
                                   <OptSelect
                                     color={color}
-                                    value={opts.voice ?? audVoices[0]?.id}
+                                    value={opts.voice ?? autoVoice(audVoices, opts.language, prompt, lang) ?? ''}
                                     onChange={v => updateSlotOpts(i, { voice: v })}
                                     options={audVoices.map((v: any) => ({
                                       value: v.id,
@@ -4918,7 +5039,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   )}
                   {totalEstDollars != null && phase !== 'generating' && (
                     <span
-                      title={mode === 'text' ? 'Estimated total — assumes ~500-token response per model' : 'Estimated total based on your selected options'}
+                      title={mode === 'text' ? 'Estimated total — assumes ~500-token response per model' : mode === 'audio' ? 'Estimated total for this script: exact for voices billed per character, an estimate of speaking time for the others' : 'Estimated total based on your selected options'}
                       style={{
                         fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)',
                         color: 'var(--muted2)', whiteSpace: 'nowrap' as const,

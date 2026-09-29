@@ -32,6 +32,12 @@ export const newPollHealth = (): PollHealth =>
 
 /** A job that has answered 404 for this long never got created. */
 export const MISSING_JOB_GRACE_MS = 180_000
+/** A fresh run's first poll waits this long: the server writes the job row
+ *  only after its checks, the credit reserve and any uploads, so an
+ *  immediate poll was a certain 404 in the console (tester, Sep 28). */
+export const FIRST_POLL_DELAY_MS = 1_500
+/** Ceiling on the wait between polls while the job has not appeared. */
+export const MISSING_BACKOFF_MS = 5_000
 /** Transient trouble that lasts this long stops the loop with instructions. */
 export const TRANSIENT_WINDOW_MS = 120_000
 /** Ceiling on the wait between polls while the server is unwell. */
@@ -86,9 +92,12 @@ export function classifyPollResponse(status: PollStatus, now: number, h: PollHea
     return { kind: 'ok' }
   }
   if (status === 404) {
-    h.failures = 0; h.firstFailureAt = null; h.nextAllowedAt = 0
+    h.failures = 0; h.firstFailureAt = null
     if (h.firstMissingAt === null) h.firstMissingAt = now
     if (now - h.firstMissingAt > MISSING_JOB_GRACE_MS) return { kind: 'stop', message: MISSING_JOB_MESSAGE }
+    // Not there yet: ask less often the longer it stays missing (1s, then
+    // up to 5s), so a slow start costs a few 404s rather than one a second.
+    h.nextAllowedAt = now + Math.min(MISSING_BACKOFF_MS, 1000 + Math.floor((now - h.firstMissingAt) / 2))
     return { kind: 'pending' }
   }
   if (status === 401) return { kind: 'stop', message: SESSION_EXPIRED_MESSAGE }
