@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.0",
+    "@anthropic-ai/sdk": "^0.129.0",
     "@google/genai": "^2.16.0",
     "@sparkjsdev/spark": "^2.1.0",
     "@supabase/ssr": "^0.12.3",

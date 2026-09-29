@@ -60,12 +60,24 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean; its own front door is xcreate.modelxd.com, where the top bar picks
-what to make (Text, Image, Video, Audio) and your past work (the Library) is on
+what to make (Text, Image, Video, Audio, Film) and your past work (the Library) is on
 the account page. Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
 image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a
 model's thinking depth and switch web search on. Costs real credits.
+
+**Film (成片 in Chinese, ムービー in Japanese, 필름 in Korean).** On
+xcreate.modelxd.com only, the fifth type: describe a short film (what it is
+for, what happens, the feel, any words that must appear), pick the shape
+(vertical 9:16, wide 16:9 or square 1:1), the length (15, 30 or 60 seconds)
+and a budget ($5, $7, $10 or $15; $7 is the default). Claude Opus 5.5 plans
+the scenes, has ModelXD's models make the pictures (GPT Image 2), clips
+(HappyHorse 1.1) and voice (MiniMax), draws the titles and transitions in
+code, adds music it makes itself, and edits one finished MP4. It takes about
+10 to 20 minutes and keeps going if you leave; the film is in your Library.
+The budget is reserved when you start; you pay what it used at list price,
+the rest comes back, and if no film comes out you pay nothing.
 
 **Region editing (inpainting).** When editing an image, an "Edit region"
 button appears if a selected model supports masks (currently GPT Image 2):

@@ -14,8 +14,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
-import { isStudioType, onStudioTypeRequest, publishStudioType } from '../components/xcreate/studio-type'
+import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
+import FilmStudio from './FilmStudio'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
 import { useSite } from '../../lib/useSite'
@@ -1075,6 +1076,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // another page, or any link that wants one).
   const viewParam = useSearchParams()?.get('view')
   const searchTypeParam = useSearchParams()?.get('type') ?? null
+  // ?film=<id> is one film, the fifth type (Sep 29): its progress, then the video.
+  const searchFilmParam = useSearchParams()?.get('film') ?? null
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -1624,6 +1627,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           setLoadError("This XCreate doesn't exist or you don't have access. It may belong to another account.")
           return
         }
+        // A film's row (the fifth type) opens back into the film view.
+        const filmRef = isStandalone ? (data as any).slots?.[0]?.options?.film : null
+        if (typeof filmRef === 'string') { openFilm(filmRef); return }
         // Rows are born at run start, so this ?id= may name a run that is
         // still generating — resume its job (live cards + polling) instead
         // of restoring a half-written snapshot. Owner-read RLS on
@@ -1675,10 +1681,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     draftCheckedRef.current = true
     let draft: any = null
     try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null'); sessionStorage.removeItem(DRAFT_KEY) } catch { return }
-    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode)) return
+    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode) || draft.mode === 'film') return
     // A link that names what to open outranks the draft.
     const params = new URLSearchParams(window.location.search)
-    if (['id', 'job', 'template', 'model', 'type'].some(k => params.has(k))) return
+    if (['id', 'job', 'template', 'model', 'type', 'film'].some(k => params.has(k))) return
     const nextMode: Mode = draft.mode
     const recipe = RECIPES[nextMode].some(r => r.id === draft.recipeMode) ? draft.recipeMode as ModelMode : RECIPES[nextMode][0].id
     if (nextMode !== mode) modeClearedRef.current = true
@@ -3290,8 +3296,24 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // takes the bar's requests. With a run or its results on screen, a request
   // opens a fresh composer in that type, as New does: the run goes on
   // server-side and waits in the Library.
-  const switchType = (next: Mode) => {
+  // The fifth type, the film, has its own composer and view (FilmStudio);
+  // the studio's own state waits underneath it. A film is ?film=<id>.
+  const [filmOpen, setFilmOpen] = useState(false)
+  const [filmId, setFilmId] = useState<string | null>(null)
+  const setFilmUrl = (id: string | null) => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
+    url.searchParams.delete('id')
+    url.searchParams.delete('job')
+    if (id) url.searchParams.set('film', id)
+    else url.searchParams.delete('film')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }
+  const openFilm = (id: string | null) => { setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
+  const switchType = (next: StudioType) => {
     setFromOpen(false)
+    if (next === 'film') { openFilm(null); return }
+    if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
     if (next !== mode) { setMode(next); setActiveTemplateId(null) }
   }
@@ -3301,7 +3323,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (!isStandalone) return
     return onStudioTypeRequest(type => switchTypeRef.current(type))
   }, [isStandalone])
-  useEffect(() => { if (isStandalone) publishStudioType(mode) }, [isStandalone, mode])
+  useEffect(() => { if (isStandalone) publishStudioType(filmOpen ? 'film' : mode) }, [isStandalone, mode, filmOpen])
+  useEffect(() => {
+    if (!isStandalone || !searchFilmParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFilmParam)) return
+    setFilmOpen(true)
+    setFilmId(searchFilmParam.toLowerCase())
+  }, [isStandalone, searchFilmParam])
   useEffect(() => () => publishStudioType(null), [])
   // ?type= is a seed, consumed and stripped like ?model=.
   useEffect(() => {
@@ -3983,7 +4010,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       <div className="xduel-page">
         <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
-          {isStandalone ? <header className="xcs-heading">
+          {isStandalone ? !filmOpen && <header className="xcs-heading">
             {/* Studio's title is www's own XCreate headline (owner, Sep 26: the
                 earlier slogan read as nothing); its eyebrow would repeat it. */}
             <h1>{t('xcreate.subtitle')}</h1>
@@ -4047,7 +4074,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               composer = describe an edit + pick ANY edit-capable model.
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
-          {phase === 'workflow' ? (
+          {isStandalone && filmOpen ? (
+            <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
+              onSignIn={next => showAuth(next ?? '/?type=film')} />
+          ) : phase === 'workflow' ? (
             <div>
               {/* Strip ⇄ canvas toggle. The canvas is the ComfyUI-style
                   board: nodes + wires + click-to-branch (CC, July 27). */}

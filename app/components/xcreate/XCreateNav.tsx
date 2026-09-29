@@ -43,16 +43,29 @@ function Types() {
   const active = useStudioType()
   const row = useRef<HTMLElement>(null)
   const [more, setMore] = useState({ left: false, right: false })
+  // On a phone the row scrolls and the fifth type (the film) starts past
+  // the edge: keep the current type in view, when it changes and when the
+  // row changes size.
+  const showCurrent = () => {
+    const el = row.current
+    const current = el?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!el || !current) return
+    const box = el.getBoundingClientRect()
+    const r = current.getBoundingClientRect()
+    if (r.right > box.right) el.scrollBy({ left: r.right - box.right + 8, behavior: 'smooth' })
+    else if (r.left < box.left) el.scrollBy({ left: r.left - box.left - 8, behavior: 'smooth' })
+  }
   useEffect(() => {
     const el = row.current
     if (!el) return
     const check = () => setMore({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
     check()
     el.addEventListener('scroll', check, { passive: true })
-    const ro = new ResizeObserver(check)
+    const ro = new ResizeObserver(() => { check(); showCurrent() })
     ro.observe(el)
     return () => { el.removeEventListener('scroll', check); ro.disconnect() }
   }, [lang])
+  useEffect(showCurrent, [active])
   const scrollRow = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
   return <div className="xcs-types-wrap">
     <nav ref={row} className="xcs-types" aria-label={t('xcreate.site.navigation')}>

@@ -136,3 +136,60 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   html[data-site='xcreate'] .model-picker-name { min-width: calc(100% - 64px) !important; }
   html[data-site='xcreate'] .model-picker-name > div { white-space: normal !important; overflow-wrap: anywhere; }
 }
+
+/* ── The film, XCreate's fifth type (Sep 29): FilmStudio.tsx. Phone first;
+   the composer's three choices sit side by side from 761px. ── */
+.xcs-film { max-width: 800px; margin: 0 auto; }
+.xcs-film-form { display: grid; gap: 16px; }
+.xcs-film-form > .xcs-field-heading { margin-bottom: -6px; }
+.xcs-film-box { border: 1px solid var(--border2); border-radius: 14px; background: var(--surface); }
+.xcs-film-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c0a; }
+.xcs-film-box textarea { display: block; width: 100%; min-height: 150px; resize: vertical; border: 0; background: transparent; color: var(--white); font: inherit; font-size: 16px; line-height: 1.65; padding: 16px; outline: none; box-sizing: border-box; }
+.xcs-studio .xcs-film-box textarea:focus-visible { outline: none; }
+.xcs-film-options { display: grid; gap: 14px; }
+.xcs-film-options fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.xcs-film-options legend { font-size: 13px; font-weight: 600; margin: 0 0 8px; padding: 0; }
+.xcs-film-seg { display: flex; gap: 3px; padding: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; }
+.xcs-film-seg button { flex: 1 1 0; min-width: 0; min-height: 42px; padding: 0 6px; border: 0; border-radius: 7px; background: transparent; color: var(--muted2); font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.xcs-film-seg button[aria-pressed='true'] { background: var(--surface); color: var(--red); font-weight: 600; box-shadow: 0 1px 4px #0000000d; }
+.xcs-film-note { margin: 0; font-size: 13px; line-height: 1.65; color: var(--muted2); }
+.xcs-film-error { margin: 0; font-size: 14px; line-height: 1.6; color: var(--red); }
+.xcs-film-error a { color: inherit; font-weight: 600; }
+.xcs-film-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0; }
+.xcs-film-actions > * { flex: 1 1 100%; min-height: 48px; font-size: 14px; }
+.xcs-film-actions .xcs-primary { font-weight: 600; }
+.xcs-film-actions .xcs-primary:disabled { opacity: .5; cursor: default; }
+.xcs-film-head { margin-bottom: 18px; }
+.xcs-film-eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 12px; color: var(--muted2); }
+.xcs-film-eyebrow svg { color: var(--red); }
+.xcs-film-head h1 { font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 700; line-height: 1.15; letter-spacing: -.03em; margin: 0 0 10px; }
+.xcs-film-brief { margin: 0; font-size: 14px; line-height: 1.6; color: var(--muted2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.xcs-film-live { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: 14px; }
+.xcs-film-clock { font-family: var(--font-mono), monospace; font-weight: 600; }
+.xcs-film-spinner { display: inline-block; flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border2); border-top-color: var(--red); animation: xcs-film-spin .9s linear infinite; }
+@keyframes xcs-film-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .xcs-film-spinner { animation-duration: 3s; } }
+.xcs-film-wait { display: flex; justify-content: center; margin: 0; padding: 72px 0; }
+.xcs-film-player { margin: 6px auto 14px; background: #000; border-radius: 12px; overflow: hidden; }
+.xcs-film-player video { display: block; width: 100%; height: 100%; }
+.xcs-film-player[data-aspect='9:16'] { aspect-ratio: 9 / 16; max-height: 78vh; max-width: min(100%, calc(78vh * 9 / 16)); }
+.xcs-film-player[data-aspect='16:9'] { aspect-ratio: 16 / 9; }
+.xcs-film-player[data-aspect='1:1'] { aspect-ratio: 1; max-width: min(100%, 78vh); }
+.xcs-film-steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; line-height: 1.55; }
+.xcs-film-steps li { padding: 8px 12px; border-radius: 9px; overflow-wrap: anywhere; }
+.xcs-film-steps li.is-note { color: var(--muted2); border-left: 2px solid var(--border2); border-radius: 0; padding: 2px 12px; }
+.xcs-film-steps li.is-call { display: flex; align-items: center; gap: 8px; background: var(--surface2); }
+.xcs-film-steps li.is-call code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); }
+.xcs-film-call-kind { flex-shrink: 0; font-weight: 600; }
+.xcs-film-call-status { margin-left: auto; flex-shrink: 0; font-size: 12px; color: var(--muted2); white-space: nowrap; }
+.xcs-film-steps li.is-running .xcs-film-call-status { color: var(--red); }
+.xcs-film-steps li.is-refused, .xcs-film-steps li.is-failed { opacity: .65; }
+.xcs-film-steps li.is-error { color: var(--red); background: #fff0eb; }
+.xcs-film-more { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.xcs-film-more summary { cursor: pointer; font-size: 13px; font-weight: 600; padding: 6px 0; }
+.xcs-film-more pre { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; line-height: 1.65; color: var(--muted2); }
+@media (min-width: 761px) {
+  .xcs-film-options { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.3fr); }
+  .xcs-film-actions > * { flex: 0 0 auto; padding-left: 26px; padding-right: 26px; }
+  .xcs-film-head h1 { font-size: 34px; }
+}

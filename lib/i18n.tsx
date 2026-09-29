@@ -2280,6 +2280,9 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.hideconfigs': { en: 'Hide Configs', 'zh-Hant': '隱藏設定', 'zh-Hans': '隐藏设置', ja: '設定を隠す', ko: '설정 숨기기' },
   'xcreate.savemore':    { en: 'Select more, save more', 'zh-Hant': '選越多，省越多', 'zh-Hans': '选越多，省越多', ja: '多く選ぶほどお得', ko: '많이 고를수록 더 할인' },
   'mode.audio': { en: 'Audio', 'zh-Hant': '語音', 'zh-Hans': '语音', ja: '音声', ko: '음성' },
+  // XCreate's fifth type (Sep 29): Claude directs and edits a whole film.
+  // 成片 is the word for this in Chinese video apps (剪映's 一鍵成片).
+  'mode.film': { en: 'Film', 'zh-Hant': '成片', 'zh-Hans': '成片', ja: 'ムービー', ko: '필름' },
   'xcreate.voice': { en: 'Voice', 'zh-Hant': '聲音', 'zh-Hans': '声音', ja: 'ボイス', ko: '목소리' },
   'xcreate.format': { en: 'Format', 'zh-Hant': '格式', 'zh-Hans': '格式', ja: 'フォーマット', ko: '형식' },
   // The language the speech is READ in, not the site's language.

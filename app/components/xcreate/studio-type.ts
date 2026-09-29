@@ -1,5 +1,5 @@
 'use client'
-// The type the XCreate studio is making (text, image, video, audio), shared
+// The type the XCreate studio is making (text, image, video, audio, film), shared
 // between the studio (app/xcreate/client.tsx) and the door's top bar, which
 // carries the four types as XTell's carries its temples (owner, Sep 28). The
 // studio owns it: it publishes its current type while it is on screen (null
@@ -8,10 +8,11 @@
 
 import { useSyncExternalStore } from 'react'
 
-export type StudioType = 'text' | 'image' | 'video' | 'audio'
+export type StudioType = 'text' | 'image' | 'video' | 'audio' | 'film'
 
-/** The top bar's order (owner, Sep 28: "Text, Image, Video, Audio"). */
-export const STUDIO_TYPES: StudioType[] = ['text', 'image', 'video', 'audio']
+/** The top bar's order (owner, Sep 28: "Text, Image, Video, Audio"; Sep 29:
+ *  the film, made by Claude, fifth). */
+export const STUDIO_TYPES: StudioType[] = ['text', 'image', 'video', 'audio', 'film']
 
 export const isStudioType = (value: unknown): value is StudioType =>
   typeof value === 'string' && (STUDIO_TYPES as string[]).includes(value)

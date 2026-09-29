@@ -13,7 +13,7 @@ import './standalone.css'
 type Mode = 'image' | 'video' | 'text' | 'audio'
 type Creation = {
   id: string; mode: Mode; prompt: string; title?: string | null; created_at: string
-  slots: { text?: string; isImage?: boolean; isVideo?: boolean; error?: string; name?: string }[] | null
+  slots: { text?: string; isImage?: boolean; isVideo?: boolean; error?: string; name?: string; options?: { film?: string } | null }[] | null
 }
 type Page = { rows: Creation[]; total: number; pageSize: number }
 
@@ -63,6 +63,8 @@ export default function StandaloneLibrary({ onNew }: { onNew: () => void }) {
           const url = preview?.text?.split('\n')[0]
           const mediaUrl = url && /^https?:\/\//i.test(url) ? url : null
           const title = item.title || item.prompt || copy.untitled
+          // A film (the fifth type) is a video row whose one slot names it.
+          const isFilm = typeof slots[0]?.options?.film === 'string'
           return <Link key={item.id} href={`/?id=${encodeURIComponent(item.id)}`} className="xcs-creation" aria-label={`${copy.open}: ${title}`}>
             <div className="xcs-creation-preview">
               {mediaUrl && (item.mode === 'image' || preview?.isImage)
@@ -71,9 +73,9 @@ export default function StandaloneLibrary({ onNew }: { onNew: () => void }) {
                   ? <video src={mediaUrl} preload="metadata" muted playsInline />
                   : item.mode === 'text' && preview?.text
                     ? <p>{preview.text.slice(0,240)}</p>
-                    : <ModeIcon m={item.mode} />}
+                    : <ModeIcon m={isFilm ? 'film' : item.mode} />}
             </div>
-            <div className="xcs-creation-copy"><div className="xcs-creation-meta"><span>{t(`mode.${item.mode}`)}</span><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString(lang)}</time></div><h2>{title}</h2><span>{slots.length} {copy.models}</span></div>
+            <div className="xcs-creation-copy"><div className="xcs-creation-meta"><span>{t(isFilm ? 'mode.film' : `mode.${item.mode}`)}</span><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString(lang)}</time></div><h2>{title}</h2>{!isFilm && <span>{slots.length} {copy.models}</span>}</div>
           </Link>
         })}
       </div>}

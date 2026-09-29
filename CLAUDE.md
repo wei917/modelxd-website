@@ -25,7 +25,7 @@ rating system (XDRating) surfaced on XBoard.
 - **Framework**: Next.js 16 App Router (React 18)
   - The Edge network gate is `proxy.ts` at the repo root — Next 16 renamed
     `middleware.ts` to `proxy.ts`. Same behavior, canonical name.
-- **Hosting**: Vercel (3 cron jobs in `vercel.json`)
+- **Hosting**: Vercel (4 cron jobs in `vercel.json`)
 - **Database + Auth**: Supabase (PostgreSQL + Google OAuth + anonymous sessions)
 - **Payments**: Stripe (credit top-ups)
 - **AI Providers**: 7 direct integrations — OpenAI, Google, Alibaba DashScope,
@@ -117,8 +117,8 @@ isn't entitled. All the actual UI is in `client.tsx`.
 `/xcreate`), beside profile/terms/login; nothing else is served there. Its
 name follows the language like XTell's X先知: X創作 / X创作 / X作成 / X창작
 (`xcreate.site.brand`, equal to www's `nav.xcreate`; Sep 28). Since Sep 28
-the top bar carries the four types (Text, Image, Video, Audio) as XTell's
-carries its temples: the studio (Codex's) is the door's one page, with the
+the top bar carries the types (Text, Image, Video, Audio, and since Sep 29
+Film) as XTell's carries its temples: the studio (Codex's) is the door's one page, with the
 trending feed for the chosen type under the composer, and the Library is on the
 account page (`studio-type.ts` links the bar and the studio; old `?view=`
 links redirect). The shell around it (top bar, footer, sign-in,
@@ -127,6 +127,26 @@ account page, legal note) is `app/components/xcreate/*` with its own
 Nav loads it on every host. The `--xc-*` palette is defined there once. A
 link from the studio to a www-only page (XBoard, the legacy `?c=` → XDirect
 forward) goes through `wwwHref()`, or the door would bounce it home.
+
+**Film, the door's fifth type (Sep 29; owner: "5th top bar", "$7").**
+成片 / Film / ムービー / 필름. A brief becomes a finished short film: one
+Claude Managed Agents session (Opus 5.5 in a sandbox with ffmpeg) plans it,
+calls three custom tools that OUR server runs through `lib/providers`
+(GPT Image 2 stills, HappyHorse 1.1 clips, MiniMax voice; list price,
+logged against the viewer), draws titles in code and edits. `lib/film/`:
+`agent.ts` is the agent + environment source and `FILM_LOCK` (sync with
+`npx tsx scripts/film-agent-sync.ts [--apply]`, which never archives),
+`tools.ts` the tool bodies, `driver.ts` start/drive/settle, `config.ts`
+the choices and the budget split. Sessions run 10-30 min, so the open page
+POSTs `/api/xcreate/film/[id]` every 4s (a drive pass in `after`) and a
+per-minute cron hits `/api/xcreate/film/cron`. The budget is reserved up
+front; Claude's share is the session's platform budget, the generation
+share is checked per call, unspent generation moves to Claude if Claude
+runs out; charged = what it used at list, never more than the budget, and
+no film = full refund. Tables `xcreate_films` + `xcreate_film_calls`
+(migration 111, service key only); the film is also an xcreates row
+(`slots[0].options.film`), so it is in the Library and opens back into
+`?film=<id>`. UI: `app/xcreate/FilmStudio.tsx`, words in `film-copy.ts`.
 
 **The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting
@@ -293,6 +313,7 @@ app/
 ├── xcreate/page.tsx            # Server shell — resolves feature flags
 ├── xcreate/client.tsx          # The whole studio UI (large)
 ├── xcreate/templates.ts        # XCREATE_TEMPLATES
+├── xcreate/FilmStudio.tsx      # The door's fifth type: a film by Claude
 ├── xtalk/page.tsx              # Room setup (Discussion / Werewolf)
 ├── xtalk/[id]/page.tsx         # Werewolf game permalink
 ├── xvote/page.tsx              # Community voting
@@ -317,7 +338,8 @@ app/
     ├── v1/chat/completions/    # Public inference API (OpenAI-shaped)
     ├── agent/ask/              # Site agent (Claude Haiku)
     ├── xduel/{route,vote,quota,community-vote}
-    ├── xcreate/{route,chat,node,inputs,source,job/[id],jobs/active}
+    ├── xcreate/{route,chat,node,inputs,source,job/[id],jobs/active,
+    │           film,film/[id],film/cron}
     ├── xdirector/{route,conversation,transcribe,digest,reference,refs}
     ├── xtalk/{route,game,werewolf}
     ├── xboard/{route,werewolf}
@@ -337,6 +359,7 @@ app/
 
 lib/
 ├── providers/                  # 7 providers + router, pricing, call-log
+├── film/                       # XCreate film: agent, tools, driver, config
 ├── xdrating.ts                 # Bradley-Terry rating pipeline
 ├── credits.ts                  # Wallet: grant/debit RPCs (server-only)
 ├── stripe.ts                   # Checkout + webhook helpers
