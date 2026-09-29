@@ -33,6 +33,13 @@ const pk = parsePick('{"flavor":"鹹","ids":[52, "243", 52, 9999, 48, 50, 30, 12
 check(`a pick: the taste's element, real numbers only, no repeats, at most ${PICK_TOP}`, !!pk && pk.element === '水' && pk.ids.length === PICK_TOP && pk.ids[0] === 52 && pk.ids[1] === 243 && !pk.ids.includes(9999))
 check('a pick with an unknown taste, or no real number, is refused', parsePick('{"flavor":"鮮","ids":[52]}', id => ids.has(id)) === null && parsePick('{"flavor":"甘","ids":[9999]}', id => ids.has(id)) === null && parsePick('nope', () => true) === null)
 check('the note: no digits (no lucky numbers)', parseNote('{"note":"鹹屬水。"}') === '鹹屬水。' && parseNote('{"note":"第８天"}') === null && parseNote('{"note":"lucky 7"}') === null)
+{
+  // The same-meal line on the page (Sep 29) must say the hours mealOf uses.
+  const at = (h: string) => mealOf(`2026-09-28T${h}`)!.slot
+  check('meal hours: the boundaries the page states', at('04:59') === 'late' && at('05:00') === 'breakfast' && at('10:59') === 'breakfast' && at('11:00') === 'lunch' && at('15:00') === 'tea' && at('17:00') === 'dinner' && at('21:00') === 'late' && mealOf('2026-09-29T01:00')!.date === '2026-09-28')
+  const line = (STRINGS as any)['xtell.cookie.sameMeal']
+  check('the same-meal line states those hours in every language', ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => ['5', '11', '15', '17', '21'].every(h => new RegExp(`(^|\\D)${h}(\\D|$)`).test(line[l]))))
+}
 check('five tastes, five elements', Object.entries(FLAVOR_ELEMENT).map(([k, v]) => k + v).join('') === '酸木苦火甘土辛金鹹水')
 check('the writer gets the meal, the 時辰 and the day', (() => { const f = cookieFacts({ food: '牛肉麵', ask: '', meal: mealOf('2026-09-28T12:30')!, dayGz: '乙巳' }); return f.includes('牛肉麵') && f.includes('午餐') && f.includes('午時') && f.includes('乙巳日') })())
 

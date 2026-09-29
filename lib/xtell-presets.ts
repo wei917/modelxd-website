@@ -49,11 +49,11 @@ export const PRESETS: Array<{ key: 'light' | 'balanced' | 'deep'; models: string
 
 /** A row's declared thinking levels. */
 export const levelsOf = (m: PresetModel): string[] => ((m.output_config?.text?.thinking_levels ?? []) as string[])
-/** The house default a seat starts with: Qwen Flash thinking on, other Qwen
- *  rows off, everything else the provider's own default (the reading route
- *  applies the same rule when no level is sent). */
+/** The house default a seat starts with: every Qwen row thinking off (Flash
+ *  too since Sep 29: with it on, a 塔羅 answer ran 9,728 tokens and 145 s),
+ *  everything else the provider's own default (the reading route applies
+ *  the same rule when no level is sent). */
 export function defaultThinking(m: PresetModel): string | null {
   if (m.provider !== 'alibaba') return null
-  const want = m.model_name === 'qwen3.8-flash' ? 'thinking_true' : 'thinking_false'
-  return levelsOf(m).includes(want) ? want : null
+  return levelsOf(m).includes('thinking_false') ? 'thinking_false' : null
 }

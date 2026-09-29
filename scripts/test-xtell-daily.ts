@@ -128,6 +128,8 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('user copy has no engine, library or source wording', !keys.some(k => /lunar-typescript|astronomy-engine|Swiss|library|engine|ephemeris/i.test(JSON.stringify((STRINGS as any)[k]))))
   check('the delete confirmation names what goes, and what does not', LANGS.every(l => (STRINGS as any)['xtell.dy.deleteConfirm'][l].length > 20) && /birth details/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /paid conversations/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /other temple visits are not affected/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /cannot be undone/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en))
   check('catalog: daily is live and free', catalog.liveFeature('daily')?.opens === 'daily' && catalog.XTELL_CATALOG_VERSION === '2026-09-28.2')
+  const qwen = (name: string) => ({ provider: 'alibaba', model_name: name, output_config: { text: { thinking_levels: ['thinking_true', 'thinking_false'] } } })
+  check('Qwen starts with thinking off, Flash too (Sep 29); others keep their own default', presets.defaultThinking(qwen('qwen3.8-flash')) === 'thinking_false' && presets.defaultThinking(qwen('qwen3.8-max')) === 'thinking_false' && presets.defaultThinking({ provider: 'openai', model_name: 'gpt-6-luna' }) === null)
   check('presets moved, not changed: deep is GPT-6 Astra only', same(presets.PRESETS.find(p => p.key === 'deep')?.models, ['gpt-6-astra']))
 }
 
@@ -364,6 +366,9 @@ async function routes() {
   const ask = async (body: any) => { const r = await reading.POST(req('http://t/api/xtell/reading', 'POST', { modelId: 'm1', ...body })); return { status: r.status, text: await r.text() } }
   const r1 = await ask({ temple: 'daily', readingId: f1.d.readingId, question: '今天適合談加薪嗎？', basis: { western: { contacts: [{ transit: 'Pluto', natal: 'Sun' }] } }, chart: 'fake' })
   const sys = systems.at(-1) ?? ''
+  check('every teacher gets the length rule: 1000 字, the conclusion first, no repeated summary', sys.includes('全文 1000 字以內') && sys.includes('先給結論') && sys.includes('不要把整段解讀再摘要'))
+  const routeSrc = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/reading/route.ts'), 'utf8')
+  check('the route\'s own Qwen default is thinking off too', /houseDefault = \(model as any\)\.provider !== 'alibaba' \? null : 'thinking_false'/.test(routeSrc))
   check('follow-up: the teacher gets that day\'s stored basis and free reading, nothing the client sent', r1.status === 200 && sys.includes('占星塔的老師') && sys.includes('行運月亮在') && sys.includes('當天的免費解讀') && !sys.includes('fake'))
   check('follow-up needs a question and its visit', (await ask({ temple: 'daily', readingId: f1.d.readingId, question: '' })).status === 400 && (await ask({ temple: 'daily', question: 'x' })).status === 400)
   // A question put to some of the table remembers whom it was for (owner,

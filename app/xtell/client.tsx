@@ -78,9 +78,9 @@ type AstroMode = (typeof ASTRO_MODES)[number]
 const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
 type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: string }
 
-// The house default master (owner, Sep 24): Qwen 3.8 Flash with thinking
-// ON — native in the classics and the temples' language, first word in
-// seconds even while reasoning, a hundredth of Sol's price. Max, then Sol,
+// The house default master (owner, Sep 24): Qwen 3.8 Flash — native in the
+// classics and the temples' language, a hundredth of Sol's price. Thinking
+// starts OFF since Sep 29 (with it on, a 塔羅 answer took 145 s). Max, then Sol,
 // are the fallbacks if it ever leaves the catalog; the picker stays for
 // anyone who wants another seat or a 合參.
 const DEFAULT_MASTER = 'qwen3.8-flash'
@@ -597,9 +597,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // Per-seat settings, the way XCreate configures each slot: thinking level
   // (from the row's declared levels) and web search (where the row declares
   // the capability). Defaults are computed, so an untouched seat needs no
-  // entry. Qwen Flash defaults to thinking ON (owner's default master; it
-  // still answers in seconds); Qwen Max defaults to thinking OFF — its own
-  // default sat 130 s before the first token on a 紫微 prompt.
+  // entry. Every Qwen row defaults to thinking OFF: Max's own default sat
+  // 130 s before the first token on a 紫微 prompt, and Flash's thinking made
+  // a 塔羅 answer 9,728 tokens and 145 s (Sep 29).
   type SeatOpts = { thinking: string | null; search: boolean }
   const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
   // ⚙ on any chip opens the settings panels for ALL seated masters together,
@@ -1178,7 +1178,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 ? temple === 'jiemeng' || temple === 'cookie'
                   ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : 'xtell.cookie.cracking')} /></div>
                   : <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.entering.note')}</div>
-                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'cookie' ? t('xtell.cookie.price') : temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>}
+                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' || temple === 'cookie' ? '' : t('xtell.solar.note')}</div>}
               {/* The wait bar takes the whole row beside the button. */}
               {!(entering && (temple === 'jiemeng' || temple === 'cookie')) && <span style={{ flex: 1 }} />}
               <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
@@ -1189,6 +1189,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : t(temple === 'yixue' ? 'xtell.yixue.enter' : temple === 'cookie' ? 'xtell.cookie.crack' : 'xtell.enter')}</button>
             </div>
           )}
+          {/* The price, and how a meal is told apart (a tester, Sep 29: the
+              hours mealOf uses), under the button at full width. */}
+          {temple === 'cookie' && <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.7 }}>{t('xtell.cookie.price')}<br />{t('xtell.cookie.sameMeal')}</p>}
           {errShown && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
         </div>
         {/* This temple's saved visits (owner, Sep 24: history in each

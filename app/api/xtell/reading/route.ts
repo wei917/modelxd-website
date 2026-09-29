@@ -38,6 +38,19 @@ const LANG_LINE: Record<string, string> = {
 }
 const langLine = (v: unknown) => (typeof v === 'string' && LANG_LINE[v]) ? `\n\n${LANG_LINE[v]} 若信眾以其他語言提問，改用信眾的語言。` : ''
 
+// How long an answer may be (owner, Sep 29: a tester's 塔羅 answer ran to
+// ~3,300 characters and said the same advice in several sections). 1000 字
+// in Chinese and Japanese; the same amount of reading is about 600 words in
+// English and 1,500 자 in Korean.
+const LENGTH_LINE: Record<string, string> = {
+  'zh-Hant': '篇幅：全文 1000 字以內。先給結論，再說理由；同一個建議只說一次，籤詩或牌義只引用一次，結尾不要把整段解讀再摘要一遍。',
+  'zh-Hans': '篇幅：全文 1000 字以内。先给结论，再说理由；同一个建议只说一次，签诗或牌义只引用一次，结尾不要把整段解读再摘要一遍。',
+  'ja': '分量：全体で1000字以内。まず結論、次に理由。同じ助言は一度だけ、籤の詩やカードの意味の引用も一度だけにし、最後に全体をもう一度まとめ直さないこと。',
+  'ko': '분량: 전체 1,500자 이내. 결론을 먼저, 이유는 그다음에. 같은 조언은 한 번만, 첨시나 카드 뜻의 인용도 한 번만 하고, 끝에서 풀이 전체를 다시 요약하지 말 것.',
+  'en': 'Length: about 600 words at most. Give the conclusion first, then the reasons; say each piece of advice once, quote the verse or the card meaning once, and do not end by summarising the whole reading again.',
+}
+const lengthLine = (v: unknown) => `\n${LENGTH_LINE[typeof v === 'string' && LENGTH_LINE[v] ? v : 'zh-Hant']}`
+
 // What the facts block is called, per temple: a 命盤 for the chart temples,
 // a 籤 for 關帝廟, wishes plus a chart for 四面佛.
 const FACTS_HEAD: Record<string, string> = {
@@ -142,12 +155,11 @@ export async function POST(req: Request) {
   // Thinking level per seat (owner, Sep 24: configure each master like an
   // XCreate slot). Accepted only if the row declares it; `null` from the
   // client means an explicit Auto (provider default); absent means the house
-  // default: Qwen Flash thinking on (the default master), other Qwen rows
-  // thinking off — Max's own default sat 130 s before the first token on a
-  // 紫微 prompt.
+  // default: every Qwen row thinking off. Max's own default sat 130 s before
+  // the first token on a 紫微 prompt; Flash's thinking made a 塔羅 answer
+  // 9,728 tokens and 145 s (owner, Sep 29: off, like the others).
   const levels: string[] = (model as any).output_config?.text?.thinking_levels ?? []
-  const houseDefault = (model as any).provider !== 'alibaba' ? null
-    : (model as any).model_name === 'qwen3.8-flash' ? 'thinking_true' : 'thinking_false'
+  const houseDefault = (model as any).provider !== 'alibaba' ? null : 'thinking_false'
   const thinking: string | null = body?.thinking === undefined
     ? houseDefault
     : (typeof body.thinking === 'string' && levels.includes(body.thinking) ? body.thinking : null)
@@ -322,8 +334,8 @@ export async function POST(req: Request) {
         { userId: user.id },
         {
           system: daily
-            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}`
-            : `${MASTERS[temple]}${langLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}`,
+            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}`
+            : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}`,
           search,
           thinking,
         },

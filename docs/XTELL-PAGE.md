@@ -379,8 +379,9 @@ engine independently and made the art.
    `output_config.text.thinking_levels`) and **web search** Off/On (only
    where the row declares `web_search`). The reading request
    carries `thinking` and `search` per seat; the route accepts a level only
-   if the row declares it. House default: Qwen Flash `thinking_true`, other Alibaba rows
-   `thinking_false` (Max's own default sat 130 s before the first token on a
+   if the row declares it. House default: every Alibaba row `thinking_false`
+   (Flash too since Sep 29: thinking on made a 塔羅 answer 9,728 tokens and
+   145 s; Max's own default sat 130 s before the first token on a
    紫微 prompt); the UI shows the default as the selected pill so Auto is a
    deliberate choice.
    Clicking a master's name opens the picker to **replace** that seat, so the
