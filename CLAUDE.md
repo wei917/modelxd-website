@@ -118,7 +118,7 @@ name follows the language like XTell's X先知: X創作 / X创作 / X作成 / X�
 (`xcreate.site.brand`, equal to www's `nav.xcreate`; Sep 28). Since Sep 28
 the top bar carries the four types (Text, Image, Video, Audio) as XTell's
 carries its temples: the studio (Codex's) is the door's one page, with the
-templates for the chosen type under the composer, and the Library is on the
+tools for the chosen type under the composer, and the Library is on the
 account page (`studio-type.ts` links the bar and the studio; old `?view=`
 links redirect). The shell around it (top bar, footer, sign-in,
 account page, legal note) is `app/components/xcreate/*` with its own

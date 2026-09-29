@@ -14,7 +14,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useLang } from '../../lib/i18n'
-import StandaloneTemplates from './StandaloneTemplates'
+import StandaloneTools from './StandaloneTools'
 import { isStudioType, onStudioTypeRequest, publishStudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import { xcreateStudioCopy } from './standalone-copy'
@@ -3188,15 +3188,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     url.searchParams.delete('type')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }, [isStandalone, searchTypeParam])
-  // Old ?view= links: the Library moved to the account page, the templates
-  // under the composer (Sep 28).
+  // Old ?view= links: the Library moved to the account page; Templates lands
+  // on the studio, at its tools when the type has some (Sep 28).
   useEffect(() => {
     if (!isStandalone || !viewParam) return
     if (viewParam === 'creations') { router.replace('/profile'); return }
     const url = new URL(window.location.href)
     url.searchParams.delete('view')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-    if (viewParam === 'templates') requestAnimationFrame(() => document.getElementById('xcs-templates')?.scrollIntoView({ block: 'start' }))
+    if (viewParam === 'templates') requestAnimationFrame(() => document.getElementById('xcs-tools')?.scrollIntoView({ block: 'start' }))
   }, [isStandalone, viewParam, router])
 
   // Load a saved creation back into the Create tab so the user can continue
@@ -4267,15 +4267,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 </div>
 
                 {isStandalone && <div className="xcs-prompt-section">
-                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label>
-                    {/* The templates are a section further down this page now (Sep 28). */}
-                    {phase === 'setup' && slots.length === 0 && XCREATE_TEMPLATES.some(item => item.mode === mode) && <a href="#xcs-templates" onClick={event => {
-                      const section = document.getElementById('xcs-templates')
-                      if (!section) return
-                      event.preventDefault()
-                      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    }}>{copy.useTemplate} ↓</a>}
-                  </div>
+                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label></div>
                   {promptComposer}
                 </div>}
 
@@ -5073,11 +5065,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 )}
 
                 {/* The door's one page (Sep 28: the top bar carries the types):
-                    the templates for the current type, then what is trending
-                    on social media for it (Sep 26). Setup screen only, like the
-                    wall above; each renders nothing for a type it has none of. */}
+                    the tools for the current type (the templates were taken
+                    off, owner, Sep 28), then what is trending on social media
+                    for it (Sep 26). Setup screen only, like the wall above;
+                    each renders nothing for a type it has none of. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (
-                  <StandaloneTemplates mode={mode} onSelect={template => { void applyTemplate(template) }} />
+                  <StandaloneTools mode={mode} onSelect={template => { void applyTemplate(template) }} />
                 )}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
                   <StandaloneTrending kind={mode}
