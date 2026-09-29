@@ -10,7 +10,7 @@ consumer law should confirm the wording before it goes live.
 
 | 項目 | 内容 |
 |---|---|
-| 販売業者 | ◆ (legal name of the seller: company or individual) |
+| 販売業者 | ModelXD LLC (owner, Sep 29) |
 | 運営統括責任者 | ◆ |
 | 所在地 | ◆ |
 | 電話番号 | ◆ |
