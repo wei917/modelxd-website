@@ -2067,7 +2067,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
           <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800, letterSpacing: 2 }}>
             {t('xtell.qian.stick')} {stick.n} {t('xtell.qian.stickunit')}
           </div>
-        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t(jiao ? 'xtell.qian.rule' : 'xtell.qian.rule.omikuji')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t('xtell.qian.random')}</div></div>}
+        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t(jiao ? 'xtell.qian.rule' : 'xtell.qian.rule.omikuji')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t(jiao ? 'xtell.qian.random' : 'xtell.qian.random.omikuji')}</div></div>}
         {stick && jiao && (
           <div style={{ display: 'flex', gap: 6 }}>
             {Array.from({ length: CONFIRM_THROWS }, (_, i) => {
