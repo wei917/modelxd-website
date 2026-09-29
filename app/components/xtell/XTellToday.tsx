@@ -80,8 +80,10 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
         : <p className="xtell-dy-small">{t('common.loading')}</p>) : <>
         <p className="xtell-td-date">
           <strong>{dateLabel(data.date)}</strong>
-          <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}</span>
+          <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}{data.rokuyo ? ` · ${data.rokuyo}` : ''}</span>
         </p>
+        {/* Japanese pages: the lucky days a Japanese calendar marks (Sep 29). */}
+        {data.luckyDays && data.luckyDays.length > 0 && <p className="xtell-td-lucky">{fill(t('xtell.today.luckyDays'), { days: data.luckyDays.join('・') })}</p>}
         <dl className="xtell-td-yiji">
           <div className="is-yi"><dt>{t('xtell.today.yi')}</dt><dd>{data.yi.join('、') || '—'}</dd></div>
           <div className="is-ji"><dt>{t('xtell.today.ji')}</dt><dd>{data.ji.join('、') || '—'}</dd></div>

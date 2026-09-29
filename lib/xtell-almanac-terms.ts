@@ -193,3 +193,31 @@ export const ZHIXING_JA: Record<string, string> = { 滿: '満', 收: '納' }
 export const ZHIXING_KO: Record<string, string> = { 建: '건', 除: '제', 滿: '만', 平: '평', 定: '정', 執: '집', 破: '파', 危: '위', 成: '성', 收: '수', 開: '개', 閉: '폐' }
 /** The 煞 direction in Hangul. */
 export const SHA_KO: Record<string, string> = { 東: '동', 西: '서', 南: '남', 北: '북' }
+
+// ── What a Japanese calendar marks (Sep 29, a second reviewer: Japanese
+// readers expect 六曜 and days like 一粒万倍日) ───────────────────────────
+// The tables are the standard ones; 2026 was checked against published
+// Japanese calendars (天赦日 3/5 5/4 5/20 7/19 10/1 12/16; 一粒万倍日 on
+// 3/5 5/2 5/5 7/19 10/1 12/16, not 5/4; 大安 on 5/7). 大明日 is left out:
+// its table could not be checked the same way.
+
+/** 六曜 as Japan writes it (the library prints the Simplified forms). */
+export const ROKUYO_JA: Record<string, string> = { 先胜: '先勝', 友引: '友引', 先负: '先負', 佛灭: '仏滅', 大安: '大安', 赤口: '赤口' }
+
+/** 一粒万倍日: by the solar-term month's branch, the day branches that are one. */
+const MANBAI: Record<string, string[]> = {
+  寅: ['丑', '午'], 卯: ['酉', '寅'], 辰: ['子', '卯'], 巳: ['卯', '辰'], 午: ['巳', '午'], 未: ['酉', '午'],
+  申: ['子', '未'], 酉: ['卯', '申'], 戌: ['酉', '午'], 亥: ['酉', '戌'], 子: ['亥', '子'], 丑: ['卯', '子'],
+}
+/** 天赦日: by season (solar-term month), the one day 干支 that is it. */
+const TENSHA: Record<string, string> = {
+  寅: '戊寅', 卯: '戊寅', 辰: '戊寅', 巳: '甲午', 午: '甲午', 未: '甲午',
+  申: '戊申', 酉: '戊申', 戌: '戊申', 亥: '甲子', 子: '甲子', 丑: '甲子',
+}
+/** The lucky days a Japanese calendar would mark on this date, with what each means. */
+export function japaneseLuckyDays(monthZhi: string, dayZhi: string, dayGz: string): string[] {
+  const days: string[] = []
+  if (TENSHA[monthZhi] === dayGz) days.push('天赦日（年に数回しかない最上の吉日）')
+  if (MANBAI[monthZhi]?.includes(dayZhi)) days.push('一粒万倍日（始めたことが大きく実るとされる日）')
+  return days
+}

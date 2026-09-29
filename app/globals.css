@@ -3708,6 +3708,7 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 @keyframes xtell-wait-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes xtell-caret { 50% { opacity: 0 } }
 @media (prefers-reduced-motion: reduce) { .xtell-wait { animation: none } .xtell-wait-fill { transition: none } .xtell-caret::after { animation: none } }
+.xtell-td-lucky { margin: 6px 0 10px; font-size: 13.5px; font-weight: 700; color: var(--xtell-vermilion, var(--red)); line-height: 1.6; }
 .xtell-dy-card { min-width: 0; padding: 14px 16px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-paper); font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
 /* The day's reading in its temple room (DailyBoard) reads like its card. */
 .xtell-dy-card header, .xtell-dy-board header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }

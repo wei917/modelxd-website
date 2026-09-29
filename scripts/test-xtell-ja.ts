@@ -13,6 +13,7 @@ const S = STRINGS as any
 const ja = Object.entries(S).filter(([k, v]: [string, any]) => (k.startsWith('xtell') || k.startsWith('legal')) && typeof v?.ja === 'string').map(([k, v]: [string, any]) => [k, v.ja as string] as const)
 const bad = (rx: RegExp) => ja.filter(([, v]) => rx.test(v)).map(([k]) => k)
 
+check('no 称骨 suggestion on Japanese pages: it means nothing there (second reviewer, Sep 29)', !S['xtell.as.chip.3'].ja.includes('称骨') && !S['xtell.q.bazi.4'].ja.includes('称骨') && !S['xtell.as.chip.3'].ja.includes('何両何銭'))
 check('no 老師 in Japanese: the teachers are 先生', bad(/老師/).length === 0, bad(/老師/).join(' '))
 check('no 籤詩, 廟街, 入廟, 解籤, 還願 or 守願人 in Japanese', bad(/籤詩|廟街|入廟|解籤|還願|守願/).length === 0, bad(/籤詩|廟街|入廟|解籤|還願|守願/).join(' '))
 // 筊 only as a gloss after ポエ, or as a named result (聖筊 / 笑筊 / 陰筊) the rule has explained.

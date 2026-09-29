@@ -47,6 +47,20 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
     }
     check('400 days of Japanese and Korean almanacs: every 宜忌 and 彭祖 line translated', !raw, raw)
   }
+  {
+    // What a Japanese calendar marks (Sep 29), against published 2026 calendars.
+    const days: Array<[string, string[]]> = []
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(Date.UTC(2026, 0, 1) + i * 86400_000).toISOString().slice(0, 10)
+      days.push([d, almanacFor(d, 'ja').luckyDays ?? []])
+    }
+    const tensha = days.filter(([, l]) => l.some(x => x.startsWith('天赦日'))).map(([d]) => d.slice(5))
+    const manbai = new Set(days.filter(([, l]) => l.some(x => x.startsWith('一粒万倍日'))).map(([d]) => d.slice(5)))
+    check('天赦日 2026: 3/5 5/4 5/20 7/19 10/1 12/16, as published', tensha.join(' ') === '03-05 05-04 05-20 07-19 10-01 12-16', tensha.join(' '))
+    check('一粒万倍日 2026 on the published days, and not on 5/4', ['03-05', '05-02', '05-05', '07-19', '10-01', '12-16'].every(d => manbai.has(d)) && !manbai.has('05-04'))
+    check('六曜 in Japan\'s forms: 5/7 大安, 10/1 仏滅, 5/5 先負', almanacFor('2026-05-07', 'ja').rokuyo === '大安' && almanacFor('2026-10-01', 'ja').rokuyo === '仏滅' && almanacFor('2026-05-05', 'ja').rokuyo === '先負')
+    check('六曜 and lucky days on Japanese pages only', ['zh-Hant', 'zh-Hans', 'en', 'ko'].every(l => almanacFor('2026-10-01', l as any).rokuyo === undefined && almanacFor('2026-10-01', l as any).luckyDays === undefined))
+  }
   check('Japanese and Korean name the animals their own way', almanacFor('2026-09-27', 'ja').chong.animal === '犬' && almanacFor('2026-09-27', 'ko').chong.animal === '개' && almanacFor('2026-09-27', 'ko').animal === '말')
   check('a leap month is marked', almanacFor('2025-07-30', 'zh-Hant').lunarDate.startsWith('閏六月') && almanacFor('2025-07-30', 'en').lunarDate.startsWith('leap 6/'))
   check('where one simplified form is two traditional ones', toHant('益后') === '益後' && toHant('天后') === '天后' && toHant('理发') === '理髮' && toHant('馀事勿取') === '餘事勿取' && toHant('谷雨') === '穀雨' && toHant('复日') === '復日' && toHant('己不破券二比并亡') === '己不破券二比並亡')

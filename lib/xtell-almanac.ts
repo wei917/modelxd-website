@@ -20,7 +20,7 @@
 
 import { Solar, I18n } from 'lunar-typescript'
 import type { Lang } from './lang'
-import { YIJI, PENGZU, JIEQI_JA, JIEQI_KO, ZHIXING_JA, ZHIXING_KO, SHA_KO } from './xtell-almanac-terms'
+import { YIJI, PENGZU, JIEQI_JA, JIEQI_KO, ZHIXING_JA, ZHIXING_KO, SHA_KO, ROKUYO_JA, japaneseLuckyDays } from './xtell-almanac-terms'
 
 /** Simplified → Traditional for the almanac's vocabulary. Character by
  *  character is safe here except where one simplified form stands for two
@@ -73,6 +73,10 @@ export type Almanac = {
   /** The solar term in force, and the next one, each with its date. */
   jieQi: { name: string; date: string }
   nextJieQi: { name: string; date: string }
+  /** Japanese pages only: the day's 六曜, and the lucky days a Japanese
+   *  calendar marks (天赦日, 一粒万倍日), each with a few words on it. */
+  rokuyo?: string
+  luckyDays?: string[]
 }
 
 const clean = (xs: string[]) => xs.filter(x => x && !/[.{}]/.test(x) && x !== '无' && x !== 'None')
@@ -121,6 +125,10 @@ export function almanacFor(date: string, lang: Lang): Almanac {
       pengZu: base.pengZu.map(l => PENGZU[l]?.[lang] ?? l) as [string, string],
       jieQi: { ...base.jieQi, name: term(base.jieQi.name) },
       nextJieQi: { ...base.nextJieQi, name: term(base.nextJieQi.name) },
+      ...(lang === 'ja' ? {
+        rokuyo: ROKUYO_JA[lunar.getLiuYao()] ?? lunar.getLiuYao(),
+        luckyDays: japaneseLuckyDays(lunar.getMonthZhi(), lunar.getDayZhi(), lunar.getDayInGanZhi()),
+      } : {}),
     }
   }
   if (lang !== 'en') {
