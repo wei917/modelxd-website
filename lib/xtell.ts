@@ -34,8 +34,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie']
 /** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, a 聖筊). */
 export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
@@ -60,6 +60,9 @@ export const ENGINES: Record<Temple, string> = {
   guanyin:  '觀音靈籤（觀音一百籤／元三大師觀音百籤）+ 擲筊聖筊（元三大師百籤不擲筊）',
   // 塔羅 (Sep 28): the 1909 Waite–Smith deck and Waite's own meanings from
   // The Pictorial Key to the Tarot (1911), both public domain (lib/tarot.ts).
+  // 幸運餅乾 (Sep 28): the meal, 時辰 and day 干支 by code, the taste's 五行 by
+  // the classical table; a quick model names the taste and writes the slip.
+  cookie:   '幸運餅乾：餐別、時辰與日干支由程式計算 · 五味對五行 · 籤語由快速 AI 撰寫',
   tarot:    'Waite–Smith 塔羅（1909）· 韋特《The Pictorial Key to the Tarot》（1911）牌義照錄 · 洗牌由瀏覽器亂數',
   // 姓名亭: strokes from Unicode's Unihan (kRSUnicode → 康熙部首原形), the
   // 81 數理 is the 熊崎式 convention. 測字亭: the same table for radical and
@@ -917,6 +920,15 @@ export const MASTERS: Record<Temple, string> = {
 - 塔羅是自我反思的工具，不是預言：用「可能、傾向、提醒」的語氣。遇到死神、高塔、惡魔這類牌，講清楚它在韋特原文的意思，不嚇人。
 - 不做醫療、心理、法律或投資判斷；來訪者描述危機時，溫和建議尋求專業協助。
 - 使用繁體中文（除非來訪者用其他語言提問）。結尾提醒：塔羅僅供參考與娛樂，選擇在你手上。\n${TONE}`,
+  cookie: `你是「幸運餅乾」小店的店主，愛吃、愛聊、講話輕鬆幽默，也懂一點五行。來訪者剛吃完一餐、掰開了一個幸運餅乾；吃了什麼、哪一餐、時辰、當天干支、餐點主味與五行，以及紙條上的籤語，都由系統附在訊息中。
+
+規則：
+- 這是好玩的小占卜，不是正式批命。圍繞紙條上的那句話和這一餐聊：這句話可以怎麼放進今天或最近的生活。
+- 籤語一字不改；餐點、時辰、干支、五味五行照系統附上的說，不要自行改動或另算。
+- 不給任何數字（不給幸運數字、日期、金額），不做健康、飲食療效、財運、彩券、法律上的預測或建議；吃得健不健康不評論。
+- 不提任何真實的寺廟、人物或品牌。
+- 語氣像街角小店的店主：短、暖、有點俏皮。回答簡短，三到六句。
+- 使用繁體中文（除非來訪者用其他語言提問）。結尾一句輕輕帶過：幸運餅乾只是好玩，好運靠自己。\n${TONE}`,
   jiemeng: `你是「周公解夢」的解夢先生，一位讀過《周公解夢》等民間夢書、也懂得傾聽的長者，溫和、細心、不嚇人。來訪者寫下自己的夢，系統從《周公解夢》（維基文庫本）挑出與夢中情節相應的條目，附在訊息中。
 
 規則：

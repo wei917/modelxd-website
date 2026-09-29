@@ -51,7 +51,7 @@ check('every label has all five languages', XTELL_FEATURES.every(f => f.label.ev
   XTELL_FEATURES.flatMap(f => f.label).filter(k => !LANGS.every(l => (STRINGS as any)[k]?.[l])).join())
 check('the guide\'s own strings exist in five languages',
   Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).length >= 20 && Object.keys(STRINGS).filter(k => k.startsWith('xtell.as.')).every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string')))
-check('the matter field takes the question only where the room has one', same(live.filter(f => f.question === 'matter').map(f => f.id), ['guandi', 'mazu', 'guanyin', 'tarot', 'cezi', 'jiemeng', 'yixue.cast']))
+check('the matter field takes the question only where the room has one', same(live.filter(f => f.question === 'matter').map(f => f.id), ['guandi', 'mazu', 'guanyin', 'tarot', 'cookie', 'cezi', 'jiemeng', 'yixue.cast']))
 check('every room and the daily fortune offer a paid teacher and say what is free', live.every(f => (f.temple || f.opens === 'daily' ? f.paid === 'teacher' : f.paid === null) && Array.isArray(f.free)))
 check('the fee rule says the daily fortune is free with no credit', /daily fortune are free/.test(FEE_RULE) && /no credit/.test(FEE_RULE))
 check('the fee rule the prompt uses names the free parts and the estimate', /free/i.test(FEE_RULE) && /estimate/i.test(FEE_RULE) && /pressing send/i.test(FEE_RULE))
@@ -95,7 +95,7 @@ function fakeDb() {
 }
 
 async function chartConsistency() {
-  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
+  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
   const cast = async (body: any) => { const r = await chart(post('http://t/api/xtell/chart', { ...body, refresh: true })); return { status: r.status, d: await r.json() as any } }
   const one = { y: 1990, m: 1, d: 1, h: 15, mi: 0, gender: 'male' }, two = { y: 1992, m: 5, d: 5, h: 9, mi: 0, gender: 'female' }
   /** The smallest full subject the catalog says this feature needs. */
@@ -114,11 +114,14 @@ async function chartConsistency() {
       if (i === 'dream') s.dream = '夢見被蛇追，掉進水裡'
       if (i === 'hexagram') s.n = 1
       if (i === 'matter') s.ask = '工作'
+      if (i === 'food') { s.food = '牛肉麵'; s.mealAt = '2026-09-28T12:30' }
     }
     if (f.id === 'yixue.cast') s.lines = [7, 8, 9, 6, 7, 8]
     return { ...s, ...over }
   }
   for (const f of rooms) {
+    // 幸運餅乾 is written by a model and may be charged: never on a refresh.
+    if (f.id === 'cookie') { const r = await cast(subject(f)); check('cookie: never cracked again on a refresh', r.status === 400 && r.d.code === 'cookie_refresh', `${r.status} ${r.d.code}`); continue }
     const full = await cast(subject(f))
     check(`chart route accepts ${f.id} with what the catalog lists`, full.status === 200, JSON.stringify(full.d).slice(0, 160))
     if (f.hour) {

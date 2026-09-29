@@ -32,6 +32,7 @@ import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, asQianEdition, needsJiao, type Jiao, type QianEdition } from '../../lib/xtell-ritual'
 import { drawTarot, asSpread, SPREADS, type TarotPick, type TarotSpread } from '../../lib/tarot-draw'
+import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xtell-cookie'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
 import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
@@ -51,7 +52,9 @@ import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, t
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie'
+/** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
+const localNow = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu' || t === 'guanyin'
 
 // Start with a question. Casting is an explicitly selected practice, never
@@ -139,7 +142,7 @@ function setReadingParam(id: string | null) {
 /** The same checks the routes make, run on a subject before it is sent, and
  *  on a saved subject before its chart is shown. Null when it is fine. */
 function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
-  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'tarot'
+  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'tarot' && temple !== 'cookie'
   if (needsBirth || (isQian(temple) && subj?.birth)) {
     const p = birthProblem(subj?.birth)
     if (p) return `birth_${p}`
@@ -157,6 +160,7 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
   }
   if (temple === 'cezi' && !/^[㐀-䶿一-鿿]$/.test(String(subj?.ch ?? ''))) return 'char_invalid'
   // lib/jiemeng.ts dreamProblem, mirrored.
+  if (temple === 'cookie') { const bad = cookieProblem(subj?.food, subj?.mealAt); if (bad) return bad }
   if (temple === 'jiemeng') { const d = String(subj?.dream ?? ''); if (!d.trim()) return 'dream_required'; if (d.length > DREAM_MAX) return 'dream_too_long' }
   return null
 }
@@ -173,6 +177,8 @@ function fieldOf(code: string | null): string | null {
   if (code.startsWith('char_')) return 'char'
   if (code === 'wish_required') return 'wishes'
   if (code.startsWith('dream_')) return 'dream'
+  if (code.startsWith('food_')) return 'food'
+  if (code === 'meal_time_invalid') return 'mealAt'
   if (code === 'place_invalid') return 'place'
   if (code === 'place2_invalid') return 'place2'
   return null
@@ -190,6 +196,7 @@ function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): st
   if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xtell.${subj.gender}`)}`
   if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
   if (temple === 'jiemeng') { const d = String(subj.dream ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
+  if (temple === 'cookie') return `${String(subj.food ?? '').slice(0, 40)}${subj.mealAt ? ` · ${String(subj.mealAt).replace('T', ' ')}` : ''}`
   if (isQian(temple) || temple === 'tarot') return subj.ask ? String(subj.ask).slice(0, 60) : ''
   return `${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}`
 }
@@ -456,6 +463,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const [given, setGiven] = useState(init.given ?? '')
   const [ch, setCh] = useState(init.ch ?? '')
   const [dream, setDream] = useState(init.dream ?? '')
+  // 幸運餅乾: what was eaten, and when (the phone's local time, editable).
+  const [food, setFood] = useState<string>(init.food ?? '')
+  const [mealAt, setMealAt] = useState<string>(typeof init.mealAt === 'string' ? init.mealAt : localNow())
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
   const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
   // 占星塔 only.
@@ -681,6 +691,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask }
+    : temple === 'cookie' ? { temple, food: food.trim(), mealAt, ask: ask.trim(), lang }
     : temple === 'yixue' ? {
         temple, mode: yixueMode,
         ...(yixueMode === 'cast' ? { ask: ask.trim(), lines: castRef.current.values,
@@ -1106,6 +1117,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               surnameAria={fieldAria('surname')} givenAria={fieldAria('given')} />
           ) : temple === 'cezi' ? (
             <CeziForm ch={ch} setCh={setCh} ask={ask} setAsk={setAsk} sel={sel} charAria={fieldAria('char')} />
+          ) : temple === 'cookie' ? (
+            <CookieForm food={food} setFood={setFood} mealAt={mealAt} setMealAt={setMealAt} ask={ask} setAsk={setAsk} sel={sel} foodAria={fieldAria('food')} mealAria={fieldAria('mealAt')} />
           ) : temple === 'jiemeng' ? (
             <DreamForm dream={dream} setDream={setDream} ask={ask} setAsk={setAsk} sel={sel} dreamAria={fieldAria('dream')} />
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
@@ -1149,15 +1162,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           {!isQian(temple) && temple !== 'tarot' && !(temple === 'yixue' && yixueMode !== 'ask') && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               {entering
-                ? <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : 'xtell.entering.note')}</div>
-                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>}
+                ? <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : temple === 'cookie' ? 'xtell.cookie.cracking' : 'xtell.entering.note')}</div>
+                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'cookie' ? t('xtell.cookie.price') : temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' ? '' : t('xtell.solar.note')}</div>}
               <span style={{ flex: 1 }} />
               <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', minWidth: 112,
                 fontWeight: 700, fontSize: 13.5, cursor: entering ? 'wait' : questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: !entering && questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
               }}>{entering
                 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="xtell-think is-light" aria-hidden="true"><i /><i /><i /></span>{t('xtell.entering')}</span>
-                : t(temple === 'yixue' ? 'xtell.yixue.enter' : 'xtell.enter')}</button>
+                : t(temple === 'yixue' ? 'xtell.yixue.enter' : temple === 'cookie' ? 'xtell.cookie.crack' : 'xtell.enter')}</button>
             </div>
           )}
           {errShown && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
@@ -1349,6 +1362,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'jiemeng' ? <DreamBoard chart={chart} />
                 : temple === 'tarot' ? <TarotBoard chart={chart} />
+                : temple === 'cookie' ? <CookieBoard chart={chart} />
                 : temple === 'simianfo' ? <WishBoard chart={chart} wishes={wishes} year={year} hourUnknown={!!birth.hourUnknown} />
                 : temple === 'navagraha' ? <NavagrahaBoard chart={chart} />
                 : temple === 'zhanxing' ? <ZhanxingBoard chart={chart} />
@@ -2788,6 +2802,54 @@ function TarotBoard({ chart }: { chart: any }) {
         ))}
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.tarot.source')}</div>
+    </div>
+  )
+}
+
+// ── 幸運餅乾 (Sep 28) ─────────────────────────────────────────────────────────
+
+function CookieForm({ food, setFood, mealAt, setMealAt, ask, setAsk, sel, foodAria, mealAria }: {
+  food: string; setFood: (s: string) => void; mealAt: string; setMealAt: (s: string) => void
+  ask: string; setAsk: (s: string) => void; sel: any; foodAria?: FieldAria; mealAria?: FieldAria
+}) {
+  const t = useT()
+  const bad = (a?: FieldAria) => a?.invalid ? { 'aria-invalid': true as const, 'aria-describedby': a.describedBy } : {}
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+        {t('xtell.cookie.food')}
+        <textarea value={food} rows={2} maxLength={FOOD_MAX} onChange={e => setFood(e.target.value.slice(0, FOOD_MAX))} placeholder={t('xtell.cookie.food.ph')} {...bad(foodAria)}
+          style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400, lineHeight: 1.6, resize: 'vertical', ...(foodAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
+      </label>
+      <label style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, fontWeight: 700 }}>
+        {t('xtell.cookie.when')}
+        <input type="datetime-local" value={mealAt} onChange={e => setMealAt(e.target.value)} {...bad(mealAria)}
+          style={{ ...sel, ...(mealAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
+      </label>
+      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, COOKIE_ASK_MAX))} placeholder={t('xtell.cookie.ask.ph')} aria-label={t('xtell.cookie.ask')}
+        style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
+    </div>
+  )
+}
+
+function CookieBoard({ chart }: { chart: any }) {
+  const t = useT()
+  if (!chart?.fortune) return null
+  const facts = [t(`xtell.cookie.slot.${chart.meal?.slot ?? 'lunch'}`), chart.shichen, chart.dayGz ? `${chart.dayGz}日` : '', t('xtell.cookie.flavor').replace('{flavor}', chart.flavor).replace('{element}', chart.element)].filter(Boolean).join(' · ')
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13 }}>{chart.food}</span>
+        <span style={{ flex: 1 }} />
+        <ShareButton spec={() => ({ icon: 'cookie', link: 'cookie', title: t('xtell.site.focus.cookie.name'), kicker: facts,
+          body: [chart.fortune, chart.note], style: 'prose', name: 'xtell-cookie' })} />
+      </div>
+      <div className="xtell-cookie-slip">
+        <p>{chart.fortune}</p>
+      </div>
+      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
+      <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
+      {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}
     </div>
   )
 }

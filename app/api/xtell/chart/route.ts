@@ -12,6 +12,10 @@ export const runtime = 'nodejs'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES, asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
+import { cookieProblem, mealOf, mealKey, shichenOf, cookieBrief, cookieFacts, parseCookie, FREE_PER_MEAL, EXTRA_CENTS, ASK_MAX as COOKIE_ASK_MAX } from '@/lib/xtell-cookie'
+import { dailyText } from '@/lib/xtell-daily-model'
+import { debitCredits, grantCredits, InsufficientCreditsError } from '@/lib/credits'
+import { almanacFor } from '@/lib/xtell-almanac'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamProblem, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
 import { scanDream } from '@/lib/jiemeng-scan'
@@ -32,7 +36,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'edition', 'spread', 'picks'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -143,6 +147,46 @@ export async function POST(req: Request) {
     // `scan` names the model that chose the lines.
     const chart = { dream, ask, entries, scan: by }
     const readingId = await save(sb, user.id, temple, { ...body, dream, ask }, chart, {}, dream.split('\n')[0])
+    return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
+  }
+
+  // 幸運餅乾 (Sep 28): which meal it was, its 時辰 and the day's 干支 by code;
+  // a quick house model names the taste and writes the slip. Two cookies a
+  // meal are free; from the third each is debited EXTRA_CENTS before the
+  // model is called, and refunded if no slip comes back. A cookie is never
+  // cracked again on a refresh: the saved slip is the slip.
+  if (temple === 'cookie') {
+    if (!persist) return refuse('cookie_refresh', 'a cookie is not cracked again')
+    const bad = cookieProblem(body?.food, body?.mealAt)
+    if (bad) return refuse(bad, 'bad cookie input')
+    const food = String(body.food).trim()
+    const ask = typeof body?.ask === 'string' ? body.ask.trim().slice(0, COOKIE_ASK_MAX) : ''
+    const meal = mealOf(body.mealAt)!
+    const key = mealKey(meal)
+    const { count } = await sb.from('xtell_readings').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('temple', 'cookie').eq('subject->>meal', key)
+    const cents = (count ?? 0) >= FREE_PER_MEAL ? EXTRA_CENTS : 0
+    if (cents) {
+      try {
+        await debitCredits({ userId: user.id, amountCents: cents, referenceType: 'xtell', referenceId: 'cookie', description: 'XTell fortune cookie (third or later of a meal)', metadata: { temple: 'cookie', meal: key } })
+      } catch (e) {
+        if (e instanceof InsufficientCreditsError) return refuse('no_credits', 'not enough credits', 402)
+        throw e
+      }
+    }
+    const dayGz = (() => { try { return almanacFor(meal.date, 'zh-Hant').dayGz } catch { return null } })()
+    const lang = typeof body?.lang === 'string' ? body.lang : 'zh-Hant'
+    const text = await dailyText({ system: cookieBrief(lang), content: cookieFacts({ food, ask, meal, dayGz }), userId: user.id, accept: t => !!parseCookie(t) }).catch(() => null)
+    const cookie = text ? parseCookie(text) : null
+    if (!cookie) {
+      if (cents) await grantCredits({ userId: user.id, amountCents: cents, kind: 'refund', referenceType: 'xtell', referenceId: 'cookie', description: 'XTell fortune cookie refund (no slip)' }).catch(() => null)
+      return refuse('cookie_failed', 'the cookie could not be cracked', 502)
+    }
+    const chart = { food, ask, meal: { ...meal, key }, shichen: shichenOf(meal.hour), dayGz, ...cookie, charged: cents }
+    // `crack`: every cookie is its own visit. Without it, save() would hand
+    // back an earlier row with the same meal and no questions, and the meal's
+    // count (and the charge from the third) would never move.
+    const readingId = await save(sb, user.id, temple, { food, ask, mealAt: body.mealAt, meal: key, crack: crypto.randomUUID() }, chart, {}, cookie.fortune)
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 

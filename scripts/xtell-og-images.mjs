@@ -16,13 +16,13 @@ const PAPER = '#faf9f6', INK = '#292b29', SECONDARY = '#656761', RULE = '#dedfd8
 
 // The approved sheets' five-by-two order (TempleArtwork.tsx TEMPLE_ART).
 const SHEET = { mazu: 0, guandi: 1, yuelao: 2, simianfo: 3, navagraha: 4, bazi: 5, ziwei: 6, xingming: 7, cezi: 8, zhanxing: 9 }
-const OWN = { yixue: 'yixue-school', jiemeng: 'jiemeng', guanyin: 'guanyin', tarot: 'tarot' }
+const OWN = { yixue: 'yixue-school', jiemeng: 'jiemeng', guanyin: 'guanyin', tarot: 'tarot', cookie: 'cookie' }
 const NAMES = {
   bazi: ['八字廟', 'BaZi Temple'], ziwei: ['紫微斗數廟', 'Zi Wei Temple'], yuelao: ['月老廟', 'Yue Lao Temple'],
   guandi: ['關帝廟', 'Guan Di Temple'], mazu: ['媽祖廟', 'Mazu Temple'], simianfo: ['四面佛', 'Four-Faced Buddha'],
   navagraha: ['九曜廟', 'Navagraha Temple'], zhanxing: ['占星塔', 'Astrology Tower'], xingming: ['姓名學', 'Name Study'],
   cezi: ['測字', 'Character Reading'], yixue: ['易學堂', 'I Ching Hall'], jiemeng: ['周公解夢', 'Dream Hall'],
-  guanyin: ['觀音廟', 'Guanyin Temple'], tarot: ['塔羅館', 'Tarot Parlour'],
+  guanyin: ['觀音廟', 'Guanyin Temple'], tarot: ['塔羅館', 'Tarot Parlour'], cookie: ['幸運餅乾', 'Fortune Cookie'],
 }
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
@@ -34,7 +34,7 @@ async function tile(sheet, index) {
 
 // Square object art (塔羅's fanned cards) is fitted whole on its own paper;
 // everything else fills the column.
-const FIT_WHOLE = { tarot: '#fbf7ee' }
+const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee' }
 async function portrait(key) {
   const img = key in SHEET ? await tile('portraits.avif', SHEET[key]) : sharp(`${A}/${OWN[key]}-portrait.avif`)
   return key in FIT_WHOLE
@@ -66,13 +66,13 @@ async function temple(key) {
 }
 
 async function street() {
-  // Every temple's icon, two rows of seven, under the name.
-  const order = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
-  const S = 112, GAP = 24, left = (W - (7 * S + 6 * GAP)) / 2
+  // Every temple's icon, two rows of eight, under the name.
+  const order = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'xingming', 'cezi', 'yixue', 'jiemeng', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
+  const S = 100, GAP = 22, left = (W - (8 * S + 7 * GAP)) / 2
   const icons = await Promise.all(order.map(async (key, i) => {
     // The clear icons (scripts/xtell-clear-icons.mjs): no paper square on paper.
     const img = key in SHEET ? await tile('icons-clear.avif', SHEET[key]) : sharp(`${A}/${OWN[key]}-icon-clear.avif`)
-    return { input: await img.resize(S, S).toBuffer(), left: Math.round(left + (i % 7) * (S + GAP)), top: 262 + Math.floor(i / 7) * (S + 30) }
+    return { input: await img.resize(S, S).toBuffer(), left: Math.round(left + (i % 8) * (S + GAP)), top: 270 + Math.floor(i / 8) * (S + 30) }
   }))
   const svg = text([
     `<text x="${W / 2}" y="150" text-anchor="middle" font-family="Songti TC" font-size="92" fill="${INK}">X先知</text>`,

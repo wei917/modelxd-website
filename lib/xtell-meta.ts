@@ -34,6 +34,7 @@ export const XTELL_TEMPLE_NAMES: Record<string, Record<Lang, string>> = {
   yixue: {"en": "I Ching Hall", "zh-Hant": "易學堂", "zh-Hans": "易学堂", "ja": "易学堂", "ko": "역학당"},
   jiemeng: {"en": "Dream Hall", "zh-Hant": "周公解夢", "zh-Hans": "周公解梦", "ja": "夢占い（周公解夢）", "ko": "주공해몽"},
   guanyin: {"en": "Guanyin Temple", "zh-Hant": "觀音廟", "zh-Hans": "观音庙", "ja": "観音堂", "ko": "관음사"},
+  cookie: {"en": "Fortune Cookie", "zh-Hant": "幸運餅乾", "zh-Hans": "幸运饼干", "ja": "フォーチュンクッキー", "ko": "포춘 쿠키"},
   tarot: {"en": "Tarot Parlour", "zh-Hant": "塔羅館", "zh-Hans": "塔罗馆", "ja": "タロットの館", "ko": "타로 하우스"},
 }
 const BRAND: Record<Lang, string> = { en: 'XTell', 'zh-Hant': 'X先知', 'zh-Hans': 'X先知', ja: 'X占い', ko: 'X운세' }

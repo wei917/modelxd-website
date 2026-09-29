@@ -327,6 +327,9 @@ five grids 天格/人格/地格/外格/總格, the 81-number 吉凶 convention a
 draw one of a hundred sticks; Chinese pages use the 觀音一百籤 and confirm
 it with a 聖筊, Japanese pages 元三大師's hundred poems, where Japanese
 omikuji come from, with no blocks),
+**幸運餅乾** (fortune cookie: say what you just ate and when, crack a cookie
+for a one-line slip tied to the meal's taste, the hour and the day; two a
+meal free, then one cent each; no lucky numbers),
 **塔羅館** (tarot: write a question, draw one card or three for past, present
 and future, shuffled by your own browser; the original 1909 Waite–Smith cards
 and Waite's own meanings are shown free, then a teacher reads them),

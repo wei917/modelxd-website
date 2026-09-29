@@ -31,6 +31,8 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
         placeOf(s.place), s.mode === 'year' && s.year ? String(s.year) : ''].filter(Boolean).join(' · ')
     case 'navagraha':
       return [born(t, s.birth), placeOf(s.place)].filter(Boolean).join(' · ')
+    case 'cookie':
+      return clip(String(s.food ?? '').replace(/\s+/g, ' '))
     case 'tarot':
       return [s.spread === 'three' ? t('xtell.tarot.spread.three') : t('xtell.tarot.spread.one'), clip(s.ask)].filter(Boolean).join(' · ')
     case 'guandi': case 'mazu': case 'guanyin':
@@ -67,6 +69,7 @@ export function notAskedKey(temple: string): string {
   switch (temple) {
     case 'guandi': case 'mazu': case 'guanyin': return 'xtell.saved.notasked.qian'
     case 'tarot': return 'xtell.saved.notasked.tarot'
+    case 'cookie': return 'xtell.saved.notasked.cookie'
     case 'simianfo': return 'xtell.saved.notasked.wish'
     case 'xingming': return 'xtell.saved.notasked.name'
     case 'cezi': return 'xtell.saved.notasked.char'

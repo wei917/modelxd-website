@@ -22,6 +22,7 @@ import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamFacts, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
 import { asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
+import { cookieFacts } from '@/lib/xtell-cookie'
 
 const LOG = '[xtell/reading]'
 
@@ -53,6 +54,7 @@ const FACTS_HEAD: Record<string, string> = {
   yixue:     '易學堂的對話模式與可核對的經文材料（引用須照錄；僅起卦練習才有系統算定的卦）：',
   jiemeng:   '來訪者的夢與《周公解夢》的相關條目（條目由系統從原書挑出，照錄引用）：',
   guanyin:   '信眾求得的觀音籤（系統從籤筒抽出；籤譜與籤文照錄，勿更動）：',
+  cookie:    '來訪者的一餐與幸運餅乾的籤語（餐別、時辰、干支由系統計算，籤語照錄，勿更動）：',
   tarot:     '來訪者抽出的塔羅牌（系統依瀏覽器洗牌結果排定；牌義照錄韋特原文，勿更動）：',
 }
 
@@ -84,6 +86,9 @@ export async function POST(req: Request) {
   if (isDaily) {
     if (typeof body?.readingId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.readingId)) return refuse('daily_missing', 'daily follow-up needs its visit')
     if (!question.trim()) return refuse('question_required', 'write a question for the teacher')
+  } else if (temple === 'cookie') {
+    // The slip is read from the saved visit, never from the client.
+    if (typeof body?.readingId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.readingId)) return refuse('cookie_missing', 'a cookie reading needs its visit')
   } else if (temple === 'tarot') {
     if (!validPicks(asSpread(body?.spread), body?.picks)) return refuse('cards_invalid', 'bad draw')
   } else if (isQianTemple(temple)) {
@@ -186,9 +191,20 @@ export async function POST(req: Request) {
     if (Array.isArray(visit?.chart?.entries)) dreamLines = visit.chart.entries.map((e: any) => e?.id)
   }
 
+  // 幸運餅乾: the slip, the meal and its 時辰 as saved when the cookie was
+  // cracked, from the visitor's own visit.
+  let cookieChart: any = null
+  if (temple === 'cookie') {
+    const { data: visit } = await sb.from('xtell_readings').select('chart').eq('id', body.readingId).eq('user_id', user.id).eq('temple', 'cookie').maybeSingle()
+    cookieChart = visit?.chart ?? null
+    if (!cookieChart?.fortune) return refuse('cookie_missing', 'that cookie is not saved')
+  }
+
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
-  const facts = daily ? daily.facts : temple === 'jiemeng'
+  const facts = daily ? daily.facts : temple === 'cookie'
+    ? `${cookieFacts({ food: String(cookieChart.food ?? ''), ask: String(cookieChart.ask ?? ''), meal: cookieChart.meal, dayGz: cookieChart.dayGz ?? null })}\n主味：${cookieChart.flavor}（五行屬${cookieChart.element}）\n幸運餅乾的籤語（照錄）：「${cookieChart.fortune}」\n當時的小解說：${cookieChart.note}`
+    : temple === 'jiemeng'
     ? dreamFacts(String(body.dream).trim(), typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : '', dreamEntries(dreamLines))
     : temple === 'yixue'
     // The cast is recomputed from the six line values; the text comes from

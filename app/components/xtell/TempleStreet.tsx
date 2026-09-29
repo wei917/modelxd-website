@@ -5,7 +5,7 @@ import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, displayTemples, artKind, type TempleKey } from './TempleArtwork'
 
 // Also used to validate room hashes. These are the existing API keys.
-export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot'] as const
+export const TEMPLES = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie'] as const
 export type { TempleKey } from './TempleArtwork'
 
 /**
@@ -17,7 +17,7 @@ export type { TempleKey } from './TempleArtwork'
 export const PURPOSES: Array<{ key: 'self' | 'love' | 'question' | 'ritual' | 'learn'; temples: TempleKey[] }> = [
   { key: 'self', temples: ['bazi', 'ziwei', 'zhanxing', 'navagraha', 'xingming'] },
   { key: 'love', temples: ['yuelao', 'zhanxing', 'tarot'] },
-  { key: 'question', temples: ['tarot', 'yixue', 'cezi', 'jiemeng', 'guanyin', 'guandi', 'mazu'] },
+  { key: 'question', temples: ['tarot', 'yixue', 'cezi', 'jiemeng', 'cookie', 'guanyin', 'guandi', 'mazu'] },
   { key: 'ritual', temples: ['guanyin', 'guandi', 'mazu', 'simianfo'] },
   { key: 'learn', temples: ['yixue'] },
 ]
@@ -57,7 +57,7 @@ export default function TempleStreet({ selected, onSelect, onEnter }: {
           </button>
           <details className="xtell-focus-how" key={selected}>
             <summary>{t('xtell.site.focus.how')}</summary>
-            <p>{t(qian ? 'xtell.site.focus.howQian' : selected === 'yixue' ? 'xtell.site.focus.howYixue' : selected === 'tarot' ? 'xtell.site.focus.howTarot' : 'xtell.site.focus.howChart')}</p>
+            <p>{t(qian ? 'xtell.site.focus.howQian' : selected === 'yixue' ? 'xtell.site.focus.howYixue' : selected === 'tarot' ? 'xtell.site.focus.howTarot' : selected === 'cookie' ? 'xtell.site.focus.howCookie' : 'xtell.site.focus.howChart')}</p>
             <p>{t('xtell.site.focus.howReading')}</p>
           </details>
           <p className="xtell-focus-note">{t('xtell.site.focus.signin')}</p>

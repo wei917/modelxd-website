@@ -18,18 +18,18 @@
 import type { Temple } from './xtell'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-28.1'
+export const XTELL_CATALOG_VERSION = '2026-09-28.2'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha'
   | 'zhanxing.natal' | 'zhanxing.synastry' | 'zhanxing.today' | 'zhanxing.year'
-  | 'xingming' | 'cezi' | 'jiemeng' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot'
+  | 'xingming' | 'cezi' | 'jiemeng' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot' | 'cookie'
   | 'daily' | 'almanac' | 'courses'
 
 export type FeatureMode = 'natal' | 'synastry' | 'today' | 'year' | 'ask' | 'lookup' | 'cast'
 
 /** What a room asks for besides the birth records and places. */
-export type FeatureInput = 'wishes' | 'matter' | 'name' | 'gender' | 'character' | 'hexagram' | 'question' | 'year' | 'birth' | 'dream'
+export type FeatureInput = 'wishes' | 'matter' | 'name' | 'gender' | 'character' | 'hexagram' | 'question' | 'year' | 'birth' | 'dream' | 'food'
 
 export type Feature = {
   id: FeatureId
@@ -89,6 +89,9 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'tarot', status: 'live', temple: 'tarot', people: 0, hour: null, place: false, inputs: [], optional: ['matter'],
     free: ['draw'], paid: 'teacher', question: 'matter', label: [room('tarot')],
     about: 'Tarot (塔羅): write what you want to know, choose one card or three (past, present, future), and shuffle; the 1909 Waite–Smith cards are shown free, upright or reversed, with Waite\'s own meanings; the chosen teachers then read them. For love, choices, how things stand.' },
+  { id: 'cookie', status: 'live', temple: 'cookie', people: 0, hour: null, place: false, inputs: ['food'], optional: ['matter'],
+    free: ['draw'], paid: 'teacher', question: 'matter', label: [room('cookie')],
+    about: 'Fortune cookie (幸運餅乾): say what you just ate and when (and, if you like, a question); crack the cookie for a one-line slip and a short note tied to the meal\'s main taste and its element, the hour and the day. Light fun. Two cookies a meal are free; from the third, each costs one cent. No lucky numbers.' },
   { id: 'simianfo', status: 'live', temple: 'simianfo', people: 1, hour: 'optional', place: false, inputs: ['wishes'], optional: [],
     free: ['chart'], paid: 'teacher', question: 'composer', label: [room('simianfo')],
     about: 'Four-Faced Buddha: write a wish to at least one of the four faces (safety, career, marriage, wealth), optionally a pledge; the keeper reads which face this year favours from the visitor\'s BaZi. Wishing, not fortune-telling.' },

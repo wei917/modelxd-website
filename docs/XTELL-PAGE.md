@@ -55,7 +55,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (14 live)
+## Temples (15 live)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -73,6 +73,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
 | 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xtell-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, one 聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28 |
 | 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xtell/tarot/` | The browser shuffles the 78 (Fisher–Yates, crypto) and deals 1 or 3 (past/present/future), each upright/reversed at even odds; only ids travel. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
+| 幸運餅乾 | Fortune cookie | `lib/xtell-cookie.ts` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. A quick house model (Qwen 3.8 Flash via `dailyText`, falling over like the daily reading) names the taste and writes a one-line slip plus a short note; `parseCookie` refuses an unknown taste or **any digit** (no lucky numbers, owner). **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own `xtell_readings` rows by `subject->>meal`; every crack is its own row (`crack` id, or `save()` would reuse the last one). Never re-cracked on a refresh. A teacher can chat about the slip (the slip is read from the saved row). Added Sep 28 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 

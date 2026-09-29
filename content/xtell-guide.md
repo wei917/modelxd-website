@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-28.1 -->
+<!-- xtell-guide version: 2026-09-28.2 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -96,6 +96,15 @@ browser's own randomness, each upright or reversed. They are the original
 1909 Waite–Smith cards, shown free with A. E. Waite's own meaning for each
 (in English, from his 1911 book). Then the chosen teachers read the cards for
 your question. Tarot here is for reflection, not prediction.
+
+### cookie
+幸運餅乾 (Fortune Cookie). Write what you just ate and when (the time
+defaults to now), and a question if you like, then crack the cookie: a
+one-line slip and a short note that tie the meal's main taste and its element
+(sour wood, bitter fire, sweet earth, pungent metal, salty water), the hour
+and the day to the message. Light fun, never a prediction, and no lucky
+numbers. Two cookies a meal are free; from the third, each costs one cent.
+A teacher can chat about the slip afterwards (paid, like every teacher).
 
 ### simianfo
 四面佛 (Four-Faced Buddha). Write a wish to at least one of the four faces
