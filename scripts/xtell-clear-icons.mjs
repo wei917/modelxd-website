@@ -13,7 +13,7 @@
 //
 //   node scripts/xtell-clear-icons.mjs   → icons-clear.avif, yixue-school-icon-clear.avif, jiemeng-icon-clear.avif,
 //                                           guanyin-icon-clear.avif, tarot-icon-clear.avif, cookie-icon-clear.avif,
-//                                           kyusei-icon-clear.avif, sukuyo-icon-clear.avif
+//                                           kyusei-icon-clear.avif, sukuyo-icon-clear.avif, sunzi-icon-clear.avif
 
 import sharp from 'sharp'
 
@@ -72,3 +72,4 @@ await clear('tarot-icon.avif', 'tarot-icon-clear.avif', 300)
 await clear('cookie-icon.avif', 'cookie-icon-clear.avif', 300)
 await clear('kyusei-icon.avif', 'kyusei-icon-clear.avif', 300)
 await clear('sukuyo-icon.avif', 'sukuyo-icon-clear.avif', 300)
+await clear('sunzi-icon.avif', 'sunzi-icon-clear.avif', 300)

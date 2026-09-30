@@ -58,9 +58,8 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   // Sunburst against the object icons); the ring was then redrawn in code
   // with exactly 27 stars. See docs/XTELL-PAGE.md.
   sukuyo: { src: { portrait: '/xtell/approved/sukuyo-portrait.avif', icon: '/xtell/approved/sukuyo-icon.avif', iconClear: '/xtell/approved/sukuyo-icon-clear.avif' }, caption: 'SUKUYO', kind: 'object' },
-  // 孫子兵法 (Sep 29): the whole title in 行楷 brush over a war scene
-  // (mountains, banners, a volley of arrows, a bow, spears), drawn in code
-  // (scripts/xtell-sunzi-art.mjs); the owner chose it from six styles.
+  // 孫子兵法 (Sep 29): the owner's icon, a red war banner over a shield and
+  // rock with 「孫子兵法」 below; see docs/XTELL-PAGE.md.
   sunzi: { src: { portrait: '/xtell/approved/sunzi-portrait.avif', icon: '/xtell/approved/sunzi-icon.avif', iconClear: '/xtell/approved/sunzi-icon-clear.avif' }, caption: 'ART OF WAR', kind: 'object' },
   kyusei: { src: { portrait: '/xtell/approved/kyusei-portrait.avif', icon: '/xtell/approved/kyusei-icon.avif', iconClear: '/xtell/approved/kyusei-icon-clear.avif' }, caption: 'NINE STAR KI', kind: 'object' },
 }

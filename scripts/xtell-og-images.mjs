@@ -36,7 +36,7 @@ async function tile(sheet, index) {
 
 // Square object art (塔羅's fanned cards) is fitted whole on its own paper;
 // everything else fills the column.
-const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee', kyusei: '#fcf8ee', sukuyo: '#fcf8ed', sunzi: '#faf6ed' }
+const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee', kyusei: '#fcf8ee', sukuyo: '#fcf8ed', sunzi: '#fdf7e6' }
 async function portrait(key) {
   const img = key in SHEET ? await tile('portraits.avif', SHEET[key]) : sharp(`${A}/${OWN[key]}-portrait.avif`)
   return key in FIT_WHOLE
