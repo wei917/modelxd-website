@@ -57,7 +57,11 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `117_site_visit_groups_country.sql` (2026-09-30, by the
+  Latest applied: `118_site_visit_summary.sql` (2026-10-01 Taiwan time, by
+  the owner; the range's own numbers for the /admin/traffic tiles; one new
+  function; checked live: one row for the service key that adds up with the
+  daily rows, 42501 for the publishable key), after
+  `117_site_visit_groups_country.sql` (2026-09-30, by the
   owner; /admin/traffic: country filter, stay for signed-in and not signed-in
   browsers, sign-ins by method; three new functions, nothing dropped; checked
   live: rows for the service key from all three, 42501 for the publishable
@@ -66,10 +70,7 @@ rating system (XDRating) surfaced on XBoard.
   for the service key, 42501 for the publishable key), after
   `115_site_visit_daily.sql` (2026-09-29, by the owner; the
   daily numbers behind /admin/traffic; checked live: rows for the service
-  key, 42501 for the publishable key). `118_site_visit_summary.sql` (the
-  range's own numbers for the /admin/traffic tiles; one new function) is
-  written and proven on PGlite, awaiting the owner. Before those:
-  `114_credit_fractions.sql` (2026-09-29, the carry for
+  key, 42501 for the publishable key), after `114_credit_fractions.sql` (2026-09-29, the carry for
   charges under a cent; checked live: the publishable key gets 42501 on
   the table and on `accrue_fraction`), after `113_line_one_account.sql`
   (proven on PGlite, not checked live), `112_line_welcome_credit.sql`
@@ -818,7 +819,8 @@ browsers as median / top 20% / top 10% / average), then fixed charts that
 are always every country (browsers by country, sign-ins by Google / LINE).
 Three service-key functions in `117_site_visit_groups_country.sql`; before
 117 is run the page falls back to `site_visit_daily()` (115, 116), and
-before 118 the tiles are today's and say "today". A tile under a heading
+without 118 (`site_visit_summary()`, applied Oct 1) the tiles are today's and
+say "today". A tile under a heading
 that names a range must be the range's number: on Oct 1 the tiles showed
 today under "Filtered: 14 days", and 20 minutes after midnight the owner
 read "3 active browsers" as the log having been wiped. The stay

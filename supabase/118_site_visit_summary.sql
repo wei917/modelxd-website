@@ -1,5 +1,8 @@
 -- supabase/118_site_visit_summary.sql — /admin/traffic: the numbers for the
 -- whole range.
+-- (Applied by the owner on Oct 1, Taiwan time, and checked live: one row for
+-- the service key, adding up with site_visit_daily_v2's days; the publishable
+-- key gets 42501.)
 --
 -- Owner, Oct 1 (Taiwan time), twenty minutes after midnight there: "did you
 -- removed all data?", "why all countries 14 days active browsers is only 3?",
