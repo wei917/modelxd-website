@@ -8,7 +8,7 @@ import { useT, useLang } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
 import { XTellMark } from './xtell/XTellNav'
 import { XCreateMark } from './xcreate/XCreateNav'
-import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, type LineChannel } from '../../lib/line-login'
+import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
 
 // Same glyphs as Nav's NavIcon (app/components/Nav.tsx) — keep in sync.
 function AuthFeatureIcon({ name }: { name: string }) {
@@ -94,6 +94,7 @@ export default function AuthModal() {
     // decode. Path-only values are unaffected.
     document.cookie = `auth_redirect=${encodeURIComponent(destination)}; path=/; max-age=600; SameSite=Lax`
     if (via === 'line' && line) rememberLineChannel(line)
+    markLineTry(via === 'line' && line ? line : null)
     await supabase.auth.signInWithOAuth({
       provider: (via === 'line' && line ? LINE_CHANNELS[line].provider : 'google') as any,
       options: { redirectTo: `${window.location.origin}/auth/callback` },

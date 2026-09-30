@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useT, useLang } from '../../lib/i18n'
-import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, type LineChannel } from '../../lib/line-login'
+import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
@@ -31,6 +31,7 @@ export default function LoginPage() {
     setLoading(via)
     document.cookie = `auth_redirect=${redirect}; path=/; max-age=600; SameSite=Lax`
     if (via === 'line' && line) rememberLineChannel(line)
+    markLineTry(via === 'line' && line ? line : null)
     await supabase.auth.signInWithOAuth({
       provider: (via === 'line' && line ? LINE_CHANNELS[line].provider : 'google') as any,
       options: { redirectTo: `${window.location.origin}/auth/callback` },

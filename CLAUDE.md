@@ -55,8 +55,9 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `110_trending_rank_range.sql` (2026-09-27; checked live:
-  positive rank CHECK, publish_trending_week EXECUTE for service_role only). Renamed
+  Latest applied: `112_line_welcome_credit.sql` (2026-09-29, by the owner;
+  not checked live). `113_line_one_account.sql` is written and proven on
+  PGlite, awaiting the owner. Renamed
   tables keep their ORIGINAL constraint names (`creates_mode_check` on
   `xcreates`): look a constraint up in `pg_constraint` before dropping it
   by name, or `drop ... if exists` silently misses it (106 did).
@@ -963,8 +964,16 @@ can sit at the table honestly. One act per request; the client loops.
   live (a new region = a provider + an entry in `lib/line-login.ts`, after
   probing its authorize URL for a 302 to access.line.me). The page language
   picks the channel (ja → Japan, zh-Hant → Taiwan, others no button; owner:
-  language only, no geo), and the channel used is remembered per browser so
-  one person does not split into two accounts. A LINE account may have NO email: gates use
+  language only, no geo), and the channel used is remembered per browser
+  (`modelxd_line` cookie on `.modelxd.com`). **One LINE person, one
+  account**: both channels are under one LINE provider, so a person has the
+  SAME LINE id on both, but Supabase finds accounts by (provider, id) and
+  sees two providers. `113_line_one_account.sql` makes `handle_new_user`
+  refuse a LINE sign-up whose id already has an account on the other
+  channel (fails open on any lookup error); GoTrue then answers "Database
+  error saving new user" and `/auth/callback` restarts the sign-in once
+  through the other channel (`modelxd_line_try` says which was tried,
+  `modelxd_line_twin` stops a loop), landing in the existing account. A LINE account may have NO email: gates use
   `isVerifiedAccount()` (`lib/verified-account.ts`), never
   `email_confirmed_at`, and names/photos go through `lib/user-face.ts`
   (OIDC fills `name`/`picture`, not `full_name`/`avatar_url`). LINE

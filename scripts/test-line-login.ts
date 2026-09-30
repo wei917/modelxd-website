@@ -4,7 +4,7 @@
 // Run: npx tsx scripts/test-line-login.ts
 import fs from 'node:fs'
 import path from 'node:path'
-import { lineChannelFor, LINE_CHANNELS } from '../lib/line-login'
+import { lineChannelFor, LINE_CHANNELS, otherLineChannel, lineChannelOfProvider, isNewUserRefusal, lineCookieAttrs, asLineChannel } from '../lib/line-login'
 import { isVerifiedAccount } from '../lib/verified-account'
 import { userName, userPhoto } from '../lib/user-face'
 import { STRINGS } from '../lib/i18n'
@@ -21,6 +21,21 @@ check('a remembered channel wins over the language (one person, one account)', l
 check('both channels are live', LINE_CHANNELS.jp.live && LINE_CHANNELS.tw.live)
 check('junk remembered value is ignored', lineChannelFor({ remembered: 'xx', lang: 'ja' }) === 'jp')
 check('no geo: the layout no longer writes data-country', !read('app/layout.tsx').includes('data-country') && !read('lib/line-login.ts').includes('dataset.country'))
+
+// ── One LINE person, one account (migration 113) ───────────────────────────
+check('the other channel', otherLineChannel('jp') === 'tw' && otherLineChannel('tw') === 'jp')
+check('provider → channel', lineChannelOfProvider('custom:line-jp') === 'jp' && lineChannelOfProvider('custom:line-tw') === 'tw' && lineChannelOfProvider('google') === null)
+check('GoTrue\'s refusal is recognised, other errors are not', isNewUserRefusal('Database error saving new user') && !isNewUserRefusal('access_denied') && !isNewUserRefusal(null))
+check('only jp/tw are channels', asLineChannel('jp') === 'jp' && asLineChannel('xx') === null && asLineChannel(undefined) === null)
+check('the remembered channel is shared by every modelxd.com door, host-only on localhost', lineCookieAttrs('xtell.modelxd.com').includes('domain=.modelxd.com') && !lineCookieAttrs('localhost').includes('domain='))
+const mig = read('supabase/113_line_one_account.sql')
+check('113 refuses a twin and keeps 112 (welcome credit for both channels)', /raise exception 'line_twin/.test(mig) && /\?\| array\['google', 'custom:line-jp', 'custom:line-tw'\]/.test(mig))
+check('113 fails open: a lookup error reads as no twin', /exception when others then\s+v_twin := false/.test(mig))
+const cb = read('app/auth/callback/route.ts')
+check('the callback retries once through the other channel on the refusal', cb.includes('isNewUserRefusal(oauthErrorDesc)') && cb.includes('!cookieStore.get(LINE_TWIN)') && cb.includes('otherLineChannel(triedLine)'))
+check('the callback remembers the channel a LINE account lives on', cb.includes('lineChannelOfProvider(i.provider)'))
+for (const f of ['app/components/AuthModal.tsx', 'app/login/LoginPage.tsx'])
+  check(`${f} marks which channel a sign-in tries (none for Google)`, read(f).includes("markLineTry(via === 'line' && line ? line : null)"))
 
 // ── Verified ───────────────────────────────────────────────────────────────
 check('a Google account with a confirmed email', isVerifiedAccount({ email_confirmed_at: '2026-09-29T00:00:00Z', app_metadata: { provider: 'google' } }))
