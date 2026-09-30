@@ -945,6 +945,17 @@ what changed:
   language so the stand-in writes it; `DAILY_RULES` is `-2`, so rows cached
   before are not served. `leaksChinese` missed it: literary 繁體 has none of
   its marker characters.
+- **Chinese terms in Japanese answers, replaced by code (Sep 30).** The
+  default teacher (Qwen 3.8 Flash, thinking off) wrote 処女座, 月亮, 命主星,
+  大運 in the Jyotish room, 還願 and 參宿 with the glossary in its prompt.
+  `jaTermStream()` (lib/xtell-lang-check.ts) replaces a fixed list per room
+  as the answer streams, holding back 16 characters so a word cut between
+  two pieces is still caught; what is shown is what is saved. The daily
+  reading goes through `fixJaTerms()` before it is saved. **Add a word only
+  if it cannot be part of another Japanese phrase** (合相 is in 「場合相手」;
+  東北 is a region; 「利西南」 is the 易's own text) and add a line to
+  scripts/test-xtell-ja.ts. Off when the visitor wrote without kana, since
+  the teacher then answers in their language.
 - **Teachers contradicted the chart** (a 相害 year called harmonious; 癸 and
   丙 called a 干合; a stem placed in the wrong pillar; 媽祖 given a 大吉 it
   does not have; 売 said to contain 貝; a 爻辭 called a 卦辭). `TONE` now

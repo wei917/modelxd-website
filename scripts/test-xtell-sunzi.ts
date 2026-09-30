@@ -200,6 +200,15 @@ async function routes() {
   check('without the carry (migration 114 not run) the old rounding stands: nothing under half a cent', b2.debits.join() === '1')
   const b3 = await bill([0.0349], [3])
   check('a larger charge bills its whole cents and carries the rest', b3.micros[0] === 34900 && b3.debits.join() === '3')
+  // Japanese pages (Sep 30): the listed Chinese terms are replaced as the
+  // answer streams, even when a word arrives in two pieces.
+  const said = async (body: any) => {
+    const POST = readingRoute([], { '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any) => { for (const d of ['まず白', '話訳：戦う前に勝つ。', 'それから長い説明が続きます。']) cb.onDelta(d); await cb.onDone({ cost: 0 }) } } })
+    const r = await POST(post('http://t/api/xtell/reading', { temple: 'sunzi', modelId: 'm1', situation: '對手降價', ...body }))
+    return (await r.text()).split('\n').filter((l: string) => l.startsWith('data:')).map((l: string) => { try { return JSON.parse(l.slice(5)).text ?? '' } catch { return '' } }).join('')
+  }
+  check('a Japanese answer streams with its terms replaced, whole to the last character', await said({ lang: 'ja', question: 'まず何をすべきですか？' }) === 'まず現代語訳：戦う前に勝つ。それから長い説明が続きます。')
+  check('…but not when the visitor wrote in Chinese, or on another page language', (await said({ lang: 'ja', question: '第一步該做什麼？' })).includes('白話訳') && (await said({ lang: 'zh-Hant', question: 'まず何を' })).includes('白話訳'))
   const mig = fs.readFileSync(path.join(__dirname, '..', 'supabase', '114_credit_fractions.sql'), 'utf8')
   check('114: the carry is service-role only, by name', /revoke all on function public\.accrue_fraction\(uuid, bigint\) from public, anon, authenticated/.test(mig) && /grant execute on function public\.accrue_fraction\(uuid, bigint\) to service_role/.test(mig) && /enable row level security/.test(mig))
 

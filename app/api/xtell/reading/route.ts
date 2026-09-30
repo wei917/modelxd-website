@@ -24,7 +24,7 @@ import { situationProblem, sunziLines, sunziFacts, ASK_MAX as SUNZI_ASK_MAX } fr
 import { asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieFacts } from '@/lib/xtell-cookie'
-import { chineseLeak, leaksChinese } from '@/lib/xtell-lang-check'
+import { chineseLeak, leaksChinese, jaTermStream } from '@/lib/xtell-lang-check'
 import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 import { sukuyoChart, sukuyoFacts, asPartnerDate } from '@/lib/sukuyo'
 
@@ -346,16 +346,24 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // A Japanese answer has its listed Chinese terms replaced as it streams
+      // (lib/xtell-lang-check.ts): what is shown, saved and shared is the
+      // same text. Not when the visitor wrote in another language, where the
+      // teacher answers in theirs.
+      const fix = body?.lang === 'ja' && (!question || /[ぁ-ゖァ-ヺ]/.test(question))
+        ? jaTermStream(daily ? (daily.method === 'western' ? 'zhanxing' : 'daily') : temple) : null
+      const show = (text: string) => { if (text) { full += text; controller.enqueue(sse('delta', { text })) } }
       await providers.streamText(
         model as any,
         messages,
         {
-          onDelta: (text) => { full += text; controller.enqueue(sse('delta', { text })) },
+          onDelta: (text) => show(fix ? fix.push(text) : text),
           // The save and the debit are AWAITED before the stream closes:
           // Vercel freezes the function the moment the response ends, and a
           // fire-and-forget write started here can be cut off. The first
           // live test lost exactly one appended turn that way (Sep 24).
           onDone: async (r) => {
+            if (fix) show(fix.end())
             // Whole cents due now: this answer's cost joins what earlier
             // answers left under a cent (supabase/114). Until that migration
             // runs, the old rounding, which bills nothing below half a cent.
@@ -397,6 +405,7 @@ export async function POST(req: Request) {
             controller.close()
           },
           onError: (msg) => {
+            if (fix) show(fix.end())
             controller.enqueue(sse('error', { message: sanitizeProviderError(msg) }))
             controller.close()
           },

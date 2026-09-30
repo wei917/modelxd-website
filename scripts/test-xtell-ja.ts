@@ -141,5 +141,32 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
   check('易: a 卦辭 is quoted whole (井 was cut before 「凶」)', read('lib/xtell.ts').includes('引卦辭或爻辭要整句照錄到句末'))
   check('an XTell charge is filed under its visit, and the history names it XTell', route.includes("referenceId: readingId ?? (model as any).id") && read('app/profile/page.tsx').includes("xtell: 'XTell',"))
 }
+// Chinese terms the default teacher keeps writing in Japanese answers,
+// replaced by code (Sep 30).
+{
+  const { fixJaTerms, jaTermStream } = require('../lib/xtell-lang-check')
+  const route = read('app/api/xtell/reading/route.ts')
+  check('西洋占星: sign names, 月亮, 星盤, 命主星', fixJaTerms('太陽は処女座、月亮は巨蟹座、命主星は水星。星盤では摩羯座と雙魚座。', 'zhanxing') === '太陽は乙女座、月は蟹座、チャートルーラーは水星。ホロスコープでは山羊座と魚座。')
+  check('correct Japanese is left alone', ['乙女座と蟹座と山羊座、月は魚座。', 'この場合相手の都合相談を。', '東北地方へ。「利西南、不利東北」。', '事業と婚姻。'].every(t => ['zhanxing', 'navagraha', 'sukuyo', 'simianfo', 'yixue', 'bazi'].every(r => fixJaTerms(t, r) === t)))
+  check('インド占星: 大運 is ダシャー, a glossed pair is said once', fixJaTerms('現在の「土星の大運」は2044年まで。大運（マハダシャ）の中の副運（アンタルダシャ）。マハーダシャーとアンタルダシャー。', 'navagraha') === '現在の「土星のダシャー」は2044年まで。マハーダシャーの中のアンタルダシャー。マハーダシャーとアンタルダシャー。')
+  check('…but never inside 最大運勢 or 大運勢, and only in that room', fixJaTerms('今年最大運勢の年、大運勢。', 'navagraha') === '今年最大運勢の年、大運勢。' && fixJaTerms('大運は甲申。', 'bazi') === '大運は甲申。' && fixJaTerms('大運は甲申。', 'simianfo') === '大運は甲申。')
+  check('宿曜 new-form names; 四面仏 お礼参り and 願掛け; 現代語訳 everywhere', fixJaTerms('今日は參宿、明日は虛宿。', 'sukuyo') === '今日は参宿、明日は虚宿。' && fixJaTerms('還願の方法を決め、許願する。', 'simianfo') === 'お礼参りの方法を決め、願掛けする。' && fixJaTerms('白話訳：村は移っても。白話：井戸。白話小説は別。', 'yixue') === '現代語訳：村は移っても。現代語訳：井戸。白話小説は別。')
+  check('replacing twice changes nothing more', ['太陽は処女座、月亮は巨蟹座。', '大運（マハダシャ）と副運。'].every(t => fixJaTerms(fixJaTerms(t, 'navagraha'), 'navagraha') === fixJaTerms(t, 'navagraha')))
+  // However the provider cuts the answer into pieces, the page gets the same text.
+  const long = 'あなたの太陽は処女座、月亮は巨蟹座にあります。大運（マハダシャ）は土星、副運（アンタルダシャ）も土星です。今年最大運勢の時期で、命主星は水星😀。マハダシャ'
+  const whole = fixJaTerms(long, 'navagraha')
+  let same = true
+  for (const size of [1, 2, 3, 5, 7, 11, 16, 17, 40]) {
+    const st = jaTermStream('navagraha'); let out = ''
+    for (let i = 0; i < long.length; i += size) out += st.push(long.slice(i, i + size))
+    out += st.end()
+    if (out !== whole) same = false
+  }
+  check('streamed in pieces of any size, the text is the same as replaced whole', same && whole.endsWith('マハーダシャー') && whole.includes('😀'))
+  const st = jaTermStream('zhanxing'); const parts = ['太陽は処', '女座です。それから長い文章が続きます、'].map(c => st.push(c))
+  check('a word split across two pieces is still replaced, and nothing half-written is shown', !parts.join('').includes('処') && (parts.join('') + st.end()) === '太陽は乙女座です。それから長い文章が続きます、')
+  check('the reading route streams through it on Japanese pages, and saves what it showed', route.includes("onDelta: (text) => show(fix ? fix.push(text) : text)") && route.includes('if (fix) show(fix.end())') && /body\?\.lang === 'ja' && \(!question \|\| \/\[ぁ-ゖァ-ヺ\]\/\.test\(question\)\)/.test(route))
+  check('the daily reading is replaced before it is saved', read('app/api/xtell/daily/route.ts').includes("fixJaTerms(text, m === 'western' ? 'zhanxing' : 'daily')"))
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall Japanese copy checks passed')
 if (fails) process.exit(1)

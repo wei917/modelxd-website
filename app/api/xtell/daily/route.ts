@@ -17,7 +17,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { ndjsonResponse } from '@/lib/partial-json'
 import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
 import { dailyText } from '@/lib/xtell-daily-model'
-import { inLanguage } from '@/lib/xtell-lang-check'
+import { inLanguage, fixJaTerms } from '@/lib/xtell-lang-check'
 import {
   DAILY_METHODS, DAILY_RULES, asDailyLang, dailyBases, basisFacts, dailyBrief, parseDailyReading, profileProblem,
   type DailyMethod, type DailyProfile, type DailyBases,
@@ -84,7 +84,10 @@ export async function POST(req: Request) {
         system: dailyBrief(m, lang), content: basisFacts(m, bases), userId: user.id, accept: t => { const r = parseDailyReading(t); return !!r && inLanguage([r.summary, ...r.themes, r.reflect, r.why].join(' '), lang) },
         onDelta: emit && (d => emit({ t: 'd', m, d })), onRestart: emit && (() => emit({ t: 'restart', m })),
       })
-      reading = text ? parseDailyReading(text) : null
+      // Japanese: the listed Chinese terms (処女座, 月亮 …) are replaced by
+      // code before the day is saved (lib/xtell-lang-check.ts). The words
+      // hold no quote or backslash, so the JSON still parses.
+      reading = text ? parseDailyReading(lang === 'ja' ? fixJaTerms(text, m === 'western' ? 'zhanxing' : 'daily') : text) : null
       // Generic on purpose: never the model's text or the profile.
       if (!reading) console.warn('[xtell/daily] no readable reply')
     } catch {
