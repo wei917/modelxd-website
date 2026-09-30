@@ -55,11 +55,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `112_line_welcome_credit.sql` (2026-09-29, by the owner;
-  not checked live), after `111_xcreate_films.sql` (2026-09-29; checked
-  live: the film tables answer the service key only, publishable key
-  42501). `113_line_one_account.sql` is written and proven on PGlite,
-  awaiting the owner. Renamed
+  Latest applied: `113_line_one_account.sql` (2026-09-29, by the owner;
+  proven on PGlite first, not checked live), after `112_line_welcome_credit.sql`
+  and `111_xcreate_films.sql` (2026-09-29; checked live: the film tables
+  answer the service key only, publishable key 42501). Renamed
   tables keep their ORIGINAL constraint names (`creates_mode_check` on
   `xcreates`): look a constraint up in `pg_constraint` before dropping it
   by name, or `drop ... if exists` silently misses it (106 did).
