@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-29.4 -->
+<!-- xtell-guide version: 2026-09-29.5 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -88,6 +88,8 @@ and English pages the sticks are the 觀音一百籤 used across Taiwan
 (graded 大吉 to 凶), the set Japanese おみくじ come from, drawn with no
 blocks. A name, city and birth date can be
 added for context. A gentle room for worries, family and peace of mind.
+On Japanese pages every stick at 觀音, 關帝 and 媽祖 also shows a 書き下し文 and a
+modern Japanese translation under its poem, written by AI and labelled so.
 
 ### tarot
 塔羅 (Tarot). Write what you want to know, choose one card (an answer) or

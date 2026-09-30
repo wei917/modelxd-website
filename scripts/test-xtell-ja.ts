@@ -96,5 +96,33 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
   check('…and the situation written at 孫子兵法', /孫子/.test(S['legal.privacy.xtell'].ja) && /孫子兵法/.test(read('app/privacy/page.tsx')))
   check('the history is grouped by temple', read('app/components/xtell/XTellActivity.tsx').includes('xtell-history-group') && LANGS.every(l => S['xtell.site.historyCount']?.[l]?.includes('{n}')))
 }
+// ── 書き下し and translations for the temple poems (Sep 29) ────────────────
+{
+  const file = JSON.parse(read('content/qian/kundoku-ja.json'))
+  const old = JSON.parse(read('content/names/kyujitai.json')) as Record<string, string>
+  const sets = ['guandi', 'mazu', 'guanyin-gansan']
+  const poems = sets.flatMap(set => (JSON.parse(read(`content/qian/${set}.json`)) as any[]).map(q => ({ id: `${set}:${q.n}`, poem: q.poem as string[] })))
+  const missing = poems.filter(p => !file.items[p.id])
+  check('every poem of 關帝, 媽祖 and 元三大師 観音百籤 has a Japanese reading (260)', poems.length === 260 && missing.length === 0, missing.slice(0, 5).map(p => p.id).join(' '))
+  check('one 書き下し line a line of the poem, and a translation', poems.every(p => { const r = file.items[p.id]; return r && r.kundoku.length === p.poem.length && r.kundoku.every((l: string) => l.trim()) && r.modern.trim().length >= 10 }))
+  // A 書き下し keeps most of its poem's kanji (in Japanese forms): a reading
+  // attached to the wrong poem would share few.
+  const share = (p: { id: string; poem: string[] }) => {
+    const k = [...file.items[p.id].kundoku.join('')]
+    const have = new Set([...k, ...k.map(c => old[c] ?? c)])
+    const chars = [...p.poem.join('')]
+    return chars.filter(c => have.has(c)).length / chars.length
+  }
+  const thin = poems.filter(p => file.items[p.id] && share(p) < 0.5)
+  check('each 書き下し is of its own poem (at least half the poem\'s kanji are in it)', thin.length === 0, thin.slice(0, 5).map(p => `${p.id} ${share(p).toFixed(2)}`).join(' '))
+  const kana = (t: string) => /[ぁ-ゖ]/.test(t)
+  check('they are Japanese (kana in every line and translation), with no Simplified forms', poems.every(p => { const r = file.items[p.id]; return r && r.kundoku.every(kana) && kana(r.modern) }) && !/[们这说还给为么样让应关发经实问题从动种边头两见长门开间东车书习过时对气吗呢]/.test(JSON.stringify(file.items)))
+  check('the file says who wrote it', /AI/.test(file.source.what) && typeof file.source.model === 'string')
+  const xt = require('../lib/xtell')
+  const q = xt.qianOf(20, 'guanyin', 'gansan')
+  check('a stick carries its reading; the 一百籤 edition (Chinese pages) has none', q.ja?.kundoku.length === 4 && !xt.qianOf(20, 'guanyin', 'yibai').ja && xt.qianOf(26, 'guandi').ja && xt.qianOf(59, 'mazu').ja)
+  check('a Japanese answer is handed the reading and told not to write its own; other languages are not', xt.guandiFacts(q, '', 'guanyin', 'gansan', 'ja').includes(q.ja.kundoku[0]) && /不要自行另作訓讀/.test(xt.guandiFacts(q, '', 'guanyin', 'gansan', 'ja')) && !xt.guandiFacts(q, '', 'guanyin', 'gansan', 'zh-Hant').includes(q.ja.kundoku[0]))
+  check('the card shows both on Japanese pages, labelled as the AI\'s', read('app/xtell/client.tsx').includes("lang === 'ja' && qian.ja") && S['xtell.qian.kundoku'].ja.includes('AI') && S['xtell.qian.modern'].ja.includes('AI'))
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall Japanese copy checks passed')
 if (fails) process.exit(1)

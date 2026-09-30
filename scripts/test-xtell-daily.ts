@@ -127,7 +127,7 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('daily strings in all five languages', keys.length >= 100 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), String(keys.length))
   check('user copy has no engine, library or source wording', !keys.some(k => /lunar-typescript|astronomy-engine|Swiss|library|engine|ephemeris/i.test(JSON.stringify((STRINGS as any)[k]))))
   check('the delete confirmation names what goes, and what does not', LANGS.every(l => (STRINGS as any)['xtell.dy.deleteConfirm'][l].length > 20) && /birth details/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /paid conversations/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /other temple visits are not affected/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en) && /cannot be undone/.test((STRINGS as any)['xtell.dy.deleteConfirm'].en))
-  check('catalog: daily is live and free', catalog.liveFeature('daily')?.opens === 'daily' && catalog.XTELL_CATALOG_VERSION === '2026-09-29.4')
+  check('catalog: daily is live and free', catalog.liveFeature('daily')?.opens === 'daily' && catalog.XTELL_CATALOG_VERSION === '2026-09-29.5')
   const qwen = (name: string) => ({ provider: 'alibaba', model_name: name, output_config: { text: { thinking_levels: ['thinking_true', 'thinking_false'] } } })
   check('Qwen starts with thinking off, Flash too (Sep 29); others keep their own default', presets.defaultThinking(qwen('qwen3.8-flash')) === 'thinking_false' && presets.defaultThinking(qwen('qwen3.8-max')) === 'thinking_false' && presets.defaultThinking({ provider: 'openai', model_name: 'gpt-6-luna' }) === null)
   {

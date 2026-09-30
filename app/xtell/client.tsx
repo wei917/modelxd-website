@@ -2172,6 +2172,20 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
           <div key={i} style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 700, letterSpacing: 3, lineHeight: 1.8 }}>{l}</div>
         ))}
       </div>
+      {/* Japanese pages: the 書き下し文 and a modern translation, as a Japanese
+          おみくじ prints them. Written once by an AI and labelled so. */}
+      {lang === 'ja' && qian.ja && Array.isArray(qian.ja.kundoku) && (
+        <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+          <div>
+            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.qian.kundoku')}</div>
+            {qian.ja.kundoku.map((l: string, i: number) => <div key={i} style={{ fontSize: 14.5, lineHeight: 1.85 }}>{l}</div>)}
+          </div>
+          <div>
+            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.qian.modern')}</div>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8, color: 'var(--muted)' }}>{qian.ja.modern}</p>
+          </div>
+        </div>
+      )}
       {Object.keys(qian.sections ?? {}).length > 0 && <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xtell.qian.notes.mazu' : 'xtell.qian.notes')}</div>}
       <div style={{ display: 'grid', gap: 10 }}>
         {Object.entries(qian.sections as Record<string, string>).map(([name, text]) => (

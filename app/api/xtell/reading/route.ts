@@ -40,7 +40,7 @@ const JA_TERMS = '用語は日本で使われる言い方にすること：西�
 const LANG_LINE: Record<string, string> = {
   'zh-Hant': '回答語言：繁體中文，全文不得夾雜簡體字。',
   'zh-Hans': '回答语言：简体中文。',
-  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に読みか短い説明を添える（例：日主（にっしゅ）、流年（りゅうねん））。読みに確信がないときは読みを付けない。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける；漢文の書き下し文は確信が持てなければ書かず、現代語訳だけにする。' + JA_TERMS,
+  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に読みか短い説明を添える（例：日主（にっしゅ）、流年（りゅうねん））。読みに確信がないときは読みを付けない。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける；資料におみくじの書き下し文と現代語訳が付いているときは、それをそのまま使う；付いていない漢文の書き下し文は確信が持てなければ書かず、現代語訳だけにする。' + JA_TERMS,
   'ko': '답변 언어: 한국어. 명리 용어는 한자를 병기하고 필요하면 짧은 설명을 덧붙일 것 (예: 일주(日主), 유년(流年)).',
   'en': 'Answer in English. Keep the Chinese terms in parentheses the first time each appears (e.g. day master 日主, the year\'s flow 流年) and do not translate proper names of stars or palaces without also giving the Chinese.',
 }
@@ -297,7 +297,7 @@ export async function POST(req: Request) {
         // The poem comes from disk by number; the client's copy is never used.
         ? (() => {
           const edition = asQianEdition(body?.edition)
-          const base = guandiFacts(qianOf(body.n, temple, edition)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple, edition)
+          const base = guandiFacts(qianOf(body.n, temple, edition)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '', temple, edition, typeof body?.lang === 'string' ? body.lang : undefined)
           const bz = validBirth(body?.birth) ? baziChart(body.birth) : null
           const extra = bingGaoFacts(validBingGao(body), bz, body?.birth?.gender ?? '', body?.birth?.hourUnknown === true, bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : null)
           return extra ? `${base}\n\n${extra}` : base

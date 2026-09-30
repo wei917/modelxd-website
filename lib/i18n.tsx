@@ -1990,6 +1990,8 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.mazu.desc':     { en: 'The sixty 甲子 sticks of the sea goddess, as drawn at Zhenlan and Chaotian temples. Travel, safety, home, trade. Draw, throw the blocks, read.', 'zh-Hant': '天上聖母六十甲子籤，鎮瀾宮、朝天宮用的那一套。出行、平安、家宅、生意。抽籤、擲筊、解籤。', 'zh-Hans': '天上圣母六十甲子签，镇澜宫、朝天宫用的那一套。出行、平安、家宅、生意。抽签、掷筊、解签。', ja: '海の女神・媽祖の六十甲子籤。旅、平安、家、商い。籤を引き、ポエ（筊）を投げ、詩を読む。', ko: '바다의 여신 마조의 육십갑자 제비. 여행, 평안, 집, 장사. 뽑고, 던지고, 풀이합니다.' },
   'xtell.mazu.intro':    { en: 'The stick is confirmed. Tell the master what you asked Mazu about, or say 請老師解籤.', 'zh-Hant': '籤已允。告訴老師你向媽祖問的是什麼事，或直接說「請老師解籤」。', 'zh-Hans': '签已允。告诉老师你向妈祖问的是什么事，或直接说"请老师解签"。', ja: '籤が認められました。媽祖に何を尋ねたかを先生に伝えるか、「おみくじを読んでください」と言ってください。', ko: '제비가 허락되었습니다. 마조께 무엇을 물었는지 스승에게 말하거나 「해첨을 부탁합니다」라고 하세요.' },
   'xtell.qian.notes.mazu': { en: 'Stories behind the stick', 'zh-Hant': '卦頭故事', 'zh-Hans': '卦头故事', ja: '籤にまつわる故事', ko: '괘두 고사' },
+  "xtell.qian.kundoku": {"en": "Japanese reading (AI)", "zh-Hant": "日文訓讀（AI）", "zh-Hans": "日文训读（AI）", "ja": "書き下し文（AI）", "ko": "일본어 훈독 (AI)"},
+  "xtell.qian.modern": {"en": "Modern Japanese (AI)", "zh-Hant": "日文現代語譯（AI）", "zh-Hans": "日文现代语译（AI）", "ja": "現代語訳（AI）", "ko": "현대 일본어 번역 (AI)"},
   "xtell.qian.mazu.luck": {"en": "{el}: favours {season}, the {dir}", "zh-Hant": "屬{el}利{season} 宜其{dir}", "zh-Hans": "属{el}利{season} 宜其{dir}", "ja": "五行は{el}・{season}によく、{dir}がよい", "ko": "오행 {el} · {season}에 좋고 {dir}이 좋음"},
   "xtell.qian.mazu.season.春": {"en": "spring", "zh-Hant": "春", "zh-Hans": "春", "ja": "春", "ko": "봄"},
   "xtell.qian.mazu.season.夏": {"en": "summer", "zh-Hant": "夏", "zh-Hans": "夏", "ja": "夏", "ko": "여름"},

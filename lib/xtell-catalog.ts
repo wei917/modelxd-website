@@ -19,7 +19,7 @@ import type { Temple } from './xtell'
 import { XTELL_TEMPLE_NAMES } from './xtell-meta'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-29.4'
+export const XTELL_CATALOG_VERSION = '2026-09-29.5'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'kyusei' | 'sukuyo'

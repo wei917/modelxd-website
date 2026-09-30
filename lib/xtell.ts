@@ -1063,6 +1063,12 @@ export type Qian = {
   story: string
   poem: string[]
   sections: Record<string, string>
+  /** 書き下し文 (one line a line of the poem) and a modern Japanese
+   *  translation, written once by an AI (content/qian/kundoku-ja.json,
+   *  scripts/translate-qian-ja.ts) and labelled so on the page. Japanese
+   *  おみくじ print both; teachers improvising a 書き下し got it wrong
+   *  (「先有滯」 read 「さきにつよいあり」, a test round, Sep 29). */
+  ja?: { kundoku: string[]; modern: string }
 }
 
 // One corpus per 求籤 temple. 關帝: 100 sticks, six Qing commentaries.
@@ -1081,15 +1087,26 @@ export function qianCorpus(temple: QianTemple = 'guandi', edition: QianEdition =
 }
 /** Kept for the golden suite's older import. */
 export const guandiQian = () => qianCorpus('guandi')
+let qianJa: Record<string, { kundoku: string[]; modern: string }> | null = null
+/** The Japanese readings, keyed '<file stem>:<n>'; empty if the file is not there. */
+function qianJaOf(temple: QianTemple, edition: QianEdition, n: number) {
+  if (!qianJa) {
+    try { qianJa = JSON.parse(readFileSync(join(process.cwd(), 'content', 'qian', 'kundoku-ja.json'), 'utf-8')).items ?? {} } catch { qianJa = {} }
+  }
+  return qianJa![`${QIAN_FILE[corpusKey(temple, edition)].replace(/\.json$/, '')}:${n}`] ?? null
+}
 export function qianOf(n: number, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): Qian | null {
-  return qianCorpus(temple, edition).find(q => q.n === n) ?? null
+  const q = qianCorpus(temple, edition).find(x => x.n === n)
+  if (!q) return null
+  const ja = qianJaOf(temple, edition, n)
+  return ja && ja.kundoku.length === q.poem.length ? { ...q, ja } : q
 }
 export function validQian(n: unknown, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): n is number {
   return Number.isInteger(n) && (n as number) >= 1 && (n as number) <= qianCorpus(temple, edition).length
 }
 
 /** The 籤 as facts: number, luck, the poem, every commentary the edition carries. */
-export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai'): string {
+export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi', edition: QianEdition = 'yibai', lang?: string): string {
   const sections = Object.entries(q.sections).map(([k, v]) => `${k}：${v}`).join('\n')
   const notesHead = temple === 'guandi' ? '本籤註解（清刊本原文，可直接引用，標明出處）：' : '本籤所附（原文，可直接引用）：'
   return [
@@ -1100,6 +1117,8 @@ export function guandiFacts(q: Qian, ask: string, temple: QianTemple = 'guandi',
     q.luck ? '' : '吉凶：此籤籤紙不標吉凶（照原籤）；解籤時不要自行定上下吉凶，就詩意說。',
     q.story ? `典故：${q.story}` : '',
     `籤詩：\n${q.poem.map(l => '  ' + l).join('\n')}`,
+    // A Japanese answer quotes this reading; it does not make up its own.
+    lang === 'ja' && q.ja ? `籤詩的日文訓讀（書き下し文，頁面上已顯示；以日文回答時照錄這一版，不要自行另作訓讀）：\n${q.ja.kundoku.map(l => '  ' + l).join('\n')}\n籤詩的日文現代語譯（頁面上已顯示，可引用）：${q.ja.modern}` : '',
     sections ? `${notesHead}\n${sections}` : '',
     needsJiao(temple, edition) ? `擲筊：聖筊為允，此籤已由${QIAN_DEITY[temple]}允准。` : '求籤方式：元三大師百籤不擲筊，搖籤筒得籤；籤即是答。',
   ].filter(Boolean).join('\n')

@@ -978,9 +978,18 @@ what changed:
   cookie slip about "credits" is not drawn.
 - **Account history grouped by temple** (owner, same day): one `<details>` a
   temple in `XTellActivity`, the temple visited last on top and open.
-- **Not done:** fixed 書き下し and translations for the 260 temple poems
-  (teachers improvise kanbun readings and get them wrong); a one-time AI
-  job that needs a budget.
+- **書き下し and translations for the 260 temple poems** (owner: "spend", up
+  to $5): 關帝 100, 媽祖 60 and 元三大師 観音百籤 100 each have a 書き下し
+  文 (a line a line of the poem) and a modern Japanese translation in
+  `content/qian/kundoku-ja.json`, written once by Claude Opus 5.5
+  (`scripts/translate-qian-ja.ts`, ten poems a call, resumable, capped).
+  Measured on five poems first: Opus $0.0078 a poem, GPT-6 Astra $0.022
+  with readings no better. Spent $1.96 in all. Three lines the model left
+  as bare kanji were completed by hand. `qianOf()` attaches them as
+  `qian.ja`; Japanese pages show both under the poem, labelled (AI); a
+  Japanese answer is handed the same reading and told not to write its own
+  (`guandiFacts(…, lang)`). The 清刊本 notes of 關帝 (聖意, 東坡解 …) are
+  still Chinese only; the teacher explains them.
 
 ## Each market's order (Sep 28)
 
