@@ -369,7 +369,11 @@ earlier than the Western one and that is the zodiac, not a bug), **九星気学*
 directions to favour and to avoid for a move or a trip; it is not 九曜),
 **宿曜占星術** (Sukuyō, brought to Japan by 空海: the birth mansion among the 27
 by the lunar calendar, what today is to it, and with a partner's birthday the
-two people's relation), and **易學堂**
+two people's relation), **孫子兵法** (The Art of War, for what to do next,
+not fortune-telling: describe a situation you face and the lines of Sunzi's
+thirteen chapters that speak to it are picked by a quick AI and shown free
+with a plain translation; a strategist teacher turns them into concrete next
+steps and never helps deceive or harm anyone), and **易學堂**
 (the I Ching school: three rooms. 起卦 — write one matter, throw three coins
 six times on screen, and the hexagram, its changing lines, the resulting
 hexagram and WHICH passage to read are computed by 朱熹's rule from 《易學啟蒙》;

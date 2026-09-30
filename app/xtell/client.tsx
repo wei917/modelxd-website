@@ -57,7 +57,7 @@ import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, t
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi'
 /** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
 const localNow = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu' || t === 'guanyin'
@@ -108,6 +108,8 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => i)
 const HOUR_REQUIRED: Temple[] = ['ziwei', 'navagraha']
 /** lib/jiemeng.ts DREAM_MAX (that module reads the book from disk: server only). */
 const DREAM_MAX = 1500
+/** lib/sunzi.ts SITUATION_MAX, for the same reason. */
+const SITUATION_MAX = 1500
 /** Temples whose saved chart is recomputed (without saving) when a visit is
  *  reopened, so a record saved before the unknown-hour fix shows no 時柱 and
  *  a correct 合盤. Charts that move with today's date (紫微 流年, 占星 今日)
@@ -147,7 +149,7 @@ function setReadingParam(id: string | null) {
 /** The same checks the routes make, run on a subject before it is sent, and
  *  on a saved subject before its chart is shown. Null when it is fine. */
 function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
-  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'tarot' && temple !== 'cookie'
+  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'sunzi' && temple !== 'tarot' && temple !== 'cookie'
   if (needsBirth || (isQian(temple) && subj?.birth)) {
     const p = birthProblem(subj?.birth)
     if (p) return `birth_${p}`
@@ -167,6 +169,8 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
   // lib/jiemeng.ts dreamProblem, mirrored.
   if (temple === 'cookie') { const bad = cookieProblem(subj?.food, subj?.mealAt); if (bad) return bad }
   if (temple === 'jiemeng') { const d = String(subj?.dream ?? ''); if (!d.trim()) return 'dream_required'; if (d.length > DREAM_MAX) return 'dream_too_long' }
+  // lib/sunzi.ts situationProblem, mirrored.
+  if (temple === 'sunzi') { const d = String(subj?.situation ?? ''); if (!d.trim()) return 'situation_required'; if (d.length > SITUATION_MAX) return 'situation_too_long' }
   return null
 }
 
@@ -182,6 +186,7 @@ function fieldOf(code: string | null): string | null {
   if (code.startsWith('char_')) return 'char'
   if (code === 'wish_required') return 'wishes'
   if (code.startsWith('dream_')) return 'dream'
+  if (code.startsWith('situation_')) return 'situation'
   if (code.startsWith('food_')) return 'food'
   if (code === 'meal_time_invalid') return 'mealAt'
   if (code === 'place_invalid') return 'place'
@@ -201,6 +206,7 @@ function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): st
   if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xtell.${subj.gender}`)}`
   if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
   if (temple === 'jiemeng') { const d = String(subj.dream ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
+  if (temple === 'sunzi') { const d = String(subj.situation ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
   if (temple === 'cookie') return `${String(subj.food ?? '').slice(0, 40)}${subj.mealAt ? ` · ${String(subj.mealAt).replace('T', ' ')}` : ''}`
   if (isQian(temple) || temple === 'tarot') return subj.ask ? String(subj.ask).slice(0, 60) : ''
   return `${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}`
@@ -473,6 +479,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const [given, setGiven] = useState(init.given ?? '')
   const [ch, setCh] = useState(init.ch ?? '')
   const [dream, setDream] = useState(init.dream ?? '')
+  // 孫子兵法: the situation as the visitor tells it (+ the shared `ask`).
+  const [situation, setSituation] = useState(init.situation ?? '')
   // 幸運餅乾: what was eaten, and when (the phone's local time, editable).
   const [food, setFood] = useState<string>(init.food ?? '')
   const [mealAt, setMealAt] = useState<string>(typeof init.mealAt === 'string' ? init.mealAt : localNow())
@@ -705,6 +713,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask }
+    // 孫子兵法: `lang` is the language of the free translations.
+    : temple === 'sunzi' ? { temple, situation: situation.trim(), ask: ask.trim(), lang }
     : temple === 'cookie' ? { temple, food: food.trim(), mealAt, ask: ask.trim(), lang }
     : temple === 'yixue' ? {
         temple, mode: yixueMode,
@@ -912,6 +922,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
           // 解夢: the line numbers shown, used only when the visit was not saved.
           ...(temple === 'jiemeng' ? { entries: (Array.isArray(chart?.entries) ? chart.entries : []).map((e: any) => e.id) } : {}),
+          // 孫子兵法: the same, the line numbers shown.
+          ...(temple === 'sunzi' ? { lines: (Array.isArray(chart?.lines) ? chart.lines : []).map((l: any) => l.id) } : {}),
           search: optsOf(m).search && searchable(m),
           thinking: optsOf(m).thinking,
           lang,
@@ -1141,6 +1153,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             <CookieForm food={food} setFood={setFood} mealAt={mealAt} setMealAt={setMealAt} ask={ask} setAsk={setAsk} sel={sel} foodAria={fieldAria('food')} mealAria={fieldAria('mealAt')} />
           ) : temple === 'jiemeng' ? (
             <DreamForm dream={dream} setDream={setDream} ask={ask} setAsk={setAsk} sel={sel} dreamAria={fieldAria('dream')} />
+          ) : temple === 'sunzi' ? (
+            <SunziForm situation={situation} setSituation={setSituation} ask={ask} setAsk={setAsk} sel={sel} situationAria={fieldAria('situation')} />
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
               <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} />
@@ -1192,12 +1206,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               {entering
                 // The two entries that wait on a quick model say how long
                 // (Sep 29); the others are computed here in a moment.
-                ? temple === 'jiemeng' || temple === 'cookie'
-                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : 'xtell.cookie.cracking')} /></div>
+                ? temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie'
+                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : temple === 'sunzi' ? WAIT_SECONDS.sunzi : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : temple === 'sunzi' ? 'xtell.sunzi.looking' : 'xtell.cookie.cracking')} /></div>
                   : <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.entering.note')}</div>
-                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' || temple === 'cookie' ? '' : t('xtell.solar.note')}</div>}
+                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' ? '' : t('xtell.solar.note')}</div>}
               {/* The wait bar takes the whole row beside the button. */}
-              {!(entering && (temple === 'jiemeng' || temple === 'cookie')) && <span style={{ flex: 1 }} />}
+              {!(entering && (temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie')) && <span style={{ flex: 1 }} />}
               <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', minWidth: 112,
                 fontWeight: 700, fontSize: 13.5, cursor: entering ? 'wait' : questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: !entering && questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
@@ -1398,6 +1412,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'xingming' ? <NameBoard chart={chart} />
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'jiemeng' ? <DreamBoard chart={chart} />
+                : temple === 'sunzi' ? <SunziBoard chart={chart} />
                 : temple === 'tarot' ? <TarotBoard chart={chart} />
                 : temple === 'cookie' ? <CookieBoard chart={chart} readingId={readingId}
                     onNote={(note, fortune) => setChart((c: any) => c?.fortune === fortune ? { ...c, note, notePending: false } : c)} />
@@ -1418,8 +1433,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
 
           {/* Conversation. Empty and without an intro line (解夢 before its
               first question), it takes no room. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: turns.length === 0 && (temple === 'jiemeng' || daily) ? 0 : 120 }}>
-            {turns.length === 0 && !savedProblem && !unverified && temple !== 'jiemeng' && !daily && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: turns.length === 0 && (temple === 'jiemeng' || temple === 'sunzi' || daily) ? 0 : 120 }}>
+            {turns.length === 0 && !savedProblem && !unverified && temple !== 'jiemeng' && temple !== 'sunzi' && !daily && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
                 {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'ask'}`
                   : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
@@ -2902,6 +2917,26 @@ function DreamForm({ dream, setDream, ask, setAsk, sel, dreamAria }: { dream: st
   )
 }
 
+// ── 孫子兵法 (Sep 29) ──────────────────────────────────────────────────────
+// The situation as the visitor tells it, and the decision in front of them.
+// The lines come back from the chart route (lib/sunzi.ts), shown free.
+function SunziForm({ situation, setSituation, ask, setAsk, sel, situationAria }: { situation: string; setSituation: (s: string) => void; ask: string; setAsk: (s: string) => void; sel: any; situationAria?: FieldAria }) {
+  const t = useT()
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+        {t('xtell.sunzi.situation')}
+        <textarea value={situation} rows={5} maxLength={SITUATION_MAX} onChange={e => setSituation(e.target.value.slice(0, SITUATION_MAX))} placeholder={t('xtell.sunzi.situation.ph')}
+          aria-invalid={situationAria?.invalid || undefined} aria-describedby={situationAria?.invalid ? situationAria.describedBy : undefined}
+          style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400, lineHeight: 1.7, resize: 'vertical', ...(situationAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
+      </label>
+      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.sunzi.ask.ph')} aria-label={t('xtell.sunzi.ask')}
+        style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sunzi.note')}</div>
+    </div>
+  )
+}
+
 // ── 塔羅 (Sep 28) ─────────────────────────────────────────────────────────────
 // The browser deals (lib/tarot-draw.ts); the server lays the cards with their
 // names, pictures and Waite's meaning for the way each landed (lib/tarot.ts).
@@ -3066,6 +3101,43 @@ function CookieBoard({ chart, readingId, onNote }: { chart: any; readingId: stri
       <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
       {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}
       {chart.fortuneId != null && <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.cookie.source')}</div>}
+    </div>
+  )
+}
+
+// The situation, then Sunzi's lines: the original as written with its
+// chapter, and the AI's plain translation under it, labelled as such.
+function SunziBoard({ chart }: { chart: any }) {
+  const t = useT()
+  const { lang } = useLang()
+  const hans = lang === 'zh-Hans'
+  const lines: Array<{ id: number; chapter: string; chapterS: string; short: string; t: string; s: string; gloss: string }> = Array.isArray(chart?.lines) ? chart.lines : []
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.sunzi.yours')}</div>
+        <div style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>{chart?.situation}</div>
+        {chart?.ask && <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.sunzi.ask')}</span>{chart.ask}</div>}
+      </div>
+      <div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.sunzi.found')}</div>
+        {lines.length ? (
+          <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
+            {lines.map(l => (
+              <li key={l.id} style={{ borderLeft: '3px solid var(--border2)', paddingLeft: 12 }}>
+                <div lang={hans ? 'zh-Hans' : 'zh-Hant'} style={{ fontSize: 15.5, lineHeight: 1.75, fontFamily: 'var(--font-display), serif', fontWeight: 700, letterSpacing: '.03em' }}>
+                  {hans ? l.s : l.t}
+                  <span style={{ ...mono, fontSize: 11, fontWeight: 400, letterSpacing: 0, color: 'var(--muted2)', marginLeft: 8, whiteSpace: 'nowrap' }}>〈{hans ? (l.chapterS ?? l.chapter).replace(/第.+$/, '') : l.short}〉</span>
+                </div>
+                {l.gloss && <div style={{ fontSize: 13.5, lineHeight: 1.7, color: 'var(--muted)', marginTop: 3 }}>
+                  <span style={{ ...mono, fontSize: 10.5, color: 'var(--muted2)', marginRight: 6 }}>{t('xtell.sunzi.gloss')}</span>{l.gloss}
+                </div>}
+              </li>
+            ))}
+          </ol>
+        ) : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.sunzi.none')}</p>}
+        <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sunzi.caveat')}</p>
+      </div>
     </div>
   )
 }

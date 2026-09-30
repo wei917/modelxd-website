@@ -18,18 +18,18 @@
 import type { Temple } from './xtell'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-29.2'
+export const XTELL_CATALOG_VERSION = '2026-09-29.3'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'kyusei' | 'sukuyo'
   | 'zhanxing.natal' | 'zhanxing.synastry' | 'zhanxing.today' | 'zhanxing.year'
-  | 'xingming' | 'cezi' | 'jiemeng' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot' | 'cookie'
+  | 'xingming' | 'cezi' | 'jiemeng' | 'sunzi' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot' | 'cookie'
   | 'daily' | 'almanac' | 'courses'
 
 export type FeatureMode = 'natal' | 'synastry' | 'today' | 'year' | 'ask' | 'lookup' | 'cast'
 
 /** What a room asks for besides the birth records and places. */
-export type FeatureInput = 'wishes' | 'matter' | 'name' | 'gender' | 'character' | 'hexagram' | 'question' | 'year' | 'birth' | 'dream' | 'food'
+export type FeatureInput = 'wishes' | 'matter' | 'name' | 'gender' | 'character' | 'hexagram' | 'question' | 'year' | 'birth' | 'dream' | 'situation' | 'food'
 
 export type Feature = {
   id: FeatureId
@@ -125,6 +125,9 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'jiemeng', status: 'live', temple: 'jiemeng', people: 0, hour: null, place: false, inputs: ['dream'], optional: ['matter'],
     free: ['lookup'], paid: 'teacher', question: 'matter', label: [room('jiemeng')],
     about: 'Dream reading (解夢, 周公解夢): write the dream, and optionally what you want to know; a quick AI picks the lines of the classic folk dream book 周公解夢 about what happens in the dream, shown free and quoted as written; then the chosen teachers read the dream against those lines and your situation. The dream may be written in any language. Up to 30 dreams a day.' },
+  { id: 'sunzi', status: 'live', temple: 'sunzi', people: 0, hour: null, place: false, inputs: ['situation'], optional: ['matter'],
+    free: ['lookup'], paid: 'teacher', question: 'matter', label: [room('sunzi')],
+    about: 'The Art of War (孫子兵法), for what to do next: describe a situation you face (work, business, study, a negotiation, family), and optionally the decision in front of you; a quick AI picks the lines of Sunzi\'s thirteen chapters that speak to it, shown free, quoted as written, each with a plain AI translation; then the chosen teachers (a strategist, 軍師) turn them into concrete next steps. Any language. Never helps deceive or harm anyone. Up to 30 situations a day.' },
   { id: 'yixue.ask', status: 'live', temple: 'yixue', mode: 'ask', people: 0, hour: null, place: false, inputs: ['question'], optional: [],
     free: [], paid: 'teacher', question: 'composer', label: [room('yixue'), 'xtell.yixue.mode.ask'],
     about: 'I Ching school, ask the teacher: learn the I Ching as a beginner; no hexagram is cast.' },

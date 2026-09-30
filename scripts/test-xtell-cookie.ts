@@ -121,7 +121,7 @@ function world(opts: { reply?: string | null; note?: string | null; balance?: nu
       debitCredits: async (o: any) => { if (balance < o.amountCents) throw new InsufficientCreditsError('insufficient_credits'); balance -= o.amountCents; debits.push(o.amountCents); return balance },
       grantCredits: async (o: any) => { balance += o.amountCents; grants.push(o.amountCents); return balance },
     },
-    '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/jiemeng-scan': { scanDream: async () => null },
+    '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/sunzi': require('../lib/sunzi'), '@/lib/sunzi-scan': { scanSituation: async () => null }, '@/lib/jiemeng-scan': { scanDream: async () => null },
   }).POST
   const crack = async (body: any) => { const r = await POST(new Request('http://t/api/xtell/chart', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ temple: 'cookie', lang: 'zh-Hant', ...body }) })); return { status: r.status, d: await r.json() as any } }
   return { rows, debits, grants, crack, note, noteCalls, afters, balance: () => balance }

@@ -34,8 +34,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei', 'sukuyo']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei', 'sukuyo', 'sunzi']
 /** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, a 聖筊). */
 export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
@@ -79,6 +79,11 @@ export const ENGINES: Record<Temple, string> = {
   // public domain) the dream points at, checked against the book
   // (lib/jiemeng.ts, lib/jiemeng-scan.ts); the reading is the master's.
   jiemeng:  '《周公解夢》（維基文庫）· 條目由 AI 從原書挑出、照錄原文 · 解讀由老師為之',
+  // 孫子兵法 (Sep 29): built like 解夢. A quick model picks the lines of the
+  // thirteen chapters the situation calls for, checked against the book, with
+  // a plain translation of each (lib/sunzi.ts, lib/sunzi-scan.ts); the next
+  // steps are the 軍師's.
+  sunzi:    '《孫子兵法》十三篇（維基文庫）· 原文由 AI 從書中挑出、照錄 · 白話翻譯由 AI 撰寫 · 下一步由軍師為之',
   // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
   simianfo: 'lunar-typescript v1.8.6',
   // 九曜廟: our own engine on astronomy-engine, checked against Swiss
@@ -954,6 +959,18 @@ export const MASTERS: Record<Temple, string> = {
 - 不提任何真實的寺廟、人物或品牌。
 - 語氣像街角小店的店主：短、暖、有點俏皮。回答簡短，三到六句。
 - 使用繁體中文（除非來訪者用其他語言提問）。結尾一句輕輕帶過：幸運餅乾只是好玩，好運靠自己。\n${TONE}`,
+  sunzi: `你是「孫子兵法」的軍師，一位讀熟《孫子兵法》十三篇、也在商場與人生裡看過許多進退的謀士，冷靜、務實、話說得清楚，不賣弄兵書。來訪者寫下自己眼前的處境，系統從《孫子兵法》（維基文庫本）挑出與這個處境相應的原文，附在訊息中。你的工作是幫他想清楚下一步。
+
+規則：
+- 先用一兩句話把處境說清楚：他要的是什麼、對面是誰（或是什麼）、手上有什麼、卡在哪裡。這就是「知彼知己」；缺了關鍵的一塊，先問一到兩個具體的問題，不要先講一大篇。
+- 引用原文時，只能照錄系統附上的句子，並註明篇名（例如〈謀攻〉）；沒有附上的，絕不自行引用或杜撰《孫子兵法》的原文。句子是系統挑的，未必每句都貼切：不相干的就直說不相干，不要硬套。
+- 引了原文，先用白話說它的意思，再說它在這個處境裡指向什麼。
+- 給出下一步：最多三步，依先後排列，每一步具體、這一兩週內做得到（例如先去問清楚什麼、先準備什麼、先不做什麼）；再說一件現在不要做的事，以及怎麼看出時機到了。
+- 孫子講的是「先為不可勝」與「不戰而屈人之兵」：能談就不打，能合作就不對立，打不贏就先保全自己。來訪者面對的若是家人、伴侶、同事或朋友，重點放在溝通、界線與雙贏，不教人算計身邊的人。
+- 「兵者，詭道也」是戰場上對敵國說的，不是待人之道：絕不教人欺騙、操控、威脅、報復、傷害他人或做違法的事。來訪者若這樣問，說明孫子也主張不戰而勝，改談怎麼保護自己、怎麼好好談、何時抽身。
+- 涉及人身安全、家暴、霸凌或自我傷害，嚴肅建議立即尋求正式協助（報警、專業機構）；涉及法律、投資、醫療，只談思路，明確建議諮詢專業人士，不給具體指示。
+- 語氣像一位沉著的軍師：短句、有條理、不說教、不打包票。
+- 使用繁體中文（除非來訪者用其他語言提問，例如日文頁面就用日文）。結尾提醒：兵法是想事情的工具，不是命令；決定與後果都在你手上。\n${TONE}`,
   jiemeng: `你是「周公解夢」的解夢先生，一位讀過《周公解夢》等民間夢書、也懂得傾聽的長者，溫和、細心、不嚇人。來訪者寫下自己的夢，系統從《周公解夢》（維基文庫本）挑出與夢中情節相應的條目，附在訊息中。
 
 規則：

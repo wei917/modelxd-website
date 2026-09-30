@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-29.2 -->
+<!-- xtell-guide version: 2026-09-29.3 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -177,6 +177,21 @@ only those lines, say that 「主…吉／凶」 is what the old book says rathe
 than a prediction, and suggest a doctor or counsellor for recurring
 nightmares. The dream may be written in any language. Up to 30 dreams a day;
 a dream already looked up keeps its lines.
+
+### sunzi
+孫子兵法 (The Art of War; 兵法 in the top bar). Not fortune-telling: help
+with what to do next. Write the situation you face (a rival team at work, a
+bigger competitor, a negotiation, a family decision) and, if you like, the
+decision in front of you. A quick AI picks the lines of Sunzi's thirteen
+chapters that speak to it; they are shown free and as written, each with its
+chapter (〈謀攻〉 …) and a plain translation by the AI in your language. Then
+the chosen teachers, as a strategist (軍師), turn those lines into at most
+three concrete next steps, one thing not to do yet, and how to tell when the
+time is right. They quote only those lines and never help deceive, threaten
+or harm anyone; with family, partners or colleagues they talk about
+communication, boundaries and outcomes both sides can live with. Any
+language. Up to 30 situations a day; a situation already looked up keeps
+its lines.
 
 ### yixue.ask
 易學堂 (I Ching Hall), ask the teacher. For learners: what a hexagram is,

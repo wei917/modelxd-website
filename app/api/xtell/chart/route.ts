@@ -20,6 +20,8 @@ import { almanacFor } from '@/lib/xtell-almanac'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamProblem, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
 import { scanDream } from '@/lib/jiemeng-scan'
+import { situationProblem, sunziLines, glossLang, ASK_MAX as SUNZI_ASK_MAX, SCANS_PER_DAY as SUNZI_PER_DAY } from '@/lib/sunzi'
+import { scanSituation } from '@/lib/sunzi-scan'
 import { kyuseiChart, asToday } from '@/lib/kyusei'
 import { sukuyoChart, asPartnerDate } from '@/lib/sukuyo'
 
@@ -39,7 +41,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -150,6 +152,43 @@ export async function POST(req: Request) {
     // `scan` names the model that chose the lines.
     const chart = { dream, ask, entries, scan: by }
     const readingId = await save(sb, user.id, temple, { ...body, dream, ask }, chart, {}, dream.split('\n')[0])
+    return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
+  }
+
+  // 孫子兵法 (Sep 29): built like 解夢 above. The situation as written and
+  // the lines of the thirteen chapters it calls for, each with a plain
+  // translation in the page's language, chosen by a quick model
+  // (lib/sunzi-scan.ts) and checked against the book (lib/sunzi.ts). Free to
+  // the visitor, the next steps are paid. The same situation, decision and
+  // language looked up again keeps its lines; the same daily cap, counted
+  // from saved visits; always saved. The visit is titled by the situation.
+  if (temple === 'sunzi') {
+    const bad = situationProblem(body?.situation)
+    if (bad) return refuse(bad, bad === 'situation_required' ? 'describe the situation' : 'the situation is too long')
+    const situation = String(body.situation).trim()
+    const ask = typeof body?.ask === 'string' ? body.ask.trim().slice(0, SUNZI_ASK_MAX) : ''
+    const lang = glossLang(body?.lang)
+    const { data: recent } = await sb.from('xtell_readings')
+      .select('chart, created_at').eq('user_id', user.id).eq('temple', 'sunzi')
+      .order('created_at', { ascending: false }).limit(SUNZI_PER_DAY + 20)
+    const rows = (recent ?? []) as Array<{ chart: any; created_at: string }>
+    const seen = rows.find(r => r.chart?.scan && r.chart?.situation === situation && (r.chart?.ask ?? '') === ask && r.chart?.lang === lang && Array.isArray(r.chart?.lines))
+    let lines, by: string
+    if (seen) {
+      lines = sunziLines(seen.chart.lines)
+      by = seen.chart.scan
+    } else {
+      const dayAgo = Date.now() - 86_400_000
+      if (rows.filter(r => r.chart?.scan && Date.parse(r.created_at) > dayAgo).length >= SUNZI_PER_DAY)
+        return refuse('sunzi_daily_limit', 'too many situations looked up today', 429)
+      const scan = await scanSituation(situation, ask, lang, user.id)
+      if (!scan) return refuse('sunzi_scan_failed', 'the Sunzi lookup is unavailable', 503)
+      lines = sunziLines(scan.picks)
+      by = scan.model
+    }
+    // `scan` names the model that chose the lines; `lang` the translations' language.
+    const chart = { situation, ask, lang, lines, scan: by }
+    const readingId = await save(sb, user.id, temple, { ...body, situation, ask }, chart, {}, situation.split('\n')[0])
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 

@@ -76,6 +76,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 幸運餅乾 | Fortune cookie | `lib/xtell-cookie.ts`, `lib/xtell-cookie-fortunes.ts`, `content/cookie/fortunes.json` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. **The slips are real fortune-cookie fortunes** (owner, Sep 28): 206 of the 254 in reggi/fortune-cookie (MIT, © 2022 Thomas Reggi, pinned; `scripts/build-cookie-fortunes.mjs` drops duplicates, numbers, jokes, garbled lines and health/windfall/lawsuit predictions, fixes typos keeping `orig`), translated by ModelXD (`content/cookie/translations.json`; 简中 by OpenCC). A quick house model (Qwen 3.8 Flash via `dailyText`) sees the whole numbered list and names the **10 that fit best** plus the meal's taste; **one of the 10 is drawn at random** on the server, and the slip is returned at once; the note under it is written after, streamed by `/api/xtell/cookie/note` (Sep 29), once per cookie (`notePending`, lowered in the same UPDATE that checks it; a second tab is told it is being written and asks again), in the slip's language (`noteLang`), and saved even if the reader leaves (optional: a slip without a note still shows). No digits anywhere. **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own rows by `subject->>meal`; every crack its own row (`crack` id). Never re-cracked on a refresh. All five languages of the slip are saved, so a language switch reads right; the English original shows under it. Added Sep 28 |
 | 九星気学 | Nine Star Ki | `lib/kyusei.ts` (+ `lib/kyusei-words.ts`, lunar-typescript for 立春 and the 節) | Birth date (hour optional). Code: 本命星 by the 立春 year (11 − year mod 9), 月命星 by the 節月 (寅 month starts 八白 / 五黄 / 二黒 by the year's group), this year's and month's 洛書 boards (南 on top), 五黄殺 · 暗剣殺 · 破 · 本命殺 · 本命的殺, and lucky directions by 相生・比和 (五黄 never), with 最大吉 where the 月命星 also fits; 八方塞がり when one's own star is in the centre (no lucky direction, said as a time to hold, not an omen). A 立春 or 節入り-day birth with the hour unknown or close gets the other side's star too. The boards are as of the visitor's local date, saved with the visit (`today`, `asToday`). Icon: generated like 觀音's (GPT Image 2.5 Sunburst image edit against the object icons 八字 紫微 測字 占星, medium, $0.022 a draft), then the nine discs recoloured in code into the real 定位盤 (南 on top: 四緑 九紫 二黒 / 三碧 五黄 七赤 / 八白 一白 六白); in the street's share picture. Japan's menu puts it right after 四柱推命. Added Sep 29 |
 | 宿曜占星術 | Sukuyō | `lib/sukuyo.ts` (+ `lib/sukuyo-words.ts`, lunar-typescript's lunar dates) | Birth date, and optionally a partner's birth date (date only, saved with the visit). Code: the 宿曜経 calendar (旧暦 1月1日 室, 2月 奎, 3月 胃, 4月 畢, 5月 参, 6月 鬼, 7月 張, 8月 角, 9月 氐, 10月 心, 11月 斗, 12月 虚, then one 宿 a day, 牛 unused) gives the 本命宿 and today's 宿; 三九の秘法 names what any 宿 is to one's own (命 業 胎; 栄 衰 安 危 成 壊 友 親 in each nine) and a pair's relation (栄親, 友衰, 安壊, 危成, 命, 業胎). Checked against a published 2026 calendar (rekichu.com, January, across the 12月1日 boundary). The lunar dates are China's calendar, which in rare months starts a day off Japan's 旧暦; a leap-month birth takes its month's number; both said. Board: the two 宿, today's kind of day with a conventional meaning, the pair, and the 三九 table (three rows of nine). Icon: generated the same way (a crescent in a night circle over a sutra scroll), then the ring of stars redrawn in code as exactly 27, evenly spaced. Six drafts for both temples cost $0.133. Added Sep 29 |
+| 孫子兵法 | The Art of War, for what to do next (not fortune-telling) | `lib/sunzi.ts` + `lib/sunzi-scan.ts` + `content/sunzi/sunzi.json` | No birth. The situation as written (≤1,500 chars, any language) + an optional decision. Built like 解夢: a quick house-paid model picks the lines of the thirteen chapters that speak to it, each with a plain AI translation in the page language, shown free; the 軍師 (paid) turns them into next steps. See "孫子兵法" below. Added Sep 29 |
 
 ## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
 
@@ -863,10 +864,64 @@ image edit, medium, 3 outputs, $0.068) against a style sheet cropped from
 www card, on the art's own paper #f8f4e9 so no square shows), and
 `jiemeng-icon-clear.avif` from `scripts/xtell-clear-icons.mjs`.
 
+## 孫子兵法 (Sep 29)
+
+Owner: "孫子兵法 is to teach you what to do next", built after LINE. Not
+fortune-telling: the visitor writes the situation they face and, optionally,
+the decision in front of them. It is 解夢's shape (see above) on another
+book.
+
+**The book.** Chinese Wikisource 《孫子兵法》, revision 7906064
+(2026-07-02). 孫武, c. 500 BC, public domain; the page has no licence tag,
+so `scripts/fetch-sunzi.mjs [revid]` checks the header names 孫武 instead.
+The thirteen chapters only (孫星衍's appended 答話 and notes are left out),
+split into 319 lines: paragraphs cut after 。 or ！ (not ？, so 始計's 七計
+stay one line with their answer), a line over 100 characters cut again at
+； (行軍's list of signs), a line of three characters or fewer joined to the
+next (「微哉！微哉！」). `{{另|A|B}}` keeps the page's reading A (「勝可擅也」).
+Every character of the chapters is kept (7,435 with punctuation).
+Simplified by OpenCC at build time.
+
+**The lines** (`lib/sunzi-scan.ts`): the same scanners as 解夢 (GPT-6 Luna
+at reasoning none, then Gemini 3.1 Flash-Lite), the whole book as a fixed
+system prompt, and `{"picks": [{"id", "gloss"}]}` back: at most 5 lines,
+each with a one-sentence translation of the line in the page language. The
+gloss is labelled 白話（AI 翻譯） on the page; the line is the book's, checked
+by number (`sunziLines`), and a sentence that stands in two chapters (「合於
+利而動，不合於利而止。」 in 九地 and 火攻) is shown once. The prompt says a
+gloss is a translation, never advice, with an example: Flash-Lite wrote
+advice ("…冷静に計算してください") until it did. Never picks lines to help
+deceive or harm someone; asked for revenge on an ex, Luna picked 不戰而屈人
+之兵 and 合於利而動. Measured Sep 29 (seven situations, four languages): Luna
+1.7-3.3s, $0.0001-0.0009; Flash-Lite 1.2-1.7s, $0.0015-0.0024. Probe
+spend $0.007.
+
+**Chart route**: the same situation, decision and language keeps its lines
+(no second call); another language is a new lookup, since the translations
+are per language. 30 new lookups a day (`sunzi_daily_limit`), counted from
+saved visits; always saved; titled by the situation's first line.
+**Reading route**: the 軍師 gets the saved visit's lines by `readingId`, or
+the page's numbers checked against the book; never the translations.
+
+**The 軍師** (`MASTERS.sunzi`): restates the situation first (知彼知己) and
+asks one or two questions when a key fact is missing; quotes only the
+attached lines with their chapter; at most three concrete next steps, one
+thing not to do yet, and how to tell the time is right; with family,
+partners or colleagues, communication and boundaries, never scheming; never
+helps deceive, manipulate, threaten, take revenge or break the law (詭道 is
+about an enemy state, not people); safety situations go to real help.
+
+**The icon** is drawn in code (`scripts/xtell-sunzi-art.mjs`): seven bamboo
+slips tied with two cords, 「孫子兵法」 down the middle one. Interim, like
+九星's was, until the owner decides on generated art.
+
+Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
+stubbed.
+
 ## Each market's order (Sep 28)
 
 `displayTemples(lang)` (TempleArtwork.tsx): every temple in every language,
-only the order changes. 日本語: 占星, 塔羅, 八字, 觀音, 月老, 解夢, 姓名, 易經,
+only the order changes (孫子兵法 follows 解夢 in every list). 日本語: 占星, 塔羅, 八字, 觀音, 月老, 解夢, 姓名, 易經,
 紫微, 關帝, 媽祖, 九曜, 四面佛, 測字. 한국어: 八字 (사주), 月老 (labelled 궁합),
 塔羅, 占星, 解夢, 姓名, 易經, 紫微, 觀音, 關帝, 媽祖, 九曜, 四面佛, 測字.
 Chinese and English: the owner's order with 塔羅 after 占星 and 觀音 leading

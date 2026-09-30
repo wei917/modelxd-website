@@ -20,6 +20,7 @@ import { DAILY_METHODS, DAILY_TEACHER, westernFacts, type DailyMethod } from '@/
 import { liuRiFacts } from '@/lib/xtell'
 import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamFacts, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
+import { situationProblem, sunziLines, sunziFacts, ASK_MAX as SUNZI_ASK_MAX } from '@/lib/sunzi'
 import { asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieFacts } from '@/lib/xtell-cookie'
@@ -88,6 +89,7 @@ const FACTS_HEAD: Record<string, string> = {
   zhanxing:  '來訪者的星盤（系統以回歸黃道排定，勿更動）：',
   yixue:     '易學堂的對話模式與可核對的經文材料（引用須照錄；僅起卦練習才有系統算定的卦）：',
   jiemeng:   '來訪者的夢與《周公解夢》的相關條目（條目由系統從原書挑出，照錄引用）：',
+  sunzi:     '來訪者的處境與《孫子兵法》的相關原文（原文由系統從十三篇挑出，照錄引用）：',
   guanyin:   '信眾求得的觀音籤（系統從籤筒抽出；籤譜與籤文照錄，勿更動）：',
   cookie:    '來訪者的一餐與幸運餅乾的籤語（餐別、時辰、干支由系統計算，籤語照錄，勿更動）：',
   tarot:     '來訪者抽出的塔羅牌（系統依瀏覽器洗牌結果排定；牌義照錄韋特原文，勿更動）：',
@@ -139,6 +141,9 @@ export async function POST(req: Request) {
   } else if (temple === 'jiemeng') {
     const bad = dreamProblem(body?.dream)
     if (bad) return refuse(bad, 'write the dream')
+  } else if (temple === 'sunzi') {
+    const bad = situationProblem(body?.situation)
+    if (bad) return refuse(bad, 'describe the situation')
   } else if (temple === 'yixue') {
     const bad = yixueInputError(body)
     if (bad) return Response.json({ error: bad }, { status: 400 })
@@ -225,6 +230,15 @@ export async function POST(req: Request) {
     if (Array.isArray(visit?.chart?.entries)) dreamLines = visit.chart.entries.map((e: any) => e?.id)
   }
 
+  // 孫子兵法's lines, the same way: from the visitor's own saved visit, else
+  // the numbers the page shows, each checked against the book and read from
+  // disk.
+  let sunziPicked: unknown = temple === 'sunzi' ? body?.lines : null
+  if (temple === 'sunzi' && typeof body?.readingId === 'string' && /^[0-9a-f-]{36}$/i.test(body.readingId)) {
+    const { data: visit } = await sb.from('xtell_readings').select('chart').eq('id', body.readingId).eq('user_id', user.id).eq('temple', 'sunzi').maybeSingle()
+    if (Array.isArray(visit?.chart?.lines)) sunziPicked = visit.chart.lines
+  }
+
   // 幸運餅乾: the slip, the meal and its 時辰 as saved when the cookie was
   // cracked, from the visitor's own visit.
   let cookieChart: any = null
@@ -240,6 +254,8 @@ export async function POST(req: Request) {
     ? `${cookieFacts({ food: String(cookieChart.food ?? ''), ask: String(cookieChart.ask ?? ''), meal: cookieChart.meal, dayGz: cookieChart.dayGz ?? null })}\n主味：${cookieChart.flavor}（五行屬${cookieChart.element}）\n幸運餅乾的籤語（照錄）：「${cookieChart.fortune}」${cookieChart.note ? `\n當時的小解說：${cookieChart.note}` : ''}`
     : temple === 'jiemeng'
     ? dreamFacts(String(body.dream).trim(), typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : '', dreamEntries(dreamLines))
+    : temple === 'sunzi'
+    ? sunziFacts(String(body.situation).trim(), typeof body?.ask === 'string' ? body.ask.trim().slice(0, SUNZI_ASK_MAX) : '', sunziLines(sunziPicked))
     : temple === 'yixue'
     // The cast is recomputed from the six line values; the text comes from
     // disk. A learner's question names the hexagrams it wants shown.

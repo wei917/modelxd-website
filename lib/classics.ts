@@ -35,6 +35,8 @@ const SOURCES: Record<Temple, string[]> = {
   cezi:     ['cezimidie.txt'],
   // 解夢: its book's lines ride with the dream (lib/jiemeng.ts dreamFacts).
   jiemeng:  [],
+  // 孫子兵法: the same, the chosen lines ride with the situation (lib/sunzi.ts sunziFacts).
+  sunzi:    [],
   // 觀音廟: the stick is its own text. 塔羅: Waite's meaning rides with each
   // card (lib/tarot.ts tarotFacts).
   guanyin:  [],

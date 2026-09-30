@@ -14,7 +14,7 @@ import { useT } from '../../../lib/i18n'
  *  cookie — its taste-and-slips pick, ~3 s (the note streams after);
  *  note — the cookie's note, ~230 tokens, ~5.5 s;
  *  dream — GPT-6 Luna's scan, 1–2 s (p90 2.4 s). */
-export const WAIT_SECONDS = { daily: 20, cookie: 5, note: 6, dream: 4 } as const
+export const WAIT_SECONDS = { daily: 20, cookie: 5, note: 6, dream: 4, sunzi: 4 } as const
 
 export function WaitBar({ seconds, label }: { seconds: number; label?: string }) {
   const t = useT()
