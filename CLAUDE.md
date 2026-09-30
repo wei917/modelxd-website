@@ -36,7 +36,9 @@ rating system (XDRating) surfaced on XBoard.
   Archivo Black (logo), Noto Sans TC (Chinese). CSS vars: `--font-body`,
   `--font-display`, `--font-mono`, `--font-logo`, `--font-zh`
 - **i18n**: 5 languages via `lib/i18n.tsx` (en / zh-Hant / zh-Hans / ja / ko).
-  Target markets are Taiwan and Japan. The product is **desktop-first**.
+  Target markets are Taiwan and Japan. The product is **mobile-first** since
+  Sep 28 (owner; ad traffic is ~93% phones): design and check every page at
+  phone width first, then desktop.
 
 ## Environments
 
@@ -55,7 +57,9 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  Latest applied: `114_credit_fractions.sql` (2026-09-29, the carry for
+  Latest applied: `115_site_visit_daily.sql` (2026-09-29, by the owner; the
+  daily numbers behind /admin/traffic; checked live: rows for the service
+  key, 42501 for the publishable key), after `114_credit_fractions.sql` (2026-09-29, the carry for
   charges under a cent; checked live: the publishable key gets 42501 on
   the table and on `accrue_fraction`), after `113_line_one_account.sql`
   (proven on PGlite, not checked live), `112_line_welcome_credit.sql`
@@ -795,6 +799,9 @@ IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`, shared with
 the Google Ads consent default). `/api/visit` bypasses the www password gate
 so ad clicks that land on `/coming-soon` still count. **Reports filter
 `env = 'production'`**; queries and definitions are in `docs/SITE-VISITS.md`.
+The daily picture (active browsers, new and returning, signed-in users, stay
+time, visits by source) is the admin page **`/admin/traffic`**, one call to
+`site_visit_daily()` (`115_site_visit_daily.sql`, service key only).
 
 ## Admin
 

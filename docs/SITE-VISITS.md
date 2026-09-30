@@ -33,6 +33,17 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
   (Googlebot, AdsBot, headless Chrome, Lighthouse), browsers without
   JavaScript. No IP address is stored anywhere.
 
+## The daily dashboard: `/admin/traffic`
+
+Admin only (`ADMIN_EMAILS`, on www). Today so far, then per day: active
+browsers split into new and returning, signed-in users, visits by source
+(ChatGPT ads = `utm_source='chatgpt'`, Google Ads = a click id, other), and
+median and average stay per browser. Days are cut in Taiwan time. It is one
+call to `site_visit_daily(p_days, p_tz)` (`supabase/115_site_visit_daily.sql`):
+PostgREST cannot group or take a median, and "returning" needs each browser's
+first day over the whole table. "Stay" there is per browser per day (that
+browser's visits added up), not per visit.
+
 ## Reports (Supabase SQL editor)
 
 Time on site by source, last 7 days:
