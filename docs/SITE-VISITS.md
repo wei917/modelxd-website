@@ -35,23 +35,51 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
 
 ## The daily dashboard: `/admin/traffic`
 
-Admin only (`ADMIN_EMAILS`, on www). Today so far, then per day: active
-browsers split into new and returning, signed-in users, visits by source
-(ChatGPT ads = `utm_source='chatgpt'`, Google Ads = a click id, other), and
-stay per browser: median, top 20%, top 10% and average. Days are cut in
-Taiwan time. It is one call to `site_visit_daily(p_days, p_tz)`
-(`supabase/115_site_visit_daily.sql`, widened by
-`116_site_visit_stay_top.sql`): PostgREST cannot group or take a median, and
-"returning" needs each browser's first day over the whole table. "Stay" there
-is per browser per day (that browser's visits added up), not per visit.
+Admin only (`ADMIN_EMAILS`, on www). Days are cut in Taiwan time. The page
+has two kinds of chart (owner, Sep 30: "overall settings/filters/toggles and
+pre defined charts without effecting by the filters"):
 
-**Top 20% / top 10% stay** (Sep 30) is the stay that the most engaged fifth
-and tenth of that day's browsers reached or passed: the 80th and 90th
-percentile (`p80_seconds`, `p90_seconds`). It answers "how long do the people
-who stay, stay", which neither of the other two does: on ad traffic the
-median is a few seconds, and a handful of very long stays can lift the
-average above even the top 10%. Until 116 has been run the page shows a note
-in place of the two numbers.
+- **Filters**, at the top: the range (7 / 14 / 30 / 90 days) and the country
+  (`?country=JP`; the picker offers the five countries with the most browsers
+  in the range).
+- **Filtered part**, which follows both: today so far, then per day: active
+  browsers split into new and returning, signed-in users, visits by source
+  (ChatGPT ads = `utm_source='chatgpt'`, Google Ads = a click id, other), and
+  stay for two groups, each with median, top 20%, top 10% and average. With a
+  country picked, "new" and "returning" mean within that country.
+- **Fixed charts**, always every country (only the range applies): browsers
+  by country (the three biggest named, the rest Other) and sign-ins by
+  method (Google, LINE Taiwan, LINE Japan).
+- **Tables** for every chart.
+
+Three functions in `supabase/117_site_visit_groups_country.sql`, service key
+only: `site_visit_daily_v2(p_days, p_tz, p_country)`,
+`site_visit_by_country(p_days, p_tz, p_top)` and
+`site_signins_daily(p_days, p_tz)`. PostgREST cannot group or take a median,
+and "returning" needs each browser's first day over the whole table, so the
+work is done in the database in one round trip each. Until 117 has been run
+the page falls back to `site_visit_daily()` (115, widened by 116): every
+country, one stay chart, no fixed charts, and a line saying what is missing.
+
+**Stay** is per browser per day (that browser's visits added up, tab in
+front), not per visit. **Top 20% / top 10% stay** is the stay that the most
+engaged fifth and tenth of the browsers reached or passed: the 80th and 90th
+percentile.
+
+**Signed in / not signed in** (Sep 30). A browser counts as signed in on a
+day if any of its visits that day carried an account. The numbers over
+everyone mix two very different groups and describe neither: from Sep 28 to
+Sep 30 the 8% of browsers that signed in stayed a median of about 5 minutes
+(top 10%: 16 to 44 minutes) and the 92% that did not, 6 to 12 seconds. So
+the page draws the two groups as two charts, each on its own scale. A day
+with nobody in a group is a gap in the line and a dash in the table, not
+"0s". The owner's own sessions are in the signed-in group.
+
+**Sign-ins by method** counts accounts per day by the method the account was
+made with (`activity_logs.metadata.provider`: `google`, `custom:line-tw`,
+`custom:line-jp`), plus new accounts and sign-ins over the range. The login
+log does not record the host, so sign-ins on dev.modelxd.com and localhost
+are in these numbers too.
 
 ## Reports (Supabase SQL editor)
 

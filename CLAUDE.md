@@ -57,6 +57,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `117_site_visit_groups_country.sql` (/admin/traffic: country filter, stay
+  for signed-in and not signed-in browsers, sign-ins by method; three new
+  functions, nothing dropped) is written and proven on PGlite, awaiting the
+  owner.
   Latest applied: `116_site_visit_stay_top.sql` (2026-09-30, by the owner;
   top 20% / top 10% stay on /admin/traffic; checked live: fourteen columns
   for the service key, 42501 for the publishable key), after
@@ -802,11 +806,15 @@ IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`, shared with
 the Google Ads consent default). `/api/visit` bypasses the www password gate
 so ad clicks that land on `/coming-soon` still count. **Reports filter
 `env = 'production'`**; queries and definitions are in `docs/SITE-VISITS.md`.
-The daily picture (active browsers, new and returning, signed-in users, stay
-time as median, top 20%, top 10% and average, visits by source) is the admin
-page **`/admin/traffic`**, one call to `site_visit_daily()`
-(`115_site_visit_daily.sql`, widened by `116_site_visit_stay_top.sql`;
-service key only).
+The daily picture is the admin page **`/admin/traffic`**: filters at the top
+(range, country), the part they narrow (active browsers, new and returning,
+signed-in users, visits by source, stay for signed-in and not signed-in
+browsers as median / top 20% / top 10% / average), then fixed charts that
+are always every country (browsers by country, sign-ins by Google / LINE).
+Three service-key functions in `117_site_visit_groups_country.sql`; before
+117 is run the page falls back to `site_visit_daily()` (115, 116). The stay
+numbers over everyone are misleading on their own: signed-in browsers stay
+minutes, the rest seconds.
 
 ## Admin
 
