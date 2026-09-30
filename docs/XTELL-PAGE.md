@@ -912,8 +912,9 @@ helps deceive, manipulate, threaten, take revenge or break the law (詭道 is
 about an enemy state, not people); safety situations go to real help.
 
 **The icon** is drawn in code (`scripts/xtell-sunzi-art.mjs`): seven bamboo
-slips tied with two cords, 「孫子兵法」 down the middle one. Interim, like
-九星's was, until the owner decides on generated art.
+slips tied with two cords and one large 「孫」 across them (owner: "bigger
+孫"; the first draft's four small characters were unreadable at 40 px).
+Interim, like 九星's was, until the owner decides on generated art.
 
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.

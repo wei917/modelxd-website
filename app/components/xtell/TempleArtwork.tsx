@@ -58,9 +58,9 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   // Sunburst against the object icons); the ring was then redrawn in code
   // with exactly 27 stars. See docs/XTELL-PAGE.md.
   sukuyo: { src: { portrait: '/xtell/approved/sukuyo-portrait.avif', icon: '/xtell/approved/sukuyo-icon.avif', iconClear: '/xtell/approved/sukuyo-icon-clear.avif' }, caption: 'SUKUYO', kind: 'object' },
-  // 孫子兵法 (Sep 29): bamboo slips tied with cord, the title in seal-like
-  // strokes, drawn in code (scripts/xtell-sunzi-art.mjs) until the owner
-  // decides on generated art like the other temples'.
+  // 孫子兵法 (Sep 29): bamboo slips tied with cord under one large 「孫」,
+  // drawn in code (scripts/xtell-sunzi-art.mjs) until the owner decides on
+  // generated art like the other temples'.
   sunzi: { src: { portrait: '/xtell/approved/sunzi-portrait.avif', icon: '/xtell/approved/sunzi-icon.avif', iconClear: '/xtell/approved/sunzi-icon-clear.avif' }, caption: 'ART OF WAR', kind: 'object' },
   kyusei: { src: { portrait: '/xtell/approved/kyusei-portrait.avif', icon: '/xtell/approved/kyusei-icon.avif', iconClear: '/xtell/approved/kyusei-icon-clear.avif' }, caption: 'NINE STAR KI', kind: 'object' },
 }
