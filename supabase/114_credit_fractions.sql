@@ -1,5 +1,5 @@
 -- 114_credit_fractions.sql — charges under a cent are carried, not dropped
--- (Sep 29).
+-- (Sep 29; run by the owner the same day and checked live).
 --
 -- The wallet is whole cents. An XTell answer from the default teacher costs
 -- $0.0002 to $0.0007, and the reading route rounded each to the nearest
