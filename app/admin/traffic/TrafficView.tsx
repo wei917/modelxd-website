@@ -271,11 +271,12 @@ export default function TrafficView({ rows, days, ranges, tz }: { rows: DayRow[]
       ) : (
         <>
           <h2 style={{ margin: '22px 0 8px', fontSize: 13, fontWeight: 500, color: INK2 }}>Today so far ({today.day})</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             <Tile label="Active browsers" value={num(today.browsers)} was={prev && num(prev.browsers)} />
             <Tile label="Returning browsers" value={num(today.returningBrowsers)} was={prev && num(prev.returningBrowsers)} />
             <Tile label="Signed-in users" value={num(today.signedInUsers)} was={prev && num(prev.signedInUsers)} />
             <Tile label="Median stay" value={stay(today.medianSeconds)} was={prev && stay(prev.medianSeconds)} />
+            <Tile label="Average stay" value={stay(today.avgSeconds)} was={prev && stay(prev.avgSeconds)} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 12, marginTop: 16 }}>
