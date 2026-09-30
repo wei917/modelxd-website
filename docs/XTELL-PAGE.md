@@ -911,10 +911,13 @@ partners or colleagues, communication and boundaries, never scheming; never
 helps deceive, manipulate, threaten, take revenge or break the law (詭道 is
 about an enemy state, not people); safety situations go to real help.
 
-**The icon** is drawn in code (`scripts/xtell-sunzi-art.mjs`): seven bamboo
-slips tied with two cords and one large 「孫」 across them (owner: "bigger
-孫"; the first draft's four small characters were unreadable at 40 px).
-Interim, like 九星's was, until the owner decides on generated art.
+**The icon** is drawn in code (`scripts/xtell-sunzi-art.mjs`): the whole
+title 「孫子／兵法」 large in two lines over a war scene, ink-wash mountains,
+a banner at each edge and a row of spears (owner: the full title and some
+war background; earlier drafts, bamboo slips and then one large 孫, are in
+git). No red sun: a red disc behind a war scene reads as a Japanese military
+flag in Taiwan and Korea. Interim, like 九星's was, until the owner decides
+on generated art.
 
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
