@@ -56,7 +56,9 @@ rating system (XDRating) surfaced on XBoard.
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
   Latest applied: `113_line_one_account.sql` (2026-09-29, by the owner;
-  proven on PGlite first, not checked live), after `112_line_welcome_credit.sql`
+  proven on PGlite first, not checked live; `114_credit_fractions.sql`,
+  the carry for charges under a cent, is written and proven, awaiting the
+  owner), after `112_line_welcome_credit.sql`
   and `111_xcreate_films.sql` (2026-09-29; checked live: the film tables
   answer the service key only, publishable key 42501). Renamed
   tables keep their ORIGINAL constraint names (`creates_mode_check` on

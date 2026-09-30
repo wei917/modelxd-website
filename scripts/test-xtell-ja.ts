@@ -8,6 +8,7 @@ import { STRINGS } from '../lib/i18n'
 import { XTELL_TEMPLE_NAMES } from '../lib/xtell-meta'
 
 let fails = 0
+const read = (p: string) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8')
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
 const S = STRINGS as any
 const ja = Object.entries(S).filter(([k, v]: [string, any]) => (k.startsWith('xtell') || k.startsWith('legal')) && typeof v?.ja === 'string').map(([k, v]: [string, any]) => [k, v.ja as string] as const)
@@ -63,5 +64,37 @@ check('it states prices, payment timing, delivery and the refund rules', ['販�
 check('served on the XTell and XCreate doors', /XTELL_ROUTES = \[[^\]]*'\/tokushoho'/.test(site) && /XCREATE_ROUTES = \[[^\]]*'\/tokushoho'/.test(site))
 check('linked from the www, XTell and XCreate footers', ['app/components/Nav.tsx', 'app/components/xtell/XTellNav.tsx', 'app/components/xcreate/XCreateNav.tsx'].every(f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').includes('href="/tokushoho"')))
 check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[l]?.trim()) && S['nav.tokushoho'].ja === '特定商取引法に基づく表記')
+// ── The signed-in test round of Sep 29 (all 18 rooms in 日本語) ────────────
+{
+  const { inLanguage } = require('../lib/xtell-lang-check')
+  const zh = '今日行運月亮位於金牛座，且多項行星處於逆行狀態。與本命盤的緊密相位顯示能量正在重新調整。'
+  const jp = '今日は月が牡牛座にあり、いくつかの惑星が逆行しています。出生図との相から、力の入れ方を見直す日です。'
+  check('a 繁體 reading is not a Japanese one; a Japanese one is', !inLanguage(zh, 'ja') && inLanguage(jp, 'ja') && inLanguage(zh, 'zh-Hant') && !inLanguage(jp, 'zh-Hant'))
+  check('…nor a Korean or English one', !inLanguage(zh, 'ko') && !inLanguage(zh, 'en') && inLanguage('Today the Moon is in Taurus and several planets are retrograde.', 'en') && inLanguage('오늘은 달이 황소자리에 있고 여러 행성이 역행합니다. 힘을 쓰는 방식을 돌아보는 날입니다.', 'ko'))
+  const daily = require('../lib/xtell-daily')
+  check('the daily brief tells a Japanese page to translate, not to keep Chinese terms', /Japanese \(日本語\) only/.test(daily.dailyBrief('western', 'ja')) && !/Keep Chinese technical terms/.test(daily.dailyBrief('western', 'ja')) && daily.DAILY_RULES.western === 'western-2')
+  check('the daily route refuses a reading that is not in the page language', read('app/api/xtell/daily/route.ts').includes('inLanguage('))
+  check('the almanac card no longer says 農民暦 or 黄暦', !/農民暦|黄暦/.test(S['xtell.today.almanacSub'].ja + S['xtell.today.almanac'].ja))
+  const places = require('../lib/xtell-places')
+  check('Japanese pages start on Tokyo, Japan first, names in Japanese', places.defaultPlaceFor('ja') === 'tokyo' && places.placesFor('ja')[0].tz === 'Asia/Tokyo' && places.placeLabel(places.placeOf('seoul'), 'ja') === 'ソウル' && places.placeLabel(places.placeOf('naha'), 'ja').includes('那覇') && places.placeLabel(places.placeOf('taipei'), 'zh-Hant') === '台北')
+  check('every place has a name in ja, ko and en; twenty Japanese cities', places.PLACES.every((p: any) => ['ja', 'ko', 'en'].every(l => places.placeLabel(p, l) && (l !== 'en' || /^[A-Za-z ().]+$/.test(places.placeLabel(p, l))))) && places.PLACES.filter((p: any) => p.tz === 'Asia/Tokyo').length === 20)
+  const names = require('../lib/names')
+  check('a new-form kanji shows its old form and strokes; the count stays the written form\'s', names.charInfo('続').strokes === 13 && names.charInfo('続').old.ch === '續' && names.charInfo('続').old.strokes === 21 && !names.charInfo('木').old)
+  check('the teacher is told both schools and not to mix the forms', names.nameFacts(names.nameChart('沢', '広'), 'male').includes('舊字體派') && names.ceziFacts(names.charInfo('続'), '').includes('不要把舊字體才有的部件'))
+  const client = read('app/xtell/client.tsx')
+  check('signs, planets and relation words come from the page language', client.includes("t(`xtell.sign.${i}`)") && client.includes('relText(lang, d.detail)') && client.includes('lunarLocal(lang, chart.lunar)') && !/PLANET_ZH\[[^\]]* as keyof/.test(client))
+  check('the name board\'s labels are strings, the Chinese idioms on Chinese pages only', ['tian', 'ren', 'di', 'wai', 'zong'].every(k => LANGS.every(l => S[`xtell.name.ge.${k}`]?.[l])) && S['xtell.name.ge.zong'].ja === '総格' && client.includes("chinese ? g.shuli.name : ''"))
+  check('no 称骨 card on Japanese pages', client.includes("chenggu && lang !== 'ja' && <ChengguCard"))
+  const xt = require('../lib/xtell')
+  check('every teacher is held to the chart\'s relations and verdicts, and to no gender roles', /說法不可與附上的盤或表相反/.test(xt.TONE) && /不用性別刻板印象/.test(xt.TONE))
+  check('媽祖 has no grade to announce; 卦辭 and 爻辭 are kept apart', /沒有吉凶等級/.test(xt.MASTERS.mazu) && /稱爻辭，不稱卦辭/.test(xt.MASTERS.yixue))
+  const rr = read('app/api/xtell/reading/route.ts')
+  check('Japanese answers get the glossary (ハウス, 命式, おみくじ, no 簡体字)', rr.includes('JA_TERMS') && /ハウス/.test(rr) && /ホロスコープ/.test(rr) && /簡体字/.test(rr))
+  const cat = require('../lib/xtell-catalog')
+  check('the guide is given the rooms\' Japanese names', cat.roomNamesFor('ja').includes('bazi = 四柱推命') && cat.roomNamesFor('ja').includes('zhanxing = 西洋占星術') && read('app/api/xtell/assistant/route.ts').includes('roomNamesFor('))
+  check('the privacy summary names LINE sign-in, in five languages', LANGS.every(l => /LINE/.test(S['legal.privacy.signin']?.[l] ?? '')) && read('app/privacy/page.tsx').includes("'legal.privacy.signin'") && /Google or LINE sign-in/.test(read('app/terms/page.tsx')))
+  check('…and the situation written at 孫子兵法', /孫子/.test(S['legal.privacy.xtell'].ja) && /孫子兵法/.test(read('app/privacy/page.tsx')))
+  check('the history is grouped by temple', read('app/components/xtell/XTellActivity.tsx').includes('xtell-history-group') && LANGS.every(l => S['xtell.site.historyCount']?.[l]?.includes('{n}')))
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall Japanese copy checks passed')
 if (fails) process.exit(1)

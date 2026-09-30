@@ -922,6 +922,66 @@ all in git history or the session scratchpad only.
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
 
+## The signed-in test round (Sep 29)
+
+Owner: "do another round of test … try each feature one by one". All 18
+rooms, the guide, the almanac, the daily fortune, the account and legal
+pages, on the live site in 日本語 (signed-in in the owner's Chrome at 606 px,
+signed-out at phone width), one teacher question a room. What it found, and
+what changed:
+
+- **Sub-cent answers were never billed.** The reading route rounded each
+  answer's cost to whole cents; the default teacher's answers cost $0.0002
+  to $0.0007, so all 18 were charged $0. `114_credit_fractions.sql` keeps
+  the part under a cent per user (millionths of a dollar) and
+  `accrueFraction()` (lib/credits.ts) returns the whole cents now due; over
+  time a user pays the sum rounded down, never more than list. Without the
+  migration the old rounding stands. Only XTell readings use it so far.
+- **The daily 西洋 reading came back in 繁體 on a Japanese page** and was
+  cached for the day: the brief said "Keep Chinese technical terms in
+  Chinese characters", and the facts are Chinese. The brief now says to
+  translate; `inLanguage()` (lib/xtell-lang-check.ts: kana for Japanese,
+  hangul for Korean, Latin for English) refuses a reading in another
+  language so the stand-in writes it; `DAILY_RULES` is `-2`, so rows cached
+  before are not served. `leaksChinese` missed it: literary 繁體 has none of
+  its marker characters.
+- **Teachers contradicted the chart** (a 相害 year called harmonious; 癸 and
+  丙 called a 干合; a stem placed in the wrong pillar; 媽祖 given a 大吉 it
+  does not have; 売 said to contain 貝; a 爻辭 called a 卦辭). `TONE` now
+  says: relations and yearly verdicts only as attached, never the opposite;
+  name the pillar; no gender roles. 媽祖, 易 and 測字 have their own lines.
+- **Chinese on Japanese pages.** The boards read names from the engines'
+  Chinese tables: signs, planets, elements and modalities now come from the
+  string table (`sign(t, i)`, `plName`), the Vedic board too (`rasiName`,
+  `grahaName`, `nakName`); relation words through `relText` (無特殊關係,
+  兩盤合看涵蓋, 同為, 生, 剋, the animals); lunar dates in figures
+  (`lunarLocal`); 納音 in Japanese forms; the name board's 格 labels, grades
+  and 三才 line as strings, with the 81 數理 idioms on Chinese pages only;
+  媽祖's line and its doubled heading; 歲, 畫. Japanese answers get a
+  glossary (`JA_TERMS`: ハウス, コンジャンクション, ホロスコープ, 命式,
+  おみくじ, no 簡体字, no guessed readings or 書き下し). The guide is given the
+  rooms' names in the page language (`roomNamesFor`).
+- **Places:** 20 Japanese and 6 Korean cities; `placeLabel`, `placesFor`
+  (the visitor's country first) and `defaultPlaceFor` (Tokyo, Seoul).
+- **Names:** schools differ on new-form kanji. The count stays the written
+  form's (the earlier decision); Japanese pages also show the old form and
+  its strokes (続 → 續 21, `content/names/kyujitai.json`, 298 pairs from
+  OpenCC's table by `scripts/build-kyujitai.mjs`), and the teacher is told
+  both schools and not to mix the forms when taking a character apart.
+- **解夢 lines carry an AI translation** on pages that are not Chinese, like
+  孫子兵法's (「齒自落者父母凶」 alone frightened a reader). The scan answers
+  `{"picks": [{"id", "gloss"}]}`; a dream looked up on a Chinese page is
+  looked up again on a Japanese one.
+- **Also:** no 称骨 card in Japanese; 九星 and 宿曜 summaries show the date
+  only; the almanac card no longer says 農民暦; plan dates in the site
+  language; LINE and the 孫子兵法 situation in the privacy summaries; the
+  cookie slip about "credits" is not drawn.
+- **Account history grouped by temple** (owner, same day): one `<details>` a
+  temple in `XTellActivity`, the temple visited last on top and open.
+- **Not done:** fixed 書き下し and translations for the 260 temple poems
+  (teachers improvise kanbun readings and get them wrong); a one-time AI
+  job that needs a budget.
+
 ## Each market's order (Sep 28)
 
 `displayTemples(lang)` (TempleArtwork.tsx): every temple in every language,

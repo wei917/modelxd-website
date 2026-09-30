@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-29.3 -->
+<!-- xtell-guide version: 2026-09-29.4 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -175,8 +175,9 @@ free and as written, each with its section (龍蛇禽獸等類 …). Then the ch
 teachers read the dream against those lines and your situation; they quote
 only those lines, say that 「主…吉／凶」 is what the old book says rather
 than a prediction, and suggest a doctor or counsellor for recurring
-nightmares. The dream may be written in any language. Up to 30 dreams a day;
-a dream already looked up keeps its lines.
+nightmares. The dream may be written in any language. On pages that are not
+Chinese each line also carries a plain translation by the AI. Up to 30 dreams
+a day; a dream already looked up keeps its lines.
 
 ### sunzi
 孫子兵法 (The Art of War; 兵法 in the top bar). Not fortune-telling: help

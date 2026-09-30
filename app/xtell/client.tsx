@@ -717,7 +717,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     : temple === 'tarot' ? { temple, spread, picks: picksRef.current, ask: ask.trim() }
     : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
-    : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask }
+    : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask, lang }
     // 孫子兵法: `lang` is the language of the free translations.
     : temple === 'sunzi' ? { temple, situation: situation.trim(), ask: ask.trim(), lang }
     : temple === 'cookie' ? { temple, food: food.trim(), mealAt, ask: ask.trim(), lang }
@@ -2461,11 +2461,11 @@ const sign = (t: Tr, i: number) => t(`xtell.sign.${i}`)
 // rows, 流年), shown in the page's language (a Japanese tester, Sep 29:
 // 「無特殊關係」「兩盤合看涵蓋」 on a Japanese page).
 const REL_WORDS: Record<string, Array<[string | RegExp, string]>> = {
-  ja: [['無特殊關係', '特別な関係なし'], ['兔', '兎'], ['龍', '竜'], ['雞', '鶏'], ['豬', '猪'], ['猴', '猿'], ['狗', '犬'], ['　或　', '　または　'],
+  ja: [['無特殊關係', '特別な関係なし'], ['無法判讀', '判定できません'], ['天干五合', '干合'], [/同為(.)/, 'どちらも$1'], [/(.)生(.)/, '$1生$2（相生）'], [/(.)剋(.)/, '$1剋$2（相剋）'], ['兔', '兎'], ['龍', '竜'], ['雞', '鶏'], ['豬', '猪'], ['猴', '猿'], ['狗', '犬'], ['　或　', '　または　'],
     [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, '二人の命式を合わせると $1（$2/5）']],
-  'zh-Hans': [['無特殊關係', '无特殊关系'], ['兩盤合看涵蓋', '两盘合看涵盖'], ['龍', '龙'], ['雞', '鸡'], ['豬', '猪'], ['馬', '马'], ['　或　', '　或　']],
-  ko: [['無特殊關係', '특별한 관계 없음'], ['　或　', ' 또는 '], [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, '두 명식을 합치면 $1 ($2/5)']],
-  en: [['無特殊關係', 'no special relation'], ['六合', 'Six Harmony'], ['三合', 'Three Harmony'], ['六沖', 'Clash'], ['相害', 'Harm'], ['相刑', 'Punishment'], ['　或　', ' or '],
+  'zh-Hans': [['無特殊關係', '无特殊关系'], ['無法判讀', '无法判读'], [/同為(.)/, '同为$1'], [/(.)剋(.)/, '$1克$2'], ['兩盤合看涵蓋', '两盘合看涵盖'], ['龍', '龙'], ['雞', '鸡'], ['豬', '猪'], ['馬', '马'], ['　或　', '　或　']],
+  ko: [['無特殊關係', '특별한 관계 없음'], ['無法判讀', '판정 불가'], ['天干五合', '천간합'], [/同為(.)/, '둘 다 $1'], ['　或　', ' 또는 '], [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, '두 명식을 합치면 $1 ($2/5)']],
+  en: [['無特殊關係', 'no special relation'], ['無法判讀', 'cannot be read'], ['天干五合', 'stem harmony'], [/同為(.)/, 'both $1'], [/(.)生(.)/, '$1 feeds $2'], [/(.)剋(.)/, '$1 restrains $2'], ['六合', 'Six Harmony'], ['三合', 'Three Harmony'], ['六沖', 'Clash'], ['相害', 'Harm'], ['相刑', 'Punishment'], ['　或　', ' or '],
     [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, 'together the two charts cover $1 ($2/5)']],
 }
 const relText = (lang: string, s: unknown): string => {
@@ -3231,7 +3231,7 @@ function DreamBoard({ chart }: { chart: any }) {
   const t = useT()
   const { lang } = useLang()
   const hans = lang === 'zh-Hans'
-  const entries: Array<{ id: number; section: string; sectionS: string; t: string; s: string }> = Array.isArray(chart?.entries) ? chart.entries : []
+  const entries: Array<{ id: number; section: string; sectionS: string; t: string; s: string; gloss?: string }> = Array.isArray(chart?.entries) ? chart.entries : []
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div>
@@ -3244,9 +3244,15 @@ function DreamBoard({ chart }: { chart: any }) {
         {entries.length ? (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
             {entries.map(e => (
-              <li key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 15, lineHeight: 1.7 }}>
-                <span style={{ fontFamily: 'var(--font-display), serif', fontWeight: 700, letterSpacing: '.06em' }}>{hans ? e.s : e.t}</span>
-                <span style={{ ...mono, fontSize: 11, color: 'var(--muted2)' }}>〔{hans ? e.sectionS : e.section}〕</span>
+              <li key={e.id} style={{ fontSize: 15, lineHeight: 1.7 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  <span lang={hans ? 'zh-Hans' : 'zh-Hant'} style={{ fontFamily: 'var(--font-display), serif', fontWeight: 700, letterSpacing: '.06em' }}>{hans ? e.s : e.t}</span>
+                  <span style={{ ...mono, fontSize: 11, color: 'var(--muted2)' }}>〔{hans ? e.sectionS : e.section}〕</span>
+                </div>
+                {/* The AI's translation of the line, on pages that are not Chinese. */}
+                {e.gloss && <div style={{ fontSize: 13.5, lineHeight: 1.7, color: 'var(--muted)' }}>
+                  <span style={{ ...mono, fontSize: 10.5, color: 'var(--muted2)', marginRight: 6 }}>{t('xtell.sunzi.gloss')}</span>{e.gloss}
+                </div>}
               </li>
             ))}
           </ul>

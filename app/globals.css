@@ -3285,6 +3285,18 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-history-list strong { font-size: 16px; font-weight: 500; }
 .xtell-history-list time { font-size: 13px; color: var(--xtell-secondary); }
 .xtell-history-amount { flex-shrink: 0; font: 14px var(--font-mono), monospace; }
+/* The history grouped by temple (Sep 29): one <details> a temple. */
+.xtell-history-group { border-bottom: 1px solid var(--xtell-rule); }
+.xtell-history-group > summary { display: flex; align-items: center; gap: 12px; padding: 16px 0; cursor: pointer; list-style: none; }
+.xtell-history-group > summary::-webkit-details-marker { display: none; }
+.xtell-history-group > summary::after { content: '▾'; margin-left: auto; color: var(--xtell-secondary); transition: transform .15s; }
+.xtell-history-group:not([open]) > summary::after { transform: rotate(-90deg); }
+.xtell-history-group > summary .xtell-artwork { display: inline-block; width: 36px; height: 36px; flex-shrink: 0; }
+.xtell-history-group > summary strong { font-size: 17px; font-weight: 600; }
+.xtell-history-group > summary small { font-size: 13px; color: var(--xtell-secondary); }
+.xtell-history-group .xtell-history-list { padding-left: 48px; }
+.xtell-history-group .xtell-history-list li:last-child { border-bottom: none; }
+@media (max-width: 640px) { .xtell-history-group .xtell-history-list { padding-left: 0; } }
 @media (max-width: 1000px) {
   .xtell-nav-inner { gap: 32px; padding-inline: 28px; }
   .xtell-container { padding-inline: 28px; }

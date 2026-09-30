@@ -18,7 +18,7 @@ import { dailyText } from '@/lib/xtell-daily-model'
 import { debitCredits, grantCredits, InsufficientCreditsError } from '@/lib/credits'
 import { almanacFor } from '@/lib/xtell-almanac'
 import { yixueChart, yixueInputError } from '@/lib/yijing'
-import { dreamEntries, dreamProblem, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
+import { dreamEntries, dreamProblem, dreamLang, ASK_MAX, SCANS_PER_DAY } from '@/lib/jiemeng'
 import { scanDream } from '@/lib/jiemeng-scan'
 import { situationProblem, sunziLines, glossLang, ASK_MAX as SUNZI_ASK_MAX, SCANS_PER_DAY as SUNZI_PER_DAY } from '@/lib/sunzi'
 import { scanSituation } from '@/lib/sunzi-scan'
@@ -135,22 +135,25 @@ export async function POST(req: Request) {
       .select('chart, created_at').eq('user_id', user.id).eq('temple', 'jiemeng')
       .order('created_at', { ascending: false }).limit(SCANS_PER_DAY + 20)
     const rows = (recent ?? []) as Array<{ chart: any; created_at: string }>
-    const seen = rows.find(r => r.chart?.scan && r.chart?.dream === dream && Array.isArray(r.chart?.entries))
+    // The translations are per language: a dream looked up on a Chinese page
+    // (no translations) is looked up again on a Japanese one.
+    const dl = dreamLang(body?.lang)
+    const seen = rows.find(r => r.chart?.scan && r.chart?.dream === dream && Array.isArray(r.chart?.entries) && dreamLang(r.chart?.lang) === dl)
     let entries, by: string
     if (seen) {
-      entries = dreamEntries(seen.chart.entries.map((e: any) => e?.id))
+      entries = dreamEntries(seen.chart.entries)
       by = seen.chart.scan
     } else {
       const dayAgo = Date.now() - 86_400_000
       if (rows.filter(r => r.chart?.scan && Date.parse(r.created_at) > dayAgo).length >= SCANS_PER_DAY)
         return refuse('dream_daily_limit', 'too many dreams looked up today', 429)
-      const scan = await scanDream(dream, user.id)
+      const scan = await scanDream(dream, user.id, typeof body?.lang === 'string' ? body.lang : 'zh-Hant')
       if (!scan) return refuse('dream_scan_failed', 'the dream book lookup is unavailable', 503)
-      entries = dreamEntries(scan.ids)
+      entries = dreamEntries(scan.picks ?? scan.ids)
       by = scan.model
     }
-    // `scan` names the model that chose the lines.
-    const chart = { dream, ask, entries, scan: by }
+    // `scan` names the model that chose the lines; `lang` the translations' language.
+    const chart = { dream, ask, entries, scan: by, lang: dl }
     const readingId = await save(sb, user.id, temple, { ...body, dream, ask }, chart, {}, dream.split('\n')[0])
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }

@@ -1,15 +1,17 @@
 'use client'
 // The visitor's saved readings (supabase/105): every chart cast and every
-// conversation, newest first. Open continues the same thread; delete is a
-// soft delete under the owner policy. Reads the table directly with the
+// conversation, grouped by temple (owner, Sep 29: "group them by temples"),
+// the temple visited last on top and open, each group newest first. Open
+// continues the same thread; delete erases the row under the owner policy. Reads the table directly with the
 // browser client, like the wallet does — RLS scopes it to the signed-in user.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../../lib/i18n'
 import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../../lib/xtell-history'
 import { TitleEditor } from './TitleEditor'
 import { yenApprox } from '../../../lib/plans'
+import { TempleArtwork, TEMPLE_ART, type TempleKey } from './TempleArtwork'
 
 type Saved = { id: string; temple: string; title: string | null; subject: any; cost_cents: number; created_at: string; updated_at: string; turns: Array<{ role: string }> }
 
@@ -49,29 +51,40 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
     setRenaming(null)
     return true
   }
+  // Rows arrive newest first, so the groups come out in the order the
+  // temples were last visited.
+  const groups = useMemo(() => {
+    const by = new Map<string, Saved[]>()
+    for (const r of rows) { const g = by.get(r.temple); if (g) g.push(r); else by.set(r.temple, [r]) }
+    return [...by.entries()]
+  }, [rows])
   return <section id="xtell-activity" className="xtell-activity" aria-labelledby="xtell-activity-title">
     <div className="xtell-section-heading"><h2 id="xtell-activity-title">{t('xtell.site.history')}</h2><span>XTell</span></div>
     <p className="xtell-account-note">{t('xtell.site.historyNote')}</p>
     {status === 'loading' ? <p role="status" className="xtell-history-empty">{t('common.loading')}</p>
       : status === 'error' ? <div className="xtell-history-empty" role="alert"><p>{t('xtell.site.historyError')}</p><button className="xtell-button" onClick={() => setAttempt(n => n + 1)}>{t('xtell.site.retry')}</button></div>
       : rows.length === 0 ? <div className="xtell-history-empty"><p>{t('xtell.site.historyEmpty')}</p><a className="xtell-text-link" href={basePath}>{t('xtell.site.street')} <span aria-hidden="true">↗</span></a></div>
-      : <ul className="xtell-history-list">{rows.map(row => {
+      : <div className="xtell-history-groups">{groups.map(([temple, list], gi) => <details key={temple} className="xtell-history-group" open={gi === 0 || undefined}>
+        <summary>
+          {temple in TEMPLE_ART && <TempleArtwork temple={temple as TempleKey} kind="icon" clear />}
+          <strong>{t(`xtell.site.focus.${temple}.name`)}</strong>
+          <small>{t('xtell.site.historyCount').replace('{n}', String(list.length))} · {new Date(list[0].created_at).toLocaleDateString(lang, { dateStyle: 'medium' })}</small>
+        </summary>
+        <ul className="xtell-history-list">{list.map(row => {
         const asked = (row.turns ?? []).filter(x => x.role === 'user').length
         const named = row.title || firstAsk(row.turns)
+        const what = describeVisit(t, row.temple, row.subject)
         if (renaming === row.id) return <li key={row.id} style={{ display: 'block' }}>
-          <strong>{t(`xtell.site.focus.${row.temple}.name`)}</strong>
           <TitleEditor value={row.title ?? ''} onSave={text => rename(row.id, text)} onCancel={() => setRenaming(null)} />
         </li>
         return <li key={row.id}>
           <span>
-            {/* Named as the explorer and the room name it (tester, Sep 26:
-                the list said 姓名亭／測字亭, the explorer 姓名學／測字). */}
-            <strong>{t(`xtell.site.focus.${row.temple}.name`)}</strong>
-            {/* Named by what it was about, not "chart only" for every row
-                (audit, product); the first question stays the title. */}
-            <span style={{ display: 'block', fontSize: 13 }}>{named || describeVisit(t, row.temple, row.subject) || t(notAskedKey(row.temple))}</span>
-            {named && describeVisit(t, row.temple, row.subject) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{describeVisit(t, row.temple, row.subject)}</span>}
-            {!asked && (named || describeVisit(t, row.temple, row.subject)) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(notAskedKey(row.temple))}</span>}
+            {/* The temple is the group's heading; the row is named by what it
+                was about, not "chart only" for every row (audit, product);
+                the first question stays the title. */}
+            <strong>{named || what || t(notAskedKey(row.temple))}</strong>
+            {named && what && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{what}</span>}
+            {!asked && (named || what) && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted2)' }}>{t(notAskedKey(row.temple))}</span>}
             <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {asked > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--muted2)' }}>{asked} {t('xtell.saved.turns')}</span>}
           </span>
@@ -91,6 +104,7 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
             {failed === row.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--xtell-vermilion, var(--red))', textAlign: 'right' }}>{t('xtell.saved.deleteFailed')}</span>}
           </span>
         </li>
-      })}</ul>}
+        })}</ul>
+      </details>)}</div>}
   </section>
 }

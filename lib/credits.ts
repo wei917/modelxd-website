@@ -59,6 +59,30 @@ function serviceClient(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
+// ── Charges under a cent (supabase/114) ────────────────────────────────────
+
+/**
+ * Add a charge, in millionths of a dollar, to the user's carry and get back
+ * the whole cents now due (then debit them with debitCredits). The wallet is
+ * whole cents and an XTell answer costs a fraction of one: rounding each
+ * charge billed nothing (a test round, Sep 29), and rounding up would
+ * overbill. Over time the user pays the sum of the charges rounded down to
+ * the cent.
+ *
+ * Null when the carry is not available (migration 114 not applied, or the
+ * call failed): the caller then rounds as before.
+ */
+export async function accrueFraction(userId: string, micros: number): Promise<number | null> {
+  if (!Number.isFinite(micros) || micros <= 0) return 0
+  try {
+    const { data, error } = await serviceClient().rpc('accrue_fraction', { p_user: userId, p_micros: Math.round(micros) })
+    if (error || typeof data !== 'number') return null
+    return data
+  } catch {
+    return null
+  }
+}
+
 // ── Errors ────────────────────────────────────────────────────────────────
 
 /**

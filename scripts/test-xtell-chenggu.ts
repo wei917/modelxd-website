@@ -288,7 +288,7 @@ async function routes() {
     '@/lib/supabase-server': { createSupabaseServer: async () => db },
     '@/lib/models': { getModelById: async () => model },
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
-    '@/lib/credits': { debitCredits: async () => {}, InsufficientCreditsError: class extends Error {} },
+    '@/lib/credits': { debitCredits: async () => {}, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
     '@/lib/xtell': xtell,
     '@/lib/classics': { classicsBlock: () => '' },

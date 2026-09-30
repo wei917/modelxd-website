@@ -165,14 +165,15 @@ async function routes() {
   // Reading: the saved visit's lines, never a client's.
   const systems: string[] = []
   const visitId = '00000000-0000-4000-8000-00000000abcd'
-  const readingRoute = (rows: any[]) => loadRoute('app/api/xtell/reading/route.ts', {
+  const readingRoute = (rows: any[], over: Record<string, unknown> = {}) => loadRoute('app/api/xtell/reading/route.ts', {
     '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb(rows).db },
     '@/lib/xtell-admin': { xtellAdmin: () => { throw new Error('the service role is not for temple readings') }, dailyMissing: () => false },
     '@/lib/models': { getModelById: async () => ({ id: 'm1', provider: 'openai', model_name: 'test', display_name: 'Test', enabled: true, blocked_features: [], output_config: { text: { capabilities: [], thinking_levels: [] } } }) },
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
-    '@/lib/credits': { debitCredits: async () => {}, InsufficientCreditsError: class extends Error {} },
+    '@/lib/credits': { debitCredits: async () => {}, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
     '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': jm, '@/lib/sunzi': sz,
+    ...over,
   }).POST
   const ask = async (rows: any[], body: any) => { const r = await readingRoute(rows)(post('http://t/api/xtell/reading', { temple: 'sunzi', modelId: 'm1', question: '第一步該做什麼？', situation: '對手降價', ...body })); await r.text(); return { status: r.status, sys: systems.at(-1) ?? '' } }
   const s1 = await ask([row('對手降價', [40], 1, { id: visitId })], { readingId: visitId, lines: [200, 201] })
@@ -181,6 +182,27 @@ async function routes() {
   check('reading without a saved visit: only real book lines, from disk', s2.status === 200 && s2.sys.includes(book.lines[12].t) && !s2.sys.includes('<x>'))
   const s3 = await ask([row('對手降價', [40], 1, { id: visitId, user_id: 'user-b' })], { readingId: visitId })
   check('reading: another visitor\'s visit is not read', s3.status === 200 && !s3.sys.includes(book.lines[40].t))
+  // Billing (Sep 29, supabase/114): a charge under a cent is carried, never
+  // rounded away (18 answers of a test round were billed nothing) or up.
+  const bill = async (costs: number[], carry: Array<number | null>) => {
+    const debits: number[] = [], micros: number[] = []
+    let i = 0, j = 0
+    const POST = readingRoute([], {
+      '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any) => { await cb.onDone({ cost: costs[i++] }) } },
+      '@/lib/credits': { debitCredits: async (o: any) => { debits.push(o.amountCents) }, accrueFraction: async (_u: string, m: number) => { micros.push(Math.round(m)); return carry[j++] }, InsufficientCreditsError: class extends Error {} },
+    })
+    for (let k = 0; k < costs.length; k++) { const r = await POST(post('http://t/api/xtell/reading', { temple: 'sunzi', modelId: 'm1', question: 'q', situation: '對手降價' })); await r.text() }
+    return { debits, micros }
+  }
+  const b1 = await bill([0.0004, 0.0004, 0.0093], [0, 0, 1])
+  check('each answer\'s cost joins the carry in millionths of a dollar; a cent is debited only when one is due', b1.micros.join() === '400,400,9300' && b1.debits.join() === '1')
+  const b2 = await bill([0.0004, 0.012], [null, null])
+  check('without the carry (migration 114 not run) the old rounding stands: nothing under half a cent', b2.debits.join() === '1')
+  const b3 = await bill([0.0349], [3])
+  check('a larger charge bills its whole cents and carries the rest', b3.micros[0] === 34900 && b3.debits.join() === '3')
+  const mig = fs.readFileSync(path.join(__dirname, '..', 'supabase', '114_credit_fractions.sql'), 'utf8')
+  check('114: the carry is service-role only, by name', /revoke all on function public\.accrue_fraction\(uuid, bigint\) from public, anon, authenticated/.test(mig) && /grant execute on function public\.accrue_fraction\(uuid, bigint\) to service_role/.test(mig) && /enable row level security/.test(mig))
+
   const r7 = await readingRoute([])(post('http://t/api/xtell/reading', { temple: 'sunzi', modelId: 'm1', question: 'q', situation: ' ' }))
   check('reading: a missing situation is refused', r7.status === 400 && (await r7.json() as any).code === 'situation_required')
 }

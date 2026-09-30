@@ -22,7 +22,7 @@
 
 import * as providers from '@/lib/providers'
 import { getModelByProviderName } from '@/lib/models'
-import { scanSystem, scanIds } from '@/lib/jiemeng'
+import { scanSystem, scanMessage, scanPicks, type DreamPick } from '@/lib/jiemeng'
 
 export const SCANNERS = [
   { provider: 'openai', model: 'gpt-6-luna', thinking: 'none' },
@@ -31,44 +31,50 @@ export const SCANNERS = [
 const TIMEOUT_MS = 25_000
 const SCHEMA = {
   name: 'dream_lines',
-  schema: { type: 'object', properties: { ids: { type: 'array', items: { type: 'integer' } } }, required: ['ids'], additionalProperties: false },
+  schema: {
+    type: 'object',
+    properties: { picks: { type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, gloss: { type: 'string' } }, required: ['id', 'gloss'], additionalProperties: false } } },
+    required: ['picks'], additionalProperties: false,
+  },
   strict: true,
 }
 
 type Scanner = (typeof SCANNERS)[number]
 
-/** One scanner's answer: the line numbers, or null (disabled, failed, timed
- *  out, or a reply that is not the JSON asked for). */
-export async function scanWith(s: Scanner, dream: string, userId: string): Promise<number[] | null> {
+/** One scanner's answer: the picks (line numbers, and translations on a
+ *  page that is not Chinese), or null (disabled, failed, timed out, or a
+ *  reply that is not the JSON asked for). */
+export async function scanWith(s: Scanner, dream: string, userId: string, lang = 'zh-Hant'): Promise<DreamPick[] | null> {
   const model = await getModelByProviderName(s.provider, s.model).catch(() => null)
   if (!model?.enabled) return null
   let text = '', error: string | undefined
   let timer: ReturnType<typeof setTimeout> | null = null
   await Promise.race([
     new Promise<void>(resolve => {
-      providers.streamText(model, [{ role: 'user', content: `夢（照錄）：\n${dream}` }], {
+      providers.streamText(model, [{ role: 'user', content: scanMessage(dream, lang) }], {
         onDelta: (t: string) => { text += t },
         onDone: () => resolve(),
         onError: (m: string) => { error = m; resolve() },
       }, [], { userId }, {
-        thinking: s.thinking, search: false, maxTokens: 300, system: scanSystem(),
+        thinking: s.thinking, search: false, maxTokens: 900, system: scanSystem(),
         ...(s.provider === 'openai' ? { jsonSchema: SCHEMA } : { jsonMode: true }),
       }).catch((e: any) => { error = e?.message ?? String(e); resolve() })
     }),
     new Promise<void>(resolve => { timer = setTimeout(() => { error = 'timeout'; resolve() }, TIMEOUT_MS) }),
   ])
   if (timer) clearTimeout(timer)
-  const ids = error ? null : scanIds(text)
-  if (!ids) console.warn(`[xtell/jiemeng] scan by ${s.model} failed: ${error ?? `unreadable reply ${JSON.stringify(text.slice(0, 200))}`}`)
-  return ids
+  const picks = error ? null : scanPicks(text)
+  if (!picks) console.warn(`[xtell/jiemeng] scan by ${s.model} failed: ${error ?? `unreadable reply ${JSON.stringify(text.slice(0, 200))}`}`)
+  return picks
 }
 
-/** The book's line numbers for this dream, and the model that chose them;
- *  null when no scanner could answer (the page then says so). */
-export async function scanDream(dream: string, userId: string): Promise<{ ids: number[]; model: string } | null> {
+/** The book's lines for this dream (`ids`, and `picks` with the
+ *  translations), and the model that chose them; null when no scanner could
+ *  answer (the page then says so). */
+export async function scanDream(dream: string, userId: string, lang = 'zh-Hant'): Promise<{ ids: number[]; picks: DreamPick[]; model: string } | null> {
   for (const s of SCANNERS) {
-    const ids = await scanWith(s, dream, userId)
-    if (ids) return { ids, model: s.model }
+    const picks = await scanWith(s, dream, userId, lang)
+    if (picks) return { ids: picks.map(p => p.id), picks, model: s.model }
   }
   return null
 }

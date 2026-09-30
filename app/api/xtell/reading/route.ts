@@ -11,7 +11,7 @@ export const maxDuration = 300
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
-import { debitCredits, InsufficientCreditsError } from '@/lib/credits'
+import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { baziChart, baziFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
@@ -347,7 +347,11 @@ export async function POST(req: Request) {
           // fire-and-forget write started here can be cut off. The first
           // live test lost exactly one appended turn that way (Sep 24).
           onDone: async (r) => {
-            const cents = Math.round((r.cost ?? 0) * 100)
+            // Whole cents due now: this answer's cost joins what earlier
+            // answers left under a cent (supabase/114). Until that migration
+            // runs, the old rounding, which bills nothing below half a cent.
+            const carried = await accrueFraction(user.id, (r.cost ?? 0) * 1e6)
+            const cents = carried ?? Math.round((r.cost ?? 0) * 100)
             // Measured, not yet acted on (Sep 29): how often a Japanese
             // answer carries Chinese prose, per model. Characters only,
             // never the answer.

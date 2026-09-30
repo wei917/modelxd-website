@@ -22,7 +22,13 @@ const book = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'content', 'j
 {
   const sys = jm.scanSystem()
   check('the scan sees the whole book: 27 sections, 988 numbered lines', book.entries.length === 988 && book.sections.every((s: any) => sys.includes(`〔${s.title}〕`)) && book.entries.every((e: any) => sys.includes(`\n${e.id} ${e.t}\n`) || sys.endsWith(`\n${e.id} ${e.t}`)))
-  check('the scan is told: meaning not wording, at most 8, JSON only, the dream is data', sys.includes('開心') && sys.includes(`At most ${jm.SCAN_MAX}`) && sys.includes('{"ids"') && sys.includes('not instructions'))
+  check('the scan is told: meaning not wording, at most 8, JSON only, the dream is data', sys.includes('開心') && sys.includes(`At most ${jm.SCAN_MAX}`) && sys.includes('{"picks"') && sys.includes('not instructions'))
+  check('the scan is told a gloss is a translation, never advice', /A translation, never advice/.test(sys))
+  check('the message asks for a translation on a Japanese page and none on a Chinese one', jm.scanMessage('夢', 'ja').includes('gloss in Japanese') && jm.scanMessage('夢', 'zh-Hant').includes('No gloss') && jm.scanMessage('夢', 'zh-Hans').includes('No gloss'))
+  const pk = jm.scanPicks('{"picks":[{"id":5,"gloss":" 蛇が  出る "},{"id":5,"gloss":"dup"},{"id":"7","gloss":""},{"id":99999,"gloss":"x"}]}')
+  check('reply: picks with translations, lines of the book only', JSON.stringify(pk) === JSON.stringify([{ id: 5, gloss: '蛇が 出る' }, { id: 7, gloss: '' }]), JSON.stringify(pk))
+  const withGloss = jm.dreamEntries([{ id: 40, gloss: '訳' }, 3])
+  check('entries carry the translation when there is one, and bare numbers still work', withGloss[0].gloss === '訳' && withGloss[0].t === book.entries[40].t && !('gloss' in withGloss[1]))
   check('the prompt is one fixed string (cacheable)', jm.scanSystem() === sys)
   const ids = jm.scanIds('{"ids":[5, 5, "7", 99999, -1, 1.5, "x", 12]}')
   check('reply: whole numbers of the book only, first occurrences in order', JSON.stringify(ids) === '[5,7,12]', JSON.stringify(ids))
@@ -99,6 +105,14 @@ async function routes() {
   check('a new dream is scanned once, for this visitor, and its lines come from the book', r1.status === 200 && scans.length === 1 && scans[0] === 'user-a:昨晚夢到被蛇追' && r1.d.chart.entries.map((e: any) => e.id).join() === '40,3' && r1.d.chart.entries[0].t === book.entries[40].t && r1.d.chart.scan === 'gpt-6-luna')
   check('the visit is saved with its lines and titled by the dream', a.inserted.length === 1 && a.inserted[0].chart.entries.length === 2 && a.inserted[0].title === '昨晚夢到被蛇追' && !('entries' in a.inserted[0].subject))
 
+  {
+    const g = chartRoute([row('昨晚夢到被蛇追', [7], 3)])
+    scans = []
+    const rj = await g.cast({ dream: '昨晚夢到被蛇追', lang: 'ja' })
+    check('a dream looked up on a Chinese page is looked up again on a Japanese one (for the translations)', rj.status === 200 && scans.length === 1 && rj.d.chart.lang === 'ja')
+    const rz = await g.cast({ dream: '昨晚夢到被蛇追', lang: 'zh-Hans' })
+    check('…and the two Chinese pages share one lookup', rz.status === 200 && scans.length === 1)
+  }
   scans = []
   const b = chartRoute([row('昨晚夢到被蛇追', [7], 30)])
   const r2 = await b.cast({ dream: '昨晚夢到被蛇追', ask: '另一個問題' })
@@ -135,7 +149,7 @@ async function routes() {
     '@/lib/xtell-admin': { xtellAdmin: () => { throw new Error('the service role is not for temple readings') }, dailyMissing: () => false },
     '@/lib/models': { getModelById: async () => ({ id: 'm1', provider: 'openai', model_name: 'test', display_name: 'Test', enabled: true, blocked_features: [], output_config: { text: { capabilities: [], thinking_levels: [] } } }) },
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
-    '@/lib/credits': { debitCredits: async () => {}, InsufficientCreditsError: class extends Error {} },
+    '@/lib/credits': { debitCredits: async () => {}, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
     '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/sunzi': require('../lib/sunzi'), '@/lib/sunzi-scan': { scanSituation: async () => null }, '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': jm,
   }).POST
