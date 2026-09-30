@@ -49,10 +49,13 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   guanyin: { src: { portrait: '/xtell/approved/guanyin-portrait.avif', icon: '/xtell/approved/guanyin-icon.avif', iconClear: '/xtell/approved/guanyin-icon-clear.avif' }, caption: 'GUANYIN', kind: 'deity' },
   tarot: { src: { portrait: '/xtell/approved/tarot-portrait.avif', icon: '/xtell/approved/tarot-icon.avif', iconClear: '/xtell/approved/tarot-icon-clear.avif' }, caption: 'TAROT', kind: 'object' },
   cookie: { src: { portrait: '/xtell/approved/cookie-portrait.avif', icon: '/xtell/approved/cookie-icon.avif', iconClear: '/xtell/approved/cookie-icon-clear.avif' }, caption: 'FORTUNE COOKIE', kind: 'object' },
-  // 九星気学 (Sep 29): the 洛書 board drawn in code (scripts/xtell-kyusei-art.mjs),
-  // an interim picture until generated art like the others' is approved.
-  // 宿曜占星術 (Sep 29): the ring of twenty-seven around the moon, drawn in
-  // code (scripts/xtell-sukuyo-art.mjs), interim like 九星's.
+  // 九星気学 (Sep 29): the nine-star board on a compass rose. Generated like
+  // 觀音's; the discs were then recoloured in code into the real 定位盤 (南
+  // on top: 四緑 九紫 二黒 / 三碧 五黄 七赤 / 八白 一白 六白). See docs/XTELL-PAGE.md.
+  // 宿曜占星術 (Sep 29): a crescent in a night circle ringed by the twenty-
+  // seven mansions, over a sutra scroll. Generated like 觀音's (GPT Image 2.5
+  // Sunburst against the object icons); the ring was then redrawn in code
+  // with exactly 27 stars. See docs/XTELL-PAGE.md.
   sukuyo: { src: { portrait: '/xtell/approved/sukuyo-portrait.avif', icon: '/xtell/approved/sukuyo-icon.avif', iconClear: '/xtell/approved/sukuyo-icon-clear.avif' }, caption: 'SUKUYO', kind: 'object' },
   kyusei: { src: { portrait: '/xtell/approved/kyusei-portrait.avif', icon: '/xtell/approved/kyusei-icon.avif', iconClear: '/xtell/approved/kyusei-icon-clear.avif' }, caption: 'NINE STAR KI', kind: 'object' },
 }

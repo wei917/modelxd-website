@@ -35,7 +35,7 @@ async function tile(sheet, index) {
 
 // Square object art (塔羅's fanned cards) is fitted whole on its own paper;
 // everything else fills the column.
-const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee', kyusei: '#faf6ed', sukuyo: '#faf6ed' }
+const FIT_WHOLE = { tarot: '#fbf7ee', cookie: '#fbf7ee', kyusei: '#fcf8ee', sukuyo: '#fcf8ed' }
 async function portrait(key) {
   const img = key in SHEET ? await tile('portraits.avif', SHEET[key]) : sharp(`${A}/${OWN[key]}-portrait.avif`)
   return key in FIT_WHOLE
@@ -67,14 +67,13 @@ async function temple(key) {
 }
 
 async function street() {
-  // Every temple's icon, two rows of eight, under the name.
-  // 九星氣學 and 宿曜 join this picture when generated art replaces their interim icons.
-  const order = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'xingming', 'cezi', 'yixue', 'jiemeng', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
-  const S = 100, GAP = 22, left = (W - (8 * S + 7 * GAP)) / 2
+  // Every temple's icon, two rows of nine, under the name.
+  const order = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'yixue', 'jiemeng', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
+  const PER = 9, S = 100, GAP = 22, left = (W - (PER * S + (PER - 1) * GAP)) / 2
   const icons = await Promise.all(order.map(async (key, i) => {
     // The clear icons (scripts/xtell-clear-icons.mjs): no paper square on paper.
     const img = key in SHEET ? await tile('icons-clear.avif', SHEET[key]) : sharp(`${A}/${OWN[key]}-icon-clear.avif`)
-    return { input: await img.resize(S, S).toBuffer(), left: Math.round(left + (i % 8) * (S + GAP)), top: 270 + Math.floor(i / 8) * (S + 30) }
+    return { input: await img.resize(S, S).toBuffer(), left: Math.round(left + (i % PER) * (S + GAP)), top: 270 + Math.floor(i / PER) * (S + 30) }
   }))
   const svg = text([
     `<text x="${W / 2}" y="150" text-anchor="middle" font-family="Songti TC" font-size="92" fill="${INK}">X先知</text>`,
