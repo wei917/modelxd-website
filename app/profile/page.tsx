@@ -16,6 +16,7 @@ import { DailyProfileSettings } from '../components/xtell/XTellDaily'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { XCreateAccountHead, XCreateAccountWelcome, XCreateLibrary } from '../components/xcreate/XCreateAccount'
 import { yenApprox } from '../../lib/plans'
+import { userName, userPhoto } from '../../lib/user-face'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -316,8 +317,8 @@ export default function ProfilePage() {
         // Self-heal: create the missing profile row from auth metadata.
         const fallback = {
           id: u.id,
-          display_name: u.user_metadata?.full_name ?? u.user_metadata?.name ?? u.email?.split('@')[0] ?? null,
-          avatar_url:   u.user_metadata?.avatar_url ?? null,
+          display_name: userName(u),
+          avatar_url:   userPhoto(u),
           bio:          null,
         }
         await client.from('profiles').upsert(fallback)

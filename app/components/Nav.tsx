@@ -13,6 +13,7 @@ import BugReportLink from './BugReport'
 import { useSite } from '../../lib/useSite'
 import XTellNav from './xtell/XTellNav'
 import XCreateNav from './xcreate/XCreateNav'
+import { userName, userPhoto } from '../../lib/user-face'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
@@ -757,11 +758,11 @@ export default function Nav() {
           <div style={{ height: 30 }} aria-hidden />
         ) : user ? (
           <Link href="/profile" className="nav-auth-profile" aria-label={t('nav.profile')}>
-            {user.user_metadata?.avatar_url ? (
-              <img src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />
+            {userPhoto(user) ? (
+              <img src={userPhoto(user)!} alt="" referrerPolicy="no-referrer" />
             ) : (
               <span className="nav-auth-initials">
-                {(user.user_metadata?.full_name || user.email || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                {(userName(user) || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
               </span>
             )}
             <span className="nav-auth-name">{t('nav.profile')}</span>

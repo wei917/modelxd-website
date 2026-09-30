@@ -16,6 +16,7 @@ export const runtime     = 'nodejs'
 // ignores gateway timeouts and the job polling owns delivery.
 export const maxDuration = 800
 
+import { isVerifiedAccount } from '@/lib/verified-account'
 import { getModelById, type ModelInfo } from '@/lib/models'
 import { processAttachment }            from '@/lib/attachment'
 import { XCREATE_PROMPT_MAX }           from '@/lib/xcreate-limits'
@@ -551,10 +552,11 @@ export async function POST(req: Request) {
   const user = sessionUser ?? (apiToken ? { id: apiToken.userId, email_confirmed_at: 'via-token' } as any : null)
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verified-user gate. Google OAuth auto-confirms email at sign-up, so
-  // this is a no-op today; protects future email/password flows. Token
-  // users passed it when they signed in to mint the key.
-  if (!user.email_confirmed_at) {
+  // Verified-user gate: a confirmed email or an OAuth sign-in (Google, and
+  // LINE since Sep 29, which has no email without its permission). Guards
+  // anonymous sessions and future email/password flows. Token users passed
+  // it when they signed in to mint the key.
+  if (!isVerifiedAccount(user)) {
     return Response.json(
       { error: 'email_not_verified', message: 'Please verify your email before using XCreate.' },
       { status: 403 },

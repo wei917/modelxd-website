@@ -33,12 +33,15 @@ function serviceClient() {
   )
 }
 
+import { isVerifiedAccount } from '@/lib/verified-account'
+
 export async function POST(req: Request) {
   const { createSupabaseServer } = await import('@/lib/supabase-server')
   const supabaseUser = await createSupabaseServer()
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!user.email_confirmed_at) {
+  // A confirmed email or an OAuth sign-in (LINE has no email by default).
+  if (!isVerifiedAccount(user)) {
     return Response.json(
       { error: 'email_not_verified', message: 'Please verify your email before using XCreate.' },
       { status: 403 },

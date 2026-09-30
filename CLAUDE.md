@@ -956,12 +956,21 @@ can sit at the table honestly. One act per request; the client loops.
 
 ## Decisions Taken (don't re-litigate without new information)
 
-- **Apple + LINE sign-in: dropped.** Desktop OS share in TW/JP is ~81%/76%
-  Windows, so the iPhone-majority argument doesn't apply to a desktop product.
-  Sign in with Apple on Windows is worse than Google and costs $99/yr plus a
-  6-month secret rotation. If a mobile push ever happens, LINE is the
-  higher-value one for these markets (~94% penetration in TW) and needs a
-  custom OAuth bridge — Supabase has no LINE provider.
+- **LINE sign-in: built Sep 29** (reversed once ad traffic turned out ~93%
+  phones). Supabase custom OIDC, one provider per LINE region because a LINE
+  channel serves one region: `custom:line-jp` (live) and `custom:line-tw`
+  (not created; flip `live` in `lib/line-login.ts` after probing its
+  authorize URL). The button shows only where a channel serves the visitor
+  (remembered channel, then `data-country` JP/TW, then ja/zh-Hant), and the
+  channel used is remembered per browser so one person does not split into
+  two accounts. A LINE account may have NO email: gates use
+  `isVerifiedAccount()` (`lib/verified-account.ts`), never
+  `email_confirmed_at`, and names/photos go through `lib/user-face.ts`
+  (OIDC fills `name`/`picture`, not `full_name`/`avatar_url`). The $10
+  welcome credit reaches LINE sign-ups only once `112_line_welcome_credit.sql`
+  runs (owner's call).
+- **Apple sign-in: dropped.** Costs $99/yr plus a 6-month secret rotation, and
+  on Windows it is worse than Google.
 - **Werewolf ratings stay out of `all`.**
 - **HappyHorse 1.0 ranks above 1.1** and that is not a bug: 1.0 follows prompt
   instructions (e.g. shallow DoF) more faithfully, while 1.1 optimises for

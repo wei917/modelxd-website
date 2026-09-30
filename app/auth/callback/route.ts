@@ -72,8 +72,8 @@ export async function GET(request: Request) {
   // Safe metadata from Google/Apple — no tokens
   const safeMetadata = {
     email:          user.email,
-    full_name:      meta?.full_name ?? null,
-    avatar_url:     meta?.avatar_url ?? null,
+    full_name:      meta?.full_name ?? meta?.name ?? null,
+    avatar_url:     meta?.avatar_url ?? meta?.picture ?? null,
     provider:       user.app_metadata?.provider ?? null,
     email_verified: user.email_confirmed_at != null,
   }

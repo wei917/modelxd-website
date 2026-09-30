@@ -9,6 +9,7 @@ export const runtime     = 'nodejs'
 // own bookkeeping ahead of the platform limit.
 export const maxDuration = 800
 
+import { isVerifiedAccount } from '@/lib/verified-account'
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
 import { processAttachment }              from '@/lib/attachment'
 import { sanitizeProviderError, ACCOUNT_LIMIT, SAFETY } from '@/lib/provider-errors'
@@ -315,11 +316,10 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verified-user gate: block anyone whose email isn't confirmed.
-  // Google OAuth (the only sign-in path today) auto-confirms email at
-  // login, so this is effectively a no-op now — but it guards against
-  // any future email/password / magic-link flow we add.
-  if (!user.email_confirmed_at) {
+  // Verified-user gate: a confirmed email or an OAuth sign-in (Google, and
+  // LINE since Sep 29, which has no email without its permission). Guards
+  // anonymous sessions and any future email/password / magic-link flow.
+  if (!isVerifiedAccount(user)) {
     return Response.json(
       { error: 'email_not_verified', message: 'Please verify your email before using XDuel.' },
       { status: 403 },

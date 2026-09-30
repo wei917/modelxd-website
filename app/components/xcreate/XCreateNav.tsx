@@ -18,6 +18,7 @@ import { useLang } from '../../../lib/i18n'
 import { useSite } from '../../../lib/useSite'
 import ModeIcon from '../ModeIcon'
 import { STUDIO_TYPES, requestStudioType, useStudioType } from './studio-type'
+import { userName, userPhoto } from '../../../lib/user-face'
 import './xcreate-shell.css'
 
 /** The mark: the ModelXD logo beside the name in the reader's language
@@ -94,10 +95,10 @@ export default function XCreateNav({ user }: { user: User | null }) {
   const { t } = useLang()
   const { show } = useAuthModal()
   useTabTitle()
-  const initial = (user?.user_metadata?.full_name || user?.email || 'X').slice(0, 1).toUpperCase()
+  const initial = (userName(user) || 'X').slice(0, 1).toUpperCase()
   // The Google photo, as www's nav shows it; the initial only without one
   // (owner, Sep 26: a letter read as "not updated after sign in").
-  const photo = typeof user?.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null
+  const photo = userPhoto(user)
   return (
     <header className="xcs-top">
       <a href="#xcreate-main" className="xcs-skip" onClick={event => {

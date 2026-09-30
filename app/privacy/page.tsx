@@ -4,7 +4,7 @@ import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // before beta). Static page, same layout language as /terms. Sep 28: XTell's
 // data, the referral card check, bug reports, the language and referral
 // cookies, and what deleting really erases (XTell rows at once; a removed
-// XDuel/XCreate only hides until the account goes).
+// XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in.
 
 export const metadata = { title: 'Privacy Policy — ModelXD' }
 
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: September 28, 2026
+        Last updated: September 29, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
@@ -33,7 +33,9 @@ export default function PrivacyPage() {
       <h2 style={S.h2}>1. What We Collect</h2>
       <p style={S.p}>
         <strong>Account data.</strong> When you sign in with Google we receive your
-        name, email address, and profile picture. We also store your language and
+        name, email address, and profile picture. When you sign in with LINE we
+        receive your LINE display name, profile picture and an account ID, and your
+        email address only if you allow LINE to share it. We also store your language and
         country (from your browser and network region) to localize the product.
         <br /><strong>Content you submit.</strong> Prompts, messages, uploaded files
         (images, videos, documents), the AI outputs generated for you, and your votes.
@@ -143,7 +145,8 @@ export default function PrivacyPage() {
         We share data only with the processors needed to run the Service: AI
         providers (what a task needs, for generation), Stripe (payments and card
         checks), Supabase (database, storage, and authentication hosting), Vercel
-        (web hosting) and Google (the ads tag described above).
+        (web hosting), Google (the ads tag described above) and, if you sign in with
+        LINE, LY Corporation (LINE Login).
         We may disclose data if required by law.
       </p>
 

@@ -148,7 +148,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // required. The route checks the same header again.
   const logVisits = !needsConsent(h.get('x-vercel-ip-country'))
   return (
-    <html lang={lang} data-site={site}>
+    // data-country: the sign-in dialog picks the visitor's LINE channel by it
+    // (lib/line-login.ts). A country code only, from Vercel's geo.
+    <html lang={lang} data-site={site} data-country={/^[A-Z]{2}$/.test(h.get('x-vercel-ip-country') ?? '') ? h.get('x-vercel-ip-country')! : undefined}>
       <head>
         {/* The first inline script in <head> (Next hoists its async chunks
             and styles above it), so it runs before any of <body> is parsed:
