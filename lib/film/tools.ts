@@ -10,13 +10,18 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateImage, generateVideo, generateSpeech } from '@/lib/providers'
 import { estimateCost } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { FILM_VOICES } from './agent'
+import { FILM_VOICES, FILM_STYLED_VOICES } from './agent'
 
 export const FILM_TOOL_MODELS = {
   image: 'gpt-image-2',
   t2v: 'happyhorse-1.1-t2v',
   i2v: 'happyhorse-1.1-i2v',
   speech: 'speech-2.8-turbo',
+  /** The voices that take a delivery instruction: Taiwanese Mandarin comes
+   *  from here (owner picked Gemini told 「用台灣腔的國語說，溫暖親切。」, Sep 29;
+   *  MiniMax has no Taiwan-accented voice among its 332). Optional: without
+   *  the row, speak falls back to MiniMax only. */
+  speechStyled: 'gemini-3.8-flash-tts',
 } as const
 
 /** Per-film ceilings on top of the money, so a confused agent stops early. */
@@ -28,7 +33,7 @@ export const isFilmTool = (v: unknown): v is FilmTool =>
 const IMAGE_SIZE: Record<string, string> = { '9:16': '1152x2048', '16:9': '2048x1152', '1:1': '1024x1024' }
 const URL_TTL = 60 * 60 * 24
 
-export type FilmModels = Record<keyof typeof FILM_TOOL_MODELS, any>
+export type FilmModels = { image: any; t2v: any; i2v: any; speech: any; speechStyled: any | null }
 
 export async function loadFilmModels(sb: SupabaseClient): Promise<FilmModels> {
   const names = Object.values(FILM_TOOL_MODELS)
@@ -39,7 +44,10 @@ export async function loadFilmModels(sb: SupabaseClient): Promise<FilmModels> {
     if (!row) throw new Error(`film models: ${name} is missing or disabled`)
     return row
   }
-  return { image: by(FILM_TOOL_MODELS.image), t2v: by(FILM_TOOL_MODELS.t2v), i2v: by(FILM_TOOL_MODELS.i2v), speech: by(FILM_TOOL_MODELS.speech) }
+  return {
+    image: by(FILM_TOOL_MODELS.image), t2v: by(FILM_TOOL_MODELS.t2v), i2v: by(FILM_TOOL_MODELS.i2v), speech: by(FILM_TOOL_MODELS.speech),
+    speechStyled: (data ?? []).find((r: any) => r.model_name === FILM_TOOL_MODELS.speechStyled) ?? null,
+  }
 }
 
 /** The file-safe form of the agent's asset name. */
@@ -47,6 +55,10 @@ export const assetName = (v: unknown) =>
   String(v ?? '').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'asset'
 
 const clampSeconds = (v: unknown) => Math.max(3, Math.min(10, Math.round(Number(v) || 5)))
+/** A speak call goes to the styled voices when it names one or asks for a style. */
+const wantsStyledVoice = (input: any) =>
+  (typeof input?.voice === 'string' && (FILM_STYLED_VOICES as readonly string[]).includes(input.voice))
+  || (typeof input?.style === 'string' && input.style.trim().length > 0)
 const aspectOf = (v: unknown) => (typeof v === 'string' && IMAGE_SIZE[v] ? v : '9:16')
 
 /** List price of a call before it runs, in cents (rounded up). */
@@ -54,7 +66,7 @@ export function estimateToolCents(tool: FilmTool, input: any, models: FilmModels
   let usd = 0
   if (tool === 'generate_image') usd = estimateCost(models.image, 'image', { quality: 'medium', size: IMAGE_SIZE[aspectOf(input?.aspect)] })
   else if (tool === 'generate_video') usd = estimateCost(models.t2v, 'video', { resolution: '720p', seconds: clampSeconds(input?.seconds) })
-  else usd = estimateCost(models.speech, 'audio', { promptChars: String(input?.text ?? '').slice(0, 600).length })
+  else usd = estimateCost((wantsStyledVoice(input) && models.speechStyled) || models.speech, 'audio', { promptChars: String(input?.text ?? '').slice(0, 600).length })
   return Math.max(1, Math.ceil(usd * 100))
 }
 
@@ -137,10 +149,21 @@ export async function runFilmTool(
     // speak
     const text = String(input?.text ?? '').slice(0, 600)
     if (!text.trim()) return { status: 'failed', costUsd: 0, text: 'speak needs text.' }
-    const offered: string[] = (models.speech.output_config?.audio?.voices ?? []).map((v: any) => v.id)
-    const voice = typeof input?.voice === 'string' && offered.includes(input.voice) ? input.voice : null
-    if (!voice) return { status: 'failed', costUsd: 0, text: `Pick a voice from: ${(offered.length ? offered : FILM_VOICES).join(', ')}.` }
-    const r = await generateSpeech(models.speech, text, { voice, format: 'mp3' }, context)
+    let r
+    if (wantsStyledVoice(input)) {
+      const styledVoices = FILM_STYLED_VOICES.join(', ')
+      if (!models.speechStyled) return { status: 'failed', costUsd: 0, text: 'The voices that take a style are unavailable right now. Use a MiniMax voice without style.' }
+      const offered: string[] = (models.speechStyled.output_config?.audio?.voices ?? []).map((v: any) => v.id)
+      const voice = typeof input?.voice === 'string' && offered.includes(input.voice) ? input.voice : null
+      if (!voice) return { status: 'failed', costUsd: 0, text: `style works only with these voices: ${styledVoices} (women: Leda, Kore, Aoede, Zephyr; men: Puck, Charon, Fenrir, Orus). Pick one of them, or drop style to use a MiniMax voice.` }
+      const style = typeof input?.style === 'string' && input.style.trim() ? input.style.trim().slice(0, 300) : null
+      r = await generateSpeech(models.speechStyled, text, { voice, style, format: 'mp3' }, context)
+    } else {
+      const offered: string[] = (models.speech.output_config?.audio?.voices ?? []).map((v: any) => v.id)
+      const voice = typeof input?.voice === 'string' && offered.includes(input.voice) ? input.voice : null
+      if (!voice) return { status: 'failed', costUsd: 0, text: `Pick a voice from: ${(offered.length ? offered : FILM_VOICES).join(', ')}, or one of ${FILM_STYLED_VOICES.join(', ')} with a style.` }
+      r = await generateSpeech(models.speech, text, { voice, format: 'mp3' }, context)
+    }
     const s = await store(sb, film, 'xcreate-ai-audio', name, r.buffer, r.mediaType)
     return {
       status: 'done', costUsd: r.cost ?? 0, bucket: 'xcreate-ai-audio', path: s.path,

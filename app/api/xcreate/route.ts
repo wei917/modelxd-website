@@ -288,7 +288,7 @@ async function runSlot(
       const format = typeof options.format === 'string' ? options.format : null
       const result = await providers.generateSpeech(
         model, prompt,
-        { voice, format, speed: options.speed ?? null, style: options.style ?? null, language: options.language ?? null },
+        { voice, format, speed: options.speed ?? null, style: typeof options.style === 'string' && options.style.trim() ? options.style.trim().slice(0, 300) : null, language: options.language ?? null },
         callContext,
       )
       const ext = result.mediaType.includes('wav') ? 'wav'

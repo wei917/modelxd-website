@@ -20,7 +20,7 @@ export const FILM_ENVIRONMENT_NAME = 'xcreate-film'
 /** The ids and the version new sessions use (written by the sync script). */
 export const FILM_LOCK = {
   agentId: 'agent_01BWWNejHR3rJgcpNN4hXyU7',
-  agentVersion: 3,
+  agentVersion: 4,
   environmentId: 'env_016Ucz1UnKat9aFHBRnDvT5E',
 }
 
@@ -38,6 +38,7 @@ export const FILM_SYSTEM = `You are a film director and motion designer working 
 
 Tools:
 - generate_image, generate_video and speak run on ModelXD's models and each return a download URL. Fetch results into /workspace with curl. They are paid from the viewer's budget and each reply says how much is left, so plan before calling and never retry blindly.
+- Voices: a brief written for Taiwan (Traditional Chinese, Taiwanese places or wording) usually wants Taiwanese Mandarin, which only the Gemini voices with a style can do (see speak).
 - ffmpeg, Python 3 with Pillow and NumPy, and Noto CJK fonts are installed. You can add packages with pip or apt. The sandbox reaches package registries and ModelXD's file storage, nothing else.
 
 Method:
@@ -60,6 +61,10 @@ export const FILM_VOICES = [
   'Japanese_DecisivePrincess', 'Korean_SweetGirl', 'Korean_CalmLady', 'English_expressive_narrator',
   'English_Graceful_Lady',
 ]
+
+/** Gemini 3.8 Flash TTS voices, the ones that take a delivery instruction
+ *  (women: Leda, Kore, Aoede, Zephyr; men: Puck, Charon, Fenrir, Orus). */
+export const FILM_STYLED_VOICES = ['Leda', 'Kore', 'Aoede', 'Zephyr', 'Puck', 'Charon', 'Fenrir', 'Orus'] as const
 
 export const FILM_TOOLS = [
   {
@@ -95,13 +100,14 @@ export const FILM_TOOLS = [
   {
     type: 'custom' as const,
     name: 'speak',
-    description: 'Turn text into speech with MiniMax Speech 2.8 Turbo (MP3, nearly free). Pick a voice in the language of the text. Returns a download URL and the duration.',
+    description: 'Turn text into speech. The MiniMax voices (Chinese (Mandarin)_..., Cantonese_..., Japanese_..., Korean_..., English_...) speak a standard accent and cost almost nothing. For an accent or a way of speaking they lack, such as Taiwanese Mandarin, pick a Gemini voice (women: Leda, Kore, Aoede, Zephyr; men: Puck, Charon, Fenrir, Orus) and describe the delivery in style, written in the language of the line, for example 「用台灣腔的國語說，溫暖親切。」. Returns a download URL and the duration.',
     input_schema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Short file-safe name, unique in this film' },
         text: { type: 'string', description: 'The line to speak, at most 600 characters' },
-        voice: { type: 'string', enum: FILM_VOICES },
+        voice: { type: 'string', enum: [...FILM_VOICES, ...FILM_STYLED_VOICES] },
+        style: { type: 'string', description: 'Gemini voices only: how to say it (accent, mood, pace), in the language of the line' },
       },
       required: ['name', 'text', 'voice'],
     },

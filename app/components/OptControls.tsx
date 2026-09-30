@@ -80,6 +80,30 @@ export function OptSelect({ color, value, onChange, options }: {
   )
 }
 
+/** Free text under a model card: the Audio tab's delivery instruction
+ *  (accent, mood, pace) for the speech models that take one. Empty = none.
+ *  `opt-text` lifts it to 16px on a phone (globals.css) so focusing it does
+ *  not zoom the page. */
+export function OptText({ color, value, onChange, placeholder, maxLength }: {
+  color: string
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  maxLength: number
+}) {
+  return (
+    <textarea className="opt-text" value={value} rows={2} maxLength={maxLength} placeholder={placeholder}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        flex: 1, width: '100%', maxWidth: '100%', boxSizing: 'border-box' as const,
+        padding: '7px 8px', borderRadius: 6, fontSize: 12, lineHeight: 1.5,
+        fontFamily: 'inherit', resize: 'vertical' as const, outline: 'none',
+        background: '#ffffff', color: 'var(--white)',
+        border: `1px solid ${value ? color + '66' : 'var(--border2)'}`,
+      }} />
+  )
+}
+
 /** Thinking levels come from output_config.text.thinking_levels as the
  *  provider's own values. Most read fine as they are (low / high / xhigh);
  *  DashScope's boolean pair does not (Codex QA, Sep 25: raw thinking_true in

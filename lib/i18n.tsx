@@ -2283,6 +2283,15 @@ export const STRINGS: Record<string, Entry> = {
   // XCreate's fifth type (Sep 29): Claude directs and edits a whole film.
   // 成片 is the word for this in Chinese video apps (剪映's 一鍵成片).
   'mode.film': { en: 'Film', 'zh-Hant': '成片', 'zh-Hans': '成片', ja: 'ムービー', ko: '필름' },
+  // Audio: the delivery instruction for Gemini, OpenAI and Qwen Instruct TTS (Sep 29).
+  'xcreate.style': { en: 'Delivery', 'zh-Hant': '語氣', 'zh-Hans': '语气', ja: '話し方', ko: '말투' },
+  'xcreate.style.hint': {
+    en: 'Optional: accent, mood, pace. e.g. Speak Mandarin with a Taiwanese accent, warm and friendly.',
+    'zh-Hant': '選填：口音、情緒、速度。例如：用台灣腔的國語說，溫暖親切。',
+    'zh-Hans': '选填：口音、情绪、语速。例如：用台湾腔的国语说，温暖亲切。',
+    ja: '任意：なまり・感情・速さ。例：台湾なまりの中国語で、温かく親しみやすく。',
+    ko: '선택: 억양, 감정, 속도. 예: 대만 억양의 중국어로 따뜻하고 친근하게.',
+  },
   'xcreate.voice': { en: 'Voice', 'zh-Hant': '聲音', 'zh-Hans': '声音', ja: 'ボイス', ko: '목소리' },
   'xcreate.format': { en: 'Format', 'zh-Hant': '格式', 'zh-Hans': '格式', ja: 'フォーマット', ko: '형식' },
   // The language the speech is READ in, not the site's language.

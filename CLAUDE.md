@@ -134,7 +134,8 @@ forward) goes through `wwwHref()`, or the door would bounce it home.
 成片 / Film / ムービー / 필름. A brief becomes a finished short film: one
 Claude Managed Agents session (Opus 5.5 in a sandbox with ffmpeg) plans it,
 calls three custom tools that OUR server runs through `lib/providers`
-(GPT Image 2 stills, HappyHorse 1.1 clips, MiniMax voice; list price,
+(GPT Image 2 stills, HappyHorse 1.1 clips, MiniMax voice or Gemini TTS
+with a delivery style, e.g. Taiwanese Mandarin; list price,
 logged against the viewer), draws titles in code and edits. `lib/film/`:
 `agent.ts` is the agent + environment source and `FILM_LOCK` (sync with
 `npx tsx scripts/film-agent-sync.ts [--apply]`, which never archives),
@@ -149,6 +150,13 @@ no film = full refund. Tables `xcreate_films` + `xcreate_film_calls`
 (migration 111, service key only); the film is also an xcreates row
 (`slots[0].options.film`), so it is in the Library and opens back into
 `?film=<id>`. UI: `app/xcreate/FilmStudio.tsx`, words in `film-copy.ts`.
+
+**Audio delivery (Sep 29).** Speech rows that take an instruction (Gemini
+TTS, GPT-4o mini TTS, Qwen TTS Instruct; `takesSpeechStyle` in client.tsx)
+get a 語氣 / Delivery box in ⚙, sent as `style` (capped at 300 characters).
+MiniMax takes none. Taiwanese Mandarin comes from here: MiniMax has no such
+voice (all 332 checked), and Gemini told 「用台灣腔的國語說，溫暖親切。」 is
+the one the owner's ear picked. The film's speak tool routes the same way.
 
 **The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting

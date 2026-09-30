@@ -3848,3 +3848,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-today { grid-template-columns: minmax(0, 1fr); padding-inline: 16px; }
   .xtell-td { padding: 16px; }
 }
+
+/* OptText (app/components/OptControls.tsx): 16px on a phone, or focusing the
+   field zooms the page (iOS zooms any field under 16px). */
+@media (max-width: 760px) { .opt-text { font-size: 16px !important; } }

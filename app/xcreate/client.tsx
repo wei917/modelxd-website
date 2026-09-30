@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { usePromptRefiner } from '../components/PromptRefiner'
 import { XCREATE_PROMPT_MAX } from '@/lib/xcreate-limits'
-import { OptPill, OptGroup, OptSelect, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
+import { OptPill, OptGroup, OptSelect, OptText, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
@@ -460,6 +460,9 @@ interface SlotOptions {
   voice?: string | null
   format?: string | null
   language?: string | null
+  /** How to say it (accent, mood, pace), for the rows takesSpeechStyle()
+   *  allows: Gemini TTS, OpenAI TTS and Alibaba's -instruct- models. */
+  style?: string | null
   /** Number of outputs to generate. Only meaningful for image models that
    *  declare `output_config.image.max_count > 1`. Defaults to 1. */
   count: number | null
@@ -661,6 +664,17 @@ function scriptLanguage(text: string): SpeechLang | null {
   if (/[\u3400-\u9fff]/.test(text)) return 'zh'
   if (/[a-z]/i.test(text)) return 'en'
   return null
+}
+
+/** Speech rows that take a delivery instruction (accent, mood, pace):
+ *  Gemini TTS reads it as its style annotation (lib/providers/google.ts),
+ *  OpenAI as `instructions` (openai.ts), and Alibaba only on its -instruct-
+ *  models (alibaba.ts drops it elsewhere). MiniMax takes none. Taiwanese
+ *  Mandarin comes from here: MiniMax has no such voice (all 332 checked,
+ *  Sep 29), and Gemini told 「用台灣腔的國語說」 passed the owner's ear. */
+const SPEECH_STYLE_MAX = 300
+function takesSpeechStyle(model: { provider: string; model_name: string }): boolean {
+  return model.provider === 'google' || model.provider === 'openai' || /-instruct-/.test(model.model_name)
 }
 
 /** The voice an unpicked slot speaks in: the row's first voice in the target
@@ -1287,6 +1301,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         voice:    typeof opts.voice === 'string' && voiceIds.includes(opts.voice) ? opts.voice : null,
         language: clamp(opts.language, langIds),
         format:   clamp(opts.format, formats),
+        style:    takesSpeechStyle(model as any) && typeof opts.style === 'string' ? opts.style.slice(0, SPEECH_STYLE_MAX) : null,
       }
     }
     // Text mode: no watermark concept. Thinking level clamps to the
@@ -2351,6 +2366,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         voice:          opts.voice ?? (mode === 'audio' ? autoVoice((m.output_config as any)?.audio?.voices ?? [], opts.language, prompt, lang) : null),
         format:         opts.format ?? null,
         language:       opts.language ?? null,
+        style:          mode === 'audio' && typeof opts.style === 'string' && opts.style.trim() ? opts.style.trim() : null,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }
@@ -4678,11 +4694,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           const showArV   = mode === 'video' && vidArs.length > 0
                           const showQual  = mode === 'image' && imgQualities.length > 1
                           const showVoice = mode === 'audio' && audVoices.length > 0
+                          const showStyle = mode === 'audio' && takesSpeechStyle(model as any)
                           const showLang  = mode === 'audio' && audLangs.length > 1
                           const showFormat = mode === 'audio' && audFormats.length > 1
                           const showThink = mode === 'text' && thinkLevels.length > 0
                           const showSearch = mode === 'text' && canSearch
-                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'lang' | 'format' | 'count' | 'wm'> = []
+                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'style' | 'lang' | 'format' | 'count' | 'wm'> = []
                           if (showThink)     groupsInOrder.push('think')
                           if (showSearch)    groupsInOrder.push('search')
                           if (showSizeV)     groupsInOrder.push('size_v')
@@ -4692,6 +4709,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           if (showArI)       groupsInOrder.push('ar_i')
                           if (showQual)      groupsInOrder.push('qual')
                           if (showVoice)     groupsInOrder.push('voice')
+                          if (showStyle)     groupsInOrder.push('style')
                           if (showLang)      groupsInOrder.push('lang')
                           if (showFormat)    groupsInOrder.push('format')
                           if (showCount)     groupsInOrder.push('count')
@@ -4721,6 +4739,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                       group: v.language ?? null,
                                     }))}
                                   />
+                                </Group>
+                              )}
+                              {/* Audio: how to say it (accent, mood, pace), for the
+                                  rows that take an instruction. */}
+                              {showStyle && (
+                                <Group label={t('xcreate.style')} last={isLast('style')}>
+                                  <OptText color={color} value={opts.style ?? ''} maxLength={SPEECH_STYLE_MAX}
+                                    placeholder={t('xcreate.style.hint')}
+                                    onChange={v => updateSlotOpts(i, { style: v })} />
                                 </Group>
                               )}
                               {/* Audio: the language the text is READ AS, not the
