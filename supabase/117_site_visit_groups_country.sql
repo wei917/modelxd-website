@@ -1,6 +1,8 @@
 -- supabase/117_site_visit_groups_country.sql — /admin/traffic: stay for
 -- signed-in and not signed-in browsers, a country filter, and sign-ins by
 -- method.
+-- (Applied by the owner on Sep 30 and checked live: the service key gets
+-- rows from all three functions, the publishable key gets 42501 on each.)
 --
 -- Owner, Sep 30, on seeing "top 10% stay: 1 minute": "your number is average
 -- both signed in and not signed in?" and "should have two group of lines",

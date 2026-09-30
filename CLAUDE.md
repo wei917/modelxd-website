@@ -57,11 +57,11 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `117_site_visit_groups_country.sql` (/admin/traffic: country filter, stay
-  for signed-in and not signed-in browsers, sign-ins by method; three new
-  functions, nothing dropped) is written and proven on PGlite, awaiting the
-  owner.
-  Latest applied: `116_site_visit_stay_top.sql` (2026-09-30, by the owner;
+  Latest applied: `117_site_visit_groups_country.sql` (2026-09-30, by the
+  owner; /admin/traffic: country filter, stay for signed-in and not signed-in
+  browsers, sign-ins by method; three new functions, nothing dropped; checked
+  live: rows for the service key from all three, 42501 for the publishable
+  key), after `116_site_visit_stay_top.sql` (2026-09-30, by the owner;
   top 20% / top 10% stay on /admin/traffic; checked live: fourteen columns
   for the service key, 42501 for the publishable key), after
   `115_site_visit_daily.sql` (2026-09-29, by the owner; the
