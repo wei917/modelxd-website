@@ -16,6 +16,7 @@
 // Client-safe: no server imports (the Temple type is erased at build).
 
 import type { Temple } from './xtell'
+import { XTELL_TEMPLE_NAMES } from './xtell-meta'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
 export const XTELL_CATALOG_VERSION = '2026-09-29.3'
@@ -181,4 +182,13 @@ export function catalogForPrompt(): string {
     'NOT LIVE (explain honestly; never offer as an action or say it is available):',
     ...XTELL_FEATURES.filter(f => f.status === 'pending').map(line),
   ].join('\n')
+}
+
+/** The rooms' names in one page language, for the guide's prompt: it learns
+ *  the rooms from a Chinese-and-English catalog, and named them 「八字廟」 and
+ *  「占星塔」 in a Japanese answer beside buttons that said 四柱推命 and 西洋占星術
+ *  (a test round, Sep 29). */
+export function roomNamesFor(lang: string): string {
+  const temples = [...new Set(XTELL_FEATURES.filter(f => f.status === 'live' && f.temple).map(f => f.temple as string))]
+  return temples.map(t => `${t} = ${(XTELL_TEMPLE_NAMES[t] as Record<string, string> | undefined)?.[lang] ?? t}`).join('; ')
 }

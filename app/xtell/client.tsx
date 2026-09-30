@@ -35,7 +35,7 @@ import { drawTarot, asSpread, SPREADS, type TarotPick, type TarotSpread } from '
 import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xtell-cookie'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
-import { PLACES, DEFAULT_PLACE } from '../../lib/xtell-places'
+import { PLACES, placesFor, placeLabel, defaultPlaceFor } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
@@ -196,10 +196,10 @@ function fieldOf(code: string | null): string | null {
 
 /** One line of what a consultation was cast from, shown where a paid
  *  question is written so the visitor can confirm it first. */
-function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): string {
+function subjectSummary(t: (k: string) => string, temple: Temple, subj: any, lang = 'zh-Hant'): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   const born = (b: any) => !b ? '' : `${b.y}-${pad(b.m)}-${pad(b.d)} ${b.hourUnknown ? t('xtell.hourunknown') : `${pad(b.h)}:${pad(b.mi)}`} · ${t(`xtell.${b.gender}`)}`
-  const where = (k: unknown) => PLACES.find(p => p.key === k)?.label ?? ''
+  const where = (k: unknown) => placeLabel(PLACES.find(p => p.key === k), lang)
   if (temple === 'yuelao' || (temple === 'zhanxing' && subj.mode === 'synastry')) {
     return `${t('xtell.person1')} ${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}　${t('xtell.person2')} ${born(subj.birth2)}${subj.place2 ? ` · ${where(subj.place2)}` : ''}`
   }
@@ -209,6 +209,11 @@ function subjectSummary(t: (k: string) => string, temple: Temple, subj: any): st
   if (temple === 'sunzi') { const d = String(subj.situation ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
   if (temple === 'cookie') return `${String(subj.food ?? '').slice(0, 40)}${subj.mealAt ? ` · ${String(subj.mealAt).replace('T', ' ')}` : ''}`
   if (isQian(temple) || temple === 'tarot') return subj.ask ? String(subj.ask).slice(0, 60) : ''
+  // 九星気学 and 宿曜 read the date only: no hour or gender in the line.
+  if (temple === 'kyusei' || temple === 'sukuyo') {
+    const b = subj.birth
+    return !b ? '' : `${b.y}-${pad(b.m)}-${pad(b.d)}${temple === 'sukuyo' && typeof subj.partner === 'string' ? ` × ${subj.partner}` : ''}`
+  }
   return `${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}`
 }
 const ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
@@ -489,7 +494,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // 宿曜: an optional partner's birth date, for the two people's relation.
   const [partnerDate, setPartnerDate] = useState<string>(typeof init.partner === 'string' ? init.partner : '')
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
-  const [place, setPlace] = useState(init.place ?? DEFAULT_PLACE)
+  const [place, setPlace] = useState(init.place ?? defaultPlaceFor(lang))
   // 占星塔 only.
   const [astroMode, setAstroMode] = useState<AstroMode>(temple === 'zhanxing' && init.mode ? init.mode
     : temple === 'zhanxing' && (ASTRO_MODES as readonly string[]).includes(carried?.feature.mode ?? '') ? carried!.feature.mode as AstroMode : 'natal')
@@ -518,7 +523,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // The teacher must receive the same subject that produced the visible
   // board, even if an entry control was changed while its request loaded.
   const yixueSubject = useRef<Record<string, unknown> | null>(temple === 'yixue' && initial ? { temple, ...init } : null)
-  const [place2, setPlace2] = useState(init.place2 ?? DEFAULT_PLACE)
+  const [place2, setPlace2] = useState(init.place2 ?? defaultPlaceFor(lang))
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
@@ -1179,7 +1184,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
               <select aria-label={t('xtell.place')} aria-invalid={fieldAria('place').invalid || undefined} aria-describedby={fieldAria('place').describedBy} style={sel} value={place} onChange={e => setPlace(e.target.value)}>
-                {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                {placesFor(lang).map(p => <option key={p.key} value={p.key}>{placeLabel(p, lang)}</option>)}
               </select>
               <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 240 }}>{t('xtell.place.note')}</span>
             </div>
@@ -1188,7 +1193,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
               <select aria-label={t('xtell.place')} aria-invalid={fieldAria('place').invalid || undefined} aria-describedby={fieldAria('place').describedBy} style={sel} value={place} onChange={e => setPlace(e.target.value)}>
-                {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                {placesFor(lang).map(p => <option key={p.key} value={p.key}>{placeLabel(p, lang)}</option>)}
               </select>
               {astroMode === 'year' && (
                 <>
@@ -1241,7 +1246,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               // 「返回」, not 「修改資料」 (owner, Sep 28): it goes back to the form.
               : <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.goBack')}</button>}
             {!daily && temple !== 'yixue' && (() => {
-              const summary = subjectSummary(t, temple, subject())
+              const summary = subjectSummary(t, temple, subject(), lang)
               return summary ? <span style={{ minWidth: 0 }}>{summary}</span> : null
             })()}
           </div>
@@ -1402,7 +1407,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               {/* Where a beginner starts, from the chart itself (日主, 命宮
                   and its stars, 上升 and the Moon's 宿). */}
               {(() => { const fact = chartFact(t, temple, chart, lang); return fact ? <p className="xtell-chart-fact">{fact}</p> : null })()}
-              {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{chenggu && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
+              {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{/* 称骨 is unknown in Japan (a reviewer, Sep 29): no card on Japanese pages. */}{chenggu && lang !== 'ja' && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
                   setInput(question)
                   composerRef.current?.focus()
                   composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1668,7 +1673,7 @@ function chartFact(t: (k: string) => string, temple: Temple, chart: any, lang: s
     }
     if (temple === 'navagraha' && chart?.lagna) {
       const moon = chart.grahas?.find((g: any) => g.graha === 'Moon')
-      return t('xtell.sum.navagraha.fact').replace('{lagna}', RASI[chart.lagna.rasi][1]).replace('{nak}', moon ? `${NAKSHATRA[moon.nakshatra][1]}宿` : '—')
+      return t('xtell.sum.navagraha.fact').replace('{lagna}', rasiName(t, lang, chart.lagna.rasi)).replace('{nak}', moon ? nakName(lang, moon.nakshatra) : '—')
     }
   } catch { /* an older saved chart shape simply has no fact line */ }
   return ''
@@ -1694,6 +1699,7 @@ function ExampleQuestions({ temple, onExample }: { temple: Temple; onExample: (q
 // below it. Nothing on this card is the model's opinion.
 function HeCard({ match }: { match: any }) {
   const t = useT()
+  const { lang } = useLang()
   const band: Record<string, string> = {
     high: 'var(--score-elite)', good: 'var(--score-good)',
     mixed: 'var(--score-fair)', work: 'var(--score-poor)',
@@ -1732,7 +1738,7 @@ function HeCard({ match }: { match: any }) {
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 12.5, fontWeight: 700, color: rowColour(d.score) }}>{d.range ? `${d.range[0]}–${d.range[1]}` : d.score}</span>
               <span style={{ ...mono, color: 'var(--muted2)', fontSize: 9.5 }}>×{d.weight}%</span>
             </div>
-            <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--muted2)', marginTop: -4 }}>{d.detail}</div>
+            <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--muted2)', marginTop: -4 }}>{relText(lang, d.detail)}</div>
           </div>
         ))}
       </div>
@@ -1749,7 +1755,7 @@ function HeCard({ match }: { match: any }) {
               <div key={y.year} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5 }}>
                 <span style={{ fontFamily: 'var(--font-mono), monospace', fontWeight: 700, minWidth: 62 }}>{y.year}</span>
                 <span style={{ ...mono, color: 'var(--muted2)', minWidth: 34 }}>{y.ganZhi}</span>
-                <span style={{ color: y.good ? 'var(--green)' : 'var(--red)', fontWeight: 600, minWidth: 56 }}>{y.kind}</span>
+                <span style={{ color: y.good ? 'var(--green)' : 'var(--red)', fontWeight: 600, minWidth: 56 }}>{relText(lang, y.kind)}</span>
                 <span style={{ color: 'var(--muted)' }}>{t(y.good ? 'xtell.he.year.good' : 'xtell.he.year.bad')}</span>
               </div>
             ))}
@@ -1772,6 +1778,7 @@ function HeCard({ match }: { match: any }) {
  */
 function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: boolean }) {
   const t = useT()
+  const { lang } = useLang()
   const unknown = hourUnknown || chart.hourUnknown === true || !chart.pillars?.time
   const d = chart.doubt
   const cols = [
@@ -1782,7 +1789,7 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        {unknown ? `${String(chart.solar).slice(0, 10)} · ${t('xtell.hourunknown')}` : chart.solar} · {chart.lunar}
+        {unknown ? `${String(chart.solar).slice(0, 10)} · ${t('xtell.hourunknown')}` : chart.solar} · {lunarLocal(lang, chart.lunar)}
       </div>
       <div className="xtell-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, maxWidth: 560 }}>
         {cols.map(c => {
@@ -1798,7 +1805,7 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
             <div key={c.key} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 8px', textAlign: 'center', background: c.key === 'day' ? 'var(--surface2)' : 'transparent', minWidth: 0 }}>
               <div style={{ fontSize: 10.5, color: both ? 'var(--red)' : 'var(--muted2)', marginBottom: 6 }}>{c.label} · {both ? t('xtell.bazi.undecided') : p.shiShen}</div>
               <div style={{ fontFamily: 'var(--font-display), serif', fontSize: both ? 18 : 26, fontWeight: 800, letterSpacing: both ? 1 : 4 }}>{both ? `${both[0].ganZhi}／${both[1].ganZhi}` : p.ganZhi}</div>
-              <div style={{ fontSize: 10.5, color: 'var(--muted2)', marginTop: 6 }}>{both ? `${both[0].naYin}／${both[1].naYin}` : p.naYin}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--muted2)', marginTop: 6 }}>{both ? `${naYinLocal(lang, both[0].naYin)}／${naYinLocal(lang, both[1].naYin)}` : naYinLocal(lang, p.naYin)}</div>
               {!both && <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{t('xtell.p.hidden')} {p.hideGan.join(' ')}</div>}
             </div>
           )
@@ -1922,14 +1929,15 @@ function ChengguCard({ data, onAsk, disabled }: { data: Chenggu; onAsk: (questio
  *  the 大運 in force is approximate, or either of two near a change. */
 function LiuNianLine({ year }: { year: any }) {
   const t = useT()
-  const rel = (kind: string, taiSui: string) => `${kind}${taiSui && taiSui !== '無' ? `（${taiSui}）` : ''}`
+  const { lang } = useLang()
+  const rel = (kind: string, taiSui: string) => `${relText(lang, kind)}${taiSui && taiSui !== '無' ? `（${taiSui}）` : ''}`
   const vsYear = Array.isArray(year.yearChoices)
     ? t('xtell.liunian.yearUndecided').replace('{list}', year.yearChoices.map((c: any) => t('xtell.liunian.ifYear').replace('{gz}', c.ganZhi).replace('{rel}', rel(c.yearBranch?.kind, c.taiSui))).join(t('xtell.list.sep')))
     : rel(year.yearBranch?.kind, year.taiSui)
   return (
     <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
       <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
-      {year.year} {year.ganZhi}　{t('xtell.liunian.vsDay')} <b>{year.shiShen}</b>　{t('xtell.liunian.vsDayBranch')} <b>{year.dayBranch?.kind}</b>　{t('xtell.liunian.vsYear')} <b>{vsYear}</b>
+      {year.year} {year.ganZhi}　{t('xtell.liunian.vsDay')} <b>{year.shiShen}</b>　{t('xtell.liunian.vsDayBranch')} <b>{relText(lang, year.dayBranch?.kind)}</b>　{t('xtell.liunian.vsYear')} <b>{vsYear}</b>
       {Array.isArray(year.daYunChoices)
         ? <>　{t('xtell.dayun')} <b>{year.daYunChoices.join('／')}</b> <span style={{ fontSize: 11 }}>（{t('xtell.dayun.approx')}）</span></>
         : year.daYun ? <>　{t('xtell.dayun')} <b>{year.daYun}</b>{year.daYunApprox ? <span style={{ fontSize: 11 }}>（{t('xtell.dayun.approx')}）</span> : null}</> : null}
@@ -1939,10 +1947,11 @@ function LiuNianLine({ year }: { year: any }) {
 
 function ZiweiBoard({ chart }: { chart: any }) {
   const t = useT()
+  const { lang } = useLang()
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        {chart.solar} · {chart.lunar} {chart.time} · {chart.fiveElementsClass} · {t('xtell.ziwei.soul')} {chart.soul} · {t('xtell.ziwei.body')} {chart.body}
+        {chart.solar} · {lunarLocal(lang, chart.lunar)} {chart.time} · {chart.fiveElementsClass} · {t('xtell.ziwei.soul')} {chart.soul} · {t('xtell.ziwei.body')} {chart.body}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
         {chart.palaces.map((p: any) => (
@@ -1965,7 +1974,7 @@ function ZiweiBoard({ chart }: { chart: any }) {
           {[chart.horoscope.decadal, ...chart.horoscope.years, chart.horoscope.month].map((p: any, k: number) => (
             <div key={k}>
               <b style={{ color: 'var(--white)' }}>{p.name}{p.year ? ` ${p.year}` : ''}{p.label ? ` ${p.label}` : ''}</b>
-              <span style={{ fontFamily: 'var(--font-mono), monospace', margin: '0 8px' }}>{p.ganZhi}{p.range ? ` · ${p.range[0]}–${p.range[1]}歲` : ''}</span>
+              <span style={{ fontFamily: 'var(--font-mono), monospace', margin: '0 8px' }}>{p.ganZhi}{p.range ? ` · ${p.range[0]}–${p.range[1]}${lang === 'ja' ? '歳' : lang === 'zh-Hans' ? '岁' : lang === 'ko' ? '세' : lang === 'en' ? '' : '歲'}` : ''}</span>
               {t('xtell.ziwei.lands')} <b style={{ color: 'var(--white)' }}>{p.palace}</b>　
               <span style={{ color: 'var(--muted2)' }}>祿{p.mutagen[0]} 權{p.mutagen[1]} 科{p.mutagen[2]} 忌{p.mutagen[3]}</span>
             </div>
@@ -2141,6 +2150,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
  *  and every commentary the edition carries. All of it is text from disk. */
 function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any; temple: Temple; bazi?: any; year?: any; hourUnknown?: boolean }) {
   const t = useT()
+  const { lang } = useLang()
   // 關帝's edition grades each stick (大吉 … 下下); 媽祖's carries a 五行/direction
   // line instead, which is a hint, not a grade, so it stays neutral.
   const graded = temple !== 'mazu'
@@ -2150,7 +2160,7 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{t('xtell.history.stick').replace('{n}', String(qian.n))}　{qian.ganZhi}</div>
-        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: graded ? 18 : 14, fontWeight: graded ? 800 : 600, color: luckColour }}>{qian.luck}</div>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: graded ? 18 : 14, fontWeight: graded ? 800 : 600, color: luckColour }}>{mazuLuck(t, lang, qian.luck)}</div>
         {qian.story && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{qian.story}</div>}
         <span style={{ flex: 1 }} />
         <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
@@ -2165,8 +2175,9 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
       {Object.keys(qian.sections ?? {}).length > 0 && <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xtell.qian.notes.mazu' : 'xtell.qian.notes')}</div>}
       <div style={{ display: 'grid', gap: 10 }}>
         {Object.entries(qian.sections as Record<string, string>).map(([name, text]) => (
-          <div key={name} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 10, fontSize: 13, lineHeight: 1.7 }}>
-            <b style={{ color: 'var(--muted)' }}>{name}</b>
+          // 媽祖's one section is its heading (「卦頭故事」 was printed twice).
+          <div key={name} style={{ display: 'grid', gridTemplateColumns: temple === 'mazu' ? '1fr' : '64px 1fr', gap: 10, fontSize: 13, lineHeight: 1.7 }}>
+            {temple !== 'mazu' && <b style={{ color: 'var(--muted)' }}>{name}</b>}
             <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
           </div>
         ))}
@@ -2366,9 +2377,10 @@ function KyuseiBoard({ chart }: { chart: any }) {
 
 function NavagrahaBoard({ chart }: { chart: any }) {
   const t = useT()
+  const { lang } = useLang()
   const dms = (d: number) => `${Math.floor(d)}°${String(Math.round((d % 1) * 60)).padStart(2, '0')}'`
-  const rasi = (i: number) => RASI[i][1]
-  const nak = (i: number, pada: number) => `${NAKSHATRA[i][0]} ${NAKSHATRA[i][1]}宿 ${pada}`
+  const rasi = (i: number) => rasiName(t, lang, i)
+  const nak = (i: number, pada: number) => `${NAKSHATRA[i][0]} ${nakName(lang, i)} ${pada}`
   const ymd = (s: string) => String(s).slice(0, 10)
   const nowId = chart.dasha?.current ? `${chart.dasha.current.lord}${chart.dasha.current.from}` : ''
   return (
@@ -2392,7 +2404,7 @@ function NavagrahaBoard({ chart }: { chart: any }) {
           <tbody>
             {chart.grahas.map((g: any) => (
               <tr key={g.graha} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '6px 10px 6px 0', fontWeight: 700 }}>{GRAHA_ZH[g.graha as keyof typeof GRAHA_ZH]} <span style={{ color: 'var(--muted2)', fontWeight: 400 }}>{GRAHA_SA[g.graha as keyof typeof GRAHA_SA]}</span></td>
+                <td style={{ padding: '6px 10px 6px 0', fontWeight: 700 }}>{grahaName(t, g.graha)} <span style={{ color: 'var(--muted2)', fontWeight: 400 }}>{GRAHA_SA[g.graha as keyof typeof GRAHA_SA]}</span></td>
                 <td style={{ padding: '6px 10px 6px 0' }}>{rasi(g.rasi)}</td>
                 <td style={{ padding: '6px 10px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>{dms(g.deg)}{g.retro && g.graha !== 'Rahu' && g.graha !== 'Ketu' ? ' R' : ''}</td>
                 <td style={{ padding: '6px 10px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>{g.house}</td>
@@ -2411,13 +2423,13 @@ function NavagrahaBoard({ chart }: { chart: any }) {
             <span key={p.from} style={{
               padding: '4px 10px', borderRadius: 999, fontSize: 12,
               border: '1px solid ' + (now ? 'var(--red)' : 'var(--border2)'), color: now ? 'var(--red)' : 'var(--muted)', fontWeight: now ? 700 : 400,
-            }}>{GRAHA_ZH[p.lord as keyof typeof GRAHA_ZH]} {ymd(p.from).slice(0, 4)}–{ymd(p.to).slice(0, 4)}{now ? ` · ${t('xtell.dasha.now')}` : ''}</span>
+            }}>{grahaName(t, p.lord)} {ymd(p.from).slice(0, 4)}–{ymd(p.to).slice(0, 4)}{now ? ` · ${t('xtell.dasha.now')}` : ''}</span>
           )
         })}
       </div>
       {chart.dasha.currentAntar && (
         <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 8 }}>
-          {t('xtell.dasha.now')}：{GRAHA_ZH[chart.dasha.current.lord as keyof typeof GRAHA_ZH]} / {GRAHA_ZH[chart.dasha.currentAntar.lord as keyof typeof GRAHA_ZH]}　{ymd(chart.dasha.currentAntar.from)} – {ymd(chart.dasha.currentAntar.to)}
+          {t('xtell.dasha.now')}：{grahaName(t, chart.dasha.current.lord)} / {grahaName(t, chart.dasha.currentAntar.lord)}　{ymd(chart.dasha.currentAntar.from)} – {ymd(chart.dasha.currentAntar.to)}
         </div>
       )}
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.nav.note')}</div>
@@ -2429,17 +2441,77 @@ function NavagrahaBoard({ chart }: { chart: any }) {
 
 function PlaceRow({ label, value, onChange, sel, aria }: { label?: string; value: string; onChange: (v: string) => void; sel: any; aria?: FieldAria }) {
   const t = useT()
+  const { lang } = useLang()
   return (
     <div className="xtell-place-row" style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6, marginLeft: 62 }}>
       <span style={{ fontSize: 12, color: 'var(--muted2)' }} aria-hidden="true">{t('xtell.place')}</span>
       <select aria-label={`${label ?? ''} ${t('xtell.place')}`.trim()} aria-invalid={aria?.invalid || undefined} aria-describedby={aria?.invalid ? aria.describedBy : undefined} style={sel} value={value} onChange={e => onChange(e.target.value)}>
-        {PLACES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+        {placesFor(lang).map(p => <option key={p.key} value={p.key}>{placeLabel(p, lang)}</option>)}
       </select>
     </div>
   )
 }
 
-const sign = (i: number) => `${SIGNS[i][1]}座`
+// Sign and planet names in the page's language (a Japanese tester, Sep 29:
+// 「處女座」「巨蟹座」「月亮」 on a Japanese page). The engine keeps its Chinese
+// names for the teacher's facts; the board reads the string table.
+type Tr = (k: string) => string
+const sign = (t: Tr, i: number) => t(`xtell.sign.${i}`)
+// Relation words the engine writes in 繁體 for the teacher's facts (合盤
+// rows, 流年), shown in the page's language (a Japanese tester, Sep 29:
+// 「無特殊關係」「兩盤合看涵蓋」 on a Japanese page).
+const REL_WORDS: Record<string, Array<[string | RegExp, string]>> = {
+  ja: [['無特殊關係', '特別な関係なし'], ['兔', '兎'], ['龍', '竜'], ['雞', '鶏'], ['豬', '猪'], ['猴', '猿'], ['狗', '犬'], ['　或　', '　または　'],
+    [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, '二人の命式を合わせると $1（$2/5）']],
+  'zh-Hans': [['無特殊關係', '无特殊关系'], ['兩盤合看涵蓋', '两盘合看涵盖'], ['龍', '龙'], ['雞', '鸡'], ['豬', '猪'], ['馬', '马'], ['　或　', '　或　']],
+  ko: [['無特殊關係', '특별한 관계 없음'], ['　或　', ' 또는 '], [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, '두 명식을 합치면 $1 ($2/5)']],
+  en: [['無特殊關係', 'no special relation'], ['六合', 'Six Harmony'], ['三合', 'Three Harmony'], ['六沖', 'Clash'], ['相害', 'Harm'], ['相刑', 'Punishment'], ['　或　', ' or '],
+    [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, 'together the two charts cover $1 ($2/5)']],
+}
+const relText = (lang: string, s: unknown): string => {
+  let out = String(s ?? '')
+  for (const [a, b] of REL_WORDS[lang] ?? []) out = typeof a === 'string' ? out.split(a).join(b) : out.replace(a, b)
+  return out
+}
+/** The engines write the lunar date in Chinese numerals (「一九九二年三月
+ *  十三」, 「冬月廿七」, 「臘月初五」). Pages that are not Chinese show it in
+ *  figures; a string this cannot read is shown as it is. */
+const CN_DIGIT: Record<string, number> = { 〇: 0, 零: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 }
+const CN_MONTH: Record<string, number> = { 正: 1, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 冬: 11, 十二: 12, 臘: 12, 腊: 12 }
+function lunarLocal(lang: string, s: unknown): string {
+  const raw = String(s ?? '')
+  if (lang === 'zh-Hant' || lang === 'zh-Hans') return raw
+  const m = raw.match(/^([〇零一二三四五六七八九]{4})年(閏|闰)?(正|冬|臘|腊|十[一二]?|[一二三四五六七八九])月(初[一二三四五六七八九十]|十[一二三四五六七八九]?|二十|廿[一二三四五六七八九]?|三十|卅)$/)
+  if (!m) return raw
+  const year = [...m[1]].map(c => CN_DIGIT[c]).join('')
+  const month = CN_MONTH[m[3]]
+  const d = m[4]
+  const day = d.startsWith('初') ? (d[1] === '十' ? 10 : CN_DIGIT[d[1]])
+    : d === '二十' ? 20 : d === '三十' || d === '卅' ? 30
+    : d.startsWith('廿') ? 20 + (CN_DIGIT[d[1]] ?? 0)
+    : 10 + (CN_DIGIT[d[1]] ?? 0)
+  if (lang === 'ja') return `旧暦${year}年${m[2] ? '閏' : ''}${month}月${day}日`
+  if (lang === 'ko') return `음력 ${year}년 ${m[2] ? '윤' : ''}${month}월 ${day}일`
+  return `lunar ${year}-${m[2] ? 'leap ' : ''}${month}-${day}`
+}
+/** 納音 as Japanese 四柱推命 books write them (剣鋒金, 炉中火 …); the
+ *  engine's are 繁體. Only the nine that differ. */
+const NAYIN_JA: Record<string, string> = { 劍鋒金: '剣鋒金', 爐中火: '炉中火', 覆燈火: '覆灯火', 大溪水: '大渓水', 大驛土: '大駅土', 白蠟金: '白鑞金', 路旁土: '路傍土', 石榴木: '柘榴木', 沙中金: '砂中金' }
+const naYinLocal = (lang: string, s: string) => (lang === 'ja' ? NAYIN_JA[s] ?? s : s)
+/** 媽祖's line in place of a grade: 「屬金利秋 宜其西方」 (the stick's 五行,
+ *  its season and its direction), in the page's language. */
+function mazuLuck(t: Tr, lang: string, luck: unknown): string {
+  const raw = String(luck ?? '')
+  if (lang === 'zh-Hant') return raw
+  const m = raw.match(/^屬(.)利(.)\s+宜其(.+)$/)
+  return m ? t('xtell.qian.mazu.luck').replace('{el}', t(`xtell.el.${m[1]}`)).replace('{season}', t(`xtell.qian.mazu.season.${m[2]}`)).replace('{dir}', t(`xtell.qian.mazu.dir.${m[3]}`)) : raw
+}
+const plName = (t: Tr, k: string) => (k in PLANET_ZH || k in POINT_ZH ? t(`xtell.pl.${k}`) : k)
+// 九曜: the rasi keep their Chinese names on 繁體 pages (白羊, not 牡羊座),
+// elsewhere the page's own sign names; the grahas and the mansions likewise.
+const rasiName = (t: Tr, lang: string, i: number) => (lang === 'zh-Hant' ? RASI[i][1] : t(`xtell.sign.${i}`))
+const grahaName = (t: Tr, g: string) => t(`xtell.pl.${g}`)
+const nakName = (lang: string, i: number) => { const n = `${NAKSHATRA[i][1]}宿`; return lang === 'ja' ? n.replace('參', '参').replace('虛', '虚') : n }
 /** One sign, or both of a transition day's when the hour is unknown. Reads
  *  the engine's daySigns; `moonSigns` is the short-lived earlier shape of the
  *  same idea, still on a few saved charts. */
@@ -2449,15 +2521,16 @@ const signsOfC = (c: any, body: string): number[] => {
   const p = c?.planets?.find((x: any) => x.body === body)
   return p ? [p.sign] : []
 }
-const signLabelC = (c: any, body: string) => signsOfC(c, body).map(sign).join(' / ')
+const signLabelC = (t: Tr, c: any, body: string) => signsOfC(c, body).map(i => sign(t, i)).join(' / ')
 const dms = (d: number) => `${Math.floor(d)}°${String(Math.floor((d % 1) * 60)).padStart(2, '0')}'`
-const nameOf = (k: string) => (PLANET_ZH as any)[k] ?? (POINT_ZH as any)[k] ?? k
+const nameOf = (t: Tr, k: string) => plName(t, k)
 const glyphOf = (k: string) => (PLANET_GLYPH as any)[k] ?? ''
 
 /** One aspect as a chip. The orb is on it because a 0.2° square and a 6.8°
  *  square are not the same statement, and the whole point of showing the
  *  chart is that the reading can be checked against it. */
 function AspectChip({ a, prefix }: { a: any; prefix?: [string, string] }) {
+  const t = useT()
   const tight = a.orb < 1
   return (
     <span style={{
@@ -2465,9 +2538,9 @@ function AspectChip({ a, prefix }: { a: any; prefix?: [string, string] }) {
       border: '1px solid ' + (tight ? 'var(--red)' : 'var(--border2)'), fontSize: 11.5,
       color: tight ? 'var(--red)' : 'var(--muted)', whiteSpace: 'nowrap',
     }}>
-      <span>{prefix?.[0]}{nameOf(a.a)}</span>
+      <span>{prefix?.[0]}{nameOf(t, a.a)}</span>
       <span style={{ fontSize: 13 }}>{a.glyph}</span>
-      <span>{prefix?.[1]}{nameOf(a.b)}</span>
+      <span>{prefix?.[1]}{nameOf(t, a.b)}</span>
       <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, opacity: 0.75 }}>
         {a.orb.toFixed(1)}°{a.applying ? '→' : ''}
       </span>
@@ -2475,7 +2548,7 @@ function AspectChip({ a, prefix }: { a: any; prefix?: [string, string] }) {
   )
 }
 
-function Bars({ title, data, keys }: { title: string; data: Record<string, number>; keys: readonly string[] }) {
+function Bars({ title, data, keys, label = k => k }: { title: string; data: Record<string, number>; keys: readonly string[]; label?: (k: string) => string }) {
   const max = Math.max(1, ...keys.map(k => data[k] ?? 0))
   return (
     <div>
@@ -2489,7 +2562,7 @@ function Bars({ title, data, keys }: { title: string; data: Record<string, numbe
                 background: (data[k] ?? 0) === 0 ? 'var(--border2)' : 'var(--red)', borderRadius: 3,
               }} />
             </div>
-            <div style={{ fontSize: 11.5, marginTop: 4 }}>{k}</div>
+            <div style={{ fontSize: 11.5, marginTop: 4 }}>{label(k)}</div>
             <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11, color: 'var(--muted2)' }}>{data[k] ?? 0}</div>
           </div>
         ))}
@@ -2506,15 +2579,15 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
   const sunSigns = signsOfC(c, 'Sun')
   // Bodies with two possible signs that day; the note under the cards names
   // them and says why (Codex QA: the slash had no explanation nearby).
-  const twoBodies: string[] = unknown ? c.planets.filter((p: any) => signsOfC(c, p.body).length > 1).map((p: any) => PLANET_ZH[p.body as keyof typeof PLANET_ZH]) : []
+  const twoBodies: string[] = unknown ? c.planets.filter((p: any) => signsOfC(c, p.body).length > 1).map((p: any) => plName(t, p.body)) : []
   const local = localStamp(String(c.utc), String(c.tz))
   // The answer to 「我是什麼星座」 comes first. The everyday 星座 is the Sun
   // sign; the Ascendant, which used to lead the board, was being read as the
   // answer (Codex QA, Sep 25).
   const big: Array<[string, string, string]> = [
-    ['sun', signLabelC(c, 'Sun'), t('xtell.astro.sun.meaning')],
-    ['moon', signLabelC(c, 'Moon'), t('xtell.astro.moon.meaning')],
-    ['asc', unknown ? t('xtell.astro.needstime') : sign(Math.floor(c.angles.asc / 30)), t('xtell.astro.asc.meaning')],
+    ['sun', signLabelC(t, c, 'Sun'), t('xtell.astro.sun.meaning')],
+    ['moon', signLabelC(t, c, 'Moon'), t('xtell.astro.moon.meaning')],
+    ['asc', unknown ? t('xtell.astro.needstime') : sign(t, Math.floor(c.angles.asc / 30)), t('xtell.astro.asc.meaning')],
   ]
   const planetTable = (<>
     <p className="xtell-scroll-hint" aria-hidden="true">{t('xtell.scrollHint')}</p>
@@ -2531,9 +2604,9 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
             <tr key={p.body} style={{ borderTop: '1px solid var(--border)' }}>
               <td style={{ padding: '6px 14px 6px 0', fontWeight: 700 }}>
                 <span style={{ color: 'var(--muted2)', fontWeight: 400, marginRight: 6 }}>{glyphOf(p.body)}</span>
-                {PLANET_ZH[p.body as keyof typeof PLANET_ZH]}
+                {plName(t, p.body)}
               </td>
-              <td style={{ padding: '6px 14px 6px 0' }}>{signLabelC(c, p.body)}</td>
+              <td style={{ padding: '6px 14px 6px 0' }}>{signLabelC(t, c, p.body)}</td>
               <td style={{ padding: '6px 14px 6px 0', fontFamily: 'var(--font-mono), monospace' }}>
                 {/* No noon degree for the Moon or a sign-crossing body when the hour is unknown. */}
                 {unknown && (p.body === 'Moon' || signsOfC(c, p.body).length > 1) ? '—' : dms(p.deg)}{p.retro && p.body !== 'NorthNode' && p.body !== 'SouthNode' ? ' ℞' : ''}
@@ -2549,8 +2622,8 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
     <div>
       <div style={{ fontFamily: 'var(--font-display), serif', fontSize: compact ? 16 : 21, fontWeight: 800, lineHeight: 1.3 }}>
         {sunSigns.length > 1
-          ? t('xtell.astro.sunsign.either').replace('{a}', sign(sunSigns[0])).replace('{b}', sign(sunSigns[1]))
-          : t('xtell.astro.sunsign.is').replace('{sign}', sign(sunSigns[0]))}
+          ? t('xtell.astro.sunsign.either').replace('{a}', sign(t, sunSigns[0])).replace('{b}', sign(t, sunSigns[1]))
+          : t('xtell.astro.sunsign.is').replace('{sign}', sign(t, sunSigns[0]))}
         <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted2)', marginLeft: 8, fontFamily: 'var(--font-body), sans-serif' }}>{t('xtell.astro.sunsign.note')}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: compact ? 'repeat(3, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '10px 0' }}>
@@ -2586,12 +2659,12 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
                   {[['ASC', c.angles.asc], ['MC', c.angles.mc], ['Fortune', c.angles.fortune]].map(([k, v]: any) => (
                     <span key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
                       <span style={{ ...mono, color: 'var(--muted2)' }}>{POINT_ZH[k as keyof typeof POINT_ZH]}</span>
-                      <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 19, fontWeight: 800 }}>{sign(Math.floor(v / 30))}</span>
+                      <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 19, fontWeight: 800 }}>{sign(t, Math.floor(v / 30))}</span>
                       <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, color: 'var(--muted)' }}>{dms(v % 30)}</span>
                     </span>
                   ))}
                   <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    {t('xtell.astro.ruler')} {c.chartRuler ? PLANET_ZH[c.chartRuler as keyof typeof PLANET_ZH] : '—'} · {t(`xtell.astro.sect.${c.sect}`)}
+                    {t('xtell.astro.ruler')} {c.chartRuler ? plName(t, c.chartRuler) : '—'} · {t(`xtell.astro.sect.${c.sect}`)}
                   </span>
                 </div>
               )}
@@ -2603,15 +2676,15 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
                     {c.cusps.map((x: number, i: number) => (
                       <span key={i} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
                         <span style={{ fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>{i + 1}</span>{' '}
-                        {sign(Math.floor(x / 30))} {dms(x % 30)}
+                        {sign(t, Math.floor(x / 30))} {dms(x % 30)}
                       </span>
                     ))}
                   </div>
                 </>
               )}
               <div style={{ display: 'flex', gap: 34, flexWrap: 'wrap', margin: '18px 0 4px' }}>
-                <Bars title={t('xtell.astro.elements')} data={c.balance.elements} keys={ELEMENTS} />
-                <Bars title={t('xtell.astro.modalities')} data={c.balance.modalities} keys={MODALITIES} />
+                <Bars title={t('xtell.astro.elements')} data={c.balance.elements} keys={ELEMENTS} label={k => t(`xtell.astro.el.${ELEMENTS.indexOf(k as any)}`)} />
+                <Bars title={t('xtell.astro.modalities')} data={c.balance.modalities} keys={MODALITIES} label={k => t(`xtell.astro.mod.${MODALITIES.indexOf(k as any)}`)} />
               </div>
               <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xtell.astro.aspects')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -2659,7 +2732,7 @@ function ZhanxingBoard({ chart }: { chart: any }) {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {s.composite.planets.slice(0, 10).map((p: any) => (
             <span key={p.body} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
-              {glyphOf(p.body)} {PLANET_ZH[p.body as keyof typeof PLANET_ZH]} {sign(p.sign)} {dms(p.deg)}
+              {glyphOf(p.body)} {plName(t, p.body)} {sign(t, p.sign)} {dms(p.deg)}
             </span>
           ))}
         </div>
@@ -2674,10 +2747,10 @@ function ZhanxingBoard({ chart }: { chart: any }) {
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
           <span style={{ ...mono, color: 'var(--muted2)' }}>{d.date}</span>
-          <span style={{ fontSize: 13 }}>{t('xtell.astro.moontoday')} <b>{sign(d.moonSign)}</b></span>
+          <span style={{ fontSize: 13 }}>{t('xtell.astro.moontoday')} <b>{sign(t, d.moonSign)}</b></span>
           <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
             {d.retro.length
-              ? `${t('xtell.astro.retro')}：${d.retro.map((p: string) => PLANET_ZH[p as keyof typeof PLANET_ZH]).join('、')}`
+              ? `${t('xtell.astro.retro')}：${d.retro.map((p: string) => plName(t, p)).join('、')}`
               : t('xtell.astro.noretro')}
           </span>
         </div>
@@ -2697,9 +2770,9 @@ function ZhanxingBoard({ chart }: { chart: any }) {
               {d.list.map((x: any, i: number) => (
                 <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: '6px 12px 6px 0' }}>
-                    <b>{glyphOf(x.a)} {nameOf(x.a)}</b> <span style={{ color: 'var(--muted2)' }}>{sign(x.transitSign)} {dms(x.transitDeg)}{x.retro ? ' ℞' : ''}</span>
+                    <b>{glyphOf(x.a)} {nameOf(t, x.a)}</b> <span style={{ color: 'var(--muted2)' }}>{sign(t, x.transitSign)} {dms(x.transitDeg)}{x.retro ? ' ℞' : ''}</span>
                   </td>
-                  <td style={{ padding: '6px 12px 6px 0' }}>{x.glyph} {nameOf(x.b)}</td>
+                  <td style={{ padding: '6px 12px 6px 0' }}>{x.glyph} {nameOf(t, x.b)}</td>
                   <td style={{ padding: '6px 12px 6px 0', fontFamily: 'var(--font-mono), monospace', color: x.orb < 0.3 ? 'var(--red)' : 'var(--muted)' }}>
                     {x.orb.toFixed(2)}°{x.applying ? ' →' : ''}
                   </td>
@@ -2731,7 +2804,7 @@ function ZhanxingBoard({ chart }: { chart: any }) {
             <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.astro.needstime')}</span>
           ) : (
             <>
-              <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{sign(Math.floor(ret.asc / 30))}</span>
+              <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{sign(t, Math.floor(ret.asc / 30))}</span>
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11.5, color: 'var(--muted)' }}>{dms(ret.asc % 30)}</span>
             </>
           )}
@@ -2740,14 +2813,14 @@ function ZhanxingBoard({ chart }: { chart: any }) {
           {/* Saved charts from before the engine dropped the return Moon still carry it. */}
           {ret.planets.filter((p: any) => !(c.hourUnknown && p.body === 'Moon')).slice(0, 10).map((p: any) => (
             <span key={p.body} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
-              {glyphOf(p.body)} {sign(p.sign)} {dms(p.deg)} {!c.hourUnknown && <span style={{ fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>H{p.house}</span>}
+              {glyphOf(p.body)} {sign(t, p.sign)} {dms(p.deg)} {!c.hourUnknown && <span style={{ fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)' }}>H{p.house}</span>}
             </span>
           ))}
         </div>
         <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.prog')}</div>
         <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-          {t('xtell.astro.progsun')} <b>{sign(prog.sun.sign)} {c.hourUnknown ? `${Math.round(prog.sun.deg)}°` : `${prog.sun.deg.toFixed(1)}°`}</b>　·　
-          {t('xtell.astro.progmoon')} <b>{sign(prog.moon.sign)}{c.hourUnknown ? '' : ` ${prog.moon.deg.toFixed(1)}°`}</b>
+          {t('xtell.astro.progsun')} <b>{sign(t, prog.sun.sign)} {c.hourUnknown ? `${Math.round(prog.sun.deg)}°` : `${prog.sun.deg.toFixed(1)}°`}</b>　·　
+          {t('xtell.astro.progmoon')} <b>{sign(t, prog.moon.sign)}{c.hourUnknown ? '' : ` ${prog.moon.deg.toFixed(1)}°`}</b>
           {c.hourUnknown
             ? <span style={{ color: 'var(--muted)' }}> (±6°, {t('xtell.astro.needstime')})</span>
             : <span style={{ color: 'var(--muted)' }}> ({t('xtell.astro.house')} {prog.moon.house})</span>}
@@ -2818,6 +2891,12 @@ function NameForm({ surname, given, gender, onSurname, onGiven, onGender, sel, s
  *  their 數理, and the 三才 line. All of it came out of lib/names.ts. */
 function NameBoard({ chart }: { chart: any }) {
   const t = useT()
+  const { lang } = useLang()
+  const chinese = lang === 'zh-Hant' || lang === 'zh-Hans'
+  // The old form beside a Japanese new-form kanji: Japanese pages only (余,
+  // 台 and 体 are ordinary characters in a Chinese name).
+  const showOld = lang === 'ja' && [...chart.surname, ...chart.given].some((c: any) => c.old)
+  const sancaiKey = /兩處/.test(chart.sancai.label) ? 'bad' : /一處/.test(chart.sancai.label) ? 'mixed' : 'good'
   const luckColour: Record<string, string> = { 吉: 'var(--score-elite)', 半吉: 'var(--score-fair)', 凶: 'var(--score-poor)' }
   const chars = [...chart.surname, ...chart.given]
   const ge: any[] = Object.values(chart.ge)
@@ -2830,29 +2909,33 @@ function NameBoard({ chart }: { chart: any }) {
             <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800 }}>{c.ch}</div>
             <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 700 }}>{c.strokes}</div>
             <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{c.kana ? t('xtell.name.kana') : `${c.radical}部`}</div>
+            {showOld && c.old && <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>{t('xtell.name.old').replace('{ch}', c.old.ch).replace('{n}', String(c.old.strokes))}</div>}
           </div>
         ))}
       </div>
+      {showOld && <p style={{ margin: '-6px 0 14px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.name.oldNote')}</p>}
       <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.name.grids')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 14 }}>
         {ge.map(g => (
           <div key={g.key} style={{ border: '1px solid ' + (g.key === 'ren' ? 'var(--red)' : 'var(--border2)'), borderRadius: 10, padding: '10px 12px', background: g.key === 'ren' ? 'var(--surface2)' : 'transparent' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <b style={{ fontSize: 12.5 }}>{g.label}</b>
+              <b style={{ fontSize: 12.5 }}>{tOr(t, `xtell.name.ge.${g.key}`, g.label)}</b>
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 20, fontWeight: 800 }}>{g.n}</span>
             </div>
             <div style={{ fontSize: 12, marginTop: 4 }}>
-              <span style={{ color: 'var(--muted)' }}>{g.wuxing}　</span>
-              <span style={{ fontWeight: 700, color: luckColour[g.shuli.luck] ?? 'var(--muted)' }}>{g.shuli.luck}</span>
-              <span style={{ color: 'var(--muted)' }}>　{g.shuli.name}{g.n !== g.shuli.n ? `（${g.shuli.n}）` : ''}</span>
+              <span style={{ color: 'var(--muted)' }}>{tOr(t, `xtell.el.${g.wuxing}`, g.wuxing)}　</span>
+              <span style={{ fontWeight: 700, color: luckColour[g.shuli.luck] ?? 'var(--muted)' }}>{tOr(t, `xtell.name.luck.${g.shuli.luck}`, g.shuli.luck)}</span>
+              {/* The 81 數理 keyword is a Chinese idiom (「寶馬金鞍」): Chinese pages only. */}
+              <span style={{ color: 'var(--muted)' }}>　{chinese ? g.shuli.name : ''}{g.n !== g.shuli.n ? `（${g.shuli.n}）` : ''}</span>
             </div>
           </div>
         ))}
       </div>
       <div style={{ fontSize: 13 }}>
         <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.name.sancai')}</span>
-        天{chart.sancai.tian} 人{chart.sancai.ren} 地{chart.sancai.di}　
-        <span style={{ color: 'var(--muted)' }}>天→人 {chart.sancai.tianRen}，人→地 {chart.sancai.renDi}　{chart.sancai.label}</span>
+        <span style={{ color: 'var(--muted)' }}>{t('xtell.name.sancai.line')
+          .replace('{a}', tOr(t, `xtell.el.${chart.sancai.tian}`, chart.sancai.tian)).replace(/\{b\}/g, tOr(t, `xtell.el.${chart.sancai.ren}`, chart.sancai.ren)).replace('{c}', tOr(t, `xtell.el.${chart.sancai.di}`, chart.sancai.di))
+          .replace('{r1}', tOr(t, `xtell.name.rel.${chart.sancai.tianRen}`, chart.sancai.tianRen)).replace('{r2}', tOr(t, `xtell.name.rel.${chart.sancai.renDi}`, chart.sancai.renDi))}　{t(`xtell.name.sancai.${sancaiKey}`)}</span>
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.name.source')}</div>
     </div>
@@ -2882,13 +2965,15 @@ function CeziForm({ ch, setCh, ask, setAsk, sel, charAria }: { ch: string; setCh
 
 function CeziBoard({ info, ask }: { info: any; ask: string }) {
   const t = useT()
+  const { lang } = useLang()
   return (
     <div>
       <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 72, fontWeight: 800, lineHeight: 1, padding: '10px 18px', background: 'var(--surface2)', borderRadius: 12 }}>{info.ch}</div>
         <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.cezi.radical')}</span>{info.radical}部（{info.radicalStrokes}畫）</div>
+          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.cezi.radical')}</span>{info.radical}部（{info.radicalStrokes}{lang === 'ja' ? '画' : lang === 'zh-Hans' ? '画' : lang === 'ko' ? '획' : lang === 'en' ? ' strokes' : '畫'}）</div>
           <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.name.chars')}</span>{info.strokes}</div>
+          {lang === 'ja' && info.old && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.name.old').replace('{ch}', info.old.ch).replace('{n}', String(info.old.strokes))}</div>}
           {ask && <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.qian.ask')}</span>{ask}</div>}
         </div>
       </div>

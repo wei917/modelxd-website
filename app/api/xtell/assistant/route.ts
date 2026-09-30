@@ -17,7 +17,7 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { houseCall } from '@/lib/house-llm'
-import { XTELL_CATALOG_VERSION, FEE_RULE, catalogForPrompt, liveFeature } from '@/lib/xtell-catalog'
+import { XTELL_CATALOG_VERSION, FEE_RULE, catalogForPrompt, liveFeature, roomNamesFor } from '@/lib/xtell-catalog'
 import { cleanQuestion } from '@/lib/xtell-handoff'
 
 export const runtime = 'nodejs'
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
         // Stable prefix (rules, catalog, guide) cached across all five
         // languages; only the language tail varies.
         { type: 'text', text: `${rules()}\n\n--- X先知 GUIDE ---\n${await guide()}`, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: `SITE LANGUAGE: ${lang}. Write "answer" and every "question" in ${lang}, whatever language the visitor used.` },
+        { type: 'text', text: `SITE LANGUAGE: ${lang}. Write "answer" and every "question" in ${lang}, whatever language the visitor used.\nROOM NAMES in this language (when "answer" names a room, use exactly these, never a name from the guide or the catalog): ${roomNamesFor(typeof body?.lang === 'string' && body.lang in LANGS ? body.lang : 'zh-Hant')}` },
       ],
       messages: [...history, { role: 'user', content: q }],
     })

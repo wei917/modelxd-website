@@ -17,6 +17,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { ndjsonResponse } from '@/lib/partial-json'
 import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
 import { dailyText } from '@/lib/xtell-daily-model'
+import { inLanguage } from '@/lib/xtell-lang-check'
 import {
   DAILY_METHODS, DAILY_RULES, asDailyLang, dailyBases, basisFacts, dailyBrief, parseDailyReading, profileProblem,
   type DailyMethod, type DailyProfile, type DailyBases,
@@ -78,7 +79,9 @@ export async function POST(req: Request) {
     let reading = null
     try {
       const text = await dailyText({
-        system: dailyBrief(m, lang), content: basisFacts(m, bases), userId: user.id, accept: t => !!parseDailyReading(t),
+        // Readable, and in the page's language: a reply in another language
+        // is refused here, and the stand-in model writes the day instead.
+        system: dailyBrief(m, lang), content: basisFacts(m, bases), userId: user.id, accept: t => { const r = parseDailyReading(t); return !!r && inLanguage([r.summary, ...r.themes, r.reflect, r.why].join(' '), lang) },
         onDelta: emit && (d => emit({ t: 'd', m, d })), onRestart: emit && (() => emit({ t: 'restart', m })),
       })
       reading = text ? parseDailyReading(text) : null

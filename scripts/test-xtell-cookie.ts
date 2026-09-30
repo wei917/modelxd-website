@@ -11,7 +11,7 @@ import vm from 'node:vm'
 import fs from 'node:fs'
 import path from 'node:path'
 import { mealOf, mealKey, cookieProblem, cookieFacts, FLAVOR_ELEMENT, parsePick, parseNote, pickBrief, PICK_TOP } from '../lib/xtell-cookie'
-import { cookieFortunes } from '../lib/xtell-cookie-fortunes'
+import { cookieFortunes, fortuneOf } from '../lib/xtell-cookie-fortunes'
 import * as xtell from '../lib/xtell'
 import { STRINGS } from '../lib/i18n'
 
@@ -26,7 +26,7 @@ check('what was eaten is required, and short', cookieProblem('', '2026-09-28T12:
 // The slips: real fortunes, chosen by the model, one of the best drawn here.
 const list = cookieFortunes()
 const ids = new Set(list.map(f => f.id))
-check('206 real fortunes, in five languages, none with a number', list.length === 206 && list.every(f => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => (f as any)[l]?.trim() && !/[0-9０-９]/.test((f as any)[l]))))
+check('205 of the 206 real fortunes are drawn (not the one about "credits", which still reads for a cookie that holds it), in five languages, none with a number', list.length === 205 && !ids.has(0) && fortuneOf(0)?.en.includes('credits') === true && list.every(f => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => (f as any)[l]?.trim() && !/[0-9０-９]/.test((f as any)[l]))))
 check('the source and its MIT licence travel with the list', (() => { const j = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'content', 'cookie', 'fortunes.json'), 'utf8')); return j.source.licence === 'MIT' && /Thomas Reggi/.test(j.source.copyright) && fs.readFileSync(path.join(__dirname, '..', j.source.licenceFile), 'utf8').startsWith('MIT License') })())
 check('the chooser sees every fortune, numbered', (() => { const b = pickBrief(list); return list.every(f => b.includes(`${f.id} ${f.en}`)) })())
 const pk = parsePick('{"flavor":"鹹","ids":[52, "243", 52, 9999, 48, 50, 30, 12, 8, 1, 2, 4, 5]}', id => ids.has(id))

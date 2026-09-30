@@ -30,8 +30,28 @@ export const PLACES: Place[] = [
   { key: 'fukuoka',    label: '福岡',     lat: 33.5904, lon: 130.4017, tz: 'Asia/Tokyo' },
   { key: 'sapporo',    label: '札幌',     lat: 43.0618, lon: 141.3545, tz: 'Asia/Tokyo' },
   { key: 'naha',       label: '沖繩那霸', lat: 26.2124, lon: 127.6809, tz: 'Asia/Tokyo' },
+  // More of Japan (a test round, Sep 29: six Japanese cities were too few
+  // for a Japanese visitor to find one near their birthplace).
+  { key: 'yokohama',   label: '橫濱',     lat: 35.4437, lon: 139.6380, tz: 'Asia/Tokyo' },
+  { key: 'saitama',    label: '埼玉',     lat: 35.8617, lon: 139.6455, tz: 'Asia/Tokyo' },
+  { key: 'chiba',      label: '千葉',     lat: 35.6073, lon: 140.1063, tz: 'Asia/Tokyo' },
+  { key: 'kyoto',      label: '京都',     lat: 35.0116, lon: 135.7681, tz: 'Asia/Tokyo' },
+  { key: 'kobe',       label: '神戶',     lat: 34.6901, lon: 135.1955, tz: 'Asia/Tokyo' },
+  { key: 'sendai',     label: '仙台',     lat: 38.2682, lon: 140.8694, tz: 'Asia/Tokyo' },
+  { key: 'niigata',    label: '新潟',     lat: 37.9162, lon: 139.0364, tz: 'Asia/Tokyo' },
+  { key: 'kanazawa',   label: '金澤',     lat: 36.5613, lon: 136.6562, tz: 'Asia/Tokyo' },
+  { key: 'shizuoka',   label: '靜岡',     lat: 34.9756, lon: 138.3828, tz: 'Asia/Tokyo' },
+  { key: 'hiroshima',  label: '廣島',     lat: 34.3853, lon: 132.4553, tz: 'Asia/Tokyo' },
+  { key: 'okayama',    label: '岡山',     lat: 34.6551, lon: 133.9195, tz: 'Asia/Tokyo' },
+  { key: 'matsuyama',  label: '松山',     lat: 33.8392, lon: 132.7657, tz: 'Asia/Tokyo' },
+  { key: 'kumamoto',   label: '熊本',     lat: 32.8031, lon: 130.7079, tz: 'Asia/Tokyo' },
+  { key: 'kagoshima',  label: '鹿兒島',   lat: 31.5966, lon: 130.5571, tz: 'Asia/Tokyo' },
   { key: 'seoul',      label: '首爾',     lat: 37.5665, lon: 126.9780, tz: 'Asia/Seoul' },
   { key: 'busan',      label: '釜山',     lat: 35.1796, lon: 129.0756, tz: 'Asia/Seoul' },
+  { key: 'incheon',    label: '仁川',     lat: 37.4563, lon: 126.7052, tz: 'Asia/Seoul' },
+  { key: 'daegu',      label: '大邱',     lat: 35.8714, lon: 128.6014, tz: 'Asia/Seoul' },
+  { key: 'daejeon',    label: '大田',     lat: 36.3504, lon: 127.3845, tz: 'Asia/Seoul' },
+  { key: 'gwangju',    label: '光州',     lat: 35.1595, lon: 126.8526, tz: 'Asia/Seoul' },
   { key: 'hongkong',   label: '香港',     lat: 22.3193, lon: 114.1694, tz: 'Asia/Hong_Kong' },
   { key: 'macau',      label: '澳門',     lat: 22.1987, lon: 113.5439, tz: 'Asia/Macau' },
   { key: 'shanghai',   label: '上海',     lat: 31.2304, lon: 121.4737, tz: 'Asia/Shanghai' },
@@ -70,6 +90,45 @@ export const PLACES: Place[] = [
 
 export const DEFAULT_PLACE = 'taipei'
 export const placeOf = (key: unknown): Place | null => PLACES.find(p => p.key === key) ?? null
+
+// ── The list in the page's language (Sep 29) ───────────────────────────────
+// `label` stays 繁體: it is what the teacher's facts and saved charts name.
+// The form shows the visitor's own spelling, their country first, and
+// starts on their capital.
+const N = (ja: string, ko: string, en: string) => ({ ja, ko, en })
+const PLACE_NAMES: Record<string, { ja: string; ko: string; en: string }> = {
+  taipei: N('台北', '타이베이', 'Taipei'), newtaipei: N('新北', '신베이', 'New Taipei'), taoyuan: N('桃園', '타오위안', 'Taoyuan'), hsinchu: N('新竹', '신주', 'Hsinchu'),
+  taichung: N('台中', '타이중', 'Taichung'), changhua: N('彰化', '장화', 'Changhua'), chiayi: N('嘉義', '자이', 'Chiayi'), tainan: N('台南', '타이난', 'Tainan'),
+  kaohsiung: N('高雄', '가오슝', 'Kaohsiung'), pingtung: N('屏東', '핑둥', 'Pingtung'), yilan: N('宜蘭', '이란', 'Yilan'), hualien: N('花蓮', '화롄', 'Hualien'),
+  taitung: N('台東', '타이둥', 'Taitung'), penghu: N('澎湖', '펑후', 'Penghu'), kinmen: N('金門', '진먼', 'Kinmen'),
+  tokyo: N('東京', '도쿄', 'Tokyo'), osaka: N('大阪', '오사카', 'Osaka'), nagoya: N('名古屋', '나고야', 'Nagoya'), fukuoka: N('福岡', '후쿠오카', 'Fukuoka'),
+  sapporo: N('札幌', '삿포로', 'Sapporo'), naha: N('那覇（沖縄）', '나하(오키나와)', 'Naha (Okinawa)'), yokohama: N('横浜', '요코하마', 'Yokohama'), saitama: N('さいたま', '사이타마', 'Saitama'),
+  chiba: N('千葉', '지바', 'Chiba'), kyoto: N('京都', '교토', 'Kyoto'), kobe: N('神戸', '고베', 'Kobe'), sendai: N('仙台', '센다이', 'Sendai'), niigata: N('新潟', '니가타', 'Niigata'),
+  kanazawa: N('金沢', '가나자와', 'Kanazawa'), shizuoka: N('静岡', '시즈오카', 'Shizuoka'), hiroshima: N('広島', '히로시마', 'Hiroshima'), okayama: N('岡山', '오카야마', 'Okayama'),
+  matsuyama: N('松山', '마쓰야마', 'Matsuyama'), kumamoto: N('熊本', '구마모토', 'Kumamoto'), kagoshima: N('鹿児島', '가고시마', 'Kagoshima'),
+  seoul: N('ソウル', '서울', 'Seoul'), busan: N('釜山', '부산', 'Busan'), incheon: N('仁川', '인천', 'Incheon'), daegu: N('大邱', '대구', 'Daegu'), daejeon: N('大田', '대전', 'Daejeon'), gwangju: N('光州', '광주', 'Gwangju'),
+  hongkong: N('香港', '홍콩', 'Hong Kong'), macau: N('マカオ', '마카오', 'Macau'), shanghai: N('上海', '상하이', 'Shanghai'), beijing: N('北京', '베이징', 'Beijing'),
+  guangzhou: N('広州', '광저우', 'Guangzhou'), shenzhen: N('深圳', '선전', 'Shenzhen'), xiamen: N('アモイ', '샤먼', 'Xiamen'), fuzhou: N('福州', '푸저우', 'Fuzhou'), chengdu: N('成都', '청두', 'Chengdu'),
+  singapore: N('シンガポール', '싱가포르', 'Singapore'), kl: N('クアラルンプール', '쿠알라룸푸르', 'Kuala Lumpur'), bangkok: N('バンコク', '방콕', 'Bangkok'), hanoi: N('ハノイ', '하노이', 'Hanoi'),
+  hcmc: N('ホーチミン', '호찌민', 'Ho Chi Minh City'), manila: N('マニラ', '마닐라', 'Manila'), jakarta: N('ジャカルタ', '자카르타', 'Jakarta'), delhi: N('ニューデリー', '뉴델리', 'New Delhi'),
+  mumbai: N('ムンバイ', '뭄바이', 'Mumbai'), chennai: N('チェンナイ', '첸나이', 'Chennai'), kolkata: N('コルカタ', '콜카타', 'Kolkata'), dubai: N('ドバイ', '두바이', 'Dubai'),
+  london: N('ロンドン', '런던', 'London'), paris: N('パリ', '파리', 'Paris'), berlin: N('ベルリン', '베를린', 'Berlin'), newyork: N('ニューヨーク', '뉴욕', 'New York'),
+  chicago: N('シカゴ', '시카고', 'Chicago'), la: N('ロサンゼルス', '로스앤젤레스', 'Los Angeles'), sf: N('サンフランシスコ', '샌프란시스코', 'San Francisco'), seattle: N('シアトル', '시애틀', 'Seattle'),
+  vancouver: N('バンクーバー', '밴쿠버', 'Vancouver'), toronto: N('トロント', '토론토', 'Toronto'), sydney: N('シドニー', '시드니', 'Sydney'), melbourne: N('メルボルン', '멜버른', 'Melbourne'), auckland: N('オークランド', '오클랜드', 'Auckland'),
+}
+/** A place's name in the page's language (the 繁體 label on Chinese pages). */
+export function placeLabel(p: Place | null | undefined, lang: string): string {
+  if (!p) return ''
+  const n = PLACE_NAMES[p.key]
+  return (lang === 'ja' || lang === 'ko' || lang === 'en') && n ? n[lang] : p.label
+}
+/** The list for a form: the visitor's own country first, the rest as is. */
+export function placesFor(lang: string): Place[] {
+  const first = lang === 'ja' ? 'Asia/Tokyo' : lang === 'ko' ? 'Asia/Seoul' : null
+  return first ? [...PLACES.filter(p => p.tz === first), ...PLACES.filter(p => p.tz !== first)] : PLACES
+}
+/** Where a new form starts. */
+export const defaultPlaceFor = (lang: string): string => (lang === 'ja' ? 'tokyo' : lang === 'ko' ? 'seoul' : DEFAULT_PLACE)
 
 // ── The daily fortune's birth zone (owner, Sep 27: no city) ────────────────
 // The daily profile stores the zone the visitor was born in as 'tz:<IANA>'.

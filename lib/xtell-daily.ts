@@ -19,7 +19,10 @@ export const DAILY_METHODS = ['western', 'bazi'] as const
 export type DailyMethod = (typeof DAILY_METHODS)[number]
 /** Bumped when a method's computation or its writing brief changes; a new
  *  version is a new cache key, so old readings are never shown as new. */
-export const DAILY_RULES: Record<DailyMethod, string> = { western: 'western-1', bazi: 'bazi-1' }
+// -2 (Sep 29): readings are checked for the page's language; the day's
+// cached rows written before that (a Chinese reading on a Japanese page)
+// are not served again.
+export const DAILY_RULES: Record<DailyMethod, string> = { western: 'western-2', bazi: 'bazi-2' }
 /** Which consent wording a saved profile agreed to (the i18n key's version). */
 export const CONSENT_VERSION = 'daily-consent-1'
 export const DAILY_LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
@@ -176,7 +179,9 @@ export function dailyBrief(method: DailyMethod, lang: DailyLang): string {
     'If the facts say something is approximate or undecided (an unknown birth hour), say so plainly and do not sound certain about it.',
     'If the facts show no prominent contacts, say that nothing stands out under this calculation and draw no conclusion about events; never call the day calm or quiet because of it.',
     TONE,
-    `Write every field in ${LANG_NAME[lang]}. Keep Chinese technical terms in Chinese characters with a short explanation the first time.`,
+    lang === 'zh-Hant' || lang === 'zh-Hans'
+      ? `Write every field in ${LANG_NAME[lang]}. Keep the technical terms in Chinese characters with a short explanation the first time.`
+      : `Write every field in ${LANG_NAME[lang]} only. The facts below are in Chinese: translate them, do not copy their sentences, and never write a Chinese sentence. Use the words a reader of ${LANG_NAME[lang]} knows${lang === 'ja' ? ' (ハウス, コンジャンクション, スクエア, トライン, 月, 逆行, 命式, 日主)' : ''}; a BaZi term may stay in its characters with a short explanation the first time.`,
     'Reply with ONLY a JSON object, no markdown fence:',
     '{"summary": "one or two sentences", "themes": ["two or three short things to notice"], "reflect": "one question or thing to think about today", "why": "two or three sentences: which computed facts led to this, in plain words"}',
   ].join('\n')

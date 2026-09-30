@@ -22,15 +22,22 @@ type RadicalTable = Record<string, [string, number]>         // radical number �
 
 let strokeTable: StrokeTable | null = null
 let radicalTable: RadicalTable | null = null
+let oldForms: Record<string, string> | null = null
 function tables() {
   if (!strokeTable) {
     strokeTable = JSON.parse(readFileSync(join(process.cwd(), 'content', 'names', 'kangxi.json'), 'utf-8'))
     radicalTable = JSON.parse(readFileSync(join(process.cwd(), 'content', 'names', 'radicals.json'), 'utf-8'))
+    // Japanese new forms and their old forms (scripts/build-kyujitai.mjs).
+    try { oldForms = JSON.parse(readFileSync(join(process.cwd(), 'content', 'names', 'kyujitai.json'), 'utf-8')) } catch { oldForms = {} }
   }
-  return { strokes: strokeTable!, radicals: radicalTable! }
+  return { strokes: strokeTable!, radicals: radicalTable!, old: oldForms! }
 }
 
-export type CharInfo = { ch: string; strokes: number; radical: string; radicalNo: number; radicalStrokes: number; kana?: true }
+/** `old`: for a Japanese new-form kanji (続, 沢, 広), its old form and that
+ *  form's strokes. The count used is always the written character's (the
+ *  note on the page says so); the old form is shown beside it on Japanese
+ *  pages because the orthodox 熊崎式 school counts 旧字体 (Sep 29). */
+export type CharInfo = { ch: string; strokes: number; radical: string; radicalNo: number; radicalStrokes: number; kana?: true; old?: { ch: string; strokes: number } }
 
 // ── かな (Sep 29, a reviewer: many Japanese given names are kana) ──────────
 // Kana counts differ by school; this is the table of the modern stroke
@@ -54,11 +61,12 @@ export function kanaInfo(ch: string): CharInfo | null {
 }
 
 export function charInfo(ch: string): CharInfo | null {
-  const { strokes, radicals } = tables()
+  const { strokes, radicals, old } = tables()
   const e = strokes[ch]
   if (!e) return null
   const r = radicals[String(e[1])]
-  return { ch, strokes: e[0], radicalNo: e[1], radical: r?.[0] ?? '?', radicalStrokes: r?.[1] ?? 0 }
+  const o = old[ch]
+  return { ch, strokes: e[0], radicalNo: e[1], radical: r?.[0] ?? '?', radicalStrokes: r?.[1] ?? 0, ...(o && strokes[o] ? { old: { ch: o, strokes: strokes[o][0] } } : {}) }
 }
 
 // ── 五行 ──────────────────────────────────────────────────────────────────
@@ -182,6 +190,10 @@ export function nameFacts(c: NameChart, gender: string): string {
     ...([...c.surname, ...c.given].some(x => x.ch === '々') ? ['「々」依所重複之字計畫。'] : []),
     ...([...c.surname, ...c.given].some(x => x.kana) ? ['日文假名依現行筆順的通行表計畫（濁點加 2、半濁點加 1、小寫同大寫、長音符 1）；假名筆畫各流派算法不一，這是慣例不是定律。'] : []),
     `筆畫依所寫字形計（日本新字體如沢、桜照寫法計，不換回舊字體；三字姓或三字名依熊崎式加總）。`,
+    ...(() => {
+      const olds = [...c.surname, ...c.given].filter(x => x.old)
+      return olds.length ? [`若這是日本姓名：${olds.map(x => `「${x.ch}」的舊字體是「${x.old!.ch}」（${x.old!.strokes} 畫）`).join('、')}。日本的舊字體派依舊字體計畫，五格會不同；此處依所寫字形計，使用者問起時說明兩派的差別，不要自行改算。中文姓名不適用。`] : []
+    })(),
     `五格（五格剖象法，筆畫依康熙字典部首原形，數字一至十以數值計）：`,
     ge,
     `三才：天${c.sancai.tian} 人${c.sancai.ren} 地${c.sancai.di}　天→人 ${c.sancai.tianRen}，人→地 ${c.sancai.renDi}　${c.sancai.label}`,
@@ -202,6 +214,7 @@ export function ceziFacts(info: CharInfo, ask: string): string {
     `所書之字：「${info.ch}」`,
     `康熙部首：${info.radical}部（第 ${info.radicalNo} 部，部首 ${info.radicalStrokes} 畫）${wx ? `，部首五行屬${wx}` : ''}`,
     `康熙筆畫：${info.strokes} 畫（含部首原形）`,
+    ...(info.old ? [`此字若是日本新字體，其舊字體為「${info.old.ch}」（${info.old.strokes} 畫），兩者結構不同：拆字只拆來訪者所寫的「${info.ch}」這個字形，不要把舊字體才有的部件說成這個字有的（例如「売」沒有「貝」，「賣」才有）。`] : []),
     `以上為系統查表所得；字的拆解、加減筆與觸機由老師為之，拆解時請把拆出的部件一一寫明。`,
   ].join('\n')
 }

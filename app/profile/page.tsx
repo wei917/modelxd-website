@@ -895,7 +895,7 @@ export default function ProfilePage() {
                   }}>
                     {t('profile.bonus')
                       .replace('{amount}', formatCents(credits.bonus_cents ?? 0))
-                      .replace('{date}', new Date(credits.bonus_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}
+                      .replace('{date}', new Date(credits.bonus_expires_at).toLocaleDateString(lang, { month: 'short', day: 'numeric' }))}
                   </div>
                 )}
                 {credits && credits.lifetime_spent_cents > 0 && (
@@ -958,7 +958,7 @@ export default function ProfilePage() {
             const sub = plan.subscription
             const live = !!sub && ['active', 'trialing', 'past_due'].includes(sub.status)
             const when = sub?.currentPeriodEnd
-              ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+              ? new Date(sub.currentPeriodEnd).toLocaleDateString(lang, { year: 'numeric', month: 'short', day: 'numeric' })
               : ''
             const btn = (primary: boolean) => ({
               padding: '10px 16px', borderRadius: 6, flexShrink: 0,

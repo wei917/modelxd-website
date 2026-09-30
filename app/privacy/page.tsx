@@ -4,7 +4,8 @@ import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // before beta). Static page, same layout language as /terms. Sep 28: XTell's
 // data, the referral card check, bug reports, the language and referral
 // cookies, and what deleting really erases (XTell rows at once; a removed
-// XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in.
+// XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in,
+// in the summaries too, and the situation written at 孫子兵法.
 
 export const metadata = { title: 'Privacy Policy — ModelXD' }
 
@@ -29,7 +30,7 @@ export default function PrivacyPage() {
         XDirect, XCut, XTalk, XGame, XWorld, XArch, XTell, XVote, XBoard and the API.
       </p>
 
-      <LocaleSummary items={['legal.privacy.public', 'legal.privacy.private', 'legal.privacy.xtell', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
+      <LocaleSummary items={['legal.privacy.signin', 'legal.privacy.public', 'legal.privacy.private', 'legal.privacy.xtell', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
       <h2 style={S.h2}>1. What We Collect</h2>
       <p style={S.p}>
         <strong>Account data.</strong> When you sign in with Google we receive your
@@ -42,8 +43,9 @@ export default function PrivacyPage() {
         <br /><strong>XTell (X先知).</strong> What a temple needs to draw your chart
         or answer you: your birth date and time (or that the hour is unknown) and the
         time zone you were born in; for 月老 and compatibility charts, the same for a
-        second person; a name at 姓名學, a character at 測字, your wishes at 四面佛, or
-        a dream at 解夢; and your questions and readings. If you choose to save your
+        second person; a name at 姓名學, a character at 測字, your wishes at 四面佛, a
+        dream at 解夢, or the situation you describe at 孫子兵法; and your
+        questions and readings. If you choose to save your
         birth details for the free daily reading (今日運勢), we keep them, with the
         time zone you read in, until you delete them.
         <br /><strong>Payments.</strong> Purchases are processed by Stripe. We store

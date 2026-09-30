@@ -21,3 +21,23 @@ export function chineseLeak(text: string): { count: number; share: number; sampl
 /** A Japanese answer with Chinese prose in it: a few Chinese-only characters,
  *  not one stray form. */
 export const leaksChinese = (text: string): boolean => chineseLeak(text).count >= 3
+
+/** Is this text written in the page's language at all? (Sep 29: the free
+ *  daily 西洋占星 reading came back wholly in literary 繁體 on a Japanese
+ *  page, 「今日行運月亮位於金牛座…」, which the character list above does not
+ *  catch.) Japanese always has kana, Korean hangul, English Latin letters;
+ *  Chinese has none of the first two. Shares are of the letters that carry
+ *  language, so numbers and punctuation do not count. */
+export function inLanguage(text: string, lang: string): boolean {
+  const s = String(text ?? '')
+  const han = (s.match(/[㐀-鿿]/g) ?? []).length
+  const kana = (s.match(/[ぁ-ゖァ-ヺー]/g) ?? []).length
+  const hangul = (s.match(/[가-힣]/g) ?? []).length
+  const latin = (s.match(/[A-Za-z]/g) ?? []).length
+  const all = han + kana + hangul + latin
+  if (all < 20) return true   // too short to judge
+  if (lang === 'ja') return kana / (han + kana || 1) >= 0.2
+  if (lang === 'ko') return hangul / all >= 0.4
+  if (lang === 'en') return latin / all >= 0.6
+  return kana + hangul === 0 || (kana + hangul) / all < 0.2   // Chinese pages
+}

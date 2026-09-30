@@ -276,7 +276,7 @@ async function routes() {
   const afters: Promise<unknown>[] = []
   const dailyRoute = loadRoute('app/api/xtell/daily/route.ts', {
     ...common, '@/lib/xtell-daily-model': writer, '@/lib/xtell-daily': daily,
-    'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, '@/lib/partial-json': require('../lib/partial-json'),
+    'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, '@/lib/partial-json': require('../lib/partial-json'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'),
   })
   const followRoute = loadRoute('app/api/xtell/daily/followup/route.ts', common)
   const req = (url: string, method: string, body?: unknown, ip = '10.0.0.1') => new Request(url, { method, headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) })

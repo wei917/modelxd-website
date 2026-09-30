@@ -20,7 +20,7 @@ export default function TermsPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: September 28, 2026
+        Last updated: September 29, 2026
       </p>
       <p style={S.p}>
         Welcome to ModelXD. These Terms of Service (&quot;Terms&quot;) govern your use of
@@ -46,7 +46,7 @@ export default function TermsPage() {
 
       <h2 style={S.h2}>2. Accounts</h2>
       <p style={S.p}>
-        Most of the Service needs an account (via Google sign-in); a few parts, such
+        Most of the Service needs an account (via Google or LINE sign-in); a few parts, such
         as the XTell almanac, work without one. You are responsible for activity under
         your account. You must be at least 13 years old (or the minimum age of digital
         consent in your country). We may suspend or terminate accounts that violate

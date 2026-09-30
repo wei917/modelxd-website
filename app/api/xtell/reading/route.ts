@@ -33,10 +33,14 @@ const LOG = '[xtell/reading]'
 // The visitor's site language → the language the master answers in. The
 // chart facts stay Chinese (they are the checkable record); the reading
 // follows the picker unless the visitor writes in another language.
+// Japanese wording (a test round, Sep 29): the facts are Chinese, and the
+// answers carried their terms into Japanese (第4宮, 合相, 入相位, 星盤, 月亮,
+// 命盤, 命理, 籤詩, 師姐, 守願人, 系統) and Simplified forms (周公解梦, 宝马金鞍).
+const JA_TERMS = '用語は日本で使われる言い方にすること：西洋占星術とインド占星術では「ハウス」（「宮」と書かない）、「コンジャンクション（合）」「スクエア」「トライン」「オポジション」「セクスタイル」、近づいている相は「接近中」、離れていく相は「離れつつある」、「ホロスコープ」（「星盤」と書かない）、「月」（「月亮」と書かない）；インド占星術の運期は「ダシャー」（「大運」と書かない）。四柱推命では「命式」（「命盤」と書かない。紫微斗数の「命盤」はそのままでよい）。方位は「南東・北西・北東・南西」の順で書く。おみくじは「おみくじ」「おみくじの詩」「言葉」と書き、「籤」「籤詩」「籤語」と書かない。「命理」は「占い」、「系統」は「システム」と書く。自分を「師姐」「守願人」と名乗らない（名乗るなら「案内役」）。簡体字（梦、马、车、齿 など）は一字も使わず、書名や分類名も日本の字体で書く（例：周公解夢）。引用する古典の原文だけは原文のままでよい。'
 const LANG_LINE: Record<string, string> = {
   'zh-Hant': '回答語言：繁體中文，全文不得夾雜簡體字。',
   'zh-Hans': '回答语言：简体中文。',
-  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に読みか短い説明を添える（例：日主（にっしゅ）、流年（りゅうねん））。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける。',
+  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に読みか短い説明を添える（例：日主（にっしゅ）、流年（りゅうねん））。読みに確信がないときは読みを付けない。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける；漢文の書き下し文は確信が持てなければ書かず、現代語訳だけにする。' + JA_TERMS,
   'ko': '답변 언어: 한국어. 명리 용어는 한자를 병기하고 필요하면 짧은 설명을 덧붙일 것 (예: 일주(日主), 유년(流年)).',
   'en': 'Answer in English. Keep the Chinese terms in parentheses the first time each appears (e.g. day master 日主, the year\'s flow 流年) and do not translate proper names of stars or palaces without also giving the Chinese.',
 }
