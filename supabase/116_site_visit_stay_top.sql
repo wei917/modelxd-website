@@ -1,5 +1,7 @@
 -- supabase/116_site_visit_stay_top.sql — the top 20% and top 10% stay for
 -- /admin/traffic.
+-- (Applied by the owner on Sep 30 and checked live: the service key gets the
+-- fourteen columns, the publishable key gets 42501.)
 --
 -- Owner, Sep 30: "add top 20% and 10% stay time". The median says what the
 -- typical visitor does (a few seconds, on ad traffic) and the average is

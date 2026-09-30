@@ -57,9 +57,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `116_site_visit_stay_top.sql` (top 20% / top 10% stay on /admin/traffic)
-  is written and proven on PGlite, awaiting the owner.
-  Latest applied: `115_site_visit_daily.sql` (2026-09-29, by the owner; the
+  Latest applied: `116_site_visit_stay_top.sql` (2026-09-30, by the owner;
+  top 20% / top 10% stay on /admin/traffic; checked live: fourteen columns
+  for the service key, 42501 for the publishable key), after
+  `115_site_visit_daily.sql` (2026-09-29, by the owner; the
   daily numbers behind /admin/traffic; checked live: rows for the service
   key, 42501 for the publishable key), after `114_credit_fractions.sql` (2026-09-29, the carry for
   charges under a cent; checked live: the publishable key gets 42501 on
