@@ -4,9 +4,10 @@
 // come from the database functions through page.tsx and data.ts.
 //
 // Layout (owner, Sep 30): the filters at the top, then the part they narrow
-// (today's numbers, browsers, sources, stay for the two groups), then the
-// fixed charts that are always for every country (browsers by country,
-// sign-ins by method), then the tables every chart is drawn from.
+// (the range's numbers with today's under them, browsers, sources, stay for
+// the two groups), then the fixed charts that are always for every country
+// (browsers by country, sign-ins by method), then the tables every chart is
+// drawn from.
 //
 // Built phone-first (owner, Sep 28). Charts are plain HTML and SVG: columns
 // capped at 24px with a 2px gap between stacked parts, one y-axis each, a
@@ -15,7 +16,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { CountryDay, DayRow, SigninDay, SigninTotal } from './data'
+import type { CountryDay, DayRow, SigninDay, SigninTotal, StayLine, Summary } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -245,13 +246,31 @@ function Card({ title, note, legend, children }: { title: string; note?: string;
   )
 }
 
-function Tile({ label, value, was }: { label: string; value: string; was: string | null }) {
+function Tile({ label, value, sub }: { label: string; value: string; sub: string[] }) {
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', minWidth: 0 }}>
       <div style={{ fontSize: 12, color: INK2 }}>{label}</div>
       <div style={{ fontSize: 26, fontWeight: 600, color: INK, lineHeight: 1.2, marginTop: 2 }}>{value}</div>
-      <div style={{ fontSize: 12, color: INK3, marginTop: 2 }}>{was === null ? ' ' : `Yesterday ${was}`}</div>
+      {sub.map((line, i) => <div key={i} style={{ fontSize: 12, color: INK3, marginTop: 2 }}>{line}</div>)}
     </div>
+  )
+}
+
+/** One group's stay over the whole range: how many browsers, and its four times. */
+function Group({ title, line }: { title: string; line: StayLine }) {
+  const cells: Array<[string, number]> = [['Median', line.median], ['Top 20%', line.p80], ['Top 10%', line.p90], ['Average', line.avg]]
+  return (
+    <section style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', minWidth: 0 }}>
+      <div style={{ fontSize: 12, color: INK2 }}>{title} · {num(line.browsers)} {line.browsers === 1 ? 'browser' : 'browsers'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 6 }}>
+        {cells.map(([label, secs]) => (
+          <div key={label} style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.3, whiteSpace: 'nowrap' }}>{stayOf(line.browsers, secs)}</div>
+            <div style={{ fontSize: 12, color: INK3, marginTop: 2 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -314,12 +333,28 @@ const METHODS: Array<Series<SigninDay> & { key: SigninTotal['key'] }> = [
 const COUNTRY_KEYS = ['c0', 'c1', 'c2'] as const
 const COUNTRY_COLORS = [BLUE, ORANGE, AQUA]
 
+/** The tiles at the top of the filtered part: the same number for the whole
+ *  range and for one day. */
+const TILES: Array<{ label: string; top?: boolean; whole: (s: Summary) => string; day: (r: DayRow) => string }> = [
+  { label: 'Active browsers', whole: s => num(s.browsers), day: r => num(r.browsers) },
+  { label: 'Returning browsers', whole: s => num(s.returningBrowsers), day: r => num(r.returningBrowsers) },
+  { label: 'Signed-in users', whole: s => num(s.signedInUsers), day: r => num(r.signedInUsers) },
+  { label: 'Median stay', whole: s => stayOf(s.browsers, s.everyone.median), day: r => stayOf(r.browsers, r.medianSeconds) },
+  { label: 'Top 20% stay', top: true, whole: s => stayOf(s.browsers, s.everyone.p80), day: r => stayOf(r.browsers, r.p80Seconds) },
+  { label: 'Top 10% stay', top: true, whole: s => stayOf(s.browsers, s.everyone.p90), day: r => stayOf(r.browsers, r.p90Seconds) },
+  { label: 'Average stay', whole: s => stayOf(s.browsers, s.everyone.avg), day: r => stayOf(r.browsers, r.avgSeconds) },
+]
+
 /** Shown where the numbers go until the owner has run a migration. */
 const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_stay_top.sql has been run.'
+const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
+export default function TrafficView({ rows, whole, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
   rows: DayRow[]
+  /** The range as a whole (migration 118), or null until it has been run:
+   *  the tiles then show today, and say so. */
+  whole: Summary | null
   days: number
   ranges: readonly number[]
   tz: string
@@ -399,16 +434,27 @@ export default function TrafficView({ rows, days, ranges, tz, topStay, upgraded,
         <p style={{ fontSize: 14, color: INK2 }}>No visits logged for this range{country ? ` from ${where}` : ''} yet.</p>
       ) : (
         <>
-          <h3 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 500, color: INK2 }}>Today so far ({today.day})</h3>
+          <h3 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 500, color: INK2 }}>
+            {whole ? `All ${days} days together, through today (${today.day})` : `Today only, so far (${today.day})`}
+          </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-            <Tile label="Active browsers" value={num(today.browsers)} was={prev && num(prev.browsers)} />
-            <Tile label="Returning browsers" value={num(today.returningBrowsers)} was={prev && num(prev.returningBrowsers)} />
-            <Tile label="Signed-in users" value={num(today.signedInUsers)} was={prev && num(prev.signedInUsers)} />
-            <Tile label="Median stay" value={stayOf(today.browsers, today.medianSeconds)} was={prev && stayOf(prev.browsers, prev.medianSeconds)} />
-            {topStay && <Tile label="Top 20% stay" value={stayOf(today.browsers, today.p80Seconds)} was={prev && stayOf(prev.browsers, prev.p80Seconds)} />}
-            {topStay && <Tile label="Top 10% stay" value={stayOf(today.browsers, today.p90Seconds)} was={prev && stayOf(prev.browsers, prev.p90Seconds)} />}
-            <Tile label="Average stay" value={stayOf(today.browsers, today.avgSeconds)} was={prev && stayOf(prev.browsers, prev.avgSeconds)} />
+            {TILES.filter(t => topStay || !t.top).map(t => whole
+              ? <Tile key={t.label} label={t.label} value={t.whole(whole)} sub={[`Today ${t.day(today)}`, ...(prev ? [`Yesterday ${t.day(prev)}`] : [])]} />
+              : <Tile key={t.label} label={`${t.label} today`} value={t.day(today)} sub={prev ? [`Yesterday ${t.day(prev)}`] : []} />)}
           </div>
+          {whole && (
+            <>
+              <div style={{ ...grid, marginTop: 10 }}>
+                <Group title="Signed in" line={whole.signed} />
+                <Group title="Not signed in" line={whole.guest} />
+              </div>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2, lineHeight: 1.5 }}>
+                A browser or an account that came on several days counts once. Returning = came on more than one day.
+                Stay is per browser per day. Signed in = had an account on any visit in the range.
+              </p>
+            </>
+          )}
+          {!whole && upgraded && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_118}</p>}
           {!topStay && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_116}</p>}
 
           <div style={{ ...grid, marginTop: 16 }}>

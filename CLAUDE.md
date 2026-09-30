@@ -66,7 +66,10 @@ rating system (XDRating) surfaced on XBoard.
   for the service key, 42501 for the publishable key), after
   `115_site_visit_daily.sql` (2026-09-29, by the owner; the
   daily numbers behind /admin/traffic; checked live: rows for the service
-  key, 42501 for the publishable key), after `114_credit_fractions.sql` (2026-09-29, the carry for
+  key, 42501 for the publishable key). `118_site_visit_summary.sql` (the
+  range's own numbers for the /admin/traffic tiles; one new function) is
+  written and proven on PGlite, awaiting the owner. Before those:
+  `114_credit_fractions.sql` (2026-09-29, the carry for
   charges under a cent; checked live: the publishable key gets 42501 on
   the table and on `accrue_fraction`), after `113_line_one_account.sql`
   (proven on PGlite, not checked live), `112_line_welcome_credit.sql`
@@ -807,12 +810,18 @@ the Google Ads consent default). `/api/visit` bypasses the www password gate
 so ad clicks that land on `/coming-soon` still count. **Reports filter
 `env = 'production'`**; queries and definitions are in `docs/SITE-VISITS.md`.
 The daily picture is the admin page **`/admin/traffic`**: filters at the top
-(range, country), the part they narrow (active browsers, new and returning,
+(range, country), the part they narrow (tiles for the RANGE as a whole with
+today and yesterday under them, from `site_visit_summary()` in 118; then
+per day: active browsers, new and returning,
 signed-in users, visits by source, stay for signed-in and not signed-in
 browsers as median / top 20% / top 10% / average), then fixed charts that
 are always every country (browsers by country, sign-ins by Google / LINE).
 Three service-key functions in `117_site_visit_groups_country.sql`; before
-117 is run the page falls back to `site_visit_daily()` (115, 116). The stay
+117 is run the page falls back to `site_visit_daily()` (115, 116), and
+before 118 the tiles are today's and say "today". A tile under a heading
+that names a range must be the range's number: on Oct 1 the tiles showed
+today under "Filtered: 14 days", and 20 minutes after midnight the owner
+read "3 active browsers" as the log having been wiped. The stay
 numbers over everyone are misleading on their own: signed-in browsers stay
 minutes, the rest seconds.
 

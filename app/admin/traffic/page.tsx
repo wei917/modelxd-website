@@ -7,20 +7,26 @@
 // Two kinds of chart (owner, Sep 30: "overall settings/filters/toggles and
 // pre defined charts without effecting by the filters"):
 //   - FILTERED: the tiles, browsers, sources, stay and the daily table
-//     follow the range and the country picked at the top. One call to
-//     site_visit_daily_v2(days, tz, country).
+//     follow the range and the country picked at the top.
+//     site_visit_daily_v2(days, tz, country) for the days, and
+//     site_visit_summary(days, tz, country) (118) for the range as a whole:
+//     the tiles are the RANGE's numbers, with today and yesterday under
+//     them. They were today's at first, under a heading that said "14 days",
+//     and twenty minutes into a new day the owner asked if the data was gone.
 //   - FIXED: browsers by country and sign-ins by method are always for every
 //     country; only the range applies. site_visit_by_country() and
 //     site_signins_daily().
-// All three come from supabase/117_site_visit_groups_country.sql. Until the
-// owner has run it the page falls back to site_visit_daily() (115/116): no
-// country filter, no signed-in split, no fixed charts, and a line saying so.
+// The daily and fixed functions come from supabase/117_site_visit_groups_country.sql.
+// Until the owner has run it the page falls back to site_visit_daily()
+// (115/116): no country filter, no signed-in split, no fixed charts, and a
+// line saying so. Until 118 has been run the tiles are today's, and their
+// heading and labels say "today".
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { getAdminUser } from '@/lib/admin'
 import TrafficView from './TrafficView'
-import { askedCountry, countryDays, countryNames, fillDaily, signinDays, type CountryRow, type DailyRow, type SigninRow } from './data'
+import { askedCountry, countryDays, countryNames, fillDaily, signinDays, toSummary, type CountryRow, type DailyRow, type SigninRow, type SummaryRow } from './data'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,14 +69,18 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
 
   // The fixed charts. A failure here leaves them out instead of taking the
   // page down: they are extra views of the same log.
-  const [byCountry, signins] = upgraded
+  // The same goes for the range's own numbers (migration 118): without them
+  // the tiles show today, under a heading that says so.
+  const [byCountry, signins, range] = upgraded
     ? await Promise.all([
         sb.rpc('site_visit_by_country', { p_days: days, p_tz: TZ, p_top: 5 }),
         sb.rpc('site_signins_daily', { p_days: days, p_tz: TZ }),
+        sb.rpc('site_visit_summary', { p_days: days, p_tz: TZ, p_country: wanted }),
       ])
-    : [null, null]
+    : [null, null, null]
   if (byCountry?.error) console.error('[admin/traffic] site_visit_by_country:', byCountry.error.message)
   if (signins?.error) console.error('[admin/traffic] site_signins_daily:', signins.error.message)
+  if (range?.error && range.error.code !== NOT_THERE) console.error('[admin/traffic] site_visit_summary:', range.error.message)
 
   const found = (daily.data ?? []) as DailyRow[]
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date())
@@ -80,6 +90,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   return (
     <TrafficView
       rows={fillDaily(found, today)}
+      whole={toSummary(((range?.data ?? []) as SummaryRow[])[0])}
       days={days}
       ranges={RANGES}
       tz="Taiwan time"

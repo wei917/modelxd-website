@@ -1,6 +1,7 @@
 // app/admin/traffic/data.ts
-// The shapes /admin/traffic draws, and how the rows the three database
-// functions return (supabase/117_site_visit_groups_country.sql) become them.
+// The shapes /admin/traffic draws, and how the rows the database functions
+// return (supabase/117_site_visit_groups_country.sql, 118_site_visit_summary.sql)
+// become them.
 // Pure functions, no I/O: page.tsx does the calls.
 
 /** One day of the FILTERED part of the page (range + country). */
@@ -44,6 +45,47 @@ export type DailyRow = {
   signed_p90_seconds?: number | null; signed_avg_seconds?: number | null
   guest_browsers?: number | null; guest_median_seconds?: number | null; guest_p80_seconds?: number | null
   guest_p90_seconds?: number | null; guest_avg_seconds?: number | null
+}
+
+/** The one row of site_visit_summary() (migration 118): the whole range.
+ *  Browsers and accounts are counted once here, which the daily rows cannot
+ *  be added up to; stay is still per browser per day. */
+export type SummaryRow = {
+  visits: number; browsers: number; new_browsers: number; returning_browsers: number; signed_in_users: number
+  median_seconds: number; p80_seconds: number; p90_seconds: number; avg_seconds: number; total_seconds: number
+  chatgpt_visits: number; google_visits: number; other_visits: number
+  signed_browsers: number; signed_median_seconds: number; signed_p80_seconds: number; signed_p90_seconds: number; signed_avg_seconds: number
+  guest_browsers: number; guest_median_seconds: number; guest_p80_seconds: number; guest_p90_seconds: number; guest_avg_seconds: number
+}
+
+/** One group's stay over the range: how many browsers, and the four times. */
+export type StayLine = { browsers: number; median: number; p80: number; p90: number; avg: number }
+
+/** The whole range, as the view shows it. */
+export type Summary = {
+  visits: number
+  browsers: number
+  newBrowsers: number
+  /** Browsers in the range that were also seen on an earlier day: they came back. */
+  returningBrowsers: number
+  signedInUsers: number
+  everyone: StayLine
+  signed: StayLine
+  guest: StayLine
+}
+
+export function toSummary(r: SummaryRow | undefined | null): Summary | null {
+  if (!r) return null
+  return {
+    visits: r.visits,
+    browsers: r.browsers,
+    newBrowsers: r.new_browsers,
+    returningBrowsers: r.returning_browsers,
+    signedInUsers: r.signed_in_users,
+    everyone: { browsers: r.browsers, median: r.median_seconds, p80: r.p80_seconds, p90: r.p90_seconds, avg: r.avg_seconds },
+    signed: { browsers: r.signed_browsers, median: r.signed_median_seconds, p80: r.signed_p80_seconds, p90: r.signed_p90_seconds, avg: r.signed_avg_seconds },
+    guest: { browsers: r.guest_browsers, median: r.guest_median_seconds, p80: r.guest_p80_seconds, p90: r.guest_p90_seconds, avg: r.guest_avg_seconds },
+  }
 }
 
 /** A row of site_visit_by_country(): country is a two-letter code, '??' for a

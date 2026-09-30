@@ -42,7 +42,8 @@ pre defined charts without effecting by the filters"):
 - **Filters**, at the top: the range (7 / 14 / 30 / 90 days) and the country
   (`?country=JP`; the picker offers the five countries with the most browsers
   in the range).
-- **Filtered part**, which follows both: today so far, then per day: active
+- **Filtered part**, which follows both: tiles for the range as a whole
+  (see "The range as a whole" below), then per day: active
   browsers split into new and returning, signed-in users, visits by source
   (ChatGPT ads = `utm_source='chatgpt'`, Google Ads = a click id, other), and
   stay for two groups, each with median, top 20%, top 10% and average. With a
@@ -60,6 +61,22 @@ and "returning" needs each browser's first day over the whole table, so the
 work is done in the database in one round trip each. Until 117 has been run
 the page falls back to `site_visit_daily()` (115, widened by 116): every
 country, one stay chart, no fixed charts, and a line saying what is missing.
+
+**The range as a whole** (Oct 1). The tiles at the top are the RANGE's
+numbers, with today so far and yesterday in small type under each:
+`site_visit_summary(p_days, p_tz, p_country)` in
+`supabase/118_site_visit_summary.sql` returns one row for the window. It
+cannot be added up from the daily rows: a browser that comes on three days
+is three in the daily counts and one here, and a median of medians is not a
+median. Active browsers and signed-in users are counted once; **returning**
+= browsers that came on more than one day (the earlier day may be before the
+range); stay is still per browser per day, over every day in the range. Two
+boxes under the tiles give stay for the browsers that had an account on any
+visit in the range and for the rest (the daily rule with a window of one day
+is the same rule). Until 118 has been run the tiles are today's, every label
+ends in "today", and a line says what is missing. They were today's at first
+under the heading "Filtered: 14 days"; twenty minutes into a new Taiwan day
+the owner read "3" as the log having been emptied.
 
 **Stay** is per browser per day (that browser's visits added up, tab in
 front), not per visit. **Top 20% / top 10% stay** is the stay that the most
