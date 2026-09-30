@@ -514,8 +514,9 @@ Wallet system in `supabase/11_credits.sql`, typed helpers in `lib/credits.ts`
 `credit_transactions` directly via the browser client; owner-read RLS
 guarantees users only see their own rows.
 
-- **Welcome credit: $10** for new verified Google signups, written from the
-  `handle_new_user` trigger (`68_welcome_credit.sql`). Anonymous sessions get
+- **Welcome credit: $10** for new verified Google or LINE signups, written
+  from the `handle_new_user` trigger (`68_welcome_credit.sql`, LINE since
+  `112_line_welcome_credit.sql`). Anonymous sessions get
   $0. **Not backfilled** — only accounts created after the migration.
 - **The daily $1 grant was removed** (July 20). Free XDuels are the free tier.
   `/api/credits/ensure-daily` survives for locale/last-seen analytics only —
@@ -958,17 +959,16 @@ can sit at the table honestly. One act per request; the client loops.
 
 - **LINE sign-in: built Sep 29** (reversed once ad traffic turned out ~93%
   phones). Supabase custom OIDC, one provider per LINE region because a LINE
-  channel serves one region: `custom:line-jp` (live) and `custom:line-tw`
-  (not created; flip `live` in `lib/line-login.ts` after probing its
-  authorize URL). The button shows only where a channel serves the visitor
+  channel serves one region: `custom:line-jp` and `custom:line-tw`, both
+  live (a new region = a provider + an entry in `lib/line-login.ts`, after
+  probing its authorize URL for a 302 to access.line.me). The button shows only where a channel serves the visitor
   (remembered channel, then `data-country` JP/TW, then ja/zh-Hant), and the
   channel used is remembered per browser so one person does not split into
   two accounts. A LINE account may have NO email: gates use
   `isVerifiedAccount()` (`lib/verified-account.ts`), never
   `email_confirmed_at`, and names/photos go through `lib/user-face.ts`
-  (OIDC fills `name`/`picture`, not `full_name`/`avatar_url`). The $10
-  welcome credit reaches LINE sign-ups only once `112_line_welcome_credit.sql`
-  runs (owner's call).
+  (OIDC fills `name`/`picture`, not `full_name`/`avatar_url`). LINE
+  sign-ups get the same $10 welcome credit (`112_line_welcome_credit.sql`).
 - **Apple sign-in: dropped.** Costs $99/yr plus a 6-month secret rotation, and
   on Windows it is worse than Google.
 - **Werewolf ratings stay out of `all`.**

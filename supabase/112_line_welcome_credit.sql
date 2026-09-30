@@ -1,8 +1,8 @@
 -- 112_line_welcome_credit.sql — LINE sign-ups get the same start as Google
--- ones (Sep 29, DRAFT: the owner decides whether to run it).
+-- ones (Sep 29; run by the owner the same day).
 --
 -- LINE Login arrived as Supabase custom OIDC providers, one per LINE region:
--- 'custom:line-jp' (live) and 'custom:line-tw' (not created yet). Without
+-- 'custom:line-jp' and 'custom:line-tw'. Without
 -- this, handle_new_user (68) grants the $10 welcome credit to provider
 -- 'google' only, so a LINE sign-up starts at $0 while the sign-in dialog
 -- promises "$10, no card".

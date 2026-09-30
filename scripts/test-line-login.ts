@@ -17,9 +17,12 @@ check('Japan by country', lineChannelFor({ country: 'JP', lang: 'en' }) === 'jp'
 check('Japan by language when the country is elsewhere', lineChannelFor({ country: 'US', lang: 'ja' }) === 'jp')
 check('no LINE for a US English visitor', lineChannelFor({ country: 'US', lang: 'en' }) === null)
 check('a remembered channel wins over country and language', lineChannelFor({ remembered: 'jp', country: 'US', lang: 'ko' }) === 'jp')
-check('country wins over language (a Japanese reader in Taiwan is not sent to Japan)', lineChannelFor({ country: 'TW', lang: 'ja' }) === (LINE_CHANNELS.tw.live ? 'tw' : null))
-check('Taiwan stays off until its provider exists', LINE_CHANNELS.tw.live || lineChannelFor({ country: 'TW', lang: 'zh-Hant' }) === null)
-check('a remembered channel that is not live falls back', lineChannelFor({ remembered: 'tw', country: 'JP' }) === (LINE_CHANNELS.tw.live ? 'tw' : 'jp'))
+check('Taiwan by country', lineChannelFor({ country: 'TW', lang: 'en' }) === 'tw')
+check('Taiwan by language (繁體) when the country is elsewhere', lineChannelFor({ country: 'US', lang: 'zh-Hant' }) === 'tw')
+check('country wins over language (a Japanese reader in Taiwan gets the Taiwan channel)', lineChannelFor({ country: 'TW', lang: 'ja' }) === 'tw')
+check('no LINE for 简体 outside Japan and Taiwan', lineChannelFor({ country: 'CN', lang: 'zh-Hans' }) === null)
+check('both channels are live', LINE_CHANNELS.jp.live && LINE_CHANNELS.tw.live)
+check('a remembered Taiwan channel wins in Japan (one person, one account)', lineChannelFor({ remembered: 'tw', country: 'JP' }) === 'tw')
 check('junk remembered value is ignored', lineChannelFor({ remembered: 'xx', country: 'JP' }) === 'jp')
 
 // ── Verified ───────────────────────────────────────────────────────────────

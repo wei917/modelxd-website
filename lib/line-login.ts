@@ -9,10 +9,10 @@
 // Client-safe.
 
 export type LineChannel = 'jp' | 'tw'
-/** Channels set up in Supabase. Taiwan joins when its provider exists. */
+/** Channels set up in Supabase (both live since Sep 29). */
 export const LINE_CHANNELS: Record<LineChannel, { provider: string; live: boolean }> = {
   jp: { provider: 'custom:line-jp', live: true },
-  tw: { provider: 'custom:line-tw', live: false },
+  tw: { provider: 'custom:line-tw', live: true },
 }
 export const LINE_KEY = 'modelxd_line'
 

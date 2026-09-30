@@ -375,7 +375,7 @@ health, money and legal questions belong with professionals.
 
 ## Accounts, credits and pricing
 
-Sign in with Google (in Japan, LINE too). New Google accounts get **$10 of free credit**.
+Sign in with Google (in Japan and Taiwan, LINE too). New accounts get **$10 of free credit**.
 XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger
@@ -423,7 +423,7 @@ demand.
 - **Where are my past generations and games?** In the left nav history, and
   in full at `/profile`.
 - **Is it free?** XDuel is, within a daily quota. Everything that runs a model
-  for you costs credits; new Google accounts start with $10.
+  for you costs credits; new accounts start with $10.
 - **A model said it was unavailable — was I charged?** No. When a model fails,
   nothing is billed for it: XCreate refunds the reserved amount, and a broken
   XDuel refunds the daily quota. "Unavailable right now" usually means our
