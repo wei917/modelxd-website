@@ -1024,7 +1024,9 @@ can sit at the table honestly. One act per request; the client loops.
 ## Decisions Taken (don't re-litigate without new information)
 
 - **LINE sign-in: built Sep 29** (reversed once ad traffic turned out ~93%
-  phones). Supabase custom OIDC, one provider per LINE region because a LINE
+  phones). Supabase custom providers of the `oauth2` type (Manual
+  configuration: an `oidc` one fails, LINE signs web logins with HS256; the
+  channels' callback is `https://auth.modelxd.com/auth/v1/callback`), one provider per LINE region because a LINE
   channel serves one region: `custom:line-jp` and `custom:line-tw`, both
   live (a new region = a provider + an entry in `lib/line-login.ts`, after
   probing its authorize URL for a 302 to access.line.me). The page language
