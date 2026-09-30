@@ -95,26 +95,5 @@
       "duration": 30,
       "needsImage": true
     }
-  },
-  {
-    "platform": "x",
-    "postId": "2103188197933187179",
-    "handle": "Mayz1169",
-    "url": "https://x.com/Mayz1169/status/2103188197933187179",
-    "kind": "video",
-    "models": [
-      "GPT Image 2",
-      "Seedance 2.5"
-    ],
-    "likes": 940,
-    "summary": {
-      "en": "A 15-second anime chase in one unbroken shot: a character sheet from GPT Image 2, animated with Seedance 2.5.",
-      "zh-Hant": "15 秒一鏡到底的動畫追逐：先用 GPT Image 2 做角色設定圖，再用 Seedance 2.5 動起來。",
-      "zh-Hans": "15 秒一镜到底的动画追逐：先用 GPT Image 2 做角色设定图，再用 Seedance 2.5 动起来。",
-      "ja": "ワンカットで描く 15 秒のアニメ追走劇。GPT Image 2 で作ったキャラクターシートを Seedance 2.5 でアニメ化。",
-      "ko": "끊김 없는 원테이크 15초 애니메이션 추격전. GPT Image 2로 만든 캐릭터 시트를 Seedance 2.5로 움직였습니다."
-    },
-    "prompt": null,
-    "preset": null
   }
 ]

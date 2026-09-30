@@ -53,6 +53,16 @@ export type TrendingPost = {
   preset: TrendingPreset | null             // null = no preset button
 }
 
+/** The bar for a post to be on the list at all (owner, Sep 30: "yes 1k is
+ *  the minimum bar"). x_search has no like-count filter (its parameters are
+ *  dates and handles only), so the search ASKS for 1k+ and the code enforces
+ *  it on the count Grok reports: under the bar, or with no count, a post is
+ *  never stored (lib/trending-job.ts), never published and never served.
+ *  Until Sep 30 the floor was a suggestion Grok could lower (300, then 100)
+ *  and nothing checked it: 46 of the 52 live posts were under 1,000, one at 30. */
+export const TRENDING_MIN_LIKES = 1000
+export const meetsLikesBar = (likes: unknown): likes is number =>
+  typeof likes === 'number' && likes >= TRENDING_MIN_LIKES
 /** The most one /api/trending page returns: a request bound. */
 export const TRENDING_MAX = 20
 /** Posts one week can hold live per kind (/admin/trending's publish). It was

@@ -33,6 +33,7 @@ import {
   type Family, type MediaKind, type Support,
 } from './trending-models'
 import { XCREATE_PROMPT_MAX } from './xcreate-limits'
+import { TRENDING_MIN_LIKES, meetsLikesBar } from '../app/xcreate/trending'
 
 export type TrendKind = MediaKind
 
@@ -143,9 +144,9 @@ function searchPrompt(kind: TrendKind, from: string, to: string, group: Family[]
   return `Find the most-liked posts on X from ${from} to ${to} that show off an ${media} made with ${focus}.
 
 Search in Top mode, most-liked first, with operators, for example:
-  ${names} ${filter} min_faves:300 since:${from} until:${to}
-  ${names} ("made with" OR "created with" OR prompt) ${filter} min_faves:100 since:${from} until:${to}
-Lower min_faves only when a model in this search has too few posts. Cover varied subjects: products, animals, nature, food, architecture and travel, original animation and characters, practical creative demos. Do not fill the list with celebrity or portrait posts.
+  ${names} ${filter} min_faves:${TRENDING_MIN_LIKES} since:${from} until:${to}
+  ${names} ("made with" OR "created with" OR prompt) ${filter} min_faves:${TRENDING_MIN_LIKES} since:${from} until:${to}
+Never search below min_faves:${TRENDING_MIN_LIKES}. A post with fewer than ${TRENDING_MIN_LIKES} likes is left out, and so is one whose like count you cannot read: return fewer posts, or none, rather than lower the bar. Cover varied subjects: products, animals, nature, food, architecture and travel, original animation and characters, practical creative demos. Do not fill the list with celebrity or portrait posts.
 
 Keep only posts where the author names the model that made the ${kind}, from this search (${focus}). Every image or video model the author credits must be one of: ${offered}. Drop a post that credits any other generator, including Midjourney, also when it is mixed with another model.
 The prompt is optional. Include it only when it is in the post itself or plainly in the author's first reply; do not dig through threads for it.
@@ -459,6 +460,11 @@ export async function ingestCandidates(sb: SupabaseClient, kind: TrendKind, post
     const [, handle, postId] = m
     if (seen.has(postId)) continue
     seen.add(postId)
+    // The bar, before anything else and before anything is stored.
+    if (!meetsLikesBar(p.likes)) {
+      report.dropped.push({ url, reason: `under ${TRENDING_MIN_LIKES} likes (${typeof p.likes === 'number' ? p.likes : 'count unknown'})` })
+      continue
+    }
     const models = (p.models ?? []).map(s => String(s).trim()).filter(Boolean)
     const verdict = eligibility(kind, models, offered)
     if (!verdict.ok) { report.dropped.push({ url, reason: verdict.reason }); continue }

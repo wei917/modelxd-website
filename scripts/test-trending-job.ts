@@ -18,6 +18,7 @@ type Logged = { action: string; request_id: string; status?: string; cost_usd?: 
 const logged: Logged[] = []
 let xaiResponse: any = null
 let xaiCalls = 0
+let xaiBody = ''
 let costRows: any[] = []
 let callRows: any[] = []
 let spendReadable = true
@@ -33,6 +34,7 @@ globalThis.fetch = (async (input: any, init?: any) => {
   const url = new URL(typeof input === 'string' ? input : input.url)
   if (url.hostname === 'api.x.ai') {
     xaiCalls++
+    xaiBody = String(init?.body ?? '')
     return new Response(sse([{ type: 'response.created' }, { type: 'response.completed', response: xaiResponse }]), { status: 200, headers: { 'content-type': 'text/event-stream' } })
   }
   if (url.pathname.endsWith('/functions/v1/log-provider-call')) { logged.push(JSON.parse(init.body)); return new Response('{}', { status: 200 }) }
@@ -144,6 +146,31 @@ async function main() {
   assert.equal(xaiCalls, 0, 'no provider call when spend is unreadable')
   spendReadable = true
 
-  console.log('PASS: missing or unreadable cost logged as null (never $0), one end row on malformed JSON, returned records and citations on the end row, month spend counts unknowns at the measured estimate; budget planning picks only what fits (kinds alternate, groups rotate weekly, the rest deferred) and refuses with no provider call when nothing fits or spend is unreadable')
+  // The likes bar (owner, Sep 30: "yes 1k is the minimum bar"). Under it, or
+  // with no count, a post is dropped before its text is checked and before
+  // anything is stored: the mocked fetch throws on any call this makes.
+  {
+    const { ingestCandidates } = await import('../lib/trending-job')
+    const { TRENDING_MIN_LIKES, meetsLikesBar } = await import('../app/xcreate/trending')
+    assert.equal(TRENDING_MIN_LIKES, 1000)
+    for (const [likes, ok] of [[1000, true], [34730, true], [999, false], [30, false], [0, false], [null, false], [undefined, false], ['1200', false]] as const) {
+      assert.equal(meetsLikesBar(likes), ok, `likes ${String(likes)}`)
+    }
+    const under = [
+      { url: 'https://x.com/a/status/2101000000000000011', handle: 'a', likes: 999, models: ['Seedance 2.5'], summary: { en: 'x' } },
+      { url: 'https://x.com/b/status/2101000000000000012', handle: 'b', likes: null, models: ['Seedance 2.5'], summary: { en: 'x' } },
+      { url: 'https://x.com/c/status/2101000000000000013', handle: 'c', models: ['Seedance 2.5'], summary: { en: 'x' } },
+    ]
+    const { report, rows } = await ingestCandidates(serviceClient(), 'video', under as any, at, false, support)
+    assert.equal(rows.length, 0)
+    assert.equal(report.inserted, 0)
+    assert.deepEqual(report.dropped.map(d => d.reason), ['under 1000 likes (999)', 'under 1000 likes (count unknown)', 'under 1000 likes (count unknown)'])
+    // The search asks for the bar and is no longer told it may go lower.
+    assert.ok(xaiBody.includes('min_faves:1000'), 'the search asks for 1k+')
+    assert.ok(!/min_faves:(300|100)\b/.test(xaiBody) && !/Lower min_faves/.test(xaiBody), 'no lower floor offered')
+    assert.ok(/Never search below min_faves:1000/.test(xaiBody))
+  }
+
+  console.log('PASS: the 1,000-like bar drops a post before any check or write and the search asks for it; missing or unreadable cost logged as null (never $0), one end row on malformed JSON, returned records and citations on the end row, month spend counts unknowns at the measured estimate; budget planning picks only what fits (kinds alternate, groups rotate weekly, the rest deferred) and refuses with no provider call when nothing fits or spend is unreadable')
 }
 main().catch(err => { console.error(err); process.exit(1) })

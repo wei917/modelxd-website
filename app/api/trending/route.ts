@@ -26,7 +26,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { FALLBACK_TRENDING, TRENDING_MAX, TRENDING_PAGE, type TrendingPost } from '@/app/xcreate/trending'
+import { FALLBACK_TRENDING, TRENDING_MAX, TRENDING_MIN_LIKES, TRENDING_PAGE, meetsLikesBar, type TrendingPost } from '@/app/xcreate/trending'
 import { afterBranches, decodeCursor, encodeCursor, pageFiltered, toPostgrestOr, type CursorKey, type FeedKind } from '@/lib/trending-cursor'
 import { eligibility, loadSupport, presetRunsOn, type Support } from '@/lib/trending-models'
 
@@ -71,7 +71,8 @@ export async function GET(req: NextRequest) {
     console.warn(`[trending] catalog unreadable, serving nothing: ${(err as Error).message}`)
     return NextResponse.json({ error: 'trending unavailable' }, { status: 503, headers: NO_STORE })
   }
-  const eligible = (p: { kind: TrendingPost['kind']; models: string[] | null }) => eligibility(p.kind, p.models ?? [], support).ok
+  const eligible = (p: { kind: TrendingPost['kind']; models: string[] | null; likes?: number | null }) =>
+    meetsLikesBar(p.likes) && eligibility(p.kind, p.models ?? [], support).ok
 
   let page: { rows: Row[]; next: CursorKey | null }
   try {
@@ -81,6 +82,7 @@ export async function GET(req: NextRequest) {
         let query = sb.from('trending_posts')
           .select('platform, post_id, handle, url, kind, models, likes, summary, prompt, preset, week, rank')
           .eq('status', 'live')
+          .gte('likes', TRENDING_MIN_LIKES)
         if (kind !== 'all') query = query.eq('kind', kind)
         if (key) query = query.or(toPostgrestOr(afterBranches(key)))
         const { data, error } = await query

@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TRENDING_LIVE_MAX } from '@/app/xcreate/trending'
+import { TRENDING_LIVE_MAX, TRENDING_MIN_LIKES, meetsLikesBar } from '@/app/xcreate/trending'
 import { XCREATE_PROMPT_MAX } from '@/lib/xcreate-limits'
 
 export type AdminTrendRow = {
@@ -45,7 +45,7 @@ export default function AdminTrendingClient({ rows, spent, budget, notShown, cat
 }) {
   const router = useRouter()
   const weeks = useMemo(() => [...new Set(rows.map(r => r.week))], [rows])
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(rows.filter(r => r.status === 'live').map(r => r.id)))
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(rows.filter(r => r.status === 'live' && meetsLikesBar(r.likes)).map(r => r.id)))
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
@@ -114,11 +114,11 @@ export default function AdminTrendingClient({ rows, spent, budget, notShown, cat
         </p>}
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           {ofWeek.map(r => <label key={r.id} style={{ display: 'grid', gridTemplateColumns: '28px 70px 1fr 220px', gap: 12, alignItems: 'start', padding: '12px 14px', borderTop: '1px solid var(--border)', fontSize: 13, cursor: 'pointer', background: picked.has(r.id) ? 'var(--surface2)' : 'transparent' }}>
-            <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} style={{ marginTop: 3 }} />
+            <input type="checkbox" checked={picked.has(r.id)} disabled={!meetsLikesBar(r.likes)} onChange={() => toggle(r.id)} style={{ marginTop: 3 }} />
             <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 11 }}>
               <div style={{ color: STATUS_COLOR[r.status], fontWeight: 700 }}>{r.status}{r.rank ? ` #${r.rank}` : ''}</div>
               <div style={{ color: 'var(--muted2)', marginTop: 4 }}>{r.kind}</div>
-              <div style={{ color: 'var(--muted2)' }}>♥ {r.likes ?? '?'}</div>
+              <div style={{ color: meetsLikesBar(r.likes) ? 'var(--muted2)' : 'var(--red)' }} title={meetsLikesBar(r.likes) ? undefined : `Under the ${TRENDING_MIN_LIKES}-like bar: cannot go live`}>♥ {r.likes ?? '?'}</div>
             </div>
             <div style={{ minWidth: 0 }}>
               <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--red)', textDecoration: 'none', fontWeight: 600 }}>@{r.handle} ↗</a>

@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { assertAdmin } from '@/lib/admin'
 import { runTrending, serviceClient, type TrendKind } from '@/lib/trending-job'
-import { TRENDING_LIVE_MAX } from '@/app/xcreate/trending'
+import { TRENDING_LIVE_MAX, TRENDING_MIN_LIKES, meetsLikesBar } from '@/app/xcreate/trending'
 
 export const maxDuration = 800
 
@@ -46,6 +46,14 @@ export async function POST(req: NextRequest) {
     // Bounded input: row uuids, the chosen at most a full week of both kinds.
     if (!uuids(body.ids, 2 * TRENDING_LIVE_MAX)) return NextResponse.json({ error: 'bad ids' }, { status: 400 })
     if (!uuids(body.seen, ADMIN_ROWS)) return NextResponse.json({ error: 'bad seen' }, { status: 400 })
+
+    // The bar: nothing under it goes live, whatever was ticked.
+    if (body.ids.length) {
+      const { data: chosen, error: readErr } = await sb.from('trending_posts').select('id, likes').in('id', body.ids)
+      if (readErr) return NextResponse.json({ error: readErr.message }, { status: 500 })
+      const under = (chosen ?? []).filter((r: any) => !meetsLikesBar(r.likes)).length
+      if (under) return NextResponse.json({ error: `${under} of the ticked posts ${under === 1 ? 'is' : 'are'} under ${TRENDING_MIN_LIKES} likes (or has no count). Untick ${under === 1 ? 'it' : 'them'}.` }, { status: 409 })
+    }
 
     // Everything else (the week's rows, the per-kind limit, rows not shown)
     // is checked inside the transaction, where nothing can change under it.
