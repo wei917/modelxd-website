@@ -1,42 +1,37 @@
--- supabase/115_site_visit_daily.sql — daily traffic numbers for /admin/traffic.
--- (Drafted as 114; 114_credit_fractions.sql landed the same evening. Applied by
--- the owner on Sep 29 and checked live: the service key gets rows, the
--- publishable key gets 42501.)
--- Superseded by 116_site_visit_stay_top.sql, which defines the same function
--- with two more columns. Once 116 has run, do not re-run this file: Postgres
--- refuses it and nothing changes.
+-- supabase/116_site_visit_stay_top.sql — the top 20% and top 10% stay for
+-- /admin/traffic.
 --
--- Owner, Sep 29: daily active users, returning users and stay time, as a
--- chart on an admin page instead of a question asked each time. The numbers
--- come from site_visits (109). PostgREST cannot group or take a median, and
--- "returning" needs each browser's first day over the WHOLE table, so the
--- page would otherwise have to page every row through the API. One function
--- does it in one round trip.
+-- Owner, Sep 30: "add top 20% and 10% stay time". The median says what the
+-- typical visitor does (a few seconds, on ad traffic) and the average is
+-- pulled up by a handful of very long stays. Neither shows how long the
+-- engaged visitors stay. Two more columns on site_visit_daily() (115):
 --
--- One row per day that had visits, days cut in p_tz (the page asks for
--- Asia/Taipei, where the traffic is), production rows only:
+--   p80_seconds   the stay the top 20% of that day's browsers reached or
+--                 passed (the 80th percentile)
+--   p90_seconds   the same for the top 10% (the 90th percentile)
 --
---   browsers            distinct visitor cookies that day ("active users":
---                       browsers, not people)
---   new_browsers        of those, first seen that day
---   returning_browsers  of those, first seen on an earlier day
---   signed_in_users     distinct accounts seen that day
---   median_seconds, avg_seconds, total_seconds
---                       stay time PER BROWSER per day (its visits that day
---                       added up), tab in front (see 109)
---   chatgpt_visits      visits tagged utm_source = 'chatgpt' (OpenAI ads)
---   google_visits       visits carrying a Google Ads click id
---   other_visits        everything else
+-- Same basis as median_seconds: stay PER BROWSER per day (its visits that
+-- day added up), tab in front, production rows, days cut in p_tz.
 --
--- Read only, and only by server code holding the service key: anon and
--- authenticated are revoked by name (pitfall 15), and the function runs as
--- its caller, who cannot read site_visits anyway.
+-- A function's result columns cannot be changed by "create or replace", so
+-- it is dropped and created again, in one transaction: a reader never finds
+-- it missing. The existing twelve columns keep their names, order and
+-- meaning, so the page deployed before this still works after it. The new
+-- page shows a note where these two numbers go until this has been run.
 --
--- Run by hand. Dev and prod share this database. Safe to re-run.
+-- Dropping the function drops its grants with it: anon and authenticated are
+-- revoked again by name (pitfall 15).
+--
+-- Run by hand. Dev and prod share this database. Safe to re-run, and safe to
+-- run without 115 (it defines the whole function). Once this has run, 115
+-- itself can no longer be re-run: Postgres refuses it ("cannot change return
+-- type") and nothing changes. Proven on PGlite before it was handed over.
 
 begin;
 
-create or replace function public.site_visit_daily(
+drop function if exists public.site_visit_daily(integer, text);
+
+create function public.site_visit_daily(
   p_days integer default 30,
   p_tz   text    default 'Asia/Taipei'
 ) returns table (
@@ -51,7 +46,9 @@ create or replace function public.site_visit_daily(
   total_seconds      bigint,
   chatgpt_visits     integer,
   google_visits      integer,
-  other_visits       integer
+  other_visits       integer,
+  p80_seconds        integer,
+  p90_seconds        integer
 )
 language sql
 stable
@@ -83,6 +80,8 @@ as $$
            count(*) filter (where f.first_day = p.day)    as new_browsers,
            count(*) filter (where f.first_day < p.day)    as returning_browsers,
            percentile_cont(0.5) within group (order by p.secs) as median_seconds,
+           percentile_cont(0.8) within group (order by p.secs) as p80_seconds,
+           percentile_cont(0.9) within group (order by p.secs) as p90_seconds,
            avg(p.secs)                                    as avg_seconds,
            sum(p.secs)                                    as total_seconds
     from per_browser p join first_seen f using (visitor_id)
@@ -99,7 +98,8 @@ as $$
   )
   select b.day, s.visits::int, b.browsers::int, b.new_browsers::int, b.returning_browsers::int,
          s.signed_in_users::int, round(b.median_seconds)::int, round(b.avg_seconds)::int,
-         b.total_seconds::bigint, s.chatgpt_visits::int, s.google_visits::int, s.other_visits::int
+         b.total_seconds::bigint, s.chatgpt_visits::int, s.google_visits::int, s.other_visits::int,
+         round(b.p80_seconds)::int, round(b.p90_seconds)::int
   from b join s using (day)
   order by b.day;
 $$;

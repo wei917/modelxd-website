@@ -2,8 +2,9 @@
 // Admin-only traffic dashboard (owner, Sep 29): daily active browsers, new
 // and returning, signed-in users, stay time and where visits came from.
 // Server-side gate, same as /admin/models. The numbers are one call to
-// site_visit_daily() (supabase/115_site_visit_daily.sql) over our own visit
-// log; docs/SITE-VISITS.md defines what a visit and "stay" mean.
+// site_visit_daily() (supabase/115_site_visit_daily.sql, widened by
+// 116_site_visit_stay_top.sql) over our own visit log; docs/SITE-VISITS.md
+// defines what a visit and "stay" mean.
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
@@ -21,6 +22,8 @@ type Row = {
   day: string; visits: number; browsers: number; new_browsers: number; returning_browsers: number
   signed_in_users: number; median_seconds: number; avg_seconds: number; total_seconds: number
   chatgpt_visits: number; google_visits: number; other_visits: number
+  // Added by migration 116; absent until the owner has run it.
+  p80_seconds?: number | null; p90_seconds?: number | null
 }
 
 const nextDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
@@ -43,6 +46,8 @@ function fill(data: Row[], today: string): DayRow[] {
       returningBrowsers: r?.returning_browsers ?? 0,
       signedInUsers: r?.signed_in_users ?? 0,
       medianSeconds: r?.median_seconds ?? 0,
+      p80Seconds: r?.p80_seconds ?? 0,
+      p90Seconds: r?.p90_seconds ?? 0,
       avgSeconds: r?.avg_seconds ?? 0,
       totalSeconds: Number(r?.total_seconds ?? 0),
       chatgpt: r?.chatgpt_visits ?? 0,
@@ -67,17 +72,23 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   )
   const { data, error } = await sb.rpc('site_visit_daily', { p_days: days, p_tz: TZ })
   if (error) {
-    // PGRST202 = the function is not there: migration 115 has not been run.
+    // PGRST202 = the function is not there: neither 115 nor 116 has been run.
+    // 116 defines the whole function, so it is the one to run.
     const missing = error.code === 'PGRST202'
     return (
       <div style={{ padding: 32, color: 'var(--red)', lineHeight: 1.6 }}>
         {missing
-          ? 'This page needs supabase/115_site_visit_daily.sql. Run it in the Supabase SQL editor, then reload.'
+          ? 'This page needs supabase/116_site_visit_stay_top.sql. Run it in the Supabase SQL editor, then reload.'
           : `Failed to load: ${error.message}`}
       </div>
     )
   }
 
+  const found = (data ?? []) as Row[]
+  // The top 20% and top 10% stay come from migration 116. Before it has been
+  // run the rows simply lack the two columns, and the view says so in their
+  // place instead of drawing zeros.
+  const topStay = found.some(r => r.p80_seconds != null)
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date())
-  return <TrafficView rows={fill((data ?? []) as Row[], today)} days={days} ranges={RANGES} tz="Taiwan time" />
+  return <TrafficView rows={fill(found, today)} days={days} ranges={RANGES} tz="Taiwan time" topStay={topStay} />
 }

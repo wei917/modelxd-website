@@ -20,6 +20,8 @@ export type DayRow = {
   returningBrowsers: number
   signedInUsers: number
   medianSeconds: number
+  p80Seconds: number         // the stay the top 20% of browsers reached or passed
+  p90Seconds: number         // the same for the top 10%
   avgSeconds: number
   totalSeconds: number
   chatgpt: number
@@ -33,6 +35,13 @@ type Series = { key: keyof DayRow; label: string; color: string }
 // the site's light surface; the aqua is under 3:1, which the legend, the
 // tooltip and the table cover).
 const BLUE = '#2a78d6', ORANGE = '#eb6834', AQUA = '#1baf7a'
+// Median, top 20% and top 10% are one measure at three points, in order, so
+// they share the blue hue and step darker as they go up: steps 400, 550 and
+// 700 of the blue ramp, even in lightness and validated as an ordinal ramp on
+// the site's surface (the light end is 3.57:1). They never cross: the darker
+// line is always the higher one. The average is a different kind of number
+// and keeps its own hue.
+const BLUE_400 = '#3987e5', BLUE_550 = '#1c5cab', BLUE_700 = '#0d366b'
 const INK = 'var(--white)', INK2 = 'var(--muted2)', INK3 = 'var(--muted)'
 const GRID = 'rgba(0,0,0,0.07)'
 const PLOT_H = 168
@@ -240,13 +249,22 @@ const SOURCES: Series[] = [
   { key: 'other', label: 'Other', color: AQUA },
 ]
 const STAY: Series[] = [
-  { key: 'medianSeconds', label: 'Median', color: BLUE },
+  { key: 'medianSeconds', label: 'Median', color: BLUE_400 },
   { key: 'avgSeconds', label: 'Average', color: ORANGE },
 ]
+const STAY_TOP: Series[] = [
+  { key: 'medianSeconds', label: 'Median', color: BLUE_400 },
+  { key: 'p80Seconds', label: 'Top 20%', color: BLUE_550 },
+  { key: 'p90Seconds', label: 'Top 10%', color: BLUE_700 },
+  { key: 'avgSeconds', label: 'Average', color: ORANGE },
+]
+/** Shown where the two numbers go until the owner has run the migration. */
+const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_stay_top.sql has been run.'
 
-export default function TrafficView({ rows, days, ranges, tz }: { rows: DayRow[]; days: number; ranges: readonly number[]; tz: string }) {
+export default function TrafficView({ rows, days, ranges, tz, topStay }: { rows: DayRow[]; days: number; ranges: readonly number[]; tz: string; topStay: boolean }) {
   const today = rows[rows.length - 1]
   const prev = rows.length > 1 ? rows[rows.length - 2] : null
+  const staySeries = topStay ? STAY_TOP : STAY
   const th: React.CSSProperties = { textAlign: 'right', padding: '6px 10px', fontWeight: 500, color: INK2, whiteSpace: 'nowrap', borderBottom: '1px solid var(--border2)' }
   const td: React.CSSProperties = { textAlign: 'right', padding: '6px 10px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
   return (
@@ -276,8 +294,11 @@ export default function TrafficView({ rows, days, ranges, tz }: { rows: DayRow[]
             <Tile label="Returning browsers" value={num(today.returningBrowsers)} was={prev && num(prev.returningBrowsers)} />
             <Tile label="Signed-in users" value={num(today.signedInUsers)} was={prev && num(prev.signedInUsers)} />
             <Tile label="Median stay" value={stay(today.medianSeconds)} was={prev && stay(prev.medianSeconds)} />
+            {topStay && <Tile label="Top 20% stay" value={stay(today.p80Seconds)} was={prev && stay(prev.p80Seconds)} />}
+            {topStay && <Tile label="Top 10% stay" value={stay(today.p90Seconds)} was={prev && stay(prev.p90Seconds)} />}
             <Tile label="Average stay" value={stay(today.avgSeconds)} was={prev && stay(prev.avgSeconds)} />
           </div>
+          {!topStay && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_116}</p>}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 12, marginTop: 16 }}>
             <Card title="Active browsers per day" note="Returning = first seen on an earlier day." legend={BROWSERS}>
@@ -286,8 +307,12 @@ export default function TrafficView({ rows, days, ranges, tz }: { rows: DayRow[]
             <Card title="Visits by source" note="ChatGPT ads carry utm_source=chatgpt; Google Ads carry a click id." legend={SOURCES}>
               <Columns rows={rows} series={SOURCES} />
             </Card>
-            <Card title="Stay per browser" note="Time with the tab in front, added up per browser per day. A few long stays pull the average above the median." legend={STAY}>
-              <Lines rows={rows} series={STAY} format={stay} />
+            <Card title="Stay per browser"
+              note={topStay
+                ? 'Time with the tab in front, added up per browser per day. Top 20% and top 10% are the stay that the most engaged fifth and tenth of browsers reached or passed. A few very long stays can lift the average above both.'
+                : 'Time with the tab in front, added up per browser per day. A few long stays pull the average above the median.'}
+              legend={staySeries}>
+              <Lines rows={rows} series={staySeries} format={stay} />
             </Card>
           </div>
 
@@ -298,7 +323,9 @@ export default function TrafficView({ rows, days, ranges, tz }: { rows: DayRow[]
                 <tr>
                   <th style={{ ...th, textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)' }}>Day</th>
                   <th style={th}>Browsers</th><th style={th}>New</th><th style={th}>Returning</th><th style={th}>Signed-in users</th>
-                  <th style={th}>Visits</th><th style={th}>Median stay</th><th style={th}>Average stay</th><th style={th}>Total time</th>
+                  <th style={th}>Visits</th><th style={th}>Median stay</th>
+                  {topStay && <><th style={th}>Top 20% stay</th><th style={th}>Top 10% stay</th></>}
+                  <th style={th}>Average stay</th><th style={th}>Total time</th>
                   <th style={th}>ChatGPT ads</th><th style={th}>Google Ads</th><th style={th}>Other</th>
                 </tr>
               </thead>
@@ -307,7 +334,9 @@ export default function TrafficView({ rows, days, ranges, tz }: { rows: DayRow[]
                   <tr key={r.day}>
                     <td style={{ ...td, textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)' }}>{r.day}</td>
                     <td style={td}>{num(r.browsers)}</td><td style={td}>{num(r.newBrowsers)}</td><td style={td}>{num(r.returningBrowsers)}</td><td style={td}>{num(r.signedInUsers)}</td>
-                    <td style={td}>{num(r.visits)}</td><td style={td}>{stay(r.medianSeconds)}</td><td style={td}>{stay(r.avgSeconds)}</td><td style={td}>{(r.totalSeconds / 3600).toFixed(1)} h</td>
+                    <td style={td}>{num(r.visits)}</td><td style={td}>{stay(r.medianSeconds)}</td>
+                    {topStay && <><td style={td}>{stay(r.p80Seconds)}</td><td style={td}>{stay(r.p90Seconds)}</td></>}
+                    <td style={td}>{stay(r.avgSeconds)}</td><td style={td}>{(r.totalSeconds / 3600).toFixed(1)} h</td>
                     <td style={td}>{num(r.chatgpt)}</td><td style={td}>{num(r.google)}</td><td style={td}>{num(r.other)}</td>
                   </tr>
                 ))}

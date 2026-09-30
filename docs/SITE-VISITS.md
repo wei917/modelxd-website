@@ -38,11 +38,20 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
 Admin only (`ADMIN_EMAILS`, on www). Today so far, then per day: active
 browsers split into new and returning, signed-in users, visits by source
 (ChatGPT ads = `utm_source='chatgpt'`, Google Ads = a click id, other), and
-median and average stay per browser. Days are cut in Taiwan time. It is one
-call to `site_visit_daily(p_days, p_tz)` (`supabase/115_site_visit_daily.sql`):
-PostgREST cannot group or take a median, and "returning" needs each browser's
-first day over the whole table. "Stay" there is per browser per day (that
-browser's visits added up), not per visit.
+stay per browser: median, top 20%, top 10% and average. Days are cut in
+Taiwan time. It is one call to `site_visit_daily(p_days, p_tz)`
+(`supabase/115_site_visit_daily.sql`, widened by
+`116_site_visit_stay_top.sql`): PostgREST cannot group or take a median, and
+"returning" needs each browser's first day over the whole table. "Stay" there
+is per browser per day (that browser's visits added up), not per visit.
+
+**Top 20% / top 10% stay** (Sep 30) is the stay that the most engaged fifth
+and tenth of that day's browsers reached or passed: the 80th and 90th
+percentile (`p80_seconds`, `p90_seconds`). It answers "how long do the people
+who stay, stay", which neither of the other two does: on ad traffic the
+median is a few seconds, and a handful of very long stays can lift the
+average above even the top 10%. Until 116 has been run the page shows a note
+in place of the two numbers.
 
 ## Reports (Supabase SQL editor)
 
