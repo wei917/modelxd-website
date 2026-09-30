@@ -39,6 +39,14 @@ export interface ModelPricing {
   tokens?: {
     text_input?:    TokenRate
     cached_input?:  TokenRate
+    /** $ per 1M tokens WRITTEN into the prompt cache. OpenAI charges these
+     *  at 1.25x the uncached input rate on GPT-5.6 and later (automatic, no
+     *  opt-out); Anthropic already folds its 1.25x into its own accounting,
+     *  and everyone else writes for free. Unset = no surcharge, and the
+     *  write bills at the plain input rate. Cache-write tokens are a SUBSET
+     *  of input_tokens (measured: 2,610 of 2,613 on a cold call), so this
+     *  rate REPLACES the input rate for them rather than adding to it. */
+    cache_write?:   TokenRate
     image_input?:   TokenRate
     video_input?:   TokenRate
     audio_input?:   TokenRate

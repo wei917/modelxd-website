@@ -65,12 +65,19 @@ export function calcTextCost(
     /** Web searches the provider performed. Billed per call, NOT per token,
      *  so it is a separate term rather than folded into the token maths. */
     searchCount?:      number
+    /** Tokens written into the prompt cache on this call. Part of
+     *  inputTokens, not extra on top, so they are carved OUT of the
+     *  uncached text below and re-charged at the write rate. */
+    cacheWriteTokens?: number
   } = {},
 ): number {
   const t = pricing(model).tokens ?? {}
   const lvl = details.thinkingLevel ?? null
   const textInputRate    = resolveTokenRate(t.text_input,    lvl)
   const cachedInputRate  = resolveTokenRate(t.cached_input,  lvl) || textInputRate
+  // No declared write rate = no surcharge, so the write costs plain input
+  // and the arithmetic below is unchanged for every model but OpenAI's.
+  const cacheWriteRate   = resolveTokenRate(t.cache_write,   lvl) || textInputRate
   const imageInputRate   = resolveTokenRate(t.image_input,   lvl) || textInputRate
   const videoInputRate   = resolveTokenRate(t.video_input,   lvl) || textInputRate
   const audioInputRate   = resolveTokenRate(t.audio_input,   lvl) || textInputRate
@@ -78,9 +85,14 @@ export function calcTextCost(
   const imageInputTokens = details.imageInputTokens ?? 0
   const videoInputTokens = details.videoInputTokens ?? 0
   const audioInputTokens = details.audioInputTokens ?? 0
-  const uncachedText     = Math.max(0, inputTokens - cachedTokens - imageInputTokens - videoInputTokens - audioInputTokens)
+  const cacheWriteTokens = Math.min(
+    details.cacheWriteTokens ?? 0,
+    Math.max(0, inputTokens - cachedTokens - imageInputTokens - videoInputTokens - audioInputTokens),
+  )
+  const uncachedText     = Math.max(0, inputTokens - cachedTokens - imageInputTokens - videoInputTokens - audioInputTokens - cacheWriteTokens)
   return (
     (uncachedText     / 1_000_000) * textInputRate   +
+    (cacheWriteTokens / 1_000_000) * cacheWriteRate  +
     (cachedTokens     / 1_000_000) * cachedInputRate +
     (imageInputTokens / 1_000_000) * imageInputRate  +
     (videoInputTokens / 1_000_000) * videoInputRate  +

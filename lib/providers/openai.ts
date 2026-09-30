@@ -93,6 +93,10 @@ export async function streamText(
     let inputTokens = 0
     let outputTokens = 0
     let cachedTokens = 0
+    // Billed at 1.25x uncached input on GPT-5.6 and later, automatic and
+    // with no opt-out. A subset of input_tokens, so pricing.ts carves it
+    // out rather than adding it (see ModelPricing.tokens.cache_write).
+    let cacheWriteTokens = 0
     let reasoningTokens = 0
     let responseModel: string | null = null
     let responseId: string | null = null
@@ -119,6 +123,7 @@ export async function streamText(
           inputTokens     = usage.input_tokens ?? 0
           outputTokens    = usage.output_tokens ?? 0
           cachedTokens    = usage.input_tokens_details?.cached_tokens ?? 0
+          cacheWriteTokens = (usage.input_tokens_details as any)?.cache_write_tokens ?? 0
           reasoningTokens = usage.output_tokens_details?.reasoning_tokens ?? 0
         }
         console.log(`${TAG} response.completed model=${responseModel} usage=`, JSON.stringify(usage))
@@ -127,8 +132,8 @@ export async function streamText(
       }
     }
 
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
-    console.log(`${TAG} done sent_model=${model.model_name} returned_model=${responseModel} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount, cacheWriteTokens })
+    console.log(`${TAG} done sent_model=${model.model_name} returned_model=${responseModel} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} written=${cacheWriteTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
   } catch (err: any) {
     console.error(`${TAG} ERROR`, err?.message ?? err, err?.response?.data ?? err)
@@ -190,13 +195,14 @@ async function streamTextBackground(
     const inputTokens     = usage.input_tokens ?? 0
     const outputTokens    = usage.output_tokens ?? 0
     const cachedTokens    = usage.input_tokens_details?.cached_tokens ?? 0
+    const cacheWriteTokens = (usage.input_tokens_details as any)?.cache_write_tokens ?? 0
     const reasoningTokens = usage.output_tokens_details?.reasoning_tokens ?? 0
 
     // No stream to count events on here — tally the search calls the
     // completed response actually contains.
     const searchCount = (resp.output ?? []).filter((o: any) => o?.type === 'web_search_call').length
-    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
-    console.log(`${TAG} background done sent_model=${model.model_name} returned_model=${resp.model} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
+    const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount, cacheWriteTokens })
+    console.log(`${TAG} background done sent_model=${model.model_name} returned_model=${resp.model} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} written=${cacheWriteTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })
   } catch (err: any) {
     console.error(`${TAG} background ERROR`, err?.message ?? err, err?.response?.data ?? err)
@@ -349,7 +355,9 @@ export async function generateImage(
     const inputTokens  = usage.input_tokens ?? 0
     const outputTokens = usage.output_tokens ?? 0
     const cachedTokens = usage.input_tokens_details?.cached_tokens ?? 0
-    const tokenCost = calcTextCost(model, inputTokens, outputTokens, cachedTokens)
+    const tokenCost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, {
+      cacheWriteTokens: (usage.input_tokens_details as any)?.cache_write_tokens ?? 0,
+    })
     if (tokenCost > 0) cost = tokenCost
   }
 
