@@ -1930,7 +1930,13 @@ function ChengguCard({ data, onAsk, disabled }: { data: Chenggu; onAsk: (questio
 function LiuNianLine({ year }: { year: any }) {
   const t = useT()
   const { lang } = useLang()
-  const rel = (kind: string, taiSui: string) => `${relText(lang, kind)}${taiSui && taiSui !== '無' ? `（${taiSui}）` : ''}`
+  // 值太歲 is the birth year's own branch come round again: the engine calls
+  // the branches' relation 「無特殊關係」 there, which beside the 太歲 note
+  // read as a contradiction, so the note stands alone.
+  const rel = (kind: string, taiSui: string) => {
+    const ts = taiSui && taiSui !== '無' ? (TAI_SUI[lang]?.[taiSui] ?? taiSui) : ''
+    return taiSui === '值太歲' && kind === '無特殊關係' ? ts : `${relText(lang, kind)}${ts ? `（${ts}）` : ''}`
+  }
   const vsYear = Array.isArray(year.yearChoices)
     ? t('xtell.liunian.yearUndecided').replace('{list}', year.yearChoices.map((c: any) => t('xtell.liunian.ifYear').replace('{gz}', c.ganZhi).replace('{rel}', rel(c.yearBranch?.kind, c.taiSui))).join(t('xtell.list.sep')))
     : rel(year.yearBranch?.kind, year.taiSui)
@@ -2481,6 +2487,13 @@ const REL_WORDS: Record<string, Array<[string | RegExp, string]>> = {
   ko: [['無特殊關係', '특별한 관계 없음'], ['無法判讀', '판정 불가'], ['天干五合', '천간합'], [/同為(.)/, '둘 다 $1'], ['　或　', ' 또는 '], [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, '두 명식을 합치면 $1 ($2/5)']],
   en: [['無特殊關係', 'no special relation'], ['無法判讀', 'cannot be read'], ['天干五合', 'stem harmony'], [/同為(.)/, 'both $1'], [/(.)生(.)/, '$1 feeds $2'], [/(.)剋(.)/, '$1 restrains $2'], ['六合', 'Six Harmony'], ['三合', 'Three Harmony'], ['六沖', 'Clash'], ['相害', 'Harm'], ['相刑', 'Punishment'], ['　或　', ' or '],
     [/兩盤合看涵蓋 (.+?)（(\d)\/5）/, 'together the two charts cover $1 ($2/5)']],
+}
+/** The year's branch against the birth year's (太歲), per page language. */
+const TAI_SUI: Record<string, Record<string, string>> = {
+  ja: { 值太歲: '生まれ年と同じ支（値太歳）', 沖太歲: '冲太歳', 刑太歲: '刑太歳', 害太歲: '害太歳', 合太歲: '合太歳' },
+  'zh-Hans': { 值太歲: '值太岁', 沖太歲: '冲太岁', 刑太歲: '刑太岁', 害太歲: '害太岁', 合太歲: '合太岁' },
+  ko: { 值太歲: '태어난 해와 같은 지지 (치태세)', 沖太歲: '충태세', 刑太歲: '형태세', 害太歲: '해태세', 合太歲: '합태세' },
+  en: { 值太歲: 'same branch as the birth year (Tai Sui year)', 沖太歲: 'clashes with Tai Sui', 刑太歲: 'punishes Tai Sui', 害太歲: 'harms Tai Sui', 合太歲: 'in harmony with Tai Sui' },
 }
 const relText = (lang: string, s: unknown): string => {
   let out = String(s ?? '')

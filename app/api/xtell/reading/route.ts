@@ -13,7 +13,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, liuNianFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 import { xtellAdmin } from '@/lib/xtell-admin'
 import { DAILY_METHODS, DAILY_TEACHER, westernFacts, type DailyMethod } from '@/lib/xtell-daily'
@@ -36,11 +36,11 @@ const LOG = '[xtell/reading]'
 // Japanese wording (a test round, Sep 29): the facts are Chinese, and the
 // answers carried their terms into Japanese (第4宮, 合相, 入相位, 星盤, 月亮,
 // 命盤, 命理, 籤詩, 師姐, 守願人, 系統) and Simplified forms (周公解梦, 宝马金鞍).
-const JA_TERMS = '用語は日本で使われる言い方にすること：西洋占星術とインド占星術では「ハウス」（「宮」と書かない）、「コンジャンクション（合）」「スクエア」「トライン」「オポジション」「セクスタイル」、近づいている相は「接近中」、離れていく相は「離れつつある」、「ホロスコープ」（「星盤」と書かない）、「月」（「月亮」と書かない）；インド占星術の運期は「ダシャー」（「大運」と書かない）。四柱推命では「命式」（「命盤」と書かない。紫微斗数の「命盤」はそのままでよい）。方位は「南東・北西・北東・南西」の順で書く。おみくじは「おみくじ」「おみくじの詩」「言葉」と書き、「籤」「籤詩」「籤語」と書かない。「命理」は「占い」、「系統」は「システム」と書く。自分を「師姐」「守願人」と名乗らない（名乗るなら「案内役」）。簡体字（梦、马、车、齿 など）は一字も使わず、書名や分類名も日本の字体で書く（例：周公解夢）。引用する古典の原文だけは原文のままでよい。'
+const JA_TERMS = '用語は日本で使われる言い方にすること：西洋占星術とインド占星術では「ハウス」（「宮」と書かない）、「コンジャンクション（合）」「スクエア」「トライン」「オポジション」「セクスタイル」、近づいている相は「接近中」、離れていく相は「離れつつある」、「ホロスコープ」（「星盤」と書かない）、「月」（「月亮」と書かない）、十二星座は「牡羊座・牡牛座・双子座・蟹座・獅子座・乙女座・天秤座・蠍座・射手座・山羊座・水瓶座・魚座」（「処女座」「巨蟹座」「摩羯座」「双魚座」と書かない）、「チャートルーラー」（「命主星」と書かない）；インド占星術の運期は「ダシャー」「マハーダシャー」「アンタルダシャー」（「大運」「副運」と書かない）、聖典名は『バガヴァッド・ギーター』のように日本語で書く。相性を見ることは「相性」（「合盤」と書かない）、生まれ年の動物は「干支（えと）」（「生肖」と書かない）。宿曜の宿の名は「参宿」「虚宿」のように新字体で書く。四面仏の四つの面は「平安・仕事・結婚・財」、願いがかなった後のお礼は「お礼参り」（「還願」と書かない）、願いをかけることは「願掛け」（「許願」と書かない）。古典の口語訳は「現代語訳」（「白話訳」「白話」と書かない）。四柱推命では「命式」（「命盤」と書かない。紫微斗数の「命盤」はそのままでよい）。方位は「南東・北西・北東・南西」の順で書く。おみくじは「おみくじ」「おみくじの詩」「言葉」と書き、「籤」「籤詩」「籤語」と書かない。「命理」は「占い」、「系統」は「システム」と書く。自分を「師姐」「守願人」と名乗らない（名乗るなら「案内役」）。簡体字（梦、马、车、齿 など）は一字も使わず、書名や分類名も日本の字体で書く（例：周公解夢）。引用する古典の原文だけは原文のままでよい。'
 const LANG_LINE: Record<string, string> = {
   'zh-Hant': '回答語言：繁體中文，全文不得夾雜簡體字。',
   'zh-Hans': '回答语言：简体中文。',
-  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に読みか短い説明を添える（例：日主（にっしゅ）、流年（りゅうねん））。読みに確信がないときは読みを付けない。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける；資料におみくじの書き下し文と現代語訳が付いているときは、それをそのまま使う；付いていない漢文の書き下し文は確信が持てなければ書かず、現代語訳だけにする。' + JA_TERMS,
+  'ja': '回答言語：日本語のみ。文章はすべて自然な日本語で書き、中国語の文（簡体字でも繁体字でも）を一文も混ぜないこと。命理の術語は漢字のままでよいが、初出に短い説明を添える。読み仮名を括弧で付けてよいのは次の語だけ：日主（にっしゅ）、流年（りゅうねん）、大運（だいうん）、命式（めいしき）、十神（じっしん）。ほかの語には読み仮名を付けない（誤った読みを書くより、付けないほうがよい）。籤の詩やカードの原文を引くときは、原文のあとに日本語訳を付ける；資料におみくじの書き下し文と現代語訳が付いているときは、それをそのまま使う；付いていない漢文の書き下し文は確信が持てなければ書かず、現代語訳だけにする。' + JA_TERMS,
   'ko': '답변 언어: 한국어. 명리 용어는 한자를 병기하고 필요하면 짧은 설명을 덧붙일 것 (예: 일주(日主), 유년(流年)).',
   'en': 'Answer in English. Keep the Chinese terms in parentheses the first time each appears (e.g. day master 日主, the year\'s flow 流年) and do not translate proper names of stars or palaces without also giving the Chinese.',
 }
@@ -74,6 +74,9 @@ const LENGTH_LINE: Record<string, string> = {
   'ko': '분량: 전체 1,500자 이내. 결론을 먼저, 이유는 그다음에. 같은 조언은 한 번만, 첨시나 카드 뜻의 인용도 한 번만 하고, 끝에서 풀이 전체를 다시 요약하지 말 것.',
   'en': 'Length: about 600 words at most. Give the conclusion first, then the reasons; say each piece of advice once, quote the verse or the card meaning once, and do not end by summarising the whole reading again.',
 }
+// Every teacher is told the date: without it a model takes the year from
+// its training (2024 for 「今年」, a live test, Sep 29).
+const todayLine = () => `今天的日期（西元，UTC）：${new Date().toISOString().slice(0, 10)}。說到「今天、今年、明年」以此為準，不要自行假設年份。`
 const lengthLine = (v: unknown) => `\n${LENGTH_LINE[typeof v === 'string' && LENGTH_LINE[v] ? v : 'zh-Hant']}`
 
 // What the facts block is called, per temple: a 命盤 for the chart temples,
@@ -307,8 +310,14 @@ export async function POST(req: Request) {
             const c = baziChart(body.birth)
             return simianfoFacts(c, body.birth.gender, body.birth?.hourUnknown === true, body.wishes, liuNian(c, body.birth.y, new Date().getFullYear()))
           })()
-          // 八字廟: the pillars, then the 稱骨 weights from the same birth.
-          : `${baziFacts(baziChart(body.birth), body.birth.gender, body.birth?.hourUnknown === true)}\n\n${chengguFacts(chengGu(body.birth))}`
+          // 八字廟: the pillars, this year's and next year's 流年 (a live test,
+          // Sep 29: asked about 「今年の流年」 with no year in the facts, the
+          // teacher answered for 2024 甲辰), then the 稱骨 weights.
+          : (() => {
+            const c = baziChart(body.birth)
+            const y = new Date().getFullYear()
+            return `${baziFacts(c, body.birth.gender, body.birth?.hourUnknown === true)}\n\n${liuNianFacts(liuNian(c, body.birth.y, y))}\n${liuNianFacts(liuNian(c, body.birth.y, y + 1), '明年流年')}\n\n${chengguFacts(chengGu(body.birth))}`
+          })()
 
   // The chart rides in the SYSTEM slot with the master persona: every turn of
   // the conversation carries it natively, and the client can never overwrite
@@ -372,7 +381,11 @@ export async function POST(req: Request) {
             if (cents > 0) {
               await debitCredits({
                 userId: user.id, amountCents: cents,
-                referenceType: 'xtell', referenceId: (model as any).id ?? (model as any).model_name,
+                // The visit is the session: its answers are one row in the
+                // credit history. (It was the model's id until Sep 30, which
+                // put a charge from today in one group with charges from
+                // other rooms and other weeks.)
+                referenceType: 'xtell', referenceId: readingId ?? (model as any).id ?? (model as any).model_name,
                 description: `XTell ${daily ? 'daily' : temple} reading (${(model as any).model_name})`,
                 metadata: { temple: daily ? 'daily' : temple, modelName: (model as any).model_name, search, thinking },
               }).catch(err => {
@@ -392,8 +405,8 @@ export async function POST(req: Request) {
         { userId: user.id },
         {
           system: daily
-            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${closingLine(body?.lang)}`
-            : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${closingLine(body?.lang)}`,
+            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${closingLine(body?.lang)}`
+            : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${closingLine(body?.lang)}`,
           search,
           thinking,
         },

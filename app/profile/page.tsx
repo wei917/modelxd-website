@@ -94,6 +94,7 @@ const REF_LABELS: Record<string, string> = {
   xtalk_werewolf: 'Werewolf game',
   xtalk_turn: 'Discussion',
   xtalk_bid: 'Discussion',
+  xtell: 'XTell',
   xcreate: 'XCreate',
   xcreate_reserve: 'XCreate',
   xcreate_refund: 'XCreate',

@@ -124,5 +124,22 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
   check('a Japanese answer is handed the reading and told not to write its own; other languages are not', xt.guandiFacts(q, '', 'guanyin', 'gansan', 'ja').includes(q.ja.kundoku[0]) && /不要自行另作訓讀/.test(xt.guandiFacts(q, '', 'guanyin', 'gansan', 'ja')) && !xt.guandiFacts(q, '', 'guanyin', 'gansan', 'zh-Hant').includes(q.ja.kundoku[0]))
   check('the card shows both on Japanese pages, labelled as the AI\'s', read('app/xtell/client.tsx').includes("lang === 'ja' && qian.ja") && S['xtell.qian.kundoku'].ja.includes('AI') && S['xtell.qian.modern'].ja.includes('AI'))
 }
+// The live re-test on Sep 30 (signed in, every room in Japanese).
+{
+  const xt = require('../lib/xtell')
+  const route = read('app/api/xtell/reading/route.ts'), client = read('app/xtell/client.tsx')
+  check('every teacher is told today\'s date: 「今年」 was answered for 2024', (route.match(/\$\{todayLine\(\)\}/g) ?? []).length === 2 && /今天的日期（西元，UTC）/.test(route))
+  const c = xt.baziChart({ y: 1990, m: 5, d: 15, h: 14, mi: 30, gender: 'male' })
+  const next = xt.liuNianFacts(xt.liuNian(c, 1990, 2027), '明年流年')
+  check('四柱推命 is given this year\'s and next year\'s 流年', next.startsWith('明年流年：2027 丁未年') && xt.liuNianFacts(xt.liuNian(c, 1990, 2026)).startsWith('今年流年：2026 丙午年') && route.includes("'明年流年'"))
+  check('縁結び: each year carries the page\'s own verdict, so a hard year is not called good', /頁面上的判定：\$\{y\.good \? '順' : '有波動'\}/.test(read('lib/xtell.ts')))
+  check('sign names, Jyotish periods and 四面仏 words are in the glossary', ['乙女座', '「処女座」', 'チャートルーラー', 'マハーダシャー', 'お礼参り', '願掛け', '「現代語訳」'].every(w => route.includes(w)))
+  check('readings in parentheses only for a fixed list: 相刑（あいおし）, 化禄（かりく）, 危宿（ぎしゅく） were wrong', route.includes('ほかの語には読み仮名を付けない') && !route.includes('読みに確信がないときは'))
+  check('the Jyotish chip says ダシャー, not 大運', S['xtell.q.navagraha.1'].ja.includes('ダシャー') && !S['xtell.q.navagraha.1'].ja.includes('大運'))
+  check('a drawn stick is 第 n 番 in Japanese, as on its card', S['xtell.qian.stickunit'].ja === '番')
+  check('the 太歳 note is in the page language, and 值太歲 stands alone', /ja: \{ 值太歲: '生まれ年と同じ支（値太歳）'/.test(client) && client.includes("taiSui === '值太歲' && kind === '無特殊關係' ? ts"))
+  check('易: a 卦辭 is quoted whole (井 was cut before 「凶」)', read('lib/xtell.ts').includes('引卦辭或爻辭要整句照錄到句末'))
+  check('an XTell charge is filed under its visit, and the history names it XTell', route.includes("referenceId: readingId ?? (model as any).id") && read('app/profile/page.tsx').includes("xtell: 'XTell',"))
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall Japanese copy checks passed')
 if (fails) process.exit(1)
