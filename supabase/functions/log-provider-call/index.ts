@@ -37,7 +37,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 // in lib/providers — it is not user input, so there is nothing to validate.
 // 52_provider_calls_all_providers drops the matching DB check for the same
 // reason. Adding a provider is pure data again: no redeploy, no migration.
-const ALLOWED_MODES     = new Set(['text', 'image', 'video'])
+const ALLOWED_MODES     = new Set(['text', 'image', 'video', 'audio'])
 const ALLOWED_STATUS    = new Set(['success', 'failed'])
 
 interface CommonFields {

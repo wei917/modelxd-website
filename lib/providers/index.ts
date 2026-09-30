@@ -496,8 +496,10 @@ export async function generateSpeech(
       result = await minimax.generateSpeech(model, text, options)
     } else if (model.provider === 'alibaba') {
       result = await alibaba.generateSpeech(model, text, options)
+    } else if (model.provider === 'openai') {
+      result = await openai.generateSpeech(model, text, options)
     } else {
-      noImplementation(model, 'text', ['google', 'minimax', 'alibaba'])
+      noImplementation(model, 'text', ['google', 'minimax', 'alibaba', 'openai'])
     }
     endCall(requestId, desc, {
       status:         'success',

@@ -4,6 +4,8 @@
 //   - Text:  Responses API with streaming (supports all models including GPT-5-pro)
 //   - Image: Responses API with image_generation tool + previous_response_id for
 //            multi-turn editing
+//   - Audio: /v1/audio/speech, SSE (see generateSpeech — the plain call reports
+//            no usage at all, the SSE one does)
 //   - Video: Not supported directly
 
 import OpenAI from 'openai'
@@ -11,10 +13,11 @@ import type {
   ModelInfo,
   TextStreamCallbacks,
   ImageResult,
+  SpeechResult,
   Attachment,
   TextGenExtras,
 } from './types'
-import { calcTextCost, calcImageCost } from './pricing'
+import { calcTextCost, calcImageCost, calcSpeechCost } from './pricing'
 import { VARIATION_DIRECTIVES } from './types'
 
 let _client: OpenAI | null = null
@@ -557,4 +560,99 @@ export async function transcribeAudio(
     ? segments.map(s => `[${mm(s.start)}] ${s.text}`).join('\n')
     : String(res.text ?? '')
   return { text, rawText: String(res.text ?? ''), durationSeconds, cost, segments }
+}
+
+// ── text to speech (/v1/audio/speech) ───────────────────────────────────────
+//
+// SSE is not an optimisation here, it is the only honest way to bill this
+// model. A plain POST returns nothing but audio bytes: no usage body, no
+// usage header (the x-ratelimit-*-tokens counters move by the INPUT tokens
+// only). `stream_format: 'sse'` ends the stream with a `speech.audio.done`
+// event carrying real `input_tokens` / `output_tokens`, and those numbers
+// are not derivable — two identical calls measured 74, 80, 82 and 98 output
+// tokens for the same sentence, because the delivery differs every time.
+// So we stream, concatenate the deltas, and bill what OpenAI reports.
+//
+// Unlike the other three speech providers this one takes `instructions`:
+// free text steering accent, tone and pacing on top of the chosen voice.
+// There is no language parameter — it reads the text as written.
+
+const SPEECH_MEDIA_TYPES: Record<string, string> = {
+  mp3: 'audio/mpeg', opus: 'audio/opus', aac: 'audio/aac',
+  flac: 'audio/flac', wav: 'audio/wav', pcm: 'audio/L16',
+}
+
+/** Duration straight out of the RIFF header. Only wav carries one; every
+ *  other container would need a decoder, so those return undefined and the
+ *  player reports the length itself. */
+function wavSeconds(buf: Buffer): number | undefined {
+  if (buf.length < 44 || buf.toString('ascii', 0, 4) !== 'RIFF') return undefined
+  const byteRate = buf.readUInt32LE(28)
+  return byteRate > 0 ? (buf.length - 44) / byteRate : undefined
+}
+
+export async function generateSpeech(
+  model: ModelInfo,
+  text: string,
+  options?: { voice?: string | null; format?: string | null; speed?: number | null; style?: string | null },
+): Promise<SpeechResult> {
+  const TAG = `[openai/${model.model_name}]`
+  const key = process.env.OPENAI_API_KEY
+  if (!key) throw new Error('OPENAI_API_KEY is not set')
+  const cfg    = model.output_config?.audio ?? {}
+  const voice  = options?.voice ?? (cfg.voices ?? [])[0]?.id ?? 'marin'
+  const format = (options?.format ?? (cfg.formats ?? [])[0] ?? 'wav').toLowerCase()
+
+  const body: Record<string, unknown> = {
+    model: model.model_name,
+    input: text,
+    voice,
+    response_format: format,
+    stream_format: 'sse',
+  }
+  if (options?.speed != null) body.speed = options.speed
+  if (options?.style) body.instructions = options.style
+  console.log(`${TAG} tts chars=${text.length} voice=${voice} format=${format}`)
+
+  const res = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`OpenAI TTS ${res.status}: ${detail.slice(0, 300)}`)
+  }
+
+  const chunks: Buffer[] = []
+  let usage: any = null
+  for (const line of (await res.text()).split('\n')) {
+    if (!line.startsWith('data:')) continue
+    const payload = line.slice(5).trim()
+    if (!payload || payload === '[DONE]') continue
+    let event: any
+    try { event = JSON.parse(payload) } catch { continue }
+    if (event.type === 'speech.audio.delta' && typeof event.audio === 'string') {
+      chunks.push(Buffer.from(event.audio, 'base64'))
+    } else if (event.type === 'speech.audio.done') {
+      usage = event.usage ?? null
+    }
+  }
+  const buffer = Buffer.concat(chunks)
+  if (buffer.length === 0) throw new Error('OpenAI TTS returned no audio.')
+
+  const durationSeconds = wavSeconds(buffer)
+  // Fall back to our own token estimate only if the done event never landed;
+  // a short clip billed at zero would be worse than a slightly wrong one.
+  const inputTextTokens   = Number(usage?.input_tokens  ?? 0) || Math.ceil(text.length / 4)
+  const outputAudioTokens = Number(usage?.output_tokens ?? 0) || Math.round((durationSeconds ?? 0) * 28)
+  const cost = calcSpeechCost(model, { inputTextTokens, outputAudioTokens })
+  console.log(`${TAG} tts ok bytes=${buffer.length} dur=${durationSeconds?.toFixed(1) ?? '?'}s audioTok=${outputAudioTokens} cost=$${cost.toFixed(6)}`)
+  return {
+    buffer,
+    mediaType: SPEECH_MEDIA_TYPES[format] ?? 'audio/mpeg',
+    durationSeconds, cost, characters: null,
+    inputTextTokens, outputAudioTokens,
+    usageMetadata: usage ?? undefined,
+  }
 }
