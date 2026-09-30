@@ -912,12 +912,15 @@ helps deceive, manipulate, threaten, take revenge or break the law (詭道 is
 about an enemy state, not people); safety situations go to real help.
 
 **The icon** is drawn in code (`scripts/xtell-sunzi-art.mjs`): the whole
-title 「孫子／兵法」 large in two lines over a war scene, ink-wash mountains,
-a banner at each edge and a row of spears (owner: the full title and some
-war background; earlier drafts, bamboo slips and then one large 孫, are in
-git). No red sun: a red disc behind a war scene reads as a Japanese military
-flag in Taiwan and Korea. Interim, like 九星's was, until the owner decides
-on generated art.
+title 「孫子／兵法」 large in two lines of 行楷 over a war scene, ink-wash
+mountains, a banner at each edge, a volley of arrows across the sky, a drawn
+bow and a row of spears. Owner, over four rounds: "bigger 孫", the full
+title and war background, style C of six (隸書 slips, 魏碑 seal, 行楷 scene,
+隸書 banner, 楷書 stone, bold 明朝), and 弓箭. No red sun: a red disc behind
+a war scene reads as a Japanese military flag in Taiwan and Korea. The 行楷
+is macOS's STXingkaiTC-Bold, a downloadable font the SVG renderer cannot
+see, so its glyph outlines are read with fontkit (`npm i --no-save
+fontkit@2`) and only the picture is committed.
 
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
