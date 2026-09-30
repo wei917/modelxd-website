@@ -10,20 +10,17 @@ import { userName, userPhoto } from '../lib/user-face'
 import { STRINGS } from '../lib/i18n'
 
 let fails = 0
+const read = (p: string) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8')
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
 
 // ── Channel ────────────────────────────────────────────────────────────────
-check('Japan by country', lineChannelFor({ country: 'JP', lang: 'en' }) === 'jp')
-check('Japan by language when the country is elsewhere', lineChannelFor({ country: 'US', lang: 'ja' }) === 'jp')
-check('no LINE for a US English visitor', lineChannelFor({ country: 'US', lang: 'en' }) === null)
-check('a remembered channel wins over country and language', lineChannelFor({ remembered: 'jp', country: 'US', lang: 'ko' }) === 'jp')
-check('Taiwan by country', lineChannelFor({ country: 'TW', lang: 'en' }) === 'tw')
-check('Taiwan by language (繁體) when the country is elsewhere', lineChannelFor({ country: 'US', lang: 'zh-Hant' }) === 'tw')
-check('country wins over language (a Japanese reader in Taiwan gets the Taiwan channel)', lineChannelFor({ country: 'TW', lang: 'ja' }) === 'tw')
-check('no LINE for 简体 outside Japan and Taiwan', lineChannelFor({ country: 'CN', lang: 'zh-Hans' }) === null)
+check('日本語 → Japan', lineChannelFor({ lang: 'ja' }) === 'jp')
+check('繁體 → Taiwan', lineChannelFor({ lang: 'zh-Hant' }) === 'tw')
+check('no LINE in English, 简体 or Korean', ['en', 'zh-Hans', 'ko'].every(lang => lineChannelFor({ lang }) === null))
+check('a remembered channel wins over the language (one person, one account)', lineChannelFor({ remembered: 'tw', lang: 'ja' }) === 'tw' && lineChannelFor({ remembered: 'jp', lang: 'en' }) === 'jp')
 check('both channels are live', LINE_CHANNELS.jp.live && LINE_CHANNELS.tw.live)
-check('a remembered Taiwan channel wins in Japan (one person, one account)', lineChannelFor({ remembered: 'tw', country: 'JP' }) === 'tw')
-check('junk remembered value is ignored', lineChannelFor({ remembered: 'xx', country: 'JP' }) === 'jp')
+check('junk remembered value is ignored', lineChannelFor({ remembered: 'xx', lang: 'ja' }) === 'jp')
+check('no geo: the layout no longer writes data-country', !read('app/layout.tsx').includes('data-country') && !read('lib/line-login.ts').includes('dataset.country'))
 
 // ── Verified ───────────────────────────────────────────────────────────────
 check('a Google account with a confirmed email', isVerifiedAccount({ email_confirmed_at: '2026-09-29T00:00:00Z', app_metadata: { provider: 'google' } }))
@@ -41,7 +38,6 @@ check('a non-https photo is not drawn', userPhoto({ user_metadata: { picture: 'j
 // ── Wiring ─────────────────────────────────────────────────────────────────
 const S = STRINGS as any
 check('the LINE label exists in all five languages', ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof S['auth.line']?.[l] === 'string' && S['auth.line'][l].includes('LINE')))
-const read = (p: string) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8')
 for (const f of ['app/api/xcreate/route.ts', 'app/api/xduel/route.ts', 'app/api/xcreate/source/route.ts'])
   check(`${f} gates on isVerifiedAccount, not email_confirmed_at`, read(f).includes('isVerifiedAccount(user)') && !/if \(!user\.email_confirmed_at\)/.test(read(f)))
 for (const f of ['app/components/AuthModal.tsx', 'app/login/LoginPage.tsx'])

@@ -961,10 +961,10 @@ can sit at the table honestly. One act per request; the client loops.
   phones). Supabase custom OIDC, one provider per LINE region because a LINE
   channel serves one region: `custom:line-jp` and `custom:line-tw`, both
   live (a new region = a provider + an entry in `lib/line-login.ts`, after
-  probing its authorize URL for a 302 to access.line.me). The button shows only where a channel serves the visitor
-  (remembered channel, then `data-country` JP/TW, then ja/zh-Hant), and the
-  channel used is remembered per browser so one person does not split into
-  two accounts. A LINE account may have NO email: gates use
+  probing its authorize URL for a 302 to access.line.me). The page language
+  picks the channel (ja → Japan, zh-Hant → Taiwan, others no button; owner:
+  language only, no geo), and the channel used is remembered per browser so
+  one person does not split into two accounts. A LINE account may have NO email: gates use
   `isVerifiedAccount()` (`lib/verified-account.ts`), never
   `email_confirmed_at`, and names/photos go through `lib/user-face.ts`
   (OIDC fills `name`/`picture`, not `full_name`/`avatar_url`). LINE
