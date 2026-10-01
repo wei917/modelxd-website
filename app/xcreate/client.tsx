@@ -5383,8 +5383,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                               // price is half of what is being compared. Hiding
                               // it here argues against the whole product. Back as
                               // one term on a line that already exists, so the
-                              // total stays the single headline.
-                              const slotEst = estimateSlotDollars(model, mode, used, prompt.length, docTokens)
+                              // total stays the single headline. Only until the
+                              // model finishes (owner, Oct 1): then the card's
+                              // header carries the real cost, and a failed model
+                              // is not billed, so an estimate beside either one
+                              // reads as a second, wrong price.
+                              const slotEst = slot.done ? null : estimateSlotDollars(model, mode, used, prompt.length, docTokens)
                               if (slotEst != null && slotEst > 0) parts.push(`~$${slotEst < 0.01 ? slotEst.toFixed(4) : slotEst.toFixed(2)}`)
                               if (parts.length === 0) return null
                               return (
