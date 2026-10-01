@@ -153,10 +153,18 @@ const SIMP: Record<string, string> = {
   買: '买', 倫: '伦', 紐: '纽', 約: '约', 磯: '矶', 舊: '旧', 溫: '温', 華: '华', 奧: '奥', 蘭: '兰', 蓮: '莲', 繩: '绳', 沖: '冲', 廈: '厦',
   臺: '台', 灣: '湾', 義: '义', 圖: '图',
 }
-const fold = (s: string): string => [...s.normalize('NFKC').toLowerCase().replace(/[\s·・.\-'()（）]/g, '')].map(c => SIMP[c] ?? c).join('')
+// Katakana folds to hiragana, so ソウル and そうる meet.
+const kana = (c: string): string => { const n = c.charCodeAt(0); return n >= 0x30a1 && n <= 0x30f6 ? String.fromCharCode(n - 0x60) : c }
+const fold = (s: string): string => [...s.normalize('NFKC').toLowerCase().replace(/[\s·・.\-'()（）]/g, '')].map(c => kana(SIMP[c] ?? c)).join('')
 const ALIASES: Record<string, string[]> = {
   taipei: ['台北市', '臺北'], newtaipei: ['新北市', '板橋'], sydney: ['悉尼'], hcmc: ['西貢', 'saigon'], kl: ['kualalumpur'],
-  newyork: ['nyc'], la: ['losangeles'], sf: ['sanfrancisco'], hongkong: ['hk'], naha: ['沖繩', '沖縄', 'okinawa'],
+  newyork: ['nyc'], la: ['losangeles'], sf: ['sanfrancisco'], hongkong: ['hk'], naha: ['沖繩', '沖縄', 'okinawa', 'おきなわ'],
+  // Kana readings: a phone keyboard shows かな before the kanji (a live
+  // check, Oct 1: さっぽろ found nothing).
+  tokyo: ['とうきょう'], osaka: ['おおさか'], nagoya: ['なごや'], fukuoka: ['ふくおか'], sapporo: ['さっぽろ'], yokohama: ['よこはま'],
+  saitama: ['さいたま'], chiba: ['ちば'], kyoto: ['きょうと'], kobe: ['こうべ'], sendai: ['せんだい'], niigata: ['にいがた'],
+  kanazawa: ['かなざわ'], shizuoka: ['しずおか'], hiroshima: ['ひろしま'], okayama: ['おかやま'], matsuyama: ['まつやま'],
+  kumamoto: ['くまもと'], kagoshima: ['かごしま'],
 }
 
 /** Places whose name (in any of our languages, or an alias) contains what
