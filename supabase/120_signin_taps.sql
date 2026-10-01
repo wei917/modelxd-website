@@ -1,4 +1,7 @@
 -- supabase/120_signin_taps.sql — taps on the sign-in buttons.
+-- (Applied by the owner on Oct 1 and checked live: the service key reads the
+-- table and calls the function; the publishable key gets 42501 on select,
+-- insert and the function.)
 --
 -- Owner, Oct 1: "still no one signed in Japan LINE. is there any way to check
 -- if people tried it but failed or simply no one tried to sign in?", then
