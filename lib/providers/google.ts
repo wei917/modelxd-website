@@ -626,6 +626,7 @@ export async function generateVideo(
 
   if (onProgress) onProgress(2)
 
+  const submittedAt = Date.now()
   let operation: any = await withRetry(() => (ai().models as any).generateVideos(request), 'video generateVideos')
   console.log(`${TAG} operation submitted name=${operation?.name ?? '(unknown)'}`)
 
@@ -643,6 +644,7 @@ export async function generateVideo(
     if (onProgress) onProgress(Math.min(90, 5 + polls * 5))
   }
 
+  const generationMs = Date.now() - submittedAt
   if (operation.error) {
     throw new Error(`Veo operation failed: ${operation.error.message ?? JSON.stringify(operation.error).slice(0, 500)}`)
   }
@@ -752,6 +754,7 @@ export async function generateVideo(
     usageMetadata:   meta && Object.keys(meta).length > 0 ? meta : null,
     // Handle for future extension calls — valid on Google's side ~2 days.
     providerVideoRef: video.uri ?? null,
+    generationMs,
   }
 }
 
@@ -856,6 +859,7 @@ async function generateOmniVideo(
   console.log(`${TAG} interactions.create task=${effTask} aspect=${aspectRatio} dur=${duration} images=${imageAtts.length} videos=${videoAtts.length}`)
   if (onProgress) onProgress(5)
 
+  const submittedAt = Date.now()
   const interaction: any = await withRetry(() => (ai() as any).interactions.create({
     model: model.model_name,
     input,
@@ -879,6 +883,7 @@ async function generateOmniVideo(
   }), 'omni interactions.create')
 
   if (onProgress) onProgress(70)
+  const generationMs = Date.now() - submittedAt
   console.log(`${TAG} interaction id=${interaction?.id} status=${interaction?.status}`)
 
   // Locate the video part: SDK convenience wrapper first, then steps[].
@@ -937,7 +942,7 @@ async function generateOmniVideo(
 
   if (onProgress) onProgress(100)
   console.log(`${TAG} omni video ok bytes=${buffer.length} task=${task}`)
-  return { buffer, mediaType: videoPart.mime_type ?? 'video/mp4', durationSeconds: Math.round(secondsOut), cost }
+  return { buffer, mediaType: videoPart.mime_type ?? 'video/mp4', durationSeconds: Math.round(secondsOut), cost, generationMs }
 }
 
 // ── reference video: watch a link, don't download it ──────────────────────

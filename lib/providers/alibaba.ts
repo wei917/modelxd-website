@@ -386,12 +386,23 @@ function textOf(content: unknown): string {
 
 // ── async task polling ──────────────────────────────────────────────────────
 
+/** A finished task's own time, submit to end, from DashScope's output
+ *  (submit_time / end_time: same-zone wall-clock strings, so the difference
+ *  needs no zone). Null when either is missing or unreadable. */
+function taskMs(output: any): number | null {
+  const at = (v: unknown) => typeof v === 'string' ? Date.parse(v.trim().replace(' ', 'T')) : NaN
+  const ms = at(output?.end_time) - at(output?.submit_time)
+  return Number.isFinite(ms) && ms >= 0 && ms < 3_600_000 ? ms : null
+}
+
 async function pollTask(
   taskId: string,
   TAG: string,
   onProgress?: (pct: number) => void,
-  intervalMs = 15000,
-  maxAttempts = 40, // ~10 minutes
+  // Every 5 s (owner, Oct 1: "do 5 seconds"): at 15 s a finished HappyHorse
+  // task waited up to 15 s for us to notice (96 s shown, 80 s at Alibaba).
+  intervalMs = 5000,
+  maxAttempts = 120, // ~10 minutes
 ): Promise<any> {
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(`${BASE_URL}${TASK_ENDPOINT}/${taskId}`, {
@@ -889,6 +900,7 @@ export async function generateVideo(
   console.log(`${TAG} parameters resolved: ${JSON.stringify(parameters)}`)
   console.log(`${TAG} options received: watermark=${JSON.stringify(options?.watermark)} aspect_ratio=${JSON.stringify(options?.aspect_ratio)}`)
 
+  const submittedAt = Date.now()
   const createRes = await fetch(url, {
     method: 'POST',
     headers: {
@@ -915,6 +927,7 @@ export async function generateVideo(
 
   // Poll until completion
   const result = await pollTask(taskId, TAG, onProgress)
+  const generationMs = taskMs(result.output) ?? (Date.now() - submittedAt)
 
   // Strip the long video_url from the dump so the log stays readable.
   console.log(`${TAG} final task result: ${JSON.stringify({
@@ -966,6 +979,7 @@ export async function generateVideo(
     durationSeconds: billedSeconds,
     cost,
     usageMetadata:   usage,
+    generationMs,
   }
 }
 

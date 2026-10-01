@@ -170,6 +170,7 @@ export async function generateVideo(
   console.log(`${TAG} create ${extend ? 'extend' : i2v ? 'i2v' : 't2v'}${extend ? '' : ` ratio=${ratio} duration=${duration}s`}`)
   if (onProgress) onProgress(3)
 
+  const submittedAt = Date.now()
   const res = await fetch(endpoint, { method: 'POST', headers: headers(), body: JSON.stringify(body) })
   if (!res.ok) {
     throw new Error(`Runway request failed (${res.status}): ${(await res.text()).slice(0, 400)}`)
@@ -183,6 +184,7 @@ export async function generateVideo(
   // route allows maxDuration=800s, so 600s of polling leaves headroom for
   // task creation and the video download.
   let output: string | null = null
+  let doneAt = 0
   for (let i = 0; i < 120; i++) {
     await new Promise(r => setTimeout(r, 5000))
     const tr = await fetch(`${BASE}/tasks/${id}`, { headers: headers() })
@@ -191,6 +193,7 @@ export async function generateVideo(
     if (onProgress) onProgress(Math.min(90, 10 + i * 3))
     if (task.status === 'SUCCEEDED') {
       output = Array.isArray(task.output) ? task.output[0] : task.output?.[0] ?? task.output
+      doneAt = Date.now()
       break
     }
     if (task.status === 'FAILED' || task.status === 'CANCELED') {
@@ -228,5 +231,5 @@ export async function generateVideo(
   const billedSeconds = extend ? (mp4DurationSeconds(buffer) ?? duration) : duration
   const cost = billedSeconds * rate
   console.log(`${TAG} done bytes=${buffer.length} billed=${billedSeconds.toFixed(1)}s cost=$${cost.toFixed(3)}`)
-  return { buffer, mediaType: 'video/mp4', cost, durationSeconds: billedSeconds }
+  return { buffer, mediaType: 'video/mp4', cost, durationSeconds: billedSeconds, generationMs: doneAt - submittedAt }
 }

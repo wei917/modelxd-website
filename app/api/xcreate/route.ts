@@ -286,11 +286,15 @@ async function runSlot(
       const cfg = model.output_config?.audio ?? {}
       const voice = typeof options.voice === 'string' ? options.voice : null
       const format = typeof options.format === 'string' ? options.format : null
+      // The time shown is the provider's call alone: our upload and signing
+      // below are not the model's (owner, Oct 1: "remove our parts").
+      const callAt = Date.now()
       const result = await providers.generateSpeech(
         model, prompt,
         { voice, format, speed: options.speed ?? null, style: typeof options.style === 'string' && options.style.trim() ? options.style.trim().slice(0, 300) : null, language: options.language ?? null },
         callContext,
       )
+      const callEnd = Date.now()
       const ext = result.mediaType.includes('wav') ? 'wav'
         : result.mediaType.includes('flac') ? 'flac'
         : result.mediaType.includes('opus') || result.mediaType.includes('ogg') ? 'ogg'
@@ -307,7 +311,7 @@ async function runSlot(
         mode: 'audio', user_id: userId,
       }, `xcreate-ai-audio/${path}`)
 
-      const rt = Date.now() - start
+      const rt = callEnd - callAt
       await patch({ text: signed.signedUrl, streaming: false, done: true, cost: result.cost, response_time: rt, progress: 100 })
       console.log(`${LOG} Slot[${index}] spoke ${result.durationSeconds?.toFixed(1) ?? '?'}s with ${voice ?? (cfg.voices ?? [])[0]?.id ?? 'default'} ($${result.cost.toFixed(4)})`)
       return {
@@ -334,6 +338,7 @@ async function runSlot(
       const eligible = attachments.filter(a =>
         a.port !== 'mask' || (model.modes ?? []).includes('region_edit'))
       const wired   = assignPorts(portSchemaFor(model), eligible)
+      const callAt  = Date.now()
       const result  = await providers.generateImage(
         model, prompt, quality, size, wired, null, null, callContext,
         {
@@ -342,6 +347,7 @@ async function runSlot(
           count:        options.count ?? null,
         },
       )
+      const callEnd = Date.now()
 
       // Multi-image support: upload primary + extras. URLs joined with '\n'
       // in the slot's `text` field; UI splits on newlines and renders a grid.
@@ -377,7 +383,7 @@ async function runSlot(
       }
 
       const joinedUrls = signedUrls.join('\n')
-      const rt = Date.now() - start
+      const rt = callEnd - callAt
 
       // Persist POINTERS, not bytes: swap each inline image in the Google
       // multi-turn history for a marker referencing its storage object.
@@ -489,6 +495,7 @@ async function runSlot(
         extendVideoRef = ref
       }
 
+      const callAt = Date.now()
       const result = await providers.generateVideo(
         model, prompt, videoSize, videoDuration, wired,
         (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
@@ -496,6 +503,7 @@ async function runSlot(
         { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null, extend_video_ref: extendVideoRef,
           generate_audio: options.generate_audio ?? null, seed: options.seed ?? null },
       )
+      const callEnd = Date.now()
 
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
       const path = `${userId}/${jobId}_slot${index}.${ext}`
@@ -511,7 +519,10 @@ async function runSlot(
         mode: 'video', user_id: userId,
       }, `xcreate-ai-videos/${path}`)
 
-      const rt = Date.now() - start
+      // The model's own time (the provider's timestamps where it has them,
+      // else request to "done"): no polling lag, download or upload. Oct 1:
+      // a HappyHorse card said 96 s for 80 s at Alibaba.
+      const rt = result.generationMs ?? (callEnd - callAt)
       await patch({ text: signed.signedUrl, is_video: true, streaming: false, done: true, cost: result.cost, response_time: rt, progress: 100 })
       // providerVideoRef persists into xcreates.slots so a later
       // extend_video run can hand Veo its own reference (2-day validity).

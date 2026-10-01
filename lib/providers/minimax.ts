@@ -105,6 +105,8 @@ export async function generateVideo(
   console.log(`${TAG} create ${imageAtts.length > 0 ? 'i2v' : 't2v'} duration=${duration}s resolution=${resolution} ratio=${ratio} images=${imageAtts.length} audio=${audioAtts.length}`)
   if (onProgress) onProgress(3)
 
+  const submittedAt = Date.now()
+  let doneAt = 0
   const res = await fetch(`${BASE}/video_generation`, {
     method: 'POST', headers: headers(), body: JSON.stringify(body),
   })
@@ -132,6 +134,7 @@ export async function generateVideo(
     if (onProgress) onProgress(Math.min(90, 8 + i * 2))
     if (status === 'succeeded') {
       url = task?.content?.url ?? task?.content?.[0]?.url ?? null
+      doneAt = Date.now()
       break
     }
     if (status === 'failed' || status === 'cancelled') {
@@ -154,7 +157,7 @@ export async function generateVideo(
   const rate = per[resolution] ?? per.default ?? Object.values(per)[0] ?? 0
   const cost = duration * rate
   console.log(`${TAG} done bytes=${buffer.length} billed=${duration}s @${rate}/s cost=$${cost.toFixed(3)}`)
-  return { buffer, mediaType: 'video/mp4', cost, durationSeconds: duration }
+  return { buffer, mediaType: 'video/mp4', cost, durationSeconds: duration, generationMs: doneAt - submittedAt }
 }
 
 // ── text to speech (T2A v2) ─────────────────────────────────────────────────

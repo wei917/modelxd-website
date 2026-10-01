@@ -275,6 +275,13 @@ export interface VideoResult {
   mediaType:       string
   durationSeconds: number
   cost:            number
+  /** The model's own time, ms: from our request until the provider said the
+   *  video was done, from the provider's timestamps when it gives them
+   *  (DashScope). Excludes what is ours: the download, and in the route the
+   *  upload and signing (owner, Oct 1: "in the output, can we remove our
+   *  parts?"). The rest of a poll interval can remain where there are no
+   *  provider timestamps. */
+  generationMs?:   number | null
   usageMetadata?:  any
   /** Provider-side handle for the generated video (Veo: the file URI).
    *  Required to extend the video later — Veo extension only accepts its

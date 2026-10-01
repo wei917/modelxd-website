@@ -235,6 +235,7 @@ export async function generateVideo(
     `duration=${isEdit ? 'from input' : duration + 's'} mode=${recipe ?? 'auto'}`)
   if (onProgress) onProgress(2)
 
+  const submittedAt = Date.now()
   const res = await fetch(`${BASE}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey()}` },
@@ -248,6 +249,7 @@ export async function generateVideo(
   console.log(`${TAG} request_id=${request_id}`)
 
   // Poll. Grok Imagine is fast (usually well under a minute); cap at 10 min.
+  let doneAt = 0
   const POLL_MS = 5_000
   const MAX_POLLS = 120
   let final: any = null
@@ -258,7 +260,7 @@ export async function generateVideo(
     })
     if (!p.ok) throw new Error(`Grok video poll failed (${p.status}): ${(await p.text()).slice(0, 300)}`)
     const data = await p.json()
-    if (data.status === 'done') { final = data; break }
+    if (data.status === 'done') { final = data; doneAt = Date.now(); break }
     if (data.status === 'failed') {
       throw new Error(`Grok video failed: ${data.error?.message ?? data.error?.code ?? 'unknown error'}`)
     }
@@ -292,7 +294,7 @@ export async function generateVideo(
   console.log(`${TAG} video ok bytes=${buffer.length} duration=${billedSeconds}s cost=$${cost.toFixed(4)}`)
   if (onProgress) onProgress(100)
 
-  return { buffer, mediaType: 'video/mp4', durationSeconds: billedSeconds, cost }
+  return { buffer, mediaType: 'video/mp4', durationSeconds: billedSeconds, cost, generationMs: doneAt - submittedAt }
 }
 
 
