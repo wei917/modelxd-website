@@ -12,7 +12,7 @@ import { attachSampleFile, commitAttachments, type Attachment } from '../compone
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import TemplatePicker from '../components/TemplatePicker'
 import { SAMPLES_BASE, type Template } from '../xcreate/templates'
-import MatchResult, { type RatingDelta } from '../components/MatchResult'
+import MatchResult from '../components/MatchResult'
 import GameDuel from './GameDuel'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
@@ -196,12 +196,10 @@ export default function XDuel() {
   const [models,     setModels]     = useState<ModelState[]>([])
   // XDRating movement for the match report (step 5). undefined = fetching,
   // null = unavailable (tie / refit throttled / error) — chip hides.
-  const [duelDelta,  setDuelDelta]  = useState<RatingDelta | null | undefined>(undefined)
   // XBoard rows captured BEFORE the blind vote lands — the report's delta
   // must cover the WHOLE duel (both votes), not just the informed vote.
   // Without this, vote1's refit is already priced in by the time the
   // report reads "before" and the chip shows a misleading partial delta.
-  const preDuelRatingsRef = useRef<any[] | null>(null)
   const [vote1,      setVote1]      = useState<Vote>(null)
   const [lightbox,   setLightbox]   = useState<string | null>(null)
   const [vote2,      setVote2]      = useState<Vote>(null)
@@ -548,10 +546,6 @@ export default function XDuel() {
 
   const castVote = (choice: Vote) => {
     setVote1(choice)
-    // Snapshot ratings before this duel's first vote can trigger a refit.
-    fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
-      .then(rows => { preDuelRatingsRef.current = rows })
-      .catch(() => { preDuelRatingsRef.current = null })
     setTimeout(() => { setShowPrices(true); setPhase('revote'); setStep(4) }, 500)
     // No model id is sent: the server derives the winner from this slot
     // index against the duel's own row, and answers with the reveal.
@@ -566,36 +560,12 @@ export default function XDuel() {
 
   const castRevote = (choice: Vote) => {
     setVote2(choice)
-    const winnerId = choice === 'T' ? null : models[choice as number]?.meta?.id ?? null
-    setDuelDelta(winnerId ? undefined : null)
-    ;(async () => {
-      try {
-        // Before-rating for the winner, then vote → refit → after-rating.
-        // See docs/xdrating-pipeline.md (true delta is fine at current
-        // volume; switch to an Elo-style display delta if refits start
-        // coalescing post-launch).
-        let before: number | null = null
-        if (winnerId) {
-          // Prefer the pre-duel snapshot (covers both votes); fall back to
-          // a live read (covers only vote2) if the early fetch failed.
-          const rows = preDuelRatingsRef.current
-            ?? await fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
-          before = rows?.find((r: any) => r.modelId === winnerId)?.xdScore ?? null
-        }
-        if (duelId) await fetch('/api/xduel/vote', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ duelId, vote2: choice === 'T' ? 'T' : String(choice) }),
-        })
-        if (!winnerId) return
-        await fetch('/api/xdrating/refit?source=vote&force=1', { method: 'POST' })
-        const rows = await fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
-        const after = rows.find((r: any) => r.modelId === winnerId)?.xdScore ?? null
-        setDuelDelta(before !== null && after !== null ? { before, after } : null)
-      } catch (err) {
-        console.warn('[xduel] rating delta unavailable:', err)
-        setDuelDelta(null)
-      }
-    })()
+    // No rating movement is shown (owner, Oct 1), so nothing is read back
+    // and no refit is forced; the 5-minute cron refits as before.
+    if (duelId) fetch('/api/xduel/vote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duelId, vote2: choice === 'T' ? 'T' : String(choice) }),
+    }).catch(console.error)
     setTimeout(() => {
       goStep(5)
       setTimeout(() => setShowReveal(true), 600)
@@ -603,7 +573,7 @@ export default function XDuel() {
   }
 
   const clearState = (keepPrompt = false) => {
-    setVote1(null); setVote2(null); setDuelDelta(undefined)
+    setVote1(null); setVote2(null)
     setPhase('vote'); setShowPrices(false); setShowReveal(false)
     setModels([]); setApiError(null)
     if (!keepPrompt) { setPrompt(''); setAttachments([]) }
@@ -1287,7 +1257,6 @@ export default function XDuel() {
                               : '⚖ Same price as the other')
                           : (monthly > 0 ? 'More expensive option' : 'Same price'),
                       }))}
-                      ratingDelta={duelDelta}
                     />
                   )
                 })()}

@@ -7,15 +7,14 @@
 //   ┌────────────────────────────────────────────┐
 //   │        RUN COMPLETE · 4 MODELS             │
 //   │        Nano Banana 2 wins                  │
-//   │        [ XDRating 1180 → 1186  +6 ]        │
 //   │  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐           │
 //   │  │13.0*│ │ 8.4 │ │ 6.1 │ │ 0.0 │  ← score  │
 //   │  └─────┘ └─────┘ └─────┘ └─────┘           │
 //   └────────────────────────────────────────────┘
 //
 // Per-run score ≠ XDRating: see lib/matchScore.ts. MVP = highest score.
-// The rating delta arrives async (refit round-trip) — chip renders once
-// `ratingDelta` flips from undefined to a value; null hides it for good.
+// No rating chip: the owner (Oct 1) wants no XDRating movement shown
+// anywhere, on any host.
 
 import { useEffect, useState } from 'react'
 import ProviderLogo from './ProviderLogo'
@@ -36,11 +35,6 @@ export interface MatchResultEntry {
   searches?: number
 }
 
-export interface RatingDelta {
-  before: number
-  after: number
-}
-
 /** Real spend is fractions of a cent on text and dollars on video — one
  *  fixed precision would print either "$0.00" or "$1.230000". */
 function fmtSpend(c: number): string {
@@ -56,14 +50,12 @@ export default function MatchResult({
   title,
   winnerProvider,  // provider of the model named in the title → logo beside it
   entries,
-  ratingDelta,   // undefined = loading, null = unavailable
   children,      // CTA row
 }: {
   eyebrow: string
   title: string
   winnerProvider?: string | null
   entries: MatchResultEntry[]
-  ratingDelta?: RatingDelta | null
   children?: React.ReactNode
 }) {
   const maxScore = Math.max(...entries.map(e => e.score))
@@ -81,8 +73,6 @@ export default function MatchResult({
   const topBadge = entries.length >= 3 ? 'MVP' : entries.length === 2 ? 'WINNER' : null
   const [shown, setShown] = useState(false)
   useEffect(() => { const t = setTimeout(() => setShown(true), 30); return () => clearTimeout(t) }, [])
-
-  const delta = ratingDelta ? ratingDelta.after - ratingDelta.before : 0
 
   return (
     <div style={{
@@ -106,31 +96,6 @@ export default function MatchResult({
         </h2>
         {/* thin red slash under the title — the X motif, kept subtle */}
         <div style={{ width: 180, height: 2, margin: '12px auto 0', background: 'linear-gradient(90deg, transparent, var(--red), transparent)' }} />
-
-        {/* XDRating movement chip */}
-        {ratingDelta !== null && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 12,
-            fontFamily: 'var(--mono)', fontSize: 12.5,
-            border: '1px solid var(--border2)', borderRadius: 999, padding: '6px 14px',
-            background: 'var(--surface2)',
-            opacity: ratingDelta === undefined ? 0.55 : 1, transition: 'opacity .3s',
-          }}>
-            <span style={{ letterSpacing: '.14em', fontSize: 10, color: 'var(--muted)' }}>XDRATING</span>
-            {ratingDelta === undefined ? (
-              <span style={{ color: 'var(--muted)' }}>updating…</span>
-            ) : (
-              <>
-                <span>{ratingDelta.before}</span>
-                <span style={{ color: 'var(--muted)' }}>→</span>
-                <b>{ratingDelta.after}</b>
-                <b style={{ color: delta >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {delta >= 0 ? `+${delta}` : delta}
-                </b>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Model cards */}

@@ -2495,6 +2495,7 @@ export const STRINGS: Record<string, Entry> = {
   'wf.step':             { en: 'Step', 'zh-Hant': '步驟', 'zh-Hans': '步骤', ja: 'ステップ', ko: '단계' },
   'wf.editwith':         { en: 'Edit with', 'zh-Hant': '編輯模型', 'zh-Hans': '编辑模型', ja: '編集モデル', ko: '편집 모델' },
   'wf.generate':         { en: 'Generate', 'zh-Hant': '生成', 'zh-Hans': '生成', ja: '生成', ko: '생성' },
+  'wf.newsession':       { en: 'New session', 'zh-Hant': '新的創作', 'zh-Hans': '新的创作', ja: '新規作成', ko: '새로 만들기' },
   'wf.placeholder':      { en: 'Describe the change — e.g. "make the car red"', 'zh-Hant': '描述要修改的內容，例如「把車改成紅色」', 'zh-Hans': '描述要修改的内容，例如"把车改成红色"', ja: '変更内容を入力 — 例「車を赤に」', ko: '수정할 내용 입력 — 예: "차를 빨간색으로"' },
   'xcreate.generatebtn': { en: '✦ Generate →', 'zh-Hant': '✦ 生成 →', 'zh-Hans': '✦ 生成 →', ja: '✦ 生成 →', ko: '✦ 생성 →' },
   'xcreate.generating':  { en: '⏳ Generating…', 'zh-Hant': '⏳ 生成中…', 'zh-Hans': '⏳ 生成中…', ja: '⏳ 生成中…', ko: '⏳ 생성 중…' },

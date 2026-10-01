@@ -74,7 +74,14 @@ Thousands of votes/minute → thousands of O(1) upserts + at most 6 refits/min
 catalog size (~18 models → matrix ≤ 18²·2 signals·3 modes rows), never by vote
 history.
 
-## Result-screen delta (redesign, later)
+## Result-screen delta (removed Oct 1)
+
+The owner: never show a rating movement ("XDRATING 1180 → 1186"), on any
+page or host. The chip, the before/after XBoard reads and the forced refit
+after a pick or a duel vote are gone; the 5-minute cron refits as before.
+The note below is history.
+
+### (history) Redesign, later
 
 At current volume the throttle almost never coalesces, so the screen can read
 `model_ratings` before + after its own vote and show the true delta. If

@@ -38,7 +38,7 @@ import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import ModeIcon from '../components/ModeIcon'
 import TemplatePicker from '../components/TemplatePicker'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
-import MatchResult, { type RatingDelta, type MatchResultEntry } from '../components/MatchResult'
+import MatchResult, { type MatchResultEntry } from '../components/MatchResult'
 import { computeMatchScores } from '../../lib/matchScore'
 import { downloadFile, downloadName } from '../../lib/download'
 import ProviderLogo from '../components/ProviderLogo'
@@ -1380,7 +1380,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // Post-pick match report (傳說對決 style). null = hidden. Delta is
   // fetched async after the vote+refit round-trip (undefined = loading).
   const [matchResult, setMatchResult] = useState<{ eyebrow: string; title: string; winnerName: string; winnerProvider: string; entries: MatchResultEntry[] } | null>(null)
-  const [matchDelta,  setMatchDelta]  = useState<RatingDelta | null | undefined>(undefined)
   const [chatHistory,    setChatHistory]    = useState<ChatMessage[]>([])
   // ── Workflow view (CC, July 26): the per-creation continuation surface.
   // wfChain is the root_id lineage rendered as the step strip. ──
@@ -2894,7 +2893,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         error:        !!slots[i]?.error,
       })),
     })
-    setMatchDelta(undefined)
 
     if (mode !== 'text' && xcreateId) {
       // Workflow continuation (CC, July 26): picking an image/video winner
@@ -2924,10 +2922,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
     const sb = createSupabaseBrowser()
 
-    // Snapshot the winner's rating BEFORE the vote lands (for the delta).
-    const ratingsBefore: any[] | null = await fetch(`/api/xboard?mode=${mode}`)
-      .then(r => r.json()).catch(() => null)
-
     // Save to DB with chosen model recorded.
     //
     // The server route inserts the xcreates row at the end of /api/xcreate
@@ -2950,16 +2944,31 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // sendChat() reseeds the chat history once the user actually starts
     // chatting, so dropping it here is safe — the leaderboard only cares
     // about chosen_model_id.
+    //
+    // The vote marks the pick on the slots the server stored and changes
+    // nothing else in them. Until Oct 1 this rebuilt `slots` from the page's
+    // state, which dropped everything the page does not hold: each model's
+    // settings (size, length, aspect), audio and voice, errors, and the
+    // image-editing history. Every picked run then reopened with default
+    // settings and wrong estimates (a 6 s 9:16 run showed 3 s / 5 s / 1 s
+    // at 16:9). The page's own copy is only the fallback, with settings.
+    const seatOf = selectedModels.map((m, i) => (m ? i : -1)).filter(i => i >= 0)
     const slotsPayload = slots.map((s, i) => ({
       id: activeModels[i]?.id, name: activeModels[i]?.display_name, provider: activeModels[i]?.provider,
       model_name: activeModels[i]?.model_name,
       text: s.text, isImage: s.isImage, isVideo: s.isVideo, cost: s.cost, responseTime: s.responseTime,
+      error: s.error ?? null, errorRef: s.errorRef ?? null,
+      options: slotOptions[seatOf[i] ?? i] ?? {},
       chosen: i === idx,
     }))
     if (xcreateId) {
+      const { data: cur } = await sb.from('xcreates').select('slots').eq('id', xcreateId).maybeSingle()
+      const stored: any[] | null = Array.isArray(cur?.slots) && cur.slots.length === slotsPayload.length
+        && cur.slots.every((x: any, i: number) => (x?.model_name ?? null) === (activeModels[i]?.model_name ?? null))
+        ? cur.slots : null
       const { error } = await sb.from('xcreates').update({
         chosen_model_id: chosen.id,
-        slots: slotsPayload,
+        slots: stored ? stored.map((x: any, i: number) => ({ ...x, chosen: i === idx })) : slotsPayload,
       }).eq('id', xcreateId)
       if (error) {
         console.warn('[xcreate] update chosen_model_id failed:', error.message)
@@ -2981,23 +2990,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       }).select('id').single()
       if (data?.id) setXcreateId(data.id)
     }
-
-    // XDRating delta for the match report: the vote is written above (the
-    // DB trigger updated the aggregates in-transaction), so refit and read
-    // back the winner's score. Fire-and-forget relative to the UI.
-    ;(async () => {
-      try {
-        const beforeRows = ratingsBefore
-        const before = beforeRows?.find((r: any) => r.modelId === chosen.id)?.xdScore ?? null
-        await fetch('/api/xdrating/refit?source=vote&force=1', { method: 'POST' })
-        const rows = await fetch(`/api/xboard?mode=${mode}`).then(r => r.json())
-        const after = rows.find((r: any) => r.modelId === chosen.id)?.xdScore ?? null
-        setMatchDelta(before !== null && after !== null ? { before, after } : null)
-      } catch (err) {
-        console.warn('[xcreate] rating delta unavailable:', err)
-        setMatchDelta(null)
-      }
-    })()
   }
 
   const sendChat = async () => {
@@ -3988,7 +3980,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               title={matchResult.title}
               winnerProvider={matchResult.winnerProvider}
               entries={matchResult.entries}
-              ratingDelta={matchDelta}
             >
               <button
                 type="button"
@@ -4208,8 +4199,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       opacity: !wfPrompt.trim() || !wfModelId ? 0.5 : 1,
                     }}
                   >✨ {t('wf.generate')} →</button>
-                  <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted)', borderRadius: 8, padding: '9px 14px', fontSize: 12, cursor: 'pointer' }}>
-                    ← New Session
+                  {/* Full-strength text: in --muted it read as disabled (owner, Oct 1). */}
+                  <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--white)', fontWeight: 600, borderRadius: 8, padding: '9px 14px', fontSize: 12, cursor: 'pointer' }}>
+                    ← {t('wf.newsession')}
                   </button>
                 </div>
               </div>
@@ -4296,8 +4288,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <span style={{ fontSize: 11, color: 'var(--green)', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ Your pick</span>
-                    <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted)', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
-                      ← New Session
+                    <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--white)', fontWeight: 600, borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
+                      ← {t('wf.newsession')}
                     </button>
                   </div>
                 </div>
