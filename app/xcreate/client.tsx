@@ -4010,7 +4010,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               >
                 Start Over
               </button>
-              <a
+              {/* XBoard is www's; the studio door offers no way there (owner, Oct 1). */}
+              {!isStandalone && <a
                 href={wwwHref(site, '/xboard')}
                 style={{
                   padding: '13px 26px', borderRadius: 10, border: '1px solid var(--border2)',
@@ -4018,7 +4019,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 }}
               >
                 View XBoard
-              </a>
+              </a>}
             </MatchResult>
           </div>
         </div>
