@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { countSigninTap } from '../../../lib/signin-tap'
 
 export default function AuthErrorPage() {
   return (
@@ -37,6 +38,7 @@ function AuthErrorInner() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
     )
     document.cookie = `auth_redirect=/; path=/; max-age=600; SameSite=Lax`
+    countSigninTap('google')
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },

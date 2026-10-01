@@ -14,6 +14,11 @@
 //
 // Always answers 204. A tab can do nothing with an error, and a missing
 // function (before 109 is run) or a Supabase blip must never reach a page.
+//
+// A report can also be a tap on a sign-in button (lib/signin-tap.ts, Oct 1):
+// { tap: provider, path }. It becomes one row in site_signin_taps
+// (supabase/120) under the same rules: no crawlers, nothing that needs
+// consent, the same rate limit and the same visitor cookie.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,6 +27,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { needsConsent } from '@/lib/consent'
+import { TAP_PROVIDERS } from '@/lib/signin-tap'
 
 const LOG = '[api/visit]'
 const VISITOR_COOKIE = 'modelxd_vid'
@@ -49,6 +55,11 @@ const text = (x: unknown, max: number): string | null =>
 const count = (x: unknown, max: number): number =>
   typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(max, Math.round(x))) : 0
 
+const service = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
+  auth: { persistSession: false, autoRefreshToken: false },
+})
+const hostOf = (req: NextRequest) => (req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '').split(',')[0].trim().toLowerCase()
+
 function deviceOf(ua: string): 'desktop' | 'mobile' | 'tablet' {
   if (/iPad|Tablet|PlayBook|Silk|Android(?!.*Mobile)/i.test(ua)) return 'tablet'
   if (/Mobi|iPhone|iPod|Android/i.test(ua)) return 'mobile'
@@ -68,7 +79,25 @@ export async function POST(req: NextRequest) {
     if (raw.length > 4000) return done
     let b: Record<string, unknown>
     try { b = JSON.parse(raw) } catch { return done }
-    if (!b || typeof b !== 'object' || typeof b.id !== 'string' || !UUID.test(b.id)) return done
+    if (!b || typeof b !== 'object') return done
+
+    if (typeof b.tap === 'string') {
+      if (!TAP_PROVIDERS.has(b.tap)) return done
+      const path = text(b.path, 300)
+      const vid = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
+      const { error } = await service().from('site_signin_taps').insert({
+        env:        process.env.VERCEL_ENV ?? 'development',
+        provider:   b.tap,
+        visitor_id: UUID.test(vid) ? vid : null,
+        host:       hostOf(req).slice(0, 100) || null,
+        path:       path?.startsWith('/') ? path : null,
+        country:    country?.slice(0, 2) ?? null,
+      })
+      if (error && !warned) { warned = true; console.warn(`${LOG} sign-in tap failed: ${error.message}`) }
+      return done
+    }
+
+    if (typeof b.id !== 'string' || !UUID.test(b.id)) return done
 
     const landing = text(b.landing, 300)
     const referrer = text(b.referrer, 200)
@@ -76,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     // The visitor cookie: first party, a year, shared by the three front
     // doors on modelxd.com (host-only elsewhere), renewed on every report.
-    const host = (req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '').split(',')[0].trim().toLowerCase()
+    const host = hostOf(req)
     const bare = host.replace(/:\d+$/, '')
     let visitorId = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
     if (!UUID.test(visitorId)) visitorId = crypto.randomUUID()
@@ -101,10 +130,7 @@ export async function POST(req: NextRequest) {
     let cityName: string | null = null
     try { cityName = city ? decodeURIComponent(city).slice(0, 100) : null } catch { cityName = city?.slice(0, 100) ?? null }
 
-    const svc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-    const { error } = await svc.rpc('log_site_visit', {
+    const { error } = await service().rpc('log_site_visit', {
       p_id:             b.id,
       p_visitor_id:     visitorId,
       p_env:            process.env.VERCEL_ENV ?? 'development',

@@ -98,6 +98,12 @@ export type SigninRow = { day: string | null; provider: string; logins: number; 
 /** Browsers per day for the three biggest countries, and the rest. */
 export type CountryDay = { day: string; c0: number; c1: number; c2: number; other: number }
 
+/** A row of site_signin_taps_window() (migration 120): presses of a sign-in
+ *  button over the window, in activity_logs' provider words. */
+export type TapRow = { provider: string; taps: number; browsers: number }
+/** Taps per sign-in method, keyed like the sign-in chart. */
+export type TapTotals = Record<'google' | 'lineTw' | 'lineJp' | 'other', { taps: number; browsers: number }>
+
 /** Accounts that signed in per day, by the method the account was made with. */
 export type SigninDay = { day: string; google: number; lineTw: number; lineJp: number; other: number }
 export type SigninTotal = { key: keyof Omit<SigninDay, 'day'>; logins: number; people: number; newPeople: number }
@@ -181,6 +187,12 @@ export function countryDays(data: CountryRow[], today: string): { days: CountryD
 }
 
 const METHOD: Record<string, SigninTotal['key']> = { google: 'google', 'custom:line-tw': 'lineTw', 'custom:line-jp': 'lineJp' }
+
+export function tapTotals(data: TapRow[]): TapTotals {
+  const out: TapTotals = { google: { taps: 0, browsers: 0 }, lineTw: { taps: 0, browsers: 0 }, lineJp: { taps: 0, browsers: 0 }, other: { taps: 0, browsers: 0 } }
+  for (const r of data) { const t = out[METHOD[r.provider] ?? 'other']; t.taps += r.taps; t.browsers += r.browsers }
+  return out
+}
 
 /** The sign-in rows as a chart of accounts per day by method, and the totals
  *  for the whole window (from the rows whose day is null). */

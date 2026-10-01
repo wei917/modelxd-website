@@ -57,6 +57,8 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `120_signin_taps.sql` (taps on the Google and LINE buttons, for
+  /admin/traffic) is written and proven on PGlite, awaiting the owner.
   Latest applied: `119_xtell_personality.sql` (2026-10-01, by the owner;
   the visitor's own personality type for XTell; checked live: 42501 for
   the publishable key), after `118_site_visit_summary.sql` (2026-10-01 Taiwan time, by

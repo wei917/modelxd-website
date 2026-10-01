@@ -98,6 +98,24 @@ made with (`activity_logs.metadata.provider`: `google`, `custom:line-tw`,
 log does not record the host, so sign-ins on dev.modelxd.com and localhost
 are in these numbers too.
 
+## Taps on the sign-in buttons (Oct 1)
+
+Owner: "still no one signed in Japan LINE. is there any way to check if
+people tried it but failed or simply no one tried", then "add counter on tap
+google or line login". A completed sign-in is in `activity_logs`, a failure
+that comes back is in the callback's Vercel logs ("OAuth provider error"),
+but a visitor who taps LINE and gives up on LINE's own page never comes back.
+So every press of Google or LINE (the sign-in dialog, /login, the retry on
+/auth/error) sends `{ tap: provider, path }` to `/api/visit` the moment it
+is pressed (`lib/signin-tap.ts`, a beacon, before the browser leaves), and
+the route writes one row to `site_signin_taps` (`supabase/120_signin_taps.sql`):
+provider in activity_logs' words (`google`, `custom:line-tw`,
+`custom:line-jp`), the visitor cookie, host, path, country and env. Same
+rules as visits: no crawlers, nothing that needs consent, the same rate
+limit. /admin/traffic shows "Taps on sign-in" in the filtered part (it
+follows the range and the country): taps and browsers per method, and,
+for every country, the accounts that finished.
+
 ## Reports (Supabase SQL editor)
 
 Time on site by source, last 7 days:

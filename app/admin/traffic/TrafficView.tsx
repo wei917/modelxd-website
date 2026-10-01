@@ -16,7 +16,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { CountryDay, DayRow, SigninDay, SigninTotal, StayLine, Summary } from './data'
+import type { CountryDay, DayRow, SigninDay, SigninTotal, StayLine, Summary, TapTotals } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -348,10 +348,13 @@ const TILES: Array<{ label: string; top?: boolean; whole: (s: Summary) => string
 /** Shown where the numbers go until the owner has run a migration. */
 const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_stay_top.sql has been run.'
 const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
+const NEEDS_120 = 'Taps on the Google and LINE buttons appear once supabase/120_signin_taps.sql has been run.'
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
+export default function TrafficView({ rows, whole, taps, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
   rows: DayRow[]
+  /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
+  taps: TapTotals | null
   /** The range as a whole (migration 118), or null until it has been run:
    *  the tiles then show today, and say so. */
   whole: Summary | null
@@ -486,7 +489,34 @@ export default function TrafficView({ rows, whole, days, ranges, tz, topStay, up
                 <Lines rows={rows} series={staySeries} format={stay} has={r => r.browsers > 0} />
               </Card>
             )}
+            {taps && (
+              <Card title="Taps on sign-in"
+                note={country
+                  ? `Presses of Google and LINE from ${where}, counted before the visitor leaves for Google or LINE. Completed sign-ins are not known by country: the sign-ins chart below is every country.`
+                  : 'Presses of Google and LINE, counted before the visitor leaves for Google or LINE, so someone who gives up there still shows. Signed in = accounts that finished (any host, dev included).'}>
+                <div style={wrap}>
+                  <table style={table}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...th, ...first }}>Method</th><th style={th}>Taps</th><th style={th}>Browsers</th>
+                        {!country && <th style={th}>Signed in</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {METHODS.filter(m => m.key !== 'other' || taps.other.taps > 0).map(m => (
+                        <tr key={m.key}>
+                          <td style={{ ...td, ...first }}>{m.label}</td>
+                          <td style={td}>{num(taps[m.key].taps)}</td><td style={td}>{num(taps[m.key].browsers)}</td>
+                          {!country && <td style={td}>{num(totalOf(m.key)?.people ?? 0)}</td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
           </div>
+          {upgraded && !taps && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_120}</p>}
         </>
       )}
 

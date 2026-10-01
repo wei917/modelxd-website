@@ -26,7 +26,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { getAdminUser } from '@/lib/admin'
 import TrafficView from './TrafficView'
-import { askedCountry, countryDays, countryNames, fillDaily, signinDays, toSummary, type CountryRow, type DailyRow, type SigninRow, type SummaryRow } from './data'
+import { askedCountry, countryDays, countryNames, fillDaily, signinDays, tapTotals, toSummary, type CountryRow, type DailyRow, type SigninRow, type SummaryRow, type TapRow } from './data'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,16 +71,19 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   // page down: they are extra views of the same log.
   // The same goes for the range's own numbers (migration 118): without them
   // the tiles show today, under a heading that says so.
-  const [byCountry, signins, range] = upgraded
+  // Taps on the sign-in buttons (migration 120) follow the country too.
+  const [byCountry, signins, range, tapped] = upgraded
     ? await Promise.all([
         sb.rpc('site_visit_by_country', { p_days: days, p_tz: TZ, p_top: 5 }),
         sb.rpc('site_signins_daily', { p_days: days, p_tz: TZ }),
         sb.rpc('site_visit_summary', { p_days: days, p_tz: TZ, p_country: wanted }),
+        sb.rpc('site_signin_taps_window', { p_days: days, p_tz: TZ, p_country: wanted }),
       ])
-    : [null, null, null]
+    : [null, null, null, null]
   if (byCountry?.error) console.error('[admin/traffic] site_visit_by_country:', byCountry.error.message)
   if (signins?.error) console.error('[admin/traffic] site_signins_daily:', signins.error.message)
   if (range?.error && range.error.code !== NOT_THERE) console.error('[admin/traffic] site_visit_summary:', range.error.message)
+  if (tapped?.error && tapped.error.code !== NOT_THERE) console.error('[admin/traffic] site_signin_taps_window:', tapped.error.message)
 
   const found = (daily.data ?? []) as DailyRow[]
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date())
@@ -91,6 +94,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
     <TrafficView
       rows={fillDaily(found, today)}
       whole={toSummary(((range?.data ?? []) as SummaryRow[])[0])}
+      taps={tapped && !tapped.error ? tapTotals((tapped.data ?? []) as TapRow[]) : null}
       days={days}
       ranges={RANGES}
       tz="Taiwan time"
