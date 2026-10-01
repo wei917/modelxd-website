@@ -264,7 +264,7 @@ export default function Omnibox() {
                       onClick={() => go(i)}
                     >
                       {r.provider
-                        ? <ProviderLogo provider={r.provider} size={14} />
+                        ? <ProviderLogo provider={r.provider} model={r.sub} size={14} />
                         : <span className="omni-dot" />}
                       <span className="omni-label">{r.label}</span>
                       {r.sub && <span className="omni-sub">{r.sub}</span>}

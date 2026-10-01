@@ -384,7 +384,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                     </span>
                   )}
                 </span>
-                <ProviderLogo provider={m.provider} size={18} />
+                <ProviderLogo provider={m.provider} model={m.model_name} size={18} />
                 <div className="model-picker-name" style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.display_name}
@@ -461,7 +461,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', opacity: 0.45, cursor: 'default' }}
                 >
                   <span style={{ width: 18, flexShrink: 0 }} />
-                  <ProviderLogo provider={m.provider} size={18} />
+                  <ProviderLogo provider={m.provider} model={m.model_name} size={18} />
                   <div className="model-picker-name" style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {m.display_name}

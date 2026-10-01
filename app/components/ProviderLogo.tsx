@@ -18,7 +18,11 @@
 // their pink-to-orange gradient sampled from the same asset.
 // Unknown providers (or a missing file) render nothing.
 
-const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'minimax', 'modelxd']
+// bytedance (Oct 1): simple-icons' ByteDance mark (CC0), brand hex #3C8CFF.
+// It shows for ByteDance's models whoever we buy them from (lib/model-maker).
+import { makerKey } from '../../lib/model-maker'
+
+const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'minimax', 'modelxd', 'bytedance']
 
 // Ours is the brand mark itself (the same PNG the Nav lockup uses), not a
 // simple-icons SVG — XEval lists ModelXD Autopilot alongside the vendors and
@@ -27,14 +31,18 @@ const SRC: Record<string, string> = { modelxd: '/logo.png' }
 
 export default function ProviderLogo({
   provider,
+  model,
   size = 16,
   style,
 }: {
   provider?: string | null
+  /** The model's catalog or display name: a model bought through a reseller
+   *  wears its MAKER's mark (Seedance -> ByteDance), not the reseller's. */
+  model?: string | null
   size?: number
   style?: React.CSSProperties
 }) {
-  const p = (provider ?? '').toLowerCase()
+  const p = makerKey(provider, model).toLowerCase()
   if (!KNOWN.includes(p)) return null
   return (
     // eslint-disable-next-line @next/next/no-img-element

@@ -415,8 +415,9 @@ export async function generateVideo(
 ): Promise<VideoResult & { requestId: string | null }> {
   assertSupported(model)
 
-  // Alibaba/DashScope, Google/Veo, xAI/Grok Imagine and Runway support native video.
-  if (model.provider !== 'alibaba' && model.provider !== 'google' && model.provider !== 'xai' && model.provider !== 'runway' && model.provider !== 'minimax') {
+  // Alibaba/DashScope, Google/Veo, xAI/Grok Imagine, Runway, MiniMax and
+  // Replicate (Seedance 2.5, Oct 1) support native video.
+  if (!['alibaba', 'google', 'xai', 'runway', 'minimax', 'replicate'].includes(model.provider)) {
     throw new Error(`Video generation not supported for provider: ${model.provider}`)
   }
 

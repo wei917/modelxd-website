@@ -52,7 +52,7 @@ function PieceMeta({ p, size = 10 }: { p: ShowcasePiece; size?: number }) {
   return (
     <>
       <span className="line1">
-        <ProviderLogo provider={p.provider} size={size} />
+        <ProviderLogo provider={p.provider} model={p.model} size={size} />
         <span className="name">{p.name}</span>
       </span>
       <span className="line2">

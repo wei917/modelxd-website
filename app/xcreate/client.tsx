@@ -17,6 +17,7 @@ import { useLang } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import FilmStudio from './FilmStudio'
+import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
 import { useSite } from '../../lib/useSite'
@@ -2882,7 +2883,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       eyebrow: `Run complete · ${activeModels.length} model${activeModels.length > 1 ? 's' : ''} · ${mode}`,
       title:   `${chosen.display_name} wins`,
       winnerName: chosen.display_name,
-      winnerProvider: chosen.provider,
+      winnerProvider: makerKey(chosen.provider, chosen.model_name),
       entries: activeModels.map((m, i) => ({
         name:         m.display_name,
         provider:     m.provider,
@@ -4609,7 +4610,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                               </span>
                             ) : null
                           })()}
-                          <ProviderLogo provider={model.provider} size={18} />
+                          <ProviderLogo provider={model.provider} model={model.model_name} size={18} />
                           {/* Split a name like "GPT-5.4 (free)" into a bold
                               main line and a smaller muted sub-line for the
                               parenthetical variant. The sub-line may truncate

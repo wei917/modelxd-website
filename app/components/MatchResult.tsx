@@ -19,6 +19,7 @@
 
 import { useEffect, useState } from 'react'
 import ProviderLogo from './ProviderLogo'
+import { MAKER_LABELS, makerOf } from '../../lib/model-maker'
 
 export interface MatchResultEntry {
   name: string
@@ -171,11 +172,11 @@ export default function MatchResult({
                 {/* Post-reveal surface — provider logos are fine here (the
                     blind-phase ban only covers XDuel votes 1-2). */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-                  <ProviderLogo provider={e.provider} size={18} />
+                  <ProviderLogo provider={e.provider} model={e.name} size={18} />
                   <div style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25 }}>{e.name}</div>
                 </div>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.16em', color: 'var(--muted)', marginTop: 3, textTransform: 'uppercase' }}>
-                  {e.provider}
+                  {MAKER_LABELS[makerOf(e.name) ?? ''] ?? e.provider}
                 </div>
               </div>
 

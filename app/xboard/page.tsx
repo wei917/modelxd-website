@@ -9,6 +9,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 import ProviderLogo from '../components/ProviderLogo'
+import { MAKER_LABELS, makerKey } from '../../lib/model-maker'
 import { useT } from '../../lib/i18n'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -120,6 +121,10 @@ const PROVISIONAL_BELOW = 60
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Who made it: the board's provider column, filter and sort use this, so
+ *  a model bought through a reseller sits with its maker (Oct 1). */
+const makerOfRow = (m: { provider: string; model_name: string }) => makerKey(m.provider, m.model_name)
+
 const PROVIDER_LABELS: Record<string, string> = {
   openai:    'OpenAI',
   google:    'Google',
@@ -218,7 +223,7 @@ interface MergedRow extends AIModel {
 function sortValue(m: MergedRow, key: SortKey): string | number | null {
   switch (key) {
     case 'name':     return m.display_name?.toLowerCase() ?? null
-    case 'provider': return m.provider?.toLowerCase() ?? null
+    case 'provider': return makerOfRow(m).toLowerCase() || null
     case 'released': return m.released_at ?? null
     case 'price':    return headlinePrice(m)
     case 'quality':  return m.qualityScore
@@ -369,14 +374,14 @@ export default function LeaderboardPage() {
       const covered = subtypeModes(subtype)
       list = list.filter(m => (m.modes ?? []).some(x => covered.includes(x)))
     }
-    if (selectedProviders.length > 0) list = list.filter(m => selectedProviders.includes(m.provider))
+    if (selectedProviders.length > 0) list = list.filter(m => selectedProviders.includes(makerOfRow(m)))
     list = list.filter(m => primaryMode(m) === filterMode)
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(m =>
         m.display_name.toLowerCase().includes(q) ||
         m.model_name.toLowerCase().includes(q) ||
-        m.provider.toLowerCase().includes(q) ||
+        makerOfRow(m).toLowerCase().includes(q) ||
         (m.tags ?? []).some(t => t.toLowerCase().includes(q))
       )
     }
@@ -406,14 +411,14 @@ export default function LeaderboardPage() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: models.length }
-    for (const m of models) c[m.provider] = (c[m.provider] ?? 0) + 1
+    for (const m of models) c[makerOfRow(m)] = (c[makerOfRow(m)] ?? 0) + 1
     return c
   }, [models])
 
   // Every provider present in the catalog, alphabetical — new companies
   // show up in the dropdown automatically.
   const providerList = useMemo(
-    () => [...new Set(models.map(m => m.provider))].sort(),
+    () => [...new Set(models.map(m => makerOfRow(m)))].sort(),
     [models],
   )
 
@@ -567,7 +572,7 @@ export default function LeaderboardPage() {
                       >
                         <span className="provider-filter-check">{on ? '✓' : ''}</span>
                         <ProviderLogo provider={p} size={13} />
-                        {PROVIDER_LABELS[p] ?? p}
+                        {PROVIDER_LABELS[p] ?? MAKER_LABELS[p] ?? p}
                         <span className="provider-filter-count">{counts[p] ?? 0}</span>
                       </button>
                     )
@@ -749,12 +754,12 @@ function ModelRow({ model: m }: { model: MergedRow }) {
 
       {/* Provider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <ProviderLogo provider={m.provider} size={14} />
+        <ProviderLogo provider={m.provider} model={m.model_name} size={14} />
         <span style={{
           fontSize: 12, color: 'var(--muted2)', fontFamily: 'var(--font-body), sans-serif',
           fontWeight: 600, textTransform: 'capitalize',
         }}>
-          {PROVIDER_LABELS[m.provider] ?? m.provider}
+          {PROVIDER_LABELS[makerOfRow(m)] ?? MAKER_LABELS[makerOfRow(m)] ?? makerOfRow(m)}
         </span>
       </div>
 
@@ -950,7 +955,7 @@ function WerewolfBoard({
     let list = (ww?.rows ?? [])
       .map(r => ({ r, m: byId.get(r.modelId)!, score: scores?.[r.modelId] ?? null }))
       .filter(x => !!x.m)
-    if (providers.length > 0) list = list.filter(x => providers.includes(x.m.provider))
+    if (providers.length > 0) list = list.filter(x => providers.includes(makerOfRow(x.m)))
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(x => x.m.display_name.toLowerCase().includes(q) || x.m.provider.toLowerCase().includes(q))
@@ -1025,7 +1030,7 @@ function WerewolfBoard({
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg)'}
               >
                 <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ProviderLogo provider={m.provider} size={14} />
+                  <ProviderLogo provider={m.provider} model={m.model_name} size={14} />
                   <NameCell name={m.display_name} />
                 </div>
                 <div style={{ textAlign: 'right' }}>
