@@ -380,13 +380,13 @@ export const XCREATE_TEMPLATES: Template[] = [
     slotMode:          'extend_video',
     // Native continuation — the model reads the WHOLE input clip, so
     // motion and identity carry into the continuation (unlike the
-    // last-frame trick). Two engines, priced 4.5x apart — the choice IS
-    // the product: Wan 2.7 `first_clip` at $0.10/s (input ≤10s, total
-    // ≤15s) vs Seedance 2.5 via Runway `mode:"extend"` at ~$0.45/s
-    // combined (≤30s in+out, output matches input length).
+    // last-frame trick). Wan 2.7 `first_clip` at $0.10/s (input ≤10s,
+    // total ≤15s). Seedance 2.5 extended through Runway until Oct 1; on
+    // Replicate a video input bills another rate, and extension had never
+    // been run, so it is off the list.
     starterPrompt:     'Continue this video: {{the camera keeps pulling back to reveal the whole scene}}. Same subject, same lighting, same motion energy — one continuous take, no cuts.',
     duration:          8,
-    recommendedModels: ['wan2.7-i2v', 'seedance2_5'],
+    recommendedModels: ['wan2.7-i2v'],
     previewUrl:        '/templates/video-extend.jpg',
     previewBgColor:    '#4a2d52',
     attachmentSlots: [

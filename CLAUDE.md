@@ -448,7 +448,7 @@ Seven, all direct (`lib/providers/index.ts` routes on `model.provider`):
 | `alibaba` | `alibaba.ts` | DashScope. Text via `/compatible-mode/v1`, native API for image/video. |
 | `xai` | `xai.ts` | Grok models. |
 | `anthropic` | `anthropic.ts` | Messages API. Also powers the site agent + XDirector. |
-| `runway` | `runway.ts` | Video generation. |
+| `runway` | `runway.ts` | Video: Gen-4.5 and Gen-4 Turbo. Sold Seedance 2.5 until Oct 1, at about twice ByteDance's price. |
 | `moonshot` | `moonshot.ts` | Kimi models. |
 | `minimax` | `minimax.ts` | MiniMax H3 / Hailuo video (Global endpoint, async task pattern). |
 | `replicate` | `replicate.ts` | Reseller at the MAKER'S list price (Cloudflare since Dec 2025). Seedance 2.5 (`bytedance/seedance-2.5`): 480p/720p only, no 1080p; no video references (they bill another rate). Outputs expire in 1 h, so downloaded at once. Oct 1. |
@@ -510,6 +510,8 @@ Key columns:
   the maker's own list price in the same shape; `model_pricing` stays what we
   pay and bill. Null = bought from the maker directly (every first-party
   row). XBoard shows "via X · official $Y" under the price when they differ.
+  Only row with a `via` (Oct 1): Seedance 2.5, `via='replicate'`, at the
+  official price, so the two prices are equal there.
 - `modes` — text[] of input-shape patterns (`text_to_video`, `image_to_video`,
   `start_end_frames`, `pdf_to_text`, …). A **set**, not a single value.
 - `input_config` / `output_config` — jsonb per-modality options

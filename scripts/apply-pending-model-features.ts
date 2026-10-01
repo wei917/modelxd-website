@@ -15,6 +15,12 @@ import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
 
 async function main() {
+  // OBSOLETE (Oct 1): Seedance 2.5 moved from Runway to Replicate, which has
+  // 480p/720p only; step 2 below would re-add 1080p to the catalog row.
+  if (!process.argv.includes('--i-know-this-is-obsolete')) {
+    console.error('Obsolete one-off (Seedance is on Replicate since Oct 1); not running.')
+    process.exit(1)
+  }
   const env = Object.fromEntries(readFileSync('.env.local', 'utf8').split('\n')
     .filter(l => l.includes('=') && !l.startsWith('#'))
     .map(l => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]))
