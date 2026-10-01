@@ -1699,7 +1699,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.pt.l.F": {"en": "Feeling", "zh-Hant": "情感", "zh-Hans": "情感", "ja": "感情", "ko": "감정"},
   "xtell.pt.l.J": {"en": "Judging", "zh-Hant": "判斷", "zh-Hans": "判断", "ja": "判断", "ko": "판단"},
   "xtell.pt.l.P": {"en": "Perceiving", "zh-Hant": "感知", "zh-Hans": "感知", "ja": "知覚", "ko": "인식"},
-  "xtell.pt.identity": {"en": "Fifth letter, only if your result has one (-A / -T)", "zh-Hant": "第五碼（結果有 -A／-T 才填）", "zh-Hans": "第五码（结果有 -A／-T 才填）", "ja": "5文字目（結果に -A／-T がある場合のみ）", "ko": "다섯 번째 글자(결과에 -A/-T가 있을 때만)"},
+  "xtell.pt.identity": {"en": "-A / -T (only if your 16Personalities result has it; optional)", "zh-Hant": "-A／-T（16Personalities 結果才有，選填）", "zh-Hans": "-A／-T（16Personalities 结果才有，选填）", "ja": "-A／-T（16Personalitiesの結果にある場合のみ・任意）", "ko": "-A/-T(16Personalities 결과에 있을 때만, 선택)"},
   "xtell.pt.none": {"en": "None", "zh-Hant": "不填", "zh-Hans": "不填", "ja": "なし", "ko": "없음"},
   "xtell.pt.empty": {"en": "Not set.", "zh-Hant": "尚未填寫。", "zh-Hans": "尚未填写。", "ja": "未入力です。", "ko": "아직 입력하지 않았습니다."},
   "xtell.pt.add": {"en": "Add my type", "zh-Hant": "填寫我的類型", "zh-Hans": "填写我的类型", "ja": "タイプを入力", "ko": "유형 입력"},
