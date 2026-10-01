@@ -17,7 +17,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang, useT, tOr } from '../../../lib/i18n'
 import { useAuthModal } from '../../../lib/AuthModalContext'
-import { daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../../lib/xtell-birth'
+import { daysInMonth, birthYears, REMEMBER_KEY } from '../../../lib/xtell-birth'
 import { placeOf, birthZone, ZONE_PREFIX, COMMON_ZONES } from '../../../lib/xtell-places'
 import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-time'
 import { dropDates } from '../../../lib/xtell-share'
@@ -306,7 +306,9 @@ export function DailyProfileSettings() {
       {editing ? (
         <ProfileForm profile={profile} gen={gen} onSaved={(p, g) => { if (g !== gen.current) return; gen.current++; setProfile(p); setState('ready'); setEditing(false); setNotice(null) }} onCancel={() => setEditing(false)} errText={errText} />
       ) : state === 'none' ? (
-        <p className="xtell-dy-small">{t('xtell.dy.remind')} <a className="xtell-dy-link" href="/#xtell-daily">{t('xtell.dy.start')}</a></p>
+        // A room's 「填入我的生日」 sends a visitor with nothing saved here
+        // (Oct 1): the form opens in place instead of sending them away again.
+        <p className="xtell-dy-small">{t('xtell.dy.remind')} <button type="button" className="xtell-dy-link" onClick={() => { setConfirmDelete(false); setEditing(true) }}>{t('xtell.dy.start')}</button></p>
       ) : (<>
         <div className="xtell-dy-profile">
           {/* Hidden by default (owner, Sep 28): the birth and zones show
@@ -337,11 +339,8 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
   const t = useT()
   const { lang } = useLang()
   const errId = useId()
-  // A new profile can start from 占星塔's remembered birth, but only when the
-  // visitor presses 「填入我的生日」 (owner, Oct 1: never on screen without
-  // asking, someone may be watching). A convenience, never consent (the box
-  // below is always unticked).
-  const [remembered] = useState(() => profile ? null : (() => { try { return rememberedBirth(localStorage.getItem(REMEMBER_KEY)) } catch { return null } })())
+  // A new profile starts on the default; the 占星 room's old browser copy
+  // is no longer offered (owner, Oct 1: it filled 1900-1-1).
   const [f, setF] = useState(() => {
     const b = profile?.birth ?? { y: 1990, m: 1, d: 1, h: 12, mi: 0, hourUnknown: false }
     return {
@@ -386,12 +385,6 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
   return (
     <form className="xtell-dy-form" onSubmit={e => { e.preventDefault(); void save() }} aria-describedby={err ? errId : undefined}>
       <p className="xtell-dy-form-title">{t('xtell.dy.form.title')}</p>
-      {remembered && (
-        <button type="button" className="xtell-fill-mine" onClick={() => set({
-          y: remembered.y, m: remembered.m, d: remembered.d, h: remembered.h, mi: remembered.mi, hourUnknown: remembered.hourUnknown, fold: null,
-          ...(placeOf(remembered.place)?.tz ? { birthTz: placeOf(remembered.place)!.tz } : {}),
-        })}>{t('xtell.fillMine')}</button>
-      )}
       <fieldset className="xtell-dy-field">
         <legend>{t('xtell.dy.form.date')}</legend>
         <select className={sel} aria-label={t('xtell.site.birth.year')} value={f.y} onChange={e => set({ y: +e.target.value, d: Math.min(f.d, daysInMonth(+e.target.value, f.m)), fold: null })}>{birthYears().map(y => <option key={y} value={y}>{y}</option>)}</select>

@@ -19,5 +19,5 @@ export default async function XTellPage() {
   const h = await headers()
   const site = siteFromHeaders(h)
   // The 黃曆 is its own section (see app/page.tsx).
-  return <XTellClient standalone={site === 'xtell'} almanacSection={almanacSection()} />
+  return <XTellClient standalone={site === 'xtell'} almanacSection={almanacSection()} country={h.get('x-vercel-ip-country')} />
 }

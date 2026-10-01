@@ -946,6 +946,26 @@ all in git history or the session scratchpad only.
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
 
+## Birthplace and 「填入我的生日」, round two (Oct 1, owner bug report)
+
+- **No default city.** Rooms that need a birthplace (占星, 九曜) used to start
+  on Taipei (Tokyo, Seoul on those pages), so a visitor who never looked got
+  a chart for a city they were not born in. The place now starts empty and
+  the room refuses to cast until one is picked (`place_invalid`, as the
+  routes already did).
+- **Typed and picked** (`PlacePicker`, `searchPlaces` in lib/xtell-places.ts):
+  a city is found by any of its names (繁體, 简体, 日本語, 한국어, English,
+  a few aliases such as 悉尼, NYC), names that start with what was typed
+  first. Before anything is typed, the cities of the visitor's country are
+  offered: Vercel's `x-vercel-ip-country`, passed from the server pages, else
+  the page's language. A city not on the list: the nearest large one; the
+  ascendant and houses move a little, the planets not at all.
+- **「填入我的生日」 fills only the birthday saved on the account.** It filled
+  1900-1-1 from the 占星 room's old copy in the browser; that copy is no
+  longer written and is cleared when a room opens. Signed in with nothing
+  saved, the button says so and links to the account page, where the form
+  now opens in place. Signed out, there is no button.
+
 ## 「填入我的生日」 (Oct 1)
 
 Owner: "when user enter that kind of temple, we add a button to fill user's

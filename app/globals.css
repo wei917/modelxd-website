@@ -3708,6 +3708,18 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 /* 「填入我的生日」: a room fills the saved birthday only on this press (Oct 1). */
 .xtell-fill-mine { min-height: 36px; padding: 6px 12px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 999px; background: transparent; color: var(--xtell-vermilion, var(--white)); font: inherit; font-size: 12.5px; cursor: pointer; }
 .xtell-dy-form .xtell-fill-mine { justify-self: start; }
+.xtell-fill-note { flex-basis: 100%; font-size: 12.5px; line-height: 1.6; color: var(--xtell-secondary, var(--muted)); }
+.xtell-fill-note a { color: var(--xtell-vermilion, var(--blue)); }
+/* The birthplace: typed and picked, no default city (Oct 1). 16px input so
+   iOS does not zoom the page on focus. */
+.xtell-place-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.xtell-place-label { font-size: 12.5px; font-weight: 700; }
+.xtell-place-input { flex: 1 1 200px; min-width: 0; min-height: 42px; padding: 6px 10px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 6px; background: var(--xtell-white, transparent); color: inherit; font: inherit; font-size: 16px; }
+.xtell-place-options { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.xtell-place-options button { min-height: 38px; padding: 6px 12px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 13.5px; cursor: pointer; }
+.xtell-place-chosen { font-size: 15px; font-weight: 700; }
+.xtell-place-change { border: 0; background: none; padding: 6px 2px; color: var(--xtell-vermilion, var(--blue)); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.xtell-place-none { flex-basis: 100%; font-size: 12px; line-height: 1.6; color: var(--xtell-secondary, var(--muted)); }
 /* The visitor's own personality type (account page + a room's box; Sep 30). */
 .xtell-pt-picker { display: grid; gap: 8px; margin-top: 4px; }
 .xtell-pt-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

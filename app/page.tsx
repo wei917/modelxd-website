@@ -38,7 +38,7 @@ export default async function Page() {
   const site = siteFromHeaders(h)
   // The street's 黃曆 is its own section (AlmanacSection): computed on the
   // server, in its own Suspense and error boundary.
-  if (site === 'xtell') return <XTellClient almanacSection={almanacSection()} />
+  if (site === 'xtell') return <XTellClient almanacSection={almanacSection()} country={h.get('x-vercel-ip-country')} />
   // The studio's own server shell, so `/` here reads the gallery on the
   // server exactly as /xcreate does.
   if (site === 'xcreate') return <XCreatePage />

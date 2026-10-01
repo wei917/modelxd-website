@@ -15,7 +15,7 @@
 //      web search where the model supports it, and the reading streams in
 //      as a 批文. The model interprets the chart; it never computes one.
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
@@ -37,7 +37,7 @@ import { drawTarot, asSpread, SPREADS, type TarotPick, type TarotSpread } from '
 import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xtell-cookie'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
-import { PLACES, placesFor, placeLabel, defaultPlaceFor } from '../../lib/xtell-places'
+import { placesFor, placeLabel, placeOf, searchPlaces } from '../../lib/xtell-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
@@ -163,6 +163,9 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
     const p = birthProblem(subj?.birth2)
     if (p) return `birth2_${p}`
   }
+  // The routes' validPlace, mirrored: no default city since Oct 1.
+  if ((temple === 'navagraha' || temple === 'zhanxing') && !placeOf(subj?.place)) return 'place_invalid'
+  if (temple === 'zhanxing' && (astroMode ?? subj?.mode) === 'synastry' && !placeOf(subj?.place2)) return 'place2_invalid'
   if (temple === 'simianfo' && !FACE_KEYS.some(k => String(subj?.wishes?.[k] ?? '').trim())) return 'wish_required'
   // lib/names.ts validName / validChar, mirrored.
   if (temple === 'xingming') {
@@ -203,7 +206,7 @@ function fieldOf(code: string | null): string | null {
 function subjectSummary(t: (k: string) => string, temple: Temple, subj: any, lang = 'zh-Hant'): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   const born = (b: any) => !b ? '' : `${b.y}-${pad(b.m)}-${pad(b.d)} ${b.hourUnknown ? t('xtell.hourunknown') : `${pad(b.h)}:${pad(b.mi)}`} · ${t(`xtell.${b.gender}`)}`
-  const where = (k: unknown) => placeLabel(PLACES.find(p => p.key === k), lang)
+  const where = (k: unknown) => placeLabel(placeOf(k), lang)
   if (temple === 'yuelao' || (temple === 'zhanxing' && subj.mode === 'synastry')) {
     return `${t('xtell.person1')} ${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}　${t('xtell.person2')} ${born(subj.birth2)}${subj.place2 ? ` · ${where(subj.place2)}` : ''}`
   }
@@ -225,7 +228,15 @@ const shichenOf = (h: number) => ZHI[h === 23 ? 0 : Math.floor((h + 1) / 2) % 12
 
 function RequireTempleAuth() { useRequireAuth(); return null }
 
-export default function XTellClient({ standalone: standaloneOverride, almanacSection }: { standalone?: boolean; almanacSection?: React.ReactNode }) {
+/** The visitor's country (Vercel's x-vercel-ip-country, from the server
+ *  page): the birthplace picker offers that country's cities first. */
+const VisitorCountry = createContext<string | null>(null)
+
+export default function XTellClient({ country = null, ...rest }: { standalone?: boolean; almanacSection?: React.ReactNode; country?: string | null }) {
+  return <VisitorCountry.Provider value={country}><XTellStreet {...rest} /></VisitorCountry.Provider>
+}
+
+function XTellStreet({ standalone: standaloneOverride, almanacSection }: { standalone?: boolean; almanacSection?: React.ReactNode }) {
   const site = useSite()
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
@@ -511,7 +522,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // 宿曜: an optional partner's birth date, for the two people's relation.
   const [partnerDate, setPartnerDate] = useState<string>(typeof init.partner === 'string' ? init.partner : '')
   // 九曜廟: the birth place (a curated city key; coordinates + zone resolve server-side).
-  const [place, setPlace] = useState(init.place ?? defaultPlaceFor(lang))
+  // No default city (owner, Oct 1): the visitor picks one.
+  const [place, setPlace] = useState<string>(typeof init.place === 'string' ? init.place : '')
   // 占星塔 only.
   const [astroMode, setAstroMode] = useState<AstroMode>(temple === 'zhanxing' && init.mode ? init.mode
     : temple === 'zhanxing' && (ASTRO_MODES as readonly string[]).includes(carried?.feature.mode ?? '') ? carried!.feature.mode as AstroMode : 'natal')
@@ -540,7 +552,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // The teacher must receive the same subject that produced the visible
   // board, even if an entry control was changed while its request loaded.
   const yixueSubject = useRef<Record<string, unknown> | null>(temple === 'yixue' && initial ? { temple, ...init } : null)
-  const [place2, setPlace2] = useState(init.place2 ?? defaultPlaceFor(lang))
+  const [place2, setPlace2] = useState<string>(typeof init.place2 === 'string' ? init.place2 : '')
   const [srYear, setSrYear] = useState(init.year ?? new Date().getFullYear())
   // Shown by default. The computed chart is the whole reason this page is not
   // just a chat window, and it was hidden behind a link nobody clicked.
@@ -758,22 +770,24 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
 
   // The visitor's own birthday, filled in only when they press 「填入我的生日」
   // (owner, Oct 1: "not auto fill since other people will see their
-  // birthday if they watch you use the website"). 占星 used to restore it on
-  // load from this browser's copy; now the copy, like the saved profile, waits
-  // for the button. Gender and city come from the browser's copy only when
-  // it is the same birthday.
+  // birthday if they watch you use the website"). Only the birthday saved on
+  // the account counts (owner, Oct 1: the button filled 1900-1-1 from an
+  // old browser copy); signed in with none saved, the button says where to
+  // save one. Signed out, there is no button.
   const myBirth = useMyBirth(TAKES_BIRTH(temple))
-  const fillBirth = (set: (fn: (b: any) => any) => void, allowUnknown: boolean) => () => {
-    const v = myBirth
-    if (!v) return
+  const fillBirth = (set: (fn: (b: any) => any) => void, allowUnknown: boolean) => (): boolean => {
+    const v = myBirth?.birth
+    if (!v) return false
     set(b => ({
       ...b, y: v.y, m: v.m, d: v.d,
       // A room that needs the hour keeps its own when the saved one is unknown.
       ...(v.hourUnknown && !allowUnknown ? {} : { h: v.h, mi: v.mi, hourUnknown: v.hourUnknown }),
-      ...(v.gender ? { gender: v.gender } : {}),
     }))
-    if (v.place && (temple === 'zhanxing' || temple === 'navagraha') && placesFor(lang).some(p => p.key === v.place)) setPlace(v.place)
+    // A profile saved before Sep 27 names a city; later ones a zone only.
+    if (myBirth?.place && (temple === 'zhanxing' || temple === 'navagraha')) setPlace(myBirth.place)
+    return true
   }
+  const canFill = myBirth?.status === 'saved' || myBirth?.status === 'none'
 
   const enter = async (n?: number): Promise<boolean> => {
     if (questionRequired && !input.trim()) return false
@@ -787,9 +801,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     setEntering(true)
     clearErr()
     refreshToken.current++
-    if (temple === 'zhanxing') {
-      try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ ...birth, place })) } catch { /* ignore */ }
-    }
     try {
       const requestSubject = subject(n)
       // The routes check the same things; checking here first keeps the
@@ -1180,7 +1191,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               extra={<PersonalityAttach saved={savedType} on={withType} setOn={setWithType} />} />
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} jiao={jiao}
-              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} onFillBirth={myBirth ? fillBirth(setBirth, true) : undefined} />
+              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} onFillBirth={canFill ? fillBirth(setBirth, true) : undefined} />
           ) : temple === 'xingming' ? (
             <NameForm surname={surname} given={given} gender={birth.gender}
               onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel}
@@ -1198,16 +1209,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             </>
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
-              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} onFill={myBirth ? fillBirth(setBirth, true) : undefined} />
-              {temple === 'zhanxing' && <PlaceRow label={t('xtell.person1')} value={place} onChange={setPlace} sel={sel} aria={fieldAria('place')} />}
+              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} onFill={canFill ? fillBirth(setBirth, true) : undefined} />
+              {temple === 'zhanxing' && <PlacePicker label={t('xtell.person1')} value={place} onChange={setPlace} aria={fieldAria('place')} />}
               <div style={{ height: 12 }} />
               <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria('birth2')} />
-              {temple === 'zhanxing' && <PlaceRow label={t('xtell.person2')} value={place2} onChange={setPlace2} sel={sel} aria={fieldAria('place2')} />}
+              {temple === 'zhanxing' && <PlacePicker label={t('xtell.person2')} value={place2} onChange={setPlace2} aria={fieldAria('place2')} />}
               {temple === 'yuelao' && <PersonalityAttach saved={savedType} on={withType} setOn={setWithType} partner={partnerType} setPartner={setPartnerType} />}
             </>
           ) : (
             <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={!HOUR_REQUIRED.includes(temple)} aria={fieldAria('birth')}
-              onFill={myBirth ? fillBirth(setBirth, !HOUR_REQUIRED.includes(temple)) : undefined} />
+              onFill={canFill ? fillBirth(setBirth, !HOUR_REQUIRED.includes(temple)) : undefined} />
           )}
           {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} aria={fieldAria('wishes')} />}
           {temple === 'sukuyo' && (
@@ -1219,20 +1230,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             </div>
           )}
           {temple === 'navagraha' && (
-            <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
-              <select aria-label={t('xtell.place')} aria-invalid={fieldAria('place').invalid || undefined} aria-describedby={fieldAria('place').describedBy} style={sel} value={place} onChange={e => setPlace(e.target.value)}>
-                {placesFor(lang).map(p => <option key={p.key} value={p.key}>{placeLabel(p, lang)}</option>)}
-              </select>
-              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 240 }}>{t('xtell.place.note')}</span>
+            <div style={{ marginTop: 12 }}>
+              <PlacePicker value={place} onChange={setPlace} aria={fieldAria('place')} />
+              <span style={{ display: 'block', marginTop: 6, fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.place.note')}</span>
             </div>
           )}
           {temple === 'zhanxing' && astroMode !== 'synastry' && (
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700 }} aria-hidden="true">{t('xtell.place')}</span>
-              <select aria-label={t('xtell.place')} aria-invalid={fieldAria('place').invalid || undefined} aria-describedby={fieldAria('place').describedBy} style={sel} value={place} onChange={e => setPlace(e.target.value)}>
-                {placesFor(lang).map(p => <option key={p.key} value={p.key}>{placeLabel(p, lang)}</option>)}
-              </select>
+              <div style={{ flexBasis: '100%' }}><PlacePicker value={place} onChange={setPlace} aria={fieldAria('place')} /></div>
               {astroMode === 'year' && (
                 <>
                   <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8 }} aria-hidden="true">{t('xtell.astro.year.pick')}</span>
@@ -2034,22 +2039,26 @@ type FieldAria = { invalid: boolean; describedBy?: string }
 /** Rooms with a birth row for the visitor (the stick rooms' is optional). */
 const TAKES_BIRTH = (temple: string) => !['tarot', 'cezi', 'jiemeng', 'sunzi', 'cookie', 'yixue', 'xingming'].includes(temple)
 
-/** The visitor's saved birthday: the daily fortune's profile (server), else
- *  this browser's copy from 占星. Loaded quietly, never shown until the
- *  visitor presses 「填入我的生日」. */
-function useMyBirth(enabled: boolean): ReturnType<typeof rememberedBirth> {
-  const [v, setV] = useState<ReturnType<typeof rememberedBirth>>(null)
+/** The birthday saved on the visitor's account (the daily fortune's
+ *  profile): `out` signed out, `none` signed in with nothing saved, `saved`
+ *  with it. Loaded quietly, never shown until the visitor presses
+ *  「填入我的生日」. The 占星 room's old copy in this browser is cleared: it is
+ *  no longer read, and it was the visitor's birthday left on the device. */
+type MyBirth = { status: 'out' | 'none' | 'saved'; birth: ReturnType<typeof rememberedBirth>; place: string | null }
+function useMyBirth(enabled: boolean): MyBirth | null {
+  const [v, setV] = useState<MyBirth | null>(null)
   useEffect(() => {
     if (!enabled) return
     let live = true
-    const local = (() => { try { return rememberedBirth(localStorage.getItem(REMEMBER_KEY)) } catch { return null } })()
-    fetch('/api/xtell/profile').then(r => r.ok ? r.json() : null).then(d => {
+    try { localStorage.removeItem(REMEMBER_KEY) } catch { /* nothing to clear */ }
+    fetch('/api/xtell/profile').then(async r => {
       if (!live) return
-      const server = d?.profile?.birth ? rememberedBirth(JSON.stringify(d.profile.birth)) : null
-      if (!server) { setV(local); return }
-      const same = !!local && local.y === server.y && local.m === server.m && local.d === server.d
-      setV({ ...server, ...(same && local!.gender ? { gender: local!.gender } : {}), ...(same && local!.place ? { place: local!.place } : {}) })
-    }).catch(() => { if (live) setV(local) })
+      if (!r.ok) { setV({ status: 'out', birth: null, place: null }); return }
+      const d = await r.json().catch(() => null)
+      if (!live) return
+      const birth = d?.profile?.birth ? rememberedBirth(JSON.stringify(d.profile.birth)) : null
+      setV(birth ? { status: 'saved', birth, place: placeOf(d.profile.place)?.key ?? null } : { status: 'none', birth: null, place: null })
+    }).catch(() => { if (live) setV({ status: 'out', birth: null, place: null }) })
     return () => { live = false }
   }, [enabled])
   return v
@@ -2057,9 +2066,10 @@ function useMyBirth(enabled: boolean): ReturnType<typeof rememberedBirth> {
 
 function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFill }: {
   label?: string
-  /** 「填入我的生日」: shown only when the visitor has a saved birthday; never
-   *  filled without the press (owner, Oct 1). */
-  onFill?: () => void
+  /** 「填入我的生日」, for a signed-in visitor; never filled without the press
+   *  (owner, Oct 1). False when nothing is saved: the row then says where
+   *  to save a birthday. */
+  onFill?: () => boolean
   value: { y: number; m: number; d: number; h: number; mi: number; gender: 'male' | 'female'; hourUnknown?: boolean }
   onChange: (v: any) => void
   sel: any
@@ -2069,6 +2079,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
   aria?: FieldAria
 }) {
   const t = useT()
+  const [noneSaved, setNoneSaved] = useState(false)
   // Only real days are offered (audit F01). When a month or year change
   // leaves the chosen day impossible (31 → February), the day is KEPT and
   // flagged rather than silently moved to another date; entering is refused
@@ -2085,7 +2096,10 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
       {onFill && (
-        <button type="button" onClick={onFill} className="xtell-fill-mine">{t('xtell.fillMine')}</button>
+        <button type="button" onClick={() => setNoneSaved(!onFill())} className="xtell-fill-mine">{t('xtell.fillMine')}</button>
+      )}
+      {noneSaved && (
+        <span role="status" className="xtell-fill-note">{t('xtell.fillMine.none')} <a href="/profile#xtell-daily-settings">{t('xtell.fillMine.set')}</a></span>
       )}
       <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}
@@ -2144,8 +2158,8 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   birth: any; setBirth: (b: any) => void; sel: any
   /** false for 元三大師's set: draw once, no 筊. */
   jiao?: boolean
-  /** 「填入我的生日」, when the visitor has one saved. */
-  onFillBirth?: () => void
+  /** 「填入我的生日」, for a signed-in visitor (false: nothing saved). */
+  onFillBirth?: () => boolean
 }) {
   const t = useT()
   const [bingOpen, setBingOpen] = useState(false)
@@ -2529,15 +2543,40 @@ function NavagrahaBoard({ chart }: { chart: any }) {
 
 // ── 占星塔 ─────────────────────────────────────────────────────────────────
 
-function PlaceRow({ label, value, onChange, sel, aria }: { label?: string; value: string; onChange: (v: string) => void; sel: any; aria?: FieldAria }) {
+/** The birthplace (owner, Oct 1): no city until the visitor picks one, and
+ *  no Taiwan-first list. They type and pick; before they type, the cities
+ *  of the country they are in (by IP, else the page's language) are offered.
+ *  A city not on the list: the nearest large one (the ascendant and houses
+ *  move a little, the planets not at all). */
+function PlacePicker({ label, value, onChange, aria }: { label?: string; value: string; onChange: (v: string) => void; aria?: FieldAria }) {
   const t = useT()
   const { lang } = useLang()
+  const country = useContext(VisitorCountry)
+  const [q, setQ] = useState('')
+  const inputId = useId()
+  const chosen = placeOf(value)
+  const caption = `${label ? `${label} · ` : ''}${t('xtell.place')}`
+  if (chosen) return (
+    <div className="xtell-place-pick">
+      <span className="xtell-place-label">{caption}</span>
+      <span className="xtell-place-chosen">{placeLabel(chosen, lang)}</span>
+      <button type="button" className="xtell-place-change" onClick={() => { onChange(''); setQ('') }}>{t('xtell.place.change')}</button>
+    </div>
+  )
+  const typed = q.trim()
+  const offered = typed ? searchPlaces(typed, lang, country) : placesFor(lang, country).slice(0, 6)
   return (
-    <div className="xtell-place-row" style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6, marginLeft: 62 }}>
-      <span style={{ fontSize: 12, color: 'var(--muted2)' }} aria-hidden="true">{t('xtell.place')}</span>
-      <select aria-label={`${label ?? ''} ${t('xtell.place')}`.trim()} aria-invalid={aria?.invalid || undefined} aria-describedby={aria?.invalid ? aria.describedBy : undefined} style={sel} value={value} onChange={e => onChange(e.target.value)}>
-        {placesFor(lang).map(p => <option key={p.key} value={p.key}>{placeLabel(p, lang)}</option>)}
-      </select>
+    <div className="xtell-place-pick">
+      <label htmlFor={inputId} className="xtell-place-label">{caption}</label>
+      <input id={inputId} type="text" className="xtell-place-input" value={q} onChange={e => setQ(e.target.value.slice(0, 40))}
+        placeholder={t('xtell.place.search')} autoComplete="off" enterKeyHint="search"
+        aria-invalid={aria?.invalid || undefined} aria-describedby={aria?.invalid ? aria.describedBy : undefined} />
+      {offered.length > 0 && (
+        <div className="xtell-place-options" role="group" aria-label={typed ? t('xtell.place.matches') : t('xtell.place.nearby')}>
+          {offered.map(p => <button key={p.key} type="button" onClick={() => { onChange(p.key); setQ('') }}>{placeLabel(p, lang)}</button>)}
+        </div>
+      )}
+      {typed && offered.length === 0 && <span className="xtell-place-none">{t('xtell.place.none')}</span>}
     </div>
   )
 }

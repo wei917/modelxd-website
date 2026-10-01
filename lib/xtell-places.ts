@@ -88,7 +88,6 @@ export const PLACES: Place[] = [
   { key: 'auckland',   label: '奧克蘭',   lat: -36.8485, lon: 174.7633, tz: 'Pacific/Auckland' },
 ]
 
-export const DEFAULT_PLACE = 'taipei'
 export const placeOf = (key: unknown): Place | null => PLACES.find(p => p.key === key) ?? null
 
 // ── The list in the page's language (Sep 29) ───────────────────────────────
@@ -122,13 +121,56 @@ export function placeLabel(p: Place | null | undefined, lang: string): string {
   const n = PLACE_NAMES[p.key]
   return (lang === 'ja' || lang === 'ko' || lang === 'en') && n ? n[lang] : p.label
 }
-/** The list for a form: the visitor's own country first, the rest as is. */
-export function placesFor(lang: string): Place[] {
-  const first = lang === 'ja' ? 'Asia/Tokyo' : lang === 'ko' ? 'Asia/Seoul' : null
-  return first ? [...PLACES.filter(p => p.tz === first), ...PLACES.filter(p => p.tz !== first)] : PLACES
+// ── Finding a place (owner, Oct 1) ─────────────────────────────────────────
+// A form starts with NO place: it used to start on Taipei (Tokyo, Seoul on
+// those pages), and a visitor who never looked had a chart cast for a city
+// they were not born in. The visitor types and picks; until they type, the
+// cities of the country they are in (Vercel's x-vercel-ip-country) come
+// first, else those of the page's language, never Taiwan's by default.
+
+const COUNTRY_OF_TZ: Record<string, string> = {
+  'Asia/Taipei': 'TW', 'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Hong_Kong': 'HK', 'Asia/Macau': 'MO', 'Asia/Shanghai': 'CN',
+  'Asia/Singapore': 'SG', 'Asia/Kuala_Lumpur': 'MY', 'Asia/Bangkok': 'TH', 'Asia/Ho_Chi_Minh': 'VN', 'Asia/Manila': 'PH', 'Asia/Jakarta': 'ID',
+  'Asia/Kolkata': 'IN', 'Asia/Dubai': 'AE', 'Europe/London': 'GB', 'Europe/Paris': 'FR', 'Europe/Berlin': 'DE',
+  'America/New_York': 'US', 'America/Chicago': 'US', 'America/Los_Angeles': 'US', 'America/Vancouver': 'CA', 'America/Toronto': 'CA',
+  'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Pacific/Auckland': 'NZ',
 }
-/** Where a new form starts. */
-export const defaultPlaceFor = (lang: string): string => (lang === 'ja' ? 'tokyo' : lang === 'ko' ? 'seoul' : DEFAULT_PLACE)
+/** A place's country (ISO 3166 alpha-2). */
+export const countryOfPlace = (p: Place): string => COUNTRY_OF_TZ[p.tz] ?? ''
+const LANG_COUNTRY: Record<string, string> = { ja: 'JP', ko: 'KR', 'zh-Hant': 'TW', 'zh-Hans': 'CN' }
+
+/** The list in the order a form offers it: the visitor's country (by IP,
+ *  else by the page's language) first, the rest as listed. */
+export function placesFor(lang: string, country?: string | null): Place[] {
+  const first = (typeof country === 'string' && /^[A-Z]{2}$/.test(country) ? country : '') || LANG_COUNTRY[lang] || ''
+  if (!first || !PLACES.some(p => countryOfPlace(p) === first)) return PLACES
+  return [...PLACES.filter(p => countryOfPlace(p) === first), ...PLACES.filter(p => countryOfPlace(p) !== first)]
+}
+
+// 繁體 → 简体 for the characters the labels use, so 广州 finds 廣州.
+const SIMP: Record<string, string> = {
+  廣: '广', 東: '东', 門: '门', 島: '岛', 濱: '滨', 橫: '横', 戶: '户', 澤: '泽', 靜: '静', 兒: '儿', 爾: '尔', 內: '内', 馬: '马', 達: '达',
+  買: '买', 倫: '伦', 紐: '纽', 約: '约', 磯: '矶', 舊: '旧', 溫: '温', 華: '华', 奧: '奥', 蘭: '兰', 蓮: '莲', 繩: '绳', 沖: '冲', 廈: '厦',
+  臺: '台', 灣: '湾', 義: '义', 圖: '图',
+}
+const fold = (s: string): string => [...s.normalize('NFKC').toLowerCase().replace(/[\s·・.\-'()（）]/g, '')].map(c => SIMP[c] ?? c).join('')
+const ALIASES: Record<string, string[]> = {
+  taipei: ['台北市', '臺北'], newtaipei: ['新北市', '板橋'], sydney: ['悉尼'], hcmc: ['西貢', 'saigon'], kl: ['kualalumpur'],
+  newyork: ['nyc'], la: ['losangeles'], sf: ['sanfrancisco'], hongkong: ['hk'], naha: ['沖繩', '沖縄', 'okinawa'],
+}
+
+/** Places whose name (in any of our languages, or an alias) contains what
+ *  was typed, those that start with it first; the visitor's country first
+ *  within each. Empty for an empty query. */
+export function searchPlaces(query: string, lang: string, country?: string | null, limit = 8): Place[] {
+  const q = fold(String(query ?? ''))
+  if (!q) return []
+  const names = (p: Place) => [p.label, p.key, ...(PLACE_NAMES[p.key] ? Object.values(PLACE_NAMES[p.key]) : []), ...(ALIASES[p.key] ?? [])].map(fold)
+  const ordered = placesFor(lang, country)
+  const starts = ordered.filter(p => names(p).some(n => n.startsWith(q)))
+  const contains = ordered.filter(p => !starts.includes(p) && names(p).some(n => n.includes(q)))
+  return [...starts, ...contains].slice(0, limit)
+}
 
 // ── The daily fortune's birth zone (owner, Sep 27: no city) ────────────────
 // The daily profile stores the zone the visitor was born in as 'tz:<IANA>'.
