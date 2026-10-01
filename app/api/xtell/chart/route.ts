@@ -3,6 +3,11 @@
 // it before any reading is bought — the chart is the part they can verify
 // against any 排盤 site, so it is shown before money moves.
 //
+// Signed out (owner, Oct 1), the free chart is cast too, and not saved: no
+// account to keep it under. 解夢, 孫子兵法 and the fortune cookie still need
+// a session, because their free step calls a model on our account
+// (lib/xtell-guest.ts).
+//
 // 關帝廟 has no chart: the input is the stick number the ritual produced,
 // and the "chart" is the poem loaded from disk. 四面佛 is a 八字 chart plus
 // this year's 流年 read against it. 八字廟 also weighs the birth (稱骨).
@@ -53,7 +58,9 @@ function subjectOf(body: any) {
 // RLS (supabase/105); the reading route appends the turns. A save failure
 // never blocks the chart — the visitor still gets what they came for and the
 // server log says why (typically: migration 105 not applied yet).
-async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string, temple: Temple, body: any, chart: unknown, extras: Record<string, unknown>, title?: string) {
+async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string | null, temple: Temple, body: any, chart: unknown, extras: Record<string, unknown>, title?: string) {
+  // A signed-out visitor's chart is shown, not saved.
+  if (!userId) return null
   try {
     const clean = Object.fromEntries(Object.entries(extras).filter(([, v]) => v !== undefined))
     const subject = subjectOf(body)
@@ -90,7 +97,8 @@ async function save(sb: Awaited<ReturnType<typeof createSupabaseServer>>, userId
 export async function POST(req: Request) {
   const sb = await createSupabaseServer()
   const { data: { user } } = await sb.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const uid = user?.id ?? null
+  const signInFirst = () => Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const temple = asTemple(body?.temple)
@@ -110,7 +118,7 @@ export async function POST(req: Request) {
     if (bad) return Response.json({ error: bad }, { status: 400 })
     try {
       const chart = yixueChart(body)
-      const readingId = persist ? await save(sb, user.id, temple, body, chart, {}, chart.mode === 'cast' ? chart.ask : undefined) : null
+      const readingId = persist ? await save(sb, uid, temple, body, chart, {}, chart.mode === 'cast' ? chart.ask : undefined) : null
       return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
     } catch (e: any) {
       console.error('[xtell/chart] yixue', e?.message ?? e)
@@ -127,6 +135,7 @@ export async function POST(req: Request) {
   // it never frees a slot). Always saved, `refresh` or not, so every scan
   // is counted. The visit is titled by the dream.
   if (temple === 'jiemeng') {
+    if (!user) return signInFirst()
     const bad = dreamProblem(body?.dream)
     if (bad) return refuse(bad, bad === 'dream_required' ? 'write the dream' : 'the dream is too long')
     const dream = String(body.dream).trim()
@@ -166,6 +175,7 @@ export async function POST(req: Request) {
   // language looked up again keeps its lines; the same daily cap, counted
   // from saved visits; always saved. The visit is titled by the situation.
   if (temple === 'sunzi') {
+    if (!user) return signInFirst()
     const bad = situationProblem(body?.situation)
     if (bad) return refuse(bad, bad === 'situation_required' ? 'describe the situation' : 'the situation is too long')
     const situation = String(body.situation).trim()
@@ -201,6 +211,7 @@ export async function POST(req: Request) {
   // model is called, and refunded if no slip comes back. A cookie is never
   // cracked again on a refresh: the saved slip is the slip.
   if (temple === 'cookie') {
+    if (!user) return signInFirst()
     if (!persist) return refuse('cookie_refresh', 'a cookie is not cracked again')
     const bad = cookieProblem(body?.food, body?.mealAt)
     if (bad) return refuse(bad, 'bad cookie input')
@@ -255,7 +266,7 @@ export async function POST(req: Request) {
     if (!validPicks(spread, body?.picks)) return refuse('cards_invalid', 'bad draw')
     const ask = typeof body?.ask === 'string' ? body.ask.trim().slice(0, TAROT_ASK_MAX) : ''
     const chart = tarotChart(spread, body.picks, ask)
-    const readingId = await keep(() => save(sb, user.id, temple, { ...body, spread, ask }, chart, {}, ask || undefined))
+    const readingId = await keep(() => save(sb, uid, temple, { ...body, spread, ask }, chart, {}, ask || undefined))
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 
@@ -275,7 +286,7 @@ export async function POST(req: Request) {
     const year = bz ? liuNian(bz, body.birth.y, new Date().getFullYear()) : undefined
     const saved = temple === 'guanyin' ? { ...body, edition } : body
     const chart = temple === 'guanyin' ? { ...qian, edition } : qian
-    const readingId = await keep(() => save(sb, user.id, temple, saved, chart, { bazi: bz ?? undefined, year }))
+    const readingId = await keep(() => save(sb, uid, temple, saved, chart, { bazi: bz ?? undefined, year }))
     return Response.json({ temple, chart, bazi: bz ?? undefined, year, engine: ENGINES[temple], readingId })
   }
 
@@ -285,7 +296,7 @@ export async function POST(req: Request) {
     if (!validName(body?.given)) return refuse('given_invalid', 'bad name')
     try {
       const chart = nameChart(body.surname, body.given)
-      const readingId = await keep(() => save(sb, user.id, temple, body, chart, {}))
+      const readingId = await keep(() => save(sb, uid, temple, body, chart, {}))
       return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
     } catch (e: any) { return refuse('name_nodata', e?.message ?? 'no stroke data') }
   }
@@ -293,7 +304,7 @@ export async function POST(req: Request) {
     if (!validChar(body?.ch)) return refuse('char_invalid', 'write exactly one character')
     const info = charInfo(body.ch)
     if (!info) return refuse('char_nodata', `no data for ${body.ch}`)
-    const readingId = await keep(() => save(sb, user.id, temple, body, info, {}))
+    const readingId = await keep(() => save(sb, uid, temple, body, info, {}))
     return Response.json({ temple, chart: info, engine: ENGINES[temple], readingId })
   }
 
@@ -351,7 +362,7 @@ export async function POST(req: Request) {
     // shown under the pillars. Saved with the visit, and recomputed with
     // the chart when it is reopened (`refresh`).
     const chenggu = temple === 'bazi' ? chengGu(body.birth) : undefined
-    const readingId = await keep(() => save(sb, user.id, temple, body, chart, { match, year, chenggu }))
+    const readingId = await keep(() => save(sb, uid, temple, body, chart, { match, year, chenggu }))
     return Response.json({ temple, chart, match, year, chenggu, engine: ENGINES[temple], readingId })
   } catch (e: any) {
     console.error('[xtell/chart]', e?.message ?? e)

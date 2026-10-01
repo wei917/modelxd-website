@@ -37,6 +37,30 @@ screenshot, stored in `feedback`, works signed out; `BugReport`), the same
 pieces as www's sidebar. Before this the street had no contact at all; the
 address was only inside the Terms and Privacy pages.
 
+## Signed out: the free chart, sign-in at the first question (Oct 1)
+
+Owner, Oct 1, on the first Japanese ad clicks (4 and 5 seconds, neither
+signed in): "if they click ad, it should land to the landing page and no
+sign in is needed", then "don't build something too complicated". The
+Japanese ad links to a room (`?t=bazi`), and every room opened with the
+sign-in dialog that cannot be closed (Sep 25).
+
+On xtell.modelxd.com a signed-out visitor can now open a room, fill in the
+form and see the chart. The chart route casts it without a session and does
+not save it (`save()` returns null without an account, so there is no
+`readingId`). Sending a question to a teacher, or adding one, opens the
+ordinary sign-in dialog (closable; the chart and the question stay). After
+signing in the visitor comes back to the same room (the dialog keeps the
+hash), but the form starts again: details typed before are not carried
+over, on purpose, to keep it simple.
+
+Three rooms stay sign-in first, because their free step calls a model on
+our account: 解夢 and 孫子兵法 scan with one, and the fortune cookie writes its
+slip with one and counts two free a meal per account. The list is
+`SIGN_IN_FIRST` in `lib/xtell-guest.ts`; those rooms still mount
+`XTellAuthGate`, and their branches of the chart route answer 401 without a
+session. `/xtell` on www still requires sign-in for the whole page.
+
 ## The architecture rule (the one thing you must not break)
 
 **The model never computes the chart. Code computes the chart; the model only

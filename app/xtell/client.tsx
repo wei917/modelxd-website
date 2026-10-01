@@ -18,6 +18,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
+import { useAuthModal } from '../../lib/AuthModalContext'
+import { SIGN_IN_FIRST } from '../../lib/xtell-guest'
 import { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
 import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import { XTellFooter } from '../components/xtell/XTellNav'
@@ -371,7 +373,10 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
           <XTellDaily openSignal={dailySignal} onContinue={openDaily} />
         </div>
       </> : <>
-        <XTellAuthGate />
+        {/* Signed out, a room still casts its free chart; sign-in is asked
+            at the first question to a teacher (owner, Oct 1). Three rooms
+            stay sign-in first (lib/xtell-guest.ts). */}
+        {SIGN_IN_FIRST.has(temple) && <XTellAuthGate />}
         <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '') + (handoff?.feature.temple === temple ? handoff.feature.id : '') + `:${opened}`} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
           daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null}
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
@@ -437,6 +442,7 @@ export default function XTellClient({ standalone: standaloneOverride, almanacSec
  *  the way back leads to the street. */
 function TempleRoom({ temple, onBack, standalone = false, initial = null, daily = null, onResume, handoff = null }: { temple: Temple; onBack: () => void; standalone?: boolean; initial?: SavedReading | null; daily?: SavedDaily | null; onResume?: (r: SavedReading) => void; handoff?: Handoff | null }) {
   const t = useT()
+  const { show: showSignIn } = useAuthModal()
   // The site language rides with every reading so the master answers in it
   // (owner, Sep 24) — a Japanese visitor pressing the Chinese pre-filled
   // question still gets Japanese. The visitor writing in another language
@@ -974,11 +980,21 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     } catch (e: any) { fail(String(e?.message ?? e), e?.code); doneAssistant(idx, 0) }
   }
 
+  /** A signed-out visitor sees the chart for free; a question to a teacher
+   *  costs credits, so that is where sign-in is asked. The dialog can be
+   *  closed: the chart stays on screen, and the question in the box. */
+  const signedIn = async () => {
+    const { data: { session } } = await createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!).auth.getSession()
+    if (!session) showSignIn()
+    return !!session
+  }
+
   const send = async (fromButton = false) => {
     // Chart rooms allow a general reading. Teacher conversations require an
     // actual question; neither an empty click nor Enter may spend credits.
     const typed = input.trim()
     if ((!typed && (questionRequired || !fromButton)) || busy || joining.length > 0 || masters.length === 0 || unverified || savedProblem) return
+    if (!(await signedIn())) return
     const q = typed || t('xtell.question.general')
     const to = recipients.map(m => m.id), seats = masters.map(m => m.id)
     // One id per question: every master's request carries it, the server
@@ -1009,6 +1025,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     for (let i = ts.length - 1; i >= 0; i--) if (ts[i].role === 'user') { at = i; break }
     const u = at >= 0 ? ts[at] as Extract<Turn, { role: 'user' }> : null
     if (!u?.qid || joining.includes(m.id) || ts.slice(at + 1).some(tn => (tn as any).modelId === m.id)) return
+    if (!(await signedIn())) return
     setJoining(js => [...js, m.id]); clearErr()
     await askTeacher(m, u.content, u.qid, u.to ?? [], u.seats ?? masters.map(x => x.id), threadOf(ts.slice(0, at), m.id))
     setJoining(js => js.filter(x => x !== m.id))
