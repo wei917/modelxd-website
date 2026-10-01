@@ -16,6 +16,7 @@ import * as alibaba    from './alibaba'
 import * as xai        from './xai'
 import * as anthropic  from './anthropic'
 import * as runway     from './runway'
+import * as replicate from './replicate'
 import * as minimax    from './minimax'
 import * as moonshot   from './moonshot'
 import { startCall, endCall, logMediaUrl } from './call-log'
@@ -46,7 +47,7 @@ export interface CallContext {
   userId?: string | null
 }
 
-const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot', 'minimax']
+const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot', 'minimax', 'replicate']
 
 // Providers whose text path can ingest a raw PDF natively (full fidelity:
 // text + page images). A model only takes the native path when it ALSO
@@ -437,7 +438,8 @@ export async function generateVideo(
     : model.provider === 'runway'  ? await runway.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     : model.provider === 'minimax' ? await minimax.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
     : model.provider === 'alibaba' ? await alibaba.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
-    : noImplementation(model, 'video', ['google', 'xai', 'runway', 'alibaba', 'minimax'])
+    : model.provider === 'replicate' ? await replicate.generateVideo(model, prompt, size, seconds, attachments, onProgress, options)
+    : noImplementation(model, 'video', ['google', 'xai', 'runway', 'alibaba', 'minimax', 'replicate'])
     endCall(requestId, desc, {
       status:         'success',
       latency_ms:     Date.now() - t0,

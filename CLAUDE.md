@@ -451,6 +451,7 @@ Seven, all direct (`lib/providers/index.ts` routes on `model.provider`):
 | `runway` | `runway.ts` | Video generation. |
 | `moonshot` | `moonshot.ts` | Kimi models. |
 | `minimax` | `minimax.ts` | MiniMax H3 / Hailuo video (Global endpoint, async task pattern). |
+| `replicate` | `replicate.ts` | Reseller at the MAKER'S list price (Cloudflare since Dec 2025). Seedance 2.5 (`bytedance/seedance-2.5`): 480p/720p only, no 1080p; no video references (they bill another rate). Outputs expire in 1 h, so downloaded at once. Oct 1. |
 
 ### Native PDF handling
 `PROVIDERS_WITH_NATIVE_PDF = {openai, google}`. A model takes the native path
@@ -900,6 +901,7 @@ XAI_API_KEY=xxx
 MOONSHOT_API_KEY=xxx
 RUNWAYML_API_SECRET=xxx
 MINIMAX_API_KEY=                      # api.minimax.io (Global) — H3 video; unset = MiniMax rows stay unusable
+REPLICATE_API_TOKEN=                  # replicate.com (sign in with GitHub) — Seedance 2.5 at ByteDance's list price
 
 # Payments
 STRIPE_SECRET_KEY=sk_xxx
