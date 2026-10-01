@@ -23,6 +23,16 @@ const en = {
   models: 'models',
   reference: 'Reference',
   newCreation: 'New project',
+  // The studio's own history list (Oct 1), like XTell's per-temple list.
+  history: 'Your recent work',
+  seeAll: 'See all',
+  rename: 'Rename',
+  renameSave: 'Save',
+  renameCancel: 'Cancel',
+  renameFailed: 'Could not save. Please try again.',
+  delete: 'Delete',
+  deleteConfirm: 'Delete this?',
+  deleteFailed: 'Could not delete. Please try again.',
 }
 
 type Copy = typeof en
@@ -37,6 +47,8 @@ const copy: Record<Lang, Copy> = {
     error: '無法載入作品庫，請再試一次。', retry: '重試', signIn: '登入開啟作品庫', previous: '上一頁', next: '下一頁',
     open: '開啟專案', untitled: '未命名專案', models: '個模型', reference: '參考素材',
     newCreation: '新專案',
+    history: '你的紀錄', seeAll: '查看全部', rename: '改標題', renameSave: '儲存', renameCancel: '取消',
+    renameFailed: '沒有存成功，請再試一次。', delete: '刪除', deleteConfirm: '確定刪除？', deleteFailed: '沒有刪除成功，請再試一次。',
   },
   'zh-Hans': {
     subtitle: '用你选择的模型创作，留下适合你的成果。',
@@ -47,6 +59,8 @@ const copy: Record<Lang, Copy> = {
     error: '无法加载作品库，请重试。', retry: '重试', signIn: '登录打开作品库', previous: '上一页', next: '下一页',
     open: '打开项目', untitled: '未命名项目', models: '个模型', reference: '参考素材',
     newCreation: '新项目',
+    history: '你的记录', seeAll: '查看全部', rename: '改标题', renameSave: '保存', renameCancel: '取消',
+    renameFailed: '没有保存成功，请再试一次。', delete: '删除', deleteConfirm: '确定删除？', deleteFailed: '没有删除成功，请再试一次。',
   },
   ja: {
     subtitle: '選んだモデルでつくり、自分に合う結果を残す。',
@@ -57,6 +71,8 @@ const copy: Record<Lang, Copy> = {
     error: 'ライブラリを読み込めませんでした。もう一度お試しください。', retry: '再試行', signIn: 'ログインしてライブラリを開く', previous: '前へ', next: '次へ',
     open: 'プロジェクトを開く', untitled: '無題のプロジェクト', models: 'モデル', reference: '参考素材',
     newCreation: '新しいプロジェクト',
+    history: 'これまでの作品', seeAll: 'すべて見る', rename: '名前を変更', renameSave: '保存', renameCancel: 'キャンセル',
+    renameFailed: '保存できませんでした。もう一度お試しください。', delete: '削除', deleteConfirm: '削除しますか？', deleteFailed: '削除できませんでした。もう一度お試しください。',
   },
   ko: {
     subtitle: '원하는 모델로 만들고, 마음에 드는 결과를 남기세요.',
@@ -67,6 +83,8 @@ const copy: Record<Lang, Copy> = {
     error: '라이브러리를 불러오지 못했습니다. 다시 시도하세요.', retry: '다시 시도', signIn: '로그인하여 라이브러리 열기', previous: '이전', next: '다음',
     open: '프로젝트 열기', untitled: '제목 없는 프로젝트', models: '모델', reference: '참고 자료',
     newCreation: '새 프로젝트',
+    history: '내 기록', seeAll: '모두 보기', rename: '이름 바꾸기', renameSave: '저장', renameCancel: '취소',
+    renameFailed: '저장하지 못했습니다. 다시 시도해 주세요.', delete: '삭제', deleteConfirm: '삭제할까요?', deleteFailed: '삭제하지 못했습니다. 다시 시도해 주세요.',
   },
 }
 

@@ -144,7 +144,13 @@ the top bar carries the types (Text, Image, Video, Audio, and since Sep 29
 Film) as XTell's carries its temples: the studio (Codex's) is the door's one page, with the
 trending feed for the chosen type under the composer, and the Library is on the
 account page (`studio-type.ts` links the bar and the studio; old `?view=`
-links redirect). The shell around it (top bar, footer, sign-in,
+links redirect). Since Oct 1 the studio also lists your last five runs of the
+chosen type above the trending feed (`StudioHistory.tsx`, studio rows only:
+no `node_kind`; Film keeps only film rows and Video leaves them out, by
+`slots->0->options->>film`), and the Library filters Film on its own. A
+reopened picture/video/voice run with a recorded pick opens on its canvas;
+picking marks `chosen` on the stored slots and changes nothing else in them
+(it used to rewrite them and lose every model's settings). The shell around it (top bar, footer, sign-in,
 account page, legal note) is `app/components/xcreate/*` with its own
 `xcreate-shell.css`, every rule scoped to `html[data-site="xcreate"]` because
 Nav loads it on every host. The `--xc-*` palette is defined there once. A

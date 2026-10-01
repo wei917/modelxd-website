@@ -68,7 +68,11 @@ export async function GET(req: NextRequest) {
   const query = (withDeletedFilter: boolean) => {
     let q = supabase.from('xcreates').select('*', { count: 'exact' }).eq('user_id', user.id)
     if (withDeletedFilter) q = q.is('deleted_at', null)
-    if (filter !== 'all')  q = q.eq('mode', filter)
+    // Film is the studio's fifth type: a video row whose first slot names it
+    // (lib/film/driver.ts). It gets its own filter and leaves Video (Oct 1).
+    if (filter === 'film') q = q.eq('mode', 'video').not('slots->0->options->>film', 'is', null)
+    else if (filter !== 'all') q = q.eq('mode', filter)
+    if (filter === 'video') q = q.is('slots->0->options->>film', null)
     return q.order('created_at', { ascending: false }).range(from, to)
   }
 

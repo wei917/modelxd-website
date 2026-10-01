@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from 'react'
 import ProviderLogo from './ProviderLogo'
+import { useT } from '../../lib/i18n'
 import { MAKER_LABELS, makerOf } from '../../lib/model-maker'
 
 export interface MatchResultEntry {
@@ -70,7 +71,8 @@ export default function MatchResult({
   // "MVP" implies a field to be most-valuable IN — with only two
   // competitors the natural word is "WINNER", and a solo run gets no
   // badge at all (CC, July 16-17).
-  const topBadge = entries.length >= 3 ? 'MVP' : entries.length === 2 ? 'WINNER' : null
+  const t = useT()
+  const topBadge = entries.length >= 3 ? 'MVP' : entries.length === 2 ? t('mr.winner') : null
   const [shown, setShown] = useState(false)
   useEffect(() => { const t = setTimeout(() => setShown(true), 30); return () => clearTimeout(t) }, [])
 
@@ -127,10 +129,10 @@ export default function MatchResult({
                 fontSize: 38, lineHeight: 1, marginTop: mvp ? 6 : 2,
                 color: e.error ? 'var(--muted)' : mvp ? 'var(--red)' : 'var(--white)',
               }}>
-                {e.error ? 'DNF' : e.score.toFixed(1)}
+                {e.error ? t('mr.dnf') : e.score.toFixed(1)}
               </div>
               <div style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '.2em', color: 'var(--muted)', marginTop: 3, textTransform: 'uppercase' }}>
-                match score
+                {t('mr.score')}
               </div>
 
               <div style={{ textAlign: 'center', marginTop: 11 }}>
@@ -162,14 +164,14 @@ export default function MatchResult({
                        : 'var(--muted2)',
                   fontWeight: 700,
                 }}>
-                  {e.error ? '—' : `${fmtSpend(e.cost)} total`}
+                  {e.error ? '—' : t('mr.total').replace('{cost}', fmtSpend(e.cost))}
                 </span>
                 {/* Deliberately language-neutral: the count IS the message,
                     and it explains a total that would otherwise look wrong
                     next to the per-token rate. */}
                 {!e.error && (e.searches ?? 0) > 0 && (
                   <span
-                    title={`${e.searches} web search${e.searches === 1 ? '' : 'es'} — billed per search, on top of tokens`}
+                    title={t('mr.searches').replace('{n}', String(e.searches))}
                     style={{ color: 'var(--muted2)' }}
                   >
                     🌐 {e.searches}
@@ -190,7 +192,7 @@ export default function MatchResult({
                 background: e.isPick ? 'var(--red)' : 'transparent',
                 color: e.isPick ? '#fff' : 'var(--muted)',
               }}>
-                {e.isPick ? '★ your pick' : e.error ? 'failed' : '—'}
+                {e.isPick ? `★ ${t('xc.yourpick')}` : e.error ? t('mr.failed') : '—'}
               </div>
             </div>
           )

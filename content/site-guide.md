@@ -60,8 +60,10 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean; its own front door is xcreate.modelxd.com, where the top bar picks
-what to make (Text, Image, Video, Audio, Film) and your past work (the Library) is on
-the account page. Your private studio. Pick up to four models and run the same prompt through
+what to make (Text, Image, Video, Audio, Film); your latest five of the
+chosen type are listed under the composer (Continue, rename, delete), and all of
+your past work (the Library, filterable by type, Film included) is on the
+account page. A run where you already picked a winner reopens on its canvas. Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
 image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a

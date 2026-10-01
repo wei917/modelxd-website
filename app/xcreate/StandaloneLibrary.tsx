@@ -6,6 +6,7 @@ import { useAuthModal } from '@/lib/AuthModalContext'
 import { useLang } from '@/lib/i18n'
 import ModeIcon from '../components/ModeIcon'
 import { xcreateStudioCopy } from './standalone-copy'
+import { STUDIO_TYPES, type StudioType } from '../components/xcreate/studio-type'
 // The account page shows the Library without the studio, so it brings the
 // studio's stylesheet (every rule scoped to the XCreate door).
 import './standalone.css'
@@ -23,7 +24,7 @@ export default function StandaloneLibrary({ onNew }: { onNew: () => void }) {
   const { lang, t } = useLang()
   const copy = xcreateStudioCopy(lang)
   const { show } = useAuthModal()
-  const [filter, setFilter] = useState<Mode | 'all'>('all')
+  const [filter, setFilter] = useState<StudioType | 'all'>('all')
   const [page, setPage] = useState(0)
   const [retry, setRetry] = useState(0)
   const [data, setData] = useState<Page | null>(null)
@@ -45,9 +46,10 @@ export default function StandaloneLibrary({ onNew }: { onNew: () => void }) {
   return <section className="xcs-library" aria-label={copy.creationsTitle}>
     <div className="xcs-library-toolbar">
       <label className="xcs-filter-label">{copy.type}
-        <select value={filter} onChange={e => { setFilter(e.target.value as Mode | 'all'); setPage(0) }}>
+        <select value={filter} onChange={e => { setFilter(e.target.value as StudioType | 'all'); setPage(0) }}>
           <option value="all">{copy.all}</option>
-          {(['image', 'video', 'text', 'audio'] as const).map(mode => <option key={mode} value={mode}>{t(`mode.${mode}`)}</option>)}
+          {/* The top bar's types and order; Film is its own (Oct 1), no longer inside Video. */}
+          {STUDIO_TYPES.map(type => <option key={type} value={type}>{t(`mode.${type}`)}</option>)}
         </select>
       </label>
       <button className="xcs-secondary" onClick={onNew}>+ {copy.newCreation}</button>
@@ -70,7 +72,8 @@ export default function StandaloneLibrary({ onNew }: { onNew: () => void }) {
               {mediaUrl && (item.mode === 'image' || preview?.isImage)
                 ? <img src={mediaUrl} alt="" loading="lazy" />
                 : mediaUrl && (item.mode === 'video' || preview?.isVideo)
-                  ? <video src={mediaUrl} preload="metadata" muted playsInline />
+                  // #t=0.1: mobile Chrome paints a blank box for a preload="metadata" video without it.
+                  ? <video src={`${mediaUrl}#t=0.1`} preload="metadata" muted playsInline />
                   : item.mode === 'text' && preview?.text
                     ? <p>{preview.text.slice(0,240)}</p>
                     : <ModeIcon m={isFilm ? 'film' : item.mode} />}

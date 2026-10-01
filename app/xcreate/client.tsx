@@ -13,9 +13,10 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useAuthModal } from '../../lib/AuthModalContext'
-import { useLang } from '../../lib/i18n'
+import { useLang, tOr } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
+import StudioHistory from './StudioHistory'
 import FilmStudio from './FilmStudio'
 import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
@@ -2578,6 +2579,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
             kind: (r.node_kind ?? null) as any,
             label: sl?.name ?? sl?.model_name ?? undefined,
             cost: Number(sl?.cost ?? 0) || undefined,
+            responseTime: Number(sl?.responseTime ?? 0) || undefined,
           })
         }
       }
@@ -2879,8 +2881,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       error:        !!slots[i]?.error,
     })))
     setMatchResult({
-      eyebrow: `Run complete · ${activeModels.length} model${activeModels.length > 1 ? 's' : ''} · ${mode}`,
-      title:   `${chosen.display_name} wins`,
+      eyebrow: t('xc.done.eyebrow').replace('{n}', String(activeModels.length)).replace('{mode}', t(`mode.${mode}`)),
+      title:   t('xc.done.wins').replace('{name}', chosen.display_name),
       winnerName: chosen.display_name,
       winnerProvider: makerKey(chosen.provider, chosen.model_name),
       entries: activeModels.map((m, i) => ({
@@ -3563,6 +3565,21 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (typeof continueIdx === 'number' && continueIdx >= 0 && continueIdx < rawSlots.length) {
       targetIdx = continueIdx
     }
+    // A reopened picture, video or voice run that already has a pick opens
+    // on its canvas (owner, Oct 1: "how to go to canvas directly if I have
+    // selected an answer?"). Since August the canvas has one node per model
+    // output, with time and cost in each node's details, so every result
+    // stays in view (the Aug 20 reason for landing on the cards was a board
+    // that showed only the output node). Text keeps the cards: its
+    // continuation is a chat that shows one answer.
+    let toCanvas = false
+    if (targetIdx === null && itemMode !== 'text') {
+      const picked = rawSlots.findIndex((sl: any) => sl?.chosen)
+      if (picked >= 0 && picked < restoredSlots.length && !restoredSlots[picked].error) {
+        targetIdx = picked
+        toCanvas = true
+      }
+    }
 
     if (targetIdx !== null && restoredModels[targetIdx]) {
       setChosenIdx(targetIdx)
@@ -3585,6 +3602,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       }
       // Text continuation is a conversation; image/video continuation is
       // the workflow view (CC, July 26).
+      if (toCanvas) setWfView('canvas')
       setPhase(itemMode === 'text' ? 'chatting' : 'workflow')
     } else {
       // Every slot failed → the workflow board would show one dead node,
@@ -3620,7 +3638,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       // A recorded winner carries into chosenIdx so a decided run reads
       // as a record, not a re-vote — the pick affordances gate on
       // chosenIdx === null — and the board stays reachable through the
-      // per-card "Continue on canvas" button.
+      // per-card "Continue on canvas" button. (Since Oct 1 only text runs,
+      // undecided runs and runs whose pick failed land here; decided
+      // picture/video/voice runs open on the canvas above.)
       const chosenStored = rawSlots.findIndex((sl: any) => sl?.chosen)
       setChosenIdx(chosenStored >= 0 ? chosenStored : null)
       setChatHistory([])
@@ -3989,7 +4009,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   background: 'var(--red)', color: '#fff', fontWeight: 800, fontSize: 14,
                 }}
               >
-                ⚡ Keep creating with {matchResult.winnerName}
+                ⚡ {t('xc.done.keep').replace('{name}', matchResult.winnerName)}
               </button>
               <button
                 type="button"
@@ -3999,7 +4019,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   background: 'transparent', color: 'var(--white)', fontWeight: 700, fontSize: 14, cursor: 'pointer',
                 }}
               >
-                Start Over
+                {t('xc.startover')}
               </button>
               {/* XBoard is www's; the studio door offers no way there (owner, Oct 1). */}
               {!isStandalone && <a
@@ -4084,8 +4104,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
           {isStandalone && filmOpen ? (
-            <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
-              onSignIn={next => showAuth(next ?? '/?type=film')} />
+            <>
+              <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
+                onSignIn={next => showAuth(next ?? '/?type=film')} />
+              {/* Past films under the brief, like the other types' history. */}
+              {!filmId && userId && <StudioHistory type="film" userId={userId} />}
+            </>
           ) : phase === 'workflow' ? (
             <div>
               {/* Strip ⇄ canvas toggle. The canvas is the ComfyUI-style
@@ -4287,7 +4311,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     )}
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--green)', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ Your pick</span>
+                    <span style={{ fontSize: 11, color: 'var(--green)', background: '#34d39918', padding: '4px 10px', borderRadius: 8 }}>✓ {t('xc.yourpick')}</span>
                     <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--white)', fontWeight: 600, borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
                       ← {t('wf.newsession')}
                     </button>
@@ -4297,7 +4321,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* Dismissed models */}
                 {activeModels.length > 1 && (
                   <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' as const }}>
-                    <span style={{ fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>Dismissed:</span>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>{t('xc.dismissed')}</span>
                     {activeModels.map((m, i) => i === chosenIdx ? null : (
                       <span key={i} style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--border2)', padding: '3px 10px', borderRadius: 8, fontFamily: 'var(--mono)', textDecoration: 'line-through' }}>
                         {m.model_name ?? m.display_name}
@@ -5242,6 +5266,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     tools were taken off (owner, Sep 28: "remove 範本 section",
                     "remove 工具 in image creation as well"). Setup screen
                     only, like the wall above. */}
+                {/* Your own recent runs of this type come first (owner, Oct 1:
+                    history on the tool page, like XTell's temples). */}
+                {isStandalone && userId && phase === 'setup' && slots.length === 0 && (
+                  <StudioHistory type={mode} userId={userId} />
+                )}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
                   <StandaloneTrending kind={mode}
                     onUse={template => { void applyTemplate(template) }} />
@@ -5255,8 +5284,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         stands; Start Over remains the way onward. */}
                     {phase === 'picking' && slots.length > 1 && chosenIdx === null && (
                       <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                        <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>Which result won?</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>Pick it to record your vote and keep generating with that model</div>
+                        <div style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, marginBottom: 4 }}>{t('xc.whichwon')}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xc.whichwon.sub')}</div>
                       </div>
                     )}
                     {/* 4 results → 2×2 grid (readable), otherwise single row.
@@ -5333,20 +5362,20 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                               const compatibleModes = (model.modes ?? []).filter(x => modeMatchesMode(x, mode))
 
                               const parts: string[] = []
-                              if (used.mode         && compatibleModes.length > 1)         parts.push(modeLabel(used.mode))
+                              if (used.mode         && compatibleModes.length > 1)         parts.push(tOr(t, `ml.${used.mode}`, modeLabel(used.mode)))
                               if (used.size         && sizes.length          > 0)          parts.push(used.size)
                               if (used.duration     && allDurations.length   > 0)          parts.push(`${used.duration}s`)
                               if (used.aspect_ratio && ars.length            > 0)          parts.push(used.aspect_ratio)
-                              if (used.quality      && qualities.length      > 1)          parts.push(`${used.quality} quality`)
+                              if (used.quality      && qualities.length      > 1)          parts.push(t('xc.sum.quality').replace('{q}', used.quality))
                               if (mode === 'image' && (model.output_config?.image?.max_count ?? 1) > 1 && (used.count ?? 1) > 0) {
-                                parts.push(`${used.count ?? 1} image${(used.count ?? 1) > 1 ? 's' : ''}`)
+                                parts.push((used.count ?? 1) > 1 ? t('xc.sum.image.many').replace('{n}', String(used.count)) : t('xc.sum.image.one'))
                               }
                               // Watermark only applies to Alibaba image/video models —
                               // never to text. Skip the line for any other case.
                               const summaryShowsWatermark = (mode === 'video' || mode === 'image') && model.provider === 'alibaba'
-                              if (summaryShowsWatermark && used.watermark === true)  parts.push('watermark on')
-                              if (summaryShowsWatermark && used.watermark === false) parts.push('watermark off')
-                              if (mode === 'video' && used.generate_audio === false) parts.push('audio off')
+                              if (summaryShowsWatermark && used.watermark === true)  parts.push(t('xc.sum.wm.on'))
+                              if (summaryShowsWatermark && used.watermark === false) parts.push(t('xc.sum.wm.off'))
+                              if (mode === 'video' && used.generate_audio === false) parts.push(t('xc.sum.audio.off'))
                               // THIS MODEL'S share of the bill. The per-slot cost
                               // row was removed once for clutter, leaving the
                               // composer's total as the only price signal — but
@@ -5432,7 +5461,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = color + '18' }}
                                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent' }}
                                 >
-                                  {mode === 'image' || mode === 'video' ? `Generate more with ${stripModelVariant(model.display_name)} →` : `Select ${stripModelVariant(model.display_name)} →`}
+                                  {(mode === 'image' || mode === 'video' ? t('xc.genmore') : t('xc.select')).replace('{name}', stripModelVariant(model.display_name))} →
                                 </button>
                               </div>
                             )}
@@ -5454,7 +5483,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)' }}
                                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)' }}
                                 >
-                                  Continue on canvas →
+                                  {t('xc.oncanvas')} →
                                 </button>
                               </div>
                             )}
@@ -5480,7 +5509,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       const totalActual = slots.reduce((sum, s) => sum + (s.done && s.cost > 0 ? s.cost : 0), 0)
                       return (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 32 }}>
-                          <button className="btn-secondary" onClick={reset}>← Start Over</button>
+                          <button className="btn-secondary" onClick={reset}>← {t('xc.startover')}</button>
                           {totalActual > 0 && (
                             <span style={{
                               fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)',

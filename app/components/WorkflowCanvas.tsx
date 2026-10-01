@@ -62,6 +62,8 @@ export type CanvasNode = {
   parentIds?: string[]
   label?: string
   cost?: number
+  /** The model's own generation time in ms (XCreate output nodes). */
+  responseTime?: number
   kind?: NodeKind | null
   /** Output nodes carry the row they came from and WHICH slot. A two-model
    *  run is two nodes sharing one rowId — the board shows both outputs the
@@ -351,16 +353,17 @@ function NodeActionPanel({ n, origin, onPlay, onClose, onDelete, onRegen, pick, 
   }, [n])
 
   const rows: Array<[string, string]> = []
-  if (n.label) rows.push(['model', n.label])
-  if (origin) rows.push(['scene', origin])
-  if (n.kind) rows.push(['kind', n.kind])
-  if (meta.w && meta.h) rows.push(['resolution', `${meta.w}×${meta.h}`])
-  if (meta.dur) rows.push(['length', `${meta.dur.toFixed(1)}s`])
-  if (typeof meta.size === 'number') rows.push(['size', meta.size > 1048576 ? `${(meta.size / 1048576).toFixed(1)} MB` : `${Math.round(meta.size / 1024)} KB`])
-  if (n.attach) rows.push(['file', n.attach.fileName])
-  if (n.createdAt) rows.push(['created', new Date(n.createdAt).toLocaleString()])
-  if (typeof n.cost === 'number' && n.cost > 0) rows.push(['cost', `$${n.cost.toFixed(3)}`])
-  if (n.error) rows.push(['error', n.error])
+  if (n.label) rows.push([t('wf.d.model'), n.label])
+  if (origin) rows.push([t('wf.d.scene'), origin])
+  if (n.kind) rows.push([t('wf.d.kind'), n.kind])
+  if (meta.w && meta.h) rows.push([t('wf.d.resolution'), `${meta.w}×${meta.h}`])
+  if (meta.dur) rows.push([t('wf.d.length'), `${meta.dur.toFixed(1)}s`])
+  if (typeof meta.size === 'number') rows.push([t('wf.d.size'), meta.size > 1048576 ? `${(meta.size / 1048576).toFixed(1)} MB` : `${Math.round(meta.size / 1024)} KB`])
+  if (n.attach) rows.push([t('wf.d.file'), n.attach.fileName])
+  if (n.createdAt) rows.push([t('wf.d.created'), new Date(n.createdAt).toLocaleString()])
+  if (typeof n.responseTime === 'number' && n.responseTime > 0) rows.push([t('wf.d.time'), `${(n.responseTime / 1000).toFixed(1)}s`])
+  if (typeof n.cost === 'number' && n.cost > 0) rows.push([t('wf.d.cost'), `$${n.cost.toFixed(3)}`])
+  if (n.error) rows.push([t('wf.d.error'), n.error])
 
   // The window moves by its header (owner, Aug 9) — a translate offset on
   // top of the anchored position, so resize and anchoring stay intact.

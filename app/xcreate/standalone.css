@@ -193,3 +193,35 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-film-actions > * { flex: 0 0 auto; padding-left: 26px; padding-right: 26px; }
   .xcs-film-head h1 { font-size: 34px; }
 }
+
+/* The studio's own history (Oct 1): your last five of the current type,
+   under the composer, like XTell's per-temple list. Phone first: the
+   actions drop under the title below 640px. */
+.xcs-history { box-sizing: border-box; max-width: 800px; margin: 40px auto 0; border: 1px solid var(--border2); border-radius: 14px; background: var(--surface); padding: 18px 20px 8px; }
+.xcs-history-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.xcs-history-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--white); }
+.xcs-history-head a { font-size: 13px; color: var(--muted2); text-decoration: none; }
+.xcs-history-head a:hover { color: var(--red); }
+.xcs-history ul { list-style: none; margin: 0; padding: 0; }
+.xcs-history li { border-top: 1px solid var(--border); padding: 10px 0; }
+.xcs-history li:first-child { border-top: none; }
+.xcs-history-row { display: flex; align-items: center; gap: 12px; }
+.xcs-history-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.xcs-history-title { font-size: 14px; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xcs-history-text time { font-size: 12px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+.xcs-history-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted2); }
+.xcs-history-actions button, .xcs-history-open { box-sizing: border-box; display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border: 1px solid var(--border2); border-radius: 8px; background: transparent; color: var(--white); font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
+.xcs-history-actions button:disabled { opacity: .5; cursor: default; }
+.xcs-history-open { border-color: var(--red); color: var(--red); font-weight: 600; }
+.xcs-history-actions .xcs-history-danger { border-color: var(--red); color: var(--red); }
+.xcs-history-rename { display: flex; gap: 8px; align-items: center; }
+.xcs-history-rename input { box-sizing: border-box; flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 8px 12px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); color: var(--white); font: inherit; font-size: 14px; }
+.xcs-history-rename .xcs-primary, .xcs-history-rename .xcs-secondary { min-height: 40px; padding: 8px 14px; }
+.xcs-history-error { margin: 6px 0 0; font-size: 12px; color: var(--red); }
+@media (max-width: 640px) {
+  .xcs-history { margin-top: 28px; padding: 14px 14px 6px; }
+  .xcs-history-row { flex-wrap: wrap; gap: 8px; }
+  .xcs-history-actions { width: 100%; }
+  .xcs-history-rename { flex-wrap: wrap; }
+  .xcs-history-rename input { flex-basis: 100%; }
+}
