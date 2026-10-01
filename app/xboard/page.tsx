@@ -38,6 +38,10 @@ interface AIModel {
   input_modalities: string[]
   output_modalities: string[]
   model_pricing: ModelPricing | null
+  /** The maker's own list price when we buy through a reseller (migration 121). */
+  official_pricing?: ModelPricing | null
+  /** The reseller; null = the maker directly. */
+  via?: string | null
   modes: string[] | null
   output_config: { text?: { capabilities?: string[] } } | null
   tags: string[]
@@ -161,6 +165,11 @@ function rateNum(r: TokenRate | undefined): number | null {
 function headlinePrice(m: AIModel): number | null {
   const mode = primaryMode(m)
   const p = m.model_pricing ?? {}
+  return headlineOf(mode, p)
+}
+
+/** The headline rate of any pricing object, by the model's primary mode. */
+function headlineOf(mode: string, p: ModelPricing): number | null {
   if (mode === 'video' && p.per_video_second) {
     const r = p.per_video_second
     return r['720p'] ?? r['default'] ?? Object.values(r)[0] ?? null
@@ -781,6 +790,10 @@ function ModelRow({ model: m }: { model: MergedRow }) {
         {(() => {
           const p = priceParts(m)
           if (!p) return '-'
+          // Bought through a reseller (owner, Oct 1: two prices): say so,
+          // and show the maker's own price when ours differs from it.
+          const official = m.via && m.official_pricing ? headlineOf(primaryMode(m), m.official_pricing) : null
+          const ours = headlinePrice(m)
           return (
             <>
               <span style={{ display: 'inline-block', minWidth: 56, textAlign: 'right' }}>
@@ -789,6 +802,12 @@ function ModelRow({ model: m }: { model: MergedRow }) {
               <span style={{ display: 'inline-block', minWidth: 56, textAlign: 'left', color: 'var(--muted)', paddingLeft: 6 }}>
                 / {p.unit}
               </span>
+              {m.via && (
+                <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--muted)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                  via {m.via.charAt(0).toUpperCase() + m.via.slice(1)}
+                  {official != null && ours != null && Math.abs(official - ours) > 1e-9 && <> · official {fmtPrice(official)}</>}
+                </div>
+              )}
             </>
           )
         })()}

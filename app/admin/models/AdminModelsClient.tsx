@@ -93,6 +93,10 @@ export interface AdminModel {
   output_modalities:  string[]
   tags:               string[]
   model_pricing:      ModelPricing | null
+  /** The maker's own list price when we buy through a reseller (`via`);
+   *  null = model_pricing is the official price. Migration 121. */
+  official_pricing?:  ModelPricing | null
+  via?:               string | null
   input_config:       InputConfig  | null
   output_config:      OutputConfig | null
   created_at?:        string
@@ -131,6 +135,8 @@ const EMPTY: AdminModel = {
   output_modalities: ['text'],
   tags:              [],
   model_pricing:     null,
+  official_pricing:  null,
+  via:               null,
   input_config:      null,
   output_config:     null,
 }
@@ -686,6 +692,18 @@ function ModelForm({ row, onSave, onCancel, busy }: {
             onChange={r => patchPerVideoSecond(r)}
           />
         )}
+        {/* Two prices (owner, Oct 1): the rates above are what we pay and
+            bill; when we buy through a reseller, the maker's own list price
+            goes here so the board can show both. */}
+        <Row>
+          <Field label="Via (reseller)" hint="Empty when we buy from the maker directly, e.g. replicate, runway.">
+            <input value={m.via ?? ''} onChange={e => setM({ ...m, via: e.target.value.trim() ? e.target.value : null })}
+              style={inp} placeholder="(direct)" />
+          </Field>
+        </Row>
+        <Field label="Official price (JSON)" hint="Only with Via: the maker's own list price, same shape as the pricing above. Empty = the pricing above is official.">
+          <OfficialPriceInput value={m.official_pricing ?? null} onChange={v => setM({ ...m, official_pricing: v })} />
+        </Field>
       </Section>
 
       {/* Modes — set of input shapes this model supports. User picks one at generation time. */}
@@ -970,6 +988,31 @@ function sliceConsumed(buf: string): string {
 }
 
 // ── Subcomponents ────────────────────────────────────────────────────────────
+
+/** A JSON box for official_pricing: the text is kept while it doesn't parse,
+ *  and only valid JSON (an object, or empty for null) reaches the row. */
+function OfficialPriceInput({ value, onChange }: { value: ModelPricing | null; onChange: (v: ModelPricing | null) => void }) {
+  const [text, setText] = useState(() => value ? JSON.stringify(value, null, 2) : '')
+  const [bad, setBad] = useState(false)
+  return (
+    <>
+      <textarea value={text} rows={4} spellCheck={false} placeholder='{"per_video_second": {"480p": 0.103, "720p": 0.231}}'
+        onChange={e => {
+          const t = e.target.value
+          setText(t)
+          if (!t.trim()) { setBad(false); onChange(null); return }
+          try {
+            const v = JSON.parse(t)
+            const ok = v && typeof v === 'object' && !Array.isArray(v)
+            setBad(!ok)
+            if (ok) onChange(v)
+          } catch { setBad(true) }
+        }}
+        style={{ ...inp, fontFamily: 'var(--font-mono), monospace', fontSize: 13, minHeight: 80 }} />
+      {bad && <span style={{ color: 'var(--red)', fontSize: 13 }}>Not valid JSON (an object) yet: not saved.</span>}
+    </>
+  )
+}
 
 function Section({ title, accent = 'var(--red)', children }: {
   title: string; accent?: string; children: React.ReactNode

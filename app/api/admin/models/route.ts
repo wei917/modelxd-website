@@ -27,6 +27,10 @@ interface InRow {
   output_modalities:  string[]
   tags?:              string[]
   model_pricing?:     any
+  /** The maker's own list price when we buy through a reseller (migration 121). */
+  official_pricing?:  any
+  /** The reseller we buy through; null = the maker directly. */
+  via?:               string | null
   input_config?:      any
   output_config?:     any
 }
@@ -72,6 +76,10 @@ export async function POST(req: Request): Promise<Response> {
     model_pricing:      body.model_pricing ?? null,
     input_config:       body.input_config  ?? null,
     output_config:      body.output_config ?? null,
+    // Only when sent: a tab from before migration 121 saves without them,
+    // and a missing key must leave the stored value alone, not null it.
+    ...('official_pricing' in body ? { official_pricing: body.official_pricing ?? null } : {}),
+    ...('via' in body ? { via: typeof body.via === 'string' && body.via.trim() ? body.via.trim().toLowerCase().slice(0, 40) : null } : {}),
     updated_at:         new Date().toISOString(),
   }
 

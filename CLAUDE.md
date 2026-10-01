@@ -504,6 +504,11 @@ Key columns:
   `tokens.text_output` / `tokens.cached_input` (per 1M; `text_output` may
   be a `{ default, by_level }` object), media rates under their own keys.
   There are NO flat `input_price`/`output_price` columns — verified Aug 6.
+- `official_pricing` / `via` (migration 121, Oct 1) — when we buy a model
+  from a RESELLER (`via`: 'runway', 'replicate', …), `official_pricing` holds
+  the maker's own list price in the same shape; `model_pricing` stays what we
+  pay and bill. Null = bought from the maker directly (every first-party
+  row). XBoard shows "via X · official $Y" under the price when they differ.
 - `modes` — text[] of input-shape patterns (`text_to_video`, `image_to_video`,
   `start_end_frames`, `pdf_to_text`, …). A **set**, not a single value.
 - `input_config` / `output_config` — jsonb per-modality options
