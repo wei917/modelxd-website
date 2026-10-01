@@ -95,7 +95,8 @@ const S = STRINGS as any, LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
 const keys = Object.keys(S).filter(k => k.startsWith('xtell.pt.'))
 check('its strings exist in five languages', keys.length >= 27 && keys.every(k => LANGS.every(l => typeof S[k]?.[l] === 'string' && S[k][l].trim())), String(keys.length))
 check('the trademark note names its owner and says this is not the official test', LANGS.every(l => S['xtell.pt.tm'][l].includes('MBTI®') && S['xtell.pt.tm'][l].includes('The Myers-Briggs Company')))
-check('the room box shows the type', LANGS.every(l => S['xtell.pt.attach'][l].includes('{type}')))
+check('the room box names the type only once ticked; unticked it says nothing about which', LANGS.every(l => S['xtell.pt.attach'][l].includes('{type}') && !/\{type\}|[EI][SN][TF][JP]/.test(S['xtell.pt.attachPlain'][l])) && read('app/components/xtell/XTellPersonality.tsx').includes("{on ? t('xtell.pt.attach').replace('{type}', saved) : t('xtell.pt.attachPlain')}"))
+check('the account page keeps the saved type hidden until 修改, like the birthday', read('app/components/xtell/XTellPersonality.tsx').includes("<span>{t('xtell.dy.savedHidden')}</span>") && !read('app/components/xtell/XTellPersonality.tsx').includes('<span className="xtell-pt-type">{saved}</span>'))
 check('the account page shows the section on the XTell door', read('app/profile/page.tsx').includes('<DailyProfileSettings /><PersonalitySettings />'))
 
 routeChecks().then(() => {

@@ -969,6 +969,9 @@ temple that reads everything a visitor has told us.
   that it is the visitor's own description, not a fortune and not a
   diagnosis; to use it only where it fits, a mention or two; never over the
   stick, cards, chart or book; never as fate or a ranking of types.
+- **Not on screen unasked** (owner, Oct 1): the room's box reads
+  「附上我的人格類型」 and names the letters only once ticked; the account
+  page shows 「已儲存（已隱藏，按「修改」查看）」, like the birthday.
 - **The word:** the label says MBTI because that is what people call it,
   with 「MBTI® 為 The Myers-Briggs Company 的商標…並非官方測驗」 under it.
 

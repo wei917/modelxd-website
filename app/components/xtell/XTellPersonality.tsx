@@ -125,7 +125,9 @@ export function PersonalitySettings() {
         </form>
       ) : saved ? (
         <div className="xtell-dy-profile">
-          <span className="xtell-pt-type">{saved}</span>
+          {/* Hidden like the saved birthday (owner, Sep 28 / Oct 1): the
+              letters show only in the form, after 修改. */}
+          <span>{t('xtell.dy.savedHidden')}</span>
           <span className="xtell-dy-row">
             <button type="button" className="xtell-dy-link" onClick={edit}>{t('xtell.pt.edit')}</button>
             <button type="button" className="xtell-dy-link" disabled={busy} onClick={() => void remove()}>{t('xtell.pt.delete')}</button>
@@ -158,7 +160,9 @@ export function PersonalityAttach({ saved, on, setOn, partner, setPartner }: {
       {saved ? (
         <label className="xtell-dy-check">
           <input type="checkbox" checked={on} onChange={e => setOn(e.target.checked)} />
-          {t('xtell.pt.attach').replace('{type}', saved)}
+          {/* The letters show only once ticked: someone may be watching the
+              screen (owner, Oct 1), as with the birthday. */}
+          {on ? t('xtell.pt.attach').replace('{type}', saved) : t('xtell.pt.attachPlain')}
         </label>
       ) : (
         <a className="xtell-dy-link" href="/profile#xtell-personality">{t('xtell.pt.hint')}</a>
