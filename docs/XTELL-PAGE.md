@@ -922,6 +922,26 @@ all in git history or the session scratchpad only.
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
 
+## 「填入我的生日」 (Oct 1)
+
+Owner: "when user enter that kind of temple, we add a button to fill user's
+info, but not auto fill since other people will see their birthday if they
+watch you use the website."
+
+- Every birth row that is the visitor's own (the single rows, the first
+  person in 月老 and 合盤, the stick rooms' optional 稟告 birth) shows
+  「填入我的生日」 when a birthday is saved; pressing it fills the date and
+  time. Nothing is filled on load.
+- The source is the daily fortune's saved profile (`/api/xtell/profile`),
+  else this browser's 占星 copy (`xtell.zhanxing.birth`). Gender and city
+  come from the browser copy only when it is the same birthday (the profile
+  stores neither). A room that needs the hour (紫微, 九曜) keeps its own when
+  the saved hour is unknown.
+- 占星 used to restore its copy on load, and the daily form prefilled a new
+  profile from it; both now wait for the same button.
+- The profile is fetched quietly when a room opens, but nothing from it is on
+  screen until the press.
+
 ## The visitor's own personality type (Oct 1)
 
 Owner (Sep 30): "we allow users to enter in the profile page, and optionally

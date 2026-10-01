@@ -337,16 +337,18 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
   const t = useT()
   const { lang } = useLang()
   const errId = useId()
-  // A new profile starts from 占星塔's remembered birth when there is one:
-  // a convenience, never consent (the box below is always unticked).
+  // A new profile can start from 占星塔's remembered birth, but only when the
+  // visitor presses 「填入我的生日」 (owner, Oct 1: never on screen without
+  // asking, someone may be watching). A convenience, never consent (the box
+  // below is always unticked).
+  const [remembered] = useState(() => profile ? null : (() => { try { return rememberedBirth(localStorage.getItem(REMEMBER_KEY)) } catch { return null } })())
   const [f, setF] = useState(() => {
-    const r = profile ? null : (() => { try { return rememberedBirth(localStorage.getItem(REMEMBER_KEY)) } catch { return null } })()
-    const b = profile?.birth ?? r ?? { y: 1990, m: 1, d: 1, h: 12, mi: 0, hourUnknown: false }
+    const b = profile?.birth ?? { y: 1990, m: 1, d: 1, h: 12, mi: 0, hourUnknown: false }
     return {
       y: b.y, m: b.m, d: b.d, h: b.h, mi: b.mi, hourUnknown: b.hourUnknown === true,
-      // The zone of birth (owner, Sep 27: no city): a saved profile's, a
-      // remembered 占星塔 city's zone, or the visitor's own zone today.
-      birthTz: birthZone(profile?.place) ?? placeOf(r?.place)?.tz ?? detectedZone(),
+      // The zone of birth (owner, Sep 27: no city): a saved profile's, or
+      // the visitor's own zone today.
+      birthTz: birthZone(profile?.place) ?? detectedZone(),
       displayTz: profile?.displayTz ?? detectedZone(),
       fold: (profile?.fold ?? null) as 0 | 1 | null,
       consent: false,
@@ -384,6 +386,12 @@ function ProfileForm({ profile, gen, onSaved, onCancel, errText }: { profile: Pr
   return (
     <form className="xtell-dy-form" onSubmit={e => { e.preventDefault(); void save() }} aria-describedby={err ? errId : undefined}>
       <p className="xtell-dy-form-title">{t('xtell.dy.form.title')}</p>
+      {remembered && (
+        <button type="button" className="xtell-fill-mine" onClick={() => set({
+          y: remembered.y, m: remembered.m, d: remembered.d, h: remembered.h, mi: remembered.mi, hourUnknown: remembered.hourUnknown, fold: null,
+          ...(placeOf(remembered.place)?.tz ? { birthTz: placeOf(remembered.place)!.tz } : {}),
+        })}>{t('xtell.fillMine')}</button>
+      )}
       <fieldset className="xtell-dy-field">
         <legend>{t('xtell.dy.form.date')}</legend>
         <select className={sel} aria-label={t('xtell.site.birth.year')} value={f.y} onChange={e => set({ y: +e.target.value, d: Math.min(f.d, daysInMonth(+e.target.value, f.m)), fold: null })}>{birthYears().map(y => <option key={y} value={y}>{y}</option>)}</select>

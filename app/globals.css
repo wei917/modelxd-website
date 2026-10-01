@@ -3705,6 +3705,9 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-dy-field small { flex-basis: 100%; color: var(--xtell-secondary); line-height: 1.6; }
 .xtell-dy-select { min-height: 40px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--xtell-rule); border-radius: 3px; background: var(--xtell-paper); color: var(--xtell-ink); font: inherit; font-size: 14px; }
 .xtell-dy-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.6; cursor: pointer; }
+/* 「填入我的生日」: a room fills the saved birthday only on this press (Oct 1). */
+.xtell-fill-mine { min-height: 36px; padding: 6px 12px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 999px; background: transparent; color: var(--xtell-vermilion, var(--white)); font: inherit; font-size: 12.5px; cursor: pointer; }
+.xtell-dy-form .xtell-fill-mine { justify-self: start; }
 /* The visitor's own personality type (account page + a room's box; Sep 30). */
 .xtell-pt-picker { display: grid; gap: 8px; margin-top: 4px; }
 .xtell-pt-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

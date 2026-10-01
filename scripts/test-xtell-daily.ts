@@ -109,6 +109,21 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('a birth zone applies DST like a city there', profileProblem({ birth: { y: 2025, m: 3, d: 9, h: 2, mi: 30 }, place: 'tz:America/Los_Angeles', displayTz: 'Asia/Taipei' }) === 'birth_time_gap' && profileProblem({ birth: { y: 2025, m: 11, d: 2, h: 1, mi: 30 }, place: 'tz:America/Los_Angeles', displayTz: 'Asia/Taipei' }) === 'birth_time_ambiguous')
 }
 
+// ── 「填入我的生日」: a saved birthday reaches a form only on the press ─────
+// (owner, Oct 1: "not auto fill since other people will see their birthday
+// if they watch you use the website").
+{
+  const client = fs.readFileSync(path.join(__dirname, '..', 'app/xtell/client.tsx'), 'utf8')
+  const dailyUi = fs.readFileSync(path.join(__dirname, '..', 'app/components/xtell/XTellDaily.tsx'), 'utf8')
+  const S = STRINGS as any
+  check('占星 no longer fills the birth row on load', !/useEffect\(\(\) => \{\s*if \(temple !== 'zhanxing'\) return\s*try \{\s*const v = rememberedBirth/.test(client))
+  check('a room fills only from the button, in every birth row of the visitor\'s own (single, 月老 / 合盤 first person, the stick rooms\' 稟告)', (client.match(/onFill=\{myBirth \? fillBirth\(setBirth/g) ?? []).length === 2 && client.includes('onFillBirth={myBirth ? fillBirth(setBirth, true) : undefined}') && client.includes('<BirthRow value={birth} onChange={setBirth} sel={sel} onFill={onFillBirth} />') && !client.includes('value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria(\'birth2\')} onFill'))
+  check('the button shows only when a birthday is saved (the profile, else this browser\'s 占星 copy)', client.includes("fetch('/api/xtell/profile')") && client.includes('{onFill && (') && client.includes('const same = !!local && local.y === server.y'))
+  check('a room that needs the hour keeps its own when the saved hour is unknown', client.includes('...(v.hourUnknown && !allowUnknown ? {} : { h: v.h, mi: v.mi, hourUnknown: v.hourUnknown })'))
+  check('the daily form starts from the default, and fills the 占星 copy only on the button', dailyUi.includes("const b = profile?.birth ?? { y: 1990, m: 1, d: 1, h: 12, mi: 0, hourUnknown: false }") && dailyUi.includes('{remembered && (') && dailyUi.includes("t('xtell.fillMine')"))
+  check('「填入我的生日」 in five languages', ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof S['xtell.fillMine']?.[l] === 'string' && S['xtell.fillMine'][l].trim()))
+}
+
 // ── 占星塔's remembered birth keeps an unknown hour ─────────────────────────
 {
   const r = rememberedBirth(JSON.stringify({ y: 1990, m: 5, d: 6, h: 9, mi: 30, gender: 'female', hourUnknown: true, place: 'tokyo' }))

@@ -750,20 +750,24 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       }
     : { temple, birth, ...(temple === 'yuelao' ? { birth2, ...typeSubject } : {}) }
 
-  // 今日 is the one room someone comes back to daily, so the birth row is
-  // restored from THEIR browser rather than retyped. Wrapped because a
-  // private window or blocked site data makes localStorage throw on access,
-  // not just return null.
-  useEffect(() => {
-    if (temple !== 'zhanxing') return
-    try {
-      const v = rememberedBirth(localStorage.getItem(REMEMBER_KEY))
-      if (v) {
-        setBirth(b => ({ ...b, y: v.y, m: v.m, d: v.d, h: v.h, mi: v.mi, hourUnknown: v.hourUnknown, gender: v.gender ?? b.gender }))
-        if (v.place) setPlace(v.place)
-      }
-    } catch { /* no memory is fine; the form still works */ }
-  }, [temple])
+  // The visitor's own birthday, filled in only when they press 「填入我的生日」
+  // (owner, Oct 1: "not auto fill since other people will see their
+  // birthday if they watch you use the website"). 占星 used to restore it on
+  // load from this browser's copy; now the copy, like the saved profile, waits
+  // for the button. Gender and city come from the browser's copy only when
+  // it is the same birthday.
+  const myBirth = useMyBirth(TAKES_BIRTH(temple))
+  const fillBirth = (set: (fn: (b: any) => any) => void, allowUnknown: boolean) => () => {
+    const v = myBirth
+    if (!v) return
+    set(b => ({
+      ...b, y: v.y, m: v.m, d: v.d,
+      // A room that needs the hour keeps its own when the saved one is unknown.
+      ...(v.hourUnknown && !allowUnknown ? {} : { h: v.h, mi: v.mi, hourUnknown: v.hourUnknown }),
+      ...(v.gender ? { gender: v.gender } : {}),
+    }))
+    if (v.place && (temple === 'zhanxing' || temple === 'navagraha') && placesFor(lang).some(p => p.key === v.place)) setPlace(v.place)
+  }
 
   const enter = async (n?: number): Promise<boolean> => {
     if (questionRequired && !input.trim()) return false
@@ -1159,7 +1163,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               extra={<PersonalityAttach saved={savedType} on={withType} setOn={setWithType} />} />
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} jiao={jiao}
-              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
+              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} onFillBirth={myBirth ? fillBirth(setBirth, true) : undefined} />
           ) : temple === 'xingming' ? (
             <NameForm surname={surname} given={given} gender={birth.gender}
               onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel}
@@ -1177,7 +1181,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             </>
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
-              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} />
+              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} onFill={myBirth ? fillBirth(setBirth, true) : undefined} />
               {temple === 'zhanxing' && <PlaceRow label={t('xtell.person1')} value={place} onChange={setPlace} sel={sel} aria={fieldAria('place')} />}
               <div style={{ height: 12 }} />
               <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria('birth2')} />
@@ -1185,7 +1189,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               {temple === 'yuelao' && <PersonalityAttach saved={savedType} on={withType} setOn={setWithType} partner={partnerType} setPartner={setPartnerType} />}
             </>
           ) : (
-            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={!HOUR_REQUIRED.includes(temple)} aria={fieldAria('birth')} />
+            <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={!HOUR_REQUIRED.includes(temple)} aria={fieldAria('birth')}
+              onFill={myBirth ? fillBirth(setBirth, !HOUR_REQUIRED.includes(temple)) : undefined} />
           )}
           {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} aria={fieldAria('wishes')} />}
           {temple === 'sukuyo' && (
@@ -2009,8 +2014,35 @@ function ZiweiBoard({ chart }: { chart: any }) {
 
 
 type FieldAria = { invalid: boolean; describedBy?: string }
-function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria }: {
+/** Rooms with a birth row for the visitor (the stick rooms' is optional). */
+const TAKES_BIRTH = (temple: string) => !['tarot', 'cezi', 'jiemeng', 'sunzi', 'cookie', 'yixue', 'xingming'].includes(temple)
+
+/** The visitor's saved birthday: the daily fortune's profile (server), else
+ *  this browser's copy from 占星. Loaded quietly, never shown until the
+ *  visitor presses 「填入我的生日」. */
+function useMyBirth(enabled: boolean): ReturnType<typeof rememberedBirth> {
+  const [v, setV] = useState<ReturnType<typeof rememberedBirth>>(null)
+  useEffect(() => {
+    if (!enabled) return
+    let live = true
+    const local = (() => { try { return rememberedBirth(localStorage.getItem(REMEMBER_KEY)) } catch { return null } })()
+    fetch('/api/xtell/profile').then(r => r.ok ? r.json() : null).then(d => {
+      if (!live) return
+      const server = d?.profile?.birth ? rememberedBirth(JSON.stringify(d.profile.birth)) : null
+      if (!server) { setV(local); return }
+      const same = !!local && local.y === server.y && local.m === server.m && local.d === server.d
+      setV({ ...server, ...(same && local!.gender ? { gender: local!.gender } : {}), ...(same && local!.place ? { place: local!.place } : {}) })
+    }).catch(() => { if (live) setV(local) })
+    return () => { live = false }
+  }, [enabled])
+  return v
+}
+
+function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFill }: {
   label?: string
+  /** 「填入我的生日」: shown only when the visitor has a saved birthday; never
+   *  filled without the press (owner, Oct 1). */
+  onFill?: () => void
   value: { y: number; m: number; d: number; h: number; mi: number; gender: 'male' | 'female'; hourUnknown?: boolean }
   onChange: (v: any) => void
   sel: any
@@ -2035,6 +2067,9 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria }: {
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
+      {onFill && (
+        <button type="button" onClick={onFill} className="xtell-fill-mine">{t('xtell.fillMine')}</button>
+      )}
       <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}
         {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -2083,7 +2118,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria }: {
 // ── 關帝廟 ─────────────────────────────────────────────────────────────────
 
 /** 稟明事由, then the tube and the blocks. */
-function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel, jiao = true }: {
+function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel, jiao = true, onFillBirth }: {
   ask: string; setAsk: (s: string) => void
   stick: { n: number; throws: Jiao[] } | null
   ritual: 'idle' | 'drawn' | 'rejected' | 'confirmed'
@@ -2092,6 +2127,8 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   birth: any; setBirth: (b: any) => void; sel: any
   /** false for 元三大師's set: draw once, no 筊. */
   jiao?: boolean
+  /** 「填入我的生日」, when the visitor has one saved. */
+  onFillBirth?: () => void
 }) {
   const t = useT()
   const [bingOpen, setBingOpen] = useState(false)
@@ -2130,7 +2167,7 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
               <input type="checkbox" checked={bing.withBirth} disabled={locked} onChange={e => setBing({ ...bing, withBirth: e.target.checked })} />
               {t('xtell.qian.bing.birth')}
             </label>
-            {bing.withBirth && <BirthRow value={birth} onChange={setBirth} sel={sel} />}
+            {bing.withBirth && <BirthRow value={birth} onChange={setBirth} sel={sel} onFill={onFillBirth} />}
           </div>
         )}
       </div>
