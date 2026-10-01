@@ -922,6 +922,36 @@ all in git history or the session scratchpad only.
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
 
+## The visitor's own personality type (Oct 1)
+
+Owner (Sep 30): "we allow users to enter in the profile page, and optionally
+give temple master to use". The first piece of a later combined XTell
+temple that reads everything a visitor has told us.
+
+- **What:** the four letters people know as "MBTI" (nearly always from the
+  free 16Personalities test), plus the -A / -T some results carry. Typed in
+  on the XTell account page (「我的人格類型」, `PersonalitySettings` in
+  `app/components/xtell/XTellPersonality.tsx`). We run no test of our own
+  yet; the official MBTI® and 16Personalities cannot be licensed in
+  practice, and OEJTS is non-commercial. A later test would use the
+  public-domain IPIP questions (`source: 'test'`, `scores` are kept for it).
+- **Stored:** `xtell_personality` (supabase/119), one row per account,
+  server only like `xtell_profiles`, deleted with the account.
+  `/api/xtell/personality` GET / PUT / DELETE, own row only; 503 before 119
+  runs, and the section hides.
+- **Used:** only in 孫子兵法, 月老 (plus an optional partner type chosen in
+  the room) and 塔羅 (`PERSONALITY_TEMPLES`), and only while the box
+  「附上我的人格類型（INFJ）」 is ticked; it is off by default. Never in the
+  stick rooms or the chart rooms, never in the daily reading. An attached
+  type rides in the visit's subject (`mbti`, `mbti2`), so a reopened visit
+  asks with the same type.
+- **The teacher is told** (`personalityFacts`, after the room's own facts)
+  that it is the visitor's own description, not a fortune and not a
+  diagnosis; to use it only where it fits, a mention or two; never over the
+  stick, cards, chart or book; never as fate or a ranking of types.
+- **The word:** the label says MBTI because that is what people call it,
+  with 「MBTI® 為 The Myers-Briggs Company 的商標…並非官方測驗」 under it.
+
 ## The signed-in test round (Sep 29)
 
 Owner: "do another round of test … try each feature one by one". All 18

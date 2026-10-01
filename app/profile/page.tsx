@@ -13,6 +13,7 @@ import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import XTellActivity from '../components/xtell/XTellActivity'
 import { DailyProfileSettings } from '../components/xtell/XTellDaily'
+import { PersonalitySettings } from '../components/xtell/XTellPersonality'
 import { XTellFooter } from '../components/xtell/XTellNav'
 import { XCreateAccountHead, XCreateAccountWelcome, XCreateLibrary } from '../components/xcreate/XCreateAccount'
 import { yenApprox } from '../../lib/plans'
@@ -1291,7 +1292,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {isXTell ? <><DailyProfileSettings /><XTellActivity userId={user.id} /></> : isXCreate ? <XCreateLibrary /> : <>
+          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></> : isXCreate ? <XCreateLibrary /> : <>
           {/* Privacy summary — sits right above the content tabs so the
               public/private expectations frame what's below (CC, July 19). */}
           <div style={{

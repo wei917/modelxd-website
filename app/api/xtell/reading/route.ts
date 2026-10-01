@@ -25,6 +25,7 @@ import { asQianEdition } from '@/lib/xtell'
 import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieFacts } from '@/lib/xtell-cookie'
 import { chineseLeak, leaksChinese, jaTermStream } from '@/lib/xtell-lang-check'
+import { offersPersonality, personalityFacts } from '@/lib/xtell-personality'
 import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 import { sukuyoChart, sukuyoFacts, asPartnerDate } from '@/lib/sukuyo'
 
@@ -257,7 +258,7 @@ export async function POST(req: Request) {
 
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
-  const facts = daily ? daily.facts : temple === 'cookie'
+  const chartFacts = daily ? daily.facts : temple === 'cookie'
     ? `${cookieFacts({ food: String(cookieChart.food ?? ''), ask: String(cookieChart.ask ?? ''), meal: cookieChart.meal, dayGz: cookieChart.dayGz ?? null })}\n主味：${cookieChart.flavor}（五行屬${cookieChart.element}）\n幸運餅乾的籤語（照錄）：「${cookieChart.fortune}」${cookieChart.note ? `\n當時的小解說：${cookieChart.note}` : ''}`
     : temple === 'jiemeng'
     ? dreamFacts(String(body.dream).trim(), typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : '', dreamEntries(dreamLines))
@@ -318,6 +319,12 @@ export async function POST(req: Request) {
             const y = new Date().getFullYear()
             return `${baziFacts(c, body.birth.gender, body.birth?.hourUnknown === true)}\n\n${liuNianFacts(liuNian(c, body.birth.y, y))}\n${liuNianFacts(liuNian(c, body.birth.y, y + 1), '明年流年')}\n\n${chengguFacts(chengGu(body.birth))}`
           })()
+
+  // The visitor's own personality type (Sep 30), only in the rooms that offer
+  // it and only when they ticked the box (the client then sends it with the
+  // visit). It is their own description of themselves, said so to the teacher.
+  const typeFacts = !daily && offersPersonality(temple) ? personalityFacts(body?.mbti, temple === 'yuelao' ? body?.mbti2 : undefined) : ''
+  const facts = typeFacts ? `${chartFacts}\n\n${typeFacts}` : chartFacts
 
   // The chart rides in the SYSTEM slot with the master persona: every turn of
   // the conversation carries it natively, and the client can never overwrite

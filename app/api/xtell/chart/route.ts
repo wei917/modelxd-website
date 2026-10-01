@@ -41,7 +41,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner', 'mbti', 'mbti2'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]

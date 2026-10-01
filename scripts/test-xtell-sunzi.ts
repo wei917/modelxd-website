@@ -117,7 +117,7 @@ async function routes() {
   const chartRoute = (rows: any[]) => {
     const f = fakeDb(rows)
     const POST = loadRoute('app/api/xtell/chart/route.ts', {
-      '@/lib/supabase-server': { createSupabaseServer: async () => f.db }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': jm, '@/lib/jiemeng-scan': { scanDream: async () => null }, '@/lib/sunzi': sz,
+      '@/lib/supabase-server': { createSupabaseServer: async () => f.db }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'), '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': jm, '@/lib/jiemeng-scan': { scanDream: async () => null }, '@/lib/sunzi': sz,
       '@/lib/sunzi-scan': { scanSituation: async (situation: string, ask: string, lang: string, userId: string) => { scans.push(`${userId}:${lang}:${situation}|${ask}`); return answer } },
     }).POST
     return { ...f, cast: async (body: any) => { const r = await POST(post('http://t/api/xtell/chart', { temple: 'sunzi', ...body })); return { status: r.status, d: await r.json() as any } } }
@@ -172,7 +172,7 @@ async function routes() {
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
     '@/lib/credits': { debitCredits: async () => {}, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
-    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': jm, '@/lib/sunzi': sz,
+    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'), '@/lib/jiemeng': jm, '@/lib/sunzi': sz,
     ...over,
   }).POST
   const ask = async (rows: any[], body: any) => { const r = await readingRoute(rows)(post('http://t/api/xtell/reading', { temple: 'sunzi', modelId: 'm1', question: '第一步該做什麼？', situation: '對手降價', ...body })); await r.text(); return { status: r.status, sys: systems.at(-1) ?? '' } }
@@ -182,6 +182,11 @@ async function routes() {
   check('reading without a saved visit: only real book lines, from disk', s2.status === 200 && s2.sys.includes(book.lines[12].t) && !s2.sys.includes('<x>'))
   const s3 = await ask([row('對手降價', [40], 1, { id: visitId, user_id: 'user-b' })], { readingId: visitId })
   check('reading: another visitor\'s visit is not read', s3.status === 200 && !s3.sys.includes(book.lines[40].t))
+  // The visitor's own personality type (Sep 30): reaches the 軍師 only when
+  // the visit carries it, after the book's lines; a bad value says nothing.
+  const t1 = await ask([], { lines: [12], mbti: 'infj-a' }), t2 = await ask([], { lines: [12] }), t3 = await ask([], { lines: [12], mbti: 'INFX' })
+  check('reading: an attached type reaches the 軍師 after the lines, as the visitor\'s own description', t1.sys.includes('來訪者：INFJ-A') && t1.sys.indexOf('來訪者：INFJ-A') > t1.sys.indexOf(book.lines[12].t) && t1.sys.includes('自我描述'))
+  check('reading: none attached, or not a type: nothing about it', !t2.sys.includes('人格類型') && !t3.sys.includes('人格類型'))
   // Billing (Sep 29, supabase/114): a charge under a cent is carried, never
   // rounded away (18 answers of a test round were billed nothing) or up.
   const bill = async (costs: number[], carry: Array<number | null>) => {

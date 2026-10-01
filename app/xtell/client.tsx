@@ -56,6 +56,8 @@ import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
+import { asPersonalityType, offersPersonality } from '../../lib/xtell-personality'
+import { PersonalityAttach, useSavedPersonality } from '../components/xtell/XTellPersonality'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi'
 /** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
@@ -486,6 +488,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const [dream, setDream] = useState(init.dream ?? '')
   // 孫子兵法: the situation as the visitor tells it (+ the shared `ask`).
   const [situation, setSituation] = useState(init.situation ?? '')
+  // The visitor's own personality type (Sep 30): attached only while the box
+  // is ticked, never by default; a reopened visit keeps the type it was asked
+  // with. 月老 may add the other person's type, typed in here.
+  const savedType = useSavedPersonality(offersPersonality(temple))
+  const [withType, setWithType] = useState<boolean>(!!asPersonalityType(init.mbti))
+  const [partnerType, setPartnerType] = useState<string>(asPersonalityType(init.mbti2) ?? '')
+  const typeToSend = offersPersonality(temple) && withType ? (asPersonalityType(init.mbti) ?? savedType ?? null) : null
+  const partnerToSend = temple === 'yuelao' ? asPersonalityType(partnerType) : null
+  const typeSubject = { ...(typeToSend ? { mbti: typeToSend } : {}), ...(partnerToSend ? { mbti2: partnerToSend } : {}) }
   // 幸運餅乾: what was eaten, and when (the phone's local time, editable).
   const [food, setFood] = useState<string>(init.food ?? '')
   const [mealAt, setMealAt] = useState<string>(typeof init.mealAt === 'string' ? init.mealAt : localNow())
@@ -714,12 +725,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
     isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}), ...(temple === 'guanyin' ? { edition } : {}) }
-    : temple === 'tarot' ? { temple, spread, picks: picksRef.current, ask: ask.trim() }
+    : temple === 'tarot' ? { temple, spread, picks: picksRef.current, ask: ask.trim(), ...typeSubject }
     : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask, lang }
     // 孫子兵法: `lang` is the language of the free translations.
-    : temple === 'sunzi' ? { temple, situation: situation.trim(), ask: ask.trim(), lang }
+    : temple === 'sunzi' ? { temple, situation: situation.trim(), ask: ask.trim(), lang, ...typeSubject }
     : temple === 'cookie' ? { temple, food: food.trim(), mealAt, ask: ask.trim(), lang }
     : temple === 'yixue' ? {
         temple, mode: yixueMode,
@@ -737,7 +748,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         ...(astroMode === 'synastry' ? { birth2, place2 } : {}),
         ...(astroMode === 'year' ? { year: srYear } : {}),
       }
-    : { temple, birth, ...(temple === 'yuelao' ? { birth2 } : {}) }
+    : { temple, birth, ...(temple === 'yuelao' ? { birth2, ...typeSubject } : {}) }
 
   // 今日 is the one room someone comes back to daily, so the birth row is
   // restored from THEIR browser rather than retyped. Wrapped because a
@@ -1144,7 +1155,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} disabled={yixueEntryBusy} />
               : <YixueQuestion value={input} onChange={setInput} disabled={yixueEntryBusy} />
           ) : temple === 'tarot' ? (
-            <TarotPanel ask={ask} setAsk={setAsk} spread={spread} setSpread={setSpread} onDeal={dealCards} entering={entering} sel={sel} />
+            <TarotPanel ask={ask} setAsk={setAsk} spread={spread} setSpread={setSpread} onDeal={dealCards} entering={entering} sel={sel}
+              extra={<PersonalityAttach saved={savedType} on={withType} setOn={setWithType} />} />
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} jiao={jiao}
               bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} />
@@ -1159,7 +1171,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           ) : temple === 'jiemeng' ? (
             <DreamForm dream={dream} setDream={setDream} ask={ask} setAsk={setAsk} sel={sel} dreamAria={fieldAria('dream')} />
           ) : temple === 'sunzi' ? (
-            <SunziForm situation={situation} setSituation={setSituation} ask={ask} setAsk={setAsk} sel={sel} situationAria={fieldAria('situation')} />
+            <>
+              <SunziForm situation={situation} setSituation={setSituation} ask={ask} setAsk={setAsk} sel={sel} situationAria={fieldAria('situation')} />
+              <PersonalityAttach saved={savedType} on={withType} setOn={setWithType} />
+            </>
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
               <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} />
@@ -1167,6 +1182,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               <div style={{ height: 12 }} />
               <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria('birth2')} />
               {temple === 'zhanxing' && <PlaceRow label={t('xtell.person2')} value={place2} onChange={setPlace2} sel={sel} aria={fieldAria('place2')} />}
+              {temple === 'yuelao' && <PersonalityAttach saved={savedType} on={withType} setOn={setWithType} partner={partnerType} setPartner={setPartnerType} />}
             </>
           ) : (
             <BirthRow value={birth} onChange={setBirth} sel={sel} allowUnknown={!HOUR_REQUIRED.includes(temple)} aria={fieldAria('birth')} />
@@ -3053,9 +3069,11 @@ function SunziForm({ situation, setSituation, ask, setAsk, sel, situationAria }:
 // The browser deals (lib/tarot-draw.ts); the server lays the cards with their
 // names, pictures and Waite's meaning for the way each landed (lib/tarot.ts).
 
-function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel }: {
+function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel, extra }: {
   ask: string; setAsk: (s: string) => void; spread: TarotSpread; setSpread: (s: TarotSpread) => void
   onDeal: () => void; entering: boolean; sel: any
+  /** Shown above the deal button: the personality-type box (Sep 30). */
+  extra?: React.ReactNode
 }) {
   const t = useT()
   return (
@@ -3074,6 +3092,7 @@ function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel }: {
           </button>
         ))}
       </div>
+      {extra}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, flex: 1, minWidth: 220 }}>{t('xtell.tarot.note')}</span>
         <button type="button" onClick={onDeal} disabled={entering} aria-busy={entering || undefined} className="xtell-tarot-deal">

@@ -276,7 +276,7 @@ async function routes() {
   const afters: Promise<unknown>[] = []
   const dailyRoute = loadRoute('app/api/xtell/daily/route.ts', {
     ...common, '@/lib/xtell-daily-model': writer, '@/lib/xtell-daily': daily,
-    'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, '@/lib/partial-json': require('../lib/partial-json'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'),
+    'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, '@/lib/partial-json': require('../lib/partial-json'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'),
   })
   const followRoute = loadRoute('app/api/xtell/daily/followup/route.ts', common)
   const req = (url: string, method: string, body?: unknown, ip = '10.0.0.1') => new Request(url, { method, headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) })
@@ -371,7 +371,7 @@ async function routes() {
     '@/lib/providers': { streamText: async (_m: unknown, _msgs: unknown, cb: any, _a: unknown, _c: unknown, opts: any) => { systems.push(opts.system); await cb.onDone({ cost: 0 }) } },
     '@/lib/credits': { debitCredits: async () => {}, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
-    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': require('../lib/yijing'), '@/lib/xtell-daily': daily, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/sunzi': require('../lib/sunzi'), '@/lib/sunzi-scan': { scanSituation: async () => null }, '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/jiemeng': require('../lib/jiemeng'),
+    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': require('../lib/yijing'), '@/lib/xtell-daily': daily, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/sunzi': require('../lib/sunzi'), '@/lib/sunzi-scan': { scanSituation: async () => null }, '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'), '@/lib/jiemeng': require('../lib/jiemeng'),
   })
   const ask = async (body: any) => { const r = await reading.POST(req('http://t/api/xtell/reading', 'POST', { modelId: 'm1', ...body })); return { status: r.status, text: await r.text() } }
   const r1 = await ask({ temple: 'daily', readingId: f1.d.readingId, question: '今天適合談加薪嗎？', basis: { western: { contacts: [{ transit: 'Pluto', natal: 'Sun' }] } }, chart: 'fake' })

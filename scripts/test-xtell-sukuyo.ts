@@ -35,6 +35,6 @@ check(`${keys.length} 宿曜 strings, all in five languages, a meaning for every
 check('the guide can open it', liveFeature('sukuyo')?.temple === 'sukuyo')
 const chartRoute = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/chart/route.ts'), 'utf8')
 const readingRoute = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/reading/route.ts'), 'utf8')
-check('the chart and the teacher use the same date and partner', chartRoute.includes('sukuyoChart(body.birth, (body.today = asToday(body?.today)), (body.partner = asPartnerDate(body?.partner) ?? undefined))') && readingRoute.includes('sukuyoFacts(sukuyoChart(body.birth, asToday(body?.today), asPartnerDate(body?.partner)))') && chartRoute.includes("'today', 'partner'] as const"))
+check('the chart and the teacher use the same date and partner', chartRoute.includes('sukuyoChart(body.birth, (body.today = asToday(body?.today)), (body.partner = asPartnerDate(body?.partner) ?? undefined))') && readingRoute.includes('sukuyoFacts(sukuyoChart(body.birth, asToday(body?.today), asPartnerDate(body?.partner)))') && /'today', 'partner'[^\]]*\] as const/.test(chartRoute))
 console.log(fails ? `\n${fails} FAILED` : '\nall 宿曜 checks passed')
 if (fails) process.exit(1)
