@@ -57,6 +57,9 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `123_site_ads_accounts.sql` (two read-only functions for /admin/traffic:
+  what ad visitors did, accounts per country) is written and proven on
+  PGlite, awaiting the owner.
   Latest applied: `120_signin_taps.sql` (2026-10-01, by the owner; taps on
   the Google and LINE buttons for /admin/traffic; checked live: the service
   key reads the table and calls the function, 42501 for the publishable key

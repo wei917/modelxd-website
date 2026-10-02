@@ -132,6 +132,29 @@ shares" in the filtered part, beside "XTell teacher votes" (👍 / 👎 per
 teacher and temple from `xtell_answer_votes`, same migration, written by
 `/api/xtell/vote` rather than here because a vote belongs to an account).
 
+## From ads, and accounts per country (Oct 2)
+
+Owner, after the Japan ad numbers were worked out by hand ("can you add to
+dashboard? also we need total registered user count in all and each
+country"). Two read-only functions in `supabase/123_site_ads_accounts.sql`:
+
+- `site_ad_funnel(days, tz, country)`, the "From ads" card in the filtered
+  part: per source (Google Ads = a click id, ChatGPT ads =
+  utm_source=chatgpt), the browsers an ad brought in the range, and of them
+  how many stayed 30 s or more in total, pressed Google or LINE (taps,
+  since Oct 1), and signed in. All of a browser's visits in the range count,
+  later ones too; a browser with both sources is Google.
+- `site_registered_users(days, tz)`, the "Registered accounts" card in the
+  fixed part: every account (profiles; none are anonymous) by
+  `profiles.country`, which is where the account was LAST seen, not where it
+  signed up; '??' when never recorded. Plus how many were made in the range.
+
+First real numbers (14 days to Oct 2 09:00 Taiwan): Japan, Google Ads 81
+browsers, 59 stayed 30 s or more, 1 pressed sign-in, 0 signed in, median
+56 s. Taiwan, Google Ads 648 browsers, 200 stayed, 25 signed in, median 9 s;
+ChatGPT ads 363, 103 stayed, 36 signed in. Accounts: 90 (Taiwan 81, US 6,
+China 1, Japan 1, unknown 1).
+
 ## Reports (Supabase SQL editor)
 
 Time on site by source, last 7 days:
