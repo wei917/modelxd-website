@@ -871,6 +871,32 @@ page draws every back the same way up. Mouse-only hover lifts (a
 finger left :hover behind on the neighbour); no motion under
 `prefers-reduced-motion`. Tests: `scripts/test-xtell-tarot.ts`.
 
+### 占星塔: 目前的天象 on every visit; no sending people elsewhere (Oct 2)
+
+Owner, on a birth-chart (本命) visit that asked 「最近的行運對我的工作有什麼
+影響？」: all four teachers said no transits were attached (true: only the
+今日 mode computed them), and when asked how to attach them, sent the
+visitor to other astrology websites to paste results back. Now:
+
+- Every 占星 mode's facts end with **目前的天象**, computed at the moment of
+  the question (`zhanxingFacts(…, at = new Date())`, `currentSkyFacts` in
+  lib/astrology.ts): the date, the Moon's sign, what is retrograde, today's
+  1° transits from the Sun to Mars and the nodes, and **this season's slow
+  transits** (`seasonTransits`: Jupiter to Pluto against the natal chart,
+  2° orb, exact date when within ±45 days). Each aspect is listed once; the
+  今日 mode adds only the season's slow ones its own list lacks
+  (`seasonOnlyFacts`). An unknown birth hour still never targets the Moon or
+  the angles.
+- The 占星 teacher is told the current sky is always attached, to answer
+  「最近、這陣子」 from it (empty lists: say so, read the natal chart), and
+  that the year's themes are in this room's 「年度」 option.
+- **Every teacher** (the shared `TONE`, and 易學堂's own rules): never send a
+  visitor to another website, app or charting tool to look something up
+  and paste it back; what is not attached is not computed here, or is in
+  one of this site's own options.
+
+Tests: `scripts/test-astrology.ts` (the last block).
+
 ### 塔羅: 二擇一, 關係 and modern meanings (Oct 2)
 
 Owner, on the open items from "is our tarot the same way people do it?":

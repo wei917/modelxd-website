@@ -252,5 +252,34 @@ const knownAt = (y: number, m: number, d: number, h = 12) => { const b: any = { 
   check('unknown hour, today: transits never target the Moon or the angles', d.today!.list.every(x => !/Moon|ASC|MC|Fortune/.test(String(x.b))))
 }
 
+// ── 目前的天象 on every visit (Oct 2: a birth-chart visit asked about
+// 最近的行運, every teacher said it had none, and some sent the visitor to
+// other websites) ────────────────────────────────────────────────────────────
+{
+  const { seasonTransits, currentSkyFacts, SLOW_PLANETS } = require('../lib/astrology')
+  const { MASTERS, TONE } = require('../lib/xtell')
+  const at = new Date('2026-10-02T12:00:00Z')
+  const owner = { y: 1990, m: 9, d: 17, h: 0, mi: 0, gender: 'male', hourUnknown: false } as any
+  const natal = zhanxingChart(owner, 'hsinchu', 'natal')
+  const season = seasonTransits(natal.natal, at)
+  check('season: only Jupiter to Pluto, within 2°', season.length > 0 && season.every((t: any) => SLOW_PLANETS.includes(t.a) && t.orb <= 2))
+  const sky = currentSkyFacts(natal.natal, at)
+  const lines = sky.split('\n').filter((l: string) => l.startsWith('  行運'))
+  check('sky: every aspect listed once (fast ones today, slow ones this season)', new Set(lines).size === lines.length && lines.length > 0)
+  for (const mode of ['natal', 'synastry', 'year', 'today'] as const) {
+    const c = zhanxingChart(owner, 'hsinchu', mode, { b2: { ...owner, y: 1992 }, place2: 'taipei', year: 2026 })
+    const f = zhanxingFacts(c, 'male', 'female', at)
+    check(`facts (${mode}): the season's slow transits are attached, computed at the question`, f.includes('這一季仍在作用的慢速行運') && f.includes('2026-10-02') && (mode === 'today' || f.includes('目前的天象')))
+  }
+  const today = zhanxingChart(owner, 'hsinchu', 'today')
+  const tf = zhanxingFacts(today, 'male', 'female', new Date(today.today!.date + 'T12:00:00Z'))
+  const tl = tf.split('\n').filter((l: string) => l.startsWith('  行運'))
+  check('facts (today): no transit listed twice between the day and the season', new Set(tl).size === tl.length)
+  const unknown = zhanxingFacts(zhanxingChart(unknownAt(1990, 9, 17), 'hsinchu', 'natal'), 'male', 'female', at)
+  check('unknown hour: the current sky never targets the Moon or the angles', !/本命(月亮|上升|天頂|福點)/.test(unknown.slice(unknown.indexOf('目前的天象'))))
+  check('teacher: told the current sky is always there, how to answer 「最近」, and where the year lives', MASTERS.zhanxing.includes('目前的天象') && MASTERS.zhanxing.includes('問到「最近、這陣子、這幾個月」') && MASTERS.zhanxing.includes('「年度」選項'))
+  check('every teacher: never send the visitor to another website or app', TONE.includes('不要叫來訪者去其他網站、App 或排盤工具') && Object.values(MASTERS).every((m: any) => /不要叫來訪者去其他網站/.test(m)))
+}
+
 console.log(fails === 0 ? '\nALL PASS' : `\n${fails} FAILED`)
 process.exit(fails === 0 ? 0 : 1)
