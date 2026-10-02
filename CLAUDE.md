@@ -188,8 +188,13 @@ the one the owner's ear picked. The film's speak tool routes the same way.
 **The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting
 videos, wired together. Multi-select nodes to feed several images into one
-generation — that's how a product-video pipeline gets built. Toggle between
-`strip` and `canvas` views.
+generation — that's how a product-video pipeline gets built. Since Oct 1
+the canvas is XCreate's only continuation view (the `strip` view, which drew
+a multi-model run as model 1 → model 2 → model 3, is gone): a run that
+starts the board opens with a prompt node (`prompt::<rowId>`, a `brief`
+node) wired to each model's output, and `fitOnLoad` opens the board zoomed
+to fit every node (35%-100%) until the user pans or zooms; the % chip fits
+again. XDirect does not pass `fitOnLoad`.
 
 ### XDirect — `/xdirect` (the director + canvas stage)
 A real page since Aug 5: the director chat (`XDirectorChat`) beside the live

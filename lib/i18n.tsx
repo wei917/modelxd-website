@@ -2545,6 +2545,9 @@ export const STRINGS: Record<string, Entry> = {
   'ml.reference_frames': { en: 'Reference Frames', 'zh-Hant': '參考畫格', 'zh-Hans': '参考帧', ja: '参照フレーム', ko: '참조 프레임' },
   'ml.audio_to_video':   { en: 'Audio → Video', 'zh-Hant': '語音 → 影片', 'zh-Hans': '语音 → 视频', ja: '音声 → 動画', ko: '음성 → 동영상' },
   // Canvas details panel rows.
+  'wf.promptnode':      { en: 'Prompt', 'zh-Hant': '提示詞', 'zh-Hans': '提示词', ja: 'プロンプト', ko: '프롬프트' },
+  'wf.d.prompt':         { en: 'prompt', 'zh-Hant': '提示詞', 'zh-Hans': '提示词', ja: 'プロンプト', ko: '프롬프트' },
+  'wf.d.copy':           { en: 'Copy prompt', 'zh-Hant': '複製提示詞', 'zh-Hans': '复制提示词', ja: 'プロンプトをコピー', ko: '프롬프트 복사' },
   'wf.d.model':          { en: 'model', 'zh-Hant': '模型', 'zh-Hans': '模型', ja: 'モデル', ko: '모델' },
   'wf.d.scene':          { en: 'scene', 'zh-Hant': '場景', 'zh-Hans': '场景', ja: 'シーン', ko: '장면' },
   'wf.d.kind':           { en: 'kind', 'zh-Hant': '類型', 'zh-Hans': '类型', ja: '種類', ko: '종류' },

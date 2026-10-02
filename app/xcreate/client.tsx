@@ -1388,7 +1388,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // Canvas board (CC, July 27): ComfyUI-style node view of the family.
   // wfSelHero mirrors the node picked ON THE CANVAS so the hero + composer
   // can branch from any node, not just the newest step.
-  const [wfView,       setWfView]       = useState<'strip' | 'canvas'>('strip')
   const [wfSelHero,    setWfSelHero]    = useState<{ url: string | null; isVideo: boolean; isAudio?: boolean } | null>(null)
   // ── Board editor (CC, July 28). The canvas is now an editor, so it needs
   // a SELECTION (plural — a product video takes the original photo and the
@@ -2508,16 +2507,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       //   board_id (groups several products)  →  root_id (one lineage)  →  self.
       // Selecting a column that doesn't exist is an ERROR from PostgREST
       // rather than an empty result, so each rung is tried and checked.
-      const BOARD_COLS = 'id, slots, created_at, parent_id, parent_ids, board_id, node_kind'
-      const PLAIN_COLS = 'id, slots, created_at, parent_id'
+      const BOARD_COLS = 'id, prompt, slots, created_at, parent_id, parent_ids, board_id, node_kind'
+      const PLAIN_COLS = 'id, prompt, slots, created_at, parent_id'
       let self: any = null
       {
         const a = await sb.from('xcreates')
-          .select('id, slots, root_id, parent_id, parent_ids, board_id, node_kind')
+          .select('id, prompt, slots, root_id, parent_id, parent_ids, board_id, node_kind')
           .eq('id', xcreateId).maybeSingle()
         if (!a.error) self = a.data
         else {
-          const b = await sb.from('xcreates').select('id, slots, root_id, parent_id').eq('id', xcreateId).maybeSingle()
+          const b = await sb.from('xcreates').select('id, prompt, slots, root_id, parent_id').eq('id', xcreateId).maybeSingle()
           self = b.data
         }
       }
@@ -2580,6 +2579,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
             label: sl?.name ?? sl?.model_name ?? undefined,
             cost: Number(sl?.cost ?? 0) || undefined,
             responseTime: Number(sl?.responseTime ?? 0) || undefined,
+            prompt: typeof r.prompt === 'string' && r.prompt ? r.prompt : undefined,
           })
         }
       }
@@ -2732,7 +2732,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       setChatHistory([])
       setWfSel(created.map((n: any) => n.id))
       setWfSelHero({ url: created[0].thumb, isVideo: !!created[0].isVideo })
-      setWfView('canvas')
       setPhase('workflow')
     } finally { setPbBusy(false) }
   }
@@ -2767,8 +2766,25 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         })
       }
     }
+    // A run that starts the board (no parent row) begins with its PROMPT
+    // (owner, Oct 1: "it should be a prompt -> model [n] result"): one text
+    // node, wired to each model's output, like XDirect's brief node. Steps
+    // after it keep their prompt in each node's details.
+    const promptNodes: CanvasNode[] = []
+    const promptOfRow: Record<string, string> = {}
+    for (const n of wfChain as any[]) {
+      if (!n.rowId || !n.prompt || (n.parentRowIds ?? []).length > 0 || n.rowId in promptOfRow) continue
+      const id = `prompt::${n.rowId}`
+      promptOfRow[n.rowId] = id
+      promptNodes.push({
+        id, thumb: null, isVideo: false, parentId: null, parentIds: [],
+        // No kind: the INPUT badge is an English code, and the label says it.
+        label: t('wf.promptnode'), brief: n.prompt, prompt: n.prompt,
+      })
+    }
     const outputNodes: CanvasNode[] = (wfChain as any[]).map(n => {
       const parents = [
+        ...(promptOfRow[n.rowId] ? [promptOfRow[n.rowId]] : []),
         ...((n.parentRowIds ?? []) as string[]).map(p => primary[p]).filter(Boolean),
         ...(inputIdsByRow[n.rowId] ?? []),
       ]
@@ -2776,8 +2792,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       // still valid for anything generated in the last hour).
       return { ...n, thumb: wfOutUrls[n.id] ?? n.thumb, parentId: parents[0] ?? null, parentIds: parents }
     })
-    return [...inputNodes, ...outputNodes]
-  }, [wfChain, wfInputs, wfOutUrls])
+    return [...promptNodes, ...inputNodes, ...outputNodes]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wfChain, wfInputs, wfOutUrls, lang])
 
   const markBatch = (jobId: string, patch: Partial<{ status: 'running' | 'done' | 'error'; url: string; cost: number; error: string }>) =>
     setBatchRuns(prev => prev.map(r => r.jobId === jobId ? { ...r, ...patch } : r))
@@ -3572,13 +3589,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // stays in view (the Aug 20 reason for landing on the cards was a board
     // that showed only the output node). Text keeps the cards: its
     // continuation is a chat that shows one answer.
-    let toCanvas = false
     if (targetIdx === null && itemMode !== 'text') {
       const picked = rawSlots.findIndex((sl: any) => sl?.chosen)
-      if (picked >= 0 && picked < restoredSlots.length && !restoredSlots[picked].error) {
-        targetIdx = picked
-        toCanvas = true
-      }
+      if (picked >= 0 && picked < restoredSlots.length && !restoredSlots[picked].error) targetIdx = picked
     }
 
     if (targetIdx !== null && restoredModels[targetIdx]) {
@@ -3602,7 +3615,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       }
       // Text continuation is a conversation; image/video continuation is
       // the workflow view (CC, July 26).
-      if (toCanvas) setWfView('canvas')
       setPhase(itemMode === 'text' ? 'chatting' : 'workflow')
     } else {
       // Every slot failed → the workflow board would show one dead node,
@@ -4112,23 +4124,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
             </>
           ) : phase === 'workflow' ? (
             <div>
-              {/* Strip ⇄ canvas toggle. The canvas is the ComfyUI-style
-                  board: nodes + wires + click-to-branch (CC, July 27). */}
-              {(
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-                <button
-                  onClick={() => setWfView(v => v === 'strip' ? 'canvas' : 'strip')}
-                  style={{
-                    background: 'transparent', border: '1px solid var(--border2)', color: 'var(--muted)',
-                    borderRadius: 8, padding: '6px 14px', fontSize: 11, fontFamily: 'var(--mono)',
-                    letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer',
-                  }}
-                >{wfView === 'strip' ? '⧉ ' + t('wf.canvas') : '☰ ' + t('wf.simple')}</button>
-              </div>
-              )}
-
-              {wfView === 'canvas' && (
-                <WorkflowCanvas
+              {/* The canvas is the only view (owner, Oct 1): the old step strip
+                  drew a multi-model run as model 1 → model 2 → model 3, as if
+                  each were the next step. On the canvas a run is its prompt
+                  with one wire to each model's result. */}
+              <WorkflowCanvas
+                  fitOnLoad
                   nodes={wfNodes}
                   selectedIds={wfSel}
                   onSelect={(n, additive) => {
@@ -4149,30 +4150,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   onClearSelection={() => setWfSel([])}
                   onDelete={deleteNodes}
                 />
-              )}
-
-              {/* Step strip — oldest → newest; the open step is outlined. */}
-              {wfView === 'strip' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, flexWrap: 'wrap' as const }}>
-                {wfChain.map((step, i) => (
-                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {i > 0 && <span style={{ color: 'var(--muted)', fontSize: 14 }}>→</span>}
-                    <div style={{
-                      width: 72, height: 72, borderRadius: 10, overflow: 'hidden',
-                      border: ((step as any).rowId ?? step.id) === xcreateId ? '2px solid var(--red)' : '1px solid var(--border2)',
-                      background: 'var(--surface)', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {step.thumb
-                        ? (step.isVideo
-                          ? <video src={step.thumb} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <img src={step.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)
-                        : <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>{t('wf.step')} {i + 1}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              )}
 
               {/* Current result — the output every next step edits. */}
               {(() => {
@@ -5478,7 +5455,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                 continuation is the chat. */}
                             {phase === 'picking' && mode !== 'text' && xcreateId && slot.done && !slot.error && (slots.length === 1 || chosenIdx !== null) && (
                               <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
-                                <button onClick={() => { setChosenIdx(i); setWfView('canvas'); setPhase('workflow'); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{
+                                <button onClick={() => { setChosenIdx(i); setPhase('workflow'); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{
                                   width: '100%', padding: '10px 0', borderRadius: 8,
                                   background: 'transparent', border: '1px solid var(--border2)',
                                   color: 'var(--white)', fontWeight: 700, fontSize: 13, cursor: 'pointer',

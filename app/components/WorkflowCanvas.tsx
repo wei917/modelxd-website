@@ -353,7 +353,8 @@ function NodeActionPanel({ n, origin, onPlay, onClose, onDelete, onRegen, pick, 
   }, [n])
 
   const rows: Array<[string, string]> = []
-  if (n.label) rows.push([t('wf.d.model'), n.label])
+  // A text node (a run's prompt, a film's brief) has a name, not a model.
+  if (n.label && !(n.brief && !n.rowId)) rows.push([t('wf.d.model'), n.label])
   if (origin) rows.push([t('wf.d.scene'), origin])
   if (n.kind) rows.push([t('wf.d.kind'), n.kind])
   if (meta.w && meta.h) rows.push([t('wf.d.resolution'), `${meta.w}×${meta.h}`])
@@ -431,10 +432,10 @@ function NodeActionPanel({ n, origin, onPlay, onClose, onDelete, onRegen, pick, 
       {n.prompt && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 11.5, fontFamily: 'var(--mono)', color: '#6a6c73', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ flex: 1 }}>prompt</span>
+            <span style={{ flex: 1 }}>{t('wf.d.prompt')}</span>
             <button
               onClick={() => { try { void navigator.clipboard.writeText(n.prompt!) } catch {} }}
-              title="copy prompt" aria-label="copy prompt"
+              title={t('wf.d.copy')} aria-label={t('wf.d.copy')}
               style={{ border: 'none', background: 'none', color: '#9a9ca3', cursor: 'pointer', fontSize: 12, padding: 0 }}
             >⧉</button>
           </div>
@@ -521,6 +522,7 @@ const KIND_BADGE: Record<NodeKind, { text: string; bg: string }> = {
 export default function WorkflowCanvas({
   nodes: rawNodes, selectedIds, onSelect, onClearSelection,
   onDelete, busy = false, height = 460, onPlay, nodeOrigin, sceneOf, onUseTake, sceneSlot, pickMode, title, onRerun,
+  fitOnLoad = false,
 }: {
   nodes: CanvasNode[]
   selectedIds: string[]
@@ -557,6 +559,11 @@ export default function WorkflowCanvas({
    *  sibling of the original. opts.refs, when present, is the user's
    *  chosen subset of the original's source files for this re-run. */
   onRerun?: (n: CanvasNode, model: { id: string; display_name: string }, opts: { duration?: number; resolution?: string; aspect_ratio?: string; refs?: Array<{ bucket: string; storagePath: string; mediaType: string; fileName: string; fileSize: number }> }) => void
+  /** Open zoomed to fit every node (XCreate, owner Oct 1: "the default
+   *  should zoom out more to see more elements"), and keep fitting as nodes
+   *  arrive until the user pans, zooms or drags; the % chip fits again.
+   *  Never above 100%. Off = the old fixed 100% at the top left. */
+  fitOnLoad?: boolean
 }) {
   const t = useT()
   // ── Take stacks (owner, Aug 9): a cut with several takes renders as ONE
@@ -833,6 +840,28 @@ export default function WorkflowCanvas({
   const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
 
+  // Fit-to-view (fitOnLoad): the whole layout inside the host, centred,
+  // between the wheel's 35% floor and 100%. `userMoved` stops the refits
+  // once the person has framed the board themselves.
+  const userMoved = useRef(false)
+  const fitView = () => {
+    const host = hostRef.current
+    if (!host || layout.pos.size === 0) return null
+    const w = host.clientWidth, h = host.clientHeight
+    if (w === 0 || h === 0) return null
+    // Wires run in a corridor below the cards, up to ~44px past the layout;
+    // a little more keeps the lowest one off the edge.
+    const lw = layout.width, lh = layout.height + 64
+    const z = Math.max(0.35, Math.min(1, w / lw, h / lh))
+    return { x: Math.max(0, (w - lw * z) / 2), y: Math.max(0, (h - lh * z) / 2), z }
+  }
+  useEffect(() => {
+    if (!fitOnLoad || userMoved.current) return
+    const v = fitView()
+    if (v) setView(v)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitOnLoad, layout])
+
   // Wheel-zoom has to be a MANUAL listener with passive:false. React
   // registers onWheel as passive, so preventDefault() there is ignored and
   // the browser scrolls the page instead of zooming the board — the hint
@@ -857,6 +886,7 @@ export default function WorkflowCanvas({
       // rocket (owner, Aug 9). exp keeps it smooth and symmetric; the clamp
       // tames free-spinning mouse wheels that report deltas of 300+.
       const d = Math.max(-100, Math.min(100, e.deltaY))
+      userMoved.current = true
       setView(v => ({ ...v, z: Math.min(2, Math.max(0.35, v.z * Math.exp(-d * 0.0012))) }))
     }
     host.addEventListener('wheel', onWheelRaw, { passive: false })
@@ -877,7 +907,7 @@ export default function WorkflowCanvas({
     const d = drag.current
     if (!d) return
     const dx = e.clientX - d.sx, dy = e.clientY - d.sy
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) d.moved = true
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) { d.moved = true; userMoved.current = true }
     // Resolve the origin NOW, not inside the updater. React may run the
     // updater after onPointerUp has already nulled drag.current, and reading
     // drag.current!.ox in there threw "Cannot read properties of null" the
@@ -1156,6 +1186,7 @@ export default function WorkflowCanvas({
                 const dy = (e.clientY - d.sy) / view.z
                 if (!d.moved && Math.abs(dx) + Math.abs(dy) < 4) return
                 d.moved = true
+                userMoved.current = true
                 setNodePos(m => ({ ...m, [n.id]: { x: d.ox + dx, y: d.oy + dy } }))
               }}
               onPointerUp={() => {
@@ -1423,17 +1454,24 @@ export default function WorkflowCanvas({
         borderRadius: 9, padding: '3px 5px', backdropFilter: 'blur(6px)',
       }}>
         <button
-          onClick={e => { e.stopPropagation(); setView(v => ({ ...v, z: Math.max(0.35, v.z / 1.2) })) }}
+          onClick={e => { e.stopPropagation(); userMoved.current = true; setView(v => ({ ...v, z: Math.max(0.35, v.z / 1.2) })) }}
           aria-label="zoom out"
           style={{ border: 'none', background: 'none', color: '#9a9ca3', fontSize: 15, width: 26, height: 24, cursor: 'pointer', lineHeight: 1 }}
         >−</button>
         <button
-          onClick={e => { e.stopPropagation(); setView({ x: 0, y: 0, z: 1 }); setNodePos({}) }}
+          onClick={e => {
+            e.stopPropagation()
+            setNodePos({})
+            // With fitOnLoad the reset is "show me everything" again.
+            const v = fitOnLoad ? fitView() : null
+            userMoved.current = false
+            setView(v ?? { x: 0, y: 0, z: 1 })
+          }}
           title={t('wf.resetview')}
           style={{ border: 'none', background: 'none', color: '#9a9ca3', fontSize: 10.5, fontFamily: 'var(--mono)', minWidth: 38, height: 24, cursor: 'pointer' }}
         >{Math.round(view.z * 100)}%</button>
         <button
-          onClick={e => { e.stopPropagation(); setView(v => ({ ...v, z: Math.min(2, v.z * 1.2) })) }}
+          onClick={e => { e.stopPropagation(); userMoved.current = true; setView(v => ({ ...v, z: Math.min(2, v.z * 1.2) })) }}
           aria-label="zoom in"
           style={{ border: 'none', background: 'none', color: '#9a9ca3', fontSize: 15, width: 26, height: 24, cursor: 'pointer', lineHeight: 1 }}
         >＋</button>
