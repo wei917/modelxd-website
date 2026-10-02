@@ -334,8 +334,8 @@ comparable to GDPval-AA's leaderboard (different judges and anchors).
 
 `/xtell`, signed-in; on xtell.modelxd.com anyone can open a temple and see
 their chart for free without signing in (sign-in comes when they ask a
-teacher, which is paid; 解夢, 孫子兵法 and the fortune cookie ask for it at
-the door). The street opens with a guide that
+teacher, which is paid; 解夢 and the fortune cookie ask for it at the door,
+and 孫子兵法 gives three free lookups a day before asking). The street opens with a guide that
 answers questions about the temples and opens the right one, then two free
 cards for today (a daily fortune, Western astrology and the BaZi day, once a
 signed-in visitor saves their birth details; today's Chinese almanac with
