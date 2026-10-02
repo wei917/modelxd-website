@@ -36,10 +36,16 @@ export function recordApiUsage(r: UsageRow): void {
     cost_usd: Number.isFinite(r.costUsd) ? Math.max(0, Number(r.costUsd.toFixed(6))) : 0,
     ref_id: r.refId ?? null, error_code: r.errorCode ?? null,
   }
-  const q = row.ref_id
-    ? service().from('api_usage').upsert(row, { onConflict: 'surface,ref_id' })
-    : service().from('api_usage').insert(row)
-  Promise.resolve(q).then(({ error }) => {
+  // A plain insert, not an upsert: the (surface, ref_id) index is PARTIAL
+  // (where ref_id is not null), and Postgres refuses ON CONFLICT against a
+  // partial index it is not told the predicate of (42P10). Until Oct 2 that
+  // dropped every image, video and 3D row. A second write for the same ref
+  // hits the index (23505) and updates the row instead, so the later write
+  // still wins.
+  Promise.resolve(service().from('api_usage').insert(row)).then(async ({ error }) => {
+    if (error?.code === '23505' && row.ref_id) {
+      ;({ error } = await service().from('api_usage').update(row).eq('surface', row.surface).eq('ref_id', row.ref_id))
+    }
     // Before migration 101 runs the table does not exist; say so once per
     // message instead of throwing into a response that already succeeded.
     if (error) console.warn(`${LOG} write failed (${r.surface} ${r.modelName ?? ''}): ${error.message}`)
