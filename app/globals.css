@@ -3417,6 +3417,9 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-artwork { display: block; background-repeat: no-repeat; background-size: 500% 200%; flex: none; }
 .xtell-artwork-portrait { background-image: url('/xtell/approved/portraits.avif'); aspect-ratio: 1586 / 2480; }
 .xtell-artwork-icon { background-image: url('/xtell/approved/icons.avif'); aspect-ratio: 1; }
+/* The www street's cards (dev.modelxd.com/xtell): the icon on a paper band. */
+.xtell-www-thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 16 / 9; background: #f7f1e6; border-bottom: 1px solid var(--border); }
+.xtell-www-thumb .xtell-artwork { height: 82%; }
 .xtell-focus-portrait { width: 100%; max-width: 440px; position: absolute; left: 50%; top: 0; transform: translateX(-50%); }
 .xtell-focus-scene[data-kind="object"] .xtell-focus-portrait { max-width: 360px; }
 .xtell-focus-scene[data-temple="yixue"] { background: var(--xtell-paper); }

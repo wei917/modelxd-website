@@ -427,9 +427,10 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
                 style={{ ...card, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s' }}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {/* Preserve the complete school illustration in the wide card. */}
-                <img src={k === 'yixue' ? '/xtell/approved/yixue-school-portrait.avif' : `/xtell/${k}.jpg`} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: k === 'yixue' ? 'contain' : 'cover', background: k === 'yixue' ? '#faf6f0' : undefined, display: 'block' }} />
+                {/* The approved painted icon, as on xtell.modelxd.com's top bar
+                    (owner, Oct 1: the first ink-wash scenes here, dark rooms
+                    with faceless figures, "scares"). */}
+                <div className="xtell-www-thumb"><TempleArtwork temple={k} kind="icon" clear /></div>
                 <div style={{ padding: '14px 18px 16px' }}>
                   <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>
