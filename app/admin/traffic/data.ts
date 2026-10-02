@@ -112,7 +112,8 @@ export type TapRow = { provider: string; taps: number; browsers: number }
 /** Taps per sign-in method, keyed like the sign-in chart. */
 export type TapTotals = Record<'google' | 'lineTw' | 'lineJp' | 'x' | 'other', { taps: number; browsers: number }>
 
-/** Accounts that signed in per day, by the method the account was made with. */
+/** Accounts that signed in per day, by the method used (since Oct 2; before,
+ *  the method the account was made with). */
 export type SigninDay = { day: string; google: number; lineTw: number; lineJp: number; x: number; other: number }
 export type SigninTotal = { key: keyof Omit<SigninDay, 'day'>; logins: number; people: number; newPeople: number }
 
