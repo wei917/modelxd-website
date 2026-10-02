@@ -3552,6 +3552,80 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-tarot-card summary { cursor: pointer; text-align: center; }
 .xtell-tarot-card details p { margin: 6px 0 0; line-height: 1.6; }
 @media (max-width: 560px) { .xtell-tarot-cards.is-three { gap: 8px; } .xtell-tarot-card strong { font-size: 12.5px; } }
+/* 塔羅's ritual (Oct 1, owner: "more 儀式感"): shuffle, cut, choose from a
+   face-down fan, turn the cards over. TarotRitual.tsx. The card back is a
+   pattern (night blue, gold lattice and medallion), the faces are the 1909 cards. */
+.xtell-tr { display: grid; justify-items: center; gap: 12px; padding: 6px 0 2px; text-align: center; min-width: 0; }
+.xtell-tr-step { margin: 0; font-size: 15.5px; font-weight: 700; line-height: 1.5; color: var(--white); min-height: 1.5em; }
+.xtell-tr-ask { margin: -6px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); max-width: 32em; overflow-wrap: anywhere; }
+.xtell-tr-card { --w: 64px; position: relative; display: block; width: var(--w); aspect-ratio: 360 / 626; padding: 0; border: none; background: none; border-radius: 6px; flex: none; }
+.xtell-tr-face { position: absolute; inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 1px 4px rgba(0, 0, 0, .28); }
+.xtell-tr-back {
+  background:
+    radial-gradient(circle at 50% 50%, #e9c97a 0 6%, transparent 6.5%),
+    radial-gradient(circle at 50% 50%, transparent 0 14%, rgba(233, 201, 122, .9) 14.5% 16%, transparent 16.5%),
+    repeating-linear-gradient(45deg, rgba(233, 201, 122, .17) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(-45deg, rgba(233, 201, 122, .17) 0 1px, transparent 1px 8px),
+    linear-gradient(160deg, #2c3263, #151937);
+  border: 1px solid #0d1027; outline: 1.5px solid rgba(233, 201, 122, .8); outline-offset: -5px;
+}
+.xtell-tr-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.xtell-tr-next { padding: 10px 20px; border-radius: 999px; border: 1px solid var(--red); background: #fff; color: var(--red); font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.xtell-tr-restart { border: none; background: none; color: var(--muted2); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 10px; }
+
+/* 洗牌: a stack that riffles in two halves. */
+.xtell-tr-stack { position: relative; width: 96px; height: 160px; margin: 6px 0 2px; }
+.xtell-tr-stack .xtell-tr-card { --w: 86px; position: absolute; left: 5px; top: calc(14px - var(--i) * 1.5px); }
+.xtell-tr-stack.is-shuffling .xtell-tr-card { animation: 1.3s ease-in-out calc(var(--i) * 20ms) both; }
+.xtell-tr-stack.is-shuffling .xtell-tr-card:nth-child(odd) { animation-name: xtell-tr-left; }
+.xtell-tr-stack.is-shuffling .xtell-tr-card:nth-child(even) { animation-name: xtell-tr-right; }
+@keyframes xtell-tr-left { 0%, 100% { transform: none; } 18%, 32% { transform: translateX(-62px) rotate(-9deg); } 50% { transform: translateX(-12px) translateY(-8px) rotate(-2deg); } 68%, 80% { transform: translateX(-62px) rotate(-9deg); } }
+@keyframes xtell-tr-right { 0%, 100% { transform: none; } 18%, 32% { transform: translateX(62px) rotate(9deg); } 50% { transform: translateX(12px) translateY(-8px) rotate(2deg); } 68%, 80% { transform: translateX(62px) rotate(9deg); } }
+
+/* 切牌: three piles; the chosen one rises. */
+.xtell-tr-piles { display: flex; gap: 24px; justify-content: center; padding: 18px 0 4px; }
+.xtell-tr-pile { position: relative; width: 78px; height: 134px; padding: 0; border: none; background: none; cursor: pointer; transition: transform .45s ease, opacity .45s ease; }
+.xtell-tr-pile .xtell-tr-card { --w: 72px; position: absolute; left: 3px; top: calc(12px - var(--i) * 2px); }
+.xtell-tr-pile:focus-visible { transform: translateY(-6px); }
+.xtell-tr-pile.is-chosen { transform: translateY(-28px) scale(1.06); }
+.xtell-tr-pile.is-other { opacity: .3; }
+
+/* The spread's places. */
+.xtell-tr-slots { display: flex; gap: 14px; justify-content: center; }
+.xtell-tr-slot { display: grid; justify-items: center; gap: 6px; perspective: 900px; }
+.xtell-tr-slot-name { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--muted2); }
+.xtell-tr-slot .xtell-tr-card, .xtell-tr-slot-empty { --w: 96px; width: 96px; }
+.xtell-tr-slots.is-three .xtell-tr-card, .xtell-tr-slots.is-three .xtell-tr-slot-empty { --w: 86px; width: 86px; }
+.xtell-tr-slot-empty { display: block; aspect-ratio: 360 / 626; border: 1.5px dashed var(--border2); border-radius: 6px; box-sizing: border-box; }
+.xtell-tr-card.is-placed { animation: xtell-tr-place .4s ease-out; }
+@keyframes xtell-tr-place { from { transform: translateY(46px) scale(.82); opacity: 0; } }
+
+/* 翻牌: each chosen card turns over; the ones waiting glow. */
+.xtell-tr-card.is-flip { cursor: pointer; transform-style: preserve-3d; transition: transform .75s cubic-bezier(.3, .7, .3, 1); }
+.xtell-tr-card.is-flip:disabled { cursor: default; }
+.xtell-tr-card.is-flipped { transform: rotateY(180deg); }
+.xtell-tr-card.is-flip:not(.is-flipped):not(:disabled) .xtell-tr-back { animation: xtell-tr-glow 1.8s ease-in-out infinite; }
+@keyframes xtell-tr-glow { 50% { box-shadow: 0 0 0 3px rgba(233, 201, 122, .55), 0 2px 14px rgba(233, 201, 122, .6); } }
+.xtell-tr-front { transform: rotateY(180deg); background: #f3efe6; overflow: hidden; }
+.xtell-tr-front img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.xtell-tr-front img.is-reversed { transform: rotate(180deg); }
+
+/* 選牌: the whole deck in a shallow arc, swiped sideways; a card rises under the finger. */
+.xtell-tr-fan { --s: 0; width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; padding: 26px 0 46px; }
+.xtell-tr-fan-row { display: flex; width: max-content; padding: 0 44px; }
+/* --o: the card's distance from the middle of the screen, in 160 px steps;
+   it tilts 9° and drops 10 px × o² per step (--s set on scroll). */
+.xtell-tr-card.is-fan { --w: 58px; --o: calc((var(--x) - var(--s)) / 160); --y: calc(var(--o) * var(--o) * 10px); --a: calc(var(--o) * 9deg);
+  margin-left: -30px; cursor: pointer; transform: translateY(var(--y)) rotate(var(--a)); transform-origin: 50% 140%; transition: transform .12s ease-out; animation: xtell-tr-deal .45s ease-out var(--d) backwards; }
+.xtell-tr-card.is-fan:first-child { margin-left: 0; }
+.xtell-tr-card.is-fan:focus-visible { transform: translateY(calc(var(--y) - 16px)) rotate(var(--a)); }
+/* A finger leaves :hover behind after a tap, which lifted the neighbour: mouse only. */
+@media (hover: hover) { .xtell-tr-card.is-fan:not(:disabled):hover { transform: translateY(calc(var(--y) - 16px)) rotate(var(--a)); } .xtell-tr-pile:hover:not(:disabled) { transform: translateY(-6px); } .xtell-tr-card.is-flip:not(:disabled):hover { transform: translateY(-4px); } }
+.xtell-tr-card.is-fan:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.xtell-tr-card.is-fan.is-picked { visibility: hidden; }
+.xtell-tr-card.is-fan:disabled { cursor: default; }
+@keyframes xtell-tr-deal { from { opacity: 0; transform: translateY(-34px) rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) { .xtell-tr *, .xtell-tr *::before { animation: none !important; transition: none !important; } }
 .xtell-dy-head .xtell-share-btn, .xtell-share-btn.xtell-dy-share { margin-left: auto; align-self: center; }
 .xtell-share-btn:hover { border-color: var(--xtell-vermilion, var(--red)); color: var(--xtell-vermilion, var(--red)); }
 .xtell-share { width: min(520px, 100%); }

@@ -33,7 +33,8 @@ import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, asQianEdition, needsJiao, type Jiao, type QianEdition } from '../../lib/xtell-ritual'
-import { drawTarot, asSpread, SPREADS, type TarotPick, type TarotSpread } from '../../lib/tarot-draw'
+import { asSpread, SPREADS, type TarotPick, type TarotSpread } from '../../lib/tarot-draw'
+import { TarotRitual } from '../components/xtell/TarotRitual'
 import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xtell-cookie'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
@@ -905,10 +906,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     if (!jiao) { setRitualBoth('confirmed'); void enter(s.n); return }
     setRitualBoth('drawn')
   }
-  // 塔羅: shuffle and deal in the browser, then lay the cards.
-  const dealCards = () => {
+  // 塔羅: the visitor shuffles, cuts and chooses in the browser
+  // (TarotRitual); the chosen cards are then laid.
+  const dealCards = (picks: TarotPick[]) => {
     if (enteringRef.current) return
-    picksRef.current = drawTarot(cryptoRand, SPREADS[spread].length)
+    picksRef.current = picks
     void enter()
   }
   const throwBlocks = () => {
@@ -3254,12 +3256,13 @@ function SunziForm({ situation, setSituation, ask, setAsk, sel, situationAria }:
 }
 
 // ── 塔羅 (Sep 28) ─────────────────────────────────────────────────────────────
-// The browser deals (lib/tarot-draw.ts); the server lays the cards with their
-// names, pictures and Waite's meaning for the way each landed (lib/tarot.ts).
+// The visitor shuffles, cuts and chooses (TarotRitual, lib/tarot-draw.ts);
+// the server lays the cards with their names, pictures and Waite's meaning
+// for the way each landed (lib/tarot.ts).
 
 function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel, extra }: {
   ask: string; setAsk: (s: string) => void; spread: TarotSpread; setSpread: (s: TarotSpread) => void
-  onDeal: () => void; entering: boolean; sel: any
+  onDeal: (picks: TarotPick[]) => void; entering: boolean; sel: any
   /** Shown above the deal button: the personality-type box (Sep 30). */
   extra?: React.ReactNode
 }) {
@@ -3281,12 +3284,10 @@ function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel, ext
         ))}
       </div>
       {extra}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, flex: 1, minWidth: 220 }}>{t('xtell.tarot.note')}</span>
-        <button type="button" onClick={onDeal} disabled={entering} aria-busy={entering || undefined} className="xtell-tarot-deal">
-          {entering ? t('xtell.tarot.drawing') : t('xtell.tarot.draw')}
-        </button>
-      </div>
+      {/* A new spread starts the ritual again. */}
+      <TarotRitual key={spread} count={SPREADS[spread].length} positions={SPREADS[spread].map(p => t(`xtell.tarot.pos.${p}`))}
+        ask={ask} disabled={entering} rand={cryptoRand} onDone={onDeal} />
+      <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.tarot.note')}</span>
     </div>
   )
 }

@@ -30,6 +30,28 @@ export function drawTarot(rand: () => number, count: number): TarotPick[] {
   return deck.slice(0, count).map(id => ({ id, reversed: rand() < 0.5 }))
 }
 
+// The ritual (owner, Oct 1: "show the cards face down to let people choose.
+// more 儀式感"): the whole deck is shuffled, each card already lying upright
+// or reversed as in a real deck, then cut, then fanned face down for the
+// visitor to choose from. Which card lies where is the shuffle's; the visitor
+// only chooses places, so nobody chooses the cards.
+
+/** The whole deck, shuffled: Fisher–Yates, then each card's orientation. */
+export function shuffleDeck(rand: () => number): TarotPick[] {
+  return drawTarot(rand, TAROT_IDS.length)
+}
+
+/** 切牌: the deck in three piles, top to bottom; the chosen pile goes on top
+ *  and the other two follow in their order. */
+export function cutDeck(deck: TarotPick[], pile: 0 | 1 | 2): TarotPick[] {
+  const a = Math.round(deck.length / 3), b = Math.round(deck.length * 2 / 3)
+  const piles = [deck.slice(0, a), deck.slice(a, b), deck.slice(b)]
+  return [...piles[pile], ...piles.filter((_, i) => i !== pile).flat()]
+}
+
+/** A card's picture, for the reveal before the spread is laid. */
+export const tarotImage = (id: string) => `/xtell/tarot/${id}.webp`
+
 /** What a client may send: the right number of distinct real cards. */
 export function validPicks(spread: TarotSpread, picks: unknown): picks is TarotPick[] {
   if (!Array.isArray(picks) || picks.length !== SPREADS[spread].length) return false
