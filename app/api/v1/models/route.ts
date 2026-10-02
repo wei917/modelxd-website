@@ -49,16 +49,24 @@ export async function GET(req: Request) {
 
   const { data, error } = await service()
     .from('ai_models')
-    .select('provider, model_name, display_name, output_modalities, modes, model_pricing, output_config, blocked_features, released_at, tags')
+    .select('provider, model_name, display_name, input_modalities, output_modalities, modes, model_pricing, output_config, blocked_features, released_at, tags')
     .eq('enabled', true)
   if (error) return Response.json({ error: { message: error.message, type: 'server_error' } }, { status: 503 })
 
   const url = new URL(req.url)
   const want = url.searchParams.get('type')   // text | image | video
   const GENERATED = ['text', 'image', 'video']
+  // A text-only model that does not take text (speech-to-text: whisper-1,
+  // fun-asr) cannot be called by chat completions, so it is not listed:
+  // anything listed is callable.
+  const chatless = (m: any) => {
+    const ins = (m.input_modalities ?? []) as string[]
+    return ins.length > 0 && !ins.includes('text') && ((m.output_modalities ?? []) as string[]).every(x => x === 'text')
+  }
 
   const rows = (data ?? [])
     .filter(m => (m.output_modalities ?? []).some((x: string) => GENERATED.includes(x)))
+    .filter(m => !chatless(m))
     .filter(m => !((m.blocked_features ?? []) as string[]).includes(API_FEATURE))
     .filter(m => !want || (m.output_modalities ?? []).includes(want))
     .sort((a, b) => `${a.provider}/${a.model_name}`.localeCompare(`${b.provider}/${b.model_name}`))

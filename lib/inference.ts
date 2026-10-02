@@ -157,6 +157,16 @@ function assertUsable(model: ModelInfo): void {
       400, 'model_wrong_modality',
     )
   }
+  // Speech-to-text models (whisper-1, fun-asr) output text but take audio,
+  // so a chat message can never reach them; the provider call would only
+  // fail as a 502.
+  const inputs = model.input_modalities ?? []
+  if (inputs.length > 0 && !inputs.includes('text')) {
+    throw new InferenceError(
+      `\`${slug}\` is a speech-to-text model: it takes audio, not chat messages, so chat completions cannot call it.`,
+      400, 'model_wrong_modality',
+    )
+  }
   // audit #2: the block was enforced in the picker and the surface list but
   // never on an API path. This is where it starts to matter.
   if (isBlockedFor(model as any, API_FEATURE)) {
