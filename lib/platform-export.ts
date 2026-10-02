@@ -8,6 +8,23 @@
 
 import type { ExportCheck, ExportSpec } from './platform-specs'
 
+/** How a picture came to be, in IPTC's Digital Source Type vocabulary: what
+ *  Meta and Google read to show an "AI info" label (Meta, Feb 2024). Our
+ *  re-encode drops the models' own provenance data, so the export writes
+ *  this back for every AI picture. A user's own photo gets none. */
+export type AiSource = 'generated' | 'edited'
+const DIGITAL_SOURCE: Record<AiSource, string> = {
+  generated: 'http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia',
+  edited:    'http://cv.iptc.org/newscodes/digitalsourcetype/compositeWithTrainedAlgorithmicMedia',
+}
+const aiXmp = (src: AiSource) => `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about="" xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" Iptc4xmpExt:DigitalSourceType="${DIGITAL_SOURCE[src]}"/>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`
+
 /** Flood from the frame edge across the background and set it to 255, like
  *  a magic wand: a pixel joins when it is light (luma 215+), nearly grey,
  *  and within 6 luma of the neighbour it was reached from. That follows the
@@ -56,7 +73,7 @@ function edgeIsWhite(px: Buffer, w: number, h: number, channels: number) {
   return true
 }
 
-export async function exportToSpec(input: Buffer, spec: ExportSpec): Promise<{
+export async function exportToSpec(input: Buffer, spec: ExportSpec, opts: { ai?: AiSource | null } = {}): Promise<{
   buffer: Buffer; width: number; height: number; checks: ExportCheck[]
 }> {
   const sharp = (await import('sharp')).default
@@ -85,10 +102,10 @@ export async function exportToSpec(input: Buffer, spec: ExportSpec): Promise<{
   // JPEG inside the byte window: step quality down until it fits the cap;
   // a file under a lower bound (淘寶 白底圖, momo) is re-encoded at full
   // quality, which is all a flat white picture can give.
-  const encode = (quality: number, chroma: '4:2:0' | '4:4:4') =>
-    sharp(data, { raw: { width: w, height: h, channels: 3 } })
-      .jpeg({ quality, chromaSubsampling: chroma })
-      .toBuffer()
+  const encode = (quality: number, chroma: '4:2:0' | '4:4:4') => {
+    const img = sharp(data, { raw: { width: w, height: h, channels: 3 } }).jpeg({ quality, chromaSubsampling: chroma })
+    return (opts.ai ? img.withXmp(aiXmp(opts.ai)) : img).toBuffer()
+  }
   let quality = 92
   let out = await encode(quality, '4:2:0')
   while (out.length > spec.maxBytes && quality > 50) {
@@ -107,6 +124,10 @@ export async function exportToSpec(input: Buffer, spec: ExportSpec): Promise<{
   ]
   if (spec.whiteBg) {
     checks.push({ key: 'white', ok: edgeIsWhite(final.data, w, h, final.info.channels), value: 'RGB 255' })
+  }
+  if (opts.ai) {
+    const xmp = (await sharp(out).metadata()).xmp?.toString() ?? ''
+    checks.push({ key: 'ai', ok: xmp.includes(DIGITAL_SOURCE[opts.ai]), value: 'IPTC' })
   }
   return { buffer: out, width: w, height: h, checks }
 }

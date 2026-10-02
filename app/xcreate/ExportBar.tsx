@@ -13,6 +13,39 @@ import { useState } from 'react'
 import { useLang } from '@/lib/i18n'
 import { EXPORT_SPECS, DEFAULT_EXPORT_BY_LANG, type ExportCheck, type ExportSpecId } from '@/lib/platform-specs'
 
+/** Fetch one picture export (query = the route's search string), save it
+ *  from a same-origin blob: URL, and return the server's checks. Throws
+ *  when the export fails. Shared with ConvertDialog. */
+export async function downloadPictureExport(query: string, fallbackName: string): Promise<ExportCheck[]> {
+  const res = await fetch(`/api/xcreate/export?${query}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(String(res.status))
+  const blob = await res.blob()
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const href = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = href; a.download = name
+  document.body.appendChild(a); a.click(); a.remove()
+  setTimeout(() => URL.revokeObjectURL(href), 15_000)
+  try { return JSON.parse(decodeURIComponent(res.headers.get('X-Export-Checks') ?? '[]')) } catch { return [] }
+}
+
+/** The checklist line under an export, shared by the picture, video and
+ *  upload exports. */
+export function ExportChecks({ checks }: { checks: ExportCheck[] }) {
+  const { t } = useLang()
+  const label: Record<ExportCheck['key'], string> = {
+    size: t('xc.export.size'), format: t('xc.export.format'), bytes: t('xc.export.bytes'), white: t('xc.export.white'),
+    duration: t('xc.export.duration'), ai: t('xc.export.ai'),
+  }
+  return (
+    <div style={{ display: 'flex', gap: '4px 12px', flexWrap: 'wrap', fontSize: 12 }}>
+      {checks.map(c => (
+        <span key={c.key} style={{ color: c.ok ? 'var(--green)' : 'var(--red)' }}>{c.ok ? '✓' : '✗'} {label[c.key]} {c.value}</span>
+      ))}
+    </div>
+  )
+}
+
 export default function ExportBar({ rowId, slot, count = 1, preferred }: {
   rowId: string
   slot: number
@@ -31,16 +64,7 @@ export default function ExportBar({ rowId, slot, count = 1, preferred }: {
     if (busy) return
     setBusy(true); setFailed(false); setChecks(null)
     try {
-      const res = await fetch(`/api/xcreate/export?id=${encodeURIComponent(rowId)}&slot=${slot}&i=${index}&spec=${spec}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error(String(res.status))
-      const blob = await res.blob()
-      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `${spec}.jpg`
-      const href = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = href; a.download = name
-      document.body.appendChild(a); a.click(); a.remove()
-      setTimeout(() => URL.revokeObjectURL(href), 15_000)
-      try { setChecks(JSON.parse(decodeURIComponent(res.headers.get('X-Export-Checks') ?? '[]'))) } catch { setChecks([]) }
+      setChecks(await downloadPictureExport(`id=${encodeURIComponent(rowId)}&slot=${slot}&i=${index}&spec=${spec}`, `${spec}.jpg`))
     } catch {
       setFailed(true)
     } finally {
@@ -48,9 +72,6 @@ export default function ExportBar({ rowId, slot, count = 1, preferred }: {
     }
   }
 
-  const label: Record<ExportCheck['key'], string> = {
-    size: t('xc.export.size'), format: t('xc.export.format'), bytes: t('xc.export.bytes'), white: t('xc.export.white'),
-  }
   const whiteMissed = checks?.some(c => c.key === 'white' && !c.ok)
 
   return (
@@ -76,14 +97,9 @@ export default function ExportBar({ rowId, slot, count = 1, preferred }: {
           ⬇ {t('xc.export.download')}
         </button>
       </div>
-      {checks && checks.length > 0 && (
-        <div style={{ display: 'flex', gap: '4px 12px', flexWrap: 'wrap', fontSize: 12 }}>
-          {checks.map(c => (
-            <span key={c.key} style={{ color: c.ok ? 'var(--green)' : 'var(--red)' }}>{c.ok ? '✓' : '✗'} {label[c.key]} {c.value}</span>
-          ))}
-        </div>
-      )}
+      {checks && checks.length > 0 && <ExportChecks checks={checks} />}
       {whiteMissed && <div style={{ fontSize: 12, color: 'var(--muted2)', lineHeight: 1.5 }}>{t('xc.export.whitehint')}</div>}
+      {checks?.some(c => c.key === 'ai' && c.ok) && <div style={{ fontSize: 12, color: 'var(--muted2)', lineHeight: 1.5 }}>{t('xc.export.ainote')}</div>}
       {failed && <div role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>{t('xc.export.failed')}</div>}
     </div>
   )

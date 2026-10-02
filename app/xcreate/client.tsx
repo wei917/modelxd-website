@@ -19,6 +19,8 @@ import StandaloneTrending from './StandaloneTrending'
 import StudioHistory from './StudioHistory'
 import StandaloneTemplates from './StandaloneTemplates'
 import ExportBar from './ExportBar'
+import VideoExportBar from './VideoExportBar'
+import ConvertDialog from './ConvertDialog'
 import FilmStudio from './FilmStudio'
 import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
@@ -1141,6 +1143,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // because validateOpts runs inside applyTemplate before state settles.
   // Cleared wherever the active template is.
   const templateAspectRef = useRef<string | null>(null)
+  // "Your own file → a platform's spec" (ConvertDialog), when open.
+  const [convertKind, setConvertKind] = useState<'image' | 'video' | null>(null)
   // E-commerce platform chip on product templates (General/Shopee/Taobao/
   // Amazon). A chip is a re-application of the template with that
   // marketplace's conventions appended — it owns the prompt the same way
@@ -3975,6 +3979,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
   return (
     <>
+      {convertKind && (
+        <ConvertDialog kind={convertKind} onClose={() => setConvertKind(null)}
+          onSignIn={() => { setConvertKind(null); showAuth(`/?type=${convertKind}`) }} />
+      )}
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
@@ -4178,6 +4186,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       : vid
                       ? <video src={url} autoPlay loop muted playsInline controls style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain' }} />
                       : <img src={url} alt="" onClick={() => setLightbox(url)} style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain', cursor: 'zoom-in' }} />}
+                    {/* The video on the canvas converts to a platform's spec too. */}
+                    {vid && xcreateId && (
+                      <VideoExportBar key={`v:${xcreateId}:${chosenIdx ?? 0}`} rowId={xcreateId} slot={chosenIdx ?? 0} />
+                    )}
                     {/* The picture on the canvas downloads in a platform's spec too. */}
                     {!aud && !vid && xcreateId && (
                       <div style={{ background: 'var(--bg)' }}>
@@ -5270,7 +5282,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* Templates are back, redesigned (owner, Oct 1): platform-ready
                     pictures and videos first, then styles. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
-                  <StandaloneTemplates mode={mode} onSelect={tpl => { void applyTemplate(tpl) }} />
+                  <StandaloneTemplates mode={mode} onSelect={tpl => { void applyTemplate(tpl) }} onConvert={kind => setConvertKind(kind)} />
                 )}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
                   <StandaloneTrending kind={mode}
@@ -5454,6 +5466,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                             </div>
                             {/* A finished picture downloads in a platform's exact
                                 upload spec (owner, Oct 1). Needs the run's row. */}
+                            {mode === 'video' && slot.done && !slot.error && slot.isVideo && xcreateId && (
+                              <VideoExportBar rowId={xcreateId} slot={i} />
+                            )}
                             {mode === 'image' && slot.done && !slot.error && slot.isImage && xcreateId && (
                               <ExportBar rowId={xcreateId} slot={i}
                                 count={(slot.text ?? '').split('\n').filter(Boolean).length}

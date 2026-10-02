@@ -167,8 +167,18 @@ Qwen). A finished picture downloads in a platform's exact upload spec
 `lib/platform-specs.ts`): exact pixels, JPEG, the file-size window, and a
 background snapped to and checked at RGB 255 where required; the checks are
 shown, a miss included. Taobao and 小紅書 numbers are from third-party guides
-(their sites refused the research fetch). Video export to spec and AI-label
-metadata are phase 2. The shell around it (top bar, footer, sign-in,
+(their sites refused the research fetch). Phase 2 (Oct 1): finished videos
+convert too (`VideoExportBar.tsx` → `/api/xcreate/export-video` →
+`lib/platform-video.ts`, ffmpeg-static traced into that function in
+next.config.js): exact frame by crop, 30 fps H.264 High + AAC, faststart,
+no edit lists, cut to the cap; the result is stored under the user's
+`exports/` folder in `xcreate-ai-videos` and handed back as a one-hour
+`download` link. A user's own photo or video converts with no model and no
+charge (`ConvertDialog.tsx`, the first card of the marketplace rows; only
+from their own upload folder). Every AI picture downloads with IPTC
+DigitalSourceType written in (trained or composite AI media, which Meta and
+Google read); videos have no such marker, so the bar asks the user to tick
+the platform's AI label. No C2PA signing and no mainland-China label yet. The shell around it (top bar, footer, sign-in,
 account page, legal note) is `app/components/xcreate/*` with its own
 `xcreate-shell.css`, every rule scoped to `html[data-site="xcreate"]` because
 Nav loads it on every host. The `--xc-*` palette is defined there once. A

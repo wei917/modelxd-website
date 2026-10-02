@@ -12,8 +12,9 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // XCut renders with ffmpeg-static's binary: keep the package out of the
-  // bundle and trace the binary into the one function that spawns it.
+  // XCut renders and the platform video export run ffmpeg-static's binary:
+  // keep the package out of the bundle and trace the binary into the
+  // functions that spawn it.
   serverExternalPackages: ['ffmpeg-static'],
   // Metadata in <head>, before first paint, for every visitor. By default
   // Next 16 streams the <title> into <body> after the shell has hydrated,
@@ -24,6 +25,8 @@ const nextConfig = {
   htmlLimitedBots: /.*/,
   outputFileTracingIncludes: {
     '/api/xcut/render': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
+    // Platform video export (Oct 1) re-encodes with the same binary.
+    '/api/xcreate/export-video': ['./node_modules/ffmpeg-static/ffmpeg'],
   },
   webpack: (config) => {
     config.watchOptions = {
