@@ -1,5 +1,7 @@
 -- supabase/123_site_ads_accounts.sql — /admin/traffic: what ad visitors did,
 -- and how many accounts there are per country.
+-- (Applied by the owner on Oct 2, Taiwan time, and checked live: rows for the
+-- service key from both functions, 42501 for the publishable key.)
 --
 -- Owner, Oct 2 (Taiwan), after "still no Japanese users login?" was answered
 -- by hand (61 browsers from the Japan ad, 43 stayed 30 s or more since the
