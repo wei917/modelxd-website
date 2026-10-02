@@ -2,8 +2,9 @@
 // and the deck the server reads (lib/tarot.ts, content/tarot/cards.json).
 //   npx tsx scripts/test-xtell-tarot.ts
 
-import { existsSync } from 'node:fs'
-import { drawTarot, validPicks, TAROT_IDS, SPREADS, asSpread } from '../lib/tarot-draw'
+import { existsSync, readFileSync } from 'node:fs'
+import { drawTarot, validPicks, TAROT_IDS, SPREADS, asSpread, shuffleDeck, cutDeck, tarotImage } from '../lib/tarot-draw'
+import { STRINGS } from '../lib/i18n'
 import { tarotDeck, tarotChart, tarotFacts } from '../lib/tarot'
 
 let fails = 0
@@ -41,6 +42,32 @@ check('a laid spread: positions in order, the meaning for the way each landed', 
 const facts = tarotFacts(chart)
 check("the teacher's facts carry the question, each position and Waite's words", facts.includes('換工作？') && facts.includes('過去：') && facts.includes('逆位') && facts.includes(deck[13].reversed))
 check('no question: the teacher is told to ask first', tarotFacts(tarotChart('one', [{ id: 'major-01', reversed: false }], '')).includes('先問清楚'))
+
+// ── The ritual (Oct 1: shuffle, cut, choose face down, turn over) ──────────
+{
+  const full = shuffleDeck(rand)
+  check('ritual: the shuffle is the whole deck, each card once, each lying one way', full.length === 78 && new Set(full.map(c => c.id)).size === 78 && full.every(c => typeof c.reversed === 'boolean') && full.some(c => c.reversed) && full.some(c => !c.reversed))
+  const order = (d: typeof full) => d.map(c => c.id).join()
+  check('ritual: two shuffles differ', order(shuffleDeck(rand)) !== order(shuffleDeck(rand)))
+  const piles = [full.slice(0, 26), full.slice(26, 52), full.slice(52)]
+  const cutMid = cutDeck(full, 1), cutLast = cutDeck(full, 2)
+  check('ritual: the cut puts the chosen pile on top, the other two below in order, nothing lost', order(cutMid) === order([...piles[1], ...piles[0], ...piles[2]]) && order(cutLast) === order([...piles[2], ...piles[0], ...piles[1]]) && order(cutDeck(full, 0)) === order(full) && cutMid.every(c => full.includes(c)))
+  check('ritual: chosen places give real, distinct cards the server accepts', validPicks('three', [cutMid[5], cutMid[40], cutMid[77]].map(c => ({ id: c.id, reversed: c.reversed }))))
+  check('ritual: the picture shown when a card is turned is the one the spread lays', tarotDeck().every(c => tarotImage(c.id) === c.image))
+  const ui = readFileSync('app/components/xtell/TarotRitual.tsx', 'utf8')
+  check('ritual: 洗牌 → 切牌 → 選牌 → 翻牌, in that order', /stage === 'deck' \|\| stage === 'shuffling'/.test(ui) && /setStage\('cut'\)/.test(ui) && /setStage\('fan'\)/.test(ui) && /setStage\('reveal'\)/.test(ui))
+  check('ritual: nothing is sent until the last card is turned, then exactly the chosen places', /if \(next\.every\(Boolean\)\) later\(\(\) => \{ setStage\('done'\); onDone\(picked\.map\(i => deck\[i\]\)\) \}/.test(ui) && (ui.match(/onDone\(/g) ?? []).length === 1)
+  check('ritual: a chosen card cannot be chosen twice, and no more than the spread holds', /picked\.includes\(i\) \|\| picked\.length >= count/.test(ui))
+  check('ritual: a failed laying starts again from the shuffle', /else if \(laying\.current\) restart\(\)/.test(ui))
+  check('ritual: the arc follows the swipe; cards are buttons with their place in words', /setProperty\('--s'/.test(ui) && /aria-label=\{fill\('xtell\.tarot\.r\.card', i \+ 1\)\}/.test(ui) && /aria-label=\{t\('xtell\.tarot\.r\.flip'\)/.test(ui))
+  const css = readFileSync('app/globals.css', 'utf8')
+  check('ritual: still for those who ask for less motion; hover lifts only with a mouse', /@media \(prefers-reduced-motion: reduce\) \{ \.xtell-tr \*/.test(css) && /@media \(hover: hover\) \{ \.xtell-tr-card\.is-fan/.test(css))
+  const client = readFileSync('app/xtell/client.tsx', 'utf8')
+  check('room: the panel runs the ritual (a new spread starts it again); the old one-press deal is gone', /<TarotRitual key=\{spread\}/.test(client) && !/drawTarot\(cryptoRand/.test(client))
+  const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
+  const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.tarot.r.'))
+  check('strings: every ritual line in five languages', keys.length === 14 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), String(keys.length))
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nall tarot checks passed')
 if (fails) process.exit(1)
