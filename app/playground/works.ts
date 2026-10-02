@@ -114,8 +114,6 @@ export const PG_ITEMS: PgItem[] = [
 
 export const PG_ARTWORKS = PG_ITEMS.filter((i): i is PgArtwork => i.kind === 'artwork')
 export const PG_PRESETS  = PG_ITEMS.filter((i): i is PgPreset => i.kind === 'preset')
-/** The home's hero picture: the vampire (owner, Sep 14). */
-export const PG_HERO = PG_ARTWORKS[0]
 
 export const pick = (v: Localized, lang: string): string => v[lang as Lang5] ?? v.en
 export const imagePromptOf = (i: PgItem, lang: string): string => pick(i.imagePrompt, lang)

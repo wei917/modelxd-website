@@ -1476,7 +1476,8 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    Keeping the two side by side puts the entire first decision in one view. */
 .home-hero {
   width: 100%; max-width: 1240px; margin: 0 auto;
-  display: grid; grid-template-columns: minmax(480px, 1.1fr) minmax(420px, .9fr);
+  /* One column since the playground card left (Oct 1). */
+  display: grid; grid-template-columns: minmax(0, 1fr);
   gap: clamp(38px, 4vw, 56px); align-items: center;
   padding: clamp(44px, 4.6vw, 68px) 40px clamp(54px, 5vw, 74px);
 }
@@ -2954,9 +2955,9 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 }
 .pg-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,.10); border-color: var(--border2); }
 .pg-card:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
-.pg-card-img, .pg-hero-img, .pg-lb-img { position: relative; display: block; background: #f0efec; min-width: 0; }
+.pg-card-img, .pg-lb-img { position: relative; display: block; background: #f0efec; min-width: 0; }
 .pg-card-img { aspect-ratio: 16 / 9; }
-.pg-card-img img, .pg-hero-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pg-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pg-img-fallback {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 22px; color: var(--muted);
@@ -3012,27 +3013,13 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    .pg-btn so the min-height wins at equal specificity. */
 @media (max-width: 760px) { .pg-btn { min-height: 44px; } .pg-lightbox { padding: 12px; } .pg-lb-card { max-height: calc(100vh - 24px); } }
 .pg-lb-hint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--muted); }
-/* Japanese home: the artwork card takes the hero's second column; the agent
-   panel sits under the hero in its standalone form. */
-.pg-hero-card {
-  display: block; min-width: 0; text-decoration: none; overflow: hidden;
-  border: 1px solid var(--border); border-radius: 24px; background: #ffffff;
-  box-shadow: 0 22px 60px rgba(0,0,0,.08); cursor: none;
-  transition: transform .16s, box-shadow .16s;
-}
-.pg-hero-card:hover { transform: translateY(-3px); box-shadow: 0 26px 64px rgba(0,0,0,.12); }
-.pg-hero-card:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
-.pg-hero-img { aspect-ratio: 16 / 9; }
-.pg-hero-body { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px 16px; }
-.pg-hero-eyebrow { font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--red); }
-.pg-hero-title { font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 20px; color: var(--white); }
-.pg-hero-cta { font-size: 14px; font-weight: 600; color: var(--red); }
+/* The agent panel sits under the hero in its standalone form. */
 .home-agent-below { max-width: 1240px; margin: -24px auto 0; padding: 0 40px 6px; }
 .home-agent-below .la-wrap { padding-top: 0; }
 @media (max-width: 760px) { .home-agent-below { margin-top: -8px; padding: 0 18px 6px; } }
-/* Phones (owner, Sep 14): the primary Playground door and the artwork must
-   both sit above the fold at 375x667. The model strip hides, the hero
-   loses its top air and eyebrow, the two secondary doors share one row. */
+/* Phones (owner, Sep 14): the primary Playground door sits above the fold
+   at 375x667. The model strip hides, the hero loses its top air and
+   eyebrow, the two secondary doors share one row. */
 @media (max-width: 760px) {
   .value-bar { display: none; }
   .home-hero { padding: 14px 18px 22px; gap: 14px; }
@@ -3044,10 +3031,6 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .home-hero-cta.is-primary { flex: 1 0 100%; }
   .home-hero-cta.is-secondary { flex: 1 1 calc(50% - 4px); min-height: 40px; padding: 0 10px; font-size: 12.5px; }
   html[lang="ja"] .home-hero-cta.is-secondary { font-size: 13px; }
-  .pg-hero-card { border-radius: 16px; }
-  .pg-hero-body { gap: 2px; padding: 10px 14px 12px; }
-  .pg-hero-title { font-size: 15px; }
-  .pg-hero-cta { font-size: 13px; }
 }
 /* Playground additions: tool entrances, section titles, preset cards, the
    editable prompt boxes in the detail panel. */

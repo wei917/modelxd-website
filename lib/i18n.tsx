@@ -1228,9 +1228,6 @@ export const STRINGS: Record<string, Entry> = {
   'pg.hint':             { en: 'Opens the tool with the prompt filled in. Nothing runs until you press start there; sign-in and the daily free quota apply as usual.', 'zh-Hant': '會帶著提示詞打開工具。在那裡按下開始之前不會執行任何東西；登入與每日免費次數照常適用。', 'zh-Hans': '会带着提示词打开工具。在那里按下开始之前不会执行任何东西；登录与每日免费次数照常适用。', ja: 'プロンプトを入れた状態でツールを開きます。そこで開始を押すまで何も実行されません。ログインと1日の無料回数は通常どおりです。', ko: '프롬프트가 채워진 상태로 도구를 엽니다. 거기서 시작을 누르기 전까지 아무것도 실행되지 않으며, 로그인과 하루 무료 횟수는 평소와 같습니다.' },
   'pg.close':            { en: 'Close', 'zh-Hant': '關閉', 'zh-Hans': '关闭', ja: '閉じる', ko: '닫기' },
   'pg.open':             { en: 'Open', 'zh-Hant': '打開', 'zh-Hans': '打开', ja: '開く', ko: '열기' },
-  'pg.home.eyebrow':     { en: 'ModelXD Playground', 'zh-Hant': 'ModelXD Playground', 'zh-Hans': 'ModelXD Playground', ja: 'ModelXD Playground', ko: 'ModelXD Playground' },
-  'pg.home.caption':     { en: 'You can create images and videos like this.', 'zh-Hant': '這樣的圖片和影片，你也做得出來。', 'zh-Hans': '这样的图片和视频，你也做得出来。', ja: 'こんな画像や動画、あなたも作れる。', ko: '이런 이미지와 영상, 당신도 만들 수 있어요.' },
-  'pg.home.cta':         { en: 'Open the playground', 'zh-Hant': '前往 Playground', 'zh-Hans': '前往 Playground', ja: 'プレイグラウンドへ', ko: 'Playground로 이동' },
 
   // ✨ Improve prompt (XDuel, XCreate; Sep 16). Suggestion, confirmation,
   // undo; the added details are labelled as suggestions, not facts.

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import LandingAgent from './components/LandingAgent'
-import PlaygroundHeroCard from './playground/HeroCard'
 import ContactEmail from './components/ContactEmail'
 import BugReportLink from './components/BugReport'
 import { useRouter } from 'next/navigation'
@@ -375,9 +374,8 @@ export default function HomeClient() {
             </button>
           </div>
         </div>
-        {/* The playground's hero artwork beside the pitch, every locale
-            (owner, Sep 14); the agent panel sits under the hero. */}
-        <PlaygroundHeroCard />
+        {/* The playground's artwork card that sat here (Sep 14) was removed
+            on Oct 1 (owner); the Try it button still opens the playground. */}
       </section>
       <div className="home-agent-below">
         <LandingAgent />
