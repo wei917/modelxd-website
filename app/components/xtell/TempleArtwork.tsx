@@ -14,15 +14,25 @@ export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simia
 export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'yixue', 'jiemeng', 'sunzi', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
 
 // Each market's own order (owner, Sep 28: "for each market, a list and
-// order"). Every temple is in every list; only the order changes. Japan
-// leads with 星座, タロット and 四柱推命, then 観音おみくじ, 縁結び and 夢占い, and puts the rooms
-// Japanese visitors rarely know (九曜, 四面佛, 測字) last. Korea leads with
-// 사주, 궁합 and 타로. Chinese and English keep the order above.
-// 九星気学 (Sep 29, a reviewer: big in Japan) comes right after 四柱推命 there.
-const ORDER_JA: TempleKey[] = ['zhanxing', 'tarot', 'bazi', 'kyusei', 'sukuyo', 'guanyin', 'yuelao', 'jiemeng', 'sunzi', 'cookie', 'xingming', 'yixue', 'ziwei', 'guandi', 'mazu', 'navagraha', 'simianfo', 'cezi']
+// order"). Every temple is in every list; only the order changes. Korea
+// leads with 사주, 궁합 and 타로. Chinese keeps the order above.
+// Oct 2 (owner: "optimize the temple order on the top nav bar for different
+// countries"), Japan by what Japanese people search for most (Keyword
+// Planner, Japan, Sep 30, a month): 夢占い and おみくじ 246,000 each,
+// 姓名判断 135,000, ホロスコープ 90,500, タロット, 四柱推命 and 九星気学
+// 74,000 each, 宿曜 33,100. The rooms Japanese visitors rarely know (関帝,
+// 媽祖, 四面仏, 字占い) stay last: a Japanese visitor read the page as a
+// Taiwanese site translated.
+const ORDER_JA: TempleKey[] = ['jiemeng', 'guanyin', 'xingming', 'zhanxing', 'tarot', 'bazi', 'kyusei', 'yuelao', 'sukuyo', 'yixue', 'ziwei', 'sunzi', 'cookie', 'navagraha', 'guandi', 'mazu', 'simianfo', 'cezi']
 const ORDER_KO: TempleKey[] = ['bazi', 'yuelao', 'tarot', 'zhanxing', 'jiemeng', 'sunzi', 'cookie', 'xingming', 'yixue', 'ziwei', 'guanyin', 'guandi', 'mazu', 'navagraha', 'kyusei', 'sukuyo', 'simianfo', 'cezi']
+// English (the United States; Oct 2, same request): what English speakers
+// look for first, tarot, astrology and dream meanings, then Chinese
+// astrology (BaZi), love compatibility, the fortune cookie they know and the
+// I Ching. The rooms that need Chinese characters or names (姓名, 測字) and
+// the Japanese 宿曜 go last.
+const ORDER_EN: TempleKey[] = ['tarot', 'zhanxing', 'jiemeng', 'bazi', 'yuelao', 'cookie', 'yixue', 'navagraha', 'sunzi', 'ziwei', 'kyusei', 'guanyin', 'guandi', 'mazu', 'simianfo', 'sukuyo', 'xingming', 'cezi']
 export function displayTemples(lang: string): TempleKey[] {
-  return lang === 'ja' ? ORDER_JA : lang === 'ko' ? ORDER_KO : DISPLAY_TEMPLES
+  return lang === 'ja' ? ORDER_JA : lang === 'ko' ? ORDER_KO : lang === 'en' ? ORDER_EN : DISPLAY_TEMPLES
 }
 
 // Both approved image sheets use the same five-column, two-row ordering.
