@@ -350,7 +350,13 @@ export default function HomeClient() {
               ? t('home.hero').split('。').filter(Boolean).map(ph => (
                   <span key={ph} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>{ph}。</span>
                 ))
-              : t('home.hero')}
+              : lang.startsWith('zh')
+                // Two lines on every width, broken after the comma (owner,
+                // Oct 1): 每個任務，/ 都用最好的 AI。, never after 都.
+                ? t('home.hero').split(/(?<=，)/).map(ph => (
+                    <span key={ph} style={{ display: 'block' }}>{ph}</span>
+                  ))
+                : t('home.hero')}
           </h1>
           <p className="home-hero-sub">{t('home.sub')}</p>
           <div className="home-hero-actions">
