@@ -1,4 +1,4 @@
-// app/api/xdev/tokens/route.ts — mint / revoke / recap API keys (XDev page).
+// app/api/xdev/tokens/route.ts — mint / revoke / recap / rename API keys (XDev page).
 // Session-auth only: a key can never mint another key. Listing happens in
 // the client via owner-read RLS on api_tokens; this route owns the writes.
 
@@ -50,11 +50,23 @@ export async function PATCH(req: Request) {
   const body = await req.json().catch(() => ({}))
   const id = typeof body.id === 'string' ? body.id : null
   if (!id) return Response.json({ error: 'missing_id' }, { status: 400 })
-  const cap = body.spend_cap_usd === null || body.spend_cap_usd === '' ? null : Math.max(0, Number(body.spend_cap_usd))
-  if (cap !== null && !Number.isFinite(cap)) return Response.json({ error: 'invalid_cap' }, { status: 400 })
+
+  // Each field changes only when it is sent: a rename leaves the cap alone.
+  const patch: { spend_cap_usd?: number | null; name?: string } = {}
+  if ('spend_cap_usd' in body) {
+    const cap = body.spend_cap_usd === null || body.spend_cap_usd === '' ? null : Math.max(0, Number(body.spend_cap_usd))
+    if (cap !== null && !Number.isFinite(cap)) return Response.json({ error: 'invalid_cap' }, { status: 400 })
+    patch.spend_cap_usd = cap
+  }
+  if ('name' in body) {
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 60) : ''
+    if (!name) return Response.json({ error: 'invalid_name' }, { status: 400 })
+    patch.name = name
+  }
+  if (Object.keys(patch).length === 0) return Response.json({ error: 'nothing_to_update' }, { status: 400 })
 
   const { error } = await service().from('api_tokens')
-    .update({ spend_cap_usd: cap })
+    .update(patch)
     .eq('id', id).eq('user_id', user.id)   // ownership enforced in the WHERE
   if (error) return Response.json({ error: error.message }, { status: 500 })
   return Response.json({ ok: true })
