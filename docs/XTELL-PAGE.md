@@ -810,6 +810,23 @@ question. A joined teacher's thread (`threadOf`) includes the questions it
 answered; the 「只問 X」 label and the 分頁 tabs count it. Owner: once asked,
 an answer cannot be cancelled mid-way (said on the button row).
 
+### A visitor who leaves mid-answer (Oct 1)
+
+Owner: left Chrome on the phone while a teacher answered and came back to
+"Load failed" (WebKit's words for a dropped line; Chrome on iPhone is
+WebKit). The server had finished, saved and billed the answer anyway. Now:
+the reading route runs its work under `after()`, held open until the stream
+ends (the providers do not await `onDone`, where the save and the debit
+run), ignores writes to a stream the browser dropped, and sends `: ping`
+every 15 s so a teacher thinking before its first word does not leave the
+line idle. The page, on a dropped line (a `TypeError`) after the server took
+the question, says 「正在取回老師的回答」 and reads the saved visit for the
+reply with that `qid` and teacher, every 3 s while the page is in front, for
+up to 320 s from the ask (`maxDuration` 300 s plus the save); found, it
+replaces the partial text and shows the cost; not found, it says to reload
+or ask again. A drop before the server took it is 「連不上伺服器」. Seats
+stay locked meanwhile. Test: `scripts/test-xtell-stream.ts`.
+
 ## 解夢 (Sep 27)
 
 Owner: "add 解夢", then "if we just allow users to talk to AI, they can just

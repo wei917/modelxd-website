@@ -230,6 +230,9 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.err.cookie_failed": {"en": "The cookie would not crack. Nothing was charged; please try again.", "zh-Hant": "餅乾沒有掰開，沒有扣點，請再試一次。", "zh-Hans": "饼干没有掰开，没有扣点，请再试一次。", "ja": "クッキーが割れませんでした。料金はかかっていません。もう一度お試しください。", "ko": "쿠키가 열리지 않았습니다. 요금은 없습니다. 다시 시도해 주세요."},
   "xtell.err.cookie_refresh": {"en": "A cookie is only cracked once.", "zh-Hant": "餅乾只會掰一次。", "zh-Hans": "饼干只会掰一次。", "ja": "クッキーは一度だけ割れます。", "ko": "쿠키는 한 번만 열립니다."},
   "xtell.err.cookie_missing": {"en": "That cookie is no longer saved.", "zh-Hant": "找不到這個餅乾的紀錄。", "zh-Hans": "找不到这个饼干的记录。", "ja": "このクッキーの記録が見つかりません。", "ko": "이 쿠키 기록을 찾을 수 없습니다."},
+  "xtell.err.stream_recovering": {"en": "The connection dropped (perhaps you left the page). Fetching the teacher's answer…", "zh-Hant": "連線中斷了（可能是離開了頁面），正在取回老師的回答…", "zh-Hans": "连接中断了（可能是离开了页面），正在取回老师的回答…", "ja": "接続が切れました（ページを離れたためかもしれません）。先生の回答を取得しています…", "ko": "연결이 끊겼습니다(페이지를 떠나 있었을 수 있어요). 선생님의 답변을 가져오는 중…"},
+  "xtell.err.stream_lost": {"en": "The teacher's answer did not come back. Reload the page: if it finished, it is there. If not, please ask again.", "zh-Hant": "沒有取回這位老師的回答。請重新整理頁面：若已完成，回答會在紀錄裡；沒有的話可以再問一次。", "zh-Hans": "没有取回这位老师的回答。请刷新页面：若已完成，回答会在记录里；没有的话可以再问一次。", "ja": "先生の回答を取得できませんでした。ページを再読み込みしてください。完了していれば表示されます。表示されない場合は、もう一度質問してください。", "ko": "선생님의 답변을 가져오지 못했습니다. 페이지를 새로 고쳐 보세요. 완료되었다면 표시되고, 아니면 다시 질문해 주세요."},
+  "xtell.err.network": {"en": "Could not reach the server. Check your connection and try again.", "zh-Hant": "連不上伺服器，請確認網路後再試一次。", "zh-Hans": "连不上服务器，请确认网络后再试一次。", "ja": "サーバーに接続できませんでした。通信状況を確認して、もう一度お試しください。", "ko": "서버에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도해 주세요."},
   // 改標題 (owner, Sep 28: 「改標題」, not 「改名」).
   "xtell.saved.rename": {"en": "Change title", "zh-Hant": "改標題", "zh-Hans": "改标题", "ja": "タイトルを変更", "ko": "제목 바꾸기"},
   "xtell.saved.renameSave": {"en": "Save", "zh-Hant": "儲存", "zh-Hans": "保存", "ja": "保存", "ko": "저장"},

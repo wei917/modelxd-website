@@ -8,6 +8,7 @@
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
+import { after } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
@@ -103,6 +104,7 @@ const FACTS_HEAD: Record<string, string> = {
   tarot:     '來訪者抽出的塔羅牌（系統依瀏覽器洗牌結果排定；牌義照錄韋特原文，勿更動）：',
 }
 
+const PING = new TextEncoder().encode(': ping\n\n')
 function sse(event: string, data: object) {
   return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
@@ -351,83 +353,101 @@ export async function POST(req: Request) {
   const to = ids(body?.to), seats = ids(body?.seats)
   let full = ''
 
+  // The visitor may leave mid-answer (owner, Oct 1: switched apps on the
+  // phone and the page said "Load failed"). The answer is still finished,
+  // saved and billed: writes to a stream the browser dropped are ignored,
+  // and after() keeps the function alive until the save is done, so the
+  // page fetches the answer from the visit when it comes back.
+  let open = true
   const stream = new ReadableStream({
-    async start(controller) {
-      // A Japanese answer has its listed Chinese terms replaced as it streams
-      // (lib/xtell-lang-check.ts): what is shown, saved and shared is the
-      // same text. Not when the visitor wrote in another language, where the
-      // teacher answers in theirs.
-      const fix = body?.lang === 'ja' && (!question || /[ぁ-ゖァ-ヺ]/.test(question))
-        ? jaTermStream(daily ? (daily.method === 'western' ? 'zhanxing' : 'daily') : temple) : null
-      const show = (text: string) => { if (text) { full += text; controller.enqueue(sse('delta', { text })) } }
-      await providers.streamText(
-        model as any,
-        messages,
-        {
-          onDelta: (text) => show(fix ? fix.push(text) : text),
-          // The save and the debit are AWAITED before the stream closes:
-          // Vercel freezes the function the moment the response ends, and a
-          // fire-and-forget write started here can be cut off. The first
-          // live test lost exactly one appended turn that way (Sep 24).
-          onDone: async (r) => {
-            if (fix) show(fix.end())
-            // Whole cents due now: this answer's cost joins what earlier
-            // answers left under a cent (supabase/114). Until that migration
-            // runs, the old rounding, which bills nothing below half a cent.
-            const carried = await accrueFraction(user.id, (r.cost ?? 0) * 1e6)
-            const cents = carried ?? Math.round((r.cost ?? 0) * 100)
-            // Measured, not yet acted on (Sep 29): how often a Japanese
-            // answer carries Chinese prose, per model. Characters only,
-            // never the answer.
-            if (body?.lang === 'ja' && leaksChinese(full)) {
-              const leak = chineseLeak(full)
-              console.warn(`${LOG} Chinese in a Japanese answer: ${(model as any).model_name}, ${leak.count} chars (${leak.sample})`)
-            }
-            if (readingId && qid) {
-              const ts = new Date().toISOString()
-              const { error } = await sb.rpc('xtell_append_turns', {
-                p_id: readingId,
-                p_user_turn: { role: 'user', content: question || '請為信眾做一次完整的解讀。', qid, ts, ...(to.length ? { to } : {}), ...(seats.length ? { seats } : {}) },
-                p_assistant_turn: { role: 'assistant', content: full, modelId: (model as any).id, name: (model as any).display_name ?? (model as any).model_name, provider: (model as any).provider, cost: r.cost ?? 0, qid, ts },
-                p_add_cents: cents,
-              })
-              if (error) console.warn(`${LOG} save turns failed:`, error.message)
-            }
-            if (cents > 0) {
-              await debitCredits({
-                userId: user.id, amountCents: cents,
-                // The visit is the session: its answers are one row in the
-                // credit history. (It was the model's id until Sep 30, which
-                // put a charge from today in one group with charges from
-                // other rooms and other weeks.)
-                referenceType: 'xtell', referenceId: readingId ?? (model as any).id ?? (model as any).model_name,
-                description: `XTell ${daily ? 'daily' : temple} reading (${(model as any).model_name})`,
-                metadata: { temple: daily ? 'daily' : temple, modelName: (model as any).model_name, search, thinking },
-              }).catch(err => {
-                if (err instanceof InsufficientCreditsError) console.warn(`${LOG} insufficient credits (${cents}¢)`)
-                else console.warn(`${LOG} debit failed:`, err)
-              })
-            }
-            controller.enqueue(sse('done', { cost: r.cost ?? 0, searches: r.searchCount ?? 0 }))
-            controller.close()
+    start(controller) {
+      const emit = (chunk: Uint8Array) => { if (!open) return; try { controller.enqueue(chunk) } catch { open = false } }
+      // A comment line every 15 s, so a connection kept quiet while a
+      // teacher thinks before its first word is not dropped as idle.
+      const beat = setInterval(() => emit(PING), 15_000)
+      // Kept alive until the stream ends, not until streamText returns: the
+      // providers do not await onDone, where the save and the debit run.
+      let settle = () => {}
+      const settled = new Promise<void>(r => { settle = r })
+      const end = () => { clearInterval(beat); settle(); if (!open) return; open = false; try { controller.close() } catch { /* already gone */ } }
+      after((async () => {
+        // A Japanese answer has its listed Chinese terms replaced as it streams
+        // (lib/xtell-lang-check.ts): what is shown, saved and shared is the
+        // same text. Not when the visitor wrote in another language, where the
+        // teacher answers in theirs.
+        const fix = body?.lang === 'ja' && (!question || /[ぁ-ゖァ-ヺ]/.test(question))
+          ? jaTermStream(daily ? (daily.method === 'western' ? 'zhanxing' : 'daily') : temple) : null
+        const show = (text: string) => { if (text) { full += text; emit(sse('delta', { text })) } }
+        await providers.streamText(
+          model as any,
+          messages,
+          {
+            onDelta: (text) => show(fix ? fix.push(text) : text),
+            // The save and the debit are AWAITED before the stream closes:
+            // Vercel freezes the function the moment the response ends, and a
+            // fire-and-forget write started here can be cut off. The first
+            // live test lost exactly one appended turn that way (Sep 24).
+            onDone: async (r) => {
+              if (fix) show(fix.end())
+              // Whole cents due now: this answer's cost joins what earlier
+              // answers left under a cent (supabase/114). Until that migration
+              // runs, the old rounding, which bills nothing below half a cent.
+              const carried = await accrueFraction(user.id, (r.cost ?? 0) * 1e6)
+              const cents = carried ?? Math.round((r.cost ?? 0) * 100)
+              // Measured, not yet acted on (Sep 29): how often a Japanese
+              // answer carries Chinese prose, per model. Characters only,
+              // never the answer.
+              if (body?.lang === 'ja' && leaksChinese(full)) {
+                const leak = chineseLeak(full)
+                console.warn(`${LOG} Chinese in a Japanese answer: ${(model as any).model_name}, ${leak.count} chars (${leak.sample})`)
+              }
+              if (readingId && qid) {
+                const ts = new Date().toISOString()
+                const { error } = await sb.rpc('xtell_append_turns', {
+                  p_id: readingId,
+                  p_user_turn: { role: 'user', content: question || '請為信眾做一次完整的解讀。', qid, ts, ...(to.length ? { to } : {}), ...(seats.length ? { seats } : {}) },
+                  p_assistant_turn: { role: 'assistant', content: full, modelId: (model as any).id, name: (model as any).display_name ?? (model as any).model_name, provider: (model as any).provider, cost: r.cost ?? 0, qid, ts },
+                  p_add_cents: cents,
+                })
+                if (error) console.warn(`${LOG} save turns failed:`, error.message)
+              }
+              if (cents > 0) {
+                await debitCredits({
+                  userId: user.id, amountCents: cents,
+                  // The visit is the session: its answers are one row in the
+                  // credit history. (It was the model's id until Sep 30, which
+                  // put a charge from today in one group with charges from
+                  // other rooms and other weeks.)
+                  referenceType: 'xtell', referenceId: readingId ?? (model as any).id ?? (model as any).model_name,
+                  description: `XTell ${daily ? 'daily' : temple} reading (${(model as any).model_name})`,
+                  metadata: { temple: daily ? 'daily' : temple, modelName: (model as any).model_name, search, thinking },
+                }).catch(err => {
+                  if (err instanceof InsufficientCreditsError) console.warn(`${LOG} insufficient credits (${cents}¢)`)
+                  else console.warn(`${LOG} debit failed:`, err)
+                })
+              }
+              emit(sse('done', { cost: r.cost ?? 0, searches: r.searchCount ?? 0 }))
+              end()
+            },
+            onError: (msg) => {
+              if (fix) show(fix.end())
+              emit(sse('error', { message: sanitizeProviderError(msg) }))
+              end()
+            },
           },
-          onError: (msg) => {
-            if (fix) show(fix.end())
-            controller.enqueue(sse('error', { message: sanitizeProviderError(msg) }))
-            controller.close()
+          [],
+          { userId: user.id },
+          {
+            system: daily
+              ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${closingLine(body?.lang)}`
+              : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${closingLine(body?.lang)}`,
+            search,
+            thinking,
           },
-        },
-        [],
-        { userId: user.id },
-        {
-          system: daily
-            ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${closingLine(body?.lang)}`
-            : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${closingLine(body?.lang)}`,
-          search,
-          thinking,
-        },
-      )
+        )
+      })().catch(e => { emit(sse('error', { message: sanitizeProviderError(String(e?.message ?? e)) })); end() }).then(() => settled))
     },
+    cancel() { open = false },
   })
   return new Response(stream, {
     headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },

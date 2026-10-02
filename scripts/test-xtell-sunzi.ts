@@ -74,7 +74,9 @@ function loadRoute(file: string, modules: Record<string, unknown>) {
   const exports: any = {}
   vm.runInNewContext(js, {
     exports, console: { ...console, warn: () => {} }, process, Response, Request, ReadableStream, TextEncoder, crypto: globalThis.crypto,
-    require: (name: string) => { if (!(name in modules)) throw new Error('unexpected route dependency: ' + name); return modules[name] },
+    // The reading route keeps its work alive with after() and beats every 15 s.
+    setInterval, clearInterval,
+    require: (name: string) => { const deps: Record<string, unknown> = { 'next/server': { after: () => {} }, ...modules }; if (!(name in deps)) throw new Error('unexpected route dependency: ' + name); return deps[name] },
   }, { filename: file })
   return exports
 }

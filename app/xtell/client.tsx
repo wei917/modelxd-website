@@ -562,8 +562,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // language switch retranslates an error already on screen (Codex review:
   // it stayed in the old language). An uncoded provider message is shown as
   // it came.
-  const fail = (raw: string, code?: string | null) => { setErr(raw); setErrCode(code ?? null) }
-  const clearErr = () => { setErr(null); setErrCode(null) }
+  // The code on screen now, for a stream that ends long after it began.
+  const errCodeRef = useRef<string | null>(null)
+  const fail = (raw: string, code?: string | null) => { setErr(raw); setErrCode(code ?? null); errCodeRef.current = code ?? null }
+  const clearErr = () => { setErr(null); setErrCode(null); errCodeRef.current = null }
   const errShown = err ? errorText(t, errCode ?? undefined, err) : null
   const errId = useId()
   const errField = fieldOf(errCode)
@@ -955,6 +957,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
    *  `history` is that teacher's thread before the question. */
   const askTeacher = async (m: PickerModel, q: string, qid: string, to: string[], seats: string[], history: Array<{ role: 'user' | 'assistant'; content: string }>) => {
     const idx = pushAssistant(m)
+    // Once the server has taken the question it finishes, saves and bills
+    // the answer even if this page loses the line (the route's after()).
+    let taken = false, ended = false
+    const since = Date.now(), visit = readingId
     try {
       const res = await fetch('/api/xtell/reading', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -973,6 +979,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         const d = await res.json().catch(() => ({}))
         throw new CodedError(d?.error ?? `HTTP ${res.status}`, d?.code)
       }
+      taken = true
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
@@ -987,11 +994,53 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           if (!type || !data) continue
           const j = JSON.parse(data)
           if (type === 'delta') appendAssistant(idx, j.text)
-          if (type === 'done') doneAssistant(idx, j.cost ?? 0)
-          if (type === 'error') { fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
+          if (type === 'done') { ended = true; doneAssistant(idx, j.cost ?? 0) }
+          if (type === 'error') { ended = true; fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
         }
       }
-    } catch (e: any) { fail(String(e?.message ?? e), e?.code); doneAssistant(idx, 0) }
+    } catch (e: any) {
+      if (ended) return
+      // A dropped line is a TypeError in every browser ("Load failed" on an
+      // iPhone, "Failed to fetch" elsewhere): never shown as it came.
+      if (e instanceof TypeError) {
+        if (taken && visit) return recoverAnswer(idx, m.id, qid, since, visit)
+        fail('network', 'network'); doneAssistant(idx, 0); return
+      }
+      fail(String(e?.message ?? e), e?.code); doneAssistant(idx, 0)
+    }
+  }
+
+  /** The line dropped after the server took the question (owner, Oct 1: left
+   *  Chrome mid-answer and saw "Load failed"). The answer is still saved, so
+   *  it is read from the visit: every 3 s while the page is in front, for as
+   *  long as the server may still be writing it (maxDuration 300 s, plus the
+   *  save). The seats stay locked meanwhile, as for any answer coming in. */
+  const recovering = useRef(0)
+  const recoverAnswer = async (idx: () => number, modelId: string, qid: string, since: number, visit: string) => {
+    recovering.current++
+    fail('recovering', 'stream_recovering')
+    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+    let found: any = null
+    for (;;) {
+      try {
+        const { data } = await sb.from('xtell_readings').select('turns').eq('id', visit).maybeSingle()
+        found = (Array.isArray(data?.turns) ? data.turns : []).find((tn: any) => tn?.role === 'assistant' && tn.qid === qid && tn.modelId === modelId) ?? null
+      } catch { /* still offline: the next try */ }
+      if (found || Date.now() - since > 320_000) break
+      await new Promise(r => setTimeout(r, 3000))
+      // Away from the page there is nothing to show it on: wait for the return.
+      if (document.hidden) await new Promise<void>(r => {
+        const back = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', back); r() } }
+        document.addEventListener('visibilitychange', back)
+      })
+    }
+    recovering.current--
+    if (!found) { fail('lost', 'stream_lost'); doneAssistant(idx, 0); return }
+    setTurns(ts => ts.map((tn, i) => (i === idx() ? { ...tn, content: String(found.content ?? '') } : tn)))
+    doneAssistant(idx, Number(found.cost) || 0)
+    // Only this notice is cleared, and only when no other answer is still
+    // being fetched; another teacher's error stays.
+    if (recovering.current === 0 && errCodeRef.current === 'stream_recovering') clearErr()
   }
 
   /** A signed-out visitor sees the chart for free; a question to a teacher
