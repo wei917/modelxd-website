@@ -3255,7 +3255,9 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 .xtell-room button { min-height: 40px; }
 .xtell-room label { font-size: 14px !important; }
 .xtell-chart { overflow-x: auto; }
-.xtell-composer { position: sticky; bottom: 0; background: var(--xtell-paper); padding: 18px 0; border-top: 1px solid var(--xtell-rule); }
+/* z-index: the 分頁 tab row is sticky with z-index 2 and scrolled under this
+   block, drawing over its 問 row (owner, Oct 1). */
+.xtell-composer { position: sticky; bottom: 0; z-index: 3; background: var(--xtell-paper); padding: 18px 0; border-top: 1px solid var(--xtell-rule); }
 .xtell-composer textarea { min-width: 0; line-height: 1.65; }
 .xtell-composer-row > button { color: var(--xtell-white) !important; min-height: 48px; min-width: 48px; }
 .xtell-replies .markdown-body { font-size: 16px; line-height: 1.85; overflow-wrap: anywhere; }
