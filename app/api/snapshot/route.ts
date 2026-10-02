@@ -30,7 +30,8 @@ export type SnapshotEntry = { name: string; modelName: string; provider: string;
  * once it has MIN_VOTES. Delete an entry to return that mode to votes.
  */
 const PICKS: Partial<Record<Mode, { provider: string; model_name: string; always?: boolean }>> = {
-  text: { provider: 'anthropic', model_name: 'claude-opus-5' },
+  // Opus 5.5 since Oct 1 (owner).
+  text: { provider: 'anthropic', model_name: 'claude-opus-5-5' },
   // `always`: shown even when the vote leader has MIN_VOTES. GPT Image 2.5
   // shipped Sep 8 with no votes yet, while GPT Image 2 leads on 33 (owner,
   // Sep 15). Still labelled "our pick"; remove the entry to hand back to votes.
