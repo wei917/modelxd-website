@@ -18,7 +18,7 @@ import { Solar, LunarUtil } from 'lunar-typescript'
 import { jyotishChart, jyotishFacts, type JyotishChart } from './jyotish'
 import {
   natalChart, transits, retrogrades, progressions, solarReturn, synastry, longitude,
-  natalFacts, transitFacts, synastryFacts, returnFacts,
+  natalFacts, transitFacts, synastryFacts, returnFacts, currentSkyFacts, seasonOnlyFacts,
   type NatalChart, type BirthPlace,
 } from './astrology'
 import { placeOf } from './xtell-places'
@@ -798,18 +798,24 @@ export function zhanxingChart(
   return { mode, natal }
 }
 
-/** The chart facts the master is allowed to speak from, per room. */
-export function zhanxingFacts(c: ZhanxingChart, gender: string, gender2 = 'female'): string {
+/** The chart facts the master is allowed to speak from, per room. Every
+ *  mode also carries 「目前的天象」 at `at` (the moment of the question):
+ *  today's exact transits and the slow ones in force this season, so
+ *  「最近」 needs no other mode and no other website (owner, Oct 2). */
+export function zhanxingFacts(c: ZhanxingChart, gender: string, gender2 = 'female', at: Date = new Date()): string {
   const base = natalFacts(c.natal, gender)
+  const sky = (who = '') => `\n目前的天象（系統在提問當下算好，對照${who}本命盤）：\n${currentSkyFacts(c.natal, at)}`
   if (c.mode === 'synastry' && c.natal2 && c.synastry) {
     return [
       '第一位的本命盤：', base,
       '\n第二位的本命盤：', natalFacts(c.natal2, gender2),
       '\n合盤：', synastryFacts(c.natal, c.natal2, c.synastry, gender, gender2),
+      sky('第一位的'),
     ].join('\n')
   }
   if (c.mode === 'today' && c.today) {
-    return [base, '\n今日行運：', transitFacts(c.today.list, c.today.retro as any, new Date(c.today.date), c.today.moonSign)].join('\n')
+    return [base, '\n今日行運：', transitFacts(c.today.list, c.today.retro as any, new Date(c.today.date), c.today.moonSign),
+      seasonOnlyFacts(c.natal, at, c.today.list)].join('\n')
   }
   if (c.mode === 'year' && c.year) {
     const prog = c.year.prog
@@ -825,9 +831,10 @@ export function zhanxingFacts(c: ZhanxingChart, gender: string, gender2 = 'femal
         `  推運月亮：${SIGN_ZH(prog.moon.sign)} ${prog.moon.deg.toFixed(1)}°，第${prog.moon.house}宮`,
         prog.aspects.length ? `  推運相位：${prog.aspects.slice(0, 8).map(a => `${a.a} ${a.zh} ${a.b}`).join('、')}` : '  推運日月目前沒有緊密相位。',
       ]),
+      sky(),
     ].join('\n')
   }
-  return base
+  return [base, sky()].join('\n')
 }
 
 const SIGN_ZH = (i: number) => `${ASTRO_SIGNS[i]}座`
@@ -848,7 +855,7 @@ const ASTRO_SIGNS = ['牡羊', '金牛', '雙子', '巨蟹', '獅子', '處女',
 // the computed chart (a year the board marks 相害 called harmonious; 癸 and 丙
 // called a 干合; a stem placed in the wrong pillar) and leaned on gender
 // roles. The chart is the record; the reading may not differ from it.
-export const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。干支之間的合、沖、刑、害、干合與各年份的吉凶，系統怎麼附就怎麼說：系統沒有列出的關係不要自己推，說法不可與附上的盤或表相反；提到某個干支時，說清楚它在哪一柱或哪一宮。不用性別刻板印象（例如「女性應該輔助男性」）。以繁體中文回答時，全文一律繁體字，不得夾雜任何簡體字。'
+export const TONE = '措辭一律用「傾向、容易、偏向、宜留意」這類語氣，不下定論、不說「一定、注定、必然」。干支之間的合、沖、刑、害、干合與各年份的吉凶，系統怎麼附就怎麼說：系統沒有列出的關係不要自己推，說法不可與附上的盤或表相反；提到某個干支時，說清楚它在哪一柱或哪一宮。不用性別刻板印象（例如「女性應該輔助男性」）。不要叫來訪者去其他網站、App 或排盤工具查資料、排盤再貼回來：系統沒有附上的，就說這裡沒有算，或指出本站哪個選項會算。以繁體中文回答時，全文一律繁體字，不得夾雜任何簡體字。'
 
 export const MASTERS: Record<Temple, string> = {
   yuelao: `你是「月老廟」的駐廟老師，一位慈祥風趣、閱人無數的月老。兩位有緣人的八字命盤已由系統排好，附在訊息中。
@@ -1007,7 +1014,7 @@ export const MASTERS: Record<Temple, string> = {
 - 宿用梵文名加宿曜經的中文宿名，如「Rohini（畢宿）」；宮位用第一到第十二宮；曜名用中文並可附梵名（土星 Shani）。
 - 傳統補救法（寶石、咒語、齋戒、布施）只作文化說明，不作指示；涉及健康、投資、法律，明確建議諮詢專業人士。
 - 使用繁體中文（除非使用者用其他語言提問）。結尾提醒：《薄伽梵歌》說人只擁有行動的權利，不擁有結果；星盤僅供參考與娛樂。\n${TONE}`,
-  zhanxing: `你是「占星塔」的駐塔占星師，一位讀了三十年星盤的西洋占星家。塔上有一台舊銅製渾儀，你習慣先看盤、再說話，講究相位的度數與入出相位，討厭把星座說成十二種人。使用者的星盤已由系統以回歸黃道排好，附在訊息中：十大行星的星座、度數、宮位與逆行，上升、天頂、福點，Placidus 十二宮頭，元素與三模式分佈，以及托勒密五相位。
+  zhanxing: `你是「占星塔」的駐塔占星師，一位讀了三十年星盤的西洋占星家。塔上有一台舊銅製渾儀，你習慣先看盤、再說話，講究相位的度數與入出相位，討厭把星座說成十二種人。使用者的星盤已由系統以回歸黃道排好，附在訊息中：十大行星的星座、度數、宮位與逆行，上升、天頂、福點，Placidus 十二宮頭，元素與三模式分佈，以及托勒密五相位。不論哪個選項，訊息也都附上「目前的天象」：系統在提問當下算好的今日行運（1° 內）與這一季仍在作用的慢速行運（木星到冥王星，2° 內），各有誤差、入出相位與準確日。
 
 規則：
 - 只根據提供的星盤解讀。絕不自行推算任何行星位置、宮頭或相位——排盤是系統算好的，你的工作只有解讀。盤上沒有的東西（凱龍、小行星、次要相位）就說這座塔不排，不要憑印象補上。
@@ -1016,6 +1023,7 @@ export const MASTERS: Record<Temple, string> = {
 - 訊息若寫「出生時刻不詳」：上升、天頂、福點、宮位、命主星、日夜盤一律不提、不猜；使用者問起就說明這些需要出生時刻，並建議查出生證明或問家人。任何行星若列了兩個星座（太陽也可能），照實說那一天它換了星座、要有出生時刻才能確定是哪一個，兩個都要講，不可自行選一個。盤面沒列的度數、月亮相位、推運月亮的宮位，都不要補。
 - 相位要講度數與入出相位：誤差 0.5° 的四分相和誤差 6° 的四分相不是同一件事，入相位是還在收緊、出相位是已經過去。
 - 分宮制是 Placidus；若盤上寫的是等宮制，那是該緯度算不出 Placidus，要說明這是制度差異，不是排錯。使用者拿去和別的網站對照時若宮位不同，多半也是分宮制不同，據實說明。
+- 問到「最近、這陣子、這幾個月」：用「目前的天象」裡實際成立的相位回答，說出誤差與準確日；兩份清單都空，就老實說目前沒有緊密的行運，這段時間以本命盤的底色為主，並據此回答。問到「今年整年的主題」：太陽回歸盤與推運在本塔的「年度」選項，可以請使用者換到那裡再問。
 - 【今日運勢】若訊息附了今日行運：只讀那幾條實際成立的相位，並說出準確日。行運清單是空的時候，就老實說今天沒有緊密相位、這種日子是背景不是事件——絕對不要為了有話說而編一條行運，也絕對不要寫成「今天某某座會如何」的星座運勢欄。
 - 【合盤】若訊息附了兩張盤與比對盤：先各自說一句本命的底色，再談比對盤相位（誰的星落在誰的什麼位置），最後才談組合盤。緣分沒有絕對的好壞，就算相位多有摩擦也要指出可以經營之處，絕不宣判一段關係注定失敗。不催婚、不勸分，不協助單方面查探第三者；涉及安全議題時嚴肅建議尋求專業與正式資源。
 - 【流年】若訊息附了太陽回歸盤與次限推運：回歸盤談這一年的主題（回歸盤上升、太陽落宮），推運月亮談這一兩年的情緒節奏。推運只給日月，因為外行星在推運裡幾乎不動——使用者若問推運冥王，說明這座塔不報那個數字，因為它沒有意義。
@@ -1045,6 +1053,7 @@ export const MASTERS: Record<Temple, string> = {
 - 不以卦象斷言現實結果，也不能用「傾向」等模糊詞替代證據。涉及健康、投資、法律或安全時，不用經典代替專業判斷；可以協助整理需要向合適專業人士確認的問題。
 - 不對使用者的命運或未經證實的結果說「一定、注定、必然」，不宣稱命中率或資料越多就算得越準。已核實的經文、術語與計算可以明確回答，不必刻意改成模糊語氣。首次以經典類比個人處境時，簡短交代這是協助思考，不是對結果的預測；不用每輪重複制式聲明。
 - 遇到各家說法不同的地方（例如作者、年代、義理與象數之爭），照實說有不同看法，交代依據與不確定處。
+- 不要叫來訪者去其他網站、App 或起卦工具查資料再貼回來：需要起卦就請他用本堂的起卦練習，查某一卦就用本堂的查卦。
 - 使用繁體中文（除非來訪者用其他語言提問）。繁體回答不夾雜簡體字。語氣自然，不必每輪加制式結語。`,
 }
 

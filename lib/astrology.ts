@@ -459,6 +459,20 @@ function exactDate(p: Planet, target: number, angle: number, near: Date): string
   return null
 }
 
+/** The slow planets, whose aspects hold for weeks or months. */
+export const SLOW_PLANETS: Planet[] = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
+
+/**
+ * What "these days" means in a reading: the slow planets' aspects to the
+ * natal chart that are still in force, within 2°, each with the date it
+ * perfects when that falls within ±45 days. A 1° daily list is too narrow
+ * for "lately" or "this season" (owner, Oct 2: a birth-chart visit asked
+ * about 最近的行運 and every teacher said it had no transits).
+ */
+export function seasonTransits(natal: NatalChart, at: Date, maxOrb = 2): Transit[] {
+  return transits(natal, at, maxOrb).filter(t => (SLOW_PLANETS as string[]).includes(t.a))
+}
+
 /** Bodies currently retrograde, the one transit fact everybody already knows. */
 export function retrogrades(at: Date): Planet[] {
   const before = new Date(at.getTime() - 43200000), after = new Date(at.getTime() + 43200000)
@@ -656,9 +670,45 @@ export function natalFacts(c: NatalChart, gender: string): string {
   ].join('\n')
 }
 
+const transitLine = (x: Transit) =>
+  `  行運${bodyName(x.a)}（${signName(x.transitSign)} ${dms(x.transitDeg)}${x.retro ? ' 逆行' : ''}）${x.zh} 本命${bodyName(x.b)}，誤差 ${x.orb.toFixed(2)}°${x.applying ? '，入相位' : '，出相位'}${x.exact ? `，準確日約 ${x.exact}` : ''}`
+
+/** The slow transits still in force this season (seasonTransits). */
+export function seasonFacts(list: Transit[]): string {
+  return [
+    list.length ? '這一季仍在作用的慢速行運（木星、土星、天王星、海王星、冥王星對本命，2° 內）：'
+      : '這一季沒有 2° 內的慢速行運：這段時間的背景以本命盤為主，沒有外行星正壓在哪一點上。',
+    ...list.map(transitLine),
+  ].join('\n')
+}
+
+/** 「目前的天象」, which every 占星 reading gets whatever its mode, so
+ *  「最近」「這陣子」 can be answered from a birth-chart visit too: today's
+ *  exact transits and the slow ones in force this season, both computed at
+ *  the moment of the question. */
+export function currentSkyFacts(natal: NatalChart, at: Date): string {
+  // Each aspect once: the slow planets in the season list, the rest in today's.
+  const fast = transits(natal, at).filter(t => !(SLOW_PLANETS as string[]).includes(t.a))
+  const retro = retrogrades(at)
+  return [
+    `日期：${at.toISOString().slice(0, 10)}（UTC）`,
+    `今日月亮：${signName(Math.floor(longitude('Moon', at) / 30))}`,
+    retro.length ? `目前逆行：${retro.map(p => PLANET_ZH[p]).join('、')}` : '目前沒有行星逆行。',
+    fast.length ? '今日 1° 內的其他行運（太陽、月亮、水星、金星、火星與月交點）：' : '今日沒有太陽到火星的 1° 內行運。',
+    ...fast.map(transitLine),
+    seasonFacts(seasonTransits(natal, at)),
+  ].join('\n')
+}
+
+/** For the 今日 room, which already lists today's transits: the season's
+ *  slow ones that its 1° list does not already show. */
+export function seasonOnlyFacts(natal: NatalChart, at: Date, shown: Transit[]): string {
+  const seen = new Set(shown.map(t => `${t.a}|${t.b}|${t.angle}`))
+  return seasonFacts(seasonTransits(natal, at).filter(t => !seen.has(`${t.a}|${t.b}|${t.angle}`)))
+}
+
 export function transitFacts(list: Transit[], retro: Planet[], at: Date, moonSign: number): string {
-  const lines = list.map(x =>
-    `  行運${bodyName(x.a)}（${signName(x.transitSign)} ${dms(x.transitDeg)}${x.retro ? ' 逆行' : ''}）${x.zh} 本命${bodyName(x.b)}，誤差 ${x.orb.toFixed(2)}°${x.applying ? '，入相位' : '，出相位'}${x.exact ? `，準確日約 ${x.exact}` : ''}`)
+  const lines = list.map(transitLine)
   return [
     `日期：${at.toISOString().slice(0, 10)}（UTC）`,
     `今日月亮：${signName(moonSign)}`,
