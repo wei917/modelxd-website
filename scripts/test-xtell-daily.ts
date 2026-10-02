@@ -398,7 +398,7 @@ async function routes() {
   check('every teacher gets the length rule: 1000 字, the conclusion first, no repeated summary', sys.includes('全文 1000 字以內') && sys.includes('先給結論') && sys.includes('不要把整段解讀再摘要'))
   const routeSrc = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/reading/route.ts'), 'utf8')
   check('the route\'s own Qwen default is thinking off too', /houseDefault = \(model as any\)\.provider !== 'alibaba' \? null : 'thinking_false'/.test(routeSrc))
-  check('follow-up: the teacher gets that day\'s stored basis and free reading, nothing the client sent', r1.status === 200 && sys.includes('占星塔的老師') && sys.includes('行運月亮在') && sys.includes('當天的免費解讀') && !sys.includes('fake'))
+  check('follow-up: the teacher gets that day\'s stored basis and free reading, nothing the client sent', r1.status === 200 && sys.includes('占星塔的大師') && sys.includes('行運月亮在') && sys.includes('當天的免費解讀') && !sys.includes('fake'))
   check('follow-up needs a question and its visit', (await ask({ temple: 'daily', readingId: f1.d.readingId, question: '' })).status === 400 && (await ask({ temple: 'daily', question: 'x' })).status === 400)
   // A question put to some of the table remembers whom it was for (owner,
   // Sep 27): model ids only, the stored question carries them.

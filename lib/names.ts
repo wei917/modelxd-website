@@ -215,6 +215,6 @@ export function ceziFacts(info: CharInfo, ask: string): string {
     `康熙部首：${info.radical}部（第 ${info.radicalNo} 部，部首 ${info.radicalStrokes} 畫）${wx ? `，部首五行屬${wx}` : ''}`,
     `康熙筆畫：${info.strokes} 畫（含部首原形）`,
     ...(info.old ? [`此字若是日本新字體，其舊字體為「${info.old.ch}」（${info.old.strokes} 畫），兩者結構不同：拆字只拆來訪者所寫的「${info.ch}」這個字形，不要把舊字體才有的部件說成這個字有的（例如「売」沒有「貝」，「賣」才有）。`] : []),
-    `以上為系統查表所得；字的拆解、加減筆與觸機由老師為之，拆解時請把拆出的部件一一寫明。`,
+    `以上為系統查表所得；字的拆解、加減筆與觸機由大師為之，拆解時請把拆出的部件一一寫明。`,
   ].join('\n')
 }

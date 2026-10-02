@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (siteFromHeaders(h) === 'xtell') return { ...xtellMetadata(serverLang(h, 'xtell')), alternates: { canonical: 'https://xtell.modelxd.com' } }
   return {
     title: 'XTell — X算命 | ModelXD',
-    description: '八字與紫微斗數線上排盤。先核對命盤，再請你選擇的 AI 老師解讀，送出問題前可查看預估費用。',
+    description: '八字與紫微斗數線上排盤。先核對命盤，再請你選擇的 AI 大師解讀，送出問題前可查看預估費用。',
   }
 }
 
