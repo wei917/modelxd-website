@@ -35,8 +35,10 @@ const FRAME: Record<string, { w: number; h: number }> = {
   '3:4': { w: 96, h: 128 }, '9:16': { w: 72, h: 128 }, '1:1': { w: 112, h: 112 },
 }
 
-export default function StandaloneTemplates({ mode, onSelect }: {
+export default function StandaloneTemplates({ mode, onSelect, onConvert }: {
   mode: 'image' | 'video' | 'text' | 'audio'; onSelect: (template: Template) => void
+  /** Opens "your own file → a platform's spec" (no model; ConvertDialog). */
+  onConvert?: (kind: 'image' | 'video') => void
 }) {
   const { lang, t } = useLang()
   const [broken, setBroken] = useState<Record<string, true>>({})
@@ -69,6 +71,17 @@ export default function StandaloneTemplates({ mode, onSelect }: {
             <span>{t(`xct.row.${row.group}.note`)}</span>
           </div>
           <div className="xcs-tpl-strip">
+            {/* First in the marketplace rows: convert a file you already have,
+                no model and nothing billed (phase 2, Oct 1). */}
+            {onConvert && (row.group === 'shop' || row.group === 'shopvideo') && (
+              <button type="button" className="xcs-tpl-card xcs-tpl-convert" onClick={() => onConvert(mode)}>
+                <span className="xcs-tpl-pv"><span className="xcs-tpl-convert-icon" aria-hidden>⇄</span></span>
+                <span className="xcs-tpl-meta">
+                  <b>{t(mode === 'image' ? 'xct.convert.image.title' : 'xct.convert.video.title')}</b>
+                  <small>{t('xct.convert.spec')}</small>
+                </span>
+              </button>
+            )}
             {row.items.map(item => {
               const title = tOr(t, `xct.${item.id}.title`, item.title)
               const line = tOr(t, `xct.${item.id}.spec`, tOr(t, `xct.${item.id}.subtitle`, item.subtitle))

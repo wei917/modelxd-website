@@ -60,10 +60,53 @@ export const exportSpecById = (id: string | null | undefined): ExportSpec | null
 
 /** One line of the checklist shown after a download. */
 export interface ExportCheck {
-  key: 'size' | 'format' | 'bytes' | 'white'
+  key: 'size' | 'format' | 'bytes' | 'white' | 'duration' | 'ai'
   ok: boolean
   value: string
 }
+
+// ── Video (phase 2, Oct 1) ──────────────────────────────────────────────
+// What the server's ffmpeg guarantees: the exact frame (filled by cropping,
+// never barred), 30 fps, MP4 with H.264 High 4:2:0 and AAC, the index at the
+// front (faststart) and no edit lists, the length cut to the platform's cap,
+// and the byte cap. A clip shorter than a platform's minimum is reported,
+// not padded or looped.
+
+export type VideoSpecId = 'v-taobao-11' | 'v-taobao-34' | 'v-shopee' | 'v-amazon' | 'v-vertical'
+
+export interface VideoSpec {
+  id: VideoSpecId
+  w: number
+  h: number
+  minSec?: number
+  maxSec: number
+  maxBytes: number
+  file: string
+}
+
+export const VIDEO_SPECS: VideoSpec[] = [
+  // 淘寶 主圖視頻: 1:1 or 3:4, MP4; 60 s or less is the stricter published cap.
+  { id: 'v-taobao-11', w: 1080, h: 1080, maxSec: 60, maxBytes: 50_000_000, file: 'taobao-video-1x1' },
+  { id: 'v-taobao-34', w: 1080, h: 1440, maxSec: 60, maxBytes: 50_000_000, file: 'taobao-video-3x4' },
+  // 蝦皮: 10-60 s, MP4 only, 30 MB or less, no larger than 1280×1280 (蝦皮大學).
+  { id: 'v-shopee',    w: 1080, h: 1080, minSec: 10, maxSec: 60, maxBytes: 30_000_000, file: 'shopee-video' },
+  // Amazon.co.jp: MP4 or MOV, 16:9 or 9:16, up to 1080p (official).
+  { id: 'v-amazon',    w: 1920, h: 1080, maxSec: 180, maxBytes: 500_000_000, file: 'amazon-video' },
+  // Reels, TikTok, Shorts, 小紅書: 9:16 1080×1920; Shorts allow 3 minutes.
+  { id: 'v-vertical',  w: 1080, h: 1920, maxSec: 180, maxBytes: 250_000_000, file: 'vertical-9x16' },
+]
+
+export const videoSpecById = (id: string | null | undefined): VideoSpec | null =>
+  VIDEO_SPECS.find(s => s.id === id) ?? null
+
+export const DEFAULT_VIDEO_EXPORT_BY_LANG: Record<string, VideoSpecId> = {
+  'zh-Hant': 'v-shopee', ja: 'v-amazon', 'zh-Hans': 'v-taobao-11', en: 'v-vertical', ko: 'v-vertical',
+}
+
+/** Uploads a user may convert: their own folder in the upload buckets. */
+export const UPLOAD_BUCKETS = { image: 'xcreate-user-images', video: 'xcreate-user-videos' } as const
+export const isOwnUpload = (userId: string, path: string) =>
+  path.startsWith(`${userId}/originals/`) && !path.includes('..') && !path.includes('//')
 
 /** The spec a result's download offers first, by page language: the
  *  marketplaces each market actually sells on. */

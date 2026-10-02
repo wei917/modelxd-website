@@ -69,7 +69,13 @@ Templates under the composer make a product photo platform-ready (淘寶主圖 a
 TikTok 9:16, LINE 圖文訊息) or restyle it, and video templates turn a product
 photo into a 淘寶 / 蝦皮 / Amazon product video or a 9:16 short. Any finished
 picture can be downloaded in a platform's exact size (pixels, JPG, file size,
-pure white background where required), with a checklist of what was met. Your private studio. Pick up to four models and run the same prompt through
+pure white background where required), with a checklist of what was met;
+finished videos convert the same way (淘寶 1:1 or 3:4, 蝦皮 10-60 s, Amazon
+16:9, Reels / TikTok / Shorts 9:16). A photo or video you already have can be
+converted to these sizes for free, with no AI (the first card in the store
+rows). Downloaded AI pictures carry an AI-generated marker that Instagram and
+Facebook read; for videos, and on TikTok, YouTube, 小紅書 and 淘寶, turn on
+the platform's own AI label when posting. Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
 image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a

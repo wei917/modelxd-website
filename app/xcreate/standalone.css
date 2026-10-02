@@ -255,6 +255,8 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-tpl-meta { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px 11px; }
 .xcs-tpl-meta b { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--white); }
 .xcs-tpl-meta small { font-size: 11.5px; line-height: 1.4; color: var(--muted2); }
+.xcs-tpl-convert .xcs-tpl-pv { background: linear-gradient(135deg, #fff0eb, #f1f2ec); }
+.xcs-tpl-convert-icon { font-size: 44px; color: var(--red); font-weight: 300; }
 .xcs-tpl-chk { align-self: flex-start; margin-top: 3px; font-size: 10.5px; font-weight: 600; color: #38624e; background: #e9f1ec; border-radius: 999px; padding: 2px 7px; }
 @media (max-width: 760px) {
   /* The row runs to the screen edge so the next card peeks in. */
