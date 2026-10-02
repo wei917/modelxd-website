@@ -33,7 +33,7 @@ check('offered in 孫子兵法, 月老 and 塔羅 only', ['sunzi', 'yuelao', 'ta
 
 const reading = read('app/api/xtell/reading/route.ts'), chart = read('app/api/xtell/chart/route.ts'), client = read('app/xtell/client.tsx')
 check('the reading route adds it only in those rooms, never to the daily reading, after the chart\'s own facts', reading.includes("const typeFacts = !daily && offersPersonality(temple) ? personalityFacts(body?.mbti, temple === 'yuelao' ? body?.mbti2 : undefined) : ''") && reading.includes('const facts = typeFacts ? `${chartFacts}\\n\\n${typeFacts}` : chartFacts'))
-check('the visit keeps what was attached, so a reopened visit asks with the same type', /SUBJECT_KEYS = \[[^\]]*'mbti', 'mbti2'\]/.test(chart) && client.includes('asPersonalityType(init.mbti) ?? savedType'))
+check('the visit keeps what was attached, so a reopened visit asks with the same type', /SUBJECT_KEYS = \[[^\]]*'mbti', 'mbti2'[,\]]/.test(chart) && client.includes('asPersonalityType(init.mbti) ?? savedType'))
 check('the box is off by default and sends nothing until ticked', client.includes('useState<boolean>(!!asPersonalityType(init.mbti))') && client.includes('offersPersonality(temple) && withType ?'))
 check('the three rooms show the box; the tarot one sits above the deal button', (client.match(/<PersonalityAttach /g) ?? []).length === 3 && client.includes('extra={<PersonalityAttach'))
 

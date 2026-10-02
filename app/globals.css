@@ -3538,6 +3538,26 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-tarot-card summary { cursor: pointer; text-align: center; }
 .xtell-tarot-card details p { margin: 6px 0 0; line-height: 1.6; }
 @media (max-width: 560px) { .xtell-tarot-cards.is-three { gap: 8px; } .xtell-tarot-card strong { font-size: 12.5px; } }
+/* Five-card spreads (Oct 1): 二擇一 in its traditional shape (現況 in the
+   middle, each road on its side, where it ends above it); 關係 as the two
+   hearts with the bond between them, what to face and what comes next below.
+   On a phone the laid spread becomes two columns so the readings stay legible. */
+.xtell-tarot-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.xtell-tarot-options { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 13px; }
+.xtell-tarot-options b { color: var(--red); margin-right: 6px; }
+.xtell-tarot-modern { margin: 0; font-size: 13px; line-height: 1.65; color: var(--white); }
+.xtell-tarot-cards.is-five { grid-template-columns: repeat(3, minmax(0, 170px)); }
+.xtell-tarot-cards.is-choice, .xtell-tr-slots.is-choice { grid-template-areas: "endA . endB" "pathA now pathB"; }
+.xtell-tarot-cards.is-love, .xtell-tr-slots.is-love { grid-template-areas: "you bond them" "block . next"; }
+.xtell-tr-slots.is-five { display: grid; grid-template-columns: repeat(3, 76px); gap: 10px 14px; justify-content: center; }
+.xtell-tr-slots.is-five .xtell-tr-card, .xtell-tr-slots.is-five .xtell-tr-slot-empty { --w: 72px; width: 72px; }
+.xtell-tr-slots.is-five .xtell-tr-slot-name { font-size: 11px; letter-spacing: .02em; text-align: center; line-height: 1.3; min-height: 2.6em; display: flex; align-items: flex-end; }
+.xtell-tr-slot.is-next .xtell-tr-slot-empty { border-color: var(--red); }
+@media (max-width: 560px) {
+  .xtell-tarot-cards.is-five { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: none; gap: 14px 10px; }
+  .xtell-tarot-cards.is-five .xtell-tarot-card { grid-area: auto !important; }
+  .xtell-tarot-cards.is-five .xtell-tarot-card img { max-width: 140px; }
+}
 /* 塔羅's ritual (Oct 1, owner: "more 儀式感"): shuffle, cut, choose from a
    face-down fan, turn the cards over. TarotRitual.tsx. The card back is the
    owner's pick D (Oct 1): the ModelXD star grown into a compass rose in a

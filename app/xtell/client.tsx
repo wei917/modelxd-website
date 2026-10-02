@@ -33,7 +33,7 @@ import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
 import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, asQianEdition, needsJiao, type Jiao, type QianEdition } from '../../lib/xtell-ritual'
-import { asSpread, SPREADS, type TarotPick, type TarotSpread } from '../../lib/tarot-draw'
+import { asSpread, SPREADS, SPREAD_KEYS, OPTION_MAX, type TarotPick, type TarotSpread, type TarotOptions } from '../../lib/tarot-draw'
 import { TarotRitual } from '../components/xtell/TarotRitual'
 import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xtell-cookie'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
@@ -472,6 +472,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const jiao = needsJiao(temple, edition)
   // 塔羅: the spread, and the cards the browser dealt (only their ids travel).
   const [spread, setSpread] = useState<TarotSpread>(asSpread(init.spread))
+  // 二擇一's two options, named by the visitor (optional).
+  const [tarotOpts, setTarotOpts] = useState<TarotOptions>({ a: typeof init.optA === 'string' ? init.optA : '', b: typeof init.optB === 'string' ? init.optB : '' })
   const picksRef = useRef<TarotPick[] | null>(Array.isArray(init.picks) ? init.picks : null)
   const defaultBirth = { y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false }
   const [birth, setBirth] = useState<typeof defaultBirth>({ ...defaultBirth, ...(init.birth ?? {}), ...(init.gender && !init.birth ? { gender: init.gender } : {}),
@@ -748,7 +750,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
    *  number, or birth + wishes. Sent to both the chart and reading routes. */
   const subject = (n?: number) =>
     isQian(temple) ? { temple, n: n ?? stick?.n, ask, name: bing.name.trim(), city: bing.city.trim(), ...(bing.withBirth ? { birth } : {}), ...(temple === 'guanyin' ? { edition } : {}) }
-    : temple === 'tarot' ? { temple, spread, picks: picksRef.current, ask: ask.trim(), ...typeSubject }
+    : temple === 'tarot' ? { temple, spread, picks: picksRef.current, ask: ask.trim(), ...(spread === 'choice' ? { optA: tarotOpts.a.trim(), optB: tarotOpts.b.trim() } : {}), ...typeSubject }
     : temple === 'xingming' ? { temple, surname: surname.replace(/\s/g, ''), given: given.replace(/\s/g, ''), gender: birth.gender }
     : temple === 'cezi' ? { temple, ch: ch.trim(), ask }
     : temple === 'jiemeng' ? { temple, dream: dream.trim(), ask, lang }
@@ -1274,7 +1276,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               : yixueMode === 'lookup' ? <YixuePicker onPick={pickHexagram} picked={lookupN} disabled={yixueEntryBusy} />
               : <YixueQuestion value={input} onChange={setInput} disabled={yixueEntryBusy} />
           ) : temple === 'tarot' ? (
-            <TarotPanel ask={ask} setAsk={setAsk} spread={spread} setSpread={setSpread} onDeal={dealCards} entering={entering} sel={sel}
+            <TarotPanel ask={ask} setAsk={setAsk} spread={spread} setSpread={setSpread} opts={tarotOpts} setOpts={setTarotOpts} onDeal={dealCards} entering={entering} sel={sel}
               extra={<PersonalityAttach saved={savedType} on={withType} setOn={setWithType} />} />
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} jiao={jiao}
@@ -3260,8 +3262,9 @@ function SunziForm({ situation, setSituation, ask, setAsk, sel, situationAria }:
 // the server lays the cards with their names, pictures and Waite's meaning
 // for the way each landed (lib/tarot.ts).
 
-function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel, extra }: {
+function TarotPanel({ ask, setAsk, spread, setSpread, opts, setOpts, onDeal, entering, sel, extra }: {
   ask: string; setAsk: (s: string) => void; spread: TarotSpread; setSpread: (s: TarotSpread) => void
+  opts: TarotOptions; setOpts: (o: TarotOptions) => void
   onDeal: (picks: TarotPick[]) => void; entering: boolean; sel: any
   /** Shown above the deal button: the personality-type box (Sep 30). */
   extra?: React.ReactNode
@@ -3276,16 +3279,29 @@ function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel, ext
       </label>
       <div role="radiogroup" aria-label={t('xtell.tarot.spread')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, marginRight: 4 }}>{t('xtell.tarot.spread')}</span>
-        {(['one', 'three'] as const).map(k => (
+        {SPREAD_KEYS.map(k => (
           <button key={k} type="button" role="radio" aria-checked={spread === k} disabled={entering} onClick={() => setSpread(k)}
             className={'xtell-tarot-spread' + (spread === k ? ' is-on' : '')}>
-            {t(`xtell.tarot.spread.${k}`)}<small>{SPREADS[k].map(p => t(`xtell.tarot.pos.${p}`)).join(' · ')}</small>
+            {t(`xtell.tarot.spread.${k}`)}<small>{t(`xtell.tarot.spread.${k}.sub`)}</small>
           </button>
         ))}
       </div>
+      {/* 二擇一 (Oct 1): name the two roads, so the cards and the teacher
+          can speak of them; both optional. */}
+      {spread === 'choice' && (
+        <div className="xtell-tarot-opts">
+          {(['a', 'b'] as const).map(k => (
+            <label key={k} style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+              {t(`xtell.tarot.opt.${k}`)}
+              <input value={opts[k]} onChange={e => setOpts({ ...opts, [k]: e.target.value.slice(0, OPTION_MAX) })} placeholder={t(`xtell.tarot.opt.${k}.ph`)} disabled={entering}
+                style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400 }} />
+            </label>
+          ))}
+        </div>
+      )}
       {extra}
       {/* A new spread starts the ritual again. */}
-      <TarotRitual key={spread} count={SPREADS[spread].length} positions={SPREADS[spread].map(p => t(`xtell.tarot.pos.${p}`))}
+      <TarotRitual key={spread} spread={spread} count={SPREADS[spread].length} keys={[...SPREADS[spread]]} positions={SPREADS[spread].map(p => t(`xtell.tarot.pos.${p}`))}
         ask={ask} disabled={entering} rand={cryptoRand} onDone={onDeal} />
       <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.tarot.note')}</span>
     </div>
@@ -3295,26 +3311,36 @@ function TarotPanel({ ask, setAsk, spread, setSpread, onDeal, entering, sel, ext
 function TarotBoard({ chart }: { chart: any }) {
   const t = useT()
   const { lang } = useLang()
-  const cards: Array<{ id: string; reversed: boolean; position: string; names: Record<string, string>; image: string; meaning: string }> = Array.isArray(chart?.cards) ? chart.cards : []
+  const cards: Array<{ id: string; reversed: boolean; position: string; names: Record<string, string>; image: string; meaning: string; modern?: Record<string, string> | null }> = Array.isArray(chart?.cards) ? chart.cards : []
+  const laid = asSpread(chart?.spread)
+  const options = laid === 'choice' && chart?.options ? chart.options as TarotOptions : null
   const name = (c: { names: Record<string, string> }) => c.names?.[lang] ?? c.names?.en ?? ''
   const turn = (c: { reversed: boolean }) => t(c.reversed ? 'xtell.tarot.reversed' : 'xtell.tarot.upright')
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ ...mono, color: 'var(--muted2)' }}>{t(`xtell.tarot.spread.${chart?.spread === 'three' ? 'three' : 'one'}`)}</span>
+        <span style={{ ...mono, color: 'var(--muted2)' }}>{t(`xtell.tarot.spread.${laid}`)}</span>
         {chart?.ask && <span style={{ fontSize: 13 }}>{chart.ask}</span>}
         <span style={{ flex: 1 }} />
         {cards.length > 0 && <ShareButton spec={() => ({ icon: 'tarot', link: 'tarot', title: t('xtell.site.focus.tarot.name'),
-          kicker: t(`xtell.tarot.spread.${chart?.spread === 'three' ? 'three' : 'one'}`),
+          kicker: t(`xtell.tarot.spread.${laid}`),
           body: cards.map(c => `${t(`xtell.tarot.pos.${c.position}`)}　${name(c)}（${turn(c)}）`), style: 'prose', name: 'xtell-tarot', log: { kind: 'tarot', temple: 'tarot' } })} />}
       </div>
-      <div className={'xtell-tarot-cards' + (cards.length > 1 ? ' is-three' : '')}>
+      {options && (options.a || options.b) && (
+        <div className="xtell-tarot-options">
+          <span><b>A</b>{options.a || '—'}</span><span><b>B</b>{options.b || '—'}</span>
+        </div>
+      )}
+      <div className={'xtell-tarot-cards' + (cards.length === 3 ? ' is-three' : cards.length > 3 ? ` is-five is-${laid}` : '')}>
         {cards.map(c => (
-          <figure key={c.id} className="xtell-tarot-card">
+          <figure key={c.id} className="xtell-tarot-card" style={cards.length > 3 ? { gridArea: c.position } : undefined}>
             <figcaption>{t(`xtell.tarot.pos.${c.position}`)}</figcaption>
             <img src={c.image} alt={name(c)} className={c.reversed ? 'is-reversed' : undefined} loading="lazy" />
             <strong>{name(c)}</strong>
             <span className={c.reversed ? 'is-reversed' : undefined}>{turn(c)}</span>
+            {/* Our own modern reading (Oct 2), in the visitor's language;
+                Waite's 1911 words stay one tap away. */}
+            {(c.modern?.[lang] ?? c.modern?.en) && <p className="xtell-tarot-modern">{c.modern?.[lang] ?? c.modern?.en}</p>}
             <details>
               <summary>{t('xtell.tarot.meaning')}</summary>
               <p lang="en">{c.meaning}</p>
