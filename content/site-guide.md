@@ -63,7 +63,13 @@ Korean; its own front door is xcreate.modelxd.com, where the top bar picks
 what to make (Text, Image, Video, Audio, Film); your latest five of the
 chosen type are listed under the composer (Continue, rename, delete), and all of
 your past work (the Library, filterable by type, Film included) is on the
-account page. A run where you already picked a winner reopens on its canvas. Your private studio. Pick up to four models and run the same prompt through
+account page. A run where you already picked a winner reopens on its canvas.
+Templates under the composer make a product photo platform-ready (淘寶主圖 and
+白底圖, 蝦皮, momo, Amazon, 樂天, Instagram / 小紅書 3:4, Stories / Reels /
+TikTok 9:16, LINE 圖文訊息) or restyle it, and video templates turn a product
+photo into a 淘寶 / 蝦皮 / Amazon product video or a 9:16 short. Any finished
+picture can be downloaded in a platform's exact size (pixels, JPG, file size,
+pure white background where required), with a checklist of what was met. Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
 image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a

@@ -225,3 +225,44 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-history-rename { flex-wrap: wrap; }
   .xcs-history-rename input { flex-basis: 100%; }
 }
+
+/* Templates (Oct 1): rows of preview cards under the composer. Phone first:
+   a row scrolls sideways with snap and runs to the screen edge; from 761px
+   it wraps instead. */
+.xcs-tpl { margin: 40px 0 8px; }
+.xcs-setup > .xcs-tpl { max-width: 1180px; }
+.xcs-tpl-head h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--white); }
+.xcs-tpl-head p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted2); }
+.xcs-tpl-row { margin-top: 18px; }
+.xcs-tpl-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.xcs-tpl-row-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--white); }
+.xcs-tpl-row-head span { font-size: 12px; color: var(--muted2); text-align: right; }
+.xcs-tpl-strip { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 6px; }
+.xcs-tpl-strip::-webkit-scrollbar { display: none; }
+.xcs-tpl-card { flex: 0 0 148px; scroll-snap-align: start; display: flex; flex-direction: column; padding: 0; text-align: left; background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; overflow: hidden; cursor: pointer; font: inherit; color: inherit; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.xcs-tpl-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); border-color: var(--red); }
+.xcs-tpl-card:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.xcs-tpl-pv { position: relative; height: 148px; background: #f1f2ec; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.xcs-tpl-pv > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.xcs-tpl-frame { display: block; background: #fff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.18); }
+.xcs-tpl-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.xcs-tpl-emoji { font-size: 40px; }
+.xcs-tpl-pv.is-video::after { content: '▶'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.45); color: #fff; font-size: 13px; display: flex; align-items: center; justify-content: center; padding-left: 3px; box-sizing: border-box; }
+.xcs-tpl-mark { position: absolute; left: 8px; top: 8px; min-width: 26px; height: 26px; padding: 0 5px; border-radius: 13px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.18); box-sizing: border-box; }
+.xcs-tpl-mark img { width: 15px; height: 15px; display: block; }
+.xcs-tpl-mark b { font-size: 10px; font-weight: 800; line-height: 1; }
+.xcs-tpl-ratio { position: absolute; right: 8px; bottom: 8px; font-size: 10.5px; font-weight: 700; color: #fff; background: rgba(0,0,0,.55); border-radius: 6px; padding: 2px 6px; font-variant-numeric: tabular-nums; }
+.xcs-tpl-meta { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px 11px; }
+.xcs-tpl-meta b { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--white); }
+.xcs-tpl-meta small { font-size: 11.5px; line-height: 1.4; color: var(--muted2); }
+.xcs-tpl-chk { align-self: flex-start; margin-top: 3px; font-size: 10.5px; font-weight: 600; color: #38624e; background: #e9f1ec; border-radius: 999px; padding: 2px 7px; }
+@media (max-width: 760px) {
+  /* The row runs to the screen edge so the next card peeks in. */
+  .xcs-tpl-strip { margin: 0 -20px; padding-left: 20px; padding-right: 20px; scroll-padding-left: 20px; }
+}
+@media (max-width: 420px) {
+  .xcs-tpl-strip { margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding-left: 16px; }
+}
+@media (min-width: 761px) {
+  .xcs-tpl-strip { flex-wrap: wrap; overflow: visible; }
+}
