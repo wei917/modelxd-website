@@ -98,6 +98,14 @@ export type SigninRow = { day: string | null; provider: string; logins: number; 
 /** Browsers per day for the three biggest countries, and the rest. */
 export type CountryDay = { day: string; c0: number; c1: number; c2: number; other: number }
 
+/** A row of site_ad_funnel() (migration 123): what the browsers an ad brought
+ *  did over the range, per source ('google', 'chatgpt'). */
+export type FunnelRow = { source: string; browsers: number; stayed_30s: number; tapped: number; signed_in: number; median_seconds: number }
+
+/** A row of site_registered_users() (123): accounts per country, by where
+ *  each was last seen; '??' when never recorded. */
+export type AccountRow = { country: string; users: number; new_users: number }
+
 /** A row of site_signin_taps_window() (migration 120): presses of a sign-in
  *  button over the window, in activity_logs' provider words. */
 export type TapRow = { provider: string; taps: number; browsers: number }

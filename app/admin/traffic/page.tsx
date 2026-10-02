@@ -26,7 +26,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { getAdminUser } from '@/lib/admin'
 import TrafficView from './TrafficView'
-import { askedCountry, countryDays, countryNames, fillDaily, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow } from './data'
+import { askedCountry, countryDays, countryNames, fillDaily, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow, type AccountRow, type FunnelRow } from './data'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,8 +72,9 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   // The same goes for the range's own numbers (migration 118): without them
   // the tiles show today, under a heading that says so.
   // Taps on the sign-in buttons (migration 120) follow the country too, and
-  // so do XTell's answer votes and share presses (122).
-  const [byCountry, signins, range, tapped, voted, shared] = upgraded
+  // so do XTell's answer votes and share presses (122), and what ad visitors
+  // did (123). Accounts per country (123) are every country.
+  const [byCountry, signins, range, tapped, voted, shared, funnel, accounts] = upgraded
     ? await Promise.all([
         sb.rpc('site_visit_by_country', { p_days: days, p_tz: TZ, p_top: 5 }),
         sb.rpc('site_signins_daily', { p_days: days, p_tz: TZ }),
@@ -81,14 +82,19 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
         sb.rpc('site_signin_taps_window', { p_days: days, p_tz: TZ, p_country: wanted }),
         sb.rpc('xtell_vote_window', { p_days: days, p_tz: TZ, p_country: wanted }),
         sb.rpc('xtell_share_window', { p_days: days, p_tz: TZ, p_country: wanted }),
+        sb.rpc('site_ad_funnel', { p_days: days, p_tz: TZ, p_country: wanted }),
+        sb.rpc('site_registered_users', { p_days: days, p_tz: TZ }),
       ])
-    : [null, null, null, null, null, null]
+    : [null, null, null, null, null, null, null, null]
   if (byCountry?.error) console.error('[admin/traffic] site_visit_by_country:', byCountry.error.message)
   if (signins?.error) console.error('[admin/traffic] site_signins_daily:', signins.error.message)
   if (range?.error && range.error.code !== NOT_THERE) console.error('[admin/traffic] site_visit_summary:', range.error.message)
   if (tapped?.error && tapped.error.code !== NOT_THERE) console.error('[admin/traffic] site_signin_taps_window:', tapped.error.message)
   if (voted?.error && voted.error.code !== NOT_THERE) console.error('[admin/traffic] xtell_vote_window:', voted.error.message)
   if (shared?.error && shared.error.code !== NOT_THERE) console.error('[admin/traffic] xtell_share_window:', shared.error.message)
+  if (funnel?.error && funnel.error.code !== NOT_THERE) console.error('[admin/traffic] site_ad_funnel:', funnel.error.message)
+  if (accounts?.error && accounts.error.code !== NOT_THERE) console.error('[admin/traffic] site_registered_users:', accounts.error.message)
+  const accountRows = accounts && !accounts.error ? (accounts.data ?? []) as AccountRow[] : null
   // The teachers' names for the votes card.
   const voteRows = (voted && !voted.error ? voted.data ?? [] : []) as VoteRow[]
   const modelIds = [...new Set(voteRows.map(r => r.model_id))]
@@ -107,6 +113,8 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
       taps={tapped && !tapped.error ? tapTotals((tapped.data ?? []) as TapRow[]) : null}
       votes={voted && !voted.error ? voteLines(voteRows, modelNames) : null}
       shares={shared && !shared.error ? shareLines((shared.data ?? []) as ShareRow[]) : null}
+      funnel={funnel && !funnel.error ? (funnel.data ?? []) as FunnelRow[] : null}
+      accounts={accountRows}
       days={days}
       ranges={RANGES}
       tz="Taiwan time"
@@ -117,7 +125,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
       upgraded={upgraded}
       country={upgraded ? wanted : null}
       picker={countries.picker.slice(0, 5)}
-      names={countryNames([...countries.picker, ...countries.codes, wanted])}
+      names={countryNames([...countries.picker, ...countries.codes, wanted, ...(accountRows ?? []).map(r => r.country)])}
       countryDays={countries.days}
       countryCodes={countries.codes}
       signinDays={methods.days}

@@ -16,7 +16,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { CountryDay, DayRow, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
+import type { AccountRow, CountryDay, DayRow, FunnelRow, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -350,12 +350,16 @@ const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_
 const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
 const NEEDS_120 = 'Taps on the Google and LINE buttons appear once supabase/120_signin_taps.sql has been run.'
 const NEEDS_122 = 'XTell answer votes and share presses appear once supabase/122_xtell_votes_shares.sql has been run.'
+const NEEDS_123 = 'What ad visitors did, and accounts per country, appear once supabase/123_site_ads_accounts.sql has been run.'
+const AD_SOURCE: Record<string, string> = { google: 'Google Ads', chatgpt: 'ChatGPT ads' }
+/** "43 (70%)": a count and its share of the ad browsers. */
+const ofAll = (n: number, all: number) => (all > 0 ? `${num(n)} (${Math.round((100 * n) / all)}%)` : num(n))
 /** XTell share counter words (lib/xtell-feedback.ts). */
 const SHARE_KIND: Record<string, string> = { answer: 'Answer', daily: "Today's fortune", almanac: 'Almanac', cookie: 'Fortune cookie', tarot: 'Tarot', qian: '籤 (stick)' }
 const SHARE_HOW: Record<string, string> = { save: 'Save to Photos (iPhone)', download: 'Download', share: 'Share…', copy: 'Copy link' }
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, taps, votes, shares, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
+export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
@@ -363,6 +367,10 @@ export default function TrafficView({ rows, whole, taps, votes, shares, days, ra
    *  or null until it has been run. */
   votes: VoteLine[] | null
   shares: ShareLine[] | null
+  /** What ad visitors did in the range, per source (migration 123), or null until it has been run. */
+  funnel: FunnelRow[] | null
+  /** Accounts per country, every country (123), or null until it has been run. */
+  accounts: AccountRow[] | null
   /** The range as a whole (migration 118), or null until it has been run:
    *  the tiles then show today, and say so. */
   whole: Summary | null
@@ -475,6 +483,27 @@ export default function TrafficView({ rows, whole, taps, votes, shares, days, ra
             <Card title="Visits by source" note="ChatGPT ads carry utm_source=chatgpt; Google Ads carry a click id." legend={SOURCES}>
               <Columns rows={rows} series={SOURCES} />
             </Card>
+            {funnel && (
+              <Card title="From ads"
+                note={`Browsers whose visit in this range came from an ad${country ? ` (${where})` : ''}, and what they did after: all their visits in the range count, later ones too. Pressed = tapped Google or LINE (counted since Oct 1).`}>
+                {funnel.length ? (
+                  <div style={wrap}>
+                    <table style={table}>
+                      <thead>
+                        <tr><th style={{ ...th, ...first }} />{funnel.map(f => <th key={f.source} style={th}>{AD_SOURCE[f.source] ?? f.source}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        <tr><td style={{ ...td, ...first }}>Browsers</td>{funnel.map(f => <td key={f.source} style={td}>{num(f.browsers)}</td>)}</tr>
+                        <tr><td style={{ ...td, ...first }}>Stayed 30 s or more</td>{funnel.map(f => <td key={f.source} style={td}>{ofAll(f.stayed_30s, f.browsers)}</td>)}</tr>
+                        <tr><td style={{ ...td, ...first }}>Pressed sign-in</td>{funnel.map(f => <td key={f.source} style={td}>{ofAll(f.tapped, f.browsers)}</td>)}</tr>
+                        <tr><td style={{ ...td, ...first }}>Signed in</td>{funnel.map(f => <td key={f.source} style={td}>{ofAll(f.signed_in, f.browsers)}</td>)}</tr>
+                        <tr><td style={{ ...td, ...first }}>Median time on site</td>{funnel.map(f => <td key={f.source} style={td}>{stay(f.median_seconds)}</td>)}</tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No ad visitors in this range{country ? ` from ${where}` : ''}.</p>}
+              </Card>
+            )}
             {upgraded ? (
               <>
                 <Card title="Stay, signed in"
@@ -571,6 +600,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, days, ra
           </div>
           {upgraded && !taps && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_120}</p>}
           {upgraded && !votes && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_122}</p>}
+          {upgraded && !funnel && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_123}</p>}
         </>
       )}
 
@@ -586,6 +616,30 @@ export default function TrafficView({ rows, whole, taps, votes, shares, days, ra
               legend={methodSeries}>
               {signinDays.length ? <Columns rows={signinDays} series={methodSeries} /> : <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No sign-ins in this range yet.</p>}
             </Card>
+            {accounts && (
+              <Card title="Registered accounts"
+                note={`Every account, all time, by the country it was last seen in (not where it signed up). New = made in the last ${days} days.`}>
+                <div style={wrap}>
+                  <table style={table}>
+                    <thead>
+                      <tr><th style={{ ...th, ...first }}>Country</th><th style={th}>Accounts</th><th style={th}>New in {days} days</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ ...td, ...first, fontWeight: 600 }}>All</td>
+                        <td style={{ ...td, fontWeight: 600 }}>{num(accounts.reduce((s, r) => s + r.users, 0))}</td>
+                        <td style={{ ...td, fontWeight: 600 }}>{num(accounts.reduce((s, r) => s + r.new_users, 0))}</td>
+                      </tr>
+                      {accounts.map(r => (
+                        <tr key={r.country}>
+                          <td style={{ ...td, ...first }}>{nameOf(r.country)}</td><td style={td}>{num(r.users)}</td><td style={td}>{num(r.new_users)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
           </div>
         </>
       )}
