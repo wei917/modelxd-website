@@ -30,7 +30,7 @@ check('excerpt: a short reply is kept whole', JSON.stringify(shareExcerpt('好�
   const fs = require('node:fs'), path = require('node:path')
   const ui = fs.readFileSync(path.join(__dirname, '..', 'app/components/xtell/ShareButton.tsx'), 'utf8')
   const { STRINGS } = require('../lib/i18n')
-  check('存到相簿 on an iPhone shares the picture alone (with text the sheet drops 「儲存影像」)', ui.includes('if (ios && file && canShare) navigator.share({ files: [file] })') && ui.includes('else download()'))
+  check('存到相簿 on an iPhone shares the picture alone (with text the sheet drops 「儲存影像」)', ui.includes("if (ios && file && canShare) void sheet({ files: [file] }, 'save')") && ui.includes("else { download(); count('download', 'done') }") && ui.includes('navigator.share(data)'))
   check('phones see 存到相簿 first, computers 下載圖片; 分享… (with the link) stays', ui.includes("t(phone ? 'xtell.share.save' : 'xtell.share.download')") && ui.includes("onClick={share}>{t('xtell.share.send')}"))
   check('the picture is a data: URL and says it can be long-pressed', ui.includes('const dataUrl = await blobToDataUrl(blob)') && ui.includes("t('xtell.share.longpress')"))
   check('the words in five languages', ['xtell.share.save', 'xtell.share.longpress'].every(k => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof STRINGS[k]?.[l] === 'string' && STRINGS[k][l].trim())))

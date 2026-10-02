@@ -19,6 +19,10 @@
 // { tap: provider, path }. It becomes one row in site_signin_taps
 // (supabase/120) under the same rules: no crawlers, nothing that needs
 // consent, the same rate limit and the same visitor cookie.
+//
+// Or a press in an XTell share dialog (lib/xtell-feedback.ts, Oct 1):
+// { share: { kind, temple, modelId, method, outcome }, path }, one row in
+// xtell_shares (supabase/122), under the same rules again.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -28,6 +32,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { needsConsent } from '@/lib/consent'
 import { TAP_PROVIDERS } from '@/lib/signin-tap'
+import { asShareReport } from '@/lib/xtell-feedback'
 
 const LOG = '[api/visit]'
 const VISITOR_COOKIE = 'modelxd_vid'
@@ -94,6 +99,23 @@ export async function POST(req: NextRequest) {
         country:    country?.slice(0, 2) ?? null,
       })
       if (error && !warned) { warned = true; console.warn(`${LOG} sign-in tap failed: ${error.message}`) }
+      return done
+    }
+
+    if (b.share !== undefined) {
+      const share = asShareReport(b.share)
+      if (!share) return done
+      const path = text(b.path, 300)
+      const vid = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
+      const { error } = await service().from('xtell_shares').insert({
+        env:        process.env.VERCEL_ENV ?? 'development',
+        ...share,
+        visitor_id: UUID.test(vid) ? vid : null,
+        host:       hostOf(req).slice(0, 100) || null,
+        path:       path?.startsWith('/') ? path : null,
+        country:    country?.slice(0, 2) ?? null,
+      })
+      if (error && !warned) { warned = true; console.warn(`${LOG} share failed: ${error.message}`) }
       return done
     }
 

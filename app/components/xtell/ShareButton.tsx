@@ -12,12 +12,15 @@
 // The link opens the temple (`?t=`), carries the sharer's referral code, and
 // is tagged utm_source=share for the visit log. A QR code puts the link on
 // the picture itself, where Instagram does not let a link be tapped.
+// Each press in the dialog is counted (Oct 1, supabase/122): what was shared,
+// how, and whether the share sheet was completed; never which app.
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLang } from '../../../lib/i18n'
 import { SITE_COOKIE, siteOfHost } from '../../../lib/site'
 import { shareUrl } from '../../../lib/xtell-share'
+import { countShare, type ShareLog, type ShareMethod, type ShareOutcome } from '../../../lib/xtell-feedback'
 import { TEMPLE_ART, type TempleKey } from './TempleArtwork'
 
 export type ShareSpec = {
@@ -33,6 +36,8 @@ export type ShareSpec = {
   style: 'prose' | 'poem'
   /** The file name, without extension. */
   name: string
+  /** What the share counter records about this picture. */
+  log?: ShareLog
 }
 
 // ── The referral code (signed-in visitors only) ────────────────────────────
@@ -267,7 +272,11 @@ function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }
   useEffect(() => { if (state !== 'making') panel.current?.querySelector<HTMLButtonElement>('.xtell-share-actions button')?.focus() }, [state])
 
   const canShare = !!file && typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
-  const share = () => { if (file) navigator.share({ files: [file], text: `${spec.title}｜${brand}\n${url}` }).catch(() => { /* closed the sheet */ }) }
+  const count = (method: ShareMethod, outcome: ShareOutcome) => { if (spec.log) countShare(spec.log, method, outcome) }
+  // The sheet says completed or closed (AbortError), never where it went.
+  const sheet = (data: ShareData, method: ShareMethod) =>
+    navigator.share(data).then(() => count(method, 'done'), (e: unknown) => count(method, (e as Error)?.name === 'AbortError' ? 'cancelled' : 'failed'))
+  const share = () => { if (file) void sheet({ files: [file], text: `${spec.title}｜${brand}\n${url}` }, 'share') }
   // Saving to Photos (owner, Oct 1: "the image cannot be saved to Photo").
   // An iPhone saves a picture only from the share sheet's 「儲存影像」, and
   // that line is missing when text rides along with the file, as it does
@@ -277,8 +286,8 @@ function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }
   const phone = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
   const ios = typeof navigator !== 'undefined' && (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
   const save = () => {
-    if (ios && file && canShare) navigator.share({ files: [file] }).catch(() => { /* closed the sheet */ })
-    else download()
+    if (ios && file && canShare) void sheet({ files: [file] }, 'save')
+    else { download(); count('download', 'done') }
   }
   const download = () => {
     if (!img) return
@@ -287,7 +296,8 @@ function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }
     document.body.appendChild(a); a.click(); a.remove()
   }
   const copy = () => {
-    navigator.clipboard?.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }).catch(() => { /* no clipboard */ })
+    if (!navigator.clipboard) { count('copy', 'failed'); return }
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); count('copy', 'done') }).catch(() => count('copy', 'failed'))
   }
 
   return (
