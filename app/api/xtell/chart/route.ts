@@ -4,9 +4,10 @@
 // against any 排盤 site, so it is shown before money moves.
 //
 // Signed out (owner, Oct 1), the free chart is cast too, and not saved: no
-// account to keep it under. 解夢, 孫子兵法 and the fortune cookie still need
-// a session, because their free step calls a model on our account
-// (lib/xtell-guest.ts).
+// account to keep it under. 解夢 and the fortune cookie still need a
+// session, because their free step calls a model on our account
+// (lib/xtell-guest.ts). 孫子兵法 does too, but since Oct 2 a signed-out
+// visitor gets GUEST_SUNZI_PER_DAY lookups a day from one address.
 //
 // 關帝廟 has no chart: the input is the stick number the ritual produced,
 // and the "chart" is the poem loaded from disk. 四面佛 is a 八字 chart plus
@@ -35,6 +36,20 @@ import { sukuyoChart, asPartnerDate } from '@/lib/sukuyo'
 // name」 and 「write at least one wish」 reached a 繁體 page raw). `error`
 // stays English for logs and older clients.
 const refuse = (code: string, error: string, status = 400) => Response.json({ error, code }, { status })
+/** 孫子兵法 for a signed-out visitor (Oct 2): its lookup is a model call we
+ *  pay for, so a few a day from one address. Counted in memory, per server
+ *  instance: a floor like the site agent's, not a wall. */
+const GUEST_SUNZI_PER_DAY = 3
+const guestScans = new Map<string, { n: number; reset: number }>()
+function guestScanAllowed(req: Request): boolean {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
+  const now = Date.now()
+  if (guestScans.size > 5000) for (const [k, g] of guestScans) if (g.reset < now) guestScans.delete(k)
+  const g = guestScans.get(ip)
+  if (!g || g.reset < now) { guestScans.set(ip, { n: 1, reset: now + 86_400_000 }); return true }
+  return ++g.n <= GUEST_SUNZI_PER_DAY
+}
+
 /** Temples whose chart cannot exist without the birth hour. */
 const HOUR_REQUIRED = new Set<Temple>(['ziwei', 'navagraha'])
 /** A birth that does not exist or cannot be charted (audit F01: 1990-02-31
@@ -175,15 +190,17 @@ export async function POST(req: Request) {
   // language looked up again keeps its lines; the same daily cap, counted
   // from saved visits; always saved. The visit is titled by the situation.
   if (temple === 'sunzi') {
-    if (!user) return signInFirst()
     const bad = situationProblem(body?.situation)
     if (bad) return refuse(bad, bad === 'situation_required' ? 'describe the situation' : 'the situation is too long')
     const situation = String(body.situation).trim()
     const ask = typeof body?.ask === 'string' ? body.ask.trim().slice(0, SUNZI_ASK_MAX) : ''
     const lang = glossLang(body?.lang)
-    const { data: recent } = await sb.from('xtell_readings')
-      .select('chart, created_at').eq('user_id', user.id).eq('temple', 'sunzi')
-      .order('created_at', { ascending: false }).limit(SUNZI_PER_DAY + 20)
+    // A signed-out visitor has no saved visits to reuse or count.
+    const { data: recent } = user
+      ? await sb.from('xtell_readings')
+        .select('chart, created_at').eq('user_id', user.id).eq('temple', 'sunzi')
+        .order('created_at', { ascending: false }).limit(SUNZI_PER_DAY + 20)
+      : { data: [] }
     const rows = (recent ?? []) as Array<{ chart: any; created_at: string }>
     const seen = rows.find(r => r.chart?.scan && r.chart?.situation === situation && (r.chart?.ask ?? '') === ask && r.chart?.lang === lang && Array.isArray(r.chart?.lines))
     let lines, by: string
@@ -194,14 +211,16 @@ export async function POST(req: Request) {
       const dayAgo = Date.now() - 86_400_000
       if (rows.filter(r => r.chart?.scan && Date.parse(r.created_at) > dayAgo).length >= SUNZI_PER_DAY)
         return refuse('sunzi_daily_limit', 'too many situations looked up today', 429)
-      const scan = await scanSituation(situation, ask, lang, user.id)
+      if (!user && !guestScanAllowed(req))
+        return refuse('sunzi_guest_limit', 'sign in to look up more situations today', 429)
+      const scan = await scanSituation(situation, ask, lang, uid)
       if (!scan) return refuse('sunzi_scan_failed', 'the Sunzi lookup is unavailable', 503)
       lines = sunziLines(scan.picks)
       by = scan.model
     }
     // `scan` names the model that chose the lines; `lang` the translations' language.
     const chart = { situation, ask, lang, lines, scan: by }
-    const readingId = await save(sb, user.id, temple, { ...body, situation, ask }, chart, {}, situation.split('\n')[0])
+    const readingId = await save(sb, uid, temple, { ...body, situation, ask }, chart, {}, situation.split('\n')[0])
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 

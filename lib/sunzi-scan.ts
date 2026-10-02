@@ -30,7 +30,7 @@ type Scanner = (typeof SCANNERS)[number]
 
 /** One scanner's answer: the picks, or null (disabled, failed, timed out, or
  *  a reply that is not the JSON asked for). */
-export async function scanWith(s: Scanner, message: string, userId: string): Promise<Pick[] | null> {
+export async function scanWith(s: Scanner, message: string, userId: string | null): Promise<Pick[] | null> {
   const model = await getModelByProviderName(s.provider, s.model).catch(() => null)
   if (!model?.enabled) return null
   let text = '', error: string | undefined
@@ -56,7 +56,7 @@ export async function scanWith(s: Scanner, message: string, userId: string): Pro
 
 /** The book's lines for this situation, and the model that chose them; null
  *  when no scanner could answer (the page then says so). */
-export async function scanSituation(situation: string, ask: string, lang: string, userId: string): Promise<{ picks: Pick[]; model: string } | null> {
+export async function scanSituation(situation: string, ask: string, lang: string, userId: string | null): Promise<{ picks: Pick[]; model: string } | null> {
   const message = scanMessage(situation, ask, lang)
   for (const s of SCANNERS) {
     const picks = await scanWith(s, message, userId)

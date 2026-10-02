@@ -54,12 +54,19 @@ signing in the visitor comes back to the same room (the dialog keeps the
 hash), but the form starts again: details typed before are not carried
 over, on purpose, to keep it simple.
 
-Three rooms stay sign-in first, because their free step calls a model on
-our account: 解夢 and 孫子兵法 scan with one, and the fortune cookie writes its
-slip with one and counts two free a meal per account. The list is
-`SIGN_IN_FIRST` in `lib/xtell-guest.ts`; those rooms still mount
-`XTellAuthGate`, and their branches of the chart route answer 401 without a
-session. `/xtell` on www still requires sign-in for the whole page.
+Two rooms stay sign-in first, because their free step calls a model on
+our account: 解夢 scans with one, and the fortune cookie writes its slip with
+one and counts two free a meal per account. The list is `SIGN_IN_FIRST` in
+`lib/xtell-guest.ts`; those rooms still mount `XTellAuthGate`, and their
+branches of the chart route answer 401 without a session.
+
+孫子兵法 joined the open rooms on Oct 2, for a ChatGPT ad (owner: an ad for a
+room that is not 迷信, so it can be approved; OpenAI's ad policy allows
+digital products and education and treats religion as sensitive). Its lookup
+is a model call we pay for, so a signed-out visitor gets
+`GUEST_SUNZI_PER_DAY` (3) a day from one address, counted in memory per
+server instance (a floor, like the site agent's), then
+`sunzi_guest_limit`: "sign in to keep going". Nothing is saved for them. `/xtell` on www still requires sign-in for the whole page.
 
 ## The architecture rule (the one thing you must not break)
 
