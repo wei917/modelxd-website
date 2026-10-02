@@ -1144,14 +1144,24 @@ what changed:
   (`guandiFacts(…, lang)`). The 清刊本 notes of 關帝 (聖意, 東坡解 …) are
   still Chinese only; the teacher explains them.
 
-## Each market's order (Sep 28)
+## Each market's order (Sep 28, Japan and English redone Oct 2)
 
 `displayTemples(lang)` (TempleArtwork.tsx): every temple in every language,
-only the order changes (孫子兵法 follows 解夢 in every list). 日本語: 占星, 塔羅, 八字, 觀音, 月老, 解夢, 姓名, 易經,
-紫微, 關帝, 媽祖, 九曜, 四面佛, 測字. 한국어: 八字 (사주), 月老 (labelled 궁합),
-塔羅, 占星, 解夢, 姓名, 易經, 紫微, 觀音, 關帝, 媽祖, 九曜, 四面佛, 測字.
-Chinese and English: the owner's order with 塔羅 after 占星 and 觀音 leading
-the deity rooms.
+only the order changes. Oct 2 (owner: "optimize the temple order on the top
+nav bar for different countries", after a Japanese visitor read the page as a
+translated Taiwanese site):
+
+- 日本語, by Japanese search demand (Keyword Planner, Japan, Sep 30): 夢占い,
+  観音 (おみくじ), 姓名, 西洋占星, タロット, 四柱推命, 九星気学, 縁結び, 宿曜, 易経,
+  紫微, 兵法, クッキー, インド占星, 関帝, 媽祖, 四面仏, 字占い.
+- English (the US): Tarot, Astrology, Dreams, BaZi, Yue Lao, Cookie, I Ching,
+  Navagraha, Art of War, Zi Wei, Nine Star, Guanyin, Guan Di, Mazu, Brahma,
+  Sukuyō, Names, Character. The rooms that need Chinese characters or names
+  go last.
+- 한국어 (Sep 28, unchanged): 八字 (사주), 月老 (궁합), 塔羅, 占星, 解夢, 孫子, 籤餅,
+  姓名, 易經, 紫微, 觀音, 關帝, 媽祖, 九曜, 九星, 宿曜, 四面佛, 測字.
+- Chinese (unchanged): the owner's order, computed methods first, 觀音 leading
+  the deity rooms.
 
 **Icons (觀音, 塔羅):** generated in XCreate (GPT Image 2.5 Sunburst, image
 edit, medium, 3 outputs each, $0.067 each) against style sheets cropped from
