@@ -20,7 +20,10 @@
 //
 // Scope is deliberately narrow: originals/ in the four user buckets. AI
 // output buckets are written only by completed runs, so sweeping them
-// would add risk without fixing anything.
+// would add risk without fixing anything. The one exception is the
+// platform video exports (Oct 1): exports/<UTC date>/ in xcreate-ai-videos
+// holds converted copies that are only needed until their one-hour download
+// link is used, and every day folder older than yesterday goes whole.
 //
 // Schedule: daily via vercel.json. Manual dry run:
 //   curl -H "Authorization: Bearer $CRON_SECRET" \
@@ -50,6 +53,50 @@ const MIN_AGE_HOURS = 24
 
 const PAGE = 1000        // storage list page size
 const DELETE_BATCH = 100
+
+// Platform video exports: kept today and yesterday, swept after.
+const EXPORT_BUCKET = 'xcreate-ai-videos'
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function sweepExports(sb: SupabaseClient, dry: boolean, LOG: string) {
+  const keepFrom = new Date(Date.now() - 24 * 3600_000).toISOString().slice(0, 10)   // yesterday, UTC
+  const doomed: string[] = []
+
+  const { data: days, error } = await sb.storage.from(EXPORT_BUCKET).list('exports', { limit: PAGE })
+  if (error) console.warn(`${LOG} list exports failed:`, error.message)
+  for (const day of days ?? []) {
+    if (day.id !== null || !/^\d{4}-\d{2}-\d{2}$/.test(day.name) || day.name >= keepFrom) continue
+    for (let offset = 0; ; offset += PAGE) {
+      const { data } = await sb.storage.from(EXPORT_BUCKET).list(`exports/${day.name}`, { limit: PAGE, offset })
+      for (const f of data ?? []) if (f.id) doomed.push(`exports/${day.name}/${f.name}`)
+      if (!data || data.length < PAGE) break
+    }
+  }
+
+  // The first exports (Oct 1, before the dated folders) sat under
+  // <uid>/exports/. Swept by age; this pass can go once they are gone.
+  const cutoff = Date.now() - 24 * 3600_000
+  const { data: top } = await sb.storage.from(EXPORT_BUCKET).list('', { limit: PAGE })
+  for (const folder of top ?? []) {
+    if (folder.id !== null || !UUID.test(folder.name)) continue
+    const { data } = await sb.storage.from(EXPORT_BUCKET).list(`${folder.name}/exports`, { limit: PAGE })
+    for (const f of data ?? []) {
+      const created = Date.parse(f.created_at ?? '')
+      if (f.id && Number.isFinite(created) && created < cutoff) doomed.push(`${folder.name}/exports/${f.name}`)
+    }
+  }
+
+  let deleted = 0
+  if (!dry) {
+    for (let i = 0; i < doomed.length; i += DELETE_BATCH) {
+      const chunk = doomed.slice(i, i + DELETE_BATCH)
+      const { error: rmErr } = await sb.storage.from(EXPORT_BUCKET).remove(chunk)
+      if (rmErr) console.warn(`${LOG} remove exports failed:`, rmErr.message)
+      else deleted += chunk.length
+    }
+  }
+  return { found: doomed.length, deleted, samples: doomed.slice(0, 5) }
+}
 
 function serviceClient(): SupabaseClient {
   return createClient(
@@ -192,13 +239,15 @@ async function handle(req: NextRequest) {
     report[bucket] = stat
   }
 
+  const exportsSwept = await sweepExports(sb, dry, LOG)
+
   const totals = Object.values(report).reduce(
     (a, s) => ({ scanned: a.scanned + s.scanned, orphans: a.orphans + s.orphans, deleted: a.deleted + s.deleted }),
     { scanned: 0, orphans: 0, deleted: 0 },
   )
-  console.log(`${LOG} scanned=${totals.scanned} orphans=${totals.orphans} deleted=${totals.deleted} zombieJobs=${zombieJobs} bonusesExpired=${bonusesExpired}`)
+  console.log(`${LOG} scanned=${totals.scanned} orphans=${totals.orphans} deleted=${totals.deleted} zombieJobs=${zombieJobs} bonusesExpired=${bonusesExpired} exports=${exportsSwept.deleted}/${exportsSwept.found}`)
 
-  return NextResponse.json({ swept: true, dry, minAgeHours: MIN_AGE_HOURS, totals, report, samples, zombieJobs, bonusesExpired })
+  return NextResponse.json({ swept: true, dry, minAgeHours: MIN_AGE_HOURS, totals, report, samples, zombieJobs, bonusesExpired, exports: exportsSwept })
 }
 
 export async function GET(req: NextRequest)  { return handle(req) }

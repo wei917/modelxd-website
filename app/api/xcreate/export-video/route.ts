@@ -7,8 +7,9 @@
 //
 // The viewer must own the run, or the upload must sit in their own folder;
 // the file is only ever read from our storage. ffmpeg runs here
-// (lib/platform-video.ts), and the result is stored under the user's
-// exports folder and handed back as a one-hour signed link that downloads
+// (lib/platform-video.ts), and the result is stored in that day's exports
+// folder (exports/<UTC date>/, swept daily by /api/cron/sweep-orphans once
+// it is two days old) and handed back as a one-hour signed link that downloads
 // (Supabase's `download` turns it into an attachment, which is what works on
 // phones; a function response could not carry a large video anyway).
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
     const result = await exportVideoToSpec(inFile, outFile, spec)
 
     const name = `${spec.file}-${spec.w}x${spec.h}.mp4`
-    const dest = `${user.id}/exports/${tag}-${name}`
+    const dest = `exports/${new Date().toISOString().slice(0, 10)}/${user.id}-${tag}-${name}`
     const { error: upErr } = await admin.storage.from(OUT_BUCKET)
       .upload(dest, await fs.readFile(outFile), { contentType: 'video/mp4', upsert: false })
     if (upErr) {
