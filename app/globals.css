@@ -3606,6 +3606,8 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-acts { justify-self: end; display: flex; gap: 2px; }
 .xtell-room .xtell-seat-add, .xtell-seat-add { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 16px 0 10px; border: 1px dashed var(--xtell-rule, var(--border2)); border-radius: 14px; background: transparent; color: var(--xtell-secondary, var(--muted)); font-size: 13px; white-space: nowrap; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
 .xtell-seat-add:hover { border-color: var(--xtell-vermilion, var(--red)); color: var(--xtell-vermilion, var(--red)); background: #fff; }
+.xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled { opacity: .45; cursor: default; pointer-events: none; }
+.xtell-seat-wait { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
 .xtell-seat-plus { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--xtell-tint, var(--surface2)); font-size: 14px; line-height: 1; }
 
 /* XTell: 進廟 in flight (owner, Sep 27: the form "freezed"). A light sweeps

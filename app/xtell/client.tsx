@@ -1029,7 +1029,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const lastUserIdx = (() => { for (let i = turns.length - 1; i >= 0; i--) if (turns[i].role === 'user') return i; return -1 })()
   const lastUser = lastUserIdx >= 0 ? turns[lastUserIdx] as Extract<Turn, { role: 'user' }> : null
   const answeredLast = new Set(turns.slice(lastUserIdx + 1).map(tn => (tn as any).modelId as string).filter(Boolean))
-  const canJoin = !!lastUser?.qid && !unverified && !savedProblem
+  // While a teacher is answering, the seats are fixed (owner, Oct 1: a
+  // teacher added mid-answer never answered): no adding, replacing or
+  // removing until every reply is in.
+  const answering = busy || joining.length > 0
+  const canJoin = !!lastUser?.qid && !unverified && !savedProblem && !answering
   const join = async (m: PickerModel) => {
     const ts = turnsRef.current
     let at = -1
@@ -1314,7 +1318,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                       <div key={m.id} className="xtell-seat" data-open={optsOpen || undefined}
                         style={optsOpen ? { borderColor: color + '80', boxShadow: `inset 3px 0 0 ${color}, 0 1px 2px rgba(60, 40, 20, .05)` } : undefined}>
                         <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>
-                        <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} onClick={() => setPicker({ replace: m.id })}>
+                        <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} disabled={answering} onClick={() => setPicker({ replace: m.id })}>
                           <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
                         </button>
                         <span className="xtell-seat-acts">
@@ -1323,7 +1327,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2.5 4.5h11M2.5 11.5h11" /><circle cx="6" cy="4.5" r="1.7" fill="#fff" /><circle cx="10.5" cy="11.5" r="1.7" fill="#fff" /></svg>
                         </button>
                         {masters.length > 1 && (
-                          <button type="button" className="xtell-seat-act" title={t('xtell.site.remove')} aria-label={`${t('xtell.site.remove')} ${m.display_name}`} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}>
+                          <button type="button" className="xtell-seat-act" title={t('xtell.site.remove')} aria-label={`${t('xtell.site.remove')} ${m.display_name}`} disabled={answering} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}>
                             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 3l6 6M9 3l-6 6" /></svg>
                           </button>
                         )}
@@ -1333,7 +1337,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   })}
                 </div>
                 {masters.length < MAX_SEATS && (
-                  <button type="button" className="xtell-seat-add" onClick={() => setPicker({ replace: null })}>
+                  <button type="button" className="xtell-seat-add" disabled={answering} aria-describedby={answering ? 'xtell-seat-wait' : undefined} onClick={() => setPicker({ replace: null })}>
                     <span className="xtell-seat-plus" aria-hidden="true">＋</span>{t('xtell.addmaster')}
                   </button>
                 )}
@@ -1412,6 +1416,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               </div>
             )
           })()}
+          {/* Under the seats, not beside them: on a phone the seat row
+              scrolls sideways and a note at its end is off screen. */}
+          {answering && <p id="xtell-seat-wait" className="xtell-seat-wait">{t('xtell.addmaster.wait')}</p>}
 
           {savedProblem && (
             <div role="alert" style={{ ...card, padding: '12px 14px', borderColor: 'var(--red)', display: 'grid', gap: 10 }}>

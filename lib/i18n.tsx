@@ -1534,6 +1534,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.entering.note": {"en": "Just a moment…", "zh-Hant": "請稍候…", "zh-Hans": "请稍候…", "ja": "少々お待ちください…", "ko": "잠시만 기다려 주세요…"},
   "xtell.jiemeng.looking": {"en": "Searching 周公解夢 for your dream…", "zh-Hant": "正在翻閱《周公解夢》…", "zh-Hans": "正在翻阅《周公解梦》…", "ja": "『周公解夢』を調べています…", "ko": "『주공해몽』을 찾아보고 있습니다…"},
   'xtell.addmaster':   { en: 'Add a master', 'zh-Hant': '再請一位老師', 'zh-Hans': '再请一位老师', ja: '先生をもう一人', ko: '스승 한 분 더' },
+  'xtell.addmaster.wait': {"en": "Teachers can be added once the answer is in", "zh-Hant": "老師回答完，才能再加老師", "zh-Hans": "老师回答完，才能再加老师", "ja": "回答が終わってから先生を追加できます", "ko": "답변이 끝난 뒤 선생님을 추가할 수 있어요"},
   'xtell.choose':      { en: 'Continue with this master', 'zh-Hant': '由這位老師續批', 'zh-Hans': '由这位老师续批', ja: 'この先生と続ける', ko: '이 스승과 계속' },
   'xtell.keep':        { en: 'Keep only this master', 'zh-Hant': '只留這位老師', 'zh-Hans': '只留这位老师', ja: 'この先生だけ残す', ko: '이 스승만 남기기' },
   "xtell.ask.to": {"en": "Ask:", "zh-Hant": "問：", "zh-Hans": "问：", "ja": "質問先：", "ko": "질문 대상:"},
