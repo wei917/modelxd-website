@@ -614,7 +614,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
               {countryDays.length ? <Columns rows={countryDays} series={countrySeries} /> : <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No visits in this range yet.</p>}
             </Card>
             <Card title="Sign-ins by method"
-              note={`Accounts that signed in each day, by the method the account was made with. In this range: ${methodSummary}. Sign-ins on dev and localhost count too: the login log does not record the host.`}
+              note={`Accounts that signed in each day, by the button used (before Oct 2: the method the account was made with, the same unless an account has two). In this range: ${methodSummary}. Sign-ins on dev and localhost count too: the login log does not record the host.`}
               legend={methodSeries}>
               {signinDays.length ? <Columns rows={signinDays} series={methodSeries} /> : <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No sign-ins in this range yet.</p>}
             </Card>

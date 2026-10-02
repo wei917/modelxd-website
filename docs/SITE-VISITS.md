@@ -50,7 +50,7 @@ pre defined charts without effecting by the filters"):
   country picked, "new" and "returning" mean within that country.
 - **Fixed charts**, always every country (only the range applies): browsers
   by country (the three biggest named, the rest Other) and sign-ins by
-  method (Google, LINE Taiwan, LINE Japan).
+  method (Google, LINE Taiwan, LINE Japan, X).
 - **Tables** for every chart.
 
 Three functions in `supabase/117_site_visit_groups_country.sql`, service key
@@ -92,9 +92,14 @@ the page draws the two groups as two charts, each on its own scale. A day
 with nobody in a group is a gap in the line and a dash in the table, not
 "0s". The owner's own sessions are in the signed-in group.
 
-**Sign-ins by method** counts accounts per day by the method the account was
-made with (`activity_logs.metadata.provider`: `google`, `custom:line-tw`,
-`custom:line-jp`), plus new accounts and sign-ins over the range. The login
+**Sign-ins by method** counts accounts per day by the method used to sign in
+(`activity_logs.metadata.provider`: `google`, `custom:line-tw`,
+`custom:line-jp`, `x`), plus new accounts and sign-ins over the range. Until
+Oct 2 the callback logged the method the account was made with, which differs
+only for an account with two methods: Supabase joins an X sign-in to the
+account with the same email, and that account keeps its first method in
+`app_metadata.provider`. Since Oct 2 `provider` is the method used
+(`signInMethod()` in `lib/signin-tap.ts`) and `account_provider` the first. The login
 log does not record the host, so sign-ins on dev.modelxd.com and localhost
 are in these numbers too.
 
@@ -105,12 +110,12 @@ people tried it but failed or simply no one tried", then "add counter on tap
 google or line login". A completed sign-in is in `activity_logs`, a failure
 that comes back is in the callback's Vercel logs ("OAuth provider error"),
 but a visitor who taps LINE and gives up on LINE's own page never comes back.
-So every press of Google or LINE (the sign-in dialog, /login, the retry on
-/auth/error) sends `{ tap: provider, path }` to `/api/visit` the moment it
+So every press of Google, LINE or X (the sign-in dialog and /login; since
+Oct 2 /auth/error retries through /login) sends `{ tap: provider, path }` to `/api/visit` the moment it
 is pressed (`lib/signin-tap.ts`, a beacon, before the browser leaves), and
 the route writes one row to `site_signin_taps` (`supabase/120_signin_taps.sql`):
 provider in activity_logs' words (`google`, `custom:line-tw`,
-`custom:line-jp`), the visitor cookie, host, path, country and env. Same
+`custom:line-jp`, `x`), the visitor cookie, host, path, country and env. Same
 rules as visits: no crawlers, nothing that needs consent, the same rate
 limit. /admin/traffic shows "Taps on sign-in" in the filtered part (it
 follows the range and the country): taps and browsers per method, and,

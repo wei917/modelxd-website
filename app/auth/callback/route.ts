@@ -7,6 +7,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { LINE_CHANNELS, LINE_COOKIE_MAX_AGE, LINE_KEY, LINE_TRY, LINE_TWIN, asLineChannel, isNewUserRefusal, lineChannelOfProvider, lineCookieDomain, otherLineChannel } from '../../../lib/line-login'
+import { signInMethod } from '../../../lib/signin-tap'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -100,13 +101,16 @@ export async function GET(request: Request) {
   const user = data.user
   const meta = user.user_metadata
 
-  // Safe metadata from Google/Apple — no tokens
+  // Safe metadata from Google/LINE/X — no tokens. provider is the method
+  // this sign-in used (Oct 2), which /admin/traffic counts by
+  // (site_signins_daily, 117); account_provider is the account's first one.
   const safeMetadata = {
-    email:          user.email,
-    full_name:      meta?.full_name ?? meta?.name ?? null,
-    avatar_url:     meta?.avatar_url ?? meta?.picture ?? null,
-    provider:       user.app_metadata?.provider ?? null,
-    email_verified: user.email_confirmed_at != null,
+    email:            user.email,
+    full_name:        meta?.full_name ?? meta?.name ?? null,
+    avatar_url:       meta?.avatar_url ?? meta?.picture ?? null,
+    provider:         signInMethod(user),
+    account_provider: user.app_metadata?.provider ?? null,
+    email_verified:   user.email_confirmed_at != null,
   }
 
   // Update profiles — latest login info + metadata

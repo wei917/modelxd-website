@@ -875,7 +875,8 @@ today and yesterday under them, from `site_visit_summary()` in 118; then
 per day: active browsers, new and returning,
 signed-in users, visits by source, stay for signed-in and not signed-in
 browsers as median / top 20% / top 10% / average), then fixed charts that
-are always every country (browsers by country, sign-ins by Google / LINE).
+are always every country (browsers by country, sign-ins by Google / LINE / X;
+since Oct 2 by the button used, `signInMethod()` in `lib/signin-tap.ts`).
 Three service-key functions in `117_site_visit_groups_country.sql`; before
 117 is run the page falls back to `site_visit_daily()` (115, 116), and
 without 118 (`site_visit_summary()`, applied Oct 1) the tiles are today's and
@@ -1090,6 +1091,13 @@ can sit at the table honestly. One act per request; the client loops.
   developer account's prepaid credit. The $10 welcome credit for X is
   `124_x_welcome_credit.sql` (run by the owner Oct 2). An X account
   may have no email: `lib/user-face.ts` falls back to the X username.
+  **Same email = same account**: Supabase links an X sign-in to the existing
+  account with that email (the owner's Google account got `x` on Oct 2; no
+  second $10). Such an account keeps its FIRST method in
+  `app_metadata.provider`, so `activity_logs.metadata.provider` is the method
+  this sign-in used (`signInMethod()`: the identity GoTrue just refreshed,
+  newest `updated_at`; identity `last_sign_in_at` is never updated), and
+  `account_provider` the first one.
 - **LINE sign-in: built Sep 29** (reversed once ad traffic turned out ~93%
   phones). Supabase custom providers of the `oauth2` type (Manual
   configuration: an `oidc` one fails, LINE signs web logins with HS256; the
