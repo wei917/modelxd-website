@@ -16,7 +16,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { CountryDay, DayRow, SigninDay, SigninTotal, StayLine, Summary, TapTotals } from './data'
+import type { CountryDay, DayRow, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -349,12 +349,20 @@ const TILES: Array<{ label: string; top?: boolean; whole: (s: Summary) => string
 const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_stay_top.sql has been run.'
 const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
 const NEEDS_120 = 'Taps on the Google and LINE buttons appear once supabase/120_signin_taps.sql has been run.'
+const NEEDS_122 = 'XTell answer votes and share presses appear once supabase/122_xtell_votes_shares.sql has been run.'
+/** XTell share counter words (lib/xtell-feedback.ts). */
+const SHARE_KIND: Record<string, string> = { answer: 'Answer', daily: "Today's fortune", almanac: 'Almanac', cookie: 'Fortune cookie', tarot: 'Tarot', qian: '籤 (stick)' }
+const SHARE_HOW: Record<string, string> = { save: 'Save to Photos (iPhone)', download: 'Download', share: 'Share…', copy: 'Copy link' }
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, taps, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
+export default function TrafficView({ rows, whole, taps, votes, shares, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
+  /** 👍 / 👎 on XTell answers and share presses in the range (migration 122),
+   *  or null until it has been run. */
+  votes: VoteLine[] | null
+  shares: ShareLine[] | null
   /** The range as a whole (migration 118), or null until it has been run:
    *  the tiles then show today, and say so. */
   whole: Summary | null
@@ -515,8 +523,54 @@ export default function TrafficView({ rows, whole, taps, days, ranges, tz, topSt
                 </div>
               </Card>
             )}
+            {votes && (
+              <Card title="XTell teacher votes"
+                note={`👍 and 👎 under teachers' answers${country ? ` from ${where}` : ''}, as they stand now, counted on the day last set. People = accounts that voted. Production only.`}>
+                {votes.length ? (
+                  <div style={wrap}>
+                    <table style={table}>
+                      <thead>
+                        <tr><th style={{ ...th, ...first }}>Teacher</th><th style={{ ...th, textAlign: 'left' }}>Temple</th><th style={th}>👍</th><th style={th}>👎</th><th style={th}>People</th></tr>
+                      </thead>
+                      <tbody>
+                        {votes.map(v => (
+                          <tr key={`${v.temple}|${v.model}`}>
+                            <td style={{ ...td, ...first }}>{v.model}</td><td style={{ ...td, textAlign: 'left' }}>{v.temple}</td>
+                            <td style={td}>{num(v.up)}</td><td style={td}>{num(v.down)}</td><td style={td}>{num(v.people)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No votes in this range yet.</p>}
+              </Card>
+            )}
+            {shares && (
+              <Card title="XTell shares"
+                note={`Presses in XTell's share dialogs${country ? ` from ${where}` : ''}: what was shared, from which temple, and how. Completed and Closed come from the phone's share sheet, which never says which app was picked; a download or a copied link counts as completed. Production only.`}>
+                {shares.length ? (
+                  <div style={wrap}>
+                    <table style={table}>
+                      <thead>
+                        <tr><th style={{ ...th, ...first }}>What</th><th style={{ ...th, textAlign: 'left' }}>Temple</th><th style={{ ...th, textAlign: 'left' }}>How</th><th style={th}>Completed</th><th style={th}>Closed</th><th style={th}>Failed</th></tr>
+                      </thead>
+                      <tbody>
+                        {shares.map(l => (
+                          <tr key={`${l.kind}|${l.temple}|${l.method}`}>
+                            <td style={{ ...td, ...first }}>{SHARE_KIND[l.kind] ?? l.kind}</td><td style={{ ...td, textAlign: 'left' }}>{l.temple || '—'}</td>
+                            <td style={{ ...td, textAlign: 'left' }}>{SHARE_HOW[l.method] ?? l.method}</td>
+                            <td style={td}>{num(l.done)}</td><td style={td}>{num(l.cancelled)}</td><td style={td}>{num(l.failed)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No shares in this range yet.</p>}
+              </Card>
+            )}
           </div>
           {upgraded && !taps && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_120}</p>}
+          {upgraded && !votes && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_122}</p>}
         </>
       )}
 

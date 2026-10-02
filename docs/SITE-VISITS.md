@@ -116,6 +116,22 @@ limit. /admin/traffic shows "Taps on sign-in" in the filtered part (it
 follows the range and the country): taps and browsers per method, and,
 for every country, the accounts that finished.
 
+## XTell share presses (Oct 1)
+
+Owner: "can we also log what type of share?" Every press in an XTell share
+dialog sends `{ share: { kind, temple, modelId, method, outcome }, path }`
+to `/api/visit` (`lib/xtell-feedback.ts`, a beacon), and the route writes one
+row to `xtell_shares` (`supabase/122_xtell_votes_shares.sql`): what was
+shared (`answer`, `daily`, `almanac`, `cookie`, `tarot`, `qian`), the temple,
+the teacher when it is an answer, how (`save` = 存到相簿 on an iPhone,
+`download`, `share` = 分享…, `copy` = 複製連結) and the ending (`done`,
+`cancelled` = the share sheet was closed, `failed`), plus the visitor
+cookie, host, path, country and env. Same rules as visits. The share sheet
+never tells the page which app was picked. /admin/traffic shows "XTell
+shares" in the filtered part, beside "XTell teacher votes" (👍 / 👎 per
+teacher and temple from `xtell_answer_votes`, same migration, written by
+`/api/xtell/vote` rather than here because a vote belongs to an account).
+
 ## Reports (Supabase SQL editor)
 
 Time on site by source, last 7 days:

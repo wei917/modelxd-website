@@ -72,7 +72,7 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
           kicker: `${dateLabel(data.date)} · ${fill(t('xtell.today.lunar'), { date: data.lunarDate })}`,
           body: [`${t('xtell.today.yi')}　${data.yi.join('、') || '—'}`, `${t('xtell.today.ji')}　${data.ji.join('、') || '—'}`,
             fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })],
-          style: 'prose', name: `xtell-almanac-${data.date}` })} />}
+          style: 'prose', name: `xtell-almanac-${data.date}`, log: { kind: 'almanac' } })} />}
       </div>
       <p className="xtell-dy-sub">{t('xtell.today.almanacSub')}</p>
       {!data ? (failed

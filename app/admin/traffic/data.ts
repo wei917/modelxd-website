@@ -239,3 +239,35 @@ export function askedCountry(v: string | undefined): string | null {
   const c = (v ?? '').trim().toUpperCase()
   return isCode(c) ? c : null
 }
+
+/** A row of xtell_vote_window() (migration 122): 👍 and 👎 on XTell answers
+ *  per temple and teacher, as the votes stand, by the day last set. */
+export type VoteRow = { temple: string; model_id: string; up: number; down: number; people: number }
+export type VoteLine = { temple: string; model: string; up: number; down: number; people: number }
+
+/** Named teachers, most votes first. A model no longer in the catalog shows
+ *  the start of its id. */
+export function voteLines(rows: VoteRow[], names: Record<string, string>): VoteLine[] {
+  return rows
+    .map(r => ({ temple: r.temple, model: names[r.model_id] ?? r.model_id.slice(0, 8), up: r.up, down: r.down, people: r.people }))
+    .sort((a, b) => (b.up + b.down) - (a.up + a.down) || a.temple.localeCompare(b.temple) || a.model.localeCompare(b.model))
+}
+
+/** A row of xtell_share_window() (migration 122): presses in XTell's share
+ *  dialogs by what, from where, how and how it ended. */
+export type ShareRow = { kind: string; temple: string | null; method: string; outcome: string; shares: number; browsers: number }
+export type ShareLine = { kind: string; temple: string; method: string; done: number; cancelled: number; failed: number }
+
+/** One line per what, temple and how, with the endings side by side; most
+ *  presses first. */
+export function shareLines(rows: ShareRow[]): ShareLine[] {
+  const by = new Map<string, ShareLine>()
+  for (const r of rows) {
+    const k = `${r.kind}|${r.temple ?? ''}|${r.method}`
+    const line = by.get(k) ?? { kind: r.kind, temple: r.temple ?? '', method: r.method, done: 0, cancelled: 0, failed: 0 }
+    if (r.outcome === 'done' || r.outcome === 'cancelled' || r.outcome === 'failed') line[r.outcome] += r.shares
+    by.set(k, line)
+  }
+  const total = (l: ShareLine) => l.done + l.cancelled + l.failed
+  return [...by.values()].sort((a, b) => total(b) - total(a) || a.kind.localeCompare(b.kind) || a.temple.localeCompare(b.temple))
+}

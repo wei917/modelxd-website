@@ -515,7 +515,7 @@ function MethodCard({ method, day, data, onRetry, onContinue }: { method: Method
         {data.status === 'ready' && data.reading && (() => { const r = data.reading; return (
           <ShareButton className="xtell-dy-share" spec={() => ({ icon: dailyTemple(method), link: null, title: t('xtell.dy.title'),
             kicker: `${t(`xtell.dy.${method}`)} · ${day.date}`, body: [dropDates(r.summary), r.themes.map(x => '・' + dropDates(x)).join('\n')],
-            style: 'prose', name: `xtell-today-${day.date}` })} />
+            style: 'prose', name: `xtell-today-${day.date}`, log: { kind: 'daily', temple: dailyTemple(method) } })} />
         ) })()}
       </header>
       {/* Until the first words arrive: the bar and the estimate. After: the

@@ -49,6 +49,7 @@ import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
 import { ShareButton } from '../components/xtell/ShareButton'
+import { AnswerVote } from '../components/xtell/AnswerVote'
 import { WaitBar, WAIT_SECONDS } from '../components/xtell/WaitBar'
 import { kyWords, STAR_COLOR, STAR_LIGHT, BOARD_LAYOUT } from '../../lib/kyusei-words'
 import { skWords, GOOD_DAY, HARD_DAY } from '../../lib/sukuyo-words'
@@ -1043,6 +1044,33 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     if (recovering.current === 0 && errCodeRef.current === 'stream_recovering') clearErr()
   }
 
+  // 👍 / 👎 (owner, Oct 1), per answer: `${qid}:${modelId}` → 1 or -1. Only
+  // in a saved visit, and only once /api/xtell/vote answers: signed out, or
+  // before migration 122 (503), the buttons stay hidden.
+  const [votes, setVotes] = useState<Record<string, 1 | -1>>({})
+  const [votesOn, setVotesOn] = useState(false)
+  useEffect(() => {
+    setVotes({}); setVotesOn(false)
+    if (!readingId) return
+    let live = true
+    fetch(`/api/xtell/vote?readingId=${readingId}`).then(r => r.ok ? r.json() : null).then(d => {
+      if (!live || !Array.isArray(d?.votes)) return
+      setVotes(Object.fromEntries(d.votes.filter((v: any) => v.vote === 1 || v.vote === -1).map((v: any) => [`${v.qid}:${v.modelId}`, v.vote])))
+      setVotesOn(true)
+    }).catch(() => { /* no buttons */ })
+    return () => { live = false }
+  }, [readingId])
+  /** Shown at once; put back if the server did not keep it. */
+  const castVote = async (qid: string, modelId: string, v: 1 | -1) => {
+    const key = `${qid}:${modelId}`, before = votes[key] ?? 0, next = before === v ? 0 : v
+    const put = (x: 0 | 1 | -1) => setVotes(vs => { const o = { ...vs }; if (x) o[key] = x; else delete o[key]; return o })
+    put(next)
+    try {
+      const r = await fetch('/api/xtell/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ readingId, qid, modelId, vote: next }) })
+      if (!r.ok) put(before)
+    } catch { put(before) }
+  }
+
   /** A signed-out visitor sees the chart for free; a question to a teacher
    *  costs credits, so that is where sign-in is asked. The dialog can be
    *  closed: the chart stays on screen, and the question in the box. */
@@ -1613,7 +1641,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                               opening, never the question or the birth. */}
                           {tn.content && !busy && (
                             <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
-                              kicker: t('xtell.share.by').replace('{name}', tn.name), body: shareExcerpt(tn.content), style: 'prose', name: `xtell-${temple}` })} />
+                              kicker: t('xtell.share.by').replace('{name}', tn.name), body: shareExcerpt(tn.content), style: 'prose', name: `xtell-${temple}`,
+                              log: { kind: 'answer', temple, modelId: tn.modelId } })} />
                           )}
                           {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
                             <button type="button" onClick={() => askOnly(tn.modelId)} disabled={busy}
@@ -1637,6 +1666,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                         {tn.content
                           ? <div className="markdown-body" style={{ lineHeight: 1.85 }}><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{tn.content}</ReactMarkdown></div>
                           : <Thinking name={tn.name} />}
+                        {/* 👍 / 👎 once the answer is in: it has its cost, or it was
+                            loaded from the visit (saved answers carry their qid). */}
+                        {votesOn && tn.content && (typeof tn.cost === 'number' || typeof tn.qid === 'string') && typeof (round.user as any)?.qid === 'string' && (
+                          <AnswerVote value={votes[`${(round.user as any).qid}:${tn.modelId}`] ?? 0}
+                            onVote={v => void castVote((round.user as any).qid, tn.modelId, v)} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2314,7 +2349,7 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
         <span style={{ flex: 1 }} />
         <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
           kicker: [t('xtell.history.stick').replace('{n}', String(qian.n)), qian.ganZhi, qian.luck].filter(Boolean).join('　'),
-          body: qian.poem, style: 'poem', name: `xtell-${temple}-${qian.n}` })} />
+          body: qian.poem, style: 'poem', name: `xtell-${temple}-${qian.n}`, log: { kind: 'qian', temple } })} />
       </div>
       <div style={{ padding: '18px 16px', background: 'var(--surface2)', borderRadius: 10, textAlign: 'center' }}>
         {qian.poem.map((l: string, i: number) => (
@@ -3269,7 +3304,7 @@ function TarotBoard({ chart }: { chart: any }) {
         <span style={{ flex: 1 }} />
         {cards.length > 0 && <ShareButton spec={() => ({ icon: 'tarot', link: 'tarot', title: t('xtell.site.focus.tarot.name'),
           kicker: t(`xtell.tarot.spread.${chart?.spread === 'three' ? 'three' : 'one'}`),
-          body: cards.map(c => `${t(`xtell.tarot.pos.${c.position}`)}　${name(c)}（${turn(c)}）`), style: 'prose', name: 'xtell-tarot' })} />}
+          body: cards.map(c => `${t(`xtell.tarot.pos.${c.position}`)}　${name(c)}（${turn(c)}）`), style: 'prose', name: 'xtell-tarot', log: { kind: 'tarot', temple: 'tarot' } })} />}
       </div>
       <div className={'xtell-tarot-cards' + (cards.length > 1 ? ' is-three' : '')}>
         {cards.map(c => (
@@ -3367,7 +3402,7 @@ function CookieBoard({ chart, readingId, onNote }: { chart: any; readingId: stri
         <span style={{ fontSize: 13 }}>{chart.food}</span>
         <span style={{ flex: 1 }} />
         <ShareButton spec={() => ({ icon: 'cookie', link: 'cookie', title: t('xtell.site.focus.cookie.name'), kicker: facts,
-          body: [fortune, ...(chart.note ? [chart.note] : [])], style: 'prose', name: 'xtell-cookie' })} />
+          body: [fortune, ...(chart.note ? [chart.note] : [])], style: 'prose', name: 'xtell-cookie', log: { kind: 'cookie', temple: 'cookie' } })} />
       </div>
       <div className="xtell-cookie-slip">
         <p>{fortune}</p>

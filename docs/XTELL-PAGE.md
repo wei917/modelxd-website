@@ -827,6 +827,34 @@ replaces the partial text and shows the cost; not found, it says to reload
 or ask again. A drop before the server took it is 「連不上伺服器」. Seats
 stay locked meanwhile. Test: `scripts/test-xtell-stream.ts`.
 
+### 👍 / 👎 and the share counter (Oct 1)
+
+Owner: "add thumb up and thumb down for each response", then "its own
+table or combine with share?" and "can we also log what type of share?".
+Two tables, one migration (`supabase/122_xtell_votes_shares.sql`, server
+only):
+
+- **Votes** (`xtell_answer_votes`): `AnswerVote.tsx` under every finished
+  teacher answer in a saved visit. Tap to choose, tap again to take it back;
+  one row per person per answer (visit, `qid`, model), +1 or -1, with the
+  temple and country. `/api/xtell/vote` reads the visit with the caller's
+  session and refuses (404) an answer that is not in it; GET returns the
+  caller's own votes for the visit, so a reopened visit shows them. Only the
+  visitor sees their vote. Deleting the visit or the account leaves the vote
+  as an anonymous count (`on delete set null`). Before 122 runs the route
+  answers 503 and the buttons stay hidden.
+- **Shares** (`xtell_shares`): every press in a share dialog, what (`answer`,
+  `daily`, `almanac`, `cookie`, `tarot`, `qian`), temple, teacher for an
+  answer, how (`save`, `download`, `share`, `copy`) and the ending (`done`,
+  `cancelled`, `failed`). Each `ShareButton` passes `log: { kind, temple,
+  modelId }`; the report goes through `/api/visit` (docs/SITE-VISITS.md). The
+  share sheet never says which app was picked.
+
+`/admin/traffic` has "XTell teacher votes" and "XTell shares" in the filtered
+part (range and country). Tests: `scripts/test-xtell-votes.ts`; the
+migration was proven on PGlite (scratchpad `pg/t122.mjs`: 19 checks,
+including a visitor deleting their visit under its own policies).
+
 ## 解夢 (Sep 27)
 
 Owner: "add 解夢", then "if we just allow users to talk to AI, they can just
