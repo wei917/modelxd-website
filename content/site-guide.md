@@ -414,7 +414,7 @@ health, money and legal questions belong with professionals.
 
 ## Accounts, credits and pricing
 
-Sign in with Google (in Japan and Taiwan, LINE too). New accounts get **$10 of free credit**.
+Sign in with Google or X (in Japan and Taiwan, LINE too). New accounts get **$10 of free credit**.
 XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger

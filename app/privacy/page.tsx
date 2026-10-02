@@ -5,7 +5,7 @@ import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // data, the referral card check, bug reports, the language and referral
 // cookies, and what deleting really erases (XTell rows at once; a removed
 // XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in,
-// in the summaries too, and the situation written at 孫子兵法.
+// in the summaries too, and the situation written at 孫子兵法. Oct 2: X sign-in.
 
 export const metadata = { title: 'Privacy Policy — ModelXD' }
 
@@ -36,7 +36,9 @@ export default function PrivacyPage() {
         <strong>Account data.</strong> When you sign in with Google we receive your
         name, email address, and profile picture. When you sign in with LINE we
         receive your LINE display name, profile picture and an account ID, and your
-        email address only if you allow LINE to share it. We also store your language and
+        email address only if you allow LINE to share it. When you sign in with X we
+        receive your X name, username, profile picture and an account ID, and your
+        email address only if X shares it with your permission. We also store your language and
         country (from your browser and network region) to localize the product.
         <br /><strong>Content you submit.</strong> Prompts, messages, uploaded files
         (images, videos, documents), the AI outputs generated for you, and your votes.
@@ -148,7 +150,7 @@ export default function PrivacyPage() {
         providers (what a task needs, for generation), Stripe (payments and card
         checks), Supabase (database, storage, and authentication hosting), Vercel
         (web hosting), Google (the ads tag described above) and, if you sign in with
-        LINE, LY Corporation (LINE Login).
+        LINE, LY Corporation (LINE Login), or with X, X Corp. (Log in with X).
         We may disclose data if required by law.
       </p>
 

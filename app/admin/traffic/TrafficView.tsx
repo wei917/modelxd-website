@@ -21,10 +21,11 @@ import type { AccountRow, CountryDay, DayRow, FunnelRow, ShareLine, SigninDay, S
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
 
-// Categorical slots 1-3 of the chart palette, in fixed order (validated on
-// the site's light surface; the aqua is under 3:1, which the legend, the
-// tooltip and the tables cover). "Other" is a neutral, never a fourth hue.
-const BLUE = '#2a78d6', ORANGE = '#eb6834', AQUA = '#1baf7a', NEUTRAL = '#898781'
+// Categorical slots 1-4 of the chart palette, in fixed order (validated on
+// the site's light surface; the aqua and the yellow are under 3:1, which the
+// legend, the tooltip and the tables cover). "Other" is a neutral, never a
+// fifth hue.
+const BLUE = '#2a78d6', ORANGE = '#eb6834', AQUA = '#1baf7a', YELLOW = '#eda100', NEUTRAL = '#898781'
 // Median, top 20% and top 10% are one measure at three points, in order, so
 // they share the blue hue and step darker as they go up: steps 400, 550 and
 // 700 of the blue ramp, even in lightness and validated as an ordinal ramp on
@@ -328,6 +329,7 @@ const METHODS: Array<Series<SigninDay> & { key: SigninTotal['key'] }> = [
   { key: 'google', label: 'Google', color: BLUE },
   { key: 'lineTw', label: 'LINE (Taiwan)', color: ORANGE },
   { key: 'lineJp', label: 'LINE (Japan)', color: AQUA },
+  { key: 'x', label: 'X', color: YELLOW },
   { key: 'other', label: 'Other', color: NEUTRAL },
 ]
 const COUNTRY_KEYS = ['c0', 'c1', 'c2'] as const
@@ -348,7 +350,7 @@ const TILES: Array<{ label: string; top?: boolean; whole: (s: Summary) => string
 /** Shown where the numbers go until the owner has run a migration. */
 const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_stay_top.sql has been run.'
 const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
-const NEEDS_120 = 'Taps on the Google and LINE buttons appear once supabase/120_signin_taps.sql has been run.'
+const NEEDS_120 = 'Taps on the sign-in buttons appear once supabase/120_signin_taps.sql has been run.'
 const NEEDS_122 = 'XTell answer votes and share presses appear once supabase/122_xtell_votes_shares.sql has been run.'
 const NEEDS_123 = 'What ad visitors did, and accounts per country, appear once supabase/123_site_ads_accounts.sql has been run.'
 const AD_SOURCE: Record<string, string> = { google: 'Google Ads', chatgpt: 'ChatGPT ads' }
@@ -485,7 +487,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
             </Card>
             {funnel && (
               <Card title="From ads"
-                note={`Browsers whose visit in this range came from an ad${country ? ` (${where})` : ''}, and what they did after: all their visits in the range count, later ones too. Pressed = tapped Google or LINE (counted since Oct 1).`}>
+                note={`Browsers whose visit in this range came from an ad${country ? ` (${where})` : ''}, and what they did after: all their visits in the range count, later ones too. Pressed = tapped Google, LINE or X (counted since Oct 1; X since Oct 2).`}>
                 {funnel.length ? (
                   <div style={wrap}>
                     <table style={table}>
@@ -529,8 +531,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
             {taps && (
               <Card title="Taps on sign-in"
                 note={country
-                  ? `Presses of Google and LINE from ${where}, counted before the visitor leaves for Google or LINE. Completed sign-ins are not known by country: the sign-ins chart below is every country.`
-                  : 'Presses of Google and LINE, counted before the visitor leaves for Google or LINE, so someone who gives up there still shows. Signed in = accounts that finished (any host, dev included).'}>
+                  ? `Presses of Google, LINE and X from ${where}, counted before the visitor leaves for the provider. Completed sign-ins are not known by country: the sign-ins chart below is every country.`
+                  : 'Presses of Google, LINE and X, counted before the visitor leaves for the provider, so someone who gives up there still shows. Signed in = accounts that finished (any host, dev included).'}>
                 <div style={wrap}>
                   <table style={table}>
                     <thead>

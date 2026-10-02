@@ -3,8 +3,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
-import { countSigninTap } from '../../../lib/signin-tap'
 
 export default function AuthErrorPage() {
   return (
@@ -31,18 +29,11 @@ function AuthErrorInner() {
     })
   }, [])
 
-  const handleRetry = async () => {
+  // Back to the sign-in page, which offers every method (Google, LINE, X):
+  // the failure may have come from any of them (Oct 2).
+  const handleRetry = () => {
     setRetrying(true)
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    )
-    document.cookie = `auth_redirect=/; path=/; max-age=600; SameSite=Lax`
-    countSigninTap('google')
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
+    window.location.href = '/login'
   }
 
   return (
@@ -74,7 +65,7 @@ function AuthErrorInner() {
         </div>
 
         <p style={{ fontSize: 14, color: 'var(--muted2)', lineHeight: 1.6, marginBottom: 8 }}>
-          We couldn&apos;t complete your Google sign-in. This usually happens when an
+          We couldn&apos;t complete your sign-in. This usually happens when an
           earlier sign-in attempt was interrupted.
         </p>
 
@@ -117,7 +108,7 @@ function AuthErrorInner() {
             opacity: retrying ? 0.5 : 1,
           }}
         >
-          {retrying ? 'Redirecting…' : 'Try again with Google'}
+          {retrying ? 'Redirecting…' : 'Try again'}
         </button>
 
         <Link href="/" style={{
