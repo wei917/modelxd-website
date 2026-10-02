@@ -374,12 +374,14 @@ export default function HomeClient() {
             </button>
           </div>
         </div>
-        {/* The playground's artwork card that sat here (Sep 14) was removed
-            on Oct 1 (owner); the Try it button still opens the playground. */}
+        {/* The agent takes the second column again (Oct 1), where the
+            playground's artwork card sat from Sep 14 until the owner removed
+            it: with the column empty, the desktop hero sat left with a
+            centred agent panel under it. On a phone it follows the buttons. */}
+        <div className="home-hero-agent">
+          <LandingAgent />
+        </div>
       </section>
-      <div className="home-agent-below">
-        <LandingAgent />
-      </div>
 
       {/* ── The apps (owner, Aug 18): the product is a shelf of working
           applications — template films with REAL generated result loops on

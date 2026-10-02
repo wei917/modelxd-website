@@ -1476,16 +1476,19 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    Keeping the two side by side puts the entire first decision in one view. */
 .home-hero {
   width: 100%; max-width: 1240px; margin: 0 auto;
-  /* One column since the playground card left (Oct 1). */
-  display: grid; grid-template-columns: minmax(0, 1fr);
+  /* The pitch beside the agent (the agent's column again since Oct 1). The
+     columns may shrink: fixed minimums of 480 + 420px ignored the 208px
+     sidebar and pushed the page sideways between 1051 and ~1250px. */
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
   gap: clamp(38px, 4vw, 56px); align-items: center;
   padding: clamp(44px, 4.6vw, 68px) 40px clamp(54px, 5vw, 74px);
 }
 .home-hero-copy { min-width: 0; }
 .home-hero-eyebrow,
 .home-compare-eyebrow {
-  font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 700;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--red);
+  /* 14px since Oct 1 (owner: 10.5px was too small to read). */
+  font-family: var(--font-mono), monospace; font-size: 14px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--red);
 }
 .home-hero-title {
   max-width: 690px; margin: 18px 0 22px;
@@ -1560,7 +1563,9 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
 }
 .home-compare .vc { margin-top: 38px; }
 
-@media (max-width: 1050px) {
+/* One column below 1180px: with the sidebar, that is where the agent's
+   column would drop under ~380px. */
+@media (max-width: 1180px) {
   .home-hero { grid-template-columns: 1fr; gap: 44px; max-width: 820px; }
   .home-hero-title { max-width: 760px; }
   .home-hero-sub { max-width: 700px; }
@@ -3013,10 +3018,6 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
    .pg-btn so the min-height wins at equal specificity. */
 @media (max-width: 760px) { .pg-btn { min-height: 44px; } .pg-lightbox { padding: 12px; } .pg-lb-card { max-height: calc(100vh - 24px); } }
 .pg-lb-hint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--muted); }
-/* The agent panel sits under the hero in its standalone form. */
-.home-agent-below { max-width: 1240px; margin: -24px auto 0; padding: 0 40px 6px; }
-.home-agent-below .la-wrap { padding-top: 0; }
-@media (max-width: 760px) { .home-agent-below { margin-top: -8px; padding: 0 18px 6px; } }
 /* Phones (owner, Sep 14): the primary Playground door sits above the fold
    at 375x667. The model strip hides, the hero loses its top air and
    eyebrow, the two secondary doors share one row. */
@@ -3031,6 +3032,8 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   .home-hero-cta.is-primary { flex: 1 0 100%; }
   .home-hero-cta.is-secondary { flex: 1 1 calc(50% - 4px); min-height: 40px; padding: 0 10px; font-size: 12.5px; }
   html[lang="ja"] .home-hero-cta.is-secondary { font-size: 13px; }
+  /* The agent column, on a phone: its input pill under the buttons, no box. */
+  .home-hero-agent { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 }
 /* Playground additions: tool entrances, section titles, preset cards, the
    editable prompt boxes in the detail panel. */
