@@ -171,9 +171,10 @@ shown, a miss included. Taobao and 小紅書 numbers are from third-party guides
 convert too (`VideoExportBar.tsx` → `/api/xcreate/export-video` →
 `lib/platform-video.ts`, ffmpeg-static traced into that function in
 next.config.js): exact frame by crop, 30 fps H.264 High + AAC, faststart,
-no edit lists, cut to the cap; the result is stored under the user's
-`exports/` folder in `xcreate-ai-videos` and handed back as a one-hour
-`download` link. A user's own photo or video converts with no model and no
+no edit lists, cut to the cap; the result is stored in
+`exports/<UTC date>/` in `xcreate-ai-videos` and handed back as a one-hour
+`download` link; the daily `/api/cron/sweep-orphans` removes every day
+folder older than yesterday. A user's own photo or video converts with no model and no
 charge (`ConvertDialog.tsx`, the first card of the marketplace rows; only
 from their own upload folder). Every AI picture downloads with IPTC
 DigitalSourceType written in (trained or composite AI media, which Meta and
