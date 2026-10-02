@@ -150,7 +150,21 @@ no `node_kind`; Film keeps only film rows and Video leaves them out, by
 `slots->0->options->>film`), and the Library filters Film on its own. A
 reopened picture/video/voice run with a recorded pick opens on its canvas;
 picking marks `chosen` on the stored slots and changes nothing else in them
-(it used to rewrite them and lose every model's settings). The shell around it (top bar, footer, sign-in,
+(it used to rewrite them and lose every model's settings). **Templates came
+back Oct 1, redesigned** (`StandaloneTemplates.tsx`; owner: "make photo/video
+taobao compliant, or make social platform compliant"): rows of preview cards
+by `Template.group`. Picture rows: 電商上架 (淘寶主圖, 淘寶白底圖, 蝦皮, momo,
+Amazon, 樂天), 社群尺寸 (3:4, 9:16, LINE 1040), styles. Video rows: product
+videos (淘寶, 蝦皮, Amazon) and shorts (9:16). The marketplace order follows
+the page language. Each platform template edits the user's own photo
+(`lockAspect` keeps its shape on an edit, `sizeByModel` for GPT Image 2 /
+Qwen). A finished picture downloads in a platform's exact upload spec
+(`ExportBar.tsx` → `/api/xcreate/export` → `lib/platform-export.ts`, specs in
+`lib/platform-specs.ts`): exact pixels, JPEG, the file-size window, and a
+background snapped to and checked at RGB 255 where required; the checks are
+shown, a miss included. Taobao and 小紅書 numbers are from third-party guides
+(their sites refused the research fetch). Video export to spec and AI-label
+metadata are phase 2. The shell around it (top bar, footer, sign-in,
 account page, legal note) is `app/components/xcreate/*` with its own
 `xcreate-shell.css`, every rule scoped to `html[data-site="xcreate"]` because
 Nav loads it on every host. The `--xc-*` palette is defined there once. A

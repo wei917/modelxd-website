@@ -17,6 +17,8 @@ import { useLang, tOr } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import StudioHistory from './StudioHistory'
+import StandaloneTemplates from './StandaloneTemplates'
+import ExportBar from './ExportBar'
 import FilmStudio from './FilmStudio'
 import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
@@ -1135,6 +1137,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // of it after, so we don't "enforce" anything from the template after
   // application.
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null)
+  // A template's locked shape for photo edits (Template.lockAspect): a ref,
+  // because validateOpts runs inside applyTemplate before state settles.
+  // Cleared wherever the active template is.
+  const templateAspectRef = useRef<string | null>(null)
   // E-commerce platform chip on product templates (General/Shopee/Taobao/
   // Amazon). A chip is a re-application of the template with that
   // marketplace's conventions appended — it owns the prompt the same way
@@ -1244,7 +1250,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           : (sizes[0] ?? null),
         duration: null,
         aspect_ratio: !isTextOnlyInput
-          ? null
+          ? (templateAspectRef.current && ars.includes(templateAspectRef.current) ? templateAspectRef.current : null)
           : opts.aspect_ratio && ars.includes(opts.aspect_ratio)
             ? opts.aspect_ratio
             : (ars[0] ?? null),
@@ -1943,7 +1949,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // clears uploads (the required inputs change with the recipe).
   const selectRecipe = (r: ModelMode) => {
     setRecipeMode(r)
-    setActiveTemplateId(null)
+    setActiveTemplateId(null); templateAspectRef.current = null
     setAttachments([])
     setSlots([]); setPhase('setup'); setChosenIdx(null)
     setSelectedModels(prev => prev.map(m => (m && (m.modes ?? []).includes(r)) ? m : null))
@@ -3157,6 +3163,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setPrompt(t.starterPrompt)
     setAttachments([])
     setActiveTemplateId(t.id)
+    templateAspectRef.current = t.lockAspect && t.aspectRatio ? t.aspectRatio : null
     setPlatformId('general')
     setSlots([])
     setPhase('setup')
@@ -3200,6 +3207,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         mode:         (t.slotMode as ModelMode) ?? base.mode ?? null,
         aspect_ratio: t.aspectRatio ?? base.aspect_ratio ?? null,
         duration:     t.duration    ?? base.duration     ?? null,
+        // Models that take a size instead of a ratio get the template's.
+        size:         t.sizeByModel?.[m.model_name] ?? base.size ?? null,
       }
       newOpts[i] = validateOpts(m, t.mode as Mode, proposed)
     })
@@ -3290,7 +3299,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setPrompt(''); setAttachments([])
     setSelectedModels([null, null, null, null])
     setSlotOptions([null, null, null, null])
-    setActiveTemplateId(null)
+    setActiveTemplateId(null); templateAspectRef.current = null
     setImageResponseId(null); setImageConvHistory(null)
     // Strip ?id=... from the URL so refreshing doesn't re-load the
     // run we just abandoned, and so the address bar matches the fresh
@@ -3343,7 +3352,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (next === 'film') { openFilm(null); return }
     if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
-    if (next !== mode) { setMode(next); setActiveTemplateId(null) }
+    if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
   }
   const switchTypeRef = useRef(switchType)
   switchTypeRef.current = switchType
@@ -3749,7 +3758,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 }}>
                   {(() => {
                     const activeTemplate = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
-                    const templateSlots = activeTemplate?.attachmentSlots
+                    const templateSlots = activeTemplate?.attachmentSlots?.map((sl, si) => ({
+                      label: tOr(t, `xct.${activeTemplate.id}.slot${si}`, sl.label),
+                      hint:  sl.hint ? tOr(t, `xct.${activeTemplate.id}.hint${si}`, sl.hint) : sl.hint,
+                    }))
                     // Template's named slots win (ROSE/JACK …); otherwise the
                     // run's recipe decides the upload slots (works in text mode
                     // too, e.g. image→text / pdf→text).
@@ -4166,6 +4178,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       : vid
                       ? <video src={url} autoPlay loop muted playsInline controls style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain' }} />
                       : <img src={url} alt="" onClick={() => setLightbox(url)} style={{ width: '100%', maxHeight: 480, display: 'block', objectFit: 'contain', cursor: 'zoom-in' }} />}
+                    {/* The picture on the canvas downloads in a platform's spec too. */}
+                    {!aud && !vid && xcreateId && (
+                      <div style={{ background: 'var(--bg)' }}>
+                        <ExportBar key={`${xcreateId}:${chosenIdx ?? 0}`} rowId={xcreateId} slot={chosenIdx ?? 0}
+                          preferred={(activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId)?.exportSpec : null) ?? null} />
+                      </div>
+                    )}
                   </div>
                 )
               })()}
@@ -4384,7 +4403,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                             onClick={() => {
                               if (isLocked) return
                               setFromOpen(false)
-                              if (m !== mode) { setMode(m); setActiveTemplateId(null) }
+                              if (m !== mode) { setMode(m); setActiveTemplateId(null); templateAspectRef.current = null }
                             }}
                             style={{ cursor: isLocked ? 'default' : undefined }}
                           >
@@ -5248,6 +5267,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {isStandalone && userId && phase === 'setup' && slots.length === 0 && (
                   <StudioHistory type={mode} userId={userId} />
                 )}
+                {/* Templates are back, redesigned (owner, Oct 1): platform-ready
+                    pictures and videos first, then styles. */}
+                {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
+                  <StandaloneTemplates mode={mode} onSelect={tpl => { void applyTemplate(tpl) }} />
+                )}
                 {isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'video' || mode === 'image') && (
                   <StandaloneTrending kind={mode}
                     onUse={template => { void applyTemplate(template) }} />
@@ -5428,6 +5452,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                 : <><div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{slot.text}</ReactMarkdown></div>{slot.streaming && <span className="stream-cursor">▋</span>}</>
                               }
                             </div>
+                            {/* A finished picture downloads in a platform's exact
+                                upload spec (owner, Oct 1). Needs the run's row. */}
+                            {mode === 'image' && slot.done && !slot.error && slot.isImage && xcreateId && (
+                              <ExportBar rowId={xcreateId} slot={i}
+                                count={(slot.text ?? '').split('\n').filter(Boolean).length}
+                                preferred={(activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId)?.exportSpec : null) ?? null} />
+                            )}
                             {/* Pick button — only when there was a contest
                                 AND no winner is recorded yet (a reopened
                                 decided run is a record, not a re-vote). */}
