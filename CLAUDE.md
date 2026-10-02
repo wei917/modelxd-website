@@ -60,7 +60,10 @@ rating system (XDRating) surfaced on XBoard.
   `123_site_ads_accounts.sql` applied 2026-10-02 (Taiwan) by the owner: two
   read-only functions for /admin/traffic (what ad visitors did, accounts per
   country); checked live: rows for the service key, 42501 for the
-  publishable key.
+  publishable key. Before it, `122_xtell_votes_shares.sql` (2026-10-01, by
+  the owner; 👍 / 👎 on XTell answers and the share counter; checked live:
+  42501 for the publishable key on select and insert on both tables and on
+  both window functions).
   Latest applied: `120_signin_taps.sql` (2026-10-01, by the owner; taps on
   the Google and LINE buttons for /admin/traffic; checked live: the service
   key reads the table and calls the function, 42501 for the publishable key
