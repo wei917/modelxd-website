@@ -818,9 +818,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       if (readingId && typeof d.readingId === 'string' && d.readingId !== readingId) setTurns([])
       setSavedProblem(null)
       setCheck('ok')
-      // A reopened visit that was edited and cast again is a new visit: the
-      // address follows it (a fresh visit's address is left as it was).
-      if (typeof d.readingId === 'string' && new URLSearchParams(window.location.search).get('reading')) setReadingParam(d.readingId)
+      // The address names the visit as soon as it exists (owner, Oct 1: a
+      // fresh cast left the address bare, so a reload or a copied link lost
+      // the result). A reopened visit that was edited and cast again is a
+      // new visit, and the address follows it too. A signed-out chart is
+      // not saved and has no id: its address stays as it was.
+      if (typeof d.readingId === 'string') setReadingParam(d.readingId)
       if (temple === 'yixue') yixueSubject.current = requestSubject
       setChart(d.chart)
       setMatch(d.match ?? null)

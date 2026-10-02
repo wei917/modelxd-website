@@ -22,5 +22,7 @@ check('a seat cannot be replaced or removed while answering', /className="xtell-
 check('disabled seat buttons look disabled', css.includes('.xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled'))
 check('the reason in five languages', ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof S['xtell.addmaster.wait']?.[l] === 'string' && S['xtell.addmaster.wait'][l].trim()))
 
+// The address names a visit as soon as it is cast (owner, Oct 1).
+check('a fresh cast puts ?reading=<id> in the address, not only a reopened one', client.includes("if (typeof d.readingId === 'string') setReadingParam(d.readingId)") && !client.includes("new URLSearchParams(window.location.search).get('reading')) setReadingParam(d.readingId)"))
 console.log(fails ? `\n${fails} FAILED` : '\nall seat checks passed')
 if (fails) process.exit(1)
