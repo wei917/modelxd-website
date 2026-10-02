@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useT, useLang } from '../../lib/i18n'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
-import { countSigninTap } from '../../lib/signin-tap'
+import { countSigninTap, type SignInVia } from '../../lib/signin-tap'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
@@ -17,9 +17,10 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('from') || '/'
-  const [loading, setLoading] = useState<'google' | 'line' | false>(false)
+  const [loading, setLoading] = useState<SignInVia | false>(false)
   const { lang } = useLang()
   // LINE (Sep 29): where a channel serves the visitor (lib/line-login.ts).
+  // X (Oct 2): offered everywhere.
   const [line, setLine] = useState<LineChannel | null>(null)
   useEffect(() => { setLine(lineChannelHere(lang)) }, [lang])
 
@@ -28,12 +29,12 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   )
 
-  const handleLogin = async (via: 'google' | 'line' = 'google') => {
+  const handleLogin = async (via: SignInVia = 'google') => {
     setLoading(via)
     document.cookie = `auth_redirect=${redirect}; path=/; max-age=600; SameSite=Lax`
     if (via === 'line' && line) rememberLineChannel(line)
     markLineTry(via === 'line' && line ? line : null)
-    const provider = via === 'line' && line ? LINE_CHANNELS[line].provider : 'google'
+    const provider = via === 'x' ? 'x' : via === 'line' && line ? LINE_CHANNELS[line].provider : 'google'
     countSigninTap(provider)
     await supabase.auth.signInWithOAuth({
       provider: provider as any,
@@ -123,6 +124,10 @@ export default function LoginPage() {
         .auth-line-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 24px; margin: -4px 0 16px; background: #06C755; border: none; border-radius: 4px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
         .auth-line-btn:hover:not(:disabled) { background: #05b34c; }
         .auth-line-btn:disabled { opacity: 0.5; }
+        /* X's own black and white logo (its brand guidelines). */
+        .auth-x-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 24px; margin: -4px 0 16px; background: #000; border: none; border-radius: 4px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .auth-x-btn:hover:not(:disabled) { background: #272727; }
+        .auth-x-btn:disabled { opacity: 0.5; }
         .auth-google-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
         .auth-note {
           font-family: var(--font-mono), monospace;
@@ -180,6 +185,10 @@ export default function LoginPage() {
               {loading === 'line' ? t('auth.signingin') : t('auth.line')}
             </button>
           )}
+          <button className="auth-x-btn" onClick={() => void handleLogin('x')} disabled={!!loading}>
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="#fff" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            {loading === 'x' ? t('auth.signingin') : t('auth.x')}
+          </button>
 
 
           {/* Feature list */}

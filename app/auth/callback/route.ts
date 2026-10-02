@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-// Supabase redirects here after a Google or LINE sign-in
+// Supabase redirects here after a Google, LINE or X sign-in
 //
 // Next 16: cookies() is async — must be awaited.
 

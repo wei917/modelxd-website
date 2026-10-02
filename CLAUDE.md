@@ -57,6 +57,9 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `124_x_welcome_credit.sql` applied 2026-10-02 by the owner: $10 for X
+  sign-ups; handle_new_user is 113 plus 'x'. Proven on PGlite; the first
+  real X sign-up is the live check (query in its header).
   `123_site_ads_accounts.sql` applied 2026-10-02 (Taiwan) by the owner: two
   read-only functions for /admin/traffic (what ad visitors did, accounts per
   country); checked live: rows for the service key, 42501 for the
@@ -1080,6 +1083,13 @@ can sit at the table honestly. One act per request; the client loops.
 
 ## Decisions Taken (don't re-litigate without new information)
 
+- **X sign-in: built Oct 2** (owner: "all markets", "$10 too"). Supabase's
+  built-in X / Twitter (OAuth 2.0) provider, `provider: 'x'`, offered in every
+  language on every door, under Google and LINE. X's API is pay-per-use (no
+  free tier): each sign-in reads the person's own profile from the
+  developer account's prepaid credit. The $10 welcome credit for X is
+  `124_x_welcome_credit.sql` (run by the owner Oct 2). An X account
+  may have no email: `lib/user-face.ts` falls back to the X username.
 - **LINE sign-in: built Sep 29** (reversed once ad traffic turned out ~93%
   phones). Supabase custom providers of the `oauth2` type (Manual
   configuration: an `oidc` one fails, LINE signs web logins with HS256; the

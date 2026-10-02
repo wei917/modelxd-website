@@ -46,7 +46,7 @@ export default function TermsPage() {
 
       <h2 style={S.h2}>2. Accounts</h2>
       <p style={S.p}>
-        Most of the Service needs an account (via Google or LINE sign-in); a few parts, such
+        Most of the Service needs an account (via Google, LINE or X sign-in); a few parts, such
         as the XTell almanac, work without one. You are responsible for activity under
         your account. You must be at least 13 years old (or the minimum age of digital
         consent in your country). We may suspend or terminate accounts that violate

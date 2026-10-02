@@ -110,10 +110,10 @@ export type AccountRow = { country: string; users: number; new_users: number }
  *  button over the window, in activity_logs' provider words. */
 export type TapRow = { provider: string; taps: number; browsers: number }
 /** Taps per sign-in method, keyed like the sign-in chart. */
-export type TapTotals = Record<'google' | 'lineTw' | 'lineJp' | 'other', { taps: number; browsers: number }>
+export type TapTotals = Record<'google' | 'lineTw' | 'lineJp' | 'x' | 'other', { taps: number; browsers: number }>
 
 /** Accounts that signed in per day, by the method the account was made with. */
-export type SigninDay = { day: string; google: number; lineTw: number; lineJp: number; other: number }
+export type SigninDay = { day: string; google: number; lineTw: number; lineJp: number; x: number; other: number }
 export type SigninTotal = { key: keyof Omit<SigninDay, 'day'>; logins: number; people: number; newPeople: number }
 
 const nextDay = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
@@ -194,10 +194,10 @@ export function countryDays(data: CountryRow[], today: string): { days: CountryD
   return { days, codes, picker: ranked }
 }
 
-const METHOD: Record<string, SigninTotal['key']> = { google: 'google', 'custom:line-tw': 'lineTw', 'custom:line-jp': 'lineJp' }
+const METHOD: Record<string, SigninTotal['key']> = { google: 'google', 'custom:line-tw': 'lineTw', 'custom:line-jp': 'lineJp', x: 'x' }
 
 export function tapTotals(data: TapRow[]): TapTotals {
-  const out: TapTotals = { google: { taps: 0, browsers: 0 }, lineTw: { taps: 0, browsers: 0 }, lineJp: { taps: 0, browsers: 0 }, other: { taps: 0, browsers: 0 } }
+  const out: TapTotals = { google: { taps: 0, browsers: 0 }, lineTw: { taps: 0, browsers: 0 }, lineJp: { taps: 0, browsers: 0 }, x: { taps: 0, browsers: 0 }, other: { taps: 0, browsers: 0 } }
   for (const r of data) { const t = out[METHOD[r.provider] ?? 'other']; t.taps += r.taps; t.browsers += r.browsers }
   return out
 }
@@ -208,7 +208,7 @@ export function signinDays(data: SigninRow[], today: string): { days: SigninDay[
   const daily = data.filter((r): r is SigninRow & { day: string } => r.day !== null)
   const first = daily.reduce<string | undefined>((m, r) => (m === undefined || r.day < m ? r.day : m), undefined)
   const days = daysThrough(first, today).map(d => {
-    const row: SigninDay = { day: d, google: 0, lineTw: 0, lineJp: 0, other: 0 }
+    const row: SigninDay = { day: d, google: 0, lineTw: 0, lineJp: 0, x: 0, other: 0 }
     for (const r of daily) if (r.day === d) row[METHOD[r.provider] ?? 'other'] += r.people
     return row
   })
@@ -216,6 +216,7 @@ export function signinDays(data: SigninRow[], today: string): { days: SigninDay[
     google: { key: 'google', logins: 0, people: 0, newPeople: 0 },
     lineTw: { key: 'lineTw', logins: 0, people: 0, newPeople: 0 },
     lineJp: { key: 'lineJp', logins: 0, people: 0, newPeople: 0 },
+    x: { key: 'x', logins: 0, people: 0, newPeople: 0 },
     other: { key: 'other', logins: 0, people: 0, newPeople: 0 },
   }
   for (const r of data) {
@@ -223,7 +224,7 @@ export function signinDays(data: SigninRow[], today: string): { days: SigninDay[
     const t = sum[METHOD[r.provider] ?? 'other']
     t.logins += r.logins; t.people += r.people; t.newPeople += r.new_people
   }
-  return { days, totals: [sum.google, sum.lineTw, sum.lineJp, sum.other] }
+  return { days, totals: [sum.google, sum.lineTw, sum.lineJp, sum.x, sum.other] }
 }
 
 /** 'TW' → 'Taiwan', 'HK' → 'Hong Kong'. Falls back to the code. SERVER ONLY:

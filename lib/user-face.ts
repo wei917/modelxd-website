@@ -14,7 +14,8 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null
 
 export function userName(u: UserLike): string | null {
   const m = u?.user_metadata
-  return str(m?.full_name) ?? str(m?.name) ?? (u?.email ? u.email.split('@')[0] : null)
+  // X (Oct 2) may give no email; its @username is the next best name.
+  return str(m?.full_name) ?? str(m?.name) ?? str(m?.preferred_username) ?? str(m?.user_name) ?? (u?.email ? u.email.split('@')[0] : null)
 }
 
 export function userPhoto(u: UserLike): string | null {
