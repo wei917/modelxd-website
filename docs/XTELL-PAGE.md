@@ -871,6 +871,14 @@ page draws every back the same way up. Mouse-only hover lifts (a
 finger left :hover behind on the neighbour); no motion under
 `prefers-reduced-motion`. Tests: `scripts/test-xtell-tarot.ts`.
 
+### 大師 / master (Oct 2)
+
+Owner: the readers are 大師 (zh-Hant), 大师 (zh-Hans), master (en), 마스터
+(ko); Japanese keeps 先生 (大師 reads as a Buddhist saint there). This is the
+word on every page, in the masters' own instructions (「你是八字廟的駐廟大師」),
+and in what the system tells them. In code and comments they are still
+"teachers" (`TeacherPicker`, `askTeacher`), which no visitor sees.
+
 ### 占星塔: 目前的天象 on every visit; no sending people elsewhere (Oct 2)
 
 Owner, on a birth-chart (本命) visit that asked 「最近的行運對我的工作有什麼

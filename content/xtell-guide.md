@@ -18,7 +18,7 @@
 X先知 (XTell; X占い in Japanese, X운세 in Korean) is a street of temples for
 Chinese, Western and Vedic fortune-telling traditions. A temple prepares the
 chart, draws the stick or opens the text; then the visitor may ask an AI
-teacher of their choice to explain it. Readings are for reflection and
+master of their choice to explain it. Readings are for reflection and
 entertainment, not advice: health, money and legal decisions belong with
 qualified professionals.
 
@@ -30,7 +30,7 @@ qualified professionals.
    optional), a name or one character at the name and character booths, a
    question at the I Ching school.
 3. The chart, stick or text appears. The visitor can check it before going on.
-4. To go further, the visitor picks a teacher and writes a question. The
+4. To go further, the visitor picks a master and writes a question. The
    price estimate is shown before sending, and nothing is sent until they
    press send.
 
@@ -52,7 +52,7 @@ cast. A folk custom that adds traditional weights for the lunar birth year,
 month, day and hour into a total in liang and qian (ten qian make one liang).
 Heavier has traditionally been read as more fortunate; it is a custom, not a
 tested prediction. With an unknown hour the board shows each possible total
-instead of one. The BaZi board prepares a question for the teacher about it.
+instead of one. The BaZi board prepares a question for the master about it.
 
 ### ziwei
 紫微斗數廟 (Zi Wei Temple). Twelve palaces (self, siblings, spouse, children,
@@ -96,7 +96,7 @@ modern Japanese translation under its poem, written by AI and labelled so.
 three (past, present, future), and shuffle; the cards are drawn by the
 browser's own randomness, each upright or reversed. They are the original
 1909 Waite–Smith cards, shown free with A. E. Waite's own meaning for each
-(in English, from his 1911 book). Then the chosen teachers read the cards for
+(in English, from his 1911 book). Then the chosen masters read the cards for
 your question. Tarot here is for reflection, not prediction.
 
 ### cookie
@@ -106,7 +106,7 @@ one-line slip and a short note that tie the meal's main taste and its element
 (sour wood, bitter fire, sweet earth, pungent metal, salty water), the hour
 and the day to the message. Light fun, never a prediction, and no lucky
 numbers. Two cookies a meal are free; from the third, each costs one cent.
-A teacher can chat about the slip afterwards (paid, like every teacher).
+A master can chat about the slip afterwards (paid, like every master).
 
 ### simianfo
 四面佛 (Four-Faced Buddha). Write a wish to at least one of the four faces
@@ -126,7 +126,7 @@ hour and place are required.
 date gives the 本命宿 among the 27 lunar mansions by the lunar calendar; the
 page shows what today is to it (三九の秘法: 栄 衰 安 危 成 壊 友 親, 命 業 胎)
 and, with an optional partner birthday, the two people's relation (栄親, 友衰,
-安壊, 危成, 命, 業胎). Free; a teacher reading is paid. It is not 九曜 (the
+安壊, 危成, 命, 業胎). Free; a master reading is paid. It is not 九曜 (the
 Vedic chart).
 
 ### kyusei
@@ -134,7 +134,7 @@ Vedic chart).
 (hour optional) gives the 本命星 (year star, the year turning at 立春) and
 月命星 (month star), and the page shows this year's and this month's 九星
 boards with the unlucky directions (五黄殺, 暗剣殺, 破, 本命殺, 本命的殺) and
-the lucky ones, for choosing a direction to move or travel. Free; a teacher
+the lucky ones, for choosing a direction to move or travel. Free; a master
 reading is paid. It is not 九曜 (Indian astrology) and not 玄空飛星.
 
 ### zhanxing.natal
@@ -148,7 +148,7 @@ chart. Both birth dates and places are needed.
 
 ### zhanxing.today
 占星塔, today. Today's planets against the visitor's natal chart (the
-transits), cast in the tower from details entered there, with a teacher to
+transits), cast in the tower from details entered there, with a master to
 ask. For a free personal reading every day, see daily.
 
 ### zhanxing.year
@@ -160,12 +160,12 @@ and Moon.
 in traditional Chinese characters, Japanese kanji or Korean hanja (not kana
 or Hangul; 々 counts as the character it repeats): the
 stroke counts, the five grids (天格, 人格, 地格, 外格, 總格), the traditional
-81-number meanings and the balance of the three talents. The teacher reads
+81-number meanings and the balance of the three talents. The master reads
 them and does not push a name change.
 
 ### cezi
 測字 (Character Reading). Write one character, and if you like, the matter
-you are asking about; the teacher takes the character apart into its
+you are asking about; the master takes the character apart into its
 components and reads them against the matter, showing every step.
 
 ### jiemeng
@@ -174,7 +174,7 @@ it, and if you like, what you want to know or what is going on in your life.
 A quick AI reads the dream against 《周公解夢》, the classic folk dream
 book, and picks the lines about what actually happens in it; they are shown
 free and as written, each with its section (龍蛇禽獸等類 …). Then the chosen
-teachers read the dream against those lines and your situation; they quote
+masters read the dream against those lines and your situation; they quote
 only those lines, say that 「主…吉／凶」 is what the old book says rather
 than a prediction, and suggest a doctor or counsellor for recurring
 nightmares. The dream may be written in any language. On pages that are not
@@ -188,7 +188,7 @@ bigger competitor, a negotiation, a family decision) and, if you like, the
 decision in front of you. A quick AI picks the lines of Sunzi's thirteen
 chapters that speak to it; they are shown free and as written, each with its
 chapter (〈謀攻〉 …) and a plain translation by the AI in your language. Then
-the chosen teachers, as a strategist (軍師), turn those lines into at most
+the chosen masters, as a strategist (軍師), turn those lines into at most
 three concrete next steps, one thing not to do yet, and how to tell when the
 time is right. They quote only those lines and never help deceive, threaten
 or harm anyone; with family, partners or colleagues they talk about
@@ -197,9 +197,9 @@ language. Up to 30 situations a day; a situation already looked up keeps
 its lines.
 
 ### yixue.ask
-易學堂 (I Ching Hall), ask the teacher. For learners: what a hexagram is,
+易學堂 (I Ching Hall), ask the master. For learners: what a hexagram is,
 how to read a line, what a passage means. No hexagram is cast here. The
-teacher quotes the original text and marks everything else as
+master quotes the original text and marks everything else as
 interpretation.
 
 ### yixue.lookup
@@ -228,8 +228,8 @@ against the natal pillars). Each has a short summary, things worth noticing,
 one thing to think about, and "why this reading" with the calculation. A
 reopened page shows the same reading for the same day. With the birth time
 unknown the readings still come, marked approximate where the time matters.
-Asking a teacher about a day's reading is paid, with the estimate shown
-before sending; the teacher sees only that day's calculation for that method.
+Asking a master about a day's reading is paid, with the estimate shown
+before sending; the master sees only that day's calculation for that method.
 
 ### almanac
 今日黃曆 (today's almanac, the farmer's almanac), a card just below this
@@ -282,7 +282,7 @@ way to learn today.
 - It never computes or states a visitor's chart, pillars, bone weight, sign,
   ascendant, luck period, hexagram or stick. The temples compute these; the
   guide says which temple and what it needs.
-- It never sends a question to a teacher or starts a draw or a cast; the
+- It never sends a question to a master or starts a draw or a cast; the
   visitor does that in the temple.
 - It does not predict events and does not give health, legal or financial
   advice.

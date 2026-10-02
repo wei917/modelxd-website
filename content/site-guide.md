@@ -334,7 +334,7 @@ comparable to GDPval-AA's leaderboard (different judges and anchors).
 
 `/xtell`, signed-in; on xtell.modelxd.com anyone can open a temple and see
 their chart for free without signing in (sign-in comes when they ask a
-teacher, which is paid; 解夢 and the fortune cookie ask for it at the door,
+master, which is paid; 解夢 and the fortune cookie ask for it at the door,
 and 孫子兵法 gives three free lookups a day before asking). The street opens with a guide that
 answers questions about the temples and opens the right one, then two free
 cards for today (a daily fortune, Western astrology and the BaZi day, once a
@@ -344,7 +344,7 @@ signed-in visitor saves their birth details; today's Chinese almanac with
 its board also shows 稱骨, the folk "how many 兩 and 錢" bone weight from
 the lunar year, month, day and hour, placed on a light-to-heavy scale with
 its traditional theme, a list of possible totals when the hour is unknown,
-and a button that prepares a question for the teacher),
+and a button that prepares a question for the master),
 **紫微斗數廟** (Zi Wei Dou Shu, twelve palaces), **月老廟** (Yue Lao —
 love and 合婚: enter TWO people's birth data and the master reads both
 charts together), **關帝廟** (Guan Di 靈籤: no birth data — draw a numbered
@@ -367,7 +367,7 @@ for a one-line slip tied to the meal's taste, the hour and the day; two a
 meal free, then one cent each; no lucky numbers),
 **塔羅館** (tarot: write a question, draw one card or three for past, present
 and future, shuffled by your own browser; the original 1909 Waite–Smith cards
-and Waite's own meanings are shown free, then a teacher reads them),
+and Waite's own meanings are shown free, then a master reads them),
 **測字亭** (glyphomancy: write one character and one question; the radical
 and strokes are looked up, the master takes the character apart the old way
 and shows every part, with the Qing classic 《測字秘牒》 at hand), and
@@ -389,14 +389,14 @@ by the lunar calendar, what today is to it, and with a partner's birthday the
 two people's relation), **孫子兵法** (The Art of War, for what to do next,
 not fortune-telling: describe a situation you face and the lines of Sunzi's
 thirteen chapters that speak to it are picked by a quick AI and shown free
-with a plain translation; a strategist teacher turns them into concrete next
+with a plain translation; a strategist (軍師) turns them into concrete next
 steps and never helps deceive or harm anyone), and **易學堂**
 (the I Ching school: three rooms. 起卦 — write one matter, throw three coins
 six times on screen, and the hexagram, its changing lines, the resulting
 hexagram and WHICH passage to read are computed by 朱熹's rule from 《易學啟蒙》;
 查卦 — read any of the 64 hexagrams in the original 《周易》 from Wikisource,
-with every correction to the transcription listed; 問老師 — no casting, ask
-the teacher anything about the I Ching as a beginner. The teacher quotes
+with every correction to the transcription listed; 問大師 — no casting, ask
+the master anything about the I Ching as a beginner. The master quotes
 the original in 「」 and labels everything else as interpretation. It is the
 three-coin method read through the text, not 六爻納甲). The honest split to
 explain when asked: the CHART is computed exactly by open calendar engines
