@@ -3446,7 +3446,6 @@ function CookieBoard({ chart, readingId, onNote }: { chart: any; readingId: stri
       </div>}
       <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
       {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}
-      {chart.fortuneId != null && <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.cookie.source')}</div>}
     </div>
   )
 }
