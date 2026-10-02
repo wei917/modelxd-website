@@ -62,6 +62,8 @@ check('no question: the teacher is told to ask first', tarotFacts(tarotChart('on
   check('ritual: the arc follows the swipe; cards are buttons with their place in words', /setProperty\('--s'/.test(ui) && /aria-label=\{fill\('xtell\.tarot\.r\.card', i \+ 1\)\}/.test(ui) && /aria-label=\{t\('xtell\.tarot\.r\.flip'\)/.test(ui))
   const css = readFileSync('app/globals.css', 'utf8')
   check('ritual: still for those who ask for less motion; hover lifts only with a mouse', /@media \(prefers-reduced-motion: reduce\) \{ \.xtell-tr \*/.test(css) && /@media \(hover: hover\) \{ \.xtell-tr-card\.is-fan/.test(css))
+  check('ritual: the card back is the owner\'s design D, on every back, the pattern under it until it loads', existsSync('public/xtell/tarot-back.webp')
+    && /\.xtell-tr-back \{\s*background:\s*url\('\/xtell\/tarot-back\.webp'\) center \/ 100% 100% no-repeat,\s*radial-gradient/.test(css))
   const client = readFileSync('app/xtell/client.tsx', 'utf8')
   check('room: the panel runs the ritual (a new spread starts it again); the old one-press deal is gone', /<TarotRitual key=\{spread\}/.test(client) && !/drawTarot\(cryptoRand/.test(client))
   const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']

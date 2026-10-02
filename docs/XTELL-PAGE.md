@@ -851,8 +851,16 @@ steps on the panel, thinking of the question shown under the step line:
 The shuffle decides which card lies where and which way up; the visitor only
 chooses places, so the note still holds that nobody, including us, picks the
 cards. A new spread restarts the ritual; 「重新洗牌」 does too until the turn;
-a failed laying shows its error and returns to 洗牌. Card backs are a CSS
-pattern (night blue, gold lattice and medallion). Mouse-only hover lifts (a
+a failed laying shows its error and returns to 洗牌. The card back (owner:
+"can your cards have ModelXD logo at the back", "not just put logo there.
+need to merge fuse with tarot style") is draft D of four made by
+`scripts/generate-tarot-back.ts` (gpt-image-2 edits with `public/logo.png`
+as the reference, ~$0.23 a draft): the logo's star grown into a gold compass
+rose in a zodiac ring, suns and moons in the corners, narrowed from 2:3 to
+the 1909 cards' 360×626 (`public/xtell/tarot-back.webp`, 57 KB); the CSS
+pattern under it shows until it loads. Not 180° symmetric (the logo is red
+on one side, blue on the other), which only matters for a printed deck: the
+page draws every back the same way up. Mouse-only hover lifts (a
 finger left :hover behind on the neighbour); no motion under
 `prefers-reduced-motion`. Tests: `scripts/test-xtell-tarot.ts`.
 
