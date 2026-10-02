@@ -118,6 +118,13 @@ export default function XDevClient() {
     load()
   }
 
+  const rename = async (r: TokenRow) => {
+    const v = prompt(l('New name for this key:', 'このキーの新しい名前：'), r.name)
+    if (v === null || !v.trim() || v.trim() === r.name) return
+    await fetch('/api/xdev/tokens', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, name: v.trim() }) })
+    load()
+  }
+
   const copy = (text: string, tag: string) => {
     navigator.clipboard?.writeText(text)
     setCopied(tag)
@@ -229,7 +236,10 @@ export default function XDevClient() {
                 <tbody>
                   {rows.map(r => (
                     <tr key={r.id}>
-                      <td style={{ padding: '8px 10px 8px 0', fontWeight: 700 }}>{r.name}</td>
+                      <td style={{ padding: '8px 10px 8px 0', fontWeight: 700 }}>
+                        {r.name}
+                        <button onClick={() => rename(r)} title={l('rename key', 'キー名を変更')} style={{ marginLeft: 6, border: 'none', background: 'none', color: 'var(--blue)', cursor: 'pointer', fontSize: 11, fontWeight: 400 }}>{l('rename', '名前を変更')}</button>
+                      </td>
                       <td style={{ padding: '8px 10px 8px 0', fontFamily: 'var(--font-mono), monospace', color: 'var(--muted)' }}>{r.token_prefix}</td>
                       <td style={{ padding: '8px 10px 8px 0', fontFamily: 'var(--font-mono), monospace' }}>${Number(r.spent_usd).toFixed(2)}</td>
                       <td style={{ padding: '8px 10px 8px 0', fontFamily: 'var(--font-mono), monospace' }}>
