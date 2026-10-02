@@ -246,6 +246,8 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.share.failed": {"en": "The picture could not be made.", "zh-Hant": "圖片沒有做出來。", "zh-Hans": "图片没有做出来。", "ja": "画像を作成できませんでした。", "ko": "이미지를 만들지 못했습니다."},
   "xtell.share.send": {"en": "Share…", "zh-Hant": "分享…", "zh-Hans": "分享…", "ja": "シェア…", "ko": "공유…"},
   "xtell.share.download": {"en": "Download picture", "zh-Hant": "下載圖片", "zh-Hans": "下载图片", "ja": "画像を保存", "ko": "이미지 저장"},
+  "xtell.share.save": {"en": "Save to Photos", "zh-Hant": "存到相簿", "zh-Hans": "存到相册", "ja": "写真に保存", "ko": "사진에 저장"},
+  "xtell.share.longpress": {"en": "You can also press and hold the picture to save it.", "zh-Hant": "也可以長按圖片儲存。", "zh-Hans": "也可以长按图片保存。", "ja": "画像を長押ししても保存できます。", "ko": "이미지를 길게 눌러도 저장할 수 있어요."},
   "xtell.share.copy": {"en": "Copy link", "zh-Hant": "複製連結", "zh-Hans": "复制链接", "ja": "リンクをコピー", "ko": "링크 복사"},
   "xtell.share.copied": {"en": "Copied", "zh-Hant": "已複製", "zh-Hans": "已复制", "ja": "コピーしました", "ko": "복사됨"},
   "xtell.share.close": {"en": "Close", "zh-Hant": "關閉", "zh-Hans": "关闭", "ja": "閉じる", "ko": "닫기"},

@@ -25,5 +25,15 @@ const ex = shareExcerpt('你生於1990年5月3日。\n\n' + long, 150)
 check('excerpt: a paragraph that was only the birth date is gone; cut at a sentence end within the limit', !ex.join('').includes('生於') && /。$/.test(ex[ex.length - 1]) && ex.join('').length <= 160, JSON.stringify(ex))
 check('excerpt: a short reply is kept whole', JSON.stringify(shareExcerpt('好運。\n\n平安。')) === JSON.stringify(['好運。', '平安。']))
 
+// Saving to Photos (owner, Oct 1: "the image cannot be saved to Photo").
+{
+  const fs = require('node:fs'), path = require('node:path')
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'app/components/xtell/ShareButton.tsx'), 'utf8')
+  const { STRINGS } = require('../lib/i18n')
+  check('存到相簿 on an iPhone shares the picture alone (with text the sheet drops 「儲存影像」)', ui.includes('if (ios && file && canShare) navigator.share({ files: [file] })') && ui.includes('else download()'))
+  check('phones see 存到相簿 first, computers 下載圖片; 分享… (with the link) stays', ui.includes("t(phone ? 'xtell.share.save' : 'xtell.share.download')") && ui.includes("onClick={share}>{t('xtell.share.send')}"))
+  check('the picture is a data: URL and says it can be long-pressed', ui.includes('const dataUrl = await blobToDataUrl(blob)') && ui.includes("t('xtell.share.longpress')"))
+  check('the words in five languages', ['xtell.share.save', 'xtell.share.longpress'].every(k => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof STRINGS[k]?.[l] === 'string' && STRINGS[k][l].trim())))
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall share checks passed')
 if (fails) process.exit(1)

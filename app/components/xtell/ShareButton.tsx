@@ -223,6 +223,12 @@ export function ShareButton({ spec, className = '' }: { spec: () => ShareSpec; c
   </>
 }
 
+const blobToDataUrl = (b: Blob) => new Promise<string>((resolve, reject) => {
+  const r = new FileReader()
+  r.onload = () => resolve(String(r.result)); r.onerror = () => reject(r.error)
+  r.readAsDataURL(b)
+})
+
 function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }) {
   const { t } = useLang()
   const [state, setState] = useState<'making' | 'ready' | 'failed'>('making')
@@ -236,19 +242,21 @@ function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }
   const brand = t('xtell.site.brand')
 
   useEffect(() => {
-    let live = true, objectUrl: string | null = null
+    let live = true
     setState('making')
     ;(async () => {
       const code = await myRefCode()
       const link = shareUrl(shareOrigin(), spec.link, code)
       const blob = await drawShareCard(spec, link, brand, t('xtell.share.tagline'))
+      // A data: URL, not a blob: one, so a long press on the picture can
+      // save it in more browsers (in-app browsers among them).
+      const dataUrl = await blobToDataUrl(blob)
       if (!live) return
-      objectUrl = URL.createObjectURL(blob)
-      setRef(code); setUrl(link); setImg(objectUrl)
+      setRef(code); setUrl(link); setImg(dataUrl)
       setFile(new File([blob], `${spec.name}.png`, { type: 'image/png' }))
       setState('ready')
     })().catch(() => { if (live) setState('failed') })
-    return () => { live = false; if (objectUrl) URL.revokeObjectURL(objectUrl) }
+    return () => { live = false }
   }, [spec, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -260,6 +268,18 @@ function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }
 
   const canShare = !!file && typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
   const share = () => { if (file) navigator.share({ files: [file], text: `${spec.title}｜${brand}\n${url}` }).catch(() => { /* closed the sheet */ }) }
+  // Saving to Photos (owner, Oct 1: "the image cannot be saved to Photo").
+  // An iPhone saves a picture only from the share sheet's 「儲存影像」, and
+  // that line is missing when text rides along with the file, as it does
+  // in 分享…: so 存到相簿 shares the picture alone. An <a download> on an
+  // iPhone goes to Files, not Photos. Elsewhere (Android, computers) the
+  // download lands in the gallery or the Downloads folder.
+  const phone = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
+  const ios = typeof navigator !== 'undefined' && (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+  const save = () => {
+    if (ios && file && canShare) navigator.share({ files: [file] }).catch(() => { /* closed the sheet */ })
+    else download()
+  }
   const download = () => {
     if (!img) return
     const a = document.createElement('a')
@@ -281,11 +301,12 @@ function ShareDialog({ spec, onClose }: { spec: ShareSpec; onClose: () => void }
           {state === 'making' && <p role="status" className="xtell-share-status">{t('xtell.share.making')}</p>}
           {state === 'failed' && <p role="alert" className="xtell-share-status">{t('xtell.share.failed')} <button type="button" className="xtell-dy-link" onClick={() => setAttempt(n => n + 1)}>{t('xtell.site.retry')}</button></p>}
           {state === 'ready' && img && <img className="xtell-share-img" src={img} alt={spec.title} />}
+          {state === 'ready' && phone && <p className="xtell-share-hint">{t('xtell.share.longpress')}</p>}
           {state === 'ready' && ref && <p className="xtell-share-ref">{t('xtell.share.noteRef')}</p>}
         </div>
         <div className="xtell-share-actions">
-          {state === 'ready' && canShare && <button type="button" className="xtell-button" onClick={share}>{t('xtell.share.send')}</button>}
-          {state === 'ready' && <button type="button" className={canShare ? 'xtell-share-plain' : 'xtell-button'} onClick={download}>{t('xtell.share.download')}</button>}
+          {state === 'ready' && <button type="button" className="xtell-button" onClick={save}>{t(phone ? 'xtell.share.save' : 'xtell.share.download')}</button>}
+          {state === 'ready' && canShare && <button type="button" className="xtell-share-plain" onClick={share}>{t('xtell.share.send')}</button>}
           {state === 'ready' && <button type="button" className="xtell-share-plain" onClick={copy}>{copied ? t('xtell.share.copied') : t('xtell.share.copy')}</button>}
           <button type="button" className="xtell-share-plain" onClick={onClose}>{t('xtell.share.close')}</button>
         </div>
