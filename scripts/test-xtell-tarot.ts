@@ -3,9 +3,9 @@
 //   npx tsx scripts/test-xtell-tarot.ts
 
 import { existsSync, readFileSync } from 'node:fs'
-import { drawTarot, validPicks, TAROT_IDS, SPREADS, asSpread, shuffleDeck, cutDeck, tarotImage } from '../lib/tarot-draw'
+import { drawTarot, validPicks, TAROT_IDS, SPREADS, SPREAD_KEYS, asSpread, asOptions, OPTION_MAX, shuffleDeck, cutDeck, tarotImage } from '../lib/tarot-draw'
 import { STRINGS } from '../lib/i18n'
-import { tarotDeck, tarotChart, tarotFacts } from '../lib/tarot'
+import { tarotDeck, tarotChart, tarotFacts, tarotModern } from '../lib/tarot'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
@@ -69,6 +69,47 @@ check('no question: the teacher is told to ask first', tarotFacts(tarotChart('on
   const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
   const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.tarot.r.'))
   check('strings: every ritual line in five languages', keys.length === 14 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), String(keys.length))
+}
+
+// ── 二擇一 and 關係 (Oct 1) ─────────────────────────────────────────────────
+{
+  check('spreads: four, the two new ones five cards each, in the order the places are filled', SPREAD_KEYS.join() === 'one,three,choice,love'
+    && SPREADS.choice.join() === 'now,pathA,pathB,endA,endB' && SPREADS.love.join() === 'you,them,bond,block,next')
+  check('spreads: a name that is not a spread (or an inherited key) is one card', asSpread('choice') === 'choice' && asSpread('love') === 'love' && asSpread('toString') === 'one' && asSpread('__proto__') === 'one' && asSpread(3) === 'one')
+  const five = shuffleDeck(rand).slice(0, 5)
+  check('spreads: five distinct real cards are a valid 二擇一 or 關係, four are not', validPicks('choice', five) && validPicks('love', five) && !validPicks('choice', five.slice(0, 4)))
+  const o = asOptions({ optA: '  留在現在的公司  ', optB: 'x'.repeat(OPTION_MAX + 9) })
+  check('options: trimmed, capped, and empty when not given', o.a === '留在現在的公司' && o.b.length === OPTION_MAX && asOptions({}).a === '' && asOptions(null).b === '')
+  const ch = tarotChart('choice', five, '換工作？', o)
+  const cf = tarotFacts(ch)
+  check('二擇一: the chart keeps the options; the teacher gets them and every place by name', ch.options?.a === '留在現在的公司' && cf.includes('選項 A：留在現在的公司') && cf.includes('二擇一')
+    && ['現況：', '選 A 的發展：', '選 B 的發展：', '選 A 的結果：', '選 B 的結果：'].every(x => cf.includes(x)))
+  check('二擇一 without names: the teacher is told they were not written', tarotFacts(tarotChart('choice', five, '', { a: '', b: '' })).includes('選項 A：（來訪者沒有寫）'))
+  const lf = tarotFacts(tarotChart('love', five, ''))
+  check('關係: every place by name, and no options', ['你的心意：', '對方的心意：', '目前的關係：', '需要面對的：', '接下來的走向：'].every(x => lf.includes(x)) && !lf.includes('選項 A') && !tarotChart('love', five, '').options)
+  const master = readFileSync('lib/xtell.ts', 'utf8')
+  check('teacher: told how to read 二擇一 (compare, never decide for them) and 關係 (never 注定)', /二擇一先講現況/.test(master) && /不替來訪者做決定/.test(master) && /關係先講兩人各自的心意/.test(master))
+  const routes = readFileSync('app/api/xtell/chart/route.ts', 'utf8') + readFileSync('app/api/xtell/reading/route.ts', 'utf8')
+  check('routes: the options are kept with the visit and reach the teacher', /'optA', 'optB'\] as const/.test(routes) && /tarotChart\(spread, body\.picks, ask, options\)/.test(routes) && /: '', asOptions\(body\)\)\)/.test(routes))
+  const css = readFileSync('app/globals.css', 'utf8')
+  check('layouts: 二擇一 and 關係 in their own shapes, two columns on a phone', /grid-template-areas: "endA \. endB" "pathA now pathB"/.test(css) && /grid-template-areas: "you bond them" "block \. next"/.test(css) && /\.xtell-tarot-cards\.is-five \.xtell-tarot-card \{ grid-area: auto !important; \}/.test(css))
+  const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
+  const need = ['xtell.tarot.spread.choice', 'xtell.tarot.spread.love', ...SPREAD_KEYS.map(k => `xtell.tarot.spread.${k}.sub`), ...[...SPREADS.choice, ...SPREADS.love].map(p => `xtell.tarot.pos.${p}`), 'xtell.tarot.opt.a', 'xtell.tarot.opt.b', 'xtell.tarot.opt.a.ph', 'xtell.tarot.opt.b.ph']
+  check('strings: the new spreads, places and option boxes in five languages', need.every(k => LANGS.every(l => typeof (STRINGS as any)[k]?.[l] === 'string' && (STRINGS as any)[k][l].trim())), need.filter(k => !(STRINGS as any)[k]).join())
+}
+
+// ── Modern meanings (Oct 2) ────────────────────────────────────────────────
+{
+  const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
+  const all = TAROT_IDS.flatMap(id => [tarotModern(id, false), tarotModern(id, true)])
+  check('modern: every card, upright and reversed, in five languages', all.every(m => !!m && LANGS.every(l => typeof m[l] === 'string' && m[l].trim().length > 5)), String(all.filter(m => !m).length))
+  check('modern: no em dashes, and no card names inside the text', TAROT_IDS.every(id => [false, true].every(r => { const m = tarotModern(id, r)!, c = deck.find(x => x.id === id)!; return LANGS.every(l => !m[l].includes('—') && !(c.names[l].length > 1 && m[l].includes(c.names[l]))) })))
+  check('modern: no death, illness or money advice', TAROT_IDS.every(id => [false, true].every(r => !/死亡|疾病|自殺|投資|股票|\bdisease|\billness|\binvest|\bsuicide/.test(Object.values(tarotModern(id, r)!).join(' ')))))
+  check('modern: 死神 reads as change, not death', /轉變|改變|變化/.test(tarotModern('major-13', false)!['zh-Hant']))
+  const laid = tarotChart('one', [{ id: 'major-13', reversed: true }], 'x')
+  check('modern: a laid card carries the reading for the way it landed; the teacher sees it as ours', laid.cards[0].modern?.['zh-Hant'] === tarotModern('major-13', true)!['zh-Hant'] && tarotFacts(laid).includes('本站的現代解讀'))
+  const client = readFileSync('app/xtell/client.tsx', 'utf8')
+  check('modern: shown under each card in the visitor\'s language, Waite one tap away', /className="xtell-tarot-modern">\{c\.modern\?\.\[lang\] \?\? c\.modern\?\.en\}/.test(client) && /<summary>\{t\('xtell\.tarot\.meaning'\)\}<\/summary>/.test(client))
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall tarot checks passed')

@@ -1,0 +1,1250 @@
+{
+ "major-00": {
+  "up": {
+   "zh-Hant": "新開始、冒險、純真：你正站在一段未知旅程的起點，帶著好奇心踏出第一步，別讓過多顧慮拖住腳步。",
+   "zh-Hans": "新开始、冒险、纯真：你正站在一段未知旅程的起点，带着好奇心迈出第一步，别让太多顾虑拖住脚步。",
+   "en": "New beginnings, spontaneity, trust: you are at the start of an unknown path, so take the first step with curiosity instead of waiting for every answer.",
+   "ja": "新しい始まり、冒険、純粋さ：未知の道の入り口に立つ今、答えがそろうのを待たず、好奇心のままに一歩を踏み出すときです。",
+   "ko": "새로운 시작, 모험, 순수함: 낯선 길의 출발점에 선 지금, 모든 답을 기다리기보다 호기심을 따라 첫걸음을 내디딜 때입니다."
+  },
+  "rev": {
+   "zh-Hant": "衝動、猶豫、缺乏準備：想出發卻沒看清方向，或因害怕而遲遲不動，先把計畫想清楚再上路。",
+   "zh-Hans": "冲动、犹豫、准备不足：想出发却没看清方向，或因害怕而迟迟不动，先把计划想清楚再上路。",
+   "en": "Recklessness, hesitation, poor planning: you may be rushing ahead without looking, or holding back out of fear, so get clear on the plan before you go.",
+   "ja": "無計画、ためらい、軽率さ：足元を見ずに飛び出そうとしているか、怖さから動けずにいるのかもしれず、まず行き先をはっきりさせましょう。",
+   "ko": "무모함, 망설임, 준비 부족: 앞뒤 보지 않고 뛰어들려 하거나 두려움에 발이 묶여 있을 수 있으니, 먼저 방향을 분명히 정하세요."
+  }
+ },
+ "major-01": {
+  "up": {
+   "zh-Hant": "行動力、創造、資源到位：你手上已有需要的能力與工具，現在是把想法化為行動的好時機。",
+   "zh-Hans": "行动力、创造、资源到位：你手上已经有需要的能力和工具，现在正是把想法落地的好时机。",
+   "en": "Skill, focus, action: you already have the tools and talent you need, so this is the moment to turn an idea into something real.",
+   "ja": "行動力、創造、準備が整う：必要な能力も道具もすでに手元にあり、アイデアを形にするのに絶好のタイミングです。",
+   "ko": "실행력, 창조, 집중: 필요한 능력과 도구가 이미 손안에 있으니, 생각을 현실로 옮기기에 좋은 때입니다."
+  },
+  "rev": {
+   "zh-Hant": "分心、空想、操弄：能力還在，卻用錯地方或只停在嘴上，也留意有人說得好聽卻另有目的。",
+   "zh-Hans": "分心、空想、操纵：能力还在，却用错了地方或只停留在嘴上，也要留意有人说得好听却另有目的。",
+   "en": "Scattered energy, empty talk, manipulation: your abilities are there but misdirected, and someone's smooth words may hide another aim.",
+   "ja": "迷い、空回り、ごまかし：能力はあるのに使い道を誤っていたり口先だけになっていたりし、甘い言葉の裏の意図にも注意が必要です。",
+   "ko": "산만함, 말뿐인 계획, 속임수: 능력은 있지만 엉뚱한 곳에 쓰이고 있을 수 있고, 듣기 좋은 말 뒤에 숨은 의도도 살펴야 합니다."
+  }
+ },
+ "major-02": {
+  "up": {
+   "zh-Hant": "直覺、沉靜、內在智慧：答案不在外面的聲音裡，先安靜下來，聽聽自己心裡早已知道的事。",
+   "zh-Hans": "直觉、沉静、内在智慧：答案不在外面的声音里，先安静下来，听听自己心里早就知道的事。",
+   "en": "Intuition, stillness, inner knowing: the answer is not in the noise around you, so get quiet and listen to what you already sense.",
+   "ja": "直感、静けさ、内なる知恵：答えは周りの声の中にはないので、心を静めて、自分がすでに感じ取っていることに耳を傾けましょう。",
+   "ko": "직관, 고요함, 내면의 지혜: 답은 바깥의 소음 속에 있지 않으니, 마음을 가라앉히고 이미 느끼고 있는 것에 귀 기울이세요."
+  },
+  "rev": {
+   "zh-Hant": "忽略直覺、隱藏、心緒混亂：你可能壓下了內心的聲音，或有事被藏著，給自己一點獨處的時間。",
+   "zh-Hans": "忽略直觉、隐瞒、心绪混乱：你可能压下了内心的声音，或者有事被藏着，给自己一点独处的时间。",
+   "en": "Ignored intuition, secrets, inner noise: you may be talking over your own gut feeling, or something is being kept hidden, so make time to reflect alone.",
+   "ja": "直感の無視、隠し事、心の乱れ：内なる声を押し込めていたり、何かが伏せられていたりするかもしれず、一人で考える時間を持ちましょう。",
+   "ko": "직관 무시, 숨겨진 일, 마음의 혼란: 내면의 목소리를 누르고 있거나 무언가 감춰져 있을 수 있으니, 혼자 돌아보는 시간을 가지세요."
+  }
+ },
+ "major-03": {
+  "up": {
+   "zh-Hant": "豐盛、滋養、創造力：用心照顧的事物正在成長，無論是作品、關係或自己，都值得好好享受這份收穫。",
+   "zh-Hans": "丰盛、滋养、创造力：用心照顾的事物正在成长，无论是作品、关系还是自己，都值得好好享受这份收获。",
+   "en": "Abundance, nurturing, creativity: what you have cared for is growing, whether a project, a relationship or yourself, so let yourself enjoy it.",
+   "ja": "豊かさ、育むこと、創造性：作品でも人間関係でも自分自身でも、心を込めて手をかけてきたものが実り始めているので、その恵みを味わいましょう。",
+   "ko": "풍요, 보살핌, 창조성: 작품이든 관계든 나 자신이든 정성껏 돌봐 온 것이 자라고 있으니, 그 결실을 충분히 누리세요."
+  },
+  "rev": {
+   "zh-Hant": "付出失衡、停滯、忽略自己：你把心力都給了別人，自己卻被掏空，創造力也卡住了，先照顧好自己。",
+   "zh-Hans": "付出失衡、停滞、忽略自己：你把心力都给了别人，自己却被掏空，创造力也卡住了，先照顾好自己。",
+   "en": "Overgiving, stagnation, self-neglect: you have poured your energy into others until your own creativity ran dry, so care for yourself first.",
+   "ja": "与えすぎ、停滞、自分を後回し：周りに尽くすあまり自分が空っぽになり、創造性も止まりがちなので、まず自分を満たしましょう。",
+   "ko": "지나친 헌신, 정체, 자기 소홀: 남에게 마음을 다 쏟느라 정작 나는 비어 있고 창의력도 막혀 있으니, 먼저 자신을 돌보세요."
+  }
+ },
+ "major-04": {
+  "up": {
+   "zh-Hant": "秩序、責任、領導：此刻需要的是清楚的規則與穩定的架構，主動扛起責任，事情就能上軌道。",
+   "zh-Hans": "秩序、责任、领导：此刻需要的是清晰的规则和稳定的框架，主动扛起责任，事情就能走上正轨。",
+   "en": "Structure, responsibility, leadership: what helps now is clear rules and a steady framework, and taking charge will put things on track.",
+   "ja": "秩序、責任、リーダーシップ：今必要なのは明確なルールと安定した土台で、自ら責任を引き受ければ物事は軌道に乗ります。",
+   "ko": "질서, 책임, 리더십: 지금 필요한 것은 분명한 규칙과 안정된 틀이며, 스스로 책임을 맡으면 일이 제자리를 찾습니다."
+  },
+  "rev": {
+   "zh-Hant": "控制過度、僵化、缺乏紀律：規則變成了枷鎖，或是該有的架構根本不存在，試著在掌控與彈性之間找平衡。",
+   "zh-Hans": "控制过度、僵化、缺乏纪律：规则变成了枷锁，或是该有的框架根本不存在，试着在掌控与弹性之间找到平衡。",
+   "en": "Overcontrol, rigidity, lack of discipline: rules have become a cage, or the structure you need is missing, so look for balance between control and flexibility.",
+   "ja": "支配しすぎ、頑固さ、規律の欠如：ルールが縛りになっているか、必要な枠組みがそもそも欠けているので、管理と柔軟さのバランスを探りましょう。",
+   "ko": "과도한 통제, 경직, 규율 부족: 규칙이 족쇄가 되었거나 필요한 틀이 아예 없을 수 있으니, 통제와 유연함 사이의 균형을 찾으세요."
+  }
+ },
+ "major-05": {
+  "up": {
+   "zh-Hant": "傳統、學習、指引：向有經驗的人請教或循著既有的方法走，能讓你少走彎路，也找到歸屬感。",
+   "zh-Hans": "传统、学习、指引：向有经验的人请教，或按照既有的方法走，能让你少走弯路，也找到归属感。",
+   "en": "Tradition, learning, guidance: asking someone experienced or following a proven path will save you detours and give you a sense of belonging.",
+   "ja": "伝統、学び、導き：経験のある人に教えを請うか、確かなやり方に沿って進めば、遠回りを避けられ、居場所も見つかります。",
+   "ko": "전통, 배움, 가르침: 경험 있는 사람에게 묻거나 검증된 방법을 따르면 시행착오를 줄이고 소속감도 얻을 수 있습니다."
+  },
+  "rev": {
+   "zh-Hant": "打破常規、質疑權威、走自己的路：舊規矩已經不適合你，可以照自己的價值觀重新決定。",
+   "zh-Hans": "打破常规、质疑权威、走自己的路：老规矩已经不适合你，可以按照自己的价值观重新做决定。",
+   "en": "Breaking convention, questioning authority, your own path: the old rules no longer fit you, so decide again by your own values.",
+   "ja": "型破り、権威への疑問、自分の道：古いルールはもう合わないので、自分の価値観に沿って選び直してみましょう。",
+   "ko": "관습 깨기, 권위에 대한 의문, 나만의 길: 낡은 규칙이 더는 맞지 않으니, 내 가치관에 따라 다시 선택해 보세요."
+  }
+ },
+ "major-06": {
+  "up": {
+   "zh-Hant": "連結、契合、價值選擇：一段關係或一個決定，正考驗你是否忠於自己真正在乎的事，跟著真心選。",
+   "zh-Hans": "连结、契合、价值选择：一段关系或一个决定，正在考验你是否忠于自己真正在乎的事，跟着真心去选。",
+   "en": "Connection, harmony, choices of the heart: a relationship or decision is asking you to stay true to what you really value, so choose with sincerity.",
+   "ja": "つながり、調和、価値観の選択：ある関係や決断が、本当に大切なものに正直でいられるかを問いかけているので、心に従って選びましょう。",
+   "ko": "연결, 조화, 가치의 선택: 어떤 관계나 결정이 진정으로 소중한 것에 충실한지 묻고 있으니, 진심을 따라 선택하세요."
+  },
+  "rev": {
+   "zh-Hant": "失衡、價值衝突、猶豫不決：關係中的步調不一致，或你在兩個選擇間搖擺，先弄清楚自己真正想要什麼。",
+   "zh-Hans": "失衡、价值冲突、犹豫不决：关系里步调不一致，或者你在两个选择之间摇摆，先弄清楚自己真正想要什么。",
+   "en": "Imbalance, clashing values, indecision: you and another person may be out of step, or you are torn between two options, so first get clear on what you want.",
+   "ja": "不調和、価値観のずれ、迷い：関係の歩調が合っていないか、二つの選択肢の間で揺れているので、まず自分が本当に望むものを確かめましょう。",
+   "ko": "불균형, 가치관 충돌, 우유부단: 관계의 발걸음이 어긋나 있거나 두 선택지 사이에서 흔들리고 있으니, 먼저 진짜 원하는 것을 분명히 하세요."
+  }
+ },
+ "major-07": {
+  "up": {
+   "zh-Hant": "意志、前進、掌握方向：只要目標清楚、把分散的心力拉回同一處，就能突破阻礙往前推進。",
+   "zh-Hans": "意志、前进、掌握方向：只要目标清晰，把分散的心力拉回同一处，就能突破阻碍向前推进。",
+   "en": "Willpower, momentum, direction: with a clear goal and your scattered energy pulled together, you can push through obstacles and move forward.",
+   "ja": "意志、前進、舵取り：目標をはっきりさせ、散らばったエネルギーを一つにまとめれば、障害を越えて前へ進めます。",
+   "ko": "의지, 전진, 방향 잡기: 목표를 분명히 하고 흩어진 에너지를 한데 모으면 장애물을 넘어 앞으로 나아갈 수 있습니다."
+  },
+  "rev": {
+   "zh-Hant": "失去方向、拉扯、急躁：心裡有好幾股念頭在互相拉扯，越用力越原地打轉，先停下來重新對準目標。",
+   "zh-Hans": "失去方向、拉扯、急躁：心里有好几股念头在互相拉扯，越用力越原地打转，先停下来重新对准目标。",
+   "en": "Lost direction, inner tug-of-war, impatience: competing pulls keep you spinning in place however hard you push, so pause and realign with your goal.",
+   "ja": "方向を見失う、引っ張り合い、焦り：心の中で複数の思いが綱引きをして空回りしているので、一度止まって目標を定め直しましょう。",
+   "ko": "방향 상실, 내적 갈등, 조급함: 여러 마음이 서로 당기며 제자리를 맴돌고 있으니, 잠시 멈추고 목표를 다시 맞추세요."
+  }
+ },
+ "major-08": {
+  "up": {
+   "zh-Hant": "勇氣、耐心、溫柔的堅定：真正的強大來自內在，用溫和而穩定的態度面對難題，比硬碰硬更有效。",
+   "zh-Hans": "勇气、耐心、温柔的坚定：真正的强大来自内心，用温和而稳定的态度面对难题，比硬碰硬更有效。",
+   "en": "Courage, patience, gentle resolve: real power comes from within, and meeting a hard situation calmly and kindly works better than force.",
+   "ja": "勇気、忍耐、しなやかな強さ：本当の強さは内側から生まれるもので、難しい状況には押し切るより穏やかで揺るがない態度で向き合うのが近道です。",
+   "ko": "용기, 인내, 부드러운 단단함: 진짜 강함은 내면에서 나오니, 어려운 상황일수록 밀어붙이기보다 차분하고 따뜻하게 마주하세요."
+  },
+  "rev": {
+   "zh-Hant": "自我懷疑、情緒失控、缺乏自信：你比自己以為的更有能耐，別讓不安或怒氣替你做決定。",
+   "zh-Hans": "自我怀疑、情绪失控、缺乏自信：你比自己以为的更有本事，别让不安或怒气替你做决定。",
+   "en": "Self-doubt, frayed temper, low confidence: you are more capable than you think, so do not let anxiety or anger make your decisions.",
+   "ja": "迷い、感情の暴走、自信のなさ：あなたは自分で思うよりずっと強いので、不安や怒りに決定を任せないようにしましょう。",
+   "ko": "자기 의심, 감정 폭발, 자신감 부족: 당신은 생각보다 훨씬 강한 사람이니, 불안이나 분노가 대신 결정하게 두지 마세요."
+  }
+ },
+ "major-09": {
+  "up": {
+   "zh-Hant": "獨處、內省、尋找答案：暫時離開人群的喧鬧，花點時間獨自思考，你要的方向會在安靜中浮現。",
+   "zh-Hans": "独处、内省、寻找答案：暂时离开人群的喧闹，花点时间独自思考，你要的方向会在安静中浮现。",
+   "en": "Solitude, reflection, inner search: step back from the crowd for a while, and the direction you need will surface in the quiet.",
+   "ja": "ひとりの時間、内省、答えを探す：しばらく人の輪から離れて静かに考えれば、進むべき方向が自然と見えてきます。",
+   "ko": "홀로 있는 시간, 성찰, 내면의 탐구: 잠시 사람들 사이의 소란에서 물러나 생각하면, 필요한 방향이 고요 속에서 드러납니다."
+  },
+  "rev": {
+   "zh-Hant": "孤立、封閉、迴避人群：獨處過了頭會變成與世隔絕，試著重新和信任的人聯繫，說說你的想法。",
+   "zh-Hans": "孤立、封闭、回避人群：独处过了头就会变成与世隔绝，试着重新和信任的人联系，聊聊你的想法。",
+   "en": "Isolation, withdrawal, shutting others out: time alone has turned into distance, so reach out to someone you trust and share what is on your mind.",
+   "ja": "孤立、閉じこもり、人を避ける：ひとりの時間が長すぎて周りと距離ができているので、信頼できる人に連絡して思いを話してみましょう。",
+   "ko": "고립, 닫힌 마음, 사람 피하기: 혼자만의 시간이 지나쳐 거리가 생겼으니, 믿을 만한 사람에게 연락해 마음을 나눠 보세요."
+  }
+ },
+ "major-10": {
+  "up": {
+   "zh-Hant": "轉機、循環、順勢而為：情況正在轉向，新的機會可能突然出現，把握時機，順著變化往前走。",
+   "zh-Hans": "转机、循环、顺势而为：情况正在转向，新的机会可能突然出现，抓住时机，顺着变化往前走。",
+   "en": "Turning point, cycles, good timing: things are shifting and a new opportunity may appear suddenly, so seize the moment and move with the change.",
+   "ja": "転機、巡り合わせ、流れに乗る：状況が動き出し、新しいチャンスが急に訪れるかもしれないので、タイミングをつかんで変化に乗りましょう。",
+   "ko": "전환점, 순환, 흐름 타기: 상황이 바뀌기 시작해 새로운 기회가 갑자기 올 수 있으니, 때를 잡고 변화에 몸을 맡기세요."
+  },
+  "rev": {
+   "zh-Hant": "時機未到、抗拒變化、低潮：事情暫時不如預期，硬推只會更累，接受這段起伏，等待下一次轉機。",
+   "zh-Hans": "时机未到、抗拒变化、低潮：事情暂时不如预期，硬推只会更累，接受这段起伏，等待下一次转机。",
+   "en": "Bad timing, resisting change, a low phase: things are not going as hoped, and forcing them only tires you, so accept the dip and wait for the next turn.",
+   "ja": "時期尚早、変化への抵抗、停滞期：今は思いどおりに進まず、無理に動かしても疲れるだけなので、浮き沈みを受け入れて次の転機を待ちましょう。",
+   "ko": "때가 아님, 변화에 대한 저항, 침체기: 지금은 일이 뜻대로 되지 않고 억지로 밀면 지칠 뿐이니, 굴곡을 받아들이고 다음 전환점을 기다리세요."
+  }
+ },
+ "major-11": {
+  "up": {
+   "zh-Hant": "公平、誠實、因果：你的選擇會帶來相應的結果，誠實面對事實、做出公正的判斷，事情自然會回到平衡。",
+   "zh-Hans": "公平、诚实、因果：你的选择会带来相应的结果，诚实面对事实、做出公正的判断，事情自然会回到平衡。",
+   "en": "Fairness, honesty, cause and effect: your choices bring matching results, so face the facts honestly and decide fairly, and balance will return.",
+   "ja": "公平、誠実、因果：選んだことにはそれ相応の結果が伴うので、事実に正直に向き合い公平に判断すれば、物事は自然と釣り合いを取り戻します。",
+   "ko": "공정, 정직, 인과: 선택에는 그에 맞는 결과가 따르니, 사실을 정직하게 마주하고 공정하게 판단하면 균형이 돌아옵니다."
+  },
+  "rev": {
+   "zh-Hant": "失衡、偏頗、逃避責任：有人沒被公平對待，或你不願承認自己的那一份，坦白面對才能真正放下。",
+   "zh-Hans": "失衡、偏颇、逃避责任：有人没有被公平对待，或者你不愿承认自己的那一份，坦然面对才能真正放下。",
+   "en": "Imbalance, bias, avoided responsibility: someone is not being treated fairly, or you are not owning your part, and honesty is the way to let it go.",
+   "ja": "不公平、偏り、責任逃れ：誰かが公平に扱われていないか、自分の非を認めきれていないので、正直に向き合うことで本当に区切りがつきます。",
+   "ko": "불균형, 편견, 책임 회피: 누군가 공정하게 대우받지 못하고 있거나 내 몫을 인정하지 않고 있으니, 솔직하게 마주해야 비로소 내려놓을 수 있습니다."
+  }
+ },
+ "major-12": {
+  "up": {
+   "zh-Hant": "暫停、換個角度、放手：事情卡住時不必硬闖，停下來從不同視角看，你會發現原本沒注意到的出路。",
+   "zh-Hans": "暂停、换个角度、放手：事情卡住时不必硬闯，停下来从不同视角看，你会发现原本没注意到的出路。",
+   "en": "Pause, new perspective, letting go: when things are stuck, stop pushing and look from a different angle, and you will see a way out you missed.",
+   "ja": "一時停止、視点を変える、手放す：行き詰まったときは無理に進まず、立ち止まって別の角度から眺めると、見落としていた道が見えてきます。",
+   "ko": "멈춤, 관점 바꾸기, 내려놓기: 일이 막혔을 때 억지로 밀지 말고 멈춰서 다른 각도로 보면, 놓쳤던 길이 보입니다."
+  },
+  "rev": {
+   "zh-Hant": "拖延、原地空等、無謂的犧牲：等待已經變成逃避，或你一再委屈自己卻沒換來什麼，是時候做決定了。",
+   "zh-Hans": "拖延、原地空等、无谓的牺牲：等待已经变成逃避，或者你一再委屈自己却没换来什么，是时候做决定了。",
+   "en": "Stalling, waiting in vain, needless sacrifice: the pause has become avoidance, or you keep giving things up for nothing, so it is time to decide.",
+   "ja": "先延ばし、空回りの待機、報われない我慢：待つことが逃げになっていたり、我慢を重ねても何も得られていなかったりするので、そろそろ決断のときです。",
+   "ko": "미루기, 하염없는 기다림, 헛된 희생: 기다림이 회피가 되었거나 계속 참기만 하고 얻는 것이 없으니, 이제 결정할 때입니다."
+  }
+ },
+ "major-13": {
+  "up": {
+   "zh-Hant": "結束、轉變、放下：一段關係、工作或習慣走到尾聲，放下舊的，新的才進得來。",
+   "zh-Hans": "结束、转变、放下：一段关系、工作或习惯走到尾声，放下旧的，新的才进得来。",
+   "en": "Endings, transformation, release: a relationship, job or habit is closing, and letting the old go is what makes room for the new.",
+   "ja": "終わり、変化、手放すこと：関係や仕事、習慣がひとつの区切りを迎えていて、古いものを手放してこそ新しいものが入ってきます。",
+   "ko": "끝, 변화, 내려놓기: 어떤 관계나 일, 습관이 마무리되고 있으니, 오래된 것을 보내야 새로운 것이 들어올 자리가 생깁니다."
+  },
+  "rev": {
+   "zh-Hant": "抗拒改變、拖著不放、停滯：明知該結束的事卻緊抓不放，只會讓自己卡得更久，鬆手才有下一步。",
+   "zh-Hans": "抗拒改变、拖着不放、停滞：明知该结束的事却紧抓不放，只会让自己卡得更久，松手才有下一步。",
+   "en": "Resisting change, holding on, stagnation: clinging to something that has already ended only keeps you stuck longer, and loosening your grip opens the next step.",
+   "ja": "変化への抵抗、しがみつき、停滞：終わるべきものにしがみつくほど身動きが取れなくなるので、手を緩めることで次の一歩が開けます。",
+   "ko": "변화 거부, 붙잡고 있기, 정체: 이미 끝난 것을 꽉 쥐고 있으면 더 오래 갇힐 뿐이니, 손을 놓아야 다음 걸음이 열립니다."
+  }
+ },
+ "major-14": {
+  "up": {
+   "zh-Hant": "平衡、調和、耐心：不走極端，把不同的想法或需求慢慢調在一起，穩穩的步調會帶你走得更遠。",
+   "zh-Hans": "平衡、调和、耐心：不走极端，把不同的想法或需求慢慢调和在一起，稳稳的步调会带你走得更远。",
+   "en": "Balance, moderation, patience: avoid extremes and blend different needs or ideas little by little, and a steady pace will carry you further.",
+   "ja": "バランス、調和、忍耐：極端に走らず、異なる考えや望みを少しずつ混ぜ合わせていけば、落ち着いた歩みがあなたを遠くまで運びます。",
+   "ko": "균형, 조화, 인내: 극단을 피하고 서로 다른 생각과 바람을 조금씩 섞어 가면, 꾸준한 걸음이 더 멀리 데려다줍니다."
+  },
+  "rev": {
+   "zh-Hant": "失衡、過度、急於求成：生活某一面用力過猛，其他部分就被冷落了，先找回自己的節奏。",
+   "zh-Hans": "失衡、过度、急于求成：生活中某一方面用力过猛，其他部分就被冷落了，先找回自己的节奏。",
+   "en": "Imbalance, excess, impatience: pushing too hard in one part of life has left the rest neglected, so find your own rhythm again.",
+   "ja": "アンバランス、やりすぎ、焦り：生活のある部分に力を入れすぎて他がおろそかになっているので、自分のペースを取り戻しましょう。",
+   "ko": "불균형, 지나침, 조급함: 삶의 한쪽에 너무 애를 써서 다른 부분이 소홀해졌으니, 나만의 리듬을 되찾으세요."
+  }
+ },
+ "major-15": {
+  "up": {
+   "zh-Hant": "執著、誘惑、被習慣綁住：某種慾望、關係或習慣讓你覺得離不開，看清它怎麼牽動你，就是鬆綁的開始。",
+   "zh-Hans": "执着、诱惑、被习惯束缚：某种欲望、关系或习惯让你觉得离不开，看清它怎样牵动你，就是松绑的开始。",
+   "en": "Attachment, temptation, habits that bind: a craving, relationship or routine feels impossible to leave, and seeing how it pulls on you is where freedom starts.",
+   "ja": "執着、誘惑、習慣の鎖：ある欲求や関係、習慣から離れられないと感じているなら、それにどう振り回されているかに気づくことが自由への第一歩です。",
+   "ko": "집착, 유혹, 나를 묶는 습관: 어떤 욕망이나 관계, 습관에서 벗어날 수 없다고 느낀다면, 그것이 나를 어떻게 끌어당기는지 알아차리는 것이 자유의 시작입니다."
+  },
+  "rev": {
+   "zh-Hant": "掙脫、覺醒、重拾自主：你開始看清綁住自己的是什麼，願意一步步鬆開，主導權正回到你手上。",
+   "zh-Hans": "挣脱、觉醒、重拾自主：你开始看清束缚自己的是什么，愿意一步步松开，主导权正回到你手上。",
+   "en": "Breaking free, awareness, reclaiming control: you are starting to see what has held you, and as you loosen it step by step, your choices become your own again.",
+   "ja": "解放、目覚め、主導権を取り戻す：自分を縛っていたものの正体が見え始め、少しずつほどいていくことで、選ぶ自由があなたの手に戻ってきます。",
+   "ko": "벗어남, 깨달음, 주도권 회복: 나를 묶던 것이 무엇인지 보이기 시작했고, 하나씩 풀어 가면서 선택의 자유가 다시 내 손에 돌아오고 있습니다."
+  }
+ },
+ "major-16": {
+  "up": {
+   "zh-Hant": "突然的改變、真相揭露、重建：建立在不穩基礎上的東西被打破，雖然震撼，卻讓你有機會從頭蓋得更扎實。",
+   "zh-Hans": "突然的改变、真相揭露、重建：建立在不稳基础上的东西被打破，虽然震撼，却让你有机会从头建得更扎实。",
+   "en": "Sudden change, revelation, rebuilding: something built on shaky ground is shaken loose, and though it is jarring, it lets you rebuild on firmer footing.",
+   "ja": "突然の変化、真実の発覚、立て直し：不安定な土台の上にあったものが崩れて動揺しても、それはより確かな形で建て直すチャンスになります。",
+   "ko": "갑작스러운 변화, 진실의 드러남, 재건: 흔들리는 기반 위에 세운 것이 무너져 당황스럽더라도, 더 단단하게 다시 세울 기회가 됩니다."
+  },
+  "rev": {
+   "zh-Hant": "延後的改變、內在動搖、抗拒崩解：你察覺事情該變了卻一直撐著，與其等它垮掉，不如主動調整。",
+   "zh-Hans": "推迟的改变、内心动摇、抗拒瓦解：你察觉事情该变了却一直硬撑，与其等它垮掉，不如主动调整。",
+   "en": "Delayed upheaval, inner shake-up, resisting collapse: you sense something must change but keep propping it up, so adjust on your own terms before it gives way.",
+   "ja": "先送りされた変化、内側の揺らぎ、崩れることへの抵抗：変わるべきだと気づきながら持ちこたえているなら、崩れるのを待たずに自分から見直しましょう。",
+   "ko": "미뤄진 변화, 내면의 흔들림, 무너짐에 대한 저항: 바뀌어야 함을 알면서도 버티고 있다면, 무너지기를 기다리지 말고 스스로 바로잡으세요."
+  }
+ },
+ "major-17": {
+  "up": {
+   "zh-Hant": "希望、療癒、重拾信心：經歷低潮之後，心慢慢平靜下來，對未來重新有了期待，相信自己正走在對的路上。",
+   "zh-Hans": "希望、疗愈、重拾信心：经历低潮之后，心慢慢平静下来，对未来重新有了期待，相信自己正走在对的路上。",
+   "en": "Hope, renewal, restored faith: after a hard stretch your heart is settling and you can look forward again, so trust that you are on the right path.",
+   "ja": "希望、癒やし、信じる心：つらい時期を越えて心が落ち着き、未来に再び期待できるようになったので、自分が正しい道にいると信じましょう。",
+   "ko": "희망, 치유, 되찾은 믿음: 힘든 시기를 지나 마음이 차분해지고 다시 미래를 기대하게 되었으니, 올바른 길 위에 있다고 믿으세요."
+  },
+  "rev": {
+   "zh-Hant": "灰心、失去信心、看不見希望：你暫時對未來沒把握，先從一件小事開始，把對自己的信任慢慢找回來。",
+   "zh-Hans": "灰心、失去信心、看不到希望：你暂时对未来没把握，先从一件小事做起，把对自己的信任慢慢找回来。",
+   "en": "Discouragement, lost faith, dimmed hope: the future feels uncertain right now, so start with one small thing and slowly rebuild trust in yourself.",
+   "ja": "落胆、自信喪失、希望が見えない：今は未来に確信が持てなくても、小さなことから始めて自分への信頼を少しずつ取り戻しましょう。",
+   "ko": "낙담, 잃어버린 믿음, 흐려진 희망: 지금은 미래가 불확실하게 느껴져도, 작은 일 하나부터 시작해 나에 대한 믿음을 천천히 되찾으세요."
+  }
+ },
+ "major-18": {
+  "up": {
+   "zh-Hant": "不確定、不安、想像力：情況還不明朗，恐懼可能放大了問題，別急著下結論，等事情更清楚再行動。",
+   "zh-Hans": "不确定、不安、想象力：情况还不明朗，恐惧可能放大了问题，别急着下结论，等事情更清楚再行动。",
+   "en": "Uncertainty, anxiety, imagination: the situation is still unclear and fear may be magnifying it, so avoid quick conclusions and act once things come into focus.",
+   "ja": "不確かさ、不安、想像力：状況はまだはっきりせず、恐れが問題を大きく見せているかもしれないので、結論を急がず見えてくるのを待ちましょう。",
+   "ko": "불확실함, 불안, 상상력: 상황이 아직 흐릿하고 두려움이 문제를 부풀리고 있을 수 있으니, 성급히 결론 내리지 말고 분명해질 때까지 기다리세요."
+  },
+  "rev": {
+   "zh-Hant": "迷霧漸散、釋放恐懼、真相浮現：讓你不安的事慢慢露出原貌，比想像中單純，你可以放下多餘的擔心。",
+   "zh-Hans": "迷雾渐散、释放恐惧、真相浮现：让你不安的事慢慢露出原貌，比想象中简单，你可以放下多余的担心。",
+   "en": "Clearing fog, released fear, truth surfacing: what unsettled you is showing its real shape and is simpler than you imagined, so you can let extra worry go.",
+   "ja": "霧が晴れる、恐れの解放、真実が見える：不安の正体が少しずつ明らかになり、思ったより単純だとわかるので、余計な心配は手放せます。",
+   "ko": "걷히는 안개, 두려움 해소, 드러나는 진실: 불안하게 하던 일이 제 모습을 드러내며 생각보다 단순하다는 것을 알게 되니, 쓸데없는 걱정은 내려놓으세요."
+  }
+ },
+ "major-19": {
+  "up": {
+   "zh-Hant": "喜悅、成功、活力：事情順利開展，你的努力被看見，放心展現真實的自己，好心情也會感染身邊的人。",
+   "zh-Hans": "喜悦、成功、活力：事情顺利展开，你的努力被看见，放心展现真实的自己，好心情也会感染身边的人。",
+   "en": "Joy, success, vitality: things are going well and your effort is being seen, so show your true self freely and let your good mood spread.",
+   "ja": "喜び、成功、活力：物事が順調に進み努力も認められているので、ありのままの自分を堂々と表せば、その明るさが周りにも広がります。",
+   "ko": "기쁨, 성공, 활력: 일이 순조롭게 풀리고 노력이 인정받고 있으니, 있는 그대로의 나를 마음껏 드러내면 그 밝은 기운이 주변에도 퍼집니다."
+  },
+  "rev": {
+   "zh-Hant": "延遲的喜悅、過度樂觀、暫時陰天：好事還在，只是來得慢一點，或期待太高讓你忽略了細節，保持耐心。",
+   "zh-Hans": "迟来的喜悦、过度乐观、暂时阴天：好事还在，只是来得慢一点，或期待太高让你忽略了细节，保持耐心。",
+   "en": "Delayed joy, overoptimism, a cloudy spell: the good is still coming, just more slowly, or high hopes are hiding the details, so stay patient.",
+   "ja": "遅れてくる喜び、楽観しすぎ、一時的な曇り空：良いことは少し遅れているだけか、期待が大きすぎて細部を見落としているので、焦らず待ちましょう。",
+   "ko": "늦어지는 기쁨, 지나친 낙관, 잠시 흐린 날: 좋은 일은 여전히 오고 있지만 조금 더딜 뿐이거나 큰 기대에 세부를 놓치고 있으니, 인내심을 가지세요."
+  }
+ },
+ "major-20": {
+  "up": {
+   "zh-Hant": "覺醒、反省、重新出發：回頭看看過去的經驗，原諒自己也原諒別人，你已準備好回應內心的召喚。",
+   "zh-Hans": "觉醒、反省、重新出发：回头看看过去的经历，原谅自己也原谅别人，你已经准备好回应内心的召唤。",
+   "en": "Awakening, reflection, a fresh start: look back on what you have lived through, forgive yourself and others, and answer the call you feel inside.",
+   "ja": "目覚め、振り返り、再出発：これまでの経験を見つめ直し、自分も他人も許したうえで、心の奥からの呼びかけに応える準備ができています。",
+   "ko": "깨어남, 돌아봄, 새 출발: 지나온 경험을 되돌아보고 나와 남을 용서하면, 마음속에서 들려오는 부름에 응답할 준비가 됩니다."
+  },
+  "rev": {
+   "zh-Hant": "自我批判、猶豫不前、錯過召喚：你對自己太嚴苛，或害怕改變而不敢回應內心的聲音，放過自己才能前進。",
+   "zh-Hans": "自我批判、犹豫不前、错过召唤：你对自己太苛刻，或因害怕改变而不敢回应内心的声音，放过自己才能前进。",
+   "en": "Self-criticism, hesitation, an unanswered call: you are too hard on yourself, or fear of change keeps you from listening within, so go easier on yourself.",
+   "ja": "自己批判、ためらい、呼びかけを聞き逃す：自分に厳しすぎるか、変化が怖くて内なる声に応えられずにいるので、自分を許すことで前に進めます。",
+   "ko": "자기 비판, 망설임, 외면한 부름: 스스로에게 너무 엄격하거나 변화가 두려워 내면의 목소리에 답하지 못하고 있으니, 나를 너그럽게 대해야 앞으로 나아갈 수 있습니다."
+  }
+ },
+ "major-21": {
+  "up": {
+   "zh-Hant": "完成、圓滿、新的階段：一段努力終於有了成果，好好慶祝這份完整，下一個旅程也正在等著你。",
+   "zh-Hans": "完成、圆满、新的阶段：一段努力终于有了成果，好好庆祝这份完整，下一段旅程也正在等着你。",
+   "en": "Completion, fulfillment, a new chapter: a long effort has come full circle, so celebrate what you have finished, because the next journey is already waiting.",
+   "ja": "完成、達成、新しい段階：積み重ねてきた努力がついに実を結んだので、その達成をしっかり祝い、次の旅への準備を始めましょう。",
+   "ko": "완성, 성취, 새로운 단계: 오랜 노력이 마침내 결실을 맺었으니 이 완성을 충분히 축하하고, 이미 기다리는 다음 여정을 준비하세요."
+  },
+  "rev": {
+   "zh-Hant": "未完成、差一步、難以收尾：目標近在眼前卻遲遲收不了尾，找出還沒處理好的那一塊，就能真正畫下句點。",
+   "zh-Hans": "未完成、差一步、难以收尾：目标近在眼前却迟迟收不了尾，找出还没处理好的那一块，就能真正画上句号。",
+   "en": "Unfinished business, one step short, trouble closing: the goal is in sight but will not wrap up, so find the missing piece and you can truly close the chapter.",
+   "ja": "未完成、あと一歩、締めくくれない：ゴールは目の前なのになかなか終わらせられないので、残っている課題を見つければ本当の区切りがつけられます。",
+   "ko": "미완성, 한 걸음 부족, 마무리의 어려움: 목표가 눈앞인데 좀처럼 끝나지 않는다면, 남아 있는 한 조각을 찾아야 진정으로 매듭지을 수 있습니다."
+  }
+ },
+ "wands-01": {
+  "up": {
+   "zh-Hant": "熱情、靈感、新開始：一個讓你心動的點子正在成形，先跨出第一步，邊做邊修比等待完美更有力。",
+   "zh-Hans": "热情、灵感、新开始：一个让你心动的点子正在成形，先迈出第一步，边做边改比等待完美更有力量。",
+   "en": "Spark, inspiration, a fresh start: an idea that excites you is taking shape, and taking the first step now matters more than having every detail planned.",
+   "ja": "情熱、ひらめき、始まり：心が躍るアイデアが芽生えているので、完璧を待たずにまず動き出すと道が開けます。",
+   "ko": "열정, 영감, 새 출발: 마음을 뛰게 하는 아이디어가 자라나고 있으니, 완벽한 계획보다 지금 첫걸음을 내딛는 것이 중요합니다."
+  },
+  "rev": {
+   "zh-Hant": "卡住、延遲、火力不足：想法還在，只是時機或動力未到，先找回讓你興奮的理由，再重新點火。",
+   "zh-Hans": "受阻、延迟、动力不足：想法还在，只是时机或劲头还没到，先找回让你兴奋的理由，再重新点火。",
+   "en": "Stalled, delayed, low on fuel: the idea is still alive, but timing or drive is missing, so reconnect with why it excited you before starting again.",
+   "ja": "停滞、遅れ、空回り：アイデアは消えていませんが、勢いやタイミングがまだ整っていないので、心が動いた理由を思い出してから再び火をつけましょう。",
+   "ko": "정체, 지연, 동력 부족: 아이디어는 아직 살아 있지만 타이밍이나 의욕이 부족하니, 처음 설렜던 이유를 되찾은 뒤 다시 불을 붙여 보세요."
+  }
+ },
+ "wands-02": {
+  "up": {
+   "zh-Hant": "規劃、抉擇、遠見：你已站在起點眺望更大的世界，現在是決定方向、擬好計畫的時候。",
+   "zh-Hans": "规划、抉择、远见：你已站在起点眺望更大的世界，现在是确定方向、拟好计划的时候。",
+   "en": "Planning, choice, vision: you are standing at the edge of something bigger, and now is the moment to pick a direction and map out the route.",
+   "ja": "計画、選択、展望：今いる場所から広い世界を見渡せる位置に立っているので、進む方向を決めて計画を練る時です。",
+   "ko": "계획, 선택, 비전: 지금 자리에서 더 넓은 세상을 내다보고 있으니, 방향을 정하고 구체적인 계획을 세울 때입니다."
+  },
+  "rev": {
+   "zh-Hant": "猶豫、原地踏步、計畫過頭：想得太多反而走不出去，挑一個小方向先試，比一直比較選項更實際。",
+   "zh-Hans": "犹豫、原地踏步、计划过度：想得太多反而迈不出去，挑一个小方向先试，比一直比较选项更实际。",
+   "en": "Hesitation, overplanning, staying put: weighing options endlessly keeps you in place, so test one small direction instead of waiting for certainty.",
+   "ja": "迷い、足踏み、考えすぎ：選択肢を比べ続けるほど動けなくなるので、小さな方向をひとつ選んで試してみましょう。",
+   "ko": "망설임, 제자리걸음, 지나친 계획: 선택지를 계속 비교할수록 발이 묶이니, 작은 방향 하나를 골라 먼저 시도해 보세요."
+  }
+ },
+ "wands-03": {
+  "up": {
+   "zh-Hant": "拓展、前瞻、成果在路上：先前的努力已經送出去了，把眼光放遠，準備迎接更大的舞台。",
+   "zh-Hans": "拓展、前瞻、成果在路上：之前的努力已经发出去了，把眼光放远，准备迎接更大的舞台。",
+   "en": "Expansion, foresight, momentum: the effort you already put out is on its way back, so lift your gaze and get ready for a wider stage.",
+   "ja": "拡大、先見、進展：これまでの努力はすでに動き出しているので、視野を遠くに広げて、より大きな舞台に備えましょう。",
+   "ko": "확장, 앞을 내다봄, 진전: 그동안의 노력이 이미 움직이기 시작했으니, 시야를 넓히고 더 큰 무대를 준비하세요."
+  },
+  "rev": {
+   "zh-Hant": "延誤、視野受限、期待落差：回報比預期慢，不代表方向錯了，檢查計畫中的盲點，耐心調整航線。",
+   "zh-Hans": "延误、视野受限、期待落差：回报比预期慢，不代表方向错了，检查计划里的盲点，耐心调整航线。",
+   "en": "Delays, narrow view, unmet expectations: results are arriving slower than hoped, which does not mean you chose wrong, so check for blind spots and adjust course.",
+   "ja": "遅れ、視野の狭さ、期待とのずれ：成果が思ったより遅くても方向が間違っているとは限らないので、計画の見落としを確かめて航路を調整しましょう。",
+   "ko": "지연, 좁은 시야, 기대와의 차이: 성과가 예상보다 늦다고 방향이 틀린 것은 아니니, 계획의 빈틈을 살피며 차분히 항로를 조정하세요."
+  }
+ },
+ "wands-04": {
+  "up": {
+   "zh-Hant": "慶祝、里程碑、歸屬感：努力有了階段性的成果，值得和身邊的人一起分享喜悅，也為下一步打穩地基。",
+   "zh-Hans": "庆祝、里程碑、归属感：努力有了阶段性的成果，值得和身边的人一起分享喜悦，也为下一步打牢地基。",
+   "en": "Celebration, milestone, belonging: your work has reached a meaningful stage, so share the joy with the people around you and let it steady your next step.",
+   "ja": "祝福、節目、居場所：努力がひとつの形になったので、身近な人と喜びを分かち合い、次の一歩の土台にしましょう。",
+   "ko": "축하, 이정표, 소속감: 노력이 의미 있는 결실을 맺었으니, 주변 사람들과 기쁨을 나누고 다음 걸음의 토대로 삼으세요."
+  },
+  "rev": {
+   "zh-Hant": "慶祝延後、歸屬感不穩、過渡期：成果還在，只是氣氛或支持暫時不到位，先照顧好讓你安心的地方。",
+   "zh-Hans": "庆祝推迟、归属感不稳、过渡期：成果还在，只是氛围或支持暂时不到位，先照顾好让你安心的地方。",
+   "en": "Postponed celebration, shaky belonging, transition: the achievement is real, but support or harmony feels thin right now, so tend to whatever makes you feel at home.",
+   "ja": "祝いの延期、居場所の揺らぎ、移行期：成果は確かにあるものの周囲の支えや雰囲気が整っていないので、まず自分が安心できる場所を大切にしましょう。",
+   "ko": "미뤄진 축하, 흔들리는 소속감, 과도기: 성과는 분명하지만 지지나 분위기가 잠시 부족하니, 먼저 마음이 편안해지는 곳을 돌보세요."
+  }
+ },
+ "wands-05": {
+  "up": {
+   "zh-Hant": "競爭、摩擦、意見交鋒：大家都想表現，難免吵吵鬧鬧，把衝突當成磨練，說出主張也聽聽別人。",
+   "zh-Hans": "竞争、摩擦、观点交锋：大家都想表现，难免吵吵闹闹，把冲突当成磨炼，说出主张也听听别人。",
+   "en": "Competition, friction, clashing ideas: everyone wants to be heard, so treat the noise as practice, state your view clearly and stay open to others.",
+   "ja": "競争、摩擦、意見のぶつかり合い：誰もが主張したい場面なので、衝突を鍛錬と考え、自分の意見を伝えつつ相手の話にも耳を傾けましょう。",
+   "ko": "경쟁, 마찰, 의견 충돌: 모두가 자기 목소리를 내려는 때이니, 갈등을 연습의 기회로 삼아 주장은 분명히 하되 상대의 말도 들어 보세요."
+  },
+  "rev": {
+   "zh-Hant": "避開衝突、內耗、休兵：爭執可能正在平息，或被你悶在心裡，找個適合的方式說開，比硬撐更省力。",
+   "zh-Hans": "回避冲突、内耗、休战：争执可能正在平息，或被你憋在心里，找个合适的方式说开，比硬扛更省力。",
+   "en": "Avoided conflict, inner tension, truce: the struggle may be easing, or you may be holding it inside, and talking it through costs less than enduring it.",
+   "ja": "衝突の回避、心の葛藤、休戦：争いが収まりつつあるか、心の中に押し込めているかもしれないので、我慢するより上手に話し合うほうが楽になります。",
+   "ko": "갈등 회피, 내적 소모, 휴전: 다툼이 잦아들고 있거나 마음속에 쌓아 두고 있을 수 있으니, 참기보다 적절한 방식으로 풀어내는 편이 수월합니다."
+  }
+ },
+ "wands-06": {
+  "up": {
+   "zh-Hant": "肯定、勝利、自信：你的付出被看見了，大方接受掌聲，也記得感謝一路陪你走來的人。",
+   "zh-Hans": "认可、胜利、自信：你的付出被看见了，大方接受掌声，也记得感谢一路陪你走来的人。",
+   "en": "Recognition, victory, confidence: your effort is being noticed, so accept the applause gracefully and thank the people who helped you get here.",
+   "ja": "称賛、勝利、自信：あなたの努力が認められているので、拍手を素直に受け取り、支えてくれた人への感謝も忘れずに。",
+   "ko": "인정, 승리, 자신감: 당신의 노력이 드러나고 있으니, 박수를 기꺼이 받아들이고 함께해 준 사람들에게도 감사를 전하세요."
+  },
+  "rev": {
+   "zh-Hant": "掌聲遲到、自我懷疑、太在意評價：外界的肯定暫時沒來，先為自己記下成績，價值不必全靠別人認可。",
+   "zh-Hans": "掌声迟到、自我怀疑、太在意评价：外界的认可暂时没来，先为自己记下成绩，价值不必全靠别人肯定。",
+   "en": "Delayed praise, self-doubt, chasing approval: outside recognition is slow to arrive, so record your own wins and remember your worth does not depend on applause.",
+   "ja": "遅れる評価、自信の揺らぎ、人目の気にしすぎ：周囲の称賛がまだ届かないときこそ、自分の成果を自分で認め、価値を他人の評価に預けすぎないように。",
+   "ko": "늦어지는 인정, 자기 의심, 평가에 대한 집착: 바깥의 칭찬이 아직 오지 않았다면 스스로 성과를 기록하고, 당신의 가치가 박수에만 달려 있지 않음을 기억하세요."
+  }
+ },
+ "wands-07": {
+  "up": {
+   "zh-Hant": "堅守、捍衛立場、不退讓：你站在有利的位置，即使質疑聲四起，也值得為自己相信的事站穩腳步。",
+   "zh-Hans": "坚守、捍卫立场、不退让：你站在有利的位置，即使质疑声四起，也值得为自己相信的事站稳脚跟。",
+   "en": "Standing firm, defending your ground, conviction: you hold the higher position, so even when challenges come from all sides, stay steady for what you believe in.",
+   "ja": "堅持、立場を守る、粘り強さ：あなたは有利な位置にいるので、周りから疑問の声が上がっても、信じることのために足元を固めましょう。",
+   "ko": "굳건함, 입장 수호, 끈기: 당신은 유리한 자리에 있으니, 사방에서 의문이 쏟아져도 믿는 것을 위해 흔들림 없이 버텨 보세요."
+  },
+  "rev": {
+   "zh-Hant": "疲於招架、過度防衛、動搖：不是每場仗都得打，分辨哪些值得堅持，放下其餘的，反而更有力氣。",
+   "zh-Hans": "疲于招架、过度防御、动摇：不是每场仗都要打，分清哪些值得坚持，放下其余的，反而更有力气。",
+   "en": "Worn down, overly defensive, wavering: not every fight is yours to win, so choose what truly deserves your stand and let the rest go to save energy.",
+   "ja": "防戦疲れ、過剰な警戒、迷い：すべての戦いに応じる必要はないので、守るべきものを見極めて残りは手放すと、かえって力が戻ります。",
+   "ko": "방어에 지침, 과도한 경계, 흔들림: 모든 싸움에 응할 필요는 없으니, 지킬 가치가 있는 것을 가려내고 나머지는 내려놓으면 오히려 힘이 생깁니다."
+  }
+ },
+ "wands-08": {
+  "up": {
+   "zh-Hant": "快速、進展、消息到來：停滯的事情開始加速，訊息與機會接連出現，順著節奏果斷回應就好。",
+   "zh-Hans": "快速、进展、消息到来：停滞的事情开始提速，消息和机会接连出现，跟着节奏果断回应就好。",
+   "en": "Speed, progress, incoming news: things that felt stuck are picking up pace, with messages and openings arriving fast, so ride the rhythm and respond decisively.",
+   "ja": "スピード、進展、知らせ：止まっていた物事が一気に動き出し、連絡やチャンスが続くので、流れに乗って迷わず応えましょう。",
+   "ko": "속도, 진전, 반가운 소식: 멈춰 있던 일이 빠르게 움직이고 연락과 기회가 이어지니, 흐름을 타고 망설임 없이 응답하세요."
+  },
+  "rev": {
+   "zh-Hant": "延宕、操之過急、訊息錯開：節奏不是太慢就是太趕，先確認溝通是否到位，再決定要踩油門還是煞車。",
+   "zh-Hans": "延误、操之过急、信息错位：节奏不是太慢就是太赶，先确认沟通是否到位，再决定踩油门还是刹车。",
+   "en": "Delays, rushing, crossed signals: the pace feels either too slow or too hurried, so make sure messages are landing before deciding to speed up or brake.",
+   "ja": "遅延、焦り、すれ違い：ペースが遅すぎたり急ぎすぎたりしやすいので、まず連絡が行き届いているか確かめてから、アクセルかブレーキかを決めましょう。",
+   "ko": "지연, 서두름, 엇갈린 소식: 속도가 너무 느리거나 너무 급해지기 쉬우니, 소통이 제대로 닿았는지 먼저 확인한 뒤 속도를 낼지 멈출지 정하세요."
+  }
+ },
+ "wands-09": {
+  "up": {
+   "zh-Hant": "韌性、堅持、最後一哩：你已經撐過不少考驗，雖然疲憊但離終點不遠，守住界線再撐一下。",
+   "zh-Hans": "韧性、坚持、最后一公里：你已经扛过不少考验，虽然疲惫但离终点不远，守住边界再坚持一下。",
+   "en": "Resilience, persistence, final stretch: you have weathered a lot and the finish is closer than it feels, so guard your boundaries and hold on a little longer.",
+   "ja": "粘り強さ、忍耐、最後のひと踏ん張り：多くの試練を乗り越えてきた今、疲れていてもゴールは近いので、自分の境界を守りながらもう少し持ちこたえましょう。",
+   "ko": "회복력, 끈기, 마지막 고비: 이미 많은 시련을 견뎌 왔고 지쳤어도 끝이 가까우니, 자신의 경계를 지키며 조금만 더 버텨 보세요."
+  },
+  "rev": {
+   "zh-Hant": "透支、防備過重、需要喘息：一直硬撐會把自己耗光，承認累了不是失敗，適時休息或請人幫忙。",
+   "zh-Hans": "透支、防备过重、需要喘息：一直硬扛会把自己耗光，承认累了不是失败，适时休息或找人帮忙。",
+   "en": "Running on empty, over-guarded, needing a break: pushing through alone will drain you, and admitting fatigue is not failure, so rest or ask for help.",
+   "ja": "消耗、警戒しすぎ、ひと休みの必要：無理を重ねると力が尽きてしまうので、疲れを認めるのは負けではないと考え、休むか誰かを頼りましょう。",
+   "ko": "소진, 지나친 경계, 쉼이 필요함: 혼자 계속 버티면 힘이 바닥나니, 지쳤음을 인정하는 것은 실패가 아니라 생각하고 쉬거나 도움을 청하세요."
+  }
+ },
+ "wands-10": {
+  "up": {
+   "zh-Hant": "重擔、責任、負荷過量：你扛了太多事，終點雖然在望，但值得檢視哪些能分出去，別一個人全包。",
+   "zh-Hans": "重担、责任、负荷过重：你扛了太多事，终点虽然在望，但值得看看哪些能分出去，别一个人全包。",
+   "en": "Burden, responsibility, overload: you are carrying too much, and while the goal is in sight, it is worth asking which loads you could share or set down.",
+   "ja": "重荷、責任、抱えすぎ：多くを背負い込んでいて、ゴールは見えているものの、人に任せられることがないか見直す価値があります。",
+   "ko": "무거운 짐, 책임, 과부하: 너무 많은 것을 짊어지고 있으니, 목표가 눈앞이라도 나눌 수 있는 일이 무엇인지 살펴보세요."
+  },
+  "rev": {
+   "zh-Hant": "放手、分擔、壓力到頂：擔子已經重到該拆開了，學著拒絕或交給別人，先放下最不必要的那一件。",
+   "zh-Hans": "放手、分担、压力到顶：担子已经重到该拆开了，学会拒绝或交给别人，先放下最不必要的那一件。",
+   "en": "Letting go, delegating, breaking point: the load has grown too heavy to carry whole, so learn to say no or hand things off, starting with what matters least.",
+   "ja": "手放す、分担、限界：荷物が一人では抱えきれないほど重くなっているので、断ることや任せることを覚え、最も不要なものから下ろしましょう。",
+   "ko": "내려놓기, 분담, 한계점: 짐이 혼자 감당하기엔 너무 무거워졌으니, 거절하거나 맡기는 법을 익히고 가장 덜 중요한 것부터 내려놓으세요."
+  }
+ },
+ "wands-11": {
+  "up": {
+   "zh-Hant": "好奇、熱忱、探索：帶著新手的興奮去嘗試吧，一則好消息或新的興趣，可能帶你走向意想不到的方向。",
+   "zh-Hans": "好奇、热忱、探索：带着新手的兴奋去尝试吧，一则好消息或新的兴趣，可能带你走向意想不到的方向。",
+   "en": "Curiosity, enthusiasm, exploration: try things with a beginner's excitement, since a piece of good news or a new interest could lead somewhere unexpected.",
+   "ja": "好奇心、意欲、探求：初心者のわくわく感を大切に挑戦してみると、よい知らせや新しい興味が思わぬ方向へ導いてくれそうです。",
+   "ko": "호기심, 열의, 탐험: 초보자의 설렘으로 도전해 보면, 반가운 소식이나 새로운 관심사가 뜻밖의 방향으로 이끌어 줄 수 있습니다."
+  },
+  "rev": {
+   "zh-Hant": "三分鐘熱度、分心、消息延遲：熱情來得快去得也快，挑一件事做完，比同時開很多頭更有收穫。",
+   "zh-Hans": "三分钟热度、分心、消息延迟：热情来得快去得也快，挑一件事做完，比同时开很多头更有收获。",
+   "en": "Fleeting enthusiasm, distraction, delayed news: excitement comes and goes quickly, so finishing one thing will teach you more than starting many.",
+   "ja": "三日坊主、気移り、知らせの遅れ：熱意が冷めやすいときなので、いくつも手をつけるより、ひとつをやり遂げるほうが得るものは大きいでしょう。",
+   "ko": "작심삼일, 산만함, 늦어지는 소식: 열정이 쉽게 식기 쉬우니, 여러 일을 벌이기보다 한 가지를 끝까지 해내는 편이 더 많은 것을 남깁니다."
+  }
+ },
+ "wands-12": {
+  "up": {
+   "zh-Hant": "行動、冒險、衝勁：適合大膽出發或換個環境，帶著熱血往前衝，同時留意別讓速度壓過判斷。",
+   "zh-Hans": "行动、冒险、冲劲：适合大胆出发或换个环境，带着热血往前冲，同时留意别让速度压过判断。",
+   "en": "Action, adventure, drive: a good time to set out boldly or change your surroundings, charging ahead with passion while keeping speed from outrunning judgment.",
+   "ja": "行動、冒険、勢い：思い切って出発したり環境を変えたりするのに向いている時なので、情熱のまま進みつつ、勢いが判断を追い越さないよう注意を。",
+   "ko": "행동, 모험, 추진력: 과감히 떠나거나 환경을 바꾸기 좋은 때이니, 열정을 안고 나아가되 속도가 판단을 앞지르지 않도록 주의하세요."
+  },
+  "rev": {
+   "zh-Hant": "衝動、急躁、虎頭蛇尾：想立刻改變的心情很強，但方向未定就出發容易繞路，先讓熱度沉澱一下。",
+   "zh-Hans": "冲动、急躁、虎头蛇尾：想马上改变的心情很强，但方向未定就出发容易绕路，先让热度沉淀一下。",
+   "en": "Impulsive, restless, unfinished: the urge to change everything at once is strong, but leaving without a direction leads to detours, so let the heat settle first.",
+   "ja": "衝動、焦り、尻すぼみ：今すぐ変えたい気持ちが強いものの、方向が定まらないまま動くと遠回りしやすいので、まず熱を少し落ち着かせましょう。",
+   "ko": "충동, 조급함, 용두사미: 당장 바꾸고 싶은 마음이 크지만 방향 없이 떠나면 돌아가기 쉬우니, 먼저 열기를 조금 가라앉히세요."
+  }
+ },
+ "wands-13": {
+  "up": {
+   "zh-Hant": "自信、溫暖、魅力：以真誠和熱情帶動身邊的人，你的存在感本身就是力量，勇敢展現自己的光芒。",
+   "zh-Hans": "自信、温暖、魅力：用真诚和热情带动身边的人，你的存在感本身就是力量，勇敢展现自己的光芒。",
+   "en": "Confidence, warmth, charisma: your sincerity and enthusiasm lift the people around you, so let yourself shine, because your presence is already a strength.",
+   "ja": "自信、温かさ、魅力：誠実さと情熱で周りの人を引っ張っていけるので、存在感そのものを力に変え、自分らしく輝きましょう。",
+   "ko": "자신감, 따뜻함, 매력: 진심과 열정으로 주변 사람들을 이끌 수 있으니, 존재감 자체가 힘이라는 것을 믿고 당당히 빛나세요."
+  },
+  "rev": {
+   "zh-Hant": "自信動搖、疲於付出、光芒黯淡：照顧別人太久可能忽略了自己，先把熱情留一點給自己，再談影響力。",
+   "zh-Hans": "自信动摇、疲于付出、光芒暗淡：照顾别人太久可能忽略了自己，先把热情留一点给自己，再谈影响力。",
+   "en": "Shaken confidence, giving too much, dimmed spark: caring for everyone else may have left you running low, so save some warmth for yourself before leading again.",
+   "ja": "自信の揺らぎ、尽くし疲れ、輝きの陰り：人の世話を続けるうちに自分を後回しにしてきたかもしれないので、まず情熱の一部を自分のために残しましょう。",
+   "ko": "흔들리는 자신감, 베풂에 지침, 빛의 흐려짐: 남을 돌보느라 자신을 뒤로 미뤘을 수 있으니, 다시 앞장서기 전에 열정의 일부를 자신에게 남겨 두세요."
+  }
+ },
+ "wands-14": {
+  "up": {
+   "zh-Hant": "領導、遠見、果斷：你有能力把願景化為行動，清楚說出方向、勇於拍板，身邊的人自然願意跟上。",
+   "zh-Hans": "领导、远见、果断：你有能力把愿景变成行动，清楚说出方向、敢于拍板，身边的人自然愿意跟上。",
+   "en": "Leadership, vision, decisiveness: you can turn a big idea into real action, and when you name the direction clearly and commit, others will want to follow.",
+   "ja": "統率、ビジョン、決断力：大きな構想を行動に移す力があるので、方向をはっきり示して決断すれば、周りの人も自然とついてきます。",
+   "ko": "리더십, 비전, 결단력: 큰 구상을 실제 행동으로 옮길 힘이 있으니, 방향을 분명히 밝히고 결단하면 주변 사람들도 자연스럽게 따라옵니다."
+  },
+  "rev": {
+   "zh-Hant": "強勢、急躁、標準過高：太想掌控全局反而讓人退縮，放慢一點、聽聽團隊的聲音，領導會更有分量。",
+   "zh-Hans": "强势、急躁、标准过高：太想掌控全局反而让人退缩，放慢一点、听听团队的声音，领导力会更有分量。",
+   "en": "Overbearing, impatient, demanding: trying to control everything can push people away, so slow down and listen to those around you, and your leadership will carry more weight.",
+   "ja": "強引さ、短気、高すぎる基準：すべてを思い通りにしようとすると人が離れやすいので、少しペースを落として周りの声を聞くと、導く力に重みが増します。",
+   "ko": "독단, 조급함, 지나친 기준: 모든 것을 통제하려 하면 사람들이 물러서기 쉬우니, 속도를 늦추고 주변의 목소리를 들으면 리더십에 무게가 더해집니다."
+  }
+ },
+ "cups-01": {
+  "up": {
+   "zh-Hant": "新的情感、敞開、滋養：心裡正湧出一份溫暖，願意先說出心意，一段關係就會開始流動。",
+   "zh-Hans": "新的情感、敞开、滋养：心里正涌出一份温暖，愿意先说出心意，一段关系就会开始流动。",
+   "en": "New feelings, openness, nourishment: a warmth is welling up inside you, and saying what you feel first lets a connection begin to flow.",
+   "ja": "新しい感情、開かれた心、満ちる愛：胸の奥からあふれる温かな思いを先に伝えれば、関係は自然に動き始めます。",
+   "ko": "새로운 감정, 열린 마음, 채움: 마음속에서 따뜻한 감정이 차오르고 있으니, 먼저 마음을 표현하면 관계가 흐르기 시작합니다."
+  },
+  "rev": {
+   "zh-Hant": "情感受阻、壓抑、空虛：心裡有話卻一直收著，先好好照顧自己的感受，內心才會慢慢重新充滿。",
+   "zh-Hans": "情感受阻、压抑、空虚：心里有话却一直憋着，先好好照顾自己的感受，内心才会慢慢重新充满。",
+   "en": "Blocked feelings, holding back, emptiness: you have been keeping your heart closed, and tending to your own feelings first will let it fill again.",
+   "ja": "感情の停滞、我慢、心の渇き：思いを内に閉じ込めがちなときは、まず自分の気持ちをいたわると心が再び満ちていきます。",
+   "ko": "막힌 감정, 억누름, 공허함: 하고 싶은 말을 마음속에 담아 두고 있으니, 먼저 자신의 감정을 돌보면 마음이 다시 채워집니다."
+  }
+ },
+ "cups-02": {
+  "up": {
+   "zh-Hant": "互相吸引、默契、平等交流：你和對方的心意正在靠近，真誠回應彼此，這段連結會越來越穩固。",
+   "zh-Hans": "互相吸引、默契、平等交流：你和对方的心意正在靠近，真诚回应彼此，这段关系会越来越稳固。",
+   "en": "Mutual attraction, rapport, equal exchange: your heart and another's are drawing closer, and answering each other honestly makes the bond steadier.",
+   "ja": "惹かれ合う心、通じ合い、対等な関係：お互いの気持ちが近づいている今、素直に応え合うほど絆は確かなものになります。",
+   "ko": "서로 끌림, 교감, 대등한 관계: 두 사람의 마음이 가까워지고 있으니, 진심으로 서로에게 응답할수록 인연이 단단해집니다."
+  },
+  "rev": {
+   "zh-Hant": "失衡、誤會、距離感：一方付出較多或話沒說開，坐下來把期待講清楚，關係才能重新對齊。",
+   "zh-Hans": "失衡、误会、距离感：一方付出更多或话没说开，坐下来把期待讲清楚，关系才能重新同步。",
+   "en": "Imbalance, misunderstanding, distance: one side may be giving more or something has gone unsaid, and talking through expectations helps you meet again in the middle.",
+   "ja": "すれ違い、誤解、心の距離：どちらかが無理をしていたり言葉が足りなかったりするので、期待を率直に話し合うことで歩調が戻ります。",
+   "ko": "불균형, 오해, 거리감: 한쪽이 더 애쓰거나 말하지 못한 것이 있으니, 서로의 기대를 솔직히 나누면 다시 발을 맞출 수 있습니다."
+  }
+ },
+ "cups-03": {
+  "up": {
+   "zh-Hant": "慶祝、友誼、分享喜悅：身邊的人正是你的支持力量，和朋友一起歡聚，好心情會加倍。",
+   "zh-Hans": "庆祝、友谊、分享喜悦：身边的人正是你的支持力量，和朋友一起相聚，好心情会加倍。",
+   "en": "Celebration, friendship, shared joy: the people around you are your support right now, and gathering with friends doubles the good feeling.",
+   "ja": "祝福、友情、喜びの共有：身近な仲間こそ今のあなたの支えなので、誰かと集まって喜びを分かち合うと幸せが広がります。",
+   "ko": "축하, 우정, 함께하는 기쁨: 곁에 있는 사람들이 지금 당신의 힘이 되어 주니, 친구들과 모여 기쁨을 나누면 행복이 커집니다."
+  },
+  "rev": {
+   "zh-Hant": "過度玩樂、小圈圈、疏離感：熱鬧之中容易失去自己，留一點時間給真正在乎的人，心會比較踏實。",
+   "zh-Hans": "过度玩乐、小圈子、疏离感：热闹之中容易迷失自己，留一点时间给真正在乎的人，心会更踏实。",
+   "en": "Overindulgence, cliques, feeling left out: it is easy to lose yourself in the noise, so save some time for the people who truly matter to you.",
+   "ja": "遊びすぎ、仲間内の壁、疎外感：にぎやかさの中で自分を見失いやすいときなので、本当に大切な人との時間を選ぶと心が落ち着きます。",
+   "ko": "지나친 놀이, 끼리끼리 문화, 소외감: 북적임 속에서 자신을 잃기 쉬우니, 정말 아끼는 사람과의 시간을 따로 챙기면 마음이 편안해집니다."
+  }
+ },
+ "cups-04": {
+  "up": {
+   "zh-Hant": "倦怠、提不起勁、錯過機會：你對眼前的一切有點麻木，抬起頭看看，其實已有新的邀約在等你。",
+   "zh-Hans": "倦怠、提不起劲、错过机会：你对眼前的一切有点麻木，抬起头看看，其实已有新的邀请在等你。",
+   "en": "Apathy, restlessness, missed offers: you feel a little numb to what is in front of you, yet if you look up, a new invitation is already waiting.",
+   "ja": "倦怠感、気乗りしない、見落とし：目の前のことに心が動かない時期ですが、顔を上げれば新しい誘いがすでに差し出されています。",
+   "ko": "권태, 의욕 저하, 놓치는 기회: 눈앞의 일들에 마음이 무뎌져 있지만, 고개를 들어 보면 새로운 제안이 이미 기다리고 있습니다."
+  },
+  "rev": {
+   "zh-Hant": "重新投入、接受、打開心門：沉悶的狀態正在鬆動，願意對新的人事物說好，生活會重新有感覺。",
+   "zh-Hans": "重新投入、接纳、打开心门：沉闷的状态正在松动，愿意对新的人和事说好，生活会重新有感觉。",
+   "en": "Re-engaging, acceptance, opening up: the dull spell is loosening, and saying yes to new people and ideas brings feeling back into your days.",
+   "ja": "再始動、新しい関心、心を開く：停滞していた気分がほどけてきているので、新しい人や物事に応じてみると日々に彩りが戻ります。",
+   "ko": "다시 움직임, 받아들임, 마음 열기: 무기력했던 상태가 풀리고 있으니, 새로운 사람과 일에 응해 보면 일상에 다시 생기가 돕니다."
+  }
+ },
+ "cups-05": {
+  "up": {
+   "zh-Hant": "失落、遺憾、仍有轉機：你正為失去的事難過，允許自己哭一場，再轉身看看，身後仍有值得珍惜的東西。",
+   "zh-Hans": "失落、遗憾、仍有转机：你正为失去的事难过，允许自己哭一场，再转身看看，身后仍有值得珍惜的东西。",
+   "en": "Disappointment, regret, what remains: you are hurting over what did not work out, so feel it fully, then turn around and notice what is still yours.",
+   "ja": "落胆、後悔、残されたもの：うまくいかなかったことに心を痛めていますが、気持ちを受け止めてから振り返れば、まだ大切なものが残っています。",
+   "ko": "실망, 아쉬움, 남아 있는 것: 뜻대로 되지 않은 일로 마음이 아프지만, 그 감정을 충분히 느낀 뒤 돌아보면 아직 소중한 것이 남아 있습니다."
+  },
+  "rev": {
+   "zh-Hant": "釋懷、和解、走出低潮：心裡的遺憾正慢慢放下，原諒自己或對方，新的連結也會跟著回來。",
+   "zh-Hans": "释怀、和解、走出低谷：心里的遗憾正慢慢放下，原谅自己或对方，新的联系也会随之回来。",
+   "en": "Acceptance, reconciliation, moving on: the old regret is slowly loosening its grip, and forgiving yourself or someone else lets new connections return.",
+   "ja": "受容、和解、立ち直り：心に残っていた後悔が少しずつほどけているので、自分や相手を許すことで新しいつながりも戻ってきます。",
+   "ko": "수용, 화해, 회복: 마음에 남은 후회가 조금씩 풀리고 있으니, 자신이나 상대를 용서하면 새로운 인연도 다시 찾아옵니다."
+  }
+ },
+ "cups-06": {
+  "up": {
+   "zh-Hant": "回憶、純真、溫柔善意：過去的美好或老朋友正在回到你身邊，用單純的心對待人，就能感到溫暖。",
+   "zh-Hans": "回忆、纯真、温柔善意：过去的美好或老朋友正在回到你身边，用单纯的心待人，就能感到温暖。",
+   "en": "Nostalgia, innocence, gentle kindness: good memories or old friends are finding their way back to you, and meeting people with a simple, open heart brings warmth.",
+   "ja": "思い出、無邪気さ、やさしさ：懐かしい記憶や旧友との縁がよみがえる時なので、素直な心で人と接すればぬくもりを感じられます。",
+   "ko": "추억, 순수함, 다정함: 지난날의 좋은 기억이나 옛 친구가 다시 찾아오는 때이니, 꾸밈없는 마음으로 사람을 대하면 따뜻함을 느낍니다."
+  },
+  "rev": {
+   "zh-Hant": "停在過去、美化回憶、向前看：太懷念從前會讓現在變淡，把回憶收好，留點空間給正在發生的事。",
+   "zh-Hans": "停在过去、美化回忆、向前看：太怀念从前会让当下变淡，把回忆收好，留点空间给正在发生的事。",
+   "en": "Living in the past, rose-tinted memories, looking ahead: longing for how things were can dull the present, so keep the memories and make room for what is happening now.",
+   "ja": "過去への執着、美化された記憶、前を向く：昔を懐かしみすぎると今が色あせるので、思い出は大切にしまい、目の前の出来事に心を向けましょう。",
+   "ko": "과거에 머묾, 미화된 추억, 앞을 보기: 옛날을 너무 그리워하면 지금이 흐려지니, 추억은 잘 간직하고 지금 일어나는 일에 자리를 내어 주세요."
+  }
+ },
+ "cups-07": {
+  "up": {
+   "zh-Hant": "選擇太多、幻想、看不清：眼前的可能性很誘人，先分辨哪些是真心想要的，再一步一步落實。",
+   "zh-Hans": "选择太多、幻想、看不清：眼前的可能性很诱人，先分辨哪些是真心想要的，再一步一步落实。",
+   "en": "Many options, daydreams, unclear view: the possibilities before you are tempting, so sort out which ones you truly want before you act on any of them.",
+   "ja": "選択肢の多さ、空想、迷い：魅力的な可能性が並んでいますが、本当に望むものを見極めてから一歩ずつ形にしていきましょう。",
+   "ko": "많은 선택지, 공상, 흐린 시야: 눈앞의 가능성이 모두 매력적이니, 진심으로 원하는 것을 가려낸 뒤 한 걸음씩 실현해 보세요."
+  },
+  "rev": {
+   "zh-Hant": "看清現實、下定決心、聚焦：迷霧正在散去，你漸漸知道自己要什麼，選定一個方向就能前進。",
+   "zh-Hans": "看清现实、下定决心、聚焦：迷雾正在散去，你渐渐知道自己要什么，选定一个方向就能前进。",
+   "en": "Clarity, decision, focus: the haze is lifting and you are learning what you really want, so choosing one direction lets you move forward.",
+   "ja": "現実を見る、決断、集中：迷いの霧が晴れて自分の望みが見えてきたので、一つの方向を選べば前に進めます。",
+   "ko": "현실 직시, 결단, 집중: 안개가 걷히며 자신이 원하는 것이 보이기 시작했으니, 한 방향을 정하면 앞으로 나아갈 수 있습니다."
+  }
+ },
+ "cups-08": {
+  "up": {
+   "zh-Hant": "離開、尋找意義、放下：某段關係或狀態已無法滿足你，勇敢轉身去找更貼近內心的東西。",
+   "zh-Hans": "离开、寻找意义、放下：某段关系或状态已无法满足你，勇敢转身去寻找更贴近内心的东西。",
+   "en": "Walking away, seeking meaning, letting go: a situation no longer fulfills you, and it takes courage to turn toward what feels truer to your heart.",
+   "ja": "旅立ち、意味の探求、手放す：今の関係や状況では心が満たされなくなっているので、勇気を出して本当に求めるものへ向かいましょう。",
+   "ko": "떠남, 의미 찾기, 내려놓음: 지금의 관계나 상황이 더는 마음을 채워 주지 못하니, 용기를 내어 마음이 진짜 원하는 곳으로 향해 보세요."
+  },
+  "rev": {
+   "zh-Hant": "猶豫、捨不得、原地打轉：心裡知道該走卻遲遲沒動，問問自己是在珍惜，還是只是害怕改變。",
+   "zh-Hans": "犹豫、舍不得、原地打转：心里知道该走却迟迟没动，问问自己是在珍惜，还是只是害怕改变。",
+   "en": "Hesitation, clinging, going in circles: part of you knows it is time to move on, so ask whether you are staying out of care or out of fear of change.",
+   "ja": "ためらい、未練、足踏み：離れるべきだと感じつつ動けないなら、大切だからか、変化が怖いだけか、自分に問いかけてみましょう。",
+   "ko": "망설임, 미련, 제자리걸음: 떠나야 한다는 걸 알면서도 머물러 있다면, 그것이 아낌 때문인지 변화가 두려워서인지 스스로에게 물어보세요."
+  }
+ },
+ "cups-09": {
+  "up": {
+   "zh-Hant": "心願達成、滿足、自在：你期待的事正在實現，好好享受這份滿足，也別忘了感謝一路幫忙的人。",
+   "zh-Hans": "心愿达成、满足、自在：你期待的事正在实现，好好享受这份满足，也别忘了感谢一路帮忙的人。",
+   "en": "Wishes granted, satisfaction, ease: something you hoped for is coming true, so enjoy the contentment and remember to thank those who helped along the way.",
+   "ja": "願いの成就、満足、くつろぎ：待ち望んでいたことが形になりつつあるので、その満足感を味わい、支えてくれた人への感謝も忘れずに。",
+   "ko": "소원 성취, 만족, 여유: 바라던 일이 이루어지고 있으니, 그 만족감을 충분히 누리고 도와준 사람들에게 감사하는 것도 잊지 마세요."
+  },
+  "rev": {
+   "zh-Hant": "期待落空、表面滿足、反思：想要的未必真能讓你快樂，重新問問自己內心真正渴望的是什麼。",
+   "zh-Hans": "期待落空、表面满足、反思：想要的未必真能让你快乐，重新问问自己内心真正渴望的是什么。",
+   "en": "Unmet hopes, surface contentment, reflection: what you wanted may not be what makes you happy, so ask yourself again what your heart truly longs for.",
+   "ja": "期待外れ、うわべの満足、見直し：手に入れたいものが本当の幸せとは限らないので、心が本当に求めているものを改めて確かめましょう。",
+   "ko": "어긋난 기대, 겉도는 만족, 돌아봄: 원하던 것이 꼭 행복을 주지는 않으니, 마음이 진정으로 바라는 것이 무엇인지 다시 물어보세요."
+  }
+ },
+ "cups-10": {
+  "up": {
+   "zh-Hant": "和樂、歸屬感、長久的幸福：你和身邊重要的人正走向安穩，多花時間相處，這份溫暖會延續下去。",
+   "zh-Hans": "和乐、归属感、长久的幸福：你和身边重要的人正走向安稳，多花时间相处，这份温暖会延续下去。",
+   "en": "Harmony, belonging, lasting happiness: you and the people closest to you are settling into something steady, and time spent together keeps that warmth going.",
+   "ja": "円満、居場所、続いていく幸せ：大切な人たちとの間に安らぎが育っているので、共に過ごす時間を重ねるほどそのぬくもりは続きます。",
+   "ko": "화목, 소속감, 오래가는 행복: 소중한 사람들과 함께 안정을 찾아가고 있으니, 함께하는 시간을 늘릴수록 그 따뜻함이 이어집니다."
+  },
+  "rev": {
+   "zh-Hant": "家庭摩擦、理想落差、疏離：想像中的美好和現實有點距離，放下完美的期待，從一次真心對話開始。",
+   "zh-Hans": "家庭摩擦、理想落差、疏离：想象中的美好和现实有点距离，放下完美的期待，从一次真心对话开始。",
+   "en": "Friction at home, unmet ideals, disconnection: the picture in your head and real life have drifted apart, so let go of perfect and start with one honest conversation.",
+   "ja": "家族間の摩擦、理想とのずれ、すれ違い：思い描いた幸せと現実に差を感じたら、完璧を求めるのをやめて、一度本音で話すことから始めましょう。",
+   "ko": "가족 간의 마찰, 이상과의 차이, 거리감: 그리던 행복과 현실 사이에 간극이 있으니, 완벽에 대한 기대를 내려놓고 진심 어린 대화 한 번부터 시작하세요."
+  }
+ },
+ "cups-11": {
+  "up": {
+   "zh-Hant": "好消息、靈感、純真好奇：可能會收到令人心動的訊息，用溫柔的心回應，新的情感或創意就會萌芽。",
+   "zh-Hans": "好消息、灵感、纯真好奇：可能会收到令人心动的消息，用温柔的心回应，新的情感或创意就会萌芽。",
+   "en": "Sweet news, inspiration, curiosity: a heartwarming message may arrive, and answering it with a gentle, open heart lets a new feeling or idea take root.",
+   "ja": "うれしい知らせ、ひらめき、素直な好奇心：心ときめく便りが届きそうなので、やさしく応えれば新しい感情やアイデアが芽生えます。",
+   "ko": "반가운 소식, 영감, 순수한 호기심: 설레는 소식이 찾아올 수 있으니, 다정한 마음으로 응답하면 새로운 감정이나 아이디어가 싹틉니다."
+  },
+  "rev": {
+   "zh-Hant": "情緒化、太敏感、靈感卡住：一點小事就容易受傷，先讓心情穩下來，再決定要不要回應。",
+   "zh-Hans": "情绪化、太敏感、灵感卡住：一点小事就容易受伤，先让心情稳定下来，再决定要不要回应。",
+   "en": "Moodiness, oversensitivity, creative block: small things can sting more than usual, so let your feelings settle before you decide how to respond.",
+   "ja": "気分の波、傷つきやすさ、ひらめきの停滞：ささいなことで心が揺れやすいので、気持ちが落ち着いてから返事を考えましょう。",
+   "ko": "감정 기복, 예민함, 막힌 영감: 사소한 일에도 쉽게 상처받을 수 있으니, 마음이 가라앉은 뒤에 어떻게 응답할지 정하세요."
+  }
+ },
+ "cups-12": {
+  "up": {
+   "zh-Hant": "浪漫、邀約、跟隨心意：有人帶著真誠的心意靠近，或你正想主動表白，用行動把感受傳達出去吧。",
+   "zh-Hans": "浪漫、邀约、跟随心意：有人带着真诚的心意靠近，或你正想主动表白，用行动把感受传达出去吧。",
+   "en": "Romance, invitation, following your heart: someone may approach with sincere intentions, or you may be ready to make the first move, so let your actions carry your feelings.",
+   "ja": "ロマンス、誘い、心に従う：誠実な好意が近づいてくる時、あるいは自分から想いを伝えたい時なので、行動で気持ちを届けましょう。",
+   "ko": "낭만, 초대, 마음 따르기: 진심을 품은 누군가가 다가오거나 당신이 먼저 마음을 전하고 싶은 때이니, 행동으로 감정을 전해 보세요."
+  },
+  "rev": {
+   "zh-Hant": "三分鐘熱度、空頭承諾、情緒起伏：好聽的話不一定是真心，多看實際行動，別只憑一時的感覺做決定。",
+   "zh-Hans": "三分钟热度、空头承诺、情绪起伏：好听的话不一定是真心，多看实际行动，别只凭一时的感觉做决定。",
+   "en": "Fleeting enthusiasm, empty promises, mood swings: sweet words are not always sincere, so watch what people actually do and avoid deciding on a passing feeling.",
+   "ja": "熱しやすく冷めやすい、口約束、気分のむら：甘い言葉が本心とは限らないので、実際の行動をよく見て、一時の気分で決めないようにしましょう。",
+   "ko": "금방 식는 열정, 빈 약속, 감정 기복: 달콤한 말이 꼭 진심은 아니니, 실제 행동을 살피고 한순간의 기분으로 결정하지 마세요."
+  }
+ },
+ "cups-13": {
+  "up": {
+   "zh-Hant": "同理心、直覺、溫柔包容：你能細膩感受他人的心情，相信自己的直覺，同時也記得照顧好自己。",
+   "zh-Hans": "同理心、直觉、温柔包容：你能细腻感受他人的情绪，相信自己的直觉，同时也记得照顾好自己。",
+   "en": "Empathy, intuition, gentle care: you sense what others feel with real depth, so trust your intuition while remembering to look after yourself too.",
+   "ja": "共感力、直感、包み込むやさしさ：人の気持ちを細やかに感じ取れる今は、自分の直感を信じつつ、自分自身のケアも忘れずに。",
+   "ko": "공감, 직관, 따뜻한 포용: 다른 사람의 감정을 섬세하게 느낄 수 있는 때이니, 직관을 믿으면서 자신을 돌보는 일도 잊지 마세요."
+  },
+  "rev": {
+   "zh-Hant": "過度付出、界線模糊、心累：你承接了太多別人的情緒，先把注意力拉回自己身上，好好休息。",
+   "zh-Hans": "过度付出、边界模糊、心累：你承接了太多别人的情绪，先把注意力拉回自己身上，好好休息。",
+   "en": "Overgiving, blurred boundaries, emotional fatigue: you have been carrying too many of other people's feelings, so bring your attention back to yourself and rest.",
+   "ja": "尽くしすぎ、境界のあいまいさ、心の疲れ：他人の感情を背負い込みすぎているので、意識を自分に戻してゆっくり休みましょう。",
+   "ko": "지나친 헌신, 흐려진 경계, 마음의 피로: 다른 사람의 감정을 너무 많이 떠안고 있으니, 관심을 자신에게 돌리고 푹 쉬세요."
+  }
+ },
+ "cups-14": {
+  "up": {
+   "zh-Hant": "沉穩、成熟、情理兼顧：面對情緒波動時你能保持冷靜，用體貼又清楚的方式處理，大家都會信任你。",
+   "zh-Hans": "沉稳、成熟、情理兼顾：面对情绪波动时你能保持冷静，用体贴又清晰的方式处理，大家都会信任你。",
+   "en": "Composure, maturity, heart and head in balance: you can stay calm when emotions run high, and handling things with both care and clarity earns people's trust.",
+   "ja": "落ち着き、成熟、情と理のバランス：感情が揺れる場面でも冷静でいられるので、思いやりと明快さをもって対応すれば周りから信頼されます。",
+   "ko": "침착함, 성숙함, 감정과 이성의 균형: 감정이 요동치는 상황에서도 차분할 수 있으니, 배려와 명확함으로 대하면 주변의 신뢰를 얻습니다."
+  },
+  "rev": {
+   "zh-Hant": "壓抑情緒、忽冷忽熱、控制欲：表面平靜但心裡其實很亂，坦白說出感受，比勉強維持形象更好。",
+   "zh-Hans": "压抑情绪、忽冷忽热、控制欲：表面平静但内心其实很乱，坦白说出感受，比勉强维持形象更好。",
+   "en": "Bottled-up feelings, running hot and cold, control: you look calm on the outside but feel unsettled within, and naming your feelings honestly beats keeping up appearances.",
+   "ja": "感情の抑え込み、気分の波、支配欲：表面は平静でも内心は乱れているので、体裁を保つより素直に気持ちを言葉にするほうがうまくいきます。",
+   "ko": "억눌린 감정, 변덕, 통제욕: 겉으로는 평온해 보여도 속은 복잡하니, 체면을 지키기보다 솔직하게 감정을 말하는 편이 낫습니다."
+  }
+ },
+ "swords-01": {
+  "up": {
+   "zh-Hant": "清晰、突破、真相：一個想法突然變得很清楚，把它說出口，事情就會開始往前走。",
+   "zh-Hans": "清晰、突破、真相：一个想法突然变得很清楚，把它说出来，事情就会开始往前推进。",
+   "en": "Clarity, breakthrough, truth: an idea has suddenly come into focus, and saying it out loud will get things moving.",
+   "ja": "明晰、突破、真実：ひとつの考えがはっきり見えてきたので、言葉にして伝えれば物事が動き始めます。",
+   "ko": "명료함, 돌파, 진실: 한 가지 생각이 또렷해졌으니, 말로 꺼내면 일이 움직이기 시작합니다."
+  },
+  "rev": {
+   "zh-Hant": "混亂、未成形、誤解：想法還沒理清楚，先別急著下結論，多問一句、多想一晚再說。",
+   "zh-Hans": "混乱、未成形、误解：想法还没理清楚，先别急着下结论，多问一句、多想一晚再说。",
+   "en": "Confusion, unformed ideas, misunderstanding: your thinking isn't clear yet, so hold off on conclusions, ask one more question and sleep on it.",
+   "ja": "混乱、未整理、誤解：考えがまだまとまっていないので、結論を急がず、もうひとつ質問してひと晩おいてから決めましょう。",
+   "ko": "혼란, 미완성, 오해: 생각이 아직 정리되지 않았으니 결론을 서두르지 말고, 한 번 더 묻고 하룻밤 생각해 보세요."
+  }
+ },
+ "swords-02": {
+  "up": {
+   "zh-Hant": "僵持、猶豫、兩難：兩個選擇都放不下，暫停一下可以，但答案不會因為不看就消失。",
+   "zh-Hans": "僵持、犹豫、两难：两个选择都放不下，暂停一下可以，但答案不会因为不看就消失。",
+   "en": "Stalemate, indecision, a hard choice: you're torn between two paths; pausing is fine, but the answer won't go away by not looking.",
+   "ja": "膠着、迷い、板ばさみ：どちらも選べず立ち止まるのは構いませんが、目をそらしても答えは消えません。",
+   "ko": "교착, 망설임, 딜레마: 두 선택 사이에서 잠시 멈추는 건 괜찮지만, 외면한다고 답이 사라지지는 않습니다."
+  },
+  "rev": {
+   "zh-Hant": "鬆動、看見、做決定：卡住的局面開始鬆開，新的資訊出現，選擇變得比想像中容易。",
+   "zh-Hans": "松动、看清、做决定：卡住的局面开始松开，新的信息出现，选择变得比想象中容易。",
+   "en": "Loosening, seeing clearly, deciding: the deadlock begins to ease as new information appears, and the choice turns out simpler than you feared.",
+   "ja": "ゆるみ、気づき、決断：行き詰まりがほどけて新しい情報が入り、選択は思っていたより簡単になりそうです。",
+   "ko": "풀림, 깨달음, 결정: 막혀 있던 상황이 풀리고 새로운 정보가 들어오면서, 선택은 생각보다 쉬워집니다."
+  }
+ },
+ "swords-03": {
+  "up": {
+   "zh-Hant": "心痛、失落、坦白：一句話或一件事讓人難過，允許自己難過一陣子，心會慢慢好起來。",
+   "zh-Hans": "心痛、失落、坦白：一句话或一件事让人难过，允许自己难过一阵子，心会慢慢好起来。",
+   "en": "Heartache, disappointment, hard truth: something said or done has hurt; let yourself feel it for a while, and your heart will mend.",
+   "ja": "心の痛み、失望、本音：言葉や出来事に傷ついた今は、しばらく悲しむ時間を自分に許すことで、心は少しずつ癒えていきます。",
+   "ko": "상심, 실망, 아픈 진실: 어떤 말이나 일로 마음이 아플 때는 잠시 슬퍼할 시간을 허락하면 마음이 천천히 나아집니다."
+  },
+  "rev": {
+   "zh-Hant": "釋懷、復原、放下：最痛的時候已經過去，把心裡那句話說開，或原諒自己，就能輕一點。",
+   "zh-Hans": "释怀、复原、放下：最痛的时候已经过去，把心里那句话说开，或原谅自己，就能轻松一点。",
+   "en": "Release, recovery, letting go: the worst of the hurt is behind you; talking it through or forgiving yourself will lighten the load.",
+   "ja": "回復、解放、許し：いちばんつらい時期は過ぎたので、胸の内を話すか自分を許すことで、心が軽くなります。",
+   "ko": "회복, 놓아줌, 용서: 가장 아픈 시기는 지났으니, 마음속 이야기를 털어놓거나 자신을 용서하면 한결 가벼워집니다."
+  }
+ },
+ "swords-04": {
+  "up": {
+   "zh-Hant": "休息、沉澱、暫停：腦袋轉太久了，先停下來好好休息，答案會在安靜的時候自己浮現。",
+   "zh-Hans": "休息、沉淀、暂停：脑子转了太久，先停下来好好休息，答案会在安静的时候自己浮现。",
+   "en": "Rest, reflection, pause: your mind has been running for too long; step back and recharge, and the answer will surface in the quiet.",
+   "ja": "休息、内省、小休止：頭を使いすぎているので、いったん立ち止まって休めば、静けさの中で答えが自然と浮かびます。",
+   "ko": "휴식, 성찰, 멈춤: 머리를 너무 오래 썼으니 잠시 멈추고 쉬면, 고요함 속에서 답이 저절로 떠오릅니다."
+  },
+  "rev": {
+   "zh-Hant": "坐不住、復出、透支：休息夠了就準備重新出發；如果還是很累，別硬撐，再給自己一點時間。",
+   "zh-Hans": "坐不住、复出、透支：休息够了就准备重新出发；如果还是很累，别硬撑，再给自己一点时间。",
+   "en": "Restlessness, returning, running on empty: if you're rested, it's time to start again; if you're still tired, don't push, give yourself more time.",
+   "ja": "焦り、再始動、無理：十分に休めたなら再び動き出す時ですが、まだ疲れているなら無理をせず、もう少し時間をとりましょう。",
+   "ko": "조바심, 재출발, 무리: 충분히 쉬었다면 다시 움직일 때지만, 아직 지쳤다면 무리하지 말고 시간을 조금 더 가지세요."
+  }
+ },
+ "swords-05": {
+  "up": {
+   "zh-Hant": "爭執、輸贏、代價：吵贏了不一定是贏，想想這場爭論值不值得，有時候退一步反而贏得更多。",
+   "zh-Hans": "争执、输赢、代价：吵赢了不一定是赢，想想这场争论值不值得，有时候退一步反而赢得更多。",
+   "en": "Conflict, winning, cost: winning the argument isn't always winning; ask whether this fight is worth it, since stepping back may gain you more.",
+   "ja": "対立、勝ち負け、代償：口論に勝っても得をするとは限らず、一歩引いたほうが結果的に多くを守れることもあります。",
+   "ko": "갈등, 승부, 대가: 말다툼에서 이겨도 진짜 이긴 건 아닐 수 있으니, 한발 물러서는 편이 오히려 더 많은 것을 지킵니다."
+  },
+  "rev": {
+   "zh-Hant": "和解、休兵、往前看：爭執的熱度退了，先開口道歉或主動示好，關係有機會重新開始。",
+   "zh-Hans": "和解、收手、翻篇：争执的热度退了，先开口道歉或主动示好，关系有机会重新开始。",
+   "en": "Reconciliation, letting go, moving on: the heat of the conflict is fading; a first apology or friendly gesture can give the relationship a fresh start.",
+   "ja": "和解、矛を収める、区切り：争いの熱が冷めてきたので、先に謝るか歩み寄れば、関係をやり直すきっかけになります。",
+   "ko": "화해, 멈춤, 정리: 다툼의 열기가 식었으니, 먼저 사과하거나 손을 내밀면 관계를 새로 시작할 기회가 생깁니다."
+  }
+ },
+ "swords-06": {
+  "up": {
+   "zh-Hant": "過渡、轉換、遠離紛擾：正從難關慢慢走出來，雖然還有點疲憊，前方會越來越平靜。",
+   "zh-Hans": "过渡、转换、远离纷扰：正从难关慢慢走出来，虽然还有点疲惫，前方会越来越平静。",
+   "en": "Transition, moving on, calmer waters: you're slowly leaving a hard stretch behind; you may still feel tired, but what lies ahead is calmer.",
+   "ja": "移行、前進、穏やかな場所へ：困難から少しずつ抜け出しつつあり、まだ疲れは残っていても、この先は穏やかになっていきます。",
+   "ko": "전환, 이동, 잔잔한 물결: 어려운 시기에서 천천히 벗어나는 중이니, 아직 지쳐 있어도 앞날은 점점 잔잔해집니다."
+  },
+  "rev": {
+   "zh-Hant": "卡住、放不下、未完成：想離開卻一直回頭看，先處理還沒說完的事，才能真正往前走。",
+   "zh-Hans": "卡住、放不下、未完成：想离开却一直回头看，先处理还没说完的事，才能真正往前走。",
+   "en": "Stuck, holding on, unfinished business: you want to move on but keep looking back; settle what's still unsaid, and then you can truly leave.",
+   "ja": "停滞、未練、やり残し：前へ進みたいのに振り返ってしまうなら、言い残したことを片づけてこそ、本当に先へ進めます。",
+   "ko": "정체, 미련, 미완의 일: 떠나고 싶지만 자꾸 뒤를 돌아본다면, 못다 한 일을 먼저 정리해야 비로소 앞으로 나아갈 수 있습니다."
+  }
+ },
+ "swords-07": {
+  "up": {
+   "zh-Hant": "策略、單獨行動、保留：用聰明的方法繞過難題也行，但別省掉該說的話，也留意別人沒說出口的事。",
+   "zh-Hans": "策略、单独行动、保留：用聪明的方法绕过难题也行，但别省掉该说的话，也留意别人没说出口的事。",
+   "en": "Strategy, going solo, holding back: a clever workaround can help, but don't skip what needs saying, and notice what others leave unsaid.",
+   "ja": "戦略、単独行動、隠しごと：うまく立ち回るのも一つの手ですが、伝えるべきことは省かず、相手が言わずにいることにも気を配りましょう。",
+   "ko": "전략, 단독 행동, 숨김: 영리하게 우회하는 것도 방법이지만, 해야 할 말은 빼먹지 말고 상대가 말하지 않는 것에도 주의하세요."
+  },
+  "rev": {
+   "zh-Hant": "坦白、回頭、良心：繞路的方法行不通了，把事情攤開來講，誠實反而是最省力的路。",
+   "zh-Hans": "坦白、回头、良心：绕路的方法行不通了，把事情摊开来讲，诚实反而是最省力的路。",
+   "en": "Coming clean, rethinking, conscience: the workaround isn't working anymore; lay things out openly, because honesty is the easier road now.",
+   "ja": "正直さ、方向転換、良心：抜け道がもう通用しない今は、正直に話してしまうことがいちばん楽な道になります。",
+   "ko": "고백, 방향 전환, 양심: 돌아가는 방법이 더 이상 통하지 않으니, 솔직하게 털어놓는 것이 오히려 가장 편한 길입니다."
+  }
+ },
+ "swords-08": {
+  "up": {
+   "zh-Hant": "受困、自我設限、無力感：覺得被困住，但綁住你的多半是想法，試著換個角度，出口其實就在旁邊。",
+   "zh-Hans": "受困、自我设限、无力感：觉得被困住，但绑住你的多半是想法，试着换个角度，出口其实就在旁边。",
+   "en": "Feeling trapped, self-limits, helplessness: what holds you is mostly a way of thinking; try another angle, and the way out is closer than it looks.",
+   "ja": "閉塞感、思い込み、無力感：身動きがとれないと感じても、縛っているのは多くの場合考え方なので、視点を変えれば出口はすぐそばにあります。",
+   "ko": "갇힌 느낌, 스스로 그은 선, 무력감: 당신을 묶고 있는 건 대부분 생각이니, 관점을 바꾸면 출구는 생각보다 가까이 있습니다."
+  },
+  "rev": {
+   "zh-Hant": "鬆綁、自由、新視角：開始發現那些限制沒那麼牢固，一步一步往外走，重新拿回選擇權。",
+   "zh-Hans": "松绑、自由、新视角：开始发现那些限制没那么牢固，一步一步往外走，重新拿回选择权。",
+   "en": "Release, freedom, new perspective: you're noticing the limits aren't as solid as they seemed; step by step, you're taking your choices back.",
+   "ja": "解放、自由、新しい視点：制約が思ったほど固くないと気づき始めた今、一歩ずつ外へ出て、選ぶ力を取り戻しましょう。",
+   "ko": "해방, 자유, 새로운 시각: 제약이 생각만큼 단단하지 않다는 걸 알게 되었으니, 한 걸음씩 나아가며 선택권을 되찾으세요."
+  }
+ },
+ "swords-09": {
+  "up": {
+   "zh-Hant": "焦慮、輾轉難眠、想太多：深夜的擔心總是被放大，把煩惱寫下來或找人聊聊，天亮後會發現沒那麼可怕。",
+   "zh-Hans": "焦虑、辗转难眠、想太多：深夜的担心总会被放大，把烦恼写下来或找人聊聊，天亮后会发现没那么可怕。",
+   "en": "Worry, restless nights, overthinking: fears grow larger in the dark; write them down or talk to someone, and by morning they'll look smaller.",
+   "ja": "不安、眠れない夜、考えすぎ：夜の心配は実際より大きく感じるもので、書き出すか誰かに話せば、朝には小さく見えるはずです。",
+   "ko": "불안, 뒤척이는 밤, 과한 생각: 밤의 걱정은 실제보다 크게 느껴지니, 적어 보거나 누군가와 이야기하면 아침에는 작아 보일 거예요."
+  },
+  "rev": {
+   "zh-Hant": "緩解、走出陰霾、求助：最焦慮的時刻正在過去，願意說出口、讓人幫忙，心就會慢慢安定下來。",
+   "zh-Hans": "缓解、走出阴霾、求助：最焦虑的时刻正在过去，愿意说出口、让别人帮忙，心就会慢慢安定下来。",
+   "en": "Relief, light returning, reaching out: the most anxious stretch is passing; once you speak up and let others help, your mind settles.",
+   "ja": "緩和、光が差す、助けを求める：いちばん不安な時期は過ぎつつあり、口に出して人の手を借りれば、心は少しずつ落ち着きます。",
+   "ko": "완화, 다시 드는 빛, 도움 요청: 가장 불안했던 시기가 지나가고 있으니, 털어놓고 도움을 받으면 마음이 차츰 안정됩니다."
+  }
+ },
+ "swords-10": {
+  "up": {
+   "zh-Hant": "谷底、結束、轉機：一件事走到了盡頭，最難熬的已經過去，接下來只會一點一點好起來。",
+   "zh-Hans": "谷底、结束、转机：一件事走到了尽头，最难熬的已经过去，接下来只会一点一点好起来。",
+   "en": "Rock bottom, an ending, turning point: something has run its course and the hardest part is behind you; from here, things can only get better.",
+   "ja": "どん底、終わり、転機：ひとつの出来事が終わりを迎え、いちばんつらいところは越えたので、ここからは少しずつ上向くだけです。",
+   "ko": "바닥, 끝맺음, 전환점: 한 가지 일이 끝을 맺었고 가장 힘든 순간은 지났으니, 이제부터는 조금씩 나아질 일만 남았습니다."
+  },
+  "rev": {
+   "zh-Hant": "復原、重新站起、放手：低潮正在退去，別再反覆回想過去的事，把力氣留給重新開始。",
+   "zh-Hans": "复原、重新站起来、放手：低潮正在退去，别再反复回想过去的事，把力气留给重新开始。",
+   "en": "Recovery, rising again, letting go: the low tide is receding; stop replaying what happened, and save your energy for starting fresh.",
+   "ja": "回復、再起、手放すこと：低迷が引いていく今、過去を何度も思い返すのはやめて、その力を新しい始まりに使いましょう。",
+   "ko": "회복, 다시 일어섬, 놓아줌: 침체가 물러가고 있으니, 지난 일을 자꾸 되새기지 말고 그 힘을 새 출발에 쓰세요."
+  }
+ },
+ "swords-11": {
+  "up": {
+   "zh-Hant": "好奇、學習、敏銳：對新想法充滿興趣，多觀察、多發問，但說話前先確認消息是否屬實。",
+   "zh-Hans": "好奇、学习、敏锐：对新想法充满兴趣，多观察、多提问，但说话前先确认消息是否属实。",
+   "en": "Curiosity, learning, sharp eyes: you're hungry for new ideas; watch closely and ask questions, but check the facts before you speak.",
+   "ja": "好奇心、学び、鋭さ：新しい考えに強く惹かれる時なので、よく観察して質問を重ね、話す前には情報が正しいか確かめましょう。",
+   "ko": "호기심, 배움, 예리함: 새로운 생각에 관심이 많은 때이니, 잘 관찰하고 질문하되 말하기 전에 사실인지 먼저 확인하세요."
+  },
+  "rev": {
+   "zh-Hant": "衝動發言、八卦、分心：話說得太快、消息聽得太雜，先停一下，把想法理順再開口。",
+   "zh-Hans": "冲动发言、八卦、分心：话说得太快、消息听得太杂，先停一下，把想法理顺再开口。",
+   "en": "Hasty words, gossip, distraction: you're speaking too fast and taking in too much noise; pause, sort out your thoughts, then speak.",
+   "ja": "軽率な発言、うわさ話、散漫：言葉が先走り、情報も入りすぎているので、いったん止まって考えを整えてから口を開きましょう。",
+   "ko": "성급한 말, 소문, 산만함: 말이 앞서고 들어오는 정보도 너무 많으니, 잠시 멈추고 생각을 정리한 뒤 말하세요."
+  }
+ },
+ "swords-12": {
+  "up": {
+   "zh-Hant": "行動力、直接、衝刺：目標清楚就全力往前衝，效率很高，只是別忘了身邊的人跟不跟得上。",
+   "zh-Hans": "行动力、直接、冲刺：目标清楚就全力往前冲，效率很高，只是别忘了身边的人跟不跟得上。",
+   "en": "Drive, directness, full speed: with a clear goal you charge ahead and get things done, just make sure the people around you can keep up.",
+   "ja": "行動力、率直、突進：目標が見えたら全力で突き進む勢いは強みですが、周りの人がついて来られているかも確かめましょう。",
+   "ko": "추진력, 직설, 돌진: 목표가 분명할 때 전력으로 나아가는 속도는 강점이지만, 주변 사람들이 따라오는지도 살펴보세요."
+  },
+  "rev": {
+   "zh-Hant": "急躁、魯莽、方向不明：衝得太快反而亂了步調，放慢一點、想清楚再行動，話也別說得太重。",
+   "zh-Hans": "急躁、鲁莽、方向不明：冲得太快反而乱了节奏，放慢一点、想清楚再行动，话也别说得太重。",
+   "en": "Impatience, rashness, no clear direction: rushing has thrown off your pace; slow down, think before acting, and soften your words.",
+   "ja": "焦り、無鉄砲、方向の迷い：急ぎすぎて足並みが乱れているので、少しペースを落とし、考えてから動き、言葉もやわらかくしましょう。",
+   "ko": "조급함, 무모함, 흐릿한 방향: 너무 서둘러 흐름이 흐트러졌으니, 속도를 늦추고 생각한 뒤 움직이며 말도 부드럽게 하세요."
+  }
+ },
+ "swords-13": {
+  "up": {
+   "zh-Hant": "清醒、坦率、界線：用理性看穿表象，說話直接但不失分寸，獨立判斷讓你更有底氣。",
+   "zh-Hans": "清醒、坦率、边界：用理性看穿表象，说话直接但不失分寸，独立判断让你更有底气。",
+   "en": "Clear-headed, candid, firm boundaries: you see past appearances, speak plainly yet fairly, and trusting your own judgment gives you steady footing.",
+   "ja": "冷静、率直、境界線：理性で本質を見抜き、はっきり言いながらも節度を守り、自分の判断を信じることで足元が固まります。",
+   "ko": "냉철함, 솔직함, 경계: 이성으로 겉모습 너머를 보고 직설적이되 선을 지키며, 스스로 판단하는 힘이 든든한 기반이 됩니다."
+  },
+  "rev": {
+   "zh-Hant": "冷淡、苛刻、防備：理性過頭會變得太尖銳，放下一點防備，用溫和的方式說真話會更好。",
+   "zh-Hans": "冷淡、苛刻、防备：理性过头会变得太尖锐，放下一点防备，用温和的方式说真话会更好。",
+   "en": "Coldness, harsh judgment, guardedness: too much logic can turn sharp; lower your guard a little and tell the truth in a gentler way.",
+   "ja": "冷たさ、厳しすぎる批判、警戒心：理屈が過ぎると言葉が鋭くなるので、少し構えを解き、本当のことをやさしく伝えましょう。",
+   "ko": "냉담함, 가혹함, 경계심: 이성이 지나치면 날카로워지니, 경계를 조금 내려놓고 진실을 부드럽게 전하세요."
+  }
+ },
+ "swords-14": {
+  "up": {
+   "zh-Hant": "理性、公正、決斷：以清楚的原則做判斷，不被情緒左右，冷靜公道的態度最能讓人信服。",
+   "zh-Hans": "理性、公正、决断：以清楚的原则做判断，不被情绪左右，冷静公道的态度最能让人信服。",
+   "en": "Logic, fairness, decisiveness: judge by clear principles rather than mood; a calm, even-handed stance is what earns people's trust here.",
+   "ja": "理性、公正、決断力：明確な原則にもとづいて判断し、感情に流されない冷静で公平な姿勢が、人の信頼を集めます。",
+   "ko": "이성, 공정, 결단: 분명한 원칙으로 판단하고 감정에 휘둘리지 않는 침착하고 공정한 태도가 사람들의 신뢰를 얻습니다."
+  },
+  "rev": {
+   "zh-Hant": "固執、強勢、不近人情：太堅持自己的道理容易變成壓人，聽聽不同意見，規則之外也要有溫度。",
+   "zh-Hans": "固执、强势、不近人情：太坚持自己的道理容易变得压人，听听不同意见，规则之外也要有温度。",
+   "en": "Rigidity, control, coldness: insisting on being right can start to overpower others; listen to other views, and leave room for warmth beyond the rules.",
+   "ja": "頑固、強引、冷淡：自分の理屈にこだわりすぎると人を押さえつけてしまうので、異なる意見にも耳を傾け、ルールの外にも温かさを持ちましょう。",
+   "ko": "고집, 강압, 냉정함: 자기 논리만 고집하면 남을 누르게 되니, 다른 의견에도 귀 기울이고 규칙 너머의 따뜻함도 잊지 마세요."
+  }
+ },
+ "pentacles-01": {
+  "up": {
+   "zh-Hant": "新資源、實際機會、紮根：手邊出現一份可以落地的資源，好好接住它，打下穩固的基礎。",
+   "zh-Hans": "新资源、实际机会、扎根：手边出现一份可以落地的资源，好好接住它，打下稳固的基础。",
+   "en": "New resources, tangible opportunity, grounding: something real and usable is coming into your hands, so take hold of it and build a steady foundation.",
+   "ja": "新しい資源、確かなチャンス、基盤づくり：手の届くところに現実的な機会が訪れているので、しっかり受け取って足場を固めましょう。",
+   "ko": "새로운 자원, 현실적인 기회, 기반 다지기: 손에 잡히는 기회가 찾아오고 있으니, 놓치지 말고 차근차근 토대를 쌓아 가세요."
+  },
+  "rev": {
+   "zh-Hant": "延遲、猶豫、根基未穩：機會並沒有消失，只是時機或準備還不到位，先把基本功顧好再行動。",
+   "zh-Hans": "延迟、犹豫、根基未稳：机会并没有消失，只是时机或准备还不到位，先把基本功打扎实再行动。",
+   "en": "Delay, hesitation, shaky footing: the opportunity hasn't vanished, but the timing or preparation isn't there yet, so strengthen the basics before you move.",
+   "ja": "遅れ、迷い、準備不足：チャンスが消えたわけではなく、まだ時機や準備が整っていないだけなので、まずは基本を固めてから動きましょう。",
+   "ko": "지연, 망설임, 불안정한 기반: 기회가 사라진 것은 아니고 아직 때와 준비가 무르익지 않았을 뿐이니, 기본기부터 다진 뒤 움직이세요."
+  }
+ },
+ "pentacles-02": {
+  "up": {
+   "zh-Hant": "平衡、彈性、多工：同時處理好幾件事並不輕鬆，但你有應變能力，保持節奏就能穩穩撐住。",
+   "zh-Hans": "平衡、灵活、多任务：同时处理好几件事并不轻松，但你有应变能力，保持节奏就能稳稳撑住。",
+   "en": "Balance, flexibility, multitasking: juggling several things at once isn't easy, but you can adapt, and keeping a steady rhythm will carry you through.",
+   "ja": "バランス、柔軟性、やりくり：いくつものことを同時にこなすのは大変ですが、臨機応変に動けるあなたなら、リズムを保てば乗り切れるでしょう。",
+   "ko": "균형, 유연함, 멀티태스킹: 여러 일을 동시에 챙기기가 쉽지는 않지만, 당신은 상황에 맞게 움직일 수 있으니 리듬만 지키면 잘 버틸 수 있어요."
+  },
+  "rev": {
+   "zh-Hant": "失衡、分身乏術、負荷過重：手上的事太多，開始顧此失彼，先放下一兩件，重新排好輕重緩急。",
+   "zh-Hans": "失衡、分身乏术、负荷过重：手上的事太多，开始顾此失彼，先放下一两件，重新排好轻重缓急。",
+   "en": "Imbalance, overload, scattered focus: too many things are pulling at you and some are slipping, so set one or two aside and reorder your priorities.",
+   "ja": "アンバランス、手一杯、空回り：抱えることが多すぎて何かがおろそかになっているので、一つ二つ手放して優先順位を整え直しましょう。",
+   "ko": "불균형, 과부하, 흐트러진 집중: 맡은 일이 너무 많아 놓치는 것이 생기고 있으니, 한두 가지는 내려놓고 우선순위를 다시 정하세요."
+  }
+ },
+ "pentacles-03": {
+  "up": {
+   "zh-Hant": "合作、專業、被看見：和對的人分工合作，各自發揮所長，你的用心與實力會得到肯定。",
+   "zh-Hans": "合作、专业、被看见：和对的人分工协作，各自发挥所长，你的用心与能力会得到肯定。",
+   "en": "Teamwork, skill, recognition: working with the right people, each doing what they do best, lets your care and craft be seen and valued.",
+   "ja": "協力、専門性、評価：信頼できる仲間と役割を分け合い、それぞれの得意を生かすことで、あなたの丁寧な仕事がきちんと認められるでしょう。",
+   "ko": "협력, 전문성, 인정: 맞는 사람들과 역할을 나누고 각자 잘하는 것을 살리면, 당신의 정성과 실력이 제대로 인정받을 거예요."
+  },
+  "rev": {
+   "zh-Hant": "配合不良、各做各的、敷衍：團隊步調不一或標準不清，先把分工與期待講清楚，品質才會回來。",
+   "zh-Hans": "配合不畅、各自为战、敷衍：团队步调不一或标准不清，先把分工和预期说清楚，质量才会回来。",
+   "en": "Poor coordination, silos, cutting corners: the team is out of step or the standards are fuzzy, so clarify roles and expectations and the quality will return.",
+   "ja": "連携不足、ばらばら、手抜き：足並みがそろわず基準もあいまいなので、役割と期待をはっきり言葉にすれば、仕事の質は戻ってくるでしょう。",
+   "ko": "엇박자, 따로 놀기, 대충 하기: 팀의 발걸음이 맞지 않거나 기준이 흐릿하니, 역할과 기대를 분명히 정하면 일의 질이 다시 올라올 거예요."
+  }
+ },
+ "pentacles-04": {
+  "up": {
+   "zh-Hant": "守成、安全感、把關：你正努力守住已經擁有的東西，求穩很好，但也留意別抓得太緊。",
+   "zh-Hans": "守成、安全感、把关：你正努力守住已经拥有的东西，求稳很好，但也留意别抓得太紧。",
+   "en": "Security, conservation, control: you're working hard to protect what you already have, and stability is good, as long as your grip doesn't get too tight.",
+   "ja": "安定、守り、管理：今あるものを大切に守ろうとしている時期で、堅実さは強みですが、握りしめすぎないよう気をつけましょう。",
+   "ko": "안정, 지키기, 관리: 이미 가진 것을 지키려 애쓰는 때이니, 든든함은 챙기되 너무 꽉 움켜쥐지는 마세요."
+  },
+  "rev": {
+   "zh-Hant": "放不開、匱乏感、鬆綁：越怕失去就抓得越緊，試著分享或放手一點，流動反而帶來新的空間。",
+   "zh-Hans": "放不开、匮乏感、松绑：越怕失去就抓得越紧，试着分享或放手一点，流动反而会带来新的空间。",
+   "en": "Clinging, scarcity, loosening up: the more you fear losing something, the tighter you hold, so try sharing or letting go a little and make room for something new.",
+   "ja": "執着、不安、手放す勇気：失うのを恐れるほど強くしがみついてしまうので、少し分け合ったり手放したりすると、新しい流れが入る余地が生まれます。",
+   "ko": "집착, 결핍감, 내려놓기: 잃을까 두려울수록 더 꽉 쥐게 되니, 조금 나누거나 놓아 보면 새로운 흐름이 들어올 공간이 생겨요."
+  }
+ },
+ "pentacles-05": {
+  "up": {
+   "zh-Hant": "困頓、孤單、求援：你可能覺得手頭吃緊或被冷落，其實支持就在附近，願意開口求助就會有出路。",
+   "zh-Hans": "困顿、孤单、求助：你可能觉得手头紧或被冷落，其实支持就在身边，愿意开口求助就会有出路。",
+   "en": "Hardship, feeling left out, reaching out: money or support may feel thin right now, but help is closer than it seems if you're willing to ask.",
+   "ja": "心細さ、孤立感、助けを求める：お金や心の余裕が足りず取り残されたように感じても、支えは意外と近くにあるので、声を上げれば道は開けます。",
+   "ko": "곤궁함, 소외감, 도움 청하기: 형편이 빠듯하거나 혼자라고 느껴지더라도 도움은 생각보다 가까이 있으니, 먼저 손을 내밀면 길이 보여요."
+  },
+  "rev": {
+   "zh-Hant": "回溫、走出低谷、接受幫助：最難的時候正在過去，放下逞強，接住別人伸出的手，日子會慢慢好轉。",
+   "zh-Hans": "回暖、走出低谷、接受帮助：最难的时候正在过去，放下逞强，接住别人伸出的手，日子会慢慢好转。",
+   "en": "Recovery, turning a corner, accepting help: the hardest stretch is passing, so drop the need to tough it out alone and let others lend a hand.",
+   "ja": "回復、どん底からの脱出、助けを受け入れる：いちばん苦しい時期は過ぎつつあるので、意地を張らずに差し出された手を取れば、少しずつ状況は上向くでしょう。",
+   "ko": "회복, 바닥에서 벗어나기, 도움 받아들이기: 가장 힘든 시기는 지나가고 있으니, 혼자 버티려 하지 말고 내민 손을 잡으면 조금씩 나아질 거예요."
+  }
+ },
+ "pentacles-06": {
+  "up": {
+   "zh-Hant": "給予、接受、互惠：資源正在流動，無論你是給的一方還是收的一方，以公平和善意往來，關係會更穩固。",
+   "zh-Hans": "给予、接受、互惠：资源正在流动，无论你是给的一方还是收的一方，以公平和善意相待，关系会更稳固。",
+   "en": "Generosity, receiving, fair exchange: resources are moving, and whether you're giving or receiving, treating it with fairness and goodwill strengthens the bond.",
+   "ja": "与える、受け取る、持ちつ持たれつ：豊かさが巡っている時期なので、与える側でも受け取る側でも、公平さと思いやりを大切にすれば関係はより強くなります。",
+   "ko": "베풂, 받음, 주고받기: 자원이 흐르고 있는 때이니, 주는 쪽이든 받는 쪽이든 공정함과 선의를 지키면 관계가 더 단단해져요."
+  },
+  "rev": {
+   "zh-Hant": "不對等、附帶條件、人情壓力：付出和回報對不太上，留意善意背後是否有隱形條件，給與收都要量力而為。",
+   "zh-Hans": "不对等、附带条件、人情压力：付出和回报对不太上，留意好意背后是否有隐形条件，给与收都要量力而行。",
+   "en": "Imbalance, strings attached, obligation: giving and getting feel uneven right now, so watch for hidden conditions and give or accept only what feels fair.",
+   "ja": "不均衡、見返り、しがらみ：与えることと受け取ることのバランスが崩れているので、好意の裏にある条件に気づき、無理のない範囲でやりとりしましょう。",
+   "ko": "불균형, 조건부 호의, 부담감: 주고받는 것이 한쪽으로 기울어 있으니, 호의 뒤에 숨은 조건이 없는지 살피고 무리하지 않는 선에서 주고받으세요."
+  }
+ },
+ "pentacles-07": {
+  "up": {
+   "zh-Hant": "耐心、評估、長期耕耘：努力已經種下，成果還在成長，停下來檢視方向，再決定力氣要放在哪裡。",
+   "zh-Hans": "耐心、评估、长期耕耘：努力已经种下，成果还在生长，停下来检视方向，再决定下一步如何发力。",
+   "en": "Patience, review, long-term effort: the seeds are planted and still growing, so pause to check your direction before deciding where to put your energy next.",
+   "ja": "忍耐、見直し、長期的な視点：まいた種はまだ育っている途中なので、いったん立ち止まって方向を確かめ、次にどこへ力を注ぐか考えましょう。",
+   "ko": "인내, 점검, 장기적인 노력: 씨앗은 이미 뿌렸고 아직 자라는 중이니, 잠시 멈춰 방향을 확인한 뒤 다음에 어디에 힘을 쏟을지 정하세요."
+  },
+  "rev": {
+   "zh-Hant": "心急、白忙感、方向模糊：成果來得比預期慢，與其焦慮或硬撐，不如誠實檢討哪些努力真的值得繼續。",
+   "zh-Hans": "心急、白忙感、方向模糊：成果来得比预期慢，与其焦虑或硬扛，不如诚实复盘哪些努力真的值得继续。",
+   "en": "Impatience, wasted effort, unclear direction: results are slower than you hoped, so instead of worrying or forcing it, honestly ask which efforts are worth continuing.",
+   "ja": "焦り、徒労感、迷い：思ったより成果が遅く感じられますが、焦ったり無理を重ねたりするより、どの努力を続ける価値があるか正直に見直しましょう。",
+   "ko": "조급함, 헛수고 같은 느낌, 흐린 방향: 결과가 기대보다 더디게 오지만, 초조해하거나 억지로 버티기보다 어떤 노력이 계속할 가치가 있는지 솔직하게 돌아보세요."
+  }
+ },
+ "pentacles-08": {
+  "up": {
+   "zh-Hant": "專注、磨練、精益求精：一次做好一件事，反覆練習讓手藝更紮實，踏實的累積會慢慢變成你的底氣。",
+   "zh-Hans": "专注、打磨、精益求精：一次做好一件事，反复练习让手艺更扎实，踏实的积累会慢慢变成你的底气。",
+   "en": "Focus, practice, craftsmanship: doing one thing well at a time and repeating it until it's solid builds a skill that becomes your quiet confidence.",
+   "ja": "集中、鍛錬、職人気質：一つひとつを丁寧に仕上げ、繰り返し練習を重ねることで、技術が確かな自信へと育っていくでしょう。",
+   "ko": "집중, 단련, 장인 정신: 한 번에 한 가지를 제대로 해내고 꾸준히 연습하면, 그렇게 쌓인 실력이 든든한 자신감이 되어 줄 거예요."
+  },
+  "rev": {
+   "zh-Hant": "倦怠、重複、完美主義：每天做一樣的事開始失去熱情，或卡在細節出不來，試著找回當初學習的理由。",
+   "zh-Hans": "倦怠、重复、完美主义：每天做同样的事开始失去热情，或卡在细节里出不来，试着找回当初学习的理由。",
+   "en": "Weariness, routine, perfectionism: repeating the same work has dulled your spark, or details have you stuck, so reconnect with why you started learning this.",
+   "ja": "マンネリ、惰性、完璧主義：同じ作業の繰り返しで情熱が薄れたり、細部にこだわりすぎて進めなくなったりしているので、学び始めた理由を思い出してみましょう。",
+   "ko": "권태, 반복, 완벽주의: 같은 일을 되풀이하며 열정이 식었거나 세부에 매달려 나아가지 못하고 있으니, 처음 배우기 시작한 이유를 떠올려 보세요."
+  }
+ },
+ "pentacles-09": {
+  "up": {
+   "zh-Hant": "自足、享受、獨立：靠自己一路經營出的成果已經開花，給自己一點時間好好品味這份從容。",
+   "zh-Hans": "自足、享受、独立：靠自己一路经营出的成果已经开花，给自己一点时间好好品味这份从容。",
+   "en": "Self-reliance, enjoyment, independence: what you've built on your own is blooming, so give yourself time to savor the ease you've earned.",
+   "ja": "自立、充実、ゆとり：自分の力で育ててきたものが実を結びつつあるので、少し立ち止まって、手にした豊かさを味わいましょう。",
+   "ko": "자립, 누림, 여유: 스스로 일궈 온 것이 꽃을 피우고 있으니, 잠시 시간을 내어 그동안 얻은 여유를 충분히 누리세요."
+  },
+  "rev": {
+   "zh-Hant": "撐場面、過度依賴、不安：外表看似穩定，內心卻不太踏實，問問自己真正想要的安全感來自哪裡。",
+   "zh-Hans": "撑场面、过度依赖、不安：表面看似稳定，内心却不太踏实，问问自己真正需要的安全感来自哪里。",
+   "en": "Keeping up appearances, dependence, unease: things may look stable from outside while feeling shaky inside, so ask where your real sense of security comes from.",
+   "ja": "見栄、依存、不安：外から見れば安定していても心の中は落ち着かないので、本当の安心感がどこから来るのか自分に問いかけてみましょう。",
+   "ko": "겉치레, 의존, 불안: 겉으로는 안정돼 보여도 속은 편치 않으니, 진짜 안정감이 어디에서 오는지 스스로에게 물어보세요."
+  }
+ },
+ "pentacles-10": {
+  "up": {
+   "zh-Hant": "家庭、傳承、長久穩定：你在意的不只眼前，而是能延續下去的基礎，與身邊的人一起經營會更有力量。",
+   "zh-Hans": "家庭、传承、长久稳定：你在意的不只是眼前，而是能延续下去的根基，和身边的人一起经营会更有力量。",
+   "en": "Family, legacy, lasting security: you're thinking beyond the present toward something that endures, and building it together with the people around you makes it stronger.",
+   "ja": "家族、継承、長く続く安定：目の前のことだけでなく先へとつながる土台を大切にしている時期で、身近な人と一緒に築くほど力強いものになります。",
+   "ko": "가족, 계승, 오래가는 안정: 눈앞의 일보다 오래 이어질 토대를 생각하는 때이니, 곁에 있는 사람들과 함께 가꿀수록 더 든든해져요."
+  },
+  "rev": {
+   "zh-Hant": "家庭壓力、期待、傳統包袱：家人或長輩的期待讓你喘不過氣，試著好好溝通，找到屬於自己的穩定方式。",
+   "zh-Hans": "家庭压力、期待、传统包袱：家人或长辈的期待让你喘不过气，试着好好沟通，找到属于自己的稳定方式。",
+   "en": "Family pressure, expectations, heavy traditions: what relatives or elders expect may feel weighty, so talk it through openly and find a stability that fits you.",
+   "ja": "家族の重圧、期待、しがらみ：家族や目上の人の期待が重く感じられるときなので、率直に話し合い、自分らしい安定の形を見つけましょう。",
+   "ko": "가족의 압박, 기대, 전통의 무게: 가족이나 어른들의 기대가 버겁게 느껴질 수 있으니, 솔직하게 대화하며 나에게 맞는 안정의 방식을 찾아보세요."
+  }
+ },
+ "pentacles-11": {
+  "up": {
+   "zh-Hant": "學習、好奇、腳踏實地：你對新技能或新領域充滿興趣，按部就班地學，小小的計畫也能一步步成形。",
+   "zh-Hans": "学习、好奇、脚踏实地：你对新技能或新领域充满兴趣，按部就班地学，小小的计划也能一步步成形。",
+   "en": "Learning, curiosity, practical steps: a new skill or field has caught your interest, and studying it step by step lets even a small plan take real shape.",
+   "ja": "学び、好奇心、地道な一歩：新しいスキルや分野に関心が向いている時期なので、順を追ってコツコツ学べば、小さな計画も着実に形になっていきます。",
+   "ko": "배움, 호기심, 착실한 첫걸음: 새로운 기술이나 분야에 관심이 생긴 때이니, 차근차근 배워 가면 작은 계획도 하나씩 현실이 될 거예요."
+  },
+  "rev": {
+   "zh-Hant": "拖延、三分鐘熱度、空想：想學的很多，真正動手的很少，挑一件最想做的，先給它一個固定的時間。",
+   "zh-Hans": "拖延、三分钟热度、空想：想学的很多，真正动手的很少，挑一件最想做的，先给它留出固定的时间。",
+   "en": "Procrastination, fading interest, daydreaming: there's a lot you want to learn but little you've started, so pick the one that matters most and give it a set time.",
+   "ja": "先延ばし、三日坊主、空想：学びたいことは多いのに手が動いていないので、いちばんやりたいことを一つ選び、決まった時間を確保しましょう。",
+   "ko": "미루기, 작심삼일, 공상: 배우고 싶은 건 많은데 실제로 시작한 건 적으니, 가장 하고 싶은 한 가지를 골라 정해진 시간을 내어 주세요."
+  }
+ },
+ "pentacles-12": {
+  "up": {
+   "zh-Hant": "穩健、可靠、持之以恆：不求快但求穩，照計畫一步一步推進，這份耐力會讓事情穩穩到位。",
+   "zh-Hans": "稳健、可靠、持之以恒：不求快但求稳，按计划一步一步推进，这份耐力会让事情稳稳落地。",
+   "en": "Steadiness, reliability, persistence: aim for steady rather than fast, follow your plan step by step, and your endurance will bring things solidly into place.",
+   "ja": "堅実、誠実、粘り強さ：速さより確実さを選び、計画どおり一歩ずつ進めていけば、その粘り強さが物事をしっかり形にしてくれます。",
+   "ko": "꾸준함, 믿음직함, 끈기: 빠르기보다 확실함을 택해 계획대로 한 걸음씩 나아가면, 그 끈기가 일을 단단하게 마무리해 줄 거예요."
+  },
+  "rev": {
+   "zh-Hant": "停滯、固執、過度保守：穩定變成了原地踏步，偶爾換個做法或加快一點節奏，事情才會再動起來。",
+   "zh-Hans": "停滞、固执、过于保守：稳定变成了原地踏步，适时换个做法或加快一点节奏，事情才会重新动起来。",
+   "en": "Stagnation, rigidity, overcaution: steadiness has turned into standing still, so try a different approach or pick up the pace a little to get things moving again.",
+   "ja": "停滞、頑固さ、慎重すぎ：安定がいつの間にか足踏みに変わっているので、やり方を少し変えたりペースを上げたりすると、物事が再び動き出します。",
+   "ko": "정체, 고집, 지나친 신중함: 안정이 어느새 제자리걸음이 되었으니, 방식을 조금 바꾸거나 속도를 살짝 높이면 일이 다시 움직이기 시작할 거예요."
+  }
+ },
+ "pentacles-13": {
+  "up": {
+   "zh-Hant": "照顧、務實、溫暖：用實際行動照顧自己和身邊的人，把生活打理得安穩舒適，就是最好的力量。",
+   "zh-Hans": "照顾、务实、温暖：用实际行动照顾自己和身边的人，把生活打理得安稳舒适，就是最好的力量。",
+   "en": "Nurturing, practicality, warmth: caring for yourself and others through concrete actions and keeping daily life calm and comfortable is your greatest strength now.",
+   "ja": "思いやり、実務力、ぬくもり：自分や身近な人を具体的な行動で支え、暮らしを心地よく整えていくことが、今のあなたのいちばんの力になります。",
+   "ko": "보살핌, 실용성, 따뜻함: 나와 주변 사람을 실제 행동으로 챙기고 일상을 편안하게 가꾸는 것이 지금 당신의 가장 큰 힘이에요."
+  },
+  "rev": {
+   "zh-Hant": "過度付出、忽略自己、操心：總是先顧別人，自己的需要卻被擺到最後，記得也把一份照顧留給自己。",
+   "zh-Hans": "过度付出、忽略自己、操心：总是先顾别人，自己的需要却被放到最后，记得也留一份照顾给自己。",
+   "en": "Overgiving, self-neglect, worry: you keep putting others first while your own needs come last, so remember to save some of that care for yourself.",
+   "ja": "尽くしすぎ、自分を後回し、気苦労：いつも周りを優先して自分の必要を後回しにしているので、そのやさしさを少し自分にも向けてあげましょう。",
+   "ko": "과한 헌신, 나 돌보기 소홀, 걱정: 늘 다른 사람을 먼저 챙기느라 내 필요는 뒤로 밀려 있으니, 그 보살핌을 나에게도 조금 나눠 주세요."
+  }
+ },
+ "pentacles-14": {
+  "up": {
+   "zh-Hant": "成熟、穩定、實力：靠長期累積的經驗與判斷力掌握局面，你可以成為讓人安心的依靠。",
+   "zh-Hans": "成熟、稳定、实力：凭长期积累的经验和判断力掌控局面，你可以成为让人安心的依靠。",
+   "en": "Maturity, stability, proven ability: experience and sound judgment built over years let you steady the situation and become someone others can rely on.",
+   "ja": "成熟、安定、実力：長年積み重ねた経験と判断力で状況をしっかり取りまとめ、周りが安心して頼れる存在になれるでしょう。",
+   "ko": "성숙함, 안정, 실력: 오랜 시간 쌓은 경험과 판단력으로 상황을 이끌 수 있으니, 주변 사람들이 믿고 기댈 수 있는 존재가 될 거예요."
+  },
+  "rev": {
+   "zh-Hant": "控制欲、只看結果、僵化：太在意成果與掌控，容易忽略人的感受，放鬆一點，讓別人也有發揮空間。",
+   "zh-Hans": "控制欲、唯结果论、僵化：太在意成果与掌控，容易忽略人的感受，放松一点，给别人也留些发挥的空间。",
+   "en": "Control, results-only thinking, rigidity: focusing too hard on outcomes and authority can overlook how people feel, so ease up and give others room to contribute.",
+   "ja": "支配欲、結果至上、硬直：成果や主導権にこだわりすぎて人の気持ちを見落としがちなので、少し肩の力を抜き、周りにも活躍の場を任せましょう。",
+   "ko": "통제욕, 결과 지상주의, 경직: 성과와 주도권에 너무 집착하면 사람들의 마음을 놓치기 쉬우니, 힘을 조금 빼고 다른 사람에게도 역할을 맡겨 보세요."
+  }
+ }
+}

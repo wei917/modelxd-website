@@ -96,7 +96,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
 | 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
 | 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xtell-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, one 聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28 |
-| 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xtell/tarot/` | The visitor's own ritual (Oct 1, `TarotRitual.tsx`): 洗牌 (the browser shuffles the 78, Fisher–Yates, crypto, each card lying upright or reversed at even odds; as often as they like), 切牌 (one of three piles to the top), then the whole deck face down in an arc to choose 1 or 3 (past/present/future) from, then each chosen card turned over; only ids travel, after the last turn. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
+| 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xtell/tarot/` | The visitor's own ritual (Oct 1, `TarotRitual.tsx`): 洗牌 (the browser shuffles the 78, Fisher–Yates, crypto, each card lying upright or reversed at even odds; as often as they like), 切牌 (one of three piles to the top), then the whole deck face down in an arc to choose 1, 3 (past/present/future) or 5 (二擇一, 關係; Oct 2) from, then each chosen card turned over; only ids travel, after the last turn. Each laid card shows our own modern reading in the visitor's language (`content/tarot/modern.json`), Waite's text one tap away. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
 | 幸運餅乾 | Fortune cookie | `lib/xtell-cookie.ts`, `lib/xtell-cookie-fortunes.ts`, `content/cookie/fortunes.json` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. **The slips are real fortune-cookie fortunes** (owner, Sep 28): 206 of the 254 in reggi/fortune-cookie (MIT, © 2022 Thomas Reggi, pinned; `scripts/build-cookie-fortunes.mjs` drops duplicates, numbers, jokes, garbled lines and health/windfall/lawsuit predictions, fixes typos keeping `orig`), translated by ModelXD (`content/cookie/translations.json`; 简中 by OpenCC). A quick house model (Qwen 3.8 Flash via `dailyText`) sees the whole numbered list and names the **10 that fit best** plus the meal's taste; **one of the 10 is drawn at random** on the server, and the slip is returned at once; the note under it is written after, streamed by `/api/xtell/cookie/note` (Sep 29), once per cookie (`notePending`, lowered in the same UPDATE that checks it; a second tab is told it is being written and asks again), in the slip's language (`noteLang`), and saved even if the reader leaves (optional: a slip without a note still shows). No digits anywhere. **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own rows by `subject->>meal`; every crack its own row (`crack` id). Never re-cracked on a refresh. All five languages of the slip are saved, so a language switch reads right; the English original shows under it. Added Sep 28 |
 | 九星気学 | Nine Star Ki | `lib/kyusei.ts` (+ `lib/kyusei-words.ts`, lunar-typescript for 立春 and the 節) | Birth date (hour optional). Code: 本命星 by the 立春 year (11 − year mod 9), 月命星 by the 節月 (寅 month starts 八白 / 五黄 / 二黒 by the year's group), this year's and month's 洛書 boards (南 on top), 五黄殺 · 暗剣殺 · 破 · 本命殺 · 本命的殺, and lucky directions by 相生・比和 (五黄 never), with 最大吉 where the 月命星 also fits; 八方塞がり when one's own star is in the centre (no lucky direction, said as a time to hold, not an omen). A 立春 or 節入り-day birth with the hour unknown or close gets the other side's star too. The boards are as of the visitor's local date, saved with the visit (`today`, `asToday`). Icon: generated like 觀音's (GPT Image 2.5 Sunburst image edit against the object icons 八字 紫微 測字 占星, medium, $0.022 a draft), then the nine discs recoloured in code into the real 定位盤 (南 on top: 四緑 九紫 二黒 / 三碧 五黄 七赤 / 八白 一白 六白); in the street's share picture. Japan's menu puts it right after 四柱推命. Added Sep 29 |
 | 宿曜占星術 | Sukuyō | `lib/sukuyo.ts` (+ `lib/sukuyo-words.ts`, lunar-typescript's lunar dates) | Birth date, and optionally a partner's birth date (date only, saved with the visit). Code: the 宿曜経 calendar (旧暦 1月1日 室, 2月 奎, 3月 胃, 4月 畢, 5月 参, 6月 鬼, 7月 張, 8月 角, 9月 氐, 10月 心, 11月 斗, 12月 虚, then one 宿 a day, 牛 unused) gives the 本命宿 and today's 宿; 三九の秘法 names what any 宿 is to one's own (命 業 胎; 栄 衰 安 危 成 壊 友 親 in each nine) and a pair's relation (栄親, 友衰, 安壊, 危成, 命, 業胎). Checked against a published 2026 calendar (rekichu.com, January, across the 12月1日 boundary). The lunar dates are China's calendar, which in rare months starts a day off Japan's 旧暦; a leap-month birth takes its month's number; both said. Board: the two 宿, today's kind of day with a conventional meaning, the pair, and the 三九 table (three rows of nine). Icon: generated the same way (a crescent in a night circle over a sutra scroll), then the ring of stars redrawn in code as exactly 27, evenly spaced. Six drafts for both temples cost $0.133. Added Sep 29 |
@@ -863,6 +863,36 @@ on one side, blue on the other), which only matters for a printed deck: the
 page draws every back the same way up. Mouse-only hover lifts (a
 finger left :hover behind on the neighbour); no motion under
 `prefers-reduced-motion`. Tests: `scripts/test-xtell-tarot.ts`.
+
+### 塔羅: 二擇一, 關係 and modern meanings (Oct 2)
+
+Owner, on the open items from "is our tarot the same way people do it?":
+"do your best judgement". Both done, no API spend.
+
+- **二擇一** (`choice`, 5 cards: now, pathA, pathB, endA, endB) in the
+  traditional shape: 現況 bottom-centre, each road on its side, where it ends
+  above it (`grid-template-areas: "endA . endB" "pathA now pathB"`). Two
+  optional boxes name the options (`optA`/`optB`, 40 characters, kept with
+  the visit, `asOptions()`); the teacher gets them, and is told to compare
+  the two roads and never decide for the visitor.
+- **關係** (`love`, 5 cards: you, them, bond, block, next): the two hearts
+  with the bond between them, what to face and what comes next below. The
+  teacher is told never to say 注定.
+- On a phone the laid five-card spread becomes two columns so the readings
+  stay legible; the ritual's places keep the shape (72 px cards).
+- **Modern meanings**: `content/tarot/modern.json`, 78 cards × upright and
+  reversed × five languages, written for X先知 (not taken from any book):
+  2-4 keywords and one plain sentence, gentle on the hard cards (死神 =
+  結束、轉變、放下; 寶劍十 = 谷底、結束、轉機), no death, illness or money
+  advice, no em dashes, no card names in the text. `tarotModern()` adds them
+  to each laid card; the board shows them under the card in the visitor's
+  language with Waite's 1911 text in the fold; the teacher sees the
+  zh-Hant line as 「本站的現代解讀」 and is told Waite's text stays the
+  source. The source line credits them. Drafted by five parallel helpers
+  (one per suit) in the session and checked by script and by reading.
+
+Tests: `scripts/test-xtell-tarot.ts` (spreads, options, facts, layouts,
+strings, every meaning present and clean).
 
 ### 👍 / 👎 and the share counter (Oct 1)
 

@@ -23,7 +23,7 @@ import { asYixueMode, yixueFacts, yixueInputError } from '@/lib/yijing'
 import { dreamEntries, dreamFacts, dreamProblem, ASK_MAX } from '@/lib/jiemeng'
 import { situationProblem, sunziLines, sunziFacts, ASK_MAX as SUNZI_ASK_MAX } from '@/lib/sunzi'
 import { asQianEdition } from '@/lib/xtell'
-import { asSpread, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
+import { asSpread, asOptions, validPicks, tarotChart, tarotFacts, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieFacts } from '@/lib/xtell-cookie'
 import { chineseLeak, leaksChinese, jaTermStream } from '@/lib/xtell-lang-check'
 import { offersPersonality, personalityFacts } from '@/lib/xtell-personality'
@@ -298,7 +298,7 @@ export async function POST(req: Request) {
         ? ceziFacts(charInfo(body.ch)!, typeof body?.ask === 'string' ? body.ask.slice(0, 300) : '')
       : temple === 'tarot'
         // The cards are laid again from their ids; the client's copy is never used.
-        ? tarotFacts(tarotChart(asSpread(body.spread), body.picks, typeof body?.ask === 'string' ? body.ask.slice(0, TAROT_ASK_MAX) : ''))
+        ? tarotFacts(tarotChart(asSpread(body.spread), body.picks, typeof body?.ask === 'string' ? body.ask.slice(0, TAROT_ASK_MAX) : '', asOptions(body)))
       : isQianTemple(temple)
         // The poem comes from disk by number; the client's copy is never used.
         ? (() => {

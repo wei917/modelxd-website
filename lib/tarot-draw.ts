@@ -12,10 +12,29 @@ export const TAROT_IDS: string[] = [
   ...SUITS.flatMap(s => Array.from({ length: 14 }, (_, i) => `${s}-${String(i + 1).padStart(2, '0')}`)),
 ]
 
-/** The spreads: one card answers the question; three read past, present, future. */
-export const SPREADS = { one: ['answer'], three: ['past', 'present', 'future'] } as const
+/** The spreads: one card answers the question; three read past, present,
+ *  future. Oct 1 (the layouts most asked for in Taiwan and Japan): 二擇一,
+ *  the situation and, for each of two options, where it goes and where it
+ *  ends; 關係, each person's heart, the bond, what to face and what comes
+ *  next. The order is the order the visitor fills the places in. */
+export const SPREADS = {
+  one: ['answer'],
+  three: ['past', 'present', 'future'],
+  choice: ['now', 'pathA', 'pathB', 'endA', 'endB'],
+  love: ['you', 'them', 'bond', 'block', 'next'],
+} as const
 export type TarotSpread = keyof typeof SPREADS
-export const asSpread = (v: unknown): TarotSpread => v === 'three' ? 'three' : 'one'
+export const SPREAD_KEYS = Object.keys(SPREADS) as TarotSpread[]
+export const asSpread = (v: unknown): TarotSpread =>
+  typeof v === 'string' && Object.prototype.hasOwnProperty.call(SPREADS, v) ? v as TarotSpread : 'one'
+
+/** 二擇一's two options, as the visitor named them (optional). */
+export const OPTION_MAX = 40
+export type TarotOptions = { a: string; b: string }
+export const asOptions = (body: any): TarotOptions => {
+  const s = (v: unknown) => typeof v === 'string' ? v.trim().slice(0, OPTION_MAX) : ''
+  return { a: s(body?.optA), b: s(body?.optB) }
+}
 
 export type TarotPick = { id: string; reversed: boolean }
 

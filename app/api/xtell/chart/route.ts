@@ -16,7 +16,7 @@ export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES, asQianEdition } from '@/lib/xtell'
-import { asSpread, validPicks, tarotChart, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
+import { asSpread, asOptions, validPicks, tarotChart, ASK_MAX as TAROT_ASK_MAX } from '@/lib/tarot'
 import { cookieProblem, mealOf, mealKey, shichenOf, cookieFacts, pickBrief, parsePick, FREE_PER_MEAL, EXTRA_CENTS, ASK_MAX as COOKIE_ASK_MAX } from '@/lib/xtell-cookie'
 import { cookieFortunes, fortuneOf, fortuneTexts } from '@/lib/xtell-cookie-fortunes'
 import { dailyText } from '@/lib/xtell-daily-model'
@@ -46,7 +46,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner', 'mbti', 'mbti2'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner', 'mbti', 'mbti2', 'optA', 'optB'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -265,8 +265,9 @@ export async function POST(req: Request) {
     const spread = asSpread(body?.spread)
     if (!validPicks(spread, body?.picks)) return refuse('cards_invalid', 'bad draw')
     const ask = typeof body?.ask === 'string' ? body.ask.trim().slice(0, TAROT_ASK_MAX) : ''
-    const chart = tarotChart(spread, body.picks, ask)
-    const readingId = await keep(() => save(sb, uid, temple, { ...body, spread, ask }, chart, {}, ask || undefined))
+    const options = asOptions(body)
+    const chart = tarotChart(spread, body.picks, ask, options)
+    const readingId = await keep(() => save(sb, uid, temple, { ...body, spread, ask, ...(spread === 'choice' ? { optA: options.a, optB: options.b } : { optA: undefined, optB: undefined }) }, chart, {}, ask || undefined))
     return Response.json({ temple, chart, engine: ENGINES[temple], readingId })
   }
 

@@ -26,9 +26,12 @@ const FAN_STEP = 28, FAN_HALF = 29, FAN_PAD = 44
 
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-export function TarotRitual({ count, positions, ask, disabled, rand, onDone }: {
+export function TarotRitual({ spread, count, keys, positions, ask, disabled, rand, onDone }: {
+  /** The spread: five-card spreads lay their places in their own shape. */
+  spread: string
   count: number
-  /** The spread's places, in order (過去, 現在, 未來…), already in words. */
+  /** The spread's places, in order, as keys (grid areas) and in words. */
+  keys: string[]
   positions: string[]
   ask: string
   disabled: boolean
@@ -106,11 +109,11 @@ export function TarotRitual({ count, positions, ask, disabled, rand, onDone }: {
     : t('xtell.tarot.drawing')
 
   const slots = (stage === 'fan' || stage === 'reveal' || stage === 'done') && (
-    <div className={'xtell-tr-slots' + (count > 1 ? ' is-three' : '')}>
+    <div className={'xtell-tr-slots' + (count === 3 ? ' is-three' : count > 3 ? ` is-five is-${spread}` : '')}>
       {positions.slice(0, count).map((label, k) => {
         const i = picked[k], card = i !== undefined && deck ? deck[i] : null
         return (
-          <div key={k} className="xtell-tr-slot">
+          <div key={k} className={'xtell-tr-slot' + (i === undefined && k === picked.length && stage === 'fan' ? ' is-next' : '')} style={count > 3 ? { gridArea: keys[k] } : undefined}>
             <span className="xtell-tr-slot-name">{label}</span>
             {!card ? <span className="xtell-tr-slot-empty" aria-hidden="true" />
               : stage === 'fan' ? <span className="xtell-tr-card is-placed" aria-hidden="true"><span className="xtell-tr-face xtell-tr-back" /></span>
