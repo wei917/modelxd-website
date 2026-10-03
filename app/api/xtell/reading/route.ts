@@ -27,6 +27,7 @@ import { asSpread, asOptions, validPicks, tarotChart, tarotFacts, ASK_MAX as TAR
 import { cookieFacts } from '@/lib/xtell-cookie'
 import { chineseLeak, leaksChinese, jaTermStream } from '@/lib/xtell-lang-check'
 import { offersPersonality, personalityFacts } from '@/lib/xtell-personality'
+import { threadFor, fitBudget, MESSAGE_CHARS, type Message } from '@/lib/xtell-thread'
 import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 import { sukuyoChart, sukuyoFacts, asPartnerDate } from '@/lib/sukuyo'
 
@@ -201,14 +202,27 @@ export async function POST(req: Request) {
     ? houseDefault
     : (typeof body.thinking === 'string' && levels.includes(body.thinking) ? body.thinking : null)
 
-  // Bound history before deriving facts so an 易學堂 follow-up can retain
-  // the last user-named hexagram's canonical text.
-  const history: Array<{ role: 'user' | 'assistant'; content: string }> = Array.isArray(body?.history)
+  // What this master rereads (owner, Oct 2: "continue and read all"): its
+  // whole thread in the saved conversation, built here from the visitor's
+  // own row (lib/xtell-thread.ts), up to HISTORY_TOKENS, the newest part
+  // when a very long one does not fit. It used to be the last 20 messages
+  // the page sent, and a master forgot how a long conversation began. Only
+  // a conversation that is not saved falls back to the page's copy. The
+  // chart is not part of this: it rides with the master's instructions.
+  // Bounded before the facts, so an 易學堂 follow-up still finds the last
+  // hexagram the visitor named.
+  const savedId = typeof body?.readingId === 'string' && /^[0-9a-f-]{36}$/i.test(body.readingId) ? body.readingId : null
+  let thread: Message[] | null = null
+  if (savedId) {
+    const { data: saved } = await sb.from('xtell_readings').select('turns').eq('id', savedId).eq('user_id', user.id).is('deleted_at', null).maybeSingle()
+    if (saved) thread = threadFor((saved as any).turns, String((model as any).id), typeof body?.qid === 'string' ? body.qid : null)
+  }
+  const pageCopy: Message[] = Array.isArray(body?.history)
     ? body.history
         .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
-        .slice(-20)
-        .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 8000) }))
+        .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, MESSAGE_CHARS) }))
     : []
+  const history: Message[] = fitBudget(thread ?? pageCopy).kept
 
   // The day's reading the follow-up is about: the visit row (the visitor's
   // own, under their session) names it, and it is read with the service role
@@ -426,7 +440,8 @@ export async function POST(req: Request) {
                   else console.warn(`${LOG} debit failed:`, err)
                 })
               }
-              emit(sse('done', { cost: r.cost ?? 0, searches: r.searchCount ?? 0 }))
+              // inputTokens: what this master actually read, for the 記憶 bar.
+              emit(sse('done', { cost: r.cost ?? 0, searches: r.searchCount ?? 0, inputTokens: r.inputTokens ?? null }))
               end()
             },
             onError: (msg) => {

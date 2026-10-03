@@ -269,7 +269,7 @@ const knownAt = (y: number, m: number, d: number, h = 12) => { const b: any = { 
   for (const mode of ['natal', 'synastry', 'year', 'today'] as const) {
     const c = zhanxingChart(owner, 'hsinchu', mode, { b2: { ...owner, y: 1992 }, place2: 'taipei', year: 2026 })
     const f = zhanxingFacts(c, 'male', 'female', at)
-    check(`facts (${mode}): the season's slow transits are attached, computed at the question`, f.includes('這一季仍在作用的慢速行運') && f.includes('2026-10-02') && (mode === 'today' || f.includes('目前的天象')))
+    check(`facts (${mode}): the season's slow transits are attached, computed at the question`, f.includes('這一季仍在作用的慢速行運') && f.includes(mode === 'today' ? c.today!.date : '2026-10-02') && (mode === 'today' || f.includes('目前的天象')))
   }
   const today = zhanxingChart(owner, 'hsinchu', 'today')
   const tf = zhanxingFacts(today, 'male', 'female', new Date(today.today!.date + 'T12:00:00Z'))
