@@ -31,7 +31,7 @@ import type { PickerModel } from '../components/ModelPickerDialog'
 import TeacherPicker from '../components/xtell/TeacherPicker'
 import MemoryDialog from '../components/xtell/MemoryDialog'
 import ContextMeter from '../components/ContextMeter'
-import { windowOf, summaryPointOf, formatTokens } from '../../lib/conversation-memory'
+import { maxInputOf, summaryPointOf, formatTokens } from '../../lib/conversation-memory'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
@@ -1433,7 +1433,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     return (
                       <div key={m.id} className="xtell-seat" data-open={optsOpen || undefined}
                         style={optsOpen ? { borderColor: color + '80', boxShadow: `inset 3px 0 0 ${color}, 0 1px 2px rgba(60, 40, 20, .05)` } : undefined}>
-                        <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>
+                        {/* 記憶 (owner, Oct 3: "an icon to fill the circle"): once the
+                            master has answered here, its logo sits in a ring
+                            that fills with its memory, up to the most XTell
+                            lets it read (its limit, or its price jump); the
+                            numbers are in the dialog it opens. */}
+                        {typeof memUse[m.id] === 'number'
+                          ? <ContextMeter className="xtell-seat-logo xtell-seat-ring" used={memUse[m.id]} max={maxInputOf(m)} point={summaryPointOf(m)} size={30}
+                              ariaLabel={t('xtell.mem.title').replace('{name}', m.display_name)} onClick={() => setMemoFor(m)}>
+                              <ProviderLogo provider={m.provider} size={15} />
+                            </ContextMeter>
+                          : <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>}
                         <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} disabled={answering} onClick={() => setPicker({ replace: m.id })}>
                           <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
                         </button>
@@ -1448,12 +1458,6 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                           </button>
                         )}
                         </span>
-                        {/* 記憶: once the master has answered in this conversation. */}
-                        {typeof memUse[m.id] === 'number' && (
-                          <ContextMeter className="xtell-seat-mem" used={memUse[m.id]} max={windowOf(m)} point={summaryPointOf(m)} label={t('xtell.mem.label')}
-                            ariaLabel={`${t('xtell.mem.title').replace('{name}', m.display_name)}: ${formatTokens(memUse[m.id])} / ${formatTokens(windowOf(m))}`}
-                            onClick={() => setMemoFor(m)} />
-                        )}
                       </div>
                     )
                   })}
@@ -1529,7 +1533,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                                 <dl className="xtell-seat-stats">
                                   {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsdFor(usd, lang)}</dd></div>}
                                   {secs && <div title={t('xtell.seat.ttft.tip')}><dt>{t('xtell.seat.ttftLabel')}</dt><dd>~{secs} {t('xtell.seat.sec')}</dd></div>}
-                                  <div title={t('xtell.mem.tip')}><dt>{t('xtell.mem.label')}</dt><dd>{memUse[m.id] == null ? '~' : ''}{formatTokens(read)} / {formatTokens(windowOf(m))}</dd></div>
+                                  <div title={t('xtell.mem.tip')}><dt>{t('xtell.mem.label')}</dt><dd>{memUse[m.id] == null ? '~' : ''}{formatTokens(read)} / {formatTokens(maxInputOf(m))}</dd></div>
                                 </dl>
                               )
                             })()}

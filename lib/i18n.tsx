@@ -289,7 +289,7 @@ export const STRINGS: Record<string, Entry> = {
   "xtell.vote.down": {"en": "Not helpful", "zh-Hant": "沒幫助", "zh-Hans": "没帮助", "ja": "役に立たなかった", "ko": "도움이 안 됨"},
   "xtell.mem.label": {"en": "Memory", "zh-Hant": "記憶", "zh-Hans": "记忆", "ja": "記憶", "ko": "기억"},
   "xtell.mem.title": {"en": "{name}'s memory", "zh-Hant": "{name}的記憶", "zh-Hans": "{name}的记忆", "ja": "{name}の記憶", "ko": "{name}의 기억"},
-  "xtell.mem.used": {"en": "Last answer: read about {used} of {size} tokens ({pct}%).", "zh-Hant": "上次回答讀了約 {used} / {size} tokens（{pct}%）。", "zh-Hans": "上次回答读了约 {used} / {size} tokens（{pct}%）。", "ja": "前回の回答で約 {used} / {size} トークン（{pct}%）を読みました。", "ko": "지난 답변에서 약 {used} / {size} 토큰({pct}%)을 읽었습니다."},
+  "xtell.mem.used": {"en": "Read for the last answer", "zh-Hant": "上次回答讀了", "zh-Hans": "上次回答读了", "ja": "前回の回答で読んだ量", "ko": "지난 답변에서 읽은 양"},
   "xtell.mem.tip": {"en": "What this master read for its last answer, against its limit; before its first answer, what this question should read.", "zh-Hant": "這位大師上次回答讀了多少，和它的上限；第一次回答前，是這一題預計會讀的量。", "zh-Hans": "这位大师上次回答读了多少，和它的上限；第一次回答前，是这一题预计会读的量。", "ja": "この先生が前回の回答で読んだ量と上限。最初の回答の前は、この質問で読む見込みの量です。", "ko": "이 마스터가 지난 답변에서 읽은 양과 한도. 첫 답변 전에는 이 질문에서 읽을 예상량입니다."},
   "xtell.mem.summary": {"en": "Conversation summary", "zh-Hant": "對話摘要", "zh-Hans": "对话摘要", "ja": "会話の要約", "ko": "대화 요약"},
   "xtell.mem.none": {"en": "No summary yet.", "zh-Hant": "還沒有摘要。", "zh-Hans": "还没有摘要。", "ja": "まだ要約はありません。", "ko": "아직 요약이 없습니다."},

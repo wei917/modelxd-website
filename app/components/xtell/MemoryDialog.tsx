@@ -12,7 +12,7 @@ import { useT, useLang } from '../../../lib/i18n'
 import type { PickerModel } from '../ModelPickerDialog'
 import ProviderLogo from '../ProviderLogo'
 import ContextMeter from '../ContextMeter'
-import { windowOf, summaryPointOf } from '../../../lib/conversation-memory'
+import { maxInputOf, summaryPointOf, formatTokens } from '../../../lib/conversation-memory'
 
 export default function MemoryDialog({ m, used, readingId, price, canNow, busy, thinking, onClose }: {
   /** The master, with its catalog limit and prices. */
@@ -75,7 +75,8 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
       setWorking(false)
     }
   }
-  const size = windowOf(m), point = summaryPointOf(m)
+  // Full = the most XTell lets this master read: its limit, or its price jump.
+  const size = maxInputOf(m), point = summaryPointOf(m)
   const pct = Math.min(100, Math.round(used / size * 100))
   const num = (n: number) => n.toLocaleString(lang === 'zh-Hant' ? 'zh-TW' : lang === 'zh-Hans' ? 'zh-CN' : lang)
   const when = (iso: string) => { try { return new Date(iso).toLocaleString(lang === 'zh-Hant' ? 'zh-TW' : lang === 'zh-Hans' ? 'zh-CN' : lang, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
@@ -87,8 +88,11 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
         </header>
         <div className="xtell-tp-body xtell-mem-body">
           <div className="xtell-mem-meter">
-            <ContextMeter used={used} max={size} point={point} />
-            <p>{t('xtell.mem.used').replace('{used}', num(used)).replace('{size}', num(size)).replace('{pct}', String(pct))}</p>
+            <ContextMeter used={used} max={size} point={point} size={56} stroke={5} ariaLabel={`${pct}%`}>{pct}%</ContextMeter>
+            <div>
+              <p>{t('xtell.mem.used')}</p>
+              <p className="xtell-mem-nums" title={`${num(used)} / ${num(size)} tokens`}>{formatTokens(used)} / {formatTokens(size)} tokens</p>
+            </div>
           </div>
           <div className="xtell-mem-head">
             <h3>{t('xtell.mem.summary')}</h3>

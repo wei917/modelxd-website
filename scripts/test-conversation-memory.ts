@@ -89,7 +89,7 @@ async function summarizeChecks() {
   const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'conversation-memory.ts'), 'utf8')
   check('the shared module is pure: no imports, so the page and every route can use it', !/^import /m.test(src))
   const meter = fs.readFileSync(path.join(__dirname, '..', 'app', 'components', 'ContextMeter.tsx'), 'utf8')
-  check('the meter shows current / max and marks the summary point', /formatTokens\(used\)\} \/ \{formatTokens\(max\)\}/.test(meter) && /point \/ max \* 100/.test(meter))
+  check('the meter is a ring that fills with what was read against the limit, red past the summary point, with no numbers of its own', /strokeDasharray=\{`\$\{Math\.max\(frac \* c, stroke\)\} \$\{c\}`\}/.test(meter) && /used >= point/.test(meter) && !/formatTokens/.test(meter))
 }
 
 summarizeChecks().then(() => { console.log(fails ? `\n${fails} FAILED` : '\nall ok'); process.exit(fails ? 1 : 0) })

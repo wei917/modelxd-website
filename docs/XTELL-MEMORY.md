@@ -117,15 +117,18 @@ summarization).
 
 ## On screen
 
-- Each seat card: 「記憶 27k / 1M」 (`ContextMeter`), the master's last
-  answer's `input_tokens` against its own limit, with a tick at its summary
-  point and red past it. From the answer as it finishes, or from the stored
-  answers when a conversation reopens. Hidden until the master has answered.
+- Each seat card: the master's logo sits in a ring that fills with its
+  last answer's `input_tokens` (`ContextMeter`; owner, Oct 3: the bar "looks
+  so bad", "an icon to fill the circle"), red past its summary point. Full =
+  the most XTell lets it read (`maxInputOf`: its limit, or its price jump,
+  so GPT-6 fills toward 272k). No numbers on the seat; tapping it opens the
+  dialog. From the answer as it finishes, or from the stored answers when a
+  conversation reopens. A plain logo until the master has answered.
 - Each master's settings card shows it again beside the price per question
   (owner, Oct 3: "current vs max"); before the first answer, the expected
   size of the question, marked ~.
-- Pressing it opens 「{name}的記憶」: the numbers (the summary point only as the
-  meter's tick: owner, Oct 3), and
+- Pressing it opens 「{name}的記憶」: a large ring with the percentage and
+  「上次回答讀了 250k / 272k tokens」 (no summary-point text: owner, Oct 3), and
   「對話摘要」, the newest summary with when it was written (no explanation
   paragraph: owner, Oct 3, "you don't need to explain").
 - 「立即摘要」 there (owner, Oct 3: "a button to force summarize now"), with
