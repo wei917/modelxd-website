@@ -62,6 +62,24 @@ export interface ModelPricing {
   per_1m_characters?: number
   /** $ per web-search call. See the note above. */
   per_search?:       number
+  /**
+   * The long-request tier. Above `threshold_input_tokens` of INPUT, some
+   * providers reprice the WHOLE request, not just the excess, and cached
+   * input with it: xAI doubles input, cached and output past 200,000 (they
+   * publish it as `long_context_threshold` on GET /v1/language-models);
+   * OpenAI charges 2x input and 1.5x output past 272,000. Anthropic, Google
+   * Flash and Qwen are flat and declare nothing here.
+   *
+   * `tokens` is a full replacement map, not multipliers — that is how both
+   * providers publish it, and an absolute rate cannot silently drift when a
+   * base price changes. Any key it omits falls back to the base rate, so a
+   * row may carry the threshold alone: that is useful on its own, because
+   * XTell sizes a request to stay under the jump (lib/conversation-memory.ts).
+   */
+  long_context?: {
+    threshold_input_tokens: number
+    tokens?: ModelPricing['tokens']
+  }
 }
 
 // ── Capabilities: input + output config ──────────────────────────────────────

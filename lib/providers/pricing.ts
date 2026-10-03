@@ -71,7 +71,16 @@ export function calcTextCost(
     cacheWriteTokens?: number
   } = {},
 ): number {
-  const t = pricing(model).tokens ?? {}
+  const p = pricing(model)
+  // The long-request tier. Some providers reprice the WHOLE request once the
+  // INPUT passes a threshold, cached input included — not just the excess.
+  // Swapping the rate map here means every term below picks up the tier with
+  // no further branching, and a row that declares only the threshold (no
+  // rates) keeps billing at base, which is what the catalog holds today for
+  // OpenAI while their multiplier is re-verified.
+  const tier = p.long_context
+  const overTier = !!tier && inputTokens > tier.threshold_input_tokens
+  const t = (overTier && tier?.tokens ? { ...(p.tokens ?? {}), ...tier.tokens } : p.tokens) ?? {}
   const lvl = details.thinkingLevel ?? null
   const textInputRate    = resolveTokenRate(t.text_input,    lvl)
   const cachedInputRate  = resolveTokenRate(t.cached_input,  lvl) || textInputRate
@@ -308,10 +317,17 @@ export function estimateCost(
   }
 
   if (mode === 'text') {
-    const tin  = resolveTokenRate(t.text_input)
-    const tout = resolveTokenRate(t.text_output)
-    if (tin === 0 && tout === 0) return 0
     const inputTokens  = Math.max(1, Math.ceil(promptChars / 4))
+    // Quote the long-request tier too, or a request over the threshold is
+    // under-quoted by whatever the tier multiplies — the gap would land in
+    // the settle, which is the failure the effort-aware output estimate
+    // below was already written to avoid.
+    const tier = p.long_context
+    const tt = (tier && inputTokens > tier.threshold_input_tokens && tier.tokens)
+      ? { ...t, ...tier.tokens } : t
+    const tin  = resolveTokenRate(tt.text_input)
+    const tout = resolveTokenRate(tt.text_output)
+    if (tin === 0 && tout === 0) return 0
     // Thinking tokens are billed as output, so the estimate has to follow
     // the effort the user picked — a flat 500 quoted 3c for a max-effort
     // Fable answer that really costs ~20c, and the gap landed in the settle
