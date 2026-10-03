@@ -18,7 +18,7 @@ import { useLang } from '../../../lib/i18n'
 import { useSite } from '../../../lib/useSite'
 import ModeIcon from '../ModeIcon'
 import { STUDIO_TYPES, requestStudioType, useStudioType } from './studio-type'
-import { userName, userPhoto } from '../../../lib/user-face'
+import { useFace } from '../../../lib/use-face'
 import './xcreate-shell.css'
 
 /** The mark: the ModelXD logo beside the name in the reader's language
@@ -108,10 +108,12 @@ export default function XCreateNav({ user }: { user: User | null }) {
   const { t } = useLang()
   const { show } = useAuthModal()
   useTabTitle()
-  const initial = (userName(user) || 'X').slice(0, 1).toUpperCase()
-  // The Google photo, as www's nav shows it; the initial only without one
-  // (owner, Sep 26: a letter read as "not updated after sign in").
-  const photo = userPhoto(user)
+  // The saved picture and website name (Oct 2), as www's nav shows them; the
+  // initial only without a picture (owner, Sep 26: a letter read as "not
+  // updated after sign in").
+  const face = useFace(user)
+  const initial = (face.name || 'X').slice(0, 1).toUpperCase()
+  const photo = face.photo
   return (
     <header className="xcs-top">
       <a href="#xcreate-main" className="xcs-skip" onClick={event => {

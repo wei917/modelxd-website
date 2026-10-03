@@ -18,6 +18,7 @@ import { XTellFooter } from '../components/xtell/XTellNav'
 import { XCreateAccountHead, XCreateAccountWelcome, XCreateLibrary } from '../components/xcreate/XCreateAccount'
 import { yenApprox } from '../../lib/plans'
 import { userName, userPhoto } from '../../lib/user-face'
+import FaceEditor from '../components/FaceEditor'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -172,6 +173,9 @@ export default function ProfilePage() {
   const ringRef   = useRef<HTMLDivElement>(null)
   const [user,        setUser]        = useState<any>(null)
   const [profile,     setProfile]     = useState<Profile | null>(null)
+  // The picture and website name editor (Oct 2): FaceEditor, saved through
+  // /api/profile/face, the only writer of display_name and avatar_url.
+  const [editingFace, setEditingFace] = useState(false)
   // /profile#language is where the sidebar globe lands (Sep 14): bring the
   // picker into view and focus it once the profile has rendered (the page
   // shows Loading until then), and again on a hash change when the globe is
@@ -301,8 +305,10 @@ export default function ProfilePage() {
   // We use .maybeSingle() here instead of .single() because users who
   // signed up before the handle_new_user trigger was installed have an
   // auth.users row but no profiles row — .single() returns HTTP 406 in
-  // that case and blanks the page. If the row is missing we upsert a
-  // default from the auth metadata and retry.
+  // that case and blanks the page. If the row is missing the page shows a
+  // default from the auth metadata; the row itself comes from
+  // /api/credits/ensure-daily or a save in the editor, because the browser
+  // cannot write profiles since migration 125 (Oct 2).
   useEffect(() => {
     const client = sb()
     client.auth.getUser().then(async ({ data }) => {
@@ -316,15 +322,7 @@ export default function ProfilePage() {
 
       let { data: p } = await client.from('profiles').select('*').eq('id', u.id).maybeSingle()
       if (!p) {
-        // Self-heal: create the missing profile row from auth metadata.
-        const fallback = {
-          id: u.id,
-          display_name: userName(u),
-          avatar_url:   userPhoto(u),
-          bio:          null,
-        }
-        await client.from('profiles').upsert(fallback)
-        p = { ...fallback, display_name: fallback.display_name ?? null } as any
+        p = { id: u.id, display_name: userName(u), avatar_url: userPhoto(u), bio: null } as any
       }
       setProfile(p as Profile)
 
@@ -823,7 +821,7 @@ export default function ProfilePage() {
           }}>
             {/* Profile block */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 28, flex: '0 1 auto', minWidth: 0, maxWidth: 380 }}>
-              {/* Avatar (read-only) */}
+              {/* Avatar: the saved picture; Edit below changes it (Oct 2). */}
               <div style={{
                 width: 96, height: 96, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
                 background: profile.avatar_url ? 'transparent' : 'var(--surface2)',
@@ -843,17 +841,38 @@ export default function ProfilePage() {
                   {profile.display_name ?? 'Anonymous'}
                 </h1>
                 <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
-                {/* Sign Out belongs with the identity block (CC, July 19). */}
-                <button
-                  onClick={async () => { await sb().auth.signOut(); window.location.href = '/' }}
-                  style={{
-                    marginTop: 10, padding: '6px 14px', borderRadius: 7,
-                    border: '1px solid var(--border2)', background: 'transparent',
-                    color: 'var(--muted2)', fontSize: 12, cursor: 'pointer',
-                  }}
-                >
-                  {t('auth.signout')}
-                </button>
+                {/* Edit the picture and website name (Oct 2), then Sign Out,
+                    which belongs with the identity block (CC, July 19). */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  <button
+                    onClick={() => setEditingFace(true)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 7,
+                      border: '1px solid var(--white)', background: 'transparent',
+                      color: 'var(--white)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    {t('face.edit')}
+                  </button>
+                  <button
+                    onClick={async () => { await sb().auth.signOut(); window.location.href = '/' }}
+                    style={{
+                      padding: '6px 14px', borderRadius: 7,
+                      border: '1px solid var(--border2)', background: 'transparent',
+                      color: 'var(--muted2)', fontSize: 12, cursor: 'pointer',
+                    }}
+                  >
+                    {t('auth.signout')}
+                  </button>
+                </div>
+                {editingFace && user && (
+                  <FaceEditor
+                    user={user}
+                    current={{ name: profile.display_name, photo: profile.avatar_url }}
+                    onClose={() => setEditingFace(false)}
+                    onSaved={face => setProfile(prev => prev && { ...prev, display_name: face.name, avatar_url: face.photo })}
+                  />
+                )}
               </div>
             </div>
 

@@ -9,7 +9,7 @@ import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, displayTemples, type TempleKey } from './TempleArtwork'
 import ContactEmail from '../ContactEmail'
 import BugReportLink from '../BugReport'
-import { userName, userPhoto } from '../../../lib/user-face'
+import { useFace } from '../../../lib/use-face'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -30,6 +30,7 @@ export function XTellMark() {
 export default function XTellNav({ user }: { user: User | null }) {
   const { lang, t } = useLang()
   const { show } = useAuthModal()
+  const face = useFace(user)
   const pathname = usePathname()
   const [activeTemple, setActiveTemple] = useState<TempleKey | null>(null)
   useEffect(() => {
@@ -126,13 +127,14 @@ export default function XTellNav({ user }: { user: User | null }) {
             title={t('xtell.site.templesMore')} onClick={() => scrollRow(1)}>›</button>}
         </div>
         <div className="xtell-nav-actions">
-          {/* The Google photo, as XCreate's and www's navs show it; the
+          {/* The saved picture (Oct 2: chosen on the account page, or the
+              first sign-in's), as XCreate's and www's navs show it; the
               initial only without one (owner, Sep 26). no-referrer: Google's
               avatar host can refuse hotlinks that carry a referrer. */}
           {user ? <Link href="/profile" className="xtell-account-link" aria-label={t('xtell.site.account')}>
-            {userPhoto(user)
-              ? <img src={userPhoto(user)!} alt="" referrerPolicy="no-referrer" />
-              : <span aria-hidden="true">{(userName(user) || 'X').slice(0, 1).toUpperCase()}</span>}
+            {face.photo
+              ? <img src={face.photo} alt="" referrerPolicy="no-referrer" />
+              : <span aria-hidden="true">{(face.name || 'X').slice(0, 1).toUpperCase()}</span>}
           </Link> : <button className="xtell-button" onClick={() => show()}>{t('auth.signin')}</button>}
         </div>
       </div>

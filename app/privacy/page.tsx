@@ -5,7 +5,8 @@ import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // data, the referral card check, bug reports, the language and referral
 // cookies, and what deleting really erases (XTell rows at once; a removed
 // XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in,
-// in the summaries too, and the situation written at 孫子兵法. Oct 2: X sign-in.
+// in the summaries too, and the situation written at 孫子兵法. Oct 2: X sign-in,
+// and the website name and picture a person chooses (checked by OpenAI).
 
 export const metadata = { title: 'Privacy Policy — ModelXD' }
 
@@ -40,6 +41,12 @@ export default function PrivacyPage() {
         receive your X name, username, profile picture and an account ID, and your
         email address only if X shares it with your permission. We also store your language and
         country (from your browser and network region) to localize the product.
+        <br /><strong>Website name and picture.</strong> You can choose the name and
+        picture ModelXD shows for you, on your account page. Until you do, it shows the
+        name and picture from your first sign-in. A picture you choose is stored as a small
+        square image at a public link, because it will be shown to other people where you
+        publish or play. Before a name or picture is saved, it is sent to OpenAI's
+        moderation service to check that it is safe to show.
         <br /><strong>Content you submit.</strong> Prompts, messages, uploaded files
         (images, videos, documents), the AI outputs generated for you, and your votes.
         <br /><strong>XTell (X先知).</strong> What a temple needs to draw your chart
@@ -147,7 +154,8 @@ export default function PrivacyPage() {
       <h2 style={S.h2}>6. Sharing</h2>
       <p style={S.p}>
         We share data only with the processors needed to run the Service: AI
-        providers (what a task needs, for generation), Stripe (payments and card
+        providers (what a task needs, for generation; OpenAI also checks a website
+        name or picture you choose before it is saved), Stripe (payments and card
         checks), Supabase (database, storage, and authentication hosting), Vercel
         (web hosting), Google (the ads tag described above) and, if you sign in with
         LINE, LY Corporation (LINE Login), or with X, X Corp. (Log in with X).
