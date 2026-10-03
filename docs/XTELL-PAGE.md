@@ -1,4 +1,4 @@
-# XTELL-PAGE.md — X算命 (`/xtell`)
+# XTELL-PAGE.md — X先知 (`/xtell`; X算命 until Oct 3)
 
 > Everything about the XTell surface. Written 2026-08-30, updated 2026-09-01
 > (關帝廟 + 四面佛 + 九曜廟; 媽祖廟, 姓名亭, 測字亭 Sep 22), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,

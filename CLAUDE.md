@@ -6,7 +6,7 @@
 > proxy (`docs/TRIPO-API.md`) and the shared
 > core Werewolf now runs on. `docs/XEVAL-PAGE.md` — everything about the `/xeval`
 > page and the eval pipeline behind it (read before touching XEval).
-> `docs/XTELL-PAGE.md` — the X算命 surface (temples,
+> `docs/XTELL-PAGE.md` — the X先知 surface (temples,
 > engines, masters, classics grounding; read before touching XTell).
 > `docs/STATE-2026-08-19.md` — a running snapshot of what
 > changed recently and what is still open (incl. the UNPUSHED commit queue
@@ -129,7 +129,7 @@ more**, and the per-user feature system is gone with it.
 | **XArch** | `/xarch` | required | X建築設計: floor plans + interior design. GPT-6 Astra / Claude Fable 5.1 read a blueprint into geometry and return edit OPS that code applies (`lib/xarch.ts`); room photos redesigned with GPT Image 2; design agent chat. Rows in `xarch_projects` (migration 100). Free sample: HABS Breiding House. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 | **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
-| **XTell** | `/xtell` | required on www; on xtell.modelxd.com the free chart is open, sign-in at the first question (Oct 1) | X算命: temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
+| **XTell** | `/xtell` | required on www; on xtell.modelxd.com the free chart is open, sign-in at the first question (Oct 1) | X先知 (X算命 until Oct 3): temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
 | **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
 ### XDuel — `/xduel`
@@ -412,7 +412,7 @@ app/
 ├── xdirect/client.tsx          # Chat rail + canvas stage (Phase 1)
 ├── xcut/page.tsx  xcut/client.tsx   # XCut: project list; ?p= / ?from= open a cut
 ├── xeval/page.tsx              # Benchmark ladders (see docs/XEVAL-PAGE.md)
-├── xtell/page.tsx  xtell/client.tsx   # X算命 temples (see docs/XTELL-PAGE.md)
+├── xtell/page.tsx  xtell/client.tsx   # X先知 temples (see docs/XTELL-PAGE.md)
 ├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
 ├── profile/page.tsx            # Balance, ledger, referral panel, and a tab
 │                               #   per surface (XDuel/XCreate/XDirect/XCut/

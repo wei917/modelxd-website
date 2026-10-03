@@ -1,4 +1,4 @@
-// lib/xtell.ts — XTell (X算命): the deterministic layer.
+// lib/xtell.ts — XTell (X先知): the deterministic layer.
 //
 // The split that makes this feature honest: everything with a right answer
 // (the chart) is computed HERE by libraries, displayed to the user, and fed
