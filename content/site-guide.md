@@ -415,6 +415,11 @@ health, money and legal questions belong with professionals.
 ## Accounts, credits and pricing
 
 Sign in with Google or X (in Japan and Taiwan, LINE too). New accounts get **$10 of free credit**.
+Your **picture and website name** (the name ModelXD shows for you instead of
+your Google, LINE or X name) are set with **Edit** on `/profile`: pick one of
+your sign-in photos or upload one, and a name of up to 30 characters. Both are
+safety-checked before they are saved; names with "ModelXD" are kept for the
+official account.
 XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger

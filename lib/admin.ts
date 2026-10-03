@@ -17,6 +17,11 @@ function adminEmails(): string[] {
   return raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 }
 
+/** Is this email on ADMIN_EMAILS? For a user already read on the server. */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  return !!email && adminEmails().includes(email.toLowerCase())
+}
+
 /**
  * Server-side admin check. Returns the user object if they're allowlisted;
  * `null` if not signed in or not an admin. Use the result in server pages

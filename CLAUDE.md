@@ -57,6 +57,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `125_profile_face.sql` (Oct 2) is PENDING: the public `avatars` bucket and
+  the browser losing insert/update/delete on `profiles` (the name and picture
+  are written only by `/api/profile/face`). Proven on PGlite. Before it runs,
+  a picture save fails ("Bucket not found"); a name save works.
   `124_x_welcome_credit.sql` applied 2026-10-02 by the owner: $10 for X
   sign-ups; handle_new_user is 113 plus 'x'. Proven on PGlite; the first
   real X sign-up is the live check (query in its header).
@@ -1084,6 +1088,22 @@ can sit at the table honestly. One act per request; the client loops.
 
 ## Decisions Taken (don't re-litigate without new information)
 
+- **Profile picture and website name: built Oct 2** (owner: "profile image
+  and website name"; users will soon publish work and join online games).
+  Every page shows `profiles.display_name` / `avatar_url` (`useFace()` in
+  `lib/use-face.ts`, plus the profile page's own read), never the sign-in
+  metadata, which Supabase overwrites with the LAST method used. Edit on the
+  account page (all three doors) opens `app/components/FaceEditor.tsx`: a
+  sign-in photo or an upload (middle square, 512 px in the browser), and a
+  name of up to 30 characters (`lib/face.ts`: invisible characters out,
+  "ModelXD" reserved for ADMIN_EMAILS). `/api/profile/face` is the only
+  writer (migration 125): both are checked with OpenAI's free moderation
+  (`lib/moderation.ts`; a check that cannot run refuses the save), the picture
+  becomes a 256 px WebP in the public `avatars` bucket (`lib/face-picture.ts`;
+  sign-in photos are copied only from the account's own identity, on the
+  providers' avatar hosts). Still to build with publishing/games: confirm the
+  name and picture at the first publish or join, and open only those two
+  columns to other users (column grants, pitfall 16), never the whole row.
 - **X sign-in: built Oct 2** (owner: "all markets", "$10 too"). Supabase's
   built-in X / Twitter (OAuth 2.0) provider, `provider: 'x'`, offered in every
   language on every door, under Google and LINE. X's API is pay-per-use (no

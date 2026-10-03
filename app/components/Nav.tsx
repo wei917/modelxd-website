@@ -13,7 +13,7 @@ import BugReportLink from './BugReport'
 import { useSite } from '../../lib/useSite'
 import XTellNav from './xtell/XTellNav'
 import XCreateNav from './xcreate/XCreateNav'
-import { userName, userPhoto } from '../../lib/user-face'
+import { useFace } from '../../lib/use-face'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const NAV_LINKS = [
@@ -136,6 +136,8 @@ export default function Nav() {
     setIsDev(h.startsWith('dev.') || h === 'localhost' || h === '127.0.0.1')
   }, [])
   const [user, setUser] = useState<User | null>(null)
+  // The saved picture and website name (Oct 2), not the last sign-in's.
+  const face = useFace(user)
   // Beta flags for nav items that carry a `feature` key. Fetched rather
   // than passed down because Nav renders on every route, gated or not.
   // No feature fetch any more: every surface in NAV_LINKS is either public
@@ -758,11 +760,11 @@ export default function Nav() {
           <div style={{ height: 30 }} aria-hidden />
         ) : user ? (
           <Link href="/profile" className="nav-auth-profile" aria-label={t('nav.profile')}>
-            {userPhoto(user) ? (
-              <img src={userPhoto(user)!} alt="" referrerPolicy="no-referrer" />
+            {face.photo ? (
+              <img src={face.photo} alt="" referrerPolicy="no-referrer" />
             ) : (
               <span className="nav-auth-initials">
-                {(userName(user) || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                {(face.name || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
               </span>
             )}
             <span className="nav-auth-name">{t('nav.profile')}</span>

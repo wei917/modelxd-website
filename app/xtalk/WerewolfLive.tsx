@@ -13,6 +13,8 @@ import { useLang, useT } from '../../lib/i18n'
 import { composition } from '../../lib/werewolf-engine'
 import { FEATURE, allowedFor } from '../../lib/model-features'
 import { createBrowserClient } from '@supabase/ssr'
+import { loadFace } from '../../lib/use-face'
+import { userName } from '../../lib/user-face'
 import { type SeatOpts } from './SeatConfig'
 import ModelSlots from './ModelSlots'
 import TemplateHelp from './TemplateHelp'
@@ -70,18 +72,17 @@ export default function WerewolfLive({
   // Whoever is signed in. It defaulted to the literal string 'You', so every
   // recorded game had a player called "You" and the transcript read like the
   // page talking to itself. Still editable — a nickname at the table is
-  // reasonable — but the default should be the person's actual name.
+  // reasonable — but the default is the person's website name (Oct 2: set
+  // on the account page), not the real name their sign-in carries.
   const [name, setName]     = useState('')
   useEffect(() => {
     createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    ).auth.getUser().then(({ data }) => {
+    ).auth.getUser().then(async ({ data }) => {
       const u = data?.user
       if (!u) return
-      const n = (u.user_metadata?.full_name as string | undefined)
-        || (u.user_metadata?.name as string | undefined)
-        || u.email?.split('@')[0]
+      const n = (await loadFace(u.id).catch(() => null))?.name ?? userName(u)
       // Only fill an untouched field, so a nickname typed before this
       // resolves is not overwritten a moment later.
       if (n) setName(prev => prev || n.slice(0, 24))
