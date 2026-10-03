@@ -60,12 +60,11 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean; its own front door is xcreate.modelxd.com, where the top bar picks
-what to make (Text, Image, Video, Audio, Film). Under the prompt box and
-Generate, each type's page shows four sections: tools and templates; every
-model of that type with what it can do and its list
-price (tap one to use it, 比較 to add it beside the others); what is trending
-on social media; and your own latest works of that type as pictures (tap one
-to reopen it). All of your past work (the Library, filterable by type, Film
+what to make (Text, Image, Video, Audio, Film). The From choice (text, image,
+video ...) is inside the prompt box; the model picker lists every model with
+what it can do and its list price. Under Generate, each type's page shows
+tools and templates, what is trending on social media, and your own latest
+works of that type as pictures (tap one to reopen it). All of your past work (the Library, filterable by type, Film
 included, with rename and delete) is on the account page. A run where you
 already picked a winner reopens on its canvas. Four platform templates do the
 store and social work, the output chosen inside each (a row of chips in the
