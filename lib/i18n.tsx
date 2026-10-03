@@ -1727,7 +1727,7 @@ export const STRINGS: Record<string, Entry> = {
   'xtell.keep':        { en: 'Keep only this master', 'zh-Hant': '只留這位大師', 'zh-Hans': '只留这位大师', ja: 'この先生だけ残す', ko: '이 마스터만 남기기' },
   "xtell.ask.to": {"en": "Ask:", "zh-Hant": "問：", "zh-Hans": "问：", "ja": "質問先：", "ko": "질문 대상:"},
   "xtell.row.seats": {"en": "Masters:", "zh-Hant": "大師席位：", "zh-Hans": "大师席位：", "ja": "先生の席：", "ko": "마스터 자리:"},
-  "xtell.row.answers": {"en": "Answers:", "zh-Hant": "回答：", "zh-Hans": "回答：", "ja": "回答：", "ko": "답변:"},
+  "xtell.row.answers": {"en": "Masters' answers:", "zh-Hant": "大師的回答：", "zh-Hans": "大师的回答：", "ja": "先生の回答：", "ko": "마스터의 답변:"},
   "xtell.ask.all": {"en": "All masters", "zh-Hant": "全部大師", "zh-Hans": "全部大师", "ja": "全員", "ko": "모든 마스터"},
   "xtell.ask.one": {"en": "Ask this one", "zh-Hant": "追問這位", "zh-Hans": "追问这位", "ja": "この先生に聞く", "ko": "이 마스터에게 묻기"},
   "xtell.ask.toLabel": {"en": "To {names}", "zh-Hant": "問：{names}", "zh-Hans": "问：{names}", "ja": "質問先：{names}", "ko": "대상: {names}"},

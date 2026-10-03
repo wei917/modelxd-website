@@ -21,6 +21,7 @@ check('再請一位老師 is disabled while answering, and says why', /className
 check('a seat cannot be replaced or removed while answering', /className="xtell-seat-main"[^>]*disabled=\{answering\}/.test(client) && /className="xtell-seat-act" title=\{t\('xtell.site.remove'\)\}[^>]*disabled=\{answering\}/.test(client))
 check('the seat row starts with a fixed 大師席位 label, outside its sideways scroll (owner, Oct 3)', /<span className="xtell-row-label xtell-row-label-seats">\{t\('xtell\.row\.seats'\)\}<\/span>\s*<div style=\{\{ overflowX: 'auto', paddingBottom: 2, flex: 1, minWidth: 0 \}\}>/.test(client))
 check('the 分頁 answer tabs start with a 回答 label, outside the tab list', /<span className="xtell-row-label xtell-row-label-tabs">\{t\('xtell\.row\.answers'\)\}<\/span>\s*<div role="tablist" aria-label=\{t\('xtell\.row\.answers'\)\}/.test(client))
+check('問： uses the same label style and place as the other two rows', /<span className="xtell-row-label xtell-row-label-tabs">\{t\('xtell\.ask\.to'\)\}<\/span>/.test(client) && !/<span style=\{\{ \.\.\.mono, color: 'var\(--muted2\)' \}\}>\{t\('xtell\.ask\.to'\)\}<\/span>/.test(client))
 check('disabled seat buttons look disabled', css.includes('.xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled'))
 check('the reason in five languages', ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof S['xtell.addmaster.wait']?.[l] === 'string' && S['xtell.addmaster.wait'][l].trim()))
 

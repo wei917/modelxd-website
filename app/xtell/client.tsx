@@ -1805,8 +1805,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               sent. 易學堂 has its own. */}
           {!daily && temple !== 'yixue' && turns.length === 0 && chart && <ExampleQuestions temple={temple} onExample={q => { setInput(q); composerRef.current?.focus() }} />}
           {masters.length > 1 && (
-            <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12 }}>
-              <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.ask.to')}</span>
+            // 問： in the same label style and place as 大師席位 and 大師的回答
+            // (owner, Oct 3: its size was off); chips that wrap line up
+            // under the first chip.
+            <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to xtell-row-labelled">
+              <span className="xtell-row-label xtell-row-label-tabs">{t('xtell.ask.to')}</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12, minWidth: 0 }}>
               <button type="button" aria-pressed={askingAll} onClick={() => setAskTo(null)} disabled={busy} style={chip(askingAll)}>{t('xtell.ask.all')}</button>
               {masters.map(m => {
                 const on = !askingAll && recipients.some(r => r.id === m.id)
@@ -1814,6 +1818,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   <ProviderLogo provider={m.provider} size={12} /> {m.display_name}
                 </button>
               })}
+              </div>
             </div>
           )}
           <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
