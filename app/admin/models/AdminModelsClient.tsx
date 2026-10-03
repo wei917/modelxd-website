@@ -97,6 +97,11 @@ export interface AdminModel {
    *  null = model_pricing is the official price. Migration 121. */
   official_pricing?:  ModelPricing | null
   via?:               string | null
+  /** Max input tokens the provider accepts in one request (migration 126).
+   *  Null = unknown. NOT the headline "context window" where a provider
+   *  quotes input+output together: OpenAI advertises 1,050,000 but accepts
+   *  922,000 in, the other 128,000 being its output reservation. */
+  context_window?:    number | null
   input_config:       InputConfig  | null
   output_config:      OutputConfig | null
   created_at?:        string
@@ -137,6 +142,7 @@ const EMPTY: AdminModel = {
   model_pricing:     null,
   official_pricing:  null,
   via:               null,
+  context_window:    null,
   input_config:      null,
   output_config:     null,
 }
@@ -563,6 +569,15 @@ function ModelForm({ row, onSave, onCancel, busy }: {
           </Field>
           <Field label="Display name (UI label)">
             <input value={m.display_name} onChange={e => setM({ ...m, display_name: e.target.value })} style={inp} placeholder="GPT-5.4 Pro" />
+          </Field>
+          <Field label="Context window (max input tokens)"
+                 hint="What the provider accepts in ONE request, not the headline number when that counts output too (OpenAI: 922,000 in, not 1,050,000). Blank = unknown.">
+            <input
+              type="number" min={1} step={1}
+              value={m.context_window ?? ''}
+              onChange={e => setM({ ...m, context_window: e.target.value ? Math.floor(Number(e.target.value)) || null : null })}
+              style={inp} placeholder="922000"
+            />
           </Field>
           <Field label="Flags">
             <div style={{ display: 'flex', gap: 14, alignItems: 'center', minHeight: 38, paddingTop: 4 }}>
