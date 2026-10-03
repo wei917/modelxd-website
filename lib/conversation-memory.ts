@@ -76,13 +76,13 @@ export const keepRawOf = (model: any): number => Math.floor(summaryPointOf(model
 export const rawBudget = (model: any, fixedTokens: number): number =>
   Math.max(4_000, Math.floor(Math.min(windowOf(model) * 0.9, priceJumpOf(model) ?? Infinity)) - fixedTokens - ANSWER_ROOM)
 
-/** What a model read for one reply, in tokens. Every provider counts its
- *  cache hits inside its input count except Anthropic, which reports them
- *  apart (cache_read_input_tokens); its input count already carries its cache
- *  writes, at 1.25x (lib/providers/anthropic.ts), so this runs a little high
- *  on a turn that writes the cache, never low. */
-export const tokensRead = (provider: unknown, r: { inputTokens?: number | null; cachedTokens?: number | null }): number | null =>
-  typeof r.inputTokens === 'number' && r.inputTokens > 0 ? r.inputTokens + (provider === 'anthropic' ? r.cachedTokens ?? 0 : 0) : null
+/** What a model read for one reply, in tokens: the provider's input count,
+ *  cache hits included, the same on every provider. Anthropic reports its
+ *  cache reads apart, and lib/providers/anthropic.ts folds them back in
+ *  (Oct 3, 7688e02), with its cache writes at 1.25x, so a turn that writes
+ *  the cache reads a little high, never low. */
+export const tokensRead = (r: { inputTokens?: number | null; cachedTokens?: number | null }): number | null =>
+  typeof r.inputTokens === 'number' && r.inputTokens > 0 ? r.inputTokens : null
 
 /** The most recent messages that fit the budget, oldest first; how many
  *  older ones did not. The latest message is always kept. */

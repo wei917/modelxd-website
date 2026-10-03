@@ -40,7 +40,7 @@ const long = Array.from({ length: 300 }, (_, i) => ({ role: (i % 2 ? 'assistant'
 const fit = cm.fitBudget(long, 50_000)
 check('fit: the newest messages that fit, in order; the oldest left out', fit.kept.at(-1)!.content.startsWith('299:') && fit.kept[0].content.startsWith(`${fit.dropped}:`) && fit.dropped + fit.kept.length === 300 && fit.kept.length < 51)
 check('fit: the latest message is kept even when it alone is too big', cm.fitBudget([{ role: 'user', content: '字'.repeat(200) }], 50).kept.length === 1)
-check('what a reply read: the input count, except Anthropic\'s cache hits, which come apart', cm.tokensRead('openai', { inputTokens: 5000, cachedTokens: 4000 }) === 5000 && cm.tokensRead('anthropic', { inputTokens: 2000, cachedTokens: 70_000 }) === 72_000 && cm.tokensRead('google', {}) === null)
+check('what a reply read: the provider\'s input count, cache hits inside it, never added twice', cm.tokensRead({ inputTokens: 5000, cachedTokens: 4000 }) === 5000 && cm.tokensRead({ inputTokens: 72_000, cachedTokens: 70_000 }) === 72_000 && cm.tokensRead({}) === null && cm.tokensRead({ inputTokens: 0 }) === null)
 check('numbers as people read them', [800, 27_613, 922_000, 991_000, 1_000_000, 1_048_576].map(cm.formatTokens).join(' ') === '800 28k 922k 991k 1M 1.05M')
 
 // ── The summarize step, storage passed in ──────────────────────────────────

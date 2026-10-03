@@ -87,9 +87,10 @@ master from rereading at a doubled price). With today's numbers: Claude
 700k, Gemini 734k, Qwen 694k, GPT-6 645k, and GPT-6 ~245k once OpenAI's 272k
 tier is in the pricing data. The raw budget never passes the jump either.
 
-`input_tokens` is what the provider says the master read. Anthropic reports
-its cache hits apart, so they are added back (`tokensRead`); everyone else
-counts them inside.
+`input_tokens` is what the provider says the master read, cache hits
+included, on every provider (`tokensRead`). Anthropic reports its cache reads
+apart; since Oct 3 (7688e02) its provider folds them back in, so they are
+not added a second time here.
 
 ## Summarizing
 

@@ -519,7 +519,7 @@ export async function POST(req: Request) {
                   else console.warn(`${LOG} debit failed:`, err)
                 })
               }
-              const read = tokensRead((model as any).provider, r)
+              const read = tokensRead(r)
               if (memoryOn) {
                 await addMessage(admin, {
                   reading_id: readingId!, role: 'assistant', content: full, qid: qidIn,

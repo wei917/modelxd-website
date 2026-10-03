@@ -69,7 +69,7 @@ const msg = (seq: number, role: 'user' | 'assistant', content: string, extra: an
 
 async function unit() {
   check('window: the catalog\'s, else 100k', cm.windowOf({ context_window: 200_000 }) === 200_000 && cm.windowOf({}) === 100_000 && cm.windowOf({ context_window: 0 }) === 100_000)
-  check('what a master read: the input count, which holds the cache hits, except Anthropic\'s, which come apart', cm.tokensRead('openai', { inputTokens: 5000, cachedTokens: 4000 }) === 5000 && cm.tokensRead('anthropic', { inputTokens: 2000, cachedTokens: 70_000 }) === 72_000 && cm.tokensRead('google', {}) === null && cm.tokensRead('anthropic', { inputTokens: 0, cachedTokens: 9 }) === null)
+  check('what a master read: the provider\'s input count, cache hits inside it (Anthropic folds its own back in), never added twice', cm.tokensRead({ inputTokens: 5000, cachedTokens: 4000 }) === 5000 && cm.tokensRead({ inputTokens: 72_000, cachedTokens: 70_000 }) === 72_000 && cm.tokensRead({}) === null)
   check('raw budget: the window less the instructions and room for the answer', cm.rawBudget({ context_window: 100_000 }, 10_000) === 72_000 && cm.rawBudget({ context_window: 10_000 }, 20_000) === 4_000)
   const rows = [msg(1, 'user', '問一', { to: [A, B] }), msg(2, 'assistant', 'A答一'), { ...msg(3, 'assistant', 'B答一'), model_id: B, qid: 'q1' }, msg(4, 'user', '問二')]
   const tr = mem.threadRows(rows as any, A, null)
@@ -195,12 +195,12 @@ async function routeChecks() {
   check('past 70%: after the answer, the master\'s own model writes its memo', c.calls.length === 2 && /要寫進摘要/.test(c.calls[1].msgs[0].content) && admin3.t.xtell_memories.length === 1 && admin3.t.xtell_memories[0].text === '新的摘要')
   check('the visitor got the answer first; the summary is billed like an answer', rc.text.indexOf('event: done') > 0 && c.debits.some(d => d.startsWith('XTell summary')) && c.debits.some(d => d.startsWith('XTell sunzi reading')))
 
-  // Anthropic serves most of a long conversation from its cache and reports
-  // those tokens apart: they count toward what the master read.
+  // Anthropic serves most of a long conversation from its cache. Its provider
+  // folds the cache reads into the input count (7688e02): counted once.
   const admin4 = fakeAdmin({ messages: long })
-  const e = route({ turns: [], admin: admin4, provider: 'anthropic', inputTokens: 2_000, cached: 70_000 })
+  const e = route({ turns: [], admin: admin4, provider: 'anthropic', inputTokens: 72_000, cached: 70_000 })
   const re = await e.ask({ question: '總結一下？', qid: Q })
-  check('Anthropic: its cache hits count toward what the master read, in the store, the page and the 70% rule', admin4.t.xtell_messages.filter((m: any) => m.role === 'assistant').at(-1)?.input_tokens === 72_000 && /"inputTokens":72000/.test(re.text) && admin4.t.xtell_memories.length === 1)
+  check('Anthropic: what the master read is its whole count, cache included and not added twice, in the store, the page and the summary rule', admin4.t.xtell_messages.filter((m: any) => m.role === 'assistant').at(-1)?.input_tokens === 72_000 && /"inputTokens":72000/.test(re.text) && admin4.t.xtell_memories.length === 1)
 
   // No service role (or before 126): the same reading, memory off.
   const d = route({ turns, admin: fakeAdmin({ missing: true }) })
