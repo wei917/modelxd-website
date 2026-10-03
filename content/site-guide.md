@@ -60,20 +60,26 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean; its own front door is xcreate.modelxd.com, where the top bar picks
-what to make (Text, Image, Video, Audio, Film); your latest five of the
-chosen type are listed under the composer (Continue, rename, delete), and all of
-your past work (the Library, filterable by type, Film included) is on the
-account page. A run where you already picked a winner reopens on its canvas.
-Templates under the composer make a product photo platform-ready (淘寶主圖 and
-白底圖, 蝦皮, momo, Amazon, 樂天, Instagram / 小紅書 3:4, Stories / Reels /
-TikTok 9:16, LINE 圖文訊息) or restyle it, and video templates turn a product
-photo into a 淘寶 / 蝦皮 / Amazon product video or a 9:16 short. Any finished
+what to make (Text, Image, Video, Audio, Film). Each type's page asks what to
+make over one prompt box (pills under it choose the recipe, the models and,
+for a platform template, the output format), then shows four sections: tools
+and templates; every model of that type with what it can do and its list
+price (tap one to use it, 比較 to add it beside the others); what is trending
+on social media; and your own latest works of that type as pictures (tap one
+to reopen it). All of your past work (the Library, filterable by type, Film
+included, with rename and delete) is on the account page. A run where you
+already picked a winner reopens on its canvas. Four platform templates do the
+store and social work, the output chosen inside each: 電商商品圖 (淘寶主圖 and
+白底圖, 蝦皮, momo, Amazon, 樂天), 社群貼文圖 (Instagram / 小紅書 3:4, Stories /
+Reels / TikTok 9:16, LINE 圖文訊息), 電商影片 (淘寶 1:1 or 3:4, 蝦皮, Amazon 16:9)
+and 社群短影音 (Reels / TikTok / Shorts 9:16, square feeds, YouTube 16:9); style
+templates restyle a photo. Any finished
 picture can be downloaded in a platform's exact size (pixels, JPG, file size,
 pure white background where required), with a checklist of what was met;
 finished videos convert the same way (淘寶 1:1 or 3:4, 蝦皮 10-60 s, Amazon
-16:9, Reels / TikTok / Shorts 9:16). A photo or video you already have can be
-converted to these sizes for free, with no AI (the first card in the store
-rows). Downloaded AI pictures carry an AI-generated marker that Instagram and
+16:9, Reels / TikTok / Shorts 9:16, square, YouTube 16:9). A photo or video
+you already have can be converted to these sizes for free, with no AI (the
+last card in the tools row). Downloaded AI pictures carry an AI-generated marker that Instagram and
 Facebook read; for videos, and on TikTok, YouTube, 小紅書 and 淘寶, turn on
 the platform's own AI label when posting. Your private studio. Pick up to four models and run the same prompt through
 all of them at once, then keep working with whichever won. Supports text,
