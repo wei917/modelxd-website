@@ -129,11 +129,14 @@ summarization).
   「對話摘要」, the newest summary with when it was written (no explanation
   paragraph: owner, Oct 3, "you don't need to explain").
 - 「立即摘要」 there (owner, Oct 3: "a button to force summarize now"), with
-  its price, about one answer: summarizes that master's conversation now,
-  whatever its size, keeping only the latest question and answer word for
-  word (`now` in lib/conversation-memory.ts). Route `app/api/xtell/memory`:
+  its price, about one answer: summarizes that master's whole conversation
+  so far, now, whatever its size, like compacting a chat (`now` in
+  lib/conversation-memory.ts). It first kept the latest question and answer
+  out of the summary; the owner's first real press found that summary
+  missing a question ("the summarization is bad"), so a press folds
+  everything. Automatic summaries still keep the newest messages. Route `app/api/xtell/memory`:
   the visitor's own conversation, an empty wallet refused before any call,
-  billed like an answer, 409 when nothing is older than the latest exchange.
+  billed like an answer, 409 when nothing is new since the last summary.
   Off until the master has answered twice here, and while an answer is
   coming in. Mostly for comparing models' summaries: at real limits an
   automatic one starts at 245k–734k tokens.

@@ -1,13 +1,13 @@
 // app/api/xtell/memory/route.ts — 「立即摘要」 (owner, Oct 3: "a button to
 // force summarize now"). A press in a master's 「{name}的記憶」 summarizes
-// that master's conversation now, whatever its size: everything but the
-// latest question and answer, with its own model, billed to the visitor like
-// an answer (docs/XTELL-MEMORY.md). The automatic summaries run in the
-// reading route; both go through lib/xtell-memory.ts.
+// that master's whole conversation so far, now, whatever its size, with its
+// own model, billed to the visitor like an answer (docs/XTELL-MEMORY.md).
+// The automatic summaries run in the reading route and keep the newest
+// messages word for word; both go through lib/xtell-memory.ts.
 //
 //   POST { readingId, modelId, lang?, thinking? }
 //   → 200 { text, at }                     the new summary
-//   → 409 { code: 'nothing_to_summarize' } nothing older than the latest exchange
+//   → 409 { code: 'nothing_to_summarize' } nothing new since the last summary
 //   → 402 { code: 'no_credits' }           an empty wallet: no call made
 //   → 502 { code: 'summary_failed' }       the model wrote nothing; not charged
 

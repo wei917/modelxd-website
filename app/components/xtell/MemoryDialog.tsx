@@ -54,8 +54,8 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
       .then(({ data, error }) => { if (live) setMemo(error || !data ? null : { text: String(data.text), at: String(data.created_at) }) })
     return () => { live = false }
   }, [readingId, m.id])
-  // 「立即摘要」 (owner, Oct 3): summarize now, billed like an answer;
-  // everything but the latest question and answer (app/api/xtell/memory).
+  // 「立即摘要」 (owner, Oct 3): the whole conversation so far, summarized
+  // now, billed like an answer (app/api/xtell/memory).
   const [working, setWorking] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const summarizeNow = async () => {

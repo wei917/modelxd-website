@@ -96,7 +96,7 @@ export async function maybeSummarize(o: {
   readingId: string
   model: any
   inputTokens: number | null
-  /** A press of 「立即摘要」: summarize now, keep only the latest exchange. */
+  /** A press of 「立即摘要」: summarize the whole conversation so far, now. */
   now?: boolean
   lang: string
   userId: string

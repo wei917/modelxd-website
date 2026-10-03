@@ -106,9 +106,11 @@ export type SummaryRun = { text: string; inputTokens: number | null; outputToken
  * After a reply: if it read more than the summary point, the model folds the
  * older part of its thread, with its previous summary, into a new summary,
  * keeping the newest messages word for word. With `now` (a person pressed
- * "summarize now"; owner, Oct 3) the point is skipped and only the latest
- * exchange stays word for word. Returns what was saved, or why not. Never
- * throws. The surface supplies:
+ * "summarize now"; owner, Oct 3) the point is skipped and the whole
+ * conversation so far goes into the summary, like compacting a chat (the
+ * owner, testing it: a summary that left out the latest question "is
+ * bad"). Returns what was saved, or why not. Never throws. The surface
+ * supplies:
  *   load    its previous summary and the thread after it (null: no storage);
  *   prompt  the summary instructions and the text to summarize;
  *   run     the model call (its own model, billed through the surface);
@@ -118,7 +120,7 @@ export type SummaryRun = { text: string; inputTokens: number | null; outputToken
 export async function maybeSummarize<T extends Numbered>(o: {
   model: any
   inputTokens: number | null
-  /** Summarize now, whatever the size; keep only the latest exchange. */
+  /** Summarize now, whatever the size: the whole conversation so far. */
   now?: boolean
   load: () => Promise<{ summary: { text: string; through_seq: number } | null; thread: T[] } | null>
   prompt: (p: { oldSummary: string | null; fold: T[] }) => { system: string; content: string }
@@ -131,11 +133,10 @@ export async function maybeSummarize<T extends Numbered>(o: {
     const loaded = await o.load()
     if (!loaded) return { saved: false, reason: 'messages table missing' }
     const { summary, thread } = loaded
-    // The newest messages within the keep share stay word for word (on a
-    // press, the latest exchange); everything before them is folded.
+    // The newest messages within the keep share stay word for word;
+    // everything before them is folded. On a press, everything is.
     let keep = 0
-    if (o.now) keep = Math.min(2, thread.length)
-    else {
+    if (!o.now) {
       const room = keepRawOf(o.model)
       let used = 0
       for (let i = thread.length - 1; i >= 0; i--) {
