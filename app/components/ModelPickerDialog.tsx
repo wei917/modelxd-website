@@ -14,6 +14,8 @@ import { useEffect, useState } from 'react'
 import { allowedFor } from '../../lib/model-features'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT } from '../../lib/i18n'
+import { useSite } from '../../lib/useSite'
+import { unitPrice, formatUsd, capabilityLine, isNewModel } from '../../lib/model-facts'
 import ProviderLogo from './ProviderLogo'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -51,6 +53,11 @@ export interface PickerModel {
   output_config?: any
   input_config?: { image?: { count?: number }; video?: { count?: number } } | null
 }
+
+// 新 / 熱門 beside a name (Oct 3, from the X創作 models row).
+const TAG: React.CSSProperties = { flexShrink: 0, fontSize: 10, fontWeight: 700, lineHeight: 1, padding: '3px 5px', borderRadius: 5, whiteSpace: 'nowrap' }
+const TAG_NEW: React.CSSProperties = { ...TAG, color: 'var(--red)', background: 'rgba(214,59,50,0.09)' }
+const TAG_HOT: React.CSSProperties = { ...TAG, color: '#8a5d00', background: '#fbf0d2' }
 
 // ── Model Picker Dialog ───────────────────────────────────────────────────────
 // Group models by company using the provider field.
@@ -108,6 +115,9 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   slotIds: (string | null)[]
 }) {
   const t = useT()
+  // On the X創作 door the XD score is hidden (owner, Oct 3: "not ready yet"),
+  // and a row says what the model does instead of its internal id.
+  const door = useSite() === 'xcreate'
   const [search,      setSearch]      = useState('')
   const [allModels,   setAllModels]   = useState<PickerModel[]>([])
   const [loading,     setLoading]     = useState(true)
@@ -139,6 +149,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   const [scores,      setScores]      = useState<Record<string, number>>({})
 
   useEffect(() => {
+    if (door) return
     // Same snapshot XBoard reads. A failure here is not worth blocking the
     // picker over — it just falls back to an unranked list.
     fetch(`/api/xboard?mode=${mode}`)
@@ -149,7 +160,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
         setScores(map)
       })
       .catch(() => {})
-  }, [mode])
+  }, [mode, door])
 
   useEffect(() => {
     // Order by release date, newest first. Rows with a null released_at
@@ -263,7 +274,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
               your cursor changed meaning depending on hidden state — you had
               to read both to know what one click would do. Two named buttons:
               click to sort by that, click again to reverse. */}
-          {([['rank', 'XD score'], ['released', 'Released']] as const).map(([key, label]) => {
+          {(door ? [['released', 'Released']] as const : [['rank', 'XD score'], ['released', 'Released']] as const).map(([key, label]) => {
             const on = sortBy === key
             return (
               <button
@@ -388,13 +399,27 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                 </span>
                 <ProviderLogo provider={m.provider} model={m.model_name} size={18} />
                 <div className="model-picker-name" style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {m.display_name}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span className="model-picker-title" style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                      {m.display_name}
+                    </span>
+                    {isNewModel(m) && <span style={TAG_NEW}>{t('xcs.models.new')}</span>}
+                    {m.is_popular && <span style={TAG_HOT}>{t('xcs.models.hot')}</span>}
                   </div>
                   {/* Internal id — useful to disambiguate variants like
-                      gpt-5 vs gpt-5-mini in the picker. */}
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.model_name}</div>
+                      gpt-5 vs gpt-5-mini in the picker. The door's buyers
+                      read what the model does instead. */}
+                  {!door && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{m.model_name}</div>}
+                  {(() => {
+                    // What it does, from its own modes and output_config
+                    // (Oct 3; owner: "the details especially the price").
+                    const caps = capabilityLine(m, mode, t)
+                    return caps ? <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 3, lineHeight: 1.45 }}>{caps}</div> : null
+                  })()}
                 </div>
+                {/* Date and badges; on a phone the door puts them on their
+                    own line under the name (standalone.css). */}
+                <span className="model-picker-meta" style={{ display: 'contents' }}>
                 {/* Release date badge — makes the newest-first sort order
                     visible. Shown as "Mar 2026" style. Null dates (mostly
                     video models) render nothing. */}
@@ -410,7 +435,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                 {/* The score, shown where the choice is made rather than only
                     on XBoard. A number that decides the order should be
                     visible, otherwise the ranking looks arbitrary. */}
-                {scores[m.id] != null && (
+                {!door && scores[m.id] != null && (
                   <span style={{
                     fontFamily: 'var(--font-mono), monospace', fontSize: 11, fontWeight: 700,
                     color: 'var(--muted2)', flexShrink: 0, whiteSpace: 'nowrap' as const,
@@ -444,6 +469,18 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                   return needsAttach
                     ? <span style={{ fontSize: 9, color: '#f59e0b', background: '#f59e0b18', padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>NEEDS ATTACHMENT</span>
                     : null
+                })()}
+                </span>
+                {/* The list price per image / second / M tokens at the
+                    composer's opening settings, the same lookup as its
+                    estimate (lib/model-facts.ts). */}
+                {(() => {
+                  const price = unitPrice(m, mode)
+                  return price ? (
+                    <span className="model-picker-price" style={{ flexShrink: 0, whiteSpace: 'nowrap' as const, fontSize: 13, fontWeight: 700, color: 'var(--white)', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatUsd(price.usd)}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted2)' }}>{t('xcs.unit.' + price.unit)}</span>
+                    </span>
+                  ) : null
                 })()}
               </div>
             )

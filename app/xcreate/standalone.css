@@ -5,17 +5,22 @@ html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding:
 .xcs-heading > p:last-child { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
 .xcs-setup > :not(.xcs-results) { max-width: 800px; width: 100%; margin-left: auto; margin-right: auto; }
 .xcs-setup .field-label { font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--white); }
-.xcs-setup .mode-row { align-items: end; justify-content: space-between; }
-.xcs-setup .mode-seg { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 4px; gap: 3px; }
-.xcs-setup .mode-seg-btn { min-height: 42px; min-width: 86px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; border-radius: 7px; }
-.xcs-setup .mode-seg-btn.active { background: var(--surface); color: var(--red); box-shadow: 0 1px 4px #0000000d; }
-.xcs-setup .recipe-crumb-btn { min-height: 44px; border-radius: 9px; font-family: inherit; }
 .xcs-prompt-section { margin-bottom: 28px; }
 .xcs-field-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .xcs-field-heading a { color: var(--muted2); text-decoration: none; font-size: 12px; font-weight: 500; }
 .xcs-field-heading a:hover { color: var(--red); }
 .xcs-prompt-section .prompt-box.framed { border-radius: 14px; border: 1px solid var(--border2); background: var(--surface); }
 .xcs-prompt-section .prompt-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c0a; }
+/* The From dropdown inside the prompt box, under the text (owner, Oct 3:
+   "put the source drop down to inside the prompt box like what others do"). */
+.xcs-prompt-tools { display: flex; align-items: center; gap: 8px; padding: 0 14px 14px; }
+.xcs-source { position: relative; min-width: 0; }
+.xcs-source-btn { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 38px; padding: 6px 14px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--white); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: border-color .15s; }
+.xcs-source-btn:hover:not(:disabled) { border-color: var(--red); }
+.xcs-source-btn:disabled { opacity: .55; cursor: default; }
+.xcs-source-label { font-weight: 500; color: var(--muted2); }
+.xcs-source-caret { font-size: 9px; color: var(--muted); }
+.xcs-source .from-menu { max-width: calc(100vw - 48px); }
 /* The box's border is the focus mark; the studio-wide focus outline on the
    textarea inside it drew a second ring 4px out (owner, Sep 26). */
 .xcs-prompt-section .prompt-textarea:focus-visible { outline: none; }
@@ -106,11 +111,6 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-heading { margin-bottom: 30px; }
   .xcs-heading h1 { font-size: 32px; }
   .xcs-heading > p:last-child { font-size: 14px; }
-  .xcs-mode-block { display: flex; align-items: end; gap: 12px; }
-  .xcs-mode-block .mode-row { flex: 1; min-width: 0; }
-  .xcs-mode-block .mode-col { width: 100%; min-width: 0; }
-  .xcs-mode-block .recipe-crumb-btn { width: 100%; min-width: 0; font-size: 12px; white-space: normal; line-height: 1.3; }
-  .xcs-mode-block .from-menu { left: auto; right: 0; max-width: calc(100vw - 40px); }
   html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .xcs-prompt-section .prompt-textarea { min-height: 138px; padding: 16px; }
   .xcs-setup .xc-actions { gap: 12px !important; }
@@ -133,8 +133,11 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   html[data-site='xcreate'] .model-picker-dialog { max-height: 85vh !important; }
   html[data-site='xcreate'] .model-picker-dialog input { min-width: 0; width: 100%; font-size: 16px !important; }
   html[data-site='xcreate'] .model-picker-row { flex-wrap: wrap; gap: 8px !important; }
-  html[data-site='xcreate'] .model-picker-name { min-width: calc(100% - 64px) !important; }
-  html[data-site='xcreate'] .model-picker-name > div { white-space: normal !important; overflow-wrap: anywhere; }
+  html[data-site='xcreate'] .model-picker-name > div, html[data-site='xcreate'] .model-picker-title { white-space: normal !important; overflow-wrap: anywhere; }
+  /* The price stays beside the name; the date and badges take their own line
+     under it (Oct 3: the picker carries each model's price). */
+  html[data-site='xcreate'] .model-picker-meta { display: flex !important; flex-wrap: wrap; align-items: center; gap: 6px; order: 2; flex-basis: 100%; padding-left: 52px; box-sizing: border-box; }
+  html[data-site='xcreate'] .model-picker-meta:empty { display: none !important; }
 }
 
 /* ── The film, XCreate's fifth type (Sep 29): FilmStudio.tsx. Phone first;
@@ -195,8 +198,8 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 }
 
 /* ── Under Generate, Oct 3 redesign (learned from Pollo AI's /image page;
-   the composer above stays as it was): (1) tools and templates, (2) the
-   models, (3) trending on social media, (4) your works. Phone first. ── */
+   the composer above stays as it was): tools and templates, trending on
+   social media, your works. Phone first. ── */
 
 /* Section heads, shared by the four sections. */
 .xcs-sec { margin: 36px 0 0; }
@@ -206,7 +209,7 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-sec-head a { flex-shrink: 0; font-size: 13px; color: var(--muted2); text-decoration: none; }
 .xcs-sec-head a:hover { color: var(--red); }
 
-/* (1) Tools and templates: one row of cards. Phone: it scrolls sideways with
+/* Tools and templates: one row of cards. Phone: it scrolls sideways with
    snap and runs to the screen edge so the next card peeks in; from 761px it
    wraps. */
 .xcs-tool-strip { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 4px; }
@@ -234,33 +237,7 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-tool { flex-basis: 172px; }
 }
 
-/* (2) The models: one per row on a phone, two from 761px; four until "see all". */
-.xcs-models { display: grid; gap: 10px; }
-.xcs-models:not(.is-open) > .xcs-model:nth-child(n+5) { display: none; }
-.xcs-model { display: flex; align-items: center; min-width: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--xc-paper, #fff); transition: border-color .15s; }
-.xcs-model:hover { border-color: var(--border2); }
-.xcs-model.in-use { border-color: var(--red); }
-.xcs-model-main { flex: 1 1 auto; align-self: stretch; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 8px 12px 14px; border: 0; border-radius: 14px; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.xcs-model-logo { flex: 0 0 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--xc-soft, #f1f2ec); }
-.xcs-model-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.xcs-model-name { display: block; min-width: 0; line-height: 1.35; }
-.xcs-model-name b { margin-right: 6px; font-size: 15px; font-weight: 700; color: var(--white); overflow-wrap: anywhere; }
-.xcs-tag { display: inline-block; margin-right: 4px; padding: 3px 6px; border-radius: 6px; font-style: normal; font-size: 10.5px; font-weight: 700; line-height: 1; vertical-align: 2px; }
-.xcs-tag.new { color: var(--red); background: var(--xc-accent-soft, #fff0eb); }
-.xcs-tag.hot { color: #8a5d00; background: #fbf0d2; }
-.xcs-tag.use { color: #fff; background: var(--red); }
-.xcs-model-caps { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; line-height: 1.45; color: var(--muted2); }
-.xcs-model-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 10px 12px 10px 0; }
-.xcs-model-price { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--white); }
-.xcs-model-add { min-height: 32px; padding: 5px 10px; border: 1px solid var(--border2); border-radius: 999px; background: var(--xc-paper, #fff); color: var(--muted2); font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
-.xcs-model-add:hover { border-color: var(--red); color: var(--red); }
-.xcs-models-more { display: block; width: 100%; min-height: 44px; margin-top: 10px; border: 0; border-radius: 12px; background: var(--xc-soft, #f1f2ec); color: var(--white); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
-.xcs-models-more:hover { background: var(--xc-rule, #e2e5dd); }
-@media (min-width: 761px) {
-  .xcs-models { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-/* (4) Your works: a picture grid, three across on a phone (nine), five
+/* Your works: a picture grid, three across on a phone (nine), five
    across from 761px (ten). */
 .xcs-works { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .xcs-work { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--xc-soft, #f1f2ec); color: inherit; text-decoration: none; }

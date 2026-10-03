@@ -17,7 +17,6 @@ import { useLang, tOr } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import StudioWorks from './StudioWorks'
-import StandaloneModels, { type DoorModel } from './StandaloneModels'
 import StandaloneTemplates from './StandaloneTemplates'
 import ExportBar from './ExportBar'
 import VideoExportBar from './VideoExportBar'
@@ -50,6 +49,7 @@ import { downloadFile, downloadName } from '../../lib/download'
 import ProviderLogo from '../components/ProviderLogo'
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import { XCREATE_TEMPLATES, PLATFORM_PRESETS, defaultFormat, type Template, type TemplateFormat } from './templates'
+import { perImageRate, perSecondRate } from '../../lib/model-facts'
 import { isSubmitEnter } from '../../lib/ime'
 
 type Mode = 'text' | 'image' | 'video' | 'audio'
@@ -537,21 +537,6 @@ const LABELS = ['A', 'B', 'C', 'D']
 //   response. Cached input is ignored here — the estimator is a ceiling.
 // Image: per-image price from image_pricing[quality]. One image per slot.
 // Video: per-second price from video_pricing[resolutionKey] × duration.
-function resolutionKeyForSize(size: string): string | null {
-  // Plain resolution keys ('480p', '720p', '4k') pass through directly -
-  // some models (Grok Imagine) declare sizes this way, and falling back
-  // to the 720p rate mis-estimated 480p runs (CC, July 20).
-  if (/^\d+p$/i.test(size)) return size.toLowerCase()
-  if (/^4k$/i.test(size)) return '4K'
-  if (!size.includes('x')) return null
-  const [w, h] = size.split('x').map(Number)
-  if (!w || !h) return null
-  const shortSide = Math.min(w, h)
-  if (shortSide >= 2000) return '4K'
-  if (shortSide >= 1000) return '1080p'
-  if (shortSide >= 700)  return '720p'
-  return '480p'
-}
 
 /** Searches to price in when a slot has web search on. Mirrors the server's
  *  reserve in app/api/xcreate/route.ts — the two must not drift, or the quote
@@ -607,18 +592,9 @@ function estimateSlotDollars(
     // they beat any token guess. Multiply by count — qwen and gpt-image-2
     // return N images per call and bill per image / per image's tokens.
     const nImgs = Math.max(1, opts?.count ?? 1)
-    const r = p.per_image
-    const size = opts?.size ?? null
-    const q    = opts?.quality ?? null
-    if (r) {
-      // Most specific key wins: "quality:size" (gpt-image-2's measured
-      // matrix) → size tier ("1024" for Gemini) → quality → fallbacks.
-      const flat = (q && size && r[`${q}:${size}`] != null) ? r[`${q}:${size}`]
-                 : (size && r[size] != null) ? r[size]
-                 : (q && r[q] != null)       ? r[q]
-                 : (r.medium ?? r.default ?? Object.values(r)[0] ?? null)
-      if (flat != null) return flat * nImgs
-    }
+    // The same lookup the model picker prices with (lib/model-facts.ts).
+    const flat = perImageRate(p.per_image, opts?.quality ?? null, opts?.size ?? null)
+    if (flat != null) return flat * nImgs
     // Token-billed with no per-image table (e.g. gpt-image-2): rough
     // heuristic — ~1400 output image tokens (1372 measured on a real
     // gpt-image-2 response). Order-of-magnitude only; quality moves it.
@@ -632,22 +608,9 @@ function estimateSlotDollars(
     return null
   }
   if (m === 'video') {
-    const r = p.per_video_second
-    if (!r) return null
-    const size = opts?.size ?? null
-    const key  = size ? resolutionKeyForSize(size) : null
-    let perSecond: number | null = null
-    // Falling back to 720p was a silent 2x on any model whose default tier is
-    // cheaper: Wan 3.0 opens at 480p ($0.05/s), so an unmapped size quoted
-    // $0.10/s — double, for a run that would never bill that. Fall back to the
-    // model's OWN first declared size, which is what validateOpts selects.
-    const firstSize = model.output_config?.video?.sizes?.[0] ?? null
-    const firstKey  = firstSize ? resolutionKeyForSize(firstSize) : null
-    if (key && r[key] != null)                          perSecond = r[key]
-    else if (firstKey && r[firstKey] != null)           perSecond = r[firstKey]
-    else if (r['default'] != null)                      perSecond = r['default']
-    else if (r['720p'] != null)                         perSecond = r['720p']
-    else if (Object.values(r).length > 0)               perSecond = Object.values(r)[0] as number
+    // An unmapped size falls back to the model's own first size, as the
+    // composer selects it (lib/model-facts.ts, shared with the model picker).
+    const perSecond = perSecondRate(p.per_video_second, opts?.size ?? null, model.output_config?.video?.sizes?.[0] ?? null)
     if (perSecond == null) return null
     const seconds = opts?.duration ?? 1
     return perSecond * seconds
@@ -1916,40 +1879,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setOptsOpen(prev => compact(prev, false))
     setSlots([])  // clear any stale results from previous run
     setPhase('setup')
-  }
-
-  // The door's model list (Oct 3 redesign, StandaloneModels): a tap makes
-  // that model the composer's one model; 比較 seats it beside the others.
-  // A model that cannot run the current recipe moves the run to the first
-  // recipe it can, letting go of a template built on the old one (the same
-  // as choosing that recipe by hand: the uploads it needed go too).
-  const seatFromDoor = (d: DoorModel): SlotModel => ({
-    id: d.id, provider: d.provider, model_name: d.model_name, display_name: d.display_name,
-    modes: (d.modes ?? []) as ModelMode[], model_pricing: d.model_pricing,
-    output_config: d.output_config, input_config: d.input_config ?? null,
-  })
-  const chooseDoorModel = (d: DoorModel) => {
-    if (phase !== 'setup') return
-    const m = seatFromDoor(d)
-    const fits = (m.modes ?? []).includes(recipeMode)
-    const recipe = fits ? recipeMode : (RECIPES[mode].find(r => (m.modes ?? []).includes(r.id))?.id ?? recipeMode)
-    if (!fits) {
-      setRecipeMode(recipe)
-      setActiveTemplateId(null); templateAspectRef.current = null
-      setAttachments([])
-    }
-    setSelectedModels([m, null, null, null])
-    setSlotOptions([optionsFor(m, recipe, fits ? activeTpl : null, fits ? activeFormat : null), null, null, null])
-    setOptsOpen([false, false, false, false])
-    setSlots([]); setChosenIdx(null)
-    flashComposer()
-  }
-  const compareDoorModel = (d: DoorModel) => {
-    if (phase !== 'setup' || !(d.modes ?? []).includes(recipeMode)) return
-    const free = selectedModels.findIndex(v => !v)
-    if (free === -1) return
-    addModel(free, seatFromDoor(d))
-    flashComposer()
   }
 
   // RESTRICTED recipes have no fallback path: a model that cannot listen
@@ -3850,6 +3779,29 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The recipe list under the From button: www's sits above the prompt box,
+  // the door's inside it (owner, Oct 3).
+  const fromMenu = fromOpen && (() => {
+    const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
+    const recipes = avail.length ? avail : RECIPES[mode]
+    return (
+      <div className="from-menu" role="listbox">
+        {recipes.map(r => {
+          const ic = RECIPE_ICONS[r.id]
+          return (
+            <button key={r.id} type="button" role="option"
+              aria-selected={r.id === recipeMode}
+              className={`from-menu-item ${r.id === recipeMode ? 'active' : ''}`}
+              onClick={() => { selectRecipe(r.id); setFromOpen(false) }}>
+              {ic && <span className="recipe-entry-icons" aria-hidden><InputIcon kind={ic[0]} /></span>}
+              {t('recipefrom.' + r.id)}
+            </button>
+          )
+        })}
+      </div>
+    )
+  })()
+
   const promptComposer = (
     <>
 {/* Prompt — framed composer. The labeled upload slots
@@ -4104,6 +4056,23 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   {phase === 'setup' && /\{\{[^}]+\}\}/.test(prompt) && (
                     <div style={{ padding: '0 16px 12px', fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
                       ✏️ Replace the {'{{marked}}'} parts with your own words — or keep the defaults
+                    </div>
+                  )}
+                  {/* The door's From dropdown sits in the prompt box (owner,
+                      Oct 3: "put the source drop down to inside the prompt box
+                      like what others do"); www keeps it above the box. */}
+                  {isStandalone && (
+                    <div className="xcs-prompt-tools">
+                      <div className="xcs-source" ref={fromRef}>
+                        <button type="button" className="xcs-source-btn" disabled={isLocked}
+                          aria-haspopup="listbox" aria-expanded={fromOpen}
+                          onClick={() => !isLocked && setFromOpen(o => !o)}>
+                          <span className="xcs-source-label">{t('xcreate.from')}</span>
+                          {t('recipefrom.' + recipeMode)}
+                          <span aria-hidden className="xcs-source-caret">▾</span>
+                        </button>
+                        {fromMenu}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4531,8 +4500,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* Mode group + "From:" dropdown. Clicking a mode switches
                     it immediately (first sub-mode as default); the From
                     button opens a small list of the mode's sub-modes. */}
-                <div
-                  className={isStandalone ? 'xcs-mode-block' : undefined}
+                {!isStandalone && <div
                   style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
                 >
                   <div className="mode-row">
@@ -4568,29 +4536,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         {t('recipefrom.' + recipeMode)}
                         <span aria-hidden style={{ fontSize: 9, color: 'var(--muted)' }}>▾</span>
                       </button>
-                      {fromOpen && (() => {
-                        const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
-                        const recipes = avail.length ? avail : RECIPES[mode]
-                        return (
-                          <div className="from-menu" role="listbox">
-                            {recipes.map(r => {
-                              const ic = RECIPE_ICONS[r.id]
-                              return (
-                                <button key={r.id} type="button" role="option"
-                                  aria-selected={r.id === recipeMode}
-                                  className={`from-menu-item ${r.id === recipeMode ? 'active' : ''}`}
-                                  onClick={() => { selectRecipe(r.id); setFromOpen(false) }}>
-                                  {ic && <span className="recipe-entry-icons" aria-hidden><InputIcon kind={ic[0]} /></span>}
-                                  {t('recipefrom.' + r.id)}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )
-                      })()}
+                      {fromMenu}
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 {isStandalone && <div className="xcs-prompt-section">
                   <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label></div>
@@ -5403,17 +5352,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
                 {/* The door's one page under Generate (Oct 3 redesign, learned
                     from Pollo AI's /image page; the owner's order, and "the top
-                    part stays the same"): (1) tools and templates, (2) the
-                    models, (3) what is trending on social media (Sep 26),
-                    (4) your own works of this type (Oct 1; a list until Oct 3).
-                    Setup screen only, like the wall above. */}
+                    part stays the same"): tools and templates, what is trending
+                    on social media (Sep 26), and your own works of this type
+                    (Oct 1; a list until Oct 3). The models list it had for a
+                    moment went: the model cards above already pick models, and
+                    the picker shows each one's price. Setup screen only, like
+                    the wall above. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && <>
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTemplates mode={mode} onSelect={tpl => { void applyTemplate(tpl) }} onConvert={kind => setConvertKind(kind)} />
                   )}
-                  <StandaloneModels mode={mode} selectedIds={activeModels.map(m => m.id)}
-                    canCompare={d => activeModels.length > 0 && activeModels.length < 4 && (d.modes ?? []).includes(recipeMode)}
-                    onUse={chooseDoorModel} onCompare={compareDoorModel} />
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTrending kind={mode} onUse={template => { void applyTemplate(template) }} />
                   )}

@@ -167,17 +167,19 @@ Film) as XTell's carries its temples: the studio (Codex's) is the door's one pag
 trending feed for the chosen type under the composer, and the Library is on the
 account page (`studio-type.ts` links the bar and the studio; old `?view=`
 links redirect). **Redesigned under Generate, Oct 3** (owner, learned from
-Pollo AI's /image page; the composer above stays as it was, owner: "the top
-part stays the same. you only change the bottom part"): four sections in the
-owner's order: tools and templates
-(`StandaloneTemplates.tsx`, one sideways row), the models
-(`StandaloneModels.tsx`: every enabled model of the type, capabilities from
-`modes`/`output_config`, list price; a tap uses it alone, 比較 adds a seat),
-trending on social media, and your works (`StudioWorks.tsx`, a picture grid of
+Pollo AI's /image page; the composer stays as it was, owner: "the top part
+stays the same", except that its From dropdown sits inside the prompt box,
+"like what others do"): tools and templates (`StandaloneTemplates.tsx`, one
+sideways row), trending on social media, and your works (`StudioWorks.tsx`, a picture grid of
 your latest of the type from `/api/profile/xcreates?studio=1`, which leaves out
 rows with a `node_kind`; Film keeps only film rows and Video leaves them out,
 by `slots->0->options->>film`). Rename and delete live in the Library, which
-filters Film on its own. A
+filters Film on its own. The model picker (`ModelPickerDialog.tsx`, every
+host) shows each model's 新 / 熱門, what it does (from `modes` and
+`output_config`) and its list price per image / second / M tokens at the
+composer's opening settings (`lib/model-facts.ts`, the same lookups as the
+estimate); on the door it hides the XD score and the internal id (owner: the
+score is "not ready yet"). A
 reopened picture/video/voice run with a recorded pick opens on its canvas;
 picking marks `chosen` on the stored slots and changes nothing else in them
 (it used to rewrite them and lose every model's settings). **Templates came
