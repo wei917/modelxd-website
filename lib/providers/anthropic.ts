@@ -275,13 +275,23 @@ export async function streamText(
         }
       }
     }
-    // Cache WRITES bill at 1.25x the input rate and arrive in their own
-    // counter — fold them into inputTokens at the premium so calcTextCost
-    // stays provider-agnostic. The fold happens HERE, after the stream: it
-    // used to live in message_start, where message_delta's final usage tally
-    // (which excludes cache traffic) silently overwrote it — a 2800-token
-    // write billed as 20 tokens (seen live, Aug 27; same bug class as the
-    // 18-token head of Aug 13).
+    // Anthropic reports its three input numbers SEPARATELY and additively:
+    // input_tokens counts only the FRESH tokens, with cache reads and writes
+    // in counters of their own (measured 2026-10-03: 13 + 2,044 read = 2,057
+    // total, cold and warm alike). OpenAI does the opposite — its cache
+    // traffic sits INSIDE input_tokens — and calcTextCost speaks OpenAI's
+    // convention, subtracting cachedTokens from inputTokens to find what was
+    // charged at full rate. So Anthropic's count has to be made whole here or
+    // that subtraction eats real tokens: a turn with 13 fresh and 2,044 read
+    // billed its fresh input at zero, and a turn with a write as well lost
+    // the entire 1.25x premium with it.
+    inputTokens += cachedTokens
+    // Cache WRITES bill at 1.25x the input rate — fold them in at the premium
+    // so calcTextCost stays provider-agnostic. The fold happens HERE, after
+    // the stream: it used to live in message_start, where message_delta's
+    // final usage tally (which excludes cache traffic) silently overwrote it
+    // — a 2800-token write billed as 20 tokens (seen live, Aug 27; same bug
+    // class as the 18-token head of Aug 13).
     if (cacheWriteTokens > 0) inputTokens += Math.ceil(cacheWriteTokens * 1.25)
     const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount })
     console.log(`${TAG} done in=${inputTokens} out=${outputTokens} cached=${cachedTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
