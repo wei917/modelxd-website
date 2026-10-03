@@ -1,4 +1,4 @@
-# XTELL-PAGE.md — X算命 (`/xtell`)
+# XTELL-PAGE.md — X先知 (`/xtell`; X算命 until Oct 3)
 
 > Everything about the XTell surface. Written 2026-08-30, updated 2026-09-01
 > (關帝廟 + 四面佛 + 九曜廟; 媽祖廟, 姓名亭, 測字亭 Sep 22), verified against the code the same day. Read this before touching `app/xtell/*`, `lib/xtell.ts`,
@@ -875,10 +875,15 @@ finger left :hover behind on the neighbour); no motion under
 
 A master used to reread only the last 20 messages the page sent. Since Oct 3
 the reading route builds each master's whole thread from the visitor's
-saved conversation (`lib/xtell-thread.ts`, up to 100k tokens). The full
-design (account basics, conversation facts recomputed only on a new day,
-each master's own memo by its own model, the 記憶 bar) is in
-`docs/XTELL-MEMORY.md`.
+saved conversation (`lib/xtell-thread.ts`), and adds the account's birth
+details (for reference, never recited), today's date in the visitor's zone
+with the day's facts (computed, not stored), and the master's own summary.
+Past 70% of its window a master summarizes the older part of its thread
+with its own model (like compacting a chat), billed to the visitor like an
+answer. Each seat shows a 「記憶 N%」 bar that opens 「對話摘要」. Messages and
+summaries live in
+`xtell_messages` / `xtell_memories` (migration 126); before it runs the
+route quietly behaves as before. The full design is `docs/XTELL-MEMORY.md`.
 
 ### 大師 / master (Oct 2)
 

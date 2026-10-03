@@ -14,7 +14,7 @@ import { getModelById } from '@/lib/models'
 import * as providers from '@/lib/providers'
 import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { sanitizeProviderError } from '@/lib/provider-errors'
-import { baziChart, baziFacts, liuNianFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS } from '@/lib/xtell'
+import { baziChart, baziFacts, liuNianFacts, chengGu, chengguFacts, ziweiChart, ziweiFacts, yuelaoFacts, heMatch, liuNian, simianfoFacts, guandiFacts, bingGaoFacts, validBingGao, qianOf, navagrahaChart, navagrahaFacts, zhanxingChart, zhanxingFacts, asAstroMode, validBirth, birthProblem, validQian, validWishes, validPlace, asTemple, isQianTemple, nameChart, nameFacts, validName, charInfo, ceziFacts, validChar, MASTERS, placeLabelOf } from '@/lib/xtell'
 import { classicsBlock } from '@/lib/classics'
 import { xtellAdmin } from '@/lib/xtell-admin'
 import { DAILY_METHODS, DAILY_TEACHER, westernFacts, type DailyMethod } from '@/lib/xtell-daily'
@@ -27,7 +27,9 @@ import { asSpread, asOptions, validPicks, tarotChart, tarotFacts, ASK_MAX as TAR
 import { cookieFacts } from '@/lib/xtell-cookie'
 import { chineseLeak, leaksChinese, jaTermStream } from '@/lib/xtell-lang-check'
 import { offersPersonality, personalityFacts } from '@/lib/xtell-personality'
-import { threadFor, fitBudget, MESSAGE_CHARS, type Message } from '@/lib/xtell-thread'
+import { threadFor } from '@/lib/xtell-thread'
+import { fitBudget, approxTokens, rawBudget, tokensRead, windowOf, MESSAGE_CHARS, type Message } from '@/lib/conversation-memory'
+import { addMessage, latestMemo, messagesAfter, threadRows, memoBlock, maybeSummarize, summaryRun, summaryCharge, type Memo } from '@/lib/xtell-memory'
 import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 import { sukuyoChart, sukuyoFacts, asPartnerDate } from '@/lib/sukuyo'
 
@@ -79,7 +81,17 @@ const LENGTH_LINE: Record<string, string> = {
 }
 // Every teacher is told the date: without it a model takes the year from
 // its training (2024 for 「今年」, a live test, Sep 29).
-const todayLine = () => `今天的日期（西元，UTC）：${new Date().toISOString().slice(0, 10)}。說到「今天、今年、明年」以此為準，不要自行假設年份。`
+// The visitor's own day (docs/XTELL-MEMORY.md: the date-bound facts change
+// once a day, never per reply, so the master's instructions stay the same
+// all day). The zone comes from the page; Taipei when it sends none.
+const tzOf = (v: unknown): string => {
+  if (typeof v === 'string' && v.length < 64) { try { new Intl.DateTimeFormat('en-US', { timeZone: v }); return v } catch { /* not a zone */ } }
+  return 'Asia/Taipei'
+}
+const localDate = (tz: string, at: Date = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
+/** One moment per day for anything that moves within a day (占星's sky). */
+const dayMoment = (tz: string) => new Date(`${localDate(tz)}T12:00:00Z`)
+const todayLine = (tz: string) => `今天的日期（西元，來訪者當地）：${localDate(tz)}。說到「今天、今年、明年」以此為準，不要自行假設年份。`
 const lengthLine = (v: unknown) => `\n${LENGTH_LINE[typeof v === 'string' && LENGTH_LINE[v] ? v : 'zh-Hant']}`
 
 // What the facts block is called, per temple: a 命盤 for the chart temples,
@@ -204,25 +216,54 @@ export async function POST(req: Request) {
 
   // What this master rereads (owner, Oct 2: "continue and read all"): its
   // whole thread in the saved conversation, built here from the visitor's
-  // own row (lib/xtell-thread.ts), up to HISTORY_TOKENS, the newest part
-  // when a very long one does not fit. It used to be the last 20 messages
+  // own row (lib/xtell-thread.ts), the newest part when a very long one does
+  // not fit (lib/conversation-memory.ts). It used to be the last 20 messages
   // the page sent, and a master forgot how a long conversation began. Only
   // a conversation that is not saved falls back to the page's copy. The
   // chart is not part of this: it rides with the master's instructions.
   // Bounded before the facts, so an 易學堂 follow-up still finds the last
   // hexagram the visitor named.
+  // Once this master has a memo (migration 126, lib/xtell-memory.ts), it
+  // rereads the memo and the messages after it; until then its whole thread
+  // from the saved turns. The memory tables are the service role's only,
+  // used after the conversation was read with the visitor's own session.
   const savedId = typeof body?.readingId === 'string' && /^[0-9a-f-]{36}$/i.test(body.readingId) ? body.readingId : null
+  const modelKey = String((model as any).id)
+  const qidIn = typeof body?.qid === 'string' && /^[0-9a-f-]{36}$/i.test(body.qid) ? body.qid : null
+  const tz = tzOf(body?.tz)
+  let admin: any = null
+  try { admin = xtellAdmin() } catch { admin = null }
   let thread: Message[] | null = null
+  let memo: Memo | null = null
+  let savedTurns: any[] = []
   if (savedId) {
     const { data: saved } = await sb.from('xtell_readings').select('turns').eq('id', savedId).eq('user_id', user.id).is('deleted_at', null).maybeSingle()
-    if (saved) thread = threadFor((saved as any).turns, String((model as any).id), typeof body?.qid === 'string' ? body.qid : null)
+    if (saved) {
+      savedTurns = Array.isArray((saved as any).turns) ? (saved as any).turns : []
+      memo = admin ? await latestMemo(admin, savedId, modelKey) : null
+      if (memo) {
+        const rows = await messagesAfter(admin, savedId, memo.through_seq)
+        if (rows) thread = threadRows(rows, modelKey, qidIn).map(({ role, content }) => ({ role, content }))
+        else memo = null
+      }
+      if (!thread) thread = threadFor(savedTurns, modelKey, qidIn)
+    }
   }
   const pageCopy: Message[] = Array.isArray(body?.history)
     ? body.history
         .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
         .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, MESSAGE_CHARS) }))
     : []
-  const history: Message[] = fitBudget(thread ?? pageCopy).kept
+  // Untrimmed here (易學堂 looks back for the last hexagram named); trimmed
+  // to the master's window where the request is assembled.
+  const history: Message[] = thread ?? pageCopy
+  // The conversation's opening question: what the reference texts are
+  // picked for, once per conversation (c4).
+  const firstUser = (savedTurns.find((t: any) => t?.role === 'user' && typeof t.content === 'string')?.content
+    ?? pageCopy.find(m => m.role === 'user')?.content ?? question) as string
+  // The day of the last answer, to tell the master when the date-bound facts moved on.
+  const lastTs = [...savedTurns].reverse().find((t: any) => t?.role === 'assistant' && typeof t.ts === 'string')?.ts
+  const prevDay = lastTs && !Number.isNaN(Date.parse(lastTs)) ? localDate(tz, new Date(lastTs)) : null
 
   // The day's reading the follow-up is about: the visit row (the visitor's
   // own, under their session) names it, and it is read with the service role
@@ -287,8 +328,8 @@ export async function POST(req: Request) {
     : temple === 'zhanxing'
     ? zhanxingFacts(
         zhanxingChart(body.birth, body.place, asAstroMode(body?.mode),
-          { b2: body.birth2, place2: body.place2, year: Number(body.year) || undefined }),
-        body.birth.gender, body.birth2?.gender ?? 'female')
+          { b2: body.birth2, place2: body.place2, year: Number(body.year) || undefined, at: dayMoment(tz) }),
+        body.birth.gender, body.birth2?.gender ?? 'female', dayMoment(tz))
     : temple === 'ziwei'
     ? ziweiFacts(ziweiChart(body.birth), body.birth.gender)
     : temple === 'yuelao'
@@ -342,16 +383,44 @@ export async function POST(req: Request) {
   const typeFacts = !daily && offersPersonality(temple) ? personalityFacts(body?.mbti, temple === 'yuelao' ? body?.mbti2 : undefined) : ''
   const facts = typeFacts ? `${chartFacts}\n\n${typeFacts}` : chartFacts
 
-  // The chart rides in the SYSTEM slot with the master persona: every turn of
-  // the conversation carries it natively, and the client can never overwrite
-  // it — history is user/assistant turns only, capped so a long consultation
-  // cannot smuggle an unbounded prompt.
-  const messages = [...history, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
-  // Teacher questions retrieve on what the visitor actually said, not the
-  // generic mode instructions in the facts block. Include follow-up context.
+  // Reference passages (c4): picked for the conversation's opening question,
+  // so they stay the same for the whole conversation. 易學堂's 問大師 keeps
+  // looking for what each message names, as before.
   const classicsQuery = daily ? '' : temple === 'yixue' && asYixueMode(body?.mode) === 'ask'
     ? [...history.filter(turn => turn.role === 'user').slice(-3).map(turn => turn.content), question].join(' ').slice(-2000)
-    : `${question} ${facts}`.slice(0, 2000)
+    : `${firstUser} ${facts}`.slice(0, 2000)
+
+  // b: the visitor's own saved birth details (owner, Oct 3: account basics on
+  // every reply), for reference; this conversation's chart may be someone
+  // else's. Never recited back (the owner's rule on showing personal data).
+  let basics = ''
+  if (!daily && admin) {
+    try {
+      const { data: prof } = await admin.from('xtell_profiles').select('birth, birth_place').eq('user_id', user.id).maybeSingle()
+      const b = (prof as any)?.birth
+      if (b && typeof b.y === 'number') {
+        const two = (n: unknown) => String(n ?? 0).padStart(2, '0')
+        const when = `${b.y}-${two(b.m)}-${two(b.d)}${b.hourUnknown ? '（時辰不詳）' : ` ${two(b.h)}:${two(b.mi)}`}`
+        basics = `\n\n來訪者本人存在帳戶的出生資料（僅供參考；本次的盤以下方資料為準，可能是別人的；不要在回答中複述生日或出生時間）：${when}，${placeLabelOf((prof as any).birth_place) ?? '出生地未填'}`
+      }
+    } catch { /* no profile, or before 109: nothing */ }
+  }
+  // c3: when this conversation was last answered on an earlier day, the
+  // date-bound facts below are today's; say so once.
+  const today = localDate(tz)
+  const dayNote = prevDay && prevDay < today ? `\n（上次對話是 ${prevDay}，今天是 ${today}：日期相關的資料已更新，與先前的說法不同時，以今天的為準。）` : ''
+  // The master's instructions, in the order of docs/XTELL-MEMORY.md:
+  // a (prompt), b (basics), c (today, the facts, the passages), d (memo).
+  const systemText = daily
+    ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine(tz)}${dayNote}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${memo ? memoBlock(memo) : ''}${closingLine(body?.lang)}`
+    : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}${basics}\n\n${todayLine(tz)}${dayNote}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${memo ? memoBlock(memo) : ''}${closingLine(body?.lang)}`
+  // The chart rides in the SYSTEM slot with the master persona: every turn of
+  // the conversation carries it natively, and the client can never overwrite
+  // it. The conversation (e) is trimmed to what fits the master's window
+  // beside it; a master summarizes long before that (lib/xtell-memory.ts).
+  const fitted = fitBudget(history, rawBudget(model, approxTokens(systemText)))
+  if (fitted.dropped > 0) console.warn(`${LOG} ${fitted.dropped} oldest messages left out for ${(model as any).model_name} (window ${windowOf(model)})`)
+  const messages = [...fitted.kept, { role: 'user' as const, content: question || '請為信眾做一次完整的解讀。' }]
 
   // Saved reading (supabase/105): the client passes the row id it got from
   // the chart route and a per-question id; both turns are appended through
@@ -366,6 +435,14 @@ export async function POST(req: Request) {
   const ids = (v: unknown) => Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 8) : []
   const to = ids(body?.to), seats = ids(body?.seats)
   let full = ''
+
+  // xtell_messages (migration 126): the visitor's message is stored as the
+  // question arrives, so it sorts before every answer; masters answering it
+  // together store it once. Nothing happens before 126 runs.
+  const memoryOn = !!(admin && readingId && qidIn)
+  if (memoryOn) {
+    await addMessage(admin, { reading_id: readingId!, role: 'user', content: question || '請為信眾做一次完整的解讀。', qid: qidIn, to, seats })
+  }
 
   // The visitor may leave mid-answer (owner, Oct 1: switched apps on the
   // phone and the page said "Load failed"). The answer is still finished,
@@ -383,7 +460,9 @@ export async function POST(req: Request) {
       // providers do not await onDone, where the save and the debit run.
       let settle = () => {}
       const settled = new Promise<void>(r => { settle = r })
-      const end = () => { clearInterval(beat); settle(); if (!open) return; open = false; try { controller.close() } catch { /* already gone */ } }
+      // `end(false)` closes the stream but keeps the work alive (a summary
+      // after the answer); `settle()` then lets the function finish.
+      const end = (settleNow = true) => { clearInterval(beat); if (settleNow) settle(); if (!open) return; open = false; try { controller.close() } catch { /* already gone */ } }
       after((async () => {
         // A Japanese answer has its listed Chinese terms replaced as it streams
         // (lib/xtell-lang-check.ts): what is shown, saved and shared is the
@@ -440,9 +519,33 @@ export async function POST(req: Request) {
                   else console.warn(`${LOG} debit failed:`, err)
                 })
               }
+              const read = tokensRead(r)
+              if (memoryOn) {
+                await addMessage(admin, {
+                  reading_id: readingId!, role: 'assistant', content: full, qid: qidIn,
+                  model_id: (model as any).id, model_name: (model as any).display_name ?? (model as any).model_name ?? null,
+                  provider: (model as any).provider ?? null, input_tokens: read, cost: r.cost ?? null,
+                })
+              }
               // inputTokens: what this master actually read, for the 記憶 bar.
-              emit(sse('done', { cost: r.cost ?? 0, searches: r.searchCount ?? 0, inputTokens: r.inputTokens ?? null }))
-              end()
+              emit(sse('done', { cost: r.cost ?? 0, searches: r.searchCount ?? 0, inputTokens: read }))
+              end(false)
+              // After the answer is delivered, never before: a master whose
+              // answer read more than 70% of its window folds the older part
+              // of its thread into a summary, with its own model, billed to
+              // the visitor like an answer (docs/XTELL-MEMORY.md).
+              if (memoryOn) {
+                const done = await maybeSummarize({
+                  admin, readingId: readingId!, model, inputTokens: read, lang: typeof body?.lang === 'string' ? body.lang : 'zh-Hant', userId: user.id,
+                  run: summaryRun((...a: any[]) => (providers.streamText as any)(...a), model, user.id, thinking),
+                  charge: summaryCharge({ accrueFraction, debitCredits }, {
+                    userId: user.id, readingId: readingId!, model, temple: daily ? 'daily' : temple,
+                    warn: m => console.warn(`${LOG} ${m}`),
+                  }),
+                })
+                if (done.saved || done.reason.startsWith('failed') || done.reason.startsWith('save failed')) console.warn(`${LOG} memory for ${(model as any).model_name}: ${done.reason}`)
+              }
+              settle()
             },
             onError: (msg) => {
               if (fix) show(fix.end())
@@ -453,9 +556,7 @@ export async function POST(req: Request) {
           [],
           { userId: user.id },
           {
-            system: daily
-              ? `${DAILY_TEACHER[daily.method]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n今日運勢的依據與當天的免費解讀（系統算定，勿更動）：\n${facts}${closingLine(body?.lang)}`
-              : `${MASTERS[temple]}${langLine(body?.lang)}${lengthLine(body?.lang)}\n\n${todayLine()}\n\n${FACTS_HEAD[temple]}\n${facts}${classicsBlock(temple, classicsQuery)}${closingLine(body?.lang)}`,
+            system: systemText,
             search,
             thinking,
           },

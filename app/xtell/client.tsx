@@ -29,6 +29,9 @@ import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } 
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import type { PickerModel } from '../components/ModelPickerDialog'
 import TeacherPicker from '../components/xtell/TeacherPicker'
+import MemoryDialog from '../components/xtell/MemoryDialog'
+import ContextMeter from '../components/ContextMeter'
+import { maxInputOf, summaryPointOf, formatTokens } from '../../lib/conversation-memory'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
@@ -45,7 +48,7 @@ import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../.
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../lib/xtell-history'
 import { TitleEditor } from '../components/xtell/TitleEditor'
-import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
+import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimateInputTokens, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
@@ -722,7 +725,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // house pick ever leaves the catalog — the temple must never open empty.
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
     sb.from('ai_models')
-      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, blocked_features')
+      .select('id, provider, model_name, display_name, modes, model_pricing, context_window, output_config, blocked_features')
       .eq('enabled', true).contains('output_modalities', ['text'])
       .then(({ data }) => {
         const rows = (data ?? []).filter(r => !(r.blocked_features ?? []).includes('xtell'))
@@ -979,6 +982,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           search: optsOf(m).search && searchable(m),
           thinking: optsOf(m).thinking,
           lang,
+          // The visitor's own day: the date-bound facts change at their midnight.
+          tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone } catch { return undefined } })(),
         }),
       })
       if (!res.ok || !res.body) {
@@ -1000,7 +1005,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           if (!type || !data) continue
           const j = JSON.parse(data)
           if (type === 'delta') appendAssistant(idx, j.text)
-          if (type === 'done') { ended = true; doneAssistant(idx, j.cost ?? 0) }
+          if (type === 'done') {
+            ended = true; doneAssistant(idx, j.cost ?? 0)
+            if (typeof j.inputTokens === 'number') setMemUse(u => ({ ...u, [m.id]: j.inputTokens }))
+          }
           if (type === 'error') { ended = true; fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
         }
       }
@@ -1048,6 +1056,59 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // being fetched; another teacher's error stays.
     if (recovering.current === 0 && errCodeRef.current === 'stream_recovering') clearErr()
   }
+
+  // 記憶 (Oct 3, docs/XTELL-MEMORY.md): how much each master read for its
+  // last answer, against its own limit (the catalog's context_window, read
+  // with the master; lib/conversation-memory.ts). Sizes come from each answer
+  // as it finishes, or from the conversation's stored answers when it reopens.
+  const [memUse, setMemUse] = useState<Record<string, number>>({})
+  const [memoFor, setMemoFor] = useState<PickerModel | null>(null)
+  // 「立即摘要」 runs here, not in the dialog, so a press outlives the dialog:
+  // closing and reopening it shows 摘要中… and then the summary, and the
+  // button cannot be pressed twice meanwhile (owner, Oct 3: closed and
+  // reopened, "I can click summarize again"). Keyed by conversation and master.
+  const summarizingRef = useRef<Set<string>>(new Set())
+  const [summarizing, setSummarizing] = useState<Record<string, true>>({})
+  const [freshMemo, setFreshMemo] = useState<Record<string, { text: string; at: string }>>({})
+  const [memoNote, setMemoNote] = useState<Record<string, string>>({})
+  const summarizeNow = async (m: PickerModel) => {
+    if (!readingId) return
+    const key = `${readingId}:${m.id}`
+    if (summarizingRef.current.has(key)) return
+    summarizingRef.current.add(key)
+    setSummarizing(s => ({ ...s, [key]: true }))
+    setMemoNote(n => { const next = { ...n }; delete next[key]; return next })
+    try {
+      const res = await fetch('/api/xtell/memory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ readingId, modelId: m.id, lang, thinking: optsOf(m).thinking }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (res.ok && typeof j.text === 'string') setFreshMemo(f => ({ ...f, [key]: { text: j.text, at: typeof j.at === 'string' ? j.at : new Date().toISOString() } }))
+      else setMemoNote(n => ({ ...n, [key]: t(j.code === 'nothing_to_summarize' ? 'xtell.mem.nothing' : j.code === 'no_credits' ? 'xtell.mem.nocredit' : 'xtell.mem.failed') }))
+    } catch {
+      setMemoNote(n => ({ ...n, [key]: t('xtell.mem.failed') }))
+    } finally {
+      summarizingRef.current.delete(key)
+      setSummarizing(s => { const next = { ...s }; delete next[key]; return next })
+    }
+  }
+  useEffect(() => {
+    setMemUse({})
+    if (!readingId) return
+    let live = true
+    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+    sb.from('xtell_messages').select('model_id, input_tokens').eq('reading_id', readingId).eq('role', 'assistant')
+      .order('seq', { ascending: false }).limit(100)
+      .then(({ data, error }) => {
+        if (!live || error || !Array.isArray(data)) return
+        const last: Record<string, number> = {}
+        for (const r of data as Array<{ model_id: string | null; input_tokens: number | null }>) if (r.model_id && typeof r.input_tokens === 'number' && !(r.model_id in last)) last[r.model_id] = r.input_tokens
+        // An answer that finished while this was loading is newer: it wins.
+        setMemUse(u => ({ ...last, ...u }))
+      })
+    return () => { live = false }
+  }, [readingId])
 
   // 👍 / 👎 (owner, Oct 1), per answer: `${qid}:${modelId}` → 1 or -1. Only
   // in a saved visit, and only once /api/xtell/vote answers: signed out, or
@@ -1394,7 +1455,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             const cols = `repeat(${masters.length}, minmax(200px, 264px))`
             const seatChars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
             return (
-              <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
+              // 大師席位 (owner, Oct 3: two rows of master cards, the seats and
+              // the answer tabs, read alike): a label at the left that stays
+              // put while the seats scroll sideways on a phone.
+              <div className="xtell-row-labelled">
+              <span className="xtell-row-label xtell-row-label-seats">{t('xtell.row.seats')}</span>
+              <div style={{ overflowX: 'auto', paddingBottom: 2, flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, flexShrink: 0 }}>
                   {masters.map((m, i) => {
@@ -1402,7 +1468,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     return (
                       <div key={m.id} className="xtell-seat" data-open={optsOpen || undefined}
                         style={optsOpen ? { borderColor: color + '80', boxShadow: `inset 3px 0 0 ${color}, 0 1px 2px rgba(60, 40, 20, .05)` } : undefined}>
-                        <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>
+                        {/* 記憶 (owner, Oct 3: "an icon to fill the circle"): once the
+                            master has answered here, its logo sits in a ring
+                            that fills with its memory, up to the most XTell
+                            lets it read (its limit, or its price jump); the
+                            numbers are in the dialog it opens. */}
+                        {typeof memUse[m.id] === 'number'
+                          ? <ContextMeter className="xtell-seat-logo xtell-seat-ring" used={memUse[m.id]} max={maxInputOf(m)} point={summaryPointOf(m)} size={30}
+                              ariaLabel={t('xtell.mem.title').replace('{name}', m.display_name)} onClick={() => setMemoFor(m)}>
+                              <ProviderLogo provider={m.provider} size={15} />
+                            </ContextMeter>
+                          : <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>}
                         <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} disabled={answering} onClick={() => setPicker({ replace: m.id })}>
                           <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
                         </button>
@@ -1484,11 +1560,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                             {(() => {
                               const usd = estimateReadingUsd(m, { thinking: o.thinking, search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
                               const secs = firstWord(m, o.thinking)
-                              if (usd == null && !secs) return null
+                              // 記憶 beside the price (owner, Oct 3: "current vs
+                              // max"): what this master read last time, or
+                              // what this question is expected to read.
+                              const read = memUse[m.id] ?? estimateInputTokens({ search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
                               return (
                                 <dl className="xtell-seat-stats">
                                   {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsdFor(usd, lang)}</dd></div>}
                                   {secs && <div title={t('xtell.seat.ttft.tip')}><dt>{t('xtell.seat.ttftLabel')}</dt><dd>~{secs} {t('xtell.seat.sec')}</dd></div>}
+                                  <div title={t('xtell.mem.tip')}><dt>{t('xtell.mem.label')}</dt><dd>{memUse[m.id] == null ? '~' : ''}{formatTokens(read)} / {formatTokens(maxInputOf(m))}</dd></div>
                                 </dl>
                               )
                             })()}
@@ -1498,6 +1578,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     </div>
                   </div>
                 )}
+              </div>
               </div>
             )
           })()}
@@ -1589,7 +1670,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 keeps its own thread; 只留這位老師 is there for whoever wants to
                 stop paying for the rest. Past rounds keep their replies. */}
             {layout === 'tabs' && replyModels.length > 1 && (
-              <div role="tablist" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
+              <div className="xtell-row-labelled" style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
+              <span className="xtell-row-label xtell-row-label-tabs">{t('xtell.row.answers')}</span>
+              <div role="tablist" aria-label={t('xtell.row.answers')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
                 {replyModels.map(m => (
                   <button key={m.id} role="tab" aria-selected={activeTab === m.id} onClick={() => setTab(m.id)} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer',
@@ -1602,6 +1685,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     {m.cost > 0 && <span style={{ ...mono, fontSize: 9.5 }}>{fmtUsdFor(m.cost, lang)}</span>}
                   </button>
                 ))}
+              </div>
               </div>
             )}
             {rounds(turns).map((round, ri) => {
@@ -1721,8 +1805,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               sent. 易學堂 has its own. */}
           {!daily && temple !== 'yixue' && turns.length === 0 && chart && <ExampleQuestions temple={temple} onExample={q => { setInput(q); composerRef.current?.focus() }} />}
           {masters.length > 1 && (
-            <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12 }}>
-              <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.ask.to')}</span>
+            // 問： in the same label style and place as 大師席位 and 大師的回答
+            // (owner, Oct 3: its size was off); chips that wrap line up
+            // under the first chip.
+            <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to xtell-row-labelled">
+              <span className="xtell-row-label xtell-row-label-tabs">{t('xtell.ask.to')}</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12, minWidth: 0 }}>
               <button type="button" aria-pressed={askingAll} onClick={() => setAskTo(null)} disabled={busy} style={chip(askingAll)}>{t('xtell.ask.all')}</button>
               {masters.map(m => {
                 const on = !askingAll && recipients.some(r => r.id === m.id)
@@ -1730,6 +1818,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   <ProviderLogo provider={m.provider} size={12} /> {m.display_name}
                 </button>
               })}
+              </div>
             </div>
           )}
           <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -1767,6 +1856,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         </div>
       )}
 
+      {memoFor && (() => {
+        // 「立即摘要」 costs about one answer: what the master last read in,
+        // an answer's length out (lib/xtell-presets.ts's estimate).
+        const usd = estimateReadingUsd(memoFor, { thinking: optsOf(memoFor).thinking, search: false }, 0, memUse[memoFor.id] ?? EST_PROMPT_TOKENS)
+        const answers = turns.filter(tn => tn.role === 'assistant' && tn.modelId === memoFor.id).length
+        const key = `${readingId}:${memoFor.id}`
+        return <MemoryDialog m={memoFor} used={memUse[memoFor.id] ?? 0} readingId={readingId} price={usd == null ? null : fmtUsdFor(usd, lang)}
+          canNow={answers >= 2} busy={answering} working={!!summarizing[key]} note={memoNote[key] ?? null} fresh={freshMemo[key] ?? null}
+          onSummarize={() => void summarizeNow(memoFor)} onClose={() => setMemoFor(null)} />
+      })()}
       {/* 「請一位老師」 (owner, Sep 28: the model browser was for developers). */}
       {picker && (
         <TeacherPicker

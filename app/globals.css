@@ -3707,7 +3707,8 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .xtell-seat-name > svg { flex-shrink: 0; color: var(--xtell-secondary, var(--muted)); opacity: .7; }
 /* Price and first-word time in each teacher's settings card. */
-.xtell-seat-stats { display: flex; gap: 18px; margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--xtell-rule, var(--border2)); }
+.xtell-seat-stats { display: flex; flex-wrap: wrap; column-gap: 18px; row-gap: 6px; margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--xtell-rule, var(--border2)); }
+.xtell-seat-stats dt, .xtell-seat-stats dd { white-space: nowrap; }
 .xtell-seat-stats > div { display: flex; align-items: baseline; gap: 6px; }
 .xtell-seat-stats dt { font-size: 11px; font-weight: 600; color: var(--muted2); }
 .xtell-seat-stats dd { margin: 0; font-family: var(--font-mono), monospace; font-size: 12px; color: var(--xtell-ink, var(--white)); }
@@ -3719,6 +3720,44 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled { opacity: .45; cursor: default; pointer-events: none; }
 .xtell-seat-wait { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
 .xtell-seat-plus { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--xtell-tint, var(--surface2)); font-size: 14px; line-height: 1; }
+/* Row labels (Oct 3, owner): 大師席位 before the seats, 回答 before the
+   answer tabs, in the style of 問： before the ask row; fixed at the left
+   while the row scrolls sideways. */
+.xtell-row-labelled { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.xtell-row-label { flex-shrink: 0; font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); white-space: nowrap; }
+.xtell-row-label-seats { height: 50px; display: flex; align-items: center; }
+/* Level with the first line of tabs when they wrap. */
+.xtell-row-label-tabs { height: 33px; display: flex; align-items: center; }
+
+/* Context meter (Oct 3, app/components/ContextMeter.tsx): a ring that fills
+   with what a model read for its last reply, against its limit; red past its
+   summary point. Shared by every surface; the --xtell-* colours apply on
+   XTell, the rest elsewhere. */
+.ctx-meter { position: relative; display: inline-grid; place-items: center; flex-shrink: 0; color: var(--xtell-ink, var(--white)); }
+.xtell-room button.ctx-meter, button.ctx-meter { min-height: 0; padding: 0; border: none; border-radius: 50%; background: none; cursor: pointer; }
+button.ctx-meter:hover .ctx-ring-track, button.ctx-meter:focus-visible .ctx-ring-track { stroke: var(--xtell-rule, var(--border2)); }
+.ctx-ring { position: absolute; inset: 0; }
+.ctx-ring-track { stroke: var(--xtell-tint, var(--surface2)); transition: stroke .15s; }
+.ctx-ring-fill { stroke: var(--xtell-secondary, var(--muted)); transition: stroke-dasharray .4s ease; }
+.ctx-ring-fill.is-high { stroke: var(--xtell-vermilion, var(--red)); }
+.ctx-ring-mid { position: relative; display: grid; place-items: center; font-family: var(--font-mono), monospace; font-size: 12px; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .ctx-ring-fill { transition: none; } }
+.xtell-mem-logo { display: inline-grid; place-items: center; margin-right: 8px; vertical-align: -2px; }
+.xtell-mem-body { padding: 4px 22px 12px; }
+.xtell-mem-body h3 { margin: 0; }
+.xtell-mem-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.xtell-mem-note { margin: 0 0 8px; font-size: 12.5px; line-height: 1.6; color: var(--xtell-vermilion, var(--red)); }
+.xtell-mem-meter { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 12px; }
+.xtell-mem-meter p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
+.xtell-mem-meter .xtell-mem-nums { margin-top: 2px; font-family: var(--font-mono), monospace; font-size: 18px; font-weight: 600; color: var(--xtell-ink, var(--white)); }
+.xtell-mem-body .xtell-tp-empty { margin: 4px 0; }
+.xtell-mem-text { font-size: 14px; line-height: 1.75; padding: 12px 14px; border-radius: 12px; background: var(--xtell-paper, var(--surface2)); }
+.xtell-mem-text.markdown-body h1, .xtell-mem-text.markdown-body h2, .xtell-mem-text.markdown-body h3, .xtell-mem-text.markdown-body h4 { font-size: 13.5px; margin: 12px 0 4px; }
+.xtell-mem-text.markdown-body > :first-child { margin-top: 0; }
+.xtell-mem-text.markdown-body ul, .xtell-mem-text.markdown-body ol { margin: 2px 0 6px; padding-left: 1.3em; }
+.xtell-mem-text.markdown-body li { margin: 2px 0; }
+.xtell-mem-text.markdown-body p { margin: 0 0 6px; }
+.xtell-mem-at { margin: 6px 0 0; font-size: 12px; color: var(--xtell-secondary, var(--muted)); }
 
 /* XTell: 進廟 in flight (owner, Sep 27: the form "freezed"). A light sweeps
    along the top edge of the form card while the chart or 解夢's lookup runs. */

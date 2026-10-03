@@ -1,4 +1,4 @@
-// lib/xtell.ts — XTell (X算命): the deterministic layer.
+// lib/xtell.ts — XTell (X先知): the deterministic layer.
 //
 // The split that makes this feature honest: everything with a right answer
 // (the chart) is computed HERE by libraries, displayed to the user, and fed
@@ -761,7 +761,7 @@ export type ZhanxingChart = {
 
 export function zhanxingChart(
   b: BirthInput, placeKey: unknown, mode: AstroMode,
-  opts?: { b2?: BirthInput; place2?: unknown; year?: number },
+  opts?: { b2?: BirthInput; place2?: unknown; year?: number; at?: Date },
 ): ZhanxingChart {
   const bp = birthPlace(b, placeKey)
   const natal = natalChart(bp)
@@ -774,8 +774,9 @@ export function zhanxingChart(
     // "Today" is the server's today, in UTC. A visitor in Taipei asking at
     // 01:00 gets the same sky as one in London asking at 17:00, which is
     // correct: the transits are where the planets are, not what the calendar
-    // on the wall says.
-    const at = new Date()
+    // on the wall says. A reading passes one moment per day (`at`), so the
+    // sky it reads stays the same all day (docs/XTELL-MEMORY.md).
+    const at = opts?.at ?? new Date()
     return {
       mode, natal,
       today: {
@@ -787,7 +788,7 @@ export function zhanxingChart(
     }
   }
   if (mode === 'year') {
-    const now = new Date()
+    const now = opts?.at ?? new Date()
     const year = opts?.year ?? now.getUTCFullYear()
     const ret = solarReturn(bp, year)
     // An unknown hour moves the return moment by up to twelve hours, and the
@@ -1281,3 +1282,6 @@ export function simianfoFacts(c: BaziChart, gender: string, hourUnknown: boolean
     `還願方式：${pledge || '（尚未說明，請提醒信眾想好再許）'}`,
   ].join('\n')
 }
+
+/** A birthplace key's name (lib/xtell-places), or null. */
+export const placeLabelOf = (key: unknown): string | null => placeOf(key)?.label ?? null
