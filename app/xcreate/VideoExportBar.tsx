@@ -36,9 +36,13 @@ export function VideoExportResult({ url, checks, ai }: { url: string; checks: Ex
   )
 }
 
-export default function VideoExportBar({ rowId, slot }: { rowId: string; slot: number }) {
+export default function VideoExportBar({ rowId, slot, preferred }: {
+  rowId: string; slot: number
+  /** The spec to offer first: the run's chosen output format (Oct 3). */
+  preferred?: VideoSpecId | null
+}) {
   const { lang, t } = useLang()
-  const [spec, setSpec] = useState<VideoSpecId>(DEFAULT_VIDEO_EXPORT_BY_LANG[lang] ?? 'v-vertical')
+  const [spec, setSpec] = useState<VideoSpecId>(preferred ?? DEFAULT_VIDEO_EXPORT_BY_LANG[lang] ?? 'v-vertical')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ url: string; checks: ExportCheck[] } | null>(null)
   const [failed, setFailed] = useState(false)

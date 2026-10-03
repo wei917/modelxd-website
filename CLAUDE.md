@@ -170,21 +170,34 @@ the top bar carries the types (Text, Image, Video, Audio, and since Sep 29
 Film) as XTell's carries its temples: the studio (Codex's) is the door's one page, with the
 trending feed for the chosen type under the composer, and the Library is on the
 account page (`studio-type.ts` links the bar and the studio; old `?view=`
-links redirect). Since Oct 1 the studio also lists your last five runs of the
-chosen type above the trending feed (`StudioHistory.tsx`, studio rows only:
-no `node_kind`; Film keeps only film rows and Video leaves them out, by
-`slots->0->options->>film`), and the Library filters Film on its own. A
+links redirect). **Redesigned Oct 3** (owner, learned from Pollo AI's /image
+page): the page asks what to make (`xcs.ask.<type>`) over one composer card
+(the prompt, then pills for the recipe, the models and, on a multi-format
+template, the output format; the model cards fold behind the models pill),
+then four sections in the owner's order: tools and templates
+(`StandaloneTemplates.tsx`, one sideways row), the models
+(`StandaloneModels.tsx`: every enabled model of the type, capabilities from
+`modes`/`output_config`, list price; a tap uses it alone, 比較 adds a seat),
+trending on social media, and your works (`StudioWorks.tsx`, a picture grid of
+your latest of the type from `/api/profile/xcreates?studio=1`, which leaves out
+rows with a `node_kind`; Film keeps only film rows and Video leaves them out,
+by `slots->0->options->>film`). Rename and delete live in the Library, which
+filters Film on its own. A
 reopened picture/video/voice run with a recorded pick opens on its canvas;
 picking marks `chosen` on the stored slots and changes nothing else in them
 (it used to rewrite them and lose every model's settings). **Templates came
-back Oct 1, redesigned** (`StandaloneTemplates.tsx`; owner: "make photo/video
-taobao compliant, or make social platform compliant"): rows of preview cards
-by `Template.group`. Picture rows: 電商上架 (淘寶主圖, 淘寶白底圖, 蝦皮, momo,
-Amazon, 樂天), 社群尺寸 (3:4, 9:16, LINE 1040), styles. Video rows: product
-videos (淘寶, 蝦皮, Amazon) and shorts (9:16). The marketplace order follows
-the page language. Each platform template edits the user's own photo
-(`lockAspect` keeps its shape on an edit, `sizeByModel` for GPT Image 2 /
-Qwen). A finished picture downloads in a platform's exact upload spec
+back Oct 1** (owner: "make photo/video taobao compliant, or make social
+platform compliant") and became four multi-format templates on Oct 3 (owner:
+"all 電商影片 should be just one template", the output chosen inside):
+電商商品圖 (淘寶主圖, 淘寶白底圖, 蝦皮, momo, Amazon, 樂天), 社群貼文圖 (3:4, 9:16,
+LINE), 電商影片 (淘寶 1:1 / 3:4, 蝦皮, Amazon) and 社群短影音 (9:16, 1:1, 16:9).
+`Template.formats` holds each output's shape, length, sizes, prompt rules and
+download spec; `defaultFormatByLang` picks the opening one (蝦皮 for zh-Hant,
+樂天 for ja); the format pill swaps the prompt's `PLATFORM:`/`FORMAT:`
+paragraph and re-clamps every seat (`applyFormat`), and the export bars offer
+that format's spec first. Each edits the user's own photo (`lockAspect` keeps
+the format's shape on an edit, `sizeByModel` for GPT Image 2 / Qwen). A
+finished picture downloads in a platform's exact upload spec
 (`ExportBar.tsx` → `/api/xcreate/export` → `lib/platform-export.ts`, specs in
 `lib/platform-specs.ts`): exact pixels, JPEG, the file-size window, and a
 background snapped to and checked at RGB 255 where required; the checks are
@@ -197,7 +210,7 @@ no edit lists, cut to the cap; the result is stored in
 `exports/<UTC date>/` in `xcreate-ai-videos` and handed back as a one-hour
 `download` link; the daily `/api/cron/sweep-orphans` removes every day
 folder older than yesterday. A user's own photo or video converts with no model and no
-charge (`ConvertDialog.tsx`, the first card of the marketplace rows; only
+charge (`ConvertDialog.tsx`, the last card of the tools row; only
 from their own upload folder). Every AI picture downloads with IPTC
 DigitalSourceType written in (trained or composite AI media, which Meta and
 Google read); videos have no such marker, so the bar asks the user to tick

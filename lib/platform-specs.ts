@@ -72,7 +72,7 @@ export interface ExportCheck {
 // and the byte cap. A clip shorter than a platform's minimum is reported,
 // not padded or looped.
 
-export type VideoSpecId = 'v-taobao-11' | 'v-taobao-34' | 'v-shopee' | 'v-amazon' | 'v-vertical'
+export type VideoSpecId = 'v-taobao-11' | 'v-taobao-34' | 'v-shopee' | 'v-amazon' | 'v-vertical' | 'v-square' | 'v-landscape'
 
 export interface VideoSpec {
   id: VideoSpecId
@@ -94,6 +94,10 @@ export const VIDEO_SPECS: VideoSpec[] = [
   { id: 'v-amazon',    w: 1920, h: 1080, maxSec: 180, maxBytes: 500_000_000, file: 'amazon-video' },
   // Reels, TikTok, Shorts, 小紅書: 9:16 1080×1920; Shorts allow 3 minutes.
   { id: 'v-vertical',  w: 1080, h: 1920, maxSec: 180, maxBytes: 250_000_000, file: 'vertical-9x16' },
+  // Feeds (Instagram, Facebook, LINE): square; YouTube: 16:9 landscape. The
+  // 180 s here is our own cap (one function, one vCPU), not these platforms'.
+  { id: 'v-square',    w: 1080, h: 1080, maxSec: 180, maxBytes: 250_000_000, file: 'square-1x1' },
+  { id: 'v-landscape', w: 1920, h: 1080, maxSec: 180, maxBytes: 500_000_000, file: 'landscape-16x9' },
 ]
 
 export const videoSpecById = (id: string | null | undefined): VideoSpec | null =>

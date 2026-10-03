@@ -36,7 +36,7 @@
  *
  * Upload with x-upsert to replace a sample in place; the URL never changes.
  */
-import type { ExportSpecId } from '../../lib/platform-specs'
+import type { ExportSpecId, VideoSpecId } from '../../lib/platform-specs'
 
 export const SAMPLES_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/samples`
 
@@ -185,7 +185,31 @@ export interface Template {
   /** Keep aspectRatio on a photo edit. An edit normally takes the photo's
    *  own shape; a 9:16 story made from a 4:3 photo must not. */
   lockAspect?:    boolean
+  /** One template, several outputs (owner, Oct 3: "all 電商影片 should be
+   *  just one template ... in the settings/prompts we allow users to choose
+   *  output format"). The composer's 輸出格式 pill picks one; the first is
+   *  the default unless defaultFormatByLang says otherwise. */
+  formats?:       TemplateFormat[]
+  defaultFormatByLang?: Record<string, string>
 }
+
+/** One output of a multi-format template: the shape, the platform's rules
+ *  appended to the prompt, and the download spec it implies. Its label is
+ *  the i18n key `xcf.<id>`. */
+export interface TemplateFormat {
+  id:           string
+  mark?:        { logo?: string; text?: string; color?: string }
+  aspectRatio:  string
+  duration?:    number
+  sizeByModel?: Record<string, string>
+  promptSpec:   string
+  exportSpec?:  ExportSpecId
+  videoSpec?:   VideoSpecId
+}
+
+/** The format a template opens with for this page language. */
+export const defaultFormat = (t: Template, lang: string): TemplateFormat | null =>
+  t.formats?.find(f => f.id === t.defaultFormatByLang?.[lang]) ?? t.formats?.[0] ?? null
 
 export const XCREATE_TEMPLATES: Template[] = [
   // ── Image tools (task verbs on the user's own photo) ─────────────────────
@@ -495,7 +519,6 @@ export const XCREATE_TEMPLATES: Template[] = [
   },
   {
     id:                'video-product-video',
-    group:             'shopvideo',
     emoji:             '📦',
     title:             'Product Video',
     subtitle:          'Product refs in → cinematic ad out',
@@ -806,236 +829,117 @@ export const XCREATE_TEMPLATES: Template[] = [
   },
 
   // ── Platform-ready pictures and videos (owner, Oct 1: "make photo/video
-  // taobao compliant, or make social platform compliant"). The prompt asks
-  // for what only a model can do (keep the real product, no promo text,
-  // no props); the download (lib/platform-specs.ts) guarantees what code
-  // can: exact pixels, JPEG, file size, a pure white background. Every one
-  // EDITS the user's own photo rather than inventing a product: Amazon and
-  // Mercari require the real item. Rules and sources: docs/STATE, Oct 1.
+  // taobao compliant, or make social platform compliant"; Oct 3: one
+  // template per job, the output format chosen inside). The prompt asks for
+  // what only a model can do (keep the real product, no promo text, no
+  // props); the download (lib/platform-specs.ts) guarantees what code can:
+  // exact pixels, JPEG, file size, a pure white background. Each EDITS the
+  // user's own photo rather than inventing a product: Amazon and Mercari
+  // require the real item. Rules and sources: docs/STATE, Oct 1.
   {
-    id:                'shop-taobao-main',
+    id:                'shop-image',
     group:             'shop',
-    mark:              { logo: '/platforms/taobao.svg' },
-    exportSpec:        'taobao-main',
-    emoji:             '🧧',
-    title:             'Taobao Main Image',
-    subtitle:          'Square hero shot, no promo text',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '1:1',
-    lockAspect:        true,
-    starterPrompt:     'Turn this photo into a Taobao / Tmall main image (主圖). Keep the exact same product: identical shape, colors, materials, printed logos and proportions; do not redesign it. Square 1:1 composition with the product as the clear hero, centered and taking about 70 to 80 percent of the frame, at a front three-quarter angle with crisp edges and true colors, under bright clean commercial studio light, on a clean light background or a subtle premium surface. No added text, no price tags, no promotional badges or stickers, no watermarks, no logo overlays, no borders and no collage.',
-    recommendedModels: ['gpt-image-2', 'gemini-3.1-flash-image', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/shop-taobao-main.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'shop-taobao-white',
-    group:             'shop',
-    mark:              { logo: '/platforms/taobao.svg' },
-    exportSpec:        'taobao-white',
-    emoji:             '⬜',
-    title:             'Taobao White Background',
-    subtitle:          '800×800, pure white, product only',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '1:1',
-    lockAspect:        true,
-    starterPrompt:     'Make a Taobao white-background image (白底圖) from this photo. Show the exact same single product, unchanged in shape, colors, materials and printed logos, front view, upright and centered, on a pure white background (RGB 255, 255, 255) that fills the whole frame. Remove everything else: no shadow, no reflection, no props, no hands or models, no hangers or tags, no text, no added logos, no watermarks, no borders. Square 1:1, the product complete and uncut with even white space around it.',
-    recommendedModels: ['gpt-image-2', 'gemini-3.1-flash-image', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/shop-taobao-white.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'shop-shopee',
-    group:             'shop',
-    mark:              { logo: '/platforms/shopee.svg' },
-    exportSpec:        'shopee',
-    emoji:             '🛒',
-    title:             'Shopee Cover Image',
-    subtitle:          'Square, product 80%+, no borders',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '1:1',
-    lockAspect:        true,
-    starterPrompt:     'Make a Shopee cover image (首圖) from this photo. Keep the exact same product, unchanged in shape, colors, materials and printed logos. Square 1:1 filled edge to edge, with no white or black border. The product fills at least 80 percent of the image, complete and not cropped, centered on a clean white or single soft-color background. No added text of any kind, no watermarks, no frames, no collage, no people or hands, no packaging covering the product.',
-    recommendedModels: ['gpt-image-2', 'gemini-3.1-flash-image', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/shop-shopee.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'shop-momo',
-    group:             'shop',
-    mark:              { text: 'm', color: '#e4007f' },
-    exportSpec:        'momo',
     emoji:             '🛍',
-    title:             'momo Main Image',
-    subtitle:          '1000×1000, product 80%+',
+    title:             'Store Product Image',
+    subtitle:          'Taobao, Shopee, momo, Amazon, Rakuten',
     mode:              'image',
     slotMode:          'image_edit',
     aspectRatio:       '1:1',
     lockAspect:        true,
-    starterPrompt:     'Make a momo main product image (商品主圖) from this photo. Keep the exact same product, unchanged in shape, colors, materials and printed logos. Square 1:1 filled edge to edge with no white or black edge, on a clean solid-color background. The product is complete, out of its packaging, and takes at least 80 percent of the image. No added text, no stickers or badges, no frames, no watermark.',
+    starterPrompt:     'Turn this photo into a store listing image. Keep the exact same product: identical shape, colors, materials, printed logos and proportions; do not redesign it. Crisp edges, true colors, bright clean commercial light.',
     recommendedModels: ['gpt-image-2', 'gemini-3.1-flash-image', 'qwen-image-3.0-pro'],
     sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/shop-momo.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
+    previewUrl:        '/templates/shop-image.jpg',
+    attachmentSlots:   [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
+    defaultFormatByLang: { 'zh-Hant': 'shopee', ja: 'rakuten', 'zh-Hans': 'taobao-main', en: 'amazon', ko: 'amazon' },
+    formats: [
+      { id: 'taobao-main', mark: { logo: '/platforms/taobao.svg' }, aspectRatio: '1:1', exportSpec: 'taobao-main',
+        promptSpec: 'PLATFORM: Taobao / Tmall main image (主圖). Square 1:1, the product as the clear hero, centered, about 70 to 80 percent of the frame, front three-quarter angle, on a clean light background or a subtle premium surface. No added text, price tags, promotional badges or stickers, watermarks, logo overlays, borders or collage.' },
+      { id: 'taobao-white', mark: { logo: '/platforms/taobao.svg' }, aspectRatio: '1:1', exportSpec: 'taobao-white',
+        promptSpec: 'PLATFORM: Taobao white-background image (白底圖). The single product, front view, upright and centered, on a pure white background (RGB 255, 255, 255) filling the whole frame. No shadow, no reflection, no props, no hands or models, no hangers or tags, no text, no added logos, no watermarks, no borders. The product complete and uncut, with even white space around it.' },
+      { id: 'shopee', mark: { logo: '/platforms/shopee.svg' }, aspectRatio: '1:1', exportSpec: 'shopee',
+        promptSpec: 'PLATFORM: Shopee cover image (首圖). Square 1:1 filled edge to edge with no white or black border. The product fills at least 80 percent of the image, complete and not cropped, centered on a clean white or single soft-color background. No added text of any kind, no watermarks, no frames, no collage, no people or hands, no packaging covering the product.' },
+      { id: 'momo', mark: { text: 'm', color: '#e4007f' }, aspectRatio: '1:1', exportSpec: 'momo',
+        promptSpec: 'PLATFORM: momo main product image (商品主圖). Square 1:1 filled edge to edge with no white or black edge, on a clean solid-color background. The product complete, out of its packaging, at least 80 percent of the image. No added text, no stickers or badges, no frames, no watermark.' },
+      { id: 'amazon', mark: { logo: '/platforms/amazon.svg' }, aspectRatio: '1:1', exportSpec: 'amazon',
+        promptSpec: 'PLATFORM: Amazon main image. The single product, complete and front facing, on a pure white background (RGB 255, 255, 255) with no gradient and no scene, filling about 85 percent of the frame. Nothing else in the picture: no props, no packaging unless it is part of the product, no mannequin, no text, no added logos, no watermarks, no borders.' },
+      { id: 'rakuten', mark: { text: 'R', color: '#bf0000' }, aspectRatio: '1:1', exportSpec: 'rakuten',
+        promptSpec: 'PLATFORM: Rakuten Ichiba first product image (第1商品画像). Square 1:1, the product large and centered on a plain white background or a clean, uncluttered natural photo background. No borders or frames of any kind, no banners, no added text or badges, no watermarks.' },
+    ],
   },
   {
-    id:                'shop-amazon',
-    group:             'shop',
-    mark:              { logo: '/platforms/amazon.svg' },
-    exportSpec:        'amazon',
-    emoji:             '📦',
-    title:             'Amazon Main Image',
-    subtitle:          'Pure white, product fills 85%',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '1:1',
-    lockAspect:        true,
-    starterPrompt:     'Make an Amazon main image from this photo. Show the exact same single product, unchanged in shape, colors, materials and printed logos, complete and front facing, on a pure white background (RGB 255, 255, 255) with no gradient and no scene. The product fills about 85 percent of the frame. Nothing else in the picture: no props, no packaging unless it is part of the product, no mannequin, no text, no added logos, no watermarks, no borders.',
-    recommendedModels: ['gpt-image-2', 'gemini-3.1-flash-image', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/shop-amazon.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'shop-rakuten',
-    group:             'shop',
-    mark:              { text: 'R', color: '#bf0000' },
-    exportSpec:        'rakuten',
-    emoji:             '🏷',
-    title:             'Rakuten Product Image',
-    subtitle:          'No borders, text 20% or less',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '1:1',
-    lockAspect:        true,
-    starterPrompt:     'Make a Rakuten Ichiba first product image (第1商品画像) from this photo. Keep the exact same product, unchanged in shape, colors, materials and printed logos. Square 1:1, the product large and centered on a plain white background or a clean, uncluttered natural photo background. No borders or frames of any kind, no banners, no added text or badges, no watermarks.',
-    recommendedModels: ['gpt-image-2', 'gemini-3.1-flash-image', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/shop-rakuten.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'social-34',
+    id:                'social-image',
     group:             'social',
-    mark:              { text: 'IG', color: '#d62976' },
-    exportSpec:        'social-34',
     emoji:             '📱',
-    title:             'Instagram / RED Post',
-    subtitle:          '3:4 vertical, 1080×1440',
+    title:             'Social Post Image',
+    subtitle:          'Instagram, RED, Stories, LINE',
     mode:              'image',
     slotMode:          'image_edit',
     aspectRatio:       '3:4',
     lockAspect:        true,
-    starterPrompt:     'Recompose this photo as a 3:4 vertical image for an Instagram or 小紅書 (RED) post. Keep the main subject exactly as it is: the same face, product, clothes and colors, not redrawn. Extend the scene above and below naturally so it fills the taller frame, with the subject in the central area. Bright, natural, high quality. No added text, no stickers, no borders, no watermark.',
+    starterPrompt:     'Recompose this photo for a social media post. Keep the main subject exactly as it is: the same face, product, clothes and colors, not redrawn. Extend or recompose the scene naturally to fill the frame. Bright, natural, high quality. No added text, no stickers, no borders, no watermark.',
     recommendedModels: ['gemini-3.1-flash-image', 'gpt-image-2', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1536', 'qwen-image-3.0-pro': '1440x1920' },
-    previewUrl:        '/templates/social-34.jpg',
-    attachmentSlots: [{ label: 'YOUR PHOTO', hint: 'The photo to post' }],
+    previewUrl:        '/templates/social-image.jpg',
+    attachmentSlots:   [{ label: 'YOUR PHOTO', hint: 'The photo to post' }],
+    formats: [
+      { id: 'post-34', mark: { text: 'IG', color: '#d62976' }, aspectRatio: '3:4', exportSpec: 'social-34',
+        sizeByModel: { 'gpt-image-2': '1024x1536', 'qwen-image-3.0-pro': '1440x1920' },
+        promptSpec: 'FORMAT: 3:4 vertical Instagram or 小紅書 (RED) post, the subject in the central area.' },
+      { id: 'story-916', mark: { text: '▶', color: '#111111' }, aspectRatio: '9:16', exportSpec: 'social-916',
+        sizeByModel: { 'gpt-image-2': '1152x2048', 'qwen-image-3.0-pro': '1080x1920' },
+        promptSpec: 'FORMAT: 9:16 full-screen vertical for Stories, Reels, TikTok or Shorts. Keep the subject and anything important in the middle of the frame, clear of the top 15 percent and the bottom 35 percent where the app shows its buttons and captions.' },
+      { id: 'line-rich', mark: { text: 'LINE', color: '#06c755' }, aspectRatio: '1:1', exportSpec: 'line-rich',
+        sizeByModel: { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
+        promptSpec: 'FORMAT: square 1:1 LINE rich message (圖文訊息), the subject centered with calm space around it so text or buttons can be laid over it later.' },
+    ],
   },
   {
-    id:                'social-916',
-    group:             'social',
-    mark:              { text: '▶', color: '#111111' },
-    exportSpec:        'social-916',
-    emoji:             '📲',
-    title:             'Stories / Reels / TikTok',
-    subtitle:          '9:16 full screen, safe zones kept clear',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '9:16',
-    lockAspect:        true,
-    starterPrompt:     'Recompose this photo as a 9:16 full-screen vertical image for Instagram Stories, Reels, TikTok or YouTube Shorts. Keep the main subject exactly as it is: the same face, product, clothes and colors, not redrawn. Extend the scene naturally to fill the tall frame. Keep the subject and anything important in the middle of the frame, clear of the top 15 percent and the bottom 35 percent where the app shows its buttons and captions. No added text, no stickers, no borders, no watermark.',
-    recommendedModels: ['gemini-3.1-flash-image', 'gpt-image-2', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1152x2048', 'qwen-image-3.0-pro': '1080x1920' },
-    previewUrl:        '/templates/social-916.jpg',
-    attachmentSlots: [{ label: 'YOUR PHOTO', hint: 'The photo to post' }],
-  },
-  {
-    id:                'social-line',
-    group:             'social',
-    mark:              { text: 'LINE', color: '#06c755' },
-    exportSpec:        'line-rich',
-    emoji:             '💬',
-    title:             'LINE Rich Message',
-    subtitle:          'Square 1040×1040, room for text',
-    mode:              'image',
-    slotMode:          'image_edit',
-    aspectRatio:       '1:1',
-    lockAspect:        true,
-    starterPrompt:     'Make a square 1:1 image for a LINE rich message (圖文訊息). Keep the main subject exactly as it is, not redrawn. Clean and eye-catching, the subject centered with calm space around it so text or buttons can be laid over it later. No added text, no borders, no watermark.',
-    recommendedModels: ['gemini-3.1-flash-image', 'gpt-image-2', 'qwen-image-3.0-pro'],
-    sizeByModel:       { 'gpt-image-2': '1024x1024', 'qwen-image-3.0-pro': '1024x1024' },
-    previewUrl:        '/templates/social-line.jpg',
-    attachmentSlots: [{ label: 'YOUR PHOTO', hint: 'The picture to use' }],
-  },
-  {
-    id:                'video-taobao-main',
+    id:                'shop-video',
     group:             'shopvideo',
-    mark:              { logo: '/platforms/taobao.svg' },
-    emoji:             '🧧',
-    title:             'Taobao Main Video',
-    subtitle:          'Product photo to a 1:1 main video',
+    emoji:             '🛍',
+    title:             'Store Product Video',
+    subtitle:          'Taobao, Shopee, Amazon',
     mode:              'video',
     slotMode:          'image_to_video',
     aspectRatio:       '1:1',
     duration:          10,
-    starterPrompt:     'A Taobao main video (主圖視頻) of the product in this photo. The product stays exactly as it is: same shape, colors, materials and printed logos. Open on the product within the first second, then a slow smooth turn or orbit that shows its form and details in bright clean studio light, keeping the product large and centered in every shot, and end on a steady hero frame. No on-screen text, no prices, no phone numbers or IDs, no watermarks or logo overlays.',
+    starterPrompt:     'A product video of the product in this photo. The product stays exactly as it is: same shape, colors, materials and printed logos. Open on the product within the first second, then a slow smooth turn or orbit that shows its form and details in bright clean studio light, keeping the product large and centered in every shot, and end on a steady hero frame. No on-screen text, no prices, no phone numbers or IDs, no watermarks or logo overlays.',
     recommendedModels: ['seedance2_5', 'wan3.0-video', 'grok-imagine-video'],
-    previewUrl:        '/templates/video-taobao-main.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
+    previewUrl:        '/templates/shop-video.jpg',
+    attachmentSlots:   [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
+    defaultFormatByLang: { 'zh-Hant': 'v-shopee', ja: 'v-amazon', 'zh-Hans': 'v-taobao-11', en: 'v-amazon', ko: 'v-amazon' },
+    formats: [
+      { id: 'v-taobao-11', mark: { logo: '/platforms/taobao.svg' }, aspectRatio: '1:1', duration: 10, videoSpec: 'v-taobao-11',
+        promptSpec: 'PLATFORM: Taobao main video (主圖視頻), square 1:1.' },
+      { id: 'v-taobao-34', mark: { logo: '/platforms/taobao.svg' }, aspectRatio: '3:4', duration: 10, videoSpec: 'v-taobao-34',
+        promptSpec: 'PLATFORM: Taobao main video (主圖視頻), vertical 3:4.' },
+      { id: 'v-shopee', mark: { logo: '/platforms/shopee.svg' }, aspectRatio: '1:1', duration: 10, videoSpec: 'v-shopee',
+        promptSpec: 'PLATFORM: Shopee product video, square 1:1, at least 10 seconds: the product itself and one clear moment of use or detail.' },
+      { id: 'v-amazon', mark: { logo: '/platforms/amazon.svg' }, aspectRatio: '16:9', duration: 10, videoSpec: 'v-amazon',
+        promptSpec: 'PLATFORM: Amazon product video, 16:9, on a clean neutral set showing its features and real scale. No calls to action, no web addresses.' },
+    ],
   },
   {
-    id:                'video-shopee',
-    group:             'shopvideo',
-    mark:              { logo: '/platforms/shopee.svg' },
-    emoji:             '🛒',
-    title:             'Shopee Product Video',
-    subtitle:          '10 to 60 seconds, under 30 MB',
-    mode:              'video',
-    slotMode:          'image_to_video',
-    aspectRatio:       '1:1',
-    duration:          10,
-    starterPrompt:     'A Shopee product video of the product in this photo, about 10 seconds. The product stays exactly as it is: same shape, colors, materials and printed logos. Bright clean background, the product large and centered throughout; show the product itself and one clear moment of use or detail. No on-screen text, no captions, no watermarks, no logos overlaid.',
-    recommendedModels: ['seedance2_5', 'wan3.0-video', 'grok-imagine-video'],
-    previewUrl:        '/templates/video-shopee.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'video-amazon',
-    group:             'shopvideo',
-    mark:              { logo: '/platforms/amazon.svg' },
-    emoji:             '📦',
-    title:             'Amazon Product Video',
-    subtitle:          '16:9, no promotional text',
-    mode:              'video',
-    slotMode:          'image_to_video',
-    aspectRatio:       '16:9',
-    duration:          10,
-    starterPrompt:     'An Amazon product video of the product in this photo. The product stays exactly as it is: same shape, colors, materials and printed logos. On a clean neutral set, show its features and real scale with one simple demonstration. No on-screen claims or promotional text, no calls to action, no web addresses, no prices, no logos overlaid.',
-    recommendedModels: ['seedance2_5', 'wan3.0-video', 'gemini-omni-1.1-flash'],
-    previewUrl:        '/templates/video-amazon.jpg',
-    attachmentSlots: [{ label: 'YOUR PRODUCT', hint: 'A photo of the real product' }],
-  },
-  {
-    id:                'video-vertical-916',
+    id:                'social-video',
     group:             'shortvideo',
-    mark:              { text: '▶', color: '#111111' },
     emoji:             '📲',
-    title:             'Reels / TikTok / Shorts',
-    subtitle:          '9:16 vertical from a photo',
+    title:             'Social Short Video',
+    subtitle:          'Reels, TikTok, Shorts, YouTube',
     mode:              'video',
     slotMode:          'image_to_video',
     aspectRatio:       '9:16',
     duration:          8,
-    starterPrompt:     'A 9:16 vertical short video for Reels, TikTok or YouTube Shorts made from this photo. The subject stays exactly as it is. Strong, eye-catching motion in the first second, then one smooth continuous camera move that brings the scene to life. Keep the subject and anything important in the middle of the frame, clear of the top 15 percent and the bottom 35 percent where the app shows its buttons and captions. No on-screen text, no watermark.',
+    starterPrompt:     'A short social video made from this photo. The subject stays exactly as it is. Strong, eye-catching motion in the first second, then one smooth continuous camera move that brings the scene to life. No on-screen text, no watermark.',
     recommendedModels: ['seedance2_5', 'wan3.0-video', 'gemini-omni-1.1-flash'],
-    previewUrl:        '/templates/video-vertical-916.jpg',
-    attachmentSlots: [{ label: 'YOUR PHOTO', hint: 'The photo to bring to life' }],
+    previewUrl:        '/templates/social-video.jpg',
+    attachmentSlots:   [{ label: 'YOUR PHOTO', hint: 'The photo to bring to life' }],
+    formats: [
+      { id: 'sv-916', mark: { text: '▶', color: '#111111' }, aspectRatio: '9:16', duration: 8, videoSpec: 'v-vertical',
+        promptSpec: 'FORMAT: 9:16 vertical for Reels, TikTok, Shorts or 小紅書. Keep the subject in the middle of the frame, clear of the top 15 percent and the bottom 35 percent where the app shows its buttons and captions.' },
+      { id: 'sv-11', mark: { text: 'IG', color: '#d62976' }, aspectRatio: '1:1', duration: 8, videoSpec: 'v-square',
+        promptSpec: 'FORMAT: square 1:1 for an Instagram, Facebook or LINE feed.' },
+      { id: 'sv-169', mark: { text: 'YT', color: '#ff0000' }, aspectRatio: '16:9', duration: 8, videoSpec: 'v-landscape',
+        promptSpec: 'FORMAT: 16:9 landscape for YouTube.' },
+    ],
   },
 ]

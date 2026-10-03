@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
   const url    = new URL(req.url)
   const page   = Math.max(0, parseInt(url.searchParams.get('page') ?? '0', 10) || 0)
   const filter = url.searchParams.get('filter') ?? 'all'
+  const studioOnly = url.searchParams.get('studio') === '1'
   const from   = page * PAGE_SIZE
   const to     = from + PAGE_SIZE - 1
 
@@ -73,6 +74,9 @@ export async function GET(req: NextRequest) {
     if (filter === 'film') q = q.eq('mode', 'video').not('slots->0->options->>film', 'is', null)
     else if (filter !== 'all') q = q.eq('mode', filter)
     if (filter === 'video') q = q.is('slots->0->options->>film', null)
+    // The studio's own grid (Oct 3): runs made in the studio only, not XDirect
+    // board nodes, upload "Source:" rows or XCut renders (they carry a node_kind).
+    if (studioOnly) q = q.is('node_kind', null)
     return q.order('created_at', { ascending: false }).range(from, to)
   }
 
