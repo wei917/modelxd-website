@@ -60,16 +60,16 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean; its own front door is xcreate.modelxd.com, where the top bar picks
-what to make (Text, Image, Video, Audio, Film). Each type's page asks what to
-make over one prompt box (pills under it choose the recipe, the models and,
-for a platform template, the output format), then shows four sections: tools
-and templates; every model of that type with what it can do and its list
+what to make (Text, Image, Video, Audio, Film). Under the prompt box and
+Generate, each type's page shows four sections: tools and templates; every
+model of that type with what it can do and its list
 price (tap one to use it, 比較 to add it beside the others); what is trending
 on social media; and your own latest works of that type as pictures (tap one
 to reopen it). All of your past work (the Library, filterable by type, Film
 included, with rename and delete) is on the account page. A run where you
 already picked a winner reopens on its canvas. Four platform templates do the
-store and social work, the output chosen inside each: 電商商品圖 (淘寶主圖 and
+store and social work, the output chosen inside each (a row of chips in the
+prompt box): 電商商品圖 (淘寶主圖 and
 白底圖, 蝦皮, momo, Amazon, 樂天), 社群貼文圖 (Instagram / 小紅書 3:4, Stories /
 Reels / TikTok 9:16, LINE 圖文訊息), 電商影片 (淘寶 1:1 or 3:4, 蝦皮, Amazon 16:9)
 and 社群短影音 (Reels / TikTok / Shorts 9:16, square feeds, YouTube 16:9); style
