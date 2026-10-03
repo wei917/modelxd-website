@@ -26,7 +26,7 @@ const tick = () => new Promise(r => setTimeout(r, 5))
 function loadRoute(file: string, modules: Record<string, unknown>, afters: Promise<unknown>[], beats: Array<{ fn: () => void; cleared: boolean }>) {
   const js = ts.transpileModule(read(file), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText
   const exports: any = {}
-  const deps: Record<string, unknown> = { 'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, ...modules }
+  const deps: Record<string, unknown> = { 'next/server': { after: (p: Promise<unknown>) => { afters.push(p) } }, '@/lib/xtell-thread': require('../lib/xtell-thread'), ...modules }
   vm.runInNewContext(js, {
     exports, console: { ...console, warn: () => {} }, process, Response, Request, ReadableStream, TextEncoder, crypto: globalThis.crypto,
     setInterval: (fn: () => void) => { const b = { fn, cleared: false }; beats.push(b); return b },

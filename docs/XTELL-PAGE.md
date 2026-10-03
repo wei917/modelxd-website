@@ -871,6 +871,15 @@ page draws every back the same way up. Mouse-only hover lifts (a
 finger left :hover behind on the neighbour); no motion under
 `prefers-reduced-motion`. Tests: `scripts/test-xtell-tarot.ts`.
 
+### Masters' memory (Oct 3): see docs/XTELL-MEMORY.md
+
+A master used to reread only the last 20 messages the page sent. Since Oct 3
+the reading route builds each master's whole thread from the visitor's
+saved conversation (`lib/xtell-thread.ts`, up to 100k tokens). The full
+design (account basics, conversation facts recomputed only on a new day,
+each master's own memo by its own model, the 記憶 bar) is in
+`docs/XTELL-MEMORY.md`.
+
 ### 大師 / master (Oct 2)
 
 Owner: the readers are 大師 (zh-Hant), 大师 (zh-Hans), master (en), 마스터
