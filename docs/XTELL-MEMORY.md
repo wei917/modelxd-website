@@ -124,7 +124,8 @@ summarization).
 - Each master's settings card shows it again beside the price per question
   (owner, Oct 3: "current vs max"); before the first answer, the expected
   size of the question, marked ~.
-- Pressing it opens 「{name}的記憶」: the numbers, where it summarizes, and
+- Pressing it opens 「{name}的記憶」: the numbers (the summary point only as the
+  meter's tick: owner, Oct 3), and
   「對話摘要」, the newest summary with when it was written (no explanation
   paragraph: owner, Oct 3, "you don't need to explain").
 - 「立即摘要」 there (owner, Oct 3: "a button to force summarize now"), with

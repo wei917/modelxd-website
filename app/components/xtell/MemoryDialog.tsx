@@ -12,7 +12,7 @@ import { useT, useLang } from '../../../lib/i18n'
 import type { PickerModel } from '../ModelPickerDialog'
 import ProviderLogo from '../ProviderLogo'
 import ContextMeter from '../ContextMeter'
-import { windowOf, summaryPointOf, formatTokens } from '../../../lib/conversation-memory'
+import { windowOf, summaryPointOf } from '../../../lib/conversation-memory'
 
 export default function MemoryDialog({ m, used, readingId, price, canNow, busy, thinking, onClose }: {
   /** The master, with its catalog limit and prices. */
@@ -88,7 +88,7 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
         <div className="xtell-tp-body xtell-mem-body">
           <div className="xtell-mem-meter">
             <ContextMeter used={used} max={size} point={point} />
-            <p>{t('xtell.mem.used').replace('{used}', num(used)).replace('{size}', num(size)).replace('{pct}', String(pct))}<br />{t('xtell.mem.point').replace('{point}', formatTokens(point))}</p>
+            <p>{t('xtell.mem.used').replace('{used}', num(used)).replace('{size}', num(size)).replace('{pct}', String(pct))}</p>
           </div>
           <div className="xtell-mem-head">
             <h3>{t('xtell.mem.summary')}</h3>
