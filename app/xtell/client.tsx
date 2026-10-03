@@ -1808,7 +1808,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         </div>
       )}
 
-      {memoFor && <MemoryDialog m={memoFor} used={memUse[memoFor.id] ?? 0} readingId={readingId} onClose={() => setMemoFor(null)} />}
+      {memoFor && (() => {
+        // 「立即摘要」 costs about one answer: what the master last read in,
+        // an answer's length out (lib/xtell-presets.ts's estimate).
+        const usd = estimateReadingUsd(memoFor, { thinking: optsOf(memoFor).thinking, search: false }, 0, memUse[memoFor.id] ?? EST_PROMPT_TOKENS)
+        const answers = turns.filter(tn => tn.role === 'assistant' && tn.modelId === memoFor.id).length
+        return <MemoryDialog m={memoFor} used={memUse[memoFor.id] ?? 0} readingId={readingId} price={usd == null ? null : fmtUsdFor(usd, lang)}
+          canNow={answers >= 2} busy={answering} thinking={optsOf(memoFor).thinking} onClose={() => setMemoFor(null)} />
+      })()}
       {/* 「請一位老師」 (owner, Sep 28: the model browser was for developers). */}
       {picker && (
         <TeacherPicker

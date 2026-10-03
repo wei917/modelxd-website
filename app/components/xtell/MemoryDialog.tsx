@@ -14,12 +14,20 @@ import ProviderLogo from '../ProviderLogo'
 import ContextMeter from '../ContextMeter'
 import { windowOf, summaryPointOf, formatTokens } from '../../../lib/conversation-memory'
 
-export default function MemoryDialog({ m, used, readingId, onClose }: {
+export default function MemoryDialog({ m, used, readingId, price, canNow, busy, thinking, onClose }: {
   /** The master, with its catalog limit and prices. */
   m: PickerModel
   /** Tokens the master read for its last answer here. */
   used: number
   readingId: string | null
+  /** About what 「立即摘要」 costs, as the page shows prices. */
+  price: string | null
+  /** The master has answered at least two questions here. */
+  canNow: boolean
+  /** An answer is coming in: no summary meanwhile. */
+  busy: boolean
+  /** The seat's thinking setting, used for the summary too. */
+  thinking: string | null
   onClose: () => void
 }) {
   const t = useT()
@@ -46,6 +54,27 @@ export default function MemoryDialog({ m, used, readingId, onClose }: {
       .then(({ data, error }) => { if (live) setMemo(error || !data ? null : { text: String(data.text), at: String(data.created_at) }) })
     return () => { live = false }
   }, [readingId, m.id])
+  // 「立即摘要」 (owner, Oct 3): summarize now, billed like an answer;
+  // everything but the latest question and answer (app/api/xtell/memory).
+  const [working, setWorking] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const summarizeNow = async () => {
+    if (!readingId || working) return
+    setWorking(true); setNote(null)
+    try {
+      const res = await fetch('/api/xtell/memory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ readingId, modelId: m.id, lang, thinking }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (res.ok && typeof j.text === 'string') setMemo({ text: j.text, at: typeof j.at === 'string' ? j.at : new Date().toISOString() })
+      else setNote(t(j.code === 'nothing_to_summarize' ? 'xtell.mem.nothing' : j.code === 'no_credits' ? 'xtell.mem.nocredit' : 'xtell.mem.failed'))
+    } catch {
+      setNote(t('xtell.mem.failed'))
+    } finally {
+      setWorking(false)
+    }
+  }
   const size = windowOf(m), point = summaryPointOf(m)
   const pct = Math.min(100, Math.round(used / size * 100))
   const num = (n: number) => n.toLocaleString(lang === 'zh-Hant' ? 'zh-TW' : lang === 'zh-Hans' ? 'zh-CN' : lang)
@@ -55,14 +84,22 @@ export default function MemoryDialog({ m, used, readingId, onClose }: {
       <div ref={panel} className="xtell-tp xtell-mem" role="dialog" aria-modal="true" aria-labelledby="xtell-mem-title" onClick={e => e.stopPropagation()}>
         <header className="xtell-tp-head">
           <h2 id="xtell-mem-title"><span className="xtell-mem-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={20} /></span>{t('xtell.mem.title').replace('{name}', m.display_name)}</h2>
-          <p>{t('xtell.mem.sub')}</p>
         </header>
         <div className="xtell-tp-body xtell-mem-body">
           <div className="xtell-mem-meter">
             <ContextMeter used={used} max={size} point={point} />
             <p>{t('xtell.mem.used').replace('{used}', num(used)).replace('{size}', num(size)).replace('{pct}', String(pct))}<br />{t('xtell.mem.point').replace('{point}', formatTokens(point))}</p>
           </div>
-          <h3>{t('xtell.mem.summary')}</h3>
+          <div className="xtell-mem-head">
+            <h3>{t('xtell.mem.summary')}</h3>
+            {readingId && (
+              <button type="button" className="xtell-join-btn is-add" disabled={!canNow || busy || working} onClick={() => void summarizeNow()}
+                title={!canNow ? t('xtell.mem.needTwo') : undefined}>
+                {working ? t('xtell.mem.working') : t('xtell.mem.now')}{!working && price && <small>~{price}</small>}
+              </button>
+            )}
+          </div>
+          {note && <p className="xtell-mem-note" role="status">{note}</p>}
           {memo === undefined && <p className="xtell-tp-empty">{t('common.loading')}</p>}
           {memo === null && <p className="xtell-tp-empty">{t('xtell.mem.none')}</p>}
           {memo && <>

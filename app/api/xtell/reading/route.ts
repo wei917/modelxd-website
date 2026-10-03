@@ -29,7 +29,7 @@ import { chineseLeak, leaksChinese, jaTermStream } from '@/lib/xtell-lang-check'
 import { offersPersonality, personalityFacts } from '@/lib/xtell-personality'
 import { threadFor } from '@/lib/xtell-thread'
 import { fitBudget, approxTokens, rawBudget, tokensRead, windowOf, MESSAGE_CHARS, type Message } from '@/lib/conversation-memory'
-import { addMessage, latestMemo, messagesAfter, threadRows, memoBlock, maybeSummarize, type Memo } from '@/lib/xtell-memory'
+import { addMessage, latestMemo, messagesAfter, threadRows, memoBlock, maybeSummarize, summaryRun, summaryCharge, type Memo } from '@/lib/xtell-memory'
 import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 import { sukuyoChart, sukuyoFacts, asPartnerDate } from '@/lib/sukuyo'
 
@@ -537,25 +537,11 @@ export async function POST(req: Request) {
               if (memoryOn) {
                 const done = await maybeSummarize({
                   admin, readingId: readingId!, model, inputTokens: read, lang: typeof body?.lang === 'string' ? body.lang : 'zh-Hant', userId: user.id,
-                  run: (sys, content) => new Promise(resolve => {
-                    // A summary that never comes back must not hold the function.
-                    setTimeout(() => resolve(null), 120_000)
-                    let text = ''
-                    providers.streamText(model as any, [{ role: 'user', content }], {
-                      onDelta: t => { text += t },
-                      onDone: (m) => resolve({ text, inputTokens: m.inputTokens ?? null, outputTokens: m.outputTokens ?? null, cost: m.cost ?? null }),
-                      onError: () => resolve(null),
-                    }, [], { userId: user.id }, { system: sys, thinking, maxTokens: 4000 }).catch(() => resolve(null))
+                  run: summaryRun((...a: any[]) => (providers.streamText as any)(...a), model, user.id, thinking),
+                  charge: summaryCharge({ accrueFraction, debitCredits }, {
+                    userId: user.id, readingId: readingId!, model, temple: daily ? 'daily' : temple,
+                    warn: m => console.warn(`${LOG} ${m}`),
                   }),
-                  charge: async (usd) => {
-                    const carried = await accrueFraction(user.id, usd * 1e6)
-                    const c = carried ?? Math.round(usd * 100)
-                    if (c > 0) await debitCredits({
-                      userId: user.id, amountCents: c, referenceType: 'xtell', referenceId: readingId!,
-                      description: `XTell summary (${(model as any).model_name})`,
-                      metadata: { temple: daily ? 'daily' : temple, modelName: (model as any).model_name, memory: true },
-                    }).catch(err => console.warn(`${LOG} memory debit failed:`, err))
-                  },
                 })
                 if (done.saved || done.reason.startsWith('failed') || done.reason.startsWith('save failed')) console.warn(`${LOG} memory for ${(model as any).model_name}: ${done.reason}`)
               }

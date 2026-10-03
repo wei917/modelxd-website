@@ -3721,7 +3721,9 @@ button.ctx-meter:hover { background: var(--xtell-paper, var(--surface2)); }
 .xtell-room .xtell-seat-mem, .xtell-seat-mem { grid-column: 1 / -1; margin: 6px 4px 0; }
 .xtell-mem-logo { display: inline-grid; place-items: center; margin-right: 8px; vertical-align: -2px; }
 .xtell-mem-body { padding: 4px 22px 12px; }
-.xtell-mem-body h3 { margin: 16px 0 6px; }
+.xtell-mem-body h3 { margin: 0; }
+.xtell-mem-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.xtell-mem-note { margin: 0 0 8px; font-size: 12.5px; line-height: 1.6; color: var(--xtell-vermilion, var(--red)); }
 .xtell-mem-meter { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 12px; }
 .xtell-mem-meter .ctx-meter-txt { display: none; }
 .xtell-mem-meter .ctx-meter-bar { height: 6px; border-radius: 3px; }

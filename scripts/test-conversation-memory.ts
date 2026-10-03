@@ -80,6 +80,10 @@ async function summarizeChecks() {
   const r8 = await base({ model: gpt6Tier, inputTokens: 250_000 }), r9 = await base({ model: gpt6, inputTokens: 250_000 })
   check('a price jump moves the point: GPT-6 at 250k goes on to summarize with the tier, not without it (70% = 645,400)', r8.reason === 'nothing old enough to fold' && r9.reason === 'under the threshold', `${r8.reason} / ${r9.reason}`)
 
+  const n1 = await base({ now: true, inputTokens: null })
+  check('now (a press): no summary point; only the latest exchange stays word for word', n1.saved && n1.through_seq === 80 && n1.text === '新的摘要' && seen.content === '舊的|10,20,30,40,50,60,70,80', `${seen?.content}`)
+  const n2 = await base({ now: true, load: async () => ({ summary: null, thread: thread.slice(-2) }) })
+  check('now, with only the latest exchange: nothing to fold', !n2.saved && n2.reason === 'nothing old enough to fold')
   const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'conversation-memory.ts'), 'utf8')
   check('the shared module is pure: no imports, so the page and every route can use it', !/^import /m.test(src))
   const meter = fs.readFileSync(path.join(__dirname, '..', 'app', 'components', 'ContextMeter.tsx'), 'utf8')

@@ -105,8 +105,10 @@ export type SummaryRun = { text: string; inputTokens: number | null; outputToken
 /**
  * After a reply: if it read more than the summary point, the model folds the
  * older part of its thread, with its previous summary, into a new summary,
- * keeping the newest messages word for word. Returns what was saved, or why
- * not. Never throws. The surface supplies:
+ * keeping the newest messages word for word. With `now` (a person pressed
+ * "summarize now"; owner, Oct 3) the point is skipped and only the latest
+ * exchange stays word for word. Returns what was saved, or why not. Never
+ * throws. The surface supplies:
  *   load    its previous summary and the thread after it (null: no storage);
  *   prompt  the summary instructions and the text to summarize;
  *   run     the model call (its own model, billed through the surface);
@@ -116,25 +118,31 @@ export type SummaryRun = { text: string; inputTokens: number | null; outputToken
 export async function maybeSummarize<T extends Numbered>(o: {
   model: any
   inputTokens: number | null
+  /** Summarize now, whatever the size; keep only the latest exchange. */
+  now?: boolean
   load: () => Promise<{ summary: { text: string; through_seq: number } | null; thread: T[] } | null>
   prompt: (p: { oldSummary: string | null; fold: T[] }) => { system: string; content: string }
   run: (system: string, content: string) => Promise<SummaryRun | null>
   save: (s: SummaryRun & { through_seq: number }) => Promise<string>
   charge: (usd: number) => Promise<void>
-}): Promise<{ saved: boolean; reason: string; through_seq?: number }> {
+}): Promise<{ saved: boolean; reason: string; through_seq?: number; text?: string }> {
   try {
-    if (!o.inputTokens || o.inputTokens <= summaryPointOf(o.model)) return { saved: false, reason: 'under the threshold' }
+    if (!o.now && (!o.inputTokens || o.inputTokens <= summaryPointOf(o.model))) return { saved: false, reason: 'under the threshold' }
     const loaded = await o.load()
     if (!loaded) return { saved: false, reason: 'messages table missing' }
     const { summary, thread } = loaded
-    // The newest messages within the keep share stay word for word;
-    // everything before them is folded.
-    const room = keepRawOf(o.model)
-    let keep = 0, used = 0
-    for (let i = thread.length - 1; i >= 0; i--) {
-      const t = approxTokens(thread[i].content)
-      if (used + t > room) break
-      used += t; keep++
+    // The newest messages within the keep share stay word for word (on a
+    // press, the latest exchange); everything before them is folded.
+    let keep = 0
+    if (o.now) keep = Math.min(2, thread.length)
+    else {
+      const room = keepRawOf(o.model)
+      let used = 0
+      for (let i = thread.length - 1; i >= 0; i--) {
+        const t = approxTokens(thread[i].content)
+        if (used + t > room) break
+        used += t; keep++
+      }
     }
     const fold = thread.slice(0, thread.length - keep)
     if (fold.length === 0) return { saved: false, reason: 'nothing old enough to fold' }
@@ -146,7 +154,7 @@ export async function maybeSummarize<T extends Numbered>(o: {
     if (saved === 'duplicate') return { saved: false, reason: 'already summarized to that point' }
     if (saved !== 'saved') return { saved: false, reason: `save failed: ${saved}` }
     if (out.cost && out.cost > 0) await o.charge(out.cost)
-    return { saved: true, reason: 'saved', through_seq: through }
+    return { saved: true, reason: 'saved', through_seq: through, text: out.text.trim() }
   } catch (e) {
     return { saved: false, reason: `failed: ${e instanceof Error ? e.message : String(e)}` }
   }

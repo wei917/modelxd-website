@@ -19,7 +19,7 @@
 // reread their whole thread from xtell_readings.turns (lib/xtell-thread.ts).
 
 import { threadIndices } from './xtell-thread'
-import { maybeSummarize as summarize, MESSAGE_CHARS, type Message } from './conversation-memory'
+import { maybeSummarize as summarize, MESSAGE_CHARS, type Message, type SummaryRun } from './conversation-memory'
 
 export type Row = { seq: number; role: 'user' | 'assistant'; content: string; model_id: string | null; qid: string | null; to: string[] | null }
 export type Memo = { text: string; through_seq: number }
@@ -96,16 +96,19 @@ export async function maybeSummarize(o: {
   readingId: string
   model: any
   inputTokens: number | null
+  /** A press of 「立即摘要」: summarize now, keep only the latest exchange. */
+  now?: boolean
   lang: string
   userId: string
-  run: (system: string, content: string) => Promise<{ text: string; inputTokens: number | null; outputTokens: number | null; cost: number | null } | null>
+  run: (system: string, content: string) => Promise<SummaryRun | null>
   charge: (usd: number) => Promise<void>
-}): Promise<{ saved: boolean; reason: string; through_seq?: number }> {
+}): Promise<{ saved: boolean; reason: string; through_seq?: number; text?: string }> {
   const modelId = String(o.model?.id)
   const name = String(o.model?.display_name ?? o.model?.model_name ?? 'master')
   return summarize({
     model: o.model,
     inputTokens: o.inputTokens,
+    now: o.now,
     load: async () => {
       const memo = await latestMemo(o.admin, o.readingId, modelId)
       const rows = await messagesAfter(o.admin, o.readingId, memo?.through_seq ?? 0)
@@ -125,4 +128,37 @@ export async function maybeSummarize(o: {
     },
     charge: o.charge,
   })
+}
+
+/** The summary call: the master's own model and thinking setting, up to
+ *  4,000 tokens, 120 s at most (a summary that never comes back must not hold
+ *  the function). `streamText` is lib/providers' own, passed in. */
+export function summaryRun(streamText: (...args: any[]) => Promise<unknown>, model: any, userId: string, thinking: string | null) {
+  return (system: string, content: string) => new Promise<SummaryRun | null>(resolve => {
+    setTimeout(() => resolve(null), 120_000)
+    let text = ''
+    streamText(model, [{ role: 'user', content }], {
+      onDelta: (t: string) => { text += t },
+      onDone: (m: any) => resolve({ text, inputTokens: m.inputTokens ?? null, outputTokens: m.outputTokens ?? null, cost: m.cost ?? null }),
+      onError: () => resolve(null),
+    }, [], { userId }, { system, thinking, maxTokens: 4000 }).catch(() => resolve(null))
+  })
+}
+
+/** Bills a summary like an answer: whole cents now, what is under a cent
+ *  carried to the next charge (supabase/114). lib/credits' own functions are
+ *  passed in. */
+export function summaryCharge(
+  credits: { accrueFraction: (userId: string, micro: number) => Promise<number | null>; debitCredits: (d: any) => Promise<unknown> },
+  o: { userId: string; readingId: string; model: any; temple: string; warn?: (msg: string) => void },
+) {
+  return async (usd: number) => {
+    const carried = await credits.accrueFraction(o.userId, usd * 1e6)
+    const cents = carried ?? Math.round(usd * 100)
+    if (cents > 0) await credits.debitCredits({
+      userId: o.userId, amountCents: cents, referenceType: 'xtell', referenceId: o.readingId,
+      description: `XTell summary (${o.model?.model_name})`,
+      metadata: { temple: o.temple, modelName: o.model?.model_name, memory: true },
+    }).catch(err => o.warn?.(`summary debit failed: ${err instanceof Error ? err.message : String(err)}`))
+  }
 }

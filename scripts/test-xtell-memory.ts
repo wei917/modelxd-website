@@ -218,4 +218,66 @@ async function routeChecks() {
   check('page: sends the visitor\'s time zone with each question', /tz: \(\(\) => \{ try \{ return Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone/.test(page))
 }
 
-unit().then(routeChecks).then(() => { console.log(fails ? `\n${fails} FAILED` : '\nall ok'); process.exit(fails ? 1 : 0) })
+// ── 「立即摘要」: the button's route ──────────────────────────────────────────
+function memoryRoute(o: { admin: any; user?: string | null; owner?: string; balance?: number }) {
+  const calls: Array<{ system: string; msgs: any[]; g: any }> = [], debits: string[] = []
+  const afters: Promise<unknown>[] = []
+  const reading = { id: VISIT, user_id: o.owner ?? ME, temple: 'sunzi', deleted_at: null }
+  const db = {
+    auth: { getUser: async () => ({ data: { user: o.user === null ? null : { id: o.user ?? ME } } }) },
+    from(table: string) {
+      const filters: any[] = []
+      const q: any = {
+        select: () => q, is: () => q, maybeSingle: () => q,
+        eq: (k: string, v: unknown) => { filters.push([k, v]); return q },
+        then: (res: any, rej: any) => {
+          const row = table === 'xtell_readings' ? reading : table === 'user_credits' ? { user_id: ME, balance_cents: o.balance ?? 500 } : null
+          return Promise.resolve({ data: row && filters.every(([k, v]) => (row as any)[k] === v) ? row : null, error: null }).then(res, rej)
+        },
+      }
+      return q
+    },
+  }
+  const model = { id: A, provider: 'openai', model_name: 'test-model', display_name: 'Opus', enabled: true, blocked_features: [], context_window: 1_000_000, output_config: { text: { thinking_levels: ['high'] } } }
+  const { POST } = loadRoute('app/api/xtell/memory/route.ts', {
+    '@/lib/supabase-server': { createSupabaseServer: async () => db },
+    '@/lib/models': { getModelById: async (id: string) => (id === A ? model : null) },
+    '@/lib/providers': { streamText: async (_m: unknown, msgs: any, cb: any, _a: unknown, _c: unknown, g: any) => { calls.push({ system: g.system, msgs, g }); cb.onDelta('立即的摘要'); cb.onDone({ cost: 0.02, inputTokens: 3_000, outputTokens: 200 }) } },
+    '@/lib/credits': { debitCredits: async (d: any) => { debits.push(d.description) }, accrueFraction: async () => null },
+    '@/lib/xtell-admin': { xtellAdmin: () => o.admin },
+    '@/lib/xtell-memory': mem,
+  }, afters)
+  const press = async (body: any = {}) => {
+    const r = await POST(new Request('http://t/api/xtell/memory', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ readingId: VISIT, modelId: A, lang: 'zh-Hant', ...body }) }))
+    return { status: r.status, json: await r.json() }
+  }
+  return { calls, debits, press }
+}
+
+async function nowChecks() {
+  const four = [msg(1, 'user', '第一問'), msg(2, 'assistant', '第一答'), msg(3, 'user', '第二問'), msg(4, 'assistant', '第二答')]
+  const admin = fakeAdmin({ messages: four })
+  const a = memoryRoute({ admin })
+  const r = await a.press({ thinking: 'high' })
+  check('立即摘要: a short conversation is summarized now, whatever its size', r.status === 200 && r.json.text === '立即的摘要' && admin.t.xtell_memories.length === 1 && admin.t.xtell_memories[0].through_seq === 2, JSON.stringify(r))
+  check('立即摘要: everything but the latest question and answer goes in; those stay word for word', /第一問/.test(a.calls[0].msgs[0].content) && /第一答/.test(a.calls[0].msgs[0].content) && !/第二問|第二答/.test(a.calls[0].msgs[0].content))
+  check('立即摘要: the master\'s own model and seat setting, billed like an answer', a.calls[0].g.thinking === 'high' && a.calls[0].g.maxTokens === 4000 && a.debits.length === 1 && a.debits[0] === 'XTell summary (test-model)')
+  const again = await a.press()
+  check('pressed again with nothing new since: nothing to summarize, no call, no charge', again.status === 409 && again.json.code === 'nothing_to_summarize' && a.calls.length === 1 && a.debits.length === 1, JSON.stringify(again))
+  const short = memoryRoute({ admin: fakeAdmin({ messages: four.slice(0, 2) }) })
+  const rs = await short.press()
+  check('one round only: nothing older than the latest exchange', rs.status === 409 && short.calls.length === 0)
+  const broke = memoryRoute({ admin: fakeAdmin({ messages: four }), balance: 0 })
+  const rb = await broke.press()
+  check('an empty wallet: refused before any model call', rb.status === 402 && rb.json.code === 'no_credits' && broke.calls.length === 0)
+  const other = memoryRoute({ admin: fakeAdmin({ messages: four }), owner: 'someone-else' })
+  check('another visitor\'s conversation: not found, nothing read or run', (await other.press()).status === 404 && other.calls.length === 0)
+  const anon = memoryRoute({ admin: fakeAdmin({ messages: four }), user: null })
+  check('signed out: refused', (await anon.press()).status === 401)
+  const dialog = read('app/components/xtell/MemoryDialog.tsx')
+  check('the dialog: the button shows its price and stays off until two rounds and while an answer is coming in', /disabled=\{!canNow \|\| busy \|\| working\}/.test(dialog) && /<small>~\{price\}<\/small>/.test(dialog) && /fetch\('\/api\/xtell\/memory'/.test(dialog))
+  const page = read('app/xtell/client.tsx')
+  check('the page: two answers from that master before the button works', /canNow=\{answers >= 2\}/.test(page) && /busy=\{answering\}/.test(page))
+}
+
+unit().then(routeChecks).then(nowChecks).then(() => { console.log(fails ? `\n${fails} FAILED` : '\nall ok'); process.exit(fails ? 1 : 0) })
