@@ -57,10 +57,12 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `125_profile_face.sql` (Oct 2) is PENDING: the public `avatars` bucket and
-  the browser losing insert/update/delete on `profiles` (the name and picture
-  are written only by `/api/profile/face`). Proven on PGlite. Before it runs,
-  a picture save fails ("Bucket not found"); a name save works.
+  `125_profile_face.sql` applied 2026-10-02 by the owner: the public
+  `avatars` bucket (WebP only, 512 KB) and the browser losing
+  insert/update/delete on `profiles` (the name and picture are written only
+  by `/api/profile/face`). Checked live: 42501 for the publishable key on
+  update/insert/delete, its upload to avatars refused by RLS, a PNG refused
+  by the bucket, the service key's WebP served at the public link.
   `124_x_welcome_credit.sql` applied 2026-10-02 by the owner: $10 for X
   sign-ups; handle_new_user is 113 plus 'x'. Proven on PGlite; the first
   real X sign-up is the live check (query in its header).
