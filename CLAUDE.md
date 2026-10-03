@@ -169,7 +169,7 @@ account page (`studio-type.ts` links the bar and the studio; old `?view=`
 links redirect). **Redesigned under Generate, Oct 3** (owner, learned from
 Pollo AI's /image page; the composer stays as it was, owner: "the top part
 stays the same", except that its From dropdown sits inside the prompt box,
-"like what others do"): tools and templates (`StandaloneTemplates.tsx`, one
+"like what others do", and the "Your prompt" line above it went): tools and templates (`StandaloneTemplates.tsx`, one
 sideways row), trending on social media, and your works (`StudioWorks.tsx`, a picture grid of
 your latest of the type from `/api/profile/xcreates?studio=1`, which leaves out
 rows with a `node_kind`; Film keeps only film rows and Video leaves them out,

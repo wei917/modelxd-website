@@ -4541,8 +4541,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   </div>
                 </div>}
 
+                {/* No "Your prompt" line above the box (owner, Oct 3): the
+                    placeholder says what goes there, and the textarea keeps
+                    its aria-label. */}
                 {isStandalone && <div className="xcs-prompt-section">
-                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label></div>
                   {promptComposer}
                 </div>}
 
