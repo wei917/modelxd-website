@@ -31,8 +31,18 @@ interface InRow {
   official_pricing?:  any
   /** The reseller we buy through; null = the maker directly. */
   via?:               string | null
+  /** Max input tokens the provider accepts in one request (migration 126). */
+  context_window?:    number | string | null
   input_config?:      any
   output_config?:     any
+}
+
+/** Empty, 0 or junk all mean "unknown" — the column's check rejects 0 and
+ *  negatives, and a blank field must clear the value rather than 500. */
+function contextWindow(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Math.floor(Number(v))
+  return Number.isFinite(n) && n > 0 ? n : null
 }
 
 function validate(r: InRow): string | null {
@@ -80,6 +90,7 @@ export async function POST(req: Request): Promise<Response> {
     // and a missing key must leave the stored value alone, not null it.
     ...('official_pricing' in body ? { official_pricing: body.official_pricing ?? null } : {}),
     ...('via' in body ? { via: typeof body.via === 'string' && body.via.trim() ? body.via.trim().toLowerCase().slice(0, 40) : null } : {}),
+    ...('context_window' in body ? { context_window: contextWindow(body.context_window) } : {}),
     updated_at:         new Date().toISOString(),
   }
 
