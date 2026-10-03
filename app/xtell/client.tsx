@@ -1063,6 +1063,36 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // as it finishes, or from the conversation's stored answers when it reopens.
   const [memUse, setMemUse] = useState<Record<string, number>>({})
   const [memoFor, setMemoFor] = useState<PickerModel | null>(null)
+  // 「立即摘要」 runs here, not in the dialog, so a press outlives the dialog:
+  // closing and reopening it shows 摘要中… and then the summary, and the
+  // button cannot be pressed twice meanwhile (owner, Oct 3: closed and
+  // reopened, "I can click summarize again"). Keyed by conversation and master.
+  const summarizingRef = useRef<Set<string>>(new Set())
+  const [summarizing, setSummarizing] = useState<Record<string, true>>({})
+  const [freshMemo, setFreshMemo] = useState<Record<string, { text: string; at: string }>>({})
+  const [memoNote, setMemoNote] = useState<Record<string, string>>({})
+  const summarizeNow = async (m: PickerModel) => {
+    if (!readingId) return
+    const key = `${readingId}:${m.id}`
+    if (summarizingRef.current.has(key)) return
+    summarizingRef.current.add(key)
+    setSummarizing(s => ({ ...s, [key]: true }))
+    setMemoNote(n => { const next = { ...n }; delete next[key]; return next })
+    try {
+      const res = await fetch('/api/xtell/memory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ readingId, modelId: m.id, lang, thinking: optsOf(m).thinking }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (res.ok && typeof j.text === 'string') setFreshMemo(f => ({ ...f, [key]: { text: j.text, at: typeof j.at === 'string' ? j.at : new Date().toISOString() } }))
+      else setMemoNote(n => ({ ...n, [key]: t(j.code === 'nothing_to_summarize' ? 'xtell.mem.nothing' : j.code === 'no_credits' ? 'xtell.mem.nocredit' : 'xtell.mem.failed') }))
+    } catch {
+      setMemoNote(n => ({ ...n, [key]: t('xtell.mem.failed') }))
+    } finally {
+      summarizingRef.current.delete(key)
+      setSummarizing(s => { const next = { ...s }; delete next[key]; return next })
+    }
+  }
   useEffect(() => {
     setMemUse({})
     if (!readingId) return
@@ -1817,8 +1847,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         // an answer's length out (lib/xtell-presets.ts's estimate).
         const usd = estimateReadingUsd(memoFor, { thinking: optsOf(memoFor).thinking, search: false }, 0, memUse[memoFor.id] ?? EST_PROMPT_TOKENS)
         const answers = turns.filter(tn => tn.role === 'assistant' && tn.modelId === memoFor.id).length
+        const key = `${readingId}:${memoFor.id}`
         return <MemoryDialog m={memoFor} used={memUse[memoFor.id] ?? 0} readingId={readingId} price={usd == null ? null : fmtUsdFor(usd, lang)}
-          canNow={answers >= 2} busy={answering} thinking={optsOf(memoFor).thinking} onClose={() => setMemoFor(null)} />
+          canNow={answers >= 2} busy={answering} working={!!summarizing[key]} note={memoNote[key] ?? null} fresh={freshMemo[key] ?? null}
+          onSummarize={() => void summarizeNow(memoFor)} onClose={() => setMemoFor(null)} />
       })()}
       {/* 「請一位老師」 (owner, Sep 28: the model browser was for developers). */}
       {picker && (

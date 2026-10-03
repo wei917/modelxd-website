@@ -239,9 +239,10 @@ function memoryRoute(o: { admin: any; user?: string | null; owner?: string; bala
     },
   }
   const model = { id: A, provider: 'openai', model_name: 'test-model', display_name: 'Opus', enabled: true, blocked_features: [], context_window: 1_000_000, output_config: { text: { thinking_levels: ['high'] } } }
+  const modelB = { ...model, id: B, provider: 'alibaba', model_name: 'test-model-b', display_name: 'Qwen' }
   const { POST } = loadRoute('app/api/xtell/memory/route.ts', {
     '@/lib/supabase-server': { createSupabaseServer: async () => db },
-    '@/lib/models': { getModelById: async (id: string) => (id === A ? model : null) },
+    '@/lib/models': { getModelById: async (id: string) => (id === A ? model : id === B ? modelB : null) },
     '@/lib/providers': { streamText: async (_m: unknown, msgs: any, cb: any, _a: unknown, _c: unknown, g: any) => { calls.push({ system: g.system, msgs, g }); cb.onDelta('立即的摘要'); cb.onDone({ cost: 0.02, inputTokens: 3_000, outputTokens: 200 }) } },
     '@/lib/credits': { debitCredits: async (d: any) => { debits.push(d.description) }, accrueFraction: async () => null },
     '@/lib/xtell-admin': { xtellAdmin: () => o.admin },
@@ -274,10 +275,25 @@ async function nowChecks() {
   check('another visitor\'s conversation: not found, nothing read or run', (await other.press()).status === 404 && other.calls.length === 0)
   const anon = memoryRoute({ admin: fakeAdmin({ messages: four }), user: null })
   check('signed out: refused', (await anon.press()).status === 401)
+  // Several masters seated: each press summarizes only that master's own
+  // thread (both questions, its own answers, never another master's), and
+  // two masters can be summarized at the same time.
+  const both = [
+    msg(1, 'user', '共同第一問', { to: [A, B] }), msg(2, 'assistant', 'A的第一答'), { ...msg(3, 'assistant', 'B的第一答'), model_id: B, qid: 'q1' },
+    msg(4, 'user', '共同第二問', { to: [A, B], qid: 'q2' }), { ...msg(5, 'assistant', 'A的第二答'), qid: 'q2' }, { ...msg(6, 'assistant', 'B的第二答'), model_id: B, qid: 'q2' },
+  ]
+  const shared = fakeAdmin({ messages: both })
+  const duo = memoryRoute({ admin: shared })
+  const [ra, rb2] = await Promise.all([duo.press({ modelId: A }), duo.press({ modelId: B })])
+  const sentFor = (name: string) => duo.calls.find(c => c.system.includes(`「${name}」`))?.msgs[0].content ?? ''
+  check('two masters pressed at once: both summaries saved, one per master', ra.status === 200 && rb2.status === 200 && shared.t.xtell_memories.length === 2 && shared.t.xtell_memories.map((r: any) => r.model_id).sort().join() === [A, B].sort().join(), `${ra.status} ${rb2.status}`)
+  check('each master\'s summary reads both questions and only its own answers', ['共同第一問', '共同第二問', 'A的第一答', 'A的第二答'].every(x => sentFor('Opus').includes(x)) && !/B的/.test(sentFor('Opus')) && ['共同第一問', '共同第二問', 'B的第一答', 'B的第二答'].every(x => sentFor('Qwen').includes(x)) && !/A的/.test(sentFor('Qwen')))
+  check('each summary is through that master\'s own last message, billed once each', shared.t.xtell_memories.find((r: any) => r.model_id === A)?.through_seq === 5 && shared.t.xtell_memories.find((r: any) => r.model_id === B)?.through_seq === 6 && duo.debits.length === 2)
   const dialog = read('app/components/xtell/MemoryDialog.tsx')
-  check('the dialog: the button shows its price and stays off until two rounds and while an answer is coming in', /disabled=\{!canNow \|\| busy \|\| working\}/.test(dialog) && /<small>~\{price\}<\/small>/.test(dialog) && /fetch\('\/api\/xtell\/memory'/.test(dialog))
+  check('the dialog: the button shows its price and stays off until two rounds and while an answer is coming in', /disabled=\{!canNow \|\| busy \|\| working\}/.test(dialog) && /<small>~\{price\}<\/small>/.test(dialog) && !/fetch\(/.test(dialog))
   const page = read('app/xtell/client.tsx')
   check('the page: two answers from that master before the button works', /canNow=\{answers >= 2\}/.test(page) && /busy=\{answering\}/.test(page))
+  check('the page runs the press, so closing and reopening the dialog keeps 摘要中… and one press at a time (owner, Oct 3)', /fetch\('\/api\/xtell\/memory'/.test(page) && /if \(summarizingRef\.current\.has\(key\)\) return/.test(page) && /working=\{!!summarizing\[key\]\}/.test(page) && /fresh=\{freshMemo\[key\] \?\? null\}/.test(page))
 }
 
 unit().then(routeChecks).then(nowChecks).then(() => { console.log(fails ? `\n${fails} FAILED` : '\nall ok'); process.exit(fails ? 1 : 0) })

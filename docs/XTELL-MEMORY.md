@@ -141,7 +141,10 @@ summarization).
   the visitor's own conversation, an empty wallet refused before any call,
   billed like an answer, 409 when nothing is new since the last summary.
   Off until the master has answered twice here, and while an answer is
-  coming in. Mostly for comparing models' summaries: at real limits an
+  coming in. The press runs in the page, not the dialog, keyed by
+  conversation and master: closing and reopening the dialog keeps 摘要中…
+  and the button off, and several masters can be summarized at once, each
+  from its own thread (owner, Oct 3). Mostly for comparing models' summaries: at real limits an
   automatic one starts at 245k–734k tokens.
 
 ## Rollout

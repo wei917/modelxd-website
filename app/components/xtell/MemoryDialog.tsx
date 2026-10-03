@@ -14,7 +14,7 @@ import ProviderLogo from '../ProviderLogo'
 import ContextMeter from '../ContextMeter'
 import { maxInputOf, summaryPointOf, formatTokens } from '../../../lib/conversation-memory'
 
-export default function MemoryDialog({ m, used, readingId, price, canNow, busy, thinking, onClose }: {
+export default function MemoryDialog({ m, used, readingId, price, canNow, busy, working, note, fresh, onSummarize, onClose }: {
   /** The master, with its catalog limit and prices. */
   m: PickerModel
   /** Tokens the master read for its last answer here. */
@@ -26,8 +26,14 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
   canNow: boolean
   /** An answer is coming in: no summary meanwhile. */
   busy: boolean
-  /** The seat's thinking setting, used for the summary too. */
-  thinking: string | null
+  /** A press of 「立即摘要」 is running (held by the page, so it outlives the
+   *  dialog: closing and reopening keeps 摘要中… and the button off). */
+  working: boolean
+  /** Why the last press did not save a summary, if it did not. */
+  note: string | null
+  /** The summary a press just saved in this page, shown before the stored one. */
+  fresh: { text: string; at: string } | null
+  onSummarize: () => void
   onClose: () => void
 }) {
   const t = useT()
@@ -54,27 +60,8 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
       .then(({ data, error }) => { if (live) setMemo(error || !data ? null : { text: String(data.text), at: String(data.created_at) }) })
     return () => { live = false }
   }, [readingId, m.id])
-  // 「立即摘要」 (owner, Oct 3): the whole conversation so far, summarized
-  // now, billed like an answer (app/api/xtell/memory).
-  const [working, setWorking] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
-  const summarizeNow = async () => {
-    if (!readingId || working) return
-    setWorking(true); setNote(null)
-    try {
-      const res = await fetch('/api/xtell/memory', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ readingId, modelId: m.id, lang, thinking }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (res.ok && typeof j.text === 'string') setMemo({ text: j.text, at: typeof j.at === 'string' ? j.at : new Date().toISOString() })
-      else setNote(t(j.code === 'nothing_to_summarize' ? 'xtell.mem.nothing' : j.code === 'no_credits' ? 'xtell.mem.nocredit' : 'xtell.mem.failed'))
-    } catch {
-      setNote(t('xtell.mem.failed'))
-    } finally {
-      setWorking(false)
-    }
-  }
+  // The newest summary: one a press just saved here, or the stored one.
+  const shown = fresh && (!memo || fresh.at >= memo.at) ? fresh : memo
   // Full = the most XTell lets this master read: its limit, or its price jump.
   const size = maxInputOf(m), point = summaryPointOf(m)
   const pct = Math.min(100, Math.round(used / size * 100))
@@ -97,18 +84,18 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
           <div className="xtell-mem-head">
             <h3>{t('xtell.mem.summary')}</h3>
             {readingId && (
-              <button type="button" className="xtell-join-btn is-add" disabled={!canNow || busy || working} onClick={() => void summarizeNow()}
+              <button type="button" className="xtell-join-btn is-add" disabled={!canNow || busy || working} onClick={onSummarize}
                 title={!canNow ? t('xtell.mem.needTwo') : undefined}>
                 {working ? t('xtell.mem.working') : t('xtell.mem.now')}{!working && price && <small>~{price}</small>}
               </button>
             )}
           </div>
           {note && <p className="xtell-mem-note" role="status">{note}</p>}
-          {memo === undefined && <p className="xtell-tp-empty">{t('common.loading')}</p>}
-          {memo === null && <p className="xtell-tp-empty">{t('xtell.mem.none')}</p>}
-          {memo && <>
-            <div className="xtell-mem-text">{memo.text}</div>
-            {when(memo.at) && <p className="xtell-mem-at">{t('xtell.mem.at').replace('{time}', when(memo.at))}</p>}
+          {shown === undefined && <p className="xtell-tp-empty">{t('common.loading')}</p>}
+          {shown === null && <p className="xtell-tp-empty">{t(working ? 'xtell.mem.working' : 'xtell.mem.none')}</p>}
+          {shown && <>
+            <div className="xtell-mem-text">{shown.text}</div>
+            {when(shown.at) && <p className="xtell-mem-at">{t('xtell.mem.at').replace('{time}', when(shown.at))}</p>}
           </>}
         </div>
         <footer className="xtell-tp-foot"><button type="button" onClick={onClose}>{t('common.close')}</button></footer>
