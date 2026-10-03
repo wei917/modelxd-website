@@ -39,11 +39,15 @@ export function rateOf(r: any, level: string | null): number {
   if (level && r.by_level && typeof r.by_level[level] === 'number') return r.by_level[level]
   return typeof r.default === 'number' ? r.default : 0
 }
+/** The tokens a question is expected to read: the instructions and chart,
+ *  the conversation so far, and what a search brings in. */
+export const estimateInputTokens = (o: { search: boolean }, chars: number, promptTokens = EST_PROMPT_TOKENS): number =>
+  promptTokens + chars + (o.search ? EST_READ_TOKENS : 0)
 export function estimateReadingUsd(m: PresetModel, o: { thinking: string | null; search: boolean }, chars: number, promptTokens = EST_PROMPT_TOKENS): number | null {
   const p = m.model_pricing ?? {}, tk = p.tokens ?? {}
   const tin = rateOf(tk.text_input, o.thinking), tout = rateOf(tk.text_output, o.thinking)
   if (!tin && !tout) return null
-  const inTok = promptTokens + chars + (o.search ? EST_READ_TOKENS : 0)
+  const inTok = estimateInputTokens(o, chars, promptTokens)
   const outTok = EST_OUT_TOKENS + (reasons(o.thinking) ? EST_THINK_TOKENS : 0)
   return (o.search ? EST_SEARCHES * (p.per_search ?? 0) : 0) + (inTok * tin + outTok * tout) / 1_000_000
 }

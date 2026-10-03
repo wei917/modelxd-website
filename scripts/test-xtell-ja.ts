@@ -37,7 +37,7 @@ check('link previews carry the same names', Object.entries(XTELL_TEMPLE_NAMES).e
 // after the Chinese facts, and the route logs any Chinese prose it sees.
 const route = fs.readFileSync(path.join(__dirname, '..', 'app/api/xtell/reading/route.ts'), 'utf8')
 check('the Japanese answer line forbids Chinese sentences and asks a translation of quoted verse', /'ja': '回答言語：日本語のみ。[^']*中国語の文[^']*日本語訳/.test(route))
-check('the language is restated after the Chinese facts, and the switch clause is in Japanese', route.includes('（最終確認：上の資料は中国語ですが、回答はすべて日本語で書くこと') && /\$\{facts\}\$\{classicsBlock\(temple, classicsQuery\)\}\$\{closingLine\(body\?\.lang\)\}/.test(route) && route.includes("'ja': '相談者が日本語以外の言語で書いた場合だけ"))
+check('the language is restated after the Chinese facts, and the switch clause is in Japanese', route.includes('（最終確認：上の資料は中国語ですが、回答はすべて日本語で書くこと') && /\$\{facts\}\$\{classicsBlock\(temple, classicsQuery\)\}(\$\{memo \? memoBlock\(memo\) : ''\})?\$\{closingLine\(body\?\.lang\)\}/.test(route) && route.includes("'ja': '相談者が日本語以外の言語で書いた場合だけ"))
 const { chineseLeak, leaksChinese } = require('../lib/xtell-lang-check')
 check('leak check: Chinese prose in Japanese is caught', leaksChinese('今日は良い日です。但是你还有很多问题，现在应该给自己时间。'))
 check('leak check: plain Japanese with shared kanji is not', !leaksChinese('今日は会社で学ぶことが多く、気持ちが現れる日です。問題は里帰りのあとに見えてきます。'))
@@ -140,7 +140,7 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
 {
   const xt = require('../lib/xtell')
   const route = read('app/api/xtell/reading/route.ts'), client = read('app/xtell/client.tsx')
-  check('every teacher is told today\'s date: 「今年」 was answered for 2024', (route.match(/\$\{todayLine\(\)\}/g) ?? []).length === 2 && /今天的日期（西元，UTC）/.test(route))
+  check('every teacher is told today\'s date: 「今年」 was answered for 2024', (route.match(/\$\{todayLine\(tz\)\}/g) ?? []).length === 2 && /今天的日期（西元，來訪者當地）/.test(route))
   const c = xt.baziChart({ y: 1990, m: 5, d: 15, h: 14, mi: 30, gender: 'male' })
   const next = xt.liuNianFacts(xt.liuNian(c, 1990, 2027), '明年流年')
   check('四柱推命 is given this year\'s and next year\'s 流年', next.startsWith('明年流年：2027 丁未年') && xt.liuNianFacts(xt.liuNian(c, 1990, 2026)).startsWith('今年流年：2026 丙午年') && route.includes("'明年流年'"))

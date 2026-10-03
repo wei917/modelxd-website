@@ -57,6 +57,12 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `126_xtell_memory.sql` applied 2026-10-03 by the owner: XTell masters'
+  memory (`xtell_messages`, `xtell_memories`, `ai_models.context_window`;
+  docs/XTELL-MEMORY.md). It copied 675 messages from 195 conversations out
+  of `xtell_readings.turns`. Checked live: 42501 for the publishable key on
+  GET and POST on both tables; `context_window` readable by it. The code
+  that uses the tables was not deployed yet when it ran.
   `125_profile_face.sql` applied 2026-10-02 by the owner: the public
   `avatars` bucket (WebP only, 512 KB) and the browser losing
   insert/update/delete on `profiles` (the name and picture are written only
@@ -385,6 +391,7 @@ app/
 │   ├── SceneStrip.tsx          # Storyboard scene cards + ASSETS shelf
 │   ├── XCutEditor.tsx / XCutLibrary.tsx   # The cutting room and its asset bin
 │   ├── ModelPickerDialog.tsx   # Model picker (takes feature= for blocks)
+│   ├── ContextMeter.tsx        # A model's memory, current / max (lib/conversation-memory.ts)
 │   ├── TemplatePicker.tsx      # XTalk / XCreate template chooser
 │   ├── LabeledSlotsPicker.tsx  # Recipe input slots
 │   ├── AuthModal.tsx           # Fullscreen login overlay (Google OAuth)
@@ -457,6 +464,7 @@ lib/
 ├── werewolf-lang.ts            # Werewolf per-language strings
 ├── house-llm.ts                # House-paid calls: Claude, OpenAI on failure
 ├── inference.ts                # Shared text-inference core (API v1 + Werewolf)
+├── conversation-memory.ts      # Long conversations: model limits, budget, summaries (XTell; XTalk next)
 ├── json-schema.ts              # Small JSON Schema validator + tolerant extractor
 ├── schema-adapt.ts             # Per-provider JSON Schema dialect adapter
 ├── xdirector-prompt.ts         # Director system prompt

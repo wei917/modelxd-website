@@ -14,7 +14,8 @@ import * as sz from '../lib/sunzi'
 import * as jm from '../lib/jiemeng'
 import * as xtell from '../lib/xtell'
 import * as yijing from '../lib/yijing'
-import { threadFor, fitBudget, approxTokens, HISTORY_TOKENS } from '../lib/xtell-thread'
+import { threadFor } from '../lib/xtell-thread'
+import { fitBudget, approxTokens, HISTORY_TOKENS } from '../lib/conversation-memory'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
@@ -83,7 +84,7 @@ function route(savedTurns: unknown[] | null, owner = ME) {
     '@/lib/credits': { debitCredits: async () => {}, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
     '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: () => '' }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'), '@/lib/jiemeng': jm, '@/lib/sunzi': sz,
-    '@/lib/xtell-thread': require('../lib/xtell-thread'),
+    '@/lib/xtell-thread': require('../lib/xtell-thread'), '@/lib/xtell-memory': require('../lib/xtell-memory'), '@/lib/conversation-memory': require('../lib/conversation-memory'),
   })
   const ask = async (body: any) => { const r = await POST(new Request('http://t/api/xtell/reading', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ temple: 'sunzi', modelId: A, question: '下一步？', situation: '對手降價', qid: 'q-new', ...body }) })); return { status: r.status, text: await r.text() } }
   return { sent, ask }
@@ -112,10 +113,11 @@ async function routeChecks() {
   const d = route(huge)
   await d.ask({ readingId: VISIT })
   const dm = d.sent[0]
-  check('a conversation past the budget: its newest part, in order, ending with the new question', dm.length > 90 && dm.length < 110 && dm.at(-2)!.content.startsWith('答199') && dm.at(-1)!.content === '下一步？', String(dm.length))
+  const keptTokens = dm.slice(0, -1).reduce((n, m) => n + approxTokens(m.content), 0)
+  check('a conversation past the master\'s window: its newest part, in order, ending with the new question, within the window', dm.length > 60 && dm.at(-2)!.content.startsWith('答199') && dm.at(-1)!.content === '下一步？' && keptTokens <= 100_000 * 0.9, `${dm.length} messages, ${keptTokens} tokens`)
 
   const src = read('app/api/xtell/reading/route.ts')
-  check('route: no message cap left', !/\.slice\(-20\)/.test(src) && /fitBudget\(thread \?\? pageCopy\)\.kept/.test(src))
+  check('route: no message cap left', !/\.slice\(-20\)/.test(src) && /fitBudget\(history, rawBudget\(model, approxTokens\(systemText\)\)\)/.test(src))
   check('route: the saved conversation is read with the visitor\'s own session, own row, not deleted', /from\('xtell_readings'\)\.select\('turns'\)\.eq\('id', savedId\)\.eq\('user_id', user\.id\)\.is\('deleted_at', null\)/.test(src))
 }
 

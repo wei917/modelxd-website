@@ -29,6 +29,9 @@ import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } 
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import type { PickerModel } from '../components/ModelPickerDialog'
 import TeacherPicker from '../components/xtell/TeacherPicker'
+import MemoryDialog from '../components/xtell/MemoryDialog'
+import ContextMeter from '../components/ContextMeter'
+import { windowOf, summaryPointOf, formatTokens } from '../../lib/conversation-memory'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
@@ -45,7 +48,7 @@ import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../.
 import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
 import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../lib/xtell-history'
 import { TitleEditor } from '../components/xtell/TitleEditor'
-import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
+import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimateInputTokens, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
@@ -722,7 +725,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // house pick ever leaves the catalog — the temple must never open empty.
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
     sb.from('ai_models')
-      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, blocked_features')
+      .select('id, provider, model_name, display_name, modes, model_pricing, context_window, output_config, blocked_features')
       .eq('enabled', true).contains('output_modalities', ['text'])
       .then(({ data }) => {
         const rows = (data ?? []).filter(r => !(r.blocked_features ?? []).includes('xtell'))
@@ -979,6 +982,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           search: optsOf(m).search && searchable(m),
           thinking: optsOf(m).thinking,
           lang,
+          // The visitor's own day: the date-bound facts change at their midnight.
+          tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone } catch { return undefined } })(),
         }),
       })
       if (!res.ok || !res.body) {
@@ -1000,7 +1005,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           if (!type || !data) continue
           const j = JSON.parse(data)
           if (type === 'delta') appendAssistant(idx, j.text)
-          if (type === 'done') { ended = true; doneAssistant(idx, j.cost ?? 0) }
+          if (type === 'done') {
+            ended = true; doneAssistant(idx, j.cost ?? 0)
+            if (typeof j.inputTokens === 'number') setMemUse(u => ({ ...u, [m.id]: j.inputTokens }))
+          }
           if (type === 'error') { ended = true; fail(j.message ?? 'error', typeof j.code === 'string' ? j.code : null); doneAssistant(idx, 0) }
         }
       }
@@ -1048,6 +1056,29 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // being fetched; another teacher's error stays.
     if (recovering.current === 0 && errCodeRef.current === 'stream_recovering') clearErr()
   }
+
+  // 記憶 (Oct 3, docs/XTELL-MEMORY.md): how much each master read for its
+  // last answer, against its own limit (the catalog's context_window, read
+  // with the master; lib/conversation-memory.ts). Sizes come from each answer
+  // as it finishes, or from the conversation's stored answers when it reopens.
+  const [memUse, setMemUse] = useState<Record<string, number>>({})
+  const [memoFor, setMemoFor] = useState<PickerModel | null>(null)
+  useEffect(() => {
+    setMemUse({})
+    if (!readingId) return
+    let live = true
+    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
+    sb.from('xtell_messages').select('model_id, input_tokens').eq('reading_id', readingId).eq('role', 'assistant')
+      .order('seq', { ascending: false }).limit(100)
+      .then(({ data, error }) => {
+        if (!live || error || !Array.isArray(data)) return
+        const last: Record<string, number> = {}
+        for (const r of data as Array<{ model_id: string | null; input_tokens: number | null }>) if (r.model_id && typeof r.input_tokens === 'number' && !(r.model_id in last)) last[r.model_id] = r.input_tokens
+        // An answer that finished while this was loading is newer: it wins.
+        setMemUse(u => ({ ...last, ...u }))
+      })
+    return () => { live = false }
+  }, [readingId])
 
   // 👍 / 👎 (owner, Oct 1), per answer: `${qid}:${modelId}` → 1 or -1. Only
   // in a saved visit, and only once /api/xtell/vote answers: signed out, or
@@ -1417,6 +1448,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                           </button>
                         )}
                         </span>
+                        {/* 記憶: once the master has answered in this conversation. */}
+                        {typeof memUse[m.id] === 'number' && (
+                          <ContextMeter className="xtell-seat-mem" used={memUse[m.id]} max={windowOf(m)} point={summaryPointOf(m)} label={t('xtell.mem.label')}
+                            ariaLabel={`${t('xtell.mem.title').replace('{name}', m.display_name)}: ${formatTokens(memUse[m.id])} / ${formatTokens(windowOf(m))}`}
+                            onClick={() => setMemoFor(m)} />
+                        )}
                       </div>
                     )
                   })}
@@ -1484,11 +1521,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                             {(() => {
                               const usd = estimateReadingUsd(m, { thinking: o.thinking, search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
                               const secs = firstWord(m, o.thinking)
-                              if (usd == null && !secs) return null
+                              // 記憶 beside the price (owner, Oct 3: "current vs
+                              // max"): what this master read last time, or
+                              // what this question is expected to read.
+                              const read = memUse[m.id] ?? estimateInputTokens({ search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
                               return (
                                 <dl className="xtell-seat-stats">
                                   {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsdFor(usd, lang)}</dd></div>}
                                   {secs && <div title={t('xtell.seat.ttft.tip')}><dt>{t('xtell.seat.ttftLabel')}</dt><dd>~{secs} {t('xtell.seat.sec')}</dd></div>}
+                                  <div title={t('xtell.mem.tip')}><dt>{t('xtell.mem.label')}</dt><dd>{memUse[m.id] == null ? '~' : ''}{formatTokens(read)} / {formatTokens(windowOf(m))}</dd></div>
                                 </dl>
                               )
                             })()}
@@ -1767,6 +1808,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         </div>
       )}
 
+      {memoFor && <MemoryDialog m={memoFor} used={memUse[memoFor.id] ?? 0} readingId={readingId} onClose={() => setMemoFor(null)} />}
       {/* 「請一位老師」 (owner, Sep 28: the model browser was for developers). */}
       {picker && (
         <TeacherPicker

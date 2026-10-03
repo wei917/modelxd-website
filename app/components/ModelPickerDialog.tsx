@@ -46,6 +46,8 @@ export interface PickerModel {
   tags?: string[]
   input_modalities?: string[]
   model_pricing?: any
+  /** Max input tokens per request (migration 126); null = unknown. */
+  context_window?: number | null
   output_config?: any
   input_config?: { image?: { count?: number }; video?: { count?: number } } | null
 }

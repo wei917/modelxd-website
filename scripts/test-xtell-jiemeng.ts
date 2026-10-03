@@ -52,7 +52,7 @@ function loadRoute(file: string, modules: Record<string, unknown>) {
     exports, console: { ...console, warn: () => {} }, process, Response, Request, ReadableStream, TextEncoder, crypto: globalThis.crypto,
     // The reading route keeps its work alive with after() and beats every 15 s.
     setInterval, clearInterval,
-    require: (name: string) => { const deps: Record<string, unknown> = { 'next/server': { after: () => {} }, '@/lib/xtell-thread': require('../lib/xtell-thread'), ...modules }; if (!(name in deps)) throw new Error('unexpected route dependency: ' + name); return deps[name] },
+    require: (name: string) => { const deps: Record<string, unknown> = { 'next/server': { after: () => {} }, '@/lib/xtell-thread': require('../lib/xtell-thread'), '@/lib/xtell-memory': require('../lib/xtell-memory'), '@/lib/conversation-memory': require('../lib/conversation-memory'), ...modules }; if (!(name in deps)) throw new Error('unexpected route dependency: ' + name); return deps[name] },
   }, { filename: file })
   return exports
 }

@@ -1,4 +1,4 @@
-# XTell masters' memory (agreed Oct 3, 2026)
+# XTell masters' memory (agreed Oct 3, 2026; built Oct 3)
 
 Owner, Oct 2-3: a master must remember the whole conversation ("continue
 and read all"); each master summarizes its own memory with its own model,
@@ -7,15 +7,29 @@ no recall; keep the design simple. Built for 1:1 conversations now (a
 visitor and the masters seated in a temple, each master in its own thread);
 the 大師會談 rooms reuse it later.
 
+Code, shared by every surface (owner, Oct 3: "this problem exists for all
+subdomain not just XTell", "we should modularize now"):
+`lib/conversation-memory.ts` (each model's limit and price jump from its
+catalog row, what a reply read, the budget, the summary point, the summarize
+step with storage passed in) and `app/components/ContextMeter.tsx` (current /
+max, the summary point marked). XTell's own: `lib/xtell-thread.ts` (who sees
+which message), `lib/xtell-memory.ts` (its tables and the wording its masters
+read), the reading route (`app/api/xtell/reading/route.ts`), the page and
+`app/components/xtell/MemoryDialog.tsx`. Tables: `supabase/126_xtell_memory.sql`.
+Tests: `scripts/test-conversation-memory.ts`, `scripts/test-xtell-thread.ts`,
+`scripts/test-xtell-memory.ts`. XTalk is the next surface to use the shared
+part (it sends whole rooms with no limit); XCharacter keeps its own memory
+work for now.
+
 ## What a master receives on each reply, in this order
 
 | | Part | Source | Changes |
 |---|---|---|---|
 | a | System prompt: persona and temple rules, shared rules (`TONE`), language, length, closing | Code (`MASTERS`, `TONE`, `DAILY_TEACHER`, the reading route's lines) | When the code changes |
-| b | User basic info: the saved birthday, time and place | The account (`xtell_profiles`), read on each reply. The master is told not to recite it back. The personality type stays opt-in (the per-room tick, Oct 1) and is part of c when ticked | When the visitor edits it |
-| c | Conversation info set at the start: c1 what was entered, with the opening question; c2 the chart; c3 live facts (date, 流年, 目前的天象, 干支); c4 reference texts (籤 poem, 解夢 and 孫子 lines, 古籍 passages) | Saved on the conversation. Only c3 is recomputed, when the visitor's local date differs from the date it was computed for; the master then gets one line saying the facts were updated | c3 at most once a day |
-| d | The master's newest memo | `xtell_memories` | When that master summarizes |
-| e | The messages after the memo, word for word; the last one is what the master replies to. 1:1: only its own thread (questions put to it or that it answered, and its own answers). Rooms: every message | `xtell_messages` | Grows |
+| b | The visitor's saved birth date, time and place, "for reference; this conversation's chart may be someone else's; never recite it back" | The account (`xtell_profiles`), read on each reply; not for 每日. The personality type stays opt-in (the per-room tick, Oct 1) and joins the facts only when ticked | When the visitor edits it |
+| c | Set at the start: what was entered, the chart, today's date in the visitor's zone and the day's facts (流年, 目前的天象 at the day's local noon, 干支), the reference texts (籤 poem, 解夢 and 孫子 lines, 古籍 passages looked up for the OPENING question) | Computed by code on each reply from the saved chart and the visitor's local date (the page sends its time zone). Not stored: the same date gives the same text, so it stays cacheable all day, and nothing a visitor can write reaches the instructions. When the date moved on since the last answer, one line says so | Once a day |
+| d | The master's newest summary | `xtell_memories` | When that master summarizes |
+| e | The messages after the summary, word for word; the last one is what the master replies to. 1:1: only its own thread (questions put to it or answered by it after joining, and its own answers). Rooms: every message | `xtell_messages` (before 126: `xtell_readings.turns`) | Grows |
 
 a to d stay the same between replies and e only grows, so the providers
 bill the repeated part at their cached rate. Rooms add the roster (masters,
@@ -23,74 +37,105 @@ temples, speaking order) after c.
 
 ## Storage (migration 126, run by the owner)
 
-- `xtell_messages`: `id`, `reading_id`, `seq` (one database-wide
-  auto-increment number: inserts need no lock; gaps do not matter, order
-  does), `role`, `content`, `model_id`, `qid`, `to[]`, `input_tokens`
-  (answers: what the master actually read), `cost`, `created_at`. Index and
-  unique on `(reading_id, seq)`; the visitor's message is unique per
-  `(reading_id, qid)` so masters answering together store it once.
-- `xtell_memories`: `id`, `reading_id`, `model_id`, `through_seq` (the last
-  message folded in), `text`, `input_tokens`, `output_tokens`, `cost`,
-  `created_at`. Index and unique on `(reading_id, model_id, through_seq)`.
-  Rows are never updated; old ones stay for comparing models.
-- `xtell_readings.context`: c3 with the date and time zone it is for, and c4.
-  c1 and c2 are already `subject` and `chart`.
-- `ai_models.context_window`: editable in `/admin/models`; 100k when empty.
-- Visitors read only their own conversations; only the server writes.
+- `xtell_messages`: `seq` (one database-wide identity: inserts need no
+  lock; gaps do not matter, order does), `reading_id`, `role`, `content`,
+  `model_id`, `model_name`, `provider`, `qid`, `to[]`, `seats[]`,
+  `input_tokens` (answers: what the master read), `cost`, `created_at`.
+  Index on `(reading_id, seq)`. The visitor's message is stored once per
+  `(reading_id, qid)` however many masters answer; an answer once per
+  `(reading_id, qid, model_id)`.
+- `xtell_memories`: `id`, `reading_id`, `model_id`, `model_name`,
+  `through_seq` (the last message folded in), `text`, `input_tokens`,
+  `output_tokens`, `cost`, `created_at`. Unique on
+  `(reading_id, model_id, through_seq)`. Never updated; old rows stay for
+  comparing models.
+- `ai_models.context_window`: max input tokens per request, filled for all
+  27 chat models on Oct 3 by the models session from the providers' own
+  sources (docs/price-audit.md) and edited in `/admin/models` (its field);
+  100k when empty. A provider's price jump for long requests lives in
+  `model_pricing.long_context.threshold_input_tokens` (shape agreed with the
+  models session; not filled yet).
+- Existing conversations are copied from `turns` by the migration (safe to
+  re-run). The route keeps writing `turns` too, until everything reads the
+  new table.
+- Visitors read only their own conversations' rows; only the server writes
+  (service role, after reading the conversation with the visitor's own
+  session). Deleting a conversation or the account deletes them.
 - No Redis: the reads are a few indexed milliseconds next to a model answer
-  of seconds, a cache could hand a master a stale memo, and Postgres keeps
-  one source of truth. Redis may come later for shared rate limits.
+  of seconds, a cache could hand a master a stale summary, and Postgres keeps
+  one source of truth.
 
 ## One reply
 
-1. Read the conversation: c1, c2, c4, and c3 with its date.
-2. If the visitor's local date changed, recompute c3, save it, add the
-   "updated" line.
-3. Read b from the account.
-4. Newest memo: `where reading_id and model_id order by through_seq desc
+1. Read the conversation with the visitor's session (own row, not deleted).
+2. Newest summary: `where reading_id and model_id order by through_seq desc
    limit 1` → d and `through_seq` (0 if none).
-5. Messages: `where reading_id and seq > through_seq order by seq` → e,
-   filtered to the master's thread in 1:1.
-6. Send a, b, c, d, e; stream the answer.
-7. The visitor's message is inserted when the request starts (so it sorts
-   before the answers); the answer is inserted with its `input_tokens` and
-   cost.
-8. In the background: if that answer read more than 70% of the master's
-   window, the master summarizes.
+3. With a summary, the messages `where reading_id and seq > through_seq order
+   by seq`, filtered to the master's thread → e. Without one, the thread
+   from `turns`. A read error falls back to `turns`, then to the page's copy.
+4. b from the account; c from the chart and the visitor's date.
+5. e is trimmed oldest-first only if it would pass 90% of the window less
+   a, b, c, d and room for the answer (logged; with summaries it should not).
+6. The visitor's message is inserted before the stream (so it sorts before
+   the answers); the answer after it, with `input_tokens` and cost.
+7. After the answer reaches the visitor: if it read past the summary point,
+   the master summarizes (below). The function then finishes.
+
+The summary point is 70% of the model's own limit, or 90% of its price jump
+if that comes first (owner, Oct 3: "70% of each"; the jump guard keeps a
+master from rereading at a doubled price). With today's numbers: Claude
+700k, Gemini 734k, Qwen 694k, GPT-6 645k, and GPT-6 ~245k once OpenAI's 272k
+tier is in the pricing data. The raw budget never passes the jump either.
+
+`input_tokens` is what the provider says the master read. Anthropic reports
+its cache hits apart, so they are added back (`tokensRead`); everyone else
+counts them inside.
 
 ## Summarizing
 
-- Who: the master's own model.
-- Input: the memo instructions, its previous memo, and the messages after
-  it, except the newest ones filling about 40% of the window, which stay
-  word for word.
-- The memo has fixed sections: the visitor's situation, every question
-  asked, chart points used, readings and advice given, open threads. It
-  keeps concrete details (dates, names, options), in the conversation's
-  language.
-- Saved as a new row, `through_seq` = the last message folded in.
-- If it fails: the old memo stays and it is tried again after the next
-  answer; only if the context would pass the window are the oldest raw
-  messages left out, and that is logged.
-- Billed like an answer: the master's list price, charged to the visitor,
-  logged in `provider_calls` with a memory tag (so the models' summaries can
-  be compared on cost and length too).
+The same idea as compacting a conversation in Claude Code: the older part
+is replaced by a summary, the recent messages stay word for word. Here each
+master summarizes its own thread with its own model (owner, Oct 3: call it
+summarization).
+
+- Who: the master's own model, its own thinking setting, up to 4,000
+  tokens out, 120 s at most.
+- Input: the summary instructions, its previous summary, and the messages after
+  it except the newest ones (40% of the limit, in proportion when the price
+  jump sets the point), which stay word for word.
+- Five fixed sections: the visitor's situation, every question asked, chart
+  points used, readings and advice given, open threads. Concrete details
+  (dates, names, options, numbers) as they were; the conversation's
+  language; no new readings.
+- Saved as a new row, `through_seq` = the last message it covers.
+- If it fails, nothing changes: the old summary stays and it is tried again
+  after the next answer.
+- Billed like an answer: the master's list price, to the visitor, as
+  "XTell summary (<model>)". The call is in `provider_calls` like any other;
+  the summary row keeps its tokens and cost for comparing models.
 
 ## On screen
 
-- A 「記憶」 bar per master: its last answer's `input_tokens` against its
-  window.
-- 「大師的筆記」: that master's newest memo.
+- Each seat card: 「記憶 27k / 1M」 (`ContextMeter`), the master's last
+  answer's `input_tokens` against its own limit, with a tick at its summary
+  point and red past it. From the answer as it finishes, or from the stored
+  answers when a conversation reopens. Hidden until the master has answered.
+- Each master's settings card shows it again beside the price per question
+  (owner, Oct 3: "current vs max"); before the first answer, the expected
+  size of the question, marked ~.
+- Pressing it opens 「{name}的記憶」: the numbers, where it summarizes, how
+  memory works, and 「對話摘要」, the newest summary with when it was written.
 
 ## Rollout
 
-0. Done Oct 3, no migration: the reading route builds each master's whole
-   thread from the saved conversation (`lib/xtell-thread.ts`), up to 100k
-   tokens, instead of the last 20 messages the page sent; the page's copy
-   only for a conversation that is not saved; the answer reports
-   `inputTokens`. Test: `scripts/test-xtell-thread.ts`.
-1. Migration 126: the tables and columns above, and existing conversations
-   copied into `xtell_messages` (safe to re-run; nothing removed).
-2. Code: write both `turns` and the new tables; read from the new tables;
-   the c3 date check; b; summaries; the 記憶 bar and 「大師的筆記」.
+0. Done Oct 3 (7a68da0), no migration: each master's whole thread from the
+   saved conversation, up to 100k tokens, instead of the last 20 messages.
+1. The code (this change) first. Before 126 every memory call quietly does
+   nothing and the route behaves as step 0, plus b, c and the bar for
+   answers given in the open page.
+2. Done Oct 3: the owner ran `supabase/126_xtell_memory.sql` (675 messages
+   copied from 195 conversations); checked live, 42501 for the publishable
+   key on GET and POST on both tables. It ran BEFORE the code deployed, so
+   www conversations continued until then are only in `turns`; that matters
+   only if one of them later grows long enough for a summary.
 3. Later: stop writing `turns`.

@@ -3693,7 +3693,8 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .xtell-seat-name > svg { flex-shrink: 0; color: var(--xtell-secondary, var(--muted)); opacity: .7; }
 /* Price and first-word time in each teacher's settings card. */
-.xtell-seat-stats { display: flex; gap: 18px; margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--xtell-rule, var(--border2)); }
+.xtell-seat-stats { display: flex; flex-wrap: wrap; column-gap: 18px; row-gap: 6px; margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--xtell-rule, var(--border2)); }
+.xtell-seat-stats dt, .xtell-seat-stats dd { white-space: nowrap; }
 .xtell-seat-stats > div { display: flex; align-items: baseline; gap: 6px; }
 .xtell-seat-stats dt { font-size: 11px; font-weight: 600; color: var(--muted2); }
 .xtell-seat-stats dd { margin: 0; font-family: var(--font-mono), monospace; font-size: 12px; color: var(--xtell-ink, var(--white)); }
@@ -3705,6 +3706,29 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled { opacity: .45; cursor: default; pointer-events: none; }
 .xtell-seat-wait { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
 .xtell-seat-plus { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--xtell-tint, var(--surface2)); font-size: 14px; line-height: 1; }
+/* Context meter (Oct 3, app/components/ContextMeter.tsx): what a model read
+   for its last reply, current / max; the tick is its summary point. Shared
+   by every surface; the --xtell-* colours apply on XTell, the rest elsewhere. */
+.ctx-meter { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--xtell-secondary, var(--muted)); font: inherit; }
+button.ctx-meter { min-height: 0; padding: 4px 6px; border: none; border-radius: 8px; background: none; cursor: pointer; }
+button.ctx-meter:hover { background: var(--xtell-paper, var(--surface2)); }
+.ctx-meter-bar { position: relative; flex: 1; min-width: 40px; height: 4px; border-radius: 2px; background: var(--xtell-tint, var(--surface2)); }
+.ctx-meter-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--xtell-secondary, var(--muted)); opacity: .55; }
+.ctx-meter-bar > span.is-high { background: var(--xtell-vermilion, var(--red)); opacity: .85; }
+.ctx-meter-bar > i { position: absolute; top: -2px; bottom: -2px; width: 1.5px; margin-left: -0.75px; border-radius: 1px; background: var(--xtell-ink, var(--white)); opacity: .35; }
+.ctx-meter-txt { flex-shrink: 0; font-family: var(--font-mono), monospace; font-size: 11px; white-space: nowrap; }
+/* XTell: across the foot of each master's seat card. */
+.xtell-room .xtell-seat-mem, .xtell-seat-mem { grid-column: 1 / -1; margin: 6px 4px 0; }
+.xtell-mem-logo { display: inline-grid; place-items: center; margin-right: 8px; vertical-align: -2px; }
+.xtell-mem-body { padding: 4px 22px 12px; }
+.xtell-mem-body h3 { margin: 16px 0 6px; }
+.xtell-mem-meter { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 12px; }
+.xtell-mem-meter .ctx-meter-txt { display: none; }
+.xtell-mem-meter .ctx-meter-bar { height: 6px; border-radius: 3px; }
+.xtell-mem-meter p { margin: 0; font-size: 13px; line-height: 1.6; }
+.xtell-mem-body .xtell-tp-empty { margin: 4px 0; }
+.xtell-mem-text { white-space: pre-wrap; font-size: 14px; line-height: 1.75; padding: 12px 14px; border-radius: 12px; background: var(--xtell-paper, var(--surface2)); }
+.xtell-mem-at { margin: 6px 0 0; font-size: 12px; color: var(--xtell-secondary, var(--muted)); }
 
 /* XTell: 進廟 in flight (owner, Sep 27: the form "freezed"). A light sweeps
    along the top edge of the form card while the chart or 解夢's lookup runs. */
