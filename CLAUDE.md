@@ -170,11 +170,10 @@ the top bar carries the types (Text, Image, Video, Audio, and since Sep 29
 Film) as XTell's carries its temples: the studio (Codex's) is the door's one page, with the
 trending feed for the chosen type under the composer, and the Library is on the
 account page (`studio-type.ts` links the bar and the studio; old `?view=`
-links redirect). **Redesigned Oct 3** (owner, learned from Pollo AI's /image
-page): the page asks what to make (`xcs.ask.<type>`) over one composer card
-(the prompt, then pills for the recipe, the models and, on a multi-format
-template, the output format; the model cards fold behind the models pill),
-then four sections in the owner's order: tools and templates
+links redirect). **Redesigned under Generate, Oct 3** (owner, learned from
+Pollo AI's /image page; the composer above stays as it was, owner: "the top
+part stays the same. you only change the bottom part"): four sections in the
+owner's order: tools and templates
 (`StandaloneTemplates.tsx`, one sideways row), the models
 (`StandaloneModels.tsx`: every enabled model of the type, capabilities from
 `modes`/`output_config`, list price; a tap uses it alone, 比較 adds a seat),
@@ -193,9 +192,9 @@ platform compliant") and became four multi-format templates on Oct 3 (owner:
 LINE), 電商影片 (淘寶 1:1 / 3:4, 蝦皮, Amazon) and 社群短影音 (9:16, 1:1, 16:9).
 `Template.formats` holds each output's shape, length, sizes, prompt rules and
 download spec; `defaultFormatByLang` picks the opening one (蝦皮 for zh-Hant,
-樂天 for ja); the format pill swaps the prompt's `PLATFORM:`/`FORMAT:`
-paragraph and re-clamps every seat (`applyFormat`), and the export bars offer
-that format's spec first. Each edits the user's own photo (`lockAspect` keeps
+樂天 for ja); a row of format chips in the prompt box (like the Platform row)
+swaps the prompt's `PLATFORM:`/`FORMAT:` paragraph and re-clamps every seat
+(`applyFormat`), and the export bars offer that format's spec first. Each edits the user's own photo (`lockAspect` keeps
 the format's shape on an edit, `sizeByModel` for GPT Image 2 / Qwen). A
 finished picture downloads in a platform's exact upload spec
 (`ExportBar.tsx` → `/api/xcreate/export` → `lib/platform-export.ts`, specs in

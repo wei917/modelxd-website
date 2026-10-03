@@ -1,7 +1,8 @@
 /* The standalone studio is scoped so ModelXD keeps its existing layout. */
 html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding: 48px 40px 80px; outline: none; }
-.xcs-heading { max-width: 800px; margin: 0 auto 22px; text-align: center; }
-.xcs-heading h1 { font-family: var(--font-display), sans-serif; font-size: clamp(22px, 2.6vw, 32px); font-weight: 700; line-height: 1.25; letter-spacing: -.02em; margin: 0; }
+.xcs-heading { max-width: 800px; margin: 0 auto 40px; }
+.xcs-heading h1 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; margin: 0 0 14px; }
+.xcs-heading > p:last-child { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
 .xcs-setup > :not(.xcs-results) { max-width: 800px; width: 100%; margin-left: auto; margin-right: auto; }
 .xcs-setup .field-label { font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--white); }
 .xcs-setup .mode-row { align-items: end; justify-content: space-between; }
@@ -9,16 +10,16 @@ html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding:
 .xcs-setup .mode-seg-btn { min-height: 42px; min-width: 86px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; border-radius: 7px; }
 .xcs-setup .mode-seg-btn.active { background: var(--surface); color: var(--red); box-shadow: 0 1px 4px #0000000d; }
 .xcs-setup .recipe-crumb-btn { min-height: 44px; border-radius: 9px; font-family: inherit; }
-.xcs-prompt-section { margin: 0; }
+.xcs-prompt-section { margin-bottom: 28px; }
 .xcs-field-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .xcs-field-heading a { color: var(--muted2); text-decoration: none; font-size: 12px; font-weight: 500; }
 .xcs-field-heading a:hover { color: var(--red); }
-/* The card draws the frame and flashes (it beats the box's inline flash). */
-.xcs-prompt-section .prompt-box.framed { margin: 0; border: 0; border-radius: 14px; background: transparent; box-shadow: none !important; }
+.xcs-prompt-section .prompt-box.framed { border-radius: 14px; border: 1px solid var(--border2); background: var(--surface); }
+.xcs-prompt-section .prompt-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c0a; }
 /* The box's border is the focus mark; the studio-wide focus outline on the
    textarea inside it drew a second ring 4px out (owner, Sep 26). */
 .xcs-prompt-section .prompt-textarea:focus-visible { outline: none; }
-.xcs-prompt-section .prompt-textarea { font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.6; min-height: 112px; padding: 16px 16px 8px; }
+.xcs-prompt-section .prompt-textarea { font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.65; min-height: 150px; padding: 20px; }
 html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important; }
 .xcs-setup .xcreate-slot-grid > [data-slot='empty'] { min-height: 52px; font-family: inherit; font-size: 13px !important; }
 /* Model cards: one row on a wide desktop (the grid's inline column count:
@@ -36,8 +37,9 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   html[data-site='xcreate'] .xcs-results .battle-arena:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
 .xcs-setup .xcreate-slot-grid > [data-slot='filled'] { min-width: 0; }
-.xcs-setup .xc-actions { margin: 10px 12px 0 !important; row-gap: 10px !important; }
-.xcs-setup .btn-battle { min-height: 42px; padding: 10px 22px; border-radius: 999px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; }
+.xcs-setup .xc-actions { padding-top: 16px; border-top: 1px solid var(--border); row-gap: 14px !important; }
+.xcs-setup .xc-actions .prompt-counter { margin-right: auto; white-space: normal; }
+.xcs-setup .btn-battle { min-height: 46px; padding: 12px 28px; border-radius: 9px; font-family: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; }
 .xcs-auth-refiner { display: contents; }
 .xcs-results { width: 100%; padding-top: 20px; }
 .xcs-results .battle-card { min-width: 0; }
@@ -100,17 +102,27 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-trend-use { pointer-events: auto; flex-shrink: 0; min-height: 34px; padding: 6px 12px; border: 1px solid var(--red); border-radius: 8px; background: var(--red); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .xcs-trend-use:disabled { opacity: .5; cursor: default; }
 @media (max-width: 760px) {
-  html[data-site='xcreate'] .xcs-studio { padding: 22px 20px 56px; }
-  .xcs-heading { margin-bottom: 16px; }
+  html[data-site='xcreate'] .xcs-studio { padding: 30px 20px 56px; }
+  .xcs-heading { margin-bottom: 30px; }
+  .xcs-heading h1 { font-size: 32px; }
+  .xcs-heading > p:last-child { font-size: 14px; }
+  .xcs-mode-block { display: flex; align-items: end; gap: 12px; }
+  .xcs-mode-block .mode-row { flex: 1; min-width: 0; }
+  .xcs-mode-block .mode-col { width: 100%; min-width: 0; }
+  .xcs-mode-block .recipe-crumb-btn { width: 100%; min-width: 0; font-size: 12px; white-space: normal; line-height: 1.3; }
+  .xcs-mode-block .from-menu { left: auto; right: 0; max-width: calc(100vw - 40px); }
   html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: minmax(0, 1fr) !important; }
-  .xcs-prompt-section .prompt-textarea { min-height: 96px; padding: 14px 14px 6px; }
-  .xcs-setup .xc-actions { gap: 10px !important; }
+  .xcs-prompt-section .prompt-textarea { min-height: 138px; padding: 16px; }
+  .xcs-setup .xc-actions { gap: 12px !important; }
+  .xcs-setup .xc-actions .prompt-counter { flex-basis: 100%; }
+  .xcs-setup .xc-actions .btn-battle { flex: 1 1 140px; }
   .xcs-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .xcs-library-toolbar { align-items: center; flex-wrap: wrap; }
   .xcs-results .battle-arena { grid-template-columns: minmax(0, 1fr) !important; }
 }
 @media (max-width: 420px) {
   html[data-site='xcreate'] .xcs-studio { padding-left: 16px; padding-right: 16px; }
+  .xcs-heading h1 { font-size: 29px; }
   .xcs-library-grid { grid-template-columns: minmax(0, 1fr); }
   .xcs-field-heading { gap: 8px; }
   html[data-site='xcreate'] .xcs-top-inner { gap: 6px; }
@@ -182,30 +194,9 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-film-head h1 { font-size: 34px; }
 }
 
-/* ── The door's page, Oct 3 redesign (learned from Pollo AI's /image page):
-   the question, one composer card, then (1) tools and templates, (2) the
+/* ── Under Generate, Oct 3 redesign (learned from Pollo AI's /image page;
+   the composer above stays as it was): (1) tools and templates, (2) the
    models, (3) trending on social media, (4) your works. Phone first. ── */
-
-/* The composer card: the prompt, the pills, the model cards when the models
-   pill is open, then the cost and Generate. */
-.xcs-composer { box-sizing: border-box; padding: 2px 2px 12px; border: 1px solid var(--border2); border-radius: 18px; background: var(--xc-paper, #fff); box-shadow: 0 2px 12px rgba(0,0,0,.04); transition: border-color .2s, box-shadow .4s; }
-.xcs-composer:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px #e8453c14; }
-.xcs-composer.is-flash { box-shadow: 0 0 0 3px rgba(214,59,50,.30); }
-.xcs-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 12px 0; }
-.xcs-pill-wrap { position: relative; min-width: 0; max-width: 100%; }
-.xcs-pill { box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 36px; padding: 6px 12px; border: 1px solid transparent; border-radius: 999px; background: var(--xc-soft, #f1f2ec); color: var(--white); font: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
-.xcs-pill:hover:not(:disabled) { border-color: var(--border2); }
-.xcs-pill:disabled { opacity: .55; cursor: default; }
-.xcs-pill.is-open { border-color: var(--red); background: var(--xc-accent-soft, #fff0eb); color: var(--red); }
-.xcs-pill-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.xcs-pill-more { flex-shrink: 0; font-weight: 700; color: var(--muted2); }
-.xcs-pill-caret { flex-shrink: 0; font-size: 9px; color: var(--muted); }
-.xcs-pill-wrap .from-menu { min-width: 220px; max-width: calc(100vw - 48px); }
-.xcs-fmark { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 16px; }
-.xcs-fmark img { display: block; width: 14px; height: 14px; }
-html[data-site='xcreate'] .xcs-composer .xcreate-slot-grid { margin: 12px 12px 0 !important; }
-/* Improve prompt sits in the card as a pill, like the ones above it. */
-.xcs-composer .refine-btn { min-height: 40px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--xc-soft, #f1f2ec); font-family: inherit; font-size: 13px; letter-spacing: 0; text-transform: none; }
 
 /* Section heads, shared by the four sections. */
 .xcs-sec { margin: 36px 0 0; }

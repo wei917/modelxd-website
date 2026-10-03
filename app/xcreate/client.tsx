@@ -296,11 +296,11 @@ function recipeInputSlots(r: ModelMode | null, t: (k: string) => string): { labe
   }
 }
 
-/** A platform's logo beside a format's name (the door's 輸出格式 pill). Text
- *  marks (IG, LINE, YT) are left out here: the name already says them. */
-function FormatMark({ mark }: { mark?: { logo?: string } }) {
+/** A platform's logo on an output-format chip. Text marks (IG, LINE, YT) are
+ *  left out: the chip's name already says them. */
+function FormatMark({ mark, on }: { mark?: { logo?: string }; on: boolean }) {
   if (!mark?.logo) return null
-  return <span className="xcs-fmark" aria-hidden><img src={mark.logo} alt="" width={14} height={14} /></span>
+  return <img src={mark.logo} alt="" width={16} height={16} style={{ display: 'block', filter: on ? 'none' : 'grayscale(1) opacity(0.55)', transition: 'filter .15s' }} />
 }
 
 /**
@@ -1204,27 +1204,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }, [fromOpen])
   // A multi-format template's chosen output (Oct 3; owner: "in the
   // settings/prompts we allow users to choose output format"): an id in
-  // activeTpl.formats, picked by the door's 輸出格式 pill. Meaningless once
-  // the template is let go, so nothing has to clear it.
+  // activeTpl.formats, picked by the format chips in the prompt box.
+  // Meaningless once the template is let go, so nothing has to clear it.
   const [formatId, setFormatId] = useState<string | null>(null)
-  const [formatOpen, setFormatOpen] = useState(false)
-  const formatRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!formatOpen) return
-    const onDown = (e: PointerEvent) => {
-      if (!formatRef.current?.contains(e.target as Node)) setFormatOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFormatOpen(false) }
-    document.addEventListener('pointerdown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('pointerdown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [formatOpen])
-  // The door's compact composer folds the model cards behind its models
-  // pill (Oct 3 redesign); www always shows them.
-  const [modelsOpen, setModelsOpen] = useState(false)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashComposer = () => {
     promptBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1812,8 +1794,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }, [chatHistory, chatStreaming])
 
   const activeModels = selectedModels.filter(Boolean) as SlotModel[]
-  // The template the composer was filled from, and the output its 輸出格式
-  // pill has chosen (Oct 3).
+  // The template the composer was filled from, and the output its format
+  // chips have chosen (Oct 3).
   const activeTpl = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) ?? null : null
   const activeFormat = activeTpl?.formats?.find(f => f.id === formatId) ?? null
   const selectedIds  = activeModels.map(m => m.id)
@@ -1967,7 +1949,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     const free = selectedModels.findIndex(v => !v)
     if (free === -1) return
     addModel(free, seatFromDoor(d))
-    setModelsOpen(true)
     flashComposer()
   }
 
@@ -3246,14 +3227,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     flashComposer()
   }
 
-  /** The 輸出格式 pill (Oct 3): switch a multi-format template's output. The
+  /** The format chips (Oct 3): switch a multi-format template's output. The
    *  prompt's spec paragraph (it starts PLATFORM: or FORMAT:) is swapped for
    *  the new one and the rest of what the user wrote stays; the shape,
    *  length and sizes follow, clamped through validateOpts. */
   const applyFormat = (fid: string) => {
     const tpl = activeTpl
     const f = tpl?.formats?.find(x => x.id === fid)
-    setFormatOpen(false)
     if (!tpl || !f) return
     setFormatId(f.id)
     setPrompt(prev => [...prev.split(/\n{2,}/).filter(p => !/^\s*(PLATFORM|FORMAT)\b/.test(p)), f.promptSpec].join('\n\n').trim())
@@ -4072,6 +4052,40 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       </div>
                     )
                   })()}
+                  {/* Output format of a multi-format template (Oct 3; owner: "in
+                      the settings/prompts we allow users to choose output
+                      format"). Chips like the Platform row above: picking one
+                      swaps the prompt's platform rules and re-sizes every seat
+                      (applyFormat). */}
+                  {activeTpl?.formats && activeFormat && (
+                    <div role="radiogroup" aria-label={t('xc.format')} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '12px 0 4px', padding: '0 16px' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.08em', color: 'var(--muted)', textTransform: 'uppercase' as const }}>{t('xc.format')}</span>
+                      {activeTpl.formats.map(f => {
+                        const on = f.id === activeFormat.id
+                        return (
+                          <button key={f.id} type="button" role="radio" aria-checked={on}
+                            onClick={() => !isLocked && applyFormat(f.id)}
+                            disabled={isLocked}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 7,
+                              height: 34, padding: '0 13px', borderRadius: 999,
+                              fontSize: 12.5, fontWeight: on ? 700 : 500,
+                              fontFamily: 'var(--font-body, inherit)',
+                              cursor: isLocked ? 'default' : 'pointer',
+                              border: '1.5px solid ' + (on ? 'var(--red)' : 'var(--border)'),
+                              background: on ? 'color-mix(in srgb, var(--red) 9%, transparent)' : 'var(--surface)',
+                              color: on ? 'var(--red)' : 'var(--muted2)',
+                              transition: 'border-color .15s, background .15s, color .15s',
+                              opacity: isLocked ? 0.5 : 1,
+                            }}
+                          >
+                            <FormatMark mark={f.mark} on={on} />
+                            <span>{t('xcf.' + f.id)}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                   <textarea id="xcreate-prompt" aria-label={copy.prompt} className="prompt-textarea"
                     maxLength={XCREATE_PROMPT_MAX}
                     placeholder={t('xcreate.ph.' + mode)}
@@ -4095,31 +4109,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 </div>
     </>
   )
-
-  // A recipe's name: www's From button says the input (從：文字); the door's
-  // pill stands alone, so it says the job (文字生圖, 修圖, 圖生影片).
-  const recipeName = (id: string) => isStandalone ? tOr(t, 'xcs.cap.' + id, t('recipefrom.' + id)) : t('recipefrom.' + id)
-  // The recipe list: under www's From button, and under the door's recipe pill.
-  const fromMenu = fromOpen && (() => {
-    const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
-    const recipes = avail.length ? avail : RECIPES[mode]
-    return (
-      <div className="from-menu" role="listbox">
-        {recipes.map(r => {
-          const ic = RECIPE_ICONS[r.id]
-          return (
-            <button key={r.id} type="button" role="option"
-              aria-selected={r.id === recipeMode}
-              className={`from-menu-item ${r.id === recipeMode ? 'active' : ''}`}
-              onClick={() => { selectRecipe(r.id); setFromOpen(false) }}>
-              {ic && <span className="recipe-entry-icons" aria-hidden><InputIcon kind={ic[0]} /></span>}
-              {recipeName(r.id)}
-            </button>
-          )
-        })}
-      </div>
-    )
-  })()
 
   return (
     <>
@@ -4216,10 +4205,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
           {isStandalone ? !filmOpen && <header className="xcs-heading">
-            {/* The door asks what to make, by type, over one compact prompt box
-                (Oct 3 redesign, learned from Pollo AI). It was www's XCreate
-                headline with a line under it (Sep 26). */}
-            <h1>{t('xcs.ask.' + mode)}</h1>
+            {/* Studio's title is www's own XCreate headline (owner, Sep 26: the
+                earlier slogan read as nothing); its eyebrow would repeat it. */}
+            <h1>{t('xcreate.subtitle')}</h1>
+            <p>{copy.subtitle}</p>
           </header> : <>
             <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
@@ -4542,14 +4531,15 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* Mode group + "From:" dropdown. Clicking a mode switches
                     it immediately (first sub-mode as default); the From
                     button opens a small list of the mode's sub-modes. */}
-                {!isStandalone && <div
+                <div
+                  className={isStandalone ? 'xcs-mode-block' : undefined}
                   style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
                 >
                   <div className="mode-row">
                     {/* Column 1 — "Generate:" + segmented mode group. The
                         XCreate door has none: its top bar carries the types
                         (owner, Sep 28). */}
-                    <div className="mode-col">
+                    {!isStandalone && <div className="mode-col">
                       <div className="field-label">{t('xcreate.generate')}</div>
                       <div className="mode-seg">
                         {(['text', 'image', 'video', 'audio'] as Mode[]).map(m => (
@@ -4566,7 +4556,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </div>}
 
                     {/* Column 2 — "From:" + small dropdown list of the
                         current mode's sub-modes. */}
@@ -4578,67 +4568,37 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         {t('recipefrom.' + recipeMode)}
                         <span aria-hidden style={{ fontSize: 9, color: 'var(--muted)' }}>▾</span>
                       </button>
-                      {fromMenu}
+                      {fromOpen && (() => {
+                        const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
+                        const recipes = avail.length ? avail : RECIPES[mode]
+                        return (
+                          <div className="from-menu" role="listbox">
+                            {recipes.map(r => {
+                              const ic = RECIPE_ICONS[r.id]
+                              return (
+                                <button key={r.id} type="button" role="option"
+                                  aria-selected={r.id === recipeMode}
+                                  className={`from-menu-item ${r.id === recipeMode ? 'active' : ''}`}
+                                  onClick={() => { selectRecipe(r.id); setFromOpen(false) }}>
+                                  {ic && <span className="recipe-entry-icons" aria-hidden><InputIcon kind={ic[0]} /></span>}
+                                  {t('recipefrom.' + r.id)}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
-                </div>}
+                </div>
 
-                {/* The door's composer is one card (Oct 3 redesign): the prompt,
-                    pills for the recipe, the models and the output format,
-                    the model cards while the models pill is open, then the
-                    cost and Generate. On www the wrapper has no class and
-                    changes nothing. */}
-                <div className={isStandalone ? `xcs-composer${promptFlash ? ' is-flash' : ''}` : undefined}>
                 {isStandalone && <div className="xcs-prompt-section">
+                  <div className="xcs-field-heading"><label htmlFor="xcreate-prompt">{copy.prompt}</label></div>
                   {promptComposer}
                 </div>}
-                {isStandalone && (
-                  <div className="xcs-pills">
-                    <div className="xcs-pill-wrap" ref={fromRef}>
-                      <button type="button" className="xcs-pill" disabled={isLocked}
-                        aria-haspopup="listbox" aria-expanded={fromOpen}
-                        onClick={() => !isLocked && setFromOpen(o => !o)}>
-                        {recipeName(recipeMode)}<span className="xcs-pill-caret" aria-hidden>▾</span>
-                      </button>
-                      {fromMenu}
-                    </div>
-                    <button type="button" className={`xcs-pill${modelsOpen ? ' is-open' : ''}`}
-                      aria-expanded={modelsOpen} aria-controls="xcs-model-cards"
-                      onClick={() => setModelsOpen(o => !o)}>
-                      {activeModels[0] ? <>
-                        <ProviderLogo provider={activeModels[0].provider} model={activeModels[0].model_name} size={16} />
-                        <span className="xcs-pill-name">{activeModels[0].display_name.replace(/\s*-\s*Gemini.*$/, '').replace(/\s*\([^)]*\)\s*$/, '')}</span>
-                        {activeModels.length > 1 && <b className="xcs-pill-more">+{activeModels.length - 1}</b>}
-                      </> : copy.addModel}
-                      <span className="xcs-pill-caret" aria-hidden>▾</span>
-                    </button>
-                    {activeTpl?.formats && activeFormat && (
-                      <div className="xcs-pill-wrap" ref={formatRef}>
-                        <button type="button" className="xcs-pill" disabled={isLocked}
-                          aria-haspopup="listbox" aria-expanded={formatOpen}
-                          aria-label={`${t('xc.format')}: ${t('xcf.' + activeFormat.id)}`} title={t('xc.format')}
-                          onClick={() => !isLocked && setFormatOpen(o => !o)}>
-                          <FormatMark mark={activeFormat.mark} />{t('xcf.' + activeFormat.id)}<span className="xcs-pill-caret" aria-hidden>▾</span>
-                        </button>
-                        {formatOpen && (
-                          <div className="from-menu xcs-format-menu" role="listbox" aria-label={t('xc.format')}>
-                            {activeTpl.formats.map(f => (
-                              <button key={f.id} type="button" role="option" aria-selected={f.id === activeFormat.id}
-                                className={`from-menu-item ${f.id === activeFormat.id ? 'active' : ''}`}
-                                onClick={() => applyFormat(f.id)}>
-                                <FormatMark mark={f.mark} />{t('xcf.' + f.id)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Model slots + per-model options. The door's models pill names
-                    them, so the heading is www's. */}
-                {!isStandalone && <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                {/* Model slots + per-model options */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                   <div className="field-label" style={{ marginBottom: 0 }}>{t('xcreate.selectmodels')}</div>
                   {/* Discount nudge (CC, July 20) — quiet grey hint. */}
                   {!isStandalone && activeModels.length < 4 && (
@@ -4646,20 +4606,19 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       {t('xcreate.savemore')}
                     </span>
                   )}
-                </div>}
+                </div>
                 {/* Once a generation run has started (generating → picking →
                     chatting), drop empty slots from the grid so the model row
                     column-aligns with the results grid below. While still in
                     setup we render all 4 slots so the user can fill them. */}
                 {(() => {
-                  if (isStandalone && !modelsOpen) return null
                   const isRunning = phase === 'generating' || phase === 'picking' || phase === 'chatting'
                   const filledSlots = [0, 1, 2, 3].filter(i => selectedModels[i])
                   const nextEmpty = selectedModels.findIndex(model => !model)
                   const slotsToShow = isRunning ? filledSlots : isStandalone ? [...filledSlots, ...(nextEmpty >= 0 ? [nextEmpty] : [])] : [0, 1, 2, 3]
                   const columnCount = slotsToShow.length
                   return (
-                <div className="xcreate-slot-grid" id={isStandalone ? 'xcs-model-cards' : undefined} style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
+                <div className="xcreate-slot-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
                   {slotsToShow.map(i => {
                     const model = selectedModels[i]
                     const color = SLOT_COLORS[i]
@@ -5282,7 +5241,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     can never overlap the prompt text. (XDuel keeps its own
                     overlay .prompt-actions — this row is XCreate-only.) */}
                 <div className="xc-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
-                  {!isStandalone && <span className="prompt-counter">{activeModels.length === 0 ? t('xcreate.pickone') : activeModels.length === 1 ? t('xcreate.selected1') : t('xcreate.selected').replace('{n}', String(activeModels.length))}</span>}
+                  <span className="prompt-counter">{activeModels.length === 0 ? t('xcreate.pickone') : activeModels.length === 1 ? t('xcreate.selected1') : t('xcreate.selected').replace('{n}', String(activeModels.length))}</span>
                   {/* Multi-model discount — red little label, full string
                       from i18n (en "10% off" = zh "9折"). */}
                   {activeModels.length >= 2 && phase !== 'generating' && (
@@ -5349,14 +5308,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   )}
                 </div>
                 {phase === 'setup' && refiner.preview}
-                </div>
 
                 {/* ── Product board (CC, July 28): the entry point for the
                     product-video pipeline. Uploading here does NOT generate
                     anything — the photos become source nodes on a fresh
                     board, and everything after that happens on the canvas.
                     Image mode only. ── */}
-                {!isStandalone && phase === 'setup' && mode === 'image' && (
+                {phase === 'setup' && mode === 'image' && (
                   <div style={{ marginTop: 22, borderTop: '1px dashed var(--border2)', paddingTop: 16 }}>
                     <button
                       onClick={() => setPbOpen(o => !o)}
@@ -5443,11 +5401,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
                 )}
 
-                {/* The door's one page under the composer (Oct 3 redesign, learned
-                    from Pollo AI's /image page; the owner's order): (1) tools
-                    and templates, (2) the models, (3) what is trending on social
-                    media (Sep 26), (4) your own works of this type (Oct 1; a list
-                    until Oct 3). Setup screen only, like the wall above. */}
+                {/* The door's one page under Generate (Oct 3 redesign, learned
+                    from Pollo AI's /image page; the owner's order, and "the top
+                    part stays the same"): (1) tools and templates, (2) the
+                    models, (3) what is trending on social media (Sep 26),
+                    (4) your own works of this type (Oct 1; a list until Oct 3).
+                    Setup screen only, like the wall above. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && <>
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTemplates mode={mode} onSelect={tpl => { void applyTemplate(tpl) }} onConvert={kind => setConvertKind(kind)} />
