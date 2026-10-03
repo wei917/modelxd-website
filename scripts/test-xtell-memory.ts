@@ -94,7 +94,7 @@ async function unit() {
   const keptTokens = long.filter(m => m.seq > memoRow.through_seq).reduce((n, m) => n + m.content.length, 0)
   check('the newest messages filling about 40% of the window stay word for word; the rest is folded', keptTokens <= 40_000 && keptTokens > 30_000 && seen.content.includes('問0') && !seen.content.includes(long.at(-1)!.content.slice(0, 6)), String(keptTokens))
   check('the memo is folded from the old memo and the messages, in order', seen.content.startsWith('舊摘要：\n舊摘要') && seen.content.indexOf('問0') < seen.content.indexOf('問1字'))
-  check('the memo instructions: five fixed sections, concrete details, no new readings, the conversation\'s language', ['來訪者的處境', '問過的問題', '用到的盤面重點', '你的解讀與建議', '尚未了結的事'].every(x => seen.sys.includes(x)) && seen.sys.includes('不要新增解讀') && seen.sys.includes('繁體中文') && seen.sys.includes('Opus'))
+  check('the memo instructions: five fixed sections, concrete details, no new readings, the conversation\'s language', ['來訪者的處境', '問過的問題', '用到的盤面重點', '你的解讀與建議', '尚未了結的事'].every(x => seen.sys.includes(x)) && seen.sys.includes('不要新增解讀') && seen.sys.includes('繁體中文') && seen.sys.includes('Opus') && seen.sys.includes('### 1. 來訪者的處境'))
   check('the summary is billed like an answer: its cost, to the visitor', charged === 0.02)
   check('the memo keeps its tokens and cost, for comparing models', memoRow.input_tokens === 50_000 && memoRow.output_tokens === 400 && memoRow.cost === 0.02)
 
@@ -290,6 +290,7 @@ async function nowChecks() {
   check('each master\'s summary reads both questions and only its own answers', ['共同第一問', '共同第二問', 'A的第一答', 'A的第二答'].every(x => sentFor('Opus').includes(x)) && !/B的/.test(sentFor('Opus')) && ['共同第一問', '共同第二問', 'B的第一答', 'B的第二答'].every(x => sentFor('Qwen').includes(x)) && !/A的/.test(sentFor('Qwen')))
   check('each summary is through that master\'s own last message, billed once each', shared.t.xtell_memories.find((r: any) => r.model_id === A)?.through_seq === 5 && shared.t.xtell_memories.find((r: any) => r.model_id === B)?.through_seq === 6 && duo.debits.length === 2)
   const dialog = read('app/components/xtell/MemoryDialog.tsx')
+  check('the dialog renders the summary as Markdown, as answers are (### headings, - lists)', /<ReactMarkdown skipHtml remarkPlugins=\{REMARK_PLUGINS\}>\{shown\.text\}<\/ReactMarkdown>/.test(dialog) && /xtell-mem-text markdown-body/.test(dialog))
   check('the dialog: the button shows its price and stays off until two rounds and while an answer is coming in', /disabled=\{!canNow \|\| busy \|\| working\}/.test(dialog) && /<small>~\{price\}<\/small>/.test(dialog) && !/fetch\(/.test(dialog))
   const page = read('app/xtell/client.tsx')
   check('the page: two answers from that master before the button works', /canNow=\{answers >= 2\}/.test(page) && /busy=\{answering\}/.test(page))

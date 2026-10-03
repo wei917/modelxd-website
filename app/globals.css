@@ -3728,7 +3728,12 @@ button.ctx-meter:hover .ctx-ring-track, button.ctx-meter:focus-visible .ctx-ring
 .xtell-mem-meter p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
 .xtell-mem-meter .xtell-mem-nums { margin-top: 2px; font-family: var(--font-mono), monospace; font-size: 18px; font-weight: 600; color: var(--xtell-ink, var(--white)); }
 .xtell-mem-body .xtell-tp-empty { margin: 4px 0; }
-.xtell-mem-text { white-space: pre-wrap; font-size: 14px; line-height: 1.75; padding: 12px 14px; border-radius: 12px; background: var(--xtell-paper, var(--surface2)); }
+.xtell-mem-text { font-size: 14px; line-height: 1.75; padding: 12px 14px; border-radius: 12px; background: var(--xtell-paper, var(--surface2)); }
+.xtell-mem-text.markdown-body h1, .xtell-mem-text.markdown-body h2, .xtell-mem-text.markdown-body h3, .xtell-mem-text.markdown-body h4 { font-size: 13.5px; margin: 12px 0 4px; }
+.xtell-mem-text.markdown-body > :first-child { margin-top: 0; }
+.xtell-mem-text.markdown-body ul, .xtell-mem-text.markdown-body ol { margin: 2px 0 6px; padding-left: 1.3em; }
+.xtell-mem-text.markdown-body li { margin: 2px 0; }
+.xtell-mem-text.markdown-body p { margin: 0 0 6px; }
 .xtell-mem-at { margin: 6px 0 0; font-size: 12px; color: var(--xtell-secondary, var(--muted)); }
 
 /* XTell: 進廟 in flight (owner, Sep 27: the form "freezed"). A light sweeps

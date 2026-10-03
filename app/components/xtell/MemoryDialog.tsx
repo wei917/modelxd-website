@@ -11,6 +11,8 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useT, useLang } from '../../../lib/i18n'
 import type { PickerModel } from '../ModelPickerDialog'
 import ProviderLogo from '../ProviderLogo'
+import ReactMarkdown from 'react-markdown'
+import { REMARK_PLUGINS } from '../../../lib/markdown'
 import ContextMeter from '../ContextMeter'
 import { maxInputOf, summaryPointOf, formatTokens } from '../../../lib/conversation-memory'
 
@@ -94,7 +96,9 @@ export default function MemoryDialog({ m, used, readingId, price, canNow, busy, 
           {shown === undefined && <p className="xtell-tp-empty">{t('common.loading')}</p>}
           {shown === null && <p className="xtell-tp-empty">{t(working ? 'xtell.mem.working' : 'xtell.mem.none')}</p>}
           {shown && <>
-            <div className="xtell-mem-text">{shown.text}</div>
+            {/* Markdown, as the answers are: models write the five parts with
+                ### headings and - lists (owner, Oct 3: the raw text "is wrong"). */}
+            <div className="xtell-mem-text markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{shown.text}</ReactMarkdown></div>
             {when(shown.at) && <p className="xtell-mem-at">{t('xtell.mem.at').replace('{time}', when(shown.at))}</p>}
           </>}
         </div>

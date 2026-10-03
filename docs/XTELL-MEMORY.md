@@ -105,7 +105,9 @@ summarization).
   it except the newest ones (40% of the limit, in proportion when the price
   jump sets the point), which stay word for word.
 - Five fixed sections: the visitor's situation, every question asked, chart
-  points used, readings and advice given, open threads. Concrete details
+  points used, readings and advice given, open threads. Each starts with a
+  `### 1. …` heading and lists with `- ` (one format for every model, so
+  summaries read alike); the dialog renders it as Markdown, as answers are. Concrete details
   (dates, names, options, numbers) as they were; the conversation's
   language; no new readings.
 - Saved as a new row, `through_seq` = the last message it covers.
