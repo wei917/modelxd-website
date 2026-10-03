@@ -1455,7 +1455,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             const cols = `repeat(${masters.length}, minmax(200px, 264px))`
             const seatChars = turns.reduce((n, tn) => n + tn.content.length, 0) + input.length
             return (
-              <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
+              // 大師席位 (owner, Oct 3: two rows of master cards, the seats and
+              // the answer tabs, read alike): a label at the left that stays
+              // put while the seats scroll sideways on a phone.
+              <div className="xtell-row-labelled">
+              <span className="xtell-row-label xtell-row-label-seats">{t('xtell.row.seats')}</span>
+              <div style={{ overflowX: 'auto', paddingBottom: 2, flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, flexShrink: 0 }}>
                   {masters.map((m, i) => {
@@ -1574,6 +1579,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   </div>
                 )}
               </div>
+              </div>
             )
           })()}
           {/* Under the seats, not beside them: on a phone the seat row
@@ -1664,7 +1670,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 keeps its own thread; 只留這位老師 is there for whoever wants to
                 stop paying for the rest. Past rounds keep their replies. */}
             {layout === 'tabs' && replyModels.length > 1 && (
-              <div role="tablist" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
+              <div className="xtell-row-labelled" style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
+              <span className="xtell-row-label xtell-row-label-tabs">{t('xtell.row.answers')}</span>
+              <div role="tablist" aria-label={t('xtell.row.answers')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
                 {replyModels.map(m => (
                   <button key={m.id} role="tab" aria-selected={activeTab === m.id} onClick={() => setTab(m.id)} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer',
@@ -1677,6 +1685,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     {m.cost > 0 && <span style={{ ...mono, fontSize: 9.5 }}>{fmtUsdFor(m.cost, lang)}</span>}
                   </button>
                 ))}
+              </div>
               </div>
             )}
             {rounds(turns).map((round, ri) => {

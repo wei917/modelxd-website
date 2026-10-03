@@ -3706,6 +3706,15 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled { opacity: .45; cursor: default; pointer-events: none; }
 .xtell-seat-wait { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
 .xtell-seat-plus { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--xtell-tint, var(--surface2)); font-size: 14px; line-height: 1; }
+/* Row labels (Oct 3, owner): 大師席位 before the seats, 回答 before the
+   answer tabs, in the style of 問： before the ask row; fixed at the left
+   while the row scrolls sideways. */
+.xtell-row-labelled { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.xtell-row-label { flex-shrink: 0; font-family: var(--font-mono), monospace; font-size: 12px; color: var(--muted2); white-space: nowrap; }
+.xtell-row-label-seats { height: 50px; display: flex; align-items: center; }
+/* Level with the first line of tabs when they wrap. */
+.xtell-row-label-tabs { height: 33px; display: flex; align-items: center; }
+
 /* Context meter (Oct 3, app/components/ContextMeter.tsx): a ring that fills
    with what a model read for its last reply, against its limit; red past its
    summary point. Shared by every surface; the --xtell-* colours apply on
