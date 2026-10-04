@@ -11,7 +11,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
-import { CONSENT_REGIONS, needsConsent } from '../lib/consent'
+import { needsConsent } from '../lib/consent'
 import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
 import { SiteProvider } from '../lib/useSite'
@@ -115,23 +115,6 @@ export const viewport = {
   viewportFit:   'cover',
 }
 
-// Google Ads tag (owner, Sep 26), on every page of every front door (www,
-// xtell., xcreate.), in <head> as Google specifies. Production deployments
-// only: localhost and the dev site must not count as ad traffic. Before the
-// config, Consent Mode denies ad and analytics storage by default in the
-// EEA, the UK and Switzerland, where prior consent is required and there is
-// no consent banner; Taiwan, Japan and everywhere else load the tag as
-// Google supplied it (the region list is lib/consent.ts). Disclosed in
-// /privacy §4.
-const GOOGLE_ADS_ID = 'AW-18476997246'
-const GTAG_INIT = [
-  'window.dataLayer = window.dataLayer || [];',
-  'function gtag(){dataLayer.push(arguments);}',
-  `gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', region: ${JSON.stringify(CONSENT_REGIONS)} });`,
-  "gtag('js', new Date());",
-  `gtag('config', '${GOOGLE_ADS_ID}');`,
-].join('\n')
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Which front door (www, xtell. or xcreate.modelxd.com) — stamped by proxy.ts. Read
   // here so the shell is right on the server render; this makes every route
@@ -143,7 +126,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // the title and LangProvider's first render all use it, so the first
   // paint is already in the visitor's language and hydration matches.
   const lang = serverLang(h, site)
-  const googleAds = process.env.VERCEL_ENV === 'production'
   // The visit log (VisitTracker → /api/visit) stays off where consent is
   // required. The route checks the same header again.
   const logVisits = !needsConsent(h.get('x-vercel-ip-country'))
@@ -156,11 +138,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             becomes the cookie, with one reload if this page was rendered in
             another language. */}
         <script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} />
-        {googleAds && <>
-          {/* Google tag (gtag.js) */}
-          <script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} />
-          <script dangerouslySetInnerHTML={{ __html: GTAG_INIT }} />
-        </>}
       </head>
       <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}${site === 'xcreate' ? ` ${dmSans.variable} ${barlowXCreate.variable}` : ''}`}>
         <SiteProvider site={site}>

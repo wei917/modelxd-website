@@ -906,8 +906,9 @@ writes one row per visit through `log_site_visit()` (migration 109). Active
 time = tab in front, pausing 5 minutes after the last input; the
 `modelxd_vid` cookie ties a browser's visits together, so a later sign-up
 traces back to its first ad click (`gclid`/`gbraid`/`wbraid`, `utm_*`). No
-IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`, shared with
-the Google Ads consent default). `/api/visit` bypasses the www password gate
+IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`). There is no
+Google Ads tag on the site (removed Oct 3, owner): ads still count their own
+clicks, and gclid reaches this log from the click URL. `/api/visit` bypasses the www password gate
 so ad clicks that land on `/coming-soon` still count. **Reports filter
 `env = 'production'`**; queries and definitions are in `docs/SITE-VISITS.md`.
 The daily picture is the admin page **`/admin/traffic`**: filters at the top
