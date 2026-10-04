@@ -24,6 +24,8 @@ for (const lang of ['zh-Hant', 'zh-Hans', 'ja', 'ko', 'en']) {
   const expected = chosen ? displayTemples(lang).filter(k => chosen.includes(k) && !!HERO_ART[k]) : displayTemples(lang).filter(k => !!HERO_ART[k]).slice(0, HERO_SLIDES)
   check(`hero (${lang}): ${chosen ? 'its hand-picked temples' : 'the first six with art'}, in that market's own order`, list.length >= 6 && list.join() === expected.join())
 }
+check('in every market the top bar starts with the rotation, in the same order (owner, Oct 3)', ['zh-Hant', 'zh-Hans', 'ja', 'ko', 'en'].every(l => heroTemples(l).join() === displayTemples(l).slice(0, heroTemples(l).length).join()),
+  ['zh-Hant', 'zh-Hans', 'ja', 'ko', 'en'].filter(l => heroTemples(l).join() !== displayTemples(l).slice(0, heroTemples(l).length).join()).join())
 check('Chinese features 易經, 孫子兵法 and 周公解夢, never the Indian 九曜 or the Japanese 九星 (owner, Oct 3)',
   ['zh-Hant', 'zh-Hans'].every(l => ['yixue', 'sunzi', 'jiemeng'].every(k => heroTemples(l).includes(k as TempleKey)) && !heroTemples(l).includes('navagraha') && !heroTemples(l).includes('kyusei')))
 check('hero art is an inventory apart from the featured six: more art never adds a dot', Object.keys(HERO_ART).length > HERO_SLIDES

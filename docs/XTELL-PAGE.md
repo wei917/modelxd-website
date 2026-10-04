@@ -1363,7 +1363,14 @@ what changed:
   (`guandiFacts(…, lang)`). The 清刊本 notes of 關帝 (聖意, 東坡解 …) are
   still Chinese only; the teacher explains them.
 
-## Each market's order (Sep 28, Japan and English redone Oct 2)
+## Each market's order (Sep 28, Japan and English redone Oct 2, Chinese Oct 3)
+
+**Oct 3 (owner):** in every market the top bar starts with the homepage
+rotation, in the same order (`scripts/test-xtell-home.ts` holds this). For
+Chinese that moved 易經, 周公解夢 and 孫子兵法 up to follow 塔羅 (popular in
+Taiwan), ahead of 九曜, 九星 and 宿曜: 八字 紫微 占星 塔羅 易經 解夢 兵法 九曜
+九星 宿曜 姓名 測字 幸運餅乾 觀音 月老 關帝 媽祖 四面佛. Japanese, Korean and
+English already began with their rotation (its first six).
 
 `displayTemples(lang)` (TempleArtwork.tsx): every temple in every language,
 only the order changes. Oct 2 (owner: "optimize the temple order on the top
@@ -1379,8 +1386,8 @@ translated Taiwanese site):
   go last.
 - 한국어 (Sep 28, unchanged): 八字 (사주), 月老 (궁합), 塔羅, 占星, 解夢, 孫子, 籤餅,
   姓名, 易經, 紫微, 觀音, 關帝, 媽祖, 九曜, 九星, 宿曜, 四面佛, 測字.
-- Chinese (unchanged): the owner's order, computed methods first, 觀音 leading
-  the deity rooms.
+- Chinese: changed Oct 3 (above); before that, the owner's Sep 24 order,
+  computed methods first, 觀音 leading the deity rooms.
 
 **Icons (觀音, 塔羅):** generated in XCreate (GPT Image 2.5 Sunburst, image
 edit, medium, 3 outputs each, $0.067 each) against style sheets cropped from
