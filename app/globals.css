@@ -3706,6 +3706,167 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-seat-add:disabled, .xtell-seat-main:disabled, .xtell-seat-act:disabled { opacity: .45; cursor: default; pointer-events: none; }
 .xtell-seat-wait { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--xtell-secondary, var(--muted)); }
 .xtell-seat-plus { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--xtell-tint, var(--surface2)); font-size: 14px; line-height: 1; }
+/* XTell homepage (Oct 3, the owner's approved Concept 24): the scenic
+   entrance that turns through the temples, today's cards (almanac, free
+   daily, the visitor's own temples), examples and the three steps. Phone
+   first: a short entrance, cards in one column; from 760px the entrance
+   grows and the cards overlap its lower edge. */
+.xtell-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.xtell-hero { position: relative; margin: 10px 0 0; }
+/* clip, not hidden: a hidden box is still a scroll container, and focusing
+   a dot scrolled it 23px when something inside overflowed (Codex, Oct 3). */
+.xtell-hero-stage { position: relative; height: 330px; border-radius: 18px; overflow: hidden; overflow: clip; background: var(--xtell-tint); isolation: isolate; }
+.xtell-hero-backdrop { position: absolute; inset: 0; overflow: hidden; overflow: clip; opacity: 0; transition: opacity .9s ease; }
+.xtell-hero-backdrop.is-on { opacity: 1; }
+.xtell-hero-backdrop picture, .xtell-hero-backdrop img { display: block; width: 100%; height: 100%; }
+.xtell-hero-backdrop img { object-fit: cover; }
+.xtell-hero-portrait { position: absolute; right: 3%; bottom: -6%; width: 40%; max-width: 200px; opacity: .5; }
+.xtell-hero-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse 74% 64% at 50% 45%, rgba(255, 253, 248, .9) 0%, rgba(255, 253, 248, .66) 48%, rgba(255, 253, 248, 0) 82%); }
+.xtell-hero-copy { position: absolute; z-index: 2; inset: 0 46px 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.xtell-hero-kicker { margin: 0; display: flex; align-items: center; gap: 10px; font: 500 14px/1.4 var(--xtell-serif, serif); letter-spacing: .08em; color: var(--xtell-ink); }
+.xtell-hero-kicker::before, .xtell-hero-kicker::after { content: ''; width: 24px; height: 1px; background: currentColor; opacity: .55; }
+.xtell-hero-title { margin: 0; font: 600 clamp(24px, 6.6vw, 46px)/1.25 var(--xtell-serif, serif); color: var(--xtell-ink); white-space: pre-line; text-wrap: balance; }
+.xtell-hero-sub { margin: 0; max-width: 34em; font-size: 13px; line-height: 1.6; color: var(--xtell-secondary); }
+.xtell-hero-enter { margin-top: 6px; display: inline-flex; align-items: center; gap: 10px; padding: 11px 22px; border-radius: 999px; background: var(--xtell-vermilion); color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 6px 18px rgba(120, 40, 20, .22); transition: transform .15s, box-shadow .15s; }
+.xtell-hero-enter:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(120, 40, 20, .28); }
+.xtell-hero-enter:focus-visible, .xtell-hero-arrow:focus-visible, .xtell-hero-dot:focus-visible, .xtell-hero-play:focus-visible { outline: 2px solid var(--xtell-vermilion); outline-offset: 2px; }
+.xtell-hero-arrow { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; min-height: 0; display: grid; place-items: center; padding: 0; border: 1px solid rgba(255, 255, 255, .75); border-radius: 50%; background: rgba(255, 253, 248, .74); color: var(--xtell-ink); font-size: 22px; line-height: 1; cursor: pointer; backdrop-filter: blur(4px); }
+.xtell-hero-arrow.is-prev { left: 8px; }
+.xtell-hero-arrow.is-next { right: 8px; }
+.xtell-hero-controls { position: absolute; z-index: 3; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; padding: 0 4px; border-radius: 999px; background: rgba(255, 253, 248, .8); backdrop-filter: blur(4px); }
+.xtell-hero-dots { display: flex; }
+/* Small to the eye, big to the finger: a 32px target around an 8px dot
+   (a 20px bar for the slide on show). */
+.xtell-hero-dot { position: relative; width: 32px; height: 32px; min-height: 0; padding: 0; border: none; border-radius: 999px; background: none; cursor: pointer; }
+.xtell-hero-dot::before { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; border-radius: 999px; background: rgba(60, 45, 30, .3); transform: translate(-50%, -50%); transition: width .2s, background-color .2s; }
+.xtell-hero-dot[aria-current="true"]::before { width: 20px; background-color: var(--xtell-vermilion); }
+.xtell-hero-play { width: 36px; height: 36px; min-height: 0; display: grid; place-items: center; padding: 0; border: none; border-radius: 50%; background: none; color: var(--xtell-ink); cursor: pointer; }
+.xtell-temple-nav a { position: relative; }
+/* The hero's temple in the top bar: a soft wash and a dot, never the
+   vermilion underline of the room you are in. */
+.xtell-temple-nav a[data-preview="true"] { background: var(--xtell-tint); }
+.xtell-temple-nav a[data-preview="true"]::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--xtell-vermilion); opacity: .75; }
+
+.xtell-home-cards { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; margin: 10px 0 0; }
+.xtell-home-cards > .xtell-home-card { margin: 0; padding: 16px 18px; border: 1px solid var(--xtell-rule); border-radius: 14px; background: var(--xtell-white); box-shadow: 0 6px 22px rgba(60, 40, 20, .06); min-width: 0; }
+.xtell-home-cards > .is-open { grid-column: 1 / -1; }
+.xtell-home-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 8px; }
+.xtell-home-card-title { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 18px/1.3 var(--xtell-serif, serif); color: var(--xtell-ink); }
+.xtell-home-badge { flex-shrink: 0; padding: 3px 10px; border-radius: 999px; background: var(--xtell-tint); color: var(--xtell-vermilion); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.xtell-home-card .xtell-dy-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.xtell-home-card .xtell-dy-head .xtell-dy-sub { flex-basis: 100%; }
+.xtell-home-more { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 14px; border: 1px solid var(--xtell-rule); border-radius: 999px; background: #fff; color: var(--xtell-vermilion); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.xtell-home-more:hover { border-color: var(--xtell-vermilion); }
+.xtell-home-link { min-height: 32px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: none; background: none; color: var(--xtell-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.xtell-home-link:hover { color: var(--xtell-vermilion); }
+.xtell-home-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; }
+.xtell-td-yiji.is-compact { margin: 6px 0 0; }
+
+.xtell-fav-star { color: #d4a03a; }
+.xtell-fav-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; }
+.xtell-fav-tile { width: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 8px; border: 1px solid var(--xtell-rule); border-radius: 12px; background: #fff; color: var(--xtell-ink); font: inherit; font-size: 12.5px; text-decoration: none; cursor: pointer; }
+.xtell-fav-tile:hover { border-color: var(--xtell-vermilion); }
+.xtell-fav-tile:focus-visible { outline: 2px solid var(--xtell-vermilion); outline-offset: 1px; }
+.xtell-fav-tile.is-add { border-style: dashed; background: transparent; color: var(--xtell-secondary); }
+.xtell-fav-tile.is-editing { cursor: default; }
+.xtell-fav-icon { width: 38px; }
+.xtell-fav-plus { width: 38px; height: 38px; display: grid; place-items: center; font-size: 22px; line-height: 1; }
+.xtell-fav-name { line-height: 1.3; text-align: center; }
+/* Editing: wider tiles, so each tool is a 34px target with room between. */
+.xtell-fav-grid.is-editing { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
+.xtell-fav-tools { display: flex; gap: 6px; }
+.xtell-fav-tools button { width: 34px; height: 34px; min-height: 0; padding: 0; border: 1px solid var(--xtell-rule); border-radius: 8px; background: #fff; color: var(--xtell-ink); font-size: 17px; line-height: 1; cursor: pointer; }
+.xtell-fav-tools button:disabled { opacity: .35; cursor: default; }
+.xtell-fav-empty { margin: 0 0 10px; font-size: 13px; line-height: 1.6; color: var(--xtell-secondary); }
+.xtell-fav-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--xtell-rule); }
+.xtell-fav-add-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--xtell-ink); }
+.xtell-fav-pick { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.xtell-fav-pick button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px 4px 8px; border: 1px solid var(--xtell-rule); border-radius: 999px; background: #fff; color: var(--xtell-ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+.xtell-fav-pick button:hover { border-color: var(--xtell-vermilion); }
+.xtell-fav-pick .xtell-fav-icon { width: 22px; }
+.xtell-fav-note { margin: 10px 0 0; font-size: 11.5px; color: var(--xtell-secondary); }
+
+.xtell-home-title { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 20px/1.3 var(--xtell-serif, serif); color: var(--xtell-ink); }
+.xtell-ex { margin: 28px 0 0; }
+.xtell-ex-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; }
+.xtell-ex-sub { flex: 1 1 220px; margin: 0; font-size: 13px; line-height: 1.6; color: var(--xtell-secondary); }
+.xtell-ex-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.xtell-ex-card { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; border: 1px solid var(--xtell-rule); border-radius: 14px; background: #fff; color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
+.xtell-ex-card:hover { border-color: var(--xtell-vermilion); box-shadow: 0 6px 18px rgba(60, 40, 20, .08); }
+.xtell-ex-card:focus-visible { outline: 2px solid var(--xtell-vermilion); outline-offset: 2px; }
+.xtell-ex-art { position: relative; height: 130px; overflow: hidden; background: var(--xtell-tint); }
+.xtell-ex-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.xtell-ex-portrait { position: absolute; left: 50%; top: 8px; width: 96px; transform: translateX(-50%); opacity: .85; }
+.xtell-ex-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
+.xtell-ex-badge { align-self: flex-start; padding: 2px 10px; border-radius: 999px; background: var(--xtell-tint); color: var(--xtell-vermilion); font-size: 12px; font-weight: 600; }
+.xtell-ex-q { font: 600 17px/1.4 var(--xtell-serif, serif); color: var(--xtell-ink); }
+.xtell-ex-a { font-size: 13.5px; line-height: 1.7; color: var(--xtell-secondary); }
+.xtell-ex-go { margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--xtell-vermilion); }
+
+.xtell-how { margin: 24px 0 0; padding: 16px 18px; border-radius: 14px; background: var(--xtell-tint); }
+.xtell-how-title { margin: 0 0 12px; font: 600 16px/1.4 var(--xtell-serif, serif); color: var(--xtell-ink); }
+.xtell-how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.xtell-how-steps li { display: flex; align-items: center; gap: 12px; }
+.xtell-how-icon { flex-shrink: 0; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: var(--xtell-ink); }
+.xtell-how-text { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 1.5; color: var(--xtell-secondary); }
+.xtell-how-text strong { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--xtell-ink); }
+.xtell-how-n { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--xtell-vermilion); color: #fff; font-size: 11.5px; font-weight: 700; }
+
+@media (min-width: 760px) {
+  .xtell-hero-stage { height: 410px; border-radius: 22px; }
+  .xtell-hero-copy { inset: 0 96px 92px; gap: 10px; }
+  .xtell-hero-sub { font-size: 14.5px; }
+  .xtell-hero-arrow { width: 46px; height: 46px; font-size: 26px; }
+  .xtell-hero-arrow.is-prev { left: 22px; }
+  .xtell-hero-arrow.is-next { right: 22px; }
+  /* Above the guide, which overlaps the lower edge. */
+  .xtell-hero-controls { bottom: 58px; }
+  .xtell-hero-portrait { right: 6%; bottom: -10%; width: 26%; max-width: 280px; opacity: .85; }
+  .xtell-home-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 12px 24px 0; }
+  .xtell-ex-card { grid-template-columns: 34% minmax(0, 1fr); }
+  .xtell-ex-art { height: auto; min-height: 150px; }
+  .xtell-ex-portrait { top: 12px; width: 110px; }
+  .xtell-how-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .xtell-hero-stage { height: 440px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xtell-hero-backdrop, .xtell-hero-dot::before, .xtell-hero-enter { transition: none; }
+}
+/* Phones get Codex's portrait compositions (Oct 3), cropped from the bottom
+   so the objects low in the frame stay; they leave the headline space clean,
+   so the scrim is lighter there and a soft glow keeps the words legible. */
+.xtell-hero-kicker, .xtell-hero-title, .xtell-hero-sub { text-shadow: 0 0 12px rgba(255, 253, 248, .9), 0 0 3px rgba(255, 253, 248, .75); }
+/* Japanese titles break between phrases where the browser can (Chrome),
+   never 「おみく／じに」. */
+.xtell-hero-title:lang(ja) { word-break: auto-phrase; }
+/* The narrowest phones (320-360px): a wider column for the words, a title
+   that scales down a little, and the kicker without its side rules. */
+@media (max-width: 360px) {
+  .xtell-hero-copy { inset: 0 38px 48px; }
+  .xtell-hero-arrow { width: 32px; height: 32px; font-size: 20px; }
+  .xtell-hero-arrow.is-prev { left: 4px; }
+  .xtell-hero-arrow.is-next { right: 4px; }
+  .xtell-hero-title { font-size: clamp(20px, 6.6vw, 24px); }
+  .xtell-hero-kicker::before, .xtell-hero-kicker::after { display: none; }
+}
+@media (max-width: 480px) {
+  .xtell-hero-backdrop img { object-position: center bottom; }
+  .xtell-hero-scrim { background: radial-gradient(ellipse 92% 44% at 50% 40%, rgba(255, 253, 248, .66) 0%, rgba(255, 253, 248, .4) 48%, rgba(255, 253, 248, 0) 82%); }
+}
+
+/* The guide's place on the homepage (Oct 3, the owner's pick of two): right
+   under the hero, before today's cards; on wide screens it overlaps the
+   hero's lower edge a little, and the cards follow close under it. Its look
+   is the .xtell-as block further down. */
+@media (max-width: 700px) {
+  .xtell-hero, .xtell-home-cards, .xtell-ex, .xtell-how { margin-left: 16px; margin-right: 16px; }
+}
+@media (min-width: 760px) {
+  .xtell-hero + .xtell-as { margin: -36px 24px 0; padding: 14px 18px; }
+}
+
 /* Row labels (Oct 3, owner): 大師席位 before the seats, 回答 before the
    answer tabs, in the style of 問： before the ask row; fixed at the left
    while the row scrolls sideways. */
@@ -3784,12 +3945,11 @@ button.ctx-meter:hover .ctx-ring-track, button.ctx-meter:focus-visible .ctx-ring
 
 /* The front-door guide above the street (XTell door only). It explains and
    points the way; its buttons come from lib/xtell-catalog.ts. */
-.xtell-as { margin: 24px 0 16px; padding: 18px 20px 14px; border: 1px solid var(--xtell-rule); border-radius: 4px; background: var(--xtell-white); }
-.xtell-as-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.xtell-as-title { margin: 0; font: 500 19px/1.4 var(--xtell-serif); color: var(--xtell-ink); }
+.xtell-as { position: relative; z-index: 2; margin: 10px 0 0; padding: 12px 14px; border: 1px solid var(--xtell-rule); border-radius: 14px; background: var(--xtell-white); box-shadow: 0 6px 22px rgba(60, 40, 20, .06); }
+.xtell-as-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.xtell-as-title { margin: 0; font: 600 16px/1.35 var(--xtell-serif, serif); color: var(--xtell-ink); }
 .xtell-as-restart { min-height: 32px; border: 0; background: none; color: var(--xtell-secondary); font: inherit; font-size: 12.5px; cursor: pointer; }
-.xtell-as-intro { max-width: 60em; margin: 8px 0 12px; font-size: 14px; line-height: 1.75; color: var(--xtell-secondary); }
-.xtell-as-panel { display: flex; flex-direction: column; gap: 10px; max-height: 340px; margin: 12px 0; padding-right: 4px; overflow-y: auto; }
+.xtell-as-panel { display: flex; flex-direction: column; gap: 10px; max-height: 340px; margin: 0 0 10px; padding-right: 4px; overflow-y: auto; }
 .xtell-as-you { align-self: flex-end; max-width: 80%; padding: 8px 12px; border-radius: 10px; background: var(--xtell-tint); font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .xtell-as-reply { align-self: flex-start; max-width: 88%; font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
 .xtell-as-reply p { margin: 0; white-space: pre-wrap; }
@@ -3798,13 +3958,13 @@ button.ctx-meter:hover .ctx-ring-track, button.ctx-meter:focus-visible .ctx-ring
 .xtell-as-go { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 14px; border: 0; border-radius: 3px; background: var(--xtell-vermilion); color: var(--xtell-white); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
 .xtell-as-go:hover { filter: brightness(.95); }
 .xtell-as-field { display: flex; gap: 8px; }
-.xtell-as-field input { flex: 1; min-width: 0; min-height: 44px; padding: 10px 14px; border: 1px solid var(--xtell-rule); border-radius: 3px; background: var(--xtell-paper); color: var(--xtell-ink); font: inherit; font-size: 15px; }
-.xtell-as-field button { min-height: 44px; padding: 0 18px; border: 1px solid var(--xtell-vermilion); border-radius: 3px; background: var(--xtell-white); color: var(--xtell-vermilion); font: inherit; font-weight: 700; cursor: pointer; }
+.xtell-as-field input { flex: 1; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--xtell-rule); border-radius: 999px; background: var(--xtell-paper); color: var(--xtell-ink); font: inherit; font-size: 15px; }
+.xtell-as-field button { min-height: 44px; padding: 0 18px; border: 1px solid var(--xtell-vermilion); border-radius: 999px; background: var(--xtell-vermilion); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 .xtell-as-field button:disabled { opacity: .45; cursor: default; }
 .xtell-as-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.xtell-as-chip { padding: 6px 12px; border: 1px solid var(--xtell-rule); border-radius: 999px; background: var(--xtell-white); color: var(--xtell-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.xtell-as-chip { min-height: 36px; padding: 6px 12px; border: 1px solid var(--xtell-rule); border-radius: 999px; background: var(--xtell-white); color: var(--xtell-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .xtell-as-chip:hover { border-color: var(--xtell-vermilion); color: var(--xtell-vermilion); }
-.xtell-as-note { margin: 10px 0 0; font-size: 12px; line-height: 1.6; color: var(--xtell-secondary); }
+.xtell-as-note { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: var(--xtell-secondary); }
 .xtell-as-typing { display: inline-flex; gap: 4px; padding: 6px 0; }
 .xtell-as-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--xtell-secondary); animation: xtell-as-dot 1s infinite ease-in-out; }
 .xtell-as-typing i:nth-child(2) { animation-delay: .15s; }
@@ -3962,7 +4122,7 @@ button.ctx-meter:hover .ctx-ring-track, button.ctx-meter:focus-visible .ctx-ring
 /* The question a guide button brought into a room, before it is sent. */
 .xtell-carried { margin: 0 0 12px; padding: 8px 12px; border-left: 3px solid var(--xtell-vermilion, var(--red)); background: var(--xtell-tint, var(--surface2)); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 @media (max-width: 700px) {
-  .xtell-as { margin: 12px 16px 16px; padding: 16px; }
+  .xtell-as { margin: 10px 16px 0; padding: 12px 14px; }
   .xtell-as-you, .xtell-as-reply { max-width: 100%; }
 }
 

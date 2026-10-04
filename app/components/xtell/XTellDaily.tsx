@@ -54,7 +54,9 @@ function zoneLabel(tz: string, lang: string): string {
   } catch { return tz }
 }
 
-export default function XTellDaily({ openSignal, onContinue }: { openSignal: number; onContinue: (row: SavedDaily) => void }) {
+/** `compact` (the homepage's card row, Oct 3): the card opens to the day's
+ *  readings on a press, and widens to the whole row while open. */
+export default function XTellDaily({ openSignal, onContinue, compact = false }: { openSignal: number; onContinue: (row: SavedDaily) => void; compact?: boolean }) {
   const t = useT()
   const { lang } = useLang()
   const { show: showSignIn } = useAuthModal()
@@ -193,8 +195,10 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, profile?.displayTz, day?.date])
   // The front-door guide's "daily" button.
+  const [open, setOpen] = useState(false)
   useEffect(() => {
     if (!openSignal) return
+    setOpen(true)
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     if (phase === 'none') setEditing(true)
     if (phase === 'signedOut') showSignIn()
@@ -212,16 +216,19 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
 
   // The card always keeps its place in the street's 今日 row (owner, Sep 27:
   // nothing hidden): its title and a loading line while the profile loads.
+  const badge = compact ? <span className="xtell-home-badge is-free">{t('xtell.home.daily.free')}</span> : null
+  const wide = compact && (editing || (open && phase === 'ready'))
+  const cls = 'xtell-dy' + (compact ? ' xtell-home-card' + (wide ? ' is-open' : ' is-compact') : '')
   if (phase === 'loading') return (
-    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
-      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
+    <section id="xtell-daily" className={cls} aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
+      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}</div>
       <p className="xtell-dy-small">{t('common.loading')}</p>
     </section>
   )
   return (
-    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} ref={sectionRef}>
+    <section id="xtell-daily" className={cls} aria-labelledby={titleId} ref={sectionRef}>
       <div className="xtell-dy-head">
-        <h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>
+        <h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}
         <p className="xtell-dy-sub">{t('xtell.dy.sub')}</p>
       </div>
       {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
@@ -245,12 +252,17 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
               they are changed or deleted on the account page. */}
           {problem && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.problem')} <button type="button" className="xtell-dy-link" onClick={() => setEditing(true)}>{t('xtell.dy.edit')}</button></p>}
           {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
-          {day && (
-            <div className="xtell-dy-cards">
-              {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
-            </div>
-          )}
-          <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
+          {compact && !open ? (
+            <button type="button" className="xtell-dy-primary xtell-home-cta" aria-expanded={false} onClick={() => setOpen(true)}>{t('xtell.home.daily.open')} <span aria-hidden="true">→</span></button>
+          ) : <>
+            {day && (
+              <div className="xtell-dy-cards">
+                {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
+              </div>
+            )}
+            <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
+            {compact && <button type="button" className="xtell-home-more" aria-expanded={true} onClick={() => setOpen(false)}>{t('xtell.home.daily.close')} <span aria-hidden="true">↑</span></button>}
+          </>}
         </>
       )}
     </section>

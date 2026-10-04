@@ -9,11 +9,16 @@
 // room (lib/xtell-handoff.ts); nothing is sent, drawn or cast for them.
 //
 // LandingAgent's patterns, adapted: the thread lives per tab in
-// sessionStorage; starter chips on the empty state and after a decline. And
+// sessionStorage; starter chips once the field is used, and after a decline. And
 // one thing LandingAgent does not need: a reply is matched to the request
 // that asked for it. Start over, a language switch or leaving the street
 // aborts the request in flight and bumps a token, so a late answer cannot
 // reappear in a cleared thread (Codex review).
+//
+// On the homepage (Oct 3, the owner's choice of two placements) it sits
+// right under the hero, compact: the heading 「不知道從哪裡開始？問我」, the
+// field and the send button. The chips and the note come once the field is
+// used, and the conversation grows in the page's flow, never over the cards.
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { useLang, useT } from '../../../lib/i18n'
@@ -74,6 +79,9 @@ export default function XTellAssistant({ onOpen }: { onOpen: (feature: FeatureId
   const { lang } = useLang()
   const titleId = useId()
   const [q, setQ] = useState('')
+  // The field has been used: the chips and the note show from then on (a
+  // blur never hides them, or a tap on a chip would miss).
+  const [engaged, setEngaged] = useState(false)
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [busy, setBusy] = useState(false)
   const [restored, setRestored] = useState(false)
@@ -176,10 +184,10 @@ export default function XTellAssistant({ onOpen }: { onOpen: (feature: FeatureId
   return (
     <section className="xtell-as" aria-labelledby={titleId}>
       <div className="xtell-as-head">
-        <h2 id={titleId} className="xtell-as-title">{t('xtell.as.title')}</h2>
+        <h2 id={titleId} className="xtell-as-title">{t('xtell.as.ask')}</h2>
         {msgs.length > 0 && <button type="button" className="xtell-as-restart" onClick={startOver}>↺ {t('xtell.as.restart')}</button>}
       </div>
-      {msgs.length === 0 ? <p className="xtell-as-intro">{t('xtell.as.intro')}</p> : (
+      {msgs.length > 0 && (
         <div className="xtell-as-panel" aria-live="polite">
           {msgs.map((m, i) => m.role === 'user'
             ? <div key={i} className="xtell-as-you">{m.text}</div>
@@ -199,16 +207,19 @@ export default function XTellAssistant({ onOpen }: { onOpen: (feature: FeatureId
           <div ref={endRef} />
         </div>
       )}
+      {/* The heading asks; the field shows a short example (the long one was
+          cut off on a phone). */}
       <form className="xtell-as-field" onSubmit={e => { e.preventDefault(); void send() }}>
-        <input value={q} maxLength={MAX_Q} onChange={e => setQ(e.target.value)} placeholder={t('xtell.as.placeholder')} aria-label={t('xtell.as.placeholder')} />
+        <input value={q} maxLength={MAX_Q} onChange={e => setQ(e.target.value)} onFocus={() => setEngaged(true)}
+          placeholder={t('xtell.as.placeholderShort')} aria-labelledby={titleId} />
         <button type="submit" disabled={!q.trim() || busy}>{t('xtell.as.send')}</button>
       </form>
-      {showChips && (
+      {showChips && engaged && (
         <div className="xtell-as-chips">
           {CHIPS.map(k => <button key={k} type="button" className="xtell-as-chip" onClick={() => void send(t(k))}>{t(k)}</button>)}
         </div>
       )}
-      <p className="xtell-as-note">{t('xtell.as.note')}</p>
+      {(engaged || msgs.length > 0) && <p className="xtell-as-note">{t('xtell.as.note')}</p>}
     </section>
   )
 }

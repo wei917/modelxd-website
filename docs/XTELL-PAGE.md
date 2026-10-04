@@ -477,7 +477,15 @@ lib/xtell-catalog.ts        # versioned feature catalog: status, inputs, fees, l
 lib/xtell-handoff.ts        # guide button → room: feature id + prepared question in sessionStorage
 content/xtell-guide.md      # the front-door guide's knowledge (version = catalog version)
 app/api/xtell/assistant/route.ts  # POST {q, lang, history} → answer + catalog actions; house-paid
-app/components/xtell/XTellAssistant.tsx  # the guide above the street (XTell door only)
+app/components/xtell/XTellAssistant.tsx  # the guide under the homepage hero (XTell door only)
+app/components/xtell/XTellHero.tsx       # homepage hero: six featured temples, turning, never navigating
+app/components/xtell/XTellFavorites.tsx  # 我的常用 (device only)
+app/components/xtell/XTellExamples.tsx   # 解讀範例 (labelled 示例) + the three steps
+lib/xtell-hero.ts           # HERO_ART inventory, HERO_SLIDES featured per market, rotation rules
+lib/xtell-favorites.ts      # favourites: parse/validate, load/save, add/remove/move
+lib/xtell-preview.ts        # hero → top bar preview event
+public/xtell/hero/*.webp    # hero scenes (Codex): wide, -mobile, -portrait-mobile
+scripts/test-xtell-home.ts  # homepage suite (in npm run test:xtell)
 scripts/test-xtell-assistant.ts  # catalog ↔ chart route, guide, assistant route, handoff
 scripts/test-xtell-chenggu.ts  # 稱骨 suite (in npm run test:xtell), routes included
 lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, nakshatra, Vimshottari, facts
@@ -609,8 +617,9 @@ route recomputes the facts from the birth and never reads a client value.
 
 ## 入口導覽 (front-door guide) and the feature catalog (Sep 27)
 
-TODO item 1, built by Claude and reviewed by Codex. A guide above the temple
-street (XTell door only; www and its site agent are unchanged) answers
+TODO item 1, built by Claude and reviewed by Codex. A guide on the XTell
+door's home page (right under the hero since Oct 3; www and its site agent
+are unchanged) answers
 questions about X先知 and the basics of the traditions, and opens the right
 room. It never computes anything personal and never sends a reading.
 
@@ -640,8 +649,8 @@ room. It never computes anything personal and never sends a reading.
   memory too, so blocked storage still opens the right mode. Nothing is in
   the URL but the temple.
 - **UI** — `app/components/xtell/XTellAssistant.tsx`: thread per tab
-  (restored entries are rebuilt and bounded), starter chips, catalog-built
-  buttons; start over, a language switch or leaving the street aborts the
+  (restored entries are rebuilt and bounded), starter chips once the field
+  is used, catalog-built buttons; start over, a language switch or leaving the street aborts the
   request in flight and a token drops late replies.
 
 **Maintenance rule.** A feature added, changed or retired updates, in the
@@ -741,7 +750,77 @@ waited for BOTH before showing anything. Now:
   entries.
 - 幸運餅乾: the slip shows right after the pick; the note streams under it.
 
+## The homepage (Oct 3, Concept 24)
+
+The xtell.modelxd.com home page is the owner's approved Concept 24 (Codex's
+design; built by Claude, reviewed by Codex), phone first. Top to bottom:
+
+1. **Hero** (`app/components/xtell/XTellHero.tsx`, `lib/xtell-hero.ts`). One
+   temple at a time over a scenic background: its name, its lead and line
+   (the existing `xtell.site.focus.<temple>.*` strings) and a real link in
+   (`/#<temple>`; the button drops a trailing gloss, 夢占い（周公解夢） →
+   「夢占いへ」, so it stays one line on a phone). **Six featured per market**:
+   the first `HERO_SLIDES` (6) of that market's top-bar order that have art.
+   `HERO_ART` is the art inventory, kept apart from what is featured, so new
+   art never adds a dot: 13 scenes by Codex, `public/xtell/hero/<k>.webp`
+   (1881 wide), `<k>-mobile.webp` (960 wide, windows up to 760 px) and
+   `<k>-portrait-mobile.webp` (960x1280, phones up to 480 px, cropped from
+   the bottom so the objects low in the frame stay). 易學堂 has no portrait
+   yet; it is featured nowhere. Featured now: 八字 紫微 占星 塔羅 九曜 九星
+   (zh-Hant, zh-Hans); 夢占い 観音 姓名判断 占星 タロット 四柱推命 (ja);
+   사주 월하노인 타로 점성 해몽 손자병법 (ko); tarot, astrology, dreams, BaZi,
+   Yue Lao, fortune cookie (en).
+   - Turns every 7 s, display only: never the address, the hash, a form, a
+     reading or a charge. Holds while a mouse is over it, keyboard focus is
+     in it or the tab is hidden, and from the start under reduced motion
+     (play overrides); any arrow or dot choice pauses it until play.
+   - Fixed stage heights (phone 330, from 760 px 410, from 1100 px 440), so
+     turning never moves the page. The stage is `overflow: clip`, not
+     hidden: a hidden box is still a scroll container, and focusing a dot
+     scrolled it 23 px when a not-yet-shown slide's fallback art overflowed
+     (Codex found it). A slide not shown yet draws only its wash (each
+     picture's own colours); its pictures load when it is next.
+   - Phones: 16 px gutters; a lighter scrim plus a soft glow on the words
+     (the portrait art leaves the headline space clean); dots are 32 px
+     targets around 8 px dots, play 36 px; Japanese titles break by phrase
+     (`word-break: auto-phrase`); at 360 px and under, a slightly smaller
+     title, a wider column and the kicker without its side rules.
+2. **Top bar preview** (`lib/xtell-preview.ts`, `XTellNav.tsx`). The hero
+   announces its temple; the bar marks that icon `data-preview` (a tint and
+   a dot), never `aria-current` (that is the room you are in). The row
+   scrolls to it only when the icon is out of view and the visitor is not
+   using the row (pointer on the strip or its arrows, focus inside it, or a
+   touch, scroll or arrow press in the last 8 s); only the row scrolls.
+3. **Guide** (`XTellAssistant.tsx`), right under the hero: the owner picked
+   this over a field inside the hero (both were built to compare, Oct 3).
+   From 760 px it overlaps the hero's lower edge by 36 px. Compact: the
+   heading 「不知道從哪裡開始？問我」 (`xtell.as.ask`), a short example in
+   the field (`xtell.as.placeholderShort`), the chips and the note once the
+   field is used; the conversation grows in the page flow, never over the
+   cards.
+4. **Today's cards** (one column on phones, three from 760 px): 今日黃曆,
+   compact (date, 宜 and 忌; 「查看黃曆」 opens every field, nothing was
+   removed); 今日運勢 (`XTellDaily compact`: the same data, consent and
+   auth, 「查看我的運勢」 opens the method cards); 我的常用
+   (`XTellFavorites.tsx`, `lib/xtell-favorites.ts`): the visitor's pinned
+   temples with their original icons, added, removed and reordered by
+   buttons (34 px), kept on this device (`localStorage` `xtell:favorites:v1`).
+   What is read back is checked (real temple keys only, each once, in the
+   saved order); anything else reads as empty and is left alone until the
+   visitor changes something; nothing is ever pre-filled; removing the last
+   pin ends editing so 新增 comes back.
+5. **解讀範例** (`XTellExamples.tsx`): example questions with a short
+   passage in a master's voice, labelled 示例 and said to be examples, never
+   a visitor's words (no testimonials); one shown, the rest behind
+   「看更多範例」; each links into its temple. **Three steps** (`XTellHowTo`):
+   what a visitor does, in words that hold wherever the guide sits.
+
+Tests: `scripts/test-xtell-home.ts` (in `npm run test:xtell`).
+
 ## 今日 row on the street: 今日運勢 and 黃曆 (Sep 27)
+
+(Superseded on Oct 3 by the homepage above, where these two cards now open
+compact; the rest of this section still describes them.)
 
 The xtell.modelxd.com home page opens with the guide (welcome, ask
 anything), then two cards side by side (stacked on phones): 今日黃曆

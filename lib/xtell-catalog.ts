@@ -71,7 +71,7 @@ export const XTELL_FEATURES: readonly Feature[] = [
     about: 'BaZi four pillars from a birth date and hour: day master, elements, hidden stems, luck pillars; the board also shows the bone weight (稱骨). For personality, work, relationships, this year.' },
   { id: 'bazi.chenggu', status: 'live', temple: 'bazi', people: 1, hour: 'optional', place: false, inputs: [], optional: [],
     free: ['chart', 'chenggu'], paid: 'teacher', question: 'composer', label: [room('bazi'), 'xtell.as.mode.chenggu'],
-    about: 'Bone weight (稱骨, 八字幾兩幾錢): the folk weight of the lunar birth year, month, day and hour, shown on the BaZi board. An unknown hour gives the possible totals instead of one.' },
+    about: 'Bone weight (稱骨, 八字幾兩幾錢): the folk weight of the lunar birth year, month, day and hour, shown on the BaZi board. The birth date is entered in the Gregorian calendar (國曆) as for the chart; the board converts it to the lunar date itself. An unknown hour gives the possible totals instead of one.' },
   { id: 'ziwei', status: 'live', temple: 'ziwei', people: 1, hour: 'required', place: false, inputs: [], optional: [],
     free: ['chart'], paid: 'teacher', question: 'composer', label: [room('ziwei')],
     about: 'Zi Wei Dou Shu: twelve palaces with their stars and the current decade and year. Needs the birth hour.' },

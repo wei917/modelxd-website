@@ -50,6 +50,9 @@ import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, fi
 import { TitleEditor } from '../components/xtell/TitleEditor'
 import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimateInputTokens, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
+import XTellHero from '../components/xtell/XTellHero'
+import XTellFavorites from '../components/xtell/XTellFavorites'
+import { XTellExamples, XTellHowTo } from '../components/xtell/XTellExamples'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
 import { ShareButton } from '../components/xtell/ShareButton'
@@ -379,15 +382,22 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
   if (standalone) return <div className="xtell-site">
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : ' xtell-room-container')} tabIndex={-1}>
       {!temple ? <>
-        {/* The guide first, then today (owner, Sep 27): the Chinese almanac
-            on the left, the daily fortune on the right. The temples
-            themselves are in the top bar. */}
+        {/* The homepage (Oct 3, the owner's approved Concept 24): a scenic
+            entrance that turns through the temples, the guide right under
+            it (the owner's pick of two placements), then today's almanac,
+            the free daily fortune and the visitor's own temples in one row,
+            examples of a reading and three steps. The temples themselves
+            stay in the top bar. */}
+        <XTellHero />
         <XTellAssistant onOpen={openFromGuide} />
-        <div className="xtell-today">
+        <div className="xtell-home-cards">
           {/* Its own section, rendered on the server (AlmanacSection). */}
-          {almanacSection ?? <AlmanacCard />}
-          <XTellDaily openSignal={dailySignal} onContinue={openDaily} />
+          {almanacSection ?? <AlmanacCard compact />}
+          <XTellDaily openSignal={dailySignal} onContinue={openDaily} compact />
+          <XTellFavorites />
         </div>
+        <XTellExamples />
+        <XTellHowTo />
       </> : <>
         {/* Signed out, a room still casts its free chart; sign-in is asked
             at the first question to a teacher (owner, Oct 1). Three rooms

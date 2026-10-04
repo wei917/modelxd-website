@@ -48,8 +48,11 @@ then only three pillars are read and anything the hour decides is left out.
 
 ### bazi.chenggu
 稱骨 (bone weight, 八字幾兩幾錢), shown on the BaZi board after the chart is
-cast. A folk custom that adds traditional weights for the lunar birth year,
-month, day and hour into a total in liang and qian (ten qian make one liang).
+cast. The visitor enters the birth date in the Gregorian calendar (國曆), as
+for the chart; the board finds the lunar date itself, so nothing needs
+converting. A folk custom that adds traditional weights for the lunar birth
+year, month, day and hour into a total in liang and qian (ten qian make one
+liang).
 Heavier has traditionally been read as more fortunate; it is a custom, not a
 tested prediction. With an unknown hour the board shows each possible total
 instead of one. The BaZi board prepares a question for the master about it.
@@ -238,7 +241,8 @@ today's date in the visitor's own time zone with the lunar date and the
 day's stem-branch, what the day is traditionally good for (宜) and should
 avoid (忌), the animal the day clashes with and the direction of 煞, the day
 officer (建除), the solar term, the day spirit, the lunar mansion, the
-auspicious and baleful stars and the Pengzu taboos, all shown at once. It comes
+auspicious and baleful stars and the Pengzu taboos. The card first shows the
+date, 宜 and 忌; a button on it opens all the rest. It comes
 from the date alone. Tradition and reference, not a personal reading.
 
 ## Not live yet
@@ -274,8 +278,10 @@ way to learn today.
 - **Unknown birth hour.** BaZi, the bone weight, Western natal charts,
   matching and the daily fortune still work with limits; Zi Wei and Vedic
   charts need the hour.
-- **Calendar.** Birth dates are entered in the Gregorian calendar (國曆). A
-  lunar birthday needs converting first.
+- **Calendar.** Birth dates are entered in the Gregorian calendar (國曆),
+  also for the bone weight and the other customs counted by the lunar
+  calendar: the temple converts the date itself. Only a visitor who knows
+  nothing but a lunar birthday needs to convert it first.
 
 ## What the guide never does
 

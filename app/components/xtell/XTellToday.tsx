@@ -37,11 +37,14 @@ function useToday(): string | null {
 const fill = (s: string, vars: Record<string, string | number>) => Object.entries(vars).reduce((out, [k, v]) => out.split(`{${k}}`).join(String(v)), s)
 
 /** `initial`: the server's almanac for this visitor's day in the page's
- *  language, or null when the server could not tell the zone. */
-export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
+ *  language, or null when the server could not tell the zone. `compact`
+ *  (the homepage's card row, Oct 3): the date and 宜 / 忌 first, the rest a
+ *  press away, nothing dropped. */
+export function AlmanacCard({ initial = null, compact = false }: { initial?: Almanac | null; compact?: boolean }) {
   const { lang, t } = useLang()
   const today = useToday()
   const [data, setData] = useState<Almanac | null>(initial)
+  const [open, setOpen] = useState(false)
   // The language `data` is in: the page's, as the server drew it.
   const dataLang = useRef(lang)
   // The day could not be fetched (twice). With the server's day already on
@@ -64,8 +67,27 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
   }, [today, lang, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
   const dateLabel = (ymd: string) => new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`))
+  const shortDate = (ymd: string) => new Intl.DateTimeFormat(lang, { month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`))
+  // The compact card: the day, then 宜 and 忌 (the first few), then a press.
+  if (compact && !open) return (
+    <section id="xtell-almanac" className="xtell-td xtell-home-card is-compact" aria-labelledby="xtell-almanac-title">
+      <div className="xtell-home-card-head">
+        <h2 id="xtell-almanac-title" className="xtell-home-card-title">{t('xtell.today.almanac')}</h2>
+        {data && <span className="xtell-home-badge">{t('xtell.home.today').replace('{date}', shortDate(data.date))}</span>}
+      </div>
+      {!data ? (failed
+        ? <p className="xtell-dy-small" role="alert">{t('xtell.today.failed')} <button type="button" className="xtell-dy-link" onClick={() => setAttempt(n => n + 1)}>{t('xtell.site.retry')}</button></p>
+        : <p className="xtell-dy-small">{t('common.loading')}</p>) : <>
+        <dl className="xtell-td-yiji is-compact">
+          <div className="is-yi"><dt>{t('xtell.today.yi')}</dt><dd>{data.yi.slice(0, 4).join('・') || '—'}</dd></div>
+          <div className="is-ji"><dt>{t('xtell.today.ji')}</dt><dd>{data.ji.slice(0, 4).join('・') || '—'}</dd></div>
+        </dl>
+        <button type="button" className="xtell-home-more" aria-expanded={false} onClick={() => setOpen(true)}>{t('xtell.home.almanac.more')} <span aria-hidden="true">→</span></button>
+      </>}
+    </section>
+  )
   return (
-    <section id="xtell-almanac" className="xtell-td" aria-labelledby="xtell-almanac-title">
+    <section id="xtell-almanac" className={'xtell-td' + (compact ? ' xtell-home-card is-open' : '')} aria-labelledby="xtell-almanac-title">
       <div className="xtell-dy-head">
         <h2 id="xtell-almanac-title" className="xtell-dy-title">{t('xtell.today.almanac')}</h2>
         {data && <ShareButton className="xtell-dy-share" spec={() => ({ icon: null, link: null, title: t('xtell.today.almanac'),
@@ -98,6 +120,7 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
           {data.xiongSha.length > 0 && <li>{t('xtell.today.xiongSha')}：{data.xiongSha.join('、')}</li>}
           <li>{t('xtell.today.pengZu')}：{data.pengZu.join('；')}</li>
         </ul>
+        {compact && <button type="button" className="xtell-home-more" aria-expanded={true} onClick={() => setOpen(false)}>{t('xtell.home.almanac.less')} <span aria-hidden="true">↑</span></button>}
       </>}
     </section>
   )
