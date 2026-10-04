@@ -248,6 +248,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
   const site = useSite()
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
+  const { show: showSignIn } = useAuthModal()
   const [temple, setTemple] = useState<Temple | null>(null)
   // www's card grid: the same purposes as the standalone street filter it.
   const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
@@ -281,14 +282,21 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
     const id = new URLSearchParams(window.location.search).get('reading')
     if (!id) return
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
-    sb.from('xtell_readings').select('id, temple, subject, chart, extras, turns').eq('id', id).is('deleted_at', null).maybeSingle()
-      .then(({ data }) => {
-        if (data?.temple === 'daily') { openDaily(data as SavedDaily); return }
-        if (!data || !TEMPLES.includes(data.temple)) return
-        setSaved(data as SavedReading)
-        if (standalone) window.location.hash = data.temple
-        setTemple(data.temple as Temple)
-      })
+    void sb.auth.getSession().then(({ data: { session } }) => {
+      // A saved visit is its owner's alone. Signed out, the database refused
+      // the read ("permission denied for table xtell_readings" in the
+      // Postgres log, Oct 3) and the street opened empty; now the sign-in
+      // dialog opens, and it brings the visitor back to this link.
+      if (!session) { showSignIn(); return }
+      sb.from('xtell_readings').select('id, temple, subject, chart, extras, turns').eq('id', id).is('deleted_at', null).maybeSingle()
+        .then(({ data }) => {
+          if (data?.temple === 'daily') { openDaily(data as SavedDaily); return }
+          if (!data || !TEMPLES.includes(data.temple)) return
+          setSaved(data as SavedReading)
+          if (standalone) window.location.hash = data.temple
+          setTemple(data.temple as Temple)
+        })
+    })
   }, [standalone])
   useEffect(() => {
     if (!standalone) return

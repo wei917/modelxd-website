@@ -44,6 +44,11 @@ temples, speaking order) after c.
   Index on `(reading_id, seq)`. The visitor's message is stored once per
   `(reading_id, qid)` however many masters answer; an answer once per
   `(reading_id, qid, model_id)`.
+  Messages are written through `xtell_add_message` (migration 127, Oct 4):
+  `insert ... on conflict do nothing`, so the copies made when several
+  masters store the same question at once are skipped quietly. The plain
+  insert's refusals were logged by Postgres as errors (20 of 27 in the
+  dashboard on Oct 3); `addMessage` keeps the plain insert until 127 runs.
 - `xtell_memories`: `id`, `reading_id`, `model_id`, `model_name`,
   `through_seq` (the last message folded in), `text`, `input_tokens`,
   `output_tokens`, `cost`, `created_at`. Unique on
