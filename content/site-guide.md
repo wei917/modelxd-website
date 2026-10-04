@@ -65,9 +65,11 @@ video ...) is inside the prompt box; the model picker lists every model with
 what it can do and its list price. On the Image tab, one-tap tools (beta) do
 one job on your own photo: white background, product in a scene, change or
 blur the background, remove objects, portrait retouch, enhance to 2K or 4K,
-colorize, expand to a new shape, photo to anime. Upload a photo, pick an
-option and Create; the panel shows which model runs it and the price per
-image, and the result is saved to your works. Under Generate, each type's
+colorize, expand to a new shape, photo to anime. Tapping one turns the prompt
+box into that tool: add a photo, pick an option, and Create. The tool writes
+the prompt; its model is chosen for you, and you can change it or add more
+models to compare, each with its price. The result is saved to your works,
+and 「再做一次」 runs it again with the same photo. Under Generate, each type's
 page also shows what is trending on social media and your own latest works
 of that type as pictures (tap one to reopen it). All of your past work (the Library, filterable by type, Film
 included, with rename and delete) is on the account page. A run where you

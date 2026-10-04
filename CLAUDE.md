@@ -182,11 +182,17 @@ entrance until then. **One-tap tools** (Oct 3, beta; owner: "blackbox mode
 that we control, which is what Pollo.ai does"): `lib/xcreate-tools.ts` holds
 10 tools (白底商品圖, 商品情境照, 換背景, 背景模糊, 物件移除, 人像美化, 畫質增強,
 黑白上色, 擴圖, 照片轉動漫), each a hidden prompt on Nano Banana 2; `ToolsRow.tsx`
-is the 工具 section on the Image tab (category chips); `ToolPanel.tsx` is a
-tool's panel (photo, choices, Create), an ordinary `/api/xcreate` run saved
-under the tool's name (`title`), showing the model and its list price for the
-beta; `?tool=<id>` opens one. The photo keeps its shape: Google turns a
-missing ratio into 1:1, so the panel sends the nearest ratio. Prompt-filling
+is the 工具 section on the Image tab (category chips). A tool is a MODE of the
+studio, not a popup (owner, Oct 4: "I don't like ... you popup a new dialog";
+"let users try or add different models"): it takes the heading and the prompt
+box's place (photo, its choices, its words; `client.tsx` tool mode,
+`applyTool` / `leaveTool` / `toolAgain`), and the model cards, Generate and
+results stay the studio's. The tool's model is seated first; the picker
+offers every image-edit model to swap or compare, each seat sized to the
+tool's shape (`toolOptionsFor` / `toolSizeFor`). The run is saved under the
+tool's name (`title` on `/api/xcreate`); `?tool=<id>` opens one, and Back
+leaves it. The photo keeps its shape: Google turns a missing ratio into 1:1,
+so the seat gets the nearest ratio. Prompt-filling
 templates are the other mode, to come back as 範本. Your works are `StudioWorks.tsx` (a picture grid of
 your latest of the type from `/api/profile/xcreates?studio=1`, which leaves out
 rows with a `node_kind`; Film keeps only film rows and Video leaves them out,

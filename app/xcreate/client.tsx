@@ -18,8 +18,7 @@ import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType }
 import StandaloneTrending from './StandaloneTrending'
 import StudioWorks from './StudioWorks'
 import ToolsRow from './ToolsRow'
-import ToolPanel from './ToolPanel'
-import { toolById, type XTool } from '../../lib/xcreate-tools'
+import { toolById, nearestRatio, type XTool, type ToolChoice } from '../../lib/xcreate-tools'
 import ExportBar from './ExportBar'
 import VideoExportBar from './VideoExportBar'
 import ConvertDialog from './ConvertDialog'
@@ -1122,14 +1121,18 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const templateAspectRef = useRef<string | null>(null)
   // "Your own file → a platform's spec" (ConvertDialog), when open.
   const [convertKind, setConvertKind] = useState<'image' | 'video' | null>(null)
-  // The one-tap tool whose panel is open (Oct 3; ToolPanel). `?tool=<id>`
-  // opens one straight from a link (an ad, a LINE post, the sign-in return).
-  const [toolOpen, setToolOpen] = useState<XTool | null>(null)
-  useEffect(() => {
-    if (!isStandalone || typeof window === 'undefined') return
-    const tool = toolById(new URLSearchParams(window.location.search).get('tool'))
-    if (tool) setToolOpen(tool)
-  }, [isStandalone])
+  // One-tap tool mode (Oct 3; owner: no popup, "maybe remove the prompt
+  // box"; "let users try or add different models that support that
+  // blackbox feature"). A tool takes the prompt box's place (a photo, its
+  // choices, a prompt it writes itself, lib/xcreate-tools.ts) and the rest
+  // of the studio stays: model cards, Generate, results. `?tool=<id>`.
+  const [toolId, setToolId] = useState<string | null>(null)
+  const [toolChoiceId, setToolChoiceId] = useState<string | null>(null)
+  const [toolText, setToolText] = useState('')
+  const [toolRatio, setToolRatio] = useState<string | null>(null)
+  const activeTool = toolById(toolId)
+  const toolChoice: ToolChoice | null = activeTool?.choices?.find(c => c.id === toolChoiceId) ?? activeTool?.choices?.[0] ?? null
+  const toolFileRef = useRef<HTMLInputElement | null>(null)
   // E-commerce platform chip on product templates (General/Shopee/Taobao/
   // Amazon). A chip is a re-application of the template with that
   // marketplace's conventions appended — it owns the prompt the same way
@@ -1682,6 +1685,23 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setRecipeMode(RECIPES[mode][0].id)  // reset Layer 2 to the first recipe
   }, [mode])
 
+  // ?tool=<id> opens a one-tap tool (an ad, a LINE post, the sign-in return),
+  // and Back / Forward move between a tool and the prompt box. Declared
+  // after the type reset above, so that effect's first run cannot undo it.
+  useEffect(() => {
+    if (!isStandalone || typeof window === 'undefined') return
+    const tool = toolById(new URLSearchParams(window.location.search).get('tool'))
+    if (tool) void applyToolRef.current(tool, { push: false })
+    const onPop = () => {
+      const next = toolById(new URLSearchParams(window.location.search).get('tool'))
+      if (next) void applyToolRef.current(next, { push: false })
+      else leaveToolRef.current({ url: false })
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStandalone])
+
   // Sign-in keeps the studio (tester, Sep 28: "I was on Image before login.
   // After Google sign-in, the app returned to the default Video workflow").
   // Google's round trip reloads the page, so on the door the draft rides in
@@ -1699,7 +1719,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode) || draft.mode === 'film') return
     // A link that names what to open outranks the draft.
     const params = new URLSearchParams(window.location.search)
-    if (['id', 'job', 'template', 'model', 'type', 'film'].some(k => params.has(k))) return
+    if (['id', 'job', 'template', 'model', 'type', 'film', 'tool'].some(k => params.has(k))) return
     const nextMode: Mode = draft.mode
     const recipe = RECIPES[nextMode].some(r => r.id === draft.recipeMode) ? draft.recipeMode as ModelMode : RECIPES[nextMode][0].id
     if (nextMode !== mode) modeClearedRef.current = true
@@ -1849,6 +1869,61 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       duration: f?.duration ?? tpl?.duration ?? null,
       size: (f?.sizeByModel ?? tpl?.sizeByModel)?.[m.model_name] ?? null,
     })
+  /** A size this model takes for a tool's shape and tier. A tier model
+   *  (Nano Banana: '1024', '2048') gets the tier, else the largest below it;
+   *  a WxH model (GPT Image, Qwen) gets its preset nearest the shape, near
+   *  the tier. */
+  const toolSizeFor = (m: SlotModel, tier: string, aspect: string | null): string | null => {
+    const sizes: string[] = m.output_config?.image?.sizes ?? []
+    if (sizes.length === 0) return null
+    const want = parseInt(tier, 10) || 1024
+    const wxh = sizes.filter(x => /^\d+x\d+$/.test(x))
+    if (wxh.length === 0) {
+      const tiers = sizes.map(x => [x, parseInt(x, 10) || 0] as const).filter(([, n]) => n > 0)
+      const exact = tiers.find(([, n]) => n === want)
+      if (exact) return exact[0]
+      const below = tiers.filter(([, n]) => n < want).sort((a, b) => b[1] - a[1])[0]
+      return (below ?? tiers[0])?.[0] ?? sizes[0]
+    }
+    const [aw, ah] = (aspect ?? '').split(':').map(Number)
+    const target = aw && ah ? aw / ah : null
+    const cost = (x: string) => {
+      const [w, h] = x.split('x').map(Number)
+      return (target ? Math.abs(Math.log((w / h) / target)) * 10 : 0) + Math.abs(Math.log(Math.max(w, h) / want))
+    }
+    return [...wxh].sort((a, b) => cost(a) - cost(b))[0]
+  }
+  /** A seat's options in tool mode: the tool's recipe, shape and size,
+   *  clamped to the model. The shape rides templateAspectRef, which is how
+   *  validateOpts keeps a ratio on an edit (google.ts squares a missing one). */
+  const toolOptionsFor = (m: SlotModel, tool: XTool, choice: ToolChoice | null, ratio: string | null): SlotOptions => {
+    const aspect = choice?.aspect ?? tool.aspect ?? ratio ?? null
+    templateAspectRef.current = aspect
+    return validateOpts(m, 'image', {
+      mode: 'image_edit', quality: null, watermark: false, count: null, duration: null,
+      aspect_ratio: aspect, size: toolSizeFor(m, choice?.size ?? tool.size, aspect),
+    })
+  }
+  // A new choice or a new photo re-sizes every seat (the shape or the tier).
+  useEffect(() => {
+    if (!activeTool || phase !== 'setup') return
+    setSlotOptions(prev => prev.map((o, i) => {
+      const m = selectedModels[i]
+      return m ? toolOptionsFor(m, activeTool, toolChoice, toolRatio) : o
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolId, toolChoiceId, toolRatio])
+  // The photo's own shape, for the tools that keep it.
+  const toolPhotoUrl = activeTool ? (attachments[0]?.previewUrl ?? null) : null
+  useEffect(() => {
+    if (!toolPhotoUrl) return
+    let dead = false
+    const img = new Image()
+    img.onload = () => { if (!dead) setToolRatio(nearestRatio(img.naturalWidth, img.naturalHeight)) }
+    img.src = toolPhotoUrl
+    return () => { dead = true }
+  }, [toolPhotoUrl])
+
   const addModel    = (i: number, m: SlotModel) => {
     // Slots fill left-to-right (CC, July 20): picking into an EMPTY slot
     // always lands in the leftmost empty one (open the D picker with B
@@ -1859,7 +1934,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     // New models adopt the run's recipe (Layer 2), not their own first mode,
     // and the active template's shape: a 9:16 story stays 9:16 on every seat.
     setSlotOptions(prev => prev.map((v, idx) => idx === target
-      ? optionsFor(m, recipeMode, activeTpl, activeFormat)
+      ? (activeTool ? toolOptionsFor(m, activeTool, toolChoice, toolRatio) : optionsFor(m, recipeMode, activeTpl, activeFormat))
       : v))
     // A new seat joins whatever state the others are in. Forcing it closed
     // meant that adding a second model WHILE configuring the first hid the
@@ -1917,7 +1992,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // template apply or job restore lands first, the guards see a non-empty
   // array and no-op.
   useEffect(() => {
-    if (phase !== 'setup' || activeTemplateId) return
+    if (phase !== 'setup' || activeTemplateId || toolId) return
     if (selectedModels.some(Boolean)) return
     let cancelled = false
     Promise.all([
@@ -2313,12 +2388,17 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
   const generate = async () => {
     if (isStandalone && !userId) { showAuth(); return }
+    // A tool writes the prompt from its choices and names the run after
+    // itself (lib/xcreate-tools.ts); it always needs its photo.
+    const runPrompt = activeTool ? activeTool.prompt({ choice: toolChoice, text: toolText }) : prompt
+    const runTitle = activeTool ? t(`xtool.${activeTool.id}.name`) : null
+    if (activeTool && attachments.length === 0) return
     // Mirror canGenerate: video / image with an attachment is enough to
     // proceed even if the prompt is empty (image_to_video, image_to_image,
     // reference_frames, etc. animate / transform the input file with no
     // text required).
     const hasAttachmentForGen = attachments.length > 0
-    const promptOkForGen = prompt.trim().length >= 1 ||
+    const promptOkForGen = runPrompt.trim().length >= 1 ||
       ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachmentForGen)
     if (!promptOkForGen || activeModels.length === 0 || phase === 'generating') return
     // A previous failure's banner (moderation refusal, upload error, 402)
@@ -2407,7 +2487,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       const url = new URL(window.location.href)
       url.search = `?id=${newRowId}`
       window.history.replaceState({}, '', url.toString())
-      window.dispatchEvent(new CustomEvent('xcreate:run-started', { detail: { id: newRowId, prompt, mode } }))
+      window.dispatchEvent(new CustomEvent('xcreate:run-started', { detail: { id: newRowId, prompt: runTitle ?? prompt, mode } }))
     }
     fetch('/api/xcreate', {
       method: 'POST',
@@ -2415,7 +2495,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       body: JSON.stringify({
         jobId: newJobId,
         rowId: newRowId,
-        prompt, mode,
+        prompt: runPrompt, mode,
+        ...(runTitle ? { title: runTitle } : {}),
         retryOf: retryOfId,
         modelIds: ids,
         modelOptions: optsList,
@@ -3343,6 +3424,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     setPrompt(''); setAttachments([])
     setSelectedModels([null, null, null, null])
     setSlotOptions([null, null, null, null])
+    setToolId(null); setToolText(''); setToolRatio(null)
     setActiveTemplateId(null); templateAspectRef.current = null
     setImageResponseId(null); setImageConvHistory(null)
     // Strip ?id=... from the URL so refreshing doesn't re-load the
@@ -3396,10 +3478,81 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     if (next === 'film') { openFilm(null); return }
     if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
+    if (toolId) leaveTool()
     if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
   }
   const switchTypeRef = useRef(switchType)
   switchTypeRef.current = switchType
+
+  // ── One-tap tool mode: enter, leave, run again ──
+  const toolLiveRef = useRef({ mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen })
+  toolLiveRef.current = { mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen }
+  /** The address for a tool (or none), without the run's ?id=. */
+  const toolUrl = (id: string | null) => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
+    url.searchParams.delete('id'); url.searchParams.delete('job')
+    if (id) url.searchParams.set('tool', id); else url.searchParams.delete('tool')
+    return url.pathname + url.search + url.hash
+  }
+  const applyTool = async (tool: XTool, { push = true }: { push?: boolean } = {}) => {
+    const live = toolLiveRef.current
+    if (live.filmOpen) { setFilmOpen(false); setFilmId(null) }
+    if (live.phase !== 'setup' || live.slotsLen > 0) {
+      stopPolling(); activeJobRef.current = null; galleryLoadedRef.current = null
+      setPhase('setup'); setSlots([]); setChosenIdx(null); setChatHistory([]); setXcreateId(null); setRetryOfId(null)
+    }
+    if (live.mode !== 'image') { modeClearedRef.current = true; setMode('image') }
+    setRecipeMode('image_edit')
+    setActiveTemplateId(null)
+    setLoadError(null); setNeedsTopUp(false)
+    // The photo stays when switching tools: try another tool on the same picture.
+    setAttachments(prev => prev.filter(a => a.mediaType?.startsWith('image/')).slice(0, 1).map(a => ({ ...a, slotIndex: 0 })))
+    setToolId(tool.id); setToolChoiceId(tool.choices?.[0]?.id ?? null); setToolText('')
+    if (typeof window !== 'undefined') {
+      const next = toolUrl(tool.id)
+      if (push) window.history.pushState({}, '', next); else window.history.replaceState({}, '', next)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    // The tool's own model first; the cards below let the user swap it or
+    // add others to compare (the picker lists the image-edit models).
+    const { data: row } = await createSupabaseBrowser().from('ai_models')
+      .select('id, provider, model_name, display_name, modes, model_pricing, output_config, input_config')
+      .eq('enabled', true).eq('model_name', tool.model).maybeSingle()
+    if (!row) return
+    const m: SlotModel = {
+      id: row.id, provider: row.provider, model_name: row.model_name,
+      display_name: row.display_name, modes: (row.modes ?? []) as ModelMode[],
+      model_pricing: row.model_pricing, output_config: row.output_config, input_config: row.input_config ?? null,
+    }
+    setSelectedModels([m, null, null, null])
+    setSlotOptions([toolOptionsFor(m, tool, tool.choices?.[0] ?? null, toolLiveRef.current.ratio), null, null, null])
+    setOptsOpen([false, false, false, false])
+  }
+  const leaveTool = ({ url = true }: { url?: boolean } = {}) => {
+    setToolId(null); setToolText(''); templateAspectRef.current = null
+    if (url && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('tool')) {
+      window.history.replaceState({}, '', toolUrl(null))
+    }
+  }
+  /** Back to the tool with the same photo, choices and models. */
+  const toolAgain = () => {
+    stopPolling(); activeJobRef.current = null; galleryLoadedRef.current = null
+    setLoadError(null); setNeedsTopUp(false)
+    setPhase('setup'); setSlots([]); setChosenIdx(null); setChatHistory([]); setXcreateId(null); setRetryOfId(null)
+    if (toolId && typeof window !== 'undefined') window.history.replaceState({}, '', toolUrl(toolId))
+    flashComposer()
+  }
+  const pickToolPhoto = (f: File | undefined) => {
+    if (!f || !f.type.startsWith('image/')) return
+    if (f.size > 20_000_000) { setLoadError(t('xtools.toobig')); return }
+    setLoadError(null); setToolRatio(null)
+    setAttachments([{ ...pendingAttachment(f, 'xcreate'), slotIndex: 0 }])
+  }
+  const applyToolRef = useRef(applyTool)
+  applyToolRef.current = applyTool
+  const leaveToolRef = useRef(leaveTool)
+  leaveToolRef.current = leaveTool
   useEffect(() => {
     if (!isStandalone) return
     return onStudioTypeRequest(type => switchTypeRef.current(type))
@@ -3727,12 +3880,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // output_config.<mode>.prompt_required (H3 400s upstream on an empty
   // text part, code 2013) — block at the composer with a named reason
   // instead of letting the provider refuse after the run starts.
-  const promptRequiredBy = prompt.trim().length === 0
+  const promptRequiredBy = prompt.trim().length === 0 && !activeTool
     ? activeModels.filter((m: any) => m?.output_config?.[mode]?.prompt_required)
     : []
-  const promptOk = (prompt.trim().length >= 3 ||
-    ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachment)) &&
-    promptRequiredBy.length === 0
+  const promptOk = activeTool
+    ? hasAttachment && (!activeTool.text?.required || toolText.trim().length > 0)
+    : (prompt.trim().length >= 3 ||
+      ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachment)) &&
+      promptRequiredBy.length === 0
   const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating' && !attachingSample
 
   // Once the user fires a generation, every setup control (mode tabs,
@@ -4095,10 +4250,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         <ConvertDialog kind={convertKind} onClose={() => setConvertKind(null)}
           onSignIn={() => { setConvertKind(null); showAuth(`/?type=${convertKind}`) }} />
       )}
-      {toolOpen && (
-        <ToolPanel tool={toolOpen} onClose={() => setToolOpen(null)}
-          onSignIn={() => { setToolOpen(null); showAuth(`/?tool=${toolOpen.id}`) }} />
-      )}
+
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
@@ -4187,12 +4339,18 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
       <div className="xduel-page">
         <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
-          {isStandalone ? !filmOpen && <header className="xcs-heading">
+          {isStandalone ? !filmOpen && (activeTool ? (
+            <header className="xcs-heading xtool-heading">
+              <button type="button" className="xtool-back" onClick={() => leaveTool()}>‹ {t('xtools.backprompt')}</button>
+              <h1>{t(`xtool.${activeTool.id}.name`)}</h1>
+              <p>{t(`xtool.${activeTool.id}.sub`)}</p>
+            </header>
+          ) : <header className="xcs-heading">
             {/* Studio's title is www's own XCreate headline (owner, Sep 26: the
                 earlier slogan read as nothing); its eyebrow would repeat it. */}
             <h1>{t('xcreate.subtitle')}</h1>
             <p>{copy.subtitle}</p>
-          </header> : <>
+          </header>) : <>
             <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
               <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
@@ -4559,7 +4717,59 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     placeholder says what goes there, and the textarea keeps
                     its aria-label. */}
                 {isStandalone && <div className="xcs-prompt-section">
-                  {promptComposer}
+                  {activeTool ? (
+                    // Tool mode (Oct 3): the photo, the tool's choices, and
+                    // its words box; the prompt is the tool's own.
+                    <div ref={promptBoxRef} className="prompt-box framed xtool-box" style={{
+                      opacity: isLocked ? 0.55 : 1,
+                      boxShadow: promptFlash ? '0 0 0 3px rgba(214,59,50,0.30)' : 'none',
+                      transition: 'box-shadow 0.4s ease',
+                    }}>
+                      <div className="xtool-stage">
+                        {attachments[0]?.previewUrl ? <>
+                          <img src={attachments[0].previewUrl} alt="" />
+                          {!isLocked && <button type="button" className="xtool-change" onClick={() => toolFileRef.current?.click()}>{t('xtools.change')}</button>}
+                        </> : (
+                          <button type="button" className="xtool-upload" disabled={isLocked} onClick={() => toolFileRef.current?.click()}>
+                            <b aria-hidden>+</b>{t('xtools.pick')}
+                          </button>
+                        )}
+                      </div>
+                      {activeTool.choices && (
+                        <div className="xtool-chips" role="radiogroup" aria-label={t(`xtool.${activeTool.id}.name`)}>
+                          {activeTool.choices.map(c => (
+                            <button key={c.id} type="button" role="radio" aria-checked={toolChoice?.id === c.id} disabled={isLocked}
+                              className={`xtool-chip${toolChoice?.id === c.id ? ' is-on' : ''}`} onClick={() => setToolChoiceId(c.id)}>
+                              {t(`xtool.${activeTool.id}.${c.id}`)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {activeTool.text && (
+                        <label className="xtool-field">
+                          {t(`xtool.${activeTool.id}.text`)}
+                          <input type="text" value={toolText} maxLength={activeTool.text.max} disabled={isLocked}
+                            placeholder={t(`xtool.${activeTool.id}.textph`)} onChange={e => setToolText(e.target.value)} />
+                          {activeTool.text.presets && (
+                            <span className="xtool-chips">
+                              {activeTool.text.presets.map(p => {
+                                const words = t(`xtool.${activeTool.id}.p.${p}`)
+                                return (
+                                  <button key={p} type="button" disabled={isLocked}
+                                    className={`xtool-chip${toolText === words ? ' is-on' : ''}`} onClick={() => setToolText(words)}>
+                                    {words}
+                                  </button>
+                                )
+                              })}
+                            </span>
+                          )}
+                        </label>
+                      )}
+                      <p className="xtool-note">{t('xtools.note')}</p>
+                      <input ref={toolFileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden
+                        onChange={e => { pickToolPhoto(e.target.files?.[0]); e.target.value = '' }} />
+                    </div>
+                  ) : promptComposer}
                 </div>}
 
                 {/* Model slots + per-model options */}
@@ -5260,7 +5470,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </span>
                   )}
                   {/* Improve prompt: secondary, beside Generate (owner, Sep 16). */}
-                  {phase === 'setup' && (isStandalone && !userId ? <span className="xcs-auth-refiner" onClickCapture={e => { e.preventDefault(); e.stopPropagation(); showAuth() }}>{refiner.action}</span> : refiner.action)}
+                  {phase === 'setup' && !activeTool && (isStandalone && !userId ? <span className="xcs-auth-refiner" onClickCapture={e => { e.preventDefault(); e.stopPropagation(); showAuth() }}>{refiner.action}</span> : refiner.action)}
                   {phase === 'setup' && (
                     <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
                       {t('xcreate.generatebtn')}
@@ -5272,14 +5482,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </button>
                   )}
                 </div>
-                {phase === 'setup' && refiner.preview}
+                {phase === 'setup' && !activeTool && refiner.preview}
 
                 {/* ── Product board (CC, July 28): the entry point for the
                     product-video pipeline. Uploading here does NOT generate
                     anything — the photos become source nodes on a fresh
                     board, and everything after that happens on the canvas.
                     Image mode only. ── */}
-                {phase === 'setup' && mode === 'image' && (
+                {phase === 'setup' && mode === 'image' && !activeTool && (
                   <div style={{ marginTop: 22, borderTop: '1px dashed var(--border2)', paddingTop: 16 }}>
                     <button
                       onClick={() => setPbOpen(o => !o)}
@@ -5378,7 +5588,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     model cards above pick models, and the picker shows each
                     one's price. Setup screen only, like the wall above. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && <>
-                  {mode === 'image' && <ToolsRow onOpen={setToolOpen} />}
+                  {mode === 'image' && <ToolsRow activeId={toolId} onOpen={tool => { void applyTool(tool) }} />}
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTrending kind={mode} onUse={template => { void applyTemplate(template) }} />
                   )}
@@ -5388,6 +5598,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* Results */}
                 {slots.length > 0 && (
                   <div className={isStandalone ? 'xcs-results' : undefined} style={{ marginTop: 24 }}>
+                    {isStandalone && activeTool && phase !== 'generating' && (
+                      <div className="xtool-again-row">
+                        <button type="button" className="xtool-again" onClick={toolAgain}>↺ {t('xtools.again')}</button>
+                      </div>
+                    )}
                     {/* A single-model run has no contest — no vote header,
                         no Select button (owner, Aug 10). The output simply
                         stands; Start Over remains the way onward. */}
