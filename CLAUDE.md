@@ -151,10 +151,11 @@ rating system (XDRating) surfaced on XBoard.
   Checked live: both return the top20/top10_avg columns and no p80/p90,
   Oct 6 reads 1,646 s / 997 s as proven on PGlite, and the publishable key
   gets 42501 on both.
-  `127_xtell_add_message.sql` (Oct 4) is PENDING: `xtell_add_message`, the
-  insert with ON CONFLICT DO NOTHING that stores an XTell message once
-  without a logged error (service role only). Proven on PGlite; until it
-  runs, `addMessage` keeps the plain insert.
+  `127_xtell_add_message.sql` applied 2026-10-04 by the owner:
+  `xtell_add_message`, the insert with ON CONFLICT DO NOTHING that stores an
+  XTell message once without a logged error. Checked live: execute false for
+  anon and authenticated, true for service_role; re-storing an existing
+  question through PostgREST returned null, added no row, logged no error.
   `126_xtell_memory.sql` applied 2026-10-03 by the owner: XTell masters'
   memory (`xtell_messages`, `xtell_memories`, `ai_models.context_window`;
   docs/XTELL-MEMORY.md). It copied 675 messages from 195 conversations out
