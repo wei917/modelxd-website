@@ -138,6 +138,7 @@ check('the embedded row is not .xtell-nav (that switches the page to the door\'s
 check('the row lines up with the banner (its 1280px column, 32px gutters); temples centered when they all fit, from the left when not (owner, Oct 4)',
   /\.xtell-embedded-inner \{ max-width: 1280px; margin: 0 auto; padding: 0 32px; \}/.test(css) && /\.xtell-explorer-container \{ max-width: 1280px; padding: 0 32px 30px; \}/.test(css)
   && /\.xtell-embedded-bar \.xtell-temple-nav \{ flex: 1 1 auto; justify-content: flex-start; justify-content: safe center; \}/.test(css))
+check('on a phone the footer note takes its own height (its 360px basis left 300px of blank in the column)', /\.xtell-footer \{ margin-inline: 20px; align-items: flex-start; flex-direction: column; gap: 18px; \}[\s\S]{0,260}\.xtell-footer-note \{ flex: none; \}/.test(css))
 check('the temples row follows the base', /href=\{templeHref\(base, key\)\}/.test(nav) && /href=\{doorHome\(base\)\}/.test(nav) && /a\[href="\$\{templeHref\(base, activeTemple\)\}"\]/.test(nav))
 const profileSrc = read('app/profile/page.tsx')
 check('www\'s account page has an X先知 tab (settings + saved visits, a visit opens on /xtell), opened by the settings links\' #xtell-… hash',

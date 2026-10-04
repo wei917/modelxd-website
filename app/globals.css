@@ -3318,6 +3318,9 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
   .xtell-temple-copy p { font-size: 16px; }
   .xtell-footer { margin-inline: 20px; align-items: flex-start; flex-direction: column; gap: 18px; }
   .xtell-footer > div { gap: 14px; }
+  /* In a column the note's 360px basis became its height: 300px of blank
+     between the disclaimer and the links on every phone. */
+  .xtell-footer-note { flex: none; }
   .xtell-room { padding-top: 21px; }
   .xtell-room-header { display: block; }
   .xtell-room-header img { width: 100%; aspect-ratio: 16/7; margin-bottom: 24px; }
