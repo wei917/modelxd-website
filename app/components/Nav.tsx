@@ -11,6 +11,7 @@ import { XCREATE_TEMPLATES } from '../xcreate/templates'
 import ContactEmail from './ContactEmail'
 import BugReportLink from './BugReport'
 import { useSite } from '../../lib/useSite'
+import { doorOfPath } from '../../lib/site'
 import XTellNav from './xtell/XTellNav'
 import XCreateNav from './xcreate/XCreateNav'
 import { useFace } from '../../lib/use-face'
@@ -29,7 +30,8 @@ const NAV_LINKS = [
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
-  { href: '/xtell',       i18n: 'nav.xtell',       protected: true,  icon: 'game'   },
+  // The XTell door, open signed out like xtell.modelxd.com (free chart; sign-in at the first question).
+  { href: '/xtell',       i18n: 'nav.xtell',       protected: false, icon: 'game'   },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
   { href: '/xdev',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
 ]
@@ -477,7 +479,18 @@ export default function Nav() {
         </a>
       )}
       <div className="nav-links">
-        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
+        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => doorOfPath(href) ? (
+          // The XTell door has its own shell (owner, Oct 4: /xtell instead of
+          // a subdomain): a plain link, so the page loads with that shell.
+          <a
+            key={href}
+            href={href}
+            onClick={(e) => handleProtectedClick(e, href, isProtected)}
+            title={collapsed ? t(i18n) : undefined}
+          >
+            <NavIcon name={icon} /><span className="nav-label">{t(i18n)}</span>
+          </a>
+        ) : (
           <Link
             key={href}
             href={href}

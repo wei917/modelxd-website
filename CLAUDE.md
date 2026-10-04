@@ -51,7 +51,10 @@ rating system (XDRating) surfaced on XBoard.
   and `xcreate.modelxd.com` (the studio, Sep 26) are the same deployment and
   the same auth/wallet with their own shell. `lib/site.ts` is the contract
   (`useSite()`, `siteFromHeaders()`, per-door route lists; any other page
-  302s to `/` there). Locally, `?site=xtell|xcreate|www` switches the shell
+  302s to `/` there). **Since Oct 4 the XTell door is also served at
+  `/xtell` on any non-door host** (dev.modelxd.com/xtell; www.modelxd.com/xtell
+  behind www's password) — the owner decided against subdomains; the
+  subdomain stays until www opens (docs/XTELL-PAGE.md). Locally, `?site=xtell|xcreate|www` switches the shell
   (cookie), or a worktree server on :3001 / :3030 is that door.
 - **Both environments share ONE Supabase project.** A migration applied for
   dev is immediately live for production. Additive columns are safe;

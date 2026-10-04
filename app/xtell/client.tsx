@@ -16,7 +16,7 @@
 //      as a 批文. The model interprets the chart; it never computes one.
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
-import { useSite } from '../../lib/useSite'
+import { useSite, useSiteBase } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { SIGN_IN_FIRST } from '../../lib/xtell-guest'
@@ -2295,6 +2295,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
   aria?: FieldAria
 }) {
   const t = useT()
+  const base = useSiteBase()
   const [noneSaved, setNoneSaved] = useState(false)
   // Only real days are offered (audit F01). When a month or year change
   // leaves the chosen day impossible (31 → February), the day is KEPT and
@@ -2315,7 +2316,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
         <button type="button" onClick={() => setNoneSaved(!onFill())} className="xtell-fill-mine">{t('xtell.fillMine')}</button>
       )}
       {noneSaved && (
-        <span role="status" className="xtell-fill-note">{t('xtell.fillMine.none')} <a href="/profile#xtell-daily-settings">{t('xtell.fillMine.set')}</a></span>
+        <span role="status" className="xtell-fill-note">{t('xtell.fillMine.none')} <a href={`${base}/profile#xtell-daily-settings`}>{t('xtell.fillMine.set')}</a></span>
       )}
       <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}

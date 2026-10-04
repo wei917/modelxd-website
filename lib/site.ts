@@ -52,6 +52,26 @@ export const XCREATE_LOCAL_PORT = '3030'
 
 export const WWW_ORIGIN = 'https://www.modelxd.com'
 
+/** The XTell door also lives under /xtell on any host (owner, Oct 4: no
+ *  subdomains; dev.modelxd.com/xtell first, www stays behind its password).
+ *  The subdomain keeps serving it until it is retired. `base` is '' on the
+ *  subdomain and '/xtell' under the path; links inside the door use it. */
+export const XTELL_PATH = '/xtell'
+export const SITE_BASE_HEADER = 'x-modelxd-site-base'
+export type SiteBase = '' | '/xtell'
+
+/** The door a page path belongs to on a host that is not a door itself.
+ *  Files under /xtell (pictures, cards) are not pages. */
+export function doorOfPath(pathname: string): 'xtell' | null {
+  if (/\.[a-z0-9]+$/i.test(pathname)) return null
+  return pathname === XTELL_PATH || pathname.startsWith(XTELL_PATH + '/') ? 'xtell' : null
+}
+
+/** The door's home, a page inside it, and a temple on it, for this base. */
+export const doorHome = (base: string): string => base || '/'
+export const doorPath = (base: string, path: string): string => base + path
+export const templeHref = (base: string, key: string): string => `${base || '/'}#${key}`
+
 function isDoor(v: string | null | undefined): v is 'xtell' | 'xcreate' {
   return v === 'xtell' || v === 'xcreate'
 }
@@ -72,6 +92,11 @@ export function siteOfHost(hostname: string, cookie?: string | null): Site {
 export function isSiteRoute(site: Site, pathname: string): boolean {
   if (site === 'modelxd' || pathname === '/') return true
   return ROUTES[site].some(r => pathname === r || pathname.startsWith(r + '/'))
+}
+
+/** The door's base for this request ('' or '/xtell'), from the proxy. */
+export function siteBaseFromHeaders(h: { get(name: string): string | null }): SiteBase {
+  return h.get(SITE_BASE_HEADER) === XTELL_PATH ? XTELL_PATH : ''
 }
 
 /** Server components / route handlers: pass `await headers()`. */

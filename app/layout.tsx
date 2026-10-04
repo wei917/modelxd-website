@@ -10,7 +10,7 @@ import VisitTracker from './components/VisitTracker'
 import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
 import { headers } from 'next/headers'
-import { siteFromHeaders } from '../lib/site'
+import { siteFromHeaders, siteBaseFromHeaders } from '../lib/site'
 import { needsConsent } from '../lib/consent'
 import { xtellMetadata } from '../lib/xtell-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
@@ -140,7 +140,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} />
       </head>
       <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}${site === 'xcreate' ? ` ${dmSans.variable} ${barlowXCreate.variable}` : ''}`}>
-        <SiteProvider site={site}>
+        <SiteProvider site={site} base={siteBaseFromHeaders(h)}>
         <LangProvider initial={lang}>
           <AuthModalProvider>
             <PageTitleProvider>

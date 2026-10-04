@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../../lib/i18n'
+import { useSiteBase } from '../../../lib/useSite'
 import { PAIRS, asPersonalityType, partsOf, typeOf, type PersonalityParts } from '../../../lib/xtell-personality'
 
 /** The saved type, or null; undefined while loading or when the feature is
@@ -151,6 +152,7 @@ export function PersonalityAttach({ saved, on, setOn, partner, setPartner }: {
   partner?: string
   setPartner?: (v: string) => void
 }) {
+  const base = useSiteBase()
   const t = useT()
   if (saved === undefined) return null
   const all: string[] = []
@@ -165,7 +167,7 @@ export function PersonalityAttach({ saved, on, setOn, partner, setPartner }: {
           {on ? t('xtell.pt.attach').replace('{type}', saved) : t('xtell.pt.attachPlain')}
         </label>
       ) : (
-        <a className="xtell-dy-link" href="/profile#xtell-personality">{t('xtell.pt.hint')}</a>
+        <a className="xtell-dy-link" href={`${base}/profile#xtell-personality`}>{t('xtell.pt.hint')}</a>
       )}
       {saved && on && <small className="xtell-pt-attach-note">{t('xtell.pt.attachNote')}</small>}
       {setPartner && (

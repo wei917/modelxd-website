@@ -11,6 +11,7 @@ import { heroTemples, stepSlide, mayRotate, HERO_ART, HERO_SLIDES, HERO_FEATURED
 import { parsePins, loadPins, savePins, pinTemple, unpinTemple, pinnedFirst, PINS_KEY } from '../lib/xtell-pins'
 import { displayTemples, type TempleKey } from '../app/components/xtell/TempleArtwork'
 import { STRINGS } from '../lib/i18n'
+import { doorOfPath, doorHome, doorPath, templeHref, siteBaseFromHeaders, XTELL_PATH, SITE_BASE_HEADER } from '../lib/site'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
@@ -48,7 +49,7 @@ check('held by: a person\'s choice, the pointer, keyboard focus, a hidden tab, l
 const hero = read('app/components/xtell/XTellHero.tsx')
 check('turning never navigates, routes, fetches or writes the address', !/location\.hash|history\.|useRouter|router\.|fetch\(|replaceState|pushState/.test(hero))
 check('the timer only moves the slide', /setTimeout\(\(\) => setIndex\(i => stepSlide\(i, 1, count\)\), HERO_SECONDS \* 1000\)/.test(hero))
-check('entering is a real link into the temple', /<a className="xtell-hero-enter" href=\{'\/#' \+ current\}>/.test(hero))
+check('entering is a real link into the temple (under /xtell when the door is served there)', /<a className="xtell-hero-enter" href=\{templeHref\(base, current\)\}>/.test(hero))
 check('any slide choice pauses; play is a toggle; reduced motion holds from the start until play', /const choose = \(i: number\) => \{ setIndex\(stepSlide\(i, 0, count\)\); setPaused\(true\) \}/.test(hero) && /reducedMotion: reducedMotion && !played/.test(hero))
 check('hover counts only for a mouse (a tap never sticks it)', /pointerType === 'mouse'/.test(hero))
 check('every slide the same height: the stage, not the copy, sets it', /\.xtell-hero-stage \{ position: relative; height: 330px;/.test(read('app/globals.css')))
@@ -117,6 +118,23 @@ const howText = [1, 2, 3, 4].flatMap(n => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko
 const how1 = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].map(l => (STRINGS['xtell.how.1.desc'] as any)[l] as string).join(' ')
 check('step 1 does not say where the guide is', !/below|下方|下面|下の|아래/.test(how1))
 check('the steps say what a visitor does, never how it is computed', !/code|calculat|計算|算好|系统|系統|계산/.test(howText))
+
+// ── The door under /xtell (owner, Oct 4: no subdomains) ───────────────────
+check('/xtell and its pages are the XTell door; files under /xtell and look-alikes are not',
+  doorOfPath('/xtell') === 'xtell' && doorOfPath('/xtell/profile') === 'xtell' && doorOfPath('/xtell/terms') === 'xtell'
+  && doorOfPath('/xtell/hero/bazi.webp') === null && doorOfPath('/xtellx') === null && doorOfPath('/') === null && doorOfPath('/profile') === null)
+check('links follow the base: the subdomain keeps /#bazi and /profile, the path gets /xtell#bazi and /xtell/profile',
+  templeHref('', 'bazi') === '/#bazi' && templeHref(XTELL_PATH, 'bazi') === '/xtell#bazi' && doorHome('') === '/' && doorHome(XTELL_PATH) === '/xtell'
+  && doorPath('', '/profile') === '/profile' && doorPath(XTELL_PATH, '/profile') === '/xtell/profile'
+  && siteBaseFromHeaders(new Headers({ [SITE_BASE_HEADER]: '/xtell' })) === '/xtell' && siteBaseFromHeaders(new Headers({ [SITE_BASE_HEADER]: '/evil' })) === '' && siteBaseFromHeaders(new Headers()) === '')
+const proxySrc = read('proxy.ts')
+check('the proxy marks /xtell pages on a non-door host as the XTell door (a leftover ?site= cookie cannot override it) and stamps the base',
+  /if \(siteOfHost\(host, null\) === 'modelxd' && doorOfPath\(req\.nextUrl\.pathname\) === 'xtell'\) \{ site = 'xtell'; base = XTELL_PATH \}/.test(proxySrc) && /headers\.set\(SITE_BASE_HEADER, base\)/.test(proxySrc))
+check('www stays behind its password: no /xtell exemption in the gate', !/startsWith\('\/xtell/.test(proxySrc.slice(proxySrc.indexOf('function isBypassed'), proxySrc.indexOf('function isBypassed') + 2000)))
+check('the door\'s account, legal and sign-in pages exist under /xtell', ['profile', 'terms', 'privacy', 'tokushoho', 'login'].every(p => fs.existsSync(path.join(__dirname, '..', 'app/xtell', p, 'page.tsx'))
+  && new RegExp(`export \\{ default.*\\} from '\\.\\./\\.\\./${p}/page'`).test(read(`app/xtell/${p}/page.tsx`))))
+check('the top bar, footer and account links follow the base', /href=\{templeHref\(base, key\)\}/.test(nav) && /href=\{doorHome\(base\)\}/.test(nav) && /href=\{doorPath\(base, '\/profile'\)\}/.test(nav) && /href=\{doorPath\(base, '\/terms'\)\}/.test(nav) && /a\[href="\$\{templeHref\(base, activeTemple\)\}"\]/.test(nav))
+check('crossing between www and the door is a full page load (the shell differs)', /doorOfPath\(href\) \? \(/.test(read('app/components/Nav.tsx')) && /window\.location\.assign\(r\.href\)/.test(read('app/components/Omnibox.tsx')) && /window\.location\.assign\(r\)/.test(read('app/components/LandingAgent.tsx')))
 
 // ── Every string in every language ─────────────────────────────────────────
 const used = new Set<string>()

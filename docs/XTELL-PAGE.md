@@ -29,6 +29,24 @@ sculptural portraits and screenprint icons, not the ink-wash covers; the
 ink-wash rule below still governs `/xtell` on www and every temple cover.
 The host is attached to Vercel's Production target, so it ships with `main`.
 
+**Under /xtell too (Oct 4; owner: no subdomains).** The same door is served
+at `/xtell` on any host that is not a door itself: dev.modelxd.com/xtell for
+testing, and www.modelxd.com/xtell, which stays behind www's password for
+now. `proxy.ts` marks `/xtell` pages on such a host as the XTell door
+(`doorOfPath` in `lib/site.ts`; files under `/xtell` are not pages, and a
+leftover `?site=` cookie cannot override the path) and stamps the base
+(`x-modelxd-site-base: /xtell`). `useSiteBase()` hands it to the links
+(`templeHref`, `doorHome`, `doorPath`): `/xtell#bazi`, `/xtell/profile`,
+`/xtell/terms`, `/xtell/privacy`, `/xtell/tokushoho`, `/xtell/login` (those
+pages re-export the www ones; the layout gives them the XTell shell). The
+subdomain gets base `''`, so its links stay `/#bazi`, `/profile`. Crossing
+between www and the door is a full page load (Nav's XTell item, Omnibox,
+LandingAgent), because the root layout, and with it the shell, survives an
+in-app navigation. www's own `/xtell` street page is gone: `/xtell` is the
+door everywhere. xtell.modelxd.com is unchanged and keeps serving the public
+until www opens; then it should redirect to www.modelxd.com/xtell. Share
+links still point at xtell.modelxd.com.
+
 **Reaching us (Sep 27).** The XTell footer carries 「聯絡我們：support@modelxd.com」
 (the address shown as it is, `ContactEmail plain`; support@ is a Workspace
 alias of the founder inbox since Sep 28, and replaced founder@ everywhere on

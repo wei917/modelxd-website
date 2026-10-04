@@ -12,6 +12,8 @@ import BugReportLink from '../BugReport'
 import { useFace } from '../../../lib/use-face'
 import { onPreview } from '../../../lib/xtell-preview'
 import { pinnedFirst } from '../../../lib/xtell-pins'
+import { useSiteBase } from '../../../lib/useSite'
+import { doorHome, doorPath, templeHref } from '../../../lib/site'
 import { usePins } from './usePins'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
@@ -32,6 +34,8 @@ export function XTellMark() {
 
 export default function XTellNav({ user }: { user: User | null }) {
   const { lang, t } = useLang()
+  // '' on xtell.modelxd.com, '/xtell' under the path (owner, Oct 4).
+  const base = useSiteBase()
   const { show } = useAuthModal()
   const face = useFace(user)
   const pathname = usePathname()
@@ -68,7 +72,7 @@ export default function XTellNav({ user }: { user: User | null }) {
   // The temple you are in is never hidden past the edge.
   useEffect(() => {
     if (!activeTemple) return
-    row.current?.querySelector(`a[href="/#${activeTemple}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    row.current?.querySelector(`a[href="${templeHref(base, activeTemple)}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeTemple])
   // The homepage hero's temple (lib/xtell-preview.ts, Oct 3): a soft mark on
   // its icon, never aria-current (that is the room you are in). The row
@@ -106,7 +110,7 @@ export default function XTellNav({ user }: { user: User | null }) {
     const el = row.current
     if (!el || !preview || activeTemple) return
     if (hovering.current || wrap.current?.contains(document.activeElement) || Date.now() - touched.current < 8000) return
-    const link = el.querySelector<HTMLElement>(`a[href="/#${preview}"]`)
+    const link = el.querySelector<HTMLElement>(`a[href="${templeHref(base, preview)}"]`)
     if (!link) return
     const box = el.getBoundingClientRect(), r = link.getBoundingClientRect()
     if (r.left >= box.left && r.right <= box.right) return
@@ -130,17 +134,19 @@ export default function XTellNav({ user }: { user: User | null }) {
         const key = window.location.hash.slice(1) as TempleKey
         return DISPLAY_TEMPLES.includes(key) ? `${t('xtell.site.focus.' + key + '.name')} | ${brand}` : t('xtell.site.tab')
       }
-      if (pathname === '/profile') return `${t('xtell.site.account')} | ${brand}`
-      if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
-      if (pathname === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
-      if (pathname === '/tokushoho') return `${t('nav.tokushoho')} | ${brand}`
+      // The door's own pages, with or without the /xtell base.
+      const page = base && pathname.startsWith(base + '/') ? pathname.slice(base.length) : pathname
+      if (page === '/profile') return `${t('xtell.site.account')} | ${brand}`
+      if (page === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
+      if (page === '/privacy') return `${t('xtell.site.title.privacy')} | ${brand}`
+      if (page === '/tokushoho') return `${t('nav.tokushoho')} | ${brand}`
       return null
     }
     const apply = () => { const title = compute(); if (title) document.title = title }
     apply()
     window.addEventListener('hashchange', apply)
     return () => window.removeEventListener('hashchange', apply)
-  }, [lang, t, pathname])
+  }, [lang, t, pathname, base])
   return (
     <header className="xtell-nav">
       <a href="#xtell-main" className="xtell-skip" onClick={event => {
@@ -156,7 +162,7 @@ export default function XTellNav({ user }: { user: User | null }) {
       <div className="xtell-nav-inner">
         {/* The wordmark is the way back to the street. Inside a temple it
             clears the hash in place instead of reloading the page. */}
-        <a href="/" aria-label="XTell" onClick={e => {
+        <a href={doorHome(base)} aria-label="XTell" onClick={e => {
           const p = window.location.pathname
           if ((p === '/' || p === '/xtell') && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
         }}><XTellMark /></a>
@@ -164,7 +170,7 @@ export default function XTellNav({ user }: { user: User | null }) {
             The avatar on the right IS the account link (owner, Sep 24). */}
         <div ref={wrap} className="xtell-temple-wrap">
           <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-            {order.map((key, i) => <a key={key} href={'/#' + key}
+            {order.map((key, i) => <a key={key} href={templeHref(base, key)}
               aria-label={t('xtell.site.focus.' + key + '.name')}
               aria-current={activeTemple === key ? 'page' : undefined}
               data-preview={!activeTemple && preview === key ? 'true' : undefined}
@@ -183,7 +189,7 @@ export default function XTellNav({ user }: { user: User | null }) {
               first sign-in's), as XCreate's and www's navs show it; the
               initial only without one (owner, Sep 26). no-referrer: Google's
               avatar host can refuse hotlinks that carry a referrer. */}
-          {user ? <Link href="/profile" className="xtell-account-link" aria-label={t('xtell.site.account')}>
+          {user ? <Link href={doorPath(base, '/profile')} className="xtell-account-link" aria-label={t('xtell.site.account')}>
             {face.photo
               ? <img src={face.photo} alt="" referrerPolicy="no-referrer" />
               : <span aria-hidden="true">{(face.name || 'X').slice(0, 1).toUpperCase()}</span>}
@@ -196,12 +202,13 @@ export default function XTellNav({ user }: { user: User | null }) {
 
 export function XTellFooter() {
   const { t } = useLang()
+  const base = useSiteBase()
   return <footer className="xtell-footer">
     {/* The name and the disclaimer as one plain line (owner, Sep 28). */}
     <p className="xtell-footer-note">{t('xtell.site.footerNote')}</p>
     {/* A way to reach us (owner, Sep 27: the street had none): the support
         address, shown as it is (Sep 28), and the bug report form, which
         works signed out too. */}
-    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href={doorPath(base, '/terms')}>{t('nav.terms')}</Link><Link href={doorPath(base, '/privacy')}>{t('nav.privacy')}</Link><Link href={doorPath(base, '/tokushoho')}>{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }

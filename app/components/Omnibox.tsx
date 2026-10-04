@@ -20,6 +20,7 @@ import { useLang, useT } from '../../lib/i18n'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
 import ProviderLogo from './ProviderLogo'
 import { useSite } from '../../lib/useSite'
+import { doorOfPath } from '../../lib/site'
 
 type Row = {
   key: string
@@ -198,13 +199,14 @@ export default function Omnibox() {
     if (q.trim() && i === askIndex) { void ask(); return }
     const r = rows[i]
     if (!r) return
-    router.push(r.href)
+    // The XTell door has its own shell: a full load, not an in-app hop.
+    if (doorOfPath(r.href.split(/[?#]/)[0])) window.location.assign(r.href); else router.push(r.href)
     setOpen(false)
     setQ('')
   }, [q, rows, askIndex, router, ask])
 
   const goTo = useCallback((href: string) => {
-    router.push(href)
+    if (doorOfPath(href.split(/[?#]/)[0])) window.location.assign(href); else router.push(href)
     setOpen(false); setQ(''); setAnswer(null)
   }, [router])
 
