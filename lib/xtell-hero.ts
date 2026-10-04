@@ -5,8 +5,9 @@
 // every temple that has a scenic background (13 on Oct 3, painted by Codex:
 // public/xtell/hero/<temple>.webp, 1881 wide, and <temple>-mobile.webp, 960
 // wide), plus a portrait composition for phones (<temple>-portrait-mobile
-// .webp, 960x1280, Codex's second pass: the wide scenes cropped to a phone
-// lost their subjects at the edges). The hero features the first HERO_SLIDES of them in each
+// .webp, 960 wide, mostly 960x1280; Codex's second pass: the wide scenes
+// cropped to a phone lost their subjects at the edges; 易學堂's, 960x1440,
+// came on Oct 4 when it joined the Chinese rotation). The hero features the first HERO_SLIDES of them in each
 // market's own order (displayTemples), so a new background never adds a dot;
 // it only steps in when a temple ahead of it in that market has no art.
 // Chinese has a hand-picked list instead (HERO_FEATURED).
@@ -43,9 +44,9 @@ export const HERO_FEATURED: Partial<Record<string, readonly TempleKey[]>> = {
   'zh-Hans': ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue', 'jiemeng', 'sunzi'],
 }
 
-const scenic = (key: TempleKey, wash: [string, string], portrait = true): HeroArt => ({
+const scenic = (key: TempleKey, wash: [string, string]): HeroArt => ({
   src: `/xtell/hero/${key}.webp`, srcMobile: `/xtell/hero/${key}-mobile.webp`,
-  ...(portrait ? { srcPortrait: `/xtell/hero/${key}-portrait-mobile.webp` } : {}), wash,
+  srcPortrait: `/xtell/hero/${key}-portrait-mobile.webp`, wash,
 })
 
 export const HERO_ART: Partial<Record<TempleKey, HeroArt>> = {
@@ -61,8 +62,7 @@ export const HERO_ART: Partial<Record<TempleKey, HeroArt>> = {
   yuelao: scenic('yuelao', ['#f6ddca', '#cca589']),
   sunzi: scenic('sunzi', ['#f5e1c3', '#af9277']),
   cookie: scenic('cookie', ['#f0eee7', '#d4be9f']),
-  // Not featured in any market yet, so no portrait version.
-  yixue: scenic('yixue', ['#e5ddc9', '#c4aa8e'], false),
+  yixue: scenic('yixue', ['#e5ddc9', '#c4aa8e']),
 }
 
 /** The featured temples, in the market's own top-bar order: the market's
