@@ -57,6 +57,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `127_xtell_add_message.sql` (Oct 4) is PENDING: `xtell_add_message`, the
+  insert with ON CONFLICT DO NOTHING that stores an XTell message once
+  without a logged error (service role only). Proven on PGlite; until it
+  runs, `addMessage` keeps the plain insert.
   `126_xtell_memory.sql` applied 2026-10-03 by the owner: XTell masters'
   memory (`xtell_messages`, `xtell_memories`, `ai_models.context_window`;
   docs/XTELL-MEMORY.md). It copied 675 messages from 195 conversations out

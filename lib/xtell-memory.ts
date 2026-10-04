@@ -25,20 +25,34 @@ export type Row = { seq: number; role: 'user' | 'assistant'; content: string; mo
 export type Memo = { text: string; through_seq: number }
 
 /** Store one message. A question already stored (several masters answering
- *  it) or an answer already stored is left as it is. Null before 126. */
+ *  it at once) or an answer already stored is left as it is: the new seq, or
+ *  null when nothing new was stored (and before 126).
+ *
+ *  Through xtell_add_message (migration 127), whose ON CONFLICT DO NOTHING
+ *  skips a copy quietly. The plain insert refused it with a unique-index
+ *  error, which Postgres logs as an ERROR: 20 of the 27 in the dashboard on
+ *  Oct 3. Until 127 runs, the plain insert is still used. */
 export async function addMessage(admin: any, m: {
   reading_id: string; role: 'user' | 'assistant'; content: string; qid?: string | null
   to?: string[] | null; seats?: string[] | null; model_id?: string | null; model_name?: string | null
   provider?: string | null; input_tokens?: number | null; cost?: number | null
 }): Promise<number | null> {
-  const { data, error } = await admin.from('xtell_messages').insert({
+  const row = {
     reading_id: m.reading_id, role: m.role, content: m.content, qid: m.qid ?? null,
     to: m.to?.length ? m.to : null, seats: m.seats?.length ? m.seats : null,
     model_id: m.model_id ?? null, model_name: m.model_name ?? null, provider: m.provider ?? null,
     input_tokens: m.input_tokens ?? null, cost: m.cost ?? null,
-  }).select('seq').maybeSingle()
-  if (error) return null           // 23505: already stored; missing: before 126
-  return typeof data?.seq === 'number' ? data.seq : Number(data?.seq) || null
+  }
+  const { data, error } = await admin.rpc('xtell_add_message', {
+    p_reading_id: row.reading_id, p_role: row.role, p_content: row.content, p_qid: row.qid,
+    p_to: row.to, p_seats: row.seats, p_model_id: row.model_id, p_model_name: row.model_name,
+    p_provider: row.provider, p_input_tokens: row.input_tokens, p_cost: row.cost,
+  })
+  if (!error) return data == null ? null : Number(data) || null
+  if (error.code !== 'PGRST202') return null    // PGRST202: no such function, i.e. before 127
+  const { data: inserted, error: insertError } = await admin.from('xtell_messages').insert(row).select('seq').maybeSingle()
+  if (insertError) return null     // 23505: already stored; missing: before 126
+  return typeof inserted?.seq === 'number' ? inserted.seq : Number(inserted?.seq) || null
 }
 
 /** The master's newest memo in this conversation, or null. */

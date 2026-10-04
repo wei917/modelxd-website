@@ -180,7 +180,9 @@ and a saved reading is resumable. One row per temple visit:
 - Each temple's entry form also lists the visitor's saved visits to THAT
   temple (`TempleHistory`, owner Sep 24: history in each temple, not only
   the account page), with Continue (in place, via `onResume`) and Delete.
-- `?reading=<id>` reopens: `XTellClient` fetches the row, opens the temple,
+- `?reading=<id>` reopens: `XTellClient` fetches the row (signed out, the
+  sign-in dialog opens instead, since Oct 4: the read is the owner's alone,
+  and the refused read was a Postgres error), opens the temple,
   and `TempleRoom` seeds every input, the chart, the extras and the turns
   from it, so the next question sends exactly what the original visit sent
   plus the saved history. The ritual shows as confirmed; the engine line is
