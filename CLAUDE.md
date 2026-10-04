@@ -178,7 +178,16 @@ social media and your works. The tools and templates row
 (`StandaloneTemplates.tsx`) was taken off the same day (owner: "remove all
 tool&templates we have"), to be rebuilt from Pollo's tools list; the file
 stays, and the 4 platform templates and the free converter have no door
-entrance until then. Your works are `StudioWorks.tsx` (a picture grid of
+entrance until then. **One-tap tools** (Oct 3, beta; owner: "blackbox mode
+that we control, which is what Pollo.ai does"): `lib/xcreate-tools.ts` holds
+10 tools (白底商品圖, 商品情境照, 換背景, 背景模糊, 物件移除, 人像美化, 畫質增強,
+黑白上色, 擴圖, 照片轉動漫), each a hidden prompt on Nano Banana 2; `ToolsRow.tsx`
+is the 工具 section on the Image tab (category chips); `ToolPanel.tsx` is a
+tool's panel (photo, choices, Create), an ordinary `/api/xcreate` run saved
+under the tool's name (`title`), showing the model and its list price for the
+beta; `?tool=<id>` opens one. The photo keeps its shape: Google turns a
+missing ratio into 1:1, so the panel sends the nearest ratio. Prompt-filling
+templates are the other mode, to come back as 範本. Your works are `StudioWorks.tsx` (a picture grid of
 your latest of the type from `/api/profile/xcreates?studio=1`, which leaves out
 rows with a `node_kind`; Film keeps only film rows and Video leaves them out,
 by `slots->0->options->>film`). Rename and delete live in the Library, which

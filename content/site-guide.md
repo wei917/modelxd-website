@@ -62,9 +62,14 @@ Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창�
 Korean; its own front door is xcreate.modelxd.com, where the top bar picks
 what to make (Text, Image, Video, Audio, Film). The From choice (text, image,
 video ...) is inside the prompt box; the model picker lists every model with
-what it can do and its list price. Under Generate, each type's page shows
-what is trending on social media and your own latest works of that type as
-pictures (tap one to reopen it). All of your past work (the Library, filterable by type, Film
+what it can do and its list price. On the Image tab, one-tap tools (beta) do
+one job on your own photo: white background, product in a scene, change or
+blur the background, remove objects, portrait retouch, enhance to 2K or 4K,
+colorize, expand to a new shape, photo to anime. Upload a photo, pick an
+option and Create; the panel shows which model runs it and the price per
+image, and the result is saved to your works. Under Generate, each type's
+page also shows what is trending on social media and your own latest works
+of that type as pictures (tap one to reopen it). All of your past work (the Library, filterable by type, Film
 included, with rename and delete) is on the account page. A run where you
 already picked a winner reopens on its canvas. On www's XCreate, four platform
 templates do the store and social work, the output chosen inside each (a row
