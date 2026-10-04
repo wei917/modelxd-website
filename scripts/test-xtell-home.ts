@@ -130,11 +130,14 @@ check('the proxy keeps /xtell on a non-door host in www\'s shell (a leftover ?si
 check('www stays behind its password: no /xtell exemption in the gate', !/startsWith\('\/xtell/.test(proxySrc.slice(proxySrc.indexOf('function isBypassed'), proxySrc.indexOf('function isBypassed') + 2000)))
 check('www\'s shell everywhere on www: no copies of its pages under /xtell, no shell switch in the layout',
   ['profile', 'terms', 'privacy', 'tokushoho', 'login'].every(p => !fs.existsSync(path.join(__dirname, '..', 'app/xtell', p))) && !/XTELL_PATH|isXTellPath|site-base/.test(read('app/layout.tsx')))
-check('on www the door\'s content sits under the temples row, links under /xtell, no XTell footer (the left nav has the logo and the account)',
-  /const inWww = site !== 'xtell'/.test(page) && /<XTellBaseProvider base=\{inWww \? '\/xtell' : ''\}>/.test(page) && /\{inWww && <XTellNav user=\{null\} embedded \/>\}/.test(page) && /\{!inWww && <XTellFooter \/>\}/.test(page)
+check('on www the door\'s content sits under the temples row, links under /xtell, the door\'s footer at the bottom (the left nav has the logo and the account)',
+  /const inWww = site !== 'xtell'/.test(page) && /<XTellBaseProvider base=\{inWww \? '\/xtell' : ''\}>/.test(page) && /\{inWww && <XTellNav user=\{null\} embedded \/>\}/.test(page) && /<\/main>\s*<XTellFooter \/>\s*<\/div><\/XTellBaseProvider>/.test(page)
   && /<XTellClient standalone /.test(read('app/xtell/page.tsx')))
 check('the embedded row is not .xtell-nav (that switches the page to the door\'s layout), sticks under the phone\'s top bar, in the door\'s colours',
-  /if \(embedded\) return <div className="xtell-embedded-bar">\{strip\}<\/div>/.test(nav) && /\.xtell-embedded-bar \{ position: sticky; top: 0;/.test(css) && /@media \(max-width: 760px\) \{ \.xtell-embedded-bar \{ top: 60px;/.test(css) && /html\[data-site="xtell"\] \.xtell-auth, \.xtell-site\.is-in-www \{/.test(css))
+  /if \(embedded\) return <div className="xtell-embedded-bar"><div className="xtell-embedded-inner">\{strip\}<\/div><\/div>/.test(nav) && /\.xtell-embedded-bar \{ position: sticky; top: 0;/.test(css) && /@media \(max-width: 760px\) \{ \.xtell-embedded-bar \{ top: 60px;/.test(css) && /html\[data-site="xtell"\] \.xtell-auth, \.xtell-site\.is-in-www \{/.test(css))
+check('the row lines up with the banner (its 1280px column, 32px gutters); temples centered when they all fit, from the left when not (owner, Oct 4)',
+  /\.xtell-embedded-inner \{ max-width: 1280px; margin: 0 auto; padding: 0 32px; \}/.test(css) && /\.xtell-explorer-container \{ max-width: 1280px; padding: 0 32px 30px; \}/.test(css)
+  && /\.xtell-embedded-bar \.xtell-temple-nav \{ flex: 1 1 auto; justify-content: flex-start; justify-content: safe center; \}/.test(css))
 check('the temples row follows the base', /href=\{templeHref\(base, key\)\}/.test(nav) && /href=\{doorHome\(base\)\}/.test(nav) && /a\[href="\$\{templeHref\(base, activeTemple\)\}"\]/.test(nav))
 const profileSrc = read('app/profile/page.tsx')
 check('www\'s account page has an X先知 tab (settings + saved visits, a visit opens on /xtell), opened by the settings links\' #xtell-… hash',

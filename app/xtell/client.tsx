@@ -390,7 +390,8 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
 
   // On www (/xtell, owner Oct 4: no subdomains) the door's content sits in
   // www's own shell: the temples row on top (the shell's left nav carries
-  // the ModelXD logo and the account), links under /xtell, no XTell footer.
+  // the ModelXD logo and the account), links under /xtell, and the door's
+  // footer at the bottom, as on xtell.modelxd.com.
   const inWww = site !== 'xtell'
   if (standalone) return <XTellBaseProvider base={inWww ? '/xtell' : ''}><div className={'xtell-site' + (inWww ? ' is-in-www xtell-www-page' : '')}>
     {inWww && <XTellNav user={null} embedded />}
@@ -419,7 +420,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
     </main>
-    {!inWww && <XTellFooter />}
+    <XTellFooter />
   </div></XTellBaseProvider>
 
   return (

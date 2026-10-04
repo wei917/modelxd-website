@@ -38,10 +38,14 @@ shell: the left nav with the ModelXD logo and the account, X先知 lit (owner:
 modelxd"). On top of the content sits the temples row alone
 (`XTellNav embedded`, class `.xtell-embedded-bar`, never `.xtell-nav`, which
 switches the whole page to the door's layout); it sticks under the phone's
-60px top bar. `XTellBaseProvider` (`app/components/xtell/XTellBase.tsx`)
+60px top bar. The row sits in the banner's column (1280px, 32px gutters,
+like `.xtell-explorer-container`) and its temples are centered when they all
+fit (about 1500px wide and up), from the left with the › arrow when they do
+not: a centered row that overflows loses its first temples off the left
+edge, where no scroll reaches (owner, Oct 4). `XTellBaseProvider` (`app/components/xtell/XTellBase.tsx`)
 gives the links their base: `''` on the door (`/#bazi`), `/xtell` on www
-(`/xtell#bazi`, `templeHref`/`doorHome` in `lib/site.ts`). No XTell footer
-on www (the sidebar carries terms, privacy and contact), the door's colours
+(`/xtell#bazi`, `templeHref`/`doorHome` in `lib/site.ts`). The door's footer
+too (owner, Oct 4: "the footer is gone"), the door's colours
 (`.xtell-site.is-in-www`), www's fonts and title. Inside a temple, the
 sidebar's X先知 link goes back to the street in place (Nav.tsx: a Link push
 to the same path dropped the hash without a hashchange). Guests get the free

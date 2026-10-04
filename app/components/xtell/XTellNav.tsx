@@ -169,7 +169,7 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
         title={t('xtell.site.templesMore')} onClick={() => scrollRow(1)}>›</button>}
     </div>
   )
-  if (embedded) return <div className="xtell-embedded-bar">{strip}</div>
+  if (embedded) return <div className="xtell-embedded-bar"><div className="xtell-embedded-inner">{strip}</div></div>
   return (
     <header className="xtell-nav">
       <a href="#xtell-main" className="xtell-skip" onClick={event => {
