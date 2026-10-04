@@ -217,11 +217,18 @@ export default function XTellDaily({ openSignal, onContinue, compact = false }: 
 
   // The card always keeps its place in the street's 今日 row (owner, Sep 27:
   // nothing hidden): its title and a loading line while the profile loads.
-  const badge = compact ? <span className="xtell-home-badge is-free">{t('xtell.home.daily.free')}</span> : null
+  // The homepage card's top line is today's Gregorian date (owner, Oct 3):
+  // the day being read, or the visitor's own date (after mount, so the
+  // server and the first render agree).
+  const [localDay, setLocalDay] = useState<string | null>(null)
+  useEffect(() => { if (compact) setLocalDay(localDateIn(detectedZone())) }, [compact])
+  const dayShown = day?.date ?? localDay
+  const dateLine = compact && <p className="xtell-home-date">{dayShown ? new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${dayShown}T12:00:00Z`)) : '\u00a0'}</p>
   const cls = 'xtell-dy' + (compact ? ' xtell-home-card' + (editing ? ' is-open' : '') : '')
   if (phase === 'loading') return (
     <section id="xtell-daily" className={cls} aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
-      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}</div>
+      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
+      {dateLine}
       {compact ? <XTellClamp><p className="xtell-dy-small">{t('common.loading')}</p></XTellClamp> : <p className="xtell-dy-small">{t('common.loading')}</p>}
     </section>
   )
@@ -244,10 +251,11 @@ export default function XTellDaily({ openSignal, onContinue, compact = false }: 
     )}
     <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
   </>
-  // The homepage card: four lines, the rest behind 更多; the buttons outside.
+  // The homepage card: five lines, the rest behind 更多; the buttons outside.
   if (compact) return (
     <section id="xtell-daily" className={cls} aria-labelledby={titleId} ref={sectionRef}>
-      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}</div>
+      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
+      {dateLine}
       {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
       {editing ? (
         <ProfileForm profile={profile} gen={gen} onSaved={onSaved} onCancel={() => setEditing(false)} errText={errText} />

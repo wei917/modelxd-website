@@ -816,12 +816,14 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    field is used; the conversation grows in the page flow, never over the
    cards.
 4. **Today's cards** (one column on phones, two from 760 px): 今日黃曆 and
-   今日運勢 (`XTellDaily compact`: the same data, consent and auth). Both
-   load everything with the page and show it in a box of four lines with a
-   fixed height, so the row never jumps as data arrives; 更多 opens the box
-   in place, 收起 closes it, and the button shows only when there is more
-   (`XTellClamp.tsx`; owner, Oct 3). The almanac puts 宜 and 忌 first (the
-   date is in the badge), then the day and every fact. The daily card keeps
+   今日運勢 (`XTellDaily compact`: the same data, consent and auth). Each
+   has the day on top (owner, Oct 3): the lunar line on the almanac
+   (農曆八月廿三 · 丙午年（屬馬） · 庚戌日), the Gregorian date on the daily
+   card (2026年10月3日星期六); no badges. Both load everything with the page
+   and show it in a box of five lines with a fixed height, so the row never
+   jumps as data arrives; 更多 opens the box in place, 收起 closes it, and the
+   button shows only when there is more (`XTellClamp.tsx`). The almanac's box
+   starts with 宜 and 忌, then every fact. The daily card keeps
    its sign-in buttons outside the box, and its birth form, when open, takes
    the whole row; the guide's 今日運勢 button opens the box. A 我的常用 card
    (favourites) sat here until Oct 3; pinning in the top bar replaced it.

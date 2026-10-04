@@ -3763,16 +3763,17 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-home-cards > .is-open { grid-column: 1 / -1; }
 .xtell-home-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 8px; }
 .xtell-home-card-title { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 18px/1.3 var(--xtell-serif, serif); color: var(--xtell-ink); }
-.xtell-home-badge { flex-shrink: 0; padding: 3px 10px; border-radius: 999px; background: var(--xtell-tint); color: var(--xtell-vermilion); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .xtell-home-card .xtell-dy-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .xtell-home-card .xtell-dy-head .xtell-dy-sub { flex-basis: 100%; }
 .xtell-home-more { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 14px; border: 1px solid var(--xtell-rule); border-radius: 999px; background: #fff; color: var(--xtell-vermilion); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .xtell-home-more:hover { border-color: var(--xtell-vermilion); }
 .xtell-home-link { min-height: 32px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: none; background: none; color: var(--xtell-secondary); font: inherit; font-size: 13px; cursor: pointer; }
 .xtell-home-link:hover { color: var(--xtell-vermilion); }
-/* A homepage card's content: four lines, the rest behind 更多 (owner,
+/* A homepage card's content: five lines, the rest behind 更多 (owner,
    Oct 3). A fixed height, so the row never jumps as data arrives. */
-.xtell-clamp { position: relative; height: 6.8em; overflow: hidden; font-size: 13.5px; line-height: 1.7; }
+.xtell-clamp { position: relative; height: 8.5em; overflow: hidden; font-size: 13.5px; line-height: 1.7; }
+/* The day on top of each card: lunar on 今日黃曆, Gregorian on 今日運勢. */
+.xtell-home-date { margin: -2px 0 8px; font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--xtell-ink); }
 .xtell-clamp.is-open { height: auto; overflow: visible; }
 .xtell-clamp.is-cut::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1.8em; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--xtell-white)); pointer-events: none; }
 .xtell-clamp > div > :first-child { margin-top: 0; }

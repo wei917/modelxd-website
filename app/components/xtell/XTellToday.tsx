@@ -67,7 +67,6 @@ export function AlmanacCard({ initial = null, compact = false }: { initial?: Alm
   }, [today, lang, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
   const dateLabel = (ymd: string) => new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`))
-  const shortDate = (ymd: string) => new Intl.DateTimeFormat(lang, { month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`))
   const share = data && <ShareButton className="xtell-dy-share" spec={() => ({ icon: null, link: null, title: t('xtell.today.almanac'),
     kicker: `${dateLabel(data.date)} · ${fill(t('xtell.today.lunar'), { date: data.lunarDate })}`,
     body: [`${t('xtell.today.yi')}　${data.yi.join('、') || '—'}`, `${t('xtell.today.ji')}　${data.ji.join('、') || '—'}`,
@@ -102,16 +101,18 @@ export function AlmanacCard({ initial = null, compact = false }: { initial?: Alm
       <li>{t('xtell.today.pengZu')}：{data.pengZu.join('；')}</li>
     </ul>
   )
-  // The homepage card: 宜 and 忌 first (the date is in the badge), then the
-  // day itself and every fact, in four lines with 更多 for the rest.
+  // The homepage card (owner, Oct 3): the lunar day on top (農曆八月廿三 ·
+  // 丙午年（屬馬） · 庚戌日), then 宜, 忌 and every fact in five lines with 更多
+  // for the rest. The Gregorian date is on the daily card beside it.
+  const lunarLine = data && `${fill(t('xtell.today.lunar'), { date: data.lunarDate })} · ${fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · ${fill(t('xtell.today.dayGz'), { gz: data.dayGz })}${data.rokuyo ? ` · ${data.rokuyo}` : ''}`
   if (compact) return (
     <section id="xtell-almanac" className="xtell-td xtell-home-card" aria-labelledby="xtell-almanac-title">
       <div className="xtell-home-card-head">
         <h2 id="xtell-almanac-title" className="xtell-home-card-title">{t('xtell.today.almanac')}</h2>
-        {data && <span className="xtell-home-badge">{t('xtell.home.today').replace('{date}', shortDate(data.date))}</span>}
         {share}
       </div>
-      <XTellClamp>{!data ? waiting : <>{yiji}{details}{facts}</>}</XTellClamp>
+      <p className="xtell-home-date">{lunarLine ?? '\u00a0'}</p>
+      <XTellClamp>{!data ? waiting : <>{yiji}{data.luckyDays && data.luckyDays.length > 0 && <p className="xtell-td-lucky">{fill(t('xtell.today.luckyDays'), { days: data.luckyDays.join('・') })}</p>}{facts}</>}</XTellClamp>
     </section>
   )
   return (

@@ -96,10 +96,11 @@ check('the chips and the note come with the first use and a blur never hides the
 const today = read('app/components/xtell/XTellToday.tsx')
 let daily = ''
 const clamp = read('app/components/xtell/XTellClamp.tsx')
-check('both cards load everything with the page and show four lines, the rest behind 更多 (owner, Oct 3)', /<XTellClamp>\{!data \? waiting : <>\{yiji\}\{details\}\{facts\}<\/>\}<\/XTellClamp>/.test(today) && /<XTellClamp openSignal=\{openSignal\}>\{readings\}<\/XTellClamp>/.test(daily = read('app/components/xtell/XTellDaily.tsx'))
-  && /\.xtell-clamp \{ position: relative; height: 6\.8em; overflow: hidden; font-size: 13\.5px; line-height: 1\.7; \}/.test(read('app/globals.css')) && /aria-expanded=\{open\} aria-controls=\{id\}/.test(clamp))
+check('both cards load everything with the page and show five lines, the rest behind 更多 (owner, Oct 3)', /<XTellClamp>\{!data \? waiting : <>\{yiji\}/.test(today) && /\{facts\}<\/>\}<\/XTellClamp>/.test(today) && /<XTellClamp openSignal=\{openSignal\}>\{readings\}<\/XTellClamp>/.test(daily = read('app/components/xtell/XTellDaily.tsx'))
+  && /\.xtell-clamp \{ position: relative; height: 8\.5em; overflow: hidden; font-size: 13\.5px; line-height: 1\.7; \}/.test(read('app/globals.css')) && /aria-expanded=\{open\} aria-controls=\{id\}/.test(clamp))
+check('the day on top: the lunar line on 今日黃曆, the Gregorian date on 今日運勢; no 今天 or 每日免費 badges (owner, Oct 3)', /<p className="xtell-home-date">\{lunarLine \?\? /.test(today) && /const lunarLine = data && `\$\{fill\(t\('xtell\.today\.lunar'\)/.test(today) && /const dateLine = compact && <p className="xtell-home-date">/.test(daily) && !('xtell.home.today' in STRINGS) && !('xtell.home.daily.free' in STRINGS) && !/xtell-home-badge/.test(today + daily))
 check('the box keeps its height (no jump as data arrives), and 更多 shows only when there is more', /\{\(more \|\| open\) && \(/.test(clamp) && /new ResizeObserver\(check\)/.test(clamp))
-check('almanac: every fact is still there (彭祖 included), 宜 and 忌 first on the homepage', /<li>\{t\('xtell\.today\.pengZu'\)\}/.test(today) && /<>\{yiji\}\{details\}\{facts\}<\/>/.test(today))
+check('almanac: every fact is still there (彭祖 included), 宜 and 忌 first in the box on the homepage', /<li>\{t\('xtell\.today\.pengZu'\)\}/.test(today) && /waiting : <>\{yiji\}/.test(today))
 check('daily: the sign-in buttons stay outside the box; the birth form takes the whole row; the guide\'s signal opens the box', /<\/XTellClamp>\s*\{actions\}/.test(daily) && /editing \? ' is-open' : ''/.test(daily) && /if \(!openSignal\) return\s*\n\s*sectionRef\.current\?\.scrollIntoView/.test(daily))
 const howSrc = read('app/components/xtell/XTellHowTo.tsx')
 const zh = (k: string) => (STRINGS[k] as any)?.['zh-Hant'] as string
