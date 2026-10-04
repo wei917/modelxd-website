@@ -93,8 +93,11 @@ check('daily: the same card and logic, compact until opened; the guide\'s signal
 const howSrc = read('app/components/xtell/XTellHowTo.tsx')
 const zh = (k: string) => (STRINGS[k] as any)?.['zh-Hant'] as string
 check('the examples are gone (owner, Oct 3: not useful): no component, no strings', !fs.existsSync(path.join(__dirname, '..', 'app/components/xtell/XTellExamples.tsx')) && !Object.keys(STRINGS).some(k => k.startsWith('xtell.ex.')))
-check('four steps (owner, Oct 3): choose a temple, give your details, choose masters, discuss the results with them', /const STEPS = \[1, 2, 3, 4\] as const/.test(howSrc) && /四個步驟/.test(zh('xtell.how.title')) && zh('xtell.how.1.title') === '選擇殿堂' && zh('xtell.how.2.title') === '提供資料' && zh('xtell.how.3.title') === '選擇大師' && zh('xtell.how.4.title') === '與大師討論結果')
+check('four steps (owner, Oct 3): choose a temple, give your details, choose masters, discuss the results with them', /const STEPS = \[1, 2, 3, 4\] as const/.test(howSrc) && zh('xtell.how.title') === '簡單幾個步驟，獲得您的專屬解讀' && zh('xtell.how.1.title') === '選擇殿堂' && zh('xtell.how.2.title') === '提供資料' && zh('xtell.how.3.title') === '選擇大師' && zh('xtell.how.4.title') === '與大師討論結果')
 
+check('the guide is 嚮導 / 向导 wherever it names itself (owner, Oct 3: 導覽 is a process), and its heading asks the visitor to ask it',
+  ['xtell.as.ask', 'xtell.as.asking', 'xtell.as.note', 'xtell.as.fail', 'xtell.as.carried'].every(k => /嚮導/.test((STRINGS[k] as any)['zh-Hant']) && !/導覽/.test((STRINGS[k] as any)['zh-Hant']) && /向导/.test((STRINGS[k] as any)['zh-Hans']))
+  && zh('xtell.as.ask') === '不知道從哪裡開始？問問嚮導' && (STRINGS['xtell.as.ask'] as any).en === 'Not sure where to start? Ask our guide')
 const css = read('app/globals.css')
 check('touch targets: 32px around each small dot, 36px play, 34px edit tools', /\.xtell-hero-dot \{ position: relative; width: 32px; height: 32px;/.test(css) && /\.xtell-hero-dot::before \{[^}]*width: 8px; height: 8px;/.test(css) && /\.xtell-hero-play \{ width: 36px; height: 36px;/.test(css) && /\.xtell-fav-tools button \{ width: 34px; height: 34px;/.test(css))
 const howText = [1, 2, 3, 4].flatMap(n => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].map(l => (STRINGS[`xtell.how.${n}.desc`] as any)[l] as string)).join(' ')
