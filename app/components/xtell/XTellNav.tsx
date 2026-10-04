@@ -7,7 +7,7 @@ import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, displayTemples, type TempleKey } from './TempleArtwork'
-import ContactEmail from '../ContactEmail'
+import { SUPPORT_EMAIL } from '../ContactEmail'
 import BugReportLink from '../BugReport'
 import { useFace } from '../../../lib/use-face'
 import { onPreview } from '../../../lib/xtell-preview'
@@ -213,9 +213,9 @@ export function XTellFooter() {
   return <footer className="xtell-footer">
     {/* The name and the disclaimer as one plain line (owner, Sep 28). */}
     <p className="xtell-footer-note">{t('xtell.site.footerNote')}</p>
-    {/* A way to reach us (owner, Sep 27: the street had none): the support
-        address, shown as it is (Sep 28), and the bug report form, which
-        works signed out too. */}
-    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    {/* A way to reach us (owner, Sep 27: the street had none): 聯絡我們 as
+        a mail link (owner, Oct 4), the address in its hover text, and the
+        bug report form, which works signed out too. */}
+    <nav aria-label={t('xtell.site.legal')}><a href={`mailto:${SUPPORT_EMAIL}`} title={SUPPORT_EMAIL}>{t('nav.contact')}</a><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }
