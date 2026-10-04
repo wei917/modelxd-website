@@ -14,7 +14,7 @@
 // choice of a slide (arrows, dots) pauses it until play is pressed. Every
 // slide has the same height, so turning never moves the page.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, artKind, type TempleKey } from './TempleArtwork'
 import { HERO_ART, HERO_SECONDS, heroTemples, stepSlide, mayRotate } from '../../../lib/xtell-hero'
@@ -102,7 +102,8 @@ export default function XTellHero() {
                     {art.srcPortrait && <source media="(max-width: 480px)" srcSet={art.srcPortrait} />}
                     {art.srcMobile && <source media="(max-width: 760px)" srcSet={art.srcMobile} />}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={art.src} alt="" style={art.focus ? { objectPosition: art.focus } : undefined} decoding="async" fetchPriority={i === 0 ? 'high' : 'low'} />
+                    <img src={art.src} alt="" decoding="async" fetchPriority={i === 0 ? 'high' : 'low'}
+                      style={{ ...(art.focus ? { objectPosition: art.focus } : {}), ...(art.focusPortrait ? { '--hero-portrait-focus': art.focusPortrait } : {}) } as CSSProperties} />
                   </picture>
                 : <TempleArtwork temple={k} className={'xtell-hero-portrait is-' + artKind(k)} />}
             </div>

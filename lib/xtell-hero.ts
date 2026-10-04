@@ -26,6 +26,9 @@ export type HeroArt = {
   srcMobile?: string
   /** A portrait composition for phones (max-width 480px), cropped from the bottom. */
   srcPortrait?: string
+  /** Where the phone crop sits when the bottom is wrong for a picture (CSS
+   *  object-position, phones only); unset = center bottom. */
+  focusPortrait?: string
   /** CSS object-position for the background. */
   focus?: string
   /** Its colours, top then bottom: under the picture while it loads, and behind the fallback. */
@@ -62,7 +65,9 @@ export const HERO_ART: Partial<Record<TempleKey, HeroArt>> = {
   yuelao: scenic('yuelao', ['#f6ddca', '#cca589']),
   sunzi: scenic('sunzi', ['#f5e1c3', '#af9277']),
   cookie: scenic('cookie', ['#f0eee7', '#d4be9f']),
-  yixue: scenic('yixue', ['#e5ddc9', '#c4aa8e']),
+  // Bottom-anchored, wider phones lost the top of the bagua panel (Codex,
+  // Oct 4); 85% keeps the whole panel and the open book at 320-480px.
+  yixue: { ...scenic('yixue', ['#e5ddc9', '#c4aa8e']), focusPortrait: 'center 85%' },
 }
 
 /** The featured temples, in the market's own top-bar order: the market's

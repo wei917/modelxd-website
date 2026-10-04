@@ -3841,7 +3841,8 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
   .xtell-hero-kicker::before, .xtell-hero-kicker::after { display: none; }
 }
 @media (max-width: 480px) {
-  .xtell-hero-backdrop img { object-position: center bottom; }
+  /* A picture may set its own phone crop (HeroArt.focusPortrait). */
+  .xtell-hero-backdrop img { object-position: var(--hero-portrait-focus, center bottom); }
   .xtell-hero-scrim { background: radial-gradient(ellipse 92% 44% at 50% 40%, rgba(255, 253, 248, .66) 0%, rgba(255, 253, 248, .4) 48%, rgba(255, 253, 248, 0) 82%); }
 }
 
