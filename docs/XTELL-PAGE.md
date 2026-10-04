@@ -794,7 +794,8 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    touch, scroll or arrow press in the last 8 s); only the row scrolls.
 3. **Guide** (`XTellAssistant.tsx`), right under the hero: the owner picked
    this over a field inside the hero (both were built to compare, Oct 3).
-   From 760 px it overlaps the hero's lower edge by 36 px. Compact: the
+   It never overlaps the picture (owner, Oct 3: an overlap hid the objects
+   at the bottom of the scenes). Compact: the
    heading 「不知道從哪裡開始？問問嚮導」 (`xtell.as.ask`; the guide is
    嚮導 wherever it names itself, owner Oct 3: 導覽 is a process), a short example in
    the field (`xtell.as.placeholderShort`), the chips and the note once the

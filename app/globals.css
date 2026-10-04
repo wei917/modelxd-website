@@ -3798,13 +3798,12 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 
 @media (min-width: 760px) {
   .xtell-hero-stage { height: 410px; border-radius: 22px; }
-  .xtell-hero-copy { inset: 0 96px 92px; gap: 10px; }
+  .xtell-hero-copy { inset: 0 96px 60px; gap: 10px; }
   .xtell-hero-sub { font-size: 14.5px; }
   .xtell-hero-arrow { width: 46px; height: 46px; font-size: 26px; }
   .xtell-hero-arrow.is-prev { left: 22px; }
   .xtell-hero-arrow.is-next { right: 22px; }
-  /* Above the guide, which overlaps the lower edge. */
-  .xtell-hero-controls { bottom: 58px; }
+  .xtell-hero-controls { bottom: 14px; }
   .xtell-hero-portrait { right: 6%; bottom: -10%; width: 26%; max-width: 280px; opacity: .85; }
   .xtell-home-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 12px 24px 0; }
   .xtell-how-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3839,14 +3838,15 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 }
 
 /* The guide's place on the homepage (Oct 3, the owner's pick of two): right
-   under the hero, before today's cards; on wide screens it overlaps the
-   hero's lower edge a little, and the cards follow close under it. Its look
+   under the hero, before today's cards, never over the picture (owner,
+   Oct 3: an overlap hid the objects at the bottom of the scenes); the cards
+   follow close under it. Its look
    is the .xtell-as block further down. */
 @media (max-width: 700px) {
   .xtell-hero, .xtell-home-cards, .xtell-how { margin-left: 16px; margin-right: 16px; }
 }
 @media (min-width: 760px) {
-  .xtell-hero + .xtell-as { margin: -36px 24px 0; padding: 14px 18px; }
+  .xtell-hero + .xtell-as { margin: 12px 24px 0; padding: 14px 18px; }
 }
 
 /* Row labels (Oct 3, owner): 大師席位 before the seats, 回答 before the
