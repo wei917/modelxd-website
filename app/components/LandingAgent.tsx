@@ -25,7 +25,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { doorOfPath } from '../../lib/site'
 import { useLang, useT } from '../../lib/i18n'
 
 type Msg = {
@@ -159,7 +158,7 @@ export default function LandingAgent() {
                 {m.intro && <div className="la-badge">{t('la.badge')}</div>}
                 <div className="la-agent-text">{m.text}</div>
                 {m.route && (
-                  <button className="la-go" onClick={() => { const r = m.route as string; if (doorOfPath(r.split(/[?#]/)[0])) window.location.assign(r); else router.push(r) }}>
+                  <button className="la-go" onClick={() => router.push(m.route as string)}>
                     {t('omni.goto').replace('{n}', m.routeLabel ?? '')}
                     <span className="la-go-arrow" aria-hidden>→</span>
                   </button>

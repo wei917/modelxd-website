@@ -5,8 +5,8 @@ import Image from 'next/image'
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT, useLang } from '../../lib/i18n'
-import { useSite, useSiteBase } from '../../lib/useSite'
-import { doorHome } from '../../lib/site'
+import { useSite } from '../../lib/useSite'
+import { isXTellPath } from '../../lib/site'
 import { XTellMark } from './xtell/XTellNav'
 import { XCreateMark } from './xcreate/XCreateNav'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
@@ -42,7 +42,6 @@ function brandLinked(copy: string, className = 'xtell-auth-maker') {
 export default function AuthModal() {
   const site = useSite()
   const isXTell = site === 'xtell'
-  const base = useSiteBase()
   const isXCreate = site === 'xcreate'
   // The two standalone doors get a real dialog: focus trap, Escape, no
   // scrolling underneath. www keeps its own behaviour.
@@ -91,8 +90,9 @@ export default function AuthModal() {
     // links now carry the whole intent — /xcreate?template=tool-upscale,
     // /xcreate?agent=1&q=... — and dropping the search meant signing in
     // threw away the thing the visitor had just asked for and landed them
-    // on a bare studio. (CC, Aug 5)
-    const destination = nextPath ?? (window.location.pathname + window.location.search + (isXTell ? window.location.hash : ''))
+    // on a bare studio. (CC, Aug 5) XTell's temple is the hash (/#bazi on
+    // its door, /xtell#bazi on www), so it comes back to that temple.
+    const destination = nextPath ?? (window.location.pathname + window.location.search + (isXTell || isXTellPath(window.location.pathname) ? window.location.hash : ''))
     // Cookie values cannot carry ';' or ',' raw, and a redirect target is
     // attacker-influenceable in principle — encode it, and let the callback
     // decode. Path-only values are unaffected.
@@ -265,7 +265,7 @@ export default function AuthModal() {
               // reloading to the default one. Elsewhere (account page) go home.
               const p = window.location.pathname
               if ((p === '/' || p === '/xtell') && window.location.hash) { window.location.hash = ''; window.scrollTo({ top: 0 }) }
-              else window.location.href = doorHome(base)
+              else window.location.href = '/'
             }}
               style={{ display: 'block', margin: '10px auto 0', border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
               ← {t('xtell.site.focus.back')}

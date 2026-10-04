@@ -39,7 +39,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifySiteToken } from '@/lib/site-token'
-import { siteOfHost, isSiteRoute, doorOfPath, SITE_HEADER, SITE_BASE_HEADER, SITE_COOKIE, XTELL_PATH } from '@/lib/site'
+import { siteOfHost, isSiteRoute, isXTellPath, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
 import { resolveLang, acceptTags, LANG_COOKIE, LANG_HEADER } from '@/lib/lang'
 
 const COOKIE_NAME = 'modelxd_site_unlocked'
@@ -93,15 +93,13 @@ function siteDoor(req: NextRequest): NextResponse {
   // WITH the port: locally the port picks the shell (:3001 XTell, :3030 XCreate).
   const host = requestHost(req)
   let site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
-  // The XTell door under /xtell on a host that is no door (owner, Oct 4: no
-  // subdomains): the same shell and pages, with links under the path. The
-  // host alone decides "no door", so a leftover ?site= cookie (dev,
-  // localhost) cannot turn /xtell into another door's redirect.
-  let base = ''
-  if (siteOfHost(host, null) === 'modelxd' && doorOfPath(req.nextUrl.pathname) === 'xtell') { site = 'xtell'; base = XTELL_PATH }
+  // /xtell on a host that is no door is www's XTell page: the door's content
+  // inside www's own shell (owner, Oct 4: no subdomains). The host alone
+  // decides, so a leftover ?site= cookie (dev, localhost) cannot turn it
+  // into another door's redirect.
+  if (siteOfHost(host, null) === 'modelxd' && isXTellPath(req.nextUrl.pathname)) site = 'modelxd'
   const headers = new Headers(req.headers)
   headers.set(SITE_HEADER, site)
-  headers.set(SITE_BASE_HEADER, base)
   // The language this request renders in (lib/lang.ts): `?lang=`, then the
   // saved cookie, then the browser's list for this door. Set, never
   // appended, so a client cannot send its own value through.

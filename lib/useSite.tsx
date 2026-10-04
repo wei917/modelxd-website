@@ -9,13 +9,12 @@
 // is only the fallback for a tree rendered without the provider.
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { siteOfHost, doorOfPath, SITE_COOKIE, XTELL_PATH, type Site, type SiteBase } from './site'
+import { siteOfHost, SITE_COOKIE, type Site } from './site'
 
 const SiteContext = createContext<Site | null>(null)
-const BaseContext = createContext<SiteBase | null>(null)
 
-export function SiteProvider({ site, base = '', children }: { site: Site; base?: SiteBase; children: React.ReactNode }) {
-  return <SiteContext.Provider value={site}><BaseContext.Provider value={base}>{children}</BaseContext.Provider></SiteContext.Provider>
+export function SiteProvider({ site, children }: { site: Site; children: React.ReactNode }) {
+  return <SiteContext.Provider value={site}>{children}</SiteContext.Provider>
 }
 
 function readCookie(name: string): string | null {
@@ -32,18 +31,6 @@ export function useSite(): Site {
   const [detected, setDetected] = useState<Site>('modelxd')
   useEffect(() => {
     if (provided === null) setDetected(siteOfHost(window.location.host, readCookie(SITE_COOKIE)))
-  }, [provided])
-  return provided ?? detected
-}
-
-/** Where the door lives on this page: '' on its subdomain, '/xtell' under
- *  the path (lib/site.ts). Server-provided whenever the layout's provider is
- *  above; otherwise read from the address after mount. */
-export function useSiteBase(): SiteBase {
-  const provided = useContext(BaseContext)
-  const [detected, setDetected] = useState<SiteBase>('')
-  useEffect(() => {
-    if (provided === null && siteOfHost(window.location.host, null) === 'modelxd' && doorOfPath(window.location.pathname)) setDetected(XTELL_PATH)
   }, [provided])
   return provided ?? detected
 }

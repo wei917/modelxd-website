@@ -25,27 +25,37 @@ temple portrait, purpose copy, a real entry button, and an illustrated
 icon-plus-label menu for the ten methods; assets in `public/xtell/approved/`,
 provenance in Codex's design directory), and non-XTell pages 302 to `/`.
 **Art decision (owner, Sep 24):** the standalone host uses those
-sculptural portraits and screenprint icons, not the ink-wash covers; the
-ink-wash rule below still governs `/xtell` on www and every temple cover.
+sculptural portraits and screenprint icons, not the ink-wash covers (so does
+www's `/xtell` since Oct 4); the ink-wash rule below still governs every
+temple cover.
 The host is attached to Vercel's Production target, so it ships with `main`.
 
-**Under /xtell too (Oct 4; owner: no subdomains).** The same door is served
-at `/xtell` on any host that is not a door itself: dev.modelxd.com/xtell for
-testing, and www.modelxd.com/xtell, which stays behind www's password for
-now. `proxy.ts` marks `/xtell` pages on such a host as the XTell door
-(`doorOfPath` in `lib/site.ts`; files under `/xtell` are not pages, and a
-leftover `?site=` cookie cannot override the path) and stamps the base
-(`x-modelxd-site-base: /xtell`). `useSiteBase()` hands it to the links
-(`templeHref`, `doorHome`, `doorPath`): `/xtell#bazi`, `/xtell/profile`,
-`/xtell/terms`, `/xtell/privacy`, `/xtell/tokushoho`, `/xtell/login` (those
-pages re-export the www ones; the layout gives them the XTell shell). The
-subdomain gets base `''`, so its links stay `/#bazi`, `/profile`. Crossing
-between www and the door is a full page load (Nav's XTell item, Omnibox,
-LandingAgent), because the root layout, and with it the shell, survives an
-in-app navigation. www's own `/xtell` street page is gone: `/xtell` is the
-door everywhere. xtell.modelxd.com is unchanged and keeps serving the public
-until www opens; then it should redirect to www.modelxd.com/xtell. Share
-links still point at xtell.modelxd.com.
+**On www at /xtell too (Oct 4; owner: no subdomains).** www's `/xtell`
+(dev.modelxd.com/xtell to test; www.modelxd.com/xtell stays behind www's
+password for now) shows the door's homepage and temples inside www's own
+shell: the left nav with the ModelXD logo and the account, X先知 lit (owner:
+"you still need the left nav bar, same as other paths. the logo is
+modelxd"). On top of the content sits the temples row alone
+(`XTellNav embedded`, class `.xtell-embedded-bar`, never `.xtell-nav`, which
+switches the whole page to the door's layout); it sticks under the phone's
+60px top bar. `XTellBaseProvider` (`app/components/xtell/XTellBase.tsx`)
+gives the links their base: `''` on the door (`/#bazi`), `/xtell` on www
+(`/xtell#bazi`, `templeHref`/`doorHome` in `lib/site.ts`). No XTell footer
+on www (the sidebar carries terms, privacy and contact), the door's colours
+(`.xtell-site.is-in-www`), www's fonts and title. Inside a temple, the
+sidebar's X先知 link goes back to the street in place (Nav.tsx: a Link push
+to the same path dropped the hash without a hashchange). Guests get the free
+chart as on the door (the sidebar link is no longer protected) and sign in at
+the first question; the sign-in comes back to the temple (`/xtell#bazi`,
+AuthModal). The settings and saved visits are the X先知 tab of www's
+`/profile` (opened by `/profile#xtell-…`, the links in 今日運勢 and the
+personality card); a visit opens on `/xtell?reading=<id>`. `proxy.ts` keeps
+`/xtell` on a non-door host in www's shell (`isXTellPath`), so a leftover
+`?site=` cookie cannot turn it into a door. The old www card grid in
+`client.tsx` (the non-standalone path, `RequireTempleAuth`) is unreachable
+now. xtell.modelxd.com is unchanged and keeps serving the public until www
+opens; then it should redirect to www.modelxd.com/xtell. Share links still
+point at xtell.modelxd.com.
 
 **Reaching us (Sep 27).** The XTell footer carries 「聯絡我們：support@modelxd.com」
 (the address shown as it is, `ContactEmail plain`; support@ is a Workspace
@@ -84,7 +94,7 @@ digital products and education and treats religion as sensitive). Its lookup
 is a model call we pay for, so a signed-out visitor gets
 `GUEST_SUNZI_PER_DAY` (3) a day from one address, counted in memory per
 server instance (a floor, like the site agent's), then
-`sunzi_guest_limit`: "sign in to keep going". Nothing is saved for them. `/xtell` on www still requires sign-in for the whole page.
+`sunzi_guest_limit`: "sign in to keep going". Nothing is saved for them. Since Oct 4 `/xtell` on www is the same (it was sign-in only before).
 
 ## The architecture rule (the one thing you must not break)
 

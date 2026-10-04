@@ -8,8 +8,7 @@ import type { UserCredits, CreditTransaction } from '../../lib/credits'
 import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
 import { downloadFile, downloadName } from '../../lib/download'
 import { useRequireAuth } from '../../lib/useRequireAuth'
-import { useSite, useSiteBase } from '../../lib/useSite'
-import { doorHome, doorPath } from '../../lib/site'
+import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import XTellActivity from '../components/xtell/XTellActivity'
@@ -77,7 +76,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames' | 'xtell' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -161,8 +160,6 @@ function ModelXDProfileAuth() { useRequireAuth(); return null }
 export default function ProfilePage() {
   const site = useSite()
   const isXTell = site === 'xtell'
-  // '' on a door's subdomain, '/xtell' when XTell is served under the path.
-  const base = useSiteBase()
   // xcreate.modelxd.com: the same wallet, plan and referral, but no
   // per-surface tabs; the studio's My creations view holds the work.
   const isXCreate = site === 'xcreate'
@@ -196,6 +193,15 @@ export default function ProfilePage() {
     return () => window.removeEventListener('hashchange', go)
   }, [profile])
   const [tab,         setTab]         = useState<Tab>('duels')
+  // X先知's links to its settings (今日運勢's birth details, the personality
+  // type) land on www's account page as /profile#xtell-…: open its tab,
+  // where those sections scroll themselves into view.
+  useEffect(() => {
+    const go = () => { if (window.location.hash.startsWith('#xtell')) setTab('xtell') }
+    go()
+    window.addEventListener('hashchange', go)
+    return () => window.removeEventListener('hashchange', go)
+  }, [])
   const [duels,       setDuels]       = useState<any[]>([])
   const [xcreates,    setXcreates]    = useState<any[]>([])
   const [votes,       setVotes]       = useState<any[]>([])
@@ -282,8 +288,6 @@ export default function ProfilePage() {
   }>(null)
   const [refBusy, setRefBusy] = useState(false)
   const [refCopied, setRefCopied] = useState(false)
-  // Under /xtell the link opens the door (/xtell?ref=), not www's home.
-  const refLink = referral ? (base ? referral.link.replace('/?ref=', `${base}?ref=`) : referral.link) : ''
   const [checkoutTier,     setCheckoutTier]     = useState<string | null>(null)
   const [checkoutBanner,   setCheckoutBanner]   = useState<'success' | 'cancel' | null>(null)
 
@@ -686,7 +690,7 @@ export default function ProfilePage() {
       {isXCreate ? <XCreateAccountWelcome loading={!!user} onSignIn={() => showAuth('/profile')} /> : isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
         <h1 className="xtell-account-title">{t('xtell.site.account')}</h1>
         <p className="xtell-account-note">{t('xtell.site.authCopy')}</p>
-        {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth(doorPath(base, '/profile'))}>{t('auth.signin')}</button>}
+        {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
       </main> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>{t('common.loading')}</div>}
     </>
   )
@@ -1109,10 +1113,10 @@ export default function ProfilePage() {
                   background: 'var(--surface2)', border: '1px solid var(--border2)',
                   fontFamily: 'var(--font-mono), monospace', fontSize: 12, color: 'var(--white)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{refLink}</code>
+                }}>{referral.link}</code>
                 <button
                   onClick={() => {
-                    navigator.clipboard?.writeText(refLink).then(() => {
+                    navigator.clipboard?.writeText(referral.link).then(() => {
                       setRefCopied(true); setTimeout(() => setRefCopied(false), 1800)
                     }).catch(() => {})
                   }}
@@ -1316,7 +1320,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} basePath={doorHome(base)} /></> : isXCreate ? <XCreateLibrary /> : <>
+          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></> : isXCreate ? <XCreateLibrary /> : <>
           {/* Privacy summary — sits right above the content tabs so the
               public/private expectations frame what's below (CC, July 19). */}
           <div style={{
@@ -1341,6 +1345,7 @@ export default function ProfilePage() {
               ['xpersonas', '👤 ' + t('nav.xpersona')],
               ['xtalks', '💬 ' + t('nav.xtalk')],
               ['xgames', '◉ ' + t('nav.xgame')],
+              ['xtell', '☯ ' + t('nav.xtell')],
               ['votes', '⊞ ' + t('nav.xvote')],
             ] as [Tab, string][]).map(([tb, label]) => {
               const active = tab === tb
@@ -1889,6 +1894,14 @@ export default function ProfilePage() {
                     </a>
                   ))}
                 </div>
+          )}
+
+          {/* ── X先知 tab — the same settings and saved visits as the
+              account page on xtell.modelxd.com; a visit opens on /xtell. ── */}
+          {tab === 'xtell' && (
+            <div className="xtell-site is-in-www xtell-profile-tab">
+              <DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} basePath="/xtell" />
+            </div>
           )}
 
           {/* ── XGame tab — every game session (Werewolf, Gomoku, …); the

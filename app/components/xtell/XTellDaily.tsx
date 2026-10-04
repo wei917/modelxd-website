@@ -24,7 +24,6 @@ import { dropDates } from '../../../lib/xtell-share'
 import { ShareButton } from './ShareButton'
 import { WaitBar, WAIT_SECONDS } from './WaitBar'
 import XTellClamp from './XTellClamp'
-import { useSiteBase } from '../../../lib/useSite'
 import { partialFields, readNdjson } from '../../../lib/partial-json'
 
 type Method = 'western' | 'bazi'
@@ -62,7 +61,6 @@ function zoneLabel(tz: string, lang: string): string {
  *  takes the whole row. */
 export default function XTellDaily({ openSignal, onContinue, compact = false }: { openSignal: number; onContinue: (row: SavedDaily) => void; compact?: boolean }) {
   const t = useT()
-  const base = useSiteBase()
   const { lang } = useLang()
   const { show: showSignIn } = useAuthModal()
   const titleId = useId()
@@ -251,7 +249,7 @@ export default function XTellDaily({ openSignal, onContinue, compact = false }: 
         {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
       </div>
     )}
-    <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href={`${base}/profile#xtell-daily-settings`}>{t('xtell.dy.editBirth')}</a></p>
+    <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
   </>
   // The homepage card: five lines, the rest behind 更多; the buttons outside.
   if (compact) return (

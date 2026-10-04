@@ -16,13 +16,14 @@
 //      as a 批文. The model interprets the chart; it never computes one.
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
-import { useSite, useSiteBase } from '../../lib/useSite'
+import { useSite } from '../../lib/useSite'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { SIGN_IN_FIRST } from '../../lib/xtell-guest'
 import { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
 import { TempleArtwork } from '../components/xtell/TempleArtwork'
-import { XTellFooter } from '../components/xtell/XTellNav'
+import XTellNav, { XTellFooter } from '../components/xtell/XTellNav'
+import { XTellBaseProvider } from '../components/xtell/XTellBase'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT, useLang, tOr } from '../../lib/i18n'
 import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../lib/xtell-birth'
@@ -387,7 +388,12 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
     chooseTemple(null)
   }
 
-  if (standalone) return <div className="xtell-site">
+  // On www (/xtell, owner Oct 4: no subdomains) the door's content sits in
+  // www's own shell: the temples row on top (the shell's left nav carries
+  // the ModelXD logo and the account), links under /xtell, no XTell footer.
+  const inWww = site !== 'xtell'
+  if (standalone) return <XTellBaseProvider base={inWww ? '/xtell' : ''}><div className={'xtell-site' + (inWww ? ' is-in-www xtell-www-page' : '')}>
+    {inWww && <XTellNav user={null} embedded />}
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : ' xtell-room-container')} tabIndex={-1}>
       {!temple ? <>
         {/* The homepage (Oct 3, the owner's approved Concept 24): a scenic
@@ -413,8 +419,8 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
     </main>
-    <XTellFooter />
-  </div>
+    {!inWww && <XTellFooter />}
+  </div></XTellBaseProvider>
 
   return (
     <div className="xduel-page">
@@ -1266,8 +1272,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // both sides).
     <div className={standalone ? "xtell-room" : undefined} data-entered={entered || undefined} style={{ maxWidth: standalone ? 1216 : 980 }}>
       {/* On the standalone site the header's 探索殿堂 link is the way back
-          (owner, Sep 24: no second back link). www's /xtell keeps it — the
-          ModelXD sidebar has no route to the street. */}
+          (owner, Sep 24: no second back link); on www's /xtell the sidebar's
+          X先知 link is (Nav.tsx). The button is for the old www grid only. */}
       {!standalone && (
         <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
           ← {t('xtell.back')}
@@ -2295,7 +2301,6 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
   aria?: FieldAria
 }) {
   const t = useT()
-  const base = useSiteBase()
   const [noneSaved, setNoneSaved] = useState(false)
   // Only real days are offered (audit F01). When a month or year change
   // leaves the chosen day impossible (31 → February), the day is KEPT and
@@ -2316,7 +2321,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
         <button type="button" onClick={() => setNoneSaved(!onFill())} className="xtell-fill-mine">{t('xtell.fillMine')}</button>
       )}
       {noneSaved && (
-        <span role="status" className="xtell-fill-note">{t('xtell.fillMine.none')} <a href={`${base}/profile#xtell-daily-settings`}>{t('xtell.fillMine.set')}</a></span>
+        <span role="status" className="xtell-fill-note">{t('xtell.fillMine.none')} <a href="/profile#xtell-daily-settings">{t('xtell.fillMine.set')}</a></span>
       )}
       <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}

@@ -62,8 +62,7 @@ check('the 特商法 page names ModelXD LLC, its address and support@modelxd.com
 check('the responsible person and phone are disclosed on request', toku.includes("['運営統括責任者', ON_REQUEST]") && toku.includes("['電話番号', ON_REQUEST]") && toku.includes('請求があった場合には、遅滞なく電子メールにて開示いたします。'))
 check('it states prices, payment timing, delivery and the refund rules', ['販売価格', '支払方法', '支払時期', '引渡時期', '返品・キャンセル', '日割りの返金はありません'].every(w => toku.includes(w)))
 check('served on the XTell and XCreate doors', /XTELL_ROUTES = \[[^\]]*'\/tokushoho'/.test(site) && /XCREATE_ROUTES = \[[^\]]*'\/tokushoho'/.test(site))
-// The XTell footer's link follows the door's base (/tokushoho, or /xtell/tokushoho under the path; Oct 4).
-check('linked from the www, XTell and XCreate footers', ['app/components/Nav.tsx', 'app/components/xtell/XTellNav.tsx', 'app/components/xcreate/XCreateNav.tsx'].every(f => { const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8'); return src.includes('href="/tokushoho"') || src.includes("href={doorPath(base, '/tokushoho')}") }))
+check('linked from the www, XTell and XCreate footers', ['app/components/Nav.tsx', 'app/components/xtell/XTellNav.tsx', 'app/components/xcreate/XCreateNav.tsx'].every(f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').includes('href="/tokushoho"')))
 check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[l]?.trim()) && S['nav.tokushoho'].ja === '特定商取引法に基づく表記')
 // ── The signed-in test round of Sep 29 (all 18 rooms in 日本語) ────────────
 {

@@ -7,8 +7,8 @@
 //
 // Turning is display only: it never changes the address, the hash or the
 // room, never opens a form, sends a reading or spends anything. Entering is
-// the link (href="/#<temple>", or "/xtell#<temple>" under the path), the
-// same native link the top bar uses.
+// the link (href="/#<temple>", or "/xtell#<temple>" on www), the same
+// native link the top bar uses.
 //
 // It holds still while the pointer or keyboard focus is on it, while the tab
 // is hidden, and from the start when the visitor asks for less motion; any
@@ -20,12 +20,12 @@ import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, artKind, type TempleKey } from './TempleArtwork'
 import { HERO_ART, HERO_SECONDS, heroTemples, stepSlide, mayRotate } from '../../../lib/xtell-hero'
 import { announcePreview } from '../../../lib/xtell-preview'
-import { useSiteBase } from '../../../lib/useSite'
+import { useXTellBase } from './XTellBase'
 import { templeHref } from '../../../lib/site'
 
 export default function XTellHero() {
   const { lang, t } = useLang()
-  const base = useSiteBase()
+  const base = useXTellBase()
   const temples = heroTemples(lang)
   const count = temples.length
   const [index, setIndex] = useState(0)
