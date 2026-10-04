@@ -22,14 +22,6 @@ const SHOW = 10
 export default function StudioWorks({ type, userId }: { type: StudioType; userId: string }) {
   const { lang, t } = useLang()
   const [rows, setRows] = useState<Row[]>([])
-  // A one-tap tool's finished run shows up here at once (ToolPanel).
-  const [bump, setBump] = useState(0)
-  useEffect(() => {
-    const onChange = () => setBump(b => b + 1)
-    window.addEventListener('xcreate:works-changed', onChange)
-    return () => window.removeEventListener('xcreate:works-changed', onChange)
-  }, [])
-
   useEffect(() => { setRows([]) }, [type])
   useEffect(() => {
     let dead = false
@@ -38,7 +30,7 @@ export default function StudioWorks({ type, userId }: { type: StudioType; userId
       .then(d => { if (!dead && Array.isArray(d?.rows)) setRows((d.rows as Row[]).slice(0, SHOW)) })
       .catch(() => {})
     return () => { dead = true }
-  }, [type, userId, bump])
+  }, [type, userId])
 
   if (rows.length === 0) return null
 
