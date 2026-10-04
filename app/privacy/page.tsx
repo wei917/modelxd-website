@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: September 29, 2026
+        Last updated: October 3, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
@@ -115,15 +115,9 @@ export default function PrivacyPage() {
         We use essential cookies: your sign-in session, your language
         (modelxd_lang), a referral code while you sign up through someone&apos;s
         referral link (modelxd_ref, 30 days), and, on gated preview domains, a
-        site-access token. We also use the Google Ads tag
-        (gtag.js) on our production sites to measure whether our ads bring
-        visitors. It sends Google the page you visit and technical details of
-        your browser, and it can set Google advertising cookies. In the
-        European Economic Area, the United Kingdom and Switzerland those
-        advertising and analytics cookies are off by default. Nothing you type
-        (prompts, questions, birth details, readings) is sent to Google Ads,
-        and we do not sell your data. You can limit Google ad personalization
-        at adssettings.google.com.
+        site-access token. We set no advertising cookies and load no
+        advertising tags. Nothing you type (prompts, questions, birth details,
+        readings) is shared with advertisers, and we do not sell your data.
       </p>
       <p style={S.p}>
         We also keep our own visit log: the pages you open, how long the tab is
