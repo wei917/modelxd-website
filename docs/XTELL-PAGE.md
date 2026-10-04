@@ -772,9 +772,8 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    art never adds a dot: 13 scenes by Codex, `public/xtell/hero/<k>.webp`
    (1881 wide), `<k>-mobile.webp` (960 wide, windows up to 760 px) and
    `<k>-portrait-mobile.webp` (960x1280, phones up to 480 px, cropped from
-   the bottom so the objects low in the frame stay). 易學堂 has no portrait
-   yet (asked of Codex Oct 3); until it arrives its phone slide uses the
-   narrow scene. Featured now: 八字 紫微 占星 塔羅 易經 解夢 兵法 (zh-Hant,
+   the bottom so the objects low in the frame stay; 易學堂's, 960x1440, came
+   from Codex on Oct 4 when it joined the Chinese rotation). Featured now: 八字 紫微 占星 塔羅 易經 解夢 兵法 (zh-Hant,
    zh-Hans, seven); 夢占い 観音 姓名判断 占星 タロット 四柱推命 (ja);
    사주 월하노인 타로 점성 해몽 손자병법 (ko); tarot, astrology, dreams, BaZi,
    Yue Lao, fortune cookie (en).

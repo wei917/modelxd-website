@@ -37,10 +37,7 @@ const missingArt = heroFiles.filter(f => !fs.existsSync(path.join(__dirname, '..
 const heavyArt = heroFiles.filter(f => !missingArt.includes(f) && fs.statSync(path.join(__dirname, '..', 'public', f)).size > 260_000)
 check(`every hero picture is on disk, wide, narrow and portrait (${heroFiles.length} files), none over 260 KB`, missingArt.length === 0 && heavyArt.length === 0, [...missingArt, ...heavyArt].join(', '))
 const featured = [...new Set(['zh-Hant', 'zh-Hans', 'ja', 'ko', 'en'].flatMap(l => heroTemples(l)))]
-// 易學堂 joined the Chinese rotation on Oct 3 before Codex had painted its
-// portrait; it shows the narrow scene on phones until the file arrives.
-const AWAITING_PORTRAIT: TempleKey[] = ['yixue']
-check(`every featured temple (${featured.length}) has its portrait composition for phones (awaiting: ${AWAITING_PORTRAIT.join()})`, featured.every(k => !!HERO_ART[k]?.srcPortrait || AWAITING_PORTRAIT.includes(k)), featured.filter(k => !HERO_ART[k]?.srcPortrait && !AWAITING_PORTRAIT.includes(k)).join(', '))
+check(`every featured temple (${featured.length}) has its portrait composition for phones`, featured.every(k => !!HERO_ART[k]?.srcPortrait), featured.filter(k => !HERO_ART[k]?.srcPortrait).join(', '))
 check('slides wrap both ways', stepSlide(5, 1, 6) === 0 && stepSlide(0, -1, 6) === 5 && stepSlide(2, 0, 6) === 2 && stepSlide(0, 1, 0) === 0)
 const still = { paused: false, hovered: false, focused: false, hidden: false, reducedMotion: false, count: 6 }
 check('turns by itself only when nothing holds it', mayRotate(still))
