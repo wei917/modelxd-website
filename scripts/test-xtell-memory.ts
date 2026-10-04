@@ -29,6 +29,9 @@ function fakeAdmin(init: { messages?: any[]; memories?: any[]; profile?: any; mi
   let nextSeq = Math.max(0, ...t.xtell_messages.map(r => r.seq)) + 1
   const log: string[] = []
   const admin = {
+    // Before migration 127 there is no xtell_add_message, so addMessage falls
+    // back to the plain insert this fake handles (PostgREST says PGRST202).
+    rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function' } }),
     log, t,
     from(table: string) {
       const f: Array<(r: any) => boolean> = []
