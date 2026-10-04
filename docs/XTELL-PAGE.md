@@ -1205,7 +1205,11 @@ and clouds, and 「孫子兵法」 in gold-edged black below a rule; a 1254² im
 resized to `sunzi-icon.avif` (300) and `sunzi-portrait.avif` (640), with
 `sunzi-icon-clear.avif` from `scripts/xtell-clear-icons.mjs`. It replaced
 four drafts drawn in code and six generated battle backgrounds ($0.135),
-all in git history or the session scratchpad only.
+all in git history or the session scratchpad only. **Oct 3 (owner):** the
+painted words are cropped off all three files (the picture kept down to just
+under the gold rule, scaled 1.12 and centred; no redraw), since the top bar
+now names it in full: 孫子兵法 / 孙子兵法 / 孫子の兵法 / 손자병법 (English
+stays Art of War).
 
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
