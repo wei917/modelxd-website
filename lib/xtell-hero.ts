@@ -9,6 +9,7 @@
 // lost their subjects at the edges). The hero features the first HERO_SLIDES of them in each
 // market's own order (displayTemples), so a new background never adds a dot;
 // it only steps in when a temple ahead of it in that market has no art.
+// Chinese has a hand-picked list instead (HERO_FEATURED).
 // A temple without `src` (none today) draws a soft wash in its colours with
 // its existing portrait art. The wash is also what shows while a picture
 // loads, so it is each picture's own colours (the middle the phone shows).
@@ -33,6 +34,15 @@ export type HeroArt = {
 /** How many temples the hero features per market. */
 export const HERO_SLIDES = 6
 
+/** Markets whose featured temples are chosen by hand instead of the top
+ *  bar's first six with art (owner, Oct 3): in Chinese, 易經, 孫子兵法 and
+ *  周公解夢 are popular in Taiwan, and the Indian 九曜 and Japanese 九星 are
+ *  left out. Shown in the top bar's order. */
+export const HERO_FEATURED: Partial<Record<string, readonly TempleKey[]>> = {
+  'zh-Hant': ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue', 'jiemeng', 'sunzi'],
+  'zh-Hans': ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue', 'jiemeng', 'sunzi'],
+}
+
 const scenic = (key: TempleKey, wash: [string, string], portrait = true): HeroArt => ({
   src: `/xtell/hero/${key}.webp`, srcMobile: `/xtell/hero/${key}-mobile.webp`,
   ...(portrait ? { srcPortrait: `/xtell/hero/${key}-portrait-mobile.webp` } : {}), wash,
@@ -55,8 +65,11 @@ export const HERO_ART: Partial<Record<TempleKey, HeroArt>> = {
   yixue: scenic('yixue', ['#e5ddc9', '#c4aa8e'], false),
 }
 
-/** The featured temples: the first HERO_SLIDES with art, in the market's own order. */
+/** The featured temples, in the market's own top-bar order: the market's
+ *  hand-picked list where it has one, otherwise the first HERO_SLIDES with art. */
 export function heroTemples(lang: string, art: Partial<Record<TempleKey, HeroArt>> = HERO_ART, slides = HERO_SLIDES): TempleKey[] {
+  const chosen = HERO_FEATURED[lang]
+  if (chosen) return displayTemples(lang).filter(key => chosen.includes(key) && !!art[key])
   return displayTemples(lang).filter(key => !!art[key]).slice(0, slides)
 }
 

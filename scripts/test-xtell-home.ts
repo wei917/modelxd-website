@@ -7,7 +7,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { heroTemples, stepSlide, mayRotate, HERO_ART, HERO_SLIDES } from '../lib/xtell-hero'
+import { heroTemples, stepSlide, mayRotate, HERO_ART, HERO_SLIDES, HERO_FEATURED } from '../lib/xtell-hero'
 import { parseFavorites, loadFavorites, saveFavorites, addFavorite, removeFavorite, moveFavorite, FAVORITES_KEY } from '../lib/xtell-favorites'
 import { displayTemples, type TempleKey } from '../app/components/xtell/TempleArtwork'
 import { STRINGS } from '../lib/i18n'
@@ -20,19 +20,25 @@ const KNOWN = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagra
 // ── The entrance ───────────────────────────────────────────────────────────
 for (const lang of ['zh-Hant', 'zh-Hans', 'ja', 'ko', 'en']) {
   const list = heroTemples(lang)
-  const first = displayTemples(lang).filter(k => !!HERO_ART[k]).slice(0, HERO_SLIDES)
-  check(`hero (${lang}): six featured, the first with art in that market's own order`, HERO_SLIDES === 6 && list.length === 6 && list.join() === first.join())
+  const chosen = HERO_FEATURED[lang]
+  const expected = chosen ? displayTemples(lang).filter(k => chosen.includes(k) && !!HERO_ART[k]) : displayTemples(lang).filter(k => !!HERO_ART[k]).slice(0, HERO_SLIDES)
+  check(`hero (${lang}): ${chosen ? 'its hand-picked temples' : 'the first six with art'}, in that market's own order`, list.length >= 6 && list.join() === expected.join())
 }
+check('Chinese features 易經, 孫子兵法 and 周公解夢, never the Indian 九曜 or the Japanese 九星 (owner, Oct 3)',
+  ['zh-Hant', 'zh-Hans'].every(l => ['yixue', 'sunzi', 'jiemeng'].every(k => heroTemples(l).includes(k as TempleKey)) && !heroTemples(l).includes('navagraha') && !heroTemples(l).includes('kyusei')))
 check('hero art is an inventory apart from the featured six: more art never adds a dot', Object.keys(HERO_ART).length > HERO_SLIDES
-  && heroTemples('zh-Hant', { ...HERO_ART, sukuyo: { wash: ['#fff', '#eee'] } }).length === 6)
+  && heroTemples('ja', { ...HERO_ART, sukuyo: { wash: ['#fff', '#eee'] } }).length === 6)
 const { bazi: _bazi, ...noBazi } = HERO_ART
-check('a featured temple without art is skipped and the next with art steps in', heroTemples('zh-Hant', noBazi).join() === displayTemples('zh-Hant').filter(k => k !== 'bazi' && !!HERO_ART[k]).slice(0, 6).join())
+check('a featured temple without art is skipped and the next with art steps in', heroTemples('ja', noBazi).join() === displayTemples('ja').filter(k => k !== 'bazi' && !!HERO_ART[k]).slice(0, 6).join())
 const heroFiles = Object.values(HERO_ART).flatMap(a => [a!.src, a!.srcMobile, a!.srcPortrait]).filter(Boolean) as string[]
 const missingArt = heroFiles.filter(f => !fs.existsSync(path.join(__dirname, '..', 'public', f)))
 const heavyArt = heroFiles.filter(f => !missingArt.includes(f) && fs.statSync(path.join(__dirname, '..', 'public', f)).size > 260_000)
 check(`every hero picture is on disk, wide, narrow and portrait (${heroFiles.length} files), none over 260 KB`, missingArt.length === 0 && heavyArt.length === 0, [...missingArt, ...heavyArt].join(', '))
 const featured = [...new Set(['zh-Hant', 'zh-Hans', 'ja', 'ko', 'en'].flatMap(l => heroTemples(l)))]
-check(`every featured temple (${featured.length}) has its portrait composition for phones`, featured.every(k => !!HERO_ART[k]?.srcPortrait), featured.filter(k => !HERO_ART[k]?.srcPortrait).join(', '))
+// 易學堂 joined the Chinese rotation on Oct 3 before Codex had painted its
+// portrait; it shows the narrow scene on phones until the file arrives.
+const AWAITING_PORTRAIT: TempleKey[] = ['yixue']
+check(`every featured temple (${featured.length}) has its portrait composition for phones (awaiting: ${AWAITING_PORTRAIT.join()})`, featured.every(k => !!HERO_ART[k]?.srcPortrait || AWAITING_PORTRAIT.includes(k)), featured.filter(k => !HERO_ART[k]?.srcPortrait && !AWAITING_PORTRAIT.includes(k)).join(', '))
 check('slides wrap both ways', stepSlide(5, 1, 6) === 0 && stepSlide(0, -1, 6) === 5 && stepSlide(2, 0, 6) === 2 && stepSlide(0, 1, 0) === 0)
 const still = { paused: false, hovered: false, focused: false, hidden: false, reducedMotion: false, count: 6 }
 check('turns by itself only when nothing holds it', mayRotate(still))

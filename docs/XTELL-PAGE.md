@@ -759,15 +759,19 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    temple at a time over a scenic background: its name, its lead and line
    (the existing `xtell.site.focus.<temple>.*` strings) and a real link in
    (`/#<temple>`; the button drops a trailing gloss, 夢占い（周公解夢） →
-   「夢占いへ」, so it stays one line on a phone). **Six featured per market**:
-   the first `HERO_SLIDES` (6) of that market's top-bar order that have art.
+   「夢占いへ」, so it stays one line on a phone). **Featured per market**:
+   the first `HERO_SLIDES` (6) of that market's top-bar order that have art,
+   except where `HERO_FEATURED` picks them by hand (Chinese, owner Oct 3:
+   易經, 孫子兵法 and 周公解夢 are popular in Taiwan; the Indian 九曜 and
+   the Japanese 九星 are left out), always shown in top-bar order.
    `HERO_ART` is the art inventory, kept apart from what is featured, so new
    art never adds a dot: 13 scenes by Codex, `public/xtell/hero/<k>.webp`
    (1881 wide), `<k>-mobile.webp` (960 wide, windows up to 760 px) and
    `<k>-portrait-mobile.webp` (960x1280, phones up to 480 px, cropped from
    the bottom so the objects low in the frame stay). 易學堂 has no portrait
-   yet; it is featured nowhere. Featured now: 八字 紫微 占星 塔羅 九曜 九星
-   (zh-Hant, zh-Hans); 夢占い 観音 姓名判断 占星 タロット 四柱推命 (ja);
+   yet (asked of Codex Oct 3); until it arrives its phone slide uses the
+   narrow scene. Featured now: 八字 紫微 占星 塔羅 易經 解夢 兵法 (zh-Hant,
+   zh-Hans, seven); 夢占い 観音 姓名判断 占星 タロット 四柱推命 (ja);
    사주 월하노인 타로 점성 해몽 손자병법 (ko); tarot, astrology, dreams, BaZi,
    Yue Lao, fortune cookie (en).
    - Turns every 7 s, display only: never the address, the hash, a form, a
