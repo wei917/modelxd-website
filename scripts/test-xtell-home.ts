@@ -1,7 +1,7 @@
 // scripts/test-xtell-home.ts — the XTell homepage (Oct 3, the owner's approved
 // Concept 24): the turning entrance, the top bar's preview mark, today's
-// cards, 我的常用, the examples and the steps. Pure logic, plus the source
-// checks that guard the promises (turning never navigates; examples are
+// cards, 我的常用 and the four steps. Pure logic, plus the source
+// checks that guard the promises (turning never navigates; nothing is
 // never testimonials; nothing pre-filled). No network, no browser.
 //   npx tsx scripts/test-xtell-home.ts
 
@@ -80,7 +80,7 @@ check('favorites: nothing pre-filled (only what this device saved), original ico
 
 // ── The page ───────────────────────────────────────────────────────────────
 const page = read('app/xtell/client.tsx')
-check('homepage order: entrance, the guide right under it, today\'s three cards, examples, steps', /<XTellHero \/>\s*<XTellAssistant onOpen=\{openFromGuide\} \/>\s*<div className="xtell-home-cards">[\s\S]*?\{almanacSection \?\? <AlmanacCard compact \/>\}\s*<XTellDaily openSignal=\{dailySignal\} onContinue=\{openDaily\} compact \/>\s*<XTellFavorites \/>\s*<\/div>\s*<XTellExamples \/>\s*<XTellHowTo \/>\s*<\/> :/.test(page))
+check('homepage order: entrance, the guide right under it, today\'s three cards, then the four steps (no examples)', /<XTellHero \/>\s*<XTellAssistant onOpen=\{openFromGuide\} \/>\s*<div className="xtell-home-cards">[\s\S]*?\{almanacSection \?\? <AlmanacCard compact \/>\}\s*<XTellDaily openSignal=\{dailySignal\} onContinue=\{openDaily\} compact \/>\s*<XTellFavorites \/>\s*<\/div>\s*<XTellHowTo \/>\s*<\/> :/.test(page) && !/XTellExamples/.test(page))
 check('one guide on the homepage, never told which temple is on show', (page.match(/<XTellAssistant /g) ?? []).length === 1 && !/<XTellAssistant[^>]*(temple|current)=/.test(page))
 const as = read('app/components/xtell/XTellAssistant.tsx')
 check('the comparison is over: no ?guide switch, no stored preference, no field in the hero', !/guidePlace|GUIDE_PLACE|xtell:guide-place|composerIn|onDraft|createPortal|guideSlot|has-guide|xtell-hero-guide/.test(page + as + hero + read('lib/xtell-hero.ts') + read('app/globals.css')))
@@ -90,24 +90,23 @@ const today = read('app/components/xtell/XTellToday.tsx')
 check('almanac: compact first (date, 宜, 忌), every detail one press away, same data', /if \(compact && !open\) return \(/.test(today) && /onClick=\{\(\) => setOpen\(true\)\}>\{t\('xtell\.home\.almanac\.more'\)\}/.test(today) && /<li>\{t\('xtell\.today\.pengZu'\)\}/.test(today))
 const daily = read('app/components/xtell/XTellDaily.tsx')
 check('daily: the same card and logic, compact until opened; the guide\'s signal opens it', /compact && !open \? \(/.test(daily) && /setOpen\(true\)\s*\n\s*sectionRef\.current\?\.scrollIntoView/.test(daily))
-const ex = read('app/components/xtell/XTellExamples.tsx')
+const howSrc = read('app/components/xtell/XTellHowTo.tsx')
 const zh = (k: string) => (STRINGS[k] as any)?.['zh-Hant'] as string
-check('examples: labelled 示例 and said to be examples, never a visitor\'s words', /t\('xtell\.ex\.badge'\)/.test(ex) && zh('xtell.ex.badge') === '示例' && /並非真實來訪者/.test(zh('xtell.ex.sub')) && !/我/.test(zh('xtell.ex.career.a') + zh('xtell.ex.love.a') + zh('xtell.ex.year.a')))
-check('examples link into their temples and send nothing', /href=\{'\/#' \+ ex\.temple\}/.test(ex) && !/fetch\(/.test(ex))
+check('the examples are gone (owner, Oct 3: not useful): no component, no strings', !fs.existsSync(path.join(__dirname, '..', 'app/components/xtell/XTellExamples.tsx')) && !Object.keys(STRINGS).some(k => k.startsWith('xtell.ex.')))
+check('four steps (owner, Oct 3): choose a temple, give your details, choose masters, discuss the results with them', /const STEPS = \[1, 2, 3, 4\] as const/.test(howSrc) && /四個步驟/.test(zh('xtell.how.title')) && zh('xtell.how.1.title') === '選擇殿堂' && zh('xtell.how.2.title') === '提供資料' && zh('xtell.how.3.title') === '選擇大師' && zh('xtell.how.4.title') === '與大師討論結果')
 
 const css = read('app/globals.css')
 check('touch targets: 32px around each small dot, 36px play, 34px edit tools', /\.xtell-hero-dot \{ position: relative; width: 32px; height: 32px;/.test(css) && /\.xtell-hero-dot::before \{[^}]*width: 8px; height: 8px;/.test(css) && /\.xtell-hero-play \{ width: 36px; height: 36px;/.test(css) && /\.xtell-fav-tools button \{ width: 34px; height: 34px;/.test(css))
-const how3 = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].map(l => (STRINGS['xtell.how.3.desc'] as any)[l] as string).join(' ')
+const howText = [1, 2, 3, 4].flatMap(n => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].map(l => (STRINGS[`xtell.how.${n}.desc`] as any)[l] as string)).join(' ')
 const how1 = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].map(l => (STRINGS['xtell.how.1.desc'] as any)[l] as string).join(' ')
-check('step 1 does not say where the guide is (it moves between the two places)', !/below|下方|下面|下の|아래/.test(how1))
-check('the steps say what a visitor does, never how it is computed', !/code|calculat|計算|算好|系统|系統|계산/.test(how3) && (STRINGS['xtell.how.3.title'] as any).en === 'Explore your reading')
+check('step 1 does not say where the guide is', !/below|下方|下面|下の|아래/.test(how1))
+check('the steps say what a visitor does, never how it is computed', !/code|calculat|計算|算好|系统|系統|계산/.test(howText))
 
 // ── Every string in every language ─────────────────────────────────────────
 const used = new Set<string>()
-for (const src of [hero, favSrc, ex, today, daily]) for (const m of src.matchAll(/t\('((?:xtell\.(?:home|fav|ex|how))[^']*)'\)/g)) used.add(m[1])
+for (const src of [hero, favSrc, howSrc, today, daily]) for (const m of src.matchAll(/t\('((?:xtell\.(?:home|fav|how))[^']*)'\)/g)) used.add(m[1])
 used.add('xtell.as.ask'); used.add('xtell.as.placeholderShort')
-for (const id of ['career', 'love', 'year']) { used.add(`xtell.ex.${id}.q`); used.add(`xtell.ex.${id}.a`) }
-for (const n of [1, 2, 3]) { used.add(`xtell.how.${n}.title`); used.add(`xtell.how.${n}.desc`) }
+for (const n of [1, 2, 3, 4]) { used.add(`xtell.how.${n}.title`); used.add(`xtell.how.${n}.desc`) }
 const missing = [...used].filter(k => !['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof (STRINGS[k] as any)?.[l] === 'string' && (STRINGS[k] as any)[l].length > 0))
 check(`all ${used.size} homepage strings exist in en, zh-Hant, zh-Hans, ja and ko`, missing.length === 0, missing.join(', '))
 

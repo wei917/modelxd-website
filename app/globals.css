@@ -3786,22 +3786,6 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-fav-pick .xtell-fav-icon { width: 22px; }
 .xtell-fav-note { margin: 10px 0 0; font-size: 11.5px; color: var(--xtell-secondary); }
 
-.xtell-home-title { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 20px/1.3 var(--xtell-serif, serif); color: var(--xtell-ink); }
-.xtell-ex { margin: 28px 0 0; }
-.xtell-ex-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 12px; }
-.xtell-ex-sub { flex: 1 1 220px; margin: 0; font-size: 13px; line-height: 1.6; color: var(--xtell-secondary); }
-.xtell-ex-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.xtell-ex-card { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; border: 1px solid var(--xtell-rule); border-radius: 14px; background: #fff; color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
-.xtell-ex-card:hover { border-color: var(--xtell-vermilion); box-shadow: 0 6px 18px rgba(60, 40, 20, .08); }
-.xtell-ex-card:focus-visible { outline: 2px solid var(--xtell-vermilion); outline-offset: 2px; }
-.xtell-ex-art { position: relative; height: 130px; overflow: hidden; background: var(--xtell-tint); }
-.xtell-ex-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.xtell-ex-portrait { position: absolute; left: 50%; top: 8px; width: 96px; transform: translateX(-50%); opacity: .85; }
-.xtell-ex-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
-.xtell-ex-badge { align-self: flex-start; padding: 2px 10px; border-radius: 999px; background: var(--xtell-tint); color: var(--xtell-vermilion); font-size: 12px; font-weight: 600; }
-.xtell-ex-q { font: 600 17px/1.4 var(--xtell-serif, serif); color: var(--xtell-ink); }
-.xtell-ex-a { font-size: 13.5px; line-height: 1.7; color: var(--xtell-secondary); }
-.xtell-ex-go { margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--xtell-vermilion); }
 
 .xtell-how { margin: 24px 0 0; padding: 16px 18px; border-radius: 14px; background: var(--xtell-tint); }
 .xtell-how-title { margin: 0 0 12px; font: 600 16px/1.4 var(--xtell-serif, serif); color: var(--xtell-ink); }
@@ -3823,13 +3807,11 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
   .xtell-hero-controls { bottom: 58px; }
   .xtell-hero-portrait { right: 6%; bottom: -10%; width: 26%; max-width: 280px; opacity: .85; }
   .xtell-home-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 12px 24px 0; }
-  .xtell-ex-card { grid-template-columns: 34% minmax(0, 1fr); }
-  .xtell-ex-art { height: auto; min-height: 150px; }
-  .xtell-ex-portrait { top: 12px; width: 110px; }
-  .xtell-how-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .xtell-how-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 1100px) {
   .xtell-hero-stage { height: 440px; }
+  .xtell-how-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .xtell-hero-backdrop, .xtell-hero-dot::before, .xtell-hero-enter { transition: none; }
@@ -3861,7 +3843,7 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
    hero's lower edge a little, and the cards follow close under it. Its look
    is the .xtell-as block further down. */
 @media (max-width: 700px) {
-  .xtell-hero, .xtell-home-cards, .xtell-ex, .xtell-how { margin-left: 16px; margin-right: 16px; }
+  .xtell-hero, .xtell-home-cards, .xtell-how { margin-left: 16px; margin-right: 16px; }
 }
 @media (min-width: 760px) {
   .xtell-hero + .xtell-as { margin: -36px 24px 0; padding: 14px 18px; }

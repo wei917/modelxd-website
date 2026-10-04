@@ -52,7 +52,7 @@ import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimat
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellHero from '../components/xtell/XTellHero'
 import XTellFavorites from '../components/xtell/XTellFavorites'
-import { XTellExamples, XTellHowTo } from '../components/xtell/XTellExamples'
+import { XTellHowTo } from '../components/xtell/XTellHowTo'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
 import { ShareButton } from '../components/xtell/ShareButton'
@@ -386,8 +386,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
             entrance that turns through the temples, the guide right under
             it (the owner's pick of two placements), then today's almanac,
             the free daily fortune and the visitor's own temples in one row,
-            examples of a reading and three steps. The temples themselves
-            stay in the top bar. */}
+            and the four steps. The temples themselves stay in the top bar. */}
         <XTellHero />
         <XTellAssistant onOpen={openFromGuide} />
         <div className="xtell-home-cards">
@@ -396,7 +395,6 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
           <XTellDaily openSignal={dailySignal} onContinue={openDaily} compact />
           <XTellFavorites />
         </div>
-        <XTellExamples />
         <XTellHowTo />
       </> : <>
         {/* Signed out, a room still casts its free chart; sign-in is asked

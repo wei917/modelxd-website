@@ -480,7 +480,7 @@ app/api/xtell/assistant/route.ts  # POST {q, lang, history} → answer + catalog
 app/components/xtell/XTellAssistant.tsx  # the guide under the homepage hero (XTell door only)
 app/components/xtell/XTellHero.tsx       # homepage hero: six featured temples, turning, never navigating
 app/components/xtell/XTellFavorites.tsx  # 我的常用 (device only)
-app/components/xtell/XTellExamples.tsx   # 解讀範例 (labelled 示例) + the three steps
+app/components/xtell/XTellHowTo.tsx      # the four steps on the homepage
 lib/xtell-hero.ts           # HERO_ART inventory, HERO_SLIDES featured per market, rotation rules
 lib/xtell-favorites.ts      # favourites: parse/validate, load/save, add/remove/move
 lib/xtell-preview.ts        # hero → top bar preview event
@@ -810,11 +810,11 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    saved order); anything else reads as empty and is left alone until the
    visitor changes something; nothing is ever pre-filled; removing the last
    pin ends editing so 新增 comes back.
-5. **解讀範例** (`XTellExamples.tsx`): example questions with a short
-   passage in a master's voice, labelled 示例 and said to be examples, never
-   a visitor's words (no testimonials); one shown, the rest behind
-   「看更多範例」; each links into its temple. **Three steps** (`XTellHowTo`):
-   what a visitor does, in words that hold wherever the guide sits.
+5. **Four steps** (`XTellHowTo.tsx`; owner, Oct 3): choose a temple, give
+   your details, choose masters, discuss the results with them. What a
+   visitor does, never how anything is computed. A 解讀範例 (sample
+   readings) section sat above it until Oct 3, when the owner removed it as
+   not useful.
 
 Tests: `scripts/test-xtell-home.ts` (in `npm run test:xtell`).
 
