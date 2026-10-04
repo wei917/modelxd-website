@@ -169,8 +169,12 @@ account page (`studio-type.ts` links the bar and the studio; old `?view=`
 links redirect). **Redesigned under Generate, Oct 3** (owner, learned from
 Pollo AI's /image page; the composer stays as it was, owner: "the top part
 stays the same", except that its From dropdown sits inside the prompt box,
-"like what others do", and the "Your prompt" line above it went): tools and templates (`StandaloneTemplates.tsx`, one
-sideways row), trending on social media, and your works (`StudioWorks.tsx`, a picture grid of
+"like what others do", and the "Your prompt" line above it went): trending on
+social media and your works. The tools and templates row
+(`StandaloneTemplates.tsx`) was taken off the same day (owner: "remove all
+tool&templates we have"), to be rebuilt from Pollo's tools list; the file
+stays, and the 4 platform templates and the free converter have no door
+entrance until then. Your works are `StudioWorks.tsx` (a picture grid of
 your latest of the type from `/api/profile/xcreates?studio=1`, which leaves out
 rows with a `node_kind`; Film keeps only film rows and Video leaves them out,
 by `slots->0->options->>film`). Rename and delete live in the Library, which
@@ -207,7 +211,7 @@ no edit lists, cut to the cap; the result is stored in
 `exports/<UTC date>/` in `xcreate-ai-videos` and handed back as a one-hour
 `download` link; the daily `/api/cron/sweep-orphans` removes every day
 folder older than yesterday. A user's own photo or video converts with no model and no
-charge (`ConvertDialog.tsx`, the last card of the tools row; only
+charge (`ConvertDialog.tsx`; its entrance was the tools row, off since Oct 3; only
 from their own upload folder). Every AI picture downloads with IPTC
 DigitalSourceType written in (trained or composite AI media, which Meta and
 Google read); videos have no such marker, so the bar asks the user to tick

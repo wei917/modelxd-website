@@ -17,7 +17,6 @@ import { useLang, tOr } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import StudioWorks from './StudioWorks'
-import StandaloneTemplates from './StandaloneTemplates'
 import ExportBar from './ExportBar'
 import VideoExportBar from './VideoExportBar'
 import ConvertDialog from './ConvertDialog'
@@ -5353,17 +5352,16 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 )}
 
                 {/* The door's one page under Generate (Oct 3 redesign, learned
-                    from Pollo AI's /image page; the owner's order, and "the top
-                    part stays the same"): tools and templates, what is trending
-                    on social media (Sep 26), and your own works of this type
-                    (Oct 1; a list until Oct 3). The models list it had for a
-                    moment went: the model cards above already pick models, and
-                    the picker shows each one's price. Setup screen only, like
-                    the wall above. */}
+                    from Pollo AI's /image page; "the top part stays the same"):
+                    what is trending on social media (Sep 26), and your own works
+                    of this type (Oct 1; a list until Oct 3). The tools and
+                    templates row went the same day (owner: "remove all
+                    tool&templates we have"), to be rebuilt from Pollo's tools
+                    list; StandaloneTemplates.tsx stays for that. The models
+                    list went too: the model cards above pick models, and the
+                    picker shows each one's price. Setup screen only, like the
+                    wall above. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && <>
-                  {(mode === 'image' || mode === 'video') && (
-                    <StandaloneTemplates mode={mode} onSelect={tpl => { void applyTemplate(tpl) }} onConvert={kind => setConvertKind(kind)} />
-                  )}
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTrending kind={mode} onUse={template => { void applyTemplate(template) }} />
                   )}
