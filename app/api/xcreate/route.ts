@@ -574,7 +574,10 @@ export async function POST(req: Request) {
     )
   }
 
-  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null, parentIds: parentIdsInput = null, nodeKind = null, boardId: boardIdInput = null, retryOf = null, rowId: clientRowId = null } = await req.json()
+  const { prompt, mode = 'text', modelIds, modelOptions = [], attachments: attachmentInputs = [], attachment: legacyAttachmentInput = null, jobId: clientJobId = null, parentId = null, parentSlotIdx = null, parentIds: parentIdsInput = null, nodeKind = null, boardId: boardIdInput = null, retryOf = null, rowId: clientRowId = null, title: titleInput = null } = await req.json()
+  // A one-tap tool names its run (ToolPanel, Oct 3): the Library and My works
+  // show 「白底商品圖」, not the hidden prompt.
+  const rowTitle = typeof titleInput === 'string' && titleInput.trim() ? titleInput.trim().slice(0, 80) : null
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} models=${JSON.stringify(modelIds)} jobId=${clientJobId ?? 'server-generated'}`)
 
   // In video/image mode an attached file (image_to_video, image_to_image,
@@ -1046,6 +1049,7 @@ export async function POST(req: Request) {
       id, user_id: user.id, mode, prompt,
       slots: [], attachment_id: attachmentId,
       input_attachments: persistedInputs,
+      ...(rowTitle ? { title: rowTitle } : {}),
     })
     let stubId = (typeof clientRowId === 'string' && UUID_RE.test(clientRowId))
       ? clientRowId.toLowerCase()
@@ -1118,6 +1122,7 @@ export async function POST(req: Request) {
   const xcreateInsert = {
     id: mintedRowId,
     user_id: user.id, mode, prompt, search_mode: searchMode,
+    ...(rowTitle ? { title: rowTitle } : {}),
     slots: slotsForXCreate, attachment_id: attachmentId,
     // Full input list (July 19) — lets the gallery restore the original
     // uploads when a past run is reopened (attachment_id only kept #1).

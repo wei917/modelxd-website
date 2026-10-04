@@ -17,6 +17,9 @@ import { useLang, tOr } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
 import StudioWorks from './StudioWorks'
+import ToolsRow from './ToolsRow'
+import ToolPanel from './ToolPanel'
+import { toolById, type XTool } from '../../lib/xcreate-tools'
 import ExportBar from './ExportBar'
 import VideoExportBar from './VideoExportBar'
 import ConvertDialog from './ConvertDialog'
@@ -1119,6 +1122,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const templateAspectRef = useRef<string | null>(null)
   // "Your own file → a platform's spec" (ConvertDialog), when open.
   const [convertKind, setConvertKind] = useState<'image' | 'video' | null>(null)
+  // The one-tap tool whose panel is open (Oct 3; ToolPanel). `?tool=<id>`
+  // opens one straight from a link (an ad, a LINE post, the sign-in return).
+  const [toolOpen, setToolOpen] = useState<XTool | null>(null)
+  useEffect(() => {
+    if (!isStandalone || typeof window === 'undefined') return
+    const tool = toolById(new URLSearchParams(window.location.search).get('tool'))
+    if (tool) setToolOpen(tool)
+  }, [isStandalone])
   // E-commerce platform chip on product templates (General/Shopee/Taobao/
   // Amazon). A chip is a re-application of the template with that
   // marketplace's conventions appended — it owns the prompt the same way
@@ -4084,6 +4095,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         <ConvertDialog kind={convertKind} onClose={() => setConvertKind(null)}
           onSignIn={() => { setConvertKind(null); showAuth(`/?type=${convertKind}`) }} />
       )}
+      {toolOpen && (
+        <ToolPanel tool={toolOpen} onClose={() => setToolOpen(null)}
+          onSignIn={() => { setToolOpen(null); showAuth(`/?tool=${toolOpen.id}`) }} />
+      )}
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{position:'fixed',inset:0,zIndex:99000,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <img src={lightbox} alt="Full size" onClick={() => setLightbox(null)} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:8,boxShadow:'0 0 80px rgba(0,0,0,0.8)',cursor:'pointer'}} />
@@ -5353,15 +5368,17 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
                 {/* The door's one page under Generate (Oct 3 redesign, learned
                     from Pollo AI's /image page; "the top part stays the same"):
-                    what is trending on social media (Sep 26), and your own works
-                    of this type (Oct 1; a list until Oct 3). The tools and
+                    one-tap tools on the Image tab (ToolsRow: a prompt and model
+                    we pick, owner: "blackbox mode that we control"), what is
+                    trending on social media (Sep 26), and your own works of
+                    this type (Oct 1; a list until Oct 3). The old tools and
                     templates row went the same day (owner: "remove all
-                    tool&templates we have"), to be rebuilt from Pollo's tools
-                    list; StandaloneTemplates.tsx stays for that. The models
-                    list went too: the model cards above pick models, and the
-                    picker shows each one's price. Setup screen only, like the
-                    wall above. */}
+                    tool&templates we have"); StandaloneTemplates.tsx stays for
+                    the prompt-filling templates. The models list went too: the
+                    model cards above pick models, and the picker shows each
+                    one's price. Setup screen only, like the wall above. */}
                 {isStandalone && phase === 'setup' && slots.length === 0 && <>
+                  {mode === 'image' && <ToolsRow onOpen={setToolOpen} />}
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTrending kind={mode} onUse={template => { void applyTemplate(template) }} />
                   )}

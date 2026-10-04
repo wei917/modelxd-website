@@ -250,3 +250,59 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-works { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
   .xcs-works > .xcs-work:nth-child(10) { display: block; }
 }
+
+/* ── One-tap tools (Oct 3; owner: "blackbox mode that we control"): the 工具
+   section's category chips (the cards are the .xcs-tool rules above) and a
+   tool's own panel, ToolPanel.tsx. Phone first: the panel is full screen;
+   from 601px a centered panel. ── */
+.xtools-beta { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--xc-accent-soft, #fff0eb); color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: 0; vertical-align: 3px; }
+.xtools-cats { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; padding-bottom: 2px; }
+.xtools-cats::-webkit-scrollbar { display: none; }
+.xtools-cat { flex-shrink: 0; min-height: 36px; padding: 6px 15px; border: 1px solid var(--border2); border-radius: 999px; background: var(--xc-paper, #fff); color: var(--muted2); font: inherit; font-size: 13px; cursor: pointer; }
+.xtools-cat.is-on { border-color: var(--white); background: var(--white); color: var(--xc-paper, #fff); font-weight: 600; }
+@media (max-width: 760px) {
+  .xtools-cats { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 420px) {
+  .xtools-cats { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+}
+
+.xtool-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.45); }
+.xtool-panel { box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 18px; border-radius: 18px; background: var(--bg); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.xtool-head { display: flex; align-items: flex-start; gap: 12px; }
+.xtool-head h2 { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.3; color: var(--white); }
+.xtool-head p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted2); }
+.xtool-x { flex-shrink: 0; margin-left: auto; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--xc-soft, #f1f2ec); color: var(--muted2); font-size: 17px; cursor: pointer; }
+.xtool-x:disabled { opacity: .4; cursor: default; }
+.xtool-stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 220px; border-radius: 14px; background: var(--xc-soft, #f1f2ec); overflow: hidden; }
+.xtool-stage > img { display: block; max-width: 100%; max-height: 52vh; object-fit: contain; }
+.xtool-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 220px; border: 2px dashed var(--border2); border-radius: 14px; background: transparent; color: var(--muted2); font: inherit; font-size: 15px; cursor: pointer; }
+.xtool-upload b { font-size: 38px; font-weight: 300; line-height: 1; color: var(--red); }
+.xtool-busy { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(255,255,255,.72); color: var(--white); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.xtool-spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border2); border-top-color: var(--red); animation: xcs-film-spin .9s linear infinite; }
+.xtool-toggle { align-self: center; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--xc-soft, #f1f2ec); }
+.xtool-toggle button { min-height: 34px; padding: 4px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--muted2); font: inherit; font-size: 13px; cursor: pointer; }
+.xtool-toggle button[aria-pressed='true'] { background: var(--xc-paper, #fff); color: var(--white); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.xtool-change { align-self: center; min-height: 36px; padding: 6px 16px; border: 1px solid var(--border2); border-radius: 999px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; font-size: 13px; cursor: pointer; }
+.xtool-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.xtool-chip { min-height: 36px; padding: 6px 14px; border: 1px solid var(--border2); border-radius: 999px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.xtool-chip.is-on { border-color: var(--red); background: var(--xc-accent-soft, #fff0eb); color: var(--red); font-weight: 600; }
+.xtool-chip:disabled { opacity: .5; cursor: default; }
+.xtool-field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 600; color: var(--white); }
+.xtool-field input { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; font-size: 16px; font-weight: 400; }
+.xtool-field input:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+.xtool-problem { margin: 0; font-size: 14px; line-height: 1.5; color: var(--red); }
+.xtool-problem a { margin-left: 8px; color: inherit; font-weight: 700; }
+.xtool-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.xtool-actions > * { box-sizing: border-box; flex: 1 1 140px; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 16px; border-radius: 999px; font: inherit; font-size: 15px; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; }
+.xtool-primary { border: 0; background: var(--red); color: #fff; }
+.xtool-primary:disabled { opacity: .45; cursor: default; }
+.xtool-secondary { border: 1px solid var(--border2); background: var(--xc-paper, #fff); color: var(--white); }
+.xtool-secondary:disabled { opacity: .45; cursor: default; }
+.xtool-info { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted2); text-align: center; }
+.xtool-note { margin: -6px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); text-align: center; }
+@media (max-width: 600px) {
+  .xtool-overlay { align-items: stretch; padding: 0; }
+  .xtool-panel { width: 100%; max-height: none; height: 100%; border-radius: 0; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow: none; }
+  .xtool-stage > img { max-height: 46vh; }
+}
