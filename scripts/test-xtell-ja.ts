@@ -104,7 +104,7 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
   check('Japanese answers get the glossary (ハウス, 命式, おみくじ, no 簡体字)', rr.includes('JA_TERMS') && /ハウス/.test(rr) && /ホロスコープ/.test(rr) && /簡体字/.test(rr))
   const cat = require('../lib/xtell-catalog')
   check('the guide is given the rooms\' Japanese names', cat.roomNamesFor('ja').includes('bazi = 四柱推命') && cat.roomNamesFor('ja').includes('zhanxing = 西洋占星術') && read('app/api/xtell/assistant/route.ts').includes('roomNamesFor('))
-  check('the privacy summary names LINE sign-in, in five languages', LANGS.every(l => /LINE/.test(S['legal.privacy.signin']?.[l] ?? '')) && read('app/privacy/page.tsx').includes("'legal.privacy.signin'") && /Google or LINE sign-in/.test(read('app/terms/page.tsx')))
+  check('the privacy summary names LINE sign-in, in five languages', LANGS.every(l => /LINE/.test(S['legal.privacy.signin']?.[l] ?? '')) && read('app/privacy/page.tsx').includes("'legal.privacy.signin'") && /Google, LINE or X sign-in/.test(read('app/terms/page.tsx')))
   check('…and the situation written at 孫子兵法', /孫子/.test(S['legal.privacy.xtell'].ja) && /孫子兵法/.test(read('app/privacy/page.tsx')))
   check('the history is grouped by temple', read('app/components/xtell/XTellActivity.tsx').includes('xtell-history-group') && LANGS.every(l => S['xtell.site.historyCount']?.[l]?.includes('{n}')))
 }
