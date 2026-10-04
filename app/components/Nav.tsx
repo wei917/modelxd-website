@@ -29,7 +29,9 @@ const NAV_LINKS = [
   { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
-  { href: '/xtell',       i18n: 'nav.xtell',       protected: true,  icon: 'game'   },
+  // Open like xtell.modelxd.com: the free chart needs no account, sign-in
+  // comes at the first question.
+  { href: '/xtell',       i18n: 'nav.xtell',       protected: false, icon: 'game'   },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
   { href: '/xdev',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
 ]
@@ -420,6 +422,16 @@ export default function Nav() {
     if (isProtected && !user) {
       e.preventDefault()
       show(href)
+      return
+    }
+    // X先知 from inside one of its temples (/xtell#bazi) goes back to the
+    // street in place, as the door's wordmark does: a Link push to the same
+    // path drops the hash without a hashchange, and the temple stayed open.
+    if (href === '/xtell' && pathname === '/xtell' && window.location.hash) {
+      e.preventDefault()
+      setMenuOpen(false)
+      window.location.hash = ''
+      window.scrollTo({ top: 0 })
     }
   }
   // The globe goes to the language picker on /profile, explicitly: signed

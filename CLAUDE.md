@@ -51,7 +51,11 @@ rating system (XDRating) surfaced on XBoard.
   and `xcreate.modelxd.com` (the studio, Sep 26) are the same deployment and
   the same auth/wallet with their own shell. `lib/site.ts` is the contract
   (`useSite()`, `siteFromHeaders()`, per-door route lists; any other page
-  302s to `/` there). Locally, `?site=xtell|xcreate|www` switches the shell
+  302s to `/` there). **Since Oct 4 www's `/xtell` shows the XTell door's
+  homepage and temples inside www's own shell** (left nav, ModelXD logo;
+  dev.modelxd.com/xtell; www.modelxd.com/xtell behind www's password): the
+  owner decided against subdomains; the subdomain stays until www opens
+  (docs/XTELL-PAGE.md, "On www at /xtell too"). Locally, `?site=xtell|xcreate|www` switches the shell
   (cookie), or a worktree server on :3001 / :3030 is that door.
 - **Both environments share ONE Supabase project.** A migration applied for
   dev is immediately live for production. Additive columns are safe;
@@ -133,7 +137,7 @@ more**, and the per-user feature system is gone with it.
 | **XArch** | `/xarch` | required | X建築設計: floor plans + interior design. GPT-6 Astra / Claude Fable 5.1 read a blueprint into geometry and return edit OPS that code applies (`lib/xarch.ts`); room photos redesigned with GPT Image 2; design agent chat. Rows in `xarch_projects` (migration 100). Free sample: HABS Breiding House. |
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 | **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
-| **XTell** | `/xtell` | required on www; on xtell.modelxd.com the free chart is open, sign-in at the first question (Oct 1) | X先知 (X算命 until Oct 3): temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
+| **XTell** | `/xtell` | the free chart is open, sign-in at the first question (xtell.modelxd.com since Oct 1, www's `/xtell` since Oct 4) | X先知 (X算命 until Oct 3): temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
 | **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
 ### XDuel — `/xduel`

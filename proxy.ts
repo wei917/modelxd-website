@@ -39,7 +39,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifySiteToken } from '@/lib/site-token'
-import { siteOfHost, isSiteRoute, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
+import { siteOfHost, isSiteRoute, isXTellPath, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
 import { resolveLang, acceptTags, LANG_COOKIE, LANG_HEADER } from '@/lib/lang'
 
 const COOKIE_NAME = 'modelxd_site_unlocked'
@@ -92,7 +92,12 @@ const bareHost = (h: string) => h.replace(/:\d+$/, '')
 function siteDoor(req: NextRequest): NextResponse {
   // WITH the port: locally the port picks the shell (:3001 XTell, :3030 XCreate).
   const host = requestHost(req)
-  const site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
+  let site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
+  // /xtell on a host that is no door is www's XTell page: the door's content
+  // inside www's own shell (owner, Oct 4: no subdomains). The host alone
+  // decides, so a leftover ?site= cookie (dev, localhost) cannot turn it
+  // into another door's redirect.
+  if (siteOfHost(host, null) === 'modelxd' && isXTellPath(req.nextUrl.pathname)) site = 'modelxd'
   const headers = new Headers(req.headers)
   headers.set(SITE_HEADER, site)
   // The language this request renders in (lib/lang.ts): `?lang=`, then the

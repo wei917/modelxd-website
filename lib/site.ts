@@ -52,6 +52,25 @@ export const XCREATE_LOCAL_PORT = '3030'
 
 export const WWW_ORIGIN = 'https://www.modelxd.com'
 
+/** The XTell door's content is also www's page at /xtell, inside www's own
+ *  shell (owner, Oct 4: no subdomains; dev.modelxd.com/xtell first, www stays
+ *  behind its password). The subdomain keeps serving the door until it is
+ *  retired. Links to the street and temples use a base: '' on the subdomain,
+ *  '/xtell' on www (app/components/xtell/XTellBase.tsx). */
+export const XTELL_PATH = '/xtell'
+export type XTellBase = '' | '/xtell'
+
+/** www's XTell page and anything under it. Files under /xtell (pictures,
+ *  cards) are not pages. */
+export function isXTellPath(pathname: string): boolean {
+  if (/\.[a-z0-9]+$/i.test(pathname)) return false
+  return pathname === XTELL_PATH || pathname.startsWith(XTELL_PATH + '/')
+}
+
+/** The street and a temple on it, for this base. */
+export const doorHome = (base: string): string => base || '/'
+export const templeHref = (base: string, key: string): string => `${base || '/'}#${key}`
+
 function isDoor(v: string | null | undefined): v is 'xtell' | 'xcreate' {
   return v === 'xtell' || v === 'xcreate'
 }

@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT, useLang } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
+import { isXTellPath } from '../../lib/site'
 import { XTellMark } from './xtell/XTellNav'
 import { XCreateMark } from './xcreate/XCreateNav'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
@@ -89,8 +90,9 @@ export default function AuthModal() {
     // links now carry the whole intent — /xcreate?template=tool-upscale,
     // /xcreate?agent=1&q=... — and dropping the search meant signing in
     // threw away the thing the visitor had just asked for and landed them
-    // on a bare studio. (CC, Aug 5)
-    const destination = nextPath ?? (window.location.pathname + window.location.search + (isXTell ? window.location.hash : ''))
+    // on a bare studio. (CC, Aug 5) XTell's temple is the hash (/#bazi on
+    // its door, /xtell#bazi on www), so it comes back to that temple.
+    const destination = nextPath ?? (window.location.pathname + window.location.search + (isXTell || isXTellPath(window.location.pathname) ? window.location.hash : ''))
     // Cookie values cannot carry ';' or ',' raw, and a redirect target is
     // attacker-influenceable in principle — encode it, and let the callback
     // decode. Path-only values are unaffected.

@@ -7,12 +7,14 @@ import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, DISPLAY_TEMPLES, displayTemples, type TempleKey } from './TempleArtwork'
-import ContactEmail from '../ContactEmail'
+import { SUPPORT_EMAIL } from '../ContactEmail'
 import BugReportLink from '../BugReport'
 import { useFace } from '../../../lib/use-face'
 import { onPreview } from '../../../lib/xtell-preview'
 import { pinnedFirst } from '../../../lib/xtell-pins'
 import { usePins } from './usePins'
+import { useXTellBase } from './XTellBase'
+import { doorHome, templeHref } from '../../../lib/site'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -30,8 +32,14 @@ export function XTellMark() {
   </span>
 }
 
-export default function XTellNav({ user }: { user: User | null }) {
+/** `embedded`: the temples row alone, on top of www's /xtell page, inside
+ *  www's own shell (owner, Oct 4), whose left nav carries the logo and the
+ *  account. The container is not .xtell-nav, which switches the page into
+ *  the door's layout. */
+export default function XTellNav({ user, embedded = false }: { user: User | null; embedded?: boolean }) {
   const { lang, t } = useLang()
+  // '' on xtell.modelxd.com; '/xtell' inside www (XTellBase).
+  const base = useXTellBase()
   const { show } = useAuthModal()
   const face = useFace(user)
   const pathname = usePathname()
@@ -68,7 +76,7 @@ export default function XTellNav({ user }: { user: User | null }) {
   // The temple you are in is never hidden past the edge.
   useEffect(() => {
     if (!activeTemple) return
-    row.current?.querySelector(`a[href="/#${activeTemple}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    row.current?.querySelector(`a[href="${templeHref(base, activeTemple)}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeTemple])
   // The homepage hero's temple (lib/xtell-preview.ts, Oct 3): a soft mark on
   // its icon, never aria-current (that is the room you are in). The row
@@ -106,7 +114,7 @@ export default function XTellNav({ user }: { user: User | null }) {
     const el = row.current
     if (!el || !preview || activeTemple) return
     if (hovering.current || wrap.current?.contains(document.activeElement) || Date.now() - touched.current < 8000) return
-    const link = el.querySelector<HTMLElement>(`a[href="/#${preview}"]`)
+    const link = el.querySelector<HTMLElement>(`a[href="${templeHref(base, preview)}"]`)
     if (!link) return
     const box = el.getBoundingClientRect(), r = link.getBoundingClientRect()
     if (r.left >= box.left && r.right <= box.right) return
@@ -124,6 +132,8 @@ export default function XTellNav({ user }: { user: User | null }) {
   // and sits in <head> before first paint (next.config htmlLimitedBots), so
   // nothing overwrites a title set here; no timed re-sets are needed.
   useEffect(() => {
+    // Inside www the page keeps www's own title (app/xtell/page.tsx).
+    if (embedded) return
     const brand = t('xtell.site.brand')
     const compute = () => {
       if (pathname === '/' || pathname === '/xtell') {
@@ -140,7 +150,26 @@ export default function XTellNav({ user }: { user: User | null }) {
     apply()
     window.addEventListener('hashchange', apply)
     return () => window.removeEventListener('hashchange', apply)
-  }, [lang, t, pathname])
+  }, [lang, t, pathname, embedded])
+  const strip = (
+    <div ref={wrap} className="xtell-temple-wrap">
+      <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
+        {order.map((key, i) => <a key={key} href={templeHref(base, key)}
+          aria-label={t('xtell.site.focus.' + key + '.name')}
+          aria-current={activeTemple === key ? 'page' : undefined}
+          data-preview={!activeTemple && preview === key ? 'true' : undefined}
+          data-pinned={i < pinnedCount ? (i === pinnedCount - 1 ? 'last' : 'true') : undefined}>
+          <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
+          <span>{t('xtell.site.focus.' + key + '.short')}</span>
+        </a>)}
+      </nav>
+      {more.left && <button type="button" className="xtell-temple-arrow is-left" tabIndex={-1} aria-hidden="true"
+        title={t('xtell.site.templesPrev')} onClick={() => scrollRow(-1)}>‹</button>}
+      {more.right && <button type="button" className="xtell-temple-arrow is-right" tabIndex={-1} aria-hidden="true"
+        title={t('xtell.site.templesMore')} onClick={() => scrollRow(1)}>›</button>}
+    </div>
+  )
+  if (embedded) return <div className="xtell-embedded-bar"><div className="xtell-embedded-inner">{strip}</div></div>
   return (
     <header className="xtell-nav">
       <a href="#xtell-main" className="xtell-skip" onClick={event => {
@@ -156,28 +185,13 @@ export default function XTellNav({ user }: { user: User | null }) {
       <div className="xtell-nav-inner">
         {/* The wordmark is the way back to the street. Inside a temple it
             clears the hash in place instead of reloading the page. */}
-        <a href="/" aria-label="XTell" onClick={e => {
+        <a href={doorHome(base)} aria-label="XTell" onClick={e => {
           const p = window.location.pathname
           if ((p === '/' || p === '/xtell') && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
         }}><XTellMark /></a>
         {/* Every temple, one compact row after the wordmark (owner, Sep 27).
             The avatar on the right IS the account link (owner, Sep 24). */}
-        <div ref={wrap} className="xtell-temple-wrap">
-          <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-            {order.map((key, i) => <a key={key} href={'/#' + key}
-              aria-label={t('xtell.site.focus.' + key + '.name')}
-              aria-current={activeTemple === key ? 'page' : undefined}
-              data-preview={!activeTemple && preview === key ? 'true' : undefined}
-              data-pinned={i < pinnedCount ? (i === pinnedCount - 1 ? 'last' : 'true') : undefined}>
-              <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
-              <span>{t('xtell.site.focus.' + key + '.short')}</span>
-            </a>)}
-          </nav>
-          {more.left && <button type="button" className="xtell-temple-arrow is-left" tabIndex={-1} aria-hidden="true"
-            title={t('xtell.site.templesPrev')} onClick={() => scrollRow(-1)}>‹</button>}
-          {more.right && <button type="button" className="xtell-temple-arrow is-right" tabIndex={-1} aria-hidden="true"
-            title={t('xtell.site.templesMore')} onClick={() => scrollRow(1)}>›</button>}
-        </div>
+        {strip}
         <div className="xtell-nav-actions">
           {/* The saved picture (Oct 2: chosen on the account page, or the
               first sign-in's), as XCreate's and www's navs show it; the
@@ -199,9 +213,9 @@ export function XTellFooter() {
   return <footer className="xtell-footer">
     {/* The name and the disclaimer as one plain line (owner, Sep 28). */}
     <p className="xtell-footer-note">{t('xtell.site.footerNote')}</p>
-    {/* A way to reach us (owner, Sep 27: the street had none): the support
-        address, shown as it is (Sep 28), and the bug report form, which
-        works signed out too. */}
-    <nav aria-label={t('xtell.site.legal')}><span>{t('contact.label')}<ContactEmail plain /></span><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    {/* A way to reach us (owner, Sep 27: the street had none): 聯絡我們 as
+        a mail link (owner, Oct 4), the address in its hover text, and the
+        bug report form, which works signed out too. */}
+    <nav aria-label={t('xtell.site.legal')}><a href={`mailto:${SUPPORT_EMAIL}`} title={SUPPORT_EMAIL}>{t('nav.contact')}</a><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }

@@ -17,7 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function XTellPage() {
   const h = await headers()
-  const site = siteFromHeaders(h)
-  // The 黃曆 is its own section (see app/page.tsx).
-  return <XTellClient standalone={site === 'xtell'} almanacSection={almanacSection()} country={h.get('x-vercel-ip-country')} />
+  // The 黃曆 is its own section (see app/page.tsx). The door's homepage on
+  // every host: on www (and dev) it sits inside www's shell (owner, Oct 4:
+  // no subdomains; client.tsx).
+  return <XTellClient standalone almanacSection={almanacSection()} country={h.get('x-vercel-ip-country')} />
 }

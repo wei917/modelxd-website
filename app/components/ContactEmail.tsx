@@ -16,8 +16,9 @@ export const SUPPORT_EMAIL = 'support@modelxd.com'
 const EMAIL = SUPPORT_EMAIL
 
 /** `plain`: the address itself as the link, no copy and no flash (owner,
- *  Sep 28: 「已複製 …」 read as a riddle). The XTell footer and the bug
- *  form use it; www's sidebar keeps the label with copy-on-click. */
+ *  Sep 28: 「已複製 …」 read as a riddle). The bug form uses it; www's
+ *  sidebar keeps the label with copy-on-click; the XTell footer has its own
+ *  聯絡我們 mail link (Oct 4). */
 export default function ContactEmail({ className, style, plain }: { className?: string; style?: React.CSSProperties; plain?: boolean }) {
   const t = useT()
   // The label STAYS "Contact Us" (owner, Aug 7) — the copy feedback is a

@@ -3332,6 +3332,9 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
   .xtell-temple-copy p { font-size: 16px; }
   .xtell-footer { margin-inline: 20px; align-items: flex-start; flex-direction: column; gap: 18px; }
   .xtell-footer > div { gap: 14px; }
+  /* In a column the note's 360px basis became its height: 300px of blank
+     between the disclaimer and the links on every phone. */
+  .xtell-footer-note { flex: none; }
   .xtell-room { padding-top: 21px; }
   .xtell-room-header { display: block; }
   .xtell-room-header img { width: 100%; aspect-ratio: 16/7; margin-bottom: 24px; }
@@ -3366,7 +3369,8 @@ body:has(.xtell-nav) :is(button, a, input, select, textarea):focus-visible {
 
 /* Approved XTell D2 + D5: one temple in focus, illustrated selection menu.
    These overrides only affect the standalone XTell shell. */
-html[data-site="xtell"] body, html[data-site="xtell"] .xtell-site, html[data-site="xtell"] .xtell-auth {
+/* .is-in-www: the same colours on www's /xtell (the door's content in www's shell). */
+html[data-site="xtell"] body, html[data-site="xtell"] .xtell-site, html[data-site="xtell"] .xtell-auth, .xtell-site.is-in-www {
   --xtell-paper: #faf6f0;
   --xtell-ink: #302d29;
   --xtell-secondary: #74685f;
@@ -4153,6 +4157,23 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-temple-nav a { min-width: 46px; padding: 4px 4px 2px; font-size: 11px; }
   .xtell-nav-icon { width: 30px; }
 }
+/* www's /xtell (owner Oct 4: no subdomains): the temples row on top of the
+   door's content, inside www's shell (the left nav keeps the ModelXD logo and
+   the account). It sticks under the phone's 60px top bar. The row sits in
+   the banner's column (the explorer container: 1280px, 32px gutters) and its
+   temples are centered when they all fit, from the left when they do not: a
+   centered row that overflows loses its first temples off the left edge,
+   where no scroll reaches (owner, Oct 4). */
+.xtell-embedded-bar { position: sticky; top: 0; z-index: 50; background: var(--xtell-white); border-bottom: 1px solid var(--xtell-rule); padding-top: 6px; }
+.xtell-embedded-inner { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+.xtell-embedded-bar .xtell-temple-nav { flex: 1 1 auto; justify-content: flex-start; justify-content: safe center; }
+.xtell-embedded-bar a { color: inherit; text-decoration: none; }
+@media (max-width: 760px) { .xtell-embedded-bar { top: 60px; padding-top: 4px; } .xtell-embedded-inner { padding: 0 8px; } }
+/* The paper reaches the bottom of the window however short the page; the
+   account page's X先知 tab sits on www's own background. */
+.xtell-www-page { min-height: 100vh; }
+@media (max-width: 760px) { .xtell-www-page { min-height: calc(100vh - 60px); } }
+.xtell-site.xtell-profile-tab { background: transparent; }
 
 /* XTell street: today's cards under the guide (owner, Sep 27): today's
    almanac (黃曆) on the left, the daily fortune on the right; stacked on a

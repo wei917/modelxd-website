@@ -76,7 +76,7 @@ function ModePills({ value, onChange }: {
   )
 }
 
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames' | 'votes' | 'activities'
+type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames' | 'xtell' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -193,6 +193,15 @@ export default function ProfilePage() {
     return () => window.removeEventListener('hashchange', go)
   }, [profile])
   const [tab,         setTab]         = useState<Tab>('duels')
+  // X先知's links to its settings (今日運勢's birth details, the personality
+  // type) land on www's account page as /profile#xtell-…: open its tab,
+  // where those sections scroll themselves into view.
+  useEffect(() => {
+    const go = () => { if (window.location.hash.startsWith('#xtell')) setTab('xtell') }
+    go()
+    window.addEventListener('hashchange', go)
+    return () => window.removeEventListener('hashchange', go)
+  }, [])
   const [duels,       setDuels]       = useState<any[]>([])
   const [xcreates,    setXcreates]    = useState<any[]>([])
   const [votes,       setVotes]       = useState<any[]>([])
@@ -1336,6 +1345,7 @@ export default function ProfilePage() {
               ['xpersonas', '👤 ' + t('nav.xpersona')],
               ['xtalks', '💬 ' + t('nav.xtalk')],
               ['xgames', '◉ ' + t('nav.xgame')],
+              ['xtell', '☯ ' + t('nav.xtell')],
               ['votes', '⊞ ' + t('nav.xvote')],
             ] as [Tab, string][]).map(([tb, label]) => {
               const active = tab === tb
@@ -1884,6 +1894,14 @@ export default function ProfilePage() {
                     </a>
                   ))}
                 </div>
+          )}
+
+          {/* ── X先知 tab — the same settings and saved visits as the
+              account page on xtell.modelxd.com; a visit opens on /xtell. ── */}
+          {tab === 'xtell' && (
+            <div className="xtell-site is-in-www xtell-profile-tab">
+              <DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} basePath="/xtell" />
+            </div>
           )}
 
           {/* ── XGame tab — every game session (Werewolf, Gomoku, …); the

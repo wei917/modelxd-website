@@ -11,6 +11,7 @@ import { heroTemples, stepSlide, mayRotate, HERO_ART, HERO_SLIDES, HERO_FEATURED
 import { parsePins, loadPins, savePins, pinTemple, unpinTemple, pinnedFirst, PINS_KEY } from '../lib/xtell-pins'
 import { displayTemples, type TempleKey } from '../app/components/xtell/TempleArtwork'
 import { STRINGS } from '../lib/i18n'
+import { isXTellPath, doorHome, templeHref, XTELL_PATH } from '../lib/site'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
@@ -48,7 +49,7 @@ check('held by: a person\'s choice, the pointer, keyboard focus, a hidden tab, l
 const hero = read('app/components/xtell/XTellHero.tsx')
 check('turning never navigates, routes, fetches or writes the address', !/location\.hash|history\.|useRouter|router\.|fetch\(|replaceState|pushState/.test(hero))
 check('the timer only moves the slide', /setTimeout\(\(\) => setIndex\(i => stepSlide\(i, 1, count\)\), HERO_SECONDS \* 1000\)/.test(hero))
-check('entering is a real link into the temple', /<a className="xtell-hero-enter" href=\{'\/#' \+ current\}>/.test(hero))
+check('entering is a real link into the temple (/xtell#… on www)', /<a className="xtell-hero-enter" href=\{templeHref\(base, current\)\}>/.test(hero))
 check('any slide choice pauses; play is a toggle; reduced motion holds from the start until play', /const choose = \(i: number\) => \{ setIndex\(stepSlide\(i, 0, count\)\); setPaused\(true\) \}/.test(hero) && /reducedMotion: reducedMotion && !played/.test(hero))
 check('hover counts only for a mouse (a tap never sticks it)', /pointerType === 'mouse'/.test(hero))
 check('every slide the same height: the stage, not the copy, sets it', /\.xtell-hero-stage \{ position: relative; height: 330px;/.test(read('app/globals.css')))
@@ -117,6 +118,36 @@ const howText = [1, 2, 3, 4].flatMap(n => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko
 const how1 = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].map(l => (STRINGS['xtell.how.1.desc'] as any)[l] as string).join(' ')
 check('step 1 does not say where the guide is', !/below|下方|下面|下の|아래/.test(how1))
 check('the steps say what a visitor does, never how it is computed', !/code|calculat|計算|算好|系统|系統|계산/.test(howText))
+
+// ── X先知 on www at /xtell (owner, Oct 4: no subdomains; www keeps its shell) ──
+check('/xtell and below are www\'s XTell page; files under /xtell and look-alikes are not',
+  isXTellPath('/xtell') && isXTellPath('/xtell/x') && !isXTellPath('/xtell/hero/bazi.webp') && !isXTellPath('/xtellx') && !isXTellPath('/') && !isXTellPath('/profile'))
+check('links follow the base: the subdomain keeps /#bazi, www gets /xtell#bazi',
+  templeHref('', 'bazi') === '/#bazi' && templeHref(XTELL_PATH, 'bazi') === '/xtell#bazi' && doorHome('') === '/' && doorHome(XTELL_PATH) === '/xtell')
+const proxySrc = read('proxy.ts')
+check('the proxy keeps /xtell on a non-door host in www\'s shell (a leftover ?site= cookie cannot make it a door)',
+  /if \(siteOfHost\(host, null\) === 'modelxd' && isXTellPath\(req\.nextUrl\.pathname\)\) site = 'modelxd'/.test(proxySrc))
+check('www stays behind its password: no /xtell exemption in the gate', !/startsWith\('\/xtell/.test(proxySrc.slice(proxySrc.indexOf('function isBypassed'), proxySrc.indexOf('function isBypassed') + 2000)))
+check('www\'s shell everywhere on www: no copies of its pages under /xtell, no shell switch in the layout',
+  ['profile', 'terms', 'privacy', 'tokushoho', 'login'].every(p => !fs.existsSync(path.join(__dirname, '..', 'app/xtell', p))) && !/XTELL_PATH|isXTellPath|site-base/.test(read('app/layout.tsx')))
+check('on www the door\'s content sits under the temples row, links under /xtell, the door\'s footer at the bottom (the left nav has the logo and the account)',
+  /const inWww = site !== 'xtell'/.test(page) && /<XTellBaseProvider base=\{inWww \? '\/xtell' : ''\}>/.test(page) && /\{inWww && <XTellNav user=\{null\} embedded \/>\}/.test(page) && /<\/main>\s*<XTellFooter \/>\s*<\/div><\/XTellBaseProvider>/.test(page)
+  && /<XTellClient standalone /.test(read('app/xtell/page.tsx')))
+check('the embedded row is not .xtell-nav (that switches the page to the door\'s layout), sticks under the phone\'s top bar, in the door\'s colours',
+  /if \(embedded\) return <div className="xtell-embedded-bar"><div className="xtell-embedded-inner">\{strip\}<\/div><\/div>/.test(nav) && /\.xtell-embedded-bar \{ position: sticky; top: 0;/.test(css) && /@media \(max-width: 760px\) \{ \.xtell-embedded-bar \{ top: 60px;/.test(css) && /html\[data-site="xtell"\] \.xtell-auth, \.xtell-site\.is-in-www \{/.test(css))
+check('the row lines up with the banner (its 1280px column, 32px gutters); temples centered when they all fit, from the left when not (owner, Oct 4)',
+  /\.xtell-embedded-inner \{ max-width: 1280px; margin: 0 auto; padding: 0 32px; \}/.test(css) && /\.xtell-explorer-container \{ max-width: 1280px; padding: 0 32px 30px; \}/.test(css)
+  && /\.xtell-embedded-bar \.xtell-temple-nav \{ flex: 1 1 auto; justify-content: flex-start; justify-content: safe center; \}/.test(css))
+check('on a phone the footer note takes its own height (its 360px basis left 300px of blank in the column)', /\.xtell-footer \{ margin-inline: 20px; align-items: flex-start; flex-direction: column; gap: 18px; \}[\s\S]{0,260}\.xtell-footer-note \{ flex: none; \}/.test(css))
+check('the temples row follows the base', /href=\{templeHref\(base, key\)\}/.test(nav) && /href=\{doorHome\(base\)\}/.test(nav) && /a\[href="\$\{templeHref\(base, activeTemple\)\}"\]/.test(nav))
+const profileSrc = read('app/profile/page.tsx')
+check('www\'s account page has an X先知 tab (settings + saved visits, a visit opens on /xtell), opened by the settings links\' #xtell-… hash',
+  /\['xtell', '☯ ' \+ t\('nav\.xtell'\)\]/.test(profileSrc) && /<XTellActivity userId=\{user\.id\} basePath="\/xtell" \/>/.test(profileSrc) && /window\.location\.hash\.startsWith\('#xtell'\)\) setTab\('xtell'\)/.test(profileSrc))
+check('the sidebar link is open to guests, as on xtell.modelxd.com (the free chart needs no account)', /\{ href: '\/xtell', +i18n: 'nav\.xtell', +protected: false,/.test(read('app/components/Nav.tsx')))
+check('inside a temple the sidebar\'s X先知 link goes back to the street in place (a Link push dropped the hash and left the temple open)',
+  /if \(href === '\/xtell' && pathname === '\/xtell' && window\.location\.hash\) \{\s*e\.preventDefault\(\)\s*setMenuOpen\(false\)\s*window\.location\.hash = ''/.test(read('app/components/Nav.tsx')))
+check('signing in from a temple on www comes back to that temple (/xtell#bazi), as on the door',
+  /isXTell \|\| isXTellPath\(window\.location\.pathname\) \? window\.location\.hash : ''/.test(read('app/components/AuthModal.tsx')))
 
 // ── Every string in every language ─────────────────────────────────────────
 const used = new Set<string>()
