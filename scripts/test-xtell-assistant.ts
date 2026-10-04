@@ -64,6 +64,13 @@ check('the fee rule the prompt uses names the free parts and the estimate', /fre
   check('guide has a section for every catalog id', XTELL_FEATURES.every(f => new RegExp(`^### ${f.id.replace('.', '\\.')}$`, 'm').test(body)), XTELL_FEATURES.filter(f => !body.includes(`### ${f.id}`)).map(f => f.id).join())
   check('pending sections say they are not available yet', pending.every(f => /Planned, not available yet/.test(body.split(`### ${f.id}`)[1]?.split('###')[0] ?? '')))
   check('guide states no prices (fees come from the catalog)', !/[$¥€]|NT\$|US\$/.test(body))
+  // A real test (Oct 3) told a visitor to enter 農曆 for the bone weight; the
+  // form takes the Gregorian date and converts it.
+  const chengguGuide = body.split('### bazi.chenggu')[1]?.split('###')[0] ?? ''
+  const chengguAbout = XTELL_FEATURES.find(f => f.id === 'bazi.chenggu')?.about ?? ''
+  const routeSrc = fs.readFileSync(path.join(__dirname, '..', 'app', 'api', 'xtell', 'assistant', 'route.ts'), 'utf8')
+  check('the bone weight says the birth date is entered in the Gregorian calendar (guide, catalog and the guide\'s rules)',
+    /Gregorian calendar \(國曆\)/.test(chengguGuide) && /Gregorian calendar \(國曆\)/.test(chengguAbout) && /Never tell a visitor to enter a lunar \(農曆\) date/.test(routeSrc))
   check('guide has no engine, library or validation wording', !/lunar-typescript|iztro|astronomy-engine|Swiss Ephemeris|\bengine\b|\blibrary\b|validated|test suite/i.test(body))
 }
 

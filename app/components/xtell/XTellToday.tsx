@@ -17,6 +17,7 @@ import { useLang } from '../../../lib/i18n'
 import type { Almanac } from '../../../lib/xtell-almanac'
 import { detectedZone, localDateIn } from '../../../lib/xtell-time'
 import { ShareButton } from './ShareButton'
+import XTellClamp from './XTellClamp'
 
 
 /** The visitor's own date, read after mount and again when the tab comes
@@ -37,8 +38,10 @@ function useToday(): string | null {
 const fill = (s: string, vars: Record<string, string | number>) => Object.entries(vars).reduce((out, [k, v]) => out.split(`{${k}}`).join(String(v)), s)
 
 /** `initial`: the server's almanac for this visitor's day in the page's
- *  language, or null when the server could not tell the zone. */
-export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
+ *  language, or null when the server could not tell the zone. `compact`
+ *  (the homepage's card row, Oct 3): everything, 宜 / 忌 first, in a box of
+ *  four lines with 更多 for the rest (XTellClamp); nothing dropped. */
+export function AlmanacCard({ initial = null, compact = false }: { initial?: Almanac | null; compact?: boolean }) {
   const { lang, t } = useLang()
   const today = useToday()
   const [data, setData] = useState<Almanac | null>(initial)
@@ -64,41 +67,62 @@ export function AlmanacCard({ initial = null }: { initial?: Almanac | null }) {
   }, [today, lang, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
   const md = (ymd: string) => { const [, m, d] = ymd.split('-').map(Number); return `${m}/${d}` }
   const dateLabel = (ymd: string) => new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`))
+  const share = data && <ShareButton className="xtell-dy-share" spec={() => ({ icon: null, link: null, title: t('xtell.today.almanac'),
+    kicker: `${dateLabel(data.date)} · ${fill(t('xtell.today.lunar'), { date: data.lunarDate })}`,
+    body: [`${t('xtell.today.yi')}　${data.yi.join('、') || '—'}`, `${t('xtell.today.ji')}　${data.ji.join('、') || '—'}`,
+      fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })],
+    style: 'prose', name: `xtell-almanac-${data.date}`, log: { kind: 'almanac' } })} />
+  const waiting = failed
+    ? <p className="xtell-dy-small" role="alert">{t('xtell.today.failed')} <button type="button" className="xtell-dy-link" onClick={() => setAttempt(n => n + 1)}>{t('xtell.site.retry')}</button></p>
+    : <p className="xtell-dy-small">{t('common.loading')}</p>
+  const yiji = data && (
+    <dl className="xtell-td-yiji">
+      <div className="is-yi"><dt>{t('xtell.today.yi')}</dt><dd>{data.yi.join('、') || '—'}</dd></div>
+      <div className="is-ji"><dt>{t('xtell.today.ji')}</dt><dd>{data.ji.join('、') || '—'}</dd></div>
+    </dl>
+  )
+  const details = data && <>
+    <p className="xtell-td-date">
+      <strong>{dateLabel(data.date)}</strong>
+      <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}{data.rokuyo ? ` · ${data.rokuyo}` : ''}</span>
+    </p>
+    {/* Japanese pages: the lucky days a Japanese calendar marks (Sep 29). */}
+    {data.luckyDays && data.luckyDays.length > 0 && <p className="xtell-td-lucky">{fill(t('xtell.today.luckyDays'), { days: data.luckyDays.join('・') })}</p>}
+  </>
+  const facts = data && (
+    <ul className="xtell-td-facts">
+      <li>{fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })}</li>
+      <li>{fill(t('xtell.today.zhiXing'), { x: data.zhiXing })}</li>
+      <li>{fill(t('xtell.today.jieQi'), { now: data.jieQi.name, nowDate: md(data.jieQi.date), next: data.nextJieQi.name, nextDate: md(data.nextJieQi.date) })}</li>
+      <li>{fill(t('xtell.today.tianShen'), { x: data.tianShen.name, luck: t(data.tianShen.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
+      <li>{fill(t('xtell.today.xiu'), { x: data.xiu.name, luck: t(data.xiu.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
+      {data.jiShen.length > 0 && <li>{t('xtell.today.jiShen')}：{data.jiShen.join('、')}</li>}
+      {data.xiongSha.length > 0 && <li>{t('xtell.today.xiongSha')}：{data.xiongSha.join('、')}</li>}
+      <li>{t('xtell.today.pengZu')}：{data.pengZu.join('；')}</li>
+    </ul>
+  )
+  // The homepage card (owner, Oct 3): the lunar day on top (農曆八月廿三 ·
+  // 丙午年（屬馬） · 庚戌日), then 宜, 忌 and every fact in five lines with 更多
+  // for the rest. The Gregorian date is on the daily card beside it.
+  const lunarLine = data && `${fill(t('xtell.today.lunar'), { date: data.lunarDate })} · ${fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · ${fill(t('xtell.today.dayGz'), { gz: data.dayGz })}${data.rokuyo ? ` · ${data.rokuyo}` : ''}`
+  if (compact) return (
+    <section id="xtell-almanac" className="xtell-td xtell-home-card" aria-labelledby="xtell-almanac-title">
+      <div className="xtell-home-card-head">
+        <h2 id="xtell-almanac-title" className="xtell-home-card-title">{t('xtell.today.almanac')}</h2>
+        {share}
+      </div>
+      <p className="xtell-home-date">{lunarLine ?? '\u00a0'}</p>
+      <XTellClamp>{!data ? waiting : <>{yiji}{data.luckyDays && data.luckyDays.length > 0 && <p className="xtell-td-lucky">{fill(t('xtell.today.luckyDays'), { days: data.luckyDays.join('・') })}</p>}{facts}</>}</XTellClamp>
+    </section>
+  )
   return (
     <section id="xtell-almanac" className="xtell-td" aria-labelledby="xtell-almanac-title">
       <div className="xtell-dy-head">
         <h2 id="xtell-almanac-title" className="xtell-dy-title">{t('xtell.today.almanac')}</h2>
-        {data && <ShareButton className="xtell-dy-share" spec={() => ({ icon: null, link: null, title: t('xtell.today.almanac'),
-          kicker: `${dateLabel(data.date)} · ${fill(t('xtell.today.lunar'), { date: data.lunarDate })}`,
-          body: [`${t('xtell.today.yi')}　${data.yi.join('、') || '—'}`, `${t('xtell.today.ji')}　${data.ji.join('、') || '—'}`,
-            fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })],
-          style: 'prose', name: `xtell-almanac-${data.date}`, log: { kind: 'almanac' } })} />}
+        {share}
       </div>
       <p className="xtell-dy-sub">{t('xtell.today.almanacSub')}</p>
-      {!data ? (failed
-        ? <p className="xtell-dy-small" role="alert">{t('xtell.today.failed')} <button type="button" onClick={() => setAttempt(n => n + 1)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontWeight: 700, cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>{t('xtell.site.retry')}</button></p>
-        : <p className="xtell-dy-small">{t('common.loading')}</p>) : <>
-        <p className="xtell-td-date">
-          <strong>{dateLabel(data.date)}</strong>
-          <span>{fill(t('xtell.today.lunar'), { date: data.lunarDate })} · {fill(t('xtell.today.yearGz'), { gz: data.yearGz, animal: data.animal })} · {fill(t('xtell.today.dayGz'), { gz: data.dayGz })}{data.rokuyo ? ` · ${data.rokuyo}` : ''}</span>
-        </p>
-        {/* Japanese pages: the lucky days a Japanese calendar marks (Sep 29). */}
-        {data.luckyDays && data.luckyDays.length > 0 && <p className="xtell-td-lucky">{fill(t('xtell.today.luckyDays'), { days: data.luckyDays.join('・') })}</p>}
-        <dl className="xtell-td-yiji">
-          <div className="is-yi"><dt>{t('xtell.today.yi')}</dt><dd>{data.yi.join('、') || '—'}</dd></div>
-          <div className="is-ji"><dt>{t('xtell.today.ji')}</dt><dd>{data.ji.join('、') || '—'}</dd></div>
-        </dl>
-        <ul className="xtell-td-facts">
-          <li>{fill(t('xtell.today.chong'), { animal: data.chong.animal, gz: data.chong.ganzhi, dir: data.sha })}</li>
-          <li>{fill(t('xtell.today.zhiXing'), { x: data.zhiXing })}</li>
-          <li>{fill(t('xtell.today.jieQi'), { now: data.jieQi.name, nowDate: md(data.jieQi.date), next: data.nextJieQi.name, nextDate: md(data.nextJieQi.date) })}</li>
-          <li>{fill(t('xtell.today.tianShen'), { x: data.tianShen.name, luck: t(data.tianShen.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
-          <li>{fill(t('xtell.today.xiu'), { x: data.xiu.name, luck: t(data.xiu.lucky ? 'xtell.today.lucky' : 'xtell.today.unlucky') })}</li>
-          {data.jiShen.length > 0 && <li>{t('xtell.today.jiShen')}：{data.jiShen.join('、')}</li>}
-          {data.xiongSha.length > 0 && <li>{t('xtell.today.xiongSha')}：{data.xiongSha.join('、')}</li>}
-          <li>{t('xtell.today.pengZu')}：{data.pengZu.join('；')}</li>
-        </ul>
-      </>}
+      {!data ? waiting : <>{details}{yiji}{facts}</>}
     </section>
   )
 }

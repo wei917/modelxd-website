@@ -23,6 +23,7 @@ import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-t
 import { dropDates } from '../../../lib/xtell-share'
 import { ShareButton } from './ShareButton'
 import { WaitBar, WAIT_SECONDS } from './WaitBar'
+import XTellClamp from './XTellClamp'
 import { partialFields, readNdjson } from '../../../lib/partial-json'
 
 type Method = 'western' | 'bazi'
@@ -54,7 +55,11 @@ function zoneLabel(tz: string, lang: string): string {
   } catch { return tz }
 }
 
-export default function XTellDaily({ openSignal, onContinue }: { openSignal: number; onContinue: (row: SavedDaily) => void }) {
+/** `compact` (the homepage's card row, Oct 3): everything loads with the
+ *  page and shows in a box of four lines, the rest behind 更多 (XTellClamp);
+ *  the sign-in buttons stay outside the box, and the birth form, when open,
+ *  takes the whole row. */
+export default function XTellDaily({ openSignal, onContinue, compact = false }: { openSignal: number; onContinue: (row: SavedDaily) => void; compact?: boolean }) {
   const t = useT()
   const { lang } = useLang()
   const { show: showSignIn } = useAuthModal()
@@ -192,7 +197,7 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
     return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, profile?.displayTz, day?.date])
-  // The front-door guide's "daily" button.
+  // The front-door guide's "daily" button (it also opens the homepage box).
   useEffect(() => {
     if (!openSignal) return
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -212,14 +217,64 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
 
   // The card always keeps its place in the street's 今日 row (owner, Sep 27:
   // nothing hidden): its title and a loading line while the profile loads.
+  // The homepage card's top line is today's Gregorian date (owner, Oct 3):
+  // the day being read, or the visitor's own date (after mount, so the
+  // server and the first render agree).
+  const [localDay, setLocalDay] = useState<string | null>(null)
+  useEffect(() => { if (compact) setLocalDay(localDateIn(detectedZone())) }, [compact])
+  const dayShown = day?.date ?? localDay
+  const dateLine = compact && <p className="xtell-home-date">{dayShown ? new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(new Date(`${dayShown}T12:00:00Z`)) : '\u00a0'}</p>
+  const cls = 'xtell-dy' + (compact ? ' xtell-home-card' + (editing ? ' is-open' : '') : '')
   if (phase === 'loading') return (
-    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
+    <section id="xtell-daily" className={cls} aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
       <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
-      <p className="xtell-dy-small">{t('common.loading')}</p>
+      {dateLine}
+      {compact ? <XTellClamp><p className="xtell-dy-small">{t('common.loading')}</p></XTellClamp> : <p className="xtell-dy-small">{t('common.loading')}</p>}
+    </section>
+  )
+  const invite = (phase === 'none' || phase === 'signedOut') && !editing
+  const actions = invite && !dismissed && (
+    <div className="xtell-dy-row">
+      <button type="button" className="xtell-dy-primary" onClick={start}>{t(phase === 'signedOut' ? 'xtell.dy.signinBtn' : 'xtell.dy.start')}</button>
+      <button type="button" className="xtell-dy-secondary" onClick={dismiss}>{t('xtell.dy.skip')}</button>
+    </div>
+  )
+  const readings = <>
+    {/* The saved birth and zones are not shown here (owner, Sep 28):
+        they are changed or deleted on the account page. */}
+    {problem && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.problem')} <button type="button" className="xtell-dy-link" onClick={() => setEditing(true)}>{t('xtell.dy.edit')}</button></p>}
+    {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
+    {day && (
+      <div className="xtell-dy-cards">
+        {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
+      </div>
+    )}
+    <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
+  </>
+  // The homepage card: five lines, the rest behind 更多; the buttons outside.
+  if (compact) return (
+    <section id="xtell-daily" className={cls} aria-labelledby={titleId} ref={sectionRef}>
+      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2></div>
+      {dateLine}
+      {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
+      {editing ? (
+        <ProfileForm profile={profile} gen={gen} onSaved={onSaved} onCancel={() => setEditing(false)} errText={errText} />
+      ) : invite ? <>
+        <XTellClamp>
+          <p className="xtell-dy-sub">{t('xtell.dy.sub')}</p>
+          {dismissed
+            ? <p className="xtell-dy-later">{t('xtell.dy.later')} <button type="button" className="xtell-dy-link" onClick={start}>{t('xtell.dy.start')}</button></p>
+            : <div className="xtell-dy-remind">
+                <p>{t('xtell.dy.remind')}</p>
+                {phase === 'signedOut' && <p className="xtell-dy-small">{t('xtell.dy.signin')}</p>}
+              </div>}
+        </XTellClamp>
+        {actions}
+      </> : <XTellClamp openSignal={openSignal}>{readings}</XTellClamp>}
     </section>
   )
   return (
-    <section id="xtell-daily" className="xtell-dy" aria-labelledby={titleId} ref={sectionRef}>
+    <section id="xtell-daily" className={cls} aria-labelledby={titleId} ref={sectionRef}>
       <div className="xtell-dy-head">
         <h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>
         <p className="xtell-dy-sub">{t('xtell.dy.sub')}</p>
@@ -228,31 +283,15 @@ export default function XTellDaily({ openSignal, onContinue }: { openSignal: num
 
       {editing ? (
         <ProfileForm profile={profile} gen={gen} onSaved={onSaved} onCancel={() => setEditing(false)} errText={errText} />
-      ) : (phase === 'none' || phase === 'signedOut') ? (
+      ) : invite ? (
         dismissed
           ? <p className="xtell-dy-later">{t('xtell.dy.later')} <button type="button" className="xtell-dy-link" onClick={start}>{t('xtell.dy.start')}</button></p>
           : <div className="xtell-dy-remind">
               <p>{t('xtell.dy.remind')}</p>
               {phase === 'signedOut' && <p className="xtell-dy-small">{t('xtell.dy.signin')}</p>}
-              <div className="xtell-dy-row">
-                <button type="button" className="xtell-dy-primary" onClick={start}>{t(phase === 'signedOut' ? 'xtell.dy.signinBtn' : 'xtell.dy.start')}</button>
-                <button type="button" className="xtell-dy-secondary" onClick={dismiss}>{t('xtell.dy.skip')}</button>
-              </div>
+              {actions}
             </div>
-      ) : (
-        <>
-          {/* The saved birth and zones are not shown here (owner, Sep 28):
-              they are changed or deleted on the account page. */}
-          {problem && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.problem')} <button type="button" className="xtell-dy-link" onClick={() => setEditing(true)}>{t('xtell.dy.edit')}</button></p>}
-          {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
-          {day && (
-            <div className="xtell-dy-cards">
-              {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
-            </div>
-          )}
-          <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
-        </>
-      )}
+      ) : readings}
     </section>
   )
 }

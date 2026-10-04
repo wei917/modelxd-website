@@ -13,18 +13,19 @@ import { almanacForZone } from '../../../lib/xtell-almanac-server'
 import { serverLang } from '../../../lib/lang'
 import { siteFromHeaders } from '../../../lib/site'
 
-async function Almanac() {
+async function Almanac({ compact }: { compact: boolean }) {
   const h = await headers()
-  return <AlmanacCard initial={almanacForZone(h.get('x-vercel-ip-timezone'), serverLang(h, siteFromHeaders(h)))} />
+  return <AlmanacCard compact={compact} initial={almanacForZone(h.get('x-vercel-ip-timezone'), serverLang(h, siteFromHeaders(h)))} />
 }
 
 /** The section as the street places it. Without the server's day (loading,
- *  or a failure), the card asks /api/xtell/almanac for the phone's own day. */
-export function almanacSection() {
+ *  or a failure), the card asks /api/xtell/almanac for the phone's own day.
+ *  The homepage shows it in a box of four lines, the rest behind 更多 (Oct 3). */
+export function almanacSection({ compact = true }: { compact?: boolean } = {}) {
   return (
-    <SectionBoundary fallback={<AlmanacCard />}>
-      <Suspense fallback={<AlmanacCard />}>
-        <Almanac />
+    <SectionBoundary fallback={<AlmanacCard compact={compact} />}>
+      <Suspense fallback={<AlmanacCard compact={compact} />}>
+        <Almanac compact={compact} />
       </Suspense>
     </SectionBoundary>
   )

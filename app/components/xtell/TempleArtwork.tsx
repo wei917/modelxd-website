@@ -11,7 +11,11 @@ export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simia
 // deity rooms, the most visited temple in Taiwan.
 // 九星氣學 (Sep 29) sits with the computed methods, after 九曜. 孫子兵法
 // (Sep 29), a reading of the visitor's own words like 解夢, after it.
-export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'yixue', 'jiemeng', 'sunzi', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
+// Oct 3 (owner): the Chinese bar starts with the homepage's rotation, in
+// its order — 易經, 周公解夢 and 孫子兵法 are popular in Taiwan, so they come
+// right after 塔羅, ahead of the Indian 九曜 and the Japanese 九星 and 宿曜
+// (lib/xtell-hero.ts HERO_FEATURED; a test keeps the two in step).
+export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue', 'jiemeng', 'sunzi', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
 
 // Each market's own order (owner, Sep 28: "for each market, a list and
 // order"). Every temple is in every list; only the order changes. Korea

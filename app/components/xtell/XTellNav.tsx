@@ -10,6 +10,9 @@ import { TempleArtwork, DISPLAY_TEMPLES, displayTemples, type TempleKey } from '
 import ContactEmail from '../ContactEmail'
 import BugReportLink from '../BugReport'
 import { useFace } from '../../../lib/use-face'
+import { onPreview } from '../../../lib/xtell-preview'
+import { pinnedFirst } from '../../../lib/xtell-pins'
+import { usePins } from './usePins'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -67,7 +70,54 @@ export default function XTellNav({ user }: { user: User | null }) {
     if (!activeTemple) return
     row.current?.querySelector(`a[href="/#${activeTemple}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeTemple])
-  const scrollRow = (dir: 1 | -1) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
+  // The homepage hero's temple (lib/xtell-preview.ts, Oct 3): a soft mark on
+  // its icon, never aria-current (that is the room you are in). The row
+  // follows it only when the icon is out of view, and never against the
+  // visitor: not while the pointer is on the row or its arrows, not while
+  // keyboard focus is in it, not within 8 s of a touch, a scroll or an
+  // arrow press. Only the row scrolls, never the page.
+  const [preview, setPreview] = useState<TempleKey | null>(null)
+  useEffect(() => onPreview(setPreview), [])
+  // Pinned temples come first, the newest at the very left (owner, Oct 3;
+  // pinned from a room's header), with a thin rule after them.
+  const { pins } = usePins()
+  const order = pinnedFirst(displayTemples(lang), pins ?? [])
+  const pinnedCount = (pins ?? []).filter(k => order.includes(k)).length
+  const wrap = useRef<HTMLDivElement>(null)
+  const touched = useRef(0)
+  const hovering = useRef(false)
+  useEffect(() => {
+    const el = wrap.current
+    if (!el) return
+    const mark = () => { touched.current = Date.now() }
+    const enter = () => { hovering.current = true }
+    const leave = () => { hovering.current = false; mark() }
+    const events = ['pointerdown', 'wheel', 'touchstart', 'keydown', 'focusin'] as const
+    events.forEach(ev => el.addEventListener(ev, mark, { passive: true }))
+    el.addEventListener('pointerenter', enter)
+    el.addEventListener('pointerleave', leave)
+    return () => {
+      events.forEach(ev => el.removeEventListener(ev, mark))
+      el.removeEventListener('pointerenter', enter)
+      el.removeEventListener('pointerleave', leave)
+    }
+  }, [])
+  useEffect(() => {
+    const el = row.current
+    if (!el || !preview || activeTemple) return
+    if (hovering.current || wrap.current?.contains(document.activeElement) || Date.now() - touched.current < 8000) return
+    const link = el.querySelector<HTMLElement>(`a[href="/#${preview}"]`)
+    if (!link) return
+    const box = el.getBoundingClientRect(), r = link.getBoundingClientRect()
+    if (r.left >= box.left && r.right <= box.right) return
+    const left = el.scrollLeft + (r.left - box.left) - (box.width - r.width) / 2
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ left: Math.max(0, left), behavior: still ? 'auto' : 'smooth' })
+  }, [preview, activeTemple])
+  const scrollRow = (dir: 1 | -1) => {
+    touched.current = Date.now()
+    row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
+  }
   // The tab title follows the language and the place: the explorer, a
   // temple (from the hash), the account page, the legal pages. The server's
   // metadata is already this language's explorer title (lib/xtell-meta.ts)
@@ -112,11 +162,13 @@ export default function XTellNav({ user }: { user: User | null }) {
         }}><XTellMark /></a>
         {/* Every temple, one compact row after the wordmark (owner, Sep 27).
             The avatar on the right IS the account link (owner, Sep 24). */}
-        <div className="xtell-temple-wrap">
+        <div ref={wrap} className="xtell-temple-wrap">
           <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-            {displayTemples(lang).map(key => <a key={key} href={'/#' + key}
+            {order.map((key, i) => <a key={key} href={'/#' + key}
               aria-label={t('xtell.site.focus.' + key + '.name')}
-              aria-current={activeTemple === key ? 'page' : undefined}>
+              aria-current={activeTemple === key ? 'page' : undefined}
+              data-preview={!activeTemple && preview === key ? 'true' : undefined}
+              data-pinned={i < pinnedCount ? (i === pinnedCount - 1 ? 'last' : 'true') : undefined}>
               <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
               <span>{t('xtell.site.focus.' + key + '.short')}</span>
             </a>)}
