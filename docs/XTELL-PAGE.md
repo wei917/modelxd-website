@@ -786,8 +786,9 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
      (`word-break: auto-phrase`); at 360 px and under, a slightly smaller
      title, a wider column and the kicker without its side rules.
 2. **Top bar preview** (`lib/xtell-preview.ts`, `XTellNav.tsx`). The hero
-   announces its temple; the bar marks that icon `data-preview` (a tint and
-   a dot), never `aria-current` (that is the room you are in). The row
+   announces its temple; the bar marks that icon `data-preview` (a soft
+   tint only; a dot sat on the label and was removed), never `aria-current`
+   (that is the room you are in). The row
    scrolls to it only when the icon is out of view and the visitor is not
    using the row (pointer on the strip or its arrows, focus inside it, or a
    touch, scroll or arrow press in the last 8 s); only the row scrolls.

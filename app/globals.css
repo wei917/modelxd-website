@@ -3742,10 +3742,10 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 .xtell-hero-dot[aria-current="true"]::before { width: 20px; background-color: var(--xtell-vermilion); }
 .xtell-hero-play { width: 36px; height: 36px; min-height: 0; display: grid; place-items: center; padding: 0; border: none; border-radius: 50%; background: none; color: var(--xtell-ink); cursor: pointer; }
 .xtell-temple-nav a { position: relative; }
-/* The hero's temple in the top bar: a soft wash and a dot, never the
-   vermilion underline of the room you are in. */
+/* The hero's temple in the top bar: a soft wash only (owner, Oct 3: a dot
+   sat on the label and the wash already marks it), never the vermilion
+   underline of the room you are in. */
 .xtell-temple-nav a[data-preview="true"] { background: var(--xtell-tint); }
-.xtell-temple-nav a[data-preview="true"]::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--xtell-vermilion); opacity: .75; }
 
 .xtell-home-cards { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; margin: 10px 0 0; }
 .xtell-home-cards > .xtell-home-card { margin: 0; padding: 16px 18px; border: 1px solid var(--xtell-rule); border-radius: 14px; background: var(--xtell-white); box-shadow: 0 6px 22px rgba(60, 40, 20, .06); min-width: 0; }
