@@ -11,6 +11,8 @@ import ContactEmail from '../ContactEmail'
 import BugReportLink from '../BugReport'
 import { useFace } from '../../../lib/use-face'
 import { onPreview } from '../../../lib/xtell-preview'
+import { pinnedFirst } from '../../../lib/xtell-pins'
+import { usePins } from './usePins'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -76,6 +78,11 @@ export default function XTellNav({ user }: { user: User | null }) {
   // arrow press. Only the row scrolls, never the page.
   const [preview, setPreview] = useState<TempleKey | null>(null)
   useEffect(() => onPreview(setPreview), [])
+  // Pinned temples come first, the newest at the very left (owner, Oct 3;
+  // pinned from a room's header), with a thin rule after them.
+  const { pins } = usePins()
+  const order = pinnedFirst(displayTemples(lang), pins ?? [])
+  const pinnedCount = (pins ?? []).filter(k => order.includes(k)).length
   const wrap = useRef<HTMLDivElement>(null)
   const touched = useRef(0)
   const hovering = useRef(false)
@@ -157,10 +164,11 @@ export default function XTellNav({ user }: { user: User | null }) {
             The avatar on the right IS the account link (owner, Sep 24). */}
         <div ref={wrap} className="xtell-temple-wrap">
           <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
-            {displayTemples(lang).map(key => <a key={key} href={'/#' + key}
+            {order.map((key, i) => <a key={key} href={'/#' + key}
               aria-label={t('xtell.site.focus.' + key + '.name')}
               aria-current={activeTemple === key ? 'page' : undefined}
-              data-preview={!activeTemple && preview === key ? 'true' : undefined}>
+              data-preview={!activeTemple && preview === key ? 'true' : undefined}
+              data-pinned={i < pinnedCount ? (i === pinnedCount - 1 ? 'last' : 'true') : undefined}>
               <TempleArtwork temple={key} kind="icon" clear className="xtell-nav-icon" />
               <span>{t('xtell.site.focus.' + key + '.short')}</span>
             </a>)}

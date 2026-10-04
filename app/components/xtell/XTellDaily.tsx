@@ -23,6 +23,7 @@ import { resolveWallTime, detectedZone, localDateIn } from '../../../lib/xtell-t
 import { dropDates } from '../../../lib/xtell-share'
 import { ShareButton } from './ShareButton'
 import { WaitBar, WAIT_SECONDS } from './WaitBar'
+import XTellClamp from './XTellClamp'
 import { partialFields, readNdjson } from '../../../lib/partial-json'
 
 type Method = 'western' | 'bazi'
@@ -54,8 +55,10 @@ function zoneLabel(tz: string, lang: string): string {
   } catch { return tz }
 }
 
-/** `compact` (the homepage's card row, Oct 3): the card opens to the day's
- *  readings on a press, and widens to the whole row while open. */
+/** `compact` (the homepage's card row, Oct 3): everything loads with the
+ *  page and shows in a box of four lines, the rest behind 更多 (XTellClamp);
+ *  the sign-in buttons stay outside the box, and the birth form, when open,
+ *  takes the whole row. */
 export default function XTellDaily({ openSignal, onContinue, compact = false }: { openSignal: number; onContinue: (row: SavedDaily) => void; compact?: boolean }) {
   const t = useT()
   const { lang } = useLang()
@@ -194,11 +197,9 @@ export default function XTellDaily({ openSignal, onContinue, compact = false }: 
     return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, profile?.displayTz, day?.date])
-  // The front-door guide's "daily" button.
-  const [open, setOpen] = useState(false)
+  // The front-door guide's "daily" button (it also opens the homepage box).
   useEffect(() => {
     if (!openSignal) return
-    setOpen(true)
     sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     if (phase === 'none') setEditing(true)
     if (phase === 'signedOut') showSignIn()
@@ -217,54 +218,72 @@ export default function XTellDaily({ openSignal, onContinue, compact = false }: 
   // The card always keeps its place in the street's 今日 row (owner, Sep 27:
   // nothing hidden): its title and a loading line while the profile loads.
   const badge = compact ? <span className="xtell-home-badge is-free">{t('xtell.home.daily.free')}</span> : null
-  const wide = compact && (editing || (open && phase === 'ready'))
-  const cls = 'xtell-dy' + (compact ? ' xtell-home-card' + (wide ? ' is-open' : ' is-compact') : '')
+  const cls = 'xtell-dy' + (compact ? ' xtell-home-card' + (editing ? ' is-open' : '') : '')
   if (phase === 'loading') return (
     <section id="xtell-daily" className={cls} aria-labelledby={titleId} aria-busy="true" ref={sectionRef}>
       <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}</div>
-      <p className="xtell-dy-small">{t('common.loading')}</p>
+      {compact ? <XTellClamp><p className="xtell-dy-small">{t('common.loading')}</p></XTellClamp> : <p className="xtell-dy-small">{t('common.loading')}</p>}
+    </section>
+  )
+  const invite = (phase === 'none' || phase === 'signedOut') && !editing
+  const actions = invite && !dismissed && (
+    <div className="xtell-dy-row">
+      <button type="button" className="xtell-dy-primary" onClick={start}>{t(phase === 'signedOut' ? 'xtell.dy.signinBtn' : 'xtell.dy.start')}</button>
+      <button type="button" className="xtell-dy-secondary" onClick={dismiss}>{t('xtell.dy.skip')}</button>
+    </div>
+  )
+  const readings = <>
+    {/* The saved birth and zones are not shown here (owner, Sep 28):
+        they are changed or deleted on the account page. */}
+    {problem && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.problem')} <button type="button" className="xtell-dy-link" onClick={() => setEditing(true)}>{t('xtell.dy.edit')}</button></p>}
+    {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
+    {day && (
+      <div className="xtell-dy-cards">
+        {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
+      </div>
+    )}
+    <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
+  </>
+  // The homepage card: four lines, the rest behind 更多; the buttons outside.
+  if (compact) return (
+    <section id="xtell-daily" className={cls} aria-labelledby={titleId} ref={sectionRef}>
+      <div className="xtell-dy-head"><h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}</div>
+      {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
+      {editing ? (
+        <ProfileForm profile={profile} gen={gen} onSaved={onSaved} onCancel={() => setEditing(false)} errText={errText} />
+      ) : invite ? <>
+        <XTellClamp>
+          <p className="xtell-dy-sub">{t('xtell.dy.sub')}</p>
+          {dismissed
+            ? <p className="xtell-dy-later">{t('xtell.dy.later')} <button type="button" className="xtell-dy-link" onClick={start}>{t('xtell.dy.start')}</button></p>
+            : <div className="xtell-dy-remind">
+                <p>{t('xtell.dy.remind')}</p>
+                {phase === 'signedOut' && <p className="xtell-dy-small">{t('xtell.dy.signin')}</p>}
+              </div>}
+        </XTellClamp>
+        {actions}
+      </> : <XTellClamp openSignal={openSignal}>{readings}</XTellClamp>}
     </section>
   )
   return (
     <section id="xtell-daily" className={cls} aria-labelledby={titleId} ref={sectionRef}>
       <div className="xtell-dy-head">
-        <h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>{badge}
+        <h2 id={titleId} className="xtell-dy-title">{t('xtell.dy.title')}</h2>
         <p className="xtell-dy-sub">{t('xtell.dy.sub')}</p>
       </div>
       {notice && <p className="xtell-dy-notice" role="status">{notice}</p>}
 
       {editing ? (
         <ProfileForm profile={profile} gen={gen} onSaved={onSaved} onCancel={() => setEditing(false)} errText={errText} />
-      ) : (phase === 'none' || phase === 'signedOut') ? (
+      ) : invite ? (
         dismissed
           ? <p className="xtell-dy-later">{t('xtell.dy.later')} <button type="button" className="xtell-dy-link" onClick={start}>{t('xtell.dy.start')}</button></p>
           : <div className="xtell-dy-remind">
               <p>{t('xtell.dy.remind')}</p>
               {phase === 'signedOut' && <p className="xtell-dy-small">{t('xtell.dy.signin')}</p>}
-              <div className="xtell-dy-row">
-                <button type="button" className="xtell-dy-primary" onClick={start}>{t(phase === 'signedOut' ? 'xtell.dy.signinBtn' : 'xtell.dy.start')}</button>
-                <button type="button" className="xtell-dy-secondary" onClick={dismiss}>{t('xtell.dy.skip')}</button>
-              </div>
+              {actions}
             </div>
-      ) : (
-        <>
-          {/* The saved birth and zones are not shown here (owner, Sep 28):
-              they are changed or deleted on the account page. */}
-          {problem && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.problem')} <button type="button" className="xtell-dy-link" onClick={() => setEditing(true)}>{t('xtell.dy.edit')}</button></p>}
-          {dayError && <p className="xtell-dy-notice" role="alert">{t('xtell.dy.err.load')} <button type="button" className="xtell-dy-link" onClick={() => void loadDay()}>{t('xtell.dy.retry')}</button></p>}
-          {compact && !open ? (
-            <button type="button" className="xtell-dy-primary xtell-home-cta" aria-expanded={false} onClick={() => setOpen(true)}>{t('xtell.home.daily.open')} <span aria-hidden="true">→</span></button>
-          ) : <>
-            {day && (
-              <div className="xtell-dy-cards">
-                {METHODS.map(m => <MethodCard key={`${m}:${day.date}`} method={m} day={day} data={day.methods[m]} onRetry={() => void loadDay()} onContinue={onContinue} />)}
-              </div>
-            )}
-            <p className="xtell-dy-small xtell-dy-settings"><a className="xtell-dy-link" href="/profile#xtell-daily-settings">{t('xtell.dy.editBirth')}</a></p>
-            {compact && <button type="button" className="xtell-home-more" aria-expanded={true} onClick={() => setOpen(false)}>{t('xtell.home.daily.close')} <span aria-hidden="true">↑</span></button>}
-          </>}
-        </>
-      )}
+      ) : readings}
     </section>
   )
 }

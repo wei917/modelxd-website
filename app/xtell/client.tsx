@@ -51,7 +51,7 @@ import { TitleEditor } from '../components/xtell/TitleEditor'
 import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimateInputTokens, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
 import XTellAssistant from '../components/xtell/XTellAssistant'
 import XTellHero from '../components/xtell/XTellHero'
-import XTellFavorites from '../components/xtell/XTellFavorites'
+import PinButton from '../components/xtell/PinButton'
 import { XTellHowTo } from '../components/xtell/XTellHowTo'
 import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
 import { AlmanacCard } from '../components/xtell/XTellToday'
@@ -385,15 +385,14 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
         {/* The homepage (Oct 3, the owner's approved Concept 24): a scenic
             entrance that turns through the temples, the guide right under
             it (the owner's pick of two placements), then today's almanac,
-            the free daily fortune and the visitor's own temples in one row,
-            and the four steps. The temples themselves stay in the top bar. */}
+            and the free daily fortune side by side, and the steps. The temples
+            stay in the top bar, where a visitor's pinned ones come first. */}
         <XTellHero />
         <XTellAssistant onOpen={openFromGuide} />
         <div className="xtell-home-cards">
           {/* Its own section, rendered on the server (AlmanacSection). */}
           {almanacSection ?? <AlmanacCard compact />}
           <XTellDaily openSignal={dailySignal} onContinue={openDaily} compact />
-          <XTellFavorites />
         </div>
         <XTellHowTo />
       </> : <>
@@ -1269,7 +1268,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       {standalone ? <>
         <header className="xtell-room-header">
           <TempleArtwork temple={temple} kind="icon" className="xtell-room-artwork" />
-          <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p><h1>{t(`xtell.site.focus.${temple}.name`)}</h1><p>{t(`xtell.site.focus.${temple}.description`)}</p></div>
+          <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p>
+            {/* 釘選 puts this temple first in the top bar (owner, Oct 3). */}
+            <div className="xtell-room-title"><h1>{t(`xtell.site.focus.${temple}.name`)}</h1><PinButton temple={temple} /></div>
+            <p>{t(`xtell.site.focus.${temple}.description`)}</p></div>
         </header>
       </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 

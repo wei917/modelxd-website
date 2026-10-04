@@ -20,7 +20,7 @@ async function Almanac({ compact }: { compact: boolean }) {
 
 /** The section as the street places it. Without the server's day (loading,
  *  or a failure), the card asks /api/xtell/almanac for the phone's own day.
- *  The homepage's card row shows it compact (Oct 3), the details a press away. */
+ *  The homepage shows it in a box of four lines, the rest behind 更多 (Oct 3). */
 export function almanacSection({ compact = true }: { compact?: boolean } = {}) {
   return (
     <SectionBoundary fallback={<AlmanacCard compact={compact} />}>

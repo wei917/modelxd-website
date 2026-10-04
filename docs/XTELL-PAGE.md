@@ -479,10 +479,12 @@ content/xtell-guide.md      # the front-door guide's knowledge (version = catalo
 app/api/xtell/assistant/route.ts  # POST {q, lang, history} → answer + catalog actions; house-paid
 app/components/xtell/XTellAssistant.tsx  # the guide under the homepage hero (XTell door only)
 app/components/xtell/XTellHero.tsx       # homepage hero: six featured temples, turning, never navigating
-app/components/xtell/XTellFavorites.tsx  # 我的常用 (device only)
+app/components/xtell/PinButton.tsx       # 釘選 in a room's header (pins to the top bar's front)
+app/components/xtell/usePins.ts          # pinned temples as state, shared by the bar and the button
+app/components/xtell/XTellClamp.tsx      # four lines of a homepage card, 更多 for the rest
 app/components/xtell/XTellHowTo.tsx      # the four steps on the homepage
 lib/xtell-hero.ts           # HERO_ART inventory, HERO_SLIDES featured per market, rotation rules
-lib/xtell-favorites.ts      # favourites: parse/validate, load/save, add/remove/move
+lib/xtell-pins.ts           # pins: parse/validate, load/save, pin (to the left)/unpin, pinnedFirst
 lib/xtell-preview.ts        # hero → top bar preview event
 public/xtell/hero/*.webp    # hero scenes (Codex): wide, -mobile, -portrait-mobile
 scripts/test-xtell-home.ts  # homepage suite (in npm run test:xtell)
@@ -789,7 +791,15 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
      targets around 8 px dots, play 36 px; Japanese titles break by phrase
      (`word-break: auto-phrase`); at 360 px and under, a slightly smaller
      title, a wider column and the kicker without its side rules.
-2. **Top bar preview** (`lib/xtell-preview.ts`, `XTellNav.tsx`). The hero
+2. **Pinned temples** (`lib/xtell-pins.ts`, `usePins.ts`, `PinButton.tsx`;
+   owner, Oct 3). 釘選 beside a temple's name in its room puts it at the
+   very left of the top bar (the newest pin leftmost, a thin rule after the
+   pinned ones); pressed again, it goes back to its place. Kept on this
+   device (`localStorage` `xtell:pins:v1`), checked when read back (real
+   temple keys, each once), never pre-filled; the bar follows at once in
+   the same tab and in others. The first render is the market's order, so
+   a visitor with pins sees them move to the front just after load.
+   **Top bar preview** (`lib/xtell-preview.ts`, `XTellNav.tsx`). The hero
    announces its temple; the bar marks that icon `data-preview` (a soft
    tint only; a dot sat on the label and was removed), never `aria-current`
    (that is the room you are in). The row
@@ -805,17 +815,16 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    the field (`xtell.as.placeholderShort`), the chips and the note once the
    field is used; the conversation grows in the page flow, never over the
    cards.
-4. **Today's cards** (one column on phones, three from 760 px): 今日黃曆,
-   compact (date, 宜 and 忌; 「查看黃曆」 opens every field, nothing was
-   removed); 今日運勢 (`XTellDaily compact`: the same data, consent and
-   auth, 「查看我的運勢」 opens the method cards); 我的常用
-   (`XTellFavorites.tsx`, `lib/xtell-favorites.ts`): the visitor's pinned
-   temples with their original icons, added, removed and reordered by
-   buttons (34 px), kept on this device (`localStorage` `xtell:favorites:v1`).
-   What is read back is checked (real temple keys only, each once, in the
-   saved order); anything else reads as empty and is left alone until the
-   visitor changes something; nothing is ever pre-filled; removing the last
-   pin ends editing so 新增 comes back.
+4. **Today's cards** (one column on phones, two from 760 px): 今日黃曆 and
+   今日運勢 (`XTellDaily compact`: the same data, consent and auth). Both
+   load everything with the page and show it in a box of four lines with a
+   fixed height, so the row never jumps as data arrives; 更多 opens the box
+   in place, 收起 closes it, and the button shows only when there is more
+   (`XTellClamp.tsx`; owner, Oct 3). The almanac puts 宜 and 忌 first (the
+   date is in the badge), then the day and every fact. The daily card keeps
+   its sign-in buttons outside the box, and its birth form, when open, takes
+   the whole row; the guide's 今日運勢 button opens the box. A 我的常用 card
+   (favourites) sat here until Oct 3; pinning in the top bar replaced it.
 5. **Four steps** (`XTellHowTo.tsx`; owner, Oct 3): choose a temple, give
    your details, choose masters, discuss the results with them. What a
    visitor does, never how anything is computed. A 解讀範例 (sample

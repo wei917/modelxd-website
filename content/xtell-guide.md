@@ -241,8 +241,8 @@ today's date in the visitor's own time zone with the lunar date and the
 day's stem-branch, what the day is traditionally good for (宜) and should
 avoid (忌), the animal the day clashes with and the direction of 煞, the day
 officer (建除), the solar term, the day spirit, the lunar mansion, the
-auspicious and baleful stars and the Pengzu taboos. The card first shows the
-date, 宜 and 忌; a button on it opens all the rest. It comes
+auspicious and baleful stars and the Pengzu taboos. The card first shows 宜
+and 忌; a button on it opens all the rest. It comes
 from the date alone. Tradition and reference, not a personal reading.
 
 ## Not live yet
