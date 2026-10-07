@@ -118,10 +118,10 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
       days={days}
       ranges={RANGES}
       tz="Taiwan time"
-      // The top 20% and top 10% stay come from migration 116, the two groups
-      // from 117. Without them the rows lack the columns, and the view says so
-      // in their place instead of drawing zeros.
-      topStay={found.length === 0 || found.some(r => r.p80_seconds != null)}
+      // The top 20% and top 10% average stay come from migration 128, the two
+      // groups from 117. Without them the rows lack the columns, and the view
+      // says so in their place instead of drawing zeros.
+      topStay={found.length === 0 || found.some(r => r.top10_avg_seconds != null)}
       upgraded={upgraded}
       country={upgraded ? wanted : null}
       picker={countries.picker.slice(0, 5)}

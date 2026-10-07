@@ -79,9 +79,14 @@ under the heading "Filtered: 14 days"; twenty minutes into a new Taiwan day
 the owner read "3" as the log having been emptied.
 
 **Stay** is per browser per day (that browser's visits added up, tab in
-front), not per visit. **Top 20% / top 10% stay** is the stay that the most
-engaged fifth and tenth of the browsers reached or passed: the 80th and 90th
-percentile.
+front), not per visit. **Top 20% / top 10% avg stay** (migration 128, Oct 7)
+is the average stay of the fifth and the tenth of the browsers that stayed
+longest: the ceil(n / 5) and ceil(n / 10) longest stays of the day (or of the
+range's browser-days on the tiles), averaged. Until Oct 7 these two columns
+were the 80th and 90th percentile, a cutoff filled in between two real stays;
+with 15 to 25 browsers a day that read as nonsense (Oct 6: top 10% 43 s under
+an average of 3 m 20 s; owner: "percentile is misleading"). The average of the
+top tenth is now 27 m 26 s for that day, and it is never below the average.
 
 **Signed in / not signed in** (Sep 30). A browser counts as signed in on a
 day if any of its visits that day carried an account. The numbers over

@@ -13,8 +13,8 @@ export type DayRow = {
   returningBrowsers: number
   signedInUsers: number
   medianSeconds: number
-  p80Seconds: number         // the stay the top 20% of browsers reached or passed
-  p90Seconds: number         // the same for the top 10%
+  top20Seconds: number       // the average stay of the fifth of browsers that stayed longest
+  top10Seconds: number       // the same for the tenth (migration 128)
   avgSeconds: number
   totalSeconds: number
   chatgpt: number
@@ -24,42 +24,46 @@ export type DayRow = {
   // if any of its visits that day carried an account; otherwise a guest.
   signedBrowsers: number
   signedMedian: number
-  signedP80: number
-  signedP90: number
+  signedTop20: number
+  signedTop10: number
   signedAvg: number
   guestBrowsers: number
   guestMedian: number
-  guestP80: number
-  guestP90: number
+  guestTop20: number
+  guestTop10: number
   guestAvg: number
 }
 
 /** A row of site_visit_daily_v2(), or of the older site_visit_daily() (which
- *  lacks the p80/p90 columns before 116 and the group columns before 117). */
+ *  lacks the group columns). The top 20% / top 10% average stay come from
+ *  migration 128; before it the rows carry no top columns. */
 export type DailyRow = {
   day: string; visits: number; browsers: number; new_browsers: number; returning_browsers: number
   signed_in_users: number; median_seconds: number; avg_seconds: number; total_seconds: number
   chatgpt_visits: number; google_visits: number; other_visits: number
-  p80_seconds?: number | null; p90_seconds?: number | null
-  signed_browsers?: number | null; signed_median_seconds?: number | null; signed_p80_seconds?: number | null
-  signed_p90_seconds?: number | null; signed_avg_seconds?: number | null
-  guest_browsers?: number | null; guest_median_seconds?: number | null; guest_p80_seconds?: number | null
-  guest_p90_seconds?: number | null; guest_avg_seconds?: number | null
+  top20_avg_seconds?: number | null; top10_avg_seconds?: number | null
+  signed_browsers?: number | null; signed_median_seconds?: number | null; signed_top20_avg_seconds?: number | null
+  signed_top10_avg_seconds?: number | null; signed_avg_seconds?: number | null
+  guest_browsers?: number | null; guest_median_seconds?: number | null; guest_top20_avg_seconds?: number | null
+  guest_top10_avg_seconds?: number | null; guest_avg_seconds?: number | null
 }
 
 /** The one row of site_visit_summary() (migration 118): the whole range.
  *  Browsers and accounts are counted once here, which the daily rows cannot
- *  be added up to; stay is still per browser per day. */
+ *  be added up to; stay is still per browser per day. The top 20% / top 10%
+ *  average stay come from 128 and are missing before it. */
 export type SummaryRow = {
   visits: number; browsers: number; new_browsers: number; returning_browsers: number; signed_in_users: number
-  median_seconds: number; p80_seconds: number; p90_seconds: number; avg_seconds: number; total_seconds: number
+  median_seconds: number; top20_avg_seconds?: number | null; top10_avg_seconds?: number | null; avg_seconds: number; total_seconds: number
   chatgpt_visits: number; google_visits: number; other_visits: number
-  signed_browsers: number; signed_median_seconds: number; signed_p80_seconds: number; signed_p90_seconds: number; signed_avg_seconds: number
-  guest_browsers: number; guest_median_seconds: number; guest_p80_seconds: number; guest_p90_seconds: number; guest_avg_seconds: number
+  signed_browsers: number; signed_median_seconds: number; signed_top20_avg_seconds?: number | null; signed_top10_avg_seconds?: number | null; signed_avg_seconds: number
+  guest_browsers: number; guest_median_seconds: number; guest_top20_avg_seconds?: number | null; guest_top10_avg_seconds?: number | null; guest_avg_seconds: number
 }
 
-/** One group's stay over the range: how many browsers, and the four times. */
-export type StayLine = { browsers: number; median: number; p80: number; p90: number; avg: number }
+/** One group's stay over the range: how many browsers, and its times. top20
+ *  and top10 are the average stay of the fifth and the tenth of its
+ *  browser-days that stayed longest; null before migration 128. */
+export type StayLine = { browsers: number; median: number; top20: number | null; top10: number | null; avg: number }
 
 /** The whole range, as the view shows it. */
 export type Summary = {
@@ -82,9 +86,9 @@ export function toSummary(r: SummaryRow | undefined | null): Summary | null {
     newBrowsers: r.new_browsers,
     returningBrowsers: r.returning_browsers,
     signedInUsers: r.signed_in_users,
-    everyone: { browsers: r.browsers, median: r.median_seconds, p80: r.p80_seconds, p90: r.p90_seconds, avg: r.avg_seconds },
-    signed: { browsers: r.signed_browsers, median: r.signed_median_seconds, p80: r.signed_p80_seconds, p90: r.signed_p90_seconds, avg: r.signed_avg_seconds },
-    guest: { browsers: r.guest_browsers, median: r.guest_median_seconds, p80: r.guest_p80_seconds, p90: r.guest_p90_seconds, avg: r.guest_avg_seconds },
+    everyone: { browsers: r.browsers, median: r.median_seconds, top20: r.top20_avg_seconds ?? null, top10: r.top10_avg_seconds ?? null, avg: r.avg_seconds },
+    signed: { browsers: r.signed_browsers, median: r.signed_median_seconds, top20: r.signed_top20_avg_seconds ?? null, top10: r.signed_top10_avg_seconds ?? null, avg: r.signed_avg_seconds },
+    guest: { browsers: r.guest_browsers, median: r.guest_median_seconds, top20: r.guest_top20_avg_seconds ?? null, top10: r.guest_top10_avg_seconds ?? null, avg: r.guest_avg_seconds },
   }
 }
 
@@ -142,8 +146,8 @@ export function fillDaily(data: DailyRow[], today: string): DayRow[] {
       returningBrowsers: r?.returning_browsers ?? 0,
       signedInUsers: r?.signed_in_users ?? 0,
       medianSeconds: r?.median_seconds ?? 0,
-      p80Seconds: r?.p80_seconds ?? 0,
-      p90Seconds: r?.p90_seconds ?? 0,
+      top20Seconds: r?.top20_avg_seconds ?? 0,
+      top10Seconds: r?.top10_avg_seconds ?? 0,
       avgSeconds: r?.avg_seconds ?? 0,
       totalSeconds: Number(r?.total_seconds ?? 0),
       chatgpt: r?.chatgpt_visits ?? 0,
@@ -151,13 +155,13 @@ export function fillDaily(data: DailyRow[], today: string): DayRow[] {
       other: r?.other_visits ?? 0,
       signedBrowsers: r?.signed_browsers ?? 0,
       signedMedian: r?.signed_median_seconds ?? 0,
-      signedP80: r?.signed_p80_seconds ?? 0,
-      signedP90: r?.signed_p90_seconds ?? 0,
+      signedTop20: r?.signed_top20_avg_seconds ?? 0,
+      signedTop10: r?.signed_top10_avg_seconds ?? 0,
       signedAvg: r?.signed_avg_seconds ?? 0,
       guestBrowsers: r?.guest_browsers ?? 0,
       guestMedian: r?.guest_median_seconds ?? 0,
-      guestP80: r?.guest_p80_seconds ?? 0,
-      guestP90: r?.guest_p90_seconds ?? 0,
+      guestTop20: r?.guest_top20_avg_seconds ?? 0,
+      guestTop10: r?.guest_top10_avg_seconds ?? 0,
       guestAvg: r?.guest_avg_seconds ?? 0,
     }
   })

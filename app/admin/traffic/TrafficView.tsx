@@ -14,7 +14,7 @@
 // legend whenever there are two series, hover/focus tooltips on the whole
 // day slot, and the tables as the no-hover way to every number.
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import Link from 'next/link'
 import type { AccountRow, CountryDay, DayRow, FunnelRow, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
 
@@ -257,13 +257,15 @@ function Tile({ label, value, sub }: { label: string; value: string; sub: string
   )
 }
 
-/** One group's stay over the whole range: how many browsers, and its four times. */
+/** One group's stay over the whole range: how many browsers, and its times
+ *  (the two top averages only once migration 128 has run). */
 function Group({ title, line }: { title: string; line: StayLine }) {
-  const cells: Array<[string, number]> = [['Median', line.median], ['Top 20%', line.p80], ['Top 10%', line.p90], ['Average', line.avg]]
+  const top: Array<[string, number]> = line.top20 != null && line.top10 != null ? [['Top 20% avg', line.top20], ['Top 10% avg', line.top10]] : []
+  const cells: Array<[string, number]> = [['Median', line.median], ...top, ['Average', line.avg]]
   return (
     <section style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', minWidth: 0 }}>
       <div style={{ fontSize: 12, color: INK2 }}>{title} · {num(line.browsers)} {line.browsers === 1 ? 'browser' : 'browsers'}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))`, gap: 8, marginTop: 6 }}>
         {cells.map(([label, secs]) => (
           <div key={label} style={{ minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.3, whiteSpace: 'nowrap' }}>{stayOf(line.browsers, secs)}</div>
@@ -309,22 +311,25 @@ const STAY: Series<DayRow>[] = [
 ]
 const STAY_TOP: Series<DayRow>[] = [
   { key: 'medianSeconds', label: 'Median', color: BLUE_400 },
-  { key: 'p80Seconds', label: 'Top 20%', color: BLUE_550 },
-  { key: 'p90Seconds', label: 'Top 10%', color: BLUE_700 },
+  { key: 'top20Seconds', label: 'Top 20% avg', color: BLUE_550 },
+  { key: 'top10Seconds', label: 'Top 10% avg', color: BLUE_700 },
   { key: 'avgSeconds', label: 'Average', color: ORANGE },
 ]
 const STAY_SIGNED: Series<DayRow>[] = [
   { key: 'signedMedian', label: 'Median', color: BLUE_400 },
-  { key: 'signedP80', label: 'Top 20%', color: BLUE_550 },
-  { key: 'signedP90', label: 'Top 10%', color: BLUE_700 },
+  { key: 'signedTop20', label: 'Top 20% avg', color: BLUE_550 },
+  { key: 'signedTop10', label: 'Top 10% avg', color: BLUE_700 },
   { key: 'signedAvg', label: 'Average', color: ORANGE },
 ]
 const STAY_GUEST: Series<DayRow>[] = [
   { key: 'guestMedian', label: 'Median', color: BLUE_400 },
-  { key: 'guestP80', label: 'Top 20%', color: BLUE_550 },
-  { key: 'guestP90', label: 'Top 10%', color: BLUE_700 },
+  { key: 'guestTop20', label: 'Top 20% avg', color: BLUE_550 },
+  { key: 'guestTop10', label: 'Top 10% avg', color: BLUE_700 },
   { key: 'guestAvg', label: 'Average', color: ORANGE },
 ]
+/** The two group charts' lines before migration 128: no top averages. */
+const TOP_KEYS = new Set<keyof DayRow>(['top20Seconds', 'top10Seconds', 'signedTop20', 'signedTop10', 'guestTop20', 'guestTop10'])
+const withoutTop = (series: Series<DayRow>[]) => series.filter(s => !TOP_KEYS.has(s.key))
 const METHODS: Array<Series<SigninDay> & { key: SigninTotal['key'] }> = [
   { key: 'google', label: 'Google', color: BLUE },
   { key: 'lineTw', label: 'LINE (Taiwan)', color: ORANGE },
@@ -342,13 +347,13 @@ const TILES: Array<{ label: string; top?: boolean; whole: (s: Summary) => string
   { label: 'Returning browsers', whole: s => num(s.returningBrowsers), day: r => num(r.returningBrowsers) },
   { label: 'Signed-in users', whole: s => num(s.signedInUsers), day: r => num(r.signedInUsers) },
   { label: 'Median stay', whole: s => stayOf(s.browsers, s.everyone.median), day: r => stayOf(r.browsers, r.medianSeconds) },
-  { label: 'Top 20% stay', top: true, whole: s => stayOf(s.browsers, s.everyone.p80), day: r => stayOf(r.browsers, r.p80Seconds) },
-  { label: 'Top 10% stay', top: true, whole: s => stayOf(s.browsers, s.everyone.p90), day: r => stayOf(r.browsers, r.p90Seconds) },
+  { label: 'Top 20% avg stay', top: true, whole: s => stayOf(s.browsers, s.everyone.top20 ?? 0), day: r => stayOf(r.browsers, r.top20Seconds) },
+  { label: 'Top 10% avg stay', top: true, whole: s => stayOf(s.browsers, s.everyone.top10 ?? 0), day: r => stayOf(r.browsers, r.top10Seconds) },
   { label: 'Average stay', whole: s => stayOf(s.browsers, s.everyone.avg), day: r => stayOf(r.browsers, r.avgSeconds) },
 ]
 
 /** Shown where the numbers go until the owner has run a migration. */
-const NEEDS_116 = 'Top 20% and top 10% stay appear once supabase/116_site_visit_stay_top.sql has been run.'
+const NEEDS_128 = 'Top 20% and top 10% average stay appear once supabase/128_site_visit_top_avg.sql has been run.'
 const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
 const NEEDS_120 = 'Taps on the sign-in buttons appear once supabase/120_signin_taps.sql has been run.'
 const NEEDS_122 = 'XTell answer votes and share presses appear once supabase/122_xtell_votes_shares.sql has been run.'
@@ -398,6 +403,9 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   const today = rows[rows.length - 1]
   const prev = rows.length > 1 ? rows[rows.length - 2] : null
   const staySeries = topStay ? STAY_TOP : STAY
+  const signedSeries = topStay ? STAY_SIGNED : withoutTop(STAY_SIGNED)
+  const guestSeries = topStay ? STAY_GUEST : withoutTop(STAY_GUEST)
+  const groupCols = topStay ? 5 : 3
   const th: React.CSSProperties = { textAlign: 'right', padding: '6px 10px', fontWeight: 500, color: INK2, whiteSpace: 'nowrap', borderBottom: '1px solid var(--border2)' }
   const td: React.CSSProperties = { textAlign: 'right', padding: '6px 10px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
   const first: React.CSSProperties = { textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)' }
@@ -476,7 +484,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
             </>
           )}
           {!whole && upgraded && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_118}</p>}
-          {!topStay && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_116}</p>}
+          {!topStay && <p style={{ margin: '8px 0 0', fontSize: 12, color: INK2 }}>{NEEDS_128}</p>}
 
           <div style={{ ...grid, marginTop: 16 }}>
             <Card title="Active browsers per day" note="Returning = first seen on an earlier day." legend={BROWSERS}>
@@ -509,20 +517,20 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
             {upgraded ? (
               <>
                 <Card title="Stay, signed in"
-                  note="Browsers with an account on a visit that day. Time with the tab in front, added up per browser per day. Top 20% and top 10% are the stay the most engaged fifth and tenth reached or passed."
-                  legend={STAY_SIGNED}>
-                  <Lines rows={rows} series={STAY_SIGNED} format={stay} has={r => r.signedBrowsers > 0} extra={r => [{ label: 'browsers signed in', value: num(r.signedBrowsers) }]} />
+                  note="Browsers with an account on a visit that day. Time with the tab in front, added up per browser per day. Top 20% avg and top 10% avg are the average stay of the fifth and the tenth of browsers that stayed longest."
+                  legend={signedSeries}>
+                  <Lines rows={rows} series={signedSeries} format={stay} has={r => r.signedBrowsers > 0} extra={r => [{ label: 'browsers signed in', value: num(r.signedBrowsers) }]} />
                 </Card>
                 <Card title="Stay, not signed in"
                   note="Everyone else, the same four numbers. Its own scale: usually seconds here and minutes on the signed-in chart."
-                  legend={STAY_GUEST}>
-                  <Lines rows={rows} series={STAY_GUEST} format={stay} has={r => r.guestBrowsers > 0} extra={r => [{ label: 'browsers not signed in', value: num(r.guestBrowsers) }]} />
+                  legend={guestSeries}>
+                  <Lines rows={rows} series={guestSeries} format={stay} has={r => r.guestBrowsers > 0} extra={r => [{ label: 'browsers not signed in', value: num(r.guestBrowsers) }]} />
                 </Card>
               </>
             ) : (
               <Card title="Stay per browser"
                 note={topStay
-                  ? 'Time with the tab in front, added up per browser per day. Top 20% and top 10% are the stay that the most engaged fifth and tenth of browsers reached or passed. A few very long stays can lift the average above both.'
+                  ? 'Time with the tab in front, added up per browser per day. Top 20% avg and top 10% avg are the average stay of the fifth and the tenth of browsers that stayed longest.'
                   : 'Time with the tab in front, added up per browser per day. A few long stays pull the average above the median.'}
                 legend={staySeries}>
                 <Lines rows={rows} series={staySeries} format={stay} has={r => r.browsers > 0} />
@@ -657,7 +665,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                   <th style={{ ...th, ...first }}>Day</th>
                   <th style={th}>Browsers</th><th style={th}>New</th><th style={th}>Returning</th><th style={th}>Signed-in users</th>
                   <th style={th}>Visits</th><th style={th}>Median stay</th>
-                  {topStay && <><th style={th}>Top 20% stay</th><th style={th}>Top 10% stay</th></>}
+                  {topStay && <><th style={th}>Top 20% avg stay</th><th style={th}>Top 10% avg stay</th></>}
                   <th style={th}>Average stay</th><th style={th}>Total time</th>
                   <th style={th}>ChatGPT ads</th><th style={th}>Google Ads</th><th style={th}>Other</th>
                 </tr>
@@ -668,7 +676,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                     <td style={{ ...td, ...first }}>{r.day}</td>
                     <td style={td}>{num(r.browsers)}</td><td style={td}>{num(r.newBrowsers)}</td><td style={td}>{num(r.returningBrowsers)}</td><td style={td}>{num(r.signedInUsers)}</td>
                     <td style={td}>{num(r.visits)}</td><td style={td}>{stayOf(r.browsers, r.medianSeconds)}</td>
-                    {topStay && <><td style={td}>{stayOf(r.browsers, r.p80Seconds)}</td><td style={td}>{stayOf(r.browsers, r.p90Seconds)}</td></>}
+                    {topStay && <><td style={td}>{stayOf(r.browsers, r.top20Seconds)}</td><td style={td}>{stayOf(r.browsers, r.top10Seconds)}</td></>}
                     <td style={td}>{stayOf(r.browsers, r.avgSeconds)}</td><td style={td}>{(r.totalSeconds / 3600).toFixed(1)} h</td>
                     <td style={td}>{num(r.chatgpt)}</td><td style={td}>{num(r.google)}</td><td style={td}>{num(r.other)}</td>
                   </tr>
@@ -687,21 +695,24 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
               <thead>
                 <tr>
                   <th style={{ ...th, ...first, borderBottom: 'none' }} />
-                  <th style={{ ...th, textAlign: 'center', borderBottom: 'none' }} colSpan={5}>Signed in</th>
-                  <th style={{ ...th, textAlign: 'center', borderBottom: 'none' }} colSpan={5}>Not signed in</th>
+                  <th style={{ ...th, textAlign: 'center', borderBottom: 'none' }} colSpan={groupCols}>Signed in</th>
+                  <th style={{ ...th, textAlign: 'center', borderBottom: 'none' }} colSpan={groupCols}>Not signed in</th>
                 </tr>
                 <tr>
                   <th style={{ ...th, ...first }}>Day</th>
-                  <th style={th}>Browsers</th><th style={th}>Median</th><th style={th}>Top 20%</th><th style={th}>Top 10%</th><th style={th}>Average</th>
-                  <th style={th}>Browsers</th><th style={th}>Median</th><th style={th}>Top 20%</th><th style={th}>Top 10%</th><th style={th}>Average</th>
+                  {[0, 1].map(g => <Fragment key={g}><th style={th}>Browsers</th><th style={th}>Median</th>{topStay && <><th style={th}>Top 20% avg</th><th style={th}>Top 10% avg</th></>}<th style={th}>Average</th></Fragment>)}
                 </tr>
               </thead>
               <tbody>
                 {[...rows].reverse().map(r => (
                   <tr key={r.day}>
                     <td style={{ ...td, ...first }}>{r.day}</td>
-                    <td style={td}>{num(r.signedBrowsers)}</td><td style={td}>{stayOf(r.signedBrowsers, r.signedMedian)}</td><td style={td}>{stayOf(r.signedBrowsers, r.signedP80)}</td><td style={td}>{stayOf(r.signedBrowsers, r.signedP90)}</td><td style={td}>{stayOf(r.signedBrowsers, r.signedAvg)}</td>
-                    <td style={td}>{num(r.guestBrowsers)}</td><td style={td}>{stayOf(r.guestBrowsers, r.guestMedian)}</td><td style={td}>{stayOf(r.guestBrowsers, r.guestP80)}</td><td style={td}>{stayOf(r.guestBrowsers, r.guestP90)}</td><td style={td}>{stayOf(r.guestBrowsers, r.guestAvg)}</td>
+                    <td style={td}>{num(r.signedBrowsers)}</td><td style={td}>{stayOf(r.signedBrowsers, r.signedMedian)}</td>
+                    {topStay && <><td style={td}>{stayOf(r.signedBrowsers, r.signedTop20)}</td><td style={td}>{stayOf(r.signedBrowsers, r.signedTop10)}</td></>}
+                    <td style={td}>{stayOf(r.signedBrowsers, r.signedAvg)}</td>
+                    <td style={td}>{num(r.guestBrowsers)}</td><td style={td}>{stayOf(r.guestBrowsers, r.guestMedian)}</td>
+                    {topStay && <><td style={td}>{stayOf(r.guestBrowsers, r.guestTop20)}</td><td style={td}>{stayOf(r.guestBrowsers, r.guestTop10)}</td></>}
+                    <td style={td}>{stayOf(r.guestBrowsers, r.guestAvg)}</td>
                   </tr>
                 ))}
               </tbody>
