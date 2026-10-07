@@ -61,11 +61,13 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `128_site_visit_top_avg.sql` (Oct 7) is PENDING: /admin/traffic's top 20% /
-  top 10% stay become the average of the longest-staying fifth and tenth
-  (they were the 80th/90th percentile); it drops and recreates
-  `site_visit_daily_v2` and `site_visit_summary`. Proven on PGlite; the page
-  leaves the two tops out, with a note, until it runs.
+  `128_site_visit_top_avg.sql` applied 2026-10-07 by the owner:
+  /admin/traffic's top 20% / top 10% stay are the average of the
+  longest-staying fifth and tenth (they were the 80th/90th percentile); it
+  dropped and recreated `site_visit_daily_v2` and `site_visit_summary`.
+  Checked live: both return the top20/top10_avg columns and no p80/p90,
+  Oct 6 reads 1,646 s / 997 s as proven on PGlite, and the publishable key
+  gets 42501 on both.
   `127_xtell_add_message.sql` (Oct 4) is PENDING: `xtell_add_message`, the
   insert with ON CONFLICT DO NOTHING that stores an XTell message once
   without a logged error (service role only). Proven on PGlite; until it
