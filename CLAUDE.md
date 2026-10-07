@@ -61,6 +61,11 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `128_site_visit_top_avg.sql` (Oct 7) is PENDING: /admin/traffic's top 20% /
+  top 10% stay become the average of the longest-staying fifth and tenth
+  (they were the 80th/90th percentile); it drops and recreates
+  `site_visit_daily_v2` and `site_visit_summary`. Proven on PGlite; the page
+  leaves the two tops out, with a note, until it runs.
   `127_xtell_add_message.sql` (Oct 4) is PENDING: `xtell_add_message`, the
   insert with ON CONFLICT DO NOTHING that stores an XTell message once
   without a logged error (service role only). Proven on PGlite; until it
@@ -930,7 +935,9 @@ The daily picture is the admin page **`/admin/traffic`**: filters at the top
 today and yesterday under them, from `site_visit_summary()` in 118; then
 per day: active browsers, new and returning,
 signed-in users, visits by source, stay for signed-in and not signed-in
-browsers as median / top 20% / top 10% / average), then fixed charts that
+browsers as median / top 20% avg / top 10% avg / average; the two tops are
+the average stay of the longest-staying fifth and tenth since migration 128,
+Oct 7, not percentiles), then fixed charts that
 are always every country (browsers by country, sign-ins by Google / LINE / X;
 since Oct 2 by the button used, `signInMethod()` in `lib/signin-tap.ts`).
 Three service-key functions in `117_site_visit_groups_country.sql`; before
