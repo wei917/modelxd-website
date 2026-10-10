@@ -60,13 +60,11 @@ check('phones get the portrait picture, narrow windows the small wide one', /<so
 check('the button names the temple without its gloss (one line on a phone)', /const short = name\.replace\(/.test(hero) && '夢占い（周公解夢）'.replace(/\s*[（(][^（）()]*[）)]\s*$/, '') === '夢占い' && '八字廟'.replace(/\s*[（(][^（）()]*[）)]\s*$/, '') === '八字廟')
 check('controls are labelled buttons; the slide is aria-current; the live region is quiet while turning', /aria-label=\{t\('xtell\.home\.hero\.prev'\)\}/.test(hero) && /aria-current=\{i === index \? 'true' : undefined\}/.test(hero) && /aria-live=\{rotating \? 'off' : 'polite'\}/.test(hero))
 
-// ── The top bar's preview mark ─────────────────────────────────────────────
+// ── The top bar marks only the room you are in ─────────────────────────────
+// (Oct 10, owner: "we rotate temples, should we highlight on the top nav bar? we didn't go into that temple yet")
 const nav = read('app/components/xtell/XTellNav.tsx')
-check('the hero\'s temple is marked data-preview, never aria-current, and not inside a room', /data-preview=\{!activeTemple && preview === key \? 'true' : undefined\}/.test(nav) && /aria-current=\{activeTemple === key \? 'page' : undefined\}/.test(nav))
-check('the row follows the preview only when the icon is out of view and untouched for 8 s, scrolling the row alone', /Date\.now\(\) - touched\.current < 8000/.test(nav) && /el\.scrollTo\(\{ left: Math\.max\(0, left\)/.test(nav))
-check('never against the visitor: the arrows count as a touch, and no follow while the pointer is on the row or focus is in it',
-  /const scrollRow = \(dir: 1 \| -1\) => \{\s*touched\.current = Date\.now\(\)/.test(nav) && /hovering\.current \|\| wrap\.current\?\.contains\(document\.activeElement\)/.test(nav) && /<div ref=\{wrap\} className="xtell-temple-wrap">/.test(nav))
-check('the hero says which temple, and forgets on leaving', /announcePreview\(current \?\? null\)/.test(hero) && /useEffect\(\(\) => \(\) => announcePreview\(null\), \[\]\)/.test(hero))
+check('the top bar marks only the room you are in: the hero\'s turning temple is not marked and the row does not follow it',
+  /aria-current=\{activeTemple === key \? 'page' : undefined\}/.test(nav) && !/data-preview|onPreview|xtell-preview/.test(nav + hero) && !fs.existsSync(path.join(__dirname, '..', 'lib/xtell-preview.ts')))
 
 // ── Pinned temples (owner, Oct 3: instead of 我的常用) ────────────────────
 check('pins: nothing saved, none', parsePins(null, KNOWN).length === 0 && parsePins('', KNOWN).length === 0)

@@ -519,7 +519,6 @@ app/components/xtell/XTellClamp.tsx      # four lines of a homepage card, 更多
 app/components/xtell/XTellHowTo.tsx      # the four steps on the homepage
 lib/xtell-hero.ts           # HERO_ART inventory, HERO_SLIDES featured per market, rotation rules
 lib/xtell-pins.ts           # pins: parse/validate, load/save, pin (to the left)/unpin, pinnedFirst
-lib/xtell-preview.ts        # hero → top bar preview event
 public/xtell/hero/*.webp    # hero scenes (Codex): wide, -mobile, -portrait-mobile
 scripts/test-xtell-home.ts  # homepage suite (in npm run test:xtell)
 scripts/test-xtell-assistant.ts  # catalog ↔ chart route, guide, assistant route, handoff
@@ -835,13 +834,11 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    temple keys, each once), never pre-filled; the bar follows at once in
    the same tab and in others. The first render is the market's order, so
    a visitor with pins sees them move to the front just after load.
-   **Top bar preview** (`lib/xtell-preview.ts`, `XTellNav.tsx`). The hero
-   announces its temple; the bar marks that icon `data-preview` (a soft
-   tint only; a dot sat on the label and was removed), never `aria-current`
-   (that is the room you are in). The row
-   scrolls to it only when the icon is out of view and the visitor is not
-   using the row (pointer on the strip or its arrows, focus inside it, or a
-   touch, scroll or arrow press in the last 8 s); only the row scrolls.
+   **Top bar**: it marks only the room you are in. The hero's turning
+   temple got a soft tint on its icon and the row scrolled to follow it
+   (Oct 3, `lib/xtell-preview.ts`); removed Oct 10 (owner: "we rotate
+   temples, should we highlight on the top nav bar? we didn't go into that
+   temple yet").
 3. **Guide** (`XTellAssistant.tsx`), right under the hero: the owner picked
    this over a field inside the hero (both were built to compare, Oct 3).
    It never overlaps the picture (owner, Oct 3: an overlap hid the objects
