@@ -536,6 +536,45 @@ export async function generateSpeech(
   }
 }
 
+export type { VideoSource } from './google'
+export { uploadVideoFile, deleteVideoFile } from './google'
+
+/** Watch a video and answer in text or JSON (Gemini only: the one provider
+ *  that takes video). Logged like every other call, so a house-paid read
+ *  still shows up in provider_calls against the user who asked. */
+export async function analyzeVideo(
+  model:   ModelInfo,
+  prompt:  string,
+  source:  import('./google').VideoSource,
+  opts:    { fps?: number; startSec?: number; endSec?: number; json?: boolean } = {},
+  context?: CallContext,
+): Promise<{ text: string; cost: number; usageMetadata: any; requestId: string | null }> {
+  assertSupported(model)
+  if (model.provider !== 'google') noImplementation(model, 'text', ['google'])
+  const desc      = descriptor(model, 'text', context)
+  const requestId = startCall(desc, { estimated_cost_usd: null })
+  const t0        = Date.now()
+  try {
+    const r = await google.analyzeVideo(model, prompt, source, opts)
+    endCall(requestId, desc, {
+      status:         'success',
+      latency_ms:     Date.now() - t0,
+      input_tokens:   r.inputTokens,
+      output_tokens:  r.outputTokens,
+      cost_usd:       r.cost,
+      usage_metadata: r.usageMetadata ?? null,
+    })
+    return { text: r.text, cost: r.cost, usageMetadata: r.usageMetadata, requestId }
+  } catch (err) {
+    endCall(requestId, desc, {
+      status:        'failed',
+      latency_ms:    Date.now() - t0,
+      error_message: (err as Error).message?.slice(0, 1000) ?? 'unknown error',
+    })
+    throw err
+  }
+}
+
 export type { TranscriptionResult } from './openai'
 
 export async function transcribeAudio(

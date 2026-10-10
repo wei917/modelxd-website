@@ -362,6 +362,22 @@ no film = full refund. Tables `xcreate_films` + `xcreate_film_calls`
 (`slots[0].options.film`), so it is in the Library and opens back into
 `?film=<id>`. UI: `app/xcreate/FilmStudio.tsx`, words in `film-copy.ts`.
 
+**同款 (Remake), the door's sixth type (Oct 10; phase 1 on branch
+`claude/remake-tab`).** 同款 / Remake / リメイク / 리메이크. Paste a video link
+or upload one, read it into a shot list, choose the length and what to swap
+(characters, theme, setting, look, language, product); making it is phase 2.
+- **Links.**
+  - YouTube: Gemini reads the URL.
+  - X: the X API (`X_BEARER_TOKEN`, `lib/remake/x.ts`).
+  - Others: the user uploads the file.
+- **Reading.** Gemini 3.8 Flash at 5 frames a second, in one-minute pieces.
+  Gemini's times are right to 0.1 s for a minute and then jump, so never read
+  longer stretches in one call.
+- **Cost.** Reads are free, 10 a day per user, counted in `activity_logs`.
+  The source is never kept.
+- **Files.** `app/xcreate/RemakeStudio.tsx`, `lib/remake/`,
+  `/api/xcreate/remake/breakdown`. Plan: `docs/REMAKE-PLAN.md`.
+
 **Audio delivery (Sep 29).** Speech rows that take an instruction (Gemini
 TTS, GPT-4o mini TTS, Qwen TTS Instruct; `takesSpeechStyle` in client.tsx)
 get a 語氣 / Delivery box in ⚙, sent as `style` (capped at 300 characters).

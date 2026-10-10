@@ -23,6 +23,7 @@ import ExportBar from './ExportBar'
 import VideoExportBar from './VideoExportBar'
 import ConvertDialog from './ConvertDialog'
 import FilmStudio from './FilmStudio'
+import RemakeStudio from './RemakeStudio'
 import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
@@ -1728,7 +1729,7 @@ function CreateStudio() {
     draftCheckedRef.current = true
     let draft: any = null
     try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null'); sessionStorage.removeItem(DRAFT_KEY) } catch { return }
-    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode) || draft.mode === 'film') return
+    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode) || draft.mode === 'film' || draft.mode === 'remake') return
     // A link that names what to open outranks the draft.
     const params = new URLSearchParams(window.location.search)
     if (['id', 'job', 'template', 'model', 'type', 'film', 'tool'].some(k => params.has(k))) return
@@ -3475,6 +3476,8 @@ function CreateStudio() {
   // the studio's own state waits underneath it. A film is ?film=<id>.
   const [filmOpen, setFilmOpen] = useState(false)
   const [filmId, setFilmId] = useState<string | null>(null)
+  // The sixth type, 同款 (Remake, Oct 10), has its own page too (RemakeStudio).
+  const [remakeOpen, setRemakeOpen] = useState(false)
   const setFilmUrl = (id: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
@@ -3484,11 +3487,13 @@ function CreateStudio() {
     else url.searchParams.delete('film')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }
-  const openFilm = (id: string | null) => { setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
+  const openFilm = (id: string | null) => { setRemakeOpen(false); setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
   const switchType = (next: StudioType) => {
     setFromOpen(false)
     if (next === 'film') { openFilm(null); return }
     if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
+    if (next === 'remake') { setRemakeOpen(true); return }
+    if (remakeOpen) setRemakeOpen(false)
     if (phase !== 'setup' || slots.length > 0) reset()
     if (toolId) leaveTool()
     if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
@@ -3497,8 +3502,8 @@ function CreateStudio() {
   switchTypeRef.current = switchType
 
   // ── One-tap tool mode: enter, leave, run again ──
-  const toolLiveRef = useRef({ mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen })
-  toolLiveRef.current = { mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen }
+  const toolLiveRef = useRef({ mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen, remakeOpen })
+  toolLiveRef.current = { mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen, remakeOpen }
   /** The address for a tool (or none), without the run's ?id=. */
   const toolUrl = (id: string | null) => {
     const url = new URL(window.location.href)
@@ -3510,6 +3515,7 @@ function CreateStudio() {
   const applyTool = async (tool: XTool, { push = true }: { push?: boolean } = {}) => {
     const live = toolLiveRef.current
     if (live.filmOpen) { setFilmOpen(false); setFilmId(null) }
+    if (live.remakeOpen) setRemakeOpen(false)
     if (live.phase !== 'setup' || live.slotsLen > 0) {
       stopPolling(); activeJobRef.current = null; galleryLoadedRef.current = null
       setPhase('setup'); setSlots([]); setChosenIdx(null); setChatHistory([]); setXcreateId(null); setRetryOfId(null)
@@ -3568,9 +3574,10 @@ function CreateStudio() {
   useEffect(() => {
     return onStudioTypeRequest(type => switchTypeRef.current(type))
   }, [])
-  useEffect(() => { publishStudioType(filmOpen ? 'film' : mode) }, [mode, filmOpen])
+  useEffect(() => { publishStudioType(remakeOpen ? 'remake' : filmOpen ? 'film' : mode) }, [mode, filmOpen, remakeOpen])
   useEffect(() => {
     if (!searchFilmParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFilmParam)) return
+    setRemakeOpen(false)
     setFilmOpen(true)
     setFilmId(searchFilmParam.toLowerCase())
   }, [searchFilmParam])
@@ -4339,7 +4346,7 @@ function CreateStudio() {
       <div className="xduel-page">
         <div className="arena xcreate-arena xcs-studio" id="xcreate-main" tabIndex={-1}>
 
-          {!filmOpen && (activeTool ? (
+          {!filmOpen && !remakeOpen && (activeTool ? (
             <header className="xcs-heading xtool-heading">
               <button type="button" className="xtool-back" onClick={() => leaveTool()}>‹ {t('xtools.backprompt')}</button>
               <h1>{t(`xtool.${activeTool.id}.name`)}</h1>
@@ -4403,7 +4410,9 @@ function CreateStudio() {
               composer = describe an edit + pick ANY edit-capable model.
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
-          {filmOpen ? (
+          {remakeOpen ? (
+            <RemakeStudio signedIn={!!userId} onSignIn={next => showAuth(next ?? '/xcreate?type=remake')} />
+          ) : filmOpen ? (
             <>
               <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
                 onSignIn={next => showAuth(next ?? '/xcreate?type=film')} />

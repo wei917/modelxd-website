@@ -2818,6 +2818,7 @@ export const STRINGS: Record<string, Entry> = {
   // XCreate's fifth type (Sep 29): Claude directs and edits a whole film.
   // 成片 is the word for this in Chinese video apps (剪映's 一鍵成片).
   'mode.film': { en: 'Film', 'zh-Hant': '成片', 'zh-Hans': '成片', ja: 'ムービー', ko: '필름' },
+  'mode.remake': { en: 'Remake', 'zh-Hant': '同款', 'zh-Hans': '同款', ja: 'リメイク', ko: '리메이크' },
   // Audio: the delivery instruction for Gemini, OpenAI and Qwen Instruct TTS (Sep 29).
   'xcreate.style': { en: 'Delivery', 'zh-Hant': '語氣', 'zh-Hans': '语气', ja: '話し方', ko: '말투' },
   'xcreate.style.hint': {
