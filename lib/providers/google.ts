@@ -1040,6 +1040,80 @@ export async function analyzeVideoUrl(
   return { text, cost, usageMetadata: usage }
 }
 
+/** A video for Gemini to watch: a public YouTube link Google fetches itself,
+ *  or a file already in Gemini's file store (uploadVideoFile). */
+export type VideoSource = { url: string } | { fileUri: string; mimeType: string }
+
+/**
+ * Watch a video and answer, optionally as JSON. 同款 (Remake, Oct 10) needs
+ * every cut, and Gemini's default of one frame a second puts cuts 0.3–1 s
+ * off, so the caller sets `fps` (5 found 10 of 10 cuts at 0.1 s in phase 0).
+ * `startSec`/`endSec` clip the part watched. Thinking tokens bill as output,
+ * so they count here (analyzeVideoUrl predates thinking models).
+ */
+export async function analyzeVideo(
+  model:  ModelInfo,
+  prompt: string,
+  source: VideoSource,
+  opts:   { fps?: number; startSec?: number; endSec?: number; json?: boolean } = {},
+): Promise<{ text: string; cost: number; usageMetadata: any; inputTokens: number; outputTokens: number }> {
+  const TAG = `[google/${model.model_name}]`
+  const part: any = 'url' in source ? videoPart(source.url) : { fileData: { fileUri: source.fileUri, mimeType: source.mimeType } }
+  const meta: Record<string, unknown> = {}
+  if (opts.fps) meta.fps = opts.fps
+  if (opts.startSec != null) meta.startOffset = `${Math.max(0, Math.floor(opts.startSec))}s`
+  if (opts.endSec != null) meta.endOffset = `${Math.max(1, Math.ceil(opts.endSec))}s`
+  if (Object.keys(meta).length) part.videoMetadata = meta
+  console.log(`${TAG} analyzeVideo ${'url' in source ? source.url.slice(0, 60) : 'file'} ${JSON.stringify(meta)}`)
+
+  const res = await withRetry(() => ai().models.generateContent({
+    model: model.model_name,
+    contents: [{ role: 'user', parts: [part as Part, { text: prompt }] }],
+    ...(opts.json ? { config: { responseMimeType: 'application/json', temperature: 0.2 } } : {}),
+  }), 'analyzeVideo')
+
+  const usage: any = (res as any).usageMetadata ?? null
+  const text = (res as any).text
+    ?? ((res as any).candidates?.[0]?.content?.parts ?? []).map((p: any) => p?.text ?? '').join('').trim()
+  if (!text) throw new Error('The video returned no description.')
+
+  const videoTokens = modalityTokens(usage, 'VIDEO')
+  const audioTokens = modalityTokens(usage, 'AUDIO')
+  const textTokens  = modalityTokens(usage, 'TEXT')
+  const outputTokens = (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0)
+  const cost = calcTextCost(
+    model,
+    textTokens || (usage?.promptTokenCount ?? 0),
+    outputTokens,
+    usage?.cachedContentTokenCount ?? 0,
+    { videoInputTokens: videoTokens, audioInputTokens: audioTokens },
+  )
+  console.log(`${TAG} analyzeVideo ok video=${videoTokens} audio=${audioTokens} out=${outputTokens} $${cost.toFixed(4)}`)
+  logResponse(model.model_name, 'analyzeVideo', { chars: text.length, videoTokens, cost })
+  return { text, cost, usageMetadata: usage, inputTokens: usage?.promptTokenCount ?? 0, outputTokens }
+}
+
+/** Put a local video in Gemini's file store and wait until it can be watched.
+ *  Its name travels in an HTTP header, so it is plain ASCII here (a Chinese
+ *  file name broke the upload in phase 0). Delete it with deleteVideoFile. */
+export async function uploadVideoFile(filePath: string, mimeType = 'video/mp4'): Promise<{ fileUri: string; mimeType: string; name: string }> {
+  let f: any = await ai().files.upload({ file: filePath, config: { mimeType, displayName: 'remake-source' } })
+  const until = Date.now() + 120_000
+  while (f.state === 'PROCESSING' && Date.now() < until) {
+    await new Promise(r => setTimeout(r, 2000))
+    f = await ai().files.get({ name: f.name })
+  }
+  if (f.state !== 'ACTIVE') {
+    if (f.name) await ai().files.delete({ name: f.name }).catch(() => {})
+    throw new Error(`The uploaded video could not be read (${f.state}).`)
+  }
+  return { fileUri: f.uri, mimeType: f.mimeType ?? mimeType, name: f.name }
+}
+
+export async function deleteVideoFile(name: string): Promise<void> {
+  await ai().files.delete({ name }).catch(e => console.warn(`[google] deleteVideoFile ${name}: ${(e as Error).message}`))
+}
+
 /**
  * Watch a video and answer in PIXELS — one or more style frames carrying the
  * reference's grade, palette, lens and light.

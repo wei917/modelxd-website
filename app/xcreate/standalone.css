@@ -257,6 +257,57 @@
   .xcs-film-head h1 { font-size: 34px; }
 }
 
+/* ── 同款 (Remake), XCreate's sixth type (Oct 10): RemakeStudio.tsx. Built on
+   the film's classes above; phone first. ── */
+.xcs-remake-link input { display: block; width: 100%; border: 0; background: transparent; color: var(--white); font: inherit; font-size: 16px; padding: 14px 16px; outline: none; box-sizing: border-box; }
+.xcs-studio .xcs-remake-link input:focus-visible { outline: none; }
+.xcs-remake-start summary { cursor: pointer; font-size: 13px; color: var(--muted2); padding: 2px 0; }
+.xcs-remake-start input { display: block; width: 120px; margin: 8px 0 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--surface); color: var(--white); font: inherit; font-size: 16px; }
+.xcs-remake-read { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border); display: grid; gap: 18px; }
+.xcs-remake-read .xcs-film-head { margin-bottom: 0; }
+.xcs-remake-title { font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 8px; overflow-wrap: anywhere; }
+.xcs-remake-read .xcs-film-brief { -webkit-line-clamp: unset; display: block; margin-bottom: 6px; }
+.xcs-remake-facts { margin: 0; display: grid; gap: 8px; font-size: 13px; line-height: 1.6; }
+.xcs-remake-facts > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; }
+.xcs-remake-facts dt { font-weight: 600; }
+.xcs-remake-facts dd { margin: 0; color: var(--muted2); overflow-wrap: anywhere; }
+.xcs-remake-shots { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.xcs-remake-shots li { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.xcs-remake-shots li.is-skipped { opacity: .45; }
+.xcs-remake-shots p { margin: 0; overflow-wrap: anywhere; }
+.xcs-remake-shot-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--muted2); }
+.xcs-remake-shot-meta > span:nth-child(2) { font-family: var(--font-mono), monospace; }
+.xcs-remake-shot-n { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: var(--surface2); color: var(--white); font-weight: 700; font-size: 11px; box-sizing: border-box; }
+.xcs-remake-shot-tr { color: var(--red); }
+.xcs-remake-shot-action { margin-top: 6px !important; font-size: 14px; line-height: 1.55; }
+.xcs-remake-shot-where { margin-top: 4px !important; font-size: 12px; line-height: 1.5; color: var(--muted2); }
+.xcs-remake-shot-text { margin-top: 4px !important; font-size: 13px; color: var(--white); }
+.xcs-remake-extra { margin-top: 0; }
+.xcs-remake-extra > .xcs-remake-swaps { margin-top: 12px; }
+.xcs-remake-more { min-height: 44px; font-size: 14px; margin-top: -8px; }
+.xcs-remake-lines { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; line-height: 1.55; }
+.xcs-remake-lines span { font-family: var(--font-mono), monospace; color: var(--muted2); margin-right: 4px; }
+.xcs-remake-length .xcs-film-seg button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; white-space: normal; line-height: 1.25; }
+.xcs-remake-length .xcs-film-seg button small { font-size: 11px; color: var(--muted2); font-weight: 400; }
+.xcs-remake-select { display: block; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--surface); color: var(--white); font: inherit; font-size: 15px; box-sizing: border-box; }
+.xcs-remake-h { margin: 6px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.xcs-remake-swaps { display: grid; gap: 16px; }
+.xcs-remake-cast, .xcs-remake-swaps fieldset { border: 1px solid var(--border); border-radius: 12px; margin: 0; padding: 12px; min-width: 0; display: grid; gap: 10px; background: var(--surface); }
+.xcs-remake-cast legend, .xcs-remake-swaps fieldset legend { font-size: 14px; font-weight: 600; padding: 0 4px; }
+.xcs-remake-field { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
+.xcs-remake-field > span { display: block; }
+.xcs-remake-input { display: block; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--surface); color: var(--white); font: inherit; font-size: 16px; font-weight: 400; box-sizing: border-box; }
+.xcs-remake-input:focus { border-color: var(--red); outline: none; }
+.xcs-remake-photo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.xcs-remake-photo .xcs-secondary { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; cursor: pointer; font-size: 13px; }
+.xcs-remake-photo img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+.xcs-remake-consent { flex: 1 1 100%; display: flex; align-items: flex-start; gap: 8px; font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--muted2); cursor: pointer; }
+.xcs-remake-consent input { margin-top: 3px; flex-shrink: 0; }
+@media (min-width: 761px) {
+  .xcs-remake-length { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+  .xcs-remake-title { font-size: 28px; }
+}
+
 /* ── Under Generate, Oct 3 redesign (learned from Pollo AI's /image page;
    the composer above stays as it was): tools and templates, trending on
    social media, your works. Phone first. ── */
