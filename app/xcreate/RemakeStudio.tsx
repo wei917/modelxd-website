@@ -20,7 +20,8 @@ const DRAFT_KEY = 'xcreate.remake-draft'
 const MAX_VIDEO_BYTES = 300_000_000
 const CAST_CHOICES: CastChoice[] = ['keep', 'photo', 'describe', 'famous']
 const money = (cents: number) => `$${(cents / 100).toFixed(cents >= 1000 ? 0 : 2)}`
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+/** Fast cuts are under a second, so times keep their tenths: 0:00.8. */
+const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
 
 type CastPick = { choice: CastChoice; text: string; consent: boolean; photo?: string }
 const withoutPhotos = (cast: Record<string, CastPick>): Record<string, CastPick> =>
