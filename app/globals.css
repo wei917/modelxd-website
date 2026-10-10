@@ -3749,7 +3749,6 @@ html[data-site="xtell"] .xtell-nav-actions { gap: 18px; }
 /* The hero's temple in the top bar: a soft wash only (owner, Oct 3: a dot
    sat on the label and the wash already marks it), never the vermilion
    underline of the room you are in. */
-.xtell-temple-nav a[data-preview="true"] { background: var(--xtell-tint); }
 /* Pinned temples come first (owner, Oct 3); a thin rule after the last. */
 .xtell-temple-nav a[data-pinned="last"] { margin-right: 9px; }
 .xtell-temple-nav a[data-pinned="last"]::after { content: ''; position: absolute; right: -6px; top: 18%; bottom: 18%; width: 1px; background: var(--xtell-rule); }

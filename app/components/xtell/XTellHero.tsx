@@ -2,8 +2,8 @@
 // app/components/xtell/XTellHero.tsx — the homepage's scenic entrance (Oct 3,
 // the owner's approved Concept 24). One temple at a time: its world behind,
 // its name, its lead and its line, and a real link into it. It turns by
-// itself every few seconds and the top bar highlights the temple on show
-// (lib/xtell-preview.ts).
+// itself every few seconds; the top bar does not follow it (Oct 10, owner:
+// it is not a room you are in).
 //
 // Turning is display only: it never changes the address, the hash or the
 // room, never opens a form, sends a reading or spends anything. Entering is
@@ -19,7 +19,6 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, artKind, type TempleKey } from './TempleArtwork'
 import { HERO_ART, HERO_SECONDS, heroTemples, stepSlide, mayRotate } from '../../../lib/xtell-hero'
-import { announcePreview } from '../../../lib/xtell-preview'
 import { useXTellBase } from './XTellBase'
 import { templeHref } from '../../../lib/site'
 
@@ -63,9 +62,6 @@ export default function XTellHero() {
   useEffect(() => { setSeen(s => s.has(index) && s.has(stepSlide(index, 1, count)) ? s : new Set([...s, index, stepSlide(index, 1, count)])) }, [index, count])
 
   const current: TempleKey | undefined = temples[index] ?? temples[0]
-  // The top bar follows the slide; it forgets when the hero goes.
-  useEffect(() => { announcePreview(current ?? null) }, [current])
-  useEffect(() => () => announcePreview(null), [])
 
   if (!current) return null
   const nameOf = (k: TempleKey) => t('xtell.site.focus.' + k + '.name')
