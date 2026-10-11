@@ -4443,3 +4443,117 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .xtell-xiang-note { font-size: 12.5px; font-weight: 700; }
 .xtell-xiang-notebox { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 10px; font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; background: #fff; }
 @media (prefers-reduced-motion: reduce) { .xtell-xiang-busy::after { animation: none; } }
+/* ── 相學館 as a page of an old 相書 (Oct 11, owner: "with the new skill, can you redesign
+   the page"): a woodblock-printed physiognomy manual. The photo plates sit inside a
+   文武邊欄 (a thick rule, then a thin one: the frame of a woodblock page) on grained
+   paper; headings carry a vermilion 魚尾; captions are set in the book's serif; the
+   other person is marked 選填 by a small 朱文 seal; chosen answers are inked; 開始觀相
+   is a square seal that presses like a stamp; the plates come up like ink spreading.
+   Same structure as before; only the look. System serif for Chinese (no web font on a
+   phone's data). Remove this block to go back. ─────────────────────────────────────── */
+.xtell-xiang-form, .xtell-xiang-footer, .xtell-room-header[data-temple="guanxiang"], .xtell-entry-form.is-xiang, .xtell-xiang-board, .xtell-xiang-zoom {
+  --xg-sheet: #f8f3e9; --xg-ink-line: rgba(43, 37, 30, .82); --xg-hair: rgba(43, 37, 30, .16);
+  --xg-ink: #27231e; --xg-muted: #6a6257; --xg-accent: #ab372b; --xg-accent-ink: #8b2a20;
+  --xg-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .25  0 0 0 0 .16  0 0 0 .07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+/* The room's header: the title in the book's hand, a double rule under it. */
+.xtell-room-header[data-temple="guanxiang"] { padding-bottom: 16px; border-bottom: 1px solid var(--xg-hair); box-shadow: 0 3px 0 -2px var(--xg-hair); }
+.xtell-room-header[data-temple="guanxiang"] .xtell-room-title { letter-spacing: .12em; }
+.xtell-room-header[data-temple="guanxiang"] .xtell-eyebrow { color: var(--xg-accent); letter-spacing: .3em; }
+
+/* The page: grained paper inside a 文武邊欄 on a computer; on a phone, only the top
+   and bottom rules, so the plates keep the full width. */
+.xtell-xiang-photos { position: relative; gap: 14px; padding: 18px 0 16px; background: var(--xg-grain), var(--xg-sheet);
+  border-top: 2.5px solid var(--xg-ink-line); border-bottom: 2.5px solid var(--xg-ink-line);
+  box-shadow: inset 0 3px 0 var(--xg-sheet), inset 0 4px 0 var(--xg-ink-line), inset 0 -3px 0 var(--xg-sheet), inset 0 -4px 0 var(--xg-ink-line); }
+@media (max-width: 759px) { .xtell-xiang-photos { margin: 0 -20px; padding: 18px 20px 16px; } }
+@media (min-width: 760px) {
+  .xtell-xiang-photos { padding: 22px 24px 20px; border: 2.5px solid var(--xg-ink-line); box-shadow: inset 0 0 0 3px var(--xg-sheet), inset 0 0 0 4px var(--xg-ink-line); }
+}
+/* Headings: a vermilion 魚尾 before them. */
+.xtell-xiang-sechead h4, .xtell-xiang-help-cols h4 { display: inline-flex; align-items: center; gap: 9px; letter-spacing: .14em; }
+.xtell-xiang-sechead h4::before, .xtell-xiang-help-cols h4::before { content: ''; flex: none; width: 11px; height: 15px; background: var(--xg-accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 68%, 0 100%); }
+.xtell-xiang-sechead p { color: var(--xg-muted); }
+/* The photo tips: a note in the margin. */
+.xtell-xiang-phototips { margin: -4px 0 4px; padding-left: 10px; border-left: 2px solid var(--xg-accent); color: var(--xg-muted); }
+
+/* A person's row: the name in the book's serif; 選填 a small 朱文 seal; chosen answers inked. */
+.xtell-xiang-head-name { font-size: 18px; letter-spacing: .1em; }
+.xtell-xiang-head-name small { padding: 0 5px; border: 1px solid var(--xg-accent); border-radius: 2px; background: transparent; color: var(--xg-accent); font-family: var(--xg-serif); font-size: 11.5px; font-weight: 600; letter-spacing: .12em; }
+.xtell-xiang-seg-cap { font-family: var(--xg-serif); letter-spacing: .08em; }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts { border-color: var(--xg-hair); border-radius: 3px; background: rgba(255, 255, 255, .7); }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts span { border-radius: 2px; font-family: var(--xg-serif); letter-spacing: .06em; color: var(--xg-ink); }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts input:checked + span { background: var(--xg-ink); box-shadow: none; color: #fff; font-weight: 600; }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts input:focus-visible + span { outline: 2px solid var(--xg-accent); outline-offset: 2px; }
+/* The rule between the two people, in ink. */
+.xtell-xiang-rule { background: var(--xg-hair); }
+
+/* The plates: a thin frame and a hairline inside it, as in a printed book. */
+.xtell-xiang-thumb { border-color: rgba(43, 37, 30, .3); border-radius: 2px; background: #fff; }
+.xtell-xiang-thumb::after { content: ''; position: absolute; inset: 3px; border: 1px solid var(--xg-hair); pointer-events: none; }
+.xtell-xiang-slots:not(.is-locked) .xtell-xiang-thumb:hover { border-color: var(--xg-ink-line); }
+.xtell-xiang-slot-name { font-size: 14.5px; font-weight: 600; letter-spacing: .14em; color: var(--xg-ink); }
+@container (max-width: 139px) { .xtell-xiang-slot-name { font-size: 13.5px; letter-spacing: .08em; } }
+@container (max-width: 79px) { .xtell-xiang-slot-name { font-size: 12px; font-weight: 600; letter-spacing: .02em; } }
+.xtell-xiang-pick-chip { border-color: var(--xg-hair); border-radius: 2px; background: rgba(248, 243, 233, .95); font-family: var(--xg-serif); letter-spacing: .08em; }
+.xtell-xiang-plus { border-radius: 2px; }
+.xtell-xiang-btn { border-color: var(--xg-hair); border-radius: 3px; background: rgba(255, 255, 255, .8); font-family: var(--xg-serif); letter-spacing: .1em; }
+.xtell-xiang-btn:hover { border-color: var(--xg-ink-line); background: #fff; }
+.xtell-xiang-btn.is-plain { background: none; }
+/* The plates come up like ink spreading, one after another. */
+@keyframes xtell-xiang-ink { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+.xtell-xiang-slot { animation: xtell-xiang-ink .55s cubic-bezier(.2, .7, .2, 1) both; }
+.xtell-xiang-slot:nth-child(2) { animation-delay: .07s; }
+.xtell-xiang-slot:nth-child(3) { animation-delay: .14s; }
+.xtell-xiang-group.is-partner .xtell-xiang-slot:nth-child(1) { animation-delay: .21s; }
+.xtell-xiang-group.is-partner .xtell-xiang-slot:nth-child(2) { animation-delay: .28s; }
+.xtell-xiang-group.is-partner .xtell-xiang-slot:nth-child(3) { animation-delay: .35s; }
+
+/* Signed out: a note tucked into the page, its button a small seal. */
+.xtell-xiang-signin { border: 1px solid var(--xg-hair); border-left: 3px solid var(--xg-accent); border-radius: 2px; background: var(--xg-grain), var(--xg-sheet); }
+.xtell-xiang-signin .xtell-dy-primary { border-radius: 3px; background: var(--xg-accent); font-family: var(--xg-serif); letter-spacing: .2em; }
+
+/* 怎麼看面相、手相: a folded leaf of notes. */
+.xtell-xiang-help { border: 1px solid rgba(43, 37, 30, .3); border-radius: 2px; background: var(--xg-grain), #fffdf8; box-shadow: inset 0 0 0 3px #fffdf8, inset 0 0 0 4px var(--xg-hair); }
+.xtell-xiang-help > summary:focus-visible { border-radius: 2px; }
+.xtell-xiang-help-text b { font-family: var(--xg-serif); letter-spacing: .12em; }
+.xtell-xiang-diagram { border-radius: 2px; box-shadow: 0 0 0 1px var(--xg-hair); }
+.xtell-xiang-pin, .xtell-xiang-legend li::before { border-radius: 3px; background: var(--xg-accent); font-family: var(--xg-serif); }
+.xtell-xiang-legend b { font-family: var(--xg-serif); letter-spacing: .04em; }
+
+/* Who they are and that they agreed: inked chips, a seal-edged note. */
+.xtell-xiang-seg.is-chips .xtell-xiang-seg-opts span { border-color: var(--xg-hair); border-radius: 3px; font-family: var(--xg-serif); letter-spacing: .06em; }
+.xtell-xiang-seg.is-chips .xtell-xiang-seg-opts input:checked + span { border-color: var(--xg-ink); background: var(--xg-ink); color: #fff; }
+.xtell-xiang-consent { border: 1px solid var(--xg-hair); border-left: 3px solid var(--xg-accent); border-radius: 2px; background: var(--xg-grain), var(--xg-sheet); }
+
+/* 開始觀相: a square seal, its white frame cut inside, pressed like a stamp. */
+.xtell-xiang-footer > button { border-radius: 4px !important; box-shadow: inset 0 0 0 4px var(--xg-accent), inset 0 0 0 5px rgba(255, 255, 255, .6); font-size: 20px !important; letter-spacing: .5em; text-indent: .5em; transition: transform .12s ease, background-color .15s, box-shadow .15s; }
+.xtell-xiang-footer > button:hover { box-shadow: inset 0 0 0 4px var(--xg-accent-ink), inset 0 0 0 5px rgba(255, 255, 255, .75); }
+.xtell-xiang-footer > button:active { transform: scale(.985); }
+.xtell-xiang-privacy { font-size: 12px; letter-spacing: .02em; }
+
+/* The check's marks and the remove button: square, like the seals. */
+.xtell-xiang-badge, .xtell-xiang-remove { border-radius: 3px; }
+
+/* The 相盤: the same page, its plates, then the reading set like annotations. */
+.xtell-xiang-board { gap: 16px; padding: 18px 0 16px; background: var(--xg-grain), var(--xg-sheet);
+  border-top: 2.5px solid var(--xg-ink-line); border-bottom: 2.5px solid var(--xg-ink-line);
+  box-shadow: inset 0 3px 0 var(--xg-sheet), inset 0 4px 0 var(--xg-ink-line), inset 0 -3px 0 var(--xg-sheet), inset 0 -4px 0 var(--xg-ink-line); }
+@media (max-width: 759px) { .xtell-xiang-board { margin: 0 -20px; padding: 18px 20px 16px; } }
+@media (min-width: 760px) { .xtell-xiang-board { padding: 22px 24px 20px; border: 2.5px solid var(--xg-ink-line); box-shadow: inset 0 0 0 3px var(--xg-sheet), inset 0 0 0 4px var(--xg-ink-line); } }
+.xtell-xiang-results-person .xtell-xiang-head-name { margin-bottom: 2px; }
+.xtell-xiang-savebar { color: var(--xg-muted); font-size: 12.5px; }
+.xtell-xiang-savebar .xtell-dy-primary { border-radius: 3px; background: var(--xg-accent); color: #fff; font-family: var(--xg-serif); letter-spacing: .2em; }
+.xtell-xiang-words h3 { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; font-family: var(--xg-serif); font-size: 16px; font-weight: 600; letter-spacing: .14em; color: var(--xg-ink); }
+.xtell-xiang-words h3::before { content: ''; flex: none; width: 10px; height: 14px; background: var(--xg-accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 68%, 0 100%); }
+.xtell-xiang-summary { font-family: var(--xg-serif); color: var(--xg-ink); }
+.xtell-xiang-words dl > div { padding: 6px 0; border-top: 1px solid var(--xg-hair); }
+.xtell-xiang-words dt { font-family: var(--xg-serif); letter-spacing: .06em; color: var(--xg-ink); }
+.xtell-xiang-words dd { color: var(--xg-muted); }
+.xtell-xiang-note { font-family: var(--xg-serif); letter-spacing: .06em; color: var(--xg-ink); }
+.xtell-xiang-notebox { border-color: rgba(43, 37, 30, .3); border-radius: 2px; background: #fffdf8; }
+.xtell-xiang-notebox:focus { outline: 2px solid var(--xg-accent); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .xtell-xiang-slot { animation: none; }
+  .xtell-xiang-footer > button { transition: none; }
+}

@@ -1431,6 +1431,18 @@ instead of original pictures? and we use those to feed into AI models".
   tile is opened large, `XiangZoom`), each palm as its lines. The saved image
   has them all, each with its caption.
 
+**相書 look** (Oct 11, pushed Oct 12 to main + dev, owner "let's push this version first"; owner: "with the new skill, can you redesign the
+page and let me try?", the frontend-design skill loaded). Same structure, a
+new look: the room as a page of an old woodblock-printed 相書. The photos and
+the 相盤 sit on grained paper inside a 文武邊欄 (thick rule, thin rule) on a
+computer, between the same top and bottom rules on a phone (full width);
+headings carry a vermilion 魚尾; names, captions and choices are set in the
+book's serif; 選填 is a small 朱文 seal; chosen answers are inked black;
+plates have a hairline inside their frame; 開始觀相 and the other buttons are
+square seals; the plates come up one after another like ink spreading (off
+under reduced motion). One CSS block at the end of the 相學館 rules in
+app/globals.css ("相學館 as a page of an old 相書"); remove it to go back.
+
 **Privacy**: the photos are never stored. The visit keeps the 相盤, gender,
 dominant hand, which photos there were (and the other person's relation,
 gender, hand and the visitor's tick), and the correction. A reopened visit
