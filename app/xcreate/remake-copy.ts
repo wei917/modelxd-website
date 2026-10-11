@@ -47,12 +47,19 @@ type Copy = {
   looks: Record<RemakeLook, string>
   language: string
   product: string
-  make: (price: string) => string
+  /** The make bar's button; the price sits beside it. */
+  make: string
   makeSoon: string
   another: string
   showAll: (n: number) => string
   showLess: string
   otherCast: (n: number) => string
+  /** The heading's two strips and the swap cards: the original, then yours. */
+  original: string
+  yours: string
+  paste: string
+  clear: string
+  inShots: (n: number) => string
 }
 
 const en: Copy = {
@@ -108,12 +115,17 @@ const en: Copy = {
   looks: { keep: 'As the original', anime: 'Anime', realistic: 'Realistic', '3d': '3D' },
   language: 'Language for voices and captions',
   product: 'Your product photo (optional)',
-  make: p => `Make my version · ${p}`,
+  make: 'Make my version',
   makeSoon: 'Making it comes next. For now you can read a video and choose what to swap.',
   another: 'Try another video',
   showAll: n => `Show all ${n} shots`,
   showLess: 'Show fewer',
   otherCast: n => `${n} more people (on screen briefly)`,
+  original: 'Original',
+  yours: 'Yours',
+  paste: 'Paste',
+  clear: 'Clear',
+  inShots: n => n === 1 ? 'in 1 shot' : `in ${n} shots`,
 }
 
 const zhHant: Copy = {
@@ -169,12 +181,17 @@ const zhHant: Copy = {
   looks: { keep: '照原片', anime: '動畫', realistic: '寫實', '3d': '3D' },
   language: '配音和字幕的語言',
   product: '你的產品照片（選填）',
-  make: p => `做同款 · ${p}`,
+  make: '做同款',
   makeSoon: '製作功能下一步上線。現在可以先讀影片、設定要換什麼。',
   another: '換一支影片',
   showAll: n => `看全部 ${n} 個鏡頭`,
   showLess: '收起',
   otherCast: n => `其他 ${n} 個角色（短暫出現）`,
+  original: '原片',
+  yours: '你的版本',
+  paste: '貼上',
+  clear: '清除',
+  inShots: n => `${n} 個鏡頭`,
 }
 
 const zhHans: Copy = {
@@ -230,6 +247,8 @@ const zhHans: Copy = {
   another: '换一个视频',
   showAll: n => `看全部 ${n} 个镜头`,
   otherCast: n => `其他 ${n} 个角色（短暂出现）`,
+  paste: '粘贴',
+  inShots: n => `${n} 个镜头`,
 }
 
 const ja: Copy = {
@@ -285,12 +304,17 @@ const ja: Copy = {
   looks: { keep: '元のまま', anime: 'アニメ', realistic: 'リアル', '3d': '3D' },
   language: '声と字幕の言語',
   product: '商品の写真（任意）',
-  make: p => `自分版を作る・${p}`,
+  make: '自分版を作る',
   makeSoon: '制作はこの次に公開します。今は動画を読み込んで、入れ替えるものを選べます。',
   another: '別の動画にする',
   showAll: n => `全 ${n} カットを見る`,
   showLess: '閉じる',
   otherCast: n => `ほか ${n} 人（少しだけ登場）`,
+  original: '元の動画',
+  yours: '自分版',
+  paste: '貼り付け',
+  clear: 'クリア',
+  inShots: n => `${n} カット`,
 }
 
 const ko: Copy = {
@@ -346,12 +370,17 @@ const ko: Copy = {
   looks: { keep: '원본대로', anime: '애니메이션', realistic: '실사', '3d': '3D' },
   language: '목소리와 자막 언어',
   product: '내 제품 사진 (선택)',
-  make: p => `내 버전 만들기 · ${p}`,
+  make: '내 버전 만들기',
   makeSoon: '제작은 다음 단계에 열립니다. 지금은 영상을 읽고 바꿀 것을 고를 수 있어요.',
   another: '다른 영상으로',
   showAll: n => `컷 ${n}개 모두 보기`,
   showLess: '접기',
   otherCast: n => `그 밖의 ${n}명 (잠깐 등장)`,
+  original: '원본',
+  yours: '내 버전',
+  paste: '붙여넣기',
+  clear: '지우기',
+  inShots: n => `컷 ${n}개`,
 }
 
 const COPY: Record<Lang, Copy> = { en, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja, ko }
