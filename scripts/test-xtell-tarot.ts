@@ -90,7 +90,7 @@ check('no question: the teacher is told to ask first', tarotFacts(tarotChart('on
   const master = readFileSync('lib/xtell.ts', 'utf8')
   check('teacher: told how to read 二擇一 (compare, never decide for them) and 關係 (never 注定)', /二擇一先講現況/.test(master) && /不替來訪者做決定/.test(master) && /關係先講兩人各自的心意/.test(master))
   const routes = readFileSync('app/api/xtell/chart/route.ts', 'utf8') + readFileSync('app/api/xtell/reading/route.ts', 'utf8')
-  check('routes: the options are kept with the visit and reach the teacher', /'optA', 'optB'\] as const/.test(routes) && /tarotChart\(spread, body\.picks, ask, options\)/.test(routes) && /: '', asOptions\(body\)\)\)/.test(routes))
+  check('routes: the options are kept with the visit and reach the teacher', /'optA', 'optB'(, '\w+')*\] as const/.test(routes) && /tarotChart\(spread, body\.picks, ask, options\)/.test(routes) && /: '', asOptions\(body\)\)\)/.test(routes))
   const css = readFileSync('app/globals.css', 'utf8')
   check('layouts: 二擇一 and 關係 in their own shapes, two columns on a phone', /grid-template-areas: "endA \. endB" "pathA now pathB"/.test(css) && /grid-template-areas: "you bond them" "block \. next"/.test(css) && /\.xtell-tarot-cards\.is-five \.xtell-tarot-card \{ grid-area: auto !important; \}/.test(css))
   const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']

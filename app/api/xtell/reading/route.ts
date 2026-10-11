@@ -32,6 +32,7 @@ import { fitBudget, approxTokens, rawBudget, tokensRead, windowOf, MESSAGE_CHARS
 import { addMessage, latestMemo, messagesAfter, threadRows, memoBlock, maybeSummarize, summaryRun, summaryCharge, type Memo } from '@/lib/xtell-memory'
 import { kyuseiChart, kyuseiFacts, asToday } from '@/lib/kyusei'
 import { sukuyoChart, sukuyoFacts, asPartnerDate } from '@/lib/sukuyo'
+import { xiangFacts, asGender, asHand, asRelation, NOTE_MAX } from '@/lib/xiang'
 
 const LOG = '[xtell/reading]'
 
@@ -115,6 +116,7 @@ const FACTS_HEAD: Record<string, string> = {
   guanyin:   '信眾求得的觀音籤（系統從籤筒抽出；籤譜與籤文照錄，勿更動）：',
   cookie:    '來訪者的一餐與幸運餅乾的籤語（餐別、時辰、干支由系統計算，籤語照錄，勿更動）：',
   tarot:     '來訪者抽出的塔羅牌（系統依瀏覽器洗牌結果排定；牌義照錄韋特原文，勿更動）：',
+  guanxiang: '相盤（看相助手依照片描述，來訪者已看過；有兩個人時，另一位是來訪者說已同意的對方；來訪者的補充或更正以他寫的為準）：',
 }
 
 const PING = new TextEncoder().encode(': ping\n\n')
@@ -149,6 +151,9 @@ export async function POST(req: Request) {
   } else if (temple === 'cookie') {
     // The slip is read from the saved visit, never from the client.
     if (typeof body?.readingId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.readingId)) return refuse('cookie_missing', 'a cookie reading needs its visit')
+  } else if (temple === 'guanxiang') {
+    // The 相盤 too: the vision model's description, saved with the visit.
+    if (typeof body?.readingId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.readingId)) return refuse('xiang_missing', 'a photo reading needs its visit')
   } else if (temple === 'tarot') {
     if (!validPicks(asSpread(body?.spread), body?.picks)) return refuse('cards_invalid', 'bad draw')
   } else if (isQianTemple(temple)) {
@@ -313,9 +318,27 @@ export async function POST(req: Request) {
     if (!cookieChart?.fortune) return refuse('cookie_missing', 'that cookie is not saved')
   }
 
+  // 相學館: the 相盤 the chart route saved, the gender and hand given then,
+  // and the visitor's own corrections, which travel with each question and
+  // are kept on the visit so a reopened one still has them.
+  let xiangText = ''
+  if (temple === 'guanxiang') {
+    const { data: visit } = await sb.from('xtell_readings').select('chart, subject, extras').eq('id', body.readingId).eq('user_id', user.id).eq('temple', 'guanxiang').maybeSingle()
+    if (!visit?.chart) return refuse('xiang_missing', 'that photo reading is not saved')
+    const kept = typeof (visit as any).extras?.note === 'string' ? (visit as any).extras.note : ''
+    const note = typeof body?.note === 'string' ? body.note.slice(0, NOTE_MAX) : kept
+    if (note !== kept) {
+      const { error } = await sb.from('xtell_readings').update({ extras: { ...((visit as any).extras ?? {}), note } }).eq('id', body.readingId).eq('user_id', user.id)
+      if (error) console.warn(`${LOG} keeping the correction failed:`, error.message)
+    }
+    const subj = (visit as any).subject ?? {}
+    const pair = subj.partner && typeof subj.partner === 'object' ? { gender: asGender(subj.partner.gender), dominant: asHand(subj.partner.dominant), relation: asRelation(subj.partner.relation) } : null
+    xiangText = xiangFacts((visit as any).chart, { gender: asGender(subj.gender), dominant: asHand(subj.dominant) }, note, pair)
+  }
+
   // Recomputed here, never taken from the client — same rule as every other
   // temple: the model may only see a chart this server produced.
-  const chartFacts = daily ? daily.facts : temple === 'cookie'
+  const chartFacts = daily ? daily.facts : temple === 'guanxiang' ? xiangText : temple === 'cookie'
     ? `${cookieFacts({ food: String(cookieChart.food ?? ''), ask: String(cookieChart.ask ?? ''), meal: cookieChart.meal, dayGz: cookieChart.dayGz ?? null })}\n主味：${cookieChart.flavor}（五行屬${cookieChart.element}）\n幸運餅乾的籤語（照錄）：「${cookieChart.fortune}」${cookieChart.note ? `\n當時的小解說：${cookieChart.note}` : ''}`
     : temple === 'jiemeng'
     ? dreamFacts(String(body.dream).trim(), typeof body?.ask === 'string' ? body.ask.slice(0, ASK_MAX) : '', dreamEntries(dreamLines))

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi'
+export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi' | 'guanxiang'
 // Menu order (owner, Sep 24: 有技術的放前面): the computed methods first —
 // 八字, 紫微, 西洋占星, 吠陀占星, 姓名, 測字 — then the deity rooms. The art
 // sheets keep their own five-by-two order via TEMPLE_ART below, so this list
@@ -15,7 +15,9 @@ export type TempleKey = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simia
 // its order — 易經, 周公解夢 and 孫子兵法 are popular in Taiwan, so they come
 // right after 塔羅, ahead of the Indian 九曜 and the Japanese 九星 and 宿曜
 // (lib/xtell-hero.ts HERO_FEATURED; a test keeps the two in step).
-export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue', 'jiemeng', 'sunzi', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
+// 相學館 (Oct 6, owner: 手相 and 面相, an important feature) comes right after
+// the rotation in every market, until it has a scene of its own there.
+export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue', 'jiemeng', 'sunzi', 'guanxiang', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'cookie', 'guanyin', 'yuelao', 'guandi', 'mazu', 'simianfo']
 
 // Each market's own order (owner, Sep 28: "for each market, a list and
 // order"). Every temple is in every list; only the order changes. Korea
@@ -27,14 +29,14 @@ export const DISPLAY_TEMPLES: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot
 // 74,000 each, 宿曜 33,100. The rooms Japanese visitors rarely know (関帝,
 // 媽祖, 四面仏, 字占い) stay last: a Japanese visitor read the page as a
 // Taiwanese site translated.
-const ORDER_JA: TempleKey[] = ['jiemeng', 'guanyin', 'xingming', 'zhanxing', 'tarot', 'bazi', 'kyusei', 'yuelao', 'sukuyo', 'yixue', 'ziwei', 'sunzi', 'cookie', 'navagraha', 'guandi', 'mazu', 'simianfo', 'cezi']
-const ORDER_KO: TempleKey[] = ['bazi', 'yuelao', 'tarot', 'zhanxing', 'jiemeng', 'sunzi', 'cookie', 'xingming', 'yixue', 'ziwei', 'guanyin', 'guandi', 'mazu', 'navagraha', 'kyusei', 'sukuyo', 'simianfo', 'cezi']
+const ORDER_JA: TempleKey[] = ['jiemeng', 'guanyin', 'xingming', 'zhanxing', 'tarot', 'bazi', 'guanxiang', 'kyusei', 'yuelao', 'sukuyo', 'yixue', 'ziwei', 'sunzi', 'cookie', 'navagraha', 'guandi', 'mazu', 'simianfo', 'cezi']
+const ORDER_KO: TempleKey[] = ['bazi', 'yuelao', 'tarot', 'zhanxing', 'jiemeng', 'sunzi', 'guanxiang', 'cookie', 'xingming', 'yixue', 'ziwei', 'guanyin', 'guandi', 'mazu', 'navagraha', 'kyusei', 'sukuyo', 'simianfo', 'cezi']
 // English (the United States; Oct 2, same request): what English speakers
 // look for first, tarot, astrology and dream meanings, then Chinese
 // astrology (BaZi), love compatibility, the fortune cookie they know and the
 // I Ching. The rooms that need Chinese characters or names (姓名, 測字) and
 // the Japanese 宿曜 go last.
-const ORDER_EN: TempleKey[] = ['tarot', 'zhanxing', 'jiemeng', 'bazi', 'yuelao', 'cookie', 'yixue', 'navagraha', 'sunzi', 'ziwei', 'kyusei', 'guanyin', 'guandi', 'mazu', 'simianfo', 'sukuyo', 'xingming', 'cezi']
+const ORDER_EN: TempleKey[] = ['tarot', 'zhanxing', 'jiemeng', 'bazi', 'yuelao', 'cookie', 'guanxiang', 'yixue', 'navagraha', 'sunzi', 'ziwei', 'kyusei', 'guanyin', 'guandi', 'mazu', 'simianfo', 'sukuyo', 'xingming', 'cezi']
 export function displayTemples(lang: string): TempleKey[] {
   return lang === 'ja' ? ORDER_JA : lang === 'ko' ? ORDER_KO : lang === 'en' ? ORDER_EN : DISPLAY_TEMPLES
 }
@@ -76,6 +78,9 @@ export const TEMPLE_ART: Record<TempleKey, Art> = {
   // rock with 「孫子兵法」 below; see docs/XTELL-PAGE.md.
   sunzi: { src: { portrait: '/xtell/approved/sunzi-portrait.avif', icon: '/xtell/approved/sunzi-icon.avif', iconClear: '/xtell/approved/sunzi-icon-clear.avif' }, caption: 'ART OF WAR', kind: 'object' },
   kyusei: { src: { portrait: '/xtell/approved/kyusei-portrait.avif', icon: '/xtell/approved/kyusei-icon.avif', iconClear: '/xtell/approved/kyusei-icon-clear.avif' }, caption: 'NINE STAR KI', kind: 'object' },
+  // 相學館 (Oct 6): an open palm with its lines and a face with the three
+  // zones, generated against the approved icons as a style reference.
+  guanxiang: { src: { portrait: '/xtell/approved/guanxiang-portrait.avif', icon: '/xtell/approved/guanxiang-icon.avif', iconClear: '/xtell/approved/guanxiang-icon-clear.avif' }, caption: 'FACE & PALM', kind: 'object' },
 }
 
 /** 'object' portraits (the lower sheet row, and 易學堂) sit differently from the deities. */

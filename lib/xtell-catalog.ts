@@ -19,18 +19,18 @@ import type { Temple } from './xtell'
 import { XTELL_TEMPLE_NAMES } from './xtell-meta'
 
 /** Bumped with every change to this list or to content/xtell-guide.md. */
-export const XTELL_CATALOG_VERSION = '2026-09-29.5'
+export const XTELL_CATALOG_VERSION = '2026-10-07.1'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'kyusei' | 'sukuyo'
   | 'zhanxing.natal' | 'zhanxing.synastry' | 'zhanxing.today' | 'zhanxing.year'
-  | 'xingming' | 'cezi' | 'jiemeng' | 'sunzi' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot' | 'cookie'
+  | 'xingming' | 'cezi' | 'jiemeng' | 'sunzi' | 'guanxiang' | 'yixue.ask' | 'yixue.lookup' | 'yixue.cast' | 'guanyin' | 'tarot' | 'cookie'
   | 'daily' | 'almanac' | 'courses'
 
 export type FeatureMode = 'natal' | 'synastry' | 'today' | 'year' | 'ask' | 'lookup' | 'cast'
 
 /** What a room asks for besides the birth records and places. */
-export type FeatureInput = 'wishes' | 'matter' | 'name' | 'gender' | 'character' | 'hexagram' | 'question' | 'year' | 'birth' | 'dream' | 'situation' | 'food'
+export type FeatureInput = 'wishes' | 'matter' | 'name' | 'gender' | 'character' | 'hexagram' | 'question' | 'year' | 'birth' | 'dream' | 'situation' | 'food' | 'photos'
 
 export type Feature = {
   id: FeatureId
@@ -129,6 +129,9 @@ export const XTELL_FEATURES: readonly Feature[] = [
   { id: 'sunzi', status: 'live', temple: 'sunzi', people: 0, hour: null, place: false, inputs: ['situation'], optional: ['matter'],
     free: ['lookup'], paid: 'teacher', question: 'matter', label: [room('sunzi')],
     about: 'The Art of War (孫子兵法), for what to do next: describe a situation you face (work, business, study, a negotiation, family), and optionally the decision in front of you; a quick AI picks the lines of Sunzi\'s thirteen chapters that speak to it, shown free, quoted as written, each with a plain AI translation; then the chosen teachers (a strategist, 軍師) turn them into concrete next steps. Any language. Never helps deceive or harm anyone. Up to 30 situations a day.' },
+  { id: 'guanxiang', status: 'live', temple: 'guanxiang', people: 0, hour: null, place: false, inputs: ['photos', 'gender'], optional: [],
+    free: ['chart'], paid: 'teacher', question: 'composer', label: [room('guanxiang')],
+    about: 'Face and palm reading (相學館, 面相, 手相, 看手相, 看面相, 手相占い, 人相, 관상, 손금, palm reading): add a photo of your own face, left palm or right palm (at least one), gender and dominant hand, and optionally the same for a partner, spouse or crush who agreed (看我們兩個, for 夫妻相 and how the two get along); an AI reading assistant describes the features and palm lines in words and marks the face on the photo for you to check (photos are not kept); then the chosen masters read them. Signed-in only.' },
   { id: 'yixue.ask', status: 'live', temple: 'yixue', mode: 'ask', people: 0, hour: null, place: false, inputs: ['question'], optional: [],
     free: [], paid: 'teacher', question: 'composer', label: [room('yixue'), 'xtell.yixue.mode.ask'],
     about: 'I Ching school, ask the teacher: learn the I Ching as a beginner; no hexagram is cast.' },

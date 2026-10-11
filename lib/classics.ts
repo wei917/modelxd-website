@@ -37,6 +37,8 @@ const SOURCES: Record<Temple, string[]> = {
   jiemeng:  [],
   // 孫子兵法: the same, the chosen lines ride with the situation (lib/sunzi.ts sunziFacts).
   sunzi:    [],
+  // 相學館: none on disk yet; the master cites 相書 only as 「相書上說」, never verbatim.
+  guanxiang: [],
   // 觀音廟: the stick is its own text. 塔羅: Waite's meaning rides with each
   // card (lib/tarot.ts tarotFacts).
   guanyin:  [],

@@ -102,7 +102,7 @@ function fakeDb() {
 }
 
 async function chartConsistency() {
-  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/sunzi': require('../lib/sunzi'), '@/lib/sunzi-scan': { scanSituation: async () => ({ picks: [{ id: 0, gloss: 'x' }], model: 'gpt-6-luna' }) }, '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
+  const chart = loadRoute('app/api/xtell/chart/route.ts', { '@/lib/supabase-server': { createSupabaseServer: async () => fakeDb() }, '@/lib/xtell': xtell, '@/lib/yijing': yijing, '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/xtell-cookie-fortunes': require('../lib/xtell-cookie-fortunes'), '@/lib/xtell-almanac': require('../lib/xtell-almanac'), '@/lib/xtell-daily-model': { dailyText: async () => null }, '@/lib/credits': { debitCredits: async () => 0, grantCredits: async () => 0, InsufficientCreditsError: class extends Error {} }, '@/lib/jiemeng': require('../lib/jiemeng'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xiang': require('../lib/xiang'), '@/lib/xiang-scan': { photosOf: () => [], checkPhotos: async () => ({}), readPhotos: async () => null }, '@/lib/sunzi': require('../lib/sunzi'), '@/lib/sunzi-scan': { scanSituation: async () => ({ picks: [{ id: 0, gloss: 'x' }], model: 'gpt-6-luna' }) }, '@/lib/jiemeng-scan': { scanDream: async () => ({ ids: [0], model: 'stub' }) } })
   const cast = async (body: any) => { const r = await chart(post('http://t/api/xtell/chart', { ...body, refresh: true })); return { status: r.status, d: await r.json() as any } }
   const one = { y: 1990, m: 1, d: 1, h: 15, mi: 0, gender: 'male' }, two = { y: 1992, m: 5, d: 5, h: 9, mi: 0, gender: 'female' }
   /** The smallest full subject the catalog says this feature needs. */
@@ -130,6 +130,8 @@ async function chartConsistency() {
   for (const f of rooms) {
     // 幸運餅乾 is written by a model and may be charged: never on a refresh.
     if (f.id === 'cookie') { const r = await cast(subject(f)); check('cookie: never cracked again on a refresh', r.status === 400 && r.d.code === 'cookie_refresh', `${r.status} ${r.d.code}`); continue }
+    // 相學館 reads photos with vision models: never again on a refresh either.
+    if (f.id === 'guanxiang') { const r = await cast(subject(f)); check('guanxiang: photos never read again on a refresh', r.status === 400 && r.d.code === 'xiang_refresh', `${r.status} ${r.d.code}`); continue }
     const full = await cast(subject(f))
     check(`chart route accepts ${f.id} with what the catalog lists`, full.status === 200, JSON.stringify(full.d).slice(0, 160))
     if (f.hour) {

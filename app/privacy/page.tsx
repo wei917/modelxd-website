@@ -7,6 +7,8 @@ import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in,
 // in the summaries too, and the situation written at 孫子兵法. Oct 2: X sign-in,
 // and the website name and picture a person chooses (checked by OpenAI).
+// Oct 7: 相學館's face and palm photos (read once, never stored; another
+// person's only with their agreement).
 
 export const metadata = { title: 'Privacy Policy — ModelXD' }
 
@@ -22,7 +24,7 @@ export default function PrivacyPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: October 3, 2026
+        Last updated: October 7, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
@@ -53,8 +55,14 @@ export default function PrivacyPage() {
         or answer you: your birth date and time (or that the hour is unknown) and the
         time zone you were born in; for 月老 and compatibility charts, the same for a
         second person; a name at 姓名學, a character at 測字, your wishes at 四面佛, a
-        dream at 解夢, or the situation you describe at 孫子兵法; and your
-        questions and readings. If you choose to save your
+        dream at 解夢, or the situation you describe at 孫子兵法; at 相學館 (face
+        and palm reading), the photos you add of your face or palms with your
+        gender and dominant hand, and, if you read the two of you, the same for
+        the other person, who they are to you, and your confirmation that they
+        agreed; and your questions and readings. The photos themselves are not
+        stored: your device shrinks them (which removes their location and other
+        photo data), they are sent once to be read, and we keep only the written
+        description (the 相盤) and which photos there were. If you choose to save your
         birth details for the free daily reading (今日運勢), we keep them, with the
         time zone you read in, until you delete them.
         <br /><strong>Payments.</strong> Purchases are processed by Stripe. We store
@@ -86,6 +94,13 @@ export default function PrivacyPage() {
         question go to the model you chose. The free helpers (the guide on the
         street, the daily reading and the dream lookup) run on models we choose from
         the same providers.
+      </p>
+      <p style={S.p}>
+        At 相學館 the photos are sent once to AI models we choose (currently from
+        Google, OpenAI and Anthropic) to check that they are clear and to describe
+        what they show; a teacher you ask receives that written description, never
+        the photos. We do not use the photos to identify anyone, and we do not
+        create or keep face templates or other biometric identifiers from them.
       </p>
       <p style={S.p}>
         We do not sell your personal data, and we do not use your content to train
@@ -134,7 +149,8 @@ export default function PrivacyPage() {
       <p style={S.p}>
         Your data is kept while your account is active. XTell readings you delete on
         your account page are erased at once, and so are saved birth details when
-        you delete them there. Removing an XDuel or XCreate from your profile hides it
+        you delete them there. Photos added at 相學館 are never stored; the written
+        description is erased with its reading. Removing an XDuel or XCreate from your profile hides it
         everywhere, including XVote; the stored copy is erased when you delete your
         account. You can delete your entire account under Profile → Danger Zone,
         which permanently removes your account, content, uploaded files, and

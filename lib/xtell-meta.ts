@@ -39,6 +39,7 @@ export const XTELL_TEMPLE_NAMES: Record<string, Record<Lang, string>> = {
   kyusei: {"en": "Nine Star Ki", "zh-Hant": "九星氣學", "zh-Hans": "九星气学", "ja": "九星気学", "ko": "구성기학"},
   sukuyo: {"en": "Sukuyō Astrology", "zh-Hant": "宿曜占星", "zh-Hans": "宿曜占星", "ja": "宿曜占星術", "ko": "숙요점성술"},
   sunzi: {"en": "The Art of War", "zh-Hant": "孫子兵法", "zh-Hans": "孙子兵法", "ja": "孫子の兵法", "ko": "손자병법"},
+  guanxiang: {"en": "Face & Palm Reading", "zh-Hant": "相學館", "zh-Hans": "相学馆", "ja": "手相・人相", "ko": "관상·손금"},
 }
 const BRAND: Record<Lang, string> = { en: 'XTell', 'zh-Hant': 'X先知', 'zh-Hans': 'X先知', ja: 'X占い', ko: 'X운세' }
 

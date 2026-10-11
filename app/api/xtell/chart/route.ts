@@ -14,6 +14,8 @@
 // this year's 流年 read against it. 八字廟 also weighs the birth (稱骨).
 
 export const runtime = 'nodejs'
+// 相學館 waits on a vision model (about a minute); every other chart is instant.
+export const maxDuration = 300
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { baziChart, chengGu, ziweiChart, heMatch, liuNian, qianOf, navagrahaChart, zhanxingChart, asAstroMode, validBirth, birthProblem, validQian, isQianTemple, validWishes, validPlace, asTemple, type Temple, nameChart, validName, charInfo, validChar, ENGINES, asQianEdition } from '@/lib/xtell'
@@ -30,6 +32,11 @@ import { situationProblem, sunziLines, glossLang, ASK_MAX as SUNZI_ASK_MAX, SCAN
 import { scanSituation } from '@/lib/sunzi-scan'
 import { kyuseiChart, asToday } from '@/lib/kyusei'
 import { sukuyoChart, asPartnerDate } from '@/lib/sukuyo'
+import { asGender, asHand, asRelation } from '@/lib/xiang'
+import { photosOf, checkPhotos, readPhotos } from '@/lib/xiang-scan'
+
+/** 相學館's photo readings a visitor may start in a day (vision models on our account). */
+const XIANG_PER_DAY = 10
 
 // Every refusal carries a stable `code` the client turns into a sentence in
 // the visitor's language, next to the field it is about (audit F05: 「bad
@@ -61,7 +68,7 @@ function birthRefusal(b: unknown, who: 'birth' | 'birth2' = 'birth'): Response |
 
 // The subject is what the client sent, reduced to the keys the routes read,
 // so a saved reading can be recomputed later exactly as it was cast.
-const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner', 'mbti', 'mbti2', 'optA', 'optB'] as const
+const SUBJECT_KEYS = ['birth', 'birth2', 'n', 'ask', 'name', 'city', 'wishes', 'place', 'place2', 'mode', 'year', 'surname', 'given', 'gender', 'ch', 'lines', 'coins', 'dream', 'situation', 'edition', 'spread', 'picks', 'food', 'mealAt', 'meal', 'crack', 'today', 'partner', 'mbti', 'mbti2', 'optA', 'optB', 'dominant', 'have', 'shot'] as const
 function subjectOf(body: any) {
   const out: Record<string, unknown> = {}
   for (const k of SUBJECT_KEYS) if (body?.[k] !== undefined) out[k] = body[k]
@@ -189,6 +196,45 @@ export async function POST(req: Request) {
   // the visitor, the next steps are paid. The same situation, decision and
   // language looked up again keeps its lines; the same daily cap, counted
   // from saved visits; always saved. The visit is titled by the situation.
+  // 相學館 (Oct 6): a cheap model checks each photo (lenient), a qualified
+  // vision model describes them into the 相盤 (lib/xiang-scan.ts), on our
+  // account, so a session is needed and a day has a cap. The photos pass
+  // through and are never stored: the visit keeps the 相盤, the gender, the
+  // dominant hand and which photos there were. Every reading is its own
+  // visit (`shot`), so the day's count is the visits'.
+  if (temple === 'guanxiang') {
+    // A reopened visit shows its saved 相盤; a refresh never reads (and pays) again.
+    if (!persist) return refuse('xiang_refresh', 'a photo reading is not read again on a refresh')
+    if (!user) return signInFirst()
+    const photos = photosOf(body?.photos)
+    if (photos === 'invalid') return refuse('photo_invalid', 'a photo could not be read')
+    if (!photos.length) return refuse('photo_required', 'add at least one photo')
+    // 看我們兩個 (owner, Oct 6): the other person's photos too, only with the
+    // visitor's word that the person in them agreed. Their photos pass
+    // through like the visitor's; the visit keeps who they are, not them.
+    const pair = body?.partner && typeof body.partner === 'object' ? body.partner : null
+    const partnerPhotos = pair ? photosOf(pair.photos, 'partner') : []
+    if (partnerPhotos === 'invalid') return refuse('photo_invalid', 'a photo could not be read')
+    if (pair && !partnerPhotos.length) return refuse('partner_photo_required', "add at least one of the other person's photos")
+    if (pair && pair.consent !== true) return refuse('xiang_consent', 'the person in the photos has to have agreed')
+    const partner = pair ? { gender: asGender(pair.gender), dominant: asHand(pair.dominant), relation: asRelation(pair.relation) } : null
+    const lang = typeof body?.lang === 'string' ? body.lang : 'zh-Hant'
+    const { data: recent } = await sb.from('xtell_readings').select('created_at').eq('user_id', user.id).eq('temple', 'guanxiang')
+      .order('created_at', { ascending: false }).limit(XIANG_PER_DAY + 5)
+    const dayAgo = Date.now() - 86_400_000
+    if ((recent ?? []).filter(r => Date.parse(r.created_at) > dayAgo).length >= XIANG_PER_DAY) return refuse('xiang_daily', 'too many photo readings today', 429)
+    const [checks, partnerChecks] = await Promise.all([checkPhotos(photos, lang, user.id), checkPhotos(partnerPhotos, lang, user.id)])
+    if ([...Object.values(checks), ...Object.values(partnerChecks)].some(c => !c.ok)) return Response.json({ error: 'a photo is not clear enough', code: 'photo_unclear', checks, partnerChecks }, { status: 422 })
+    const chart = await readPhotos(photos, { gender: asGender(body?.gender), dominant: asHand(body?.dominant) }, lang, user.id, partner ? { who: partner, photos: partnerPhotos } : undefined)
+    if (!chart) return refuse('xiang_failed', 'the photo reading is unavailable', 503)
+    const subject = {
+      gender: asGender(body?.gender), dominant: asHand(body?.dominant), have: photos.map(p => p.key), shot: crypto.randomUUID(),
+      ...(partner ? { partner: { ...partner, have: partnerPhotos.map(p => p.key), consent: true } } : {}),
+    }
+    const readingId = persist ? await save(sb, uid, temple, subject, chart, {}) : null
+    return Response.json({ temple, chart, checks, partnerChecks, engine: ENGINES[temple], readingId })
+  }
+
   if (temple === 'sunzi') {
     const bad = situationProblem(body?.situation)
     if (bad) return refuse(bad, bad === 'situation_required' ? 'describe the situation' : 'the situation is too long')

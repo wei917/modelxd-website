@@ -24,6 +24,8 @@ import { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
 import { TempleArtwork } from '../components/xtell/TempleArtwork'
 import XTellNav, { XTellFooter } from '../components/xtell/XTellNav'
 import { XTellBaseProvider } from '../components/xtell/XTellBase'
+import { XiangForm, XiangBoard, XiangPrivacy, type XiangPhotos, type XiangPhoto, type XiangCheck } from '../components/xtell/Xiang'
+import { asRelation, type XiangPhotoKey, type XiangRelation } from '../../lib/xiang'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT, useLang, tOr } from '../../lib/i18n'
 import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../lib/xtell-birth'
@@ -70,7 +72,7 @@ import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar }
 import { asPersonalityType, offersPersonality } from '../../lib/xtell-personality'
 import { PersonalityAttach, useSavedPersonality } from '../components/xtell/XTellPersonality'
 
-type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi'
+type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi' | 'guanxiang'
 /** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
 const localNow = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
 const isQian = (t: Temple) => t === 'guandi' || t === 'mazu' || t === 'guanyin'
@@ -162,7 +164,7 @@ function setReadingParam(id: string | null) {
 /** The same checks the routes make, run on a subject before it is sent, and
  *  on a saved subject before its chart is shown. Null when it is fine. */
 function subjectProblem(temple: Temple, subj: any, astroMode?: string): string | null {
-  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'sunzi' && temple !== 'tarot' && temple !== 'cookie'
+  const needsBirth = !isQian(temple) && temple !== 'xingming' && temple !== 'cezi' && temple !== 'yixue' && temple !== 'jiemeng' && temple !== 'sunzi' && temple !== 'tarot' && temple !== 'cookie' && temple !== 'guanxiang'
   if (needsBirth || (isQian(temple) && subj?.birth)) {
     const p = birthProblem(subj?.birth)
     if (p) return `birth_${p}`
@@ -187,6 +189,17 @@ function subjectProblem(temple: Temple, subj: any, astroMode?: string): string |
   if (temple === 'jiemeng') { const d = String(subj?.dream ?? ''); if (!d.trim()) return 'dream_required'; if (d.length > DREAM_MAX) return 'dream_too_long' }
   // lib/sunzi.ts situationProblem, mirrored.
   if (temple === 'sunzi') { const d = String(subj?.situation ?? ''); if (!d.trim()) return 'situation_required'; if (d.length > SITUATION_MAX) return 'situation_too_long' }
+  // 相學館: photos on a new reading; a saved visit names which there were.
+  if (temple === 'guanxiang') {
+    const p = subj?.photos ?? {}; if (!p.face && !p.left && !p.right && !(Array.isArray(subj?.have) && subj.have.length)) return 'photo_required'
+    // 看我們兩個: the other person's photos, and the visitor's word that they agreed.
+    const q = subj?.partner
+    if (q && typeof q === 'object') {
+      const qp = q.photos ?? {}
+      if (!qp.face && !qp.left && !qp.right && !(Array.isArray(q.have) && q.have.length)) return 'partner_photo_required'
+      if (q.consent !== true) return 'xiang_consent'
+    }
+  }
   return null
 }
 
@@ -203,6 +216,9 @@ function fieldOf(code: string | null): string | null {
   if (code === 'wish_required') return 'wishes'
   if (code.startsWith('dream_')) return 'dream'
   if (code.startsWith('situation_')) return 'situation'
+  if (code.startsWith('photo_')) return 'photos'
+  if (code === 'partner_photo_required') return 'partnerPhotos'
+  if (code === 'xiang_consent') return 'consent'
   if (code.startsWith('food_')) return 'food'
   if (code === 'meal_time_invalid') return 'mealAt'
   if (code === 'place_invalid') return 'place'
@@ -223,6 +239,8 @@ function subjectSummary(t: (k: string) => string, temple: Temple, subj: any, lan
   if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
   if (temple === 'jiemeng') { const d = String(subj.dream ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
   if (temple === 'sunzi') { const d = String(subj.situation ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
+  if (temple === 'guanxiang') return [...(Array.isArray(subj.have) ? subj.have : Object.keys(subj.photos ?? {})).map((k: string) => t(`xtell.xiang.slot.${k}`)), t(`xtell.${subj.gender === 'female' ? 'female' : 'male'}`),
+    ...(subj.partner && typeof subj.partner === 'object' ? [`${t('xtell.xiang.partner')}（${t(`xtell.xiang.rel.${asRelation(subj.partner.relation)}`)}）`] : [])].join(' · ')
   if (temple === 'cookie') return `${String(subj.food ?? '').slice(0, 40)}${subj.mealAt ? ` · ${String(subj.mealAt).replace('T', ' ')}` : ''}`
   if (isQian(temple) || temple === 'tarot') return subj.ask ? String(subj.ask).slice(0, 60) : ''
   // 九星気学 and 宿曜 read the date only: no hour or gender in the line.
@@ -500,7 +518,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // 二擇一's two options, named by the visitor (optional).
   const [tarotOpts, setTarotOpts] = useState<TarotOptions>({ a: typeof init.optA === 'string' ? init.optA : '', b: typeof init.optB === 'string' ? init.optB : '' })
   const picksRef = useRef<TarotPick[] | null>(Array.isArray(init.picks) ? init.picks : null)
-  const defaultBirth = { y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: 'male' as 'male' | 'female', hourUnknown: false }
+  // 相學館 starts with a woman on the left (the visitor) and a man on the right (owner, Oct 9:
+  // "move female to the left and put male to the right by default"); both stay editable.
+  const defaultBirth = { y: 1990, m: 1, d: 1, h: 12, mi: 0, gender: (temple === 'guanxiang' ? 'female' : 'male') as 'male' | 'female', hourUnknown: false }
   const [birth, setBirth] = useState<typeof defaultBirth>({ ...defaultBirth, ...(init.birth ?? {}), ...(init.gender && !init.birth ? { gender: init.gender } : {}),
     // 紫微/九曜 hide the checkbox; a record saved with it set must reopen
     // with the hour selectable so the visitor can correct it.
@@ -535,6 +555,34 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   const [dream, setDream] = useState(init.dream ?? '')
   // 孫子兵法: the situation as the visitor tells it (+ the shared `ask`).
   const [situation, setSituation] = useState(init.situation ?? '')
+  // 相學館: the photos live in this page only (never in the visit); the
+  // dominant hand; each photo's check; the visitor's corrections to the 相盤,
+  // which the reading route keeps on the visit.
+  const [xiangPhotos, setXiangPhotos] = useState<XiangPhotos>({})
+  const [xiangChecks, setXiangChecks] = useState<Record<string, XiangCheck>>({})
+  const [dominant, setDominant] = useState<'right' | 'left'>(init.dominant === 'left' ? 'left' : 'right')
+  const [xiangNote, setXiangNote] = useState<string>(typeof initial?.extras?.note === 'string' ? initial.extras.note : '')
+  const setXiangPhoto = (k: XiangPhotoKey, p: XiangPhoto | null) => {
+    setXiangPhotos(ps => { const next = { ...ps }; if (p) next[k] = p; else delete next[k]; return next })
+    setXiangChecks(cs => { const next = { ...cs }; delete next[k]; return next })
+  }
+  // 看我們兩個 (owner, Oct 6): the other person's photos (in this page only,
+  // like the visitor's), who they are to the visitor, their gender and hand,
+  // and the visitor's word that they agreed. Their tiles always show (owner,
+  // Oct 9: "you always show two sets"); the reading is for two once they have
+  // a photo. A reopened visit keeps its pair.
+  const initPartner = temple === 'guanxiang' && init.partner && typeof init.partner === 'object' ? init.partner : null
+  const [partnerPhotos, setPartnerPhotos] = useState<XiangPhotos>({})
+  const xiangPair = !!initPartner || Object.keys(partnerPhotos).length > 0
+  const [partnerChecks, setPartnerChecks] = useState<Record<string, XiangCheck>>({})
+  const [partnerGender, setPartnerGender] = useState<'male' | 'female'>(initPartner?.gender === 'male' || initPartner?.gender === 'female' ? initPartner.gender : birth.gender === 'female' ? 'male' : 'female')
+  const [partnerHand, setPartnerHand] = useState<'right' | 'left'>(initPartner?.dominant === 'left' ? 'left' : 'right')
+  const [relation, setRelation] = useState<XiangRelation>(asRelation(initPartner?.relation ?? 'dating'))
+  const [consent, setConsent] = useState<boolean>(initPartner?.consent === true)
+  const setPartnerPhoto = (k: XiangPhotoKey, p: XiangPhoto | null) => {
+    setPartnerPhotos(ps => { const next = { ...ps }; if (p) next[k] = p; else delete next[k]; return next })
+    setPartnerChecks(cs => { const next = { ...cs }; delete next[k]; return next })
+  }
   // The visitor's own personality type (Sep 30): attached only while the box
   // is ticked, never by default; a reopened visit keeps the type it was asked
   // with. 月老 may add the other person's type, typed in here.
@@ -782,6 +830,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // 孫子兵法: `lang` is the language of the free translations.
     : temple === 'sunzi' ? { temple, situation: situation.trim(), ask: ask.trim(), lang, ...typeSubject }
     : temple === 'cookie' ? { temple, food: food.trim(), mealAt, ask: ask.trim(), lang }
+    // 相學館: the photos ride once, to the chart route; never to a teacher.
+    : temple === 'guanxiang' ? {
+        temple, gender: birth.gender, dominant, photos: Object.fromEntries(Object.entries(xiangPhotos).map(([k, p]) => [k, p!.dataUrl])), lang,
+        ...(xiangPair ? { partner: { relation, gender: partnerGender, dominant: partnerHand, consent, photos: Object.fromEntries(Object.entries(partnerPhotos).map(([k, p]) => [k, p!.dataUrl])) } } : {}),
+      }
     : temple === 'yixue' ? {
         temple, mode: yixueMode,
         ...(yixueMode === 'cast' ? { ask: ask.trim(), lines: castRef.current.values,
@@ -834,6 +887,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     clearErr()
     refreshToken.current++
     try {
+      // 相學館 reads the photos on our account: a session first (signed out,
+      // the form has no photo slots, so "add a photo" would be no help).
+      if (temple === 'guanxiang' && !(await signedIn())) return false
       const requestSubject = subject(n)
       // The routes check the same things; checking here first keeps the
       // message next to the form and in the visitor's language.
@@ -844,6 +900,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         body: JSON.stringify(requestSubject),
       })
       const d = await res.json()
+      if (temple === 'guanxiang') {
+        setXiangChecks(d?.checks && typeof d.checks === 'object' ? d.checks : {})
+        setPartnerChecks(d?.partnerChecks && typeof d.partnerChecks === 'object' ? d.partnerChecks : {})
+      }
       if (!res.ok) throw new CodedError(d?.error ?? 'failed', d?.code)
       // Details edited after a conversation make a new visit: its thread
       // starts empty rather than continuing the old chart's.
@@ -996,7 +1056,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       const res = await fetch('/api/xtell/reading', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
+          ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : temple === 'guanxiang' ? { temple, note: xiangNote } : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
           // 解夢: the line numbers shown, used only when the visit was not saved.
           ...(temple === 'jiemeng' ? { entries: (Array.isArray(chart?.entries) ? chart.entries : []).map((e: any) => e.id) } : {}),
           // 孫子兵法: the same, the line numbers shown.
@@ -1281,7 +1341,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
         </button>
       )}
       {standalone ? <>
-        <header className="xtell-room-header">
+        {/* data-temple: a room may tune its own header (相學館 lays it out
+            differently on phones); the others keep the shared look. */}
+        <header className="xtell-room-header" data-temple={temple}>
           <TempleArtwork temple={temple} kind="icon" className="xtell-room-artwork" />
           <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p>
             {/* 釘選 puts this temple first in the top bar (owner, Oct 3). */}
@@ -1291,7 +1353,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
 
       {!entered ? (<>
-        <div className={standalone ? "xtell-entry-form" : undefined} aria-busy={entering || undefined} style={{ ...card, padding: '18px 20px', position: 'relative' }}>
+        <div className={standalone ? "xtell-entry-form" + (temple === 'guanxiang' ? ' is-xiang' : '') : undefined} aria-busy={entering || undefined} style={{ ...card, padding: '18px 20px', position: 'relative' }}>
           {entering && <span className="xtell-entering-bar" aria-hidden="true" />}
           {carried?.question && <p className="xtell-carried" role="note">{t('xtell.as.carried').replace('{q}', carried.question)}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
@@ -1377,6 +1439,14 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             <CookieForm food={food} setFood={setFood} mealAt={mealAt} setMealAt={setMealAt} ask={ask} setAsk={setAsk} sel={sel} foodAria={fieldAria('food')} mealAria={fieldAria('mealAt')} />
           ) : temple === 'jiemeng' ? (
             <DreamForm dream={dream} setDream={setDream} ask={ask} setAsk={setAsk} sel={sel} dreamAria={fieldAria('dream')} />
+          ) : temple === 'guanxiang' ? (
+            <XiangForm photos={xiangPhotos} setPhoto={setXiangPhoto} checks={xiangChecks} gender={birth.gender} setGender={g => setBirth(b => ({ ...b, gender: g }))}
+              dominant={dominant} setDominant={setDominant} onSignIn={() => showSignIn()} disabled={entering} photoAria={fieldAria('photos')} pair={xiangPair}
+              partner={{
+                photos: partnerPhotos, setPhoto: setPartnerPhoto, checks: partnerChecks, gender: partnerGender, setGender: setPartnerGender,
+                dominant: partnerHand, setDominant: setPartnerHand, relation, setRelation, consent, setConsent,
+                disabled: entering, photoAria: fieldAria('partnerPhotos'), consentAria: fieldAria('consent'),
+              }} />
           ) : temple === 'sunzi' ? (
             <>
               <SunziForm situation={situation} setSituation={setSituation} ask={ask} setAsk={setAsk} sel={sel} situationAria={fieldAria('situation')} />
@@ -1425,22 +1495,24 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             </div>
           )}
           {!isQian(temple) && temple !== 'tarot' && !(temple === 'yixue' && yixueMode !== 'ask') && (
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
+            <div className={temple === 'guanxiang' ? 'xtell-xiang-footer' : undefined} style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               {entering
                 // The two entries that wait on a quick model say how long
                 // (Sep 29); the others are computed here in a moment.
-                ? temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie'
-                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : temple === 'sunzi' ? WAIT_SECONDS.sunzi : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : temple === 'sunzi' ? 'xtell.sunzi.looking' : 'xtell.cookie.cracking')} /></div>
+                ? temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' || temple === 'guanxiang'
+                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : temple === 'sunzi' ? WAIT_SECONDS.sunzi : temple === 'guanxiang' ? (xiangPair ? WAIT_SECONDS.xiangPair : WAIT_SECONDS.xiang) : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : temple === 'sunzi' ? 'xtell.sunzi.looking' : temple === 'guanxiang' ? 'xtell.xiang.looking' : 'xtell.cookie.cracking')} /></div>
                   : <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.entering.note')}</div>
+                // 相學館: the privacy line sits beside its button (Oct 8).
+                : temple === 'guanxiang' ? <XiangPrivacy />
                 : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' ? '' : t('xtell.solar.note')}</div>}
               {/* The wait bar takes the whole row beside the button. */}
-              {!(entering && (temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie')) && <span style={{ flex: 1 }} />}
+              {!(entering && (temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' || temple === 'guanxiang')) && <span style={{ flex: 1 }} />}
               <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', minWidth: 112,
                 fontWeight: 700, fontSize: 13.5, cursor: entering ? 'wait' : questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: !entering && questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
               }}>{entering
                 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="xtell-think is-light" aria-hidden="true"><i /><i /><i /></span>{t('xtell.entering')}</span>
-                : t(temple === 'yixue' ? 'xtell.yixue.enter' : temple === 'cookie' ? 'xtell.cookie.crack' : 'xtell.enter')}</button>
+                : t(temple === 'yixue' ? 'xtell.yixue.enter' : temple === 'cookie' ? 'xtell.cookie.crack' : temple === 'guanxiang' ? 'xtell.xiang.enter' : 'xtell.enter')}</button>
             </div>
           )}
           {/* The price, and how a meal is told apart (a tester, Sep 29: the
@@ -1659,6 +1731,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'cezi' ? <CeziBoard info={chart} ask={ask} />
                 : temple === 'jiemeng' ? <DreamBoard chart={chart} />
                 : temple === 'sunzi' ? <SunziBoard chart={chart} />
+                : temple === 'guanxiang' ? <XiangBoard chart={chart} photos={xiangPhotos} partnerPhotos={partnerPhotos} note={xiangNote} setNote={setXiangNote} disabled={busy} />
                 : temple === 'tarot' ? <TarotBoard chart={chart} />
                 : temple === 'cookie' ? <CookieBoard chart={chart} readingId={readingId}
                     onNote={(note, fortune) => setChart((c: any) => c?.fortune === fortune ? { ...c, note, notePending: false } : c)} />
@@ -2260,7 +2333,7 @@ function ZiweiBoard({ chart }: { chart: any }) {
 
 type FieldAria = { invalid: boolean; describedBy?: string }
 /** Rooms with a birth row for the visitor (the stick rooms' is optional). */
-const TAKES_BIRTH = (temple: string) => !['tarot', 'cezi', 'jiemeng', 'sunzi', 'cookie', 'yixue', 'xingming'].includes(temple)
+const TAKES_BIRTH = (temple: string) => !['tarot', 'cezi', 'jiemeng', 'sunzi', 'cookie', 'yixue', 'xingming', 'guanxiang'].includes(temple)
 
 /** The birthday saved on the visitor's account (the daily fortune's
  *  profile): `out` signed out, `none` signed in with nothing saved, `saved`
