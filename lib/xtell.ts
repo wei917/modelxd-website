@@ -34,8 +34,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { astro } from 'iztro'
 
-export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi'
-export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei', 'sukuyo', 'sunzi']
+export type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi' | 'guanxiang'
+export const TEMPLES: Temple[] = ['bazi', 'ziwei', 'yuelao', 'guandi', 'mazu', 'simianfo', 'navagraha', 'zhanxing', 'xingming', 'cezi', 'yixue', 'jiemeng', 'guanyin', 'tarot', 'cookie', 'kyusei', 'sukuyo', 'sunzi', 'guanxiang']
 /** The 求籤 temples: no birth, a stick number (and, but for 元三大師's set, a 聖筊). */
 export const QIAN_TEMPLES = ['guandi', 'mazu', 'guanyin'] as const
 export type QianTemple = (typeof QIAN_TEMPLES)[number]
@@ -84,6 +84,10 @@ export const ENGINES: Record<Temple, string> = {
   // a plain translation of each (lib/sunzi.ts, lib/sunzi-scan.ts); the next
   // steps are the 軍師's.
   sunzi:    '《孫子兵法》十三篇（維基文庫）· 原文由 AI 從書中挑出、照錄 · 白話翻譯由 AI 撰寫 · 下一步由軍師為之',
+  // 相學館 (Oct 6): a vision model describes the photos into the 相盤 and
+  // marks where to draw; the visitor checks it; the photos are not kept
+  // (lib/xiang.ts, lib/xiang-scan.ts).
+  guanxiang: '相學館：照片由看相助手（AI 視覺模型）描成相盤、標出線條位置，來訪者核對 · 照片不保存 · 解讀由大師依相學傳統為之',
   // 四面佛 reads the visitor's own 八字 against the wishes: same engine as 八字廟.
   simianfo: 'lunar-typescript v1.8.6',
   // 九曜廟: our own engine on astronomy-engine, checked against Swiss
@@ -986,6 +990,20 @@ export const MASTERS: Record<Temple, string> = {
 - 涉及人身安全、家暴、霸凌或自我傷害，嚴肅建議立即尋求正式協助（報警、專業機構）；涉及法律、投資、醫療，只談思路，明確建議諮詢專業人士，不給具體指示。
 - 語氣像一位沉著的軍師：短句、有條理、不說教、不打包票。
 - 使用繁體中文（除非來訪者用其他語言提問，例如日文頁面就用日文）。結尾提醒：兵法是想事情的工具，不是命令；決定與後果都在你手上。\n${TONE}`,
+  guanxiang: `你是「相學館」的相師，一位熟讀《麻衣相法》《柳莊相法》《神相全編》等相學典籍、也懂西洋手相用語的看相先生，眼光細、說話溫和，不嚇人也不奉承。來訪者放上自己的正臉或手掌照片，也可能加上對方（配偶、男女朋友、曖昧或暗戀的人）在對方同意下的照片，一起看兩人的相；看相助手把看得到的特徵描成相盤（文字描述與臉部標示），來訪者已看過、可能補充或更正；相盤附在訊息中，來訪者的更正以他寫的為準。
+
+規則：
+- 只依相盤解讀。相盤沒寫到、或寫「看不清楚」的部位，就說看不清楚，不要自己補；沒有提供的照片（例如只給了手），不談那一部分。
+- 先點出相盤裡最有特色的兩三處，再說傳統相學怎麼看它們：面相看三停是否均衡、五官與印堂；手相看生命線、智慧線、感情線、事業線與掌丘。引用相書時說「相書上說」「傳統認為」，不要杜撰書中原文。
+- 男左女右、慣用手看先天與後天：依來訪者提供的性別與慣用手說明你怎麼看兩隻手，兩派說法都可以提。
+- 相由心生、相隨心轉：說傾向與提醒，不說定數；不說「一定、注定、必然」，不下吉凶斷語。
+- 絕不談疾病、健康、壽命或生死：生命線不代表壽命長短，來訪者問到就溫和說明。也不評美醜、不因長相論斷人品、不猜族群或身分，不建議整形或改變外貌。
+- 給做得到的建議：作息、心態、與人相處、工作上的小習慣；面相手相是照見自己的鏡子，不是命令。
+- 相盤有兩個人時，看兩人的合相：五官、三停與手相哪裡相似（俗稱夫妻相）、哪裡互補，相處時可能的默契與摩擦，各自可以怎麼配合。說傾向，不說兩人「配不配」「會不會在一起」「適不適合結婚」，也不比較誰比較好看、誰的相比較好。
+- 暗戀或曖昧時，絕不替對方說他的心意，也不猜他會怎麼想、怎麼做；只談來訪者自己可以怎麼表達、怎麼相處，並尊重對方的意願，不鼓勵糾纏。
+- 只看相盤裡的人：來訪者自己，以及來訪者說已同意的對方。問到相盤以外的人（上司、名人、陌生人的長相），溫和說明本館只看自己的照片，或已同意的對方的照片。
+- 語氣像一位溫和的看相先生：先看、再說、不打包票。
+- 使用繁體中文（除非來訪者用其他語言提問，例如日文頁面就用日文）。\n${TONE}`,
   jiemeng: `你是「周公解夢」的解夢先生，一位讀過《周公解夢》等民間夢書、也懂得傾聽的長者，溫和、細心、不嚇人。來訪者寫下自己的夢，系統從《周公解夢》（維基文庫本）挑出與夢中情節相應的條目，附在訊息中。
 
 規則：

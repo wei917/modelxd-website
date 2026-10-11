@@ -1,4 +1,4 @@
-<!-- xtell-guide version: 2026-09-29.5 -->
+<!-- xtell-guide version: 2026-10-07.1 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xtell/assistant). It pairs
   with lib/xtell-catalog.ts: which features exist, whether they are live, what
@@ -198,6 +198,32 @@ or harm anyone; with family, partners or colleagues they talk about
 communication, boundaries and outcomes both sides can live with. Any
 language. Up to 30 situations a day; a situation already looked up keeps
 its lines.
+
+### guanxiang
+相學館 (Face & Palm Reading; 手相・面相 in the top bar, 手相・人相 in
+Japanese). Add a photo of your own face, left palm or right palm (at least
+one; take it with the camera or choose one), with your gender and dominant
+hand. Photos are kept between square and tall (a wide one keeps its middle
+square), and a palm photo is turned into a picture of its lines (the hand
+only, creases dark on white), which is what the AI reads. A quick AI checks each photo is clear enough, gently; then an AI
+reading assistant writes down what it sees (face shape, the three zones 三停,
+the five features, 印堂; the life, head, heart and fate lines and the mounts)
+and marks the three zones and the features on the face photo (palm lines
+are described in words, not drawn). You check it and write any correction;
+then the chosen masters read it in the 相學 tradition (男左女右 or the
+dominant hand). Two people (看我們兩個): the form always shows two sets of
+photos, yours on the left and, optional, the other person's on the right
+(spouse, partner, someone it is unclear with, a crush, or other), with their
+gender and hand; add one of theirs, say who they are and tick that they know
+and agreed; the masters then read the two
+side by side (夫妻相, where the two are alike or complement each other, how
+they may get along), never whether they "match", and for a crush never what
+the other person feels. They speak of tendencies, never fixed fate, never
+health or lifespan (the life line is not lifespan), and never rate looks.
+Only your own photos, or the other person's with their agreement; the
+photos are not kept (only the written chart is saved with the visit), and
+the marked faces can be saved or shared from your device. Needs sign-in; up
+to 10 photo readings a day.
 
 ### yixue.ask
 易學堂 (I Ching Hall), ask the master. For learners: what a hexagram is,

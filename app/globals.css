@@ -4185,3 +4185,247 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 /* OptText (app/components/OptControls.tsx): 16px on a phone, or focusing the
    field zooms the page (iOS zooms any field under 16px). */
 @media (max-width: 760px) { .opt-text { font-size: 16px !important; } }
+
+/* 相學館 (Oct 6): the form, the 相盤 drawn on the face (app/components/xtell/Xiang.tsx).
+   Oct 8: laid out after GPT Image 2's mockups (scripts/xiang-ui-art.ts), with its
+   guide pictures; the site's own paper, ink and one vermilion accent, a blush tint
+   for what is chosen. No green. Oct 9: small photo tiles (below). */
+.xtell-xiang-form, .xtell-xiang-footer, .xtell-room-header[data-temple="guanxiang"], .xtell-entry-form.is-xiang, .xtell-xiang-board, .xtell-xiang-zoom {
+  --xg-accent: var(--xtell-vermilion, #a6382e); --xg-accent-ink: #8c2e25;
+  --xg-blush: #f7ece6; --xg-blush-line: #e7c8bb;
+  --xg-ink: var(--xtell-ink, #292b29); --xg-muted: var(--xtell-secondary, #656761); --xg-rule: var(--xtell-rule, #dedfd8);
+  --xg-paper: var(--xtell-paper, #faf9f6); --xg-guide: #ffffff;
+  --xg-serif: var(--xtell-serif, Georgia, 'Songti TC', 'Noto Serif CJK TC', serif);
+}
+/* The form sits on the page's paper, as in the mockups: no card around it. */
+.xtell-entry-form.is-xiang { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+.xtell-xiang-form { display: grid; gap: 22px; }
+.xtell-xiang-glyph { width: 20px; height: 20px; flex: none; }
+
+/* The intro: a readable line on a computer; on a phone the icon sits beside
+   the title and the words take the full width under them. */
+.xtell-room-header[data-temple="guanxiang"] p:not(.xtell-eyebrow) { max-width: 40em; }
+@media (max-width: 600px) {
+  .xtell-room-header[data-temple="guanxiang"] { display: grid; grid-template-columns: 84px minmax(0, 1fr); column-gap: 16px; row-gap: 4px; align-items: center; }
+  .xtell-room-header[data-temple="guanxiang"] > div { display: contents; }
+  .xtell-room-header[data-temple="guanxiang"] .xtell-room-artwork { grid-column: 1; grid-row: 1 / span 2; width: 84px; }
+  .xtell-room-header[data-temple="guanxiang"] .xtell-eyebrow { grid-column: 2; grid-row: 1; align-self: end; margin: 0; }
+  .xtell-room-header[data-temple="guanxiang"] .xtell-room-title { grid-column: 2; grid-row: 2; align-self: start; margin: 0; }
+  .xtell-room-header[data-temple="guanxiang"] p:not(.xtell-eyebrow) { grid-column: 1 / -1; grid-row: 3; margin-top: 14px; max-width: none; }
+  .xtell-room[data-entered] .xtell-room-header[data-temple="guanxiang"] .xtell-room-artwork { width: 56px; }
+}
+
+
+/* The groups' own box is reset; their legends are styled below. */
+.xtell-xiang-seg { min-width: 0; margin: 0; padding: 0; border: 0; }
+
+/* The photos (Oct 9, owner: "the slots are way too big"; "side by side 6 slots, no
+   need to put two rows"; "you always show two sets. the left one is me and the right
+   one is another person"): small tiles whose picture is the button, the visitor's
+   three on the left and the other person's on the right; above each person's
+   tiles, their name, gender and hand in one row ("so one row and make the buttons
+   smaller"); who they are and the consent tick (once the other person has a photo)
+   under theirs on a computer, across both on a phone. */
+.xtell-xiang-photos { display: grid; gap: 12px; }
+.xtell-xiang-sechead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.xtell-xiang-sechead h4 { margin: 0; font-family: var(--xg-serif); font-size: 22px; font-weight: 600; color: var(--xg-ink); }
+.xtell-xiang-sechead p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--xg-muted); }
+.xtell-xiang-people { --xg-gap: 16px; display: grid; gap: 10px var(--xg-gap); grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "me-head pa-head" "me pa" "terms terms"; align-items: start; }
+.xtell-xiang-head.is-me { grid-area: me-head; }
+.xtell-xiang-head.is-partner { grid-area: pa-head; }
+.xtell-xiang-group.is-me { grid-area: me; }
+.xtell-xiang-group.is-partner { grid-area: pa; }
+.xtell-xiang-people > .xtell-xiang-partner { grid-area: terms; margin-top: 6px; }
+/* A rule down between the two people, beside their rows and tiles. */
+.xtell-xiang-rule { grid-column: 1 / -1; grid-row: 1 / 3; justify-self: center; align-self: stretch; width: 1px; background: var(--xg-rule); }
+@media (min-width: 760px) {
+  .xtell-xiang-people { --xg-gap: 32px; grid-template-areas: "me-head pa-head" "me pa" ". terms"; }
+}
+/* A person's row: the name, then gender and hand as small pill choices. On a phone
+   the column is too narrow for one line, so the three stack. */
+.xtell-xiang-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; min-width: 0; }
+.xtell-xiang-head-name { font-family: var(--xg-serif); font-size: 17px; font-weight: 600; color: var(--xg-ink); white-space: nowrap; }
+.xtell-xiang-head-name small { margin-left: 8px; padding: 1px 8px; border: 1px solid var(--xg-rule); border-radius: 999px; font-family: var(--font-body, sans-serif); font-size: 11.5px; font-weight: 500; color: var(--xg-muted); vertical-align: 2px; }
+.xtell-xiang-seg.is-inline { display: flex; align-items: center; gap: 6px; }
+.xtell-xiang-seg-cap { font-size: 12px; color: var(--xg-muted); white-space: nowrap; }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--xg-rule); border-radius: 999px; background: #fff; }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts span { min-height: 26px; padding: 0 11px; border: 0; border-radius: 999px; background: transparent; font-size: 13px; white-space: nowrap; }
+.xtell-xiang-seg.is-inline .xtell-xiang-seg-opts input:checked + span { background: var(--xg-blush); box-shadow: inset 0 0 0 1px var(--xg-blush-line); }
+@media (max-width: 759px) { .xtell-xiang-head { flex-direction: column; align-items: flex-start; gap: 6px; } }
+.xtell-xiang-group { display: grid; gap: 8px; min-width: 0; }
+.xtell-xiang-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 759px) { .xtell-xiang-slots { gap: 6px; } }
+/* A tile: the picture, its name, 拍照. Its own width decides what fits (below). */
+.xtell-xiang-slot { container-type: inline-size; display: grid; gap: 7px; align-content: start; min-width: 0; }
+.xtell-xiang-thumb { position: relative; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--xg-rule); border-radius: 12px; background: var(--xg-guide); transition: border-color .15s, box-shadow .15s; }
+.xtell-xiang-slots:not(.is-locked) .xtell-xiang-thumb:hover { border-color: var(--xg-blush-line); }
+.xtell-xiang-slot.is-bad .xtell-xiang-thumb { border-color: var(--xg-accent); box-shadow: 0 0 0 1px var(--xg-accent); }
+.xtell-xiang-slot.is-over .xtell-xiang-thumb { border-color: var(--xg-accent); box-shadow: 0 0 0 2px var(--xg-accent); background: var(--xg-blush); }
+/* The whole photo shows, never cropped: pinned to the frame and fitted inside it. */
+.xtell-xiang-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.xtell-xiang-thumb img.is-guide { object-fit: cover; }
+.xtell-xiang-thumb img.is-photo { object-fit: contain; background: #f3f0ea; }
+.xtell-xiang-pick { position: absolute; inset: 0; border-radius: 11px; cursor: pointer; }
+.xtell-xiang-pick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.xtell-xiang-pick:has(input:focus-visible) { outline: 2px solid var(--xg-accent); outline-offset: -3px; }
+.xtell-xiang-pick:has(input:disabled), .xtell-xiang-pick input:disabled { cursor: default; }
+.xtell-xiang-pick-chip { position: absolute; left: 50%; bottom: 8px; display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 12px); padding: 4px 10px; transform: translateX(-50%); border: 1px solid var(--xg-rule); border-radius: 999px; background: rgba(255, 255, 255, .92); font-size: 12.5px; line-height: 1.3; color: var(--xg-ink); white-space: nowrap; pointer-events: none; }
+.xtell-xiang-pick-chip .xtell-xiang-glyph { width: 15px; height: 15px; color: var(--xg-accent); }
+.xtell-xiang-slot.is-over .xtell-xiang-pick-chip { border-color: var(--xg-accent); color: var(--xg-accent); font-weight: 700; }
+.xtell-xiang-plus { display: none; position: absolute; right: 4px; bottom: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--xg-accent); color: #fff; font-size: 16px; font-weight: 600; line-height: 20px; text-align: center; pointer-events: none; }
+/* What the photo check said: a mark on the picture, the words under the tiles. */
+.xtell-xiang-badge { position: absolute; left: 6px; top: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; pointer-events: none; }
+.xtell-xiang-badge .xtell-xiang-glyph { width: 14px; height: 14px; }
+.xtell-xiang-badge.is-ok { background: #fff; color: var(--xg-accent); box-shadow: 0 0 0 1px var(--xg-rule); }
+.xtell-xiang-badge.is-bad { background: var(--xg-accent); color: #fff; }
+.xtell-xiang-remove { position: absolute; right: 5px; top: 5px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: rgba(41, 43, 41, .72); color: #fff; font: 600 17px/1 var(--font-body, sans-serif); cursor: pointer; }
+.xtell-xiang-remove:hover { background: rgba(41, 43, 41, .9); }
+.xtell-xiang-remove:focus-visible { outline: 2px solid var(--xg-accent); outline-offset: 2px; }
+.xtell-xiang-busy { position: absolute; inset: 0; background: rgba(255, 255, 255, .65); }
+.xtell-xiang-busy::after { content: ''; position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; margin: -12px; border: 2px solid var(--xg-accent); border-top-color: transparent; border-radius: 50%; animation: xtell-xiang-spin .8s linear infinite; }
+@keyframes xtell-xiang-spin { to { transform: rotate(360deg); } }
+.xtell-xiang-slot-name { font-family: var(--xg-serif); font-size: 15.5px; font-weight: 600; line-height: 1.3; text-align: center; color: var(--xg-ink); }
+.xtell-xiang-actions { display: flex; justify-content: center; }
+.xtell-xiang-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 4px 12px; border: 1px solid var(--xg-rule, var(--border2)); border-radius: 999px; background: #fff; color: var(--xg-ink, var(--white)); font: inherit; font-size: 12.5px; line-height: 1.2; white-space: nowrap; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.xtell-xiang-btn .xtell-xiang-glyph { width: 16px; height: 16px; color: var(--xg-accent); }
+.xtell-xiang-btn:hover { border-color: var(--xg-blush-line); background: var(--xg-blush); }
+.xtell-xiang-btn input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.xtell-xiang-btn:focus-visible, .xtell-xiang-btn:has(input:focus-visible) { outline: 2px solid var(--xg-accent, #333); outline-offset: 2px; }
+.xtell-xiang-btn:disabled, .xtell-xiang-btn:has(input:disabled) { opacity: .5; cursor: default; }
+.xtell-xiang-btn.is-plain { width: auto; min-height: 40px; padding: 6px 12px; border-color: transparent; background: none; color: var(--xg-muted, var(--muted)); }
+/* A narrow tile (one person on a phone): 拍照's word under its icon, a + on the
+   picture. A tiny one (two people on a phone): the picture alone, which offers
+   the phone's camera too. */
+@container (max-width: 139px) {
+  .xtell-xiang-btn { padding: 4px 9px; font-size: 11.5px; }
+  .xtell-xiang-pick-chip { display: none; }
+  .xtell-xiang-plus { display: block; }
+  .xtell-xiang-slot-name { font-size: 14px; }
+}
+@container (max-width: 79px) {
+  .xtell-xiang-actions { display: none; }
+  .xtell-xiang-slot-name { font-size: 12px; font-weight: 500; }
+  .xtell-xiang-badge { left: 3px; top: 3px; width: 18px; height: 18px; }
+  .xtell-xiang-badge .xtell-xiang-glyph { width: 12px; height: 12px; }
+  .xtell-xiang-remove { right: 3px; top: 3px; width: 20px; height: 20px; font-size: 14px; }
+  .xtell-xiang-plus { right: 3px; bottom: 3px; width: 17px; height: 17px; font-size: 14px; line-height: 17px; }
+}
+.xtell-xiang-said { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.xtell-xiang-said li { display: flex; align-items: flex-start; gap: 5px; font-size: 12.5px; line-height: 1.5; color: var(--xg-muted); }
+.xtell-xiang-said li.is-bad { color: var(--xg-accent); }
+.xtell-xiang-said .xtell-xiang-glyph { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.xtell-xiang-said b { margin-right: 3px; font-weight: 600; }
+.xtell-xiang-phototips { margin: -6px 0 2px; font-size: 12.5px; line-height: 1.6; color: var(--xg-muted); }
+.xtell-xiang-tip { display: flex; align-items: flex-start; gap: 5px; margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--xg-muted, var(--muted)); }
+.xtell-xiang-tip.is-bad { color: var(--xg-accent, var(--red)); }
+/* Signed out: the same tiles, no buttons, and one way in. */
+.xtell-xiang-signin { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 14px; border: 1px solid var(--xg-blush-line); border-radius: 12px; background: var(--xg-blush); color: var(--xg-ink); font-size: 14px; line-height: 1.5; }
+.xtell-xiang-signin > .xtell-xiang-glyph { color: var(--xg-accent); }
+.xtell-xiang-signin > span { flex: 1 1 200px; }
+
+/* Choices: labelled groups of native radios (the relation's chips below; gender and hand above). */
+.xtell-xiang-seg:not(.is-inline) > legend { float: left; width: 100%; margin: 0 0 8px; padding: 0; font-size: 13px; color: var(--xg-muted); }
+.xtell-xiang-seg-opts { clear: both; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.xtell-xiang-seg-opts label { position: relative; display: block; min-width: 0; }
+.xtell-xiang-seg-opts input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.xtell-xiang-seg-opts span { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 10px; border: 1px solid var(--xg-rule); border-radius: 10px; background: #fff; font-size: 15px; color: var(--xg-ink); transition: background-color .15s, border-color .15s, color .15s; }
+.xtell-xiang-seg-opts input:checked + span { border-color: var(--xg-accent); background: var(--xg-blush); color: var(--xg-accent); font-weight: 600; }
+.xtell-xiang-seg-opts input:focus-visible + span { outline: 2px solid var(--xg-accent); outline-offset: 2px; }
+.xtell-xiang-seg-opts input:disabled + span { opacity: .55; }
+/* The other person: who they are to the visitor (round chips), and that they agreed. */
+.xtell-xiang-partner { display: grid; gap: 14px; }
+.xtell-xiang-seg.is-chips .xtell-xiang-seg-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.xtell-xiang-seg.is-chips .xtell-xiang-seg-opts span { min-height: 34px; padding: 0 14px; border-radius: 999px; font-size: 13.5px; }
+.xtell-xiang-consent { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--xg-blush-line); border-radius: 12px; background: var(--xg-blush); color: var(--xg-ink); font-size: 14px; line-height: 1.55; cursor: pointer; }
+.xtell-xiang-consent input { flex: none; width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--xg-accent); }
+.xtell-xiang-consent input:focus-visible { outline: 2px solid var(--xg-accent); outline-offset: 2px; }
+.xtell-xiang-consent.is-bad { border-color: var(--xg-accent); box-shadow: 0 0 0 1px var(--xg-accent); }
+
+/* 怎麼看面相、手相: a row that opens. Oct 9: a numbered picture each for the face
+   and the palm, the numbers explained beside it. */
+.xtell-xiang-help { border: 1px solid var(--xg-rule); border-radius: 14px; background: #fff; }
+.xtell-xiang-help > summary { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px; list-style: none; cursor: pointer; color: var(--xg-ink); }
+.xtell-xiang-help > summary::-webkit-details-marker { display: none; }
+.xtell-xiang-help > summary::after { content: ''; flex: none; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 1.6px solid var(--xg-muted); border-bottom: 1.6px solid var(--xg-muted); transform: translateY(-2px) rotate(45deg); transition: transform .15s; }
+.xtell-xiang-help[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.xtell-xiang-help > summary:focus-visible { outline: 2px solid var(--xg-accent); outline-offset: 2px; border-radius: 14px; }
+.xtell-xiang-help > summary > .xtell-xiang-glyph { width: 22px; height: 22px; }
+.xtell-xiang-help-text b { display: block; font-size: 15.5px; font-weight: 600; }
+.xtell-xiang-help-text small { display: block; margin-top: 1px; font-size: 12px; color: var(--xg-muted); }
+.xtell-xiang-help-cols { display: grid; gap: 24px; padding: 4px 16px 18px; }
+.xtell-xiang-help-cols h4 { margin: 0 0 10px; font-family: var(--xg-serif); font-size: 16px; font-weight: 600; color: var(--xg-ink); }
+.xtell-xiang-help-cols ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; line-height: 1.65; color: var(--xg-muted); }
+.xtell-xiang-learn-body { display: grid; gap: 14px; }
+@media (min-width: 760px) { .xtell-xiang-learn-body { grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; } }
+.xtell-xiang-diagram { position: relative; justify-self: center; width: 100%; max-width: 320px; aspect-ratio: 1; overflow: hidden; border-radius: 14px; background: var(--xg-guide); }
+.xtell-xiang-diagram img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.xtell-xiang-pin { position: absolute; display: grid; place-items: center; width: 22px; height: 22px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--xg-accent); box-shadow: 0 0 0 2px #fff; color: #fff; font: 700 12px/1 var(--font-body, sans-serif); }
+.xtell-xiang-legend { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; counter-reset: xg-pin; font-size: 13.5px; line-height: 1.6; color: var(--xg-muted); }
+.xtell-xiang-legend li { position: relative; padding-left: 30px; counter-increment: xg-pin; }
+.xtell-xiang-legend li::before { content: counter(xg-pin); position: absolute; left: 0; top: 1px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--xg-accent); color: #fff; font: 700 11px/1 var(--font-body, sans-serif); }
+.xtell-xiang-legend b { font-weight: 600; color: var(--xg-ink); }
+.xtell-xiang-learn-note { margin: 12px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--xg-muted); }
+
+/* The footer: the privacy line, then one wide 開始觀相 button. */
+.xtell-xiang-footer { flex-direction: column; align-items: stretch !important; gap: 12px; margin-top: 24px !important; }
+.xtell-xiang-footer > span:empty { display: none; }
+.xtell-xiang-footer > button { width: 100%; min-height: 56px; padding: 12px 24px !important; border-radius: 14px !important; background: var(--xg-accent) !important; font-family: var(--xg-serif); font-size: 19px !important; letter-spacing: .14em; }
+.xtell-xiang-footer > button:hover { background: var(--xg-accent-ink) !important; }
+.xtell-xiang-privacy { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--xg-muted); text-align: center; }
+.xtell-xiang-privacy .xtell-xiang-glyph { width: 16px; height: 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .xtell-xiang-busy::after { animation-duration: 2.4s; }
+  .xtell-xiang-thumb, .xtell-xiang-btn, .xtell-xiang-seg-opts span, .xtell-xiang-help > summary::after { transition: none; }
+}
+/* The camera on a computer. */
+.xtell-xiang-camera { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .6); }
+.xtell-xiang-camera-box { width: min(560px, 100%); display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: #fff; }
+.xtell-xiang-camera-title { font-size: 14px; font-weight: 700; }
+.xtell-xiang-camera video { justify-self: center; width: min(100%, 62vh); aspect-ratio: 1; border-radius: 10px; background: #111; object-fit: cover; }
+.xtell-xiang-camera-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.xtell-xiang-board { display: grid; gap: 14px; }
+/* The 相盤's pictures (Oct 9, owner: "the analysis results images are too big. we
+   should use the same size as the placeholder. face + palms"): the form's tiles, the
+   face with its marks and each palm as its lines, the visitor's then the other
+   person's; a tap opens one large (the face's labels need the room). */
+.xtell-xiang-results { --xg-gap: 16px; display: grid; gap: 10px var(--xg-gap); grid-template-columns: minmax(0, 1fr); }
+.xtell-xiang-results.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 760px) {
+  .xtell-xiang-results { grid-template-columns: minmax(0, 480px); }
+  .xtell-xiang-results.is-pair { --xg-gap: 32px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.xtell-xiang-results-person { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.xtell-xiang-result { container-type: inline-size; display: grid; gap: 6px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: zoom-in; }
+.xtell-xiang-result:focus-visible { outline: none; }
+.xtell-xiang-result:focus-visible .xtell-xiang-thumb { outline: 2px solid var(--xg-accent); outline-offset: 2px; }
+.xtell-xiang-result:hover .xtell-xiang-thumb { border-color: var(--xg-blush-line); }
+.xtell-xiang-result .xtell-xiang-drawing { position: absolute; inset: 0; width: auto; max-width: 100%; height: 100%; margin: auto; border-radius: 0; background: none; }
+.xtell-xiang-result .xtell-xiang-tag { display: none; }
+/* The face's zone lines, thin enough for a tile (CSS outranks the drawing's own widths). */
+.xtell-xiang-result .xtell-xiang-drawing svg path:first-child { stroke-width: 2.5px; }
+.xtell-xiang-result .xtell-xiang-drawing svg path:last-child { stroke-width: 1.2px; stroke-dasharray: 3 2; }
+.xtell-xiang-result .xtell-xiang-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; border-width: 1px; }
+@container (max-width: 79px) { .xtell-xiang-result .xtell-xiang-dot { width: 4px; height: 4px; margin: -2px 0 0 -2px; } }
+.xtell-xiang-zoom { max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); padding: 0; border: 0; border-radius: 16px; background: #fff; color: var(--xg-ink); }
+.xtell-xiang-zoom::backdrop { background: rgba(20, 20, 20, .55); }
+.xtell-xiang-zoom-body { display: grid; justify-items: center; gap: 10px; padding: 14px; }
+.xtell-xiang-zoom-img { display: block; width: 100%; height: auto; border-radius: 10px; background: #fff; }
+.xtell-xiang-zoom-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; font-family: var(--xg-serif); font-size: 15px; }
+.xtell-xiang-drawing { position: relative; width: 100%; overflow: hidden; border-radius: 10px; background: #eee; }
+.xtell-xiang-drawing img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.xtell-xiang-drawing svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.xtell-xiang-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 2px solid #fff; border-radius: 50%; box-sizing: border-box; pointer-events: none; }
+.xtell-xiang-tag { position: absolute; transform: translate(-50%, -50%); padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, .92); font-size: 11.5px; font-weight: 700; line-height: 1.6; white-space: nowrap; pointer-events: none; }
+.xtell-xiang-savebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--xtell-secondary, var(--muted)); }
+.xtell-xiang-words { display: grid; gap: 14px; }
+@media (min-width: 900px) { .xtell-xiang-words { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }
+.xtell-xiang-words h3 { margin: 0 0 6px; font-size: 14px; }
+.xtell-xiang-summary { margin: 0 0 8px; font-size: 13.5px; line-height: 1.7; }
+.xtell-xiang-words dl { margin: 0; display: grid; gap: 6px; }
+.xtell-xiang-words dl > div { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.65; }
+.xtell-xiang-words dt { font-weight: 700; white-space: nowrap; }
+.xtell-xiang-words dd { margin: 0; color: var(--xtell-secondary, var(--muted)); }
+.xtell-xiang-note { font-size: 12.5px; font-weight: 700; }
+.xtell-xiang-notebox { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--xtell-rule, var(--border2)); border-radius: 10px; font: inherit; font-size: 14px; line-height: 1.6; resize: vertical; background: #fff; }
+@media (prefers-reduced-motion: reduce) { .xtell-xiang-busy::after { animation: none; } }

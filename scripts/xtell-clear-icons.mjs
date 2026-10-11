@@ -14,6 +14,9 @@
 //   node scripts/xtell-clear-icons.mjs   → icons-clear.avif, yixue-school-icon-clear.avif, jiemeng-icon-clear.avif,
 //                                           guanyin-icon-clear.avif, tarot-icon-clear.avif, cookie-icon-clear.avif,
 //                                           kyusei-icon-clear.avif, sukuyo-icon-clear.avif, sunzi-icon-clear.avif
+//
+// 相學館's approved icon (Oct 8) came as a PNG with its own transparency, so its
+// three files come from that PNG instead (scripts/xtell-icon-from-png.mjs).
 
 import sharp from 'sharp'
 

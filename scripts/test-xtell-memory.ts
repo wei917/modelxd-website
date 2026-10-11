@@ -154,7 +154,7 @@ function route(o: { turns: any[]; admin: any; inputTokens?: number; window?: num
     } },
     '@/lib/credits': { debitCredits: async (d: any) => { debits.push(d.description) }, accrueFraction: async () => null, InsufficientCreditsError: class extends Error {} },
     '@/lib/provider-errors': { sanitizeProviderError: (m: string) => m },
-    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: (_t: string, query: string) => { queries.push(query); return '' } }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'), '@/lib/jiemeng': jm, '@/lib/sunzi': sz,
+    '@/lib/xtell': xtell, '@/lib/classics': { classicsBlock: (_t: string, query: string) => { queries.push(query); return '' } }, '@/lib/yijing': yijing, '@/lib/xtell-daily': require('../lib/xtell-daily'), '@/lib/tarot': require('../lib/tarot'), '@/lib/xtell-cookie': require('../lib/xtell-cookie'), '@/lib/kyusei': require('../lib/kyusei'), '@/lib/sukuyo': require('../lib/sukuyo'), '@/lib/xiang': require('../lib/xiang'), '@/lib/xiang-scan': { photosOf: () => [], checkPhotos: async () => ({}), readPhotos: async () => null }, '@/lib/xtell-lang-check': require('../lib/xtell-lang-check'), '@/lib/xtell-personality': require('../lib/xtell-personality'), '@/lib/jiemeng': jm, '@/lib/sunzi': sz,
     '@/lib/xtell-thread': require('../lib/xtell-thread'), '@/lib/xtell-memory': mem, '@/lib/conversation-memory': cm,
   }, afters)
   const ask = async (body: any) => {

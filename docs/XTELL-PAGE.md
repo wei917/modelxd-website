@@ -118,7 +118,7 @@ the worst place to be, because a wrong 排盤 is instantly checkable against
 any Taiwanese 排盤 site and torches credibility. A library is right every
 time for free. The models' job is the part with no right answer: the reading.
 
-## Temples (15 live)
+## Temples (15 live; 相學館 local only, Oct 6)
 
 | temple | method | engine | notes |
 |---|---|---|---|
@@ -1246,6 +1246,247 @@ stays Art of War).
 
 Tests: `scripts/test-xtell-sunzi.ts` (in `npm run test:xtell`), models
 stubbed.
+
+## 相學館 (Oct 6-7, local trial, not pushed)
+
+面相 and 手相 in one temple (owner: one temple, named 相學館 on Oct 7; 觀相閣
+until then; Japanese 手相・人相,
+Korean 관상·손금, English Face & Palm Reading; 手相・面相 in the top bar,
+right after the rotation in every market). Flow (owner, Oct 6):
+
+1. **Tutorial** in the room (`XiangTutorial` in `app/components/xtell/Xiang.tsx`):
+   三停, 五官, 印堂, the four main palm lines (the life line is not lifespan),
+   男左女右 or the dominant hand, and photo tips. Five languages.
+2. **Photos**: face, left palm, right palm, at least one, taken with the
+   camera or chosen; gender and dominant hand. The browser shrinks each to
+   1280 px JPEG (which drops EXIF, location included). Signed out, the slots
+   are replaced by a sign-in button: the reading runs on our account.
+3. **Check, then read** (`/api/xtell/chart`, temple `guanxiang`;
+   `lib/xiang.ts`, `lib/xiang-scan.ts`, house-paid like 解夢's lookup):
+   a cheap model checks each photo, leniently (owner: "don't be too
+   harsh"; only a clear no fails, with a tip under that photo; which hand
+   it is is not asked, a wrong guess misled once); then a qualified vision
+   model writes the 相盤: the features in words in the visitor's language,
+   the face's marks and box (the face photo's 0-1000 space), and the palm
+   lines it sees, in words only, cleaned and clamped by `cleanChart`. Ten
+   readings a day per visitor (each reading is its own visit, a two-person
+   one too), never on a refresh.
+4. **The visitor checks it**: the face is marked on the photo in the
+   browser (三停 dashed, 印堂/眼/鼻/口 marked, labelled "approximate"); palm
+   lines are not drawn (owner, Oct 6: "still not accurate, I would rather
+   not showing those lines"; see **Palm lines** below), the words list them.
+   A box for corrections travels with every question and is kept on the
+   visit (`extras.note`). 「存成圖片」 makes one image of the marked faces on
+   the device (share sheet on a phone, a download elsewhere).
+5. **Masters** read the saved 相盤 as text (`xiangFacts`), so any master can
+   join; the photos never reach them. MASTERS.guanxiang: only what the 相盤
+   says, tendencies never fate, never illness, health, lifespan or death,
+   never rating looks, own photos or the agreed other person's only.
+
+**看我們兩個** (owner, Oct 6: "upload your partner/wife/husband/girlfriend/
+boyfriend/your lovers/crush ... similar to 月老"). A switch at the top of the
+form: 看自己 / 看我們兩個. The other person gets who they are to the visitor
+(`RELATIONS`: 配偶, 男女朋友, 曖昧中, 暗戀, 其他), three photo slots (at least
+one), gender and dominant hand, and a required tick 「照片中的人知道並同意我把
+他／她的照片放上來看相。」 The chart route refuses without it (`xiang_consent`)
+or without their photos (`partner_photo_required`), checks their photos
+like the visitor's (`partnerChecks`), and one reader call describes both
+(theirs after the visitor's, under `partner`; the reader is never told the
+relation). The visit keeps `subject.partner` = relation, gender, hand,
+which photos, consent: true; never the photos. Both faces are marked side
+by side (swiped on a phone) and saved as one image with 你 / 對方 on them.
+The masters read 合相: where the two are alike (夫妻相) or complement each
+other and how they may get along, never 配不配, 會不會在一起 or 適不適合結婚,
+never who looks better; for 暗戀 or 曖昧, never what the other person feels
+or will do, and no pushing past their wishes. Live run on made-up photos
+(Oct 7): Claude Opus 5.5 described both in 38 s for $0.09.
+
+**The form's look** (Oct 8). A first restyle (jade, hand-drawn SVG guides)
+was rejected by the owner: "why you use green? and so many ugly drawings. if
+you can't draw you should call gpt image. ask it for a good layout and
+implement it". So GPT Image 2 drew it (`scripts/xiang-ui-art.ts`, about $0.80):
+two phone mockups, "rows" (a card per photo: the picture, its words, two
+square buttons) used on phones and "tiles" (three tiles: the name, the
+picture, a 拍照 | 選照片 bar) from 760px; and the guide pictures, first painted
+in colour, then (owner: "can you use black and white 中性 face and palms?")
+black-and-white ink drawings, and since Oct 9 a young woman's face and hands
+like the icon's (owner: "should be female, young lady as well"), on a light
+grey ground (`public/xtell/xiang/guide-face.avif`, `guide-palm-right.avif`,
+the left palm its mirror: seen palm-on, a left palm's thumb is on the left of
+the picture; the first prompt had it backwards and the slots swapped, caught
+by the owner; illustration only). The site's own paper, ink and one vermilion
+accent, a blush tint for what is chosen, serif headings, no green
+(`.xtell-xiang-*`, `--xg-*`). The form sits on the page's paper (no card,
+`.xtell-entry-form.is-xiang`). Order (Oct 8): the three steps (放上照片 → 核對相盤 →
+大師解讀, joined by a line; removed Oct 9, owner: "I don't think we need the
+steps row"), 看自己 / 看我們兩個 as two equal buttons (removed Oct 9), 照片 and
+the three cards (a photo shows whole, contained; 移除; the check's tick or
+tip; a drop state on a computer), gender and hand in one two-half panel, the
+other person under a rule (relation chips, the same cards, the consent box),
+the 怎麼看面相、手相 row, the privacy line and one wide 開始觀相 button. On
+phones the intro runs full width under the icon and title. Signed out, the
+same cards without buttons and one sign-in. Native radios in labelled groups,
+visible focus, calmer motion when asked. Behaviour, payloads and the
+one-photo minimum unchanged.
+
+**Small tiles, two sets, and the lesson** (Oct 9). Owner: "the slots are
+way too big"; "side by side 6 slots, no need to put two rows"; then "remove
+看自己 看我們兩個 row", "you always show two sets. the left one is me and the
+right one is another person", and gender and hand "也要在拍照下方". So there
+is no mode choice: the form always shows the visitor's three tiles on the left
+and the other person's (marked 選填) on the right, a rule between. Above
+each person's tiles, their name, gender and hand sit in one row as small
+pill choices (owner: "moving gender selection and dominate hand next to 你
+and 對方 選填? so one row and make the buttons smaller"; `XiangPersonHead`);
+on a phone the column is too narrow, so the three stack. 拍照 and the
+relation chips got smaller with them. A reading is for two once the other person has a photo (or a
+reopened visit was for two: `xiangPair` in client.tsx); only then do who
+they are (chips) and the consent tick show, under their tiles on a computer
+and across both on a phone. `XiangForm` takes the other person as a
+`partner` prop. Each photo is a small tile (`.xtell-xiang-slot`, a CSS
+container): the picture is the button (a phone offers its camera or its
+photos; a computer its files, or a photo dropped on it; a 選照片 chip or a +
+says so), its name, and 拍照 under it where the tile has room (not on a
+phone, where tiles are about 50 px); the check's tick or ! sits on the
+picture and its words are listed under the tiles. The photo tips are one
+line under 照片.
+
+The guides follow each person's gender (owner: the young woman "像印度人...
+改掉。畫中國人。要有男性女性 根據性別"): GPT Image 2 ink drawings of a young
+Chinese woman and man, and a woman's and a man's right palm with their
+mirrors (`guide-face-{female,male}.avif`,
+`guide-palm-{left,right}-{female,male}.avif`; $0.63 for the faces and the
+man's palm). The man was redrawn twice: a slight smile and a buzz cut
+(owner: "smile a little bit and remove hair maybe?"; $0.21), then bald, calm
+and softer (owner: "looks bad still… 中性一點 不要笑得太多。頭髮不要。光頭。像古代的
+畫像也行"; $0.42 for two versions, the woman's style and an old 相書 portrait;
+the first matched the woman better), then, since the bald one looked "有點像
+犯人", a rounder face and an ordinary short haircut with a side part, calm
+with a faint smile (owner: "臉圓一點 髮型用正常人的"; $0.42 for two versions),
+and finally (Oct 10, owner: "make the male placeholder more less human? 像古代
+那種 或者中醫那種經絡圖？ 盡量不要太像某些人") a schematic man like an old 相書
+woodblock print: a topknot, a robe collar, simplified features, no likeness of
+anyone ($0.42 with a 經絡圖 version beside it); then the woman the same way
+(owner: "女生也改掉"; $0.21), redrawn with smooth, light hair and a small bun
+on the crown (owner: "the hair looks bad"; $0.42 for two versions), then with
+the hair black again, in close smooth lines like the man's (owner: "why is it
+white hair???"; $0.42 for two versions); the lesson's face is hers (its
+numbers re-placed). The woman's palm was redrawn lighter, with slender
+fingers (owner, Oct 10: "女生的palm placeholder, 太黑 fingers太粗"; $0.42 for
+two versions). The tiles and the lesson's pictures are white, the drawings'
+backgrounds lifted to pure white (owner, Oct 10: "the background of those
+placeholders are very dark"; they were a cool grey, #f4f4f4, on the warm
+paper). The palms are smaller in their tiles (owner: "palms are too big. it
+covers too much of the placeholder images", then "稍微大一點", then "just need
+to be smaller"): 78% of the tile, near the top,
+the wrist fading to white so the 選照片 chip sits in the empty part; and the
+man's palm is flat line art as light as the woman's (owner: "for man, the
+palm is too real, make it more flat"; $0.42 for two versions). The woman's
+palm was drawn once more, thinner (owner: "你懂不懂什麼叫修長纖細的手啊"; $0.42
+for two), but its spindly pointed fingers were worse ("are you kidding me?");
+real stock photos were looked for (free libraries had few usable palms) and
+the owner chose the earlier light drawing back ("your previous previous
+versions are good, just need to be smaller"). By default the visitor (left) is a woman and the other
+person (right) a man (owner: "move female to the left and put male to the
+right by default"; `defaultBirth` in client.tsx, 相學館 only). One privacy
+line serves one or two people (owner: "只放你自己的照片。…" was wrong once the
+other person's tiles were always there): your photos, or the other
+person's if they agreed; we do not keep them; a shared image is made on
+your device (it said 手機).
+
+Owner, same day: "in 怎麼看面相、手相 you should draw the image to teach users
+which line means what on palm. and for face, which area is for what". The
+row opens on two numbered pictures: the woman's guide face (its 三停 lines
+drawn in) with nine areas (上停, 中停, 下停, 印堂 and the five 官, each with
+what tradition reads there), and a palm GPT Image 2 drew for it
+(`scripts/xiang-ui-art.ts learn`, $0.21; it left out the heart line and ran
+the fate line down the arm, so those two were fixed on the picture by hand)
+with the five lines the reader knows (`LINE_KEYS`: 生命線, 智慧線, 感情線,
+事業線, 太陽線). The numbers are set on the pictures by the page
+(`FACE_PINS`, `PALM_PINS` in % of the picture; re-measure them if a picture
+changes), so the words are in every language (`xtell.xiang.learn.*`); then
+the photo tips.
+
+**Photo shape, palm lines, the 相盤's tiles** (Oct 9). Owner: "when people
+take picture, we should limit to 1:1 or 9:16, not 16:9"; "the analysis
+results imags are too big. we should use the same size as the placeholder.
+face + palms"; "can we process the palm with filters to only show clear lines
+instead of original pictures? and we use those to feed into AI models".
+- `shrinkPhoto(file, key)` keeps every photo between square and 9:16: a
+  landscape one keeps its middle square, a very tall one its middle 9:16. The
+  computer's camera shows and takes its middle square (a webcam is wide).
+- A palm then goes through `lib/palm-lines.ts` (plain arithmetic, no
+  library): the skin coloured like the middle of the picture, opened and the
+  biggest patch kept (the hand), its own light divided out, and the creases
+  drawn dark on white with the hand's outline. The models read that picture
+  and the 相盤 shows it; the tile keeps the photo as taken (owner: "taking palm
+  photo still shows the original photo. you show the line photo after the
+  analysis"; `XiangPhoto.linePhoto`); `PALM_AS_LINES` in lib/xiang.ts tells the photo check
+  and the reader what they are looking at (the reader says it cannot judge the
+  mounts from it). Tried on the owner's own palm photo (this computer only):
+  Gemini 3.1 Flash-Lite passed it as a palm ($0.0004); Claude Opus 5.5 read
+  all five lines, the heart line "清楚、顏色深", the head line faint ($0.057).
+- The 相盤 shows every photo as the form's tiles, the visitor's then the other
+  person's: the face with its marks (the labels and thick lines only when a
+  tile is opened large, `XiangZoom`), each palm as its lines. The saved image
+  has them all, each with its caption.
+
+**Privacy**: the photos are never stored. The visit keeps the 相盤, gender,
+dominant hand, which photos there were (and the other person's relation,
+gender, hand and the visitor's tick), and the correction. A reopened visit
+has the written 相盤 only (re-add the photos to see the marks).
+
+**Models** (`scripts/xiang-model-test.ts` on made-up photos, Oct 6; draw with
+`scripts/xiang-draw.py`): reader Claude Opus 5.5 (52 s, $0.11; face points
+accurate, palm lines plausible), stand-in GPT-6.1 Sol ($0.05, 77 s; slipped
+one simplified character). GPT-6 Astra and Claude Fable 5.1 read as well but
+took 136 s / 72 s for $0.25. Claude Sonnet 5 and Gemini 3.1 Pro misplaced
+points; Grok 4.7 took 405 s. Checker Gemini 3.1 Flash-Lite (~1 s,
+$0.0004 a photo), stand-in GPT-6 Luna. Total test spend about $5.10 (photos,
+readers, icon drafts, the palm-line trials below, three live runs, one
+made-up second face).
+
+**Palm lines: not drawn** (owner, Oct 6: the reader's were "not accurate at
+all", then "fix with Gemini 3.8 Flash", then, after the trials below, "still
+not accurate, I would rather not showing those lines"; outside libraries
+such as MediaPipe were ruled out: "we want Model to compete head to head").
+The tracer and the snap were removed; the record stays. Measured with a crease score: how much darker
+the skin under a line is than 9-12 px beside it, left / right test palm
+(`scripts/xiang-best-test.ts`, `xiang-point-test.ts`, `xiang-image-test.ts`).
+Claude Opus 5.5's own points -0.1 / -0.8, no relation to the creases.
+Gemini 3.8 Flash in its own point format: low 7.6 / 13.0 (6-12 s, $0.007 a
+palm), its default 4.8 / 12.8, high 1.5 / 5.1. GPT-6 Astra at low 4.6 / 1.7
+(~20 s, $0.045). Image models drawing on the left palm themselves: Nano
+Banana 2 10.9 ($0.10), Nano Banana Pro 10.7, GPT Image 2 -0.3 (a textbook
+palm, not this one), Grok Imagine 2.0 -0.4, GPT Image 2.5 Sunburst -3.5,
+Qwen Image 3.0 Pro -5.4. The snap (`lib/xiang-snap.ts`: each point may move
+up to 2.2% of the photo's width across the line, onto the deepest valley
+darker than EACH side by 3 of 255, so an edge or a shadow never pulls;
+smoothed) takes Gemini's to 16.9 / 20.3 and Astra's to 9.8 / 11.9. On a real
+phone photo of a palm (fainter creases, the hand smaller in the frame)
+Gemini's went from 5.2 to 7.4, every line on a visible crease; the first
+rule (darker than the two sides on average) had bent its life line onto the
+thumb's outline. Even so, the owner judged the lines not accurate enough to show.
+
+**Icon** (approved Oct 8 in Codex's session, owner: "yes, this is it!"): a
+jade-and-gold framed card, a front-facing young woman with face-reading guide
+lines beside an open palm with its lines and dots. Source: Codex's
+`04-jade-coral-young-lady-straight-fingers.png` (1254 px, transparent),
+kept outside the repo. Installed unchanged by `scripts/xtell-icon-from-png.mjs
+guanxiang <png>`: the invisible margin trimmed (alpha 1 of 255 or less; the
+art is 965×860), centred at 95% of the width (84% of the height; 88% until the
+owner's "the temple icon is too small ... but not too big", Oct 8; the value is
+kept per temple in the script's FILL_BY_TEMPLE), and written
+as `guanxiang-icon-clear.avif` (300 px, its own transparency: the top bar,
+lists, www thumbs), `guanxiang-icon.avif` (300 px on the set's paper #fbf7ee:
+the room header, the share picture) and `guanxiang-portrait.avif` (640 px on
+paper: the banner and explorer, neither showing 相學館 today).
+`scripts/xtell-clear-icons.mjs` no longer derives this temple's clear icon.
+Before it (Oct 6-7, `scripts/xiang-icon.ts`, about $6 of drafts): a face and
+palm on a navy circle ("looks really bad and similar to 九曜廟's"), four
+concepts, a desk scene in ten styles, the hand alone, eight face-and-palm
+emblems (no profiles: 面相 is read from the front), and a seal with face
+lines.
 
 ## Birthplace and 「填入我的生日」, round two (Oct 1, owner bug report)
 

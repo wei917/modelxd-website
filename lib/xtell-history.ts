@@ -49,6 +49,10 @@ export function describeVisit(t: (k: string) => string, temple: string, subject:
       return clip(String(s.dream ?? '').replace(/\s+/g, ' '))
     case 'sunzi':
       return clip(String(s.situation ?? '').replace(/\s+/g, ' '))
+    case 'guanxiang':
+      return [...(Array.isArray(s.have) ? s.have : []).map((k: string) => t(`xtell.xiang.slot.${k}`)), s.gender === 'female' || s.gender === 'male' ? t(`xtell.${s.gender}`) : '',
+        // 看我們兩個: who the other person was (never their photos, which were not kept).
+        s.partner && typeof s.partner === 'object' ? `${t('xtell.xiang.partner')}（${t(`xtell.xiang.rel.${['spouse', 'dating', 'ambiguous', 'crush'].includes(s.partner.relation) ? s.partner.relation : 'other'}`)}）` : ''].filter(Boolean).join(' · ')
     case 'daily':
       return [typeof s.date === 'string' ? s.date : '', s.method === 'western' || s.method === 'bazi' ? t(`xtell.dy.${s.method}`) : ''].filter(Boolean).join(' · ')
     case 'yixue': {
@@ -83,6 +87,7 @@ export function notAskedKey(temple: string): string {
     case 'cezi': return 'xtell.saved.notasked.char'
     case 'jiemeng': return 'xtell.saved.notasked.dream'
     case 'sunzi': return 'xtell.saved.notasked.sunzi'
+    case 'guanxiang': return 'xtell.saved.notasked.guanxiang'
     case 'yixue': return 'xtell.saved.chartonly.yixue'
     default: return 'xtell.saved.chartonly'   // 八字, 紫微, 月老, 九曜, 占星
   }

@@ -4,7 +4,8 @@ import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // before beta. This is a plain static page; the big title lives in the
 // TopBar per the July 16 convention.) Sep 28: every door and app named,
 // XTell's entertainment-only rule, other people's details, and the referral
-// rules; Your Content moved to §5.
+// rules; Your Content moved to §5. Oct 7: 相學館's photos (another person's only
+// with their agreement) and what a face or palm reading is not.
 
 export const metadata = { title: 'Terms of Service — ModelXD' }
 
@@ -20,7 +21,7 @@ export default function TermsPage() {
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
       <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: September 29, 2026
+        Last updated: October 7, 2026
       </p>
       <p style={S.p}>
         Welcome to ModelXD. These Terms of Service (&quot;Terms&quot;) govern your use of
@@ -91,9 +92,10 @@ export default function TermsPage() {
         the model outputs, appear in XVote and may be displayed across the Service.
         Everything else you submit is private to your account. Do not submit content
         you don&apos;t have the right to share. If you enter details about another
-        person (for example a partner&apos;s birth details at 月老 or someone&apos;s
-        name at 姓名學), you confirm that you are allowed to share them with us for
-        that purpose.
+        person (for example a partner&apos;s birth details at 月老, someone&apos;s
+        name at 姓名學, or another person&apos;s photo at 相學館), you confirm that you
+        are allowed to share them with us for that purpose, and for a photo, that
+        the person in it knows and agreed.
       </p>
 
       <h2 style={S.h2}>6. Acceptable Use</h2>
@@ -118,7 +120,10 @@ export default function TermsPage() {
         interpretations of charts, sticks and texts computed from traditional
         methods; they are not statements of fact and not professional advice. Do not
         rely on them for decisions about health, money, legal matters or safety; for
-        those, consult a qualified professional.
+        those, consult a qualified professional. Face and palm readings at 相學館
+        describe tendencies in a tradition; they say nothing reliable about anyone&apos;s
+        health, character or worth, and a reading of two people does not decide a
+        relationship.
       </p>
 
       <h2 style={S.h2}>8. Intellectual Property</h2>
