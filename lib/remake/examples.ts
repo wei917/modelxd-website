@@ -1,8 +1,9 @@
 // lib/remake/examples.ts: 同款's "try a popular one" row, the hand-picked
 // part (owner, Oct 13: "do it. popular AI video with prompts", after
 // "at least 10k likes in total"). AI videos on X with 10,000+ likes whose
-// authors share the prompt, found with Grok's X search (two searches, $2.14,
-// Apr 13 to Oct 13) and each checked with the X API on Oct 13: the like count,
+// authors share the prompt, found with Grok's X search on Oct 13 (four
+// searches at $4.65, plus one stopped early) and each checked with the X API
+// the same day: the like count,
 // the video, and its length. Left out: real people in the video, other
 // people's characters, Sora (the owner never uses it), ads. `summary` is our
 // own words; `prompt` is the author's, as shared in the post or its thread,
@@ -53,6 +54,23 @@ export const CURATED_EXAMPLES: RemakeExample[] = [
    "zh-Hans": "一名年轻女子在安静的社区处理整理头发、抚摸猫咪、晾衣服和拿着咖啡行走等平常早晨事务，画面呈现旧式摄像机的晃动与不完美质感。",
    "ja": "若い女性が静かな住宅地で髪を直したり猫を撫でたり洗濯を干したりコーヒーを持って歩いたりする日常の朝の作業を、古いビデオカメラの揺れて不完全な映像で捉えている。",
    "ko": "젊은 여성이 조용한 동네에서 머리를 고치고 고양이를 쓰다듬고 빨래를 널고 커피를 들고 걷는 평범한 아침 일을 오래된 캠코더의 흔들리고 불완전한 화면으로 담았다."
+  }
+ },
+ {
+  "url": "https://x.com/Ciri_ai/status/2054056372321587555",
+  "handle": "Ciri_ai",
+  "likes": 10269,
+  "models": [
+   "Seedance 2.0",
+   "GPT Image 2"
+  ],
+  "prompt": "Ultra-realistic sports broadcast still of a glamorous woman sitting in a packed football stadium crowd during a night match, wearing a dark brown sleeveless high-neck satin top and black square earrings, shoulder-length light brown/blonde hair styled in soft waves. She is casually drinking from a tall blue aluminum can while holding a half-eaten cheeseburger in the other hand. Around her are fans in bright yellow and blue football jerseys and scarves, creating strong team-color contrast. The scene feels candid and cinematic, captured mid-game from a TV broadcast camera angle with shallow depth of field. Include realistic stadium seating, crowded audience atmosphere, broadcast overlay graphics in the top-left corner showing a live football score and match timer, and a sports network watermark in the top-right. Natural arena lighting, detailed skin texture, sharp focus on the woman, slightly blurred background crowd, authentic live sports broadcast aesthetic, 16:9 composition.",
+  "summary": {
+   "en": "A glamorous woman sits in a packed night football stadium drinking from a blue can and holding a half-eaten cheeseburger among fans in yellow and blue.",
+   "zh-Hant": "一位華麗的女性坐在擠滿人的夜間足球場觀眾席，喝著藍色罐子飲料並拿著吃了一半的起司漢堡，周圍是黃藍隊色的球迷。",
+   "zh-Hans": "一位华丽的女性坐在挤满人的夜间足球场观众席，喝着蓝色罐子饮料并拿着吃了一半的芝士汉堡，周围是黄蓝队色的球迷。",
+   "ja": "華やかな女性が満員の夜のサッカー競技場の観客席に座り、青い缶から飲みながら半分食べたチーズバーガーを持ち、黄と青のファンに囲まれている。",
+   "ko": "화려한 여성이 꽉 찬 밤 축구 경기장 관중석에 앉아 파란 캔을 마시며 반쯤 먹은 치즈버거를 들고 있고 노란과 파란 유니폼의 팬들이 둘러싸고 있다."
   }
  },
  {
