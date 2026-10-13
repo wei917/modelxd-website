@@ -1,8 +1,10 @@
 // app/api/xcreate/remake/examples/route.ts: 同款's "try a popular one" row
 // (owner, Oct 13: "put some example popular links in the page? so people can
 // try them"). The trending feed's LIVE videos, which the owner published in
-// /admin/trending and which have 1,000+ likes (the feed's bar), most liked
-// first, from the platforms a read takes by link (X today).
+// /admin/trending, with 10,000+ likes (REMAKE_EXAMPLE_MIN_LIKES; the feed's
+// own 1,000 bar let a 1,042-like post in, and the owner said "at least 10k"),
+// most liked first, from the platforms a read takes by link (X today). Fewer
+// than that, and the page shows no row.
 //
 //   GET -> { examples: [{ url, handle, likes, summary }] }
 //
@@ -12,7 +14,7 @@
 // an empty list, so the page just shows no row.
 
 import { createClient } from '@supabase/supabase-js'
-import { TRENDING_MIN_LIKES } from '@/app/xcreate/trending'
+import { REMAKE_EXAMPLE_MIN_LIKES } from '@/lib/remake/config'
 
 /** Platforms the read takes by link. YouTube rows would join here. */
 const READABLE = ['x']
@@ -23,7 +25,7 @@ export async function GET() {
   const { data, error } = await sb.from('trending_posts')
     .select('platform, post_id, handle, url, likes, summary')
     .eq('status', 'live').eq('kind', 'video').in('platform', READABLE)
-    .gte('likes', TRENDING_MIN_LIKES)
+    .gte('likes', REMAKE_EXAMPLE_MIN_LIKES)
     .order('likes', { ascending: false })
     .limit(MAX * 2)
   if (error) {
