@@ -1227,6 +1227,16 @@ can sit at the table honestly. One act per request; the client loops.
   Aug 5 re-derivation); "FOR AI USERS" ~$176/mo on 100 video clips (Veo 3.1
   $0.40/s vs HappyHorse 1.1 $0.18/s, 8s clips). Derivations are in comments
   in `app/page.tsx` — **re-derive before changing any number.**
+- **Landing redesigned Oct 12** (owner: "redesign", then "I didn't ask you
+  to remove most stuff": every section stays). Phone first, `.hm-*` rules at
+  the end of globals.css: X先知 and X創作 as app icons under the hero's
+  buttons (月老 from the approved temple sheet; four real results of one
+  prompt from four models, public/home/), XDirect's templates as one row of
+  loops (swiped on a phone), every surface as a picture card, XBoard (XVote
+  inside its card) and XEval as the proof, the three numbers as plain
+  columns (rows on a phone), a
+  footer that wraps between items. A company page with only the two icons
+  was tried first the same day and rejected for cutting content.
 - **Landing hero, Aug 25** (current): eyebrow "AI apps that run winning
   models", headline "The best AI for every task.", sub "Films, stories,
   analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends

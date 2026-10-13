@@ -4542,3 +4542,161 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .xtell-xiang-slot { animation: none; }
   .xtell-xiang-footer > button { transition: none; }
 }
+
+/* ══ Home redesign (Oct 12; owner: "redesign", every section kept) ═════════
+   Phone first, one left edge for every section, one card style (white,
+   hairline, 14px corners, no shadow), and the two products as app icons in
+   the hero. Scoped to .hm-* and .hm-hero so the shared .home-hero-cta
+   buttons on /xgame/practice keep their look. The older .home-* / .ham-*
+   rules above are the pre-Oct-12 landing and mostly unused now. */
+.hm-hero .home-hero-eyebrow {
+  font-family: var(--font-body), sans-serif; letter-spacing: 0; text-transform: none;
+}
+.hm-hero .home-hero-cta {
+  font-family: var(--font-body), sans-serif; font-size: 15px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; min-height: 48px; border-radius: 12px;
+}
+.hm-hero .home-hero-cta.is-primary { box-shadow: none; }
+.hm-hero .home-hero-cta.is-primary:hover { box-shadow: none; }
+
+.hm-products {
+  list-style: none; margin: 32px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 20px;
+}
+.hm-product {
+  display: flex; flex-direction: column; gap: 4px;
+  color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent;
+}
+.hm-icon {
+  position: relative; display: block; width: 112px; aspect-ratio: 1; overflow: hidden;
+  border-radius: 22%; margin-bottom: 8px; transition: transform .18s ease;
+}
+.hm-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* A hairline inside the corner keeps the cream 月老 icon's edge on the
+   near-white page without a drop shadow. */
+.hm-icon::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); pointer-events: none;
+}
+.hm-product:hover .hm-icon { transform: translateY(-3px); }
+.hm-product:active .hm-icon { transform: scale(.96); }
+.hm-product:focus-visible { outline: none; }
+.hm-product:focus-visible .hm-icon { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--blue); }
+.hm-product-name {
+  font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 18px;
+  line-height: 1.25; color: var(--white);
+}
+.hm-product-desc { font-size: 14px; line-height: 1.55; color: var(--muted2); }
+
+.hm-section { border-top: 1px solid var(--border); padding: 56px 0; }
+.hm-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; box-sizing: border-box; }
+.hm-eyebrow { font-size: 14px; font-weight: 700; color: var(--red); }
+.hm-title {
+  margin: 8px 0 0; font-family: var(--font-display), sans-serif; font-weight: 800;
+  font-size: clamp(26px, 6.6vw, 40px); line-height: 1.2; letter-spacing: -.01em; color: var(--white);
+}
+.hm-sub { margin: 10px 0 0; max-width: 40em; font-size: 16px; line-height: 1.6; color: var(--muted2); }
+
+.hm-card {
+  display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+  background: #fff; border: 1px solid var(--border2); border-radius: 14px;
+  transition: border-color .18s, transform .18s;
+}
+.hm-card:hover { border-color: var(--red); transform: translateY(-2px); }
+.hm-card:focus-visible, .hm-direct-head:focus-visible, .hm-proof-main:focus-visible,
+.hm-proof-vote:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* The box sets the shape; the loop or picture fills it from outside the
+   flow, so a clip's own size can never make one card taller than the rest. */
+.hm-media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--border); }
+.hm-media video, .hm-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.hm-card-body { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; }
+.hm-card-name {
+  font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 16px;
+  line-height: 1.3; color: var(--white);
+}
+.hm-card-desc {
+  font-size: 13px; line-height: 1.5; color: var(--muted2);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* XDirect: its templates as one row of real result loops. A phone swipes
+   it, with the next card showing at the edge; desktop shows all five. */
+.hm-direct { margin-top: 28px; }
+.hm-direct-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; max-width: 40em; }
+.hm-direct-head .hm-card-name { font-size: 20px; }
+.hm-direct-head .hm-card-desc { font-size: 15px; -webkit-line-clamp: unset; }
+.hm-direct-head:hover .hm-card-name { color: var(--red); }
+.hm-templates {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 72%; gap: 12px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  margin: 0 -16px; padding: 0 16px 4px; scroll-padding: 0 16px;
+}
+.hm-templates::-webkit-scrollbar { display: none; }
+.hm-templates > .hm-card { scroll-snap-align: start; }
+
+.hm-surfaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+
+/* XBoard and XEval close the shelf as the proof; XVote rides inside
+   XBoard's card. */
+.hm-proofs { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; align-items: start; }
+.hm-proof {
+  overflow: hidden;
+  background: #fff; border: 1px solid var(--border2); border-radius: 14px;
+}
+.hm-proof-main { display: grid; grid-template-columns: 1fr; }
+.hm-proof-main img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+.hm-proof-main .hm-card-body { justify-content: center; }
+.hm-proof-main:hover .hm-card-name, .hm-proof-vote:hover .hm-card-name { color: var(--red); }
+.hm-proof-vote { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-top: 1px solid var(--border); }
+.hm-proof-vote .hm-card-desc, .hm-proof-main .hm-card-desc { -webkit-line-clamp: unset; }
+
+.hm-section .vc { margin-top: 32px; }
+
+.hm-stats { display: grid; grid-template-columns: 1fr; }
+.hm-stat { padding: 24px 0; border-top: 1px solid var(--border); }
+.hm-stat:first-child { padding-top: 0; border-top: 0; }
+.hm-stat:last-child { padding-bottom: 0; }
+.hm-stat-label { font-size: 14px; font-weight: 700; color: var(--muted2); }
+.hm-stat-num {
+  margin-top: 6px; font-family: var(--font-display), sans-serif; font-weight: 800;
+  font-size: clamp(40px, 11vw, 56px); line-height: 1.05; font-variant-numeric: tabular-nums;
+}
+.hm-stat-period { margin-top: 4px; font-size: 13px; color: var(--muted); }
+.hm-stat-desc { margin: 10px 0 0; max-width: 34em; font-size: 15px; line-height: 1.6; color: var(--muted2); }
+.hm-link { display: inline-block; margin-top: 10px; font-size: 14px; line-height: 1.5; color: var(--blue); text-decoration: none; }
+.hm-link:hover { text-decoration: underline; }
+
+.hm-footer {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px;
+  padding: 28px 16px 40px; border-top: 1px solid var(--border);
+}
+.hm-footer .footer-copy { white-space: nowrap; text-decoration: none; }
+
+@media (max-width: 760px) {
+  .hm-hero.home-hero { padding: 28px 16px 48px; }
+  .hm-hero .home-hero-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hm-hero .home-hero-cta.is-primary { grid-column: 1 / -1; }
+  .hm-hero .home-hero-cta { width: auto; padding: 0 12px; }
+  .hm-products { gap: 16px; }
+  .hm-icon { width: 104px; }
+  .hm-product-name { font-size: 17px; }
+}
+@media (min-width: 761px) {
+  .hm-section { padding: 88px 0; }
+  .hm-inner { padding: 0 40px; }
+  .hm-templates {
+    grid-auto-flow: row; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-columns: auto;
+    overflow: visible; margin: 0; padding: 0;
+  }
+  .hm-surfaces { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .hm-proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+  .hm-proof-main .hm-card-body { padding: 16px 18px; }
+  .hm-proof-vote { padding: 14px 18px; }
+  .hm-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+  .hm-stat, .hm-stat:first-child, .hm-stat:last-child { padding: 0; border-top: 0; }
+  .hm-stat + .hm-stat { padding-left: 40px; border-left: 1px solid var(--border); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-icon, .hm-card { transition: none; }
+  .hm-product:hover .hm-icon, .hm-product:active .hm-icon, .hm-card:hover { transform: none; }
+}

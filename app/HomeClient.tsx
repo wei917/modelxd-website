@@ -22,7 +22,7 @@ type LandingApp = {
   video?: string; img?: string; emoji?: string; color?: string
   public?: boolean
 }
-const APPS: LandingApp[] = [
+const TEMPLATES: LandingApp[] = [
   { href: '/xdirect', name: 'Music Video',  nameKey: 'skill.music-video.title', descKey: 'home.app.mv',
     video: '/xdirect/skills/music-video-loop.mp4', img: '/xdirect/skills/music-video-cover.webp' },
   { href: '/xdirect', name: 'Animation',    nameKey: 'skill.ai-animation.title', descKey: 'home.app.anim',
@@ -34,9 +34,13 @@ const APPS: LandingApp[] = [
     video: '/xdirect/skills/product-video-loop.mp4', img: '/xdirect/skills/product-video-cover.jpg' },
   { href: '/xdirect', name: 'Social Post',  nameKey: 'skill.social-post.title', descKey: 'home.app.sp',
     video: '/xdirect/skills/social-post-loop.mp4', img: '/xdirect/skills/social-post-cover.jpg' },
-  // The surfaces wear generated covers of the same ambition as the template
-  // loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
-  // Generated with GPT Image 2; originals in the session scratchpad.
+]
+// The surfaces wear generated covers of the same ambition as the template
+// loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
+// Generated with GPT Image 2; originals in the session scratchpad. XVote has
+// no cover: it rides on the XBoard card, since its votes are what the board
+// ranks by.
+const SURFACES: LandingApp[] = [
   { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   video: '/landing/apps/xtalk-loop.mp4', img: '/landing/apps/xtalk.jpg' },
   { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   video: '/landing/apps/xgame-loop.mp4', img: '/landing/apps/xgame.jpg' },
   { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   video: '/landing/apps/xduel-loop.mp4', img: '/landing/apps/xduel.jpg' },
@@ -242,6 +246,17 @@ function TierComparator() {
   )
 }
 
+
+// X先知 and X創作, the two products with their own front door, as app icons
+// right under the hero's buttons (owner, Oct 12: "X先知 + X創作"). Icons:
+// 月老 from the approved temple sheet (public/xtell/approved/icons.avif),
+// and four real results of one prompt from four models
+// (public/xcreate-preview.png), which is what the studio does.
+const PRODUCTS = [
+  { href: '/xtell',   name: 'nav.xtell',   desc: 'home.prod.xtell',   icon: '/home/xtell-icon.webp' },
+  { href: '/xcreate', name: 'nav.xcreate', desc: 'home.prod.xcreate', icon: '/home/xcreate-icon.webp' },
+]
+
 export default function HomeClient() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
@@ -267,6 +282,10 @@ export default function HomeClient() {
     if (data.user) router.push(path)
     else show(path)
   }
+  // A card opens its app: public pages directly, the rest through sign-in
+  // with the destination kept (handleNav).
+  const open = (a: { href: string; public?: boolean }) => a.public ? router.push(a.href) : void handleNav(a.href)
+  const cardKeys = (a: { href: string; public?: boolean }) => (e: React.KeyboardEvent) => { if (e.key === 'Enter') open(a) }
 
   useEffect(() => {
     let mx = 0, my = 0, rx = 0, ry = 0
@@ -283,15 +302,6 @@ export default function HomeClient() {
     document.addEventListener('mousemove', onMove)
     animId = requestAnimationFrame(animRing)
     return () => { document.removeEventListener('mousemove', onMove); cancelAnimationFrame(animId) }
-  }, [])
-
-  useEffect(() => {
-    const els = document.querySelectorAll('.reveal')
-    const obs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target) } })
-    }, { threshold: 0.1 })
-    els.forEach(el => obs.observe(el))
-    return () => obs.disconnect()
   }, [])
 
   return (
@@ -334,11 +344,11 @@ export default function HomeClient() {
         })}
       </div>
 
-      {/* ── Hero ──
-          Lead with the decision ModelXD helps visitors make. The agent sits
-          beside the pitch as a useful next step instead of pushing the value
-          proposition below a full screen of chat chrome. */}
-      <section className="home-hero">
+      {/* ── Hero (redesigned Oct 12, owner: "redesign", keeping every
+          section). The pitch, its three doors, then X先知 and X創作 as app
+          icons; the agent in the second column on desktop, under the icons
+          on a phone. ── */}
+      <section className="home-hero hm-hero">
         <div className="home-hero-copy">
           <div className="home-hero-eyebrow">{t('home.eyebrow')}</div>
           <h1 className="home-hero-title">
@@ -364,7 +374,7 @@ export default function HomeClient() {
                 language. Create and compare stay as the secondary doors
                 (compare keeps each locale's existing label). */}
             <Link href={`/playground?lang=${lang}`} className="home-hero-cta is-primary">
-              {t('home.cta.play')} <span aria-hidden>→</span>
+              {t('home.cta.play')}
             </Link>
             <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xdirect')}>
               {t('home.cta.primary')}
@@ -373,162 +383,133 @@ export default function HomeClient() {
               {t(lang === 'ja' ? 'home.cta.compare' : 'home.cta.secondary')}
             </button>
           </div>
+          <ul className="hm-products">
+            {PRODUCTS.map(p => (
+              <li key={p.href}>
+                <Link href={p.href} className="hm-product">
+                  <span className="hm-icon">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.icon} alt="" width={300} height={300} />
+                  </span>
+                  <span className="hm-product-name">{t(p.name)}</span>
+                  <span className="hm-product-desc">{t(p.desc)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
-        {/* The agent takes the second column again (Oct 1), where the
-            playground's artwork card sat from Sep 14 until the owner removed
-            it: with the column empty, the desktop hero sat left with a
-            centred agent panel under it. On a phone it follows the buttons. */}
         <div className="home-hero-agent">
           <LandingAgent />
         </div>
       </section>
 
       {/* ── The apps (owner, Aug 18): the product is a shelf of working
-          applications — template films with REAL generated result loops on
-          their cards, plus the surfaces. Blind testing moved from identity
-          to trust layer; here is where the repositioning lives. ── */}
-      <div className="home-section reveal">
-        <div className="home-inner">
-          <div className="home-compare-eyebrow" style={{ marginBottom: 6, textAlign: 'center' }}>{t('home.apps.eyebrow')}</div>
-          <h2 style={{ fontFamily: 'var(--font-display), inherit', fontWeight: 800, fontSize: 'clamp(24px, 3vw, 34px)', textAlign: 'center', margin: '0 0 26px' }}>{t('home.apps.title')}</h2>
-          {/* Landing-native cards — light surfaces, small accent tints. The
-              first cut borrowed the app pages' xt-tpl system and its dark
-              #14161a banner slabs, which read broken on the light landing
-              (owner, Aug 18). Template cards carry real result media;
-              surface cards get a soft brand-tinted plate, never a dark one. */}
-          <div className="home-apps-desktop">
-            {APPS.map(a => (
-              <div
-                key={a.name}
-                role="link" tabIndex={0}
-                onClick={() => a.public ? router.push(a.href) : void handleNav(a.href)}
-                onKeyDown={e => { if (e.key === 'Enter') { a.public ? router.push(a.href) : void handleNav(a.href) } }}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12,
-                  overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s, transform .2s',
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)'
-                  el.querySelector('video')?.play().catch(() => {})
-                }}
-                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'none' }}
-              >
-                <div style={{ aspectRatio: '16 / 9', background: a.color ? `linear-gradient(135deg, ${a.color}1f, var(--surface2))` : 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {a.video
-                    ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    : a.img
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={a.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                      : <span aria-hidden style={{ fontSize: 40, filter: 'saturate(.9)' }}>{a.emoji}</span>}
-                </div>
-                <div style={{ padding: '12px 16px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display), inherit' }}>{a.nameKey ? tOr(t, a.nameKey, a.name) : a.name}</span>
-                    <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>→</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>{t(a.descKey)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* ── The proof strip (owner, Aug 24): XBoard and XEval are not
-              apps — they are the EVIDENCE behind "the best AI for every
-              task", so they sit under the shelf as two wide receipts, not
-              among the things you make with. XDev (agents) moved to the
-              developers card below for the same reason. ── */}
-          <div className="home-proof-strip">
-            {([
-              ['/xboard', 'XBoard', 'home.surf.xboard', '/landing/apps/xboard.jpg', true],
-              ['/xeval',  'XEval',  'home.surf.xeval',  '/landing/apps/xeval.jpg',  true],
-            ] as Array<[string, string, string, string, boolean]>).map(([href, name, key, img, pub]) => (
-              <div
-                key={href} className="home-proof-card"
-                role="link" tabIndex={0}
-                onClick={() => pub ? router.push(href) : void handleNav(href)}
-                onKeyDown={e => { if (e.key === 'Enter') { pub ? router.push(href) : void handleNav(href) } }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img} alt="" loading="lazy" />
-                <div className="home-proof-copy">
-                  <div className="home-proof-name">{name} <span aria-hidden>→</span></div>
-                  <div className="home-proof-desc">{t(key)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* ── Mobile apps layout (owner's mock, Aug 18 — layout only, all
-              copy is the existing i18n): XDirect leads as the FEATURED card
-              wearing a film strip of the real template clips; the other
-              surfaces follow as compact two-column text cards. Hidden on
-              desktop; the media grid above hides on mobile. ── */}
-          <div className="home-apps-mobile">
-            <div
-              className="ham-featured"
-              role="link" tabIndex={0}
+          applications. One layout for every width since Oct 12: XDirect's
+          templates as a row of real result loops (swiped on a phone), the
+          surfaces as picture cards, then XBoard with XVote, the proof. ── */}
+      <section className="hm-section">
+        <div className="hm-inner">
+          <div className="hm-eyebrow">{t('home.apps.eyebrow')}</div>
+          <h2 className="hm-title">{t('home.apps.title')}</h2>
+
+          <div className="hm-direct">
+            <div className="hm-direct-head" role="link" tabIndex={0}
               onClick={() => void handleNav('/xdirect')}
-              onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xdirect') }}
-            >
-              <div className="ham-name">XDirect</div>
-              <div className="ham-desc">{t('home.surf.xdirect')}</div>
-              <div className="ham-strip">
-                <video src="/xdirect/skills/music-video-loop.mp4" poster="/xdirect/skills/music-video-cover.webp" autoPlay muted loop playsInline preload="metadata" />
-                <video src="/xdirect/skills/ai-animation-loop.mp4" poster="/xdirect/skills/ai-animation-cover.webp" autoPlay muted loop playsInline preload="metadata" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/xdirect/skills/product-video-cover.jpg" alt="" loading="lazy" />
-              </div>
+              onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xdirect') }}>
+              <span className="hm-card-name">XDirect</span>
+              <span className="hm-card-desc">{t('home.surf.xdirect')}</span>
             </div>
-            <div className="ham-grid">
-              {([
-                ['/xduel',   'XDuel',   'home.surf.xduel',   false],
-                ['/xcreate', 'XCreate', 'home.surf.xcreate', false],
-                ['/xtalk',   'XTalk',   'home.surf.xtalk',   false],
-                ['/xgame',   'XGame',   'home.surf.xgame',   false],
-                ['/xvote',   'XVote',   'home.surf.xvote',   false],
-              ] as Array<[string, string, string, boolean]>).map(([href, name, key, pub]) => (
-                <div
-                  key={href} className="ham-card"
-                  role="link" tabIndex={0}
-                  onClick={() => pub ? router.push(href) : void handleNav(href)}
-                  onKeyDown={e => { if (e.key === 'Enter') { pub ? router.push(href) : void handleNav(href) } }}
-                >
-                  <div className="ham-name">{name}</div>
-                  <div className="ham-desc">{t(key)}</div>
+            <div className="hm-templates">
+              {TEMPLATES.map(a => (
+                <div key={a.name} className="hm-card" role="link" tabIndex={0} onClick={() => open(a)} onKeyDown={cardKeys(a)}>
+                  <div className="hm-media">
+                    {a.video
+                      ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" />
+                      // eslint-disable-next-line @next/next/no-img-element
+                      : <img src={a.img} alt="" loading="lazy" />}
+                  </div>
+                  <div className="hm-card-body">
+                    <span className="hm-card-name">{a.nameKey ? tOr(t, a.nameKey, a.name) : a.name}</span>
+                    <span className="hm-card-desc">{t(a.descKey)}</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── Interactive proof ── */}
-      <div className="xduel-page home-compare" style={{ minHeight: 'auto' }}>
-        {/* paddingBottom was 0 back when the CTA buttons ended the hero and
-            the next section's own 60px top padding carried the gap. With the
-            subtitle now last, the rule above "How XDuel Works" sat right on
-            top of it — this restores the breathing room (CC, July 25). */}
-        <div className="arena" style={{ paddingBottom: 72 }}>
-          <div className="prompt-header home-compare-header">
-            <div className="home-compare-eyebrow">{t('home.compare.eyebrow')}</div>
-            <h2 className="prompt-title">{t('home.compare.title')}</h2>
-            <div className="prompt-sub home-compare-sub">{t('home.compare.sub')}</div>
+          <div className="hm-surfaces">
+            {SURFACES.map(a => (
+              <div key={a.name} className="hm-card" role="link" tabIndex={0} onClick={() => open(a)} onKeyDown={cardKeys(a)}>
+                <div className="hm-media">
+                  {a.video
+                    ? <video src={a.video} poster={a.img} autoPlay muted loop playsInline preload="metadata" />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    : <img src={a.img} alt="" loading="lazy" />}
+                </div>
+                <div className="hm-card-body">
+                  <span className="hm-card-name">{a.name}</span>
+                  <span className="hm-card-desc">{t(a.descKey)}</span>
+                </div>
+              </div>
+            ))}
           </div>
 
+          {/* ── The proof (owner, Aug 24): XBoard and XEval are not apps,
+              they are the evidence behind "the best AI for every task", so
+              they close the shelf as two wide cards. XVote sits inside
+              XBoard's: judging other people's duels is how the board
+              moves. ── */}
+          <div className="hm-proofs">
+            <div className="hm-proof">
+              <div className="hm-proof-main" role="link" tabIndex={0} onClick={() => router.push('/xboard')} onKeyDown={e => { if (e.key === 'Enter') router.push('/xboard') }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/landing/apps/xboard.jpg" alt="" loading="lazy" />
+                <div className="hm-card-body">
+                  <span className="hm-card-name">XBoard</span>
+                  <span className="hm-card-desc">{t('home.surf.xboard')}</span>
+                </div>
+              </div>
+              <div className="hm-proof-vote" role="link" tabIndex={0} onClick={() => void handleNav('/xvote')} onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xvote') }}>
+                <span className="hm-card-name">XVote</span>
+                <span className="hm-card-desc">{t('home.surf.xvote')}</span>
+              </div>
+            </div>
+            <div className="hm-proof">
+              <div className="hm-proof-main" role="link" tabIndex={0} onClick={() => router.push('/xeval')} onKeyDown={e => { if (e.key === 'Enter') router.push('/xeval') }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/landing/apps/xeval.jpg" alt="" loading="lazy" />
+                <div className="hm-card-body">
+                  <span className="hm-card-name">XEval</span>
+                  <span className="hm-card-desc">{t('home.surf.xeval')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Interactive proof ── */}
+      <section className="hm-section">
+        <div className="hm-inner">
+          <div className="hm-eyebrow">{t('home.compare.eyebrow')}</div>
+          <h2 className="hm-title">{t('home.compare.title')}</h2>
+          <p className="hm-sub">{t('home.compare.sub')}</p>
           <TierComparator />
         </div>
-      </div>
+      </section>
 
       {/* ── The pitch, consolidated (owner, Aug 6) ──
           Six July-era sections ("Same Result Pay Less", audience split, two
           How-It-Works walkthroughs, XVote and XBoard teasers) became this
           one: the two derived savings figures and the surface grid. The
           agent above answers "how does it work" better than static copy
-          ever did, and in five languages. */}
-      <div className="home-section surface reveal">
-        <div className="home-inner">
-          <div className="home-audience">
-            <div className="home-audience-card">
-              <div className="home-audience-label">{t('home.aud.gap')}</div>
+          ever did, and in five languages. Since Oct 12 three plain columns
+          (rows on a phone) instead of one tall boxed panel. */}
+      <section className="hm-section">
+        <div className="hm-inner">
+          <div className="hm-stats">
+            <div className="hm-stat">
+              <div className="hm-stat-label">{t('home.aud.gap')}</div>
               {/* 120× — re-derived from live model_pricing Aug 7 2026:
                   cheapest enabled text output is Gemini 3.1 Flash-Lite at
                   $1.50/M, priciest is GPT-5.5 Pro at $180/M = exactly 120×.
@@ -536,12 +517,12 @@ export default function HomeClient() {
                   meaningful than actual $") — it's volume-free where the
                   two savings figures each assume a workload. Re-derive
                   before changing (same rule as the other two numbers). */}
-              <div className="home-audience-stat" style={{ color: 'var(--red)' }}>120×</div>
-              <div className="home-audience-period">{t('home.aud.gap.period')}</div>
-              <div className="home-audience-desc">{t('home.aud.gap.desc')}</div>
+              <div className="hm-stat-num" style={{ color: 'var(--red)' }}>120×</div>
+              <div className="hm-stat-period">{t('home.aud.gap.period')}</div>
+              <p className="hm-stat-desc">{t('home.aud.gap.desc')}</p>
             </div>
-            <div className="home-audience-card">
-              <div className="home-audience-label">{t('home.aud.dev')}</div>
+            <div className="hm-stat">
+              <div className="hm-stat-label">{t('home.aud.dev')}</div>
               {/* $7,800/mo, and the un-rounded figure is the point — a round
                   $8,000 reads invented, this one reads computed, because it is.
                   1B tokens/mo (a scaling production app, ~33M/day) on a
@@ -558,13 +539,13 @@ export default function HomeClient() {
                   owner rule; Gemini 3.7 Flash has the same list price, so
                   its launch changes nothing here). Re-derive before
                   changing any number. */}
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$7,800</div>
-              <div className="home-audience-period">{t('home.aud.dev.period')}</div>
-              <div className="home-audience-desc">{t('home.aud.dev.desc')}</div>
-              <a href="/xdev" className="home-proof-devlink">→ XDev · {t('home.surf.xdev')}</a>
+              <div className="hm-stat-num" style={{ color: 'var(--green)' }}>~$7,800</div>
+              <div className="hm-stat-period">{t('home.aud.dev.period')}</div>
+              <p className="hm-stat-desc">{t('home.aud.dev.desc')}</p>
+              <a href="/xdev" className="hm-link">XDev · {t('home.surf.xdev')}</a>
             </div>
-            <div className="home-audience-card">
-              <div className="home-audience-label">{t('home.aud.user')}</div>
+            <div className="hm-stat">
+              <div className="hm-stat-label">{t('home.aud.user')}</div>
               {/* $176/mo, derived the same way as the developer figure so the
                   two can be defended with one method. The old "~$17 avg.
                   monthly savings" was text-only and unattributed — it read as
@@ -576,24 +557,22 @@ export default function HomeClient() {
                   Saving $176/mo — and HappyHorse is the model our own board
                   ranks top for text-to-video, so this is the recommendation we
                   already make, priced out. Live model_pricing, Aug 5 2026. */}
-              <div className="home-audience-stat" style={{ color: 'var(--green)' }}>~$176</div>
-              <div className="home-audience-period">{t('home.aud.user.period')}</div>
-              <div className="home-audience-desc">{t('home.aud.user.desc')}</div>
+              <div className="hm-stat-num" style={{ color: 'var(--green)' }}>~$176</div>
+              <div className="hm-stat-period">{t('home.aud.user.period')}</div>
+              <p className="hm-stat-desc">{t('home.aud.user.desc')}</p>
             </div>
           </div>
-
         </div>
-      </div>
+      </section>
 
-      {/* ── Footer ── */}
-      <footer className="home-footer">
-        <div className="home-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-          <div className="footer-copy">© 2026 MODELXD</div>
-          <a href="/terms" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.terms')}</a>
-          <a href="/privacy" className="footer-copy" style={{ textDecoration: 'none' }}>{t('nav.privacy')}</a>
-          <ContactEmail className="footer-copy" style={{ textDecoration: 'none' }} />
-          <BugReportLink className="footer-copy" style={{ textDecoration: 'none' }} />
-        </div>
+      {/* ── Footer ── each item keeps its words on one line; the row wraps
+          between items on a phone (they broke mid-word before Oct 12). */}
+      <footer className="hm-footer">
+        <span className="footer-copy">© 2026 MODELXD</span>
+        <a href="/terms" className="footer-copy">{t('nav.terms')}</a>
+        <a href="/privacy" className="footer-copy">{t('nav.privacy')}</a>
+        <ContactEmail className="footer-copy" />
+        <BugReportLink className="footer-copy" />
       </footer>
     </>
   )
