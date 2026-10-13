@@ -35,8 +35,6 @@ import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
-import ShowcaseWall from '@/app/components/ShowcaseWall'
-import type { ShowcasePiece } from '@/lib/showcase'
 import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachment, type Attachment } from '../components/AttachmentButton'
 import MaskEditor from '../components/MaskEditor'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
@@ -1049,15 +1047,15 @@ function Gallery({ userId, filterMode, onCounts, onOpen, limit = 40, compact = f
 // OptPill / OptGroup / SLOT_COLORS live in app/components/OptControls.tsx
 // (shared with XTell since Sep 24).
 
-export default function CreateClient({ showcase = [] }: { showcase?: ShowcasePiece[] }) {
+export default function CreateClient() {
   return (
     <Suspense fallback={null}>
-      <CreateStudio showcase={showcase} />
+      <CreateStudio />
     </Suspense>
   )
 }
 
-function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
+function CreateStudio() {
   const { lang, t } = useLang()
   const copy = xcreateStudioCopy(lang)
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
@@ -1066,7 +1064,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // dev.modelxd.com/xcreate or www.modelxd.com/xcreate"): /xcreate shows it
   // inside www's own shell, with its type bar pinned on top. Browsing needs
   // no account; the first thing that spends asks for one.
-  const isStandalone = true
   useRequireAuth(false)
   const { show: showAuth, open: authOpen } = useAuthModal()
   // ?view= was the door's old navigation (Studio / Templates / Library); the
@@ -1095,7 +1092,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const [needsTopUp,     setNeedsTopUp]     = useState(false)
   const [balanceCents,   setBalanceCents]   = useState<number | null>(null)
   // The standalone site's main offering is video; open directly into it.
-  const [mode,           setMode]           = useState<Mode>(isStandalone ? 'video' : 'image')
+  const [mode,           setMode]           = useState<Mode>('video')
   const [prompt,         setPrompt]         = useState('')
   const [selectedModels, setSelectedModels] = useState<(SlotModel | null)[]>([null, null, null, null])
   const [slots,          setSlots]          = useState<SlotState[]>([])
@@ -1198,7 +1195,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // model-picker filtering and the input slots. Defaults to the first recipe
   // for the current output type. `catalog` holds the enabled models' modes so
   // we can hide recipes no model supports.
-  const [recipeMode, setRecipeMode] = useState<ModelMode>(isStandalone ? 'text_to_video' : 'text_to_image')
+  const [recipeMode, setRecipeMode] = useState<ModelMode>('text_to_video')
   const [catalog, setCatalog] = useState<{ modes: ModelMode[]; output_modalities: string[] }[]>([])
 
   // validateOpts is the single source of truth for "what options are valid
@@ -1649,7 +1646,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           return
         }
         // A film's row (the fifth type) opens back into the film view.
-        const filmRef = isStandalone ? (data as any).slots?.[0]?.options?.film : null
+        const filmRef = (data as any).slots?.[0]?.options?.film
         if (typeof filmRef === 'string') { openFilm(filmRef); return }
         // Rows are born at run start, so this ?id= may name a run that is
         // still generating — resume its job (live cards + polling) instead
@@ -1692,7 +1689,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // and Back / Forward move between a tool and the prompt box. Declared
   // after the type reset above, so that effect's first run cannot undo it.
   useEffect(() => {
-    if (!isStandalone || typeof window === 'undefined') return
+    if (typeof window === 'undefined') return
     const tool = toolById(new URLSearchParams(window.location.search).get('tool'))
     if (tool) void applyToolRef.current(tool, { push: false })
     const onPop = () => {
@@ -1703,7 +1700,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStandalone])
+  }, [])
 
   // Sign-in keeps the studio (tester, Sep 28: "I was on Image before login.
   // After Google sign-in, the app returned to the default Video workflow").
@@ -1715,7 +1712,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const DRAFT_KEY = 'xcreate.signin-draft'
   const draftCheckedRef = useRef(false)
   useEffect(() => {
-    if (!isStandalone || draftCheckedRef.current) return
+    if (draftCheckedRef.current) return
     draftCheckedRef.current = true
     let draft: any = null
     try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null'); sessionStorage.removeItem(DRAFT_KEY) } catch { return }
@@ -1760,9 +1757,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         }) : null))
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStandalone])
+  }, [])
   useEffect(() => {
-    if (!isStandalone || userId) return
+    if (userId) return
     try {
       if (!authOpen) { sessionStorage.removeItem(DRAFT_KEY); return }
       if (phase !== 'setup') return
@@ -1773,7 +1770,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     } catch { /* storage off: the studio opens fresh after sign-in, as before */ }
     // A snapshot when the dialog opens (it is modal: nothing changes under it).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStandalone, authOpen])
+  }, [authOpen])
 
   // Load enabled models' modes once so the recipe picker can hide recipes that
   // no enabled model supports (avoids dead-end selections).
@@ -2390,7 +2387,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }, [userId])
 
   const generate = async () => {
-    if (isStandalone && !userId) { showAuth(); return }
+    if (!userId) { showAuth(); return }
     // A tool writes the prompt from its choices and names the run after
     // itself (lib/xcreate-tools.ts); it always needs its photo.
     const runPrompt = activeTool ? activeTool.prompt({ choice: toolChoice, text: toolText }) : prompt
@@ -2544,8 +2541,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         if (!retryOfId && newRowId && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('id') === newRowId) {
           urlClearedByCodeRef.current = true  // keep the refused run's state for editing
           const url = new URL(window.location.href)
-          if (isStandalone) { url.searchParams.delete('id'); url.searchParams.delete('job') }
-          else url.search = ''
+          url.searchParams.delete('id'); url.searchParams.delete('job')
           window.history.replaceState({}, '', url.toString())
           galleryLoadedRef.current = null
         }
@@ -2802,7 +2798,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // Upload → source nodes → straight onto the canvas. Costs nothing: no
   // model runs here, the photos just become the board's roots.
   const createProductBoard = async () => {
-    if (isStandalone && !userId) { showAuth(); return }
+    if (!userId) { showAuth(); return }
     if (pbAtts.length === 0 || pbBusy) return
     setPbBusy(true)
     try {
@@ -3274,7 +3270,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   }
 
   const applyTemplate = async (t: Template) => {
-    if (isStandalone && t.sampleUrl) {
+    if (t.sampleUrl) {
       const { data } = await createSupabaseBrowser().auth.getUser()
       if (!data.user) { showAuth(`/xcreate?template=${encodeURIComponent(t.id)}`); return }
     }
@@ -3557,33 +3553,32 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const leaveToolRef = useRef(leaveTool)
   leaveToolRef.current = leaveTool
   useEffect(() => {
-    if (!isStandalone) return
     return onStudioTypeRequest(type => switchTypeRef.current(type))
-  }, [isStandalone])
-  useEffect(() => { if (isStandalone) publishStudioType(filmOpen ? 'film' : mode) }, [isStandalone, mode, filmOpen])
+  }, [])
+  useEffect(() => { publishStudioType(filmOpen ? 'film' : mode) }, [mode, filmOpen])
   useEffect(() => {
-    if (!isStandalone || !searchFilmParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFilmParam)) return
+    if (!searchFilmParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFilmParam)) return
     setFilmOpen(true)
     setFilmId(searchFilmParam.toLowerCase())
-  }, [isStandalone, searchFilmParam])
+  }, [searchFilmParam])
   useEffect(() => () => publishStudioType(null), [])
   // ?type= is a seed, consumed and stripped like ?model=.
   useEffect(() => {
-    if (!isStandalone || !isStudioType(searchTypeParam)) return
+    if (!isStudioType(searchTypeParam)) return
     switchTypeRef.current(searchTypeParam)
     const url = new URL(window.location.href)
     url.searchParams.delete('type')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-  }, [isStandalone, searchTypeParam])
+  }, [searchTypeParam])
   // Old ?view= links: the Library moved to the account page; Templates lands
   // on the studio (the templates and tools were taken off it, Sep 28).
   useEffect(() => {
-    if (!isStandalone || !viewParam) return
+    if (!viewParam) return
     if (viewParam === 'creations') { router.replace('/profile'); return }
     const url = new URL(window.location.href)
     url.searchParams.delete('view')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-  }, [isStandalone, viewParam, router])
+  }, [viewParam, router])
 
   // Load a saved creation back into the Create tab so the user can continue
   // chatting with any model from that run. `continueIdx` is the index into the
@@ -4224,10 +4219,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                       ✏️ Replace the {'{{marked}}'} parts with your own words — or keep the defaults
                     </div>
                   )}
-                  {/* The door's From dropdown sits in the prompt box (owner,
-                      Oct 3: "put the source drop down to inside the prompt box
-                      like what others do"); www keeps it above the box. */}
-                  {isStandalone && (
+                  {/* The From dropdown sits in the prompt box (owner, Oct 3:
+                      "put the source drop down to inside the prompt box like
+                      what others do"). */}
                     <div className="xcs-prompt-tools">
                       <div className="xcs-source" ref={fromRef}>
                         <button type="button" className="xcs-source-btn" disabled={isLocked}
@@ -4240,7 +4234,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         {fromMenu}
                       </div>
                     </div>
-                  )}
                 </div>
     </>
   )
@@ -4324,16 +4317,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               >
                 {t('xc.startover')}
               </button>
-              {/* XBoard is www's; the studio door offers no way there (owner, Oct 1). */}
-              {!isStandalone && <a
-                href="/xboard"
-                style={{
-                  padding: '13px 26px', borderRadius: 10, border: '1px solid var(--border2)',
-                  color: 'var(--white)', fontWeight: 700, fontSize: 14, textDecoration: 'none',
-                }}
-              >
-                View XBoard
-              </a>}
             </MatchResult>
           </div>
         </div>
@@ -4341,9 +4324,9 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
       <StudioTypeBar />
       <div className="xduel-page">
-        <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
+        <div className="arena xcreate-arena xcs-studio" id="xcreate-main" tabIndex={-1}>
 
-          {isStandalone ? !filmOpen && (activeTool ? (
+          {!filmOpen && (activeTool ? (
             <header className="xcs-heading xtool-heading">
               <button type="button" className="xtool-back" onClick={() => leaveTool()}>‹ {t('xtools.backprompt')}</button>
               <h1>{t(`xtool.${activeTool.id}.name`)}</h1>
@@ -4354,12 +4337,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 earlier slogan read as nothing); its eyebrow would repeat it. */}
             <h1>{t('xcreate.subtitle')}</h1>
             <p>{copy.subtitle}</p>
-          </header>) : <>
-            <Link href="/xcreate" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xcreate.eyebrow')}</Link>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' as const }}>
-              <h1 className="page-headline" style={{ marginBottom: 24, flex: '1 1 auto', minWidth: 240 }}>{t('xcreate.subtitle')}</h1>
-            </div>
-          </>}
+          </header>)}
 
           {/* Error banner — surfaces ?id= load failures (row not found,
               row belongs to another user) so the user understands why
@@ -4397,8 +4375,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   if (typeof window !== 'undefined' && window.location.search) {
                     urlClearedByCodeRef.current = true
                     const url = new URL(window.location.href)
-                    if (isStandalone) { url.searchParams.delete('id'); url.searchParams.delete('job') }
-                    else url.search = ''
+                    url.searchParams.delete('id'); url.searchParams.delete('job')
                     window.history.replaceState({}, '', url.toString())
                   }
                 }}
@@ -4413,7 +4390,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               composer = describe an edit + pick ANY edit-capable model.
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
-          {isStandalone && filmOpen ? (
+          {filmOpen ? (
             <>
               <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
                 onSignIn={next => showAuth(next ?? '/xcreate?type=film')} />
@@ -4667,60 +4644,12 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
             ) : (
               /* ── SETUP / GENERATING / PICKING ── */
-              <div className={isStandalone ? 'xcs-setup' : undefined}>
-                {/* Mode — clickable only during setup. Once a run has started
-                    (generating / picking / chatting) the tabs lock; user must
-                    Start Over to switch modes. Switching modes nukes any
-                    prior selection/results via the mode-change useEffect
-                    above, which is intentional. */}
-                {/* Mode group + "From:" dropdown. Clicking a mode switches
-                    it immediately (first sub-mode as default); the From
-                    button opens a small list of the mode's sub-modes. */}
-                {!isStandalone && <div
-                  style={{ position: 'relative' as const, zIndex: 40, marginBottom: 26, opacity: isLocked ? 0.45 : 1 }}
-                >
-                  <div className="mode-row">
-                    {/* Column 1 — "Generate:" + segmented mode group. The
-                        XCreate door has none: its top bar carries the types
-                        (owner, Sep 28). */}
-                    {!isStandalone && <div className="mode-col">
-                      <div className="field-label">{t('xcreate.generate')}</div>
-                      <div className="mode-seg">
-                        {(['text', 'image', 'video', 'audio'] as Mode[]).map(m => (
-                          <button key={m} className={`mode-seg-btn ${mode === m ? 'active' : ''}`}
-                            disabled={isLocked}
-                            onClick={() => {
-                              if (isLocked) return
-                              setFromOpen(false)
-                              if (m !== mode) { setMode(m); setActiveTemplateId(null); templateAspectRef.current = null }
-                            }}
-                            style={{ cursor: isLocked ? 'default' : undefined }}
-                          >
-                            <ModeIcon m={m} />{t('mode.' + m)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>}
-
-                    {/* Column 2 — "From:" + small dropdown list of the
-                        current mode's sub-modes. */}
-                    <div className="mode-col" ref={fromRef} style={{ position: 'relative' as const }}>
-                      <div className="field-label">{t('xcreate.from')}</div>
-                      <button type="button" className="recipe-crumb-btn" disabled={isLocked}
-                        aria-haspopup="listbox" aria-expanded={fromOpen}
-                        onClick={() => !isLocked && setFromOpen(o => !o)}>
-                        {t('recipefrom.' + recipeMode)}
-                        <span aria-hidden style={{ fontSize: 9, color: 'var(--muted)' }}>▾</span>
-                      </button>
-                      {fromMenu}
-                    </div>
-                  </div>
-                </div>}
+              <div className="xcs-setup">
 
                 {/* No "Your prompt" line above the box (owner, Oct 3): the
                     placeholder says what goes there, and the textarea keeps
                     its aria-label. */}
-                {isStandalone && <div className="xcs-prompt-section">
+                <div className="xcs-prompt-section">
                   {activeTool ? (
                     // Tool mode (Oct 3): the photo, the tool's choices, and
                     // its words box; the prompt is the tool's own.
@@ -4774,17 +4703,11 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         onChange={e => { pickToolPhoto(e.target.files?.[0]); e.target.value = '' }} />
                     </div>
                   ) : promptComposer}
-                </div>}
+                </div>
 
                 {/* Model slots + per-model options */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                   <div className="field-label" style={{ marginBottom: 0 }}>{t('xcreate.selectmodels')}</div>
-                  {/* Discount nudge (CC, July 20) — quiet grey hint. */}
-                  {!isStandalone && activeModels.length < 4 && (
-                    <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em' }}>
-                      {t('xcreate.savemore')}
-                    </span>
-                  )}
                 </div>
                 {/* Once a generation run has started (generating → picking →
                     chatting), drop empty slots from the grid so the model row
@@ -4794,7 +4717,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   const isRunning = phase === 'generating' || phase === 'picking' || phase === 'chatting'
                   const filledSlots = [0, 1, 2, 3].filter(i => selectedModels[i])
                   const nextEmpty = selectedModels.findIndex(model => !model)
-                  const slotsToShow = isRunning ? filledSlots : isStandalone ? [...filledSlots, ...(nextEmpty >= 0 ? [nextEmpty] : [])] : [0, 1, 2, 3]
+                  const slotsToShow = isRunning ? filledSlots : [...filledSlots, ...(nextEmpty >= 0 ? [nextEmpty] : [])]
                   const columnCount = slotsToShow.length
                   return (
                 <div className="xcreate-slot-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`, gap: 10, marginBottom: 20, alignItems: 'start' }}>
@@ -4804,16 +4727,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     const opts = slotOptions[i]
 
                     if (!model) {
-                      // Discount teaser (CC, July 20): what the run's discount
-                      // BECOMES if this slot is filled. Counted by position
-                      // among the empty slots - not the slot letter - so it
-                      // stays correct when a middle model is removed:
-                      // A+C filled -> empty B teases 15% (3rd model), D 20%.
-                      const emptyBefore = [0, 1, 2, 3].filter(j => j < i && !selectedModels[j]).length
-                      const wouldBeCount = activeModels.length + emptyBefore + 1
-                      const teaser = wouldBeCount >= 2 && wouldBeCount <= 4 && discountFor(wouldBeCount) > 0
-                        ? t(`discount.${wouldBeCount}`)
-                        : null
                       return (
                       <button key={i} data-slot="empty" onClick={() => !isLocked && setPickerSlot(i)}
                         disabled={isLocked}
@@ -4821,21 +4734,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                         onMouseEnter={e => { if (!isLocked) { const el = e.currentTarget as HTMLElement; el.style.borderColor = color; el.style.color = color } }}
                         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--muted)' }}
                       >
-                        <span style={{ fontSize: 18 }}>+</span> {isStandalone ? (activeModels.length ? copy.compareModel : copy.addModel) : t('xcreate.modelslot').replace('{l}', LABELS[i])}
-                        {/* Discount tag - pinned to the top-right corner,
-                            slightly overhanging like a price sticker. */}
-                        {!isStandalone && teaser && (
-                          <span style={{
-                            position: 'absolute', top: -8, right: -6,
-                            fontSize: 9, fontWeight: 800, color: '#fff',
-                            background: 'var(--red)', borderRadius: 999,
-                            padding: '3px 8px', lineHeight: 1,
-                            fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em',
-                            whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(232,69,60,0.35)',
-                          }}>
-                            {teaser}
-                          </span>
-                        )}
+                        <span style={{ fontSize: 18 }}>+</span> {activeModels.length ? copy.compareModel : copy.addModel}
                       </button>
                       )
                     }
@@ -4927,26 +4826,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                           onMouseEnter={e => { if (!isLocked) (e.currentTarget as HTMLElement).style.borderColor = color }}
                           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = `${color}44` }}
                         >
-                          {/* Discount tag stays once the slot is filled (CC):
-                              rank among the FILLED slots decides the number -
-                              2nd model 10%, 3rd 15%, 4th 20% - so it survives
-                              middle removals the same way the teasers do. */}
-                          {(() => {
-                            if (isStandalone) return null
-                            const filledRank = [0, 1, 2, 3].filter(j => j < i && selectedModels[j]).length + 1
-                            return filledRank >= 2 && filledRank <= 4 && discountFor(filledRank) > 0 ? (
-                              <span style={{
-                                position: 'absolute', top: -8, right: -6,
-                                fontSize: 9, fontWeight: 800, color: '#fff',
-                                background: 'var(--red)', borderRadius: 999,
-                                padding: '3px 8px', lineHeight: 1,
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em',
-                                whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(232,69,60,0.35)',
-                              }}>
-                                {t(`discount.${filledRank}`)}
-                              </span>
-                            ) : null
-                          })()}
                           <ProviderLogo provider={model.provider} model={model.model_name} size={18} />
                           {/* Split a name like "GPT-5.4 (free)" into a bold
                               main line and a smaller muted sub-line for the
@@ -4956,11 +4835,10 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                             const match = model.display_name.match(/^(.*?)\s*(\([^)]*\))\s*$/)
                             const main = (match?.[1] ?? model.display_name).trim()
                             const sub = match?.[2]?.trim()
-                            const Name = isStandalone ? 'button' : 'div'
                             return (
-                              <Name type={isStandalone ? 'button' : undefined} disabled={isStandalone && isLocked}
-                                onClick={isStandalone ? e => { e.stopPropagation(); if (!isLocked) setPickerSlot(i) } : undefined}
-                                style={{ flex: 1, minWidth: 0, textAlign: isStandalone ? 'left' : 'center', ...(isStandalone ? { background: 'none', border: 'none', padding: '10px 0', font: 'inherit', cursor: isLocked ? 'default' : 'pointer' } : {}) }}>
+                              <button type="button" disabled={isLocked}
+                                onClick={e => { e.stopPropagation(); if (!isLocked) setPickerSlot(i) }}
+                                style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '10px 0', font: 'inherit', cursor: isLocked ? 'default' : 'pointer' }}>
                                 <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
                                   {main}
                                 </div>
@@ -4969,7 +4847,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                                     {sub}
                                   </div>
                                 )}
-                              </Name>
+                              </button>
                             )
                           })()}
                           {hasOptions && (
@@ -5413,7 +5291,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                 {/* (Popular strip removed — it lives in the mode dropdown
                     now; the full catalog stays below the composer.) */}
 
-                {!isStandalone && promptComposer}
 
                 {/* Actions row — OUTSIDE the prompt box (July 2026, CC):
                     sits just below the composer as a normal flex row, so it
@@ -5474,7 +5351,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     </span>
                   )}
                   {/* Improve prompt: secondary, beside Generate (owner, Sep 16). */}
-                  {phase === 'setup' && !activeTool && (isStandalone && !userId ? <span className="xcs-auth-refiner" onClickCapture={e => { e.preventDefault(); e.stopPropagation(); showAuth() }}>{refiner.action}</span> : refiner.action)}
+                  {phase === 'setup' && !activeTool && (!userId ? <span className="xcs-auth-refiner" onClickCapture={e => { e.preventDefault(); e.stopPropagation(); showAuth() }}>{refiner.action}</span> : refiner.action)}
                   {phase === 'setup' && (
                     <button className="btn-battle" onClick={generate} disabled={!canGenerate}>
                       {t('xcreate.generatebtn')}
@@ -5529,56 +5406,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                   </div>
                 )}
 
-                {/* Discovery — the full tools + templates catalog, below the
-                    composer (CapCut "Inspiration" pattern: browse when you
-                    want it, out of the way when you're working). Hidden once
-                    a run has results so it doesn't compete with them.
-                    Clicking anything applies it and scrolls back up to the
-                    flashing composer. */}
 
-                {!isStandalone && phase === 'setup' && slots.length === 0 && (() => {
-                  // Category sections (Popular / Tools / Templates), each
-                  // wrapped so EVERY card is visible — no horizontal
-                  // scrolling (July 2026: CC prefers the full catalog on
-                  // screen over Netflix rows). Items may appear in more
-                  // than one section — that's fine.
-                  const forMode = XCREATE_TEMPLATES.filter(x => x.mode === mode)
-                  // Popular row removed (owner, Aug 26): it duplicated cards
-                  // that already sit in Tools/Templates below. `popular` on
-                  // templates still orders/badges elsewhere — don't delete
-                  // the flag.
-                  const rows: { key: string; caption: string; items: Template[] }[] = [
-                    { key: 'tools',     caption: t('xcreate.alltools'),     items: forMode.filter(x => x.kind === 'tool') },
-                    { key: 'templates', caption: t('xcreate.alltemplates'), items: forMode.filter(x => x.kind !== 'tool') },
-                  ]
-                  return (
-                    <div style={{ marginTop: 36 }}>
-                      {rows.filter(r => r.items.length > 0).map(r => (
-                        <div key={r.key} style={{ marginBottom: 22 }}>
-                          <div className="ms-cap">{r.caption}</div>
-                          <TemplatePicker
-                            templates={r.items}
-                            selectedId={activeTemplateId}
-                            onSelect={applyTemplate}
-                            onClear={reset}
-                            layout="wrap"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })()}
-
-                {/* The wall, under the tools and templates (owner, Sep 9).
-                    It sat above them for a while on the argument that a
-                    first-time visitor should meet real output before two
-                    grids of cards; the owner's call is that the tools are
-                    what this page is FOR, and the wall is what you browse
-                    once you have not found one. Setup screen only — once
-                    there are results, the results are the thing. */}
-                {!isStandalone && phase === 'setup' && slots.length === 0 && (mode === 'image' || mode === 'video') && (
-                  <ShowcaseWall pieces={showcase.filter(p => p.kind === mode)} />
-                )}
 
                 {/* The door's one page under Generate (Oct 3 redesign, learned
                     from Pollo AI's /image page; "the top part stays the same"):
@@ -5591,7 +5419,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
                     the prompt-filling templates. The models list went too: the
                     model cards above pick models, and the picker shows each
                     one's price. Setup screen only, like the wall above. */}
-                {isStandalone && phase === 'setup' && slots.length === 0 && <>
+                {phase === 'setup' && slots.length === 0 && <>
                   {mode === 'image' && <ToolsRow activeId={toolId} onOpen={tool => { void applyTool(tool) }} />}
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTrending kind={mode} onUse={template => { void applyTemplate(template) }} />
@@ -5601,8 +5429,8 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
 
                 {/* Results */}
                 {slots.length > 0 && (
-                  <div className={isStandalone ? 'xcs-results' : undefined} style={{ marginTop: 24 }}>
-                    {isStandalone && activeTool && phase !== 'generating' && (
+                  <div className="xcs-results" style={{ marginTop: 24 }}>
+                    {activeTool && phase !== 'generating' && (
                       <div className="xtool-again-row">
                         <button type="button" className="xtool-again" onClick={toolAgain}>↺ {t('xtools.again')}</button>
                       </div>

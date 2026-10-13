@@ -221,9 +221,11 @@ now shows that studio in www's shell (left nav, ModelXD logo), as /xtell
 does: `StudioTypeBar.tsx` (the door's types row: Text, Image, Video, Audio,
 Film) is pinned on top (under the phone's 60px header), and `.xcs-page`
 (standalone.css) carries X創作's `--xc-*` colours around the studio and its
-dialogs; type is www's. The studio no longer has a www/door switch
-(`isStandalone` is always true; the old www-only branches are dead code to
-remove). Browsing needs no account (`useRequireAuth(false)`); spending asks.
+dialogs; type is www's. The studio has no www/door switch any more: the
+old www studio's own pieces (the Generate/From row above the box, the
+discount nudges, the tools and templates catalog, the showcase wall and its
+server read) were removed with `isStandalone`. Browsing needs no account
+(`useRequireAuth(false)`); spending asks.
 The model picker keeps the door's look there (`studio` prop: no XD score,
 no internal id; owner, Oct 3: "not ready yet"). No Omnibox bar on /xcreate.
 Your works link to `/xcreate?id=`; the Library is www's /profile XCreate
