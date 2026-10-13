@@ -37,11 +37,10 @@ const TEMPLATES: LandingApp[] = [
 ]
 // The surfaces wear generated covers of the same ambition as the template
 // loops (owner, Aug 23: emoji plates and clip-art read as placeholders).
-// Generated with GPT Image 2; originals in the session scratchpad. XVote has
-// no cover: it rides on the XBoard card, since its votes are what the board
-// ranks by.
+// Generated with GPT Image 2; originals in the session scratchpad. XTalk and
+// XVote left the home on Oct 13 (owner: "remove XTalk and XVote in the
+// page"); both stay in the nav.
 const SURFACES: LandingApp[] = [
-  { href: '/xtalk',   name: 'XTalk',   descKey: 'home.surf.xtalk',   video: '/landing/apps/xtalk-loop.mp4', img: '/landing/apps/xtalk.jpg' },
   { href: '/xgame',   name: 'XGame',   descKey: 'home.surf.xgame',   video: '/landing/apps/xgame-loop.mp4', img: '/landing/apps/xgame.jpg' },
   { href: '/xduel',   name: 'XDuel',   descKey: 'home.surf.xduel',   video: '/landing/apps/xduel-loop.mp4', img: '/landing/apps/xduel.jpg' },
   { href: '/xcreate', name: 'XCreate', descKey: 'home.surf.xcreate', img: '/landing/apps/xcreate.jpg' },
@@ -423,32 +422,20 @@ export default function HomeClient() {
 
           {/* ── The proof (owner, Aug 24): XBoard and XEval are not apps,
               they are the evidence behind "the best AI for every task", so
-              they close the shelf as two wide cards. XVote sits inside
-              XBoard's: judging other people's duels is how the board
-              moves. ── */}
-          <div className="hm-proofs">
-            <div className="hm-proof">
-              <div className="hm-proof-main" role="link" tabIndex={0} onClick={() => router.push('/xboard')} onKeyDown={e => { if (e.key === 'Enter') router.push('/xboard') }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/landing/apps/xboard.jpg" alt="" loading="lazy" />
-                <div className="hm-card-body">
-                  <span className="hm-card-name">XBoard</span>
-                  <span className="hm-card-desc">{t('home.surf.xboard')}</span>
-                </div>
+              they close the shelf. One card since Oct 13 (owner: "merge
+              XBoard and XEval and redraw the thumbnail"): one picture of
+              measuring and ranking, and the two as its rows. ── */}
+          <div className="hm-proof">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/landing/apps/xboard-xeval.jpg" alt="" loading="lazy" />
+            <div className="hm-proof-rows">
+              <div className="hm-proof-row" role="link" tabIndex={0} onClick={() => router.push('/xboard')} onKeyDown={e => { if (e.key === 'Enter') router.push('/xboard') }}>
+                <span className="hm-card-name">XBoard</span>
+                <span className="hm-card-desc">{t('home.surf.xboard')}</span>
               </div>
-              <div className="hm-proof-vote" role="link" tabIndex={0} onClick={() => void handleNav('/xvote')} onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xvote') }}>
-                <span className="hm-card-name">XVote</span>
-                <span className="hm-card-desc">{t('home.surf.xvote')}</span>
-              </div>
-            </div>
-            <div className="hm-proof">
-              <div className="hm-proof-main" role="link" tabIndex={0} onClick={() => router.push('/xeval')} onKeyDown={e => { if (e.key === 'Enter') router.push('/xeval') }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/landing/apps/xeval.jpg" alt="" loading="lazy" />
-                <div className="hm-card-body">
-                  <span className="hm-card-name">XEval</span>
-                  <span className="hm-card-desc">{t('home.surf.xeval')}</span>
-                </div>
+              <div className="hm-proof-row" role="link" tabIndex={0} onClick={() => router.push('/xeval')} onKeyDown={e => { if (e.key === 'Enter') router.push('/xeval') }}>
+                <span className="hm-card-name">XEval</span>
+                <span className="hm-card-desc">{t('home.surf.xeval')}</span>
               </div>
             </div>
           </div>
