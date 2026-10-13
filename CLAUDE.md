@@ -375,6 +375,15 @@ or upload one, read it into a shot list, choose the length and what to swap
   longer stretches in one call.
 - **Cost.** Reads are free, 10 a day per user, counted in `activity_logs`.
   The source is never kept.
+- **Materials (Oct 13; owner: "break down the essential materials ... for
+  users to replace").** The same read lists people, things (product, props,
+  logos) and places, each with the moment and box where it is seen best; the
+  page adds music, each speaking voice and the on-screen text, and shows
+  them as a row of tiles plus one card each (original → yours). For X and
+  uploads the route cuts a 160 px picture of each from the file it holds
+  (`lib/remake/previews.ts`, ffmpeg traced into the route) and returns them
+  inline, never stored; YouTube cards play the moment in YouTube's player.
+  A logo starts as "remove"; the original's music is never reused.
 - **Files.** `app/xcreate/RemakeStudio.tsx`, `lib/remake/`,
   `/api/xcreate/remake/breakdown`. Plan: `docs/REMAKE-PLAN.md`.
 

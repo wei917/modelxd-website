@@ -8,23 +8,40 @@
 // The page is drawn around the original's cut rhythm (Oct 11): the heading
 // shows one edit twice (the original, then yours), the read shows the real
 // one as a strip with the stretch to remake framed in red, the shots run as
-// a timeline, and each person to swap is a card from the original to yours.
+// a timeline, and each material is a card from the original to yours.
+//
+// The materials (Oct 13; owner: "it should automatically break down the
+// essential materials (input images, audio...etc) for users to replace"):
+// the read names the people, things (product, props, logos) and places, and
+// the page adds the music, each speaking voice and the on-screen text. A row
+// of tiles shows them all at once; each card carries a picture of the
+// original (cut from X and uploaded videos; YouTube plays the moment in its
+// own player instead) and the ways to replace it. Photos and recordings stay
+// in the tab until making exists; nothing is uploaded yet.
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useLang, type Lang } from '@/lib/i18n'
 import { createSupabaseBrowser } from '@/lib/supabase-client'
 import { pendingAttachment, commitAttachments } from '../components/AttachmentButton'
 import ModeIcon from '../components/ModeIcon'
 import {
   REMAKE_LENGTHS, REMAKE_LOOKS, estimateRemakeCents,
-  type BreakdownResult, type CastChoice, type RemakeLook, type Shot,
+  type Breakdown, type BreakdownResult, type CastChoice, type Character, type MusicChoice, type Place,
+  type PlaceChoice, type RemakeLook, type Shot, type Thing, type ThingChoice, type VoiceChoice,
 } from '@/lib/remake/config'
 import { remakeCopy, REMAKE_LANGUAGES } from './remake-copy'
 
 const DRAFT_KEY = 'xcreate.remake-draft'
 const MAX_VIDEO_BYTES = 300_000_000
 const CAST_CHOICES: CastChoice[] = ['keep', 'photo', 'describe', 'famous']
+const THING_CHOICES: ThingChoice[] = ['keep', 'photo', 'describe', 'remove']
+/** A logo is never carried over, so it has no "keep". */
+const LOGO_CHOICES: ThingChoice[] = ['remove', 'photo', 'describe']
+const PLACE_CHOICES: PlaceChoice[] = ['keep', 'photo', 'describe']
+const MUSIC_CHOICES: MusicChoice[] = ['none', 'mine']
+const VOICE_CHOICES: VoiceChoice[] = ['ai', 'mine', 'none']
 const SHOTS_FIRST = 6
+const TEXTS_FIRST = 5
 const money = (cents: number) => `$${(cents / 100).toFixed(cents >= 1000 ? 0 : 2)}`
 /** Fast cuts are under a second, so times keep their tenths: 0:00.8. */
 const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
@@ -39,9 +56,10 @@ const TIGHTNESS: Record<string, number> = {
   medium: 0.55, 'medium wide': 0.4, wide: 0.25, 'extreme wide': 0.1,
 }
 
-type CastPick = { choice: CastChoice; text: string; consent: boolean; photo?: string }
-const withoutPhotos = (cast: Record<string, CastPick>): Record<string, CastPick> =>
-  Object.fromEntries(Object.entries(cast).map(([k, v]) => [k, { ...v, photo: undefined }]))
+type CastPick = { choice: CastChoice; text: string; consent: boolean }
+type ThingPick = { choice: ThingChoice; text: string }
+type PlacePick = { choice: PlaceChoice; text: string }
+type VoicePick = { choice: VoiceChoice; consent: boolean }
 type Draft = {
   link: string
   start: number
@@ -49,18 +67,44 @@ type Draft = {
   length: number
   fromShot: number
   cast: Record<string, CastPick>
+  things: Record<string, ThingPick>
+  places: Record<string, PlacePick>
+  music: MusicChoice
+  /** By speaker (a line's `who`). */
+  voices: Record<string, VoicePick>
+  /** On-screen text, original → the user's; empty = rewritten for the theme. */
+  texts: Record<string, string>
   theme: string
   setting: string
   look: RemakeLook
   language: Lang
 }
+/** A photo or recording the user picked: kept in the tab only, never in the draft. */
+type Picked = { url: string; name: string }
 
-const LinkIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-  <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
-</svg>
-const UploadIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-  <path d="M12 15V3" /><path d="m7 8 5-5 5 5" /><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" />
-</svg>
+const thingDefault = (t: Thing): ThingChoice => t.kind === 'logo' ? 'remove' : 'keep'
+const freshPicks = (b: Breakdown): Pick<Draft, 'cast' | 'things' | 'places' | 'music' | 'voices' | 'texts'> => ({
+  cast: Object.fromEntries(b.characters.map(ch => [ch.id, { choice: 'keep', text: '', consent: false }])),
+  things: Object.fromEntries((b.things ?? []).map(t => [t.id, { choice: thingDefault(t), text: '' }])),
+  places: Object.fromEntries((b.places ?? []).map(x => [x.id, { choice: 'keep', text: '' }])),
+  music: 'none', voices: {}, texts: {},
+})
+/** A speaker id made safe for an element id. */
+const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '_')
+
+const svg = (children: ReactNode, size = 18) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+const LinkIcon = () => svg(<><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" /></>)
+const UploadIcon = () => svg(<><path d="M12 15V3" /><path d="m7 8 5-5 5 5" /><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" /></>)
+const ICONS = {
+  person: () => svg(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>, 24),
+  thing: () => svg(<><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5" /><path d="M12 13v8" /></>, 24),
+  logo: () => svg(<><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" /><circle cx="8" cy="8" r="1.5" /></>, 24),
+  place: () => svg(<><path d="m3 20 6-10 4 6 3-4 5 8z" /><circle cx="16" cy="6" r="2" /></>, 24),
+  music: () => svg(<><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>, 24),
+  voice: () => svg(<><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0" /><path d="M12 17v4" /></>, 24),
+  text: () => svg(<><path d="M5 5h14" /><path d="M12 5v14" /><path d="M9 19h6" /></>, 24),
+}
+const PlayIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z" /></svg>
 
 export default function RemakeStudio({ signedIn, onSignIn }: {
   signedIn: boolean
@@ -71,24 +115,38 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   const c = remakeCopy(lang)
   const listSep = lang === 'en' || lang === 'ko' ? ', ' : '、'
   const colon = lang === 'en' || lang === 'ko' ? ': ' : '：'
+  const quote = (t: string) => lang === 'en' || lang === 'ko' ? `“${t}”` : `「${t}」`
   // The read and the choices survive a sign-in round trip and a trip to
   // another type (per tab, like the film's brief). Read before the first
   // draw: restoring in an effect let the save below write the empty draft
-  // over the stored one first. Photos are never stored, only their choice.
+  // over the stored one first. Photos and recordings are never stored, only
+  // the choices (drafts before Oct 13 kept a photo link in the cast; dropped).
   const [d, setD] = useState<Draft>(() => {
-    const base: Draft = { link: '', start: 0, result: null, length: 30, fromShot: 0, cast: {}, theme: '', setting: '', look: 'keep', language: lang }
+    const base: Draft = {
+      link: '', start: 0, result: null, length: 30, fromShot: 0,
+      cast: {}, things: {}, places: {}, music: 'none', voices: {}, texts: {},
+      theme: '', setting: '', look: 'keep', language: lang,
+    }
     if (typeof window === 'undefined') return base
     try {
       const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null')
-      if (saved && typeof saved === 'object') return { ...base, ...saved, cast: withoutPhotos(saved.cast ?? {}) }
+      if (saved && typeof saved === 'object') {
+        const cast = Object.fromEntries(Object.entries(saved.cast ?? {}).map(([k, v]: [string, any]) =>
+          [k, { choice: v?.choice ?? 'keep', text: v?.text ?? '', consent: !!v?.consent }]))
+        return { ...base, ...saved, cast }
+      }
     } catch { /* storage unavailable */ }
     return base
   })
   const set = (patch: Partial<Draft>) => setD(prev => ({ ...prev, ...patch }))
   const [stage, setStage] = useState<'idle' | 'uploading' | 'reading'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [productPhoto, setProductPhoto] = useState<string | null>(null)
+  const [files, setFiles] = useState<Record<string, Picked>>({})
   const [allShots, setAllShots] = useState(false)
+  const [allTexts, setAllTexts] = useState(false)
+  const [extrasOpen, setExtrasOpen] = useState(false)
+  const [peek, setPeek] = useState<string | null>(null)
+  const [flash, setFlash] = useState<string | null>(null)
   const [since, setSince] = useState(0)
   const [now, setNow] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -98,7 +156,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   const fresh = useRef(false)
 
   useEffect(() => {
-    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ...d, cast: withoutPhotos(d.cast) })) } catch { /* storage unavailable */ }
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)) } catch { /* storage unavailable */ }
   }, [d])
 
   // The clock beside the reading reel: a long read takes up to two minutes.
@@ -137,12 +195,9 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
       const r = body as BreakdownResult
       const dur = r.breakdown.duration
       fresh.current = true
-      setAllShots(false)
-      set({
-        result: r, fromShot: 0,
-        length: dur <= 15 ? 0 : dur <= 30 ? 15 : 30,
-        cast: Object.fromEntries(r.breakdown.characters.map(ch => [ch.id, { choice: 'keep', text: '', consent: false }])),
-      })
+      setAllShots(false); setAllTexts(false); setExtrasOpen(false); setPeek(null)
+      setFiles(prev => { for (const f of Object.values(prev)) URL.revokeObjectURL(f.url); return {} })
+      set({ result: r, fromShot: 0, length: dur <= 15 ? 0 : dur <= 30 ? 15 : 30, ...freshPicks(r.breakdown) })
     } catch {
       setError(c.errors.read_failed)
     } finally {
@@ -187,6 +242,9 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
 
   const b = d.result?.breakdown ?? null
   const shots = b?.shots ?? []
+  const things = b?.things ?? []
+  const places = b?.places ?? []
+  const previews = d.result?.previews ?? {}
   const roles = useMemo(() => new Map((b?.characters ?? []).map(ch => [ch.id, ch.role])), [b])
   /** The model writes "C1 grips his head"; the page says who C1 is. */
   const named = (text: string) => text.replace(/\b[cC](\d{1,2})\b/g, (m, n) => roles.get(`c${n}`) ?? m)
@@ -199,6 +257,19 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
     const main = sorted.filter((ch, i) => i < 2 || (count.get(ch.id) ?? 0) >= 2)
     return { main, extra: sorted.filter(ch => !main.includes(ch)), count }
   }, [b])
+  /** Who speaks, in the order they first do, with their first line. */
+  const speakers = useMemo(() => {
+    const m = new Map<string, { who: string; first: string; n: number }>()
+    for (const l of b?.lines ?? []) { const e = m.get(l.who); if (e) e.n++; else m.set(l.who, { who: l.who, first: l.text, n: 1 }) }
+    return [...m.values()]
+  }, [b])
+  const texts = useMemo(() => [...new Set((b?.shots ?? []).map(s => s.text.trim()).filter(Boolean))], [b])
+  /** YouTube is never downloaded, so its cards play the moment in YouTube's own player. */
+  const ytId = useMemo(() => {
+    if (d.result?.source.kind !== 'youtube' || !d.result.source.url) return null
+    try { return new URL(d.result.source.url).searchParams.get('v') } catch { return null }
+  }, [d.result])
+  const srcStart = d.result?.source.start ?? 0
 
   // The stretch to remake: from the chosen shot, for the chosen length.
   const total = Math.max(0.1, b?.duration ?? 0, shots.length ? shots[shots.length - 1].t1 : 0)
@@ -226,45 +297,153 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
     const i = shots.findIndex(s => t < s.t1)
     set({ fromShot: i < 0 ? shots.length - 1 : i })
   }
+
+  // The choices, each built on the latest state (two taps in one tick both count).
+  const castPick = (id: string): CastPick => d.cast[id] ?? { choice: 'keep', text: '', consent: false }
+  const thingPick = (t: Thing): ThingPick => d.things[t.id] ?? { choice: thingDefault(t), text: '' }
+  const placePick = (id: string): PlacePick => d.places[id] ?? { choice: 'keep', text: '' }
+  const voicePick = (who: string): VoicePick => d.voices[who] ?? { choice: 'ai', consent: false }
   const setCast = (id: string, patch: Partial<CastPick>) =>
     setD(prev => ({ ...prev, cast: { ...prev.cast, [id]: { ...(prev.cast[id] ?? { choice: 'keep', text: '', consent: false }), ...patch } } }))
-  const pickPhoto = (id: string, file: File | undefined) => {
+  const setThing = (t: Thing, patch: Partial<ThingPick>) =>
+    setD(prev => ({ ...prev, things: { ...prev.things, [t.id]: { ...(prev.things[t.id] ?? { choice: thingDefault(t), text: '' }), ...patch } } }))
+  const setPlace = (id: string, patch: Partial<PlacePick>) =>
+    setD(prev => ({ ...prev, places: { ...prev.places, [id]: { ...(prev.places[id] ?? { choice: 'keep', text: '' }), ...patch } } }))
+  const setVoice = (who: string, patch: Partial<VoicePick>) =>
+    setD(prev => ({ ...prev, voices: { ...prev.voices, [who]: { ...(prev.voices[who] ?? { choice: 'ai', consent: false }), ...patch } } }))
+  const pickFile = (key: string, file: File | undefined) => {
     if (!file) return
-    setCast(id, { photo: URL.createObjectURL(file) })
+    setFiles(prev => {
+      if (prev[key]) URL.revokeObjectURL(prev[key].url)
+      return { ...prev, [key]: { url: URL.createObjectURL(file), name: file.name } }
+    })
+  }
+  const inShots = (has: (s: Shot) => boolean) => { const n = shots.filter(has).length; return n ? c.inShots(n) : undefined }
+
+  // Every material once, for the row of tiles at the top of 03: the main
+  // people, then things, places, sound and text, and the one-shot extras
+  // last so a crowd of faces does not push the rest off the row.
+  type Tile = { key: string; label: string; pic: ReactNode; changed: boolean; extra?: boolean }
+  const pictureOr = (id: string, icon: ReactNode) => previews[id] ? <img src={previews[id]} alt="" /> : icon
+  const personTile = (ch: Character, extra: boolean): Tile =>
+    ({ key: ch.id, label: ch.role, pic: pictureOr(ch.id, <ICONS.person />), changed: castPick(ch.id).choice !== 'keep', extra })
+  const tiles: Tile[] = b ? [
+    ...castOrder.main.map(ch => personTile(ch, false)),
+    ...things.map(t => ({ key: t.id, label: t.name, pic: pictureOr(t.id, t.kind === 'logo' ? <ICONS.logo /> : <ICONS.thing />), changed: thingPick(t).choice !== thingDefault(t) })),
+    ...places.map(x => ({ key: x.id, label: x.name, pic: pictureOr(x.id, <ICONS.place />), changed: placePick(x.id).choice !== 'keep' })),
+    ...(b.music.present ? [{ key: 'music', label: c.music, pic: <ICONS.music />, changed: d.music !== 'none' }] : []),
+    ...speakers.map(sp => ({ key: `v-${safe(sp.who)}`, label: `${c.voiceLabel} ${roles.get(sp.who) ?? sp.who}`, pic: <ICONS.voice />, changed: voicePick(sp.who).choice !== 'ai' })),
+    ...(texts.length ? [{ key: 'text', label: c.kinds.text, pic: <ICONS.text />, changed: texts.some(t => !!d.texts[t]?.trim()) }] : []),
+    ...castOrder.extra.map(ch => personTile(ch, true)),
+  ] : []
+  const goTo = (tile: Tile) => {
+    if (tile.extra) setExtrasOpen(true)
+    setFlash(tile.key)
+    window.setTimeout(() => document.getElementById(`xcs-m-${tile.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), tile.extra ? 80 : 0)
+    window.setTimeout(() => setFlash(f => f === tile.key ? null : f), 1600)
   }
 
-  const castCard = (ch: { id: string; role: string; look: string }) => {
-    const pick = d.cast[ch.id] ?? { choice: 'keep' as CastChoice, text: '', consent: false }
-    return <div key={ch.id} className="xcs-remake-cast" role="group" aria-labelledby={`xcs-remake-cast-${ch.id}`}>
+  /** The original's picture on a card: cut from the video, or YouTube's player at that moment, or an icon. */
+  const cardPic = (key: string, id: string | null, best: number | undefined, icon: ReactNode) =>
+    id && previews[id] ? <img src={previews[id]} alt="" />
+      : ytId && best != null
+        ? <button type="button" className="xcs-remake-watch" aria-label={c.watchHere} aria-expanded={peek === key}
+          onClick={() => setPeek(p => p === key ? null : key)}><PlayIcon /><span>{tick(srcStart + best)}</span></button>
+        : <span className="xcs-remake-icon">{icon}</span>
+  const card = (o: { key: string; pic: ReactNode; wide?: boolean; tag: string; count?: string; name: string; look?: string; best?: number; children: ReactNode }) =>
+    <div key={o.key} id={`xcs-m-${o.key}`} className={`xcs-remake-cast${flash === o.key ? ' is-flash' : ''}`} role="group" aria-labelledby={`xcs-m-${o.key}-name`}>
       <div className="xcs-remake-cast-was">
-        <p className="xcs-remake-tag"><span>{c.original}</span><span>{c.inShots(castOrder.count.get(ch.id) ?? 0)}</span></p>
-        <p className="xcs-remake-cast-role" id={`xcs-remake-cast-${ch.id}`}>{ch.role}</p>
-        <p className="xcs-remake-cast-look">{ch.look}</p>
+        <span className={`xcs-remake-pic${o.wide ? ' is-wide' : ''}`}>{o.pic}</span>
+        <div className="xcs-remake-cast-text">
+          <p className="xcs-remake-tag"><span>{o.tag}</span>{o.count && <span>{o.count}</span>}</p>
+          <p className="xcs-remake-cast-role" id={`xcs-m-${o.key}-name`}>{o.name}</p>
+          {o.look && <p className="xcs-remake-cast-look">{o.look}</p>}
+        </div>
+        {peek === o.key && ytId && o.best != null && <div className="xcs-remake-peek">
+          <iframe src={`https://www.youtube-nocookie.com/embed/${ytId}?start=${Math.floor(srcStart + o.best)}&autoplay=1&mute=1&playsinline=1&rel=0`}
+            title={o.name} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+        </div>}
       </div>
       <div className="xcs-remake-cast-now">
         <p className="xcs-remake-tag is-yours"><span>{c.yours}</span></p>
-        <div className="xcs-film-seg">
-          {CAST_CHOICES.map(choice => <button key={choice} type="button" aria-pressed={pick.choice === choice}
-            onClick={() => setCast(ch.id, { choice })}>{c.cast[choice]}</button>)}
-        </div>
-        {(pick.choice === 'describe' || pick.choice === 'famous') && <input className="xcs-remake-input" value={pick.text} maxLength={200}
-          aria-label={`${ch.role}${colon}${c.cast[pick.choice]}`}
-          placeholder={pick.choice === 'describe' ? c.describePlaceholder : c.famousPlaceholder}
-          onChange={e => setCast(ch.id, { text: e.target.value })} />}
-        {pick.choice === 'photo' && <div className="xcs-remake-photo">
-          <label className="xcs-remake-photo-pick">
-            <span className="xcs-remake-photo-tile">{pick.photo ? <img src={pick.photo} alt="" /> : '+'}</span>
-            <span>{c.photoPick}</span>
-            <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => pickPhoto(ch.id, e.target.files?.[0])} />
-          </label>
-          <label className="xcs-remake-consent">
-            <input type="checkbox" checked={pick.consent} onChange={e => setCast(ch.id, { consent: e.target.checked })} />
-            <span>{c.photoConsent}</span>
-          </label>
-        </div>}
+        {o.children}
       </div>
     </div>
+  const seg = <T extends string>(options: T[], value: T, label: (o: T) => string, onPick: (o: T) => void) =>
+    <div className="xcs-film-seg">
+      {options.map(o => <button key={o} type="button" aria-pressed={value === o} onClick={() => onPick(o)}>{label(o)}</button>)}
+    </div>
+  const photoPicker = (key: string, label = c.photoPick) =>
+    <label className="xcs-remake-photo-pick">
+      <span className="xcs-remake-photo-tile">{files[key] ? <img src={files[key].url} alt="" /> : '+'}</span>
+      <span>{label}</span>
+      <input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => pickFile(key, e.target.files?.[0])} />
+    </label>
+  const audioPicker = (key: string) =>
+    <div className="xcs-remake-audio">
+      <label className="xcs-remake-audio-pick">
+        <ICONS.music /><span>{files[key]?.name ?? c.audioPick}</span>
+        <input type="file" accept="audio/*" hidden onChange={e => pickFile(key, e.target.files?.[0])} />
+      </label>
+      {files[key] && <audio src={files[key].url} controls preload="none" />}
+    </div>
+  const consent = (checked: boolean, onChange: (v: boolean) => void) =>
+    <label className="xcs-remake-consent">
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <span>{c.photoConsent}</span>
+    </label>
+
+  const castCard = (ch: Character) => {
+    const p = castPick(ch.id)
+    return card({
+      key: ch.id, pic: cardPic(ch.id, ch.id, ch.best, <ICONS.person />), tag: c.original,
+      count: c.inShots(castOrder.count.get(ch.id) ?? 0), name: ch.role, look: ch.look, best: ch.best,
+      children: <>
+        {seg(CAST_CHOICES, p.choice, o => c.cast[o], o => setCast(ch.id, { choice: o }))}
+        {(p.choice === 'describe' || p.choice === 'famous') && <input className="xcs-remake-input" value={p.text} maxLength={200}
+          aria-label={`${ch.role}${colon}${c.cast[p.choice]}`}
+          placeholder={p.choice === 'describe' ? c.describePlaceholder : c.famousPlaceholder}
+          onChange={e => setCast(ch.id, { text: e.target.value })} />}
+        {p.choice === 'photo' && <div className="xcs-remake-photo">
+          {photoPicker(`c:${ch.id}`)}
+          {consent(p.consent, v => setCast(ch.id, { consent: v }))}
+        </div>}
+      </>,
+    })
   }
+  const thingCard = (t: Thing) => {
+    const p = thingPick(t), logo = t.kind === 'logo'
+    return card({
+      key: t.id, pic: cardPic(t.id, t.id, t.best, logo ? <ICONS.logo /> : <ICONS.thing />), tag: `${c.original} · ${c.thingKinds[t.kind]}`,
+      count: inShots(s => !!s.things?.includes(t.id)), name: t.name, look: t.look, best: t.best,
+      children: <>
+        {seg(logo ? LOGO_CHOICES : THING_CHOICES, p.choice, o => logo && o === 'photo' ? c.myLogo : c.thingChoices[o], o => setThing(t, { choice: o }))}
+        {p.choice === 'describe' && <input className="xcs-remake-input" value={p.text} maxLength={200}
+          aria-label={`${t.name}${colon}${c.thingChoices.describe}`} placeholder={c.thingPlaceholder}
+          onChange={e => setThing(t, { text: e.target.value })} />}
+        {p.choice === 'photo' && photoPicker(`t:${t.id}`)}
+        {logo && <p className="xcs-film-note">{c.logoNote}</p>}
+      </>,
+    })
+  }
+  const placeCard = (x: Place) => {
+    const p = placePick(x.id)
+    return card({
+      key: x.id, pic: cardPic(x.id, x.id, x.best, <ICONS.place />), wide: !!previews[x.id], tag: c.original,
+      count: inShots(s => s.place === x.id), name: x.name, look: x.look, best: x.best,
+      children: <>
+        {seg(PLACE_CHOICES, p.choice, o => c.thingChoices[o], o => setPlace(x.id, { choice: o }))}
+        {p.choice === 'describe' && <input className="xcs-remake-input" value={p.text} maxLength={200}
+          aria-label={`${x.name}${colon}${c.thingChoices.describe}`} placeholder={c.settingPlaceholder}
+          onChange={e => setPlace(x.id, { text: e.target.value })} />}
+        {p.choice === 'photo' && photoPicker(`p:${x.id}`)}
+      </>,
+    })
+  }
+  const kindHeading = (label: string, n?: number) =>
+    <h3 className="xcs-remake-kind"><span>{label}</span>{n ? <b>{n}</b> : null}</h3>
+  const hasProduct = things.some(t => t.kind === 'product')
+  const shownTexts = allTexts ? texts : texts.slice(0, TEXTS_FIRST)
 
   return <section className="xcs-film xcs-remake" aria-labelledby="xcs-remake-title">
     <header className="xcs-heading">
@@ -398,42 +577,112 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
 
       <section className="xcs-remake-sec" aria-labelledby="xcs-remake-s3">
         <h2 className="xcs-remake-step" id="xcs-remake-s3"><b aria-hidden="true">03</b>{c.swapHeading}</h2>
-        <div className="xcs-remake-swaps">
-          {castOrder.main.map(ch => castCard(ch))}
-          {castOrder.extra.length > 0 && <details className="xcs-film-more xcs-remake-extra">
-            <summary>{c.otherCast(castOrder.extra.length)}</summary>
-            <div className="xcs-remake-swaps">{castOrder.extra.map(ch => castCard(ch))}</div>
-          </details>}
-        </div>
-        <div className="xcs-remake-set">
-          <label className="xcs-remake-row">
-            <span>{c.theme}</span>
-            <input className="xcs-remake-input" value={d.theme} maxLength={300} placeholder={c.themePlaceholder} onChange={e => set({ theme: e.target.value })} />
-          </label>
-          <label className="xcs-remake-row">
-            <span>{c.setting}</span>
-            <input className="xcs-remake-input" value={d.setting} maxLength={300} placeholder={c.settingPlaceholder} onChange={e => set({ setting: e.target.value })} />
-          </label>
-          <div className="xcs-remake-row" role="group" aria-labelledby="xcs-remake-look">
-            <span id="xcs-remake-look">{c.lookLabel}</span>
-            <div className="xcs-film-seg">
-              {REMAKE_LOOKS.map(l => <button key={l} type="button" aria-pressed={d.look === l} onClick={() => set({ look: l })}>{c.looks[l]}</button>)}
-            </div>
+        {tiles.length > 0 && <>
+          <p className="xcs-remake-found">{c.materials(tiles.length)}</p>
+          <div className="xcs-remake-tray">
+            {tiles.map(t => <button key={t.key} type="button" className={`xcs-remake-tile${t.changed ? ' is-changed' : ''}`} onClick={() => goTo(t)}>
+              <span className="xcs-remake-tile-pic">{t.pic}</span>
+              <span className="xcs-remake-tile-name">{t.label}</span>
+            </button>)}
           </div>
-          <label className="xcs-remake-row">
-            <span>{c.language}</span>
-            <select className="xcs-remake-select" value={d.language} onChange={e => set({ language: e.target.value as Lang })}>
-              {REMAKE_LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </label>
-          <div className="xcs-remake-row">
-            <span>{c.product}</span>
-            <label className="xcs-remake-photo-pick">
-              <span className="xcs-remake-photo-tile">{productPhoto ? <img src={productPhoto} alt="" /> : '+'}</span>
-              <span>{c.photoPick}</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" hidden
-                onChange={e => { const f = e.target.files?.[0]; if (f) setProductPhoto(URL.createObjectURL(f)) }} />
+        </>}
+
+        {b.characters.length > 0 && <div className="xcs-remake-group">
+          {kindHeading(c.kinds.people, b.characters.length)}
+          <div className="xcs-remake-swaps">
+            {castOrder.main.map(castCard)}
+            {castOrder.extra.length > 0 && <details className="xcs-film-more xcs-remake-extra" open={extrasOpen}
+              onToggle={e => setExtrasOpen(e.currentTarget.open)}>
+              <summary>{c.otherCast(castOrder.extra.length)}</summary>
+              <div className="xcs-remake-swaps">{castOrder.extra.map(castCard)}</div>
+            </details>}
+          </div>
+        </div>}
+
+        {things.length > 0 && <div className="xcs-remake-group">
+          {kindHeading(c.kinds.things, things.length)}
+          <div className="xcs-remake-swaps">{things.map(thingCard)}</div>
+        </div>}
+
+        {places.length > 0 && <div className="xcs-remake-group">
+          {kindHeading(c.kinds.places, places.length)}
+          <div className="xcs-remake-swaps">{places.map(placeCard)}</div>
+        </div>}
+
+        {(b.music.present || speakers.length > 0) && <div className="xcs-remake-group">
+          {kindHeading(c.kinds.sound, (b.music.present ? 1 : 0) + speakers.length)}
+          <div className="xcs-remake-swaps">
+            {b.music.present && card({
+              key: 'music', pic: <span className="xcs-remake-icon"><ICONS.music /></span>, tag: c.original,
+              count: b.music.bpm ? `${b.music.bpm} BPM` : undefined, name: c.music,
+              look: c.musicLine(b.music.mood, null, b.music.cuts_on_beat),
+              children: <>
+                {seg(MUSIC_CHOICES, d.music, o => c.musicChoices[o], o => set({ music: o }))}
+                {d.music === 'mine' ? audioPicker('music') : <p className="xcs-film-note">{c.noMusicNote}</p>}
+              </>,
+            })}
+            {speakers.map(sp => {
+              const p = voicePick(sp.who), name = roles.get(sp.who) ?? sp.who
+              return card({
+                key: `v-${safe(sp.who)}`, pic: <span className="xcs-remake-icon"><ICONS.voice /></span>,
+                tag: `${c.original} · ${c.voiceLabel}`, count: c.linesCount(sp.n), name, look: quote(sp.first),
+                children: <>
+                  {seg(VOICE_CHOICES, p.choice, o => c.voiceChoices[o], o => setVoice(sp.who, { choice: o }))}
+                  {p.choice === 'mine' && <div className="xcs-remake-photo">
+                    {audioPicker(`v:${sp.who}`)}
+                    {consent(p.consent, v => setVoice(sp.who, { consent: v }))}
+                  </div>}
+                </>,
+              })
+            })}
+          </div>
+        </div>}
+
+        {texts.length > 0 && <div className="xcs-remake-group">
+          {kindHeading(c.kinds.text, texts.length)}
+          {card({
+            key: 'text', pic: <span className="xcs-remake-icon"><ICONS.text /></span>, tag: c.original,
+            count: c.textsCount(texts.length), name: c.kinds.text,
+            children: <>
+              <ol className="xcs-remake-texts">
+                {shownTexts.map(t => <li key={t}>
+                  <span className="xcs-remake-caption">{t}</span>
+                  <input className="xcs-remake-input" value={d.texts[t] ?? ''} maxLength={120} placeholder={c.textAuto} aria-label={t}
+                    onChange={e => { const v = e.target.value; setD(prev => ({ ...prev, texts: { ...prev.texts, [t]: v } })) }} />
+                </li>)}
+              </ol>
+              {texts.length > TEXTS_FIRST && <button type="button" className="xcs-remake-moreshots" onClick={() => setAllTexts(v => !v)}>
+                {allTexts ? c.showLess : c.showAllTexts(texts.length)}
+              </button>}
+            </>,
+          })}
+        </div>}
+
+        <div className="xcs-remake-group">
+          {kindHeading(c.kinds.overall)}
+          <div className="xcs-remake-set">
+            <label className="xcs-remake-row">
+              <span>{c.theme}</span>
+              <input className="xcs-remake-input" value={d.theme} maxLength={300} placeholder={c.themePlaceholder} onChange={e => set({ theme: e.target.value })} />
             </label>
+            {places.length === 0 && <label className="xcs-remake-row">
+              <span>{c.setting}</span>
+              <input className="xcs-remake-input" value={d.setting} maxLength={300} placeholder={c.settingPlaceholder} onChange={e => set({ setting: e.target.value })} />
+            </label>}
+            <div className="xcs-remake-row" role="group" aria-labelledby="xcs-remake-look">
+              <span id="xcs-remake-look">{c.lookLabel}</span>
+              {seg(REMAKE_LOOKS, d.look, l => c.looks[l], l => set({ look: l }))}
+            </div>
+            <label className="xcs-remake-row">
+              <span>{c.language}</span>
+              <select className="xcs-remake-select" value={d.language} onChange={e => set({ language: e.target.value as Lang })}>
+                {REMAKE_LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </label>
+            {!hasProduct && <div className="xcs-remake-row">
+              <span>{c.product}</span>
+              {photoPicker('product')}
+            </div>}
           </div>
         </div>
       </section>

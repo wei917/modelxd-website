@@ -29,6 +29,8 @@ const nextConfig = {
     '/api/xcreate/export-video': ['./node_modules/ffmpeg-static/ffmpeg'],
     // 晴晴's fresh clips for admins (Oct 16) are re-encoded small.
     '/api/xsports/cheer': ['./node_modules/ffmpeg-static/ffmpeg'],
+    // 同款 cuts a picture of each material from the video it reads (Oct 13).
+    '/api/xcreate/remake/breakdown': ['./node_modules/ffmpeg-static/ffmpeg'],
   },
   webpack: (config) => {
     config.watchOptions = {
