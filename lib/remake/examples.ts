@@ -5,9 +5,10 @@
 // searches at $9.48, plus one stopped early) and each checked with the X API
 // the same day: the like count,
 // the video, and its length. Left out: real people in the video, other
-// people's characters, Sora (the owner never uses it), ads, and posts whose
-// prompt carries a slur or a drug trip (three @charliebcurran posts and one
-// of Elon Musk's, all 10k+). `summary` is our
+// people's characters, Sora (the owner never uses it), ads, posts whose
+// prompt carries a slur (three @charliebcurran posts, all 10k+), and every
+// post by Elon Musk (owner, Oct 13: "they are biased. people like those not
+// because they are good"; the route drops him from the feed too). `summary` is our
 // own words; `prompt` is the author's, as shared in the post or its thread,
 // shown under the read when someone remakes it. Likes only grow, so the counts
 // stay true as a floor. The route adds the trending feed's live 10k+ videos.
@@ -26,54 +27,6 @@ export type RemakeExample = {
 }
 
 export const CURATED_EXAMPLES: RemakeExample[] = [
- {
-  "url": "https://x.com/elonmusk/status/2003989532111413332",
-  "handle": "elonmusk",
-  "likes": 74775,
-  "models": [
-   "Grok Imagine"
-  ],
-  "prompt": "Santa in his sleigh pulled by reindeer fly over the mountain",
-  "summary": {
-   "en": "A short clip shows Santa riding a reindeer-pulled sleigh as it flies over a mountain.",
-   "zh-Hant": "短片中，聖誕老人乘坐麋鹿拉動的雪橇飛越一座山。",
-   "zh-Hans": "短片中，圣诞老人乘坐驯鹿拉动的雪橇飞越一座山。",
-   "ja": "短い映像で、サンタがトナカイの引くそりに乗って山の上を飛ぶ。",
-   "ko": "짧은 영상에서 산타가 순록이 끄는 썰매를 타고 산 위를 날아간다."
-  }
- },
- {
-  "url": "https://x.com/elonmusk/status/2068748080623604004",
-  "handle": "elonmusk",
-  "likes": 60384,
-  "models": [
-   "Grok Imagine"
-  ],
-  "prompt": "The kittens with mittens start dancing and singing “we’re kittens with mittens” with joyful, energetic movements and playful expressions.",
-  "summary": {
-   "en": "Kittens wearing mittens dance energetically and sing a cheerful tune about being kittens with mittens.",
-   "zh-Hant": "戴著連指手套的小貓們精力充沛地跳舞，並唱著一首關於戴手套小貓的歡快歌曲。",
-   "zh-Hans": "戴着连指手套的小猫们精力充沛地跳舞，并唱着一首关于戴手套小猫的欢快歌曲。",
-   "ja": "ミトンをはめた子猫たちが元気いっぱいに踊り、ミトンをはめた子猫である自分たちを陽気に歌います。",
-   "ko": "장갑을 낀 새끼 고양이들이 활기차게 춤을 추며 장갑 낀 새끼 고양이임을 즐겁게 노래합니다."
-  }
- },
- {
-  "url": "https://x.com/elonmusk/status/1986636451761824177",
-  "handle": "elonmusk",
-  "likes": 58870,
-  "models": [
-   "Grok Imagine"
-  ],
-  "prompt": "the lion sits up, his friends the zebra and giraffe come over, the camera follows him them vlog style, the animals stand together for a group shot,  the lion is in the middle of the shot, the giraffe bends down, they pose",
-  "summary": {
-   "en": "A lion sits up, a zebra and a giraffe join him, and the camera follows as the three animals pose together.",
-   "zh-Hant": "獅子坐起身，斑馬與長頸鹿走過來，鏡頭跟著牠們，三隻動物一起擺姿勢。",
-   "zh-Hans": "狮子坐起身，斑马与长颈鹿走过来，镜头跟着它们，三只动物一起摆姿势。",
-   "ja": "ライオンが起き上がり、シマウマとキリンが寄り、カメラが追いながら三頭が並んでポーズをとる。",
-   "ko": "사자가 일어나 앉고 얼룩말과 기린이 다가오며, 카메라가 따라가는 가운데 세 동물이 함께 포즈를 취한다."
-  }
- },
  {
   "url": "https://x.com/biggieU_U/status/2017357936922710474",
   "handle": "biggieU_U",
