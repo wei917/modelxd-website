@@ -461,24 +461,32 @@ export default function Nav() {
         aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
       >{collapsed ? '»' : '«'}</button>
       {/* The "logo" is the whole lockup — mark + wordmark. On the beta host a
-          small Beta tag sits on the mark's bottom edge, like a badge on an app
-          icon: it used to hang over the wordmark and covered the words on a
-          phone (owner, Oct 12: "it covers the text too much"), and beside the
-          words it pushed them onto two lines in the rail. The link to the
+          small Beta tag sits on the WORDMARK's bottom-right corner and
+          overlaps it only a little (owner, Oct 12, after trying it on the
+          mark: "overlap the title text a little bit ... the right bottom
+          corner"). Earlier it hung off the whole lockup and covered the words
+          on a phone ("it covers the text too much"), so it is anchored to the
+          words themselves, under the last letters and half past the end
+          (owner: "between" right-aligned under the word and touching only the
+          corner), a little see-through ("more transparent", then "too
+          transparent": 86% red). It stops
+          left of the rail's « button (right: -13px off the rail, level with
+          the words). The link to the
           official site under it is gone (owner: "remove 前往正式版"). */}
       <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
         <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0 }} />
-        <span>{lang.startsWith('zh') ? t('brand') : <>Model<span className="x">XD</span></>}</span>
-        {isDev && (
-          <span style={{
-            position: 'absolute', left: 4, bottom: -5, whiteSpace: 'nowrap',
-            padding: '0 4px', borderRadius: 999, fontSize: 7.5, fontWeight: 800,
-            letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.5,
-            background: 'var(--red)', color: '#fff',
-            fontFamily: 'var(--font-mono), monospace',
-            boxShadow: '0 1px 4px rgba(0,0,0,.25)',
-          }}>Beta</span>
-        )}
+        <span style={{ position: 'relative', whiteSpace: 'nowrap' }}>
+          {lang.startsWith('zh') ? t('brand') : <>Model<span className="x">XD</span></>}
+          {isDev && (
+            <span style={{
+              position: 'absolute', right: -12, bottom: -8, whiteSpace: 'nowrap',
+              padding: '0 4px', borderRadius: 999, fontSize: 7.5, fontWeight: 800,
+              letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.5,
+              background: 'rgba(214,59,50,.86)', color: '#fff',
+              fontFamily: 'var(--font-mono), monospace',
+            }}>Beta</span>
+          )}
+        </span>
       </Link>
       <div className="nav-links">
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
@@ -798,6 +806,28 @@ export default function Nav() {
       {/* Auth (profile + sign in/out) moved to the content-area TopBar on
           desktop. On mobile it lives in the hamburger overlay below. */}
 
+      {/* Phones: sign-in, or your picture once signed in, sits in the top
+          bar next to the hamburger (owner, Oct 13: "move the login and
+          profile icon on the top nav bar next to the hamburger menu"), so
+          neither needs the menu opened. Hidden above 760px via CSS. Nothing
+          until the session is known, so a signed-in visitor never sees
+          Sign in flash first. */}
+      {authLoaded && (user ? (
+        <Link href="/profile" className="nav-mobile-me" aria-label={t('nav.profile')}>
+          {face.photo ? (
+            <img src={face.photo} alt="" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="nav-auth-initials">
+              {(face.name || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+            </span>
+          )}
+        </Link>
+      ) : (
+        <button type="button" className="nav-mobile-me nav-mobile-signin" onClick={() => { setMenuOpen(false); show() }}>
+          {t('auth.signin')}
+        </button>
+      ))}
+
       {/* Mobile hamburger — only shown under 760px viewport via CSS. */}
       <button
         type="button"
@@ -813,21 +843,10 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {/* Account and language in one compact row at the top (owner,
-            Sep 14): the product links get the space. Sign Out lives on the
-            profile page (CC, July 19); the globe goes to the language
-            setting there. */}
-        <div className="nav-mobile-account">
-          {authLoaded && (user ? (
-            <Link href="/profile">{t('nav.profile')}</Link>
-          ) : (
-            <button type="button" onClick={() => { setMenuOpen(false); show() }}>{t('auth.signin')}</button>
-          ))}
-          <Link href="/profile#language" className="nav-lang-link" aria-label={t('nav.lang')} title={t('nav.lang')}
-                onClick={e => { setMenuOpen(false); goToLanguage(e) }}>
-            <NavIcon name="globe" />
-          </Link>
-        </div>
+        {/* No account or language row here any more: sign-in / your profile
+            moved to the top bar beside the hamburger, and the language globe
+            was dropped from this menu (owner, Oct 13: "remove the global
+            button, it's not necessary"); language stays on /profile. */}
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
