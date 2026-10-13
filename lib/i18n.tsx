@@ -1474,34 +1474,6 @@ export const STRINGS: Record<string, Entry> = {
   'vspec.v-vertical': { en: "Reels · TikTok · Shorts 9:16", 'zh-Hant': "Reels · TikTok · Shorts · 小紅書 9:16", 'zh-Hans': "Reels · TikTok · Shorts · 小红书 9:16", ja: "リール・TikTok・ショート 9:16", ko: "릴스 · 틱톡 · 쇼츠 9:16" },
 
 
-  // ModelXD Playground (/playground) and the Japanese home's hero card.
-  // English is the fallback for zh/ko. The strings say what is original and
-  // what is unofficial fan art; none names a model, price or vote.
-  'pg.eyebrow':          { en: 'ModelXD Playground', 'zh-Hant': 'ModelXD Playground', 'zh-Hans': 'ModelXD Playground', ja: 'ModelXD Playground', ko: 'ModelXD Playground' },
-  'pg.title':            { en: 'Play, make and compare with AI.', 'zh-Hant': '用AI玩、創作、比較。', 'zh-Hans': '用AI玩、创作、比较。', ja: 'AIで遊ぶ。つくる。比べる。', ko: 'AI로 놀고, 만들고, 비교하기.' },
-  'pg.sub':              { en: 'Open a work, rewrite its prompt, and send it straight to an image duel or a film. Nothing runs until you press start on the tool page.', 'zh-Hant': '打開作品、改寫提示詞，直接送去圖片對決或做成影片。在工具頁面按下開始之前，不會執行任何東西。', 'zh-Hans': '打开作品、改写提示词，直接送去图片对决或做成视频。在工具页面按下开始之前，不会执行任何东西。', ja: '作品を開いてプロンプトを書き換え、そのまま画像対決や動画づくりへ。ツールのページで開始を押すまで、何も実行されません。', ko: '작품을 열어 프롬프트를 고쳐 쓰고, 그대로 이미지 대결이나 영상 제작으로 보내세요. 도구 페이지에서 시작을 누르기 전까지 아무것도 실행되지 않습니다.' },
-  'pg.tool.image':       { en: 'Make images', 'zh-Hant': '製作圖片', 'zh-Hans': '制作图片', ja: '画像をつくる', ko: '이미지 만들기' },
-  'pg.tool.image.sub':   { en: 'Two AIs draw the same prompt. You pick the better one, then see the price.', 'zh-Hant': '兩個AI畫同一個題目，你選出較好的一張，再看價格。', 'zh-Hans': '两个AI画同一个题目，你选出较好的一张，再看价格。', ja: '2つのAIが同じお題で描き、好きな方に投票。そのあと価格がわかります。', ko: '두 AI가 같은 프롬프트를 그리고, 더 나은 쪽을 고른 뒤 가격을 확인합니다.' },
-  'pg.tool.video':       { en: 'Make a film', 'zh-Hant': '製作影片', 'zh-Hans': '制作视频', ja: '動画をつくる', ko: '영상 만들기' },
-  'pg.tool.video.sub':   { en: 'From one line of text to a storyboard and shots, with the director AI.', 'zh-Hant': '從一句話到分鏡與鏡頭，和導演AI一起完成。', 'zh-Hans': '从一句话到分镜与镜头，和导演AI一起完成。', ja: 'ひと言から絵コンテとショットへ。ディレクターAIと一緒に。', ko: '한 줄의 문장에서 스토리보드와 숏까지, 디렉터 AI와 함께.' },
-  'pg.tool.compare':     { en: 'Compare models', 'zh-Hant': '比較模型', 'zh-Hans': '比较模型', ja: '比べて選ぶ', ko: '모델 비교' },
-  'pg.tool.compare.sub': { en: 'Quality and price from real blind votes, on one board.', 'zh-Hant': '來自真實盲測投票的品質與價格，一張表看完。', 'zh-Hans': '来自真实盲测投票的质量与价格，一张表看完。', ja: '実際のブラインド投票による品質と価格を、ひとつの表で。', ko: '실제 블라인드 투표로 얻은 품질과 가격을 한 표에서.' },
-  'pg.section.works':    { en: 'Remix a work', 'zh-Hant': '從作品重混', 'zh-Hans': '从作品重混', ja: '作品からリミックス', ko: '작품으로 리믹스' },
-  'pg.section.presets':  { en: 'Scenario presets', 'zh-Hant': '情境預設', 'zh-Hans': '情境预设', ja: 'お題プリセット', ko: '시나리오 프리셋' },
-  'pg.badge.fan':        { en: 'Unofficial AI fan art', 'zh-Hant': '非官方AI同人創作', 'zh-Hans': '非官方AI同人创作', ja: '非公式AIファンアート', ko: '비공식 AI 팬아트' },
-  'pg.badge.original':   { en: 'Original scenario', 'zh-Hant': '原創情境', 'zh-Hans': '原创情境', ja: 'オリジナルのお題', ko: '오리지널 시나리오' },
-  'pg.note':             { en: 'The four game works are unofficial fan concepts generated for this playground; game names and characters belong to their owners, and nothing here is affiliated with or endorsed by a publisher. The presets are scenarios written for this page with no existing character. No work is an XDuel result, and no model names, prices or votes are attached.', 'zh-Hant': '四件遊戲作品是為這個Playground生成的非官方同人概念圖；遊戲名稱與角色的權利屬於各自的持有者，這裡的內容與任何發行商都沒有合作或授權關係。情境預設是為本頁撰寫的題目，不涉及既有角色。所有作品都不是XDuel的對戰結果，也沒有附帶任何模型名稱、價格或投票。', 'zh-Hans': '四件游戏作品是为这个Playground生成的非官方同人概念图；游戏名称与角色的权利属于各自的持有者，这里的内容与任何发行商都没有合作或授权关系。情境预设是为本页撰写的题目，不涉及既有角色。所有作品都不是XDuel的对战结果，也没有附带任何模型名称、价格或投票。', ja: 'ゲーム作品の4点は、このプレイグラウンド用に生成した非公式ファンアートです。ゲーム名やキャラクターの権利は各社に帰属し、いずれの会社とも提携・承認関係はありません。お題プリセットはこのページのために書いたお題で、既存のキャラクターは含みません。どの作品もXDuelの対戦結果ではなく、モデル名・価格・投票は付いていません。', ko: '게임 작품 네 점은 이 플레이그라운드를 위해 생성한 비공식 팬 콘셉트입니다. 게임 이름과 캐릭터의 권리는 각 권리자에게 있으며, 어떤 퍼블리셔와도 제휴하거나 승인을 받지 않았습니다. 프리셋은 이 페이지를 위해 쓴 시나리오로 기존 캐릭터를 포함하지 않습니다. 어떤 작품도 XDuel 대결 결과가 아니며 모델 이름, 가격, 투표가 붙어 있지 않습니다.' },
-  'pg.prompt.image':     { en: 'Image prompt (editable)', 'zh-Hant': '圖片提示詞（可編輯）', 'zh-Hans': '图片提示词（可编辑）', ja: '画像プロンプト（編集できます）', ko: '이미지 프롬프트(편집 가능)' },
-  'pg.prompt.source':    { en: 'Original English prompt this picture was made from', 'zh-Hant': '生成這張圖時實際使用的英文原始提示詞', 'zh-Hans': '生成这张图时实际使用的英文原始提示词', ja: 'この画像に使われた元の英語プロンプト', ko: '이 이미지에 실제 사용된 영어 원본 프롬프트' },
-  'pg.prompt.video':     { en: 'Motion prompt for the film (editable)', 'zh-Hant': '影片動態提示詞（可編輯）', 'zh-Hans': '视频动态提示词（可编辑）', ja: '動画プロンプト（編集できます）', ko: '영상 모션 프롬프트(편집 가능)' },
-  'pg.copy':             { en: 'Copy', 'zh-Hant': '複製', 'zh-Hans': '复制', ja: 'コピー', ko: '복사' },
-  'pg.copied':           { en: 'Copied', 'zh-Hant': '已複製', 'zh-Hans': '已复制', ja: 'コピーしました', ko: '복사했습니다' },
-  'pg.reset':            { en: 'Restore original', 'zh-Hant': '還原', 'zh-Hans': '还原', ja: '元に戻す', ko: '원래대로' },
-  'pg.act.duel':         { en: 'Image duel with this prompt', 'zh-Hant': '用這段提示詞進行圖片對決', 'zh-Hans': '用这段提示词进行图片对决', ja: 'このプロンプトで画像対決', ko: '이 프롬프트로 이미지 대결' },
-  'pg.act.video':        { en: 'Make the film in XDirect', 'zh-Hant': '在XDirect製作影片', 'zh-Hans': '在XDirect制作视频', ja: 'XDirectで動画をつくる', ko: 'XDirect에서 영상 만들기' },
-  'pg.hint':             { en: 'Opens the tool with the prompt filled in. Nothing runs until you press start there; sign-in and the daily free quota apply as usual.', 'zh-Hant': '會帶著提示詞打開工具。在那裡按下開始之前不會執行任何東西；登入與每日免費次數照常適用。', 'zh-Hans': '会带着提示词打开工具。在那里按下开始之前不会执行任何东西；登录与每日免费次数照常适用。', ja: 'プロンプトを入れた状態でツールを開きます。そこで開始を押すまで何も実行されません。ログインと1日の無料回数は通常どおりです。', ko: '프롬프트가 채워진 상태로 도구를 엽니다. 거기서 시작을 누르기 전까지 아무것도 실행되지 않으며, 로그인과 하루 무료 횟수는 평소와 같습니다.' },
-  'pg.close':            { en: 'Close', 'zh-Hant': '關閉', 'zh-Hans': '关闭', ja: '閉じる', ko: '닫기' },
-  'pg.open':             { en: 'Open', 'zh-Hant': '打開', 'zh-Hans': '打开', ja: '開く', ko: '열기' },
 
   // ✨ Improve prompt (XDuel, XCreate; Sep 16). Suggestion, confirmation,
   // undo; the added details are labelled as suggestions, not facts.
@@ -1544,8 +1516,6 @@ export const STRINGS: Record<string, Entry> = {
   'skill.category.story':               { en: 'story', ja: '物語' },
   'xvote.votes':                        { en: '{n} votes', 'zh-Hant': '{n} 票', 'zh-Hans': '{n} 票', ja: '{n}票', ko: '{n}표' },
   'xvote.vote1':                        { en: '1 vote', 'zh-Hant': '1 票', 'zh-Hans': '1 票', ja: '1票', ko: '1표' },
-  'home.cta.play':       { en: 'Try it', 'zh-Hant': '玩玩看', 'zh-Hans': '玩玩看', ja: '遊んでみる', ko: '체험해 보기' },
-  'home.cta.compare':    { en: 'Compare quality and price', 'zh-Hant': '比較品質與價格', 'zh-Hans': '比较质量与价格', ja: '比べて選ぶ', ko: '품질과 가격 비교' },
   'common.loading':      { en: 'Loading…', 'zh-Hant': '載入中…', 'zh-Hans': '加载中…', ja: '読み込み中…', ko: '불러오는 중…' },
   'xduel.attach':        { en: 'ATTACH', 'zh-Hant': '附加檔案', 'zh-Hans': '附加文件', ja: '添付', ko: '첨부' },
   'xduel.attach.hint':   { en: 'Optional', 'zh-Hant': '選填', 'zh-Hans': '选填', ja: '任意', ko: '선택' },
@@ -1668,8 +1638,6 @@ export const STRINGS: Record<string, Entry> = {
   // nav.xtell / nav.xcreate.
   'home.prod.xtell':   { en: 'BaZi, Zi Wei, tarot, the I Ching. Free charts, then ask an AI master.', 'zh-Hant': '八字、紫微、塔羅、易經。免費排盤，再問 AI 大師。', 'zh-Hans': '八字、紫微、塔罗、易经。免费排盘，再问 AI 大师。', ja: '四柱推命、紫微斗数、タロット、易。無料で占って、AIの先生に相談。', ko: '사주, 자미두수, 타로, 주역. 무료로 풀어 보고 AI 선생님께 물어보세요.' },
   'home.prod.xcreate': { en: 'Images, video, voice and short films, made with the models you choose.', 'zh-Hant': '圖片、影片、聲音和短片，用你選的模型來做。', 'zh-Hans': '图片、视频、声音和短片，用你选的模型来做。', ja: '画像、動画、音声、ショートフィルムを、選んだモデルでつくる。', ko: '이미지, 영상, 음성, 짧은 영화를 고른 모델로 만드세요.' },
-  'home.cta.primary': { en: 'Start creating', 'zh-Hant': '開始創作', 'zh-Hans': '开始创作', ja: '作品をつくる', ko: '창작 시작하기' },
-  'home.cta.secondary': { en: 'Blind-test models free', 'zh-Hant': '免費盲測模型', 'zh-Hans': '免费盲测模型', ja: '無料でモデルをブラインドテスト', ko: '모델 무료 블라인드 테스트' },
   'home.compare.eyebrow': { en: 'Why model choice matters', 'zh-Hant': '為什麼模型選擇很重要', 'zh-Hans': '为什么模型选择很重要', ja: 'モデル選びが重要な理由', ko: '모델 선택이 중요한 이유' },
   'home.compare.title': { en: 'Same prompt. Different price tags.', 'zh-Hant': '同一個提示詞，不同的價格。', 'zh-Hans': '同一个提示词，不同的价格。', ja: '同じプロンプト。違う価格。', ko: '같은 프롬프트. 다른 가격.' },
   'home.compare.sub': { en: 'Slide between savings and quality to see how much the model changes the result.', 'zh-Hant': '在省錢與品質之間滑動，看看模型選擇如何改變結果。', 'zh-Hans': '在省钱与质量之间滑动，看看模型选择如何改变结果。', ja: '節約と品質の間を動かして、モデル選びで結果がどれだけ変わるか確かめてください。', ko: '절약과 품질 사이를 움직여 모델 선택이 결과를 얼마나 바꾸는지 확인하세요.' },

@@ -347,7 +347,8 @@ export default function HomeClient() {
       {/* ── Hero (redesigned Oct 12, owner: "redesign", keeping every
           section). The pitch, then X先知 and X創作 as app icons; the agent in
           the second column on desktop, under the icons on a phone. The row of
-          three buttons under the pitch (玩玩看 → /playground, 開始創作 →
+          three buttons under the pitch (玩玩看 → the Playground, deleted with
+          /tgs the same day; 開始創作 →
           /xdirect, 免費盲測模型 → /xduel) was removed the same day (owner:
           "remove this row"); XDirect and XDuel stay in the nav and the app
           cards. ── */}
