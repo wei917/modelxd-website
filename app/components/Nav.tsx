@@ -806,6 +806,28 @@ export default function Nav() {
       {/* Auth (profile + sign in/out) moved to the content-area TopBar on
           desktop. On mobile it lives in the hamburger overlay below. */}
 
+      {/* Phones: sign-in, or your picture once signed in, sits in the top
+          bar next to the hamburger (owner, Oct 13: "move the login and
+          profile icon on the top nav bar next to the hamburger menu"), so
+          neither needs the menu opened. Hidden above 760px via CSS. Nothing
+          until the session is known, so a signed-in visitor never sees
+          Sign in flash first. */}
+      {authLoaded && (user ? (
+        <Link href="/profile" className="nav-mobile-me" aria-label={t('nav.profile')}>
+          {face.photo ? (
+            <img src={face.photo} alt="" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="nav-auth-initials">
+              {(face.name || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+            </span>
+          )}
+        </Link>
+      ) : (
+        <button type="button" className="nav-mobile-me nav-mobile-signin" onClick={() => { setMenuOpen(false); show() }}>
+          {t('auth.signin')}
+        </button>
+      ))}
+
       {/* Mobile hamburger — only shown under 760px viewport via CSS. */}
       <button
         type="button"
@@ -821,21 +843,10 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {/* Account and language in one compact row at the top (owner,
-            Sep 14): the product links get the space. Sign Out lives on the
-            profile page (CC, July 19); the globe goes to the language
-            setting there. */}
-        <div className="nav-mobile-account">
-          {authLoaded && (user ? (
-            <Link href="/profile">{t('nav.profile')}</Link>
-          ) : (
-            <button type="button" onClick={() => { setMenuOpen(false); show() }}>{t('auth.signin')}</button>
-          ))}
-          <Link href="/profile#language" className="nav-lang-link" aria-label={t('nav.lang')} title={t('nav.lang')}
-                onClick={e => { setMenuOpen(false); goToLanguage(e) }}>
-            <NavIcon name="globe" />
-          </Link>
-        </div>
+        {/* No account or language row here any more: sign-in / your profile
+            moved to the top bar beside the hamburger, and the language globe
+            was dropped from this menu (owner, Oct 13: "remove the global
+            button, it's not necessary"); language stays on /profile. */}
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}

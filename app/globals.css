@@ -343,10 +343,27 @@ body {
   color: var(--muted2); transition: color 0.15s, background 0.15s;
 }
 .nav-lang-link:hover { color: var(--red); background: var(--red-dim); }
-.nav-mobile-overlay .nav-mobile-account { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
-.nav-mobile-overlay .nav-mobile-account > a:first-child,
-.nav-mobile-overlay .nav-mobile-account > button { flex: 1; }
-.nav-mobile-overlay .nav-lang-link { width: 44px; height: 44px; padding: 0; border: none; justify-content: center; color: var(--muted2); }
+/* Phones: sign-in or your picture in the top bar, just left of the
+   hamburger (Oct 13). The auto margin takes the free space, so the pair
+   sits together at the right while the logo stays left. */
+.nav-mobile-me { display: none; }
+@media (max-width: 760px) {
+  .nav-mobile-me {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin: 0 10px 0 auto; flex-shrink: 0; text-decoration: none;
+  }
+  .nav-mobile-me img, .nav-mobile-me .nav-auth-initials {
+    width: 36px; height: 36px; border-radius: 50%; display: flex;
+    border: 1px solid var(--border); object-fit: cover;
+  }
+  .nav-mobile-me .nav-auth-initials { border: none; font-size: 13px; }
+  .nav-mobile-signin {
+    min-height: 40px; padding: 0 16px; border-radius: 999px;
+    border: 1px solid var(--border2); background: #fff; color: var(--white);
+    font-family: var(--font-body), sans-serif; font-size: 14px; font-weight: 700;
+    white-space: nowrap;
+  }
+}
 
 /* ── Mobile nav: hamburger menu under 760px ─────────────────────────────── */
 .nav-burger {
