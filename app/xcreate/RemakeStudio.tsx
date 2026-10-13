@@ -85,8 +85,11 @@ type Draft = {
 }
 /** A photo or recording the user picked: kept in the tab only, never in the draft. */
 type Picked = { url: string; name: string }
-/** A popular video to try, from the trending feed; `summary` is our words, never the creator's. */
-type Example = { url: string; handle: string; likes: number; summary: Partial<Record<Lang, string>> }
+/** A popular video to try (/api/xcreate/remake/examples). `summary` is our
+ *  words; `prompt` is the author's, shown under the read of that video. */
+type Example = { url: string; handle: string; likes: number; models: string[]; prompt: string; summary: Partial<Record<Lang, string>> }
+/** An X post's id, to match an example with a read (the read's link is x.com/i/status/<id>). */
+const statusId = (url: string | null | undefined) => url?.match(/\/status(?:es)?\/(\d{5,25})/)?.[1] ?? null
 
 const thingDefault = (t: Thing): ThingChoice => t.kind === 'logo' ? 'remove' : 'keep'
 const freshPicks = (b: Breakdown): Pick<Draft, 'cast' | 'things' | 'places' | 'music' | 'voices' | 'texts'> => ({
@@ -169,8 +172,19 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
 
   useEffect(() => {
     let live = true
+    // Each field checked: a cached answer from before a deploy can lack the
+    // newer ones (models and prompt came on Oct 13), and one missing array
+    // took the whole page down.
     fetch('/api/xcreate/remake/examples').then(r => r.ok ? r.json() : null)
-      .then(j => { if (live && Array.isArray(j?.examples)) setExamples(j.examples) })
+      .then(j => {
+        if (!live || !Array.isArray(j?.examples)) return
+        setExamples(j.examples.filter((e: any) => typeof e?.url === 'string').map((e: any): Example => ({
+          url: e.url, handle: String(e.handle ?? ''), likes: Number(e.likes) || 0,
+          models: Array.isArray(e.models) ? e.models.map(String) : [],
+          prompt: typeof e.prompt === 'string' ? e.prompt : '',
+          summary: e.summary && typeof e.summary === 'object' ? e.summary : {},
+        })))
+      })
       .catch(() => { /* no row */ })
     return () => { live = false }
   }, [])
@@ -286,6 +300,11 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
     try { return new URL(d.result.source.url).searchParams.get('v') } catch { return null }
   }, [d.result])
   const srcStart = d.result?.source.start ?? 0
+  /** The example this read came from, for its author's prompt. */
+  const readExample = useMemo(() => {
+    const id = statusId(d.result?.source.url)
+    return id ? examples.find(e => statusId(e.url) === id) ?? null : null
+  }, [d.result, examples])
 
   // The stretch to remake: from the chosen shot, for the chosen length.
   const total = Math.max(0.1, b?.duration ?? 0, shots.length ? shots[shots.length - 1].t1 : 0)
@@ -517,6 +536,10 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
                   <span className="xcs-remake-try-likes"><HeartIcon />{ex.likes.toLocaleString(lang)}</span>
                 </span>
                 <span className="xcs-remake-try-text">{ex.summary[lang] ?? ex.summary.en ?? ''}</span>
+                {(ex.models.length > 0 || ex.prompt) && <span className="xcs-remake-try-tags">
+                  {ex.models.slice(0, 2).map(m => <span key={m}>{m}</span>)}
+                  {ex.prompt && <span className="is-prompt">{c.withPrompt}</span>}
+                </span>}
               </button>)}
             </div>
           </div>}
@@ -539,6 +562,10 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
           </dd></div>}
           {b.music.present && <div><dt>{c.music}</dt><dd>{c.musicLine(b.music.mood, b.music.bpm, b.music.cuts_on_beat)}</dd></div>}
         </dl>
+        {readExample?.prompt && <details className="xcs-remake-prompt">
+          <summary>{c.creatorPrompt} · @{readExample.handle}</summary>
+          <p>{readExample.prompt}</p>
+        </details>}
         <p className="xcs-remake-left">{c.left(d.result.left)}</p>
       </article>
 

@@ -314,6 +314,14 @@
 .xcs-remake-try-likes { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; color: var(--red); font-weight: 700; font-variant-numeric: tabular-nums; }
 .xcs-remake-try-text { font-size: 13.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 
+.xcs-remake-try-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.xcs-remake-try-tags span { padding: 1px 7px; border-radius: 6px; background: var(--xc-soft, #f1f2ec); font-size: 11px; line-height: 1.6; color: var(--muted2); }
+.xcs-remake-try-tags .is-prompt { background: var(--xc-accent-soft, #fff0eb); color: var(--red); font-weight: 600; }
+/* The author's prompt, under the read of an example. */
+.xcs-remake-prompt { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.xcs-remake-prompt summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.xcs-remake-prompt p { margin: 10px 0 0; max-height: 240px; overflow: auto; padding: 10px 12px; border-radius: 10px; background: var(--xc-soft, #f1f2ec); font-size: 12.5px; line-height: 1.6; color: var(--muted2); white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* Reading: a strip of film whose frames light up as the playhead passes. */
 .xcs-remake-scan { display: grid; gap: 10px; }
 .xcs-remake-reel { position: relative; padding: 12px 8px; border-radius: 12px; background: var(--xc-ink, #242724); overflow: hidden; }
