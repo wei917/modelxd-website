@@ -468,7 +468,8 @@ export default function Nav() {
           on a phone ("it covers the text too much"), so it is anchored to the
           words themselves, under the last letters and half past the end
           (owner: "between" right-aligned under the word and touching only the
-          corner), see-through ("make the tag more transparent"). It stops
+          corner), a little see-through ("more transparent", then "too
+          transparent": 86% red). It stops
           left of the rail's « button (right: -13px off the rail, level with
           the words). The link to the
           official site under it is gone (owner: "remove 前往正式版"). */}
@@ -481,7 +482,7 @@ export default function Nav() {
               position: 'absolute', right: -12, bottom: -8, whiteSpace: 'nowrap',
               padding: '0 4px', borderRadius: 999, fontSize: 7.5, fontWeight: 800,
               letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.5,
-              background: 'rgba(214,59,50,.62)', color: '#fff',
+              background: 'rgba(214,59,50,.86)', color: '#fff',
               fontFamily: 'var(--font-mono), monospace',
             }}>Beta</span>
           )}
