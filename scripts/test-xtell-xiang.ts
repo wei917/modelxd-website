@@ -107,6 +107,9 @@ const read = (f: string) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8
   // Oct 9 (owner: "draw the image to teach users which line means what on palm. and for face, which area is for what").
   const pinKeys = (name: string) => [...(room.match(new RegExp(`const ${name}: Pin\\[\\] = \\[([\\s\\S]*?)\\n\\]`))?.[1] ?? '').matchAll(/key: '(\w+)'/g)].map(m => m[1])
   const worded = (key: string) => { const line = i18n.split('\n').find(l => l.startsWith(`  "${key}": {`)); return !!line && ['"en"', '"zh-Hant"', '"zh-Hans"', '"ja"', '"ko"'].every(l => line.includes(l)) }
+  // Oct 12 (owner: "why I am seeing we suggest xtell.q.guanxiang.1 in the prompt box???").
+  check('the question box suggests 相學館 questions in every language, and a temple without any gets the general prompt, never a raw key',
+    ['1', '2', '3', '4'].every(n => worded(`xtell.q.guanxiang.${n}`)) && /t\(`xtell\.q\.\$\{temple\}\.1`\)\.startsWith\('xtell\.q\.'\) \? t\('xtell\.question\.ph'\)/.test(page))
   check('怎麼看面相、手相 teaches with numbered pictures: nine areas of the face, the five palm lines the reader knows, in every language',
     ['learn-face', 'learn-palm'].every(n => fs.existsSync(path.join(__dirname, '..', `public/xtell/xiang/${n}.avif`)))
     && pinKeys('FACE_PINS').join() === 'upper,middle,lower,yintang,brows,eyes,nose,mouth,ears' && pinKeys('PALM_PINS').join() === xg.LINE_KEYS.join()

@@ -320,7 +320,6 @@ body {
   .nav--collapsed .nav-auth .nav-login,
   .nav--collapsed .nav-logo-text span { display: none; }
   /* !important: the link carries display:inline-block inline. */
-  .nav--collapsed .nav-beta-exit { display: none !important; }
   .nav--collapsed .nav-logo-text { padding: 4px 0 14px; justify-content: center; }
   .nav--collapsed .nav-links a { justify-content: center; gap: 0; padding: 10px 0; }
   .nav--collapsed .nav-auth { justify-content: center; padding-left: 0; padding-right: 0; }

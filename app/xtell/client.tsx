@@ -1925,7 +1925,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
               aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')}
-              placeholder={daily ? t('xtell.dy.askPh') : questionRequired ? t('xtell.yixue.question.ph') : temple === 'yixue' ? t('xtell.question.ph') : `${t('xtell.q.example')}${t(`xtell.q.${temple}.1`)}`}
+              placeholder={daily ? t('xtell.dy.askPh') : questionRequired ? t('xtell.yixue.question.ph') : temple === 'yixue' || t(`xtell.q.${temple}.1`).startsWith('xtell.q.') ? t('xtell.question.ph') : `${t('xtell.q.example')}${t(`xtell.q.${temple}.1`)}`}
               maxLength={temple === 'yixue' ? 2000 : undefined}
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
