@@ -460,17 +460,19 @@ export default function Nav() {
         aria-expanded={!collapsed}
         aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
       >{collapsed ? '»' : '«'}</button>
-      {/* The "logo" is the whole lockup — mark + wordmark. The Beta sticker
-          hangs off ITS bottom-right corner, overlapping the text slightly,
-          and the official-site link tucks in right beneath the sticker so
-          the pair reads as one message (CC, Aug 3). */}
+      {/* The "logo" is the whole lockup — mark + wordmark. On the beta host a
+          small Beta tag sits on the mark's bottom edge, like a badge on an app
+          icon: it used to hang over the wordmark and covered the words on a
+          phone (owner, Oct 12: "it covers the text too much"), and beside the
+          words it pushed them onto two lines in the rail. The link to the
+          official site under it is gone (owner: "remove 前往正式版"). */}
       <Link href="/" className="nav-logo-text" style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
         <img src="/logo.png" alt="ModelXD" style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0 }} />
         <span>{lang.startsWith('zh') ? t('brand') : <>Model<span className="x">XD</span></>}</span>
         {isDev && (
           <span style={{
-            position: 'absolute', bottom: 12, right: 8, whiteSpace: 'nowrap', opacity: 0.82,
-            padding: '1px 6px', borderRadius: 999, fontSize: 8, fontWeight: 800,
+            position: 'absolute', left: 4, bottom: -5, whiteSpace: 'nowrap',
+            padding: '0 4px', borderRadius: 999, fontSize: 7.5, fontWeight: 800,
             letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.5,
             background: 'var(--red)', color: '#fff',
             fontFamily: 'var(--font-mono), monospace',
@@ -478,16 +480,6 @@ export default function Nav() {
           }}>Beta</span>
         )}
       </Link>
-      {isDev && (
-        <a href="https://www.modelxd.com" className="nav-beta-exit" style={{
-          display: 'inline-block', margin: '-13px 2px 0 auto', alignSelf: 'flex-end',
-          fontSize: 10.5, fontWeight: 700, color: 'var(--red)', textDecoration: 'none',
-          fontFamily: 'var(--font-mono), monospace', letterSpacing: '.04em',
-          borderBottom: '1px dashed var(--red)', paddingBottom: 1, whiteSpace: 'nowrap',
-        }}>
-          {t('beta.official')} →
-        </a>
-      )}
       <div className="nav-links">
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
