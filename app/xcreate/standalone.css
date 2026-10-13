@@ -1,5 +1,68 @@
-/* The standalone studio is scoped so ModelXD keeps its existing layout. */
-html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding: 48px 40px 80px; outline: none; }
+/* X創作's studio at /xcreate, inside www's own shell (Oct 13). The
+   xcreate.modelxd.com door this was built for was never released and is
+   gone; its colours and its type bar came along, scoped to .xcs-page (the
+   studio's outer box, dialogs included), so the rest of www does not change
+   by a pixel. Type stays www's. */
+.xcs-page {
+  --xc-bg: #faf9f6;
+  --xc-paper: #ffffff;
+  --xc-ink: #242724;
+  --xc-secondary: #696e68;
+  --xc-rule: #e2e5dd;
+  --xc-soft: #f1f2ec;
+  --xc-accent: #cd4236;
+  --xc-accent-soft: #fff0eb;
+  --xc-green: #38624e;
+  --xc-radius: 14px;
+  --xc-font: var(--font-body), sans-serif;
+  --xc-display: var(--font-display), sans-serif;
+  /* The studio's rules are written on www's tokens: point the page colour
+     and the accent at X創作's. --surface/--surface2 are set here too, since
+     globals.css resolves them from --bg once, on :root. */
+  --bg: var(--xc-bg);
+  --surface: var(--xc-bg);
+  --surface2: var(--xc-bg);
+  --red: var(--xc-accent);
+  min-height: 100vh;
+  background: var(--xc-bg);
+  color: var(--xc-ink);
+}
+@media (max-width: 760px) { .xcs-page { min-height: calc(100vh - 60px); } }
+
+/* The types in one row, icon over label, pinned under www's top bar on a
+   phone (the shell's fixed 60px) and at the top of the window on desktop,
+   as X先知's temples row is on /xtell. The row scrolls sideways when it does
+   not fit, with arrows at its edges for a pointer; the current type wears
+   the accent and an underline. */
+.xcs-typebar { position: sticky; top: 0; z-index: 50; background: var(--xc-paper); border-bottom: 1px solid var(--xc-rule); }
+.xcs-typebar .xcs-types-wrap { max-width: 1260px; margin: 0 auto; padding: 4px 32px 0; }
+.xcs-types-wrap { position: relative; display: flex; min-width: 0; }
+.xcs-types { display: flex; align-items: stretch; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; }
+.xcs-types::-webkit-scrollbar { display: none; }
+.xcs-types a {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  min-width: 64px; padding: 8px 10px 6px; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0;
+  color: var(--xc-secondary); font-size: 13px; line-height: 1.2; text-decoration: none; white-space: nowrap;
+}
+.xcs-types a svg { width: 24px; height: 24px; }
+.xcs-types a:hover { color: var(--xc-ink); background: var(--xc-soft); }
+.xcs-types a[aria-current="page"] { color: var(--xc-accent); border-bottom-color: var(--xc-accent); font-weight: 600; }
+.xcs-types a:focus-visible { outline: 2px solid var(--xc-accent); outline-offset: -2px; }
+.xcs-types-arrow { position: absolute; top: 0; bottom: 0; width: 34px; padding: 0; border: 0; font: 24px/1 var(--xc-font); color: var(--xc-secondary); cursor: pointer; }
+.xcs-types-arrow.is-left { left: 0; text-align: left; background: linear-gradient(to right, var(--xc-paper) 55%, transparent); }
+.xcs-types-arrow.is-right { right: 0; text-align: right; background: linear-gradient(to left, var(--xc-paper) 55%, transparent); }
+.xcs-types-arrow:hover { color: var(--xc-accent); }
+@media (max-width: 760px) {
+  .xcs-typebar { top: 60px; }
+  .xcs-typebar .xcs-types-wrap { padding: 2px 8px 0; }
+  .xcs-types { gap: 2px; }
+  .xcs-types a { min-width: 52px; padding: 6px 5px 4px; gap: 4px; font-size: 11px; }
+  .xcs-types a svg { width: 22px; height: 22px; }
+}
+/* The page's own top padding (.xduel-page, 20px) sits under the bar. */
+.xcs-page > .xduel-page { padding-top: 0; }
+
+.xcs-page .xcs-studio { max-width: 1260px; width: 100%; padding: 48px 40px 80px; outline: none; }
 .xcs-heading { max-width: 800px; margin: 0 auto 40px; }
 .xcs-heading h1 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; margin: 0 0 14px; }
 .xcs-heading > p:last-child { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
@@ -25,7 +88,7 @@ html[data-site='xcreate'] .xcs-studio { max-width: 1260px; width: 100%; padding:
    textarea inside it drew a second ring 4px out (owner, Sep 26). */
 .xcs-prompt-section .prompt-textarea:focus-visible { outline: none; }
 .xcs-prompt-section .prompt-textarea { font-family: var(--font-body), sans-serif; font-size: 16px; line-height: 1.65; min-height: 150px; padding: 20px; }
-html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important; }
+.xcs-page .xcs-studio .xcreate-slot-grid { gap: 12px !important; }
 .xcs-setup .xcreate-slot-grid > [data-slot='empty'] { min-height: 52px; font-family: inherit; font-size: 13px !important; }
 /* Model cards: one row on a wide desktop (the grid's inline column count:
    the chosen models plus the "add" card, up to 4), two per row on a small
@@ -33,13 +96,13 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
    widens on wide screens so four cards keep their names readable
    (owner, Sep 26: "up to 4 models in a row, not split in 2 rows"). */
 @media (max-width: 1099px) {
-  html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .xcs-page .xcs-studio .xcreate-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .xcs-setup .xcreate-slot-grid > [data-slot='empty'] { grid-column: 1 / -1; }
 }
 @media (min-width: 1100px) {
   .xcs-heading, .xcs-setup > :not(.xcs-results) { max-width: 1040px; }
   /* Four results side by side too; www keeps its 2 x 2 for four. */
-  html[data-site='xcreate'] .xcs-results .battle-arena:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .xcs-page .xcs-results .battle-arena:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
 .xcs-setup .xcreate-slot-grid > [data-slot='filled'] { min-width: 0; }
 .xcs-setup .xc-actions { padding-top: 16px; border-top: 1px solid var(--border); row-gap: 14px !important; }
@@ -107,11 +170,11 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
 .xcs-trend-use { pointer-events: auto; flex-shrink: 0; min-height: 34px; padding: 6px 12px; border: 1px solid var(--red); border-radius: 8px; background: var(--red); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .xcs-trend-use:disabled { opacity: .5; cursor: default; }
 @media (max-width: 760px) {
-  html[data-site='xcreate'] .xcs-studio { padding: 30px 20px 56px; }
+  .xcs-page .xcs-studio { padding: 30px 20px 56px; }
   .xcs-heading { margin-bottom: 30px; }
   .xcs-heading h1 { font-size: 32px; }
   .xcs-heading > p:last-child { font-size: 14px; }
-  html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .xcs-page .xcs-studio .xcreate-slot-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .xcs-prompt-section .prompt-textarea { min-height: 138px; padding: 16px; }
   .xcs-setup .xc-actions { gap: 12px !important; }
   .xcs-setup .xc-actions .prompt-counter { flex-basis: 100%; }
@@ -121,23 +184,20 @@ html[data-site='xcreate'] .xcs-studio .xcreate-slot-grid { gap: 12px !important;
   .xcs-results .battle-arena { grid-template-columns: minmax(0, 1fr) !important; }
 }
 @media (max-width: 420px) {
-  html[data-site='xcreate'] .xcs-studio { padding-left: 16px; padding-right: 16px; }
+  .xcs-page .xcs-studio { padding-left: 16px; padding-right: 16px; }
   .xcs-heading h1 { font-size: 29px; }
   .xcs-library-grid { grid-template-columns: minmax(0, 1fr); }
   .xcs-field-heading { gap: 8px; }
-  html[data-site='xcreate'] .xcs-top-inner { gap: 6px; }
-  html[data-site='xcreate'] .xcs-actions { gap: 6px; }
-  html[data-site='xcreate'] .xcs-signin { padding: 0 10px; }
 }
 @media (max-width: 600px) {
-  html[data-site='xcreate'] .model-picker-dialog { max-height: 85vh !important; }
-  html[data-site='xcreate'] .model-picker-dialog input { min-width: 0; width: 100%; font-size: 16px !important; }
-  html[data-site='xcreate'] .model-picker-row { flex-wrap: wrap; gap: 8px !important; }
-  html[data-site='xcreate'] .model-picker-name > div, html[data-site='xcreate'] .model-picker-title { white-space: normal !important; overflow-wrap: anywhere; }
+  .xcs-page .model-picker-dialog { max-height: 85vh !important; }
+  .xcs-page .model-picker-dialog input { min-width: 0; width: 100%; font-size: 16px !important; }
+  .xcs-page .model-picker-row { flex-wrap: wrap; gap: 8px !important; }
+  .xcs-page .model-picker-name > div, .xcs-page .model-picker-title { white-space: normal !important; overflow-wrap: anywhere; }
   /* The price stays beside the name; the date and badges take their own line
      under it (Oct 3: the picker carries each model's price). */
-  html[data-site='xcreate'] .model-picker-meta { display: flex !important; flex-wrap: wrap; align-items: center; gap: 6px; order: 2; flex-basis: 100%; padding-left: 52px; box-sizing: border-box; }
-  html[data-site='xcreate'] .model-picker-meta:empty { display: none !important; }
+  .xcs-page .model-picker-meta { display: flex !important; flex-wrap: wrap; align-items: center; gap: 6px; order: 2; flex-basis: 100%; padding-left: 52px; box-sizing: border-box; }
+  .xcs-page .model-picker-meta:empty { display: none !important; }
 }
 
 /* ── The film, XCreate's fifth type (Sep 29): FilmStudio.tsx. Phone first;

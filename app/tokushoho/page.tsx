@@ -1,4 +1,3 @@
-import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // app/tokushoho/page.tsx — 特定商取引法に基づく表記 (Sep 29): the seller
 // disclosure Japan expects for paid online services (credits and the ¥749
 // plan). The seller is ModelXD LLC; the responsible person and phone are
@@ -38,7 +37,6 @@ export default function TokushohoPage() {
     <main id="xtell-main" tabIndex={-1} lang="ja" style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Legal</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>特定商取引法に基づく表記</h1>
-      <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>最終更新：2026年9月29日</p>
       <p style={S.p} lang="en">
         Commercial disclosure under Japan&apos;s Act on Specified Commercial Transactions, for

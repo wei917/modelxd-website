@@ -182,7 +182,7 @@ export default function FilmStudio({ filmId, onFilm, signedIn, onSignIn }: Props
       return <section className="xcs-film">
         <div className="xcs-empty" role={loadError === 'missing' ? 'alert' : undefined}>
           {loadError === 'auth'
-            ? <button className="xcs-primary" onClick={() => onSignIn(`/?film=${filmId}`)}>{c.signInToView}</button>
+            ? <button className="xcs-primary" onClick={() => onSignIn(`/xcreate?film=${filmId}`)}>{c.signInToView}</button>
             : <><p>{c.loadError}</p><button className="xcs-secondary" onClick={another}>{c.another}</button></>}
         </div>
       </section>

@@ -6,7 +6,7 @@ import { useAuthModal } from './AuthModalContext'
 
 /** Pops the sign-in dialog for a signed-out visitor. `enabled: false` skips
  *  it, for a page that lets strangers look around and asks at the moment
- *  something needs an account (xcreate.modelxd.com, Sep 26). The APIs
+ *  something needs an account (the XCreate studio at /xcreate). The APIs
  *  authenticate every call regardless.
  *
  *  Known: AuthModalProvider hands out a new show() on every render, so this

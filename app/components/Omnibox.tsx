@@ -38,7 +38,7 @@ type Row = {
  * yet. A block-list would quietly leak onto the next marketing page someone
  * adds; this way a new route has to opt in. (CC, Aug 5)
  */
-const SURFACES = ['/xduel', '/xcreate', '/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/profile', '/xdirector']
+const SURFACES = ['/xduel', '/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/profile', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const PAGES: { key: string; i18n: string; href: string }[] = [
@@ -71,7 +71,8 @@ export default function Omnibox() {
   const router = useRouter()
   const pathname = usePathname() ?? ''
   // www only: its rows are ModelXD surfaces and the site agent, which the
-  // XTell and XCreate hosts do not serve.
+  // XTell host does not serve. Not on /xcreate since Oct 13: the studio there
+  // is the one the X創作 door had, with its own type bar pinned on top.
   const onSurface = site === 'modelxd' && SURFACES.some(s => pathname === s || pathname.startsWith(s + '/'))
   const [open, setOpen]   = useState(false)
   const [q, setQ]         = useState('')

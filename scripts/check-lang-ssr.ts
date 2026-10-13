@@ -3,6 +3,7 @@
 // streamed into <body>), a visible string from the page, and that the
 // language boot script is the first inline script in <head>. Read-only GETs.
 //   npx tsx scripts/check-lang-ssr.ts http://localhost:3001 [xtell|xcreate|www]
+// (xcreate = www's /xcreate page since Oct 13; its door is gone)
 
 import { STRINGS } from '../lib/i18n'
 import { LANG_CODES, type Lang } from '../lib/lang'
@@ -15,7 +16,9 @@ const s = (k: string, l: Lang) => ((STRINGS[k] as any)[l] ?? STRINGS[k].en) as s
 
 // A string the door's first screen renders on the server, per language.
 const visible = (l: Lang) => door === 'xtell' ? s('xtell.site.focus.bazi.name', l) : door === 'xcreate' ? s('xcreate.subtitle', l) : s('nav.xduel', l)
-const title = (l: Lang) => door === 'xtell' ? s('xtell.site.tab', l) : door === 'xcreate' ? s('xcreate.site.brand', l) : 'ModelXD'
+const title = (l: Lang) => door === 'xtell' ? s('xtell.site.tab', l) : door === 'xcreate' ? s('nav.xcreate', l) : 'ModelXD'
+/** The page under test: the door's home, or the studio at /xcreate. */
+const home = door === 'xcreate' ? '/xcreate' : '/'
 
 async function page(path: string, headers: Record<string, string>) {
   const res = await fetch(base + path, { headers, redirect: 'manual' })
@@ -45,26 +48,26 @@ const expect = async (name: string, path: string, headers: Record<string, string
 ;(async () => {
   const ja = { 'accept-language': 'ja-JP,ja;q=0.9,en-US;q=0.8' }
   // The reported case, and every saved choice against a Japanese browser.
-  for (const l of LANG_CODES) await expect(`saved ${l}, Japanese browser`, '/', { ...ja, cookie: `modelxd_lang=${l}` }, l)
+  for (const l of LANG_CODES) await expect(`saved ${l}, Japanese browser`, home, { ...ja, cookie: `modelxd_lang=${l}` }, l)
   // First visitors: the door's browser fallback.
   if (door === 'xtell') {
-    await expect('first visit, Japanese browser', '/', ja, 'ja')
-    await expect('first visit, English browser → 繁體', '/', { 'accept-language': 'en-US,en;q=0.9' }, 'zh-Hant')
-    await expect('first visit, English Chrome with Japanese third (owner, Sep 27)', '/', { 'accept-language': 'en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6' }, 'zh-Hant')
-    await expect('first visit, Korean browser', '/', { 'accept-language': 'ko-KR,ko;q=0.9' }, 'ko')
-    await expect('first visit, zh-CN browser', '/', { 'accept-language': 'zh-CN,zh;q=0.9' }, 'zh-Hans')
-    await expect('first visit, bare zh', '/', { 'accept-language': 'zh' }, 'zh-Hant')
-    await expect('first visit, no header', '/', {}, 'zh-Hant')
+    await expect('first visit, Japanese browser', home, ja, 'ja')
+    await expect('first visit, English browser → 繁體', home, { 'accept-language': 'en-US,en;q=0.9' }, 'zh-Hant')
+    await expect('first visit, English Chrome with Japanese third (owner, Sep 27)', home, { 'accept-language': 'en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6' }, 'zh-Hant')
+    await expect('first visit, Korean browser', home, { 'accept-language': 'ko-KR,ko;q=0.9' }, 'ko')
+    await expect('first visit, zh-CN browser', home, { 'accept-language': 'zh-CN,zh;q=0.9' }, 'zh-Hans')
+    await expect('first visit, bare zh', home, { 'accept-language': 'zh' }, 'zh-Hant')
+    await expect('first visit, no header', home, {}, 'zh-Hant')
   } else {
-    await expect('first visit, Japanese browser', '/', ja, 'ja')
-    await expect('first visit, English browser', '/', { 'accept-language': 'en-US,en;q=0.9' }, 'en')
-    await expect('first visit, no header', '/', {}, 'en')
+    await expect('first visit, Japanese browser', home, ja, 'ja')
+    await expect('first visit, English browser', home, { 'accept-language': 'en-US,en;q=0.9' }, 'en')
+    await expect('first visit, no header', home, {}, 'en')
   }
   // ?lang= outranks the saved choice; an invalid one does not.
   await expect('?lang=ko over saved 繁體', '/?lang=ko', { ...ja, cookie: 'modelxd_lang=zh-Hant' }, 'ko')
   await expect('?lang=xx is ignored', '/?lang=xx', { ...ja, cookie: 'modelxd_lang=zh-Hant' }, 'zh-Hant')
   // A client-sent language header does not get through the proxy.
-  await expect('a forged x-modelxd-lang header is replaced', '/', { ...ja, 'x-modelxd-lang': 'en' }, 'ja')
+  await expect('a forged x-modelxd-lang header is replaced', home, { ...ja, 'x-modelxd-lang': 'en' }, 'ja')
   console.log(fails ? `\n${fails} FAILED` : `\nall ${door} first-paint checks passed`)
   if (fails) process.exit(1)
 })()

@@ -68,10 +68,11 @@ function isBypassed(pathname: string): boolean {
   return false
 }
 
-// ── The other front doors (XTell, XCreate) ─────────────────────────────────
-// xtell.modelxd.com is the temple street as its own site (owner, Sep 23) and
-// xcreate.modelxd.com the studio (owner, Sep 26): same deployment, same auth
-// and wallet, different shell. The proxy does two things for those hosts and
+// ── The other front door (XTell) ───────────────────────────────────────────
+// xtell.modelxd.com is the temple street as its own site (owner, Sep 23):
+// same deployment, same auth and wallet, different shell. (X創作's door,
+// xcreate.modelxd.com, was never released and is gone since Oct 13; the
+// studio is www's /xcreate.) The proxy does two things for that host and
 // nothing else: stamp the request with the site header so server components
 // know which shell to render, and refuse every route that is not the door's
 // own by sending it to `/` (app/page.tsx renders the door's app there).
@@ -90,7 +91,7 @@ function requestHost(req: NextRequest): string {
 const bareHost = (h: string) => h.replace(/:\d+$/, '')
 
 function siteDoor(req: NextRequest): NextResponse {
-  // WITH the port: locally the port picks the shell (:3001 XTell, :3030 XCreate).
+  // WITH the port: locally the port picks the shell (:3001 is XTell).
   const host = requestHost(req)
   let site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
   // /xtell on a host that is no door is www's XTell page: the door's content
@@ -125,11 +126,12 @@ function siteDoor(req: NextRequest): NextResponse {
 }
 
 /**
- * `?site=xtell` / `?site=xcreate` / `?site=www` switches the local shell and REMEMBERS it,
+ * `?site=xtell` / `?site=www` switches the local shell and REMEMBERS it,
  * then redirects to the clean URL. The cookie had no off-switch: it was set
  * by hand in devtools per lib/site.ts, nothing ever cleared it, and a stale
- * one turned every later localhost visit into the temple street with
- * /xcreate 302'ing to `/` for no visible reason (hit Sep 26).
+ * one turned every later localhost visit into the temple street (hit Sep
+ * 26). `?site=xcreate`, the old switch to the X創作 door, now clears it too,
+ * so a bookmark from before Oct 13 lands on www.
  *
  * Ports would be tidier (:3001 = XTell, and siteOfHost honours that) but
  * Next 16 refuses a second `next dev` in the same directory, so two ports
@@ -141,7 +143,7 @@ function siteSwitch(req: NextRequest): NextResponse | null {
   const url = req.nextUrl.clone()
   url.searchParams.delete('site')
   const res = NextResponse.redirect(url)
-  if (want === 'xtell' || want === 'xcreate') res.cookies.set(SITE_COOKIE, want, { path: '/', sameSite: 'lax' })
+  if (want === 'xtell') res.cookies.set(SITE_COOKIE, want, { path: '/', sameSite: 'lax' })
   else res.cookies.set(SITE_COOKIE, '', { path: '/', maxAge: 0 })
   return res
 }
@@ -150,8 +152,8 @@ export async function proxy(req: NextRequest) {
   const switched = siteSwitch(req)
   if (switched) return switched
 
-  // The XTell and XCreate hosts are never behind the site password (like
-  // dev.), and every request on every host gets the site header.
+  // The XTell host is never behind the site password (like dev.), and every
+  // request on every host gets the site header.
   const door = siteDoor(req)
   const host = bareHost(requestHost(req))
   if (host !== 'modelxd.com' && host !== 'www.modelxd.com') return door

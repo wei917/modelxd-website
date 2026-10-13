@@ -48,7 +48,7 @@ export default function StudioWorks({ type, userId }: { type: StudioType; userId
           const title = r.title || r.prompt || t('xcs.works.untitled')
           const day = new Date(r.created_at).toLocaleDateString(lang, { month: 'numeric', day: 'numeric' })
           return (
-            <Link key={r.id} href={`/?id=${encodeURIComponent(r.id)}`} className="xcs-work" title={title}>
+            <Link key={r.id} href={`/xcreate?id=${encodeURIComponent(r.id)}`} className="xcs-work" title={title}>
               {media && (slot?.isImage || r.mode === 'image')
                 ? <img src={media} alt="" loading="lazy" />
                 : media && (slot?.isVideo || r.mode === 'video')

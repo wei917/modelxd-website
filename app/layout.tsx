@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC, Noto_Sans_JP, DM_Sans } from 'next/font/google'
+import { Barlow, JetBrains_Mono, Archivo_Black, Noto_Sans_TC, Noto_Sans_JP } from 'next/font/google'
 import { AuthModalProvider } from '../lib/AuthModalContext'
 import { LangProvider } from '../lib/i18n'
 import AuthModal from './components/AuthModal'
@@ -13,10 +13,8 @@ import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
 import { needsConsent } from '../lib/consent'
 import { xtellMetadata } from '../lib/xtell-meta'
-import { xcreateMetadata } from '../lib/xcreate-meta'
 import { SiteProvider } from '../lib/useSite'
 import { serverLang, LANG_BOOT } from '../lib/lang'
-import { XCreateFooter } from './components/xcreate/XCreateNav'
 import './globals.css'
 
 // Barlow at body weights — used for paragraph copy and UI labels.
@@ -72,33 +70,13 @@ const notoJP = Noto_Sans_JP({
   display: 'swap',
 })
 
-// xcreate.modelxd.com's type (Sep 26): DM Sans for text, and a Barlow under
-// its own variable that the CJK rules in globals.css do not re-point, so
-// the wordmark and headings stay Latin Barlow in every language. The classes
-// go on <body> on that host only; preload is off so www never fetches them.
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-xc',
-  preload: false,
-  display: 'swap',
-})
-const barlowXCreate = Barlow({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-xc-display',
-  preload: false,
-  display: 'swap',
-})
-
 // Default title per front door: pages without their own metadata (the
 // client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
-// tab on the XTell and XCreate hosts. In the language the page renders in.
+// tab on the XTell host. In the language the page renders in.
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
   const site = siteFromHeaders(h)
   if (site === 'xtell') return xtellMetadata(serverLang(h, site))
-  if (site === 'xcreate') return xcreateMetadata(serverLang(h, site))
   return {
     title: 'ModelXD',
     description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',
@@ -116,7 +94,7 @@ export const viewport = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Which front door (www, xtell. or xcreate.modelxd.com) — stamped by proxy.ts. Read
+  // Which front door (www or xtell.modelxd.com) — stamped by proxy.ts. Read
   // here so the shell is right on the server render; this makes every route
   // dynamic, which they effectively were already (auth on nearly all).
   const h = await headers()
@@ -139,7 +117,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             another language. */}
         <script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} />
       </head>
-      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}${site === 'xcreate' ? ` ${dmSans.variable} ${barlowXCreate.variable}` : ''}`}>
+      <body className={`${barlow.variable} ${barlowDisplay.variable} ${jetbrainsMono.variable} ${archivoBlack.variable} ${notoTC.variable} ${notoJP.variable}`}>
         <SiteProvider site={site}>
         <LangProvider initial={lang}>
           <AuthModalProvider>
@@ -149,9 +127,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="app-main">
                 <Omnibox />
                 {children}
-                {/* The XCreate shell's footer sits under every page on that
-                    host (studio, account, legal); XTell's pages carry their own. */}
-                {site === 'xcreate' && <XCreateFooter />}
               </div>
             </div>
             <AuthModal />

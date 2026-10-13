@@ -1,5 +1,4 @@
 import LocaleSummary from '../components/LocaleSummary'
-import { XCreateLegalNote } from '../components/xcreate/XCreateNav'
 // app/terms/page.tsx — Terms of Service (drafted July 20, 2026; CC to review
 // before beta. This is a plain static page; the big title lives in the
 // TopBar per the July 16 convention.) Sep 28: every door and app named,
@@ -19,14 +18,13 @@ export default function TermsPage() {
     <main id="xtell-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Terms</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
-      <XCreateLegalNote />
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: October 7, 2026
+        Last updated: October 13, 2026
       </p>
       <p style={S.p}>
         Welcome to ModelXD. These Terms of Service (&quot;Terms&quot;) govern your use of
-        ModelXD&apos;s websites (modelxd.com, xtell.modelxd.com and xcreate.modelxd.com)
-        and services, including XDuel, XCreate, XDirect, XCut, XTalk, XGame, XWorld,
+        ModelXD&apos;s websites (modelxd.com and xtell.modelxd.com)
+        and services, including XDuel, XCreate (X創作), XDirect, XCut, XTalk, XGame, XWorld,
         XArch, XTell (X先知), XVote, XBoard and the API (together, the
         &quot;Service&quot;). By creating an account or using the Service, you agree to
         these Terms.
