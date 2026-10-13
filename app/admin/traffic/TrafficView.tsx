@@ -436,7 +436,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Traffic</h1>
       <p style={{ margin: '4px 0 0', fontSize: 13, color: INK2, lineHeight: 1.5 }}>
         Production visits from our own visit log, by day in {tz}. &ldquo;Browsers&rdquo; are visitor cookies, not people:
-        one person on a phone and a laptop counts twice.
+        one person on a phone and a laptop counts twice. Your own accounts, and every browser that has signed in with one,
+        are left out.
       </p>
 
       <section aria-label="Filters" style={{ marginTop: 14, border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', display: 'grid', gap: 10 }}>

@@ -61,6 +61,14 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `129_site_internal_users.sql` applied 2026-10-12 by the owner:
+  /admin/traffic leaves out the owner's accounts (`site_internal_users`:
+  two Google, one LINE Taiwan test) and every browser that signed in with
+  one (env `internal`, `site_mark_browser_internal`); sign-ins, accounts per
+  country and votes skip those accounts. Checked live: 3 accounts, 166
+  visits and 7 taps flipped, no production visit left signed in as one,
+  accounts per country 122 of 125 profiles, 42501 for the publishable key
+  on the table and all four functions.
   `128_site_visit_top_avg.sql` applied 2026-10-07 by the owner:
   /admin/traffic's top 20% / top 10% stay are the average of the
   longest-staying fifth and tenth (they were the 80th/90th percentile); it
@@ -931,7 +939,9 @@ IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`). There is no
 Google Ads tag on the site (removed Oct 3, owner): ads still count their own
 clicks, and gclid reaches this log from the click URL. `/api/visit` bypasses the www password gate
 so ad clicks that land on `/coming-soon` still count. **Reports filter
-`env = 'production'`**; queries and definitions are in `docs/SITE-VISITS.md`.
+`env = 'production'`**; the owner's own accounts and every browser that has
+signed in with one are logged as `internal` instead (migration 129,
+`site_internal_users`); queries and definitions are in `docs/SITE-VISITS.md`.
 The daily picture is the admin page **`/admin/traffic`**: filters at the top
 (range, country), the part they narrow (tiles for the RANGE as a whole with
 today and yesterday under them, from `site_visit_summary()` in 118; then

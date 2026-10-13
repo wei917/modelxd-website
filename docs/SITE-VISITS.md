@@ -28,7 +28,17 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
   wbraid are iOS), `utm_*` from the landing URL, `referrer` host. Only taken
   when the tab arrived from outside: a reload of an ad URL is not a new click.
 - **`env`**: `production`, `preview` (dev.modelxd.com) or `development`
-  (localhost). **Every report filters `env = 'production'`.**
+  (localhost), or `internal` (since Oct 12, migration 129): a production
+  visit, tap or share from one of the owner's browsers, i.e. any browser that
+  has signed in with an account in `site_internal_users` (the owner's two
+  Google accounts and the LINE Taiwan test account). `/api/visit` marks such
+  a browser with the `modelxd_internal` cookie, flips its earlier rows once
+  (`site_mark_browser_internal`) and logs it as `internal` from then on,
+  signed in or not. Answer votes by those accounts are `internal` too, and
+  the sign-ins, accounts-per-country and votes reports skip the accounts.
+  **Every report filters `env = 'production'`.** To add a test account:
+  `insert into site_internal_users (user_id, note) values ('<id>', 'test');`
+  then `select site_mark_browser_internal(visitor_id)` over its browsers.
 - **Not logged**: the EEA, the UK and Switzerland (`lib/consent.ts`), crawlers
   (Googlebot, AdsBot, headless Chrome, Lighthouse), browsers without
   JavaScript. No IP address is stored anywhere.
