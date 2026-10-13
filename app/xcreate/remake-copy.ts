@@ -80,6 +80,8 @@ type Copy = {
   watchHere: string
   /** The "try a popular one" row under the paste box (Oct 13). */
   tryHeading: string
+  withPrompt: string
+  creatorPrompt: string
 }
 
 const en: Copy = {
@@ -164,6 +166,8 @@ const en: Copy = {
   showAllTexts: n => `Show all ${n}`,
   watchHere: 'Watch this moment of the original',
   tryHeading: 'Try a popular one',
+  withPrompt: 'Prompt shared',
+  creatorPrompt: "The creator's prompt",
 }
 
 const zhHant: Copy = {
@@ -248,6 +252,8 @@ const zhHant: Copy = {
   showAllTexts: n => `看全部 ${n} 段`,
   watchHere: '看原片這一刻',
   tryHeading: '試試熱門影片',
+  withPrompt: '附提示詞',
+  creatorPrompt: '原作者的提示詞',
 }
 
 const zhHans: Copy = {
@@ -318,6 +324,8 @@ const zhHans: Copy = {
   textAuto: '自动改写成你的主题',
   watchHere: '看原片这一刻',
   tryHeading: '试试热门视频',
+  withPrompt: '附提示词',
+  creatorPrompt: '原作者的提示词',
 }
 
 const ja: Copy = {
@@ -402,6 +410,8 @@ const ja: Copy = {
   showAllTexts: n => `全 ${n} 件を見る`,
   watchHere: '元の動画のこの場面を見る',
   tryHeading: '人気の動画で試す',
+  withPrompt: 'プロンプト付き',
+  creatorPrompt: '作者のプロンプト',
 }
 
 const ko: Copy = {
@@ -486,6 +496,8 @@ const ko: Copy = {
   showAllTexts: n => `${n}개 모두 보기`,
   watchHere: '원본의 이 장면 보기',
   tryHeading: '인기 영상으로 해 보기',
+  withPrompt: '프롬프트 공개',
+  creatorPrompt: '원작자의 프롬프트',
 }
 
 const COPY: Record<Lang, Copy> = { en, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja, ko }
