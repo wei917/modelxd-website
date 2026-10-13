@@ -22,6 +22,10 @@ import { CURATED_EXAMPLES, type RemakeExample } from '@/lib/remake/examples'
 
 /** Platforms the read takes by link. YouTube rows would join here. */
 const READABLE = ['x']
+/** Accounts whose likes come from their reach, not the video (owner, Oct 13,
+ *  on Elon Musk's Grok Imagine posts: "they are biased. people like those not
+ *  because they are good"). Left out of both lists. */
+const LEFT_OUT = new Set(['elonmusk'])
 const MAX = 8
 const postId = (url: string) => url.match(/\/status(?:es)?\/(\d{5,25})/)?.[1] ?? url
 
@@ -41,7 +45,7 @@ export async function GET() {
   // Once each (a post can be live in more than one week, or on both lists).
   const seen = new Set<string>()
   const examples = [...CURATED_EXAMPLES, ...fromFeed]
-    .filter(e => e.likes >= REMAKE_EXAMPLE_MIN_LIKES)
+    .filter(e => e.likes >= REMAKE_EXAMPLE_MIN_LIKES && !LEFT_OUT.has(e.handle.toLowerCase()))
     .sort((a, b) => b.likes - a.likes)
     .filter(e => { const k = postId(e.url); if (seen.has(k)) return false; seen.add(k); return true })
     .slice(0, MAX)
