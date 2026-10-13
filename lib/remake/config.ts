@@ -17,6 +17,11 @@ export const BREAKDOWN_MODEL = 'gemini-3.8-flash'
 export const BREAKDOWN_FPS = 5
 /** The activity_logs event a breakdown writes; the daily cap counts them. */
 export const BREAKDOWN_EVENT = 'remake_breakdown'
+/** The bar for a "try a popular one" example (owner, Oct 13: "why you add
+ *  this? @AIwithkhan, 1,042 likes. please raise the bar. at least 10k likes
+ *  in total"). Far above the trending feed's 1,000: these are shown as THE
+ *  popular videos to remake. */
+export const REMAKE_EXAMPLE_MIN_LIKES = 10_000
 
 export type SourceKind = 'youtube' | 'x' | 'upload'
 
