@@ -122,6 +122,38 @@ Shown as cards. X videos and uploads can show one thumbnail per shot, cut from
 the file and deleted with the job (decision). YouTube shows text cards, because
 we never have its pixels.
 
+**Materials (Oct 13).** Owner: "it should automatically break down the
+essential materials (input images, audio...etc) for users to replace." The
+read now also returns:
+- `things[]`: id, kind (product, prop, logo), name, look, best, box.
+- `places[]`: id, name, look, best.
+- On each character: best and box.
+- On each shot: `things` and `place`.
+
+`best` is the second where the person or thing is seen most clearly; `box`
+is `[ymin, xmin, ymax, xmax]` on 0–1000. The page adds the music, one voice
+per speaker and the distinct on-screen texts. Every material gets a tile and a
+card with its own choices:
+- People: keep, my photo, describe, famous person.
+- Things: keep, my photo, describe, remove. A logo has no keep and starts as
+  remove.
+- Places: keep, my photo, describe.
+- Music: none, or my track. There is no music model yet.
+- Voices: AI voice, my recording, or no voice.
+- Texts: the user's own words, or rewritten for the theme.
+
+Tested Oct 13, $0.19 in total:
+- Jensen X post (85 s, two pieces): 12 people, sunglasses, a sign, the stage
+  and its music, 1 speaker, 19 texts. 13 of 15 pictures right; the misses
+  had the model's moment off.
+- Our boxing upload (24.5 s): 4 people, the system window, 4 places. 8 of 9
+  pictures right; the referee's showed his glove.
+- A YouTube video (30 s): 2 people, a gun, a notebook, 2 places. It has no
+  pictures; the cards play the moment instead.
+
+The pictures add about 60–80 KB to the response. The engine does not read
+the new choices yet; wiring them in comes with making.
+
 ## Making it (Film v2's process, `docs/FILM-V2-PLAN.md`)
 1. **Storyboard.** The director (Claude, Messages API) turns breakdown + swaps
    into the remake's storyboard: the same shot list, timing and transitions,

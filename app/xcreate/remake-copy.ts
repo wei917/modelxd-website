@@ -1,7 +1,7 @@
 // 同款 (Remake), XCreate's sixth type (Oct 10): the page's words in five
 // languages. The type's name itself is i18n `mode.remake`.
 import type { Lang } from '@/lib/i18n'
-import type { CastChoice, RemakeLook } from '@/lib/remake/config'
+import type { CastChoice, MusicChoice, RemakeLook, ThingChoice, ThingKind, VoiceChoice } from '@/lib/remake/config'
 
 type Copy = {
   title: string
@@ -60,6 +60,24 @@ type Copy = {
   paste: string
   clear: string
   inShots: (n: number) => string
+  /** 03, the materials the read found (Oct 13). */
+  materials: (n: number) => string
+  kinds: { people: string; things: string; places: string; sound: string; text: string; overall: string }
+  thingKinds: Record<ThingKind, string>
+  thingChoices: Record<ThingChoice, string>
+  thingPlaceholder: string
+  myLogo: string
+  logoNote: string
+  musicChoices: Record<MusicChoice, string>
+  noMusicNote: string
+  voiceLabel: string
+  voiceChoices: Record<VoiceChoice, string>
+  linesCount: (n: number) => string
+  audioPick: string
+  textsCount: (n: number) => string
+  textAuto: string
+  showAllTexts: (n: number) => string
+  watchHere: string
 }
 
 const en: Copy = {
@@ -101,7 +119,7 @@ const en: Copy = {
   seconds: n => `${n}s`,
   about: p => `about ${p}`,
   fromShot: 'Start from shot',
-  swapHeading: 'What to swap',
+  swapHeading: 'Materials to swap',
   cast: { keep: 'Keep', photo: 'My photo', describe: 'Describe', famous: 'Famous person' },
   describePlaceholder: 'e.g. a shiba inu in a suit',
   famousPlaceholder: 'e.g. Elon Musk',
@@ -126,6 +144,23 @@ const en: Copy = {
   paste: 'Paste',
   clear: 'Clear',
   inShots: n => n === 1 ? 'in 1 shot' : `in ${n} shots`,
+  materials: n => `${n} materials found. Tap one to swap it.`,
+  kinds: { people: 'People', things: 'Things', places: 'Places', sound: 'Sound', text: 'On-screen text', overall: 'Overall' },
+  thingKinds: { product: 'Product', prop: 'Prop', logo: 'Logo' },
+  thingChoices: { keep: 'Keep', photo: 'My photo', describe: 'Describe', remove: 'Remove' },
+  thingPlaceholder: 'e.g. a cup of bubble tea',
+  myLogo: 'My logo',
+  logoNote: "The original's logo never appears in your version.",
+  musicChoices: { none: 'No music', mine: 'My track' },
+  noMusicNote: "The original's music is never reused. Without your track, each shot keeps its own sound.",
+  voiceLabel: 'Voice',
+  voiceChoices: { ai: 'AI voice', mine: 'My recording', none: 'No voice' },
+  linesCount: n => n === 1 ? '1 line' : `${n} lines`,
+  audioPick: 'Choose an audio file',
+  textsCount: n => n === 1 ? '1 text' : `${n} texts`,
+  textAuto: 'Rewritten for your theme',
+  showAllTexts: n => `Show all ${n}`,
+  watchHere: 'Watch this moment of the original',
 }
 
 const zhHant: Copy = {
@@ -167,7 +202,7 @@ const zhHant: Copy = {
   seconds: n => `${n} 秒`,
   about: p => `約 ${p}`,
   fromShot: '從哪個鏡頭開始',
-  swapHeading: '要換什麼',
+  swapHeading: '替換素材',
   cast: { keep: '保留', photo: '我的照片', describe: '描述', famous: '名人' },
   describePlaceholder: '例如：穿西裝的柴犬',
   famousPlaceholder: '例如：馬斯克',
@@ -192,6 +227,23 @@ const zhHant: Copy = {
   paste: '貼上',
   clear: '清除',
   inShots: n => `${n} 個鏡頭`,
+  materials: n => `找到 ${n} 個素材，點一下就能換。`,
+  kinds: { people: '人物', things: '物件', places: '場景', sound: '聲音', text: '畫面文字', overall: '整體' },
+  thingKinds: { product: '商品', prop: '道具', logo: '標誌' },
+  thingChoices: { keep: '保留', photo: '我的照片', describe: '描述', remove: '拿掉' },
+  thingPlaceholder: '例如：一杯珍珠奶茶',
+  myLogo: '我的標誌',
+  logoNote: '原片的標誌不會出現在你的版本裡。',
+  musicChoices: { none: '不要音樂', mine: '我的音樂' },
+  noMusicNote: '原片的音樂不會沿用。沒有你的音樂時，每個鏡頭保留自己的聲音。',
+  voiceLabel: '配音',
+  voiceChoices: { ai: 'AI 配音', mine: '我的錄音', none: '不要聲音' },
+  linesCount: n => `${n} 句`,
+  audioPick: '選音檔',
+  textsCount: n => `${n} 段文字`,
+  textAuto: '自動改寫成你的主題',
+  showAllTexts: n => `看全部 ${n} 段`,
+  watchHere: '看原片這一刻',
 }
 
 const zhHans: Copy = {
@@ -231,7 +283,7 @@ const zhHans: Copy = {
   whole: s => `整个 ${s} 秒`,
   about: p => `约 ${p}`,
   fromShot: '从哪个镜头开始',
-  swapHeading: '要换什么',
+  swapHeading: '替换素材',
   describePlaceholder: '例如：穿西装的柴犬',
   famousPlaceholder: '例如：马斯克',
   photoPick: '选照片',
@@ -249,6 +301,18 @@ const zhHans: Copy = {
   otherCast: n => `其他 ${n} 个角色（短暂出现）`,
   paste: '粘贴',
   inShots: n => `${n} 个镜头`,
+  materials: n => `找到 ${n} 个素材，点一下就能换。`,
+  kinds: { people: '人物', things: '物件', places: '场景', sound: '声音', text: '画面文字', overall: '整体' },
+  thingKinds: { product: '商品', prop: '道具', logo: '标志' },
+  thingChoices: { keep: '保留', photo: '我的照片', describe: '描述', remove: '去掉' },
+  myLogo: '我的标志',
+  logoNote: '原片的标志不会出现在你的版本里。',
+  musicChoices: { none: '不要音乐', mine: '我的音乐' },
+  noMusicNote: '原片的音乐不会沿用。没有你的音乐时，每个镜头保留自己的声音。',
+  voiceChoices: { ai: 'AI 配音', mine: '我的录音', none: '不要声音' },
+  audioPick: '选音频文件',
+  textAuto: '自动改写成你的主题',
+  watchHere: '看原片这一刻',
 }
 
 const ja: Copy = {
@@ -290,7 +354,7 @@ const ja: Copy = {
   seconds: n => `${n} 秒`,
   about: p => `約 ${p}`,
   fromShot: 'どのカットから',
-  swapHeading: '入れ替えるもの',
+  swapHeading: '素材を入れ替える',
   cast: { keep: 'そのまま', photo: '自分の写真', describe: '説明する', famous: '有名人' },
   describePlaceholder: '例：スーツを着た柴犬',
   famousPlaceholder: '例：イーロン・マスク',
@@ -315,6 +379,23 @@ const ja: Copy = {
   paste: '貼り付け',
   clear: 'クリア',
   inShots: n => `${n} カット`,
+  materials: n => `素材が ${n} 点見つかりました。タップして入れ替え。`,
+  kinds: { people: '人物', things: 'モノ', places: '場所', sound: '音', text: '画面の文字', overall: '全体' },
+  thingKinds: { product: '商品', prop: '小道具', logo: 'ロゴ' },
+  thingChoices: { keep: 'そのまま', photo: '自分の写真', describe: '説明する', remove: '消す' },
+  thingPlaceholder: '例：タピオカミルクティー',
+  myLogo: '自分のロゴ',
+  logoNote: '元の動画のロゴは、自分版には使いません。',
+  musicChoices: { none: '音楽なし', mine: '自分の曲' },
+  noMusicNote: '元の動画の音楽は使いません。自分の曲がなければ、各カットの音だけになります。',
+  voiceLabel: '声',
+  voiceChoices: { ai: 'AI の声', mine: '自分の録音', none: '声なし' },
+  linesCount: n => `セリフ ${n}`,
+  audioPick: '音声ファイルを選ぶ',
+  textsCount: n => `${n} 件`,
+  textAuto: 'テーマに合わせて自動で書き換え',
+  showAllTexts: n => `全 ${n} 件を見る`,
+  watchHere: '元の動画のこの場面を見る',
 }
 
 const ko: Copy = {
@@ -356,7 +437,7 @@ const ko: Copy = {
   seconds: n => `${n}초`,
   about: p => `약 ${p}`,
   fromShot: '시작할 컷',
-  swapHeading: '바꿀 것',
+  swapHeading: '소재 바꾸기',
   cast: { keep: '그대로', photo: '내 사진', describe: '설명하기', famous: '유명인' },
   describePlaceholder: '예: 정장을 입은 시바견',
   famousPlaceholder: '예: 일론 머스크',
@@ -381,6 +462,23 @@ const ko: Copy = {
   paste: '붙여넣기',
   clear: '지우기',
   inShots: n => `컷 ${n}개`,
+  materials: n => `소재 ${n}개를 찾았어요. 눌러서 바꾸세요.`,
+  kinds: { people: '인물', things: '사물', places: '장소', sound: '소리', text: '화면 글자', overall: '전체' },
+  thingKinds: { product: '제품', prop: '소품', logo: '로고' },
+  thingChoices: { keep: '그대로', photo: '내 사진', describe: '설명하기', remove: '없애기' },
+  thingPlaceholder: '예: 버블티 한 잔',
+  myLogo: '내 로고',
+  logoNote: '원본의 로고는 내 버전에 나오지 않아요.',
+  musicChoices: { none: '음악 없음', mine: '내 음악' },
+  noMusicNote: '원본 음악은 쓰지 않아요. 내 음악이 없으면 각 컷의 소리만 남아요.',
+  voiceLabel: '목소리',
+  voiceChoices: { ai: 'AI 목소리', mine: '내 녹음', none: '목소리 없음' },
+  linesCount: n => `대사 ${n}개`,
+  audioPick: '오디오 파일 고르기',
+  textsCount: n => `${n}개`,
+  textAuto: '주제에 맞게 자동으로 바꿔요',
+  showAllTexts: n => `${n}개 모두 보기`,
+  watchHere: '원본의 이 장면 보기',
 }
 
 const COPY: Record<Lang, Copy> = { en, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja, ko }

@@ -31,8 +31,25 @@ export type Shot = {
   transition_in: string
   text: string
   sound: string
+  /** Things in view (Thing ids) and the setting (a Place id); reads before Oct 13 have neither. */
+  things?: string[]
+  place?: string
 }
-export type Character = { id: string; role: string; look: string }
+/** Where something is in a frame: [ymin, xmin, ymax, xmax], each 0–1000 of
+ *  the frame (the box format Gemini is trained on). */
+export type Box = [number, number, number, number]
+/** `best`: the second (on the read's clock) where they are seen most clearly;
+ *  `box`: where, at that second. They place the picture of the original on
+ *  the page. */
+export type Character = { id: string; role: string; look: string; best?: number; box?: Box }
+/** What the video depends on besides its people (owner, Oct 13: "break down
+ *  the essential materials ... for users to replace"): the product it shows,
+ *  props the action needs, and every logo on screen. */
+export type ThingKind = 'product' | 'prop' | 'logo'
+export const THING_KINDS: ThingKind[] = ['product', 'prop', 'logo']
+export type Thing = { id: string; kind: ThingKind; name: string; look: string; best?: number; box?: Box }
+/** Each distinct setting, once. */
+export type Place = { id: string; name: string; look: string; best?: number }
 export type Line = { t: number; who: string; text: string; language: string }
 export type Breakdown = {
   duration: number
@@ -42,6 +59,8 @@ export type Breakdown = {
   hook: string
   look: { style: string; palette: string; light: string }
   characters: Character[]
+  things: Thing[]
+  places: Place[]
   shots: Shot[]
   lines: Line[]
   music: { present: boolean; bpm: number | null; mood: string; cuts_on_beat: boolean }
@@ -53,11 +72,21 @@ export type BreakdownResult = {
   costUsd: number
   /** Breakdowns left today after this one. */
   left: number
+  /** A small picture of each person, thing and place, cut from the original
+   *  (id → JPEG data URL). X and uploads only: YouTube is never downloaded.
+   *  Sent once and never stored on our side. */
+  previews?: Record<string, string>
 }
 
 /** What the user swaps. Phase 1 keeps it on the page; phase 2 sends it with
  *  the remake. */
 export type CastChoice = 'keep' | 'photo' | 'describe' | 'famous'
+/** A logo is never carried over: it starts as 'remove'. */
+export type ThingChoice = 'keep' | 'photo' | 'describe' | 'remove'
+export type PlaceChoice = 'keep' | 'photo' | 'describe'
+/** No music model yet (plan, decision 4): none, or the user's own track. */
+export type MusicChoice = 'none' | 'mine'
+export type VoiceChoice = 'ai' | 'mine' | 'none'
 export type RemakeLook = 'keep' | 'anime' | 'realistic' | '3d'
 export const REMAKE_LOOKS: RemakeLook[] = ['keep', 'anime', 'realistic', '3d']
 

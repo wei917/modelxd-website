@@ -9,6 +9,9 @@
 // before the response; nothing of the source is kept. Reads up to 3 minutes
 // (owner, Oct 10). HOUSE-PAID, about $0.05 a minute, capped per user per day,
 // and logged against the user in provider_calls like every other call.
+// Since Oct 13 the read also names the materials to swap (people, things,
+// places); for X and uploads a small picture of each is cut from the file
+// while we still hold it and sent back inline (lib/remake/previews.ts).
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -23,7 +26,9 @@ import { sanitizeProviderError } from '@/lib/provider-errors'
 import { isOwnUpload, UPLOAD_BUCKETS } from '@/lib/platform-specs'
 import { classifyLink } from '@/lib/remake/source'
 import { readXVideo, XReadError } from '@/lib/remake/x'
-import { breakdownPrompt, joinPieces, normalizeBreakdown, READ_PIECE_SECONDS } from '@/lib/remake/breakdown'
+import { breakdownPrompt, joinPieces, knownSoFar, normalizeBreakdown, READ_PIECE_SECONDS } from '@/lib/remake/breakdown'
+import { makePreviews } from '@/lib/remake/previews'
+import { ffmpegPath } from '@/lib/xcut-render'
 import {
   BREAKDOWN_DAILY_CAP, BREAKDOWN_EVENT, BREAKDOWN_FPS, BREAKDOWN_MODEL, REMAKE_MAX_SOURCE_SECONDS,
   type Breakdown, type BreakdownResult, type SourceKind,
@@ -71,13 +76,14 @@ export async function POST(req: NextRequest) {
 
   const tmp = path.join(os.tmpdir(), `remake-${crypto.randomUUID()}`)
   let geminiFile: string | null = null
+  let ext = '.mp4'
   try {
     let source: VideoSource
     let known: number | null = null
     if (kind === 'youtube') {
       source = { url: url! }
     } else {
-      let bytes: Buffer, ext = '.mp4'
+      let bytes: Buffer
       if (kind === 'x') {
         const v = await readXVideo(postId!)
         known = v.durationSeconds
@@ -112,14 +118,14 @@ export async function POST(req: NextRequest) {
     let cost = 0
     for (let from = start; from < end - 0.5 && pieces.length < Math.ceil(REMAKE_MAX_SOURCE_SECONDS / READ_PIECE_SECONDS);) {
       const to = Math.min(from + READ_PIECE_SECONDS, end)
-      const cast = pieces.flatMap(p => p.b.characters)
+      const seen = knownSoFar(pieces)
       let part: Breakdown | null = null
       for (let attempt = 0; attempt < 2 && !part; attempt++) {
         try {
-          const r = await analyzeVideo(model as any, breakdownPrompt(lang, from, cast), source,
+          const r = await analyzeVideo(model as any, breakdownPrompt(lang, from, seen), source,
             { fps: BREAKDOWN_FPS, startSec: from || undefined, endSec: to, json: true }, { userId: user.id })
           cost += r.cost
-          part = normalizeBreakdown(r.text, to - from, cast.map(c => c.id))
+          part = normalizeBreakdown(r.text, to - from, { characters: seen.characters.map(c => c.id), things: seen.things.map(t => t.id), places: seen.places.map(x => x.id) })
           if (!part) console.warn(`${LOG} piece at ${from}s, attempt ${attempt + 1}: not a shot list (${r.text.slice(0, 120)})`)
         } catch (err) {
           // The first piece failing is the read failing; a later one (often
@@ -134,10 +140,16 @@ export async function POST(req: NextRequest) {
       from = to
     }
     const breakdown = joinPieces(pieces)
+    // The pictures of the materials, from the file while we still have it.
+    let previews: Record<string, string> | undefined
+    if (kind !== 'youtube') {
+      try { previews = await makePreviews(ffmpegPath(), `${tmp}${ext}`, start, breakdown) }
+      catch (err) { console.warn(`${LOG} previews: ${(err as Error).message}`) }
+    }
 
     await admin.from('activity_logs').insert({
       user_id: user.id, event: BREAKDOWN_EVENT,
-      metadata: { kind, url, start, seconds: breakdown.duration, shots: breakdown.shots.length, cost_usd: Math.round(cost * 10000) / 10000 },
+      metadata: { kind, url, start, seconds: breakdown.duration, shots: breakdown.shots.length, things: breakdown.things.length, places: breakdown.places.length, cost_usd: Math.round(cost * 10000) / 10000 },
     })
     console.log(`${LOG} ${kind} ${url ?? 'upload'}: ${breakdown.shots.length} shots, ${breakdown.duration}s, $${cost.toFixed(4)}`)
     const result: BreakdownResult = {
@@ -145,6 +157,7 @@ export async function POST(req: NextRequest) {
       source: { kind, url, start, end: Math.round((start + breakdown.duration) * 10) / 10 },
       costUsd: Math.round(cost * 10000) / 10000,
       left: Math.max(0, BREAKDOWN_DAILY_CAP - used - 1),
+      previews,
     }
     return Response.json(result)
   } catch (err) {
