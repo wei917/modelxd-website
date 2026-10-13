@@ -14,7 +14,6 @@ import { useEffect, useState } from 'react'
 import { allowedFor } from '../../lib/model-features'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT } from '../../lib/i18n'
-import { useSite } from '../../lib/useSite'
 import { unitPrice, formatUsd, capabilityLine, isNewModel } from '../../lib/model-facts'
 import ProviderLogo from './ProviderLogo'
 
@@ -100,7 +99,7 @@ function companyLabel(id: string): string {
     .join(' ')
 }
 
-export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature, needsSearch, multi }: {
+export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature, needsSearch, multi, studio = false }: {
   /** One recipe, or a SET — a model qualifies by supporting ANY of them
    *  (canvas re-generate wants image_to_video OR reference_frames). */
   mode: Mode; recipeMode: ModelMode | ModelMode[]; onSelect: (m: PickerModel) => void; onClose: () => void
@@ -121,11 +120,13 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
    *  a toggle does (it keeps at least one). Labels come from the caller.
    *  Without it the picker is exactly the single-choice dialog above. */
   multi?: { selected: string[]; max: number; onToggle: (m: PickerModel) => void; doneLabel: string; countLabel: string; maxLabel: string }
+  /** The X創作 studio: the XD score is hidden (owner, Oct 3: "not ready
+   *  yet") and a row says what the model does instead of its internal id.
+   *  It was the xcreate.modelxd.com door's look until that door went (Oct 13). */
+  studio?: boolean
 }) {
   const t = useT()
-  // On the X創作 door the XD score is hidden (owner, Oct 3: "not ready yet"),
-  // and a row says what the model does instead of its internal id.
-  const door = useSite() === 'xcreate'
+  const door = studio
   const [search,      setSearch]      = useState('')
   const [allModels,   setAllModels]   = useState<PickerModel[]>([])
   const [loading,     setLoading]     = useState(true)

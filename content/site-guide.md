@@ -59,8 +59,9 @@ failed and your daily quota is refunded.
 
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
-Korean; its own front door is xcreate.modelxd.com, where the top bar picks
-what to make (Text, Image, Video, Audio, Film). The From choice (text, image,
+Korean. A bar along the top of the page picks what to make (Text, Image,
+Video, Audio, Film). You can look around without an account; signing in is
+asked for when you make something. The From choice (text, image,
 video ...) is inside the prompt box; the model picker lists every model with
 what it can do and its list price. On the Image tab, one-tap tools (beta) do
 one job on your own photo: white background, product in a scene, change or
@@ -96,8 +97,8 @@ voices take a delivery instruction (the ⚙ settings under the model: accent,
 mood, pace). For a Taiwanese Mandarin accent, pick Gemini 3.8 Flash TTS and
 write 「用台灣腔的國語說，溫暖親切。」. The MiniMax voices speak standard accents.
 
-**Film (成片 in Chinese, ムービー in Japanese, 필름 in Korean).** On
-xcreate.modelxd.com only, the fifth type: describe a short film (what it is
+**Film (成片 in Chinese, ムービー in Japanese, 필름 in Korean).** The fifth
+type in XCreate's top bar: describe a short film (what it is
 for, what happens, the feel, any words that must appear), pick the shape
 (vertical 9:16, wide 16:9 or square 1:1), the length (15, 30 or 60 seconds)
 and a budget ($5, $7, $10 or $15; $7 is the default). Claude Opus 5.5 plans

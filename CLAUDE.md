@@ -47,16 +47,19 @@ rating system (XDRating) surfaced on XBoard.
   with an exit link to the official site. Detected by hostname at runtime
   (`h.startsWith('dev.') || localhost`), not env vars, because SSR must render
   identical markup on every host.
-- **Standalone front doors**: `xtell.modelxd.com` (the temple street, Sep 23)
-  and `xcreate.modelxd.com` (the studio, Sep 26) are the same deployment and
-  the same auth/wallet with their own shell. `lib/site.ts` is the contract
+- **Standalone front door**: `xtell.modelxd.com` (the temple street, Sep 23)
+  is the same deployment and the same auth/wallet with its own shell.
+  (`xcreate.modelxd.com`, the studio's door from Sep 26, was never released
+  and was removed on Oct 13: the owner keeps only dev.modelxd.com/xcreate and
+  www.modelxd.com/xcreate; see XCreate below.) `lib/site.ts` is the contract
   (`useSite()`, `siteFromHeaders()`, per-door route lists; any other page
   302s to `/` there). **Since Oct 4 www's `/xtell` shows the XTell door's
   homepage and temples inside www's own shell** (left nav, ModelXD logo;
   dev.modelxd.com/xtell; www.modelxd.com/xtell behind www's password): the
   owner decided against subdomains; the subdomain stays until www opens
-  (docs/XTELL-PAGE.md, "On www at /xtell too"). Locally, `?site=xtell|xcreate|www` switches the shell
-  (cookie), or a worktree server on :3001 / :3030 is that door.
+  (docs/XTELL-PAGE.md, "On www at /xtell too"). Locally, `?site=xtell|www` switches the shell
+  (cookie), or a worktree server on :3001 is that door. (`?site=xcreate`
+  now just clears the cookie.)
 - **Both environments share ONE Supabase project.** A migration applied for
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
@@ -210,15 +213,22 @@ Server shell (`page.tsx`) resolves feature flags before the client renders, so
 gated entrances are correct on first paint and never flash for a user who
 isn't entitled. All the actual UI is in `client.tsx`.
 
-**Own front door (Sep 26).** On `xcreate.modelxd.com` the studio is `/` (and
-`/xcreate`), beside profile/terms/login; nothing else is served there. Its
-name follows the language like XTell's X先知: X創作 / X创作 / X作成 / X창작
-(`xcreate.site.brand`, equal to www's `nav.xcreate`; Sep 28). Since Sep 28
-the top bar carries the types (Text, Image, Video, Audio, and since Sep 29
-Film) as XTell's carries its temples: the studio (Codex's) is the door's one page, with the
-trending feed for the chosen type under the composer, and the Library is on the
-account page (`studio-type.ts` links the bar and the studio; old `?view=`
-links redirect). **Redesigned under Generate, Oct 3** (owner, learned from
+**/xcreate is the studio, inside www's shell (Oct 13).** The studio was built
+for its own door, `xcreate.modelxd.com` (Sep 26), which was never released;
+on Oct 13 the owner dropped it ("I will only keep dev.modelxd.com/xcreate or
+www.modelxd.com/xcreate"; "you can remove anything related to it"). /xcreate
+now shows that studio in www's shell (left nav, ModelXD logo), as /xtell
+does: `StudioTypeBar.tsx` (the door's types row: Text, Image, Video, Audio,
+Film) is pinned on top (under the phone's 60px header), and `.xcs-page`
+(standalone.css) carries X創作's `--xc-*` colours around the studio and its
+dialogs; type is www's. The studio no longer has a www/door switch
+(`isStandalone` is always true; the old www-only branches are dead code to
+remove). Browsing needs no account (`useRequireAuth(false)`); spending asks.
+The model picker keeps the door's look there (`studio` prop: no XD score,
+no internal id; owner, Oct 3: "not ready yet"). No Omnibox bar on /xcreate.
+Your works link to `/xcreate?id=`; the Library is www's /profile XCreate
+tab. Its name follows the language like XTell's X先知: X創作 / X创作 / X作成 /
+X창작 (`nav.xcreate`; Sep 28), also the page title (`lib/xcreate-meta.ts`). **Redesigned under Generate, Oct 3** (owner, learned from
 Pollo AI's /image page; the composer stays as it was, owner: "the top part
 stays the same", except that its From dropdown sits inside the prompt box,
 "like what others do", and the "Your prompt" line above it went): trending on
@@ -282,14 +292,9 @@ charge (`ConvertDialog.tsx`; its entrance was the tools row, off since Oct 3; on
 from their own upload folder). Every AI picture downloads with IPTC
 DigitalSourceType written in (trained or composite AI media, which Meta and
 Google read); videos have no such marker, so the bar asks the user to tick
-the platform's AI label. No C2PA signing and no mainland-China label yet. The shell around it (top bar, footer, sign-in,
-account page, legal note) is `app/components/xcreate/*` with its own
-`xcreate-shell.css`, every rule scoped to `html[data-site="xcreate"]` because
-Nav loads it on every host. The `--xc-*` palette is defined there once. A
-link from the studio to a www-only page (XBoard, the legacy `?c=` → XDirect
-forward) goes through `wwwHref()`, or the door would bounce it home.
+the platform's AI label. No C2PA signing and no mainland-China label yet.
 
-**Film, the door's fifth type (Sep 29; owner: "5th top bar", "$7").**
+**Film, the studio's fifth type (Sep 29; owner: "5th top bar", "$7").**
 成片 / Film / ムービー / 필름. A brief becomes a finished short film: one
 Claude Managed Agents session (Opus 5.5 in a sandbox with ffmpeg) plans it,
 calls three custom tools that OUR server runs through `lib/providers`
@@ -488,7 +493,8 @@ app/
 ├── xcreate/page.tsx            # Server shell — resolves feature flags
 ├── xcreate/client.tsx          # The whole studio UI (large)
 ├── xcreate/templates.ts        # XCREATE_TEMPLATES
-├── xcreate/FilmStudio.tsx      # The door's fifth type: a film by Claude
+├── xcreate/FilmStudio.tsx      # The studio's fifth type: a film by Claude
+├── xcreate/StudioTypeBar.tsx   # The types row pinned on top of /xcreate
 ├── xtalk/page.tsx              # Room setup (Discussion / Werewolf)
 ├── xtalk/[id]/page.tsx         # Werewolf game permalink
 ├── xvote/page.tsx              # Community voting

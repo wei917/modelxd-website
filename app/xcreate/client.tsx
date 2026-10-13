@@ -26,8 +26,7 @@ import FilmStudio from './FilmStudio'
 import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
-import { useSite } from '../../lib/useSite'
-import { wwwHref } from '../../lib/site'
+import StudioTypeBar from './StudioTypeBar'
 import { discountFor } from '../../lib/xcreate-discount'
 import { estimateCost } from '../../lib/providers/pricing'
 import { decidePoll, newPollHealth, isJobPayload, RETRY_NOTE, POST_UNANSWERED_NOTE, POLL_TIMEOUT_MS, FIRST_POLL_DELAY_MS, MISSING_BACKOFF_MS, type PollHealth, type PollStatus } from '../../lib/xcreate-poll'
@@ -1062,9 +1061,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const { lang, t } = useLang()
   const copy = xcreateStudioCopy(lang)
   const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
-  const site = useSite()       // XBoard and XDirect live on www only
-  const isStandalone = site === 'xcreate'
-  useRequireAuth(!isStandalone)
+  // The studio the xcreate.modelxd.com door had is the only studio since Oct
+  // 13 (owner: the door was never released; "I will only keep
+  // dev.modelxd.com/xcreate or www.modelxd.com/xcreate"): /xcreate shows it
+  // inside www's own shell, with its type bar pinned on top. Browsing needs
+  // no account; the first thing that spends asks for one.
+  const isStandalone = true
+  useRequireAuth(false)
   const { show: showAuth, open: authOpen } = useAuthModal()
   // ?view= was the door's old navigation (Studio / Templates / Library); the
   // top bar is the four types since Sep 28, and old links are redirected
@@ -3273,7 +3276,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   const applyTemplate = async (t: Template) => {
     if (isStandalone && t.sampleUrl) {
       const { data } = await createSupabaseBrowser().auth.getUser()
-      if (!data.user) { showAuth(`/?template=${encodeURIComponent(t.id)}`); return }
+      if (!data.user) { showAuth(`/xcreate?template=${encodeURIComponent(t.id)}`); return }
     }
     // Block the mode-change effect from wiping the state we're setting.
     modeClearedRef.current = true
@@ -3930,16 +3933,14 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
   // director now lives beside the canvas, so this page is purely the studio
   // again. The old entrances stay live as redirects — ?agent=1 and ?c=
   // permalinks forward with their query intact, so every link the site
-  // agent ever handed out keeps resolving. On the XCreate host they leave for
-  // www, which alone serves /xdirect (lib/site.ts).
+  // agent ever handed out keeps resolving.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     if (p.get('agent') === '1' || p.get('c')) {
       p.delete('agent')
       const qs = p.toString()
       const to = `/xdirect${qs ? `?${qs}` : ''}`
-      if (site === 'modelxd') router.replace(to)
-      else window.location.replace(wwwHref(site, to))
+      router.replace(to)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -4244,11 +4245,13 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
     </>
   )
 
+  // .xcs-page carries X創作's colours (standalone.css) around everything the
+  // studio draws, its dialogs included; the type bar sits above the page.
   return (
-    <>
+    <div className="xcs-page">
       {convertKind && (
         <ConvertDialog kind={convertKind} onClose={() => setConvertKind(null)}
-          onSignIn={() => { setConvertKind(null); showAuth(`/?type=${convertKind}`) }} />
+          onSignIn={() => { setConvertKind(null); showAuth(`/xcreate?type=${convertKind}`) }} />
       )}
 
       {lightbox && (
@@ -4265,7 +4268,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         </div>
       )}
       {pickerSlot !== null && (
-        <ModelPickerDialog mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m as unknown as SlotModel)} onClose={() => setPickerSlot(null)} />
+        <ModelPickerDialog studio mode={mode} recipeMode={recipeMode} slotIds={selectedModels.map(m => m?.id ?? null)} onSelect={m => addModel(pickerSlot, m as unknown as SlotModel)} onClose={() => setPickerSlot(null)} />
       )}
       {maskEditorSrc && (
         <MaskEditor
@@ -4323,7 +4326,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
               </button>
               {/* XBoard is www's; the studio door offers no way there (owner, Oct 1). */}
               {!isStandalone && <a
-                href={wwwHref(site, '/xboard')}
+                href="/xboard"
                 style={{
                   padding: '13px 26px', borderRadius: 10, border: '1px solid var(--border2)',
                   color: 'var(--white)', fontWeight: 700, fontSize: 14, textDecoration: 'none',
@@ -4336,6 +4339,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
         </div>
       )}
 
+      <StudioTypeBar />
       <div className="xduel-page">
         <div className={`arena xcreate-arena${isStandalone ? ' xcs-studio' : ''}`} id="xcreate-main" tabIndex={-1}>
 
@@ -4412,7 +4416,7 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
           {isStandalone && filmOpen ? (
             <>
               <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
-                onSignIn={next => showAuth(next ?? '/?type=film')} />
+                onSignIn={next => showAuth(next ?? '/xcreate?type=film')} />
               {/* Past films under the brief, like the other types' history. */}
               {!filmId && userId && <StudioWorks type="film" userId={userId} />}
             </>
@@ -5865,6 +5869,6 @@ function CreateStudio({ showcase }: { showcase: ShowcasePiece[] }) {
             )}
         </div>
       </div>
-    </>
+    </div>
   )
 }

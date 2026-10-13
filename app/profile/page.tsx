@@ -15,7 +15,6 @@ import XTellActivity from '../components/xtell/XTellActivity'
 import { DailyProfileSettings } from '../components/xtell/XTellDaily'
 import { PersonalitySettings } from '../components/xtell/XTellPersonality'
 import { XTellFooter } from '../components/xtell/XTellNav'
-import { XCreateAccountHead, XCreateAccountWelcome, XCreateLibrary } from '../components/xcreate/XCreateAccount'
 import { yenApprox } from '../../lib/plans'
 import { userName, userPhoto } from '../../lib/user-face'
 import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
@@ -160,9 +159,6 @@ function ModelXDProfileAuth() { useRequireAuth(); return null }
 export default function ProfilePage() {
   const site = useSite()
   const isXTell = site === 'xtell'
-  // xcreate.modelxd.com: the same wallet, plan and referral, but no
-  // per-surface tabs; the studio's My creations view holds the work.
-  const isXCreate = site === 'xcreate'
   const { show: showAuth } = useAuthModal()
   const { lang, setLang } = useLang()
   const t = useT()
@@ -697,10 +693,8 @@ export default function ProfilePage() {
 
   if (!profile) return (
     <>
-      {/* XCreate's welcome carries its own Sign in button, so no dialog is
-          forced on it (see useRequireAuth on the ✕ loop). */}
-      {isXTell ? <XTellAuthGate /> : isXCreate ? null : <ModelXDProfileAuth />}
-      {isXCreate ? <XCreateAccountWelcome loading={!!user} onSignIn={() => showAuth('/profile')} /> : isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
+      {isXTell ? <XTellAuthGate /> : <ModelXDProfileAuth />}
+      {isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
         <h1 className="xtell-account-title">{t('xtell.site.account')}</h1>
         <p className="xtell-account-note">{t('xtell.site.authCopy')}</p>
         {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
@@ -794,10 +788,9 @@ export default function ProfilePage() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
-      <div id={isXTell ? "xtell-main" : isXCreate ? "xcreate-main" : undefined} tabIndex={isXTell || isXCreate ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : isXCreate ? "xduel-page xcs-account" : "xduel-page"}>
+      <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
         <div className="arena" style={{ maxWidth: 1040 }}>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
-          {isXCreate && <XCreateAccountHead />}
 
           {/* Eyebrow — ties the profile page into the same section-label
               motif used across XDuel / XCreate / landing. Gives the page
@@ -1342,7 +1335,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></> : isXCreate ? <XCreateLibrary /> : <>
+          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></> : <>
           {/* Privacy summary — sits right above the content tabs so the
               public/private expectations frame what's below (CC, July 19). */}
           <div style={{

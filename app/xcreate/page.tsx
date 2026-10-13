@@ -1,23 +1,20 @@
 // app/xcreate/page.tsx
-// Server shell for XCreate. The beta flags it used to resolve are gone
+// Server shell for XCreate (X創作). The beta flags it used to resolve are gone
 // (canvas opened to everyone, Aug 18) — the shell survives as the
-// server/client split point /xdirect also uses. On xcreate.modelxd.com the
-// same shell is also `/` (app/page.tsx renders it there).
+// server/client split point /xdirect also uses. Since Oct 13 this is the
+// studio's only address (www and dev): the xcreate.modelxd.com door it
+// shared was never released and is gone.
 
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import CreateClient from './client'
 import { readShowcase } from '@/lib/showcase'
-import { siteFromHeaders } from '@/lib/site'
 import { serverLang } from '@/lib/lang'
 import { xcreateMetadata, XCREATE_CANONICAL } from '@/lib/xcreate-meta'
 
-// On the XCreate host, /xcreate is the same page as `/`: one canonical URL.
-// www keeps the layout's metadata, as before.
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
-  if (siteFromHeaders(h) === 'xcreate') return { ...xcreateMetadata(serverLang(h, 'xcreate')), alternates: { canonical: XCREATE_CANONICAL } }
-  return {}
+  return { ...xcreateMetadata(serverLang(h, 'modelxd')), alternates: { canonical: XCREATE_CANONICAL } }
 }
 
 // The gallery is read HERE, on the server, so its pictures are in the HTML
