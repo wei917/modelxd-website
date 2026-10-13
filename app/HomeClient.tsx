@@ -345,9 +345,12 @@ export default function HomeClient() {
       </div>
 
       {/* ── Hero (redesigned Oct 12, owner: "redesign", keeping every
-          section). The pitch, its three doors, then X先知 and X創作 as app
-          icons; the agent in the second column on desktop, under the icons
-          on a phone. ── */}
+          section). The pitch, then X先知 and X創作 as app icons; the agent in
+          the second column on desktop, under the icons on a phone. The row of
+          three buttons under the pitch (玩玩看 → /playground, 開始創作 →
+          /xdirect, 免費盲測模型 → /xduel) was removed the same day (owner:
+          "remove this row"); XDirect and XDuel stay in the nav and the app
+          cards. ── */}
       <section className="home-hero hm-hero">
         <div className="home-hero-copy">
           <div className="home-hero-eyebrow">{t('home.eyebrow')}</div>
@@ -368,21 +371,6 @@ export default function HomeClient() {
                 : t('home.hero')}
           </h1>
           <p className="home-hero-sub">{t('home.sub')}</p>
-          <div className="home-hero-actions">
-            {/* Owner, Sep 14: in every language the primary door is the
-                Playground, public and before sign-in, carrying the current
-                language. Create and compare stay as the secondary doors
-                (compare keeps each locale's existing label). */}
-            <Link href={`/playground?lang=${lang}`} className="home-hero-cta is-primary">
-              {t('home.cta.play')}
-            </Link>
-            <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xdirect')}>
-              {t('home.cta.primary')}
-            </button>
-            <button type="button" className="home-hero-cta is-secondary" onClick={() => void handleNav('/xduel')}>
-              {t(lang === 'ja' ? 'home.cta.compare' : 'home.cta.secondary')}
-            </button>
-          </div>
           <ul className="hm-products">
             {PRODUCTS.map(p => (
               <li key={p.href}>

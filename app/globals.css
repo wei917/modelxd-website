@@ -4547,17 +4547,12 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
    Phone first, one left edge for every section, one card style (white,
    hairline, 14px corners, no shadow), and the two products as app icons in
    the hero. Scoped to .hm-* and .hm-hero so the shared .home-hero-cta
-   buttons on /xgame/practice keep their look. The older .home-* / .ham-*
+   buttons on /xgame/practice keep their look (the home has none since the
+   owner removed its button row, Oct 12). The older .home-* / .ham-*
    rules above are the pre-Oct-12 landing and mostly unused now. */
 .hm-hero .home-hero-eyebrow {
   font-family: var(--font-body), sans-serif; letter-spacing: 0; text-transform: none;
 }
-.hm-hero .home-hero-cta {
-  font-family: var(--font-body), sans-serif; font-size: 15px; font-weight: 700;
-  letter-spacing: 0; text-transform: none; min-height: 48px; border-radius: 12px;
-}
-.hm-hero .home-hero-cta.is-primary { box-shadow: none; }
-.hm-hero .home-hero-cta.is-primary:hover { box-shadow: none; }
 
 .hm-products {
   list-style: none; margin: 32px 0 0; padding: 0;
@@ -4674,9 +4669,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 
 @media (max-width: 760px) {
   .hm-hero.home-hero { padding: 28px 16px 48px; }
-  .hm-hero .home-hero-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .hm-hero .home-hero-cta.is-primary { grid-column: 1 / -1; }
-  .hm-hero .home-hero-cta { width: auto; padding: 0 12px; }
   .hm-products { gap: 16px; }
   .hm-icon { width: 104px; }
   .hm-product-name { font-size: 17px; }

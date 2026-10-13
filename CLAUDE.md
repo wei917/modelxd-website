@@ -1229,8 +1229,9 @@ can sit at the table honestly. One act per request; the client loops.
   in `app/page.tsx` — **re-derive before changing any number.**
 - **Landing redesigned Oct 12** (owner: "redesign", then "I didn't ask you
   to remove most stuff": every section stays). Phone first, `.hm-*` rules at
-  the end of globals.css: X先知 and X創作 as app icons under the hero's
-  buttons (月老 from the approved temple sheet; four real results of one
+  the end of globals.css: X先知 and X創作 as app icons under the pitch (the
+  hero's row of three buttons was removed the same day; 月老 from the
+  approved temple sheet; four real results of one
   prompt from four models, public/home/), XDirect's templates as one row of
   loops (swiped on a phone), every surface as a picture card, XBoard (XVote
   inside its card) and XEval as the proof, the three numbers as plain
