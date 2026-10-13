@@ -23,6 +23,13 @@
 // Or a press in an XTell share dialog (lib/xtell-feedback.ts, Oct 1):
 // { share: { kind, temple, modelId, method, outcome }, path }, one row in
 // xtell_shares (supabase/122), under the same rules again.
+//
+// The owner's own browsers stay out of the reports (owner, Oct 12: "remove
+// me and my test accounts"; supabase/129). A browser that signs in with an
+// account listed in site_internal_users gets the modelxd_internal cookie,
+// its earlier rows are flipped to env 'internal' once, and from then on its
+// visits, taps and shares are logged as 'internal', signed in or not. The
+// reports count env 'production' only.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,6 +43,7 @@ import { asShareReport } from '@/lib/xtell-feedback'
 
 const LOG = '[api/visit]'
 const VISITOR_COOKIE = 'modelxd_vid'
+const INTERNAL_COOKIE = 'modelxd_internal'
 const YEAR = 365 * 86400
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const AD_PARAMS = ['gclid', 'gbraid', 'wbraid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const
@@ -65,6 +73,24 @@ const service = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proces
 })
 const hostOf = (req: NextRequest) => (req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '').split(',')[0].trim().toLowerCase()
 
+/** The deployment, or 'internal' for one of the owner's browsers on production. */
+function envOf(internal: boolean): string {
+  const env = process.env.VERCEL_ENV ?? 'development'
+  return internal && env === 'production' ? 'internal' : env
+}
+
+// Whether an account is listed in site_internal_users (supabase/129), kept
+// per instance for ten minutes. Before 129 the table is missing: nobody is.
+const internalAccounts = new Map<string, { yes: boolean; until: number }>()
+async function isInternal(userId: string): Promise<boolean> {
+  const hit = internalAccounts.get(userId)
+  if (hit && hit.until > Date.now()) return hit.yes
+  const { data, error } = await service().from('site_internal_users').select('user_id').eq('user_id', userId).maybeSingle()
+  const yes = !error && !!data
+  internalAccounts.set(userId, { yes, until: Date.now() + 10 * 60_000 })
+  return yes
+}
+
 function deviceOf(ua: string): 'desktop' | 'mobile' | 'tablet' {
   if (/iPad|Tablet|PlayBook|Silk|Android(?!.*Mobile)/i.test(ua)) return 'tablet'
   if (/Mobi|iPhone|iPod|Android/i.test(ua)) return 'mobile'
@@ -80,6 +106,9 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
     if (limited(ip)) return done
 
+    // One of the owner's browsers (supabase/129): logged, but as 'internal'.
+    const internal = req.cookies.get(INTERNAL_COOKIE)?.value === '1'
+
     const raw = await req.text()
     if (raw.length > 4000) return done
     let b: Record<string, unknown>
@@ -91,7 +120,7 @@ export async function POST(req: NextRequest) {
       const path = text(b.path, 300)
       const vid = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
       const { error } = await service().from('site_signin_taps').insert({
-        env:        process.env.VERCEL_ENV ?? 'development',
+        env:        envOf(internal),
         provider:   b.tap,
         visitor_id: UUID.test(vid) ? vid : null,
         host:       hostOf(req).slice(0, 100) || null,
@@ -108,7 +137,7 @@ export async function POST(req: NextRequest) {
       const path = text(b.path, 300)
       const vid = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
       const { error } = await service().from('xtell_shares').insert({
-        env:        process.env.VERCEL_ENV ?? 'development',
+        env:        envOf(internal),
         ...share,
         visitor_id: UUID.test(vid) ? vid : null,
         host:       hostOf(req).slice(0, 100) || null,
@@ -131,11 +160,12 @@ export async function POST(req: NextRequest) {
     const bare = host.replace(/:\d+$/, '')
     let visitorId = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
     if (!UUID.test(visitorId)) visitorId = crypto.randomUUID()
-    done.cookies.set(VISITOR_COOKIE, visitorId, {
-      path: '/', maxAge: YEAR, httpOnly: true, sameSite: 'lax',
+    const cookie = {
+      path: '/', maxAge: YEAR, httpOnly: true, sameSite: 'lax' as const,
       secure: req.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production',
       ...(bare === 'modelxd.com' || bare.endsWith('.modelxd.com') ? { domain: '.modelxd.com' } : {}),
-    })
+    }
+    done.cookies.set(VISITOR_COOKIE, visitorId, cookie)
 
     // Only a request carrying a Supabase session cookie pays for the lookup.
     let userId: string | null = null
@@ -148,6 +178,16 @@ export async function POST(req: NextRequest) {
       } catch { /* a broken session still logs the visit, without a user */ }
     }
 
+    // Signed in with one of the owner's accounts for the first time on this
+    // browser: mark it, and flip what it logged before (supabase/129).
+    let internalVisit = internal
+    if (!internal && userId && await isInternal(userId)) {
+      internalVisit = true
+      done.cookies.set(INTERNAL_COOKIE, '1', cookie)
+      const { error } = await service().rpc('site_mark_browser_internal', { p_visitor_id: visitorId })
+      if (error && !warned) { warned = true; console.warn(`${LOG} site_mark_browser_internal failed: ${error.message}`) }
+    }
+
     const city = req.headers.get('x-vercel-ip-city')
     let cityName: string | null = null
     try { cityName = city ? decodeURIComponent(city).slice(0, 100) : null } catch { cityName = city?.slice(0, 100) ?? null }
@@ -155,7 +195,7 @@ export async function POST(req: NextRequest) {
     const { error } = await service().rpc('log_site_visit', {
       p_id:             b.id,
       p_visitor_id:     visitorId,
-      p_env:            process.env.VERCEL_ENV ?? 'development',
+      p_env:            envOf(internalVisit),
       p_user_id:        userId,
       p_host:           host.slice(0, 100) || null,
       p_landing:        landing?.startsWith('/') ? landing : null,
