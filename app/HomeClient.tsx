@@ -247,16 +247,6 @@ function TierComparator() {
 }
 
 
-// X先知 and X創作, the two products with their own front door, as app icons
-// right under the hero's buttons (owner, Oct 12: "X先知 + X創作"). Icons:
-// 月老 from the approved temple sheet (public/xtell/approved/icons.avif),
-// and four real results of one prompt from four models
-// (public/xcreate-preview.png), which is what the studio does.
-const PRODUCTS = [
-  { href: '/xtell',   name: 'nav.xtell',   desc: 'home.prod.xtell',   icon: '/home/xtell-icon.webp' },
-  { href: '/xcreate', name: 'nav.xcreate', desc: 'home.prod.xcreate', icon: '/home/xcreate-icon.webp' },
-]
-
 export default function HomeClient() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
@@ -345,8 +335,10 @@ export default function HomeClient() {
       </div>
 
       {/* ── Hero (redesigned Oct 12, owner: "redesign", keeping every
-          section). The pitch, then X先知 and X創作 as app icons; the agent in
-          the second column on desktop, under the icons on a phone. The row of
+          section). The pitch, with the agent in the second column on
+          desktop and under it on a phone. X先知 and X創作 sat under the pitch
+          as app icons for a day (owner, Oct 13: "this section doesn't make
+          sense. Remove it"). The row of
           three buttons under the pitch (玩玩看 → the Playground, deleted with
           /tgs the same day; 開始創作 →
           /xdirect, 免費盲測模型 → /xduel) was removed the same day (owner:
@@ -372,20 +364,6 @@ export default function HomeClient() {
                 : t('home.hero')}
           </h1>
           <p className="home-hero-sub">{t('home.sub')}</p>
-          <ul className="hm-products">
-            {PRODUCTS.map(p => (
-              <li key={p.href}>
-                <Link href={p.href} className="hm-product">
-                  <span className="hm-icon">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.icon} alt="" width={300} height={300} />
-                  </span>
-                  <span className="hm-product-name">{t(p.name)}</span>
-                  <span className="hm-product-desc">{t(p.desc)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
         </div>
         <div className="home-hero-agent">
           <LandingAgent />

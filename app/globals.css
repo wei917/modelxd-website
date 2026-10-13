@@ -4438,43 +4438,13 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 
 /* ══ Home redesign (Oct 12; owner: "redesign", every section kept) ═════════
    Phone first, one left edge for every section, one card style (white,
-   hairline, 14px corners, no shadow), and the two products as app icons in
-   the hero. Scoped to .hm-* and .hm-hero so the shared .home-hero-cta
+   hairline, 14px corners, no shadow). Scoped to .hm-* and .hm-hero so the shared .home-hero-cta
    buttons on /xgame/practice keep their look (the home has none since the
    owner removed its button row, Oct 12). The older .home-* / .ham-*
    rules above are the pre-Oct-12 landing and mostly unused now. */
 .hm-hero .home-hero-eyebrow {
   font-family: var(--font-body), sans-serif; letter-spacing: 0; text-transform: none;
 }
-
-.hm-products {
-  list-style: none; margin: 32px 0 0; padding: 0;
-  display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 20px;
-}
-.hm-product {
-  display: flex; flex-direction: column; gap: 4px;
-  color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent;
-}
-.hm-icon {
-  position: relative; display: block; width: 112px; aspect-ratio: 1; overflow: hidden;
-  border-radius: 22%; margin-bottom: 8px; transition: transform .18s ease;
-}
-.hm-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* A hairline inside the corner keeps the cream 月老 icon's edge on the
-   near-white page without a drop shadow. */
-.hm-icon::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); pointer-events: none;
-}
-.hm-product:hover .hm-icon { transform: translateY(-3px); }
-.hm-product:active .hm-icon { transform: scale(.96); }
-.hm-product:focus-visible { outline: none; }
-.hm-product:focus-visible .hm-icon { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--blue); }
-.hm-product-name {
-  font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 18px;
-  line-height: 1.25; color: var(--white);
-}
-.hm-product-desc { font-size: 14px; line-height: 1.55; color: var(--muted2); }
 
 .hm-section { border-top: 1px solid var(--border); padding: 56px 0; }
 .hm-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; box-sizing: border-box; }
@@ -4562,9 +4532,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 
 @media (max-width: 760px) {
   .hm-hero.home-hero { padding: 28px 16px 48px; }
-  .hm-products { gap: 16px; }
-  .hm-icon { width: 104px; }
-  .hm-product-name { font-size: 17px; }
 }
 @media (min-width: 761px) {
   .hm-section { padding: 88px 0; }
@@ -4582,6 +4549,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   .hm-stat + .hm-stat { padding-left: 40px; border-left: 1px solid var(--border); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hm-icon, .hm-card { transition: none; }
-  .hm-product:hover .hm-icon, .hm-product:active .hm-icon, .hm-card:hover { transform: none; }
+  .hm-card { transition: none; }
+  .hm-card:hover { transform: none; }
 }

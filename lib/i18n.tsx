@@ -1634,10 +1634,6 @@ export const STRINGS: Record<string, Entry> = {
   // ── Home (hero + CTAs) ──
   'home.hero':        { en: 'The best AI for every task.', 'zh-Hant': '每個任務，都用最好的 AI。', 'zh-Hans': '每个任务，都用最好的 AI。', ja: '遊ぶ。つくる。AIを選ぶ。', ko: '모든 작업에 최고의 AI를.' },
   'home.sub':         { en: 'Films, stories, analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends each job to whichever model earns it, decided by real blind votes and public benchmark data, with the prices in the open.', 'zh-Hant': '影片、故事、分析、聊天、遊戲、評測，或接上你自己的 Agent。ModelXD 讓每項任務交給勝出的模型，由真實盲測投票與公開資料集評測決定，價格公開透明。', 'zh-Hans': '视频、故事、分析、聊天、游戏、评测，或接上你自己的 Agent。ModelXD 让每项任务交给胜出的模型，由真实盲测投票与公开数据集评测决定，价格公开透明。', ja: 'AIと対戦。アイデアを映像に。品質も価格も、比べて選べる。', ko: '영상, 스토리, 분석, 채팅, 게임, 벤치마크, 또는 나만의 에이전트 연결. ModelXD는 각 작업을 이긴 모델에 맡깁니다. 실제 블라인드 투표와 공개 데이터셋 평가로 결정되고, 가격은 공개됩니다.' },
-  // The two app icons under the hero's buttons (Oct 12); names are
-  // nav.xtell / nav.xcreate.
-  'home.prod.xtell':   { en: 'BaZi, Zi Wei, tarot, the I Ching. Free charts, then ask an AI master.', 'zh-Hant': '八字、紫微、塔羅、易經。免費排盤，再問 AI 大師。', 'zh-Hans': '八字、紫微、塔罗、易经。免费排盘，再问 AI 大师。', ja: '四柱推命、紫微斗数、タロット、易。無料で占って、AIの先生に相談。', ko: '사주, 자미두수, 타로, 주역. 무료로 풀어 보고 AI 선생님께 물어보세요.' },
-  'home.prod.xcreate': { en: 'Images, video, voice and short films, made with the models you choose.', 'zh-Hant': '圖片、影片、聲音和短片，用你選的模型來做。', 'zh-Hans': '图片、视频、声音和短片，用你选的模型来做。', ja: '画像、動画、音声、ショートフィルムを、選んだモデルでつくる。', ko: '이미지, 영상, 음성, 짧은 영화를 고른 모델로 만드세요.' },
   'home.compare.eyebrow': { en: 'Why model choice matters', 'zh-Hant': '為什麼模型選擇很重要', 'zh-Hans': '为什么模型选择很重要', ja: 'モデル選びが重要な理由', ko: '모델 선택이 중요한 이유' },
   'home.compare.title': { en: 'Same prompt. Different price tags.', 'zh-Hant': '同一個提示詞，不同的價格。', 'zh-Hans': '同一个提示词，不同的价格。', ja: '同じプロンプト。違う価格。', ko: '같은 프롬프트. 다른 가격.' },
   'home.compare.sub': { en: 'Slide between savings and quality to see how much the model changes the result.', 'zh-Hant': '在省錢與品質之間滑動，看看模型選擇如何改變結果。', 'zh-Hans': '在省钱与质量之间滑动，看看模型选择如何改变结果。', ja: '節約と品質の間を動かして、モデル選びで結果がどれだけ変わるか確かめてください。', ko: '절약과 품질 사이를 움직여 모델 선택이 결과를 얼마나 바꾸는지 확인하세요.' },

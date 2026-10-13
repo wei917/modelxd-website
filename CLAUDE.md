@@ -1229,15 +1229,14 @@ can sit at the table honestly. One act per request; the client loops.
   in `app/page.tsx` — **re-derive before changing any number.**
 - **Landing redesigned Oct 12** (owner: "redesign", then "I didn't ask you
   to remove most stuff": every section stays). Phone first, `.hm-*` rules at
-  the end of globals.css: X先知 and X創作 as app icons under the pitch (the
-  hero's row of three buttons was removed the same day; 月老 from the
-  approved temple sheet; four real results of one
-  prompt from four models, public/home/), XDirect's templates as one row of
-  loops (swiped on a phone), every surface as a picture card, XBoard (XVote
-  inside its card) and XEval as the proof, the three numbers as plain
-  columns (rows on a phone), a
-  footer that wraps between items. A company page with only the two icons
-  was tried first the same day and rejected for cutting content.
+  the end of globals.css: the hero's row of three buttons removed,
+  XDirect's templates as one row of loops (swiped on a phone), every
+  surface as a picture card, XBoard (XVote inside its card) and XEval as
+  the proof, the three numbers as plain columns (rows on a phone), a footer
+  that wraps between items. A company page with only X先知 and X創作 as app
+  icons was tried first and rejected for cutting content; the two icons
+  then sat under the pitch for a day and were removed too (owner, Oct 13:
+  "this section doesn't make sense").
 - **Landing hero, Aug 25** (current): eyebrow "AI apps that run winning
   models", headline "The best AI for every task.", sub "Films, stories,
   analysis, chats, gaming, benchmarks, or bring your own agents. ModelXD sends
