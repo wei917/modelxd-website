@@ -299,6 +299,21 @@
 .xcs-remake-upload:hover { border-color: var(--red); color: var(--red); }
 .xcs-remake-note { margin: -2px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--muted2); text-align: center; }
 
+/* Try a popular one: the trending feed's published videos, most liked
+   first; a tap fills the link. A sideways row on a phone, to the edges. */
+.xcs-remake-try { display: grid; gap: 8px; margin-top: 8px; }
+.xcs-remake-try-head { margin: 0; font-size: 13px; font-weight: 700; color: var(--white); }
+.xcs-remake-try-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 2px 20px 4px; scroll-padding-left: 20px; scroll-snap-type: x proximity; }
+.xcs-remake-try-row::-webkit-scrollbar { display: none; }
+.xcs-remake-try-card { flex: 0 0 236px; scroll-snap-align: start; display: grid; gap: 6px; align-content: start; min-width: 0; padding: 12px 13px; border: 1px solid var(--border); border-radius: 14px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; text-align: left; transition: border-color .15s, box-shadow .15s; }
+.xcs-remake-try-card:hover { border-color: var(--border2); }
+.xcs-remake-try-card.is-on { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.xcs-remake-try-top { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; color: var(--muted2); }
+.xcs-remake-try-top > b { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; background: var(--xc-ink, #242724); color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.xcs-remake-try-handle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xcs-remake-try-likes { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; color: var(--red); font-weight: 700; font-variant-numeric: tabular-nums; }
+.xcs-remake-try-text { font-size: 13.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+
 /* Reading: a strip of film whose frames light up as the playhead passes. */
 .xcs-remake-scan { display: grid; gap: 10px; }
 .xcs-remake-reel { position: relative; padding: 12px 8px; border-radius: 12px; background: var(--xc-ink, #242724); overflow: hidden; }
@@ -471,7 +486,7 @@ html[data-site='xcreate'] .xduel-page:has(.xcs-remake) { overflow-y: visible; }
 .xcs-remake-again:hover { color: var(--red); }
 @media (max-width: 420px) {
   .xcs-remake-bar { margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
-  .xcs-remake-tray { margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding-left: 16px; }
+  .xcs-remake-tray, .xcs-remake-try-row { margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding-left: 16px; }
 }
 @media (min-width: 761px) {
   .xcs-remake-hero > div { grid-template-columns: 76px minmax(0, 1fr); }
@@ -482,6 +497,7 @@ html[data-site='xcreate'] .xduel-page:has(.xcs-remake) { overflow-y: visible; }
   .xcs-remake-swaps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .xcs-remake-swaps > .xcs-remake-extra { grid-column: 1 / -1; }
   .xcs-remake-tray { flex-wrap: wrap; overflow: visible; margin: 0; padding: 6px 0 0; }
+  .xcs-remake-try-row { flex-wrap: wrap; overflow: visible; margin: 0; padding: 2px 0 0; }
   .xcs-remake-bar { bottom: 16px; margin: 0; padding: 10px 10px 10px 20px; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 32px rgba(0, 0, 0, .1); }
 }
 @media (prefers-reduced-motion: reduce) {

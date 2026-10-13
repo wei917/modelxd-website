@@ -18,6 +18,10 @@
 // original (cut from X and uploaded videos; YouTube plays the moment in its
 // own player instead) and the ways to replace it. Photos and recordings stay
 // in the tab until making exists; nothing is uploaded yet.
+//
+// Under the paste box, "try a popular one" (Oct 13): the trending feed's
+// published videos, most liked first (/api/xcreate/remake/examples). A tap
+// fills the link; reading stays a tap of its own (reads are counted).
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useLang, type Lang } from '@/lib/i18n'
@@ -81,6 +85,8 @@ type Draft = {
 }
 /** A photo or recording the user picked: kept in the tab only, never in the draft. */
 type Picked = { url: string; name: string }
+/** A popular video to try, from the trending feed; `summary` is our words, never the creator's. */
+type Example = { url: string; handle: string; likes: number; summary: Partial<Record<Lang, string>> }
 
 const thingDefault = (t: Thing): ThingChoice => t.kind === 'logo' ? 'remove' : 'keep'
 const freshPicks = (b: Breakdown): Pick<Draft, 'cast' | 'things' | 'places' | 'music' | 'voices' | 'texts'> => ({
@@ -104,6 +110,7 @@ const ICONS = {
   voice: () => svg(<><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0" /><path d="M12 17v4" /></>, 24),
   text: () => svg(<><path d="M5 5h14" /><path d="M12 5v14" /><path d="M9 19h6" /></>, 24),
 }
+const HeartIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6.1 4.5c2.2 0 3.6 1.2 4.4 2.4h3c.8-1.2 2.2-2.4 4.4-2.4 3.8 0 5.7 3.9 4.1 7.2C19.5 16.4 12 21 12 21z" /></svg>
 const PlayIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z" /></svg>
 
 export default function RemakeStudio({ signedIn, onSignIn }: {
@@ -149,6 +156,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   const [flash, setFlash] = useState<string | null>(null)
   const [since, setSince] = useState(0)
   const [now, setNow] = useState(0)
+  const [examples, setExamples] = useState<Example[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   const linkRef = useRef<HTMLInputElement>(null)
   const readRef = useRef<HTMLDivElement>(null)
@@ -158,6 +166,14 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   useEffect(() => {
     try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)) } catch { /* storage unavailable */ }
   }, [d])
+
+  useEffect(() => {
+    let live = true
+    fetch('/api/xcreate/remake/examples').then(r => r.ok ? r.json() : null)
+      .then(j => { if (live && Array.isArray(j?.examples)) setExamples(j.examples) })
+      .catch(() => { /* no row */ })
+    return () => { live = false }
+  }, [])
 
   // The clock beside the reading reel: a long read takes up to two minutes.
   useEffect(() => {
@@ -490,6 +506,20 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
             <UploadIcon /><span>{c.upload}</span>
           </button>
           <p className="xcs-remake-note">{c.orUpload}</p>
+          {examples.length > 0 && <div className="xcs-remake-try">
+            <p className="xcs-remake-try-head">{c.tryHeading}</p>
+            <div className="xcs-remake-try-row">
+              {examples.map(ex => <button key={ex.url} type="button" className={`xcs-remake-try-card${d.link === ex.url ? ' is-on' : ''}`}
+                aria-pressed={d.link === ex.url}
+                onClick={() => { set({ link: ex.url }); setError(null); linkRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>
+                <span className="xcs-remake-try-top">
+                  <b>𝕏</b><span className="xcs-remake-try-handle">@{ex.handle}</span>
+                  <span className="xcs-remake-try-likes"><HeartIcon />{ex.likes.toLocaleString(lang)}</span>
+                </span>
+                <span className="xcs-remake-try-text">{ex.summary[lang] ?? ex.summary.en ?? ''}</span>
+              </button>)}
+            </div>
+          </div>}
         </>}
       <input ref={fileRef} type="file" accept="video/mp4,video/quicktime,video/webm" hidden
         onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadAndRead(f) }} />
