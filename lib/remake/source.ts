@@ -17,7 +17,7 @@ const UPLOAD_ONLY: Record<string, string> = {
   'instagram.com': 'Instagram', 'facebook.com': 'Facebook', 'fb.watch': 'Facebook',
   'bilibili.com': 'Bilibili', 'b23.tv': 'Bilibili',
   'xiaohongshu.com': '小紅書', 'xhslink.com': '小紅書',
-  'threads.net': 'Threads', 'vimeo.com': 'Vimeo',
+  'threads.net': 'Threads', 'threads.com': 'Threads', 'vimeo.com': 'Vimeo',
 }
 
 export function classifyLink(raw: string): LinkKind {
