@@ -643,12 +643,18 @@
   .xs-player .meta { flex-direction: column; gap: 6px; }
 }
 
-/* Phones, reading or typing in a game (owner, Oct 14: "hide site bar and
- * league bar" so the chat has more room). The room sets html[data-xs-folded]
- * when a pane is scrolled or the composer is in use: the site's bar slides
- * up, the league bar and the score header give way to one line (.xs-mini;
- * a tap unfolds), and the pane fills the screen down to its composer. */
-.xs-mini { display: none; align-items: center; gap: 8px; width: 100%; min-height: 46px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--xs-line); background: #fff; font: inherit; color: var(--xs-ink); text-align: left; cursor: pointer; }
+/* Phones, in a game (owner, Oct 14: "hide site bar and league bar" so the
+ * chat has more room; "I don't see any animation"). The room is one screen
+ * under the site's bar and its panes scroll inside it, the composer always
+ * on screen. Scrolling down sets html[data-xs-folded] and everything moves
+ * together, like a phone browser's address bar: the site's bar slides up,
+ * the league bar and the score header fold to nothing while the one-line
+ * score (.xs-mini) opens, and the pane grows into the room they leave.
+ * Scrolling back up (or a tap on the line) undoes it the same way. Heights
+ * fold with the grid-rows trick: a one-row grid going from 1fr to 0fr, its
+ * only child clipped. */
+.xs-mini-box { display: none; }
+.xs-mini { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 2px; border: 0; border-bottom: 1px solid var(--xs-line); background: #fff; font: inherit; color: var(--xs-ink); text-align: left; cursor: pointer; }
 .xs-mini .tm { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 14px; font-weight: 800; }
 .xs-mini .xs-logo, .xs-mini .xs-chip.big { width: 24px; height: 24px; border-radius: 5px; font-size: 8px; }
 .xs-mini .sc { flex-shrink: 0; font-family: var(--xs-num); font-size: 20px; font-weight: 700; line-height: 1; white-space: nowrap; }
@@ -658,24 +664,42 @@
 .xs-mini small + .xs-sr + .chev { margin-left: 0; }
 .xs-mini:focus-visible { outline: 2px solid var(--xs-red); outline-offset: -2px; }
 @media (max-width: 760px) {
-  .nav { transition: transform 180ms ease; }
+  html[data-xs-room] { --xs-fold: 260ms cubic-bezier(.2, .8, .2, 1); }
+  html[data-xs-room] .nav { transition: transform var(--xs-fold); }
+  html[data-xs-room] .app-main { transition: padding-top var(--xs-fold); }
   html[data-xs-folded] .nav { transform: translateY(-100%); }
   html[data-xs-folded] .app-main { padding-top: 0; }
-  html[data-xs-folded] .xs-topbar, html[data-xs-folded] .xs-ov { display: none; }
-  html[data-xs-folded] .xs-mini { display: flex; }
-  html[data-xs-folded] .xs.xs-room { display: flex; flex-direction: column; height: 100dvh; padding-top: 0; padding-bottom: env(safe-area-inset-bottom); }
-  html[data-xs-folded] .xs-split { flex: 1; min-height: 0; }
+  /* One screen under the site's bar; all of it once the bar has gone. */
+  .xs-canvas.room { display: flex; flex-direction: column; height: calc(100dvh - 60px); min-height: 0; transition: height var(--xs-fold); }
+  html[data-xs-folded] .xs-canvas.room { height: 100dvh; }
+  .xs-canvas.room .xs-topbar { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--xs-fold), border-bottom-width var(--xs-fold); }
+  .xs-canvas.room .xs-topin { width: 100%; min-height: 0; overflow: hidden; transition: padding var(--xs-fold); }
+  html[data-xs-folded] .xs-canvas.room .xs-topbar { grid-template-rows: 0fr; border-bottom-width: 0; }
+  html[data-xs-folded] .xs-canvas.room .xs-topin { padding-top: 0; padding-bottom: 0; }
+  /* A screen too short for the header and a pane (a phone on its side)
+     scrolls as a whole. */
+  .xs-canvas.room .xs.xs-room { display: flex; flex-direction: column; flex: 1; width: 100%; min-height: 0; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom); transition: padding-top var(--xs-fold); }
+  html[data-xs-folded] .xs-canvas.room .xs.xs-room { padding-top: 0; }
+  .xs-canvas.room .xs-split { flex: 1; min-height: 0; }
+  .xs-canvas.room .xs-ov { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--xs-fold), opacity var(--xs-fold); }
+  .xs-canvas.room .xs-ov-in { min-height: 0; overflow: hidden; }
+  html[data-xs-folded] .xs-canvas.room .xs-ov { grid-template-rows: 0fr; opacity: 0; }
+  .xs-canvas.room .xs-mini-box { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--xs-fold), opacity var(--xs-fold); }
+  .xs-canvas.room .xs-mini-cut { min-height: 0; overflow: hidden; }
+  html[data-xs-folded] .xs-canvas.room .xs-mini-box { grid-template-rows: 1fr; opacity: 1; }
   /* 戰況: the plays (or the clip playing) take what is left. */
-  html[data-xs-folded] .xs-split[data-view='feed'] .xs-left,
-  html[data-xs-folded] .xs-split[data-view='feed'] .xs-feedwrap,
-  html[data-xs-folded] .xs-feedbox:not([hidden]),
-  html[data-xs-folded] .xs-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  html[data-xs-folded] .xs-feed-body { flex: 1; min-height: 0; max-height: none; }
-  html[data-xs-folded] .xs-player { flex: 1; min-height: 0; overflow-y: auto; }
+  .xs-canvas.room .xs-split[data-view='feed'] .xs-left,
+  .xs-canvas.room .xs-split[data-view='feed'] .xs-feedwrap,
+  .xs-canvas.room .xs-feedbox:not([hidden]),
+  .xs-canvas.room .xs-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-canvas.room .xs-feed-body { flex: 1; min-height: 0; max-height: none; }
+  .xs-canvas.room .xs-player { flex: 1; min-height: 0; overflow-y: auto; }
   /* The chats and the other tabs: the same, the composer at the bottom. */
-  html[data-xs-folded] .xs-split:not([data-view='feed']) .xs-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  html[data-xs-folded] .xs-chat:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  html[data-xs-folded] .xs-chat .xs-thread { flex: 1; min-height: 0; max-height: none; }
-  html[data-xs-folded] .xs-rpane { flex: 1; min-height: 0; overflow-y: auto; }
+  .xs-canvas.room .xs-split:not([data-view='feed']) .xs-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-canvas.room .xs-chat:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-canvas.room .xs-chat .xs-thread { flex: 1; min-height: 0; max-height: none; }
+  .xs-canvas.room .xs-rpane { flex: 1; min-height: 0; overflow-y: auto; }
 }
-@media (max-width: 760px) and (prefers-reduced-motion: reduce) { .nav { transition: none; } }
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  html[data-xs-room] { --xs-fold: 0s; }
+}
