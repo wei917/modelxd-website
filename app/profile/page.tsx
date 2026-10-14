@@ -18,7 +18,7 @@ import { XTellFooter } from '../components/xtell/XTellNav'
 import { XCreateAccountHead, XCreateAccountWelcome, XCreateLibrary } from '../components/xcreate/XCreateAccount'
 import { yenApprox } from '../../lib/plans'
 import { userName, userPhoto } from '../../lib/user-face'
-import FaceEditor from '../components/FaceEditor'
+import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -176,6 +176,9 @@ export default function ProfilePage() {
   // The picture and website name editor (Oct 2): FaceEditor, saved through
   // /api/profile/face, the only writer of display_name and avatar_url.
   const [editingFace, setEditingFace] = useState(false)
+  // The @ID (Oct 13, supabase/132): read through /api/profile/handle, which
+  // gives an account that has none its ID first.
+  const [handleInfo, setHandleInfo] = useState<HandleInfo | null>(null)
   // /profile#language is where the sidebar globe lands (Sep 14): bring the
   // picker into view and focus it once the profile has rendered (the page
   // shows Loading until then), and again on a hash change when the globe is
@@ -337,6 +340,8 @@ export default function ProfilePage() {
 
       const { data: c } = await client.from('user_credits').select('*').eq('user_id', u.id).maybeSingle()
       setCredits((c as UserCredits | null) ?? null)
+
+      fetch('/api/profile/handle').then(r => (r.ok ? r.json() : null)).then((h: HandleInfo | null) => { if (h?.handle) setHandleInfo(h) }).catch(() => {})
     })
   }, [])
 
@@ -849,6 +854,9 @@ export default function ProfilePage() {
                 <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.01em', fontFamily: 'var(--font-display), sans-serif' }}>
                   {profile.display_name ?? 'Anonymous'}
                 </h1>
+                {handleInfo?.handle && (
+                  <div style={{ fontSize: 14, color: 'var(--muted2)', margin: '-2px 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{handleInfo.handle}</div>
+                )}
                 <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
                 {/* Edit the picture and website name (Oct 2), then Sign Out,
                     which belongs with the identity block (CC, July 19). */}
@@ -878,8 +886,10 @@ export default function ProfilePage() {
                   <FaceEditor
                     user={user}
                     current={{ name: profile.display_name, photo: profile.avatar_url }}
+                    handleInfo={handleInfo}
                     onClose={() => setEditingFace(false)}
                     onSaved={face => setProfile(prev => prev && { ...prev, display_name: face.name, avatar_url: face.photo })}
+                    onHandle={setHandleInfo}
                   />
                 )}
               </div>

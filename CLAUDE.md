@@ -61,6 +61,29 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `133_xsports_report_reasons.sql` applied 2026-10-14 by the owner: a
+  reason (fixed list) and optional details on `xsports_room_reports`.
+  Checked live without writing a row: 42501 for the publishable key on
+  select and insert; with the service key the columns read, an unknown
+  reason and 501-character details are refused (23514), a known reason
+  passes the check (23503 on the made-up ids, nothing stored).
+  `132_profile_handles.sql` applied 2026-10-13 by the owner: every
+  account's @ID (`profiles.handle`, `handle_changed_at`,
+  `profile_handle_holds`, `xsports_room_messages.author_handle`, and
+  service-only `assign_profile_handle` / `change_profile_handle`). Checked
+  live: 125 of 125 accounts got an ID, all distinct (124 word IDs, 1 X
+  username); 42501 for the publishable key on all five functions and on
+  `profile_handle_holds`; `author_handle` readable (200).
+  `131_xsports_rooms.sql` applied 2026-10-13 by the owner: X體育 live
+  rooms (`xsports_room_messages` in the supabase_realtime publication,
+  `xsports_rooms`, `xsports_room_members`, `xsports_room_reports`). Checked
+  live: the publishable key reads the messages' public columns (200 []),
+  gets 42501 on user_id, hidden, insert and the other three tables;
+  Realtime delivered an inserted row to a publishable-key subscriber.
+  `130_xsports_chats.sql` applied 2026-10-12 by the owner: X體育 saved
+  chats (`xsports_chats`, `xsports_messages`; server writes only, owner
+  reads own). Checked live: 42501 for the publishable key on GET and POST on
+  both tables; the service key reads both (0 rows).
   `129_site_internal_users.sql` applied 2026-10-12 by the owner:
   /admin/traffic leaves out the owner's accounts (`site_internal_users`:
   two Google, one LINE Taiwan test) and every browser that signed in with
@@ -153,6 +176,7 @@ more**, and the per-user feature system is gone with it.
 | **XDev** | `/xdev` | required | API keys + MCP for agents. Open since Aug 24. |
 | **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
 | **XTell** | `/xtell` | the free chart is open, sign-in at the first question (xtell.modelxd.com since Oct 1, www's `/xtell` since Oct 4) | X先知 (X算命 until Oct 3): temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
+| **XSports** | `/xsports` | scores public; sign-in to chat | X體育 (Oct 12-14; on dev and main since Oct 14, one commit each, the history on `claude/xsports`): live MLB and NBA. A game's room: 戰況 (plays, plus the leagues' highlight clips via `/api/xsports/highlights`, `lib/xsports-highlights.ts`) left; chat with fans and two house-paid AI commentators, GPT-6 Luna and Qwen 3.8 Flash (`lib/xsports-ais.ts`, `lib/xsports-room-ai.ts`: they take turns; @AI asks whichever is up, @Luna / @Qwen that one only, never stood in for; they may @ each other, one answer and never a question back; checks `npx tsx scripts/xsports-room-check.ts`; fans delete their own messages, anyone reports any message incl. the AI's with a reason (in-app dialog; migration 133), 3 reports hide; removals reach open pages as a Realtime broadcast 'gone'), AI 私聊 (up to 4 models the viewer picks: a question goes to each, one after another, each debited and saved before the next, the wallet checked before each; per-model ⚙: talk level while watching (關/少說/一般/多說, each model on its own clock, one unasked remark at a time) and thinking level (its own declared levels); a question can be aimed at one model (chip, 回覆, @ with a list; the public chat's @ lists @AI, @Luna, @Qwen and the fans who spoke); list price per remark; `/api/xsports/talk`, `lib/xsports-turn.ts`; one saved chat per game, 清除對話 deletes the game's chats (migration 130); checks `npx tsx scripts/xsports-turn-check.ts`), box score and odds right. A compact league toolbar on top (back to the games in a room, MLB / NBA capsules; NBA is its landscape mark, wordmark included). 數據 says the game has not started until it has. Addresses: `/xsports?league=mlb&game=849813`, `/xsports?league=nba`; no league lists every league, none marked; the first `?l=`/`?g=` links still open and are rewritten. Feeds: MLB's free Stats API and ESPN, prototype only (their terms are not for commercial use). |
 | **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
 ### XDuel — `/xduel`
@@ -1175,6 +1199,25 @@ can sit at the table honestly. One act per request; the client loops.
   providers' avatar hosts). Still to build with publishing/games: confirm the
   name and picture at the first publish or join, and open only those two
   columns to other users (column grants, pitfall 16), never the whole row.
+- **@ID for every account: built Oct 13** (owner: "we need user to pick an
+  id right? not just for chatroom?"; display "A": the name, then a small
+  @ID, like X). `profiles.handle`: a-z, 0-9, _ and . (3-20), unique.
+  Assigned, never asked at sign-up (owner: "assign an id from their google
+  or x or line info"): the X username, else an English one-word website name
+  the person chose, else two words and digits (swift_otter_482). NEVER the
+  email or the Google / LINE name: an ID is on every chat line, and those are
+  the address and often the real name (your Google account would have been
+  @wei917). Change once every 30 days (owner: "at most once per month");
+  replacing the assigned one is free at once; a left ID is held for its owner
+  30 days. Rules and reserved words in `lib/handle.ts`, mirrored by
+  `handle_is_reserved()` in migration 132 (keep in step); server side in
+  `lib/profile-handle.ts`; changes go through `/api/profile/face` with the
+  name and picture (moderated like them); `/api/profile/handle` reads it (and
+  assigns one) or checks a typed ID. A new account gets its ID after sign-in
+  from `/api/credits/ensure-daily`. Shown: the account page (Edit has an ID
+  field) and X體育 rooms (`author_handle` copied into each message; the
+  first-message panel shows the ID beside the name). @AI no longer fires on
+  an ID that starts with "ai".
 - **X sign-in: built Oct 2** (owner: "all markets", "$10 too"). Supabase's
   built-in X / Twitter (OAuth 2.0) provider, `provider: 'x'`, offered in every
   language on every door, under Google and LINE. X's API is pay-per-use (no

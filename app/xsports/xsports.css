@@ -1,0 +1,644 @@
+/* app/xsports/xsports.css — X體育. Every rule is scoped to .xs.
+ *
+ * Owner, Oct 12, after three board designs ("the worst UI I have ever seen
+ * in my life"): start again from the ESPN / theScore app. White rows, big
+ * numbers, team chips, one accent (ModelXD red: live, the selected tab, the
+ * send button), and everything about a game in tabs: the AI buddy, the
+ * play-by-play, the box score, the odds. The buddy's tab is a chat; plays
+ * show there only as small cards for the moments that matter. */
+
+.xs {
+  --xs-ink: var(--white);
+  --xs-ink-2: #5f656b;
+  --xs-ink-3: #8d9399;
+  --xs-rule: #e7e9ec;
+  --xs-band: #f4f5f7;
+  --xs-red: var(--red);
+  --xs-ball: #2e9e5b;
+  --xs-strike: #d8a200;
+  /* Design 02 (Oct 13): card lines, the footer tint, market numbers, the
+     chosen day. */
+  --xs-line: #e2e6ec;
+  --xs-tint: #f4f6f9;
+  --xs-navy: #1f2d4d;
+  --xs-soft: #fdeceb;
+  /* The scoreboard voice: numbers only (app/xsports/page.tsx). */
+  --xs-num: var(--font-scoreboard), var(--font-body), var(--font-zh), sans-serif;
+  font-family: var(--font-body), var(--font-zh), sans-serif;
+  color: var(--xs-ink);
+  font-variant-numeric: tabular-nums;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 0 40px;
+}
+.xs *:focus-visible { outline: 2px solid var(--xs-red); outline-offset: 2px; border-radius: 4px; }
+:where(.xs button) { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
+
+/* Team chip: the club's colour with its code, standing in for a logo. */
+.xs-chip {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 30px; height: 22px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  background: var(--team, #9aa0a6); color: var(--team-ink, #fff);
+}
+.xs-chip.big { width: 46px; height: 34px; border-radius: 8px; font-size: 13px; }
+
+/* ── Scores page: design 02, "Club Cards" (owner, Oct 13) ────────────────
+ * A pale cool-grey page, white match cards with the clubs' own logos facing
+ * each other, the time or score between them, and the three markets in one
+ * aligned footer. 14px corners, the faintest shadows; red only for the
+ * chosen league, the chosen day and a live game.
+ *
+ * Every breakpoint is the width the page actually has beside the site's left
+ * nav (a container query on .xs-canvas), not the window's: at a 768px window
+ * the open nav leaves ~560px, too narrow for two columns (Codex review, Oct
+ * 13). Two columns and the one-row header from 800px of content (a lone game
+ * spans both); phone sizes under 560px. */
+.xs-canvas { background: #f2f4f7; min-height: 100dvh; container: xs / inline-size; }
+
+/* The leagues bar (Oct 13 redesign, through Codex: the XTell-style row of
+ * two small marks in a wide white strip "looks poor"). One compact sticky
+ * toolbar on the content's own edges (the scores' 1120px column, the room's
+ * 1440px), under the phone's 60px top bar. In a game the way back comes
+ * first; the leagues are a capsule control, each mark beside its name, the
+ * current one white with the site's red. It sits outside .xs, so it names
+ * the colours it uses. */
+.xs-topbar {
+  --xs-line: #e2e6ec; --xs-ink-2: #5f656b; --xs-red: var(--red);
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255, 255, 255, .97); border-bottom: 1px solid var(--xs-line);
+  font-family: var(--font-body), var(--font-zh), sans-serif;
+}
+.xs-topin { display: flex; align-items: center; gap: 12px; max-width: 1120px; margin: 0 auto; padding: 8px 16px; }
+.xs-topbar.room .xs-topin { max-width: 1440px; padding-inline: 20px; }
+.xs-topback { position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px 0 6px; border: 0; border-radius: 999px; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--xs-ink-2); white-space: nowrap; cursor: pointer; }
+.xs-topback:hover { background: #f2f4f7; color: var(--white); }
+.xs-topback svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.xs-topback::after { content: ''; position: absolute; right: -7px; top: 9px; bottom: 9px; width: 1px; background: var(--xs-line); }
+.xs-leagues { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: #eef1f5; }
+.xs-leagues a { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 16px 0 10px; border-radius: 999px; color: var(--xs-ink-2); font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease; }
+.xs-leagues a:hover { color: var(--white); background: rgba(255, 255, 255, .7); }
+.xs-leagues a[aria-current='page'] { background: #fff; color: var(--xs-red); box-shadow: 0 1px 2px rgba(16, 24, 40, .1), 0 0 0 1px rgba(214, 59, 50, .2); }
+.xs-leagues a:focus-visible, .xs-topback:focus-visible { outline: 2px solid var(--xs-red); outline-offset: 1px; }
+/* MLB's mark in a box beside its name. The NBA's landscape mark carries
+ * its own name, so it stands alone; its wordmark takes the label's ink,
+ * black rather than red when current (red beside the logoman's own red
+ * clashes). */
+.xs-leagues .mk { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; }
+.xs-leagues .mk img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.xs-leagues .mk.mlb img { width: 28px; }
+.xs-leagues a.nba { padding: 0 20px; }
+.xs-leagues a.nba[aria-current='page'] { color: var(--white); }
+.xs-leagues .lockup { display: block; width: 37.4px; height: 22px; }
+@media (max-width: 760px) { .xs-topbar { top: 60px; } }
+@media (prefers-reduced-motion: reduce) { .xs-leagues a { transition: none; } }
+@container xs (max-width: 559px) {
+  .xs-topin, .xs-topbar.room .xs-topin { gap: 10px; padding: 7px 12px; }
+  .xs-topback { padding: 0 8px 0 2px; font-size: 13.5px; }
+  .xs-topback::after { right: -6px; }
+  .xs-leagues a { gap: 6px; padding: 0 12px 0 8px; font-size: 13.5px; }
+  .xs-leagues .mk { width: 24px; height: 20px; }
+  .xs-leagues .mk.mlb img { width: 24px; }
+  .xs-leagues a.nba { padding: 0 16px; }
+  .xs-leagues .lockup { width: 34px; height: 20px; }
+}
+.xs.xs-list {
+  max-width: 1120px;
+  padding: 20px 16px 48px;
+}
+.xs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+
+.xs-strip { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #fff; border: 1px solid var(--xs-line); border-radius: 14px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+.xs-strip .month { flex-shrink: 0; padding: 0 20px 0 10px; font-size: 18px; font-weight: 700; color: var(--xs-ink-2); white-space: nowrap; }
+.xs-strip .days { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.xs-strip .days button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 8px; border-radius: 10px; color: var(--xs-ink-2); }
+.xs-strip .days button:hover { background: var(--xs-tint); }
+.xs-strip .days small { font-size: 12px; }
+.xs-strip .days b { font-family: var(--xs-num); font-size: 22px; font-weight: 600; line-height: 1.05; color: var(--xs-ink); }
+.xs-strip .days button[aria-pressed='true'] { background: var(--xs-soft); color: var(--xs-red); }
+.xs-strip .days button[aria-pressed='true'] small { font-weight: 700; }
+.xs-strip .days button[aria-pressed='true'] b { color: var(--xs-red); font-weight: 700; }
+
+.xs-league { margin-top: 18px; }
+.xs-lghd { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; padding: 10px 18px; background: #fff; border: 1px solid var(--xs-line); border-radius: 14px; font-size: 18px; font-weight: 800; }
+.xs-lghd .mark { display: block; width: auto; height: 30px; }
+.xs-lghd .mark.mlb { height: 24px; }
+.xs-lghd small { font-size: 13px; font-weight: 500; color: var(--xs-ink-3); }
+
+.xs-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.xs-card { position: relative; display: flex; flex-direction: column; min-width: 0; color: inherit; text-decoration: none; background: #fff; border: 1px solid var(--xs-line); border-radius: 14px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); transition: border-color 150ms ease, box-shadow 150ms ease; }
+.xs-card:hover { border-color: #cbd2db; box-shadow: 0 4px 14px rgba(16, 24, 40, .07); }
+.xs .xs-card:focus-visible { outline-offset: 3px; border-radius: 14px; }
+.xs-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 0 16px; }
+.xs-card-top .ser { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--xs-ink-2); }
+.xs-state { flex-shrink: 0; display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; background: #f0f2f5; font-size: 12px; color: var(--xs-ink-2); white-space: nowrap; }
+.xs-state.live { background: var(--xs-soft); color: var(--xs-red); font-weight: 700; }
+.xs-state.other { background: #fff3dc; color: #7a4f00; }
+.xs-card-body { position: relative; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 12px 30px 14px 12px; }
+.xs-side { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; text-align: center; }
+.xs-logo { display: block; width: 52px; height: 52px; object-fit: contain; }
+.xs-side .xs-chip.big { width: 52px; height: 40px; border-radius: 10px; font-size: 14px; }
+.xs-side .who { min-width: 0; }
+.xs-side .who b { display: block; font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.xs-side .who b.long { font-size: 13px; }
+.xs-side .who small { display: block; margin-top: 2px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-side.lose .who b { color: var(--xs-ink-2); font-weight: 600; }
+.xs-mid { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 104px; padding: 0 12px; border-left: 1px solid var(--xs-line); border-right: 1px solid var(--xs-line); text-align: center; }
+.xs-mid .date { font-size: 12px; color: var(--xs-ink-2); white-space: nowrap; }
+.xs-mid .time { font-family: var(--xs-num); font-size: 26px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.xs-mid .score { display: flex; align-items: baseline; gap: 8px; font-family: var(--xs-num); font-size: 36px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.xs-mid .score i { font-style: normal; font-weight: 600; color: var(--xs-ink-3); }
+.xs-mid .score .lose { color: var(--xs-ink-3); }
+.xs-mid .sub { margin-top: 2px; font-size: 12px; color: var(--xs-ink-3); letter-spacing: .06em; white-space: nowrap; }
+.xs-mid .sub.live { color: var(--xs-red); font-weight: 700; letter-spacing: 0; }
+.xs-card .chev { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 24px; line-height: 1; color: #b3bac4; }
+.xs-mkts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 8px 8px; padding: 8px 0 7px; background: var(--xs-tint); border-radius: 10px; }
+.xs-mkts > span { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 0 6px; }
+.xs-mkts > span + span { border-left: 1px solid var(--xs-line); }
+.xs-mkts small { font-size: 12px; color: var(--xs-ink-3); }
+.xs-mkts b { font-family: var(--xs-num); font-size: 17px; font-weight: 700; color: var(--xs-navy); white-space: nowrap; }
+.xs-mkts b.none { font-weight: 600; color: #b3bac4; }
+.xs-mkts.empty { display: block; padding: 9px 12px; text-align: center; font-size: 12px; color: var(--xs-ink-3); }
+
+/* While a day loads: two quiet cards, no shimmer. */
+.xs-card.skel { min-height: 196px; pointer-events: none; }
+.xs-card.skel::before { content: ''; height: 104px; margin: 34px 22% 0; border-radius: 12px; background: #eef1f5; }
+.xs-card.skel::after { content: ''; height: 44px; margin: auto 8px 8px; border-radius: 10px; background: var(--xs-tint); }
+.xs-empty { margin: 0; padding: 18px; background: #fff; border: 1px dashed #d5dbe3; border-radius: 14px; font-size: 14px; color: var(--xs-ink-2); }
+.xs-note { margin: 0 0 8px; padding: 0 4px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-list .xs-foot { padding: 18px 4px 0; font-size: 12px; }
+
+@container xs (min-width: 800px) {
+  .xs-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .xs-card.wide { grid-column: 1 / -1; }
+  .xs-card.wide .xs-card-body { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); padding: 14px 48px 18px; }
+  .xs-card.wide .xs-side { flex-direction: row; justify-content: center; gap: 16px; text-align: left; }
+  .xs-card.wide .xs-logo, .xs-card.wide .xs-chip.big { width: 64px; height: 64px; }
+  .xs-card.wide .xs-side .who b { font-size: 18px; }
+  .xs-card.wide .xs-side .who b.long { font-size: 16px; }
+  .xs-card.wide .xs-mid { min-width: 200px; padding: 0 32px; }
+  .xs-card.wide .xs-mkts { margin: 0 10px 10px; padding: 10px 0 9px; }
+}
+@container xs (max-width: 559px) {
+  .xs.xs-list { padding: 14px 12px 40px; }
+  .xs-strip { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 8px 8px; }
+  .xs-strip .month { padding: 0 6px; font-size: 14px; }
+  .xs-strip .days { gap: 2px; }
+  .xs-strip .days small { font-size: 11px; }
+  .xs-strip .days b { font-size: 20px; }
+  .xs-lghd { padding: 9px 14px; font-size: 16px; }
+  .xs-card-body { gap: 6px; padding: 12px 26px 12px 8px; }
+  .xs-side .who b { font-size: 14px; }
+  .xs-side .who b.long { font-size: 12.5px; }
+  .xs-mid { min-width: 96px; padding: 0 8px; }
+  .xs-mid .time { font-size: 24px; }
+  .xs-mid .score { font-size: 32px; }
+  .xs-card .chev { right: 8px; }
+}
+/* The smallest phones (320-399px of content): a tighter middle, so a long
+ * club name ("Timberwolves") and a three-digit score both fit. */
+@container xs (max-width: 399px) {
+  .xs-card-body { gap: 4px; padding: 12px 22px 12px 6px; }
+  .xs-mid { min-width: 84px; padding: 0 6px; }
+  .xs-mid .time { font-size: 22px; }
+  .xs-mid .score { gap: 5px; font-size: 27px; }
+  .xs-side .who b { font-size: 13.5px; }
+  .xs-side .who b.long { font-size: 12px; }
+  .xs-card .chev { right: 6px; }
+}
+.xs-none { padding: 16px; font-size: 14px; color: var(--xs-ink-2); }
+.xs-foot { padding: 14px 16px 0; font-size: 11px; color: var(--xs-ink-3); }
+
+/* ── A game: the approved split room (owner, Oct 13) ─────────────────────
+ * White, thin cool-grey rules, dark type, ModelXD red. With room (960px of
+ * content beside the site's nav): two equal columns, 戰況 left (the
+ * overview, then the plays and the leagues' clips), the conversation right
+ * (聊天 / AI 私聊 / 數據 / 賠率), each scrolling inside itself. Narrower: one
+ * column, the overview, then a row of five (戰況 聊天 AI 私聊 數據 賠率). */
+.xs-canvas.room { --xs-bar-h: 57px; background: #fff; }
+.xs.xs-room { max-width: 1440px; padding: 10px 20px 20px; }
+.xs-note { margin: 6px 0; padding: 0 2px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-split { display: flex; flex-direction: column; }
+.xs-left, .xs-right { min-width: 0; }
+
+/* The overview: one row of three, the line score, MLB's live strip. */
+.xs-ov.skel { min-height: 150px; border-radius: 12px; background: var(--xs-tint); }
+.xs-ov-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 4px 0 12px; }
+.xs-ov-top .lg { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.xs-ov-top .lg > div { min-width: 0; }
+.xs-ov-top .lg .mark { flex-shrink: 0; height: 30px; width: auto; }
+.xs-ov-top .lg .mark.mlb { height: 22px; }
+.xs-ov-top .lg b { display: block; font-size: 18px; font-weight: 800; line-height: 1.2; }
+.xs-ov-top .lg small { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 13px; line-height: 1.35; color: var(--xs-ink-2); }
+.xs-ov-top .mx { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0 18px; border-left: 1px solid var(--xs-line); border-right: 1px solid var(--xs-line); }
+.xs-ov-top .mx .xs-logo, .xs-ov-top .mx .xs-chip.big { width: 52px; height: 52px; }
+.xs-ov-top .sc { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 96px; }
+.xs-ov-top .score { display: flex; align-items: baseline; gap: 8px; font-family: var(--xs-num); font-size: 46px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.xs-ov-top .score i { font-style: normal; font-weight: 600; color: var(--xs-ink-3); }
+.xs-ov-top .score .lose { color: var(--xs-ink-3); }
+.xs-ov-top .time { font-family: var(--xs-num); font-size: 30px; font-weight: 700; line-height: 1.05; white-space: nowrap; }
+.xs-ov-top .sc small { font-size: 13.5px; color: var(--xs-ink-2); white-space: nowrap; }
+.xs-ov-top .sc small.live { color: var(--xs-red); font-weight: 700; }
+.xs-ov-top .st { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 0; }
+.xs-ov-top .st .xs-state { font-size: 13px; padding: 4px 12px; }
+.xs-watch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--xs-ink-2); white-space: nowrap; }
+.xs-watch i { width: 6px; height: 6px; border-radius: 50%; background: var(--xs-red); }
+.xs-line { overflow-x: auto; border: 1px solid var(--xs-line); border-radius: 10px; }
+.xs-line table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.xs-line th { padding: 5px 4px; background: var(--xs-tint); font-size: 11.5px; font-weight: 600; color: var(--xs-ink-2); text-align: center; }
+.xs-line th button { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.xs-line td { padding: 5px 4px; border-top: 1px solid var(--xs-line); text-align: center; font-family: var(--xs-num); font-size: 15px; }
+.xs-line td.tm { padding-left: 10px; text-align: left; white-space: nowrap; font-family: var(--font-body), var(--font-zh), sans-serif; font-size: 13px; font-weight: 700; }
+.xs-line td.tm .xs-logo, .xs-line td.tm .xs-chip.big { display: inline-flex; width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; border-radius: 4px; font-size: 7px; }
+.xs-line td.tot { font-weight: 700; }
+.xs-ov-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--xs-line); border-radius: 10px; }
+.xs-ov-strip .field { flex-shrink: 0; width: 64px; height: 46px; }
+.xs-ov-strip .cnt { display: grid; gap: 3px; font-size: 12px; font-weight: 700; color: var(--xs-ink-2); }
+.xs-ov-strip .cnt span { display: flex; align-items: center; gap: 4px; }
+.xs-ov-strip .cnt i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #d9dee5; }
+.xs-ov-strip .cnt i.b { background: var(--xs-ball); }
+.xs-ov-strip .cnt i.s { background: var(--xs-strike); }
+.xs-ov-strip .cnt i.o { background: var(--xs-red); }
+.xs-ov-strip .who { display: grid; gap: 1px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--xs-line); }
+.xs-ov-strip .who small { font-size: 12px; color: var(--xs-ink-3); }
+.xs-ov-strip .who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
+
+/* Tabs: three on the right (wide), four in one row (narrow). */
+.xs-tabs { display: flex; border-bottom: 1px solid var(--xs-line); }
+.xs-tabs button { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 8px 10px; font-size: 15.5px; font-weight: 700; color: var(--xs-ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.xs-tabs button svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.xs-tabs button:hover { color: var(--xs-ink); }
+.xs-tabs button[aria-selected='true'] { color: var(--xs-red); border-bottom-color: var(--xs-red); }
+.xs-mtabs { display: flex; margin-top: 12px; border-bottom: 1px solid var(--xs-line); overflow-x: auto; scrollbar-width: none; }
+.xs-mtabs::-webkit-scrollbar { display: none; }
+.xs-mtabs button { flex: 1 0 auto; padding: 11px 8px 9px; font-size: 14px; font-weight: 700; color: var(--xs-ink-3); border-bottom: 2px solid transparent; white-space: nowrap; }
+.xs-mtabs button[aria-selected='true'] { color: var(--xs-ink); border-bottom-color: var(--xs-red); }
+
+/* 戰況: the plays, newest first, with the leagues' clips. */
+.xs-feedwrap { margin-top: 14px; }
+.xs-feed-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 0 0 8px; }
+.xs-feed-hd h2 { margin: 0; font-size: 21px; font-weight: 800; }
+.xs-filter { display: inline-flex; gap: 6px; }
+.xs-filter button { padding: 5px 14px; border: 1px solid var(--xs-line); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; color: var(--xs-ink-2); }
+.xs-filter button b { margin-left: 6px; font-family: var(--xs-num); font-size: 14px; }
+.xs-filter button[aria-pressed='true'] { border-color: var(--xs-red); color: var(--xs-red); }
+.xs-fresh { display: flex; align-items: center; gap: 4px; width: 100%; margin: 0 0 8px; padding: 8px 12px; border-radius: 8px; background: var(--xs-soft); color: var(--xs-red); font-size: 13px; font-weight: 700; text-align: left; }
+.xs-fresh .chev { margin-left: auto; font-size: 18px; line-height: 1; }
+.xs-fresh.small { width: auto; margin: 0; padding: 5px 10px; }
+.xs-feed-ph { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 0 6px; background: #fff; border-bottom: 1px solid var(--xs-line); font-size: 13px; font-weight: 800; }
+.xs-feed-ph small { font-weight: 500; color: var(--xs-ink-3); }
+.xs-ev { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 0 10px; padding: 10px 2px; border-bottom: 1px solid #eef1f4; }
+.xs-ev .dot { justify-self: center; width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: #c9d0d9; }
+.xs-ev.run .dot, .xs-ev.has-clip .dot { width: 11px; height: 11px; margin-top: 5px; background: #fff; border: 2.5px solid var(--xs-red); }
+.xs-ev .tx { min-width: 0; }
+.xs-ev .tx p { margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.xs-ev .tx .x { display: block; margin-top: 1px; font-size: 11.5px; color: var(--xs-ink-3); }
+.xs-ev .tx .sc { display: block; margin-top: 2px; font-family: var(--xs-num); font-size: 16px; font-weight: 700; }
+.xs-ev .tx .tm { display: block; margin-top: 2px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-ev .cm { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 5px; font-size: 12px; color: var(--xs-ink-2); }
+.xs-ev .cm button { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--xs-red); }
+.xs-ev .cm svg { width: 11px; height: 11px; fill: currentColor; }
+.xs-thumb { position: relative; display: block; flex-shrink: 0; width: 144px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: #e7ebf0; }
+.xs-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.xs-thumb .pl { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(255, 255, 255, .93); box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
+.xs-thumb .pl svg { width: 16px; height: 16px; margin-left: 2px; fill: #111; }
+.xs-thumb .du { position: absolute; right: 6px; bottom: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(0, 0, 0, .78); color: #fff; font-family: var(--xs-num); font-size: 13px; font-weight: 600; }
+.xs-cliprow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #eef1f4; }
+.xs-cliprow .xs-thumb { width: 128px; }
+.xs-cliprow .tx { min-width: 0; }
+.xs-cliprow .ti { display: block; text-align: left; font-size: 14px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.xs-cliprow .ti:hover { color: var(--xs-red); }
+.xs-cliprow small { display: block; margin-top: 3px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-loose { padding: 2px 0 8px; border-bottom: 1px solid var(--xs-line); }
+.xs-loose .hd { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0 8px; font-size: 13px; }
+.xs-loose .hd b { font-weight: 800; }
+.xs-loose .hd button { font-size: 12.5px; font-weight: 700; color: var(--xs-red); }
+.xs-loose .strip { display: grid; grid-auto-flow: column; grid-auto-columns: 168px; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 4px; }
+.xs-loose .card { min-width: 0; }
+.xs-loose .card .xs-thumb { width: 100%; }
+.xs-loose .card .ti { display: -webkit-box; margin-top: 6px; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-align: left; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.xs-loose .card .ti:hover { color: var(--xs-red); }
+.xs-loose .card small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--xs-ink-3); }
+.xs-feed-note { margin: 0; padding: 22px 8px; text-align: center; font-size: 14px; color: var(--xs-ink-2); }
+.xs-feed-note.small { padding: 10px 8px; font-size: 12.5px; color: var(--xs-ink-3); }
+
+/* A clip, in its source's own player; our label stays outside it. */
+.xs-player { display: flex; flex-direction: column; gap: 10px; }
+.xs-player .bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.xs-player .back { font-size: 14px; font-weight: 600; color: var(--xs-ink-2); }
+.xs-player .back:hover { color: var(--xs-ink); }
+.xs-player .frame { position: relative; flex-shrink: 0; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 10px; background: #0f1115; }
+.xs-player .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.xs-player .frame .off { position: absolute; inset: 0; display: flex; align-items: flex-end; color: #fff; text-decoration: none; }
+.xs-player .frame .off img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
+.xs-player .frame .off span { position: relative; margin: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(0, 0, 0, .7); font-size: 13px; font-weight: 600; }
+.xs-player .meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.xs-player .meta .badge { display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 4px; background: var(--xs-soft); color: var(--xs-red); font-size: 12px; font-weight: 700; }
+.xs-player h3 { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.xs-player .meta small { display: block; margin-top: 4px; font-size: 12.5px; color: var(--xs-ink-3); }
+.xs-player .orig { flex-shrink: 0; font-size: 14px; font-weight: 700; color: #2f6fb3; white-space: nowrap; }
+.xs-player .more h4 { margin: 6px 0 2px; font-size: 14px; font-weight: 800; }
+
+/* ── Box score tab ─────────────────────────────────────────────────────── */
+.xs-box { padding: 12px 2px 16px; }
+.xs-seg { display: inline-flex; border: 1px solid var(--xs-line); border-radius: 999px; padding: 3px; margin: 8px 0 4px; }
+.xs-seg button { padding: 5px 14px; border-radius: 999px; font-size: 13px; color: var(--xs-ink-2); }
+.xs-seg button[aria-pressed='true'] { background: var(--xs-ink); color: #fff; }
+.xs-tablewrap { overflow-x: auto; }
+.xs-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+.xs-table caption { text-align: left; font-weight: 700; font-size: 13px; padding: 10px 0 4px; }
+.xs-table th { font-weight: 500; font-size: 11px; color: var(--xs-ink-3); text-align: right; padding: 4px 0 4px 8px; border-bottom: 1px solid var(--xs-line); white-space: nowrap; }
+.xs-table th:first-child, .xs-table td:first-child { text-align: left; padding-left: 0; }
+.xs-table td { text-align: right; padding: 7px 0 7px 8px; border-bottom: 1px solid #f1f2f4; white-space: nowrap; }
+.xs-table td .pos { color: var(--xs-ink-3); font-size: 11px; margin-left: 4px; }
+.xs-table tr.sub td:first-child { padding-left: 12px; }
+.xs-table tr.tot td { font-weight: 700; border-bottom: 0; }
+.xs-notes { list-style: none; padding: 0; margin: 12px 0 0; font-size: 12px; color: var(--xs-ink-2); line-height: 1.6; }
+
+/* ── Odds tab ──────────────────────────────────────────────────────────── */
+.xs-oddsTab { padding: 4px 2px 16px; }
+.xs-or { padding: 14px 0; border-bottom: 1px solid var(--xs-line); }
+.xs-or .h { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 700; }
+.xs-or .h small { font-size: 11px; font-weight: 400; color: var(--xs-ink-3); }
+/* The probability bar; its own class (it once shared .xs-bar with the chat's
+ * composer, whose 8 px height clipped the composer; Codex review, Oct 13). */
+.xs-pbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 8px 0 4px; background: var(--xs-tint); }
+.xs-pbar i { display: block; height: 100%; transition: width 600ms ease; }
+.xs-or .v { display: flex; justify-content: space-between; font-family: var(--xs-num); font-size: 17px; font-weight: 700; }
+.xs-or .line { display: flex; gap: 16px; margin-top: 8px; font-size: 15px; font-weight: 700; }
+.xs-oddsNote { margin: 12px 0 0; font-size: 11.5px; color: var(--xs-ink-3); }
+
+.xs-pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--xs-red); margin-right: 5px; vertical-align: 1px; animation: xs-pulse 1.6s infinite; }
+@keyframes xs-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .xs-pulse { animation: none; } .xs-pbar i { transition: none; } }
+
+/* ── The game's chat ───────────────────────────────────────────────────────
+ * Who (a picture, the name, a small @ID, the time) over what they said in
+ * a soft bubble; the AI commentator in a pale red card with its model; a
+ * quiet divider per inning or period. It keeps to the newest line while the
+ * reader is at the bottom, never while they read back. */
+.xs-thread { max-height: clamp(320px, calc(100dvh - 330px), 700px); overflow-y: auto; overscroll-behavior: contain; }
+.xs-thread-in { padding: 10px 2px 12px; }
+.xs-msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 8px 0; }
+.xs-msg .av { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #e6eaef; color: var(--xs-ink-2); font-size: 14px; font-weight: 700; }
+.xs-msg .col { min-width: 0; }
+.xs-msg .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 13px; line-height: 1.4; }
+.xs-msg .who > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.xs-msg .n { font-size: 14px; font-weight: 700; color: var(--xs-ink); }
+.xs-msg .id { color: var(--xs-ink-3); }
+.xs-msg .t { color: var(--xs-ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.xs-msg .rep { margin-left: auto; font-size: 12px; color: var(--xs-ink-3); opacity: 0; }
+.xs-msg:hover .rep, .xs-msg .rep:focus-visible { opacity: 1; }
+.xs-msg .rep:disabled { opacity: 1; cursor: default; }
+.xs-msg .body { display: inline-block; max-width: 100%; margin-top: 4px; padding: 8px 12px; border-radius: 4px 14px 14px 14px; background: #f2f4f7; font-size: 15px; line-height: 1.55; color: var(--xs-ink); overflow-wrap: anywhere; }
+.xs-msg .body a { color: #2f6fb3; }
+.xs-msg.mine .n { color: var(--xs-red); }
+.xs-msg.ai { grid-template-columns: minmax(0, 1fr); margin: 6px 0; padding: 10px 14px; border: 1px solid #f5d9d6; border-radius: 12px; background: #fdf3f2; }
+.xs-msg.ai .n { color: var(--xs-red); }
+.xs-msg.ai .model { padding: 1px 8px; border: 1px solid #cfd9e8; border-radius: 6px; background: #fff; font-size: 12px; color: #34598f; }
+.xs-msg.ai .body { display: block; margin-top: 4px; padding: 0; border-radius: 0; background: none; }
+.xs-men { color: #2f6fb3; }
+.xs-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0 6px; font-size: 12px; font-weight: 700; color: var(--xs-ink-3); }
+.xs-sep::before, .xs-sep::after { content: ''; flex: 1; height: 1px; background: var(--xs-line); }
+.xs-chat-empty { margin: 0; padding: 28px 8px 24px; text-align: center; font-size: 14px; color: var(--xs-ink-2); }
+.xs-chat-empty p { margin: 0; font-size: 15px; font-weight: 600; color: var(--xs-ink); }
+.xs-chat-empty small { display: block; margin-top: 6px; font-size: 13px; color: var(--xs-ink-3); }
+.xs-flash { margin: 0; padding: 6px 2px 0; font-size: 12px; color: var(--xs-red); }
+.xs-flash.ok { color: var(--xs-ink-2); }
+/* The composer: a full-height field and a red send. */
+.xs-compose { display: flex; gap: 8px; align-items: center; padding: 10px 0 4px; border-top: 1px solid var(--xs-line); }
+.xs-compose input { flex: 1; min-width: 0; height: 48px; font: inherit; font-size: 16px; padding: 0 16px; background: #fff; border: 1px solid #d6dce4; border-radius: 12px; color: var(--xs-ink); }
+.xs-compose input:focus { outline: none; border-color: #9fb0c5; }
+.xs-compose .send { flex-shrink: 0; height: 48px; min-width: 76px; padding: 0 20px; border-radius: 12px; background: var(--xs-red); color: #fff; font-size: 16px; font-weight: 700; }
+.xs-compose .send:disabled { background: #e6e9ee; color: var(--xs-ink-3); cursor: default; }
+.xs-compose .signin { flex: 1; height: 48px; border-radius: 12px; background: var(--xs-red); color: #fff; font-size: 15px; font-weight: 700; }
+.xs-link { font-size: 12px; color: var(--xs-ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.xs-send { min-height: 40px; padding: 0 18px; border-radius: 20px; background: var(--xs-red); color: #fff; font-weight: 700; font-size: 15px; }
+.xs-send:disabled { opacity: .4; cursor: default; }
+.xs-av { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #dfe2e5; color: var(--xs-ink-2); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.xs-sheet { position: fixed; inset: 0; z-index: 1000; background: rgba(15, 15, 15, .4); display: flex; align-items: flex-end; justify-content: center; }
+.xs-sheet .card { width: 100%; max-width: 480px; background: var(--bg); border-radius: 16px 16px 0 0; padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); }
+.xs-sheet h2 { margin: 0 0 12px; font-size: 17px; }
+.xs-sheet .row { display: flex; align-items: center; gap: 10px; }
+.xs-sheet input { flex: 1; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid #d9dde1; border-radius: 10px; background: #fff; color: var(--xs-ink); }
+.xs-sheet p { font-size: 13px; color: var(--xs-ink-2); line-height: 1.55; margin: 10px 0 14px; }
+.xs-sheet .acts { display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+.xs-sheet .lbl { display: block; margin: 12px 0 6px; font-size: 12px; font-weight: 600; color: var(--xs-ink-2); }
+.xs-sheet h2 + .lbl { margin-top: 0; }
+.xs-sheet p.idline { margin: 10px 0 0; font-size: 14px; color: var(--xs-ink); }
+.xs-sheet p.idline span { margin-right: 8px; font-size: 12px; font-weight: 600; color: var(--xs-ink-2); }
+.xs-sheet p.err { margin: -6px 0 12px; font-size: 13px; color: var(--xs-red); }
+@media (min-width: 720px) { .xs-sheet { align-items: center; } .xs-sheet .card { border-radius: 16px; } }
+/* The room's own dialogs (Oct 14): report (why), delete, clear. Taller than
+   the screen, the card scrolls. */
+.xs-dlg { max-width: 440px; max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.xs-dlg h2 { font-size: 18px; font-weight: 800; }
+.xs-dlg > p { font-size: 14px; }
+.xs-dlg-quote { display: grid; gap: 2px; margin: 0 0 12px; padding: 10px 12px; border-left: 3px solid #d6dce4; border-radius: 4px 10px 10px 4px; background: var(--xs-tint); font-size: 13.5px; line-height: 1.5; color: var(--xs-ink-2); overflow-wrap: anywhere; }
+.xs-dlg-quote b { font-size: 12.5px; color: var(--xs-ink); }
+.xs-dlg-why { display: grid; gap: 6px; min-width: 0; margin: 0 0 12px; padding: 0; border: 0; }
+.xs-dlg-why legend { margin: 0 0 8px; padding: 0; font-size: 13px; font-weight: 700; color: var(--xs-ink-2); }
+.xs-dlg-why label { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--xs-line); border-radius: 10px; background: #fff; font-size: 14.5px; cursor: pointer; }
+.xs-dlg-why label:hover { border-color: #c9d0d9; }
+.xs-dlg-why label.on { border-color: var(--xs-red); background: var(--xs-soft); }
+/* .xs-sheet input is the name field's look; a choice is a plain radio. */
+.xs-sheet .xs-dlg-why input[type='radio'] { flex: none; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; accent-color: var(--xs-red); }
+.xs-dlg-more { display: block; width: 100%; min-height: 64px; margin: 0 0 4px; padding: 10px 12px; border: 1px solid #d9dde1; border-radius: 10px; background: #fff; font: inherit; font-size: 16px; line-height: 1.5; color: var(--xs-ink); resize: vertical; }
+.xs-dlg-more:focus { outline: none; border-color: #9fb0c5; }
+.xs-dlg p.note { margin: 8px 0 14px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-dlg .acts .xs-send { padding: 0 20px; }
+@media (hover: none) { .xs-msg .rep { opacity: .6; } }
+
+/* ── AI 私聊 (owner, Oct 13; redesigned through Codex the same day) ───────
+ * On top, the models that answer (chips with their marks, add, n/4), then
+ * one line: automatic watching on or off, its state, what a question and an
+ * hour of watching cost roughly, what was spent. Then who can see it and the
+ * saved chats; the conversation, each reply in a card named by its model;
+ * the composer at the bottom. */
+.xs-pv-head { display: grid; gap: 10px; margin-top: 12px; padding: 12px; border: 1px solid var(--xs-line); border-radius: 14px; background: var(--xs-tint); }
+.xs-pv-models { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+/* The chips' own box only matters on phones, where it scrolls sideways. */
+.xs-pv-chips { display: contents; }
+.xs-pv-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-width: 0; height: 34px; padding: 0 4px 0 2px; border: 1px solid var(--xs-line); border-radius: 999px; background: #fff; font-size: 13.5px; }
+/* The name: tap to ask only this model (then the chip is red-ringed). */
+.xs-pv-chip .who { display: inline-flex; align-items: center; gap: 7px; min-width: 0; height: 30px; padding: 0 6px 0 8px; border-radius: 999px; }
+.xs-pv-chip .who:hover { background: #f6f7f9; }
+.xs-pv-chip b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.xs-pv-chip .cog, .xs-pv-chip .x { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; color: var(--xs-ink-3); }
+.xs-pv-chip .cog:hover, .xs-pv-chip .x:hover { background: #f2f4f7; color: var(--xs-ink); }
+.xs-pv-chip .cog svg, .xs-pv-chip .x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.xs-pv-chip .cog svg circle { fill: #fff; }
+.xs-pv-chip.aim { border-color: var(--xs-red); box-shadow: 0 0 0 1px var(--xs-red); }
+.xs-pv-chip.aim b { color: var(--xs-red); }
+.xs-pv-chip.open .cog { background: var(--xs-soft); color: var(--xs-red); }
+/* Set to 關: answers only when asked. */
+.xs-pv-chip.quiet { border-style: dashed; }
+.xs-pv-chip.quiet b { color: var(--xs-ink-2); font-weight: 600; }
+.xs-pv-chip.skel { width: 132px; border-color: transparent; background: #e9edf2; }
+.xs-pv-add { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 10px; border: 1px dashed #c3cad4; border-radius: 999px; background: #fff; color: var(--xs-ink); font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.xs-pv-add:hover { border-color: var(--xs-red); color: var(--xs-red); }
+.xs-pv-add svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.xs-pv-add:disabled { opacity: .5; cursor: default; }
+.xs-pv-count { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--xs-ink-3); }
+/* One model's settings, under the chips. */
+.xs-pv-conf { display: grid; gap: 8px; padding: 10px 12px 12px; border: 1px solid var(--xs-line); border-radius: 12px; background: #fff; }
+.xs-pv-conf .hd { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; }
+.xs-pv-conf .hd b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.xs-pv-conf .close { display: grid; place-items: center; margin-left: auto; width: 28px; height: 28px; border-radius: 50%; color: var(--xs-ink-3); }
+.xs-pv-conf .close:hover { background: #f2f4f7; color: var(--xs-ink); }
+.xs-pv-conf .close svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.xs-pv-conf .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.xs-pv-conf .lbl { width: 4.5em; flex-shrink: 0; font-size: 13px; font-weight: 700; color: var(--xs-ink-2); }
+.xs-pv-conf .opts { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 17px; background: #eef1f5; }
+.xs-pv-conf .opts button { min-width: 44px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--xs-ink-2); white-space: nowrap; }
+.xs-pv-conf .opts button:hover:not(:disabled) { color: var(--xs-ink); background: rgba(255, 255, 255, .7); }
+.xs-pv-conf .opts button[aria-checked='true'] { background: #fff; color: var(--xs-red); box-shadow: 0 1px 2px rgba(16, 24, 40, .1), 0 0 0 1px rgba(214, 59, 50, .2); }
+.xs-pv-conf .opts button:disabled { opacity: .4; cursor: default; }
+.xs-pv-conf .hint { margin: -2px 0 0; font-size: 12px; line-height: 1.5; color: var(--xs-ink-3); }
+.xs-pv-conf .cost { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--xs-ink-2); }
+.xs-pv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12.5px; color: var(--xs-ink-2); }
+.xs-pv-watch { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 16px 0 12px; border-radius: 999px; background: var(--xs-red); color: #fff; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.xs-pv-watch svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.xs-pv-watch.on { background: #fff; color: var(--xs-red); box-shadow: inset 0 0 0 1px #f0c3be; }
+.xs-pv-watch:disabled { opacity: .5; cursor: default; }
+.xs-pv-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+.xs-pv-state i { width: 7px; height: 7px; border-radius: 50%; background: #c3cad4; }
+.xs-pv-state.on, .xs-pv-state.busy { color: var(--xs-red); }
+.xs-pv-state.on i, .xs-pv-state.busy i { background: var(--xs-red); }
+.xs-pv-state.busy i { animation: xs-pulse 1.2s infinite; }
+.xs-pv-cost { color: var(--xs-ink-3); }
+.xs-pv-spent { margin-left: auto; white-space: nowrap; }
+.xs-pv-spent b { color: var(--xs-ink); }
+.xs-pv-hist { display: flex; align-items: center; gap: 12px; padding: 10px 2px 0; font-size: 12px; color: var(--xs-ink-3); }
+.xs-pv-only { margin-right: auto; white-space: nowrap; }
+.xs-pv-hist .xs-link { flex: none; white-space: nowrap; }
+/* A reply: the model's mark and name, its cost when done. The replies of
+ * one question sit closer together. */
+.xs-pv-reply { margin: 12px 0 0; padding: 10px 14px 12px; border: 1px solid #e3e8ee; border-radius: 12px; background: #fff; }
+.xs-pv-reply + .xs-pv-reply { margin-top: 8px; }
+.xs-pv-reply header { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+.xs-pv-reply header b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--xs-ink); }
+.xs-pv-reply header small { margin-left: auto; flex-shrink: 0; font-size: 12px; color: var(--xs-ink-3); }
+/* 回覆: the next questions go to this model. */
+.xs-pv-reply header .re { flex-shrink: 0; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--xs-ink-2); }
+.xs-pv-reply header small + .re { margin-left: 2px; }
+.xs-pv-reply header b + .re { margin-left: auto; }
+.xs-pv-reply header .re:hover { background: var(--xs-soft); color: var(--xs-red); }
+.xs-pv-reply .body { margin-top: 6px; font-size: 15px; line-height: 1.6; color: var(--xs-ink); overflow-wrap: anywhere; }
+.xs-pv-reply .body p { margin: 0 0 6px; }
+.xs-pv-reply .body p:last-child { margin-bottom: 0; }
+.xs-pv-reply .body a { color: #2f6fb3; }
+.xs-pv-reply.wait { border-style: dashed; background: #fbfcfd; }
+.xs-pv-reply.wait header b { color: var(--xs-ink-2); }
+.xs-pv-reply.failed { border-color: #f1d4d1; background: #fffafa; }
+.xs-pv-reply .err { margin: 6px 0 0; font-size: 13px; color: var(--xs-red); }
+.xs-pv-reply .dots { display: flex; gap: 4px; margin-top: 10px; }
+.xs-pv-reply .dots i { width: 6px; height: 6px; border-radius: 50%; background: #c3cad4; animation: xs-pulse 1.2s infinite; }
+.xs-pv-reply .dots i:nth-child(2) { animation-delay: .2s; }
+.xs-pv-reply .dots i:nth-child(3) { animation-delay: .4s; }
+.xs-pme { display: flex; justify-content: flex-end; padding: 10px 0 0 48px; }
+.xs-pme .body { max-width: 100%; padding: 8px 12px; border-radius: 14px 14px 4px 14px; background: #f2f4f7; font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.xs-pnote { margin: 10px 0 0; text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--xs-ink-3); }
+.xs-pnote a { color: #2f6fb3; font-weight: 700; }
+/* The box: who answers (when not every model does), the @ list, the field. */
+.xs-pv-composer { position: relative; }
+.xs-pv-to { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; margin: 8px 0 0; padding: 3px 4px 3px 12px; border-radius: 999px; background: var(--xs-soft); color: var(--xs-red); font-size: 12.5px; font-weight: 700; }
+.xs-pv-to span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xs-pv-to button { display: grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; color: var(--xs-red); }
+.xs-pv-to button:hover { background: rgba(214, 59, 50, .12); }
+.xs-pv-to button svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+/* @ in a box (both chats): who can be named, above the field. */
+.xs-at-box { position: relative; }
+.xs-at { position: absolute; left: 0; bottom: calc(100% - 6px); z-index: 5; width: min(320px, 100%); max-height: 264px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--xs-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 24, 40, .12); }
+.xs-at li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.xs-at li .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xs-at li small { margin-left: auto; flex-shrink: 0; font-size: 12px; font-weight: 500; color: var(--xs-ink-3); }
+.xs-at li .face { display: grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #e6eaef; color: var(--xs-ink-2); font-size: 11px; font-weight: 700; }
+.xs-at li[aria-selected='true'], .xs-at li:hover { background: var(--xs-tint); color: var(--xs-red); }
+
+/* Before the first word: what this is, and questions that only fill the box. */
+.xs-pv-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 12px 20px; text-align: center; }
+.xs-pv-empty .ic { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 4px; border-radius: 50%; background: var(--xs-soft); color: var(--xs-red); }
+.xs-pv-empty .ic svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.xs-pv-empty p { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--xs-ink); }
+.xs-pv-empty small { max-width: 34em; font-size: 13px; line-height: 1.6; color: var(--xs-ink-2); }
+.xs-pv-empty .prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.xs-pv-empty .prompts button { padding: 7px 13px; border: 1px solid var(--xs-line); border-radius: 999px; background: #fff; font-size: 13px; color: var(--xs-ink); }
+.xs-pv-empty .prompts button:hover { border-color: var(--xs-red); color: var(--xs-red); }
+@media (prefers-reduced-motion: reduce) { .xs-pv-state.busy i, .xs-pv-reply .dots i { animation: none; } }
+
+/* With room: two equal columns, each scrolling inside itself. */
+@container xs (min-width: 960px) {
+  .xs-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: calc(100dvh - var(--xs-bar-h) - 32px); min-height: 620px; }
+  .xs-left { display: flex; flex-direction: column; min-height: 0; padding-right: 22px; border-right: 1px solid var(--xs-line); }
+  .xs-right { display: flex; flex-direction: column; min-height: 0; padding-left: 22px; }
+  .xs-mtabs { display: none; }
+  .xs-feedwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-feedbox:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-feed-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }
+  .xs-player { flex: 1; min-height: 0; overflow-y: auto; }
+  .xs-chat:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .xs-chat .xs-thread { flex: 1; max-height: none; }
+  .xs-rpane { flex: 1; min-height: 0; overflow-y: auto; }
+}
+/* Narrower: one column; the row of five picks 戰況 or one of the four. */
+@container xs (max-width: 959px) {
+  .xs-tabs { display: none; }
+  .xs-split[data-view='feed'] .xs-right { display: none; }
+  .xs-split:not([data-view='feed']) .xs-feedwrap { display: none; }
+  /* The row of five already says 戰況. */
+  .xs-feed-hd h2 { display: none; }
+  .xs-feed-body { max-height: calc(100dvh - 180px); overflow-y: auto; overscroll-behavior: contain; }
+  /* Under the overview, the chat leaves room for its composer on the first
+     screen of a phone. */
+  .xs-thread { max-height: max(240px, calc(100dvh - 480px)); }
+  /* The private chat's box stays at the bottom of the screen while its panel
+     is in view, so it is there without scrolling (Codex, Oct 13). */
+  .xs-pv-composer { position: sticky; bottom: 0; z-index: 2; background: #fff; }
+  .xs-pv-composer .xs-compose { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+}
+@container xs (max-width: 559px) {
+  .xs.xs-room { padding: 8px 12px 20px; }
+  .xs-ov-top { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'lg st' 'mx mx'; row-gap: 10px; }
+  .xs-ov-top .lg { grid-area: lg; }
+  .xs-ov-top .st { grid-area: st; }
+  .xs-ov-top .mx { grid-area: mx; padding: 0; border: 0; }
+  .xs-ov-top .mx .xs-logo, .xs-ov-top .mx .xs-chip.big { width: 46px; height: 46px; }
+  .xs-ov-top .score { font-size: 42px; }
+  .xs-ov-strip { gap: 8px 12px; padding: 8px 10px; }
+  .xs-ov-strip .who { padding-left: 10px; }
+  .xs-thumb { width: 120px; }
+  .xs-cliprow .xs-thumb { width: 112px; }
+  .xs-loose .strip { grid-auto-columns: 144px; }
+  .xs-ev { gap: 0 8px; }
+  .xs-player h3 { font-size: 16px; }
+  .xs-compose .send { min-width: 68px; padding: 0 16px; }
+  .xs-pv-head { padding: 10px; }
+  .xs-pv-chip, .xs-pv-add, .xs-pv-watch { height: 32px; font-size: 13px; }
+  /* Four long names would stack four rows of chips above the conversation
+     (Codex, Oct 13: 236px at 320): one sideways strip instead, faded where
+     more chips wait; Add (its name kept for screen readers) and n/4 stay in
+     view beside it. A chip's full name is its title. */
+  .xs-pv-models { flex-wrap: nowrap; gap: 8px; }
+  .xs-pv-chips { display: flex; flex: 1 1 auto; gap: 6px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent); padding-right: 16px; }
+  .xs-pv-chips::-webkit-scrollbar { display: none; }
+  .xs-pv-chip { flex: none; max-width: 190px; scroll-snap-align: start; }
+  .xs-pv-conf .lbl { width: auto; flex-basis: 100%; }
+  .xs-pv-conf .opts button { min-width: 0; padding: 0 9px; }
+  .xs-pv-add { flex: none; width: 32px; padding: 0; justify-content: center; }
+  .xs-pv-add .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .xs-pv-count { flex: none; margin-left: 0; }
+}
+@container xs (max-width: 399px) {
+  .xs-mtabs button { padding-inline: 5px; font-size: 12.5px; }
+  .xs-ov-top .lg .mark { height: 24px; }
+  .xs-ov-top .lg b { font-size: 16px; }
+  .xs-ov-top .score { font-size: 38px; }
+  .xs-ov-strip .who { border-left: 0; padding-left: 0; }
+  /* The picture under the words, at full width of the text. */
+  .xs-ev { grid-template-columns: 14px minmax(0, 1fr); }
+  .xs-ev > .xs-thumb { grid-column: 2; width: 100%; max-width: 240px; margin-top: 8px; }
+  .xs-cliprow .xs-thumb { width: 96px; }
+  .xs-player .meta { flex-direction: column; gap: 6px; }
+}

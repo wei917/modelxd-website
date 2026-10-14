@@ -100,7 +100,7 @@ function companyLabel(id: string): string {
     .join(' ')
 }
 
-export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature }: {
+export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature, needsSearch, multi }: {
   /** One recipe, or a SET — a model qualifies by supporting ANY of them
    *  (canvas re-generate wants image_to_video OR reference_frames). */
   mode: Mode; recipeMode: ModelMode | ModelMode[]; onSelect: (m: PickerModel) => void; onClose: () => void
@@ -111,8 +111,16 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   /** Surface this picker is choosing for. Models with the key in their
    *  blocked_features are not offered. See lib/model-features.ts. */
   feature?: string
+  /** Only models that can search the web (output_config.text.capabilities
+   *  has web_search): XSports, where search is always on (owner, Oct 12). */
+  needsSearch?: boolean
   /** Per-slot selected model ids (null = empty slot) - index maps to A/B/C/D. */
   slotIds: (string | null)[]
+  /** Opt-in: choose several (XSports' private chat, Oct 13). A row toggles
+   *  instead of choosing and closing, up to `max`; the caller decides what
+   *  a toggle does (it keeps at least one). Labels come from the caller.
+   *  Without it the picker is exactly the single-choice dialog above. */
+  multi?: { selected: string[]; max: number; onToggle: (m: PickerModel) => void; doneLabel: string; countLabel: string; maxLabel: string }
 }) {
   const t = useT()
   // On the X創作 door the XD score is hidden (owner, Oct 3: "not ready yet"),
@@ -181,7 +189,10 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   // Hidden outright rather than shown-and-disabled: a greyed row invites
   // "why not?", and the reason — our per-call timeout budget — is not the
   // user's problem to reason about.
-  const models = feature ? allowedFor(allModels, feature) : allModels
+  const offered = needsSearch
+    ? allModels.filter(m => (m.output_config?.text?.capabilities ?? []).includes('web_search'))
+    : allModels
+  const models = feature ? allowedFor(offered, feature) : offered
   const recipes: ModelMode[] = Array.isArray(recipeMode) ? recipeMode : [recipeMode]
   const eligible = models.filter(m => recipes.some(r => (m.modes ?? []).includes(r)))
 
@@ -382,16 +393,29 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
             // Slot letters this model already occupies (A/B/C/D) - shown
             // as a status badge at the LEFT edge of the row (CC, July 20).
             const inSlots = slotIds.flatMap((id, i) => id === m.id ? ['ABCD'[i]] : [])
+            const row: PickerModel = { id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config, input_config: m.input_config ?? null }
+            // Several at once: a checkbox per row; a full set leaves the
+            // unticked rows dim until one is taken off.
+            const ticked = !!multi && multi.selected.includes(m.id)
+            const full = !!multi && !ticked && multi.selected.length >= multi.max
+            const choose = () => { if (!multi) onSelect(row); else if (!full) multi.onToggle(row) }
             return (
               <div className="model-picker-row" key={m.id}
-                onClick={() => onSelect({ id: m.id, provider: m.provider, model_name: m.model_name, display_name: m.display_name, modes: (m.modes ?? []) as ModelMode[], model_pricing: m.model_pricing, output_config: m.output_config, input_config: m.input_config ?? null })}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
+                onClick={choose}
+                {...(multi ? {
+                  role: 'checkbox', 'aria-checked': ticked, 'aria-disabled': full || undefined, tabIndex: 0,
+                  onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose() } },
+                } : {})}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: full ? 'default' : 'pointer', opacity: full ? 0.45 : 1 }}
+                onMouseEnter={e => { if (!full) (e.currentTarget as HTMLElement).style.background = 'var(--surface2)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
-                {/* Left status: the slot letter(s) this model occupies. */}
+                {/* Left status: the slot letter(s) this model occupies, or
+                    its checkbox when choosing several. */}
                 <span style={{ width: 18, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-                  {inSlots.length > 0 && (
+                  {multi ? (
+                    <span aria-hidden style={{ width: 16, height: 16, borderRadius: 4, display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 800, lineHeight: 1, color: '#fff', border: `1.5px solid ${ticked ? 'var(--red)' : 'var(--border2)'}`, background: ticked ? 'var(--red)' : 'transparent' }}>{ticked ? '✓' : ''}</span>
+                  ) : inSlots.length > 0 && (
                     <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: 'var(--red)', borderRadius: 5, padding: '2px 5px', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.05em' }}>
                       {inSlots.join('')}
                     </span>
@@ -520,11 +544,25 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
         {/* An explicit way out at the bottom (owner, Aug 9) — Esc and the
             backdrop click do the same, but a visible button always works,
             fullscreen included. */}
-        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--muted2)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
-          >{t('common.cancel')}</button>
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+          {multi ? (
+            <>
+              {/* Each tick applies at once, so the way out is Done, not
+                  Cancel. */}
+              <span aria-live="polite" style={{ marginRight: 'auto', fontSize: 12.5, color: 'var(--muted2)' }}>
+                {multi.countLabel}{multi.selected.length >= multi.max ? ` · ${multi.maxLabel}` : ''}
+              </span>
+              <button
+                onClick={onClose}
+                style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--red)', background: 'var(--red)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}
+              >{multi.doneLabel}</button>
+            </>
+          ) : (
+            <button
+              onClick={onClose}
+              style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--muted2)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
+            >{t('common.cancel')}</button>
+          )}
         </div>
       </div>
     </div>
