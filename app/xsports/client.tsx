@@ -388,19 +388,23 @@ function clockOf(iso: string | undefined, lang: string, c: Copy): string {
   } catch { return '' }
 }
 
+/** Under the score: the inning (MLB; its outs are in the strip) or the
+ *  period and clock (NBA), the day before a game, final after. */
+function underOf(g: GameState, c: Copy, lang: string): string {
+  const st = statusOf(g, c)
+  return g.status === 'live' ? ((g.league ?? 'mlb') === 'nba' ? [st.main, st.sub].filter(Boolean).join(' ') : st.main)
+    : g.status === 'preview' ? shortDate(g.start, lang) : g.status === 'final' ? c.final : g.detailed
+}
+
 function Overview({ g, c, lang, viewers, onJump }: { g: GameState; c: Copy; lang: string; viewers: number; onJump: (n: number) => void }) {
   const league = g.league ?? 'mlb'
   const started = g.status === 'live' || g.status === 'final'
   const a = g.away.runs ?? 0, h = g.home.runs ?? 0
   const loser = g.status === 'final' ? (a < h ? 'away' : h < a ? 'home' : null) : null
-  const st = statusOf(g, c)
   const n = g.now
   const between = g.inningState === 'Middle' || g.inningState === 'End'
   const state = g.status === 'live' ? c.live : g.status === 'preview' ? c.notStarted : g.status === 'other' ? g.detailed : c.final
-  // Under the score: the inning (MLB; its outs are in the strip) or the
-  // period and clock (NBA), the day before a game, final after.
-  const under = g.status === 'live' ? (league === 'nba' ? [st.main, st.sub].filter(Boolean).join(' ') : st.main)
-    : g.status === 'preview' ? shortDate(g.start, lang) : g.status === 'final' ? c.final : g.detailed
+  const under = underOf(g, c, lang)
   const series = seriesLine(g, c)
   const dots = (k: string, on: number, of: number) => Array.from({ length: of }, (_, i) => <i key={i} className={i < on ? k : ''} />)
   return (
@@ -446,6 +450,24 @@ function Overview({ g, c, lang, viewers, onJump }: { g: GameState; c: Copy; lang
         </div>
       ) : null}
     </section>
+  )
+}
+
+/** Phones, while a pane has the screen: the game on one line; a tap brings
+ *  back the score header and the bars above it. */
+function MiniScore({ g, c, lang, onOpen }: { g: GameState; c: Copy; lang: string; onOpen: () => void }) {
+  const league = g.league ?? 'mlb'
+  const started = g.status === 'live' || g.status === 'final'
+  const under = underOf(g, c, lang)
+  return (
+    <button type="button" className="xs-mini" onClick={onOpen}>
+      <span className="tm"><TeamLogo league={league} t={g.away} /><b>{g.away.abbr}</b></span>
+      <span className="sc">{started ? `${g.away.runs ?? 0} – ${g.home.runs ?? 0}` : localTime(g.start)}</span>
+      <span className="tm"><b>{g.home.abbr}</b><TeamLogo league={league} t={g.home} /></span>
+      {under ? <small className={g.status === 'live' ? 'live' : undefined}>{under}</small> : null}
+      <span className="xs-sr">{c.showHeader}</span>
+      <svg className="chev" viewBox="0 0 24 24" aria-hidden><path d="M6 9l6 6 6-6" /></svg>
+    </button>
   )
 }
 
@@ -2178,6 +2200,49 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
 
   useEffect(() => { sb().auth.getUser().then(({ data }) => setSignedIn(!!data.user)) }, [])
 
+  // Phones (the site's fixed 60px bar, up to 760px): reading or typing
+  // gives the screen to the pane (owner, Oct 14: "hide site bar and league
+  // bar" so the chat has more room). A finger moving a pane, the page
+  // scrolled down, or the composer in use folds both bars away and the
+  // score header into one line (MiniScore); a tap on that line unfolds them.
+  // Only what a person does counts: a chat keeping to its newest line
+  // scrolls by itself and must not fold anything. Nothing folds before the
+  // game has loaded, so the line to unfold with is always there.
+  const splitRef = useRef<HTMLDivElement | null>(null)
+  const loaded = useRef(false)
+  useEffect(() => { loaded.current = !!game }, [game])
+  const [folded, setFolded] = useState(false)
+  useEffect(() => {
+    const el = splitRef.current
+    if (!el) return
+    const phone = window.matchMedia('(max-width: 760px)')
+    const fold = () => { if (phone.matches && loaded.current) setFolded(true) }
+    const onMove = (e: Event) => { if ((e.target as Element | null)?.closest?.('.xs-thread, .xs-feed-body, .xs-player, .xs-rpane')) fold() }
+    const onType = (e: FocusEvent) => { if ((e.target as Element | null)?.closest?.('.xs-compose')) fold() }
+    const onScroll = () => { if (window.scrollY > 40) fold() }
+    const onWidth = () => { if (!phone.matches) setFolded(false) }
+    el.addEventListener('touchmove', onMove, { passive: true })
+    el.addEventListener('wheel', onMove, { passive: true })
+    el.addEventListener('focusin', onType)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    phone.addEventListener('change', onWidth)
+    return () => {
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('wheel', onMove)
+      el.removeEventListener('focusin', onType)
+      window.removeEventListener('scroll', onScroll)
+      phone.removeEventListener('change', onWidth)
+    }
+  }, [])
+  // The site's bar is outside the page, so the fold is said on <html>.
+  useEffect(() => {
+    const root = document.documentElement
+    if (folded) root.setAttribute('data-xs-folded', '')
+    else root.removeAttribute('data-xs-folded')
+    return () => root.removeAttribute('data-xs-folded')
+  }, [folded])
+  const unfold = () => { setFolded(false); window.scrollTo({ top: 0, behavior: 'instant' }) }
+
   // The game, every 10 s while the tab is in front.
   useEffect(() => {
     let stop = false
@@ -2256,10 +2321,11 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
 
   return (
     <>
-      <div className="xs-split" data-view={view}>
+      <div ref={splitRef} className="xs-split" data-view={view}>
         <section className="xs-left">
           {g ? <Overview g={g} c={c} lang={lang} viewers={viewers} onJump={jump} />
             : <div className="xs-ov skel" aria-busy="true"><span className="xs-sr">{c.loading}</span></div>}
+          {g ? <MiniScore g={g} c={c} lang={lang} onOpen={unfold} /> : null}
           {feedDown && <p className="xs-note">{c.feedDown}</p>}
           {/* Phones: one row of the five. */}
           <div className="xs-mtabs" role="tablist">

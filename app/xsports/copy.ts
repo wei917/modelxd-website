@@ -10,6 +10,8 @@ export interface Copy {
   loading: string
   feedDown: string
   back: string
+  /** Phones: the one-line score that brings back the score header and the bars. */
+  showHeader: string
   placeholder: string
   send: string
   spent: string
@@ -196,6 +198,7 @@ const en: Copy = {
   loading: 'Loading…',
   feedDown: 'The game feed is not answering. Trying again…',
   back: 'All games',
+  showHeader: 'Show the score and menus',
   placeholder: 'Say anything…',
   send: 'Send',
   spent: 'Spent',
@@ -360,6 +363,7 @@ const zhHant: Copy = {
   loading: '載入中…',
   feedDown: '比賽資料暫時沒有回應，重試中…',
   back: '所有比賽',
+  showHeader: '展開比分與選單',
   placeholder: '想聊什麼都可以…',
   send: '送出',
   spent: '已花費',
@@ -524,6 +528,7 @@ const zhHans: Copy = {
   loading: '加载中…',
   feedDown: '比赛数据暂时没有响应，重试中…',
   back: '所有比赛',
+  showHeader: '展开比分与菜单',
   placeholder: '想聊什么都可以…',
   send: '发送',
   spent: '已花费',
@@ -688,6 +693,7 @@ const ja: Copy = {
   loading: '読み込み中…',
   feedDown: '試合データが応答しません。再試行中…',
   back: '試合一覧',
+  showHeader: 'スコアとメニューを表示',
   placeholder: '何でも話しかけて…',
   send: '送信',
   spent: '利用額',
@@ -852,6 +858,7 @@ const ko: Copy = {
   loading: '불러오는 중…',
   feedDown: '경기 데이터가 응답하지 않습니다. 다시 시도 중…',
   back: '전체 경기',
+  showHeader: '점수와 메뉴 펼치기',
   placeholder: '무엇이든 말해 보세요…',
   send: '보내기',
   spent: '사용',
