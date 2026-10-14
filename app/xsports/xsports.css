@@ -642,3 +642,40 @@
   .xs-cliprow .xs-thumb { width: 96px; }
   .xs-player .meta { flex-direction: column; gap: 6px; }
 }
+
+/* Phones, reading or typing in a game (owner, Oct 14: "hide site bar and
+ * league bar" so the chat has more room). The room sets html[data-xs-folded]
+ * when a pane is scrolled or the composer is in use: the site's bar slides
+ * up, the league bar and the score header give way to one line (.xs-mini;
+ * a tap unfolds), and the pane fills the screen down to its composer. */
+.xs-mini { display: none; align-items: center; gap: 8px; width: 100%; min-height: 46px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--xs-line); background: #fff; font: inherit; color: var(--xs-ink); text-align: left; cursor: pointer; }
+.xs-mini .tm { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 14px; font-weight: 800; }
+.xs-mini .xs-logo, .xs-mini .xs-chip.big { width: 24px; height: 24px; border-radius: 5px; font-size: 8px; }
+.xs-mini .sc { flex-shrink: 0; font-family: var(--xs-num); font-size: 20px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.xs-mini small { min-width: 0; margin-left: auto; overflow: hidden; font-size: 12.5px; color: var(--xs-ink-2); text-overflow: ellipsis; white-space: nowrap; }
+.xs-mini small.live { color: var(--xs-red); font-weight: 700; }
+.xs-mini .chev { flex-shrink: 0; width: 18px; height: 18px; margin-left: auto; fill: none; stroke: var(--xs-ink-3); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.xs-mini small + .xs-sr + .chev { margin-left: 0; }
+.xs-mini:focus-visible { outline: 2px solid var(--xs-red); outline-offset: -2px; }
+@media (max-width: 760px) {
+  .nav { transition: transform 180ms ease; }
+  html[data-xs-folded] .nav { transform: translateY(-100%); }
+  html[data-xs-folded] .app-main { padding-top: 0; }
+  html[data-xs-folded] .xs-topbar, html[data-xs-folded] .xs-ov { display: none; }
+  html[data-xs-folded] .xs-mini { display: flex; }
+  html[data-xs-folded] .xs.xs-room { display: flex; flex-direction: column; height: 100dvh; padding-top: 0; padding-bottom: env(safe-area-inset-bottom); }
+  html[data-xs-folded] .xs-split { flex: 1; min-height: 0; }
+  /* 戰況: the plays (or the clip playing) take what is left. */
+  html[data-xs-folded] .xs-split[data-view='feed'] .xs-left,
+  html[data-xs-folded] .xs-split[data-view='feed'] .xs-feedwrap,
+  html[data-xs-folded] .xs-feedbox:not([hidden]),
+  html[data-xs-folded] .xs-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  html[data-xs-folded] .xs-feed-body { flex: 1; min-height: 0; max-height: none; }
+  html[data-xs-folded] .xs-player { flex: 1; min-height: 0; overflow-y: auto; }
+  /* The chats and the other tabs: the same, the composer at the bottom. */
+  html[data-xs-folded] .xs-split:not([data-view='feed']) .xs-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  html[data-xs-folded] .xs-chat:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  html[data-xs-folded] .xs-chat .xs-thread { flex: 1; min-height: 0; max-height: none; }
+  html[data-xs-folded] .xs-rpane { flex: 1; min-height: 0; overflow-y: auto; }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) { .nav { transition: none; } }

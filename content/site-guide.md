@@ -439,7 +439,7 @@ other now and then, and answer anyone who asks: @AI for whichever one is up,
 @Luna or @Qwen for that one (the 公開聊天室 / Public chat tab; typing @ lists
 them and the fans who have spoken), plus box score (數據; before a game it
 says the game has not started) and odds (賠率) tabs; the odds are information only and the site takes no bets.
-Chatting needs sign-in; others see your name and @ID. You can delete your
+On a phone, once you scroll or start typing in a game, the menu bars and the big scoreboard fold into one score line so the chat or the plays get the screen; tap that line to bring them back. Chatting needs sign-in; others see your name and @ID. You can delete your
 own messages (刪除: gone for everyone), and report anyone else's, the AI
 commentator's included (檢舉 asks why, with room for details; reports are
 anonymous and enough of them hide a message). The **AI 私聊** tab
