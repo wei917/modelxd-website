@@ -409,6 +409,8 @@ function Overview({ g, c, lang, viewers, onJump }: { g: GameState; c: Copy; lang
   const dots = (k: string, on: number, of: number) => Array.from({ length: of }, (_, i) => <i key={i} className={i < on ? k : ''} />)
   return (
     <section className="xs-ov" aria-label={`${g.away.name} @ ${g.home.name}`}>
+      {/* One inner block, so phones can fold the header away smoothly. */}
+      <div className="xs-ov-in">
       <div className="xs-ov-top">
         <div className="lg">
           <img className={`mark ${league}`} src={LEAGUE_MARK[league]} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
@@ -449,6 +451,7 @@ function Overview({ g, c, lang, viewers, onJump }: { g: GameState; c: Copy; lang
           {n.pitcher ? <div className="who"><small>{c.pitcherLbl}</small><b>{n.pitcher}</b>{n.pitcherPitches ? <small>{c.pitchesN(n.pitcherPitches)}</small> : null}</div> : null}
         </div>
       ) : null}
+      </div>
     </section>
   )
 }
@@ -459,7 +462,10 @@ function MiniScore({ g, c, lang, onOpen }: { g: GameState; c: Copy; lang: string
   const league = g.league ?? 'mlb'
   const started = g.status === 'live' || g.status === 'final'
   const under = underOf(g, c, lang)
+  // The box opens and closes the line smoothly; the cut clips it while it does.
   return (
+    <div className="xs-mini-box">
+    <div className="xs-mini-cut">
     <button type="button" className="xs-mini" onClick={onOpen}>
       <span className="tm"><TeamLogo league={league} t={g.away} /><b>{g.away.abbr}</b></span>
       <span className="sc">{started ? `${g.away.runs ?? 0} – ${g.home.runs ?? 0}` : localTime(g.start)}</span>
@@ -468,6 +474,8 @@ function MiniScore({ g, c, lang, onOpen }: { g: GameState; c: Copy; lang: string
       <span className="xs-sr">{c.showHeader}</span>
       <svg className="chev" viewBox="0 0 24 24" aria-hidden><path d="M6 9l6 6 6-6" /></svg>
     </button>
+    </div>
+    </div>
   )
 }
 
@@ -2264,7 +2272,13 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
       phone.removeEventListener('change', onWidth)
     }
   }, [])
-  // The site's bar is outside the page, so the fold is said on <html>.
+  // The site's bar is outside the page, so the room and its fold are said
+  // on <html>.
+  useEffect(() => {
+    const root = document.documentElement
+    root.setAttribute('data-xs-room', '')
+    return () => root.removeAttribute('data-xs-room')
+  }, [])
   useEffect(() => {
     const root = document.documentElement
     if (folded) root.setAttribute('data-xs-folded', '')
@@ -2272,6 +2286,11 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
     return () => root.removeAttribute('data-xs-folded')
   }, [folded])
   const unfold = () => { setFolded(false); window.scrollTo({ top: 0, behavior: 'instant' }) }
+  // Opening a chat on a phone is asking for the screen: under a live
+  // header the private chat's messages had no room left at all.
+  const foldForChat = (k: 'feed' | RTab) => {
+    if ((k === 'chat' || k === 'private') && loaded.current && window.matchMedia('(max-width: 760px)').matches) setFolded(true)
+  }
 
   // The game, every 10 s while the tab is in front.
   useEffect(() => {
@@ -2360,7 +2379,7 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
           {/* Phones: one row of the five. */}
           <div className="xs-mtabs" role="tablist">
             {([['feed', c.tabFeed], ...rtabs] as ['feed' | RTab, string][]).map(([k, label]) => (
-              <button key={k} role="tab" aria-selected={view === k} onClick={() => (k === 'feed' ? setView('feed') : right(k))}>{label}</button>
+              <button key={k} role="tab" aria-selected={view === k} onClick={() => { if (k === 'feed') setView('feed'); else right(k); foldForChat(k) }}>{label}</button>
             ))}
           </div>
           <div className="xs-feedwrap">
