@@ -2202,9 +2202,13 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
 
   // Phones (the site's fixed 60px bar, up to 760px): reading or typing
   // gives the screen to the pane (owner, Oct 14: "hide site bar and league
-  // bar" so the chat has more room). A finger moving a pane, the page
-  // scrolled down, or the composer in use folds both bars away and the
-  // score header into one line (MiniScore); a tap on that line unfolds them.
+  // bar" so the chat has more room), like a phone browser's address bar.
+  // Scrolling down (a finger moving up, the wheel down), the page scrolled
+  // past 40px, or the composer in use folds both bars away and the score
+  // header into one line (MiniScore); scrolling back up unfolds them (owner:
+  // "I can't scroll back"), and so does a tap on that line. Unfolding takes
+  // a longer pull than folding, so a small nudge while reading moves no
+  // bars; sideways swipes (chips, clips, the line score) count for neither.
   // Only what a person does counts: a chat keeping to its newest line
   // scrolls by itself and must not fold anything. Nothing folds before the
   // game has loaded, so the line to unfold with is always there.
@@ -2217,18 +2221,44 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
     if (!el) return
     const phone = window.matchMedia('(max-width: 760px)')
     const fold = () => { if (phone.matches && loaded.current) setFolded(true) }
-    const onMove = (e: Event) => { if ((e.target as Element | null)?.closest?.('.xs-thread, .xs-feed-body, .xs-player, .xs-rpane')) fold() }
+    const open = () => setFolded(false)
+    const FOLD_AT = 16, OPEN_AT = 48
+    // run: how far the current stroke has gone one way (negative = down the
+    // page); a turn starts it again.
+    let x = 0, y = 0, run = 0
+    const onStart = (e: TouchEvent) => { const t = e.touches[0]; if (t) { x = t.clientX; y = t.clientY; run = 0 } }
+    const onMove = (e: TouchEvent) => {
+      const t = e.touches[0]
+      if (!t) return
+      const dx = t.clientX - x, dy = t.clientY - y
+      x = t.clientX; y = t.clientY
+      if (Math.abs(dx) > Math.abs(dy)) return
+      run = Math.sign(dy) === Math.sign(run) ? run + dy : dy
+      if (run <= -FOLD_AT) fold()
+      else if (run >= OPEN_AT) open()
+    }
+    let wheel = 0, wheelAt = 0
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      if (e.timeStamp - wheelAt > 300) wheel = 0
+      wheelAt = e.timeStamp
+      wheel = Math.sign(e.deltaY) === Math.sign(wheel) ? wheel + e.deltaY : e.deltaY
+      if (wheel >= FOLD_AT) fold()
+      else if (wheel <= -OPEN_AT) open()
+    }
     const onType = (e: FocusEvent) => { if ((e.target as Element | null)?.closest?.('.xs-compose')) fold() }
     const onScroll = () => { if (window.scrollY > 40) fold() }
     const onWidth = () => { if (!phone.matches) setFolded(false) }
+    el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchmove', onMove, { passive: true })
-    el.addEventListener('wheel', onMove, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: true })
     el.addEventListener('focusin', onType)
     window.addEventListener('scroll', onScroll, { passive: true })
     phone.addEventListener('change', onWidth)
     return () => {
+      el.removeEventListener('touchstart', onStart)
       el.removeEventListener('touchmove', onMove)
-      el.removeEventListener('wheel', onMove)
+      el.removeEventListener('wheel', onWheel)
       el.removeEventListener('focusin', onType)
       window.removeEventListener('scroll', onScroll)
       phone.removeEventListener('change', onWidth)
