@@ -422,6 +422,44 @@ and web-search settings (like an XCreate slot), and each reply is
 billed at that model's listed price with the cost shown under the reply. Readings are for reflection and entertainment, never advice —
 health, money and legal questions belong with professionals.
 
+### XSports（X體育）— live games with fans, AI commentators and highlights
+
+`/xsports`. Today's MLB and NBA games, with scores, free to look at without
+signing in. `/xsports` lists every league; the bar at the top shows one
+(MLB or NBA; more leagues later). Opening a game shows its room. On the left: the score, the line
+score and 戰況 (every play as it happens), with short highlight clips from
+the leagues' own sources once they publish them. MLB's clips sit on the exact
+play they show; NBA clips are listed for the game. A clip plays in its
+source's own player, or opens on the source's site when it can't be played
+here, and some clips are not available in every country; not every play gets
+a clip, and none arrive instantly. On the right: a live chat with other fans
+and two AI commentators, GPT-6 Luna and Qwen 3.8 Flash (models ModelXD pays
+for, free to users), that take turns commenting on their own, talk to each
+other now and then, and answer anyone who asks: @AI for whichever one is up,
+@Luna or @Qwen for that one (the 公開聊天室 / Public chat tab; typing @ lists
+them and the fans who have spoken), plus box score (數據; before a game it
+says the game has not started) and odds (賠率) tabs; the odds are information only and the site takes no bets.
+Chatting needs sign-in; others see your name and @ID. You can delete your
+own messages (刪除: gone for everyone), and report anyone else's, the AI
+commentator's included (檢舉 asks why, with room for details; reports are
+anonymous and enough of them hide a message). The **AI 私聊** tab
+("My AI" in English) is a private chat only you see, with up to four AI
+models you pick at its top: a question you send goes to each of them, and
+each answer is labeled with its model. To ask just one, tap its name at the
+top, press 回覆 (Reply) on one of its answers, or type @ and pick it from the
+list. Press
+開始陪看 (start watching) and they talk through the game on their own; each
+model's ⚙ sets how much it talks while watching (關 = only when asked, 少說,
+一般, 多說) and how hard it thinks (deeper is slower and costs more). Nothing
+is generated until you send a question or start watching. Each remark is
+billed at its model's list price (a rough cost per question and per hour of
+watching, and what you have spent, are shown); watching pauses after 20
+minutes without a word from you. Each game has one private chat, saved and
+reopened when you come back; 清除對話 deletes it and starts over. On
+a phone the room shows the score first, then 戰況 / 公開聊天室 / AI 私聊 /
+數據 / 賠率. Prototype: the
+game data comes from free public feeds.
+
 ## Accounts, credits and pricing
 
 Sign in with Google or X (in Japan and Taiwan, LINE too). New accounts get **$10 of free credit**.
@@ -429,7 +467,12 @@ Your **picture and website name** (the name ModelXD shows for you instead of
 your Google, LINE or X name) are set with **Edit** on `/profile`: pick one of
 your sign-in photos or upload one, and a name of up to 30 characters. Both are
 safety-checked before they are saved; names with "ModelXD" are kept for the
-official account.
+official account. Every account also has an **@ID** (lowercase letters,
+numbers, _ and ., 3 to 20 characters), shown after your name in live chat
+rooms so two people with the same name can be told apart. ModelXD gives you
+one when you sign up (your X username if you signed in with X, otherwise a
+neutral one like swift_otter_482; never your email or real name), and you
+can change it under **Edit** on `/profile`, once every 30 days.
 XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger

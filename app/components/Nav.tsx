@@ -32,6 +32,9 @@ const NAV_LINKS = [
   // Open like xtell.modelxd.com: the free chart needs no account, sign-in
   // comes at the first question.
   { href: '/xtell',       i18n: 'nav.xtell',       protected: false, icon: 'game'   },
+  // Open like /xtell: the scores are free to look at, sign-in comes when the
+  // AI buddy starts talking (it is billed).
+  { href: '/xsports',     i18n: 'nav.xsports',     protected: false, icon: 'sports' },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
   { href: '/xdev',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
 ]
@@ -58,6 +61,8 @@ function NavIcon({ name }: { name: string }) {
     // A cube in a ring: a 3D thing you can walk around.
     case 'world':  return (<svg {...p}><path d="M12 3l7 4v8l-7 4l-7-4V7z"/><path d="M5 7l7 4l7-4"/><path d="M12 11v8"/></svg>)
     // A head and shoulders: someone you made.
+    // A baseball: the ball and its two seams.
+    case 'sports': return (<svg {...p}><circle cx="12" cy="12" r="9"/><path d="M7.5 4.5a10 10 0 0 1 0 15"/><path d="M16.5 4.5a10 10 0 0 0 0 15"/></svg>)
     case 'persona': return (<svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>)
     case 'dev':    return (<svg {...p}><path d="M8 6l-5 6l5 6"/><path d="M16 6l5 6l-5 6"/><path d="M12 9v6"/><circle cx="12" cy="9" r="0.8" fill="currentColor"/></svg>)
     case 'globe':  return (<svg {...p}><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>)

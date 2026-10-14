@@ -103,11 +103,23 @@ export async function streamText(
     // OpenAI does not report a search tally in `usage`, so we count the
     // per-call completion events as they stream past.
     let searchCount = 0
+    // GPT-6 Luna (seen Oct 12, XSports) often writes a message with phase
+    // 'commentary' (a draft) and then the 'final_answer' message with nearly
+    // the same text; streaming both showed the viewer every answer twice.
+    // A commentary message is held back and shown only if no final answer
+    // comes (so a reply that is all commentary is never lost).
+    const commentaryItems = new Set<string>()
+    let held = ''
+    let shown = 0
 
     for await (const event of stream as any) {
       // Log non-delta events in full so we can see exactly what OpenAI returned
       if (event.type === 'response.output_text.delta') {
-        callbacks.onDelta(event.delta)
+        if (event.item_id && commentaryItems.has(event.item_id)) held += event.delta ?? ''
+        else { shown += (event.delta ?? '').length; callbacks.onDelta(event.delta) }
+      } else if (event.type === 'response.output_item.added' && event.item?.type === 'message' && event.item?.phase === 'commentary' && event.item?.id) {
+        commentaryItems.add(event.item.id)
+        console.log(`${TAG} event type=${event.type} phase=commentary (held back)`)
       } else if (event.type === 'response.created') {
         responseModel = (event as any).response?.model ?? null
         responseId    = (event as any).response?.id ?? null
@@ -132,6 +144,7 @@ export async function streamText(
       }
     }
 
+    if (!shown && held) callbacks.onDelta(held)
     const cost = calcTextCost(model, inputTokens, outputTokens, cachedTokens, { thinkingLevel: thinking, searchCount, cacheWriteTokens })
     console.log(`${TAG} done sent_model=${model.model_name} returned_model=${responseModel} in=${inputTokens} out=${outputTokens} cached=${cachedTokens} written=${cacheWriteTokens} reasoning=${reasoningTokens} searches=${searchCount} cost=$${cost.toFixed(6)}`)
     callbacks.onDone({ inputTokens, outputTokens, cachedTokens, cost, searchCount })

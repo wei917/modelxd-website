@@ -2,9 +2,10 @@
 // picture a person chose (Oct 2; owner: "profile image and website name").
 //
 //   POST { name?: string,
+//          handle?: string,
 //          photo?: { from: 'signin', provider: string }
 //                | { from: 'upload', data: 'data:image/jpeg;base64,...' } }
-//   → { name, photo } as saved, or { error } (codes below)
+//   → { name, photo, handle, nextChangeAt } as saved, or { error } (codes below)
 //
 // Since migration 125 this is the only writer of profiles.display_name and
 // avatar_url: the browser lost its insert/update on profiles. Both are
@@ -12,6 +13,10 @@
 // saved, because other people will see them (published work, online games);
 // when the check cannot run the save is refused, never waved through, and
 // when either is refused nothing is saved.
+//
+// The @ID (Oct 13, supabase/132; rules in lib/handle.ts) changes here too,
+// once every 30 days, through change_profile_handle; it goes first, so an ID
+// that is taken or too soon leaves the name and picture as they were.
 //
 // A picture becomes a 256 px WebP square in the public avatars bucket,
 // <user id>/<stamp>.webp; older files there are removed. A sign-in photo is
@@ -21,6 +26,8 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkName } from '@/lib/face'
+import { checkHandle } from '@/lib/handle'
+import { changeHandle, ensureHandle, handleText, type HandleState } from '@/lib/profile-handle'
 import { moderate, type ModerationVerdict } from '@/lib/moderation'
 import { isAdminEmail } from '@/lib/admin'
 import { isVerifiedAccount } from '@/lib/verified-account'
@@ -46,11 +53,12 @@ type PhotoInput = { from: 'signin'; provider: string } | { from: 'upload'; data:
 const fail = (error: string, status: number) => Response.json({ error }, { status })
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null) as { name?: unknown; photo?: unknown } | null
+  const body = await req.json().catch(() => null) as { name?: unknown; handle?: unknown; photo?: unknown } | null
   if (!body || typeof body !== 'object') return fail('bad_request', 400)
   const rawName = typeof body.name === 'string' ? body.name : undefined
+  const rawHandle = typeof body.handle === 'string' ? body.handle : undefined
   const photo = asPhotoInput(body.photo)
-  if (rawName === undefined && !photo) return fail('bad_request', 400)
+  if (rawName === undefined && rawHandle === undefined && !photo) return fail('bad_request', 400)
   if (body.photo !== undefined && !photo) return fail('bad_request', 400)
 
   const { createSupabaseServer } = await import('@/lib/supabase-server')
@@ -67,6 +75,13 @@ export async function POST(req: NextRequest) {
     name = checked.name
   }
 
+  let handle: string | undefined
+  if (rawHandle !== undefined) {
+    const checked = checkHandle(rawHandle, { admin: isAdminEmail(user.email) })
+    if (!checked.ok) return fail(checked.error, 400)
+    handle = checked.handle
+  }
+
   let files: { webp: Buffer; jpeg: Buffer } | undefined
   if (photo) {
     const source = photo.from === 'upload' ? decodeDataUrl(photo.data) : await signinPhoto(user, photo.provider)
@@ -75,16 +90,26 @@ export async function POST(req: NextRequest) {
     if (!files) return fail('picture_bad', 400)
   }
 
-  // Both checks at once; one refusal stops the whole save.
-  const [nameVerdict, pictureVerdict] = await Promise.all([
+  // All checks at once; one refusal stops the whole save.
+  const [nameVerdict, pictureVerdict, handleVerdict] = await Promise.all([
     name !== undefined ? moderate({ text: name }) : Promise.resolve<ModerationVerdict>('ok'),
     files ? moderate({ image: files.jpeg, mime: 'image/jpeg' }) : Promise.resolve<ModerationVerdict>('ok'),
+    handle !== undefined ? moderate({ text: handleText(handle) }) : Promise.resolve<ModerationVerdict>('ok'),
   ])
-  if (nameVerdict === 'refused' || pictureVerdict === 'refused') {
-    console.log('[profile/face] refused', nameVerdict === 'refused' ? 'name' : 'picture', 'for', user.id.slice(0, 8))
-    return fail(nameVerdict === 'refused' ? 'name_refused' : 'picture_refused', 422)
+  const refused = nameVerdict === 'refused' ? 'name' : pictureVerdict === 'refused' ? 'picture' : handleVerdict === 'refused' ? 'handle' : null
+  if (refused) {
+    console.log('[profile/face] refused', refused, 'for', user.id.slice(0, 8))
+    return fail(`${refused}_refused`, 422)
   }
-  if (nameVerdict === 'unavailable' || pictureVerdict === 'unavailable') return fail('check_unavailable', 503)
+  if (nameVerdict === 'unavailable' || pictureVerdict === 'unavailable' || handleVerdict === 'unavailable') return fail('check_unavailable', 503)
+
+  // The ID first: taken or too soon, and nothing else changes.
+  let handleState: HandleState | null = null
+  if (handle !== undefined) {
+    const changed = await changeHandle(user.id, handle, { moderated: true })
+    if (!changed.ok) return Response.json({ error: changed.error, next: changed.next ?? null }, { status: changed.error === 'failed' ? 500 : 409 })
+    handleState = changed.state
+  }
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!,
     { auth: { persistSession: false } })
@@ -107,8 +132,9 @@ export async function POST(req: NextRequest) {
   const patch: Record<string, string> = { id: user.id, updated_at: new Date().toISOString() }
   if (name !== undefined) patch.display_name = name
   if (photoUrl) patch.avatar_url = photoUrl
-  const { data: row, error } = await admin.from('profiles')
-    .upsert(patch, { onConflict: 'id' }).select('display_name, avatar_url').single()
+  const { data: row, error } = name === undefined && !photoUrl
+    ? await admin.from('profiles').select('display_name, avatar_url').eq('id', user.id).single()
+    : await admin.from('profiles').upsert(patch, { onConflict: 'id' }).select('display_name, avatar_url').single()
   if (error || !row) {
     console.error('[profile/face] save failed:', error?.message)
     if (fileName) await admin.storage.from(BUCKET).remove([`${user.id}/${fileName}`])
@@ -122,7 +148,8 @@ export async function POST(req: NextRequest) {
     if (stale.length) await admin.storage.from(BUCKET).remove(stale)
   }
 
-  return Response.json({ name: row.display_name ?? null, photo: row.avatar_url ?? null })
+  handleState ??= await ensureHandle(user.id)
+  return Response.json({ name: row.display_name ?? null, photo: row.avatar_url ?? null, handle: handleState?.handle ?? null, nextChangeAt: handleState?.nextChangeAt ?? null })
 }
 
 function asPhotoInput(v: unknown): PhotoInput | null {

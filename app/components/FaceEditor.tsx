@@ -1,6 +1,7 @@
 'use client'
 // app/components/FaceEditor.tsx — choose the website name and profile
-// picture (Oct 2; owner: "profile image and website name").
+// picture (Oct 2; owner: "profile image and website name"), and since Oct 13
+// the @ID (lib/handle.ts; once every 30 days, checked as it is typed).
 //
 // Opened from the account page on every door (www, xtell, xcreate). The
 // picture is one of the account's sign-in photos (Google, LINE, X) or an
@@ -14,6 +15,8 @@ import { createPortal } from 'react-dom'
 import type { User } from '@supabase/supabase-js'
 import { useT } from '../../lib/i18n'
 import { NAME_MAX, checkName, cleanName, nameLength } from '../../lib/face'
+import { HANDLE_MAX } from '../../lib/handle'
+import { useHandleCheck } from '../../lib/use-handle-check'
 import { announceFace, type Face } from '../../lib/use-face'
 
 type Choice =
@@ -68,16 +71,23 @@ async function squareJpeg(file: File): Promise<string> {
   }
 }
 
-const ERRORS = new Set(['name_empty', 'name_long', 'name_reserved', 'name_refused', 'picture_refused', 'picture_bad', 'check_unavailable', 'too_many'])
+const ERRORS = new Set(['name_empty', 'name_long', 'name_reserved', 'name_refused', 'picture_refused', 'picture_bad', 'check_unavailable', 'too_many',
+  'handle_short', 'handle_long', 'handle_chars', 'handle_reserved', 'handle_taken', 'handle_too_soon', 'handle_refused'])
 
-export default function FaceEditor({ user, current, onClose, onSaved }: {
+export type HandleInfo = { handle: string | null; nextChangeAt: string | null }
+
+export default function FaceEditor({ user, current, handleInfo, onClose, onSaved, onHandle }: {
   user: User
   current: Face
+  /** The @ID and when it may change next; null before migration 132. */
+  handleInfo?: HandleInfo | null
   onClose: () => void
   onSaved: (face: Face) => void
+  onHandle?: (info: HandleInfo) => void
 }) {
   const t = useT()
   const [name, setName] = useState(current.name ?? '')
+  const [handle, setHandle] = useState(handleInfo?.handle ?? '')
   const [choices, setChoices] = useState<Choice[]>(() => signinChoices(user))
   const [picked, setPicked] = useState<Choice | null>(null)
   const [busy, setBusy] = useState(false)
@@ -100,6 +110,10 @@ export default function FaceEditor({ user, current, onClose, onSaved }: {
   const cleaned = cleanName(name)
   const length = nameLength(cleaned)
   const nameChanged = cleaned !== (current.name ?? '')
+  const handleShown = !!handleInfo?.handle
+  const handleLocked = !!handleInfo?.nextChangeAt && Date.parse(handleInfo.nextChangeAt) > Date.now()
+  const { clean: handleClean, changed: handleChanged, state: handleState, blocked: handleBlocked } = useHandleCheck(handleInfo?.handle, handle, !handleLocked)
+  const nextDate = handleLocked ? new Date(handleInfo!.nextChangeAt!).toLocaleDateString() : ''
   const preview = picked?.url ?? current.photo
   const initial = (cleaned || current.name || '?').slice(0, 1).toUpperCase()
 
@@ -125,12 +139,13 @@ export default function FaceEditor({ user, current, onClose, onSaved }: {
       if (!checked.ok) { setError(t('face.err.' + checked.error)); return }
       body.name = checked.name
     }
+    if (handleChanged) body.handle = handleClean
     if (picked) body.photo = picked.kind === 'upload' ? { from: 'upload', data: picked.url } : { from: 'signin', provider: picked.provider }
     if (!Object.keys(body).length) { onClose(); return }
     setBusy(true)
     try {
       const res = await fetch('/api/profile/face', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      const json = await res.json().catch(() => ({})) as { name?: string | null; photo?: string | null; error?: string }
+      const json = await res.json().catch(() => ({})) as { name?: string | null; photo?: string | null; handle?: string | null; nextChangeAt?: string | null; error?: string }
       if (!res.ok) {
         setError(t('face.err.' + (json.error && ERRORS.has(json.error) ? json.error : 'failed')))
         return
@@ -138,6 +153,7 @@ export default function FaceEditor({ user, current, onClose, onSaved }: {
       const face: Face = { name: json.name ?? null, photo: json.photo ?? null }
       announceFace(user.id, face)
       onSaved(face)
+      if (json.handle) onHandle?.({ handle: json.handle, nextChangeAt: json.nextChangeAt ?? null })
       onClose()
     } catch {
       setError(t('face.err.failed'))
@@ -168,6 +184,11 @@ export default function FaceEditor({ user, current, onClose, onSaved }: {
         .face-input:focus { border-color: var(--white); }
         .face-hint { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted2); }
         .face-hint .is-over { color: var(--red); font-weight: 700; }
+        .face-hint .is-ok { color: var(--green); font-weight: 700; }
+        .face-handle { position: relative; }
+        .face-handle .face-input { padding-left: 28px; }
+        .face-handle .at { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--muted2); pointer-events: none; }
+        .face-handle .face-input:disabled { color: var(--muted2); background: var(--surface2); }
         .face-error { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: var(--red); }
         .face-note { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
         .face-actions { display: flex; gap: 10px; margin-top: 18px; }
@@ -209,13 +230,33 @@ export default function FaceEditor({ user, current, onClose, onSaved }: {
             <span className={length > NAME_MAX ? 'is-over' : undefined} aria-live="polite">{length}/{NAME_MAX}</span>
           </p>
 
+          {handleShown && (
+            <>
+              <label className="face-label" htmlFor="face-handle" style={{ marginTop: 16 }}>{t('face.handle')}</label>
+              <div className="face-handle">
+                <span className="at" aria-hidden="true">@</span>
+                <input id="face-handle" className="face-input" value={handle} disabled={handleLocked} maxLength={HANDLE_MAX + 4}
+                  autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-describedby="face-handle-hint"
+                  onChange={e => setHandle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) void save() }} />
+              </div>
+              <p className="face-hint" id="face-handle-hint" aria-live="polite">
+                {handleLocked ? <span>{t('face.handleNext').replace('{date}', nextDate)}</span>
+                  : handleState === 'checking' ? <span>{t('face.handleChecking')}</span>
+                  : handleState === 'ok' ? <span className="is-ok">✓ {t('face.handleOk')}</span>
+                  : handleState !== 'idle' ? <span className="is-over">{t('face.err.' + handleState)}</span>
+                  : <span>{t('face.handleHint')} {t('face.handleOnce')}</span>}
+              </p>
+            </>
+          )}
+
           {error && <p className="face-error" role="alert">{error}</p>}
           <p className="face-note">{t('face.checked')}</p>
 
           <div className="face-actions">
             <button type="button" className="face-cancel" onClick={onClose} disabled={busy}>{t('common.cancel')}</button>
             <button type="button" className="face-save" onClick={() => void save()}
-              disabled={busy || length > NAME_MAX || (!nameChanged && !picked) || (nameChanged && !cleaned)}>
+              disabled={busy || length > NAME_MAX || (!nameChanged && !picked && !handleChanged) || (nameChanged && !cleaned) || handleBlocked}>
               {busy ? t('face.saving') : t('face.save')}
             </button>
           </div>

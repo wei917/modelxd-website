@@ -56,6 +56,7 @@ const ROUTES: Record<string, string> = {
   '/xboard':  'XBoard',
   '/profile': 'Profile',
   '/xdev':      'XDev (keys + API docs)',
+  '/xsports':  'XSports (watch MLB live with an AI buddy)',
 }
 
 // The template catalog is derived from the real XCREATE_TEMPLATES export,

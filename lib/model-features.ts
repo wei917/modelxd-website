@@ -15,6 +15,7 @@ export const FEATURE = {
   discussion: 'xtalk_discussion',
   xduel:      'xduel',
   xcreate:    'xcreate',
+  xsports:    'xsports',
 } as const
 
 export type FeatureKey = typeof FEATURE[keyof typeof FEATURE]

@@ -15,12 +15,17 @@
 //
 // (atomic UPDATE on last_daily_grant_date), so concurrent calls from
 // multiple tabs collapse to a single grant.
+//
+// Oct 13: also where a new account gets its @ID (supabase/132), right
+// after its first sign-in; after the response, so the page never waits.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+import { after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { ensureHandle } from '@/lib/profile-handle'
 
 const LOG = '[api/credits/ensure-daily]'
 
@@ -52,6 +57,8 @@ export async function POST(req: Request) {
   } catch (err) {
     console.warn(`${LOG} locale logging failed:`, err instanceof Error ? err.message : err)
   }
+
+  after(() => ensureHandle(user.id).then(() => {}, () => {}))
 
   // Daily free credit REMOVED (CC, July 20) - free XDuels are the free
   // tier; XCreate credits are purchase-only. This endpoint now only does
