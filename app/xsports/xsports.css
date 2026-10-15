@@ -643,18 +643,16 @@
   .xs-player .meta { flex-direction: column; gap: 6px; }
 }
 
-/* Phones, in a game (owner, Oct 14: "hide site bar and league bar" so the
- * chat has more room; "I don't see any animation"). The room is one screen
- * under the site's bar and its panes scroll inside it, the composer always
- * on screen. Scrolling down sets html[data-xs-folded] and everything moves
- * together, like a phone browser's address bar: the site's bar slides up,
- * the league bar and the score header fold to nothing while the one-line
- * score (.xs-mini) opens, and the pane grows into the room they leave.
- * Scrolling back up (or a tap on the line) undoes it the same way. Heights
- * fold with the grid-rows trick: a one-row grid going from 1fr to 0fr, its
- * only child clipped. */
+/* Phones, in a game: one scroller, the page, like any mobile site (owner,
+ * Oct 14: "is this scrolling too complicated? ... too many layers?"; a
+ * folding header that resized the chat box under the finger came before).
+ * The site bar, the league bar and the score header are the top of the
+ * page and scroll away; the tabs stick to the top with the score line
+ * (.xs-mini-box) over them once the header has gone (.stuck, set by the
+ * room); the composer sticks to the bottom. No pane has a scroll box of its
+ * own. Wider screens keep their panes (above). */
 .xs-mini-box { display: none; }
-.xs-mini { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 2px; border: 0; border-bottom: 1px solid var(--xs-line); background: #fff; font: inherit; color: var(--xs-ink); text-align: left; cursor: pointer; }
+.xs-mini { display: flex; align-items: center; gap: 8px; width: 100%; height: 46px; padding: 0 2px; border: 0; border-bottom: 1px solid var(--xs-line); background: #fff; font: inherit; color: var(--xs-ink); text-align: left; cursor: pointer; }
 .xs-mini .tm { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 14px; font-weight: 800; }
 .xs-mini .xs-logo, .xs-mini .xs-chip.big { width: 24px; height: 24px; border-radius: 5px; font-size: 8px; }
 .xs-mini .sc { flex-shrink: 0; font-family: var(--xs-num); font-size: 20px; font-weight: 700; line-height: 1; white-space: nowrap; }
@@ -664,42 +662,22 @@
 .xs-mini small + .xs-sr + .chev { margin-left: 0; }
 .xs-mini:focus-visible { outline: 2px solid var(--xs-red); outline-offset: -2px; }
 @media (max-width: 760px) {
-  html[data-xs-room] { --xs-fold: 260ms cubic-bezier(.2, .8, .2, 1); }
-  html[data-xs-room] .nav { transition: transform var(--xs-fold); }
-  html[data-xs-room] .app-main { transition: padding-top var(--xs-fold); }
-  html[data-xs-folded] .nav { transform: translateY(-100%); }
-  html[data-xs-folded] .app-main { padding-top: 0; }
-  /* One screen under the site's bar; all of it once the bar has gone. */
-  .xs-canvas.room { display: flex; flex-direction: column; height: calc(100dvh - 60px); min-height: 0; transition: height var(--xs-fold); }
-  html[data-xs-folded] .xs-canvas.room { height: 100dvh; }
-  .xs-canvas.room .xs-topbar { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--xs-fold), border-bottom-width var(--xs-fold); }
-  .xs-canvas.room .xs-topin { width: 100%; min-height: 0; overflow: hidden; transition: padding var(--xs-fold); }
-  html[data-xs-folded] .xs-canvas.room .xs-topbar { grid-template-rows: 0fr; border-bottom-width: 0; }
-  html[data-xs-folded] .xs-canvas.room .xs-topin { padding-top: 0; padding-bottom: 0; }
-  /* A screen too short for the header and a pane (a phone on its side)
-     scrolls as a whole. */
-  .xs-canvas.room .xs.xs-room { display: flex; flex-direction: column; flex: 1; width: 100%; min-height: 0; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom); transition: padding-top var(--xs-fold); }
-  html[data-xs-folded] .xs-canvas.room .xs.xs-room { padding-top: 0; }
-  .xs-canvas.room .xs-split { flex: 1; min-height: 0; }
-  .xs-canvas.room .xs-ov { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--xs-fold), opacity var(--xs-fold); }
-  .xs-canvas.room .xs-ov-in { min-height: 0; overflow: hidden; }
-  html[data-xs-folded] .xs-canvas.room .xs-ov { grid-template-rows: 0fr; opacity: 0; }
-  .xs-canvas.room .xs-mini-box { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--xs-fold), opacity var(--xs-fold); }
-  .xs-canvas.room .xs-mini-cut { min-height: 0; overflow: hidden; }
-  html[data-xs-folded] .xs-canvas.room .xs-mini-box { grid-template-rows: 1fr; opacity: 1; }
-  /* 戰況: the plays (or the clip playing) take what is left. */
-  .xs-canvas.room .xs-split[data-view='feed'] .xs-left,
-  .xs-canvas.room .xs-split[data-view='feed'] .xs-feedwrap,
-  .xs-canvas.room .xs-feedbox:not([hidden]),
-  .xs-canvas.room .xs-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .xs-canvas.room .xs-feed-body { flex: 1; min-height: 0; max-height: none; }
-  .xs-canvas.room .xs-player { flex: 1; min-height: 0; overflow-y: auto; }
-  /* The chats and the other tabs: the same, the composer at the bottom. */
-  .xs-canvas.room .xs-split:not([data-view='feed']) .xs-right { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .xs-canvas.room .xs-chat:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .xs-canvas.room .xs-chat .xs-thread { flex: 1; min-height: 0; max-height: none; }
-  .xs-canvas.room .xs-rpane { flex: 1; min-height: 0; overflow-y: auto; }
+  html[data-xs-room] .nav { position: absolute; }
+  .xs-canvas.room .xs-topbar { position: static; }
+  /* The composer reaches the bottom edge: no padding under the page. */
+  .xs-canvas.room .xs.xs-room { padding-bottom: 0; }
+  /* The header, the tabs and the panes share one block, so the tabs can
+     stick for the whole length of the page. */
+  .xs-canvas.room .xs-split { display: block; }
+  .xs-canvas.room .xs-left { display: contents; }
+  /* The score line takes no room: it lies over the header's last 46px and
+     sticks at the top just as the tabs stick under it. */
+  .xs-canvas.room .xs-mini-box { display: block; position: sticky; top: 0; z-index: 6; height: 46px; margin-top: -46px; opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+  .xs-canvas.room .xs-split.stuck .xs-mini-box { opacity: 1; pointer-events: auto; }
+  .xs-canvas.room .xs-mtabs { position: sticky; top: 46px; z-index: 5; background: #fff; }
+  .xs-canvas.room .xs-thread, .xs-canvas.room .xs-feed-body { max-height: none; overflow: visible; }
+  .xs-canvas.room .xs-feed-ph { top: 87px; }
+  .xs-canvas.room .xs-grp { scroll-margin-top: 92px; }
+  .xs-canvas.room .xs-at-box { position: sticky; bottom: 0; z-index: 4; background: #fff; padding-bottom: env(safe-area-inset-bottom); }
 }
-@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
-  html[data-xs-room] { --xs-fold: 0s; }
-}
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) { .xs-canvas.room .xs-mini-box { transition: none; } }
