@@ -409,8 +409,6 @@ function Overview({ g, c, lang, viewers, onJump }: { g: GameState; c: Copy; lang
   const dots = (k: string, on: number, of: number) => Array.from({ length: of }, (_, i) => <i key={i} className={i < on ? k : ''} />)
   return (
     <section className="xs-ov" aria-label={`${g.away.name} @ ${g.home.name}`}>
-      {/* One inner block, so phones can fold the header away smoothly. */}
-      <div className="xs-ov-in">
       <div className="xs-ov-top">
         <div className="lg">
           <img className={`mark ${league}`} src={LEAGUE_MARK[league]} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
@@ -451,30 +449,26 @@ function Overview({ g, c, lang, viewers, onJump }: { g: GameState; c: Copy; lang
           {n.pitcher ? <div className="who"><small>{c.pitcherLbl}</small><b>{n.pitcher}</b>{n.pitcherPitches ? <small>{c.pitchesN(n.pitcherPitches)}</small> : null}</div> : null}
         </div>
       ) : null}
-      </div>
     </section>
   )
 }
 
-/** Phones, while a pane has the screen: the game on one line; a tap brings
- *  back the score header and the bars above it. */
+/** Phones, once the score header has scrolled away: the game on one line,
+ *  stuck at the top over the tabs; a tap goes back to the top. */
 function MiniScore({ g, c, lang, onOpen }: { g: GameState; c: Copy; lang: string; onOpen: () => void }) {
   const league = g.league ?? 'mlb'
   const started = g.status === 'live' || g.status === 'final'
   const under = underOf(g, c, lang)
-  // The box opens and closes the line smoothly; the cut clips it while it does.
   return (
     <div className="xs-mini-box">
-    <div className="xs-mini-cut">
     <button type="button" className="xs-mini" onClick={onOpen}>
       <span className="tm"><TeamLogo league={league} t={g.away} /><b>{g.away.abbr}</b></span>
       <span className="sc">{started ? `${g.away.runs ?? 0} – ${g.home.runs ?? 0}` : localTime(g.start)}</span>
       <span className="tm"><b>{g.home.abbr}</b><TeamLogo league={league} t={g.home} /></span>
       {under ? <small className={g.status === 'live' ? 'live' : undefined}>{under}</small> : null}
       <span className="xs-sr">{c.showHeader}</span>
-      <svg className="chev" viewBox="0 0 24 24" aria-hidden><path d="M6 9l6 6 6-6" /></svg>
+      <svg className="chev" viewBox="0 0 24 24" aria-hidden><path d="M18 15l-6-6-6 6" /></svg>
     </button>
-    </div>
     </div>
   )
 }
@@ -553,11 +547,12 @@ function ClipRow({ clip, where, c, lang, onOpen }: { clip: Clip; where: string; 
 
 /** 戰況: every play, newest first, under a line per half-inning or period;
  *  a play with a clip of its own carries it. 精彩影片 lists every clip. */
-function Feed({ g, c, lang, pk, h, filter, setFilter, fresh, onSeen, onOpen, bodyRef }: {
+function Feed({ g, c, lang, pk, h, filter, setFilter, fresh, onSeen, onOpen, onTop, bodyRef }: {
   g: GameState; c: Copy; lang: string; pk: number; h: Clips | null
   filter: 'all' | 'clips'; setFilter: (f: 'all' | 'clips') => void
   fresh: number; onSeen: () => void; onOpen: (clip: Clip) => void
   bodyRef: React.MutableRefObject<HTMLDivElement | null>
+  onTop: () => void
 }) {
   const nba = g.league === 'nba'
   const clips = h?.clips ?? []
@@ -596,7 +591,7 @@ function Feed({ g, c, lang, pk, h, filter, setFilter, fresh, onSeen, onOpen, bod
         </div>
       </div>
       {fresh > 0 ? (
-        <button className="xs-fresh" onClick={() => { setFilter('clips'); onSeen(); bodyRef.current?.scrollTo({ top: 0 }) }}>
+        <button className="xs-fresh" onClick={() => { setFilter('clips'); onSeen(); onTop() }}>
           <span className="xs-pulse" />{c.newClips(fresh)}<span className="chev" aria-hidden>›</span>
         </button>
       ) : null}
@@ -976,32 +971,51 @@ function useAt(draft: string, setDraft: (v: string) => void, inputRef: React.Ref
 /** A commentator's @handle, from the model name its messages carry. */
 const aiHandle = (m: { model_name: string | null }): string | null => HOUSE_AIS.find(a => a.name === m.model_name)?.handle ?? null
 
+/** Phones (the site's top bar, up to 760px) scroll a game as one page;
+ *  wider screens scroll its panes (owner, Oct 14: "is this scrolling too
+ *  complicated? ... too many layers?"; see xsports.css). */
+const pageScroll = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches
+
 /** A chat keeps to its newest line while the reader is at the bottom, and
- *  lets go the moment they scroll up: Oct 14, on a phone, pulling back a
- *  little unfolded the header, the box shrank under the reader, and the old
- *  rule (anywhere within 80px of the bottom holds) snapped them back to the
- *  last message ("why the dialog keeps jump back to my previous message?").
- *  Scrolling up now holds only at the very bottom; coming back down near
- *  it holds again. Plays that arrive after the messages, a late font, a
- *  hidden tab coming back or the fold all change the height without a
- *  scroll, so the box's size is watched rather than its line count. */
+ *  lets go the moment they scroll up (Oct 14: "why the dialog keeps jump
+ *  back to my previous message?"): scrolling up holds only at the very
+ *  bottom; coming back down near it holds again. On a phone the page is
+ *  what scrolls, so the bottom is the page's; elsewhere the chat's own box.
+ *  Plays that arrive after the messages, a late font or a tab coming back
+ *  change the height without a scroll, so the size is watched rather than
+ *  the line count. A chat on a hidden tab moves nothing. */
 function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
   const pinned = useRef(true)
   useEffect(() => {
     const el = ref.current
     const inner = el?.firstElementChild
     if (!el || !inner) return
-    let last = el.scrollTop
-    const onScroll = () => {
-      const gap = el.scrollHeight - el.scrollTop - el.clientHeight
-      pinned.current = el.scrollTop < last - 1 ? gap < 2 : gap < 80
-      last = el.scrollTop
+    const doc = document.documentElement
+    // Not on screen: a hidden tab, or a phone showing 戰況 (the chats sit
+    // in a column the page does not display).
+    const off = () => !el.getClientRects().length
+    const holds = (top: number, last: number, gap: number) => (top < last - 1 ? gap < 2 : gap < 80)
+    let lastBox = el.scrollTop, lastPage = window.scrollY
+    const onBox = () => {
+      if (pageScroll()) return
+      pinned.current = holds(el.scrollTop, lastBox, el.scrollHeight - el.scrollTop - el.clientHeight)
+      lastBox = el.scrollTop
     }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(() => { if (pinned.current) { el.scrollTop = el.scrollHeight; last = el.scrollTop } })
+    const onPage = () => {
+      if (!pageScroll() || off()) return
+      pinned.current = holds(window.scrollY, lastPage, doc.scrollHeight - window.scrollY - window.innerHeight)
+      lastPage = window.scrollY
+    }
+    const ro = new ResizeObserver(() => {
+      if (!pinned.current || off()) return
+      if (pageScroll()) { window.scrollTo({ top: doc.scrollHeight, behavior: 'instant' }); lastPage = window.scrollY }
+      else { el.scrollTop = el.scrollHeight; lastBox = el.scrollTop }
+    })
+    el.addEventListener('scroll', onBox, { passive: true })
+    window.addEventListener('scroll', onPage, { passive: true })
     ro.observe(inner)
     ro.observe(el)
-    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
+    return () => { el.removeEventListener('scroll', onBox); window.removeEventListener('scroll', onPage); ro.disconnect() }
   }, [ref])
   return pinned
 }
@@ -2214,88 +2228,49 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
 
   useEffect(() => { sb().auth.getUser().then(({ data }) => setSignedIn(!!data.user)) }, [])
 
-  // Phones (the site's fixed 60px bar, up to 760px): reading or typing
-  // gives the screen to the pane (owner, Oct 14: "hide site bar and league
-  // bar" so the chat has more room), like a phone browser's address bar.
-  // Scrolling down (a finger moving up, the wheel down), the page scrolled
-  // past 40px, or the composer in use folds both bars away and the score
-  // header into one line (MiniScore); scrolling back up unfolds them (owner:
-  // "I can't scroll back"), and so does a tap on that line. Unfolding takes
-  // a longer pull than folding, so a small nudge while reading moves no
-  // bars; sideways swipes (chips, clips, the line score) count for neither.
-  // Only what a person does counts: a chat keeping to its newest line
-  // scrolls by itself and must not fold anything. Nothing folds before the
-  // game has loaded, so the line to unfold with is always there.
+  // Phones scroll the game as one page (pageScroll): the site bar, the
+  // league bar and the score header are its top and scroll away; once the
+  // header has gone (stuck) the score line shows, stuck over the tabs, and
+  // a tap on it goes back to the top. The composer sticks to the bottom.
   const splitRef = useRef<HTMLDivElement | null>(null)
-  const loaded = useRef(false)
-  useEffect(() => { loaded.current = !!game }, [game])
-  const [folded, setFolded] = useState(false)
+  const [stuck, setStuck] = useState(false)
+  const hasGame = !!game
   useEffect(() => {
-    const el = splitRef.current
-    if (!el) return
-    const phone = window.matchMedia('(max-width: 760px)')
-    const fold = () => { if (phone.matches && loaded.current) setFolded(true) }
-    const open = () => setFolded(false)
-    const FOLD_AT = 16, OPEN_AT = 48
-    // run: how far the current stroke has gone one way (negative = down the
-    // page); a turn starts it again.
-    let x = 0, y = 0, run = 0
-    const onStart = (e: TouchEvent) => { const t = e.touches[0]; if (t) { x = t.clientX; y = t.clientY; run = 0 } }
-    const onMove = (e: TouchEvent) => {
-      const t = e.touches[0]
-      if (!t) return
-      const dx = t.clientX - x, dy = t.clientY - y
-      x = t.clientX; y = t.clientY
-      if (Math.abs(dx) > Math.abs(dy)) return
-      run = Math.sign(dy) === Math.sign(run) ? run + dy : dy
-      if (run <= -FOLD_AT) fold()
-      else if (run >= OPEN_AT) open()
-    }
-    let wheel = 0, wheelAt = 0
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
-      if (e.timeStamp - wheelAt > 300) wheel = 0
-      wheelAt = e.timeStamp
-      wheel = Math.sign(e.deltaY) === Math.sign(wheel) ? wheel + e.deltaY : e.deltaY
-      if (wheel >= FOLD_AT) fold()
-      else if (wheel <= -OPEN_AT) open()
-    }
-    const onType = (e: FocusEvent) => { if ((e.target as Element | null)?.closest?.('.xs-compose')) fold() }
-    const onScroll = () => { if (window.scrollY > 40) fold() }
-    const onWidth = () => { if (!phone.matches) setFolded(false) }
-    el.addEventListener('touchstart', onStart, { passive: true })
-    el.addEventListener('touchmove', onMove, { passive: true })
-    el.addEventListener('wheel', onWheel, { passive: true })
-    el.addEventListener('focusin', onType)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    phone.addEventListener('change', onWidth)
-    return () => {
-      el.removeEventListener('touchstart', onStart)
-      el.removeEventListener('touchmove', onMove)
-      el.removeEventListener('wheel', onWheel)
-      el.removeEventListener('focusin', onType)
-      window.removeEventListener('scroll', onScroll)
-      phone.removeEventListener('change', onWidth)
-    }
-  }, [])
-  // The site's bar is outside the page, so the room and its fold are said
-  // on <html>.
+    const ov = splitRef.current?.querySelector('.xs-ov')
+    if (!ov) return
+    const io = new IntersectionObserver(([e]) => setStuck(!e.isIntersecting), { rootMargin: '-46px 0px 0px 0px' })
+    io.observe(ov)
+    return () => io.disconnect()
+  }, [hasGame])
+  // The site's bar is outside the page, so the room says it is open on
+  // <html> (the bar scrolls with a game on phones).
   useEffect(() => {
     const root = document.documentElement
     root.setAttribute('data-xs-room', '')
     return () => root.removeAttribute('data-xs-room')
   }, [])
+  // What sticks at the top of a phone: the score line and the tabs.
+  const barsHeight = () => 46 + (splitRef.current?.querySelector<HTMLElement>('.xs-mtabs')?.offsetHeight ?? 0)
+  // On a phone a tab is a page: a chat opens at its newest line, the others
+  // at their start, unless the reader is still above it.
+  const firstView = useRef(true)
   useEffect(() => {
-    const root = document.documentElement
-    if (folded) root.setAttribute('data-xs-folded', '')
-    else root.removeAttribute('data-xs-folded')
-    return () => root.removeAttribute('data-xs-folded')
-  }, [folded])
-  const unfold = () => { setFolded(false); window.scrollTo({ top: 0, behavior: 'instant' }) }
-  // Opening a chat on a phone is asking for the screen: under a live
-  // header the private chat's messages had no room left at all.
-  const foldForChat = (k: 'feed' | RTab) => {
-    if ((k === 'chat' || k === 'private') && loaded.current && window.matchMedia('(max-width: 760px)').matches) setFolded(true)
+    if (firstView.current) { firstView.current = false; return }
+    if (!pageScroll()) return
+    requestAnimationFrame(() => {
+      if (view === 'chat' || view === 'private') { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); return }
+      const pane = splitRef.current?.querySelector<HTMLElement>(view === 'feed' ? '.xs-feedwrap' : '.xs-right')
+      if (!pane) return
+      const start = pane.getBoundingClientRect().top + window.scrollY - barsHeight()
+      if (window.scrollY > start) window.scrollTo({ top: start, behavior: 'instant' })
+    })
+  }, [view]) // eslint-disable-line react-hooks/exhaustive-deps
+  const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+  // The plays from their start: the feed's own box, or on a phone the page.
+  const feedTop = () => {
+    if (!pageScroll()) { bodyRef.current?.scrollTo({ top: 0 }); return }
+    const wrap = splitRef.current?.querySelector<HTMLElement>('.xs-feedwrap')
+    if (wrap) window.scrollTo({ top: wrap.getBoundingClientRect().top + window.scrollY - barsHeight(), behavior: 'instant' })
   }
 
   // The game, every 10 s while the tab is in front.
@@ -2338,14 +2313,20 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
   const g = game
   const openClip = (next: Clip) => {
     const box = bodyRef.current
+    const page = pageScroll()
     if (!clip && box) {
-      const top = box.getBoundingClientRect().top
+      // Measured from the top of the feed's box, or on a phone from under
+      // the bars stuck at the top of the page.
+      const top = page ? barsHeight() : box.getBoundingClientRect().top
+      const at = page ? window.scrollY : box.scrollTop
       const first = [...box.querySelectorAll<HTMLElement>('[data-at]')].find(el => el.getBoundingClientRect().bottom > top + 1)
-      place.current = first ? { at: first.dataset.at!, dy: first.getBoundingClientRect().top - top, top: box.scrollTop } : { at: '', dy: 0, top: box.scrollTop }
+      place.current = first ? { at: first.dataset.at!, dy: first.getBoundingClientRect().top - top, top: at } : { at: '', dy: 0, top: at }
       openedAt.current = g?.events.length ?? 0
     }
     setClip(next)
     setView('feed')
+    // A phone shows the clip from its top, under the bars.
+    if (page) requestAnimationFrame(() => feedTop())
   }
   // Back to 戰況 at the same row, wherever new arrivals put it.
   const closeClip = () => {
@@ -2354,6 +2335,11 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
       const box = bodyRef.current, p = place.current
       if (!box || !p) return
       const el = p.at ? box.querySelector<HTMLElement>(`[data-at="${CSS.escape(p.at)}"]`) : null
+      if (pageScroll()) {
+        if (el) window.scrollBy({ top: el.getBoundingClientRect().top - barsHeight() - p.dy, behavior: 'instant' })
+        else window.scrollTo({ top: p.top, behavior: 'instant' })
+        return
+      }
       if (el) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - p.dy
       else box.scrollTop = p.top
     })
@@ -2376,23 +2362,23 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
 
   return (
     <>
-      <div ref={splitRef} className="xs-split" data-view={view}>
+      <div ref={splitRef} className={`xs-split${stuck ? ' stuck' : ''}`} data-view={view}>
         <section className="xs-left">
           {g ? <Overview g={g} c={c} lang={lang} viewers={viewers} onJump={jump} />
             : <div className="xs-ov skel" aria-busy="true"><span className="xs-sr">{c.loading}</span></div>}
-          {g ? <MiniScore g={g} c={c} lang={lang} onOpen={unfold} /> : null}
+          {g ? <MiniScore g={g} c={c} lang={lang} onOpen={toTop} /> : null}
           {feedDown && <p className="xs-note">{c.feedDown}</p>}
           {/* Phones: one row of the five. */}
           <div className="xs-mtabs" role="tablist">
             {([['feed', c.tabFeed], ...rtabs] as ['feed' | RTab, string][]).map(([k, label]) => (
-              <button key={k} role="tab" aria-selected={view === k} onClick={() => { if (k === 'feed') setView('feed'); else right(k); foldForChat(k) }}>{label}</button>
+              <button key={k} role="tab" aria-selected={view === k} onClick={() => (k === 'feed' ? setView('feed') : right(k))}>{label}</button>
             ))}
           </div>
           <div className="xs-feedwrap">
             {g && clip ? <ClipPlayer clip={clip} clips={h?.clips ?? []} g={g} c={c} lang={lang} newPlays={Math.max(0, g.events.length - openedAt.current)} onBack={closeClip} onOpen={openClip} /> : null}
             {g ? (
               <div className="xs-feedbox" hidden={!!clip}>
-                <Feed g={g} c={c} lang={lang} pk={pk} h={h} filter={filter} setFilter={setFilter} fresh={fresh} onSeen={markSeen} onOpen={openClip} bodyRef={bodyRef} />
+                <Feed g={g} c={c} lang={lang} pk={pk} h={h} filter={filter} setFilter={setFilter} fresh={fresh} onSeen={markSeen} onOpen={openClip} onTop={feedTop} bodyRef={bodyRef} />
               </div>
             ) : <p className="xs-none">{c.loading}</p>}
           </div>
