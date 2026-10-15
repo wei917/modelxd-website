@@ -137,6 +137,12 @@ export interface Copy {
   pregameLine: (provider: string) => string
   oddsNote: string
   noOdds: string
+  /** The 賠率 timeline (OddsChart). */
+  trendTitle: string
+  rangeGame: string
+  rangeAll: string
+  trendEmpty: string
+  trendNow: string
   noPlays: string
   /** 數據 before the first pitch or tip-off. */
   boxNotStarted: string
@@ -177,7 +183,7 @@ export interface Copy {
   reportTitle: string
   reportAiTitle: string
   reportWhy: string
-  reasons: Record<'spam' | 'harassment' | 'hate' | 'sexual' | 'misinfo' | 'wrong' | 'inappropriate' | 'other', string>
+  reasons: Record<'spam' | 'harassment' | 'hate' | 'sexual' | 'misinfo' | 'wrong' | 'clueless' | 'inappropriate' | 'other', string>
   reportDetails: string
   reportDetailsPh: string
   reportSend: string
@@ -303,6 +309,11 @@ const en: Copy = {
   pregameLine: p => `${p} line, before the game`,
   oddsNote: 'For information only. ModelXD does not take bets.',
   noOdds: 'No odds for this game yet.',
+  trendTitle: 'Over time',
+  rangeGame: 'This game',
+  rangeAll: 'Since open',
+  trendEmpty: 'No history for this game yet.',
+  trendNow: 'Now',
   noPlays: 'No plays yet.',
   boxNotStarted: 'The game hasn\'t started yet. Both teams\' numbers show here once it does.',
   noGamesFor: l => `No ${l} games on this day.`,
@@ -345,7 +356,7 @@ const en: Copy = {
   reportTitle: 'Report this message',
   reportAiTitle: 'Report the AI commentator’s message',
   reportWhy: 'Why are you reporting it?',
-  reasons: { spam: 'Spam or ads', harassment: 'Harassment or personal attacks', hate: 'Hate or discrimination', sexual: 'Sexual or violent content', misinfo: 'False or misleading information', wrong: 'Wrong facts about the game or players', inappropriate: 'Inappropriate content', other: 'Something else' },
+  reasons: { spam: 'Spam or ads', harassment: 'Harassment or personal attacks', hate: 'Hate or discrimination', sexual: 'Sexual or violent content', misinfo: 'False or misleading information', wrong: 'Wrong facts about the game or players', clueless: 'Doesn\'t know the game', inappropriate: 'Inappropriate content', other: 'Something else' },
   reportDetails: 'More details (optional)',
   reportDetailsPh: 'For example: what was wrong',
   reportSend: 'Send report',
@@ -468,6 +479,11 @@ const zhHant: Copy = {
   pregameLine: p => `${p} 賽前盤口`,
   oddsNote: '僅供參考。本站不提供下注。',
   noOdds: '這場還沒有賠率。',
+  trendTitle: '走勢',
+  rangeGame: '比賽中',
+  rangeAll: '開盤以來',
+  trendEmpty: '這場還沒有走勢資料。',
+  trendNow: '現在',
   noPlays: '還沒有比賽過程。',
   boxNotStarted: '比賽還沒開始，開打後這裡會有兩隊的數據。',
   noGamesFor: l => `這天沒有 ${l} 比賽。`,
@@ -510,7 +526,7 @@ const zhHant: Copy = {
   reportTitle: '檢舉這則留言',
   reportAiTitle: '檢舉 AI 球評的留言',
   reportWhy: '為什麼檢舉？',
-  reasons: { spam: '洗版或廣告', harassment: '騷擾或人身攻擊', hate: '仇恨或歧視', sexual: '色情或暴力', misinfo: '錯誤或誤導的資訊', wrong: '說錯比賽或球員資訊', inappropriate: '內容不恰當', other: '其他' },
+  reasons: { spam: '洗版或廣告', harassment: '騷擾或人身攻擊', hate: '仇恨或歧視', sexual: '色情或暴力', misinfo: '錯誤或誤導的資訊', wrong: '說錯比賽或球員資訊', clueless: '不懂球', inappropriate: '內容不恰當', other: '其他' },
   reportDetails: '補充說明（選填）',
   reportDetailsPh: '例如：哪裡說錯了',
   reportSend: '送出檢舉',
@@ -633,6 +649,11 @@ const zhHans: Copy = {
   pregameLine: p => `${p} 赛前盘口`,
   oddsNote: '仅供参考。本站不提供投注。',
   noOdds: '这场还没有赔率。',
+  trendTitle: '走势',
+  rangeGame: '比赛中',
+  rangeAll: '开盘以来',
+  trendEmpty: '这场还没有走势数据。',
+  trendNow: '现在',
   noPlays: '还没有比赛过程。',
   boxNotStarted: '比赛还没开始，开打后这里会有两队的数据。',
   noGamesFor: l => `这天没有 ${l} 比赛。`,
@@ -675,7 +696,7 @@ const zhHans: Copy = {
   reportTitle: '举报这条留言',
   reportAiTitle: '举报 AI 球评的留言',
   reportWhy: '为什么举报？',
-  reasons: { spam: '刷屏或广告', harassment: '骚扰或人身攻击', hate: '仇恨或歧视', sexual: '色情或暴力', misinfo: '错误或误导的信息', wrong: '说错比赛或球员信息', inappropriate: '内容不恰当', other: '其他' },
+  reasons: { spam: '刷屏或广告', harassment: '骚扰或人身攻击', hate: '仇恨或歧视', sexual: '色情或暴力', misinfo: '错误或误导的信息', wrong: '说错比赛或球员信息', clueless: '不懂球', inappropriate: '内容不恰当', other: '其他' },
   reportDetails: '补充说明（选填）',
   reportDetailsPh: '例如：哪里说错了',
   reportSend: '提交举报',
@@ -798,6 +819,11 @@ const ja: Copy = {
   pregameLine: p => `${p} 試合前ライン`,
   oddsNote: '参考情報です。当サイトでは賭けを受け付けていません。',
   noOdds: 'この試合のオッズはまだありません。',
+  trendTitle: '推移',
+  rangeGame: 'この試合',
+  rangeAll: '取引開始から',
+  trendEmpty: 'この試合の推移はまだありません。',
+  trendNow: '現在',
   noPlays: 'まだプレーがありません。',
   boxNotStarted: '試合はまだ始まっていません。始まると、ここに両チームのデータが出ます。',
   noGamesFor: l => `この日は ${l} の試合がありません。`,
@@ -840,7 +866,7 @@ const ja: Copy = {
   reportTitle: 'このメッセージを報告',
   reportAiTitle: 'AI解説のメッセージを報告',
   reportWhy: '報告する理由は？',
-  reasons: { spam: 'スパム・宣伝', harassment: '嫌がらせ・個人攻撃', hate: 'ヘイト・差別', sexual: '性的・暴力的な内容', misinfo: '誤った・誤解を招く情報', wrong: '試合や選手の情報の誤り', inappropriate: '不適切な内容', other: 'その他' },
+  reasons: { spam: 'スパム・宣伝', harassment: '嫌がらせ・個人攻撃', hate: 'ヘイト・差別', sexual: '性的・暴力的な内容', misinfo: '誤った・誤解を招く情報', wrong: '試合や選手の情報の誤り', clueless: '試合を分かっていない', inappropriate: '不適切な内容', other: 'その他' },
   reportDetails: '詳細（任意）',
   reportDetailsPh: '例：どこが間違っていたか',
   reportSend: '報告する',
@@ -963,6 +989,11 @@ const ko: Copy = {
   pregameLine: p => `${p} 경기 전 라인`,
   oddsNote: '참고용입니다. 이 사이트는 베팅을 받지 않습니다.',
   noOdds: '이 경기의 배당은 아직 없습니다.',
+  trendTitle: '추이',
+  rangeGame: '이번 경기',
+  rangeAll: '개장 이후',
+  trendEmpty: '이 경기의 추이는 아직 없어요.',
+  trendNow: '지금',
   noPlays: '아직 플레이가 없습니다.',
   boxNotStarted: '경기가 아직 시작되지 않았어요. 시작하면 여기에 두 팀의 기록이 나와요.',
   noGamesFor: l => `이날은 ${l} 경기가 없습니다.`,
@@ -1005,7 +1036,7 @@ const ko: Copy = {
   reportTitle: '이 메시지 신고',
   reportAiTitle: 'AI 해설 메시지 신고',
   reportWhy: '신고 이유가 무엇인가요?',
-  reasons: { spam: '도배 또는 광고', harassment: '괴롭힘 또는 인신공격', hate: '혐오 또는 차별', sexual: '선정적이거나 폭력적인 내용', misinfo: '잘못되었거나 오해의 소지가 있는 정보', wrong: '경기나 선수 정보 오류', inappropriate: '부적절한 내용', other: '기타' },
+  reasons: { spam: '도배 또는 광고', harassment: '괴롭힘 또는 인신공격', hate: '혐오 또는 차별', sexual: '선정적이거나 폭력적인 내용', misinfo: '잘못되었거나 오해의 소지가 있는 정보', wrong: '경기나 선수 정보 오류', clueless: '경기를 잘 모름', inappropriate: '부적절한 내용', other: '기타' },
   reportDetails: '추가 설명(선택)',
   reportDetailsPh: '예: 어디가 틀렸는지',
   reportSend: '신고하기',

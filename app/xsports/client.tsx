@@ -21,6 +21,7 @@ import { mlbToday, type GameCard, type GameState, type PlayEvent, type League, t
 import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
 import { HOUSE_AIS } from '../../lib/xsports-ais'
+import OddsChart from './OddsChart'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import { teamChip } from '../../lib/mlb-colors'
@@ -829,7 +830,7 @@ function OddsRow({ g, title, note, away, home }: { g: GameState; title: string; 
 }
 
 /** Everything about who is favoured, in one place, as information. */
-function OddsTab({ g, c }: { g: GameState; c: Copy }) {
+function OddsTab({ g, c, lang, pk }: { g: GameState; c: Copy; lang: string; pk: number }) {
   const rows: React.ReactNode[] = []
   if (g.winProb && g.status === 'live') rows.push(<OddsRow key="m" g={g} title={c.modelOf(g.league ?? 'mlb')} note={c.liveUpdate} away={g.winProb.away} home={g.winProb.home} />)
   if (g.market && g.market.away !== null && g.market.home !== null) rows.push(<OddsRow key="k" g={g} title="Kalshi" note={g.market.volume ? c.traded(money(g.market.volume)) : ''} away={g.market.away} home={g.market.home} />)
@@ -844,7 +845,10 @@ function OddsTab({ g, c }: { g: GameState; c: Copy }) {
   }
   return (
     <div className="xs-oddsTab">
-      {rows.length ? rows : <p className="xs-none" style={{ padding: '16px 0' }}>{c.noOdds}</p>}
+      {/* How the chances moved (owner, Oct 14: a timeline, not one number),
+          then where they stand now. */}
+      <OddsChart league={g.league ?? 'mlb'} pk={pk} c={c} lang={lang} awayColor={teamColor(g.away)} homeColor={teamColor(g.home)} />
+      {rows.length ? rows : g.status === 'final' ? null : <p className="xs-none" style={{ padding: '16px 0' }}>{c.noOdds}</p>}
       <p className="xs-oddsNote">{c.oddsNote}</p>
     </div>
   )
@@ -902,7 +906,9 @@ const Quote = ({ who, text }: { who: string; text: string }) => (
 
 /** Why a message is reported (the server's list; supabase/133). */
 const FAN_REASONS = ['spam', 'harassment', 'hate', 'sexual', 'misinfo', 'other'] as const
-const AI_REASONS = ['wrong', 'inappropriate', 'spam', 'other'] as const
+// 不懂球 (owner, Oct 14) for the commentators only: on a fan it would let
+// three people hide an opinion they disagree with.
+const AI_REASONS = ['wrong', 'clueless', 'inappropriate', 'spam', 'other'] as const
 type Reason = (typeof FAN_REASONS)[number] | (typeof AI_REASONS)[number]
 
 // ── @ in a box: a list of who can be named ─────────────────────────────────
@@ -2399,7 +2405,7 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
           </div>
           {(rtab === 'box' || rtab === 'odds') && !g ? <p className="xs-none">{c.loading}</p> : null}
           {rtab === 'box' && g && <div className="xs-rpane"><BoxTab g={g} c={c} /></div>}
-          {rtab === 'odds' && g && <div className="xs-rpane"><OddsTab g={g} c={c} /></div>}
+          {rtab === 'odds' && g && <div className="xs-rpane"><OddsTab g={g} c={c} lang={lang} pk={pk} /></div>}
         </section>
       </div>
     </>

@@ -126,9 +126,10 @@ export async function announceGone(k: RoomKey, messageId: number): Promise<void>
   }
 }
 
-/** Why a message was reported (the page's dialog; supabase/133). Fans'
- *  messages: spam … misinfo; the commentator's: wrong, inappropriate. */
-export const REPORT_REASONS = ['spam', 'harassment', 'hate', 'sexual', 'misinfo', 'wrong', 'inappropriate', 'other'] as const
+/** Why a message was reported (the page's dialog; supabase/133, 134). Fans'
+ *  messages: spam … misinfo; the commentator's: wrong, clueless (不懂球,
+ *  owner Oct 14), inappropriate. */
+export const REPORT_REASONS = ['spam', 'harassment', 'hate', 'sexual', 'misinfo', 'wrong', 'clueless', 'inappropriate', 'other'] as const
 export type ReportReason = (typeof REPORT_REASONS)[number]
 export const REPORT_DETAILS_MAX = 300
 // Until migration 133 adds reason and details, reports save without them
@@ -147,6 +148,9 @@ export async function report(userId: string, messageId: number, why: { reason: R
   if (noReasonColumn(error)) {
     noReasonsSince = Date.now()
     await admin.from('xsports_room_reports').upsert(base, { onConflict: 'message_id,user_id', ignoreDuplicates: true })
+  } else if (error?.code === '23514' && why?.reason === 'clueless') {
+    // Until migration 134 adds it, 不懂球 is kept as other, said in front.
+    await admin.from('xsports_room_reports').upsert({ ...base, reason: 'other', details: `[clueless] ${why.details ?? ''}`.trim().slice(0, 500) }, { onConflict: 'message_id,user_id', ignoreDuplicates: true })
   }
   const { count } = await admin.from('xsports_room_reports').select('message_id', { count: 'exact', head: true }).eq('message_id', messageId)
   if ((count ?? 0) >= REPORTS_TO_HIDE) {
