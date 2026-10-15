@@ -21,6 +21,7 @@ type CharRow = {
   msg_count: number; last_chat_at: string | null
   photos: string[]; search: boolean
   voice: string | null; voice_desc: string | null; voice_rate: number | null
+  visibility?: 'private' | 'public'
 }
 
 // Per-character speaking speed (owner, Aug 8): part of the character's
@@ -846,6 +847,10 @@ export default function CharactersRoom({ models, charId, standalone, manage, edi
   const [bVoice, setBVoice] = useState<string | null>(null)
   const [bVoiceDesc, setBVoiceDesc] = useState<string | null>(null)
   const [bVoiceRate, setBVoiceRate] = useState(1)
+  // 公開 (owner, Oct 15: "people can choose to public persona or not"):
+  // a public character may be featured in public places, like 晴晴 in
+  // X體育's chat rooms. Private by default.
+  const [bPublic, setBPublic] = useState(false)
   const [bVoiceDraft, setBVoiceDraft] = useState('')
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [auditioning, setAuditioning] = useState<string | null>(null)
@@ -903,7 +908,7 @@ export default function CharactersRoom({ models, charId, standalone, manage, edi
     setBName(c?.name ?? ''); setBPersona(c?.persona ?? ''); setBAppear(c?.appearance ?? '')
     setBModel(c ? (modelOf(c.model_id) ?? null) : null)
     setBThinking(c?.thinking ?? null); setBAvatar(c?.avatar_path ?? null)
-    setBPhotos(c?.photos ?? []); setBSearch(c?.search === true)
+    setBPhotos(c?.photos ?? []); setBSearch(c?.search === true); setBPublic(c?.visibility === 'public')
     setBVoice(c?.voice ?? null); setBVoiceDesc(c?.voice_desc ?? null)
     setBVoiceDraft(c?.voice_desc ?? ''); setVoiceOpen(!!c?.voice_desc)
     const r = Number(c?.voice_rate)
@@ -947,7 +952,7 @@ export default function CharactersRoom({ models, charId, standalone, manage, edi
       action: editing ? 'update' : 'create', id: editing?.id,
       name: bName, persona: bPersona, appearance: bAppear,
       modelId: bModel.id, thinking: bThinking, avatarPath: bAvatar,
-      photos: bPhotos, search: bSearch,
+      photos: bPhotos, search: bSearch, visibility: bPublic ? 'public' : 'private',
       voice: bVoice, voiceDesc: bVoiceDesc, voiceRate: bVoiceRate,
     })
     setSaving(false)
@@ -1448,6 +1453,16 @@ export default function CharactersRoom({ models, charId, standalone, manage, edi
           </div>
         )}
         <div style={{ marginBottom: 18 }} />
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 18 }}>
+          <button role="switch" aria-checked={bPublic} aria-label={t('xc.public')} onClick={() => setBPublic(p => !p)} style={{
+            flexShrink: 0, padding: '3px 12px', borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            border: '1px solid ' + (bPublic ? 'var(--red)' : 'var(--border2)'),
+            background: bPublic ? 'var(--red)' : 'none',
+            color: bPublic ? '#fff' : 'var(--muted)',
+          }}>{t('xc.public')}{bPublic ? ' ✓' : ''}</button>
+          <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.5 }}>{t('xc.publicnote')}</div>
+        </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button onClick={save} disabled={saving || !bModel || (!editing && !bName.trim())}

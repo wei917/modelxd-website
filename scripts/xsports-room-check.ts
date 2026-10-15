@@ -242,9 +242,106 @@ async function topPair() {
   ok(x.ai().map(m => m.model_name).join() === [A.name, B.name].join() && x.ai()[1].reply_to === x.ai()[0].id, `top pair: ${A.handle} asks @${B.handle}, which answers once`)
 }
 
+// ── 晴晴, the room's cheerleader (Oct 15) ─────────────────────────────────
+const T0 = Date.parse('2026-10-15T01:00:00Z')
+const play = (i: number, o: { type?: string; scoring?: boolean; away?: number; home?: number; inning?: number; text?: string } = {}) => ({
+  id: String(i), inning: o.inning ?? 1, half: 'top', kind: 'pa', type: o.type ?? 'single', text: o.text ?? `play ${i}`, scoring: !!o.scoring,
+  away: o.away ?? 0, home: o.home ?? 0, outs: 1, endsHalf: false, big: !!o.scoring, at: new Date(T0 + i * 60_000).toISOString(),
+})
+const game = (status: string, events: any[]) => ({ league: 'mlb', status, events, away: { name: 'Brewers', runs: events.at(-1)?.away ?? 0 }, home: { name: 'Dodgers', runs: events.at(-1)?.home ?? 0 } })
+function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: number | null; visibility?: string; reply?: Reply; g?: any } = {}) {
+  const calls: { model: string; thinking: string | null; system: string; prompt: string }[] = [], stored: any[] = [], released: any[] = [], spent: number[] = []
+  let reads = 0
+  const chain = (table: string) => {
+    const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, maybeSingle: async () => {
+      if (table === 'x_characters') return { data: { id: 'c1', name: '晴晴', persona: 'PERSONA-晴晴', avatar_path: 'f/a.jpg', model_id: 'm-sonnet', thinking: 'low', visibility: o.visibility ?? 'public' } }
+      if (table === 'ai_models') return { data: { id: 'm-sonnet', provider: 'anthropic', model_name: 'claude-sonnet-5', enabled: true, blocked_features: [], output_config: { text: { thinking_levels: ['low', 'medium', 'high'] } } } }
+      // roomCheer reads it once, after taking the floor (the tick decided before).
+      reads++
+      const t = o.lastAfterLock !== undefined ? o.lastAfterLock : o.last ?? null
+      return { data: t === null ? null : { created_at: new Date(t).toISOString() } }
+    } }
+    return q
+  }
+  const mod = load('lib/xsports-cheer.ts', {
+    './providers': {
+      streamText: async (model: any, messages: any[], cb: any, _a: unknown, _c: unknown, opts: any) => {
+        calls.push({ model: model.model_name, thinking: opts?.thinking ?? null, system: opts?.system ?? '', prompt: messages[0].content })
+        const r = o.reply ?? '安打安打！大家一起喊！📣'
+        if (typeof r === 'object' && 'fail' in r) { cb.onError(r.fail); return }
+        cb.onDelta(r as string)
+        cb.onDone({ cost: 0.006 })
+      },
+    },
+    './models': { getModelByProviderName: async (provider: string, name: string) => ({ provider, model_name: name, enabled: true, blocked_features: [], output_config: { text: { thinking_levels: ['none', 'low'] } } }) },
+    './model-features': { FEATURE: { xsports: 'xsports' } },
+    './xsports-store': { xsportsAdmin: () => ({ from: (t: string) => chain(t) }) },
+    './xsports-prompt': { stateBlock: () => 'STATE' },
+    './xsports-room': {
+      addRoomMessage: async (_k: unknown, m: any) => { const msg = { id: 500 + stored.length, ...m }; stored.push(msg); return msg },
+      claimSpeaker: async () => ({ ai_since: null }), recentMessages: async () => [], releaseSpeaker: async (_k: unknown, p: any) => { released.push(p) },
+    },
+    './xsports-ai-spend': { overCapToday: async () => o.capped ?? false, addSpend: async (usd: number) => { spent.push(usd) } },
+    './xsports-ais': ais,
+    './xsports-room-ai': { gameFor: async () => o.g ?? game('live', [play(1)]) },
+    './provider-errors': { sanitizeProviderError: (s: string) => s },
+  })
+  return { mod, calls, stored, released, spent }
+}
+
+async function cheerleader() {
+  ok(ais.asksCheer('@晴晴 加油') && ais.asksCheer('＠晴晴 你好') && !ais.asksCheer('晴晴好可愛'), 'asksCheer: @晴晴 (full-width ＠ too) asks her; her name without @ does not')
+  ok(ais.cheersIn({ league: 'mlb', lang: 'zh-Hant' }) && !ais.cheersIn({ league: 'mlb', lang: 'en' }) && !ais.cheersIn({ league: 'nba', lang: 'zh-Hant' }), 'cheersIn: MLB 繁中 rooms only')
+  const { mod } = cheerRoom()
+  const due = (g: any, last: number | null, now: number) => mod.cheerDue(g, last, now)?.trigger ?? null
+  const hr = [play(1, { scoring: true, away: 1 }), play(2, { type: 'home_run', scoring: true, away: 2, inning: 3 })]
+  ok(due(game('live', [play(1)]), null, T0 + 120_000) === 'first', 'cheerDue: a live game she has not cheered: the game as it stands')
+  ok(due(game('live', hr), T0 + 150_000 - 30_000, T0 + 150_000) === null, 'cheerDue: at most one cheer every two minutes')
+  const m = mod.cheerDue(game('live', hr), T0 + 90_000, T0 + 400_000)
+  ok(m?.trigger === 'moment' && m.event.type === 'home_run', 'cheerDue: a home run since her last word')
+  ok(due(game('live', [play(1, { scoring: true, away: 1 }), play(3, { scoring: true, away: 2, inning: 3 })]), T0 + 120_000, T0 + 600_000) === null, 'cheerDue: a run that only adds to a lead early on: nothing')
+  ok(due(game('live', [play(1, { scoring: true, away: 1 }), play(3, { scoring: true, away: 1, home: 1, inning: 3 })]), T0 + 120_000, T0 + 600_000) === 'moment', 'cheerDue: a run that ties the game')
+  ok(due(game('live', [play(1, { scoring: true, away: 3, home: 1 }), play(3, { scoring: true, away: 4, home: 1, inning: 7 })]), T0 + 120_000, T0 + 600_000) === 'moment', 'cheerDue: any run from the seventh on')
+  const fin = game('final', [play(1), play(5)])
+  ok(due(fin, T0 + 60_000, T0 + 600_000) === 'final' && due(fin, T0 + 360_000, T0 + 600_000) === null && due(fin, null, T0 + 5 * 3_600_000) === null, 'cheerDue: a finished game once after its last play, while fresh')
+  ok(due(game('preview', []), null, T0) === null, 'cheerDue: nothing before a game')
+
+  const K2 = { league: 'mlb', game: '849818', lang: 'zh-Hant' }
+  const a = cheerRoom()
+  await a.mod.roomCheer(K2, { trigger: 'first' })
+  const msg = a.stored[0]
+  ok(msg?.kind === 'ai' && msg.model_name === '晴晴' && msg.author_name === '晴晴' && String(msg.author_avatar).endsWith('/x-characters/f/a.jpg') && msg.reply_to === null, 'roomCheer: her message carries her name and photo')
+  ok(a.calls[0]?.model === 'claude-sonnet-5' && a.calls[0].thinking === 'low' && a.calls[0].system.includes('PERSONA-晴晴') && a.calls[0].system.includes("the room's AI cheerleader"), 'roomCheer: her own persona, model and thinking (from her character), plus the room rules')
+  ok(a.spent.join() === '0.006' && a.released.length === 1 && Object.keys(a.released[0]).length === 0, "roomCheer: her cost counts toward the day; the floor is released without touching the commentators' state")
+  const c = cheerRoom({ capped: true })
+  await c.mod.roomCheer(K2, { trigger: 'first' })
+  ok(c.calls[0]?.model === 'gpt-6-luna' && c.calls[0].thinking === 'none' && c.stored.length === 1, "roomCheer: past the day's cap she speaks on the cheap model")
+  const p = cheerRoom({ visibility: 'private' })
+  await p.mod.roomCheer(K2, { trigger: 'first' })
+  ok(p.calls.length === 0 && p.stored.length === 0 && p.released.length === 1, 'roomCheer: a private character never speaks in a room')
+  const r = cheerRoom({ last: null, lastAfterLock: Date.now() - 10_000 })
+  await r.mod.roomCheer(K2, { trigger: 'first' })
+  ok(r.calls.length === 0 && r.stored.length === 0, 'roomCheer: another page cheered while this one waited: nothing twice')
+  const u = cheerRoom({ last: Date.now() - 10_000 })
+  await u.mod.roomCheer(K2, { trigger: 'user', asker: { name: '阿明', text: '@晴晴 幫道奇加油！', id: 42 } })
+  ok(u.stored[0]?.reply_to === 42 && u.calls[0].prompt.includes('阿明 asked you: @晴晴 幫道奇加油！'), "roomCheer: a fan's @晴晴 is answered at once, as a reply")
+  const hrGame = game('live', hr)
+  const mo = cheerRoom({ last: T0 + 90_000, g: hrGame })
+  await mo.mod.roomCheer(K2, { trigger: 'moment', event: hr[1] })
+  ok(mo.calls[0]?.prompt.includes('play 2') && mo.calls[0].prompt.includes('Brewers 2, Dodgers 0'), 'roomCheer: a moment is told the play and the score after it')
+  const f = cheerRoom({ reply: { fail: 'fixture failure' } })
+  await f.mod.roomCheer(K2, { trigger: 'first' })
+  ok(f.stored.length === 0 && f.mod.cheerResting(K2) === true && f.released.length === 1, 'roomCheer: a failure says nothing and rests the room two minutes')
+  // The commentators read her as the cheerleader.
+  const t = room({ rows: [{ kind: 'ai', author_name: '晴晴', model_name: '晴晴', content: '全壘打！！' }] })
+  await t.speak(K, 'lull')
+  ok(t.calls[0]?.prompt.includes("晴晴 (the room's AI cheerleader): 全壘打！！"), 'commentators: her words come under her name, as the cheerleader')
+}
+
 // ── app/api/xsports/room/route.ts POST with every import mocked ───────────
-async function post(content: string, o: { confirmed?: boolean; confirm?: boolean; displayName?: string | null; signin?: string } = {}) {
-  const spoke: string[] = [], asked: any[] = [], waits: Promise<unknown>[] = [], confirmedNow: string[] = []
+async function post(content: string, o: { confirmed?: boolean; confirm?: boolean; displayName?: string | null; signin?: string; lang?: string } = {}) {
+  const spoke: string[] = [], asked: any[] = [], waits: Promise<unknown>[] = [], confirmedNow: string[] = [], cheered: any[] = []
+  ;(globalThis as any).__cheered = cheered
   const route = load('app/api/xsports/room/route.ts', {
     'next/server': { after: (p: Promise<unknown>) => { waits.push(p) } },
     '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'fixture-user', user_metadata: {} } } }) } }) },
@@ -258,6 +355,7 @@ async function post(content: string, o: { confirmed?: boolean; confirm?: boolean
       roomMissing: () => false, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
     },
     '@/lib/xsports-ais': ais,
+    '@/lib/xsports-cheer': { cheerFace: async () => ({ handle: '晴晴', name: '晴晴', avatar: 'https://x/a.jpg' }), roomCheer: async (_k: unknown, cue: any) => { (globalThis as any).__cheered?.push(cue) } },
     '@/lib/xsports-room-ai': {
       roomPair: async () => ({ pair: ais.CHEAP_AIS, capped: true }),
       roomSpeak: async (_k: unknown, trigger: string, opts: any) => {
@@ -269,11 +367,11 @@ async function post(content: string, o: { confirmed?: boolean; confirm?: boolean
     },
   })
   const res: Response = await route.POST(new Request('http://fixture.invalid/api/xsports/room', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league: 'mlb', game: 849811, lang: 'zh-Hant', content, confirmName: o.confirm }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league: 'mlb', game: 849811, lang: o.lang ?? 'zh-Hant', content, confirmName: o.confirm }),
   }))
   const body = await res.clone().json().catch(() => null)
   await Promise.all(waits)
-  return { status: res.status, body, spoke, asked, confirmedNow }
+  return { status: res.status, body, spoke, asked, confirmedNow, cheered }
 }
 
 async function roomRoute() {
@@ -294,6 +392,10 @@ async function roomRoute() {
   ok(same.status === 200 && same.confirmedNow.length === 1, 'route: confirming the sign-in name as it is lets the message in')
   const fresh = await post('嗨', { confirmed: false, displayName: null, signin: 'Wei Chen' })
   ok(fresh.status === 409 && fresh.body?.name === 'Wei Chen', 'route: with no saved name the panel starts from the sign-in name')
+  const cheerAsk = await post('@晴晴 今天幫道奇加油！')
+  ok(cheerAsk.status === 200 && cheerAsk.cheered[0]?.trigger === 'user' && cheerAsk.cheered[0]?.asker?.id === 7 && cheerAsk.spoke.length === 0, 'route: @晴晴 in an MLB 繁中 room: she answers it as a reply; no commentator is asked')
+  const cheerEn = await post('@晴晴 hi', { lang: 'en' })
+  ok(cheerEn.status === 200 && cheerEn.cheered.length === 0, 'route: @晴晴 in a room she is not in asks nobody')
   const done = await post('嗨', { confirmed: true })
   ok(done.status === 200 && done.confirmedNow.length === 0, 'route: a confirmed name is not asked again')
 }
@@ -318,6 +420,7 @@ async function get(query: string, stored: number) {
       addRoomMessage: async () => null, confirmName: async () => {}, member: async () => null, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
     },
     '@/lib/xsports-ais': ais,
+    '@/lib/xsports-cheer': { cheerFace: async () => ({ handle: '晴晴', name: '晴晴', avatar: 'https://x/a.jpg' }), roomCheer: async (_k: unknown, cue: any) => { (globalThis as any).__cheered?.push(cue) } },
     '@/lib/xsports-room-ai': { roomSpeak: async () => {}, roomPair: async () => ({ pair: ais.CHEAP_AIS, capped: true }) },
   })
   const res: Response = await route.GET(new Request(`http://fixture.invalid/api/xsports/room?league=mlb&game=849811&lang=zh-Hant${query}`))
@@ -328,6 +431,7 @@ async function roomPages() {
   const newest = await get('', 200)
   ok(newest.status === 200 && newest.body.messages.length === 80 && newest.body.messages[0].id === 121 && newest.body.more === true && newest.calls[0].before === undefined, 'GET: the newest 80, oldest first, and more before them')
   ok(newest.body.ais?.map((a: any) => a.handle).join() === 'Luna,Qwen', "GET: the newest page names the room's two commentators (the @ list)")
+  ok(newest.body.cheer?.handle === '晴晴' && newest.body.cheer?.avatar === 'https://x/a.jpg', "GET: an MLB 繁中 room names 晴晴 with her photo")
   const back = await get('&before=41', 200)
   ok(back.body.messages.length === 40 && back.body.messages[0].id === 1 && back.body.more === false && back.calls[0].before === 41 && back.body.ais === undefined, 'GET: ?before= reads the page older than that id; the last one says there is no more')
   const bad = await get('&before=1%3Bdrop', 200)
@@ -340,6 +444,7 @@ async function roomPages() {
   await ledger()
   await commentators()
   await topPair()
+  await cheerleader()
   await roomRoute()
   await roomPages()
   console.log(fails ? `${fails} FAILED` : 'all passed')
