@@ -195,6 +195,14 @@ export default function ProfilePage() {
     window.addEventListener('hashchange', go)
     return () => window.removeEventListener('hashchange', go)
   }, [profile])
+  // /profile#face opens the picture, name and ID editor (X體育設定's 修改名字,
+  // Oct 14), once the profile has rendered.
+  useEffect(() => {
+    const go = () => { if (window.location.hash === '#face' && profile) setEditingFace(true) }
+    go()
+    window.addEventListener('hashchange', go)
+    return () => window.removeEventListener('hashchange', go)
+  }, [profile])
   const [tab,         setTab]         = useState<Tab>('duels')
   // X先知's links to its settings (今日運勢's birth details, the personality
   // type) land on www's account page as /profile#xtell-…: open its tab,
@@ -887,7 +895,11 @@ export default function ProfilePage() {
                     user={user}
                     current={{ name: profile.display_name, photo: profile.avatar_url }}
                     handleInfo={handleInfo}
-                    onClose={() => setEditingFace(false)}
+                    onClose={() => {
+                      setEditingFace(false)
+                      // Closed: a reload must not open it again.
+                      if (window.location.hash === '#face') history.replaceState(null, '', window.location.pathname + window.location.search)
+                    }}
                     onSaved={face => setProfile(prev => prev && { ...prev, display_name: face.name, avatar_url: face.photo })}
                     onHandle={setHandleInfo}
                   />

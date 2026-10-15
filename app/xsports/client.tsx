@@ -24,6 +24,8 @@ import { HOUSE_AIS } from '../../lib/xsports-ais'
 import OddsChart from './OddsChart'
 import { useHidden, personKey } from './hidden'
 import { createPortal } from 'react-dom'
+import type { User } from '@supabase/supabase-js'
+import { useFace } from '../../lib/use-face'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import { teamChip } from '../../lib/mlb-colors'
@@ -292,12 +294,29 @@ function SportsBar({ c, current, onPick, onBack }: { c: Copy; current: League | 
  *  its colours. */
 function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
   const hide = useHidden()
+  // The name strangers see in the chats is the account's website name
+  // (profiles.display_name, lib/use-face): shown here, changed on the account
+  // page (owner, Oct 14: "mention it's sync with profile display name").
+  const [me, setMe] = useState<User | null>(null)
+  useEffect(() => { sb().auth.getUser().then(({ data }) => setMe(data.user ?? null)).catch(() => {}) }, [])
+  const face = useFace(me)
   const people = Object.entries(hide.state.people).sort((a, b) => b[1].at - a[1].at)
   const ais = HOUSE_AIS.filter(a => a.handle in hide.state.ais)
   const aiOn = hide.state.allAi === null
   return createPortal(
     <div className="xs xs-portal">
       <Dialog title={c.settingsTitle} onClose={onClose} actions={<button className="xs-send" onClick={onClose}>{c.closeLabel}</button>}>
+        {me ? (
+          <>
+            <h3 className="xs-set-h first">{c.yourName}</h3>
+            <div className="xs-set-me">
+              {face.photo ? <img className="face" src={face.photo} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{((face.name ?? '').trim()[0] ?? '?').toUpperCase()}</span>}
+              <b className="nm">{face.name ?? ''}</b>
+              <a className="xs-unhide" href="/profile#face">{c.editName}</a>
+            </div>
+            <p className="xs-set-note sync">{c.nameSync}</p>
+          </>
+        ) : null}
         <div className="xs-set-row">
           <div className="txt"><b>{c.showAi}</b><small>{c.showAiHint}</small></div>
           <button type="button" role="switch" aria-checked={aiOn} aria-label={c.showAi} className="xs-switch" onClick={() => hide.setAllAi(aiOn)} data-autofocus><i /></button>

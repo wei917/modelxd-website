@@ -87,6 +87,9 @@ export interface Copy {
   /** XSports settings (the top bar's gear) and hiding people in the chats. */
   settings: string
   settingsTitle: string
+  yourName: string
+  editName: string
+  nameSync: string
   showAi: string
   showAiHint: string
   hiddenList: string
@@ -281,6 +284,9 @@ const en: Copy = {
   leaguesNav: 'Leagues',
   settings: 'Settings',
   settingsTitle: 'XSports settings',
+  yourName: 'Your name',
+  editName: 'Change name',
+  nameSync: 'Your name here is your profile\'s display name: change it once and it changes everywhere (messages already sent keep the old one).',
   showAi: 'Show the AI commentators',
   showAiHint: 'Off: no AI commentator messages in any chat room.',
   hiddenList: 'Hidden',
@@ -465,6 +471,9 @@ const zhHant: Copy = {
   leaguesNav: '聯盟',
   settings: '設定',
   settingsTitle: 'X體育設定',
+  yourName: '你的名字',
+  editName: '修改名字',
+  nameSync: '這就是你個人頁的網站名稱，兩邊同步：改一次，所有地方都會用新名字（已發的訊息維持原本的名字）。',
   showAi: '顯示 AI 球評',
   showAiHint: '關掉後，每個聊天室都看不到 AI 球評的留言。',
   hiddenList: '隱藏名單',
@@ -649,6 +658,9 @@ const zhHans: Copy = {
   leaguesNav: '联盟',
   settings: '设置',
   settingsTitle: 'X体育设置',
+  yourName: '你的名字',
+  editName: '修改名字',
+  nameSync: '这就是你个人页的网站名称，两边同步：改一次，所有地方都会用新名字（已发的消息保持原来的名字）。',
   showAi: '显示 AI 球评',
   showAiHint: '关掉后，每个聊天室都看不到 AI 球评的留言。',
   hiddenList: '隐藏名单',
@@ -833,6 +845,9 @@ const ja: Copy = {
   leaguesNav: 'リーグ',
   settings: '設定',
   settingsTitle: 'Xスポーツの設定',
+  yourName: 'あなたの名前',
+  editName: '名前を変更',
+  nameSync: 'プロフィールのサイト名と同じで、連動しています。一度変えればどこでも新しい名前になります（送信済みのメッセージは元の名前のまま）。',
   showAi: 'AI解説を表示',
   showAiHint: 'オフにすると、どのチャットでもAI解説のコメントが表示されません。',
   hiddenList: '非表示リスト',
@@ -1017,6 +1032,9 @@ const ko: Copy = {
   leaguesNav: '리그',
   settings: '설정',
   settingsTitle: 'X스포츠 설정',
+  yourName: '내 이름',
+  editName: '이름 바꾸기',
+  nameSync: '프로필의 사이트 이름과 같고 함께 바뀌어요. 한 번 바꾸면 모든 곳에서 새 이름이 쓰여요(이미 보낸 메시지는 원래 이름으로 남아요).',
   showAi: 'AI 해설 보기',
   showAiHint: '끄면 모든 채팅방에서 AI 해설 메시지가 보이지 않아요.',
   hiddenList: '숨긴 사람',
