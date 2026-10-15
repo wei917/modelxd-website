@@ -401,6 +401,8 @@
 .xs-msg.ai.cheer { grid-template-columns: 36px minmax(0, 1fr); border-color: #f7cddc; background: #fff3f7; }
 .xs-msg.ai.cheer .n { color: #c2185b; }
 .xs-msg .tag { padding: 1px 8px; border-radius: 999px; background: #c2185b; color: #fff; font-size: 11px; font-weight: 700; line-height: 1.6; }
+.xs-msg .media { display: block; width: 180px; max-width: 100%; aspect-ratio: 2 / 3; margin-top: 8px; border-radius: 12px; overflow: hidden; background: #f6e4ec; object-fit: cover; }
+.xs-msg a.media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .xs-men { color: #2f6fb3; }
 .xs-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0 6px; font-size: 12px; font-weight: 700; color: var(--xs-ink-3); }
 .xs-sep::before, .xs-sep::after { content: ''; flex: 1; height: 1px; background: var(--xs-line); }

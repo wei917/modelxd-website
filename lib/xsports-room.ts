@@ -32,15 +32,28 @@ export interface RoomMessage {
   model_name: string | null
   reply_to: number | null
   created_at: string
+  /** A picture or a short clip with the words (supabase/136; only 晴晴's
+   *  reviewed set, lib/xsports-cheer-media). */
+  media_url?: string | null
+  media_kind?: 'image' | 'video' | null
 }
 
-const PUBLIC_COLS = 'id, kind, author_name, author_handle, author_avatar, content, model_name, reply_to, created_at'
-// Until migration 132 adds author_handle, rooms read and write without it
-// (asking again every 5 minutes, so running it needs no restart).
-let noHandlesSince = 0
+const PUBLIC_COLS = 'id, kind, author_name, author_handle, author_avatar, content, model_name, reply_to, created_at, media_url, media_kind'
+// Until migration 132 adds author_handle (136: media_url, media_kind), rooms
+// read and write without it (asking again every 5 minutes, so running it
+// needs no restart).
+let noHandlesSince = 0, noMediaSince = 0
 const handles = () => Date.now() - noHandlesSince > 5 * 60_000
-const cols = () => (handles() ? PUBLIC_COLS : PUBLIC_COLS.replace(' author_handle,', ''))
-const noHandleColumn = (e: any) => handles() && !!e && (e.code === '42703' || e.code === 'PGRST204' || /author_handle/.test(String(e.message ?? '')))
+export const roomMedia = () => Date.now() - noMediaSince > 5 * 60_000
+const cols = () => {
+  let c = PUBLIC_COLS
+  if (!handles()) c = c.replace(' author_handle,', '')
+  if (!roomMedia()) c = c.replace(', media_url, media_kind', '')
+  return c
+}
+const missing = (e: any, col: RegExp) => !!e && (e.code === '42703' || e.code === 'PGRST204') && col.test(String(e.message ?? ''))
+const noHandleColumn = (e: any) => handles() && missing(e, /author_handle/)
+const noMediaColumn = (e: any) => roomMedia() && missing(e, /media_(url|kind)/)
 export const REPORTS_TO_HIDE = 3
 export const MESSAGE_MAX = 500
 
@@ -57,16 +70,19 @@ export async function recentMessages(k: RoomKey, limit = 80, before?: number): P
   if (before) q = q.lt('id', before)
   const { data, error } = await q.order('id', { ascending: false }).limit(limit)
   if (noHandleColumn(error)) { noHandlesSince = Date.now(); return recentMessages(k, limit, before) }
+  if (noMediaColumn(error)) { noMediaSince = Date.now(); return recentMessages(k, limit, before) }
   if (error) throw Object.assign(new Error(error.message), { code: error.code })
   return ((data ?? []) as unknown as RoomMessage[]).reverse()
 }
 
-export async function addRoomMessage(k: RoomKey, m: { kind: 'human' | 'ai'; user_id?: string | null; author_name: string; author_handle?: string | null; author_avatar?: string | null; content: string; model_name?: string | null; reply_to?: number | null }): Promise<RoomMessage> {
-  const { author_handle, ...rest } = m
+export async function addRoomMessage(k: RoomKey, m: { kind: 'human' | 'ai'; user_id?: string | null; author_name: string; author_handle?: string | null; author_avatar?: string | null; content: string; model_name?: string | null; reply_to?: number | null; media_url?: string | null; media_kind?: 'image' | 'video' | null }): Promise<RoomMessage> {
+  const { author_handle, media_url, media_kind, ...rest } = m
   const { data, error } = await xsportsAdmin().from('xsports_room_messages')
-    .insert({ league: k.league, game_id: k.game, lang: k.lang, ...rest, ...(handles() && author_handle ? { author_handle } : {}) })
+    .insert({ league: k.league, game_id: k.game, lang: k.lang, ...rest, ...(handles() && author_handle ? { author_handle } : {}), ...(roomMedia() && media_url && media_kind ? { media_url, media_kind } : {}) })
     .select(cols()).single()
   if (noHandleColumn(error)) { noHandlesSince = Date.now(); return addRoomMessage(k, m) }
+  // Before 136 the words still go in, without the picture.
+  if (noMediaColumn(error)) { noMediaSince = Date.now(); return addRoomMessage(k, m) }
   if (error) throw Object.assign(new Error(error.message), { code: error.code })
   return data as unknown as RoomMessage
 }

@@ -1,0 +1,56 @@
+// lib/xsports-cheer-media.ts — 晴晴's pictures and clips for the public rooms
+// (owner, Oct 15: "can she take selfie or someone take photo of her 喊加油? or
+// dancing?" → "and post the photos in the public chat room"). A fixed set,
+// each one looked at before it was added (GPT Image 2 with her portrait as
+// the face reference; HappyHorse 1.1 clips made from those photos), never a
+// picture made on the spot: one made live would reach a public room unseen.
+// The files sit in her character's folder of the public x-characters bucket.
+// Plain data and text: the server picks (lib/xsports-cheer), nothing else.
+
+export type CheerMediaKind = 'image' | 'video'
+
+/** One picture or clip: its file, kind, what it suits, and what it shows
+ *  (told to her, so her words fit it). */
+export interface CheerMedia { file: string; kind: CheerMediaKind; tags: readonly string[]; shows: string }
+
+/** Her folder in x-characters (founder@modelxd.com's, where her character is). */
+export const CHEER_MEDIA_DIR = 'c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer'
+
+export const CHEER_MEDIA: readonly CheerMedia[] = [
+  { file: 'selfie.jpg', kind: 'image', tags: ['selfie'], shows: 'a selfie of you in the stands, making a peace sign' },
+  { file: 'selfie2.jpg', kind: 'image', tags: ['selfie'], shows: 'a selfie of you winking under the night-game lights, a pom-pom by your cheek' },
+  { file: 'ball.jpg', kind: 'image', tags: ['selfie'], shows: 'you holding a baseball by your cheek with a wink' },
+  { file: 'megaphone.jpg', kind: 'image', tags: ['cheer'], shows: 'you leading a chant with a red megaphone' },
+  { file: 'cheer.jpg', kind: 'image', tags: ['cheer'], shows: 'you cheering with both pom-poms up high' },
+  { file: 'point.jpg', kind: 'image', tags: ['cheer'], shows: 'you pointing at the camera: you can do it!' },
+  { file: 'heart.jpg', kind: 'image', tags: ['cheer'], shows: 'you making a big heart with your arms' },
+  { file: 'wave.jpg', kind: 'image', tags: ['hello'], shows: 'you waving hello to the fans' },
+  { file: 'dance.jpg', kind: 'image', tags: ['dance'], shows: 'you mid-dance with the pom-poms, winking' },
+  { file: 'homerun.jpg', kind: 'image', tags: ['homerun'], shows: 'you holding up a 「全壘打！」 sign' },
+  { file: 'win.jpg', kind: 'image', tags: ['win'], shows: 'you jumping for joy in falling confetti' },
+  { file: 'night.jpg', kind: 'image', tags: ['win'], shows: 'you waving to the fans in confetti under the lights' },
+  { file: 'dance-1.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+  { file: 'dance-2.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+  { file: 'dance-3.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+]
+
+/** At most one picture or clip per room every ten minutes. */
+export const MEDIA_GAP_MS = 10 * 60_000
+
+/** What a fan's message asks her to show: a selfie, a dance, or any photo. */
+export function askedMedia(text: string): 'selfie' | 'dance' | 'any' | null {
+  const t = text.normalize('NFKC').toLowerCase()
+  if (/自拍|selfie|自撮り|셀카/.test(t)) return 'selfie'
+  if (/跳舞|跳支舞|跳一段|舞蹈|dance|ダンス|踊って|춤/.test(t)) return 'dance'
+  if (/拍.{0,2}照|照片|相片|來張|来张|photo|picture|\bpics?\b|写真|사진/.test(t)) return 'any'
+  return null
+}
+
+/** The picture for a moment or a request: one with the tag, not among the
+ *  room's recent ones, chosen at random (`rand` for the checks). */
+export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random): CheerMedia | null {
+  const all = CHEER_MEDIA.filter(m => tag === 'any' ? m.kind === 'image' : m.tags.includes(tag))
+  const fresh = all.filter(m => !recent.includes(m.file))
+  const from = fresh.length ? fresh : all
+  return from.length ? from[Math.floor(rand() * from.length)] : null
+}
