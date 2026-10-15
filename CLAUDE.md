@@ -64,12 +64,12 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `135_xsports_ai_spend.sql` written 2026-10-15, NOT RUN yet: the X體育
+  `135_xsports_ai_spend.sql` applied 2026-10-15 by the owner: the X體育
   commentators' spend per Taipei day (`xsports_ai_spend`,
-  `add_xsports_ai_spend()`, service role only). Proven on PGlite (15/15:
-  re-runnable, adds up, stamps the time it crosses the cap, browser roles
-  42501). Until it runs, every room keeps GPT-6 Luna + Qwen 3.8 Flash (the
-  server fails closed). Check after running: header of the file.
+  `add_xsports_ai_spend()`, service role only; proven on PGlite first,
+  15/15). Checked live: 42501 for the publishable key on select and on the
+  rpc (nothing written), the service key reads it, and the rooms then
+  reported their drawn top pairs (849818: GPT-6.1 Sol + Gemini 3.1 Pro).
   `134_xsports_report_clueless.sql` applied 2026-10-14 by the owner: adds
   `clueless` (不懂球) to `xsports_room_reports.reason`. Checked live without
   writing a row: with the service key `clueless` passes the check (23503 on
