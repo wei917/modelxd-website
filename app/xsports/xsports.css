@@ -549,6 +549,15 @@
 .xs-pv-to button svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 /* @ in a box (both chats): who can be named, above the field. */
 .xs-at-box { position: relative; }
+/* Above the chat's lines: 載入更早的訊息, or where the chat began (Oct 14). */
+.xs-older { display: flex; justify-content: center; }
+.xs-older > button, .xs-older > span { margin: 2px 0 12px; }
+.xs-older > button { padding: 6px 14px; border: 1px solid var(--xs-line); border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--xs-ink-2); cursor: pointer; }
+.xs-older > button:hover { background: var(--xs-tint); color: var(--xs-ink); }
+.xs-older > span { font-size: 12px; color: var(--xs-ink-3); }
+/* 回到最新: over the chat's bottom edge, above the box. */
+.xs-newest { position: absolute; right: 6px; bottom: calc(100% + 10px); z-index: 4; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 10px; border: 1px solid var(--xs-line); border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(16, 24, 40, .14); font: inherit; font-size: 13px; font-weight: 700; color: var(--xs-ink); cursor: pointer; }
+.xs-newest svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .xs-at { position: absolute; left: 0; bottom: calc(100% - 6px); z-index: 5; width: min(320px, 100%); max-height: 264px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--xs-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 24, 40, .12); }
 .xs-at li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .xs-at li .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

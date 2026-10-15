@@ -1,5 +1,7 @@
 // app/api/xsports/room/route.ts — a game's live room (supabase/131).
-//   GET  ?league=&game=&lang=   the room's latest visible messages (anyone),
+//   GET  ?league=&game=&lang=[&before=<id>]   80 of the room's visible messages
+//        (the newest, or those older than <id>; more: whether older ones
+//        exist) (anyone),
 //                               and `mine`: the ids of those the caller wrote
 //                               (signed in), so the page can offer 刪除
 //   POST { league, game, lang, content, confirmName? }
@@ -26,6 +28,7 @@ import { addRoomMessage, confirmName, member, ownIds, recentMessages, roomKeyOf,
 import { askedAis } from '@/lib/xsports-ais'
 import { roomSpeak } from '@/lib/xsports-room-ai'
 
+const PAGE = 80
 const fail = (code: string, status: number, extra: object = {}) => Response.json({ error: code, code, ...extra }, { status })
 
 export async function GET(req: Request) {
@@ -33,13 +36,16 @@ export async function GET(req: Request) {
   const k = roomKeyOf(q.get('league'), q.get('game'), q.get('lang'))
   if (!k) return fail('bad_room', 400)
   try {
-    const messages = await recentMessages(k, 80)
+    // A page of 80: the newest, or with ?before=<id> the ones older than it.
+    const b = q.get('before')
+    const before = b && /^\d{1,12}$/.test(b) ? Number(b) : undefined
+    const messages = await recentMessages(k, PAGE, before)
     // Which of them are the caller's (user ids never leave the server).
     let mine: number[] = []
     const sb = await createSupabaseServer()
     const { data: { user } } = await sb.auth.getUser()
     if (user) mine = await ownIds(user.id, messages.filter(m => m.kind === 'human').map(m => m.id)).catch(() => [])
-    return Response.json({ messages, mine })
+    return Response.json({ messages, mine, more: messages.length === PAGE })
   } catch (e: any) {
     if (roomMissing(e)) return fail('room_unavailable', 503)
     console.warn('[xsports/room] read', e?.message ?? e)

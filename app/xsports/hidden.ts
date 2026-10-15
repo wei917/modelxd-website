@@ -30,6 +30,10 @@ const listeners = new Set<() => void>()
 /** A fan's key: the @ID (unique, public), else the name (older messages). */
 export const personKey = (m: { author_handle?: string | null; author_name: string }) => (m.author_handle ? `@${m.author_handle}` : `name:${m.author_name}`)
 
+/** Hidden by the list: a fan on it, or the commentators (all, or this one). */
+export const isHidden = (s: HiddenState, m: { kind: string; author_handle?: string | null; author_name: string }, aiHandle: string | null) =>
+  m.kind === 'ai' ? s.allAi !== null || (!!aiHandle && aiHandle in s.ais) : personKey(m) in s.people
+
 /** The list as stored, without what has lapsed. */
 function read(): HiddenState {
   try {
@@ -66,9 +70,8 @@ export function useHidden() {
   const s = useSyncExternalStore(subscribe, snapshot, () => EMPTY)
   return {
     state: s,
-    /** Hidden here: a fan on the list, or the commentators (all, or this one). */
-    hides: (m: { kind: string; author_handle?: string | null; author_name: string }, aiHandle: string | null) =>
-      m.kind === 'ai' ? s.allAi !== null || (!!aiHandle && aiHandle in s.ais) : personKey(m) in s.people,
+    /** Hidden here (isHidden). */
+    hides: (m: { kind: string; author_handle?: string | null; author_name: string }, aiHandle: string | null) => isHidden(s, m, aiHandle),
     hidePerson: (m: { author_handle?: string | null; author_name: string; author_avatar?: string | null }) =>
       write({ ...snapshot(), people: { ...snapshot().people, [personKey(m)]: { name: m.author_name, handle: m.author_handle ?? null, avatar: m.author_avatar ?? null, at: Date.now() } } }),
     showPerson: (key: string) => {

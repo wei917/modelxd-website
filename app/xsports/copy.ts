@@ -173,6 +173,11 @@ export interface Copy {
   roomHint: (handles: string[]) => string
   roomEmpty: string
   roomDown: string
+  /** The chat, going back (Oct 14: "all the way back") and to the newest. */
+  loadOlder: string
+  chatStart: string
+  olderCap: (n: string) => string
+  toNewest: string
   signInChat: string
   nameTitle: string
   nameHelp: string
@@ -366,6 +371,10 @@ const en: Copy = {
   roomHint: h => `Type @AI to ask whichever commentator is up, or ${h.map(x => `@${x}`).join(' or ')} to ask that one.`,
   roomEmpty: 'No one has said anything yet. Say hi.',
   roomDown: 'The live chat is not open yet.',
+  loadOlder: 'Load earlier messages',
+  chatStart: 'This is where the chat began',
+  olderCap: n => `Showing the latest ${n} messages`,
+  toNewest: 'Newest',
   signInChat: 'Sign in to join the chat',
   nameTitle: 'Your name in live chats',
   nameHelp: 'Everyone in the room sees your name, @ID and picture. The name does not have to be your real one.',
@@ -553,6 +562,10 @@ const zhHant: Copy = {
   roomHint: h => `輸入 @AI 可以問輪到的球評，或用 ${h.map(x => `@${x}`).join('、')} 指定一位。`,
   roomEmpty: '還沒有人說話，打個招呼吧。',
   roomDown: '聊天室還沒開放。',
+  loadOlder: '載入更早的訊息',
+  chatStart: '聊天從這裡開始',
+  olderCap: n => `只顯示最近 ${n} 則訊息`,
+  toNewest: '回到最新',
   signInChat: '登入後加入聊天',
   nameTitle: '你在聊天室的名字',
   nameHelp: '聊天室裡的人都會看到你的名字、@ID 和照片。名字不必是本名。',
@@ -740,6 +753,10 @@ const zhHans: Copy = {
   roomHint: h => `输入 @AI 可以问轮到的球评，或用 ${h.map(x => `@${x}`).join('、')} 指定一位。`,
   roomEmpty: '还没有人说话，打个招呼吧。',
   roomDown: '聊天室还没开放。',
+  loadOlder: '加载更早的消息',
+  chatStart: '聊天从这里开始',
+  olderCap: n => `只显示最近 ${n} 条消息`,
+  toNewest: '回到最新',
   signInChat: '登录后加入聊天',
   nameTitle: '你在聊天室的名字',
   nameHelp: '聊天室里的人都会看到你的名字、@ID 和照片。名字不必是真名。',
@@ -927,6 +944,10 @@ const ja: Copy = {
   roomHint: h => `@AI と書くと次の番の解説に、${h.map(x => `@${x}`).join('・')} と書くとその解説に質問できます。`,
   roomEmpty: 'まだ誰も話していません。あいさつしてみましょう。',
   roomDown: '実況チャットはまだ開いていません。',
+  loadOlder: '前のメッセージを読み込む',
+  chatStart: 'ここからチャットが始まりました',
+  olderCap: n => `最新の${n}件まで表示しています`,
+  toNewest: '最新へ',
   signInChat: 'ログインしてチャットに参加',
   nameTitle: '実況チャットでの名前',
   nameHelp: '名前・@ID・写真は部屋の全員に見えます。名前は本名でなくてかまいません。',
@@ -1114,6 +1135,10 @@ const ko: Copy = {
   roomHint: h => `@AI 라고 쓰면 차례인 해설이, ${h.map(x => `@${x}`).join('·')} 라고 쓰면 그 해설이 답해요.`,
   roomEmpty: '아직 아무도 말하지 않았어요. 인사해 보세요.',
   roomDown: '라이브 채팅이 아직 열리지 않았습니다.',
+  loadOlder: '이전 메시지 불러오기',
+  chatStart: '여기서 채팅이 시작됐어요',
+  olderCap: n => `최근 메시지 ${n}개까지 표시합니다`,
+  toNewest: '최신으로',
   signInChat: '로그인하고 채팅 참여',
   nameTitle: '라이브 채팅에서 쓸 이름',
   nameHelp: '방에 있는 모두가 이름, @ID, 사진을 봅니다. 이름은 실명이 아니어도 됩니다.',

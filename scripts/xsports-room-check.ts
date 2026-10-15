@@ -216,10 +216,46 @@ async function roomRoute() {
   ok(done.status === 200 && done.confirmedNow.length === 0, 'route: a confirmed name is not asked again')
 }
 
+// ── The room's GET: a page at a time, back to the first (Oct 14) ──────────
+async function get(query: string, stored: number) {
+  const calls: { limit: number; before?: number }[] = []
+  const route = load('app/api/xsports/room/route.ts', {
+    'next/server': { after: () => {} },
+    '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) },
+    '@/lib/moderation': { moderate: async () => 'ok' },
+    '@/lib/user-face': { userName: () => 'Fixture', userPhoto: () => null },
+    '@/lib/profile-handle': { ensureHandle: async () => ({ handle: 'aming', nextChangeAt: null }) },
+    '@/lib/xsports-store': { xsportsAdmin: () => ({}) },
+    '@/lib/xsports-room': {
+      // Messages 1..stored; the real one's order: oldest first.
+      recentMessages: async (_k: unknown, limit: number, before?: number) => {
+        calls.push({ limit, before })
+        return Array.from({ length: stored }, (_, i) => i + 1).filter(id => !before || id < before).slice(-limit).map(id => ({ id, kind: 'human' }))
+      },
+      ownIds: async () => [], roomKeyOf: (league: string, game: unknown, lang: string) => ({ league, game: String(game), lang }), roomMissing: () => false,
+      addRoomMessage: async () => null, confirmName: async () => {}, member: async () => null, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
+    },
+    '@/lib/xsports-ais': ais,
+    '@/lib/xsports-room-ai': { roomSpeak: async () => {} },
+  })
+  const res: Response = await route.GET(new Request(`http://fixture.invalid/api/xsports/room?league=mlb&game=849811&lang=zh-Hant${query}`))
+  return { status: res.status, body: await res.json(), calls }
+}
+
+async function roomPages() {
+  const newest = await get('', 200)
+  ok(newest.status === 200 && newest.body.messages.length === 80 && newest.body.messages[0].id === 121 && newest.body.more === true && newest.calls[0].before === undefined, 'GET: the newest 80, oldest first, and more before them')
+  const back = await get('&before=41', 200)
+  ok(back.body.messages.length === 40 && back.body.messages[0].id === 1 && back.body.more === false && back.calls[0].before === 41, 'GET: ?before= reads the page older than that id; the last one says there is no more')
+  const bad = await get('&before=1%3Bdrop', 200)
+  ok(bad.calls[0].before === undefined && bad.body.messages.length === 80, 'GET: a before that is not an id is ignored')
+}
+
 ;(async () => {
   asks()
   await commentators()
   await roomRoute()
+  await roomPages()
   console.log(fails ? `${fails} FAILED` : 'all passed')
   process.exitCode = fails ? 1 : 0
 })().catch(e => { console.error(e); process.exitCode = 1 })
