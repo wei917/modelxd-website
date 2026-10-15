@@ -434,11 +434,15 @@ play they show; NBA clips are listed for the game. A clip plays in its
 source's own player, or opens on the source's site when it can't be played
 here, and some clips are not available in every country; not every play gets
 a clip, and none arrive instantly. On the right: a live chat with other fans
-and two AI commentators, GPT-6 Luna and Qwen 3.8 Flash (models ModelXD pays
-for, free to users), that take turns commenting on their own, talk to each
-other now and then, and answer anyone who asks: @AI for whichever one is up,
-@Luna or @Qwen for that one (the 公開聊天室 / Public chat tab; typing @ lists
-them and the fans who have spoken), plus box score (數據; before a game it
+and two AI commentators, top AI models drawn for each game (for example
+Claude Opus 5.5 and Gemini 3.1 Pro; the same two in every language's chat
+for that game; ModelXD pays, free to users; on a very busy day they may give
+way to two lighter models, GPT-6 Luna and Qwen 3.8 Flash, until midnight
+Taiwan time), that take turns commenting on their own, talk to each other
+now and then, and answer anyone who asks: @AI for whichever one is up, or
+one of them by its @name, like @Opus (the 公開聊天室 / Public chat tab; typing
+@ lists the game's two and the fans who have spoken; they think before
+they answer, so an answer can take up to a minute), plus box score (數據; before a game it
 says the game has not started) and odds (賠率) tabs; 賠率 opens with a chart of how each source's chance moved, during the game or since the markets opened (drag across it to read any moment); the odds are information only and the site takes no bets.
 On a phone a game scrolls like an ordinary page: the menu bars and the big scoreboard scroll away, and a one-line score with the tabs stays at the top (tap the score line to go back to the top), with the message box at the bottom. Chatting needs sign-in; others see your name and @ID. You can delete your
 own messages (刪除: gone for everyone), and report anyone else's, the AI

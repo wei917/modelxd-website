@@ -168,8 +168,10 @@ export interface RoomState { ai_since: string | null; ai_last_at: string | null;
 
 /** The room's AI may speak now: whoever claims the lock (one UPDATE with
  *  the condition in it, so two open pages cannot both win) does the
- *  speaking; the lock lapses by itself if that request dies. */
-export async function claimSpeaker(k: RoomKey, holdSeconds = 60): Promise<RoomState | null> {
+ *  speaking; the lock lapses by itself if that request dies. Held 150 s:
+ *  a top model at its middle thinking, searching for a fan, can take a
+ *  minute and more (Oct 15). */
+export async function claimSpeaker(k: RoomKey, holdSeconds = 150): Promise<RoomState | null> {
   const admin = xsportsAdmin()
   await admin.from('xsports_rooms').upsert({ league: k.league, game_id: k.game, lang: k.lang }, { onConflict: 'league,game_id,lang', ignoreDuplicates: true })
   const now = new Date().toISOString()

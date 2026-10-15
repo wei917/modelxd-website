@@ -20,7 +20,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import { mlbToday, type GameCard, type GameState, type PlayEvent, type League, type TeamLine } from '../../lib/mlb'
 import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
-import { HOUSE_AIS } from '../../lib/xsports-ais'
+import { ALL_AIS, aiByName, gameDraw, type Commentator } from '../../lib/xsports-ais'
 import OddsChart from './OddsChart'
 import { useHidden, personKey, isHidden } from './hidden'
 import { useRoomLang } from './room-lang'
@@ -304,7 +304,7 @@ function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
   useEffect(() => { sb().auth.getUser().then(({ data }) => setMe(data.user ?? null)).catch(() => {}) }, [])
   const face = useFace(me)
   const people = Object.entries(hide.state.people).sort((a, b) => b[1].at - a[1].at)
-  const ais = HOUSE_AIS.filter(a => a.handle in hide.state.ais)
+  const ais = AI_HANDLES.filter(h => h.handle in hide.state.ais)
   const aiOn = hide.state.allAi === null
   return createPortal(
     <div className="xs xs-portal">
@@ -335,11 +335,11 @@ function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
         <h3 className="xs-set-h">{c.hiddenList}</h3>
         {people.length || ais.length ? (
           <ul className="xs-set-list">
-            {ais.map(a => (
-              <li key={a.handle}>
-                <ProviderLogo provider={a.provider} model={a.model_name} size={28} />
-                <span className="nm"><b>{a.name}</b><small>{c.aiCommentator} · @{a.handle}</small></span>
-                <button type="button" className="xs-unhide" onClick={() => hide.showAi(a.handle)}>{c.unhide}</button>
+            {ais.map(h => (
+              <li key={h.handle}>
+                <ProviderLogo provider={h.ais[0].provider} model={h.ais[0].model_name} size={28} />
+                <span className="nm"><b>{h.ais.map(a => a.name).join(' / ')}</b><small>{c.aiCommentator} · @{h.handle}</small></span>
+                <button type="button" className="xs-unhide" onClick={() => hide.showAi(h.handle)}>{c.unhide}</button>
               </li>
             ))}
             {people.map(([k, p]) => (
@@ -1078,7 +1078,16 @@ function useAt(draft: string, setDraft: (v: string) => void, inputRef: React.Ref
 }
 
 /** A commentator's @handle, from the model name its messages carry. */
-const aiHandle = (m: { model_name: string | null }): string | null => HOUSE_AIS.find(a => a.name === m.model_name)?.handle ?? null
+const aiHandle = (m: { model_name: string | null }): string | null => aiByName(m.model_name)?.handle ?? null
+
+/** Each commentator handle once, with every model that has carried it (a
+ *  hidden @Qwen hides Qwen3.8 Max and Qwen 3.8 Flash alike). */
+const AI_HANDLES = ALL_AIS.reduce<{ handle: string; ais: Commentator[] }[]>((out, a) => {
+  const h = out.find(x => x.handle === a.handle)
+  if (h) h.ais.push(a)
+  else out.push({ handle: a.handle, ais: [a] })
+  return out
+}, [])
 
 /** Phones (the site's top bar, up to 760px) scroll a game as one page;
  *  wider screens scroll its panes (owner, Oct 14: "is this scrolling too
@@ -1391,6 +1400,9 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   // once a read has reached it (Infinity: the room was empty then), a page
   // on its way, the last one failed, and whether the reader went back at all.
   const [startId, setStartId] = useState<number | null>(null)
+  // The room's two commentators now (the @ list): the game's draw until
+  // the room says (the day may have reached its cap, or a model be off).
+  const [ais, setAis] = useState<Commentator[]>(() => gameDraw(league, String(pk)).slice(0, 2))
   const [olderBusy, setOlderBusy] = useState(false)
   const [olderFailed, setOlderFailed] = useState(false)
   const [pagedBack, setPagedBack] = useState(false)
@@ -1427,6 +1439,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
       if (own.length) setMine(prev => new Set([...prev, ...own]))
       setLoaded(true)
       if (!more) setStartId(rows[0]?.id ?? Infinity)
+      if (Array.isArray(j.ais) && j.ais.length) setAis(j.ais as Commentator[])
       setMsgs(prev => {
         const have = new Set(prev.map(m => m.id))
         const hole = more && rows.length > 0 && prev.length > 0 && !rows.some(m => have.has(m.id))
@@ -1734,7 +1747,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   const aiShown = hide.state.allAi === null
   const atOptions: AtOption[] = [
     ...(aiShown ? [{ key: 'ai', label: c.aiAny, insert: 'AI', hint: '@AI' }] : []),
-    ...HOUSE_AIS.filter(a => aiShown && !(a.handle in hide.state.ais)).map(a => ({ key: `ai:${a.handle}`, label: a.name, insert: a.handle, hint: `@${a.handle}`, logo: { provider: a.provider, model: a.model_name } })),
+    ...ais.filter(a => aiShown && !(a.handle in hide.state.ais)).map(a => ({ key: `ai:${a.handle}`, label: a.name, insert: a.handle, hint: `@${a.handle}`, logo: { provider: a.provider, model: a.model_name } })),
   ]
   const yours = new Set(msgs.filter(m => mine.has(m.id)).map(m => m.author_handle))
   const offered = new Set(atOptions.map(o => o.insert))
@@ -1779,7 +1792,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
           </div>
           {down ? <p className="xs-chat-empty">{c.roomDown}</p>
             : rows.length ? rows
-            : loaded ? <div className="xs-chat-empty"><p>{c.roomEmpty}</p><small>{c.roomHint(HOUSE_AIS.map(a => a.handle))}</small></div>
+            : loaded ? <div className="xs-chat-empty"><p>{c.roomEmpty}</p><small>{c.roomHint(ais.map(a => a.handle))}</small></div>
             : <p className="xs-chat-empty">{c.loading}</p>}
         </div>
       </div>
@@ -1796,7 +1809,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
         return (
           <Dialog title={ai ? (card.model_name ?? card.author_name) : card.author_name} onClose={close} actions={<button className="xs-link" onClick={close}>{c.closeLabel}</button>}>
             <div className="xs-card-who">
-              {ai ? (() => { const a = HOUSE_AIS.find(x => x.handle === h); return a ? <ProviderLogo provider={a.provider} model={a.model_name} size={36} /> : null })()
+              {ai ? (() => { const a = aiByName(card.model_name); return a ? <ProviderLogo provider={a.provider} model={a.model_name} size={36} /> : null })()
                 : face ? <img className="face" src={face} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{(card.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
               <span>{ai ? `${c.aiCommentator}${h ? ` · @${h}` : ''}` : card.author_handle ? `@${card.author_handle}` : ''}</span>
             </div>

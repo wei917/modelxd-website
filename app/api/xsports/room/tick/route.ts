@@ -6,7 +6,8 @@
 // script must not be able to make it talk in every room.
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+// A top model at its middle thinking can take a minute and more (Oct 15).
+export const maxDuration = 180
 
 import { after } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'

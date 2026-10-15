@@ -1,22 +1,24 @@
 // app/api/xsports/room/route.ts — a game's live room (supabase/131).
 //   GET  ?league=&game=&lang=[&before=<id>]   80 of the room's visible messages
 //        (the newest, or those older than <id>; more: whether older ones
-//        exist) (anyone),
-//                               and `mine`: the ids of those the caller wrote
-//                               (signed in), so the page can offer 刪除
+//        exist) (anyone), and `mine`: the ids of those the caller wrote
+//        (signed in), so the page can offer 刪除; with the newest page,
+//        `ais`: the room's two commentators now (its @ list)
 //   POST { league, game, lang, content, confirmName? }
 //        a fan's message: signed in, name confirmed once (409
 //        name_unconfirmed carries the name, @ID and picture to confirm), not
 //        muted, at most one every 2 s, checked by OpenAI's moderation (a
 //        check that cannot run refuses, like the profile name). The name,
 //        @ID (supabase/132) and picture are copied in. "@AI" asks the
-//        room's commentators (whoever's turn it is), "@Luna" / "@Qwen" one
-//        of them (lib/xsports-ais), each named one in turn.
+//        room's commentators (whoever's turn it is), "@Opus", "@Gemini"...
+//        one of the room's two (lib/xsports-ais), each named one in turn.
 
 export const runtime = 'nodejs'
 // A fan naming both commentators, each perhaps asking the other: up to four
-// answers one after another in `after`, each waiting for the floor.
-export const maxDuration = 120
+// answers one after another in `after`, each waiting for the floor; a top
+// model at its middle thinking, searching, can take a minute and more each
+// (Oct 15).
+export const maxDuration = 300
 
 import { after } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
@@ -26,7 +28,7 @@ import { ensureHandle } from '@/lib/profile-handle'
 import { xsportsAdmin } from '@/lib/xsports-store'
 import { addRoomMessage, confirmName, member, ownIds, recentMessages, roomKeyOf, roomMissing, secondsSinceLast, MESSAGE_MAX } from '@/lib/xsports-room'
 import { askedAis } from '@/lib/xsports-ais'
-import { roomSpeak } from '@/lib/xsports-room-ai'
+import { roomPair, roomSpeak } from '@/lib/xsports-room-ai'
 
 const PAGE = 80
 const fail = (code: string, status: number, extra: object = {}) => Response.json({ error: code, code, ...extra }, { status })
@@ -45,7 +47,9 @@ export async function GET(req: Request) {
     const sb = await createSupabaseServer()
     const { data: { user } } = await sb.auth.getUser()
     if (user) mine = await ownIds(user.id, messages.filter(m => m.kind === 'human').map(m => m.id)).catch(() => [])
-    return Response.json({ messages, mine, more: messages.length === PAGE })
+    // The room's two commentators now, with the newest page (the @ list).
+    const ais = before ? undefined : (await roomPair(k).catch(() => null))?.pair
+    return Response.json({ messages, mine, more: messages.length === PAGE, ais })
   } catch (e: any) {
     if (roomMissing(e)) return fail('room_unavailable', 503)
     console.warn('[xsports/room] read', e?.message ?? e)
@@ -95,9 +99,9 @@ export async function POST(req: Request) {
   if (verdict === 'unavailable') return fail('check_unavailable', 503)
 
   const message = await addRoomMessage(k, { kind: 'human', user_id: user.id, author_name: name, author_handle: id?.handle ?? null, author_avatar: avatar, content })
-  // A fan asked the commentators: whoever's turn it is (@AI), or each one
-  // named, in order, when it can take the floor.
-  const asked = askedAis(content)
+  // A fan asked the commentators: whoever's turn it is (@AI), or each of
+  // the room's two that is named, in order, when it can take the floor.
+  const asked = /[@＠]/.test(content) ? askedAis(content, (await roomPair(k)).pair) : []
   if (asked.length) {
     after((async () => {
       for (const who of asked) await roomSpeak(k, 'user', { asker: { name, text: content, id: message.id }, wait: true, who: who === 'any' ? undefined : who })
