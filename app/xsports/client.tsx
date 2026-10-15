@@ -976,6 +976,36 @@ function useAt(draft: string, setDraft: (v: string) => void, inputRef: React.Ref
 /** A commentator's @handle, from the model name its messages carry. */
 const aiHandle = (m: { model_name: string | null }): string | null => HOUSE_AIS.find(a => a.name === m.model_name)?.handle ?? null
 
+/** A chat keeps to its newest line while the reader is at the bottom, and
+ *  lets go the moment they scroll up: Oct 14, on a phone, pulling back a
+ *  little unfolded the header, the box shrank under the reader, and the old
+ *  rule (anywhere within 80px of the bottom holds) snapped them back to the
+ *  last message ("why the dialog keeps jump back to my previous message?").
+ *  Scrolling up now holds only at the very bottom; coming back down near
+ *  it holds again. Plays that arrive after the messages, a late font, a
+ *  hidden tab coming back or the fold all change the height without a
+ *  scroll, so the box's size is watched rather than its line count. */
+function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
+  const pinned = useRef(true)
+  useEffect(() => {
+    const el = ref.current
+    const inner = el?.firstElementChild
+    if (!el || !inner) return
+    let last = el.scrollTop
+    const onScroll = () => {
+      const gap = el.scrollHeight - el.scrollTop - el.clientHeight
+      pinned.current = el.scrollTop < last - 1 ? gap < 2 : gap < 80
+      last = el.scrollTop
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(() => { if (pinned.current) { el.scrollTop = el.scrollHeight; last = el.scrollTop } })
+    ro.observe(inner)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
+  }, [ref])
+  return pinned
+}
+
 /** A fan's message with its mentions marked: @AI and @someone's_id. */
 function withMentions(text: string): React.ReactNode {
   const out: React.ReactNode[] = []
@@ -1087,21 +1117,8 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   lines.sort((x, y) => x.t - y.t)
 
   // Keep to the newest line while the reader is at the bottom; leave them be
-  // once they scroll up to read. Plays that arrive after the messages, a
-  // late font or a hidden tab coming back all change the height without a
-  // scroll, so the thread's size is watched rather than its line count.
-  const pinned = useRef(true)
-  useEffect(() => {
-    const el = boxRef.current
-    const inner = el?.firstElementChild
-    if (!el || !inner) return
-    const onScroll = () => { pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(() => { if (pinned.current) el.scrollTop = el.scrollHeight })
-    ro.observe(inner)
-    ro.observe(el)
-    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
-  }, [])
+  // once they scroll up to read (useStickToBottom).
+  const pinned = useStickToBottom(boxRef)
 
   const post = async (text: string, confirmName = false) => {
     setSending(true)
@@ -1702,18 +1719,7 @@ function PrivateChat({ league, pk, lang, c, g, signedIn, onSignIn }: {
   }, [learn])
 
   // Keep to the newest line while the reader is at the bottom (as the room).
-  const pinned = useRef(true)
-  useEffect(() => {
-    const el = listRef.current
-    const inner = el?.firstElementChild
-    if (!el || !inner) return
-    const onScroll = () => { pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(() => { if (pinned.current) el.scrollTop = el.scrollHeight })
-    ro.observe(inner)
-    ro.observe(el)
-    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect() }
-  }, [])
+  const pinned = useStickToBottom(listRef)
 
   /** The chat this conversation is saved in; created on the first word.
    *  Null when it could not be, or when the conversation was cleared while
