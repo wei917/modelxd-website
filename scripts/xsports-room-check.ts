@@ -244,16 +244,20 @@ async function topPair() {
 
 // ── 晴晴, the room's cheerleader (Oct 15) ─────────────────────────────────
 const T0 = Date.parse('2026-10-15T01:00:00Z')
+const cheerMedia = load('lib/xsports-cheer-media.ts', {})
 const play = (i: number, o: { type?: string; scoring?: boolean; away?: number; home?: number; inning?: number; text?: string } = {}) => ({
   id: String(i), inning: o.inning ?? 1, half: 'top', kind: 'pa', type: o.type ?? 'single', text: o.text ?? `play ${i}`, scoring: !!o.scoring,
   away: o.away ?? 0, home: o.home ?? 0, outs: 1, endsHalf: false, big: !!o.scoring, at: new Date(T0 + i * 60_000).toISOString(),
 })
 const game = (status: string, events: any[]) => ({ league: 'mlb', status, events, away: { name: 'Brewers', runs: events.at(-1)?.away ?? 0 }, home: { name: 'Dodgers', runs: events.at(-1)?.home ?? 0 } })
-function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: number | null; visibility?: string; reply?: Reply; g?: any } = {}) {
+function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: number | null; visibility?: string; reply?: Reply; g?: any; mediaRows?: { media_url: string; created_at: string }[]; media?: boolean } = {}) {
   const calls: { model: string; thinking: string | null; system: string; prompt: string }[] = [], stored: any[] = [], released: any[] = [], spent: number[] = []
   let reads = 0
   const chain = (table: string) => {
-    const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, maybeSingle: async () => {
+    const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, not: () => q,
+      // A list read (her recent pictures) is awaited as it is.
+      then: (ok2: any, no: any) => Promise.resolve({ data: o.mediaRows ?? [], error: null }).then(ok2, no),
+      maybeSingle: async () => {
       if (table === 'x_characters') return { data: { id: 'c1', name: '晴晴', persona: 'PERSONA-晴晴', avatar_path: 'f/a.jpg', model_id: 'm-sonnet', thinking: 'low', visibility: o.visibility ?? 'public' } }
       if (table === 'ai_models') return { data: { id: 'm-sonnet', provider: 'anthropic', model_name: 'claude-sonnet-5', enabled: true, blocked_features: [], output_config: { text: { thinking_levels: ['low', 'medium', 'high'] } } } }
       // roomCheer reads it once, after taking the floor (the tick decided before).
@@ -280,9 +284,11 @@ function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: 
     './xsports-room': {
       addRoomMessage: async (_k: unknown, m: any) => { const msg = { id: 500 + stored.length, ...m }; stored.push(msg); return msg },
       claimSpeaker: async () => ({ ai_since: null }), recentMessages: async () => [], releaseSpeaker: async (_k: unknown, p: any) => { released.push(p) },
+      roomMedia: () => o.media ?? true,
     },
     './xsports-ai-spend': { overCapToday: async () => o.capped ?? false, addSpend: async (usd: number) => { spent.push(usd) } },
     './xsports-ais': ais,
+    './xsports-cheer-media': cheerMedia,
     './xsports-room-ai': { gameFor: async () => o.g ?? game('live', [play(1)]) },
     './provider-errors': { sanitizeProviderError: (s: string) => s },
   })
@@ -332,6 +338,29 @@ async function cheerleader() {
   const f = cheerRoom({ reply: { fail: 'fixture failure' } })
   await f.mod.roomCheer(K2, { trigger: 'first' })
   ok(f.stored.length === 0 && f.mod.cheerResting(K2) === true && f.released.length === 1, 'roomCheer: a failure says nothing and rests the room two minutes')
+  // Her pictures (Oct 15).
+  ok(cheerMedia.askedMedia('@晴晴 自拍一張！') === 'selfie' && cheerMedia.askedMedia('@晴晴 跳舞給我們看') === 'dance' && cheerMedia.askedMedia('@晴晴 拍張照') === 'any' && cheerMedia.askedMedia('@晴晴 鼓舞士氣') === null && cheerMedia.askedMedia('@晴晴 加油') === null, 'askedMedia: a selfie, a dance, any photo; other words ask for none')
+  ok(cheerMedia.pickMedia('selfie', ['selfie.jpg', 'selfie2.jpg'], () => 0).file === 'ball.jpg', 'pickMedia: not one the room saw lately')
+  ok(cheerMedia.pickMedia('any', [], () => 0.99).kind === 'image' && cheerMedia.pickMedia('dance', [], () => 0.99).kind === 'video', 'pickMedia: "any photo" is a photo; a dance may be a clip')
+  const hi = cheerRoom()
+  await hi.mod.roomCheer(K2, { trigger: 'first' })
+  ok(String(hi.stored[0]?.media_url).endsWith('/cheer/wave.jpg') && hi.stored[0]?.media_kind === 'image' && hi.calls[0].prompt.includes('comes with a picture: you waving hello'), 'roomCheer: her first word in a room comes with a hello picture, and she knows what it shows')
+  const sf = cheerRoom({ last: Date.now() - 10_000 })
+  await sf.mod.roomCheer(K2, { trigger: 'user', asker: { name: '阿明', text: '@晴晴 自拍一張！', id: 43 } })
+  ok(['selfie.jpg', 'selfie2.jpg', 'ball.jpg'].some(x => String(sf.stored[0]?.media_url).endsWith('/cheer/' + x)) && sf.stored[0]?.reply_to === 43, 'roomCheer: a fan asks for a selfie and gets one, as a reply')
+  const soon = cheerRoom({ last: Date.now() - 10_000, mediaRows: [{ media_url: 'https://x/cheer/wave.jpg', created_at: new Date(Date.now() - 3 * 60_000).toISOString() }] })
+  await soon.mod.roomCheer(K2, { trigger: 'user', asker: { name: '阿明', text: '@晴晴 跳舞！', id: 44 } })
+  ok(!soon.stored[0]?.media_url && soon.calls[0].prompt.includes('the next one comes a little later'), 'roomCheer: within ten minutes of her last picture, words only, and she says the next comes later')
+  const tie = [play(1, { scoring: true, away: 1 }), play(3, { scoring: true, away: 1, home: 1, inning: 3 })]
+  const nolead = cheerRoom({ last: T0 + 90_000, g: game('live', tie) })
+  await nolead.mod.roomCheer(K2, { trigger: 'moment', event: tie[1] })
+  ok(nolead.stored.length === 1 && !nolead.stored[0].media_url, 'roomCheer: a tying run gets words only')
+  const homer = cheerRoom({ last: T0 + 90_000, g: game('live', hr) })
+  await homer.mod.roomCheer(K2, { trigger: 'moment', event: hr[1] })
+  ok(/\/cheer\/(homerun\.jpg|dance-\d\.mp4)$/.test(String(homer.stored[0]?.media_url)), 'roomCheer: a home run comes with the 全壘打 sign or a dance clip')
+  const pre = cheerRoom({ media: false })
+  await pre.mod.roomCheer(K2, { trigger: 'first' })
+  ok(pre.stored.length === 1 && !pre.stored[0].media_url && !pre.calls[0].prompt.includes('comes with'), 'roomCheer: before 136, words only')
   // The commentators read her as the cheerleader.
   const t = room({ rows: [{ kind: 'ai', author_name: '晴晴', model_name: '晴晴', content: '全壘打！！' }] })
   await t.speak(K, 'lull')

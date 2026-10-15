@@ -963,7 +963,7 @@ function OddsTab({ g, c, lang, pk }: { g: GameState; c: Copy; lang: string; pk: 
 
 // ── The game's chat: one live thread ────────────────────────────────────────
 
-interface RoomMsg { id: number; kind: 'human' | 'ai'; author_name: string; author_handle?: string | null; author_avatar: string | null; content: string; model_name: string | null; reply_to: number | null; created_at: string }
+interface RoomMsg { id: number; kind: 'human' | 'ai'; author_name: string; author_handle?: string | null; author_avatar: string | null; content: string; model_name: string | null; reply_to: number | null; created_at: string; media_url?: string | null; media_kind?: 'image' | 'video' | null }
 
 // ── XSports' own dialog ──────────────────────────────────────────────────────
 // Owner, Oct 14: "deletion should use our dialog too, not system alert".
@@ -1351,6 +1351,11 @@ const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, on
         <div className="body">
           {ai ? <ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={AI_MD}>{m.content}</ReactMarkdown> : withMentions(m.content)}
         </div>
+        {/* 晴晴's picture or clip (Oct 15), at a fixed 2:3 so nothing
+            moves when it loads; a clip loops silently, like a GIF. */}
+        {m.media_url && /^https:\/\//.test(m.media_url) ? (m.media_kind === 'video'
+          ? <video className="media" src={m.media_url} autoPlay muted loop playsInline preload="metadata" />
+          : <a className="media" href={m.media_url} target="_blank" rel="noopener noreferrer"><img src={m.media_url} alt="" loading="lazy" /></a>) : null}
       </div>
     </div>
   )
