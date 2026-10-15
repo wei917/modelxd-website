@@ -731,6 +731,9 @@
 .xs-set-row .txt { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .xs-set-row b { font-size: 15px; }
 .xs-set-row small { font-size: 12.5px; line-height: 1.5; color: var(--xs-ink-2); }
+/* 聊天室語言: a native picker (a wheel on phones); 16px so iOS does not zoom. */
+.xs-select { flex-shrink: 0; max-width: 48%; height: 38px; padding: 0 32px 0 12px; border: 1px solid var(--xs-line); border-radius: 10px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5l4 4 4-4' fill='none' stroke='%235f656b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center / 12px; font: inherit; font-size: 16px; font-weight: 600; color: var(--xs-ink); -webkit-appearance: none; appearance: none; cursor: pointer; }
+.xs-select:focus-visible { outline: 2px solid var(--xs-red); outline-offset: 1px; }
 .xs-switch { position: relative; flex-shrink: 0; width: 46px; height: 28px; border-radius: 999px; background: #d0d5dc; transition: background-color 150ms ease; }
 .xs-switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .25); transition: transform 150ms ease; }
 .xs-switch[aria-checked='true'] { background: var(--xs-red); }

@@ -142,6 +142,11 @@ export interface Copy {
   /** The tag before the commentator's model name in the chat. */
   commentator: string
   roomPlaceholder: string
+  /** The box in another language's room (X體育設定): which one. */
+  roomPlaceholderIn: (name: string) => string
+  /** X體育設定: the chat's language (Oct 15). */
+  roomLangTitle: string
+  roomLangHint: string
   /** The AI 球友 tab before a conversation starts. */
   buddyEmpty: string
   all: string
@@ -337,6 +342,9 @@ const en: Copy = {
   lastWatcher: 'At least one model keeps watching',
   commentator: 'Commentator',
   roomPlaceholder: 'Comment, or ask the commentator with @AI',
+  roomPlaceholderIn: n => `Comment in the ${n} chat, or ask @AI`,
+  roomLangTitle: 'Chat language',
+  roomLangHint: 'Each language has its own chat, and the AI commentators speak it. Saved in this browser only.',
   buddyEmpty: 'This is your own AI buddy. Press Start and it talks through the game on its own; ask it anything at any time. Each remark is billed at the price of the model you pick.',
   all: 'All',
   tabBuddy: 'AI buddy',
@@ -528,6 +536,9 @@ const zhHant: Copy = {
   lastWatcher: '至少留一個模型陪看',
   commentator: '球評',
   roomPlaceholder: '留言，或用 @AI 問球評',
+  roomPlaceholderIn: n => `在${n}聊天室留言，或用 @AI 問球評`,
+  roomLangTitle: '聊天室語言',
+  roomLangHint: '每種語言各有一個聊天室，AI 球評也說那種語言。只存在這個瀏覽器。',
   buddyEmpty: '這是你自己的 AI 球友。按「開始一起看」，它會跟著比賽自己開口聊，你也可以隨時問它任何事。每一句依你選的模型定價計費。',
   all: '全部',
   tabBuddy: 'AI 球友',
@@ -719,6 +730,9 @@ const zhHans: Copy = {
   lastWatcher: '至少留一个模型陪看',
   commentator: '球评',
   roomPlaceholder: '留言，或用 @AI 问球评',
+  roomPlaceholderIn: n => `在${n}聊天室留言，或用 @AI 问球评`,
+  roomLangTitle: '聊天室语言',
+  roomLangHint: '每种语言各有一个聊天室，AI 球评也说那种语言。只保存在这个浏览器。',
   buddyEmpty: '这是你自己的 AI 球友。按「开始一起看」，它会跟着比赛自己开口聊，你也可以随时问它任何事。每一句按你选的模型定价计费。',
   all: '全部',
   tabBuddy: 'AI 球友',
@@ -910,6 +924,9 @@ const ja: Copy = {
   lastWatcher: '少なくとも1つのモデルは観戦します',
   commentator: '解説',
   roomPlaceholder: 'コメント、または @AI で解説に質問',
+  roomPlaceholderIn: n => `${n}のチャットにコメント、または @AI で質問`,
+  roomLangTitle: 'チャットの言語',
+  roomLangHint: '言語ごとに別のチャットがあり、AI解説もその言語で話します。このブラウザにだけ保存されます。',
   buddyEmpty: 'あなた専用のAI観戦仲間です。「一緒に観戦する」を押すと、試合に合わせて自分から話しかけます。いつでも何でも質問できます。発言ごとに、選んだモデルの定価で課金されます。',
   all: 'すべて',
   tabBuddy: 'AI観戦仲間',
@@ -1101,6 +1118,9 @@ const ko: Copy = {
   lastWatcher: '최소 한 모델은 함께 봅니다',
   commentator: '해설',
   roomPlaceholder: '댓글, 또는 @AI로 해설에게 질문',
+  roomPlaceholderIn: n => `${n} 채팅방에 댓글, 또는 @AI로 질문`,
+  roomLangTitle: '채팅방 언어',
+  roomLangHint: '언어마다 채팅방이 따로 있고, AI 해설도 그 언어로 말합니다. 이 브라우저에만 저장됩니다.',
   buddyEmpty: '나만의 AI 친구입니다. 「함께 보기 시작」을 누르면 경기를 따라 먼저 말을 걸고, 언제든 무엇이든 물어볼 수 있어요. 한마디마다 고른 모델의 정가로 과금됩니다.',
   all: '전체',
   tabBuddy: 'AI 친구',
