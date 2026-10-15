@@ -9,7 +9,8 @@
 //     other when one fails; one asking the other gets one answer, never a
 //     question back; each thinks at its quickest; what each one reads
 //   - app/api/xsports/room/route.ts POST: each commentator named answers, in
-//     order, one after the other
+//     order, one after the other; the first message confirms the name, which
+//     may be the sign-in name
 //
 //   npx tsx scripts/xsports-room-check.ts       exit code 1 on any failure
 
@@ -161,17 +162,17 @@ async function commentators() {
 }
 
 // ── app/api/xsports/room/route.ts POST with every import mocked ───────────
-async function post(content: string) {
-  const spoke: string[] = [], asked: any[] = [], waits: Promise<unknown>[] = []
+async function post(content: string, o: { confirmed?: boolean; confirm?: boolean; displayName?: string | null; signin?: string } = {}) {
+  const spoke: string[] = [], asked: any[] = [], waits: Promise<unknown>[] = [], confirmedNow: string[] = []
   const route = load('app/api/xsports/room/route.ts', {
     'next/server': { after: (p: Promise<unknown>) => { waits.push(p) } },
     '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'fixture-user', user_metadata: {} } } }) } }) },
     '@/lib/moderation': { moderate: async () => 'ok' },
-    '@/lib/user-face': { userName: () => 'Fixture', userPhoto: () => null },
+    '@/lib/user-face': { userName: () => o.signin ?? 'Fixture', userPhoto: () => null },
     '@/lib/profile-handle': { ensureHandle: async () => ({ handle: 'aming', nextChangeAt: null }) },
-    '@/lib/xsports-store': { xsportsAdmin: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { display_name: '阿明', avatar_url: null } }) }) }) }) }) },
+    '@/lib/xsports-store': { xsportsAdmin: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: o.displayName === null ? null : { display_name: o.displayName ?? '阿明', avatar_url: null } }) }) }) }) }) },
     '@/lib/xsports-room': {
-      addRoomMessage: async (_k: unknown, m: any) => ({ id: 7, ...m }), confirmName: async () => {}, member: async () => ({ confirmed: true, mutedUntil: null }),
+      addRoomMessage: async (_k: unknown, m: any) => ({ id: 7, ...m }), confirmName: async (id: string) => { confirmedNow.push(id) }, member: async () => ({ confirmed: o.confirmed ?? true, mutedUntil: null }),
       ownIds: async () => [], recentMessages: async () => [], roomKeyOf: (league: string, game: unknown, lang: string) => ({ league, game: String(game), lang }),
       roomMissing: () => false, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
     },
@@ -186,10 +187,11 @@ async function post(content: string) {
     },
   })
   const res: Response = await route.POST(new Request('http://fixture.invalid/api/xsports/room', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league: 'mlb', game: 849811, lang: 'zh-Hant', content }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league: 'mlb', game: 849811, lang: 'zh-Hant', content, confirmName: o.confirm }),
   }))
+  const body = await res.clone().json().catch(() => null)
   await Promise.all(waits)
-  return { status: res.status, spoke, asked }
+  return { status: res.status, body, spoke, asked, confirmedNow }
 }
 
 async function roomRoute() {
@@ -200,6 +202,18 @@ async function roomRoute() {
   ok(any.spoke.join(',') === 'start:any,end:any' && any.asked[0].who === undefined, 'route: @AI asks whichever is up')
   const none = await post('好球！')
   ok(none.status === 200 && none.spoke.length === 0, 'route: a message asking nobody starts no commentator')
+
+  // The first message: the name is shown and confirmed once; it may be the
+  // sign-in name (owner, Oct 14: "the display name can be the same as sign in
+  // name"; a rule that it differ reopened the panel forever).
+  const ask = await post('嗨', { confirmed: false, displayName: 'Wei Chen', signin: 'Wei Chen' })
+  ok(ask.status === 409 && ask.body?.code === 'name_unconfirmed' && ask.body?.name === 'Wei Chen' && ask.confirmedNow.length === 0, 'route: an unconfirmed name is asked for, filled in with the current one even when it is the sign-in name')
+  const same = await post('嗨', { confirmed: false, confirm: true, displayName: 'Wei Chen', signin: 'Wei Chen' })
+  ok(same.status === 200 && same.confirmedNow.length === 1, 'route: confirming the sign-in name as it is lets the message in')
+  const fresh = await post('嗨', { confirmed: false, displayName: null, signin: 'Wei Chen' })
+  ok(fresh.status === 409 && fresh.body?.name === 'Wei Chen', 'route: with no saved name the panel starts from the sign-in name')
+  const done = await post('嗨', { confirmed: true })
+  ok(done.status === 200 && done.confirmedNow.length === 0, 'route: a confirmed name is not asked again')
 }
 
 ;(async () => {
