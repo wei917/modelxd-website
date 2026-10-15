@@ -362,8 +362,7 @@ no film = full refund. Tables `xcreate_films` + `xcreate_film_calls`
 (`slots[0].options.film`), so it is in the Library and opens back into
 `?film=<id>`. UI: `app/xcreate/FilmStudio.tsx`, words in `film-copy.ts`.
 
-**同款 (Remake), the door's sixth type (Oct 10; phase 1 on branch
-`claude/remake-tab`).** 同款 / Remake / リメイク / 리메이크. Paste a video link
+**同款 (Remake), the studio's sixth type, after 成片 in /xcreate's type bar (Oct 10).** 同款 / Remake / リメイク / 리메이크. Paste a video link
 or upload one, read it into a shot list, choose the length and what to swap
 (characters, theme, setting, look, language, product); making it is phase 2.
 - **Links.**

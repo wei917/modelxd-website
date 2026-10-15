@@ -261,7 +261,7 @@
    around the original's cut rhythm (Oct 11): the heading shows one edit
    twice (the original in ink, yours in red), the read shows the real one
    as a strip with the stretch framed in red, the shots run as a timeline,
-   and each person is a card from the original to yours. The door's palette
+   and each person is a card from the original to yours. X創作's palette
    and the phone's own fonts; timecodes in the mono face. Phone first. ── */
 .xcs-remake .xcs-heading { margin-bottom: 30px; }
 .xcs-remake .xcs-heading > p { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
@@ -482,7 +482,7 @@
    full width on a phone, a floating card from 761px. The page wrapper
    (.xduel-page) is a scroll box that never scrolls and would swallow the
    sticky (globals.css explains it), so this page lets it overflow. */
-html[data-site='xcreate'] .xduel-page:has(.xcs-remake) { overflow-y: visible; }
+.xcs-page .xduel-page:has(.xcs-remake) { overflow-y: visible; }
 .xcs-remake-soon { text-align: center; margin-bottom: -18px; }
 .xcs-remake-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -20px; padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: rgba(255, 255, 255, .94); -webkit-backdrop-filter: saturate(1.4) blur(12px); backdrop-filter: saturate(1.4) blur(12px); box-shadow: 0 -8px 24px rgba(0, 0, 0, .05); }
 .xcs-remake-bar-sum { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 13px; }
