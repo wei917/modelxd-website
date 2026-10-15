@@ -618,6 +618,8 @@ export async function getGame(pk: number, opts: { fresh?: boolean } = {}): Promi
     // Kalshi's price for the game, while its market is open (before and
     // during the game). Fails soft; never blocks the feed.
     const usDay = feed.gameData?.datetime?.officialDate
+    // The game's US date, for the markets' timeline too (lib/xsports-odds-history).
+    if (isMlbDate(usDay)) state.usDate = usDay
     if (state.status !== 'final' && isMlbDate(usDay)) {
       const [o, line] = await Promise.all([oddsFor('mlb', usDay, state.away.abbr, state.home.abbr), lineFor('mlb', usDay, state.away.abbr, state.home.abbr)])
       state.market = o.kalshi
@@ -723,4 +725,32 @@ export async function getPlayers(ids: number[], season: string): Promise<PlayerC
   }
   if (playerCache.size > 3000) playerCache.clear()
   return want.map(id => playerCache.get(id)?.card).filter((c): c is PlayerCard => !!c)
+}
+
+// ── Over time (the 賠率 tab's timeline, Oct 14) ───────────────────────────
+
+/** MLB's win probability for the away team after each plate appearance,
+ *  the scoring plays, and where each inning began. ~19 KB for a whole game
+ *  with the fields trimmed. Empty before the first pitch. */
+export async function getWinHistory(pk: number): Promise<{
+  points: { t: number; away: number }[]
+  scoring: { t: number; away: number; awayScore: number; homeScore: number }[]
+  innings: { t: number; n: number }[]
+}> {
+  if (!isGamePk(pk)) throw new Error('bad game id')
+  const rows: any[] = await getJson(`${API}/v1/game/${pk}/winProbability?fields=atBatIndex,awayTeamWinProbability,about,startTime,endTime,inning,halfInning,isScoringPlay,result,awayScore,homeScore`)
+  const points: { t: number; away: number }[] = []
+  const scoring: { t: number; away: number; awayScore: number; homeScore: number }[] = []
+  const innings: { t: number; n: number }[] = []
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const away = Number(r?.awayTeamWinProbability)
+    const t = Date.parse(String(r?.about?.endTime ?? r?.about?.startTime ?? ''))
+    const n = Number(r?.about?.inning)
+    const began = Date.parse(String(r?.about?.startTime ?? ''))
+    if (n && r?.about?.halfInning === 'top' && !innings.some(i => i.n === n) && Number.isFinite(began)) innings.push({ t: began, n })
+    if (!Number.isFinite(away) || !Number.isFinite(t)) continue
+    points.push({ t, away })
+    if (r?.about?.isScoringPlay) scoring.push({ t, away, awayScore: Number(r?.result?.awayScore) || 0, homeScore: Number(r?.result?.homeScore) || 0 })
+  }
+  return { points, scoring, innings }
 }

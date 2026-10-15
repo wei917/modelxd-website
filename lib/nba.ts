@@ -168,6 +168,11 @@ export async function nbaVideos(id: number): Promise<any[]> {
   return videoLists.get(id) ?? []
 }
 
+/** ESPN's win chance for the away team at each play and where each period
+ *  began, from this instance's copy of the game's summary (getNbaGame). */
+const winLists = new Map<number, { points: { t: number; away: number }[]; periods: { t: number; n: number }[] }>()
+export const nbaWinHistory = (id: number) => winLists.get(id) ?? { points: [], periods: [] }
+
 export async function getNbaGame(id: number, opts: { fresh?: boolean } = {}): Promise<GameState> {
   if (!isNbaId(id)) throw new Error('bad game id')
   return cached(games, String(id), opts.fresh ? 0 : CACHE_MS, async () => {
@@ -187,6 +192,21 @@ export async function getNbaGame(id: number, opts: { fresh?: boolean } = {}): Pr
     const events = playsOf(d.plays ?? [], away, home, homeId)
     const wp: any[] = d.winprobability ?? []
     const lastWp = wp[wp.length - 1]
+    // Over time, for the 賠率 tab: ESPN's chance for the away team at each
+    // play (by the play's wall clock), and where each period began.
+    const plays: any[] = Array.isArray(d.plays) ? d.plays : []
+    const clockOf = new Map(plays.map(p => [String(p?.id), Date.parse(String(p?.wallclock ?? ''))]))
+    const periodsAt: { t: number; n: number }[] = []
+    for (const p of plays) {
+      const pn = Number(p?.period?.number), t = Date.parse(String(p?.wallclock ?? ''))
+      if (pn && Number.isFinite(t) && !periodsAt.some(x => x.n === pn)) periodsAt.push({ t, n: pn })
+    }
+    winLists.set(id, {
+      points: wp.map(w => ({ t: clockOf.get(String(w?.playId)) ?? NaN, away: (1 - Number(w?.homeWinPercentage)) * 100 }))
+        .filter(x => Number.isFinite(x.t) && Number.isFinite(x.away)),
+      periods: periodsAt,
+    })
+    if (winLists.size > 200) winLists.delete(winLists.keys().next().value!)
     const pick = (d.pickcenter ?? [])[0]
     const line = pick && (pick.details || typeof pick.overUnder === 'number')
       ? { provider: String(pick.provider?.name ?? 'Sportsbook').replace(/^Draft Kings$/, 'DraftKings'), spread: pick.details ? String(pick.details) : null, total: typeof pick.overUnder === 'number' ? pick.overUnder : null }

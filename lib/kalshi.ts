@@ -72,23 +72,100 @@ const pct = (v: unknown) => {
 export async function getMarketOdds(date: string, away: string, home: string, league = 'mlb'): Promise<MarketOdds | null> {
   const series = KALSHI_SERIES[league]
   if (!series) return null
-  const events = await openEvents(series)
+  const hit = matchEvent(await openEvents(series), series, tickerDate(date), away, home)
+  if (!hit) return null
+  return {
+    source: 'Kalshi',
+    away: pct(hit.away?.last_price_dollars ?? hit.away?.yes_bid_dollars),
+    home: pct(hit.home?.last_price_dollars ?? hit.home?.yes_bid_dollars),
+    volume: hit.volume > 0 ? Math.round(hit.volume) : null,
+  }
+}
+
+/** The game's two markets among these events (dated by the ticker's day,
+ *  matched by both teams' codes), with the dollars traded on them. */
+function matchEvent(events: any[], series: string, day: string, away: string, home: string): { away: any; home: any; volume: number } | null {
   const want = new Set([norm(away), norm(home)])
-  const day = tickerDate(date)
   for (const e of events) {
     const ticker = String(e?.event_ticker ?? '')
     if (!ticker.startsWith(`${series}-${day}`)) continue
     const markets: any[] = Array.isArray(e?.markets) ? e.markets : []
     const byTeam = new Map(markets.map(m => [norm(String(m?.ticker ?? '').split('-').pop() ?? ''), m]))
     if (byTeam.size !== 2 || ![...want].every(t => byTeam.has(t))) continue
-    const a = byTeam.get(norm(away)), h = byTeam.get(norm(home))
-    const volume = markets.reduce((n, m) => n + (Number(m?.volume_fp) || 0), 0)
-    return {
-      source: 'Kalshi',
-      away: pct(a?.last_price_dollars ?? a?.yes_bid_dollars),
-      home: pct(h?.last_price_dollars ?? h?.yes_bid_dollars),
-      volume: volume > 0 ? Math.round(volume) : null,
-    }
+    return { away: byTeam.get(norm(away)), home: byTeam.get(norm(home)), volume: markets.reduce((n, m) => n + (Number(m?.volume_fp) || 0), 0) }
   }
   return null
+}
+
+// ── Over time (the 賠率 tab's timeline, Oct 14) ───────────────────────────
+
+/** One price: when (ms) and the away team's chance, 0-100. */
+export interface PricePoint { t: number; away: number }
+
+/** Every spelling Kalshi may use for a team. */
+const codes = (code: string) => {
+  const c = code.toUpperCase()
+  return ALIASES.find(group => group.includes(c)) ?? [c]
+}
+
+/** "2026-10-15T00:00:00Z" → "2000": an event ticker's start, Eastern. */
+const etTime = (iso: string) => {
+  try { return new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)).replace(':', '') } catch { return '' }
+}
+
+/** A game's markets: from the open list, or once it is over (the list
+ *  holds open markets only) by its event ticker, <series>-<day><HHMM ET>
+ *  <AWAY><HOME>, e.g. KXMLBGAME-26OCT132000CLETB. */
+async function gameMarkets(date: string, away: string, home: string, league: string, start?: string | null) {
+  const series = KALSHI_SERIES[league]
+  if (!series) return null
+  const day = tickerDate(date)
+  const open = matchEvent(await openEvents(series).catch(() => []), series, day, away, home)
+  if (open) return { series, ...open }
+  const hhmm = start ? etTime(start) : ''
+  if (!hhmm) return null
+  for (const a of codes(away)) for (const h of codes(home)) {
+    const res = await fetch(`${API}/events/${series}-${day}${hhmm}${a}${h}?with_nested_markets=true`, { cache: 'no-store' })
+    if (!res.ok) continue
+    const j = await res.json()
+    const hit = matchEvent(j?.event ? [j.event] : [], series, day, away, home)
+    if (hit) return { series, ...hit }
+  }
+  return null
+}
+
+/** A candle's closing price in percent: the last trade, else the middle of
+ *  the closing bid and ask. */
+const candlePct = (c: any): number | null => {
+  const last = Number(c?.price?.close_dollars)
+  if (Number.isFinite(last) && last > 0) return last * 100
+  const bid = Number(c?.yes_bid?.close_dollars), ask = Number(c?.yes_ask?.close_dollars)
+  return bid > 0 && ask > 0 ? ((bid + ask) / 2) * 100 : null
+}
+
+/** Kalshi's price of the away team's contract over time: each minute from
+ *  an hour before the start to five hours after it (or the last three hours
+ *  before a start is known), each hour before that back to when the market
+ *  opened (at most a week). Empty when there is no market. */
+export async function getMarketHistory(date: string, away: string, home: string, league: string, start?: string | null): Promise<PricePoint[]> {
+  const m = await gameMarkets(date, away, home, league, start)
+  const ticker = String(m?.away?.ticker ?? '')
+  if (!m || !ticker) return []
+  const now = Math.floor(Date.now() / 1000)
+  const opened = Math.floor(Date.parse(String(m.away?.open_time ?? '')) / 1000) || now - 7 * 86400
+  const from = Math.max(opened, now - 7 * 86400)
+  const s = start ? Math.floor(Date.parse(start) / 1000) : NaN
+  const minFrom = Math.max(from, Number.isFinite(s) ? s - 3600 : now - 3 * 3600)
+  const minTo = Math.min(now, Number.isFinite(s) ? s + 5 * 3600 : now)
+  const candles = async (a: number, b: number, period: number): Promise<PricePoint[]> => {
+    if (b <= a) return []
+    const res = await fetch(`${API}/series/${m.series}/markets/${ticker}/candlesticks?start_ts=${a}&end_ts=${b}&period_interval=${period}`, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`Kalshi ${res.status}`)
+    const j = await res.json()
+    const list: any[] = Array.isArray(j?.candlesticks) ? j.candlesticks : []
+    return list.map(c => ({ t: Number(c?.end_period_ts) * 1000, away: candlePct(c) }))
+      .filter((p): p is PricePoint => Number.isFinite(p.t) && p.away !== null)
+  }
+  const [hours, minutes] = await Promise.all([candles(from, minFrom, 60), candles(minFrom, minTo, 1)])
+  return [...hours, ...minutes]
 }

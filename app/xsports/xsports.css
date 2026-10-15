@@ -643,6 +643,34 @@
   .xs-player .meta { flex-direction: column; gap: 6px; }
 }
 
+/* The 賠率 tab's timeline (OddsChart, Oct 14): each source's chance for the
+ * away team, upper half the away team's, lower half the home team's. */
+.xs-trend { margin: 4px 0 18px; }
+.xs-trend.skel { height: 236px; border-radius: 10px; background: var(--xs-tint); }
+.xs-trend .hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.xs-trend h3 { margin: 0; font-size: 15px; font-weight: 800; color: var(--xs-ink); }
+.xs-trend .rng { display: inline-flex; padding: 2px; border-radius: 999px; background: #eef1f5; }
+.xs-trend .rng button { height: 28px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--xs-ink-2); }
+.xs-trend .rng button[aria-pressed='true'] { background: #fff; color: var(--xs-ink); box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
+.xs-trend .plot { position: relative; height: 168px; border: 1px solid var(--xs-line); border-radius: 10px; overflow: hidden; touch-action: pan-y; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.xs-trend svg { display: block; }
+.xs-trend .grid { stroke: rgba(16, 24, 40, .06); stroke-width: 1; }
+.xs-trend .mid { stroke: #b9c0c9; stroke-width: 1; stroke-dasharray: 4 4; }
+.xs-trend .ln { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.xs-trend .mk { fill: var(--xs-red); stroke: #fff; stroke-width: 1.5; }
+.xs-trend .cur line { stroke: var(--xs-ink-2); stroke-width: 1; }
+.xs-trend .cur circle { stroke: #fff; stroke-width: 1.5; }
+.xs-trend .ya { position: absolute; left: 8px; font-size: 11.5px; font-weight: 800; color: var(--xs-ink-2); pointer-events: none; }
+.xs-trend .ya.top { top: 6px; }
+.xs-trend .ya.bot { bottom: 6px; }
+.xs-trend .xt { position: relative; height: 18px; margin-top: 4px; }
+.xs-trend .xt span { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; color: var(--xs-ink-3); white-space: nowrap; }
+.xs-trend .lg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 6px; font-size: 12.5px; color: var(--xs-ink-2); }
+.xs-trend .lg .when { min-width: 3em; font-weight: 700; color: var(--xs-ink); }
+.xs-trend .lg .src { display: inline-flex; align-items: center; gap: 5px; }
+.xs-trend .lg .src i { width: 12px; height: 3px; border-radius: 2px; }
+.xs-trend .lg .src b { font-weight: 800; color: var(--xs-ink); }
+
 /* Phones, in a game: one scroller, the page, like any mobile site (owner,
  * Oct 14: "is this scrolling too complicated? ... too many layers?"; a
  * folding header that resized the chat box under the finger came before).

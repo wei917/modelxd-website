@@ -438,10 +438,11 @@ for, free to users), that take turns commenting on their own, talk to each
 other now and then, and answer anyone who asks: @AI for whichever one is up,
 @Luna or @Qwen for that one (the 公開聊天室 / Public chat tab; typing @ lists
 them and the fans who have spoken), plus box score (數據; before a game it
-says the game has not started) and odds (賠率) tabs; the odds are information only and the site takes no bets.
+says the game has not started) and odds (賠率) tabs; 賠率 opens with a chart of how each source's chance moved, during the game or since the markets opened (drag across it to read any moment); the odds are information only and the site takes no bets.
 On a phone a game scrolls like an ordinary page: the menu bars and the big scoreboard scroll away, and a one-line score with the tabs stays at the top (tap the score line to go back to the top), with the message box at the bottom. Chatting needs sign-in; others see your name and @ID. You can delete your
 own messages (刪除: gone for everyone), and report anyone else's, the AI
-commentator's included (檢舉 asks why, with room for details; reports are
+commentator's included (檢舉 asks why, with room for details; for the AI
+commentators one of the reasons is 不懂球, it doesn't know the game; reports are
 anonymous and enough of them hide a message). The **AI 私聊** tab
 ("My AI" in English) is a private chat only you see, with up to four AI
 models you pick at its top: a question you send goes to each of them, and
