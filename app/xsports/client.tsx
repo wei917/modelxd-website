@@ -8,7 +8,7 @@
 // flavor"). Beside it, AI 私聊: a private chat with up to four AI models the
 // viewer picks and pays for (/api/xsports/talk), one per game.
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Suspense, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang, useT } from '../../lib/i18n'
@@ -22,11 +22,11 @@ import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
 import { HOUSE_AIS } from '../../lib/xsports-ais'
 import OddsChart from './OddsChart'
-import { useHidden, personKey } from './hidden'
+import { useHidden, personKey, isHidden } from './hidden'
 import { createPortal } from 'react-dom'
 import type { User } from '@supabase/supabase-js'
 import { useFace } from '../../lib/use-face'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import { teamChip } from '../../lib/mlb-colors'
 import { copyFor, type Copy } from './copy'
@@ -347,6 +347,18 @@ function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
   )
 }
 
+/** Today where the viewer is (owner, Oct 15: "The xsport shows 'today' but
+ *  it's actually tomorrow"). The server draws New York's first (it cannot
+ *  know the zone); the page moves to the viewer's at once, and again past
+ *  midnight or back in front. */
+const localToday = () => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+function onDayChange(cb: () => void) {
+  const t = setInterval(cb, 60_000)
+  document.addEventListener('visibilitychange', cb)
+  return () => { clearInterval(t); document.removeEventListener('visibilitychange', cb) }
+}
+const useToday = () => useSyncExternalStore(onDayChange, localToday, () => mlbToday())
+
 function useGames(league: League, date: string) {
   const [games, setGames] = useState<GameCard[] | null>(null)
   const [down, setDown] = useState(false)
@@ -358,7 +370,9 @@ function useGames(league: League, date: string) {
       if (document.hidden && !first) return
       first = false
       try {
-        const res = await fetch(`/api/xsports/games?league=${league}&date=${date}`)
+        // The viewer's day: the games that start on it where they are.
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const res = await fetch(`/api/xsports/games?league=${league}&date=${date}${tz ? `&tz=${encodeURIComponent(tz)}` : ''}`)
         if (!res.ok) throw new Error(String(res.status))
         const j = await res.json()
         if (!stop) { setGames(j.games ?? []); setDown(false) }
@@ -414,8 +428,10 @@ function LeagueBlock({ league, name, date, c, lang, heading, hrefOf, onOpen }: {
 }
 
 function Scores({ c, lang, only, hrefOf, onOpen }: { c: Copy; lang: string; only: League | 'all'; hrefOf: (league: League, pk: number) => string; onOpen: (league: League, pk: number) => void }) {
-  const today = mlbToday()
-  const [date, setDate] = useState(today)
+  const today = useToday()
+  // A day tapped; until then today, whichever day that is.
+  const [picked, setDate] = useState<string | null>(null)
+  const date = picked ?? today
   const days = Array.from({ length: 7 }, (_, i) => shiftDate(today, i - 2))
   const fmt = (d: string, o: Intl.DateTimeFormatOptions) => { try { return new Intl.DateTimeFormat(lang, { ...o, timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) } catch { return d } }
   return (
@@ -1075,16 +1091,22 @@ const jumpTo = (top: number) => jumpBy(top - window.scrollY)
  *  back to my previous message?"). On a phone the page is what scrolls, so
  *  the bottom is the page's; elsewhere the chat's own box.
  *  Anything changing height (a message, the score header above, a play's
- *  line) is watched, not just the chat's line count: at the bottom the page
- *  follows to the new bottom; reading back, the message at the top of the
- *  reader's view is held where it was. Browsers with scroll anchoring do
- *  that themselves; iPhones do not (Oct 14: "on iPhone mobile chrome, you
- *  still jump to mid of the message when a new message is received"). The
- *  reader lets go by scrolling up (a finger moving down, the wheel up) and
- *  is held again by scrolling back near the bottom; the page's own jumps
- *  count for neither. A chat that is not on screen moves nothing. */
-function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
+ *  line, older messages drawn above) is watched, not just the chat's line
+ *  count: at the bottom the page follows to the new bottom; reading back,
+ *  the message at the top of the reader's view is held where it was.
+ *  Browsers with scroll anchoring do that themselves; iPhones do not (Oct
+ *  14: "on iPhone mobile chrome, you still jump to mid of the message when a
+ *  new message is received"). The reader lets go by scrolling up (a finger
+ *  moving down, the wheel up) and is held again by scrolling back near the
+ *  bottom, when the newest line is drawn there (`live`); the page's own
+ *  jumps count for neither. A chat that is not on screen moves nothing.
+ *  `moved` hears every scroll after that, `settled` every change in size
+ *  once the reader's place is held again; `away` says the reader is more
+ *  than a screen above the bottom. */
+function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>, hooks?: React.MutableRefObject<{ live: boolean; moved: () => void; settled: () => void }>) {
   const pinned = useRef(true)
+  const [away, setAway] = useState(false)
+  const api = useRef({ toBottom: () => {}, anchor: (): Element | null => null })
   useEffect(() => {
     const el = ref.current
     const inner = el?.firstElementChild
@@ -1103,15 +1125,33 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
       if (pageScroll()) jumpTo(doc.scrollHeight)
       else el.scrollTop = el.scrollHeight
     }
-    // The first message still in view and where it is.
-    let anchor: Element | null = null, anchorTop = 0
+    // Where an element is in what scrolls (the page, or the box): moves
+    // only when something above it changes size, never with scrolling.
+    const at = (e: Element) => e.getBoundingClientRect().top + (pageScroll() ? window.scrollY : el.scrollTop - el.getBoundingClientRect().top)
+    // The first message still in view and where it is. The lines are
+    // stacked top to bottom, so a halving search finds it in a few looks;
+    // never the line above them (載入更早的訊息), older ones arrive under it.
+    let anchor: Element | null = null, anchorY = 0, anchorPage = false
+    // The sizes when the reader's place was last held. A scroll that comes
+    // while they differ (something changed size and the observer below has
+    // not run yet; Oct 14: a page of older messages landing mid-flick) keeps
+    // the anchor it has, or the page would hold the new lines in place of
+    // what the reader was reading.
+    let innerH = -1, bodyH = -1
+    const settledNow = () => inner.getBoundingClientRect().height === innerH && document.body.getBoundingClientRect().height === bodyH
     const remember = () => {
       anchor = null
-      const top = viewTop()
-      for (const m of inner.children) {
-        const r = m.getBoundingClientRect()
-        if (r.bottom > top + 1) { anchor = m; anchorTop = r.top; break }
+      innerH = inner.getBoundingClientRect().height
+      bodyH = document.body.getBoundingClientRect().height
+      const top = viewTop() + 1
+      const kids = inner.children
+      let lo = 0, hi = kids.length - 1, i = kids.length
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (kids[mid].getBoundingClientRect().bottom > top) { i = mid; hi = mid - 1 } else lo = mid + 1
       }
+      while (i < kids.length && kids[i].hasAttribute('data-xs-skip')) i++
+      if (i < kids.length) { anchor = kids[i]; anchorY = at(anchor); anchorPage = pageScroll() }
     }
     const letGo = () => { if (!off()) pinned.current = false }
     let y0 = 0
@@ -1119,10 +1159,15 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
     const onTouchMove = (e: TouchEvent) => { const y = e.touches[0]?.clientY ?? 0; if (y > y0 + 3) letGo(); y0 = y }
     const onWheel = (e: WheelEvent) => { if (e.deltaY < 0) letGo() }
     const onScroll = () => {
-      if (off()) return
+      // Mid-change, the observer below is about to hold the place and look
+      // again; nothing is measured until then.
+      if (off() || !settledNow()) return
       // The reader's own scroll near the bottom holds again.
-      if (Date.now() - ours > 200 && gap() < 80) pinned.current = true
+      const g = gap()
+      if ((hooks?.current.live ?? true) && Date.now() - ours > 200 && g < 80) pinned.current = true
+      setAway(!pinned.current && g > (pageScroll() ? window.innerHeight : el.clientHeight))
       remember()
+      hooks?.current.moved()
     }
     const onBox = () => { if (!pageScroll()) onScroll() }
     const onPage = () => { if (pageScroll()) onScroll() }
@@ -1130,8 +1175,8 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
       if (off()) return
       if (pinned.current) { toBottom(); remember(); return }
       // Reading back: keep that message where it was.
-      if (anchor && anchor.isConnected) {
-        const moved = anchor.getBoundingClientRect().top - anchorTop
+      if (anchor && anchor.isConnected && anchorPage === pageScroll()) {
+        const moved = at(anchor) - anchorY
         if (Math.abs(moved) > 1) {
           ours = Date.now()
           if (pageScroll()) jumpBy(moved)
@@ -1139,7 +1184,12 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
         }
       }
       remember()
+      hooks?.current.settled()
     })
+    api.current = {
+      toBottom: () => { pinned.current = true; setAway(false); if (!off()) { toBottom(); remember() } },
+      anchor: () => anchor,
+    }
     el.addEventListener('scroll', onBox, { passive: true })
     window.addEventListener('scroll', onPage, { passive: true })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
@@ -1157,8 +1207,8 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
       window.removeEventListener('wheel', onWheel)
       ro.disconnect()
     }
-  }, [ref])
-  return pinned
+  }, [ref, hooks])
+  return { pinned, away, api }
 }
 
 /** A fan's message with its mentions marked: @AI and @someone's_id. */
@@ -1173,6 +1223,105 @@ function withMentions(text: string): React.ReactNode {
   if (last < text.length) out.push(text.slice(last))
   return out
 }
+
+// What the chat draws (owner, Oct 14: "why do you have to re-draw every
+// message on the page? you should use something like scroll view which only
+// draw messages in the current screen + some above and some bottom"). Every
+// message read stays in memory as data (100 fans over a 3-hour game is a few
+// thousand, a few MB; MAX_KEPT at most), but only a window of them is drawn:
+// the newest WINDOW while the reader watches the newest; CHUNK more as they
+// near either edge scrolling back (older ones from the server, 80 at a time,
+// "all the way back"); and once they stop, at most MAX_DRAWN around where
+// they are. Everything drawn is real, never a guessed height, so nothing
+// shifts under the reader but whole chunks, which the anchor holds.
+const WINDOW = 120
+const CHUNK = 80
+const MAX_DRAWN = 360
+const MAX_KEPT = 5000
+
+/** One line of the chat: a message, or where an inning or period begins. */
+type Item = { key: string; m: RoomMsg; sep?: undefined } | { key: string; sep: string; m?: undefined }
+
+/** Two runs of a room's messages as one, oldest first; the same list when
+ *  nothing is new. */
+function merged(a: RoomMsg[], b: RoomMsg[]): RoomMsg[] {
+  const seen = new Set(a.map(m => m.id))
+  const fresh = b.filter(m => !seen.has(m.id))
+  return fresh.length ? [...a, ...fresh].sort((x, y) => x.id - y.id) : a
+}
+
+/** Counting back n messages from line i (not included): where to start. */
+function backBy(items: Item[], i: number, n: number): number {
+  while (i > 0 && n > 0) { i--; if (items[i].m) n-- }
+  return i
+}
+
+/** Counting on n messages from line i (included): just past the last. */
+function onBy(items: Item[], i: number, n: number): number {
+  while (i < items.length && n > 0) { if (items[i].m) n--; i++ }
+  return i
+}
+
+/** The first line with this message or a later one. */
+function lineOf(items: Item[], id: number): number {
+  const i = items.findIndex(it => it.m !== undefined && it.m.id >= id)
+  return i < 0 ? items.length : i
+}
+
+/** The message on line i, or on the line after it (an inning's line). */
+const msgAt = (items: Item[], i: number): RoomMsg | undefined => items[i]?.m ?? items[i + 1]?.m
+
+const hhmmFmt = new Map<string, Intl.DateTimeFormat>()
+/** "21:14" in the reader's language; one formatter per language. */
+function hhmm(lang: string, iso: string): string {
+  try {
+    let f = hhmmFmt.get(lang)
+    if (!f) { f = new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit', hour12: false }); hhmmFmt.set(lang, f) }
+    return f.format(new Date(iso))
+  } catch { return '' }
+}
+
+/** A commentator's words: one paragraph's flow, links open apart. */
+const AI_MD: Components = {
+  p: ({ children }) => <>{children} </>,
+  a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>,
+}
+
+/** One message, drawn once: it changes only when it or its buttons do, so a
+ *  new message (or a keystroke in the box) leaves every other row alone. */
+const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, onCard, onRemove, onReport }: {
+  m: RoomMsg; lang: string; c: Copy; mine: boolean; reported: boolean; signedIn: boolean | null
+  onCard: (m: RoomMsg) => void; onRemove: (m: RoomMsg) => void; onReport: (m: RoomMsg) => void
+}) {
+  const ai = m.kind === 'ai'
+  const h = ai ? aiHandle(m) : null
+  const face = !ai && m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null
+  return (
+    <div className={`xs-msg${ai ? ' ai' : ''}${mine ? ' mine' : ''}`} data-id={m.id}>
+      {ai ? null : face
+        ? <img className="av" src={face} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        : <span className="av" aria-hidden>{(m.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
+      <div className="col">
+        {/* Who (the name, then a small @ID: owner, Oct 13, "A seems
+            better"; the commentator by its model), when, then the words. */}
+        <div className="who">
+          {ai
+            ? <><button type="button" className="who-btn" onClick={() => onCard(m)}><b className="n">{c.aiCommentator}</b><span className="model">{m.model_name ?? m.author_name}</span></button>{h ? <span className="id">@{h}</span> : null}</>
+            : <>{mine ? <b className="n">{m.author_name}</b> : <button type="button" className="who-btn" onClick={() => onCard(m)}><b className="n">{m.author_name}</b></button>}{m.author_handle ? <span className="id">@{m.author_handle}</span> : null}</>}
+          <time className="t" dateTime={m.created_at}>{hhmm(lang, m.created_at)}</time>
+          {/* Yours: 刪除. Anyone else's, the commentator's too (owner, Oct
+              14): 檢舉. */}
+          {!signedIn ? null : !ai && mine
+            ? <button className="rep" onClick={() => onRemove(m)} aria-label={c.deleteMsg}>{c.deleteMsg}</button>
+            : <button className="rep" onClick={() => onReport(m)} disabled={reported} aria-label={c.report}>{reported ? c.reported : c.report}</button>}
+        </div>
+        <div className="body">
+          {ai ? <ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={AI_MD}>{m.content}</ReactMarkdown> : withMentions(m.content)}
+        </div>
+      </div>
+    </div>
+  )
+})
 
 /** The game's chat (owner, Oct 13: "the UI is so AI flavor"): one live
  *  thread like PTT's live posts or a stream's chat. Fans and the
@@ -1221,25 +1370,53 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   }, [undo])
   const boxRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  // What is drawn (WINDOW, above): from the message `from` (null: the newest
+  // WINDOW) to the message `to` (null: through the newest, "live").
+  const [win, setWin] = useState<{ from: number | null; to: number | null }>({ from: null, to: null })
+  // Going back (owner, Oct 14: "all the way back"): the room's first message
+  // once a read has reached it (Infinity: the room was empty then), a page
+  // on its way, the last one failed, and whether the reader went back at all.
+  const [startId, setStartId] = useState<number | null>(null)
+  const [olderBusy, setOlderBusy] = useState(false)
+  const [olderFailed, setOlderFailed] = useState(false)
+  const [pagedBack, setPagedBack] = useState(false)
+  const olderBusyRef = useRef(false)
+  const msgsRef = useRef(msgs)
+  msgsRef.current = msgs
 
-  const add = useCallback((m: RoomMsg) => setMsgs(prev => (prev.some(x => x.id === m.id) ? prev : [...prev, m].sort((x, y) => x.id - y.id).slice(-300))), [])
+  // Keep to the newest line while the reader is at the bottom; leave them be
+  // once they scroll up to read (useStickToBottom), which also tells the
+  // window where they scroll (moved, below).
+  const scrollHooks = useRef({ live: true, moved: () => {}, settled: () => {} })
+  const { pinned, away, api } = useStickToBottom(boxRef, scrollHooks)
+  // The oldest are let go only while the reader is at the newest, never from
+  // under someone reading back.
+  const kept = useCallback((list: RoomMsg[]) => (list.length > MAX_KEPT && pinned.current ? list.slice(-MAX_KEPT) : list), [pinned])
+
+  const add = useCallback((m: RoomMsg) => setMsgs(prev => kept(merged(prev, [m]))), [kept])
 
   useEffect(() => {
     let stop = false
-    // Read the room; merged with what Realtime already delivered.
+    // Read the room's newest page; merged with what Realtime already
+    // delivered. A page that does not reach what is here (a phone back after
+    // 80 or more missed messages) starts the list again from it, or a hole
+    // would stay in the middle.
     const load = () => fetch(`/api/xsports/room?league=${league}&game=${pk}&lang=${lang}`).then(async res => {
       if (stop) return
       if (!res.ok) { setDown(true); return }
       setDown(false)
       const j = await res.json()
       const rows = (j.messages ?? []) as RoomMsg[]
+      const more = j.more === true
       // Your own messages (the server knows; ids only): 刪除 instead of 檢舉.
       const own: number[] = Array.isArray(j.mine) ? j.mine : []
       if (own.length) setMine(prev => new Set([...prev, ...own]))
       setLoaded(true)
+      if (!more) setStartId(rows[0]?.id ?? Infinity)
       setMsgs(prev => {
-        const seen = new Set(prev.map(m => m.id))
-        return [...prev, ...rows.filter(m => !seen.has(m.id))].sort((x, y) => x.id - y.id).slice(-300)
+        const have = new Set(prev.map(m => m.id))
+        const hole = more && rows.length > 0 && prev.length > 0 && !rows.some(m => have.has(m.id))
+        return kept(merged(hole ? prev.filter(m => m.id > rows[rows.length - 1].id) : prev, rows))
       })
     }).catch(() => { if (!stop) setDown(true) })
     load()
@@ -1264,7 +1441,36 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
         await channel.track({ at: Date.now() })
       })
     return () => { stop = true; document.removeEventListener('visibilitychange', onVis); client.removeChannel(channel) }
-  }, [league, pk, lang, add, onViewers])
+  }, [league, pk, lang, add, kept, onViewers])
+
+  // The page before the oldest here, from the server.
+  const loadOlder = useCallback(async () => {
+    const first = msgsRef.current[0]
+    if (!first || olderBusyRef.current || msgsRef.current.length >= MAX_KEPT) return
+    olderBusyRef.current = true
+    setOlderBusy(true)
+    setOlderFailed(false)
+    try {
+      const res = await fetch(`/api/xsports/room?league=${league}&game=${pk}&lang=${lang}&before=${first.id}`)
+      if (!res.ok) throw new Error(String(res.status))
+      const j = await res.json()
+      const rows = (j.messages ?? []) as RoomMsg[]
+      const own: number[] = Array.isArray(j.mine) ? j.mine : []
+      if (own.length) setMine(prev => new Set([...prev, ...own]))
+      if (j.more !== true) setStartId(rows[0]?.id ?? first.id)
+      if (rows.length) {
+        setMsgs(prev => merged(prev, rows))
+        // Drawn at once, unless the reader went back to the newest meanwhile.
+        if (!pinned.current) setWin(w => ({ from: Math.min(w.from ?? Infinity, rows[0].id), to: w.to }))
+      }
+      setPagedBack(true)
+    } catch {
+      setOlderFailed(true)
+    } finally {
+      olderBusyRef.current = false
+      setOlderBusy(false)
+    }
+  }, [league, pk, lang, pinned])
 
   // A commentator speaks when an open page's tick finds a reason.
   useEffect(() => {
@@ -1275,16 +1481,128 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     return () => clearInterval(t)
   }, [signedIn, league, pk, lang])
 
-  // The thread: messages and the game's key plays in time order.
-  type Line = { t: number; key: string; play?: PlayEvent; msg?: RoomMsg }
-  const lines: Line[] = []
-  for (const m of msgs) lines.push({ t: Date.parse(m.created_at), key: `m${m.id}`, msg: m })
-  for (const e of g?.events ?? []) if (e.at) lines.push({ t: Date.parse(e.at), key: `p${e.id}`, play: e })
-  lines.sort((x, y) => x.t - y.t)
+  // The chat's lines: the messages and, from the game's plays, where each
+  // inning or period begins (the plays themselves are in 戰況: owner, Oct
+  // 13, not twice). Nobody this viewer hid (./hidden), with no placeholder.
+  const items = useMemo(() => {
+    type Line = { t: number; key: string; play?: PlayEvent; msg?: RoomMsg }
+    const lines: Line[] = []
+    for (const m of msgs) lines.push({ t: Date.parse(m.created_at), key: `m${m.id}`, msg: m })
+    for (const e of g?.events ?? []) if (e.at) lines.push({ t: Date.parse(e.at), key: `p${e.id}`, play: e })
+    lines.sort((x, y) => x.t - y.t)
+    const out: Item[] = []
+    let ctx = '', shown = ''
+    for (const ln of lines) {
+      if (ln.play) { ctx = ctxOf(g, ln.play, c); continue }
+      const m = ln.msg!
+      if (isHidden(hide.state, m, aiHandle(m))) continue
+      if (ctx && ctx !== shown) { out.push({ key: `s-${ln.key}`, sep: ctx }); shown = ctx }
+      out.push({ key: ln.key, m })
+    }
+    return out
+  }, [msgs, g, c, hide.state])
 
-  // Keep to the newest line while the reader is at the bottom; leave them be
-  // once they scroll up to read (useStickToBottom).
-  const pinned = useStickToBottom(boxRef)
+  // The lines drawn: [start, end).
+  let end = items.length
+  if (win.to !== null) {
+    const k = lineOf(items, win.to + 1)
+    if (k < end) end = k
+    while (end > 0 && items[end - 1].sep !== undefined) end--
+  }
+  let start = win.from === null ? backBy(items, end, WINDOW) : Math.min(end, lineOf(items, win.from))
+  // With the inning's line above its first message.
+  if (start > 0 && items[start - 1].sep !== undefined) start--
+  const live = win.to === null
+  const atStart = startId !== null && (msgs.length === 0 || msgs[0].id <= startId)
+  // As much as is kept (MAX_KEPT): no further back from here.
+  const capped = start === 0 && !atStart && msgs.length >= MAX_KEPT
+  // Something earlier to draw: here already, or on the server.
+  const earlier = start > 0 || (loaded && msgs.length > 0 && !atStart && !capped)
+  const view = useRef({ items, start, end, win, earlier, failed: olderFailed })
+  view.current = { items, start, end, win, earlier, failed: olderFailed }
+  scrollHooks.current.live = live
+
+  // Draw more above: CHUNK more messages from memory, else the server's next
+  // page (drawn on the pass after it arrives).
+  const extendUp = useCallback(() => {
+    const v = view.current
+    if (v.start > 0) {
+      const id = msgAt(v.items, backBy(v.items, v.start, CHUNK))?.id
+      if (id !== undefined) setWin(w => ({ from: id, to: w.to }))
+    } else loadOlder()
+  }, [loadOlder])
+  // Draw more below, through the newest once it is reached.
+  const extendDown = useCallback(() => {
+    const v = view.current
+    if (v.win.to === null) return
+    const j = onBy(v.items, v.end, CHUNK)
+    const to = j >= v.items.length ? null : v.items[j - 1].m?.id ?? null
+    setWin(w => ({ from: w.from, to }))
+  }, [])
+  // Once the reader stops, if too much is drawn: let go of what is farthest
+  // from where they are (a third kept above them, the rest below).
+  const trim = useCallback(() => {
+    const v = view.current
+    if (pinned.current) return
+    let drawn = 0
+    for (let i = v.start; i < v.end; i++) if (v.items[i].m) drawn++
+    if (drawn <= MAX_DRAWN) return
+    let a = api.current.anchor() as HTMLElement | null
+    while (a && !a.dataset.id) a = a.nextElementSibling as HTMLElement | null
+    if (!a) return
+    const id = Number(a.dataset.id)
+    const at = v.items.findIndex(it => it.m?.id === id)
+    if (at < 0) return
+    const f = backBy(v.items, at, MAX_DRAWN / 3)
+    const t = onBy(v.items, at, (MAX_DRAWN * 2) / 3)
+    setWin({ from: msgAt(v.items, f)?.id ?? id, to: t >= v.items.length ? null : v.items[t - 1].m?.id ?? null })
+  }, [pinned, api])
+  // Near an edge of what is drawn, more is drawn before the reader gets
+  // there: above while reading back (on a phone only once the chat's start
+  // is under the bars; with it in view they are looking at the score above
+  // it, which older lines would push away, and 載入更早的訊息 is there),
+  // below while the newest is not drawn.
+  const edges = useCallback(() => {
+    const el = boxRef.current
+    const inner = el?.firstElementChild
+    if (!el || !inner || !el.getClientRects().length) return
+    const v = view.current
+    const page = pageScroll()
+    let above: number, below: number, screen: number
+    if (page) {
+      const r = inner.getBoundingClientRect()
+      above = 92 - r.top
+      below = r.bottom - window.innerHeight
+      screen = window.innerHeight
+    } else {
+      above = el.scrollTop
+      below = el.scrollHeight - el.scrollTop - el.clientHeight
+      screen = el.clientHeight
+    }
+    if (!pinned.current && v.earlier && !v.failed && above < screen * 1.5 && (!page || above > 0)) extendUp()
+    else if (v.win.to !== null && below < screen * 1.5) extendDown()
+  }, [pinned, extendUp, extendDown])
+  const idle = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (idle.current) clearTimeout(idle.current) }, [])
+  scrollHooks.current.moved = () => {
+    const v = view.current
+    // Reading back, what is drawn stays drawn; back at the newest, only the
+    // newest WINDOW again.
+    if (!pinned.current && v.win.from === null) {
+      const id = msgAt(v.items, v.start)?.id
+      if (id !== undefined) setWin(w => (w.from === null ? { from: id, to: w.to } : w))
+    } else if (pinned.current && v.win.to === null && v.win.from !== null) setWin({ from: null, to: null })
+    edges()
+    if (idle.current) clearTimeout(idle.current)
+    idle.current = setTimeout(trim, 600)
+  }
+  // After each change in size, once the reader's place is held again (never
+  // before: the page would still look near the top and fetch on and on):
+  // still near an edge, draw on.
+  scrollHooks.current.settled = edges
+
+  // 回到最新: the newest drawn again, and the reader held there.
+  const goNewest = useCallback(() => { setWin({ from: null, to: null }); api.current.toBottom() }, [api])
 
   const post = async (text: string, confirmName = false) => {
     setSending(true)
@@ -1315,7 +1633,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
       const m = j.message as RoomMsg
       setMine(prev => new Set(prev).add(m.id))
       // Your own message always brings you to the newest line.
-      pinned.current = true
+      goNewest()
       add(m)
       return true
     } catch {
@@ -1377,7 +1695,8 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     } catch { setDlgErr(c.roomDown) } finally { setDlgBusy(false) }
   }
   // Reporting: the dialog asks why (owner, Oct 14: "fill more data? why 檢舉").
-  const openReport = (m: RoomMsg) => { setReporting(m); setWhy(null); setWhyMore(''); setDlgErr('') }
+  const openReport = useCallback((m: RoomMsg) => { setReporting(m); setWhy(null); setWhyMore(''); setDlgErr('') }, [])
+  const askRemove = useCallback((m: RoomMsg) => { setRemoving(m); setDlgErr('') }, [])
   const sendReport = async () => {
     const m = reporting
     if (!m || !why) return
@@ -1404,8 +1723,11 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     ...HOUSE_AIS.filter(a => aiShown && !(a.handle in hide.state.ais)).map(a => ({ key: `ai:${a.handle}`, label: a.name, insert: a.handle, hint: `@${a.handle}`, logo: { provider: a.provider, model: a.model_name } })),
   ]
   const yours = new Set(msgs.filter(m => mine.has(m.id)).map(m => m.author_handle))
-  for (const m of [...msgs].reverse()) {
-    if (m.kind !== 'human' || !m.author_handle || yours.has(m.author_handle) || personKey(m) in hide.state.people || atOptions.some(o => o.insert === m.author_handle)) continue
+  const offered = new Set(atOptions.map(o => o.insert))
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i]
+    if (m.kind !== 'human' || !m.author_handle || yours.has(m.author_handle) || personKey(m) in hide.state.people || offered.has(m.author_handle)) continue
+    offered.add(m.author_handle)
     atOptions.push({ key: `h:${m.author_handle}`, label: m.author_name, insert: m.author_handle, hint: `@${m.author_handle}`, avatar: m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null })
   }
   const atList = useAt(draft, setDraft, inputRef, atOptions)
@@ -1413,47 +1735,13 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     if (atList.onKeyDown(e)) return
     if (isSubmitEnter(e as any)) { e.preventDefault(); send() }
   }
-  const time = (ms: number) => { try { return new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit', hour12: false }).format(new Date(ms)) } catch { return '' } }
-
-  const out: React.ReactNode[] = []
-  let ctx = '', shown = ''
-  for (const ln of lines) {
-    // Plays are in 戰況 now (owner, Oct 13: not twice); they only say which
-    // inning or period a message belongs to.
-    if (ln.play) { ctx = ctxOf(g, ln.play, c); continue }
-    const m = ln.msg!
-    // Hidden by this viewer (./hidden): gone, with no placeholder.
-    if (hide.hides(m, aiHandle(m))) continue
-    if (ctx && ctx !== shown) { out.push(<div key={`s-${ln.key}`} className="xs-sep"><span>{ctx}</span></div>); shown = ctx }
-    const ai = m.kind === 'ai'
-    const face = !ai && m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null
-    out.push(
-      <div key={ln.key} className={`xs-msg${ai ? ' ai' : ''}${mine.has(m.id) ? ' mine' : ''}`}>
-        {ai ? null : face
-          ? <img className="av" src={face} alt="" loading="lazy" referrerPolicy="no-referrer" />
-          : <span className="av" aria-hidden>{(m.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
-        <div className="col">
-          {/* Who (the name, then a small @ID: owner, Oct 13, "A seems
-              better"; the commentator by its model), when, then the words. */}
-          <div className="who">
-            {ai
-              ? <><button type="button" className="who-btn" onClick={() => setCard(m)}><b className="n">{c.aiCommentator}</b><span className="model">{m.model_name ?? m.author_name}</span></button>{aiHandle(m) ? <span className="id">@{aiHandle(m)}</span> : null}</>
-              : <>{mine.has(m.id) ? <b className="n">{m.author_name}</b> : <button type="button" className="who-btn" onClick={() => setCard(m)}><b className="n">{m.author_name}</b></button>}{m.author_handle ? <span className="id">@{m.author_handle}</span> : null}</>}
-            <time className="t" dateTime={m.created_at}>{time(ln.t)}</time>
-            {/* Yours: 刪除. Anyone else's, the commentator's too (owner, Oct
-                14): 檢舉. */}
-            {!signedIn ? null : !ai && mine.has(m.id)
-              ? <button className="rep" onClick={() => { setRemoving(m); setDlgErr('') }} aria-label={c.deleteMsg}>{c.deleteMsg}</button>
-              : <button className="rep" onClick={() => openReport(m)} disabled={reported.has(m.id)} aria-label={c.report}>{reported.has(m.id) ? c.reported : c.report}</button>}
-          </div>
-          <div className="body">
-            {ai
-              ? <ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{ p: ({ children }) => <>{children} </>, a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}>{m.content}</ReactMarkdown>
-              : withMentions(m.content)}
-          </div>
-        </div>
-      </div>,
-    )
+  // Only the window is drawn (WINDOW, above); each message a RoomRow.
+  const rows: React.ReactNode[] = []
+  for (let i = start; i < end; i++) {
+    const it = items[i]
+    rows.push(it.m
+      ? <RoomRow key={it.key} m={it.m} lang={lang} c={c} mine={mine.has(it.m.id)} reported={reported.has(it.m.id)} signedIn={signedIn} onCard={setCard} onRemove={askRemove} onReport={openReport} />
+      : <div key={it.key} className="xs-sep"><span>{it.sep}</span></div>)
   }
 
   return (
@@ -1462,8 +1750,18 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
           (Oct 13: no more empty space above three messages). */}
       <div ref={boxRef} className="xs-thread" role="log" aria-live="polite">
         <div className="xs-thread-in">
+          {/* Above the lines drawn: more to read (drawn as the reader nears
+              it, or on a tap), a page on its way, the limit of what is kept,
+              or where the chat began. */}
+          <div className="xs-older" data-xs-skip="">
+            {down || !items.length ? null
+              : olderBusy ? <span>{c.loading}</span>
+              : capped ? <span>{c.olderCap(MAX_KEPT.toLocaleString(lang))}</span>
+              : earlier ? <button type="button" onClick={() => { pinned.current = false; setOlderFailed(false); setWin(w => (w.from === null ? { from: msgAt(items, start)?.id ?? null, to: w.to } : w)); extendUp() }}>{c.loadOlder}</button>
+              : pagedBack ? <span>{c.chatStart}</span> : null}
+          </div>
           {down ? <p className="xs-chat-empty">{c.roomDown}</p>
-            : out.length ? out
+            : rows.length ? rows
             : loaded ? <div className="xs-chat-empty"><p>{c.roomEmpty}</p><small>{c.roomHint(HOUSE_AIS.map(a => a.handle))}</small></div>
             : <p className="xs-chat-empty">{c.loading}</p>}
         </div>
@@ -1501,6 +1799,13 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
       })() : null}
       <div className="xs-at-box">
         {signedIn === false ? null : atList.list}
+        {/* Reading back (a screen or more up), or the newest not drawn:
+            one tap to the newest, held there again. */}
+        {(!live || away) && items.length > 0 && !atList.list ? (
+          <button type="button" className="xs-newest" onClick={goNewest}>
+            <svg viewBox="0 0 24 24" aria-hidden><path d="M12 5v14M6 13l6 6 6-6" /></svg>{c.toNewest}
+          </button>
+        ) : null}
         <div className="xs-compose">
           {signedIn === false ? (
             <button className="signin" onClick={onSignIn}>{c.signInChat}</button>
@@ -1938,7 +2243,7 @@ function PrivateChat({ league, pk, lang, c, g, signedIn, onSignIn }: {
   }, [learn])
 
   // Keep to the newest line while the reader is at the bottom (as the room).
-  const pinned = useStickToBottom(listRef)
+  const { pinned } = useStickToBottom(listRef)
 
   /** The chat this conversation is saved in; created on the first word.
    *  Null when it could not be, or when the conversation was cleared while

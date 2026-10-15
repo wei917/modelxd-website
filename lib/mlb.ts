@@ -283,8 +283,11 @@ async function getJson(url: string): Promise<any> {
 /** A YYYY-MM-DD date is all the schedule takes. */
 export const isMlbDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
 
-/** MLB's own calendar day: games are listed by their US date, so "today" is
- *  today in New York, not in Taipei (a 7 pm ET game is the next morning there). */
+/** MLB's own calendar day: games are listed by their US date, so this is
+ *  today in New York, not in Taipei (a 7 pm ET game is the next morning
+ *  there). The scores page shows the viewer's own day instead
+ *  (lib/xsports-day.ts); this is the server's first paint and the API's
+ *  default. */
 export function mlbToday(at: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at)
 }

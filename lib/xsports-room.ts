@@ -48,11 +48,15 @@ export const MESSAGE_MAX = 500
 export const roomMissing = (e: any): boolean =>
   !!e && (e.code === '42P01' || e.code === 'PGRST205' || /does not exist|schema cache|could not find/i.test(String(e.message ?? '')))
 
-export async function recentMessages(k: RoomKey, limit = 80): Promise<RoomMessage[]> {
-  const { data, error } = await xsportsAdmin().from('xsports_room_messages').select(cols())
+/** The newest messages, or (before) the ones just older than that id: the
+ *  page goes back a page at a time to the game's first (Oct 14: "all the
+ *  way back"). Oldest first. */
+export async function recentMessages(k: RoomKey, limit = 80, before?: number): Promise<RoomMessage[]> {
+  let q = xsportsAdmin().from('xsports_room_messages').select(cols())
     .eq('league', k.league).eq('game_id', k.game).eq('lang', k.lang).eq('hidden', false)
-    .order('id', { ascending: false }).limit(limit)
-  if (noHandleColumn(error)) { noHandlesSince = Date.now(); return recentMessages(k, limit) }
+  if (before) q = q.lt('id', before)
+  const { data, error } = await q.order('id', { ascending: false }).limit(limit)
+  if (noHandleColumn(error)) { noHandlesSince = Date.now(); return recentMessages(k, limit, before) }
   if (error) throw Object.assign(new Error(error.message), { code: error.code })
   return ((data ?? []) as unknown as RoomMessage[]).reverse()
 }
