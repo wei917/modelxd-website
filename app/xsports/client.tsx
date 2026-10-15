@@ -22,6 +22,8 @@ import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
 import { HOUSE_AIS } from '../../lib/xsports-ais'
 import OddsChart from './OddsChart'
+import { useHidden, personKey } from './hidden'
+import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import { teamChip } from '../../lib/mlb-colors'
@@ -250,6 +252,7 @@ const LEAGUES: { key: League; name: string }[] = [{ key: 'mlb', name: 'MLB' }, {
  *  "remove 'all' tab"): /xsports alone lists every league with none
  *  marked; a league shows only its games. */
 function SportsBar({ c, current, onPick, onBack }: { c: Copy; current: League | null; onPick: (k: League) => void; onBack?: () => void }) {
+  const [settings, setSettings] = useState(false)
   return (
     <div className={`xs-topbar${onBack ? ' room' : ''}`}>
       <div className="xs-topin">
@@ -271,8 +274,57 @@ function SportsBar({ c, current, onPick, onBack }: { c: Copy; current: League | 
             </a>
           ))}
         </nav>
+        {/* X體育設定 (owner, Oct 14: hiding people is for every chat room, so
+            it gets a visible home): the AI commentators on or off, and who is
+            hidden. */}
+        <button type="button" className="xs-gear" aria-label={c.settings} title={c.settings} onClick={() => setSettings(true)}>
+          <svg viewBox="0 0 24 24" aria-hidden><path d="M10.3 4.3c.4-1.8 2.9-1.8 3.4 0a1.7 1.7 0 0 0 2.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 0 0 1 2.5c1.8.4 1.8 2.9 0 3.4a1.7 1.7 0 0 0-1 2.6c.9 1.5-.8 3.3-2.4 2.4a1.7 1.7 0 0 0-2.6 1c-.4 1.8-2.9 1.8-3.4 0a1.7 1.7 0 0 0-2.5-1c-1.6.9-3.3-.9-2.4-2.4a1.7 1.7 0 0 0-1.1-2.6c-1.7-.4-1.7-2.9 0-3.4a1.7 1.7 0 0 0 1.1-2.5c-.9-1.6.8-3.3 2.4-2.4 1 .6 2.3 0 2.5-1.1z" /><circle cx="12" cy="12" r="3" /></svg>
+        </button>
       </div>
+      {settings ? <XsSettings c={c} onClose={() => setSettings(false)} /> : null}
     </div>
+  )
+}
+
+/** X體育設定: whether the AI commentators show, and who is hidden in the
+ *  chats; this browser only, each for 30 days (./hidden). The sheet is drawn
+ *  at the page's root (the top bar is a layer of its own), inside .xs for
+ *  its colours. */
+function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
+  const hide = useHidden()
+  const people = Object.entries(hide.state.people).sort((a, b) => b[1].at - a[1].at)
+  const ais = HOUSE_AIS.filter(a => a.handle in hide.state.ais)
+  const aiOn = hide.state.allAi === null
+  return createPortal(
+    <div className="xs xs-portal">
+      <Dialog title={c.settingsTitle} onClose={onClose} actions={<button className="xs-send" onClick={onClose}>{c.closeLabel}</button>}>
+        <div className="xs-set-row">
+          <div className="txt"><b>{c.showAi}</b><small>{c.showAiHint}</small></div>
+          <button type="button" role="switch" aria-checked={aiOn} aria-label={c.showAi} className="xs-switch" onClick={() => hide.setAllAi(aiOn)} data-autofocus><i /></button>
+        </div>
+        <h3 className="xs-set-h">{c.hiddenList}</h3>
+        {people.length || ais.length ? (
+          <ul className="xs-set-list">
+            {ais.map(a => (
+              <li key={a.handle}>
+                <ProviderLogo provider={a.provider} model={a.model_name} size={28} />
+                <span className="nm"><b>{a.name}</b><small>{c.aiCommentator} · @{a.handle}</small></span>
+                <button type="button" className="xs-unhide" onClick={() => hide.showAi(a.handle)}>{c.unhide}</button>
+              </li>
+            ))}
+            {people.map(([k, p]) => (
+              <li key={k}>
+                {p.avatar && /^https:\/\//.test(p.avatar) ? <img className="face" src={p.avatar} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{(p.name.trim()[0] ?? '?').toUpperCase()}</span>}
+                <span className="nm"><b>{p.name}</b>{p.handle ? <small>@{p.handle}</small> : null}</span>
+                <button type="button" className="xs-unhide" onClick={() => hide.showPerson(k)}>{c.unhide}</button>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="xs-set-empty">{c.hiddenEmpty}</p>}
+        <p className="xs-set-note">{c.hiddenNote}</p>
+      </Dialog>
+    </div>,
+    document.body,
   )
 }
 
@@ -1073,6 +1125,16 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   const [dlgErr, setDlgErr] = useState('')
   const [removing, setRemoving] = useState<RoomMsg | null>(null)
   const [flashOk, setFlashOk] = useState(false)
+  // Hiding people (owner, Oct 14): this browser's list (./hidden); a name
+  // tapped opens its card; the flash after hiding offers 復原 for a while.
+  const hide = useHidden()
+  const [card, setCard] = useState<RoomMsg | null>(null)
+  const [undo, setUndo] = useState<(() => void) | null>(null)
+  useEffect(() => {
+    if (!undo) return
+    const t = setTimeout(() => { setUndo(null); setFlash('') }, 6000)
+    return () => clearTimeout(t)
+  }, [undo])
   const boxRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -1232,13 +1294,15 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   // Who an @ can name here: whichever commentator is up (@AI), each
   // commentator by its @handle (owner, Oct 14: "can user choose which AI to
   // mention?"), then the fans who have spoken, newest first (never yourself).
+  // Nobody hidden is offered.
+  const aiShown = hide.state.allAi === null
   const atOptions: AtOption[] = [
-    { key: 'ai', label: c.aiAny, insert: 'AI', hint: '@AI' },
-    ...HOUSE_AIS.map(a => ({ key: `ai:${a.handle}`, label: a.name, insert: a.handle, hint: `@${a.handle}`, logo: { provider: a.provider, model: a.model_name } })),
+    ...(aiShown ? [{ key: 'ai', label: c.aiAny, insert: 'AI', hint: '@AI' }] : []),
+    ...HOUSE_AIS.filter(a => aiShown && !(a.handle in hide.state.ais)).map(a => ({ key: `ai:${a.handle}`, label: a.name, insert: a.handle, hint: `@${a.handle}`, logo: { provider: a.provider, model: a.model_name } })),
   ]
   const yours = new Set(msgs.filter(m => mine.has(m.id)).map(m => m.author_handle))
   for (const m of [...msgs].reverse()) {
-    if (m.kind !== 'human' || !m.author_handle || yours.has(m.author_handle) || atOptions.some(o => o.insert === m.author_handle)) continue
+    if (m.kind !== 'human' || !m.author_handle || yours.has(m.author_handle) || personKey(m) in hide.state.people || atOptions.some(o => o.insert === m.author_handle)) continue
     atOptions.push({ key: `h:${m.author_handle}`, label: m.author_name, insert: m.author_handle, hint: `@${m.author_handle}`, avatar: m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null })
   }
   const atList = useAt(draft, setDraft, inputRef, atOptions)
@@ -1254,8 +1318,10 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     // Plays are in 戰況 now (owner, Oct 13: not twice); they only say which
     // inning or period a message belongs to.
     if (ln.play) { ctx = ctxOf(g, ln.play, c); continue }
-    if (ctx && ctx !== shown) { out.push(<div key={`s-${ln.key}`} className="xs-sep"><span>{ctx}</span></div>); shown = ctx }
     const m = ln.msg!
+    // Hidden by this viewer (./hidden): gone, with no placeholder.
+    if (hide.hides(m, aiHandle(m))) continue
+    if (ctx && ctx !== shown) { out.push(<div key={`s-${ln.key}`} className="xs-sep"><span>{ctx}</span></div>); shown = ctx }
     const ai = m.kind === 'ai'
     const face = !ai && m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null
     out.push(
@@ -1268,8 +1334,8 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
               better"; the commentator by its model), when, then the words. */}
           <div className="who">
             {ai
-              ? <><b className="n">{c.aiCommentator}</b><span className="model">{m.model_name ?? m.author_name}</span>{aiHandle(m) ? <span className="id">@{aiHandle(m)}</span> : null}</>
-              : <><b className="n">{m.author_name}</b>{m.author_handle ? <span className="id">@{m.author_handle}</span> : null}</>}
+              ? <><button type="button" className="who-btn" onClick={() => setCard(m)}><b className="n">{c.aiCommentator}</b><span className="model">{m.model_name ?? m.author_name}</span></button>{aiHandle(m) ? <span className="id">@{aiHandle(m)}</span> : null}</>
+              : <>{mine.has(m.id) ? <b className="n">{m.author_name}</b> : <button type="button" className="who-btn" onClick={() => setCard(m)}><b className="n">{m.author_name}</b></button>}{m.author_handle ? <span className="id">@{m.author_handle}</span> : null}</>}
             <time className="t" dateTime={m.created_at}>{time(ln.t)}</time>
             {/* Yours: 刪除. Anyone else's, the commentator's too (owner, Oct
                 14): 檢舉. */}
@@ -1299,7 +1365,37 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
             : <p className="xs-chat-empty">{c.loading}</p>}
         </div>
       </div>
-      {flash && <p className={`xs-flash${flashOk ? ' ok' : ''}`} role="status">{flash}</p>}
+      {flash && <p className={`xs-flash${flashOk ? ' ok' : ''}`} role="status">{flash}{undo ? <button type="button" className="undo" onClick={() => { undo(); setUndo(null); setFlash('') }}>{c.undo}</button> : null}</p>}
+      {card ? (() => {
+        // A name tapped: hide this person (or the commentators), or report
+        // the message. 復原 in the flash takes a hide back.
+        const ai = card.kind === 'ai'
+        const h = aiHandle(card)
+        const close = () => setCard(null)
+        const hidden = (label: string, back: () => void) => { close(); setFlash(c.hiddenFlash(label)); setFlashOk(true); setUndo(() => back) }
+        const face = !ai && card.author_avatar && /^https:\/\//.test(card.author_avatar) ? card.author_avatar : null
+        const eye = <svg viewBox="0 0 24 24" aria-hidden><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.4 5.2A9.6 9.6 0 0 1 12 5c4.5 0 8 4.3 9 7a12 12 0 0 1-2.4 3.5M6.2 6.3C4.6 7.5 3.5 9.4 3 12c1 2.7 4.5 7 9 7 1.6 0 3.1-.5 4.4-1.3" /></svg>
+        return (
+          <Dialog title={ai ? (card.model_name ?? card.author_name) : card.author_name} onClose={close} actions={<button className="xs-link" onClick={close}>{c.closeLabel}</button>}>
+            <div className="xs-card-who">
+              {ai ? (() => { const a = HOUSE_AIS.find(x => x.handle === h); return a ? <ProviderLogo provider={a.provider} model={a.model_name} size={36} /> : null })()
+                : face ? <img className="face" src={face} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{(card.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
+              <span>{ai ? `${c.aiCommentator}${h ? ` · @${h}` : ''}` : card.author_handle ? `@${card.author_handle}` : ''}</span>
+            </div>
+            <div className="xs-card-acts">
+              {ai ? <>
+                {h ? <button type="button" onClick={() => { hide.hideAi(h); hidden(h, () => hide.showAi(h)) }}>{eye}{c.hideAi(h)}</button> : null}
+                <button type="button" onClick={() => { hide.setAllAi(true); hidden(c.aiCommentator, () => hide.setAllAi(false)) }}>{eye}{c.hideAllAi}</button>
+              </> : <button type="button" onClick={() => { const k = personKey(card); hide.hidePerson(card); hidden(card.author_name, () => hide.showPerson(k)) }}>{eye}{c.hidePerson}</button>}
+              {signedIn && !reported.has(card.id) ? (
+                <button type="button" className="quiet" onClick={() => { close(); openReport(card) }}>
+                  <svg viewBox="0 0 24 24" aria-hidden><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>{c.reportThis}
+                </button>
+              ) : null}
+            </div>
+          </Dialog>
+        )
+      })() : null}
       <div className="xs-at-box">
         {signedIn === false ? null : atList.list}
         <div className="xs-compose">
