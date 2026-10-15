@@ -84,6 +84,21 @@ export interface Copy {
   tabPrivate: string
   privateEmpty: string
   leaguesNav: string
+  /** XSports settings (the top bar's gear) and hiding people in the chats. */
+  settings: string
+  settingsTitle: string
+  showAi: string
+  showAiHint: string
+  hiddenList: string
+  hiddenEmpty: string
+  hiddenNote: string
+  unhide: string
+  hidePerson: string
+  hideAi: (handle: string) => string
+  hideAllAi: string
+  reportThis: string
+  hiddenFlash: (name: string) => string
+  undo: string
   /** The private chat's head (Oct 13 redesign): the models that answer
    *  (several may), automatic watching, what it costs. */
   privateTitle: string
@@ -264,6 +279,20 @@ const en: Copy = {
   tabPrivate: 'My AI',
   privateEmpty: 'Every model you picked answers a question; tap a model, press Reply on its answer or @ it to ask just that one. Press “Start watching” and they talk through the game, each as much as its settings say. Billed at each model’s list price.',
   leaguesNav: 'Leagues',
+  settings: 'Settings',
+  settingsTitle: 'XSports settings',
+  showAi: 'Show the AI commentators',
+  showAiHint: 'Off: no AI commentator messages in any chat room.',
+  hiddenList: 'Hidden',
+  hiddenEmpty: 'Tap a name in a chat room to hide that person.',
+  hiddenNote: 'Kept in this browser only, for 30 days.',
+  unhide: 'Show again',
+  hidePerson: 'Hide this person',
+  hideAi: h => `Hide ${h}`,
+  hideAllAi: 'Hide all AI commentators',
+  reportThis: 'Report this message',
+  hiddenFlash: n => `${n} hidden`,
+  undo: 'Undo',
   privateTitle: 'Your private AI watch party',
   privateOnly: 'Only you can see this',
   modelsLabel: 'Models that answer',
@@ -434,6 +463,20 @@ const zhHant: Copy = {
   tabPrivate: 'AI 私聊',
   privateEmpty: '提問時，每個選的模型都會回答；點一下模型、按答案上的「回覆」或 @ 它，就只問它。按「開始陪看」，它們會跟著比賽聊，各說多少在模型的設定裡選。依各模型定價計費。',
   leaguesNav: '聯盟',
+  settings: '設定',
+  settingsTitle: 'X體育設定',
+  showAi: '顯示 AI 球評',
+  showAiHint: '關掉後，每個聊天室都看不到 AI 球評的留言。',
+  hiddenList: '隱藏名單',
+  hiddenEmpty: '點聊天室裡的名字就能隱藏。',
+  hiddenNote: '只存在這個瀏覽器，30 天後自動解除。',
+  unhide: '取消隱藏',
+  hidePerson: '隱藏這個人',
+  hideAi: h => `隱藏 ${h}`,
+  hideAllAi: '隱藏所有 AI 球評',
+  reportThis: '檢舉這則訊息',
+  hiddenFlash: n => `已隱藏 ${n}`,
+  undo: '復原',
   privateTitle: '你的 AI 私人陪看',
   privateOnly: '只有你看得到',
   modelsLabel: '回答的模型',
@@ -604,6 +647,20 @@ const zhHans: Copy = {
   tabPrivate: 'AI 私聊',
   privateEmpty: '提问时，每个选的模型都会回答；点一下模型、按答案上的「回复」或 @ 它，就只问它。按「开始陪看」，它们会跟着比赛聊，各说多少在模型的设置里选。按各模型定价计费。',
   leaguesNav: '联盟',
+  settings: '设置',
+  settingsTitle: 'X体育设置',
+  showAi: '显示 AI 球评',
+  showAiHint: '关掉后，每个聊天室都看不到 AI 球评的留言。',
+  hiddenList: '隐藏名单',
+  hiddenEmpty: '点聊天室里的名字就能隐藏。',
+  hiddenNote: '只存在这个浏览器，30 天后自动解除。',
+  unhide: '取消隐藏',
+  hidePerson: '隐藏这个人',
+  hideAi: h => `隐藏 ${h}`,
+  hideAllAi: '隐藏所有 AI 球评',
+  reportThis: '举报这条消息',
+  hiddenFlash: n => `已隐藏 ${n}`,
+  undo: '撤销',
   privateTitle: '你的 AI 私人陪看',
   privateOnly: '只有你看得到',
   modelsLabel: '回答的模型',
@@ -774,6 +831,20 @@ const ja: Copy = {
   tabPrivate: 'マイAI',
   privateEmpty: '質問には選んだモデル全員が答えます。モデルをタップするか、回答の「返信」や @ で、そのモデルだけに聞けます。「観戦を始める」を押すと試合について話し、どれだけ話すかはモデルごとの設定で選べます。各モデルの定価で課金されます。',
   leaguesNav: 'リーグ',
+  settings: '設定',
+  settingsTitle: 'Xスポーツの設定',
+  showAi: 'AI解説を表示',
+  showAiHint: 'オフにすると、どのチャットでもAI解説のコメントが表示されません。',
+  hiddenList: '非表示リスト',
+  hiddenEmpty: 'チャットで名前をタップすると非表示にできます。',
+  hiddenNote: 'このブラウザにだけ保存され、30日で解除されます。',
+  unhide: '再表示',
+  hidePerson: 'この人を非表示',
+  hideAi: h => `${h}を非表示`,
+  hideAllAi: 'AI解説をすべて非表示',
+  reportThis: 'このコメントを報告',
+  hiddenFlash: n => `${n}を非表示にしました`,
+  undo: '元に戻す',
   privateTitle: 'あなた専用の AI 観戦',
   privateOnly: 'あなただけに表示',
   modelsLabel: '答えるモデル',
@@ -944,6 +1015,20 @@ const ko: Copy = {
   tabPrivate: '내 AI',
   privateEmpty: '질문하면 고른 모델이 모두 답합니다. 모델을 누르거나 답의 「답장」 또는 @로 그 모델에게만 물을 수 있습니다. 「함께 보기 시작」을 누르면 경기 이야기를 하며, 얼마나 말할지는 모델별 설정에서 고릅니다. 모델별 정가로 청구됩니다.',
   leaguesNav: '리그',
+  settings: '설정',
+  settingsTitle: 'X스포츠 설정',
+  showAi: 'AI 해설 보기',
+  showAiHint: '끄면 모든 채팅방에서 AI 해설 메시지가 보이지 않아요.',
+  hiddenList: '숨긴 사람',
+  hiddenEmpty: '채팅방에서 이름을 누르면 숨길 수 있어요.',
+  hiddenNote: '이 브라우저에만 저장되며 30일 뒤 자동으로 해제돼요.',
+  unhide: '다시 보기',
+  hidePerson: '이 사람 숨기기',
+  hideAi: h => `${h} 숨기기`,
+  hideAllAi: 'AI 해설 모두 숨기기',
+  reportThis: '이 메시지 신고',
+  hiddenFlash: n => `${n} 숨김`,
+  undo: '되돌리기',
   privateTitle: '나만의 AI 관전',
   privateOnly: '나만 볼 수 있음',
   modelsLabel: '답할 모델',

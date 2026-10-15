@@ -709,3 +709,40 @@
   .xs-canvas.room .xs-at-box { position: sticky; bottom: 0; z-index: 4; background: #fff; padding-bottom: env(safe-area-inset-bottom); }
 }
 @media (max-width: 760px) and (prefers-reduced-motion: reduce) { .xs-canvas.room .xs-mini-box { transition: none; } }
+
+/* X體育設定 and hiding people in the chats (Oct 14): the top bar's gear opens
+ * the settings sheet; a name tapped in a chat opens its card. The gear sits
+ * outside .xs, so it resets its own button. */
+.xs-gear { display: inline-grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; margin-left: auto; padding: 0; border: 0; border-radius: 50%; background: none; font: inherit; color: var(--xs-ink-2); cursor: pointer; }
+.xs-gear:hover { background: #f2f4f7; color: var(--white); }
+.xs-gear:focus-visible { outline: 2px solid var(--xs-red); outline-offset: 1px; }
+.xs-gear svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.xs.xs-portal { max-width: none; margin: 0; padding: 0; }
+.xs-set-row { display: flex; align-items: center; gap: 14px; padding: 2px 0 14px; border-bottom: 1px solid var(--xs-line); }
+.xs-set-row .txt { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.xs-set-row b { font-size: 15px; }
+.xs-set-row small { font-size: 12.5px; line-height: 1.5; color: var(--xs-ink-2); }
+.xs-switch { position: relative; flex-shrink: 0; width: 46px; height: 28px; border-radius: 999px; background: #d0d5dc; transition: background-color 150ms ease; }
+.xs-switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .25); transition: transform 150ms ease; }
+.xs-switch[aria-checked='true'] { background: var(--xs-red); }
+.xs-switch[aria-checked='true'] i { transform: translateX(18px); }
+.xs-set-h { margin: 16px 0 4px; font-size: 13px; font-weight: 800; color: var(--xs-ink-2); }
+.xs-set-list { max-height: 42vh; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; }
+.xs-set-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--xs-line); }
+.xs-set-list .face, .xs-card-who .face { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--xs-tint); font-size: 12px; font-weight: 800; color: var(--xs-ink-2); }
+.xs-set-list .nm { flex: 1; min-width: 0; display: grid; }
+.xs-set-list .nm b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.xs-set-list .nm small { font-size: 12px; color: var(--xs-ink-3); }
+.xs-unhide { flex-shrink: 0; height: 30px; padding: 0 12px; border: 1px solid var(--xs-line); border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--xs-ink); }
+.xs-sheet p.xs-set-empty { margin: 8px 0 4px; }
+.xs-sheet p.xs-set-note { margin: 12px 0 16px; font-size: 12px; color: var(--xs-ink-3); }
+.xs-msg .who-btn { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.xs-msg .who-btn:hover .n { text-decoration: underline; text-underline-offset: 3px; }
+.xs-card-who { display: flex; align-items: center; gap: 10px; margin: -4px 0 14px; font-size: 13px; color: var(--xs-ink-2); }
+.xs-card-who .face { width: 36px; height: 36px; font-size: 14px; }
+.xs-card-acts { display: grid; gap: 8px; margin-bottom: 14px; }
+.xs-card-acts button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 0 14px; border-radius: 12px; background: var(--xs-tint); font-size: 15px; font-weight: 700; color: var(--xs-ink); text-align: left; }
+.xs-card-acts button.quiet { background: none; font-weight: 600; color: var(--xs-ink-2); }
+.xs-card-acts svg { flex-shrink: 0; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.xs-flash .undo { margin-left: 10px; font-size: 12px; font-weight: 800; color: var(--xs-red); text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .xs-switch, .xs-switch i { transition: none; } }

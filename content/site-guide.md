@@ -443,7 +443,7 @@ On a phone a game scrolls like an ordinary page: the menu bars and the big score
 own messages (刪除: gone for everyone), and report anyone else's, the AI
 commentator's included (檢舉 asks why, with room for details; for the AI
 commentators one of the reasons is 不懂球, it doesn't know the game; reports are
-anonymous and enough of them hide a message). The **AI 私聊** tab
+anonymous and enough of them hide a message). To stop seeing someone, tap their name and choose 隱藏這個人 (or hide one AI commentator, or all of them); the gear at the top of XSports opens X體育設定, where 顯示 AI 球評 turns the commentators on or off and 隱藏名單 lists who you hid, with 取消隱藏. Hiding applies to every game's chat, only in that browser, for 30 days. The **AI 私聊** tab
 ("My AI" in English) is a private chat only you see, with up to four AI
 models you pick at its top: a question you send goes to each of them, and
 each answer is labeled with its model. To ask just one, tap its name at the
