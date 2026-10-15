@@ -220,7 +220,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
         body: JSON.stringify({ ...payload, start: d.start || 0, lang }),
       })
       const body = await res.json().catch(() => ({}))
-      if (res.status === 401) { onSignIn('/?type=remake'); return }
+      if (res.status === 401) { onSignIn('/xcreate?type=remake'); return }
       if (!res.ok || !body?.breakdown) { setError(errorText(body)); return }
       const r = body as BreakdownResult
       const dur = r.breakdown.duration
@@ -236,7 +236,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   }
 
   const readLink = () => {
-    if (!signedIn) { onSignIn('/?type=remake'); return }
+    if (!signedIn) { onSignIn('/xcreate?type=remake'); return }
     if (!d.link.trim() || busy) return
     void read({ url: d.link.trim() })
   }
@@ -252,7 +252,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
 
   const uploadAndRead = async (file: File) => {
     const { data } = await createSupabaseBrowser().auth.getUser()
-    if (!data.user) { onSignIn('/?type=remake'); return }
+    if (!data.user) { onSignIn('/xcreate?type=remake'); return }
     if (file.size > MAX_VIDEO_BYTES) { setError(c.errors.too_large); return }
     setStage('uploading'); setError(null)
     try {
@@ -521,7 +521,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
           <button className="xcs-primary xcs-remake-go" disabled={signedIn && !d.link.trim()} onClick={readLink}>
             {signedIn ? c.read : c.signIn}
           </button>
-          <button type="button" className="xcs-remake-upload" onClick={() => signedIn ? fileRef.current?.click() : onSignIn('/?type=remake')}>
+          <button type="button" className="xcs-remake-upload" onClick={() => signedIn ? fileRef.current?.click() : onSignIn('/xcreate?type=remake')}>
             <UploadIcon /><span>{c.upload}</span>
           </button>
           <p className="xcs-remake-note">{c.orUpload}</p>
