@@ -956,6 +956,10 @@ const Quote = ({ who, text }: { who: string; text: string }) => (
   <blockquote className="xs-dlg-quote"><b>{who}</b><span>{text.length > 140 ? `${text.slice(0, 140)}…` : text}</span></blockquote>
 )
 
+/** The name errors /api/profile/face can give that the account page words
+ *  (lib/i18n face.err.*). */
+const FACE_ERRORS = new Set(['name_empty', 'name_long', 'name_reserved', 'name_refused', 'check_unavailable', 'too_many', 'failed'])
+
 /** Why a message is reported (the server's list; supabase/133). */
 const FAN_REASONS = ['spam', 'harassment', 'hate', 'sexual', 'misinfo', 'other'] as const
 // 不懂球 (owner, Oct 14) for the commentators only: on a fan it would let
@@ -1114,6 +1118,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   const [panel, setPanel] = useState<{ name: string; avatar: string | null; text: string; handle: string | null } | null>(null)
   const [nameDraft, setNameDraft] = useState('')
   const [panelErr, setPanelErr] = useState('')
+  const [panelBusy, setPanelBusy] = useState(false)
   const t = useT()
   const [mine, setMine] = useState<Set<number>>(new Set())
   const [reported, setReported] = useState<Set<number>>(new Set())
@@ -1205,20 +1210,27 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   const post = async (text: string, confirmName = false) => {
     setSending(true)
     setFlash('')
+    // From the name panel (confirmName) a problem is said in the panel: the
+    // chat's own line is behind it (owner, Oct 14: "you should show the
+    // error message").
+    const problem = (msg: string) => { if (confirmName) setPanelErr(msg); else { setFlashOk(false); setFlash(msg) } }
     try {
       const res = await fetch('/api/xsports/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game: pk, lang, content: text, confirmName }) })
       const j = await res.json().catch(() => ({}))
       if (res.status === 401) { onSignIn(); return false }
       if (res.status === 409 && j.code === 'name_unconfirmed') {
-        // A name still copied from the sign-in starts empty: the person sets one.
-        setPanel({ name: j.chosen ? (j.name ?? '') : '', avatar: j.avatar ?? null, text, handle: j.handle ?? null })
-        setNameDraft(j.chosen ? (j.name ?? '') : '')
+        // Already confirmed in the panel and still refused: say so there,
+        // never reopen it silently (Oct 14: it kept popping up).
+        if (confirmName) { setPanelErr(c.nameError); return false }
+        // The name strangers will see, filled in: keep it or change it (it
+        // may be the sign-in name, owner Oct 14).
+        setPanel({ name: j.name ?? '', avatar: j.avatar ?? null, text, handle: j.handle ?? null })
+        setNameDraft(j.name ?? '')
         setPanelErr('')
         return false
       }
       if (!res.ok) {
-        setFlashOk(false)
-        setFlash(j.code === 'too_fast' ? c.slowDown : j.code === 'refused' ? c.refusedMsg : j.code === 'muted' ? c.mutedMsg : j.code === 'check_unavailable' ? c.checkDown : c.roomDown)
+        problem(j.code === 'too_fast' ? c.slowDown : j.code === 'refused' ? c.refusedMsg : j.code === 'muted' ? c.mutedMsg : j.code === 'check_unavailable' ? c.checkDown : c.roomDown)
         return false
       }
       const m = j.message as RoomMsg
@@ -1227,6 +1239,9 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
       pinned.current = true
       add(m)
       return true
+    } catch {
+      problem(c.roomDown)
+      return false
     } finally {
       setSending(false)
     }
@@ -1243,20 +1258,29 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
   // is shown, not changed, here: it changes on the account page only (owner,
   // Oct 13: "why you allow users to change id while entering the chat room?").
   const useName = async () => {
-    if (!panel) return
+    if (!panel || panelBusy) return
     setPanelErr('')
-    const name = nameDraft.trim()
-    if (name && name !== panel.name) {
-      const res = await fetch('/api/profile/face', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
-      if (!res.ok) {
-        const code = String((await res.json().catch(() => ({}))).error ?? '')
-        setPanelErr(code === 'too_many' ? t('face.err.too_many') : code === 'check_unavailable' ? c.checkDown : c.nameError)
-        return
+    setPanelBusy(true)
+    try {
+      const name = nameDraft.trim()
+      if (name && name !== panel.name) {
+        const res = await fetch('/api/profile/face', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
+        if (res.status === 401) { onSignIn(); return }
+        if (!res.ok) {
+          // Why, in the account page's own words where it has them.
+          const code = String((await res.json().catch(() => ({}))).error ?? '')
+          setPanelErr(FACE_ERRORS.has(code) ? t(`face.err.${code}`) : c.nameError)
+          return
+        }
+        setPanel(p => (p ? { ...p, name } : p))
       }
+      // The panel stays until the message is in, so a refusal shows in it.
+      if (await post(panel.text, true)) { setPanel(null); setDraft('') }
+    } catch {
+      setPanelErr(c.roomDown)
+    } finally {
+      setPanelBusy(false)
     }
-    const text = panel.text
-    setPanel(null)
-    if (await post(text, true)) setDraft('')
   }
 
   // Taking back your own message (owner, Oct 14): gone for everyone, after
@@ -1463,7 +1487,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
             {panelErr && <p className="err" role="alert">{panelErr}</p>}
             <div className="acts">
               <button className="xs-link" onClick={() => setPanel(null)}>{c.cancel}</button>
-              <button className="xs-send" onClick={useName} disabled={!nameDraft.trim()}>{c.nameUse}</button>
+              <button className="xs-send" onClick={useName} disabled={!nameDraft.trim() || panelBusy}>{c.nameUse}</button>
             </div>
           </div>
         </div>

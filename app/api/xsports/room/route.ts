@@ -65,16 +65,15 @@ export async function POST(req: Request) {
   ])
   const name = (prof?.display_name || userName(user as any) || 'Fan').slice(0, 60)
   const avatar = prof?.avatar_url || userPhoto(user as any) || null
-  // A name the person chose, not the one copied from their sign-in (owner,
-  // Oct 13: "we need users to set their display name"): sign-in names are
-  // often real full names, and a room shows the name to strangers.
-  const signinName = (userName(user as any) ?? '').trim()
-  const chosen = !!prof?.display_name && prof.display_name.trim() !== signinName
+  // Before the first message the person sees and confirms the name strangers
+  // will see (owner, Oct 13: "we need users to set their display name"); it
+  // may be their sign-in name (Oct 14: "the display name can be the same as
+  // sign in name": a rule that it differ made the panel reopen forever).
 
   try {
     const m = await member(user.id)
     if (!m.confirmed) {
-      if (body?.confirmName !== true || !chosen) return fail('name_unconfirmed', 409, { name: chosen ? name : '', avatar, chosen, handle: id?.handle ?? null, nextChangeAt: id?.nextChangeAt ?? null })
+      if (body?.confirmName !== true) return fail('name_unconfirmed', 409, { name, avatar, handle: id?.handle ?? null, nextChangeAt: id?.nextChangeAt ?? null })
       await confirmName(user.id)
     }
     if (m.mutedUntil && Date.parse(m.mutedUntil) > Date.now()) return fail('muted', 403)
