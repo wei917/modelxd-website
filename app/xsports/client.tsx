@@ -11,7 +11,7 @@
 import { Suspense, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { useLang, useT } from '../../lib/i18n'
+import { LANGS, useLang, useT } from '../../lib/i18n'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { isSubmitEnter } from '../../lib/ime'
 import { FEATURE } from '../../lib/model-features'
@@ -23,6 +23,7 @@ import { nextSpeaker } from '../../lib/xsports-turn'
 import { HOUSE_AIS } from '../../lib/xsports-ais'
 import OddsChart from './OddsChart'
 import { useHidden, personKey, isHidden } from './hidden'
+import { useRoomLang } from './room-lang'
 import { createPortal } from 'react-dom'
 import type { User } from '@supabase/supabase-js'
 import { useFace } from '../../lib/use-face'
@@ -294,6 +295,8 @@ function SportsBar({ c, current, onPick, onBack }: { c: Copy; current: League | 
  *  its colours. */
 function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
   const hide = useHidden()
+  const { lang } = useLang()
+  const [roomLang, setRoomLang] = useRoomLang()
   // The name strangers see in the chats is the account's website name
   // (profiles.display_name, lib/use-face): shown here, changed on the account
   // page (owner, Oct 14: "mention it's sync with profile display name").
@@ -317,6 +320,14 @@ function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
             <p className="xs-set-note sync">{c.nameSync}</p>
           </>
         ) : null}
+        {/* Which language's chat to join (owner, Oct 15); the site's own
+            language means following the site again. */}
+        <div className="xs-set-row">
+          <div className="txt"><b id="xs-room-lang">{c.roomLangTitle}</b><small>{c.roomLangHint}</small></div>
+          <select className="xs-select" value={roomLang ?? lang} onChange={e => setRoomLang(e.target.value === lang ? null : e.target.value)} aria-labelledby="xs-room-lang">
+            {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+          </select>
+        </div>
         <div className="xs-set-row">
           <div className="txt"><b>{c.showAi}</b><small>{c.showAiHint}</small></div>
           <button type="button" role="switch" aria-checked={aiOn} aria-label={c.showAi} className="xs-switch" onClick={() => hide.setAllAi(aiOn)} data-autofocus><i /></button>
@@ -358,6 +369,7 @@ function onDayChange(cb: () => void) {
   return () => { clearInterval(t); document.removeEventListener('visibilitychange', cb) }
 }
 const useToday = () => useSyncExternalStore(onDayChange, localToday, () => mlbToday())
+const noChange = () => () => {}
 
 function useGames(league: League, date: string) {
   const [games, setGames] = useState<GameCard[] | null>(null)
@@ -1332,8 +1344,10 @@ const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, on
  *  Realtime (supabase/131); the watching count is Realtime presence; a
  *  signed-in viewer's open page asks every 10 s whether a commentator
  *  should speak. */
-function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
-  league: League; pk: number; lang: string; c: Copy; g: GameState | null
+function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }: {
+  /** lang: the site's (words, times); room: the chat's language
+   *  (room-lang.ts), whose room this is and whose words the AIs speak. */
+  league: League; pk: number; lang: string; room: string; c: Copy; g: GameState | null
   signedIn: boolean | null; onSignIn: () => void; onViewers: (n: number) => void
 }) {
   const [msgs, setMsgs] = useState<RoomMsg[]>([])
@@ -1401,7 +1415,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     // delivered. A page that does not reach what is here (a phone back after
     // 80 or more missed messages) starts the list again from it, or a hole
     // would stay in the middle.
-    const load = () => fetch(`/api/xsports/room?league=${league}&game=${pk}&lang=${lang}`).then(async res => {
+    const load = () => fetch(`/api/xsports/room?league=${league}&game=${pk}&lang=${room}`).then(async res => {
       if (stop) return
       if (!res.ok) { setDown(true); return }
       setDown(false)
@@ -1423,11 +1437,11 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     const onVis = () => { if (!document.hidden) load() }
     document.addEventListener('visibilitychange', onVis)
     const client = sb()
-    const channel = client.channel(`xsports-room:${league}:${pk}:${lang}`, { config: { presence: { key: uid() } } })
+    const channel = client.channel(`xsports-room:${league}:${pk}:${room}`, { config: { presence: { key: uid() } } })
     channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'xsports_room_messages', filter: `game_id=eq.${pk}` }, (payload: any) => {
         const r = payload?.new
-        if (r && r.league === league && r.lang === lang && !r.hidden) add(r as RoomMsg)
+        if (r && r.league === league && r.lang === room && !r.hidden) add(r as RoomMsg)
       })
       // A message taken back by its author, or hidden by reports: gone here
       // too, at once (the server's broadcast).
@@ -1441,7 +1455,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
         await channel.track({ at: Date.now() })
       })
     return () => { stop = true; document.removeEventListener('visibilitychange', onVis); client.removeChannel(channel) }
-  }, [league, pk, lang, add, kept, onViewers])
+  }, [league, pk, room, add, kept, onViewers])
 
   // The page before the oldest here, from the server.
   const loadOlder = useCallback(async () => {
@@ -1451,7 +1465,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     setOlderBusy(true)
     setOlderFailed(false)
     try {
-      const res = await fetch(`/api/xsports/room?league=${league}&game=${pk}&lang=${lang}&before=${first.id}`)
+      const res = await fetch(`/api/xsports/room?league=${league}&game=${pk}&lang=${room}&before=${first.id}`)
       if (!res.ok) throw new Error(String(res.status))
       const j = await res.json()
       const rows = (j.messages ?? []) as RoomMsg[]
@@ -1470,16 +1484,16 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
       olderBusyRef.current = false
       setOlderBusy(false)
     }
-  }, [league, pk, lang, pinned])
+  }, [league, pk, room, pinned])
 
   // A commentator speaks when an open page's tick finds a reason.
   useEffect(() => {
     if (!signedIn) return
-    const tick = () => { if (!document.hidden) fetch('/api/xsports/room/tick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game: pk, lang }) }).catch(() => {}) }
+    const tick = () => { if (!document.hidden) fetch('/api/xsports/room/tick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game: pk, lang: room }) }).catch(() => {}) }
     tick()
     const t = setInterval(tick, 10_000)
     return () => clearInterval(t)
-  }, [signedIn, league, pk, lang])
+  }, [signedIn, league, pk, room])
 
   // The chat's lines: the messages and, from the game's plays, where each
   // inning or period begins (the plays themselves are in 戰況: owner, Oct
@@ -1612,7 +1626,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     // error message").
     const problem = (msg: string) => { if (confirmName) setPanelErr(msg); else { setFlashOk(false); setFlash(msg) } }
     try {
-      const res = await fetch('/api/xsports/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game: pk, lang, content: text, confirmName }) })
+      const res = await fetch('/api/xsports/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game: pk, lang: room, content: text, confirmName }) })
       const j = await res.json().catch(() => ({}))
       if (res.status === 401) { onSignIn(); return false }
       if (res.status === 409 && j.code === 'name_unconfirmed') {
@@ -1735,6 +1749,9 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
     if (atList.onKeyDown(e)) return
     if (isSubmitEnter(e as any)) { e.preventDefault(); send() }
   }
+  // Another language's room than the site's (X體育設定): the box says which.
+  const placeholder = room === lang ? c.roomPlaceholder : c.roomPlaceholderIn(LANGS.find(l => l.code === room)?.label ?? room)
+
   // Only the window is drawn (WINDOW, above); each message a RoomRow.
   const rows: React.ReactNode[] = []
   for (let i = start; i < end; i++) {
@@ -1811,7 +1828,7 @@ function Thread({ league, pk, lang, c, g, signedIn, onSignIn, onViewers }: {
             <button className="signin" onClick={onSignIn}>{c.signInChat}</button>
           ) : (
             <>
-              <input ref={inputRef} value={draft} placeholder={c.roomPlaceholder} maxLength={500} aria-label={c.roomPlaceholder} enterKeyHint="send"
+              <input ref={inputRef} value={draft} placeholder={placeholder} maxLength={500} aria-label={placeholder} enterKeyHint="send"
                 {...atList.inputProps}
                 onChange={e => { setDraft(e.target.value); atList.read(e.target.value, e.target.selectionStart) }}
                 onKeyDown={onKey} />
@@ -2717,6 +2734,11 @@ type RTab = 'chat' | 'private' | 'box' | 'odds'
 
 function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; lang: string }) {
   const auth = useAuthModal()
+  // The public chat's language: the site's, unless X體育設定 picked another.
+  // The choice lives in this browser, so the chat opens only once the page
+  // has read it (never the site's room first, for a moment).
+  const room = useRoomLang()[0] ?? lang
+  const onClient = useSyncExternalStore(noChange, () => true, () => false)
   const [game, setGame] = useState<GameState | null>(null)
   const [feedDown, setFeedDown] = useState(false)
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
@@ -2900,7 +2922,7 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
           {/* The chat stays mounted on the other tabs: its Realtime channel,
               the watching count and the commentator's ticks keep going. */}
           <div className="xs-chat" hidden={rtab !== 'chat'}>
-            <Thread league={league} pk={pk} lang={lang} c={c} g={g} signedIn={signedIn} onSignIn={() => auth.show()} onViewers={setViewers} />
+            {onClient ? <Thread key={room} league={league} pk={pk} lang={lang} room={room} c={c} g={g} signedIn={signedIn} onSignIn={() => auth.show()} onViewers={setViewers} /> : null}
           </div>
           {/* So does the private one, its words and its running total; it
               speaks only while its tab is in view. */}
