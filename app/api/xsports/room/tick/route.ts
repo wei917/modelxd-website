@@ -14,6 +14,8 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { xsportsAdmin } from '@/lib/xsports-store'
 import { roomKeyOf, roomMissing, type RoomState } from '@/lib/xsports-room'
 import { gameFor, nextTrigger, roomSpeak } from '@/lib/xsports-room-ai'
+import { cheersIn } from '@/lib/xsports-ais'
+import { cheerDue, cheerFace, cheerResting, lastCheerAt, roomCheer } from '@/lib/xsports-cheer'
 
 const lastTick = new Map<string, number>()
 
@@ -36,6 +38,15 @@ export async function POST(req: Request) {
   if (room?.ai_busy_until && Date.parse(room.ai_busy_until) > Date.now()) return Response.json({ spoke: false, reason: 'busy' })
   const game = await gameFor(k.league, Number(k.game)).catch(() => null)
   if (!game) return Response.json({ spoke: false, reason: 'no_game' })
+  // 晴晴 first when a moment is due (MLB 繁中 rooms): a cheer belongs right
+  // on the play; the commentators speak on the next tick.
+  if (cheersIn(k) && !cheerResting(k) && await cheerFace()) {
+    const due = cheerDue(game, await lastCheerAt(k).catch(() => null))
+    if (due) {
+      after(roomCheer(k, due))
+      return Response.json({ spoke: true, trigger: `cheer:${due.trigger}` })
+    }
+  }
   const { data: lastHuman } = await xsportsAdmin().from('xsports_room_messages').select('created_at')
     .eq('league', k.league).eq('game_id', k.game).eq('lang', k.lang).eq('kind', 'human')
     .order('id', { ascending: false }).limit(1).maybeSingle()

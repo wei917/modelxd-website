@@ -20,7 +20,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import { mlbToday, type GameCard, type GameState, type PlayEvent, type League, type TeamLine } from '../../lib/mlb'
 import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
-import { ALL_AIS, aiByName, gameDraw, type Commentator } from '../../lib/xsports-ais'
+import { ALL_AIS, aiByName, CHEERLEADER, gameDraw, isCheer, type Commentator } from '../../lib/xsports-ais'
 import OddsChart from './OddsChart'
 import { useHidden, personKey, isHidden } from './hidden'
 import { useRoomLang } from './room-lang'
@@ -305,6 +305,7 @@ function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
   const face = useFace(me)
   const people = Object.entries(hide.state.people).sort((a, b) => b[1].at - a[1].at)
   const ais = AI_HANDLES.filter(h => h.handle in hide.state.ais)
+  const cheerHidden = CHEERLEADER.handle in hide.state.ais
   const aiOn = hide.state.allAi === null
   return createPortal(
     <div className="xs xs-portal">
@@ -333,8 +334,15 @@ function XsSettings({ c, onClose }: { c: Copy; onClose: () => void }) {
           <button type="button" role="switch" aria-checked={aiOn} aria-label={c.showAi} className="xs-switch" onClick={() => hide.setAllAi(aiOn)} data-autofocus><i /></button>
         </div>
         <h3 className="xs-set-h">{c.hiddenList}</h3>
-        {people.length || ais.length ? (
+        {people.length || ais.length || cheerHidden ? (
           <ul className="xs-set-list">
+            {cheerHidden ? (
+              <li key="cheer">
+                <span className="face" aria-hidden>{CHEERLEADER.name[0]}</span>
+                <span className="nm"><b>{CHEERLEADER.name}</b><small>{c.cheerRole} · @{CHEERLEADER.handle}</small></span>
+                <button type="button" className="xs-unhide" onClick={() => hide.showAi(CHEERLEADER.handle)}>{c.unhide}</button>
+              </li>
+            ) : null}
             {ais.map(h => (
               <li key={h.handle}>
                 <ProviderLogo provider={h.ais[0].provider} model={h.ais[0].model_name} size={28} />
@@ -1078,7 +1086,7 @@ function useAt(draft: string, setDraft: (v: string) => void, inputRef: React.Ref
 }
 
 /** A commentator's @handle, from the model name its messages carry. */
-const aiHandle = (m: { model_name: string | null }): string | null => aiByName(m.model_name)?.handle ?? null
+const aiHandle = (m: { model_name: string | null }): string | null => (m.model_name === CHEERLEADER.name ? CHEERLEADER.handle : aiByName(m.model_name)?.handle ?? null)
 
 /** Each commentator handle once, with every model that has carried it (a
  *  hidden @Qwen hides Qwen3.8 Max and Qwen 3.8 Flash alike). */
@@ -1236,7 +1244,7 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>, hooks?: R
 function withMentions(text: string): React.ReactNode {
   const out: React.ReactNode[] = []
   let last = 0
-  for (const m of text.matchAll(/[@＠](?:\s*ai(?![a-z0-9_.])|[a-z0-9_.]{3,20})/gi)) {
+  for (const m of text.matchAll(/[@＠](?:\s*ai(?![a-z0-9_.])|晴晴|[a-z0-9_.]{3,20})/gi)) {
     if (m.index! > last) out.push(text.slice(last, m.index))
     out.push(<span key={m.index} className="xs-men">{m[0]}</span>)
     last = m.index! + m[0].length
@@ -1315,18 +1323,22 @@ const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, on
   onCard: (m: RoomMsg) => void; onRemove: (m: RoomMsg) => void; onReport: (m: RoomMsg) => void
 }) {
   const ai = m.kind === 'ai'
+  // 晴晴, the room's cheerleader: her photo, her name and a 啦啦隊 tag.
+  const cheer = isCheer(m)
   const h = ai ? aiHandle(m) : null
-  const face = !ai && m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null
+  const face = (cheer || !ai) && m.author_avatar && /^https:\/\//.test(m.author_avatar) ? m.author_avatar : null
   return (
-    <div className={`xs-msg${ai ? ' ai' : ''}${mine ? ' mine' : ''}`} data-id={m.id}>
-      {ai ? null : face
+    <div className={`xs-msg${ai ? ' ai' : ''}${cheer ? ' cheer' : ''}${mine ? ' mine' : ''}`} data-id={m.id}>
+      {ai && !cheer ? null : face
         ? <img className="av" src={face} alt="" loading="lazy" referrerPolicy="no-referrer" />
         : <span className="av" aria-hidden>{(m.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
       <div className="col">
         {/* Who (the name, then a small @ID: owner, Oct 13, "A seems
             better"; the commentator by its model), when, then the words. */}
         <div className="who">
-          {ai
+          {cheer
+            ? <><button type="button" className="who-btn" onClick={() => onCard(m)}><b className="n">{m.author_name}</b><span className="tag">{c.cheerTag}</span></button><span className="id">@{CHEERLEADER.handle}</span></>
+            : ai
             ? <><button type="button" className="who-btn" onClick={() => onCard(m)}><b className="n">{c.aiCommentator}</b><span className="model">{m.model_name ?? m.author_name}</span></button>{h ? <span className="id">@{h}</span> : null}</>
             : <>{mine ? <b className="n">{m.author_name}</b> : <button type="button" className="who-btn" onClick={() => onCard(m)}><b className="n">{m.author_name}</b></button>}{m.author_handle ? <span className="id">@{m.author_handle}</span> : null}</>}
           <time className="t" dateTime={m.created_at}>{hhmm(lang, m.created_at)}</time>
@@ -1403,6 +1415,8 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   // The room's two commentators now (the @ list): the game's draw until
   // the room says (the day may have reached its cap, or a model be off).
   const [ais, setAis] = useState<Commentator[]>(() => gameDraw(league, String(pk)).slice(0, 2))
+  // 晴晴, where she cheers (the room says; null elsewhere).
+  const [cheer, setCheer] = useState<{ handle: string; name: string; avatar: string | null } | null>(null)
   const [olderBusy, setOlderBusy] = useState(false)
   const [olderFailed, setOlderFailed] = useState(false)
   const [pagedBack, setPagedBack] = useState(false)
@@ -1440,6 +1454,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
       setLoaded(true)
       if (!more) setStartId(rows[0]?.id ?? Infinity)
       if (Array.isArray(j.ais) && j.ais.length) setAis(j.ais as Commentator[])
+      if ('cheer' in j) setCheer(j.cheer ?? null)
       setMsgs(prev => {
         const have = new Set(prev.map(m => m.id))
         const hole = more && rows.length > 0 && prev.length > 0 && !rows.some(m => have.has(m.id))
@@ -1748,6 +1763,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   const atOptions: AtOption[] = [
     ...(aiShown ? [{ key: 'ai', label: c.aiAny, insert: 'AI', hint: '@AI' }] : []),
     ...ais.filter(a => aiShown && !(a.handle in hide.state.ais)).map(a => ({ key: `ai:${a.handle}`, label: a.name, insert: a.handle, hint: `@${a.handle}`, logo: { provider: a.provider, model: a.model_name } })),
+    ...(cheer && aiShown && !(cheer.handle in hide.state.ais) ? [{ key: 'cheer', label: cheer.name, insert: cheer.handle, hint: `@${cheer.handle}`, avatar: cheer.avatar }] : []),
   ]
   const yours = new Set(msgs.filter(m => mine.has(m.id)).map(m => m.author_handle))
   const offered = new Set(atOptions.map(o => o.insert))
@@ -1801,17 +1817,18 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
         // A name tapped: hide this person (or the commentators), or report
         // the message. 復原 in the flash takes a hide back.
         const ai = card.kind === 'ai'
+        const cheer = isCheer(card)
         const h = aiHandle(card)
         const close = () => setCard(null)
         const hidden = (label: string, back: () => void) => { close(); setFlash(c.hiddenFlash(label)); setFlashOk(true); setUndo(() => back) }
-        const face = !ai && card.author_avatar && /^https:\/\//.test(card.author_avatar) ? card.author_avatar : null
+        const face = (cheer || !ai) && card.author_avatar && /^https:\/\//.test(card.author_avatar) ? card.author_avatar : null
         const eye = <svg viewBox="0 0 24 24" aria-hidden><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.4 5.2A9.6 9.6 0 0 1 12 5c4.5 0 8 4.3 9 7a12 12 0 0 1-2.4 3.5M6.2 6.3C4.6 7.5 3.5 9.4 3 12c1 2.7 4.5 7 9 7 1.6 0 3.1-.5 4.4-1.3" /></svg>
         return (
           <Dialog title={ai ? (card.model_name ?? card.author_name) : card.author_name} onClose={close} actions={<button className="xs-link" onClick={close}>{c.closeLabel}</button>}>
             <div className="xs-card-who">
-              {ai ? (() => { const a = aiByName(card.model_name); return a ? <ProviderLogo provider={a.provider} model={a.model_name} size={36} /> : null })()
+              {ai && !cheer ? (() => { const a = aiByName(card.model_name); return a ? <ProviderLogo provider={a.provider} model={a.model_name} size={36} /> : null })()
                 : face ? <img className="face" src={face} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{(card.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
-              <span>{ai ? `${c.aiCommentator}${h ? ` · @${h}` : ''}` : card.author_handle ? `@${card.author_handle}` : ''}</span>
+              <span>{ai ? `${cheer ? c.cheerRole : c.aiCommentator}${h ? ` · @${h}` : ''}` : card.author_handle ? `@${card.author_handle}` : ''}</span>
             </div>
             <div className="xs-card-acts">
               {ai ? <>
@@ -1859,7 +1876,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
               <button className="xs-link" onClick={() => setReporting(null)} disabled={dlgBusy}>{c.cancel}</button>
               <button className="xs-send" onClick={sendReport} disabled={!why || dlgBusy}>{c.reportSend}</button>
             </>}>
-            <Quote who={ai ? `${c.aiCommentator}${reporting.model_name ? ` · ${reporting.model_name}` : ''}` : reporting.author_name} text={reporting.content} />
+            <Quote who={ai ? `${isCheer(reporting) ? c.cheerRole : c.aiCommentator}${reporting.model_name ? ` · ${reporting.model_name}` : ''}` : reporting.author_name} text={reporting.content} />
             <fieldset className="xs-dlg-why">
               <legend>{c.reportWhy}</legend>
               {list.map((r, i) => (

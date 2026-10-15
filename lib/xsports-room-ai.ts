@@ -22,7 +22,7 @@ import { getGame, getSchedule, mlbToday, type GameState } from './mlb'
 import { getNbaGame, getNbaSchedule } from './nba'
 import { systemText, stateBlock, cueText, newSince, lastEventId, type Trigger } from './xsports-prompt'
 import { addRoomMessage, claimSpeaker, recentMessages, releaseSpeaker, type RoomKey, type RoomMessage, type RoomState } from './xsports-room'
-import { askedAis, CHEAP_AIS, gameDraw, TOP_AIS, type Commentator } from './xsports-ais'
+import { askedAis, CHEAP_AIS, CHEERLEADER, gameDraw, TOP_AIS, type Commentator } from './xsports-ais'
 import { addSpend, overCapToday } from './xsports-ai-spend'
 import { sanitizeProviderError } from './provider-errors'
 
@@ -42,6 +42,7 @@ export function transcript(rows: RoomMessage[], self: Commentator, pair: readonl
   if (!rows.length) return ''
   const who = (r: RoomMessage) => {
     if (r.kind === 'ai') {
+      if (r.model_name === CHEERLEADER.name) return `${CHEERLEADER.name} (the room's AI cheerleader)`
       if (!r.model_name || r.model_name === self.name) return '(you)'
       const other = pair.find(a => a.name === r.model_name)
       return other ? `${other.name} (@${other.handle}, the other AI commentator)` : `${r.model_name} (AI commentator)`

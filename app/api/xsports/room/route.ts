@@ -3,7 +3,8 @@
 //        (the newest, or those older than <id>; more: whether older ones
 //        exist) (anyone), and `mine`: the ids of those the caller wrote
 //        (signed in), so the page can offer 刪除; with the newest page,
-//        `ais`: the room's two commentators now (its @ list)
+//        `ais`: the room's two commentators now (its @ list), and `cheer`:
+//        晴晴 where she cheers (lib/xsports-cheer), else null
 //   POST { league, game, lang, content, confirmName? }
 //        a fan's message: signed in, name confirmed once (409
 //        name_unconfirmed carries the name, @ID and picture to confirm), not
@@ -27,7 +28,8 @@ import { userName, userPhoto } from '@/lib/user-face'
 import { ensureHandle } from '@/lib/profile-handle'
 import { xsportsAdmin } from '@/lib/xsports-store'
 import { addRoomMessage, confirmName, member, ownIds, recentMessages, roomKeyOf, roomMissing, secondsSinceLast, MESSAGE_MAX } from '@/lib/xsports-room'
-import { askedAis } from '@/lib/xsports-ais'
+import { askedAis, asksCheer, cheersIn } from '@/lib/xsports-ais'
+import { cheerFace, roomCheer } from '@/lib/xsports-cheer'
 import { roomPair, roomSpeak } from '@/lib/xsports-room-ai'
 
 const PAGE = 80
@@ -49,7 +51,9 @@ export async function GET(req: Request) {
     if (user) mine = await ownIds(user.id, messages.filter(m => m.kind === 'human').map(m => m.id)).catch(() => [])
     // The room's two commentators now, with the newest page (the @ list).
     const ais = before ? undefined : (await roomPair(k).catch(() => null))?.pair
-    return Response.json({ messages, mine, more: messages.length === PAGE, ais })
+    // And the room's cheerleader, where she cheers (her name, @ and photo).
+    const cheer = before ? undefined : cheersIn(k) ? await cheerFace().catch(() => null) : null
+    return Response.json({ messages, mine, more: messages.length === PAGE, ais, cheer })
   } catch (e: any) {
     if (roomMissing(e)) return fail('room_unavailable', 503)
     console.warn('[xsports/room] read', e?.message ?? e)
@@ -102,8 +106,11 @@ export async function POST(req: Request) {
   // A fan asked the commentators: whoever's turn it is (@AI), or each of
   // the room's two that is named, in order, when it can take the floor.
   const asked = /[@＠]/.test(content) ? askedAis(content, (await roomPair(k)).pair) : []
-  if (asked.length) {
+  // @晴晴: the room's cheerleader answers first (lib/xsports-cheer).
+  const cheer = cheersIn(k) && asksCheer(content) && !!(await cheerFace())
+  if (asked.length || cheer) {
     after((async () => {
+      if (cheer) await roomCheer(k, { trigger: 'user', asker: { name, text: content, id: message.id } })
       for (const who of asked) await roomSpeak(k, 'user', { asker: { name, text: content, id: message.id }, wait: true, who: who === 'any' ? undefined : who })
     })())
   }

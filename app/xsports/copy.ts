@@ -77,6 +77,9 @@ export interface Copy {
   clipNoEmbed: string
   clipBadge: string
   aiCommentator: string
+  /** 晴晴, the room's AI cheerleader (Oct 15): her tag, and what she is. */
+  cheerTag: string
+  cheerRole: string
   /** The @AI row of the public chat's @ list: whichever commentator is up. */
   aiAny: string
   /** The private AI chat's tab (owner, Oct 13: "we need a private chat room
@@ -288,6 +291,8 @@ const en: Copy = {
   clipNoEmbed: 'This clip plays only on its own site.',
   clipBadge: 'Highlight',
   aiCommentator: 'AI commentator',
+  cheerTag: 'Cheerleader',
+  cheerRole: 'AI cheerleader',
   aiAny: 'Whichever commentator is up',
   tabPrivate: 'My AI',
   privateEmpty: 'Every model you picked answers a question; tap a model, press Reply on its answer or @ it to ask just that one. Press “Start watching” and they talk through the game, each as much as its settings say. Billed at each model’s list price.',
@@ -482,6 +487,8 @@ const zhHant: Copy = {
   clipNoEmbed: '這段影片只能在原網站觀看。',
   clipBadge: '精彩片段',
   aiCommentator: 'AI 球評',
+  cheerTag: '啦啦隊',
+  cheerRole: 'AI 啦啦隊',
   aiAny: '輪到的球評',
   tabPrivate: 'AI 私聊',
   privateEmpty: '提問時，每個選的模型都會回答；點一下模型、按答案上的「回覆」或 @ 它，就只問它。按「開始陪看」，它們會跟著比賽聊，各說多少在模型的設定裡選。依各模型定價計費。',
@@ -676,6 +683,8 @@ const zhHans: Copy = {
   clipNoEmbed: '这段视频只能在原网站观看。',
   clipBadge: '精彩片段',
   aiCommentator: 'AI 球评',
+  cheerTag: '啦啦队',
+  cheerRole: 'AI 啦啦队',
   aiAny: '轮到的球评',
   tabPrivate: 'AI 私聊',
   privateEmpty: '提问时，每个选的模型都会回答；点一下模型、按答案上的「回复」或 @ 它，就只问它。按「开始陪看」，它们会跟着比赛聊，各说多少在模型的设置里选。按各模型定价计费。',
@@ -870,6 +879,8 @@ const ja: Copy = {
   clipNoEmbed: 'この動画は配信元のサイトでのみ再生できます。',
   clipBadge: 'ハイライト',
   aiCommentator: 'AI解説',
+  cheerTag: 'チア',
+  cheerRole: 'AIチアリーダー',
   aiAny: '次の番の解説',
   tabPrivate: 'マイAI',
   privateEmpty: '質問には選んだモデル全員が答えます。モデルをタップするか、回答の「返信」や @ で、そのモデルだけに聞けます。「観戦を始める」を押すと試合について話し、どれだけ話すかはモデルごとの設定で選べます。各モデルの定価で課金されます。',
@@ -1064,6 +1075,8 @@ const ko: Copy = {
   clipNoEmbed: '이 영상은 원래 사이트에서만 재생됩니다.',
   clipBadge: '하이라이트',
   aiCommentator: 'AI 해설',
+  cheerTag: '치어리더',
+  cheerRole: 'AI 치어리더',
   aiAny: '차례인 해설',
   tabPrivate: '내 AI',
   privateEmpty: '질문하면 고른 모델이 모두 답합니다. 모델을 누르거나 답의 「답장」 또는 @로 그 모델에게만 물을 수 있습니다. 「함께 보기 시작」을 누르면 경기 이야기를 하며, 얼마나 말할지는 모델별 설정에서 고릅니다. 모델별 정가로 청구됩니다.',

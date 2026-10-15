@@ -67,6 +67,9 @@ export async function POST(req: Request) {
     const voiceDesc = voice ? (clean(body.voiceDesc, 500) || null) : null
     const VOICE_RATES = [0.75, 1, 1.25, 1.5]
     const voiceRate = VOICE_RATES.includes(Number(body.voiceRate)) ? Number(body.voiceRate) : 1
+    // 公開 (Oct 15): only when the builder says, so an older page saving a
+    // public character cannot quietly make it private again.
+    const visibility = body.visibility === 'public' || body.visibility === 'private' ? body.visibility : undefined
 
     // Until migration 77 lands, the voice columns don't exist — and dev +
     // prod share one database, so a save must never break over them. Try
@@ -86,6 +89,7 @@ export async function POST(req: Request) {
         user_id: user.id, name, persona, appearance,
         avatar_path: avatarPath, model_id: model.id, thinking, search, photos,
         voice, voice_desc: voiceDesc, voice_rate: voiceRate,
+        ...(visibility ? { visibility } : {}),
       }
       let ins = await svc().from('x_characters').insert(row).select('id').single()
       if (ins.error && /voice/i.test(ins.error.message)) {
@@ -99,7 +103,7 @@ export async function POST(req: Request) {
     }
 
     // update — owner-scoped by the WHERE; name keeps its old value if blank.
-    const patch: Record<string, any> = { persona, appearance, model_id: model.id, thinking, search, photos, voice, voice_desc: voiceDesc, voice_rate: voiceRate }
+    const patch: Record<string, any> = { persona, appearance, model_id: model.id, thinking, search, photos, voice, voice_desc: voiceDesc, voice_rate: voiceRate, ...(visibility ? { visibility } : {}) }
     if (name) patch.name = name
     if (avatarPath) patch.avatar_path = avatarPath
     let upd = await svc().from('x_characters')

@@ -78,3 +78,26 @@ export function askedAis(text: string, room: readonly Commentator[]): (Commentat
   }
   return hits.sort((a, b) => a.at - b.at).map(h => h.who)
 }
+
+/** The room's AI cheerleader (owner, Oct 15: "cheerleader feature 🙂 ... in
+ *  Taiwan cheerleaders are very popular"; "we can use it in the MLB game
+ *  public chat room"): 晴晴, a public character of founder@modelxd.com in
+ *  x_characters, so her persona, photo and model are edited in XPersona, and
+ *  making her private takes her out of the rooms. She cheers in these
+ *  leagues' rooms in these languages only (lib/xsports-cheer.ts). */
+export const CHEERLEADER = {
+  handle: '晴晴',
+  name: '晴晴',
+  characterId: '707c0db5-bdff-4e88-aa57-95c12f173580',
+  leagues: ['mlb'] as readonly string[],
+  langs: ['zh-Hant'] as readonly string[],
+}
+
+/** 晴晴 cheers in this room. */
+export const cheersIn = (k: { league: string; lang: string }) => CHEERLEADER.leagues.includes(k.league) && CHEERLEADER.langs.includes(k.lang)
+
+/** A message asks 晴晴: @晴晴 (a full-width ＠ too). */
+export const asksCheer = (text: string) => /@\s*晴晴/.test(text.normalize('NFKC'))
+
+/** 晴晴's own message. */
+export const isCheer = (m: { kind: string; model_name: string | null }) => m.kind === 'ai' && m.model_name === CHEERLEADER.name
