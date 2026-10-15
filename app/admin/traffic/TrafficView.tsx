@@ -247,6 +247,40 @@ function Card({ title, note, legend, children }: { title: string; note?: string;
   )
 }
 
+export interface SportsDay { day: string; usd: number; remarks: number; capped_at: string | null }
+
+/** XSports' AI commentators: today's spend against the daily cap (owner,
+ *  Oct 15: "so we can cap $50 a day for sports? when it hits cap, how do I
+ *  know?"). Red once the cap is reached, with the time; the filters do not
+ *  narrow it. */
+function SportsSpend({ s }: { s: { cap: number; today: string; days: SportsDay[] | null } }) {
+  const today = s.days?.find(d => d.day === s.today) ?? null
+  const usd = today?.usd ?? 0
+  const over = !!s.days && usd >= s.cap
+  const at = today?.capped_at ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' }).format(new Date(today.capped_at)) : null
+  const week = (s.days ?? []).reduce((a, d) => a + d.usd, 0)
+  return (
+    <section aria-label="XSports AI commentators" style={{ marginTop: 14, border: `1px solid ${over ? 'var(--red)' : 'var(--border)'}`, background: over ? 'var(--red-dim)' : undefined, borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ fontSize: 12, color: INK2 }}>XSports AI commentators, today (Taiwan time)</div>
+      {s.days === null ? (
+        <div style={{ fontSize: 13, color: INK, marginTop: 4, lineHeight: 1.5 }}>Waiting for supabase/135_xsports_ai_spend.sql. Until it runs, every room uses GPT-6 Luna and Qwen 3.8 Flash.</div>
+      ) : (
+        <>
+          <div style={{ fontSize: 26, fontWeight: 600, color: over ? 'var(--red)' : INK, lineHeight: 1.2, marginTop: 2 }}>
+            ${usd.toFixed(2)} <span style={{ fontSize: 14, fontWeight: 500, color: INK2 }}>of ${s.cap} a day</span>
+          </div>
+          <div style={{ fontSize: 12, color: INK3, marginTop: 2 }}>{today?.remarks ?? 0} remarks today; ${week.toFixed(2)} over the last 7 days</div>
+          {over && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)', marginTop: 6, lineHeight: 1.5 }}>
+              Cap reached{at ? ` at ${at}` : ''}. Every room uses GPT-6 Luna and Qwen 3.8 Flash until midnight.
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 function Tile({ label, value, sub }: { label: string; value: string; sub: string[] }) {
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', minWidth: 0 }}>
@@ -366,7 +400,7 @@ const SHARE_KIND: Record<string, string> = { answer: 'Answer', daily: "Today's f
 const SHARE_HOW: Record<string, string> = { save: 'Save to Photos (iPhone)', download: 'Download', share: 'Share…', copy: 'Copy link' }
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals }: {
+export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports }: {
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
@@ -399,6 +433,9 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   countryCodes: string[]
   signinDays: SigninDay[]
   signinTotals: SigninTotal[]
+  /** XSports' AI commentators: the last 7 Taipei days' spend (supabase/135),
+   *  null until it has been run, and the daily cap. */
+  sports: { cap: number; today: string; days: SportsDay[] | null }
 }) {
   const today = rows[rows.length - 1]
   const prev = rows.length > 1 ? rows[rows.length - 2] : null
@@ -439,6 +476,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
         one person on a phone and a laptop counts twice. Your own accounts, and every browser that has signed in with one,
         are left out.
       </p>
+
+      <SportsSpend s={sports} />
 
       <section aria-label="Filters" style={{ marginTop: 14, border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', display: 'grid', gap: 10 }}>
         <nav aria-label="Date range" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

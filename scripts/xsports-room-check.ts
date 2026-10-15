@@ -1,13 +1,19 @@
 // scripts/xsports-room-check.ts — checks the two AI commentators of X體育's
-// public chat (Oct 14: Qwen 3.8 Flash joined GPT-6 Luna) without a network,
-// a database or a provider:
-//   - lib/xsports-ais askedAis(): who a message asks (@AI, @Luna, @Qwen); a
-//     fan's @ID that only starts like one never counts
+// public chat (Oct 14: Qwen 3.8 Flash joined GPT-6 Luna; Oct 15: each game
+// draws two top models, the cheap pair past the day's cap) without a
+// network, a database or a provider:
+//   - lib/xsports-ais askedAis(): who a message asks (@AI, @Luna, @Qwen, a
+//     top pair's handles); a fan's @ID that only starts like one, or a
+//     model not in the room, never counts; gameDraw(): fixed per game, two
+//     makers, every top model drawn
+//   - lib/xsports-ai-spend: the Taipei day's total against $50, failing
+//     closed when the day cannot be read
 //   - lib/xsports-room-ai roomSpeak(), transpiled and run with every import
 //     mocked (the harness of scripts/xsports-turn-check.ts): they take
 //     turns; a named one answers, and only it; @AI and ticks fall to the
 //     other when one fails; one asking the other gets one answer, never a
-//     question back; each thinks at its quickest; what each one reads
+//     question back; the cheap pair thinks at its quickest, the top pair at
+//     its middle; what each one reads; every remark's cost is counted
 //   - app/api/xsports/room/route.ts POST: each commentator named answers, in
 //     order, one after the other; the first message confirms the name, which
 //     may be the sign-in name
@@ -18,20 +24,58 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import vm from 'node:vm'
 import ts from 'typescript'
-import { askedAis } from '../lib/xsports-ais'
+import { askedAis, CHEAP_AIS, TOP_AIS, gameDraw } from '../lib/xsports-ais'
 
 let fails = 0
 const ok = (cond: boolean, msg: string) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) fails++ }
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 function asks() {
-  const who = (t: string) => askedAis(t).map(w => (w === 'any' ? 'any' : w.handle)).join(',')
+  const who = (t: string, room = CHEAP_AIS) => askedAis(t, room).map(w => (w === 'any' ? 'any' : w.handle)).join(',')
   ok(who('@Qwen 誰會贏？') === 'Qwen', 'askedAis: @Qwen asks Qwen')
   ok(who('@luna @QWEN 你們覺得呢') === 'Luna,Qwen' && who('@Qwen 先說，@Luna 再說') === 'Qwen,Luna', 'askedAis: both, in the order named, any case')
   ok(who('@AI 誰會贏') === 'any' && who('＠ＡＩ 誰會贏') === 'any' && who('@ai球友 你好') === 'any', 'askedAis: @AI (full-width too) asks whichever is up')
   ok(who('@AI @Qwen 誰會贏') === 'Qwen', 'askedAis: a commentator named outranks @AI')
   ok(who('@aiko 你好') === '' && who('@lunatic 你好') === '' && who('@qwen_fan 你好') === '' && who('@luna.x 你好') === '' && who('寫信到 a@ai.com') === '', "askedAis: a fan's @ID that only starts like one asks nobody")
   ok(who('Luna 跟 Qwen 都不錯') === '' && who('好球！') === '', 'askedAis: a name without @ asks nobody')
+  const OG = [TOP_AIS[0], TOP_AIS[2]]
+  ok(who('@Opus 誰會贏', OG) === 'Opus' && who('@gemini @OPUS 你們呢', OG) === 'Gemini,Opus', 'askedAis: a top pair by its handles, in the order named')
+  ok(who('@Sol 你好', OG) === '' && who('@Luna 你好', OG) === '' && who('@Sol @AI 你好', OG) === 'any', 'askedAis: a model that is not in this room asks nobody (@AI still asks whoever is up)')
+}
+
+function draws() {
+  const a = gameDraw('mlb', '849811')
+  ok(a.map(x => x.handle).join() === gameDraw('mlb', '849811').map(x => x.handle).join() && a.length === TOP_AIS.length, 'gameDraw: the same order every time for a game')
+  ok(new Set(a.slice(0, 2).map(x => x.provider)).size === 2, "gameDraw: a game's two are two makers")
+  const n = new Map<string, number>()
+  for (let g = 800000; g < 800500; g++) for (const x of gameDraw('mlb', String(g)).slice(0, 2)) n.set(x.handle, (n.get(x.handle) ?? 0) + 1)
+  ok(TOP_AIS.every(x => (n.get(x.handle) ?? 0) > 120), `gameDraw: over 500 games every top model is drawn, ~200 each (${[...n].map(([h, c]) => `${h} ${c}`).join(', ')})`)
+  const pairs = new Set(Array.from({ length: 50 }, (_, i) => gameDraw('nba', String(401898400 + i)).slice(0, 2).map(x => x.handle).sort().join('+')))
+  ok(pairs.size >= 8, `gameDraw: games draw different pairs (${pairs.size} of 10 possible over 50 games)`)
+}
+
+// ── lib/xsports-ai-spend.ts: the day's total and the cap ──────────────────
+async function ledger() {
+  const mk = (o: { usd?: number; error?: boolean; rpcUsd?: number } = {}) => {
+    const rpcCalls: any[] = []
+    const mod = load('lib/xsports-ai-spend.ts', {
+      './xsports-store': {
+        xsportsAdmin: () => ({
+          from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => (o.error ? { data: null, error: { code: '42P01', message: 'relation does not exist' } } : { data: o.usd === undefined ? null : { usd: o.usd }, error: null }) }) }) }),
+          rpc: async (name: string, args: any) => { rpcCalls.push({ name, ...args }); return { data: [{ usd: o.rpcUsd ?? 1, remarks: 1, capped_at: null }], error: null } },
+        }),
+      },
+    })
+    return { mod, rpcCalls }
+  }
+  ok(await mk({ error: true }).mod.overCapToday() === true, 'ledger: a day that cannot be read (no table yet) counts as over the cap: the cheap pair')
+  ok(await mk({}).mod.overCapToday() === false && await mk({ usd: 49.99 }).mod.overCapToday() === false, 'ledger: nothing spent, or under $50: the top models')
+  ok(await mk({ usd: 50 }).mod.overCapToday() === true, 'ledger: $50 reached: over the cap')
+  const a = mk({ rpcUsd: 50.01 })
+  await a.mod.addSpend(0.03)
+  ok(a.rpcCalls[0]?.name === 'add_xsports_ai_spend' && a.rpcCalls[0].p_usd === 0.03 && a.rpcCalls[0].p_cap === 50 && /^\d{4}-\d{2}-\d{2}$/.test(a.rpcCalls[0].p_day), 'ledger: a remark adds its cost to the Taipei day, against $50')
+  ok(await a.mod.overCapToday() === true, 'ledger: the remark that crosses the cap switches this server at once')
+  ok(a.mod.taipeiDay(new Date('2026-10-14T16:30:00Z')) === '2026-10-15' && a.mod.taipeiDay(new Date('2026-10-14T15:59:00Z')) === '2026-10-14', 'ledger: the day turns at Taipei midnight')
 }
 
 // ── lib/xsports-room-ai.ts with every import mocked ──────────────────────
@@ -43,23 +87,30 @@ function load(rel: string, mocks: Record<string, unknown>) {
   const module = { exports: {} as any }
   vm.runInNewContext(js, {
     module, exports: module.exports, require: (id: string) => { if (id in mocks) return mocks[id]; throw Error('Unmocked import: ' + id) },
-    console: quiet, Request, Response, URL, clearTimeout,
+    console: quiet, Request, Response, URL, clearTimeout, process: { env: {} },
     // The room's lock waits 1.5 s between tries; not here.
     setTimeout: (fn: () => void, ms: number) => setTimeout(fn, Math.min(ms, 5)),
   }, { filename: rel })
   return module.exports
 }
 const ais = load('lib/xsports-ais.ts', {})
-const [LUNA, QWEN] = ais.HOUSE_AIS
+const [LUNA, QWEN] = ais.CHEAP_AIS
 const K = { league: 'mlb', game: '849811', lang: 'zh-Hant' }
 
 type Reply = string | { fail: string } | { silent: true }
-function room(o: { plan?: Record<string, Reply | Reply[]>; rows?: any[]; missing?: string[]; disabled?: string[]; busy?: number } = {}) {
+function room(o: { plan?: Record<string, Reply | Reply[]>; rows?: any[]; missing?: string[]; disabled?: string[]; busy?: number; capped?: boolean } = {}) {
+  const spent: number[] = []
+  const names: Record<string, string> = Object.fromEntries(ais.ALL_AIS.map((a: any) => [a.model_name, a.name]))
+  const tops = new Set(ais.TOP_AIS.map((a: any) => a.model_name))
   const calls: { model: string; thinking: string | null; system: string; prompt: string; search: boolean }[] = []
   const stored: any[] = (o.rows ?? []).map((r, i) => ({ id: i + 1, kind: 'human', author_name: 'Fan', author_handle: null, author_avatar: null, model_name: null, reply_to: null, created_at: '', ...r }))
   const released: any[] = []
   let id = 100, busy = o.busy ?? 0
-  const levels: Record<string, string[]> = { 'gpt-6-luna': ['none', 'low', 'medium', 'high', 'xhigh', 'max'], 'qwen3.8-flash': ['thinking_true', 'thinking_false'] }
+  const levels: Record<string, string[]> = {
+    'gpt-6-luna': ['none', 'low', 'medium', 'high', 'xhigh', 'max'], 'qwen3.8-flash': ['thinking_true', 'thinking_false'],
+    'claude-opus-5-5': ['low', 'medium', 'high', 'xhigh', 'max'], 'gpt-6.1-sol': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'gemini-3.1-pro-preview': ['low', 'medium', 'high'], 'grok-4.7': ['low', 'medium', 'high', 'xhigh'], 'qwen3.8-max': ['thinking_true', 'thinking_false'],
+  }
   const said: Record<string, number> = {}
   const mod = load('lib/xsports-room-ai.ts', {
     './providers': {
@@ -72,12 +123,12 @@ function room(o: { plan?: Record<string, Reply | Reply[]>; rows?: any[]; missing
         if (typeof r === 'object' && 'fail' in r) { cb.onError(r.fail); return }
         if (typeof r === 'object') return // ends without done or error
         for (const piece of r.match(/.{1,6}/gu) ?? []) cb.onDelta(piece)
-        cb.onDone({ cost: 0.0001 })
+        cb.onDone({ cost: tops.has(model.model_name) ? 0.02 : 0.0001 })
       },
     },
     './models': {
       getModelByProviderName: async (provider: string, name: string) => (o.missing?.includes(name) ? null : {
-        provider, model_name: name, display_name: name === LUNA.model_name ? LUNA.name : QWEN.name, enabled: !o.disabled?.includes(name),
+        provider, model_name: name, display_name: names[name], enabled: !o.disabled?.includes(name), blocked_features: [],
         output_config: { text: { thinking_levels: levels[name] ?? [], capabilities: ['web_search'] } },
       }),
     },
@@ -91,10 +142,13 @@ function room(o: { plan?: Record<string, Reply | Reply[]>; rows?: any[]; missing
       releaseSpeaker: async (_k: unknown, patch: any) => { released.push(patch) },
     },
     './xsports-ais': ais,
+    './model-features': { FEATURE: { xsports: 'xsports' } },
+    // The cheap pair unless a check says otherwise: the checks from Oct 14.
+    './xsports-ai-spend': { overCapToday: async () => o.capped ?? true, addSpend: async (usd: number) => { spent.push(usd) } },
     './provider-errors': { sanitizeProviderError: (s: string) => s },
   })
   const ai = () => stored.filter(m => m.kind === 'ai')
-  return { speak: mod.roomSpeak as (k: typeof K, t: string, opts?: any) => Promise<void>, transcript: mod.transcript, nextUp: mod.nextUp, calls, stored, released, ai }
+  return { speak: mod.roomSpeak as (k: typeof K, t: string, opts?: any) => Promise<void>, transcript: mod.transcript, nextUp: mod.nextUp, calls, stored, released, ai, spent }
 }
 
 async function commentators() {
@@ -157,8 +211,35 @@ async function commentators() {
   ok(b.calls.length === 0 && b.ai().length === 0, 'roomSpeak: a tick that finds the floor taken says nothing')
 
   // nextUp(): whoever did not speak last; the first word is Luna's.
-  const up = (names: (string | null)[]) => r.nextUp(names.map((n, i) => ({ id: i, kind: n ? 'ai' : 'human', model_name: n, content: '', author_name: '' }))).handle
+  const up = (names: (string | null)[]) => r.nextUp(names.map((n, i) => ({ id: i, kind: n ? 'ai' : 'human', model_name: n, content: '', author_name: '' })), CHEAP_AIS).handle
   ok(up([]) === 'Luna' && up(['GPT-6 Luna']) === 'Qwen' && up(['GPT-6 Luna', null, 'Qwen 3.8 Flash', null]) === 'Luna' && up(['an old model']) === 'Luna', 'nextUp: turns by who spoke last; fans in between do not count')
+}
+
+// ── The top pair (Oct 15): the game's draw, middle thinking, the cap ───────
+async function topPair() {
+  const [A, B, C] = gameDraw('mlb', K.game)
+  const r = room({ capped: false })
+  for (let i = 0; i < 3; i++) await r.speak(K, 'lull')
+  ok(r.ai().map(m => m.model_name).join() === [A.name, B.name, A.name].join(), `top pair: the game's draw speaks, taking turns (${A.handle}, ${B.handle})`)
+  ok(r.calls.every(c => c.thinking === (c.model === 'qwen3.8-max' ? 'thinking_true' : 'medium')), 'top pair: each at its middle thinking (medium; Qwen thinking on)')
+  ok(r.calls[1].system.includes(`You are ${B.name} (@${B.handle})`) && r.calls[1].system.includes(`${A.name} (@${A.handle})`) && r.calls[1].prompt.includes(`${A.name} (@${A.handle}, the other AI commentator)`), 'top pair: each is told who it is and who the other is')
+  ok(r.spent.length === 3 && r.spent.every(x => x === 0.02), "top pair: every remark's cost goes to the day's total")
+  const d = room({ capped: false, disabled: [A.model_name] })
+  await d.speak(K, 'lull')
+  await d.speak(K, 'lull')
+  ok(d.ai().map(m => m.model_name).join() === [B.name, C.name].join(), 'top pair: a drawn model switched off is replaced by the next in the draw')
+  const c = room({ capped: true })
+  await c.speak(K, 'lull')
+  ok(c.ai()[0]?.model_name === 'GPT-6 Luna' && c.calls[0].thinking === 'none', 'over the cap: the cheap pair speaks, at its quickest')
+  const f = room({ capped: false, plan: { [A.model_name]: { fail: 'fixture failure' }, [B.model_name]: { fail: 'fixture failure' } } })
+  await f.speak(K, 'lull')
+  ok(f.calls.map(x => x.model).join() === [A.model_name, B.model_name, 'gpt-6-luna'].join() && f.ai()[0]?.model_name === 'GPT-6 Luna', 'top pair: both fail, the cheap pair speaks instead')
+  const g = room({ capped: true })
+  await g.speak(K, 'user', { asker: { name: '阿明', text: `@${A.handle} 你好`, id: 1 }, wait: true, who: A })
+  ok(g.calls.length === 0 && g.ai().length === 0, 'a commentator named that has left the room (the cap was reached since): nobody answers')
+  const x = room({ capped: false, plan: { [A.model_name]: [`我看好道奇。@${B.handle} 你覺得呢？`] } })
+  await x.speak(K, 'lull')
+  ok(x.ai().map(m => m.model_name).join() === [A.name, B.name].join() && x.ai()[1].reply_to === x.ai()[0].id, `top pair: ${A.handle} asks @${B.handle}, which answers once`)
 }
 
 // ── app/api/xsports/room/route.ts POST with every import mocked ───────────
@@ -178,6 +259,7 @@ async function post(content: string, o: { confirmed?: boolean; confirm?: boolean
     },
     '@/lib/xsports-ais': ais,
     '@/lib/xsports-room-ai': {
+      roomPair: async () => ({ pair: ais.CHEAP_AIS, capped: true }),
       roomSpeak: async (_k: unknown, trigger: string, opts: any) => {
         const h = opts.who?.handle ?? 'any'
         spoke.push(`start:${h}`); asked.push({ trigger, ...opts })
@@ -236,7 +318,7 @@ async function get(query: string, stored: number) {
       addRoomMessage: async () => null, confirmName: async () => {}, member: async () => null, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
     },
     '@/lib/xsports-ais': ais,
-    '@/lib/xsports-room-ai': { roomSpeak: async () => {} },
+    '@/lib/xsports-room-ai': { roomSpeak: async () => {}, roomPair: async () => ({ pair: ais.CHEAP_AIS, capped: true }) },
   })
   const res: Response = await route.GET(new Request(`http://fixture.invalid/api/xsports/room?league=mlb&game=849811&lang=zh-Hant${query}`))
   return { status: res.status, body: await res.json(), calls }
@@ -245,15 +327,19 @@ async function get(query: string, stored: number) {
 async function roomPages() {
   const newest = await get('', 200)
   ok(newest.status === 200 && newest.body.messages.length === 80 && newest.body.messages[0].id === 121 && newest.body.more === true && newest.calls[0].before === undefined, 'GET: the newest 80, oldest first, and more before them')
+  ok(newest.body.ais?.map((a: any) => a.handle).join() === 'Luna,Qwen', "GET: the newest page names the room's two commentators (the @ list)")
   const back = await get('&before=41', 200)
-  ok(back.body.messages.length === 40 && back.body.messages[0].id === 1 && back.body.more === false && back.calls[0].before === 41, 'GET: ?before= reads the page older than that id; the last one says there is no more')
+  ok(back.body.messages.length === 40 && back.body.messages[0].id === 1 && back.body.more === false && back.calls[0].before === 41 && back.body.ais === undefined, 'GET: ?before= reads the page older than that id; the last one says there is no more')
   const bad = await get('&before=1%3Bdrop', 200)
   ok(bad.calls[0].before === undefined && bad.body.messages.length === 80, 'GET: a before that is not an id is ignored')
 }
 
 ;(async () => {
   asks()
+  draws()
+  await ledger()
   await commentators()
+  await topPair()
   await roomRoute()
   await roomPages()
   console.log(fails ? `${fails} FAILED` : 'all passed')
