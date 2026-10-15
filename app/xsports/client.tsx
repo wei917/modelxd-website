@@ -1057,14 +1057,32 @@ const aiHandle = (m: { model_name: string | null }): string | null => HOUSE_AIS.
  *  complicated? ... too many layers?"; see xsports.css). */
 const pageScroll = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches
 
+/** A jump the page makes for the reader: instant, even though the site's CSS
+ *  asks for smooth scrolling and some browsers ignore behavior: 'instant'
+ *  (Chrome on iPhone, Oct 14: the jump to a new message animated, something
+ *  changed height on the way, and it stopped mid-message). */
+function jumpBy(dy: number) {
+  const doc = document.documentElement
+  const was = doc.style.scrollBehavior
+  doc.style.scrollBehavior = 'auto'
+  window.scrollBy(0, dy)
+  doc.style.scrollBehavior = was
+}
+const jumpTo = (top: number) => jumpBy(top - window.scrollY)
+
 /** A chat keeps to its newest line while the reader is at the bottom, and
  *  lets go the moment they scroll up (Oct 14: "why the dialog keeps jump
- *  back to my previous message?"): scrolling up holds only at the very
- *  bottom; coming back down near it holds again. On a phone the page is
- *  what scrolls, so the bottom is the page's; elsewhere the chat's own box.
- *  Plays that arrive after the messages, a late font or a tab coming back
- *  change the height without a scroll, so the size is watched rather than
- *  the line count. A chat on a hidden tab moves nothing. */
+ *  back to my previous message?"). On a phone the page is what scrolls, so
+ *  the bottom is the page's; elsewhere the chat's own box.
+ *  Anything changing height (a message, the score header above, a play's
+ *  line) is watched, not just the chat's line count: at the bottom the page
+ *  follows to the new bottom; reading back, the message at the top of the
+ *  reader's view is held where it was. Browsers with scroll anchoring do
+ *  that themselves; iPhones do not (Oct 14: "on iPhone mobile chrome, you
+ *  still jump to mid of the message when a new message is received"). The
+ *  reader lets go by scrolling up (a finger moving down, the wheel up) and
+ *  is held again by scrolling back near the bottom; the page's own jumps
+ *  count for neither. A chat that is not on screen moves nothing. */
 function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
   const pinned = useRef(true)
   useEffect(() => {
@@ -1075,28 +1093,70 @@ function useStickToBottom(ref: React.RefObject<HTMLDivElement | null>) {
     // Not on screen: a hidden tab, or a phone showing 戰況 (the chats sit
     // in a column the page does not display).
     const off = () => !el.getClientRects().length
-    const holds = (top: number, last: number, gap: number) => (top < last - 1 ? gap < 2 : gap < 80)
-    let lastBox = el.scrollTop, lastPage = window.scrollY
-    const onBox = () => {
-      if (pageScroll()) return
-      pinned.current = holds(el.scrollTop, lastBox, el.scrollHeight - el.scrollTop - el.clientHeight)
-      lastBox = el.scrollTop
+    // Where the reader's view starts: under the bars stuck at the top of a
+    // phone's page, or the box's own top.
+    const viewTop = () => (pageScroll() ? 92 : el.getBoundingClientRect().top)
+    const gap = () => (pageScroll() ? doc.scrollHeight - window.scrollY - window.innerHeight : el.scrollHeight - el.scrollTop - el.clientHeight)
+    let ours = 0
+    const toBottom = () => {
+      ours = Date.now()
+      if (pageScroll()) jumpTo(doc.scrollHeight)
+      else el.scrollTop = el.scrollHeight
     }
-    const onPage = () => {
-      if (!pageScroll() || off()) return
-      pinned.current = holds(window.scrollY, lastPage, doc.scrollHeight - window.scrollY - window.innerHeight)
-      lastPage = window.scrollY
+    // The first message still in view and where it is.
+    let anchor: Element | null = null, anchorTop = 0
+    const remember = () => {
+      anchor = null
+      const top = viewTop()
+      for (const m of inner.children) {
+        const r = m.getBoundingClientRect()
+        if (r.bottom > top + 1) { anchor = m; anchorTop = r.top; break }
+      }
     }
+    const letGo = () => { if (!off()) pinned.current = false }
+    let y0 = 0
+    const onTouchStart = (e: TouchEvent) => { y0 = e.touches[0]?.clientY ?? 0 }
+    const onTouchMove = (e: TouchEvent) => { const y = e.touches[0]?.clientY ?? 0; if (y > y0 + 3) letGo(); y0 = y }
+    const onWheel = (e: WheelEvent) => { if (e.deltaY < 0) letGo() }
+    const onScroll = () => {
+      if (off()) return
+      // The reader's own scroll near the bottom holds again.
+      if (Date.now() - ours > 200 && gap() < 80) pinned.current = true
+      remember()
+    }
+    const onBox = () => { if (!pageScroll()) onScroll() }
+    const onPage = () => { if (pageScroll()) onScroll() }
     const ro = new ResizeObserver(() => {
-      if (!pinned.current || off()) return
-      if (pageScroll()) { window.scrollTo({ top: doc.scrollHeight, behavior: 'instant' }); lastPage = window.scrollY }
-      else { el.scrollTop = el.scrollHeight; lastBox = el.scrollTop }
+      if (off()) return
+      if (pinned.current) { toBottom(); remember(); return }
+      // Reading back: keep that message where it was.
+      if (anchor && anchor.isConnected) {
+        const moved = anchor.getBoundingClientRect().top - anchorTop
+        if (Math.abs(moved) > 1) {
+          ours = Date.now()
+          if (pageScroll()) jumpBy(moved)
+          else el.scrollTop += moved
+        }
+      }
+      remember()
     })
     el.addEventListener('scroll', onBox, { passive: true })
     window.addEventListener('scroll', onPage, { passive: true })
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('wheel', onWheel, { passive: true })
     ro.observe(inner)
     ro.observe(el)
-    return () => { el.removeEventListener('scroll', onBox); window.removeEventListener('scroll', onPage); ro.disconnect() }
+    // On a phone everything above the chat moves it too (the score header).
+    ro.observe(document.body)
+    return () => {
+      el.removeEventListener('scroll', onBox)
+      window.removeEventListener('scroll', onPage)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('wheel', onWheel)
+      ro.disconnect()
+    }
   }, [ref])
   return pinned
 }
@@ -2403,11 +2463,11 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
     if (firstView.current) { firstView.current = false; return }
     if (!pageScroll()) return
     requestAnimationFrame(() => {
-      if (view === 'chat' || view === 'private') { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); return }
+      if (view === 'chat' || view === 'private') { jumpTo(document.documentElement.scrollHeight); return }
       const pane = splitRef.current?.querySelector<HTMLElement>(view === 'feed' ? '.xs-feedwrap' : '.xs-right')
       if (!pane) return
       const start = pane.getBoundingClientRect().top + window.scrollY - barsHeight()
-      if (window.scrollY > start) window.scrollTo({ top: start, behavior: 'instant' })
+      if (window.scrollY > start) jumpTo(start)
     })
   }, [view]) // eslint-disable-line react-hooks/exhaustive-deps
   const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -2415,7 +2475,7 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
   const feedTop = () => {
     if (!pageScroll()) { bodyRef.current?.scrollTo({ top: 0 }); return }
     const wrap = splitRef.current?.querySelector<HTMLElement>('.xs-feedwrap')
-    if (wrap) window.scrollTo({ top: wrap.getBoundingClientRect().top + window.scrollY - barsHeight(), behavior: 'instant' })
+    if (wrap) jumpTo(wrap.getBoundingClientRect().top + window.scrollY - barsHeight())
   }
 
   // The game, every 10 s while the tab is in front.
@@ -2481,8 +2541,8 @@ function Room({ league, pk, c, lang }: { league: League; pk: number; c: Copy; la
       if (!box || !p) return
       const el = p.at ? box.querySelector<HTMLElement>(`[data-at="${CSS.escape(p.at)}"]`) : null
       if (pageScroll()) {
-        if (el) window.scrollBy({ top: el.getBoundingClientRect().top - barsHeight() - p.dy, behavior: 'instant' })
-        else window.scrollTo({ top: p.top, behavior: 'instant' })
+        if (el) jumpBy(el.getBoundingClientRect().top - barsHeight() - p.dy)
+        else jumpTo(p.top)
         return
       }
       if (el) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - p.dy
