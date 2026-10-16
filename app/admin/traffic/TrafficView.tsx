@@ -18,7 +18,7 @@ import type { CheerModelRow } from '@/lib/xsports-cheer-stats'
 import { Fragment, useState } from 'react'
 import Link from 'next/link'
 import { STRINGS } from '../../../lib/i18n'
-import type { AccountRow, CountryDay, DayRow, FunnelRow, PageRow, ProductDay, ProductTotal, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
+import type { AccountRow, CountryDay, DayRow, FunnelRow, PageRow, ProductAvgDay, ProductDay, ProductTotal, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -197,38 +197,50 @@ function Lines<R extends { day: string }>({ rows, series, format, extra, has = (
    *  and the tooltip gives no times. */
   has?: (r: R) => boolean
 }) {
-  const val = (r: R, s: Series<R>) => r[s.key] as number
-  const max = Math.max(1, ...rows.filter(has).flatMap(r => series.map(s => val(r, s))))
+  // A series value may also be null on its own (an app nobody opened that
+  // day, in "Avg per visit"): that series breaks there, the others go on.
+  const val = (r: R, s: Series<R>) => r[s.key] as number | null
+  const at = (i: number, s: Series<R>) => (has(rows[i]) ? val(rows[i], s) : null)
+  const max = Math.max(1, ...rows.flatMap((r, i) => series.map(s => at(i, s))).filter((v): v is number => v != null))
   const n = rows.length
   const x = (i: number) => ((i + 0.5) / n) * 100
-  // Unbroken runs of days that have numbers: one polyline each. A run of one
-  // day is a dot, drawn below with the end dots.
-  const runs: number[][] = []
-  rows.forEach((r, i) => {
-    if (!has(r)) return
-    const last = runs[runs.length - 1]
-    if (last && last[last.length - 1] === i - 1) last.push(i)
-    else runs.push([i])
+  // Unbroken runs of days that have a number, per series: one polyline each.
+  // A run of one day is a dot, drawn below with the end dots.
+  const runsOf = (s: Series<R>) => {
+    const runs: number[][] = []
+    rows.forEach((_, i) => {
+      if (at(i, s) == null) return
+      const last = runs[runs.length - 1]
+      if (last && last[last.length - 1] === i - 1) last.push(i)
+      else runs.push([i])
+    })
+    return runs
+  }
+  const lines = series.map(s => {
+    const runs = runsOf(s)
+    const lastDay = runs.length ? runs[runs.length - 1][runs[runs.length - 1].length - 1] : null
+    return { s, runs, lastDay, lone: runs.filter(run => run.length === 1).map(run => run[0]) }
   })
-  const lastDay = runs.length ? runs[runs.length - 1][runs[runs.length - 1].length - 1] : null
-  const lone = runs.filter(run => run.length === 1).map(run => run[0])
   return (
     <Plot rows={rows} max={max} format={format} ticksFor={timeAxis}
-      tip={r => [...(extra ? extra(r) : []), ...(has(r) ? series.map(s => ({ label: s.label, value: format(val(r, s)), color: s.color })) : [])]}>
+      tip={r => {
+        if (!has(r)) return extra ? extra(r) : []
+        return [...(extra ? extra(r) : []), ...series.map(s => { const v = val(r, s); return { label: s.label, value: v == null ? '—' : format(v), color: s.color } })]
+      }}>
       {(top, hover) => (
         <>
           <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
             {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={0} y2={100} stroke="var(--border2)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
-            {series.map(s => runs.filter(run => run.length > 1).map(run => (
+            {lines.map(({ s, runs }) => runs.filter(run => run.length > 1).map(run => (
               <polyline key={`${s.label}${run[0]}`} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"
-                points={run.map(i => `${x(i)},${100 - (val(rows[i], s) / top) * 100}`).join(' ')} />
+                points={run.map(i => `${x(i)},${100 - ((at(i, s) ?? 0) / top) * 100}`).join(' ')} />
             )))}
           </svg>
           {/* Dots on the last day with numbers, on a day that stands alone, and on
               the hovered day: round at any width, 8px with a 2px surface ring. */}
-          {series.map(s => [lastDay, ...lone, hover].filter((i, k, a): i is number => i !== null && a.indexOf(i) === k && has(rows[i])).map(i => (
+          {lines.map(({ s, lastDay, lone }) => [lastDay, ...lone, hover].filter((i, k, a): i is number => i !== null && a.indexOf(i) === k && at(i, s) != null).map(i => (
             <span key={`${s.label}${i}`} aria-hidden style={{
-              position: 'absolute', left: `${x(i)}%`, bottom: `${(val(rows[i], s) / top) * 100}%`,
+              position: 'absolute', left: `${x(i)}%`, bottom: `${((at(i, s) ?? 0) / top) * 100}%`,
               width: 8, height: 8, borderRadius: '50%', background: s.color, boxShadow: '0 0 0 2px var(--bg)', transform: 'translate(-50%, 50%)',
             }} />
           )))}
@@ -486,7 +498,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   /** Accounts per country, every country (123), or null until it has been run. */
   accounts: AccountRow[] | null
   /** Browsers per app in the range and country (138), or null until it has been run. */
-  products: { days: ProductDay[]; totals: ProductTotal[] } | null
+  products: { days: ProductDay[]; avg: ProductAvgDay[]; totals: ProductTotal[] } | null
   /** Page views per page and X先知 room in the range and country (139), or null until it has been run. */
   pages: PageRow[] | null
   /** The range as a whole (migration 118), or null until it has been run:
@@ -543,6 +555,10 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   ]
   // Only the apps with a browser in the range get a line.
   const productSeries = products ? PRODUCTS.filter(s => products.days.some(d => (d[s.key] as number) > 0)) : []
+  // The same apps, the same colours, for the per-visit chart.
+  const productAvgSeries: Series<ProductAvgDay>[] = productSeries.map(s => ({ ...s, key: s.key as keyof ProductAvgDay & string }))
+  // What the app chart shows (owner, Oct 16: "maybe a button to switch?").
+  const [appMetric, setAppMetric] = useState<'browsers' | 'avg'>('browsers')
   const methodSeries = METHODS.filter(m => m.key !== 'other' || signinDays.some(d => d.other > 0))
   const totalOf = (k: SigninTotal['key']) => signinTotals.find(t => t.key === k)
   const methodSummary = methodSeries.map(m => {
@@ -624,7 +640,19 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                   : products.totals.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No visits in this range{country ? ` from ${where}` : ''} yet.</p>
                   : (
                     <>
-                      <Lines rows={products.days} series={productSeries} format={num} />
+                      <div role="group" aria-label="The chart shows" style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                        {([['browsers', 'Browsers'], ['avg', 'Avg per visit']] as const).map(([m, label]) => (
+                          <button key={m} type="button" aria-pressed={appMetric === m} onClick={() => setAppMetric(m)}
+                            style={{ font: 'inherit', fontSize: 13, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+                              border: `1px solid ${appMetric === m ? 'var(--white)' : 'var(--border2)'}`,
+                              background: appMetric === m ? 'var(--white)' : 'transparent', color: appMetric === m ? 'var(--bg)' : INK2 }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {appMetric === 'browsers'
+                        ? <Lines rows={products.days} series={productSeries} format={num} />
+                        : <Lines rows={products.avg} series={productAvgSeries} format={stay} />}
                       <div style={{ ...wrap, marginTop: 14 }}>
                         <table style={table}>
                           <thead>

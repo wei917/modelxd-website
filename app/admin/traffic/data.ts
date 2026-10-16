@@ -118,19 +118,41 @@ export type ProductTotal = { product: string; visits: number; browsers: number; 
 
 /** The by-product rows as the chart's days (every day from the first through
  *  today) and the range's totals, busiest first. */
-export function productDays(data: ProductRow[], today: string): { days: ProductDay[]; totals: ProductTotal[] } {
+/** The average time per visit in each charted app, per day (owner, Oct 16:
+ *  "aver time per visit" in the chart): the app's time that day over the
+ *  visits that opened it. Null on a day nobody opened the app, so its line
+ *  breaks there instead of reading 0s. */
+export type ProductAvgDay = { day: string; xtell: number | null; xcreate: number | null; xsports: number | null; www: number | null; other: number | null }
+
+type ChartKey = (typeof CHART_PRODUCTS)[number] | 'other'
+const CHART_KEYS: ChartKey[] = [...CHART_PRODUCTS, 'other']
+
+export function productDays(data: ProductRow[], today: string): { days: ProductDay[]; avg: ProductAvgDay[]; totals: ProductTotal[] } {
   const empty = (day: string): ProductDay => ({ day, xtell: 0, xcreate: 0, xsports: 0, www: 0, other: 0 })
   const byDay = new Map<string, ProductDay>()
+  // Visits and seconds per day per charted app, for the averages.
+  const sums = new Map<string, Record<ChartKey, { visits: number; seconds: number }>>()
   for (const r of data) {
     if (!r.day) continue
     const d = byDay.get(r.day) ?? empty(r.day)
-    const k = (CHART_PRODUCTS as readonly string[]).includes(r.product) ? (r.product as (typeof CHART_PRODUCTS)[number]) : 'other'
+    const k: ChartKey = (CHART_PRODUCTS as readonly string[]).includes(r.product) ? (r.product as ChartKey) : 'other'
     d[k] += r.browsers
     byDay.set(r.day, d)
+    const sum = sums.get(r.day) ?? Object.fromEntries(CHART_KEYS.map(c => [c, { visits: 0, seconds: 0 }])) as Record<ChartKey, { visits: number; seconds: number }>
+    sum[k].visits += r.visits
+    sum[k].seconds += Number(r.total_seconds)
+    sums.set(r.day, sum)
   }
   const first = [...byDay.keys()].sort()[0]
+  const range = daysThrough(first, today)
+  const avgOf = (day: string): ProductAvgDay => {
+    const sum = sums.get(day)
+    const one = (k: ChartKey) => (sum && sum[k].visits > 0 ? Math.round(sum[k].seconds / sum[k].visits) : null)
+    return { day, xtell: one('xtell'), xcreate: one('xcreate'), xsports: one('xsports'), www: one('www'), other: one('other') }
+  }
   return {
-    days: daysThrough(first, today).map(d => byDay.get(d) ?? empty(d)),
+    days: range.map(d => byDay.get(d) ?? empty(d)),
+    avg: range.map(avgOf),
     totals: data.filter(r => r.day === null)
       .map(r => ({ product: r.product, visits: r.visits, browsers: r.browsers, seconds: Number(r.total_seconds) }))
       .sort((x, y) => y.browsers - x.browsers || x.product.localeCompare(y.product)),
