@@ -162,6 +162,13 @@ export function cheerCue(cue: CheerCue, g: GameState): string {
   }
 }
 
+/** Her team in this game, if it is playing (CHEERLEADER.team). */
+export const teamSide = (g: GameState): 'away' | 'home' | null =>
+  g.away.abbr === CHEERLEADER.team.abbr ? 'away' : g.home.abbr === CHEERLEADER.team.abbr ? 'home' : null
+
+/** Told in her team's games (owner, Oct 16: "she support LA dodgers"). */
+export const FAN_LINE = `[You are a ${CHEERLEADER.team.name} fan (道奇迷), and this is a Dodgers game: cheer for the Dodgers and their players by name, celebrate their runs, rally their at-bats, cheer their pitcher and fielders to hold the other side, and keep Dodgers fans' spirits up when they trail. Stay warm toward the other team's fans: a quick nod to a great play of theirs is fine, never mockery.]`
+
 /** Cheer once in the room, if she can take the floor (a fan's @ waits up to
  *  a minute for it). A cue from a tick is checked again once she has the
  *  floor: another page may have cheered meanwhile. Never throws. */
@@ -200,15 +207,17 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
     // minutes (a fan who asks too soon is told the next one comes later).
     let media: CheerMedia | null = null, later = false
     const tag = mediaTag(use)
+    // Her Dodger-blue set in Dodgers games, her red XD set elsewhere.
+    const side = teamSide(g)
     if (tag) {
       const seen = await recentMedia(k).catch(() => null)
       if (seen && seen.last !== null && Date.now() - seen.last < MEDIA_GAP_MS) later = use.trigger === 'user'
-      else if (seen) media = pickMedia(tag, seen.files)
+      else if (seen) media = pickMedia(tag, seen.files, Math.random, side ? 'dodgers' : 'xd')
     }
     const withMedia = media
       ? `\n[Your message comes with ${media.kind === 'video' ? 'a clip' : 'a picture'}: ${media.shows}. Let your words fit it; do not describe it at length.]`
       : later && use.trigger === 'user' ? `\n[You posted a picture a few minutes ago; tell ${use.asker.name} playfully that the next one comes a little later.]` : ''
-    const prompt = `${stateBlock(g, { tz: 'Asia/Taipei', others: [] })}\n\n${cheerTranscript(recent)}\n\n${cheerCue(use, g)}${withMedia}`
+    const prompt = `${stateBlock(g, { tz: 'Asia/Taipei', others: [] })}\n\n${cheerTranscript(recent)}\n\n${side ? `${FAN_LINE}\n` : ''}${cheerCue(use, g)}${withMedia}`
     let cost = 0
     const text = await new Promise<string>((resolve, reject) => {
       let out = ''

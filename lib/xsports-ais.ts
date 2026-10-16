@@ -91,6 +91,9 @@ export const CHEERLEADER = {
   characterId: '707c0db5-bdff-4e88-aa57-95c12f173580',
   leagues: ['mlb'] as readonly string[],
   langs: ['zh-Hant'] as readonly string[],
+  /** Her team (owner, Oct 16: "she support LA dodgers"): in its games she
+   *  cheers for it, in its blue set; elsewhere she cheers both sides. */
+  team: { abbr: 'LAD', name: 'Los Angeles Dodgers' },
 }
 
 /** 晴晴 cheers in this room. */
