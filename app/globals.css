@@ -4641,7 +4641,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   margin: 0; font-family: var(--xtell-serif, var(--font-display)), serif; font-size: 18px;
   font-weight: 400; line-height: 1.3; letter-spacing: -.01em; color: var(--white);
 }
-.plib-count { font-size: 12px; color: var(--muted2); font-variant-numeric: tabular-nums; }
 /* The site's segmented type control, compact, in the section header. */
 .plib-seg { border-radius: 8px; }
 .plib-seg .mode-seg-btn { min-height: 30px; padding: 4px 10px; font-size: 11px; }
@@ -4798,16 +4797,14 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   .plib-picker { position: static; }
   .plib-head-name { font-size: 17px; }
   /* One row on a phone, as on a desktop (owner, Oct 16): the badge keeps
-     its icon, the count rides in View all, the type buttons tighten. */
+     its icon, the type buttons tighten. */
   .plib-seg .mode-seg-btn { min-height: 30px; padding: 4px 6px; }
   .plib-vis-word { display: none; }
-  .plib-head:has(.plib-viewall) .plib-count { display: none; }
   .plib-head-end { gap: 0; }
   .plib-picker-pop { min-width: min(300px, calc(100vw - 32px)); }
   .plib-section { padding: 18px 0 20px; }
   .plib-head { gap: 6px; margin-bottom: 10px; }
   .plib-head-icon svg { width: 18px; height: 18px; }
-  .plib-count { font-size: 12px; }
   .plib-vis { padding: 5px 6px; }
   .plib-viewall { gap: 3px; font-size: 12px; }
   .plib-head-end { gap: 6px; }
