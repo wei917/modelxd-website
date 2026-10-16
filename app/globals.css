@@ -4865,8 +4865,8 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-you {
   /* One grid (owner, Oct 16, phone first, then the desktop the same):
      picture, 登出 under it | the labelled lines, the language the last of
-     them | 編輯 just after the longest line. */
-  display: grid; grid-template-columns: 58px max-content minmax(0, max-content) auto; justify-content: start;
+     them | 編輯 at the panel's right edge, as 加值 is. */
+  display: grid; grid-template-columns: 58px max-content minmax(0, 1fr) auto;
   column-gap: 6px; row-gap: 4px; align-items: center; padding: 6px 0 20px;
 }
 .acct-avatar {
@@ -4881,7 +4881,7 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-ids, .acct-ids > div { display: contents; }
 .acct-ids dt { grid-column: 2; margin-left: 16px; font-size: 13px; color: var(--muted2); white-space: nowrap; }
 .acct-ids dd { grid-column: 3; min-width: 0; margin: 0 0 0 6px; font-size: 14px; color: var(--white); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.acct-edit { grid-column: 4; grid-row: 1 / span 3; margin-left: 12px; }
+.acct-edit { grid-column: 4; grid-row: 1 / span 3; margin-left: 12px; justify-self: end; }
 .acct-out { grid-column: 1; grid-row: 4; justify-self: center; margin-top: 6px; }
 .acct-ids .acct-f-lang dt { grid-column: 2; grid-row: 4; margin-top: 6px; }
 .acct-ids .acct-f-lang dd { grid-column: 3 / span 2; grid-row: 4; justify-self: start; margin: 6px 0 0 6px; overflow: visible; }
