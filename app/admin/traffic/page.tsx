@@ -27,6 +27,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getAdminUser } from '@/lib/admin'
 import TrafficView from './TrafficView'
 import { DAILY_CAP_USD, spendDays, taipeiDay } from '@/lib/xsports-ai-spend'
+import { cheerModelStats } from '@/lib/xsports-cheer-stats'
 import { askedCountry, countryDays, countryNames, fillDaily, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow, type AccountRow, type FunnelRow } from './data'
 
 export const dynamic = 'force-dynamic'
@@ -132,6 +133,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
       signinDays={methods.days}
       signinTotals={methods.totals}
       sports={{ cap: DAILY_CAP_USD, today: taipeiDay(), days: await spendDays(7) }}
+      cheerModels={await cheerModelStats(sb, days).catch(() => null)}
     />
   )
 }

@@ -14,6 +14,7 @@
 // legend whenever there are two series, hover/focus tooltips on the whole
 // day slot, and the tables as the no-hover way to every number.
 
+import type { CheerModelRow } from '@/lib/xsports-cheer-stats'
 import { Fragment, useState } from 'react'
 import Link from 'next/link'
 import type { AccountRow, CountryDay, DayRow, FunnelRow, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
@@ -249,6 +250,44 @@ function Card({ title, note, legend, children }: { title: string; note?: string;
 
 export interface SportsDay { day: string; usd: number; remarks: number; capped_at: string | null }
 
+/** 晴晴's photos and clips by model (owner, Oct 16: "so we know which models
+ *  are better"): what each made for admins' asks, what failed, and fans'
+ *  👍 / 👎 and reports on what was posted, over the range (every country). */
+function CheerModels({ rows, days }: { rows: CheerModelRow[] | null; days: number }) {
+  const th: React.CSSProperties = { textAlign: 'right', padding: '6px 8px', fontWeight: 600, color: INK2, whiteSpace: 'nowrap' }
+  const td: React.CSSProperties = { textAlign: 'right', padding: '6px 8px', color: INK, whiteSpace: 'nowrap' }
+  return (
+    <section aria-label="晴晴's models" style={{ marginTop: 14, border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ fontSize: 12, color: INK2 }}>晴晴's photos and clips by model, last {days} days (every country)</div>
+      {rows === null ? (
+        <div style={{ fontSize: 13, color: INK, marginTop: 4, lineHeight: 1.5 }}>Waiting for supabase/137_xsports_cheer_jobs.sql.</div>
+      ) : rows.length === 0 ? (
+        <div style={{ fontSize: 13, color: INK3, marginTop: 4 }}>Nothing made yet: an admin taps her name in a room and asks.</div>
+      ) : (
+        <div style={{ overflowX: 'auto', marginTop: 6 }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: 13, minWidth: 560 }}>
+            <thead><tr>
+              <th style={{ ...th, textAlign: 'left' }}>Model</th><th style={th}>Made</th><th style={th}>Failed</th><th style={th}>Posted</th>
+              <th style={th}>👍</th><th style={th}>👎</th><th style={th}>Reports</th><th style={th}>Median time</th><th style={th}>Avg cost</th>
+            </tr></thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={`${r.kind}:${r.model}`} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ ...td, textAlign: 'left' }}>{r.label} <span style={{ color: INK3 }}>{r.kind === 'video' ? 'clip' : 'photo'}</span></td>
+                  <td style={td}>{r.made}</td><td style={{ ...td, color: r.failed ? 'var(--red)' : INK3 }}>{r.failed}</td><td style={td}>{r.posted}</td>
+                  <td style={td}>{r.up}</td><td style={td}>{r.down}</td><td style={{ ...td, color: r.reports ? 'var(--red)' : INK3 }}>{r.reports}</td>
+                  <td style={td}>{r.medianMs == null ? '-' : `${Math.round(r.medianMs / 1000)} s`}</td>
+                  <td style={td}>{r.avgUsd == null ? '-' : `$${r.avgUsd.toFixed(3)}`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 /** XSports' AI commentators: today's spend against the daily cap (owner,
  *  Oct 15: "so we can cap $50 a day for sports? when it hits cap, how do I
  *  know?"). Red once the cap is reached, with the time; the filters do not
@@ -400,7 +439,7 @@ const SHARE_KIND: Record<string, string> = { answer: 'Answer', daily: "Today's f
 const SHARE_HOW: Record<string, string> = { save: 'Save to Photos (iPhone)', download: 'Download', share: 'Share…', copy: 'Copy link' }
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports }: {
+export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports, cheerModels }: {
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
@@ -436,6 +475,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   /** XSports' AI commentators: the last 7 Taipei days' spend (supabase/135),
    *  null until it has been run, and the daily cap. */
   sports: { cap: number; today: string; days: SportsDay[] | null }
+  cheerModels: CheerModelRow[] | null
 }) {
   const today = rows[rows.length - 1]
   const prev = rows.length > 1 ? rows[rows.length - 2] : null
@@ -478,6 +518,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
       </p>
 
       <SportsSpend s={sports} />
+      <CheerModels rows={cheerModels} days={days} />
 
       <section aria-label="Filters" style={{ marginTop: 14, border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', display: 'grid', gap: 10 }}>
         <nav aria-label="Date range" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

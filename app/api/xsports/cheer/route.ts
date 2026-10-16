@@ -8,16 +8,19 @@
 //        photo in about ten seconds; a dance, a cheer, or a 加油 asked as a
 //        `video`, a clip of `seconds` (3 or 5, default 5) in one to two
 //        minutes
-//   GET  ?draft=<id>                                  → { status, url?, kind? }
-//        working, done (with the picture or clip to look at), or failed
+//   GET  ?draft=<id>                  → { status, url?, kind?, model?, ms?, usd? }
+//        working, done (with the picture or clip to look at, and for the
+//        admin which model made it, how long it took, what it cost), or
+//        failed
 //   POST { league, game, lang, action, name?, draft } → { ok }
 //        posts it with her words, as soon as she has the floor
 // action: 'selfie' | 'dance' | 'cheer' | 'shout' (a 加油 takes a name,
 // checked by OpenAI's moderation; a check that cannot run refuses).
 // Admins only (ADMIN_EMAILS, lib/admin), checked here: 403 for anyone else.
-// Only where she cheers, while her character is public (409). ModelXD pays
-// (about $0.07 a photo, plus $0.18 a second of clip); each counts toward
-// the day's XSports total.
+// Only where she cheers, while her character is public (409). The models
+// are drawn from lists in a JSON file (lib/xsports-cheer-models); every ask
+// is a row of xsports_cheer_jobs (supabase/137; 503 not_set_up before it
+// runs). ModelXD pays; each call counts toward the day's XSports total.
 
 export const runtime = 'nodejs'
 // A clip is made in `after`: a picture, about two minutes of HappyHorse, a
@@ -31,7 +34,8 @@ import { roomKeyOf } from '@/lib/xsports-room'
 import { cheersIn } from '@/lib/xsports-ais'
 import { CHEER_ACTIONS, clipSeconds, shoutName } from '@/lib/xsports-cheer-media'
 import { cheerFace, roomCheer } from '@/lib/xsports-cheer'
-import { freshStatus, isFreshId, makeFresh, newFreshId } from '@/lib/xsports-cheer-fresh'
+import { freshPosted, freshStatus, isFreshId, makeFresh, newFreshId, startFresh } from '@/lib/xsports-cheer-fresh'
+import { modelLabel } from '@/lib/xsports-cheer-models'
 
 const fail = (code: string, status: number) => Response.json({ error: code, code }, { status })
 
@@ -40,7 +44,8 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('draft')
   if (!isFreshId(id)) return fail('bad_draft', 400)
   try {
-    return Response.json(await freshStatus(id))
+    const st = await freshStatus(id)
+    return Response.json(st.status === 'done' ? { ...st, label: await modelLabel(st.model).catch(() => null) } : st)
   } catch (e: any) {
     console.warn('[xsports/cheer] status', e?.message ?? e)
     return fail('unavailable', 503)
@@ -48,7 +53,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await getAdminUser())) return fail('forbidden', 403)
+  const admin = await getAdminUser()
+  if (!admin) return fail('forbidden', 403)
   const body = await req.json().catch(() => ({}))
   const k = roomKeyOf(body?.league, body?.game, body?.lang)
   if (!k) return fail('bad_room', 400)
@@ -70,11 +76,22 @@ export async function POST(req: Request) {
     if (!isFreshId(body.draft)) return fail('bad_draft', 400)
     const st = await freshStatus(body.draft).catch(() => null)
     if (st?.status !== 'done') return fail('not_ready', 409)
-    after(roomCheer(k, { trigger: 'admin', action, name, media: { url: st.url, kind: st.kind } }))
+    const draft = body.draft
+    after((async () => {
+      const posted = await roomCheer(k, { trigger: 'admin', action, name, media: { url: st.url, kind: st.kind } })
+      if (posted) await freshPosted(draft, posted.id)
+    })())
     return Response.json({ ok: true })
   }
 
   const draft = newFreshId()
-  after(makeFresh(k, draft, action, name, { seconds: clipSeconds(body?.seconds), video: action === 'shout' && body?.video === true }))
+  const o = { seconds: clipSeconds(body?.seconds), video: action === 'shout' && body?.video === true }
+  try {
+    await startFresh(k, draft, { action, name, ...o, adminId: admin.id })
+  } catch (e: any) {
+    console.warn('[xsports/cheer] start', e?.message ?? e)
+    return fail('not_set_up', 503)
+  }
+  after(makeFresh(k, draft, action, name, o))
   return Response.json({ draft })
 }

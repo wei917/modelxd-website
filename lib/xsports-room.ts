@@ -114,6 +114,15 @@ export async function ownIds(userId: string, ids: number[]): Promise<number[]> {
   return (data ?? []).map((r: { id: number }) => r.id)
 }
 
+/** The caller's 👍 (1) / 👎 (-1) on these messages (supabase/137), by id;
+ *  none before 137 runs. */
+export async function ownVotes(userId: string, ids: number[]): Promise<Record<number, 1 | -1>> {
+  if (!ids.length) return {}
+  const { data, error } = await xsportsAdmin().from('xsports_media_votes').select('message_id, vote').eq('user_id', userId).in('message_id', ids)
+  if (error) return {}
+  return Object.fromEntries((data ?? []).map((r: { message_id: number; vote: number }) => [r.message_id, r.vote === 1 ? 1 : -1]))
+}
+
 /** A fan takes back one of their own messages (owner, Oct 14): hidden for
  *  everyone, the row kept so reports on it can still be looked at. Returns
  *  its room, or null when it is not theirs (or not there). */
