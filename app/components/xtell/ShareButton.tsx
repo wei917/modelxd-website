@@ -124,7 +124,7 @@ export async function drawShareCard(spec: ShareSpec, url: string, brand: string,
   const css = getComputedStyle(document.body)
   const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback
   const paper = v('--xtell-paper', '#faf9f6'), ink = v('--xtell-ink', '#292b29'), secondary = v('--xtell-secondary', '#656761')
-  const rule = v('--xtell-rule', '#dedfd8'), vermilion = v('--xtell-vermilion', '#a6382e')
+  const rule = v('--xtell-rule', '#dedfd8'), vermilion = v('--xtell-vermilion', '#d63b32')
   const serif = v('--xtell-serif', 'serif'), sans = css.fontFamily || 'sans-serif'
 
   const canvas = document.createElement('canvas')
