@@ -5,10 +5,10 @@
 // the face reference; HappyHorse 1.1 clips made from those photos), never a
 // picture made on the spot: one made live would reach a public room unseen.
 // The files sit in her character's folder of the public x-characters bucket.
-// One kind of picture is made on the spot: the comic 加油 picture an admin
-// asks for, which that admin looks at before it is posted (drawShout in
-// lib/xsports-cheer). Plain data and text: the server picks, and the page
-// reads the admin's actions and the name rule from here.
+// What an admin asks her for is made fresh each time instead, and posted
+// only after that admin has seen it (lib/xsports-cheer-fresh). Plain data
+// and text: the server picks, and the page reads the admin's actions and
+// the name rule from here.
 
 import { cleanName, nameLength } from './face'
 
@@ -63,11 +63,10 @@ export function askedMedia(text: string): 'selfie' | 'dance' | 'any' | null {
   return null
 }
 
-/** The picture for a moment or a request: one of the set with the tag (and
- *  of the kind, when one is asked), not among the room's recent ones, chosen
- *  at random (`rand` for the checks). */
-export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random, set: 'xd' | 'dodgers' = 'xd', kind?: CheerMediaKind): CheerMedia | null {
-  const fits = (m: CheerMedia) => (tag === 'any' ? m.kind === 'image' : m.tags.includes(tag)) && (!kind || m.kind === kind)
+/** The picture for a moment or a request: one of the set with the tag, not
+ *  among the room's recent ones, chosen at random (`rand` for the checks). */
+export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random, set: 'xd' | 'dodgers' = 'xd'): CheerMedia | null {
+  const fits = (m: CheerMedia) => (tag === 'any' ? m.kind === 'image' : m.tags.includes(tag))
   // From the set; her red XD set for anything the set has none of.
   const inSet = CHEER_MEDIA.filter(m => (m.set ?? 'xd') === set && fits(m))
   const all = inSet.length ? inSet : CHEER_MEDIA.filter(m => (m.set ?? 'xd') === 'xd' && fits(m))
@@ -79,20 +78,23 @@ export function pickMedia(tag: string, recent: readonly string[], rand: () => nu
 /** What an admin can ask her for in her card (owner, Oct 16: "admins can tap
  *  her profile and ask her do something? the action can have dance(post
  *  dance selfie), 幫某人加油(with comic like picture with dialog +name text),
- *  or cheer video...etc"): a dance clip, a selfie, a cheer clip, or a comic
- *  picture of her shouting 「<name> 加油！」. */
-export const CHEER_ACTIONS = ['dance', 'selfie', 'cheer', 'shout'] as const
+ *  or cheer video...etc"; "fresh each time"): a selfie, a dance clip, a cheer
+ *  clip, or a comic picture of her shouting 「<name> 加油！」, each made new
+ *  (lib/xsports-cheer-fresh). */
+export const CHEER_ACTIONS = ['selfie', 'dance', 'cheer', 'shout'] as const
 export type CheerAction = typeof CHEER_ACTIONS[number]
 
-/** From her set for an admin's ask, whenever it comes (no ten-minute gap):
- *  a dance clip, a selfie, a cheer clip (a dance clip while the set has no
- *  cheer clips). The 加油 picture is drawn instead. */
-export function adminPick(action: CheerAction, recent: readonly string[], set: 'xd' | 'dodgers', rand: () => number = Math.random): CheerMedia | null {
-  switch (action) {
-    case 'selfie': return pickMedia('selfie', recent, rand, set, 'image')
-    case 'dance': return pickMedia('dance', recent, rand, set, 'video')
-    case 'cheer': return pickMedia('cheer', recent, rand, set, 'video') ?? pickMedia('dance', recent, rand, set, 'video')
-    case 'shout': return null
+/** Made fresh for an admin: a picture (about a minute) or a clip (about
+ *  three: a picture, then moved). */
+export const freshKind = (a: CheerAction): CheerMediaKind => (a === 'dance' || a === 'cheer' ? 'video' : 'image')
+
+/** What the fresh one shows, told to her so her words fit it. */
+export function freshShows(a: CheerAction, name?: string): string {
+  switch (a) {
+    case 'selfie': return 'a selfie you just took at the game'
+    case 'dance': return 'a short clip of you dancing with the pom-poms, just filmed'
+    case 'cheer': return 'a short clip of you leading a cheer, just filmed'
+    case 'shout': return `a comic picture of you shouting 「${name ?? ''} 加油！」 in a big speech bubble`
   }
 }
 

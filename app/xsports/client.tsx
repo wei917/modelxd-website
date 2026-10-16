@@ -21,7 +21,7 @@ import { mlbToday, type GameCard, type GameState, type PlayEvent, type League, t
 import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
 import { ALL_AIS, aiByName, CHEERLEADER, gameDraw, isCheer, type Commentator } from '../../lib/xsports-ais'
-import { SHOUT_NAME_MAX, shoutName, type CheerAction } from '../../lib/xsports-cheer-media'
+import { CHEER_ACTIONS, SHOUT_NAME_MAX, shoutName, type CheerAction } from '../../lib/xsports-cheer-media'
 import OddsChart from './OddsChart'
 import { useHidden, personKey, isHidden } from './hidden'
 import { useRoomLang } from './room-lang'
@@ -1319,64 +1319,131 @@ const AI_MD: Components = {
 
 /** One message, drawn once: it changes only when it or its buttons do, so a
  *  new message (or a keystroke in the box) leaves every other row alone. */
-/** An admin's asks of 晴晴, in her card (owner, Oct 16: "admins can tap her
- *  profile and ask her do something"): a dance clip, a selfie, a cheer clip
- *  (she posts as soon as she has the floor, with words of her own), or
- *  幫某人加油: a comic picture drawn on the spot, shown here first, then
- *  posted or drawn again. Only admins get it (the room says;
- *  app/api/xsports/cheer checks again). */
-function CheerActions({ c, league, game, room, onDone }: { c: Copy; league: string; game: string; room: string; onDone: () => void }) {
-  const [busy, setBusy] = useState<CheerAction | null>(null)
-  const [naming, setNaming] = useState(false)
-  const [name, setName] = useState('')
-  const [pic, setPic] = useState<string | null>(null)
+/** An admin's ask of 晴晴 while it is made (about a minute for a picture,
+ *  three for a clip) and until it is posted or let go (owner, Oct 16: "fresh
+ *  each time"). Kept for this tab and room (sessionStorage), so closing her
+ *  card, or the page, keeps it; onReady says when it is ready. */
+type CheerJob = { id: string; action: CheerAction; name?: string; status: 'working' | 'done' | 'failed'; url?: string; kind?: 'image' | 'video'; at: number }
+const CHEER_JOB_GIVE_UP_MS = 15 * 60_000
+
+function useCheerJob(league: string, game: string, room: string, c: Copy, onReady: () => void) {
+  const key = `xsports.cheerJob:${league}:${game}:${room}`
+  const [job, setJobState] = useState<CheerJob | null>(null)
+  const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const named = shoutName(name)
-  const ask = async (action: CheerAction, extra: object = {}) => {
-    const res = await fetch('/api/xsports/cheer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game, lang: room, action, ...extra }) })
+  const ready = useRef(onReady)
+  ready.current = onReady
+  const setJob = useCallback((j: CheerJob | null) => {
+    setJobState(j)
+    try { if (j) sessionStorage.setItem(key, JSON.stringify(j)); else sessionStorage.removeItem(key) } catch { /* private mode: this page only */ }
+  }, [key])
+  useEffect(() => {
+    try { const v = sessionStorage.getItem(key); setJobState(v ? JSON.parse(v) as CheerJob : null) } catch { setJobState(null) }
+  }, [key])
+  // While it is made: ask every 4 s (not from a tab in the background).
+  useEffect(() => {
+    if (!job || job.status !== 'working') return
+    let stop = false
+    const tick = async () => {
+      if (stop || document.hidden) return
+      if (Date.now() - job.at > CHEER_JOB_GIVE_UP_MS) { setJob({ ...job, status: 'failed' }); return }
+      try {
+        const res = await fetch(`/api/xsports/cheer?draft=${encodeURIComponent(job.id)}`)
+        const j = await res.json().catch(() => ({}))
+        if (stop) return
+        if (j.status === 'done' && typeof j.url === 'string' && /^https:\/\//.test(j.url)) {
+          setJob({ ...job, status: 'done', url: j.url, kind: j.kind === 'video' ? 'video' : 'image' })
+          ready.current()
+        } else if (j.status === 'failed' || res.status === 400 || res.status === 403) setJob({ ...job, status: 'failed' })
+      } catch { /* asked again on the next tick */ }
+    }
+    const t = setInterval(tick, 4000)
+    void tick()
+    return () => { stop = true; clearInterval(t) }
+  }, [job, setJob])
+  const call = async (body: object) => {
+    const res = await fetch('/api/xsports/cheer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game, lang: room, ...body }) })
     const j = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(j?.code ?? String(res.status))
     return j
   }
-  const run = async (action: CheerAction, step: () => Promise<void>) => {
+  const make = async (action: CheerAction, name?: string) => {
     setErr('')
-    setBusy(action)
-    try { await step() } catch (e: any) { setErr(e?.message === 'name_refused' ? c.cheerNameRefused : c.cheerActFailed) } finally { setBusy(null) }
+    setBusy(true)
+    try {
+      const j = await call({ action, name })
+      if (typeof j.draft !== 'string') throw new Error('no_draft')
+      setJob({ id: j.draft, action, name, status: 'working', at: Date.now() })
+    } catch (e: any) {
+      setErr(e?.message === 'name_refused' ? c.cheerNameRefused : c.cheerActFailed)
+    } finally { setBusy(false) }
   }
-  const draw = () => run('shout', async () => {
-    setPic(null)
-    const j = await ask('shout', { name: named })
-    setPic(typeof j.picture === 'string' ? j.picture : null)
-  })
+  const post = async (): Promise<boolean> => {
+    if (!job || job.status !== 'done') return false
+    setErr('')
+    setBusy(true)
+    try { await call({ action: job.action, name: job.name, draft: job.id }); setJob(null); return true } catch { setErr(c.cheerActFailed); return false } finally { setBusy(false) }
+  }
+  const clear = () => { setJob(null); setErr('') }
+  return { job, busy, err, make, post, clear }
+}
+
+/** An admin's asks of 晴晴, in her card (owner, Oct 16: "admins can tap her
+ *  profile and ask her do something"; "fresh each time"): a selfie, a dance
+ *  clip, a cheer clip, or 幫某人加油 (a comic picture with the name), each
+ *  made new, shown here, then posted with words of her own or let go. Only
+ *  admins get it (the room says; app/api/xsports/cheer checks again). */
+function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useCheerJob>; onPosted: () => void }) {
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+  const named = shoutName(name)
+  const { job, busy, err } = cj
+  const label = (a: CheerAction) => (a === 'selfie' ? c.actSelfie : a === 'dance' ? c.actDance : a === 'cheer' ? c.actCheer : c.actShout)
   return (
     <div className="xs-cheer-acts">
       <p className="lbl">{c.askHer}</p>
       <div className="row">
-        {(['dance', 'selfie', 'cheer'] as const).map(a => (
-          <button key={a} type="button" disabled={!!busy} onClick={() => run(a, async () => { await ask(a); onDone() })}>
-            {busy === a ? c.loading : a === 'dance' ? c.actDance : a === 'selfie' ? c.actSelfie : c.actCheer}
+        {CHEER_ACTIONS.map(a => (
+          <button key={a} type="button" aria-pressed={a === 'shout' ? naming : undefined} disabled={busy || !!job}
+            onClick={() => { if (a === 'shout') setNaming(v => !v); else { setNaming(false); void cj.make(a) } }}>
+            {label(a)}
           </button>
         ))}
-        <button type="button" aria-pressed={naming} disabled={!!busy} onClick={() => { setNaming(v => !v); setPic(null); setErr('') }}>{c.actShout}</button>
       </div>
-      {naming ? (
+      {naming && !job ? (
         <div className="shout">
-          {pic ? <img className="pic" src={pic} alt={`「${named} 加油！」`} /> : (
-            <input value={name} maxLength={SHOUT_NAME_MAX * 2} placeholder={c.shoutName} aria-label={c.shoutName} autoFocus enterKeyHint="go" disabled={!!busy}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (isSubmitEnter(e as any) && named && !busy) { e.preventDefault(); draw() } }} />
-          )}
-          {pic ? (
-            <div className="row">
-              <button type="button" className="go" disabled={!!busy} onClick={() => run('shout', async () => { await ask('shout', { name: named, picture: pic }); onDone() })}>{busy === 'shout' ? c.loading : c.shoutPost}</button>
-              <button type="button" disabled={!!busy} onClick={draw}>{c.shoutRedo}</button>
-            </div>
-          ) : (
-            <button type="button" className="go" disabled={!!busy || !named} onClick={draw}>{busy === 'shout' ? c.shoutDrawing : c.shoutDraw}</button>
-          )}
+          <input value={name} maxLength={SHOUT_NAME_MAX * 2} placeholder={c.shoutName} aria-label={c.shoutName} autoFocus enterKeyHint="go" disabled={busy}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (isSubmitEnter(e as any) && named && !busy) { e.preventDefault(); void cj.make('shout', named) } }} />
+          <button type="button" className="go" disabled={busy || !named} onClick={() => void cj.make('shout', named)}>{busy ? c.loading : c.shoutDraw}</button>
+        </div>
+      ) : null}
+      {job?.status === 'working' ? (
+        <p className="wait" role="status"><span className="spin" aria-hidden />{c.cheerMaking[job.action]}<small>{c.cheerMayClose}</small></p>
+      ) : null}
+      {job?.status === 'done' && job.url ? (
+        <div className="shout">
+          {job.kind === 'video'
+            ? <video className="pic" src={job.url} autoPlay muted loop playsInline />
+            : <img className="pic" src={job.url} alt={job.action === 'shout' ? `「${job.name ?? ''} 加油！」` : ''} />}
+          <div className="row">
+            <button type="button" className="go" disabled={busy} onClick={async () => { if (await cj.post()) onPosted() }}>{busy ? c.loading : c.cheerPost}</button>
+            <button type="button" disabled={busy} onClick={() => void cj.make(job.action, job.name)}>{c.cheerAnother}</button>
+          </div>
+          <button type="button" className="quiet" disabled={busy} onClick={() => { cj.clear(); setNaming(false) }}>{c.cheerDiscard}</button>
+        </div>
+      ) : null}
+      {job?.status === 'failed' ? (
+        <div className="shout">
+          <p className="err" role="alert">{c.cheerActFailed}</p>
+          <div className="row">
+            <button type="button" className="go" disabled={busy} onClick={() => void cj.make(job.action, job.name)}>{c.cheerRetry}</button>
+            <button type="button" disabled={busy} onClick={() => { cj.clear(); setNaming(false) }}>{c.cheerDiscard}</button>
+          </div>
         </div>
       ) : null}
       {err ? <p className="err" role="alert">{err}</p> : null}
+      <p className="note">{c.cheerCostNote}</p>
     </div>
   )
 }
@@ -1485,8 +1552,10 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   const [ais, setAis] = useState<Commentator[]>(() => gameDraw(league, String(pk)).slice(0, 2))
   // 晴晴, where she cheers (the room says; null elsewhere).
   const [cheer, setCheer] = useState<{ handle: string; name: string; avatar: string | null } | null>(null)
-  // An admin reading (the room says): her card offers her actions.
+  // An admin reading (the room says): her card offers her actions, and what
+  // they asked her for is made (and kept) here.
   const [admin, setAdmin] = useState(false)
+  const cheerJob = useCheerJob(league, String(pk), room, c, () => { setFlash(c.cheerReady); setFlashOk(true) })
   const [olderBusy, setOlderBusy] = useState(false)
   const [olderFailed, setOlderFailed] = useState(false)
   const [pagedBack, setPagedBack] = useState(false)
@@ -1901,7 +1970,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
                 : face ? <img className="face" src={face} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{(card.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
               <span>{ai ? `${cheer ? c.cheerRole : c.aiCommentator}${h ? ` · @${h}` : ''}` : card.author_handle ? `@${card.author_handle}` : ''}</span>
             </div>
-            {cheer && admin ? <CheerActions c={c} league={league} game={String(pk)} room={room} onDone={() => { close(); setFlash(c.cheerAsked); setFlashOk(true) }} /> : null}
+            {cheer && admin ? <CheerActions c={c} cj={cheerJob} onPosted={() => { close(); setFlash(c.cheerAsked); setFlashOk(true) }} /> : null}
             <div className="xs-card-acts">
               {ai ? <>
                 {h ? <button type="button" onClick={() => { hide.hideAi(h); hidden(h, () => hide.showAi(h)) }}>{eye}{c.hideAi(h)}</button> : null}
