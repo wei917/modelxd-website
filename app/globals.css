@@ -4854,7 +4854,7 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 
 /* ── www /profile: the Profile tab (app/profile/Account.tsx, Oct 16) ─────
    One column of plain sections in X先知's type and sizes: serif headings at
-   18px, 14px text, 13px notes, 5px buttons, a warm rule between sections. */
+   18px, 14px text, 13px notes, round buttons, a warm rule between sections. */
 .acct { font-size: 14px; color: var(--white); padding-bottom: 8px; }
 .acct-you { position: relative; display: flex; align-items: center; gap: 14px; padding: 6px 0 20px; }
 .acct-avatar {
@@ -4879,7 +4879,7 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 8px 0; font-size: 14px; }
 .acct-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .acct-btn {
-  min-height: 36px; padding: 0 14px; border-radius: 5px; border: 1px solid var(--border2);
+  min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border2);
   background: var(--xtell-white, #fff); color: var(--white); font: inherit; font-size: 14px; font-weight: 500;
   white-space: nowrap; cursor: pointer;
 }
@@ -4887,7 +4887,13 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-btn.is-primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
 .acct-btn.is-primary:hover { filter: brightness(.94); color: #fff; }
 .acct-btn:disabled { opacity: .6; cursor: default; }
-.acct-select { min-height: 36px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--white); font: inherit; font-size: 14px; }
+.acct-you-acts { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.acct-lang { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+.acct-lang select {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0;
+  opacity: 0; font-size: 16px; appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.acct-lang:focus-within { border-color: var(--red); color: var(--red); }
 .acct-ref { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .acct-ref code {
   flex: 1; min-width: 0; padding: 8px 10px; border-radius: 5px; border: 1px solid var(--border2);
@@ -4923,6 +4929,9 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-xtell .xtell-profile-tab { background: transparent; }
 @media (max-width: 760px) {
   .acct-balance-num { font-size: 26px; }
+  /* The buttons go under the name on a phone, lined up with it. */
+  .acct-you { flex-wrap: wrap; row-gap: 10px; }
+  .acct-you-acts { flex-basis: 100%; padding-left: 70px; }
   .acct-app { gap: 8px; }
   .acct-ref { flex-wrap: wrap; }
   .acct-ref code { flex-basis: 100%; }

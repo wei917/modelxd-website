@@ -2718,9 +2718,7 @@ export const STRINGS: Record<string, Entry> = {
   // library-designs-20261014/03): Profile (the account), Library (your
   // work, one section per app). Favorite waits for bookmarks.
   // www's Profile tab (app/profile/Account.tsx, Oct 16).
-  'acct.settings':   { en: 'Settings', 'zh-Hant': '設定', 'zh-Hans': '设置', ja: '設定', ko: '설정' },
   'acct.language':   { en: 'Language', 'zh-Hant': '語言', 'zh-Hans': '语言', ja: '言語', ko: '언어' },
-  'acct.signedin.as': { en: 'Signed in as {email}', 'zh-Hant': '目前登入：{email}', 'zh-Hans': '当前登录：{email}', ja: '{email} でログイン中', ko: '{email}(으)로 로그인됨' },
   'acct.activity':   { en: 'Activity', 'zh-Hant': '點數紀錄', 'zh-Hans': '点数记录', ja: 'クレジット履歴', ko: '크레딧 내역' },
   'acct.thismonth':  { en: 'This month {amount}', 'zh-Hant': '本月花費 {amount}', 'zh-Hans': '本月花费 {amount}', ja: '今月の利用 {amount}', ko: '이번 달 사용 {amount}' },
   'acct.today':      { en: 'Today', 'zh-Hant': '今天', 'zh-Hans': '今天', ja: '今日', ko: '오늘' },
