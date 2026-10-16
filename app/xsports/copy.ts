@@ -80,6 +80,20 @@ export interface Copy {
   /** 晴晴, the room's AI cheerleader (Oct 15): her tag, and what she is. */
   cheerTag: string
   cheerRole: string
+  // An admin's asks of 晴晴, in her card (Oct 16).
+  askHer: string
+  actDance: string
+  actSelfie: string
+  actCheer: string
+  actShout: string
+  shoutName: string
+  shoutDraw: string
+  shoutDrawing: string
+  shoutRedo: string
+  shoutPost: string
+  cheerAsked: string
+  cheerActFailed: string
+  cheerNameRefused: string
   /** The @AI row of the public chat's @ list: whichever commentator is up. */
   aiAny: string
   /** The private AI chat's tab (owner, Oct 13: "we need a private chat room
@@ -293,6 +307,19 @@ const en: Copy = {
   aiCommentator: 'AI commentator',
   cheerTag: 'Cheerleader',
   cheerRole: 'AI cheerleader',
+  askHer: 'Ask 晴晴 (only admins see this)',
+  actDance: 'Dance',
+  actSelfie: 'Take a selfie',
+  actCheer: 'Post a cheer clip',
+  actShout: 'Cheer someone on',
+  shoutName: 'Name in the bubble',
+  shoutDraw: 'Draw it',
+  shoutDrawing: 'Drawing… about a minute',
+  shoutRedo: 'Draw again',
+  shoutPost: 'Post it',
+  cheerAsked: '晴晴 is on it: her post appears in a moment',
+  cheerActFailed: "That didn't work. Try again.",
+  cheerNameRefused: "That name can't go in her bubble. Try another.",
   aiAny: 'Whichever commentator is up',
   tabPrivate: 'My AI',
   privateEmpty: 'Every model you picked answers a question; tap a model, press Reply on its answer or @ it to ask just that one. Press “Start watching” and they talk through the game, each as much as its settings say. Billed at each model’s list price.',
@@ -489,6 +516,19 @@ const zhHant: Copy = {
   aiCommentator: 'AI 球評',
   cheerTag: '啦啦隊',
   cheerRole: 'AI 啦啦隊',
+  askHer: '請晴晴…（只有管理員看得到）',
+  actDance: '跳舞',
+  actSelfie: '自拍',
+  actCheer: '應援影片',
+  actShout: '幫某人加油',
+  shoutName: '要加油的名字',
+  shoutDraw: '畫出來',
+  shoutDrawing: '畫圖中，約一分鐘…',
+  shoutRedo: '重畫',
+  shoutPost: '貼出',
+  cheerAsked: '晴晴收到了，馬上貼出來',
+  cheerActFailed: '沒有成功，請再試一次',
+  cheerNameRefused: '這個名字不能放進對話框，換一個試試',
   aiAny: '輪到的球評',
   tabPrivate: 'AI 私聊',
   privateEmpty: '提問時，每個選的模型都會回答；點一下模型、按答案上的「回覆」或 @ 它，就只問它。按「開始陪看」，它們會跟著比賽聊，各說多少在模型的設定裡選。依各模型定價計費。',
@@ -685,6 +725,19 @@ const zhHans: Copy = {
   aiCommentator: 'AI 球评',
   cheerTag: '啦啦队',
   cheerRole: 'AI 啦啦队',
+  askHer: '请晴晴…（只有管理员看得到）',
+  actDance: '跳舞',
+  actSelfie: '自拍',
+  actCheer: '应援视频',
+  actShout: '帮某人加油',
+  shoutName: '要加油的名字',
+  shoutDraw: '画出来',
+  shoutDrawing: '画图中，约一分钟…',
+  shoutRedo: '重画',
+  shoutPost: '发出',
+  cheerAsked: '晴晴收到了，马上发出来',
+  cheerActFailed: '没有成功，请再试一次',
+  cheerNameRefused: '这个名字不能放进对话框，换一个试试',
   aiAny: '轮到的球评',
   tabPrivate: 'AI 私聊',
   privateEmpty: '提问时，每个选的模型都会回答；点一下模型、按答案上的「回复」或 @ 它，就只问它。按「开始陪看」，它们会跟着比赛聊，各说多少在模型的设置里选。按各模型定价计费。',
@@ -881,6 +934,19 @@ const ja: Copy = {
   aiCommentator: 'AI解説',
   cheerTag: 'チア',
   cheerRole: 'AIチアリーダー',
+  askHer: '晴晴にお願い（管理者にだけ表示）',
+  actDance: 'ダンス',
+  actSelfie: '自撮り',
+  actCheer: '応援動画',
+  actShout: '誰かを応援',
+  shoutName: '吹き出しに入れる名前',
+  shoutDraw: '描く',
+  shoutDrawing: '描いています（1分ほど）…',
+  shoutRedo: '描き直す',
+  shoutPost: '投稿する',
+  cheerAsked: '晴晴が受け取りました。まもなく投稿されます',
+  cheerActFailed: 'うまくいきませんでした。もう一度お試しください',
+  cheerNameRefused: 'この名前は吹き出しに入れられません。別の名前でお試しください',
   aiAny: '次の番の解説',
   tabPrivate: 'マイAI',
   privateEmpty: '質問には選んだモデル全員が答えます。モデルをタップするか、回答の「返信」や @ で、そのモデルだけに聞けます。「観戦を始める」を押すと試合について話し、どれだけ話すかはモデルごとの設定で選べます。各モデルの定価で課金されます。',
@@ -1077,6 +1143,19 @@ const ko: Copy = {
   aiCommentator: 'AI 해설',
   cheerTag: '치어리더',
   cheerRole: 'AI 치어리더',
+  askHer: '晴晴에게 부탁하기 (관리자에게만 보임)',
+  actDance: '춤',
+  actSelfie: '셀카',
+  actCheer: '응원 영상',
+  actShout: '누군가 응원하기',
+  shoutName: '말풍선에 넣을 이름',
+  shoutDraw: '그리기',
+  shoutDrawing: '그리는 중 (약 1분)…',
+  shoutRedo: '다시 그리기',
+  shoutPost: '올리기',
+  cheerAsked: '晴晴이 받았어요. 곧 올라옵니다',
+  cheerActFailed: '실패했어요. 다시 시도해 주세요',
+  cheerNameRefused: '이 이름은 말풍선에 넣을 수 없어요. 다른 이름으로 해 보세요',
   aiAny: '차례인 해설',
   tabPrivate: '내 AI',
   privateEmpty: '질문하면 고른 모델이 모두 답합니다. 모델을 누르거나 답의 「답장」 또는 @로 그 모델에게만 물을 수 있습니다. 「함께 보기 시작」을 누르면 경기 이야기를 하며, 얼마나 말할지는 모델별 설정에서 고릅니다. 모델별 정가로 청구됩니다.',

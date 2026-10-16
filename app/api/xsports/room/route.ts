@@ -3,8 +3,10 @@
 //        (the newest, or those older than <id>; more: whether older ones
 //        exist) (anyone), and `mine`: the ids of those the caller wrote
 //        (signed in), so the page can offer 刪除; with the newest page,
-//        `ais`: the room's two commentators now (its @ list), and `cheer`:
-//        晴晴 where she cheers (lib/xsports-cheer), else null
+//        `ais`: the room's two commentators now (its @ list), `cheer`:
+//        晴晴 where she cheers (lib/xsports-cheer), else null, and `admin`:
+//        whether the caller is an admin (her card then offers her actions,
+//        app/api/xsports/cheer, which checks again)
 //   POST { league, game, lang, content, confirmName? }
 //        a fan's message: signed in, name confirmed once (409
 //        name_unconfirmed carries the name, @ID and picture to confirm), not
@@ -23,6 +25,7 @@ export const maxDuration = 300
 
 import { after } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { isAdminEmail } from '@/lib/admin'
 import { moderate } from '@/lib/moderation'
 import { userName, userPhoto } from '@/lib/user-face'
 import { ensureHandle } from '@/lib/profile-handle'
@@ -53,7 +56,8 @@ export async function GET(req: Request) {
     const ais = before ? undefined : (await roomPair(k).catch(() => null))?.pair
     // And the room's cheerleader, where she cheers (her name, @ and photo).
     const cheer = before ? undefined : cheersIn(k) ? await cheerFace().catch(() => null) : null
-    return Response.json({ messages, mine, more: messages.length === PAGE, ais, cheer })
+    const admin = before ? undefined : isAdminEmail(user?.email)
+    return Response.json({ messages, mine, more: messages.length === PAGE, ais, cheer, admin })
   } catch (e: any) {
     if (roomMissing(e)) return fail('room_unavailable', 503)
     console.warn('[xsports/room] read', e?.message ?? e)

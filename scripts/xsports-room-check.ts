@@ -17,6 +17,10 @@
 //   - app/api/xsports/room/route.ts POST: each commentator named answers, in
 //     order, one after the other; the first message confirms the name, which
 //     may be the sign-in name
+//   - 晴晴 (lib/xsports-cheer, lib/xsports-cheer-media): when she cheers, her
+//     pictures and clips, her team, and an admin's asks from her card
+//     (app/api/xsports/cheer: admins only; the 加油 picture is drawn, shown,
+//     then posted)
 //
 //   npx tsx scripts/xsports-room-check.ts       exit code 1 on any failure
 
@@ -82,7 +86,7 @@ async function ledger() {
 const root = join(__dirname, '..')
 const warned: string[] = []
 const quiet = { ...console, warn: (...a: unknown[]) => { warned.push(a.map(String).join(' ')) } }
-function load(rel: string, mocks: Record<string, unknown>) {
+function load(rel: string, mocks: Record<string, unknown>, globals: Record<string, unknown> = {}) {
   const js = ts.transpileModule(readFileSync(join(root, rel), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText
   const module = { exports: {} as any }
   vm.runInNewContext(js, {
@@ -90,6 +94,7 @@ function load(rel: string, mocks: Record<string, unknown>) {
     console: quiet, Request, Response, URL, clearTimeout, process: { env: {} },
     // The room's lock waits 1.5 s between tries; not here.
     setTimeout: (fn: () => void, ms: number) => setTimeout(fn, Math.min(ms, 5)),
+    ...globals,
   }, { filename: rel })
   return module.exports
 }
@@ -244,14 +249,18 @@ async function topPair() {
 
 // ── 晴晴, the room's cheerleader (Oct 15) ─────────────────────────────────
 const T0 = Date.parse('2026-10-15T01:00:00Z')
-const cheerMedia = load('lib/xsports-cheer-media.ts', {})
+const cheerMedia = load('lib/xsports-cheer-media.ts', { './face': load('lib/face.ts', {}) })
+const SB = 'https://sb.test'
+const SHOUT_DIR = `${SB}/storage/v1/object/public/x-characters/c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer/shout/`
+const UUID = '0f8fad5b-d9cb-469f-a165-70867728950e'
 const play = (i: number, o: { type?: string; scoring?: boolean; away?: number; home?: number; inning?: number; text?: string } = {}) => ({
   id: String(i), inning: o.inning ?? 1, half: 'top', kind: 'pa', type: o.type ?? 'single', text: o.text ?? `play ${i}`, scoring: !!o.scoring,
   away: o.away ?? 0, home: o.home ?? 0, outs: 1, endsHalf: false, big: !!o.scoring, at: new Date(T0 + i * 60_000).toISOString(),
 })
 const game = (status: string, events: any[]) => ({ league: 'mlb', status, events, away: { name: 'Brewers', runs: events.at(-1)?.away ?? 0 }, home: { name: 'Dodgers', runs: events.at(-1)?.home ?? 0 } })
-function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: number | null; visibility?: string; reply?: Reply; g?: any; mediaRows?: { media_url: string; created_at: string }[]; media?: boolean } = {}) {
+function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: number | null; visibility?: string; reply?: Reply; g?: any; mediaRows?: { media_url: string; created_at: string }[]; media?: boolean; imageOff?: boolean } = {}) {
   const calls: { model: string; thinking: string | null; system: string; prompt: string }[] = [], stored: any[] = [], released: any[] = [], spent: number[] = []
+  const images: { model: string; prompt: string; size: string; ports: string[] }[] = [], uploads: { bucket: string; path: string; type: string }[] = [], fetched: string[] = []
   let reads = 0
   const chain = (table: string) => {
     const q: any = { select: () => q, eq: () => q, order: () => q, limit: () => q, not: () => q,
@@ -276,11 +285,17 @@ function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: 
         cb.onDelta(r as string)
         cb.onDone({ cost: 0.006 })
       },
+      generateImage: async (model: any, prompt: string, _q: string, size: string, atts: any[]) => {
+        images.push({ model: model.model_name, prompt, size, ports: atts.map(a => a.port) })
+        return { buffer: Buffer.from('png'), mediaType: 'image/png', cost: 0.053 }
+      },
     },
-    './models': { getModelByProviderName: async (provider: string, name: string) => ({ provider, model_name: name, enabled: true, blocked_features: [], output_config: { text: { thinking_levels: ['none', 'low'] } } }) },
+    './models': { getModelByProviderName: async (provider: string, name: string) => ({ provider, model_name: name, enabled: !(o.imageOff && name === 'gpt-image-2'), blocked_features: [], output_config: { text: { thinking_levels: ['none', 'low'] } } }) },
     './model-features': { FEATURE: { xsports: 'xsports' } },
-    './xsports-store': { xsportsAdmin: () => ({ from: (t: string) => chain(t) }) },
+    './xsports-store': { xsportsAdmin: () => ({ from: (t: string) => chain(t), storage: { from: (bucket: string) => ({ upload: async (path: string, _b: unknown, opt: any) => { uploads.push({ bucket, path, type: opt?.contentType }); return { error: null } } }) } }) },
     './xsports-prompt': { stateBlock: () => 'STATE' },
+    'crypto': { randomUUID: () => UUID },
+    'sharp': { __esModule: true, default: () => { const q: any = { resize: () => q, jpeg: () => q, toBuffer: async () => Buffer.from('jpg') }; return q } },
     './xsports-room': {
       addRoomMessage: async (_k: unknown, m: any) => { const msg = { id: 500 + stored.length, ...m }; stored.push(msg); return msg },
       claimSpeaker: async () => ({ ai_since: null }), recentMessages: async () => [], releaseSpeaker: async (_k: unknown, p: any) => { released.push(p) },
@@ -291,8 +306,11 @@ function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: 
     './xsports-cheer-media': cheerMedia,
     './xsports-room-ai': { gameFor: async () => o.g ?? game('live', [play(1)]) },
     './provider-errors': { sanitizeProviderError: (s: string) => s },
+  }, {
+    process: { env: { NEXT_PUBLIC_SUPABASE_URL: SB } }, Buffer,
+    fetch: async (url: string) => { fetched.push(url); return new Response('jpeg-bytes') },
   })
-  return { mod, calls, stored, released, spent }
+  return { mod, calls, stored, released, spent, images, uploads, fetched }
 }
 
 async function cheerleader() {
@@ -380,6 +398,33 @@ async function cheerleader() {
   ok(blueSet.length === 0 || /\/cheer\/blue-/.test(String(fan.stored[0]?.media_url)), 'roomCheer: in a Dodgers game her picture comes from the Dodger-blue set')
   ok(!String(hi.stored[0]?.media_url).includes('/cheer/blue-'), 'roomCheer: elsewhere from her red XD set')
   ok(cheerMedia.pickMedia('dance', [], () => 0.99, 'dodgers').file === 'blue-clip-2.mp4' && cheerMedia.pickMedia('dance', [], () => 0.99).file === 'clip-2.mp4', 'pickMedia: a dance clip in Dodger blue in her team\'s games, in red elsewhere')
+  // An admin's asks from her card (Oct 16).
+  ok(cheerMedia.pickMedia('dance', [], () => 0, 'xd', 'video').kind === 'video' && cheerMedia.pickMedia('cheer', [], () => 0, 'xd', 'video') === null, 'pickMedia: of a kind when one is asked; none when the set has none')
+  const ap = (a: string, set: string) => cheerMedia.adminPick(a, [], set, () => 0)
+  ok(ap('dance', 'xd').file === 'clip-1.mp4' && ap('dance', 'dodgers').file === 'blue-clip-1.mp4' && ap('cheer', 'dodgers').kind === 'video' && ap('selfie', 'xd').file === 'selfie.jpg' && ap('selfie', 'dodgers').file === 'blue-selfie.jpg' && ap('shout', 'xd') === null, 'adminPick: a dance or cheer is a clip (a dance clip while there are no cheer clips), a selfie a selfie, in the game\'s set; a 加油 is drawn instead')
+  ok(cheerMedia.shoutName('  大谷 ') === '大谷' && cheerMedia.shoutName('「山本」') === '山本' && cheerMedia.shoutName('\u202eabc') === 'abc' && cheerMedia.shoutName('x'.repeat(17)) === '' && cheerMedia.shoutName('x'.repeat(16)).length === 16 && cheerMedia.shoutName(42) === '' && cheerMedia.shoutName('   ') === '', 'shoutName: cleaned like a website name, no brackets, at most 16; too long or empty is none')
+  const ad = cheerRoom({ last: Date.now() - 10_000, mediaRows: [{ media_url: 'https://x/cheer/wave.jpg', created_at: new Date(Date.now() - 60_000).toISOString() }] })
+  await ad.mod.roomCheer(K2, { trigger: 'admin', action: 'dance' })
+  ok(/\/cheer\/clip-\d\.mp4$/.test(String(ad.stored[0]?.media_url)) && ad.stored[0]?.media_kind === 'video' && ad.stored[0]?.reply_to === null && ad.calls[0].prompt.includes('Post a dance for the room now') && ad.released.length === 1, "roomCheer: an admin's dance posts a clip at once: inside both gaps, not a reply")
+  const as = cheerRoom({ g: lad('live', [play(1)]) })
+  await as.mod.roomCheer(K2, { trigger: 'admin', action: 'selfie' })
+  ok(String(as.stored[0]?.media_url).endsWith('/cheer/blue-selfie.jpg') && as.calls[0].prompt.includes('comes with a picture'), "roomCheer: an admin's selfie in a Dodgers game is her blue selfie")
+  const pic = SHOUT_DIR + UUID + '.jpg'
+  const sh = cheerRoom()
+  await sh.mod.roomCheer(K2, { trigger: 'admin', action: 'shout', name: '大谷', picture: pic })
+  ok(sh.stored[0]?.media_url === pic && sh.stored[0]?.media_kind === 'image' && sh.calls[0].prompt.includes('Cheer for 大谷 by name') && sh.calls[0].prompt.includes('「大谷 加油！」'), "roomCheer: an admin's 加油 posts the picture drawn for it, and she cheers the name")
+  ok(sh.mod.isShoutPicture(pic) && !sh.mod.isShoutPicture(pic.replace('.jpg', '.png')) && !sh.mod.isShoutPicture(pic.replace('/shout/', '/')) && !sh.mod.isShoutPicture(pic.replace('https:', 'http:')) && !sh.mod.isShoutPicture(SHOUT_DIR + '../selfie.jpg') && !sh.mod.isShoutPicture('https://evil.test/' + UUID + '.jpg') && !sh.mod.isShoutPicture(7), 'isShoutPicture: only a picture drawShout made')
+  const dr = cheerRoom({ g: lad('live', [play(1)]) })
+  const url = await dr.mod.drawShout(K2, '大谷')
+  ok(url === pic && dr.mod.isShoutPicture(url) && dr.images[0]?.model === 'gpt-image-2' && dr.images[0].size === '1024x1536' && dr.images[0].ports.join() === 'reference_image' && dr.images[0].prompt.includes('「大谷 加油！」') && dr.images[0].prompt.includes('royal blue'), 'drawShout: GPT Image 2 with her photo as the reference, the name in the bubble, Dodger blue in a Dodgers game')
+  ok(dr.fetched[0]?.endsWith('/cheer/blue-cheer.jpg') && dr.uploads[0]?.bucket === 'x-characters' && dr.uploads[0].path.endsWith('/cheer/shout/' + UUID + '.jpg') && dr.uploads[0].type === 'image/jpeg' && dr.spent.includes(0.053) && dr.stored.length === 0, "drawShout: kept in her folder's shout/, counted toward the day; nothing posted yet")
+  const red = cheerRoom()
+  await red.mod.drawShout(K2, '阿明')
+  ok(red.fetched[0]?.endsWith('/cheer/cheer.jpg') && red.images[0].prompt.includes('red and white'), 'drawShout: in red elsewhere')
+  const off = cheerRoom({ imageOff: true })
+  let threw = false
+  try { await off.mod.drawShout(K2, '阿明') } catch { threw = true }
+  ok(threw && off.uploads.length === 0, 'drawShout: no drawing model, no picture (it throws)')
   // The commentators read her as the cheerleader.
   const t = room({ rows: [{ kind: 'ai', author_name: '晴晴', model_name: '晴晴', content: '全壘打！！' }] })
   await t.speak(K, 'lull')
@@ -393,6 +438,7 @@ async function post(content: string, o: { confirmed?: boolean; confirm?: boolean
   const route = load('app/api/xsports/room/route.ts', {
     'next/server': { after: (p: Promise<unknown>) => { waits.push(p) } },
     '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'fixture-user', user_metadata: {} } } }) } }) },
+    '@/lib/admin': { isAdminEmail: (e?: string) => e === 'admin@fixture.test' },
     '@/lib/moderation': { moderate: async () => 'ok' },
     '@/lib/user-face': { userName: () => o.signin ?? 'Fixture', userPhoto: () => null },
     '@/lib/profile-handle': { ensureHandle: async () => ({ handle: 'aming', nextChangeAt: null }) },
@@ -448,12 +494,61 @@ async function roomRoute() {
   ok(done.status === 200 && done.confirmedNow.length === 0, 'route: a confirmed name is not asked again')
 }
 
+// ── app/api/xsports/cheer: an admin's asks of 晴晴 (Oct 16) ───────────────
+async function cheerPost(body: Record<string, unknown>, o: { admin?: boolean; verdict?: string; drawFails?: boolean; face?: boolean } = {}) {
+  const waits: Promise<unknown>[] = [], cues: any[] = [], drawn: string[] = []
+  const route = load('app/api/xsports/cheer/route.ts', {
+    'next/server': { after: (p: Promise<unknown>) => { waits.push(p) } },
+    '@/lib/admin': { getAdminUser: async () => (o.admin === false ? null : { id: 'a1', email: 'admin@fixture.test' }) },
+    '@/lib/moderation': { moderate: async () => o.verdict ?? 'ok' },
+    '@/lib/xsports-room': { roomKeyOf: (league: string, game: unknown, lang: string) => (league && game && lang ? { league, game: String(game), lang } : null) },
+    '@/lib/xsports-ais': ais,
+    '@/lib/xsports-cheer-media': cheerMedia,
+    '@/lib/xsports-cheer': {
+      cheerFace: async () => (o.face === false ? null : { handle: '晴晴', name: '晴晴', avatar: 'https://x/a.jpg' }),
+      roomCheer: async (_k: unknown, cue: any) => { cues.push(cue) },
+      drawShout: async (_k: unknown, name: string) => { if (o.drawFails) throw new Error('fixture: no picture'); drawn.push(name); return SHOUT_DIR + UUID + '.jpg' },
+      isShoutPicture: (u: unknown) => u === SHOUT_DIR + UUID + '.jpg',
+    },
+  })
+  const res: Response = await route.POST(new Request('http://fixture.invalid/api/xsports/cheer', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league: 'mlb', game: 849811, lang: 'zh-Hant', ...body }),
+  }))
+  await Promise.all(waits)
+  return { status: res.status, body: await res.json().catch(() => null), cues, drawn }
+}
+
+async function cheerRoute() {
+  const fan = await cheerPost({ action: 'dance' }, { admin: false })
+  ok(fan.status === 403 && fan.cues.length === 0, 'cheer route: anyone but an admin gets 403 and nothing happens')
+  const dance = await cheerPost({ action: 'dance' })
+  ok(dance.status === 200 && dance.cues[0]?.trigger === 'admin' && dance.cues[0]?.action === 'dance', "cheer route: an admin's dance asks her at once")
+  const en = await cheerPost({ action: 'selfie', lang: 'en' })
+  const priv = await cheerPost({ action: 'selfie' }, { face: false })
+  ok(en.status === 409 && priv.status === 409 && en.cues.length + priv.cues.length === 0, "cheer route: 409 in a room she is not in, or while she is private")
+  const odd = await cheerPost({ action: 'sing' })
+  ok(odd.status === 400 && odd.cues.length === 0, 'cheer route: an unknown action is refused')
+  const draw = await cheerPost({ action: 'shout', name: ' 大谷 ' })
+  ok(draw.status === 200 && draw.body?.picture === SHOUT_DIR + UUID + '.jpg' && draw.drawn.join() === '大谷' && draw.cues.length === 0, 'cheer route: a 加油 is drawn and handed back to look at; nothing posted')
+  const noname = await cheerPost({ action: 'shout', name: '   ' })
+  const refused = await cheerPost({ action: 'shout', name: '壞字' }, { verdict: 'refused' })
+  const nocheck = await cheerPost({ action: 'shout', name: '大谷' }, { verdict: 'unavailable' })
+  ok(noname.status === 400 && refused.status === 422 && refused.body?.code === 'name_refused' && nocheck.status === 503 && noname.drawn.length + refused.drawn.length + nocheck.drawn.length === 0, 'cheer route: no name 400; a name moderation refuses 422; a check that cannot run refuses (503); nothing drawn')
+  const post = await cheerPost({ action: 'shout', name: '大谷', picture: SHOUT_DIR + UUID + '.jpg' })
+  ok(post.status === 200 && post.cues[0]?.action === 'shout' && post.cues[0]?.name === '大谷' && post.cues[0]?.picture === SHOUT_DIR + UUID + '.jpg' && post.drawn.length === 0, 'cheer route: posting the picture asks her with it')
+  const forged = await cheerPost({ action: 'shout', name: '大谷', picture: 'https://evil.test/x.jpg' })
+  ok(forged.status === 400 && forged.cues.length === 0, 'cheer route: any other picture is refused')
+  const failed = await cheerPost({ action: 'shout', name: '大谷' }, { drawFails: true })
+  ok(failed.status === 502 && failed.body?.code === 'draw_failed', 'cheer route: a drawing that fails says so (502)')
+}
+
 // ── The room's GET: a page at a time, back to the first (Oct 14) ──────────
-async function get(query: string, stored: number) {
+async function get(query: string, stored: number, user: { id: string; email: string } | null = null) {
   const calls: { limit: number; before?: number }[] = []
   const route = load('app/api/xsports/room/route.ts', {
     'next/server': { after: () => {} },
-    '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) },
+    '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }) },
+    '@/lib/admin': { isAdminEmail: (e?: string) => e === 'admin@fixture.test' },
     '@/lib/moderation': { moderate: async () => 'ok' },
     '@/lib/user-face': { userName: () => 'Fixture', userPhoto: () => null },
     '@/lib/profile-handle': { ensureHandle: async () => ({ handle: 'aming', nextChangeAt: null }) },
@@ -480,6 +575,9 @@ async function roomPages() {
   ok(newest.status === 200 && newest.body.messages.length === 80 && newest.body.messages[0].id === 121 && newest.body.more === true && newest.calls[0].before === undefined, 'GET: the newest 80, oldest first, and more before them')
   ok(newest.body.ais?.map((a: any) => a.handle).join() === 'Luna,Qwen', "GET: the newest page names the room's two commentators (the @ list)")
   ok(newest.body.cheer?.handle === '晴晴' && newest.body.cheer?.avatar === 'https://x/a.jpg', "GET: an MLB 繁中 room names 晴晴 with her photo")
+  const asAdmin = await get('', 200, { id: 'a1', email: 'admin@fixture.test' })
+  const asFan = await get('', 200, { id: 'f1', email: 'fan@fixture.test' })
+  ok(asAdmin.body.admin === true && asFan.body.admin === false && newest.body.admin === false, 'GET: says whether the reader is an admin (her card then offers her actions)')
   const back = await get('&before=41', 200)
   ok(back.body.messages.length === 40 && back.body.messages[0].id === 1 && back.body.more === false && back.calls[0].before === 41 && back.body.ais === undefined, 'GET: ?before= reads the page older than that id; the last one says there is no more')
   const bad = await get('&before=1%3Bdrop', 200)
@@ -494,6 +592,7 @@ async function roomPages() {
   await topPair()
   await cheerleader()
   await roomRoute()
+  await cheerRoute()
   await roomPages()
   console.log(fails ? `${fails} FAILED` : 'all passed')
   process.exitCode = fails ? 1 : 0

@@ -5,7 +5,12 @@
 // the face reference; HappyHorse 1.1 clips made from those photos), never a
 // picture made on the spot: one made live would reach a public room unseen.
 // The files sit in her character's folder of the public x-characters bucket.
-// Plain data and text: the server picks (lib/xsports-cheer), nothing else.
+// One kind of picture is made on the spot: the comic 加油 picture an admin
+// asks for, which that admin looks at before it is posted (drawShout in
+// lib/xsports-cheer). Plain data and text: the server picks, and the page
+// reads the admin's actions and the name rule from here.
+
+import { cleanName, nameLength } from './face'
 
 export type CheerMediaKind = 'image' | 'video'
 
@@ -58,14 +63,47 @@ export function askedMedia(text: string): 'selfie' | 'dance' | 'any' | null {
   return null
 }
 
-/** The picture for a moment or a request: one of the set with the tag, not
- *  among the room's recent ones, chosen at random (`rand` for the checks). */
-export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random, set: 'xd' | 'dodgers' = 'xd'): CheerMedia | null {
-  const fits = (m: CheerMedia) => (tag === 'any' ? m.kind === 'image' : m.tags.includes(tag))
+/** The picture for a moment or a request: one of the set with the tag (and
+ *  of the kind, when one is asked), not among the room's recent ones, chosen
+ *  at random (`rand` for the checks). */
+export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random, set: 'xd' | 'dodgers' = 'xd', kind?: CheerMediaKind): CheerMedia | null {
+  const fits = (m: CheerMedia) => (tag === 'any' ? m.kind === 'image' : m.tags.includes(tag)) && (!kind || m.kind === kind)
   // From the set; her red XD set for anything the set has none of.
   const inSet = CHEER_MEDIA.filter(m => (m.set ?? 'xd') === set && fits(m))
   const all = inSet.length ? inSet : CHEER_MEDIA.filter(m => (m.set ?? 'xd') === 'xd' && fits(m))
   const fresh = all.filter(m => !recent.includes(m.file))
   const from = fresh.length ? fresh : all
   return from.length ? from[Math.floor(rand() * from.length)] : null
+}
+
+/** What an admin can ask her for in her card (owner, Oct 16: "admins can tap
+ *  her profile and ask her do something? the action can have dance(post
+ *  dance selfie), 幫某人加油(with comic like picture with dialog +name text),
+ *  or cheer video...etc"): a dance clip, a selfie, a cheer clip, or a comic
+ *  picture of her shouting 「<name> 加油！」. */
+export const CHEER_ACTIONS = ['dance', 'selfie', 'cheer', 'shout'] as const
+export type CheerAction = typeof CHEER_ACTIONS[number]
+
+/** From her set for an admin's ask, whenever it comes (no ten-minute gap):
+ *  a dance clip, a selfie, a cheer clip (a dance clip while the set has no
+ *  cheer clips). The 加油 picture is drawn instead. */
+export function adminPick(action: CheerAction, recent: readonly string[], set: 'xd' | 'dodgers', rand: () => number = Math.random): CheerMedia | null {
+  switch (action) {
+    case 'selfie': return pickMedia('selfie', recent, rand, set, 'image')
+    case 'dance': return pickMedia('dance', recent, rand, set, 'video')
+    case 'cheer': return pickMedia('cheer', recent, rand, set, 'video') ?? pickMedia('dance', recent, rand, set, 'video')
+    case 'shout': return null
+  }
+}
+
+/** The longest name in a 加油 bubble, as a person counts characters. */
+export const SHOUT_NAME_MAX = 16
+
+/** The name for a 加油 picture: cleaned like a website name (lib/face),
+ *  without corner brackets or quotes (the bubble has its own), at most
+ *  SHOUT_NAME_MAX characters; '' when nothing is left or it is too long. */
+export function shoutName(raw: unknown): string {
+  if (typeof raw !== 'string') return ''
+  const s = cleanName(raw.replace(/[「」『』"“”]/g, ''))
+  return s && nameLength(s) <= SHOUT_NAME_MAX ? s : ''
 }
