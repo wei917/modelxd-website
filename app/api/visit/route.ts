@@ -43,6 +43,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { needsConsent } from '@/lib/consent'
 import { TAP_PROVIDERS } from '@/lib/signin-tap'
 import { asShareReport } from '@/lib/xtell-feedback'
+import { visitEnv } from '@/lib/visit-env'
 
 const LOG = '[api/visit]'
 const VISITOR_COOKIE = 'modelxd_vid'
@@ -78,11 +79,9 @@ const service = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proces
 })
 const hostOf = (req: NextRequest) => (req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '').split(',')[0].trim().toLowerCase()
 
-/** The deployment, or 'internal' for one of the owner's browsers on production. */
-function envOf(internal: boolean): string {
-  const env = process.env.VERCEL_ENV ?? 'development'
-  return internal && env === 'production' ? 'internal' : env
-}
+/** The real site (dev.modelxd.com included) is 'production', one of the
+ *  owner's browsers there 'internal' (lib/visit-env.ts). */
+const envOf = (req: NextRequest, internal: boolean) => visitEnv(hostOf(req), internal)
 
 // Whether an account is listed in site_internal_users (supabase/129), kept
 // per instance for ten minutes. Before 129 the table is missing: nobody is.
@@ -125,7 +124,7 @@ export async function POST(req: NextRequest) {
       const path = text(b.path, 300)
       const vid = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
       const { error } = await service().from('site_signin_taps').insert({
-        env:        envOf(internal),
+        env:        envOf(req, internal),
         provider:   b.tap,
         visitor_id: UUID.test(vid) ? vid : null,
         host:       hostOf(req).slice(0, 100) || null,
@@ -142,7 +141,7 @@ export async function POST(req: NextRequest) {
       const path = text(b.path, 300)
       const vid = req.cookies.get(VISITOR_COOKIE)?.value ?? ''
       const { error } = await service().from('xtell_shares').insert({
-        env:        envOf(internal),
+        env:        envOf(req, internal),
         ...share,
         visitor_id: UUID.test(vid) ? vid : null,
         host:       hostOf(req).slice(0, 100) || null,
@@ -200,7 +199,7 @@ export async function POST(req: NextRequest) {
     const { error } = await service().rpc('log_site_visit', {
       p_id:             b.id,
       p_visitor_id:     visitorId,
-      p_env:            envOf(internalVisit),
+      p_env:            envOf(req, internalVisit),
       p_user_id:        userId,
       p_host:           host.slice(0, 100) || null,
       p_landing:        landing?.startsWith('/') ? landing : null,
@@ -221,7 +220,7 @@ export async function POST(req: NextRequest) {
         p_id:             page.id,
         p_visit_id:       b.id,
         p_visitor_id:     visitorId,
-        p_env:            envOf(internalVisit),
+        p_env:            envOf(req, internalVisit),
         p_host:           host.slice(0, 100) || null,
         p_page:           page.key,
         p_country:        country?.slice(0, 2) ?? null,

@@ -27,8 +27,13 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
 - **Source**: `gclid` / `gbraid` / `wbraid` (Google Ads auto-tagging; gbraid and
   wbraid are iOS), `utm_*` from the landing URL, `referrer` host. Only taken
   when the tab arrived from outside: a reload of an ad URL is not a new click.
-- **`env`**: `production`, `preview` (dev.modelxd.com) or `development`
-  (localhost), or `internal` (since Oct 12, migration 129): a production
+- **`env`** (since Oct 16 decided by HOST, `lib/visit-env.ts`):
+  `production` = the real site: dev.modelxd.com (the main website, owner
+  Oct 16), www and the old xtell./xcreate. addresses; `preview` = a branch's
+  own vercel.app address; `development` = localhost. Migration 140 relabelled
+  dev.modelxd.com's past 'preview' rows. Before Oct 16 the label was
+  Vercel's, which called dev 'preview' and left its real users out.
+  `internal` (since Oct 12, migration 129): a production
   visit, tap or share from one of the owner's browsers, i.e. any browser that
   has signed in with an account in `site_internal_users` (the owner's two
   Google accounts and the LINE Taiwan test account). `/api/visit` marks such
@@ -110,7 +115,9 @@ after 5 minutes without input). `site_page_window(p_days, p_tz, p_country)`
 gives views, browsers and time per page for the "Rooms and pages" card. The
 privacy page already says the visit log records "the pages you open".
 
-**Browsers by app** (Oct 15, migration 138). Every report covers the whole
+**Browsers by app** (Oct 15, migration 138; Oct 16, migration 140: every app a
+visit OPENED, from its page views, with the time in it and an "Avg per visit"
+column; visits from before page views count where they landed). Every report covers the whole
 site (every host and page), so the owner asked for a breakdown: "a line
 chart as well, each line is one xapp". `site_visit_by_product(p_days, p_tz,
 p_country)` gives browsers, visits and time per day per app, and per app for

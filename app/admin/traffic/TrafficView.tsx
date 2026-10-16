@@ -451,7 +451,7 @@ const PRODUCTS: Series<ProductDay>[] = [
 /** The table's names for what site_visit_by_product() returns: an app, www's
  *  home, or the first part of another path. */
 const PRODUCT_NAMES: Record<string, string> = {
-  xtell: 'X先知', xcreate: 'X創作', xsports: 'X體育', www: 'www home and password page', xpersona: 'XPersona',
+  xtell: 'X先知', xcreate: 'X創作', xsports: 'X體育', www: 'www home', xpersona: 'XPersona',
   xduel: 'XDuel', xtalk: 'XTalk', xgame: 'XGame', xdirect: 'XDirect', xcut: 'XCut', xworld: 'XWorld', xarch: 'XArch',
   xdev: 'XDev', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
 }
@@ -525,6 +525,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   const td: React.CSSProperties = { textAlign: 'right', padding: '6px 10px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums' }
   const first: React.CSSProperties = { textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)' }
   const wrap: React.CSSProperties = { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 12 }
+  // Five columns at phone width: narrower cell padding for that one table.
+  const tight: React.CSSProperties = { paddingLeft: 7, paddingRight: 7 }
   const table: React.CSSProperties = { borderCollapse: 'collapse', fontSize: 13, width: '100%' }
   const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 12 }
   const summary: React.CSSProperties = { cursor: 'pointer', fontSize: 15, fontWeight: 600, padding: '10px 0' }
@@ -616,7 +618,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
             </Card>
             {upgraded && (
               <Card title="Browsers by app"
-                note={`Where each visit landed: an app's own address, or its path on www. A browser counts once a day for each app it landed on; the table is the whole range.${country ? ` ${where} only.` : ''}`}
+                note={`Every app a visit opened, with the time spent in it (from page views, since Oct 16; older visits count where they landed). A browser counts once a day per app; the table is the whole range.${country ? ` ${where} only.` : ''}`}
                 legend={productSeries.length > 1 ? productSeries : undefined}>
                 {!products ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>{NEEDS_138}</p>
                   : products.totals.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No visits in this range{country ? ` from ${where}` : ''} yet.</p>
@@ -626,13 +628,14 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                       <div style={{ ...wrap, marginTop: 14 }}>
                         <table style={table}>
                           <thead>
-                            <tr><th style={{ ...th, ...first }}>App</th><th style={th}>Browsers</th><th style={th}>Visits</th><th style={th}>Time</th></tr>
+                            <tr><th style={{ ...th, ...first, ...tight }}>App</th><th style={{ ...th, ...tight }}>Browsers</th><th style={{ ...th, ...tight }}>Visits</th><th style={{ ...th, ...tight, whiteSpace: 'normal' }}>Avg per visit</th><th style={{ ...th, ...tight }}>Time</th></tr>
                           </thead>
                           <tbody>
                             {products.totals.map(t => (
                               <tr key={t.product}>
-                                <td style={{ ...td, ...first, whiteSpace: 'normal' }}>{productName(t.product)}</td>
-                                <td style={td}>{num(t.browsers)}</td><td style={td}>{num(t.visits)}</td><td style={td}>{stay(t.seconds)}</td>
+                                <td style={{ ...td, ...first, ...tight, whiteSpace: 'normal' }}>{productName(t.product)}</td>
+                                <td style={{ ...td, ...tight }}>{num(t.browsers)}</td><td style={{ ...td, ...tight }}>{num(t.visits)}</td>
+                                <td style={{ ...td, ...tight }}>{stay(t.visits > 0 ? Math.round(t.seconds / t.visits) : 0)}</td><td style={{ ...td, ...tight }}>{stay(t.seconds)}</td>
                               </tr>
                             ))}
                           </tbody>
