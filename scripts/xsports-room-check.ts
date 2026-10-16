@@ -379,6 +379,7 @@ async function cheerleader() {
   const blueSet = cheerMedia.CHEER_MEDIA.filter((m: any) => m.set === 'dodgers')
   ok(blueSet.length === 0 || /\/cheer\/blue-/.test(String(fan.stored[0]?.media_url)), 'roomCheer: in a Dodgers game her picture comes from the Dodger-blue set')
   ok(!String(hi.stored[0]?.media_url).includes('/cheer/blue-'), 'roomCheer: elsewhere from her red XD set')
+  ok(cheerMedia.pickMedia('dance', [], () => 0.99, 'dodgers').file === 'blue-clip-2.mp4' && cheerMedia.pickMedia('dance', [], () => 0.99).file === 'clip-2.mp4', 'pickMedia: a dance clip in Dodger blue in her team\'s games, in red elsewhere')
   // The commentators read her as the cheerleader.
   const t = room({ rows: [{ kind: 'ai', author_name: '晴晴', model_name: '晴晴', content: '全壘打！！' }] })
   await t.speak(K, 'lull')
