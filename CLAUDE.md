@@ -64,6 +64,11 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `137_xsports_cheer_jobs.sql` applied 2026-10-16 by the owner: 晴晴's
+  fresh photo/clip jobs (`xsports_cheer_jobs`) and fans' 👍 / 👎 on her
+  posts (`xsports_media_votes`). Checked live: 42501 for the publishable
+  key on both tables, read and write; 23514 for action 'sing' and a vote
+  of 2; nothing left behind.
   `136_xsports_room_media.sql` applied 2026-10-15 by the owner: `media_url`
   (https only) and `media_kind` (image/video) on `xsports_room_messages`,
   readable like the other public columns (column grants), server-written.
