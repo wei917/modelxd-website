@@ -9,9 +9,10 @@
 
 export type CheerMediaKind = 'image' | 'video'
 
-/** One picture or clip: its file, kind, what it suits, and what it shows
- *  (told to her, so her words fit it). */
-export interface CheerMedia { file: string; kind: CheerMediaKind; tags: readonly string[]; shows: string }
+/** One picture or clip: its file, kind, what it suits, what it shows (told
+ *  to her, so her words fit it), and its set: her own red XD uniform, or
+ *  Dodger blue for her team's games (Oct 16; no team marks in either). */
+export interface CheerMedia { file: string; kind: CheerMediaKind; tags: readonly string[]; shows: string; set?: 'xd' | 'dodgers' }
 
 /** Her folder in x-characters (founder@modelxd.com's, where her character is). */
 export const CHEER_MEDIA_DIR = 'c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer'
@@ -31,6 +32,16 @@ export const CHEER_MEDIA: readonly CheerMedia[] = [
   { file: 'night.jpg', kind: 'image', tags: ['win'], shows: 'you waving to the fans in confetti under the lights' },
   { file: 'clip-1.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
   { file: 'clip-2.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+  // Dodger blue, for her team's games (Oct 16): no logos, letters or team names.
+  { file: 'blue-selfie.jpg', kind: 'image', set: 'dodgers', tags: ['selfie'], shows: 'a selfie of you in your blue uniform, making a peace sign, palm trees behind you' },
+  { file: 'blue-megaphone.jpg', kind: 'image', set: 'dodgers', tags: ['cheer'], shows: 'you leading a chant with a blue megaphone' },
+  { file: 'blue-cheer.jpg', kind: 'image', set: 'dodgers', tags: ['cheer'], shows: 'you cheering with both blue pom-poms up high' },
+  { file: 'blue-heart.jpg', kind: 'image', set: 'dodgers', tags: ['cheer'], shows: 'you making a big heart with your arms' },
+  { file: 'blue-hello.jpg', kind: 'image', set: 'dodgers', tags: ['hello'], shows: 'you waving hello in your blue uniform' },
+  { file: 'blue-dance.jpg', kind: 'image', set: 'dodgers', tags: ['dance'], shows: 'you mid-dance with the blue pom-poms, winking' },
+  { file: 'blue-homerun.jpg', kind: 'image', set: 'dodgers', tags: ['homerun'], shows: 'you holding up a 「全壘打！」 sign' },
+  { file: 'blue-win.jpg', kind: 'image', set: 'dodgers', tags: ['win'], shows: 'you jumping for joy in blue and white confetti' },
+  { file: 'blue-night.jpg', kind: 'image', set: 'dodgers', tags: ['win'], shows: 'you waving to the fans in confetti under the lights' },
 ]
 
 /** At most one picture or clip per room every ten minutes. */
@@ -45,10 +56,14 @@ export function askedMedia(text: string): 'selfie' | 'dance' | 'any' | null {
   return null
 }
 
-/** The picture for a moment or a request: one with the tag, not among the
- *  room's recent ones, chosen at random (`rand` for the checks). */
-export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random): CheerMedia | null {
-  const all = CHEER_MEDIA.filter(m => tag === 'any' ? m.kind === 'image' : m.tags.includes(tag))
+/** The picture for a moment or a request: one of the set with the tag, not
+ *  among the room's recent ones, chosen at random (`rand` for the checks). */
+export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random, set: 'xd' | 'dodgers' = 'xd'): CheerMedia | null {
+  const fits = (m: CheerMedia) => (tag === 'any' ? m.kind === 'image' : m.tags.includes(tag))
+  // From the set; her red XD set when the set has none for this (the blue
+  // clips came after the blue photos).
+  const inSet = CHEER_MEDIA.filter(m => (m.set ?? 'xd') === set && fits(m))
+  const all = inSet.length ? inSet : CHEER_MEDIA.filter(m => (m.set ?? 'xd') === 'xd' && fits(m))
   const fresh = all.filter(m => !recent.includes(m.file))
   const from = fresh.length ? fresh : all
   return from.length ? from[Math.floor(rand() * from.length)] : null

@@ -369,6 +369,16 @@ async function cheerleader() {
   const pre = cheerRoom({ media: false })
   await pre.mod.roomCheer(K2, { trigger: 'first' })
   ok(pre.stored.length === 1 && !pre.stored[0].media_url && !pre.calls[0].prompt.includes('comes with'), 'roomCheer: before 136, words only')
+  // Her team (Oct 16: "she support LA dodgers").
+  const lad = (status: string, events: any[]) => ({ ...game(status, events), away: { name: 'Brewers', abbr: 'MIL', runs: 0 }, home: { name: 'Dodgers', abbr: 'LAD', runs: 0 } })
+  ok(mod.teamSide(lad('live', [])) === 'home' && mod.teamSide({ ...game('live', []), away: { name: 'Rays', abbr: 'TB' }, home: { name: 'Guardians', abbr: 'CLE' } }) === null, 'teamSide: the Dodgers at home; no side in a game without them')
+  const fan = cheerRoom({ g: lad('live', [play(1)]) })
+  await fan.mod.roomCheer(K2, { trigger: 'first' })
+  ok(fan.calls[0]?.prompt.includes('道奇迷') && fan.calls[0].prompt.includes('cheer for the Dodgers and their players by name'), 'roomCheer: in a Dodgers game she is a Dodgers fan')
+  ok(!a.calls[0]?.prompt.includes('道奇迷'), 'roomCheer: in other games she cheers both sides')
+  const blueSet = cheerMedia.CHEER_MEDIA.filter((m: any) => m.set === 'dodgers')
+  ok(blueSet.length === 0 || /\/cheer\/blue-/.test(String(fan.stored[0]?.media_url)), 'roomCheer: in a Dodgers game her picture comes from the Dodger-blue set')
+  ok(!String(hi.stored[0]?.media_url).includes('/cheer/blue-'), 'roomCheer: elsewhere from her red XD set')
   // The commentators read her as the cheerleader.
   const t = room({ rows: [{ kind: 'ai', author_name: '晴晴', model_name: '晴晴', content: '全壘打！！' }] })
   await t.speak(K, 'lull')
