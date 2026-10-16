@@ -232,7 +232,7 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
     const set = side ? 'dodgers' : 'xd'
     if (use.trigger === 'admin') {
       // What the admin saw and chose to post.
-      if (use.media && roomMedia()) media = { ...use.media, shows: freshShows(use.action, use.name) }
+      if (use.media && roomMedia()) media = { ...use.media, shows: freshShows(use.action, use.name, use.media.kind) }
     } else if (tag) {
       const seen = await recentMedia(k).catch(() => null)
       if (seen && seen.last !== null && Date.now() - seen.last < MEDIA_GAP_MS) later = use.trigger === 'user'

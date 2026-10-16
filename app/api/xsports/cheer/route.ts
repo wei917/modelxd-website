@@ -3,9 +3,11 @@
 // something? the action can have dance(post dance selfie), 幫某人加油(with
 // comic like picture with dialog +name text), or cheer video...etc"; "fresh
 // each time"): made new each time, seen by the admin, then posted.
-//   POST { league, game, lang, action, name? }        → { draft }
-//        starts making it (lib/xsports-cheer-fresh: a selfie or a 加油
-//        picture in about a minute, a dance or cheer clip in about three)
+//   POST { league, game, lang, action, name?, seconds?, video? } → { draft }
+//        starts making it (lib/xsports-cheer-fresh): a selfie or a 加油
+//        photo in about ten seconds; a dance, a cheer, or a 加油 asked as a
+//        `video`, a clip of `seconds` (3 or 5, default 5) in one to two
+//        minutes
 //   GET  ?draft=<id>                                  → { status, url?, kind? }
 //        working, done (with the picture or clip to look at), or failed
 //   POST { league, game, lang, action, name?, draft } → { ok }
@@ -14,8 +16,8 @@
 // checked by OpenAI's moderation; a check that cannot run refuses).
 // Admins only (ADMIN_EMAILS, lib/admin), checked here: 403 for anyone else.
 // Only where she cheers, while her character is public (409). ModelXD pays
-// (about $0.05 a picture, $0.95 a clip); each counts toward the day's
-// XSports total.
+// (about $0.07 a photo, plus $0.18 a second of clip); each counts toward
+// the day's XSports total.
 
 export const runtime = 'nodejs'
 // A clip is made in `after`: a picture, about two minutes of HappyHorse, a
@@ -27,7 +29,7 @@ import { getAdminUser } from '@/lib/admin'
 import { moderate } from '@/lib/moderation'
 import { roomKeyOf } from '@/lib/xsports-room'
 import { cheersIn } from '@/lib/xsports-ais'
-import { CHEER_ACTIONS, shoutName } from '@/lib/xsports-cheer-media'
+import { CHEER_ACTIONS, clipSeconds, shoutName } from '@/lib/xsports-cheer-media'
 import { cheerFace, roomCheer } from '@/lib/xsports-cheer'
 import { freshStatus, isFreshId, makeFresh, newFreshId } from '@/lib/xsports-cheer-fresh'
 
@@ -73,6 +75,6 @@ export async function POST(req: Request) {
   }
 
   const draft = newFreshId()
-  after(makeFresh(k, draft, action, name))
+  after(makeFresh(k, draft, action, name, { seconds: clipSeconds(body?.seconds), video: action === 'shout' && body?.video === true }))
   return Response.json({ draft })
 }

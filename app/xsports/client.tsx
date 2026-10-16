@@ -21,7 +21,7 @@ import { mlbToday, type GameCard, type GameState, type PlayEvent, type League, t
 import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
 import { ALL_AIS, aiByName, CHEERLEADER, gameDraw, isCheer, type Commentator } from '../../lib/xsports-ais'
-import { CHEER_ACTIONS, SHOUT_NAME_MAX, shoutName, type CheerAction } from '../../lib/xsports-cheer-media'
+import { CHEER_ACTIONS, CLIP_SECONDS, freshKind, SHOUT_NAME_MAX, shoutName, type CheerAction, type ClipSeconds } from '../../lib/xsports-cheer-media'
 import OddsChart from './OddsChart'
 import { useHidden, personKey, isHidden } from './hidden'
 import { useRoomLang } from './room-lang'
@@ -1371,7 +1371,7 @@ function ClipView({ src, className, c }: { src: string; className: string; c: Co
  *  three for a clip) and until it is posted or let go (owner, Oct 16: "fresh
  *  each time"). Kept for this tab and room (sessionStorage), so closing her
  *  card, or the page, keeps it; onReady says when it is ready. */
-type CheerJob = { id: string; action: CheerAction; name?: string; status: 'working' | 'done' | 'failed'; url?: string; kind?: 'image' | 'video'; at: number }
+type CheerJob = { id: string; action: CheerAction; name?: string; video?: boolean; seconds?: ClipSeconds; status: 'working' | 'done' | 'failed'; url?: string; kind?: 'image' | 'video'; at: number }
 const CHEER_JOB_GIVE_UP_MS = 15 * 60_000
 
 function useCheerJob(league: string, game: string, room: string, c: Copy, onReady: () => void) {
@@ -1415,13 +1415,13 @@ function useCheerJob(league: string, game: string, room: string, c: Copy, onRead
     if (!res.ok) throw new Error(j?.code ?? String(res.status))
     return j
   }
-  const make = async (action: CheerAction, name?: string) => {
+  const make = async (action: CheerAction, name?: string, o: { video?: boolean; seconds?: ClipSeconds } = {}) => {
     setErr('')
     setBusy(true)
     try {
-      const j = await call({ action, name })
+      const j = await call({ action, name, video: o.video, seconds: o.seconds })
       if (typeof j.draft !== 'string') throw new Error('no_draft')
-      setJob({ id: j.draft, action, name, status: 'working', at: Date.now() })
+      setJob({ id: j.draft, action, name, video: o.video, seconds: o.seconds, status: 'working', at: Date.now() })
     } catch (e: any) {
       setErr(e?.message === 'name_refused' ? c.cheerNameRefused : c.cheerActFailed)
     } finally { setBusy(false) }
@@ -1444,6 +1444,8 @@ function useCheerJob(league: string, game: string, room: string, c: Copy, onRead
 function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useCheerJob>; onPosted: () => void }) {
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
+  // A clip's length (owner, Oct 16: "3 or 5 seconds"); the short one first.
+  const [secs, setSecs] = useState<ClipSeconds>(3)
   const named = shoutName(name)
   const { job, busy, err } = cj
   const label = (a: CheerAction) => (a === 'selfie' ? c.actSelfie : a === 'dance' ? c.actDance : a === 'cheer' ? c.actCheer : c.actShout)
@@ -1453,9 +1455,15 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
       <div className="row">
         {CHEER_ACTIONS.map(a => (
           <button key={a} type="button" aria-pressed={a === 'shout' ? naming : undefined} disabled={busy || !!job}
-            onClick={() => { if (a === 'shout') setNaming(v => !v); else { setNaming(false); void cj.make(a) } }}>
+            onClick={() => { if (a === 'shout') setNaming(v => !v); else { setNaming(false); void cj.make(a, undefined, { seconds: secs }) } }}>
             {label(a)}
           </button>
+        ))}
+      </div>
+      <div className="len" role="radiogroup" aria-label={c.clipLength}>
+        <span>{c.clipLength}</span>
+        {CLIP_SECONDS.map(n => (
+          <button key={n} type="button" role="radio" aria-checked={secs === n} disabled={busy || !!job} onClick={() => setSecs(n)}>{c.secs(n)}</button>
         ))}
       </div>
       {naming && !job ? (
@@ -1463,11 +1471,18 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
           <input value={name} maxLength={SHOUT_NAME_MAX * 2} placeholder={c.shoutName} aria-label={c.shoutName} autoFocus enterKeyHint="go" disabled={busy}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (isSubmitEnter(e as any) && named && !busy) { e.preventDefault(); void cj.make('shout', named) } }} />
-          <button type="button" className="go" disabled={busy || !named} onClick={() => void cj.make('shout', named)}>{busy ? c.loading : c.shoutDraw}</button>
+          <div className="row">
+            <button type="button" className="go" disabled={busy || !named} onClick={() => void cj.make('shout', named)}>{c.shoutPhoto}</button>
+            <button type="button" className="go" disabled={busy || !named} onClick={() => void cj.make('shout', named, { video: true, seconds: secs })}>{c.shoutVideo(secs)}</button>
+          </div>
         </div>
       ) : null}
       {job?.status === 'working' ? (
-        <p className="wait" role="status"><span className="spin" aria-hidden />{c.cheerMaking[job.action]}<small>{c.cheerMayClose}</small></p>
+        <div className="shout">
+          <p className="wait" role="status"><span className="spin" aria-hidden />{freshKind(job.action, job.video) === 'video' ? c.cheerMakingClip(job.seconds ?? 5) : c.cheerMakingPhoto}<small>{c.cheerMayClose}</small></p>
+          {/* Letting go here only frees the buttons; what was started still finishes, unposted. */}
+          <button type="button" className="quiet" onClick={() => { cj.clear(); setNaming(false) }}>{c.cheerDiscard}</button>
+        </div>
       ) : null}
       {job?.status === 'done' && job.url ? (
         <div className="shout">
@@ -1476,7 +1491,7 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
             : <img className="pic" src={job.url} alt={job.action === 'shout' ? `「${job.name ?? ''} 加油！」` : ''} />}
           <div className="row">
             <button type="button" className="go" disabled={busy} onClick={async () => { if (await cj.post()) onPosted() }}>{busy ? c.loading : c.cheerPost}</button>
-            <button type="button" disabled={busy} onClick={() => void cj.make(job.action, job.name)}>{c.cheerAnother}</button>
+            <button type="button" disabled={busy} onClick={() => void cj.make(job.action, job.name, { video: job.video, seconds: job.seconds })}>{c.cheerAnother}</button>
           </div>
           <button type="button" className="quiet" disabled={busy} onClick={() => { cj.clear(); setNaming(false) }}>{c.cheerDiscard}</button>
         </div>
@@ -1485,7 +1500,7 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
         <div className="shout">
           <p className="err" role="alert">{c.cheerActFailed}</p>
           <div className="row">
-            <button type="button" className="go" disabled={busy} onClick={() => void cj.make(job.action, job.name)}>{c.cheerRetry}</button>
+            <button type="button" className="go" disabled={busy} onClick={() => void cj.make(job.action, job.name, { video: job.video, seconds: job.seconds })}>{c.cheerRetry}</button>
             <button type="button" disabled={busy} onClick={() => { cj.clear(); setNaming(false) }}>{c.cheerDiscard}</button>
           </div>
         </div>
