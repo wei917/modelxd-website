@@ -4949,13 +4949,15 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-xtell .xtell-profile-tab { background: transparent; }
 @media (max-width: 760px) {
   .acct-balance-num { font-size: 26px; }
-  /* On a phone 編輯 moves down to the 語言 row, still at the right edge,
-     so the 18px values have the full width and a usual email stays on one
-     line; a long one wraps rather than being cut. */
-  .acct-ids dt { margin-left: 8px; }
-  .acct-ids dd { grid-column: 3 / span 2; }
-  .acct-edit { grid-row: 4; margin: 6px 0 0; }
-  .acct-ids .acct-f-lang dd { grid-column: 3; }
+  /* On a phone 編輯 stays at the right, level with the middle of the info
+     (owner, Oct 16); a 48px picture and compact 編輯 / 登出 leave the 18px
+     values room for a usual email on one line (a long one wraps). */
+  .acct-you { grid-template-columns: 48px max-content minmax(0, 1fr) auto; }
+  .acct-you .acct-avatar { width: 48px; height: 48px; }
+  .acct-edit, .acct-out { min-height: 32px; padding: 0 10px; font-size: 13px; }
+  .acct-ids dt { margin-left: 6px; }
+  .acct-edit { margin-left: 4px; }
+  @media (max-width: 374px) { .acct-ids dd { font-size: 15px; } }
   .acct-app { gap: 8px; }
   .acct-ref { flex-wrap: wrap; }
   .acct-ref code { flex-basis: 100%; }

@@ -3574,7 +3574,7 @@ function CreateStudio() {
   // on the studio (the templates and tools were taken off it, Sep 28).
   useEffect(() => {
     if (!viewParam) return
-    if (viewParam === 'creations') { router.replace('/profile'); return }
+    if (viewParam === 'creations') { router.replace('/profile?view=library'); return }
     const url = new URL(window.location.href)
     url.searchParams.delete('view')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
