@@ -4581,9 +4581,10 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
    section. Only what is on screen is styled here; the account blocks under
    Profile keep their own inline styles. */
 .pview-bar {
-  /* X先知's colours on www (.xtell-site.is-in-www), so the bar is its bar. */
+  /* X先知's bar on www, its chosen tab in XDuel's red like the page's
+     buttons (owner, Oct 16), not X先知's vermilion. */
   --xtell-white: #ffffff; --xtell-rule: #e4d9cd; --xtell-ink: #302d29;
-  --xtell-vermilion: #984c36; --xtell-tint: #efe5da;
+  --xtell-vermilion: #d63b32; --xtell-tint: #efe5da;
 }
 .pview-icon { display: flex; align-items: center; justify-content: center; height: 42px; color: inherit; }
 @media (max-width: 1100px) { .pview-icon { height: 36px; } }
@@ -4835,9 +4836,13 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .xtell-site.pv-xtell { --xtell-paper: #fdfdfb; --bg: #fdfdfb; background: #fdfdfb; }
 /* The page starts just under the tab bar (owner, Oct 16: too much space). */
 .pv-xtell > .xtell-profile { padding-top: 0; }
-/* Filled buttons in XDuel's red (.btn-battle), not X先知's darker vermilion
-   (owner, Oct 16). */
+/* One red on www's /profile, XDuel's (.btn-battle), for buttons, links and
+   chosen states alike; X先知's darker vermilion read as brown here (owner,
+   Oct 16). The X先知 blocks inside are .xtell-site too, so they are named. */
 .pv-xtell { --xd-button: #d63b32; --xd-button-hover: #ff5249; }
+.xtell-site.pv-xtell, .pv-xtell .xtell-site, .pv-xtell .xtell-profile {
+  --xtell-vermilion: #d63b32; --red: #d63b32; --red-dim: rgba(214,59,50,0.1);
+}
 .pv-xtell .arena.profile-arena { padding-top: 16px; }
 
 /* www /profile in X先知's type (owner, Oct 16). The account blocks are
