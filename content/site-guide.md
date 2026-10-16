@@ -482,7 +482,8 @@ can change it under **Edit** on `/profile`, once every 30 days.
 XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger
-live at `/profile` — the ledger groups charges by session, so a whole
+live at `/profile` (its Profile tab; the Library tab holds your work, one
+section per app, and Favorite is for bookmarks, still to come) — the ledger groups charges by session, so a whole
 Werewolf game or one generation and its follow-ups read as a single row you
 can expand.
 

@@ -551,11 +551,15 @@ app/
 ├── xeval/page.tsx              # Benchmark ladders (see docs/XEVAL-PAGE.md)
 ├── xtell/page.tsx  xtell/client.tsx   # X先知 temples (see docs/XTELL-PAGE.md)
 ├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
-├── profile/page.tsx            # Balance, ledger, referral panel, and a tab
-│                               #   per surface (XDuel/XCreate/XDirect/XCut/
-│                               #   XTalk/XGame/XVote) — this is where users
-│                               #   look for their own work, so every surface
-│                               #   that makes something belongs here
+├── profile/page.tsx            # Three views (Oct 15): Profile (picture, name,
+│                               #   wallet, ledger, plan, referral, X先知
+│                               #   settings, delete account), Library and
+│                               #   Favorite (bookmarks, pending). Library =
+│                               #   profile/Library.tsx: one section per app
+│                               #   (X Duel + XCreate on by default, the rest
+│                               #   from the section picker, fetched only when
+│                               #   on) — every surface that makes something
+│                               #   belongs there, with its own renderer
 ├── admin/models/               # Admin catalog editor
 ├── methodology/page.tsx        # How XDRating works
 ├── coming-soon/page.tsx        # SITE_PASSWORD gate form

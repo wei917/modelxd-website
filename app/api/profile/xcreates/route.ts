@@ -63,8 +63,17 @@ export async function GET(req: NextRequest) {
   const page   = Math.max(0, parseInt(url.searchParams.get('page') ?? '0', 10) || 0)
   const filter = url.searchParams.get('filter') ?? 'all'
   const studioOnly = url.searchParams.get('studio') === '1'
-  const from   = page * PAGE_SIZE
-  const to     = from + PAGE_SIZE - 1
+  // The profile Library (Oct 15) asks for small previews (size=4), a search
+  // over the prompt (q), oldest-first (sort=oldest) and a row offset. Size stays bounded;
+  // without these the response is what the studio and the old tab expect.
+  const size   = Math.min(24, Math.max(1, parseInt(url.searchParams.get('size') ?? '', 10) || PAGE_SIZE))
+  const search = (url.searchParams.get('q') ?? '').trim().slice(0, 100)
+  const oldest = url.searchParams.get('sort') === 'oldest'
+  // offset (the Library's "Show more") wins over page, so a deleted card
+  // never shifts the next request back onto rows already shown.
+  const offsetParam = url.searchParams.get('offset')
+  const from   = offsetParam != null ? Math.max(0, parseInt(offsetParam, 10) || 0) : page * size
+  const to     = from + size - 1
 
   const query = (withDeletedFilter: boolean) => {
     let q = supabase.from('xcreates').select('*', { count: 'exact' }).eq('user_id', user.id)
@@ -77,7 +86,9 @@ export async function GET(req: NextRequest) {
     // The studio's own grid (Oct 3): runs made in the studio only, not XDirect
     // board nodes, upload "Source:" rows or XCut renders (they carry a node_kind).
     if (studioOnly) q = q.is('node_kind', null)
-    return q.order('created_at', { ascending: false }).range(from, to)
+    // PostgREST pattern characters in the search are matched literally.
+    if (search) q = q.ilike('prompt', `%${search.replace(/[\\%_]/g, m => '\\' + m)}%`)
+    return q.order('created_at', { ascending: oldest }).range(from, to)
   }
 
   // Prefer the deleted_at-aware query; fall back for DBs without that column.
@@ -86,5 +97,5 @@ export async function GET(req: NextRequest) {
   if (res.error) return Response.json({ error: res.error.message }, { status: 400 })
 
   const rows = await signRows(supabase, res.data ?? [])
-  return Response.json({ rows, total: res.count ?? rows.length, pageSize: PAGE_SIZE })
+  return Response.json({ rows, total: res.count ?? rows.length, pageSize: size })
 }
