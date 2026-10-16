@@ -4594,22 +4594,22 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-field.plib-sort { width: 220px; }
 .plib-field {
   position: relative; display: flex; align-items: center; gap: 10px;
-  width: 100%; min-height: 48px; padding: 0 14px; box-sizing: border-box;
-  background: #fff; border: 1px solid var(--border2); border-radius: 10px;
+  width: 100%; min-height: 46px; padding: 0 14px; box-sizing: border-box;
+  background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 5px;
   color: var(--white); font-family: var(--font-body), sans-serif; font-size: 15px;
 }
 .plib-field:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
 .plib-picker-btn { cursor: pointer; text-align: left; }
-.plib-picker-btn > span { flex: 1; font-weight: 600; white-space: nowrap; }
+.plib-picker-btn > span { flex: 1; font-weight: 500; white-space: nowrap; }
 .plib-picker-btn[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
 .plib-sort select {
   flex: 1; min-width: 0; min-height: 44px; border: 0; outline: 0; background: transparent;
-  font: inherit; font-weight: 600; color: inherit; appearance: none; -webkit-appearance: none; cursor: pointer;
+  font: inherit; font-weight: 500; color: inherit; appearance: none; -webkit-appearance: none; cursor: pointer;
 }
 .plib-sort > svg:last-child { pointer-events: none; }
 .plib-picker-pop {
   position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 260px;
-  padding: 8px; background: #fff; border: 1px solid var(--border2); border-radius: 12px;
+  padding: 8px; background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 7px;
   box-shadow: 0 14px 36px rgba(0,0,0,.12);
 }
 .plib-picker-head { padding: 6px 10px 8px; font-size: 13px; color: var(--muted2); }
@@ -4617,36 +4617,37 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px;
   border-radius: 8px; font-size: 15px; color: var(--white); cursor: pointer;
 }
-.plib-picker-row:hover { background: rgba(0,0,0,.04); }
+.plib-picker-row:hover { background: var(--xtell-tint, rgba(0,0,0,.04)); }
 .plib-picker-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--red); }
 
-.plib-section { padding: 26px 0 30px; border-top: 1px solid var(--border); }
+.plib-section { padding: 26px 0 30px; border-top: 1px solid var(--xtell-rule, var(--border)); }
 .plib-toolbar + .plib-section { border-top: 0; }
 .plib-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .plib-head-icon { display: inline-flex; color: var(--white); }
+/* X先知's section heading: the serif, regular weight (.xtell-section-heading). */
 .plib-head-name {
-  margin: 0; font-family: var(--font-display), sans-serif; font-size: clamp(24px, 3vw, 30px);
-  font-weight: 800; color: var(--white);
+  margin: 0; font-family: var(--xtell-serif, var(--font-display)), serif; font-size: clamp(24px, 3vw, 28px);
+  font-weight: 400; line-height: 1.3; letter-spacing: -.01em; color: var(--white);
 }
-.plib-count { font-size: 16px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+.plib-count { font-size: 15px; color: var(--muted2); font-variant-numeric: tabular-nums; }
 .plib-vis {
-  display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px;
-  background: rgba(0,0,0,.05); color: var(--muted2); font-size: 14px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--muted2); font-size: 13px; font-weight: 500;
 }
-.plib-vis.is-public { background: var(--red-dim); color: var(--red); }
+.plib-vis.is-public { border-color: var(--red); background: var(--xtell-tint, var(--red-dim)); color: var(--red); }
 .plib-head-end { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 .plib-viewall {
   display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0;
-  background: none; border: 0; color: var(--red); font-size: 16px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  background: none; border: 0; color: var(--red); font-size: 15px; font-weight: 500; cursor: pointer; white-space: nowrap;
 }
-.plib-viewall:hover { text-decoration: underline; }
+.plib-viewall:hover { text-decoration: underline; text-underline-offset: 5px; }
 .plib-collapse {
   display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
   background: none; border: 0; border-radius: 50%; color: var(--white); cursor: pointer;
 }
 .plib-collapse svg { transform: rotate(180deg); transition: transform .15s; }
 .plib-collapse.is-collapsed svg { transform: none; }
-.plib-collapse:hover { background: rgba(0,0,0,.05); }
+.plib-collapse:hover { background: var(--xtell-tint, rgba(0,0,0,.05)); }
 .plib-viewall:focus-visible, .plib-collapse:focus-visible, .plib-mode:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 /* Folding is desktop-only: the arrow is not on a phone, so neither is the fold. */
 @media (min-width: 761px) {
@@ -4654,11 +4655,12 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 }
 
 .plib-modes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+/* X先知's chips (.xtell-as-chip / .xtell-pin): outlined, vermilion on a tint when chosen. */
 .plib-mode {
-  min-height: 38px; padding: 0 20px; border: 0; border-radius: 999px;
-  background: rgba(0,0,0,.05); color: var(--muted2); font-size: 15px; font-weight: 600; cursor: pointer;
+  min-height: 36px; padding: 0 16px; border: 1px solid var(--border2); border-radius: 999px;
+  background: var(--xtell-white, #fff); color: var(--white); font-size: 14px; font-weight: 400; cursor: pointer;
 }
-.plib-mode.is-on { background: var(--red-dim); color: var(--red); }
+.plib-mode.is-on { border-color: var(--red); background: var(--xtell-tint, var(--red-dim)); color: var(--red); font-weight: 600; }
 
 .plib-grid { display: grid; gap: 20px; }
 .plib-grid-duel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -4666,7 +4668,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-grid-list { gap: 0; }
 .plib-card {
   display: flex; flex-direction: column; min-width: 0; overflow: hidden;
-  background: #fff; border: 1px solid var(--border2); border-radius: 14px;
+  background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 7px;
   color: inherit; text-decoration: none; transition: border-color .15s;
 }
 .plib-card:hover { border-color: var(--red); }
@@ -4674,7 +4676,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-card-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 14px; min-width: 0; }
 .plib-card-title {
   display: block; padding: 0; background: none; border: 0; text-align: left; cursor: pointer;
-  font-family: var(--font-body), sans-serif; font-size: 17px; font-weight: 700; line-height: 1.35; color: var(--white);
+  font-family: var(--font-body), sans-serif; font-size: 16px; font-weight: 500; line-height: 1.4; color: var(--white);
   text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .plib-card time, .plib-card-meta { font-size: 14px; color: var(--muted2); }
@@ -4684,7 +4686,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
   background: none; border: 0; border-radius: 8px; color: var(--muted2); cursor: pointer;
 }
-.plib-card-acts button:hover, .plib-card-acts a:hover { background: rgba(0,0,0,.05); color: var(--red); }
+.plib-card-acts button:hover, .plib-card-acts a:hover { background: var(--xtell-tint, rgba(0,0,0,.05)); color: var(--red); }
 .plib-media { position: relative; }
 .plib-card-acts.is-overlay { position: absolute; top: 8px; right: 8px; gap: 6px; margin: 0; }
 .plib-card-acts.is-overlay a, .plib-card-acts.is-overlay button {
@@ -4730,23 +4732,23 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-persona-none { display: flex; align-items: center; justify-content: center; background: var(--red-dim); color: var(--red); font-weight: 800; font-size: 20px; }
 .plib-persona .plib-card-body { padding: 0; }
 
-.plib-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
-.plib-rows > li { border-bottom: 1px solid var(--border); }
+.plib-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--xtell-rule, var(--border)); }
+.plib-rows > li { border-bottom: 1px solid var(--xtell-rule, var(--border)); }
 .plib-row { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 4px; color: inherit; text-decoration: none; }
 a.plib-row:hover .plib-card-title { color: var(--red); }
 .plib-row-main { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .plib-row-icon { display: inline-flex; width: 40px; height: 40px; flex-shrink: 0; }
 .plib-row-icon img, .plib-row-icon svg { width: 40px; height: 40px; object-fit: contain; }
-.plib-row-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.05); color: var(--muted2); font-size: 13px; font-weight: 700; }
-.plib-row-badge.is-live { background: var(--red-dim); color: var(--red); }
+.plib-row-badge { flex-shrink: 0; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border2); color: var(--muted2); font-size: 13px; font-weight: 500; }
+.plib-row-badge.is-live { border-color: var(--red); background: var(--xtell-tint, var(--red-dim)); color: var(--red); }
 .plib-row-badge.is-voted, .plib-row-badge.is-mp4 { background: var(--green-dim); color: var(--green); }
 .plib-row-acts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .plib-row-acts a, .plib-row-acts button {
-  min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border2);
-  background: #fff; color: var(--white); font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+  min-height: 36px; padding: 0 12px; border-radius: 5px; border: 1px solid var(--border2);
+  background: var(--xtell-white, #fff); color: var(--white); font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
   display: inline-flex; align-items: center;
 }
-.plib-row-acts .is-primary { background: var(--white); border-color: var(--white); color: #fff; }
+.plib-row-acts .is-primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
 .plib-row-acts .is-danger { border-color: var(--red); color: var(--red); }
 .plib-row-confirm { font-size: 13px; color: var(--red); }
 .plib-row-error { font-size: 13px; color: var(--red); }
@@ -4757,16 +4759,16 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 @keyframes plib-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .plib-empty {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
-  padding: 30px 16px; border: 1px dashed var(--border2); border-radius: 14px;
-  color: var(--muted2); font-size: 15px; text-align: center;
+  padding: 30px 16px; border: 1px dashed var(--border2); border-radius: 7px;
+  color: var(--muted2); font-size: 15px; line-height: 1.7; text-align: center;
 }
-.plib-empty button { background: none; border: 0; padding: 0; color: var(--red); font: inherit; font-weight: 700; cursor: pointer; }
+.plib-empty button { background: none; border: 0; padding: 0; color: var(--red); font: inherit; text-decoration: underline; text-underline-offset: 5px; cursor: pointer; }
 .plib-error { border-style: solid; border-color: var(--red-dim); }
 .plib-empty-all { margin-top: 20px; }
 .plib-more { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; color: var(--red); font-size: 14px; }
 .plib-more button {
-  min-height: 44px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--border2);
-  background: #fff; color: var(--white); font-size: 15px; font-weight: 600; cursor: pointer;
+  min-height: 44px; padding: 0 22px; border-radius: 5px; border: 1px solid var(--red);
+  background: var(--xtell-white, #fff); color: var(--red); font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .plib-privacy { margin: 20px 0 0; font-size: 13px; color: var(--muted2); }
 
@@ -4800,3 +4802,16 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   .plib-row-acts { width: 100%; justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .plib-skel { animation: none; } .plib-collapse svg { transition: none; } }
+
+/* www /profile in X先知's type (owner, Oct 16). The account blocks are
+   inline-styled for the old look: small all-caps JetBrains Mono labels and
+   heavy display numbers. Here the labels become plain body text at a
+   readable size and the display type becomes X先知's serif, regular weight,
+   as its headings are. Scoped to www's account page only. */
+.pv-xtell [style*="--font-mono"] {
+  font-family: var(--font-body), sans-serif !important; font-size: 13px !important;
+  letter-spacing: 0 !important; text-transform: none !important;
+}
+.pv-xtell [style*="--font-display"], .pv-xtell .xtell-profile-summary h1 {
+  font-family: var(--xtell-serif), serif !important; font-weight: 400 !important; letter-spacing: -.01em !important;
+}

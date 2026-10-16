@@ -611,8 +611,14 @@ export default function ProfilePage() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
+      {/* www's account page wears X先知's look (owner, Oct 16: "font family,
+          font size... all don't match XTell's style"): its paper, ink and
+          vermilion (.xtell-site.is-in-www, as on www's /xtell), its bar, and
+          the account page's own X先知 layout (.xtell-profile). The door's
+          page is the same markup on its own host. */}
+      <div className={isXTell ? undefined : 'xtell-site is-in-www xtell-www-page pv-xtell'}>
       {!isXTell && <ProfileViewTabs view={view} onChange={chooseView} />}
-      <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
+      <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className="xduel-page xtell-profile">
         <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: !isXTell && view === 'library' ? 1240 : 1040 }}>
           {(isXTell || view === 'profile') && <>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
@@ -655,7 +661,7 @@ export default function ProfilePage() {
               balance card on the right of the same row. They share one
               flex parent with `flex-wrap` so the layout collapses to a
               vertical stack on narrow viewports. */}
-          <div className={isXTell ? 'xtell-profile-summary' : undefined} style={{
+          <div className="xtell-profile-summary" style={{
             display: 'flex', alignItems: 'flex-start',
             gap: 24, marginBottom: 44, flexWrap: 'wrap',
           }}>
@@ -726,7 +732,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Credit balance card (right of profile) */}
-            <div className={isXTell ? 'xtell-wallet' : undefined} style={{
+            <div className="xtell-wallet" style={{
               position: 'relative',
               display: 'flex', alignItems: 'center', gap: 18,
               background: 'var(--surface)',
@@ -1233,6 +1239,7 @@ export default function ProfilePage() {
           </>}
 
         </div>
+      </div>
       </div>
 
       {isXTell && <XTellFooter />}
