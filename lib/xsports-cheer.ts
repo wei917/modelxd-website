@@ -4,9 +4,10 @@
 // a public character of founder@modelxd.com (x_characters; CHEERLEADER in
 // lib/xsports-ais): her persona, photo and model come from that row, so she
 // is edited in XPersona, and making her private takes her out of the rooms.
-// She cheers the game's big moments (the first she sees of a live game, a
-// home run, the lead changing hands, a run from the seventh on, the final
-// out), at most once every two minutes, and answers fans who write @晴晴.
+// She cheers like a real cheerleader (owner, Oct 16: "it's been a while, she
+// didn't post anything"): the first she sees of a live game, every run, a
+// rally for the team coming up to bat at each half-inning, the final out;
+// at most once every two minutes; and answers fans who write @晴晴.
 // She never takes the commentators' turns; she shares their speaking lock.
 // ModelXD pays: every cheer counts toward the day's XSports total
 // (lib/xsports-ai-spend), and past the cap she speaks on the cheap model.
@@ -36,14 +37,14 @@ export type CheerCue =
   | { trigger: 'moment'; event: PlayEvent }
   | { trigger: 'user'; asker: { name: string; text: string; id: number } }
 
-const lead = (away: number, home: number) => Math.sign(away - home)
-
 /** What 晴晴 should cheer now, if anything, given when she last spoke in
  *  the room (ms; null: never). A live game she has not cheered yet: the
- *  game as it stands. Then the newest big moment since her last word: a home
- *  run, a run that changes who leads (or ties it), any run from the seventh
- *  on. A finished game: once, after its last play, while it is fresh (a room
- *  opened days later stays quiet). Nothing before or between games. */
+ *  game as it stands. Then, since her last word, the newest run (a home run
+ *  or any other; a lead that only grew counted too: Oct 16, a 2-run double
+ *  in the 4th left her silent for a quarter of an hour), else the newest
+ *  half-inning's end: a rally for the team coming up. A finished game:
+ *  once, after its last play, while it is fresh (a room opened days later
+ *  stays quiet). Nothing before or between games. */
 export function cheerDue(g: GameState, last: number | null, now = Date.now()): Exclude<CheerCue, { trigger: 'user' }> | null {
   if (last !== null && now - last < CHEER_GAP_MS) return null
   const plays = (g.events ?? []).filter(e => e.at && Number.isFinite(Date.parse(e.at)))
@@ -53,13 +54,13 @@ export function cheerDue(g: GameState, last: number | null, now = Date.now()): E
   }
   if (g.status !== 'live') return null
   if (last === null) return { trigger: 'first' }
-  let moment: PlayEvent | undefined
-  let before = { away: 0, home: 0 }
+  let run: PlayEvent | undefined, half: PlayEvent | undefined
   for (const e of plays) {
-    const swing = e.scoring && lead(e.away, e.home) !== lead(before.away, before.home)
-    if (Date.parse(e.at!) > last && (e.type === 'home_run' || e.type === 'grand_slam' || swing || (e.scoring && e.inning >= 7))) moment = e
-    before = { away: e.away, home: e.home }
+    if (Date.parse(e.at!) <= last) continue
+    if (e.scoring || e.type === 'home_run' || e.type === 'grand_slam') run = e
+    else if (e.endsHalf) half = e
   }
+  const moment = run ?? half
   return moment ? { trigger: 'moment', event: moment } : null
 }
 
@@ -151,6 +152,10 @@ export function cheerCue(cue: CheerCue, g: GameState): string {
     case 'final': return `[The game just ended: ${score}. Celebrate with the winning team's fans, lift up the other side, and thank everyone for cheering, in one or two sentences.]`
     case 'moment': {
       const e = cue.event
+      if (e.endsHalf && !e.scoring) {
+        const up = e.half === 'top' ? g.home.name : g.away.name
+        return `[The ${e.half === 'top' ? 'top' : 'bottom'} of inning ${e.inning} just ended (${e.text}), ${g.away.name} ${e.away}, ${g.home.name} ${e.home}. ${up} come up to bat: lead their fans in a rally chant for the batters due up, in one or two sentences.]`
+      }
       return `[Just now, ${e.half === 'top' ? 'top' : 'bottom'} of inning ${e.inning}: ${e.text} Score after it: ${g.away.name} ${e.away}, ${g.home.name} ${e.home}. Cheer this moment in one or two sentences!]`
     }
     case 'user': return `${cue.asker.name} asked you: ${cue.asker.text}\n[Answer ${cue.asker.name} by name, cheerfully, in one or two sentences. If they say which team they support, cheer for it with them.]`
