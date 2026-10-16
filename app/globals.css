@@ -4772,8 +4772,6 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .plib-empty button { background: none; border: 0; padding: 0; color: var(--red); font: inherit; text-decoration: underline; text-underline-offset: 5px; cursor: pointer; }
 .plib-error { border-style: solid; border-color: var(--red-dim); }
 .plib-empty-all { margin-top: 20px; }
-.plib-foot { display: none; }
-@media (max-width: 760px) { .plib-foot { display: flex; justify-content: center; margin-top: 10px; } }
 .plib-paging { opacity: .45; pointer-events: none; transition: opacity .15s; }
 .plib-section { scroll-margin-top: 96px; }
 .plib-pager { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 18px; }
@@ -4799,15 +4797,19 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   /* The menu hangs from the toolbar's right edge, so it stays on screen. */
   .plib-picker { position: static; }
   .plib-head-name { font-size: 17px; }
-  .plib-seg .mode-seg-btn { min-height: 32px; padding: 4px 8px; }
-  .plib-head-end { display: none; }
+  /* One row on a phone, as on a desktop (owner, Oct 16): the badge keeps
+     its icon, the count rides in View all, the type buttons tighten. */
+  .plib-seg .mode-seg-btn { min-height: 30px; padding: 4px 6px; }
+  .plib-vis-word { display: none; }
+  .plib-head:has(.plib-viewall) .plib-count { display: none; }
+  .plib-head-end { gap: 0; }
   .plib-picker-pop { min-width: min(300px, calc(100vw - 32px)); }
   .plib-section { padding: 18px 0 20px; }
-  .plib-head { gap: 8px; margin-bottom: 10px; }
+  .plib-head { gap: 6px; margin-bottom: 10px; }
   .plib-head-icon svg { width: 18px; height: 18px; }
   .plib-count { font-size: 12px; }
-  .plib-vis { font-size: 12px; padding: 2px 8px; }
-  .plib-viewall { font-size: 13px; }
+  .plib-vis { padding: 5px 6px; }
+  .plib-viewall { gap: 3px; font-size: 12px; }
   .plib-head-end { gap: 6px; }
   /* As in the phone design: no collapse arrow; View all is the control. */
   .plib-collapse { display: none; }
@@ -4822,6 +4824,12 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   .plib-card-body { padding: 8px 10px 4px; }
   .plib-row { align-items: flex-start; flex-wrap: wrap; }
   .plib-row-acts { width: 100%; justify-content: flex-start; }
+}
+/* Narrow phones (360px): the arrow goes, the type buttons tighten, so the
+   title row still holds View all. */
+@media (max-width: 374px) {
+  .plib-viewall svg { display: none; }
+  .plib-seg .mode-seg-btn { padding: 4px 5px; }
 }
 @media (prefers-reduced-motion: reduce) { .plib-skel { animation: none; } .plib-collapse svg { transition: none; } }
 

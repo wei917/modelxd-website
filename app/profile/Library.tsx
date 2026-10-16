@@ -420,8 +420,7 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
   // there is open again on a phone, with no resize event needed.
   const count = total ?? items.length
   const pages = expanded && total != null ? Math.ceil(total / PAGE) : 1
-  // In the header on a desktop; under the cards on a phone, where the header
-  // row holds the type filter beside the badge (owner, Oct 16).
+  // On the title row with the type filter, on a phone too (owner, Oct 16).
   const viewAll = state === 'ready' && (expanded
     ? <button type="button" className="plib-viewall" onClick={() => setExpanded(false)}>{t('lib.showless')}</button>
     : count > items.length && <button type="button" className="plib-viewall" onClick={() => setExpanded(true)}>{t('lib.viewall').replace('{n}', String(count))}<LibIcon name="arrow" size={14} /></button>)
@@ -432,8 +431,8 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
         <span className="plib-head-icon"><LibIcon name={def.icon} size={18} /></span>
         <h2 id={`plib-h-${def.key}`} className="plib-head-name">{t(def.nameKey)}</h2>
         {state === 'ready' && <span className="plib-count">{count}</span>}
-        <span className={def.isPublic ? 'plib-vis is-public' : 'plib-vis'}>
-          <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={12} />{t(def.isPublic ? 'lib.public' : 'lib.private')}
+        <span className={def.isPublic ? 'plib-vis is-public' : 'plib-vis'} title={t(def.isPublic ? 'lib.public' : 'lib.private')}>
+          <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={12} /><span className="plib-vis-word">{t(def.isPublic ? 'lib.public' : 'lib.private')}</span>
         </span>
         {/* The type filter is the site's own segmented control (.mode-seg, as on
             X對決, XVote and XBoard), beside the badge (owner, Oct 16). */}
@@ -472,7 +471,6 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
             </div>}
         {/* Stays put while the next page loads, so the numbers never jump. */}
         {pages > 1 && state !== 'error' && <Pager page={page} pages={pages} onGo={goPage} />}
-        {viewAll && <div className="plib-foot">{viewAll}</div>}
       </div>}
     </section>
   )
