@@ -4880,7 +4880,7 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 /* The labels are a column as wide as the longest in the reader's language. */
 .acct-ids, .acct-ids > div { display: contents; }
 .acct-ids dt { grid-column: 2; margin-left: 16px; font-size: 14px; color: var(--muted2); white-space: nowrap; }
-.acct-ids dd { grid-column: 3; min-width: 0; margin: 0 0 0 6px; font-size: 15px; color: var(--white); overflow-wrap: anywhere; }
+.acct-ids dd { grid-column: 3; min-width: 0; margin: 0 0 0 6px; font-size: 16px; color: var(--white); overflow-wrap: anywhere; }
 .acct-edit { grid-column: 4; grid-row: 1 / span 3; margin-left: 12px; justify-self: end; }
 .acct-out { grid-column: 1; grid-row: 4; justify-self: center; margin-top: 6px; }
 .acct-ids .acct-f-lang dt { grid-column: 2; grid-row: 4; margin-top: 6px; }
@@ -4949,8 +4949,8 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   .acct-balance-num { font-size: 26px; }
   /* Less air on a phone, so a usual email fits on one line; a long one
      wraps rather than being cut. */
-  .acct-ids dt { margin-left: 10px; }
-  .acct-edit { margin-left: 8px; }
+  .acct-ids dt { margin-left: 6px; }
+  .acct-edit { margin-left: 4px; }
   @media (max-width: 374px) {
     .acct-you { column-gap: 4px; }
     .acct-ids dt { margin-left: 4px; }
