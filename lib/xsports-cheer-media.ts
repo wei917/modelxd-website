@@ -2,8 +2,9 @@
 // (owner, Oct 15: "can she take selfie or someone take photo of her 喊加油? or
 // dancing?" → "and post the photos in the public chat room"). A fixed set,
 // each one looked at before it was added (GPT Image 2 with her portrait as
-// the face reference; HappyHorse 1.1 clips made from those photos), never a
-// picture made on the spot: one made live would reach a public room unseen.
+// the face reference; HappyHorse 1.1 clips made from those photos, with the
+// model's own sound since Oct 16), never a picture made on the spot: one made
+// live would reach a public room unseen.
 // The files sit in her character's folder of the public x-characters bucket.
 // What an admin asks her for is made fresh each time instead, and posted
 // only after that admin has seen it (lib/xsports-cheer-fresh). Plain data

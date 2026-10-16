@@ -1319,6 +1319,54 @@ const AI_MD: Components = {
 
 /** One message, drawn once: it changes only when it or its buttons do, so a
  *  new message (or a keystroke in the box) leaves every other row alone. */
+/** A clip: a loop that starts silent. The speaker button, and only it,
+ *  turns its sound on and off (owner, Oct 16: "the default is audio off
+ *  right? only tap the unmute icon unmute the audio"); a tap on the clip
+ *  plays it full screen with the player's controls (Oct 16: "tapping the
+ *  video cannot go full screen?"), sound as it was, and leaving full screen
+ *  brings it back here. iPhone Safari puts only a video full screen
+ *  (webkitEnterFullscreen). */
+function ClipView({ src, className, c }: { src: string; className: string; c: Copy }) {
+  const ref = useRef<HTMLVideoElement | null>(null)
+  const [muted, setMuted] = useState(true)
+  const full = () => {
+    const v = ref.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void; webkitDisplayingFullscreen?: boolean }) | null
+    if (!v || document.fullscreenElement === v || v.webkitDisplayingFullscreen) return
+    if (document.fullscreenEnabled && v.requestFullscreen) {
+      // The player's controls while full screen; the loop again after.
+      const change = () => {
+        if (document.fullscreenElement === v) { v.controls = true; return }
+        document.removeEventListener('fullscreenchange', change)
+        v.controls = false
+        void v.play().catch(() => {})
+      }
+      document.addEventListener('fullscreenchange', change)
+      v.requestFullscreen().catch(() => { document.removeEventListener('fullscreenchange', change); v.webkitEnterFullscreen?.() })
+    } else if (v.webkitEnterFullscreen) {
+      // iPhone: its own player, which pauses the clip on the way out.
+      v.addEventListener('webkitendfullscreen', () => { void v.play().catch(() => {}) }, { once: true })
+      v.webkitEnterFullscreen()
+    }
+  }
+  const sound = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const v = ref.current
+    if (!v) return
+    v.muted = !v.muted
+    if (!v.muted) void v.play().catch(() => {})
+  }
+  return (
+    <span className={`${className} clip`}>
+      <video ref={ref} src={src} autoPlay muted loop playsInline preload="metadata" role="button" tabIndex={0} aria-label={c.clipFull}
+        onClick={full} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); full() } }}
+        onVolumeChange={e => setMuted(e.currentTarget.muted)} />
+      <button type="button" className="snd" aria-label={muted ? c.soundOn : c.soundOff} aria-pressed={!muted} onClick={sound}>
+        <svg viewBox="0 0 24 24" aria-hidden><path className="spk" d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" />{muted ? <path d="M16 9.5l5 5M21 9.5l-5 5" /> : <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />}</svg>
+      </button>
+    </span>
+  )
+}
+
 /** An admin's ask of 晴晴 while it is made (about a minute for a picture,
  *  three for a clip) and until it is posted or let go (owner, Oct 16: "fresh
  *  each time"). Kept for this tab and room (sessionStorage), so closing her
@@ -1424,7 +1472,7 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
       {job?.status === 'done' && job.url ? (
         <div className="shout">
           {job.kind === 'video'
-            ? <video className="pic" src={job.url} autoPlay muted loop playsInline />
+            ? <ClipView src={job.url} className="pic" c={c} />
             : <img className="pic" src={job.url} alt={job.action === 'shout' ? `「${job.name ?? ''} 加油！」` : ''} />}
           <div className="row">
             <button type="button" className="go" disabled={busy} onClick={async () => { if (await cj.post()) onPosted() }}>{busy ? c.loading : c.cheerPost}</button>
@@ -1484,7 +1532,7 @@ const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, on
         {/* 晴晴's picture or clip (Oct 15), at a fixed 2:3 so nothing
             moves when it loads; a clip loops silently, like a GIF. */}
         {m.media_url && /^https:\/\//.test(m.media_url) ? (m.media_kind === 'video'
-          ? <video className="media" src={m.media_url} autoPlay muted loop playsInline preload="metadata" />
+          ? <ClipView src={m.media_url} className="media" c={c} />
           : <a className="media" href={m.media_url} target="_blank" rel="noopener noreferrer"><img src={m.media_url} alt="" loading="lazy" /></a>) : null}
       </div>
     </div>
