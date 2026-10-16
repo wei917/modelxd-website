@@ -430,7 +430,6 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
       <header className="plib-head">
         <span className="plib-head-icon"><LibIcon name={def.icon} size={18} /></span>
         <h2 id={`plib-h-${def.key}`} className="plib-head-name">{t(def.nameKey)}</h2>
-        {state === 'ready' && <span className="plib-count">{count}</span>}
         <span className="plib-vis" title={t(def.isPublic ? 'lib.public' : 'lib.private')}>
           <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={12} /><span className="plib-vis-word">{t(def.isPublic ? 'lib.public' : 'lib.private')}</span>
         </span>
