@@ -108,10 +108,11 @@ export default function AccountPanel(p: AccountProps) {
           {/* id="language": the sidebar globe and /profile#language land here.
               The menu is see-through over its label: a phone zooms into any
               form field under 16px. */}
+          <label className="acct-lang-label" htmlFor="language">{t('acct.language.label')}</label>
           <label className="acct-btn acct-lang">
             <span aria-hidden="true">{LANGS.find(l => l.code === lang)?.label ?? lang}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6l6-6"/></svg>
-            <select id="language" aria-label={t('acct.language')} value={lang} onChange={e => setLang(e.target.value as Lang)}>
+            <select id="language" value={lang} onChange={e => setLang(e.target.value as Lang)}>
               {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
             </select>
           </label>
