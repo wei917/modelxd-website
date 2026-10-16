@@ -4598,7 +4598,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-field {
   position: relative; display: flex; align-items: center; gap: 6px;
   min-height: 32px; padding: 0 10px; box-sizing: border-box;
-  background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 5px;
+  background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 999px;
   color: var(--white); font-family: var(--font-body), sans-serif; font-size: 13px;
 }
 .plib-field svg { width: 14px; height: 14px; }
@@ -4649,7 +4649,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
   border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--muted2); font-size: 12px; font-weight: 500;
 }
-.plib-vis.is-public { border-color: var(--red); background: var(--xtell-tint, var(--red-dim)); color: var(--red); }
 .plib-head-end { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 .plib-viewall {
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0;
