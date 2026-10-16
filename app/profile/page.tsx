@@ -17,7 +17,7 @@ import { XTellFooter } from '../components/xtell/XTellNav'
 import { yenApprox } from '../../lib/plans'
 import { userName, userPhoto } from '../../lib/user-face'
 import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
-import ProfileLibrary, { makeLoader, ProfileViewTabs, FavoritePanel, type ProfileView, type LibraryActions } from './Library'
+import ProfileLibrary, { makeLoader, ProfileViewTabs, type ProfileView, type LibraryActions } from './Library'
 import { renameReading, eraseReading } from '../../lib/xtell-history'
 
 const sb = () => createBrowserClient(
@@ -130,10 +130,11 @@ export default function ProfilePage() {
   // The @ID (Oct 13, supabase/132): read through /api/profile/handle, which
   // gives an account that has none its ID first.
   const [handleInfo, setHandleInfo] = useState<HandleInfo | null>(null)
-  // www's account page has three views (Oct 15; approved design
-  // library-designs-20261014/03): Profile (the account: picture, name,
-  // wallet, plan, referral, X先知 settings, deleting the account), Library
-  // (your work, one section per app) and Favorite. Library is where /profile
+  // www's account page has two views (Oct 15; approved design
+  // library-designs-20261014/03, Favorite left out until bookmarks exist):
+  // Profile (the account: picture, name, wallet, plan, referral, X先知
+  // settings, deleting the account) and Library (your work, one section per
+  // app). Library is where /profile
   // opens; every link that means the account opens Profile: #language (the
   // sidebar globe), #face (X體育設定's 修改名字), #xtell-… (X先知's links to
   // its birth details and personality type, which scroll themselves into
@@ -150,7 +151,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const v = new URLSearchParams(window.location.search).get('view')
     if (accountLink()) setView('profile')
-    else if (v === 'profile' || v === 'library' || v === 'favorite') setView(v)
+    else if (v === 'profile' || v === 'library') setView(v)
     const go = () => { if (accountLink()) setView('profile') }
     window.addEventListener('hashchange', go)
     return () => window.removeEventListener('hashchange', go)
@@ -610,9 +611,9 @@ export default function ProfilePage() {
       <div className="cursor" ref={cursorRef} />
       <div className="cursor-ring" ref={ringRef} />
 
+      {!isXTell && <ProfileViewTabs view={view} onChange={chooseView} />}
       <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
-        <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: !isXTell && view !== 'profile' ? 1240 : 1040 }}>
-          {!isXTell && <ProfileViewTabs view={view} onChange={chooseView} />}
+        <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: !isXTell && view === 'library' ? 1240 : 1040 }}>
           {(isXTell || view === 'profile') && <>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
 
@@ -1167,9 +1168,9 @@ export default function ProfilePage() {
               // personality type sit with the account; the readings are a
               // Library section.
               ? <div className="xtell-site is-in-www xtell-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>
-              : view === 'library' && libraryLoader
+              : libraryLoader
                 ? <ProfileLibrary loader={libraryLoader} actions={libraryActions} />
-                : view === 'favorite' ? <FavoritePanel /> : null}
+                : null}
 
           {(isXTell || view === 'profile') && <>
           {/* ── Danger zone — delete account (Privacy Policy §5) ── */}
