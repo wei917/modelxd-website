@@ -1,9 +1,8 @@
 'use client'
 // /profile — private owner page with edit + tabs
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import ReactMarkdown from 'react-markdown'
 import type { UserCredits, CreditTransaction } from '../../lib/credits'
 import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
 import { downloadFile, downloadName } from '../../lib/download'
@@ -18,18 +17,13 @@ import { XTellFooter } from '../components/xtell/XTellNav'
 import { yenApprox } from '../../lib/plans'
 import { userName, userPhoto } from '../../lib/user-face'
 import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
+import ProfileLibrary, { makeLoader, ProfileViewTabs, FavoritePanel, type ProfileView, type LibraryActions } from './Library'
+import { renameReading, eraseReading } from '../../lib/xtell-history'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 )
-
-const PROVIDER_COLORS: Record<string, string> = {
-  anthropic: '#e8453c', openai: '#10a37f', google: '#4285f4',
-  deepseek: '#4a9eff', meta: '#0668e1',
-  mistral: '#ff7000', bfl: '#a78bfa', recraft: '#34d399',
-}
-const providerColor = (p: string) => PROVIDER_COLORS[p?.toLowerCase()] ?? '#888'
 
 interface Profile {
   id: string
@@ -37,45 +31,6 @@ interface Profile {
   bio: string | null
   avatar_url: string | null
 }
-
-// Shared content-mode filter pills (XDuels / XCreates / XVotes tabs).
-function ModePills({ value, onChange }: {
-  value: 'all' | 'text' | 'image' | 'video'
-  onChange: (v: 'all' | 'text' | 'image' | 'video') => void
-}) {
-  const t = useT()
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const }}>
-      {([
-        { id: 'all',   key: 'common.all',  color: 'var(--muted2)' },
-        { id: 'text',  key: 'mode.text',   color: '#4a9eff' },
-        { id: 'image', key: 'mode.image',  color: '#a78bfa' },
-        { id: 'video', key: 'mode.video',  color: '#34d399' },
-      ] as const).map(opt => {
-        const active = value === opt.id
-        return (
-          <button key={opt.id}
-            onClick={() => onChange(opt.id)}
-            style={{
-              padding: '6px 14px', borderRadius: 999,
-              background: active ? opt.color + '22' : 'transparent',
-              border: `1px solid ${active ? opt.color + '88' : 'var(--border2)'}`,
-              color: active ? opt.color : 'var(--muted2)',
-              fontSize: 11, fontWeight: 700,
-              fontFamily: 'var(--font-mono), monospace',
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              cursor: 'pointer', transition: 'all 0.15s',
-            }}
-          >
-            {t(opt.key)}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-type Tab = 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames' | 'xtell' | 'votes' | 'activities'
 
 // Format an integer cent amount as a USD string. Handles the sign so the
 // ledger column can show "-$0.04" style entries without special casing.
@@ -175,6 +130,38 @@ export default function ProfilePage() {
   // The @ID (Oct 13, supabase/132): read through /api/profile/handle, which
   // gives an account that has none its ID first.
   const [handleInfo, setHandleInfo] = useState<HandleInfo | null>(null)
+  // www's account page has three views (Oct 15; approved design
+  // library-designs-20261014/03): Profile (the account: picture, name,
+  // wallet, plan, referral, X先知 settings, deleting the account), Library
+  // (your work, one section per app) and Favorite. Library is where /profile
+  // opens; every link that means the account opens Profile: #language (the
+  // sidebar globe), #face (X體育設定's 修改名字), #xtell-… (X先知's links to
+  // its birth details and personality type, which scroll themselves into
+  // view) and the returns from Stripe (?checkout=, ?verify=). ?view= keeps
+  // a chosen view across a reload. X先知's own front door is unchanged.
+  const [view, setView] = useState<ProfileView>('library')
+  const accountLink = () => {
+    const h = window.location.hash
+    const q = new URLSearchParams(window.location.search)
+    return h === '#language' || h === '#face' || h.startsWith('#xtell') || q.has('checkout') || q.has('verify')
+  }
+  // Declared before the checkout effect below, which strips ?checkout= from
+  // the address: effects run in order, so this one still sees it.
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get('view')
+    if (accountLink()) setView('profile')
+    else if (v === 'profile' || v === 'library' || v === 'favorite') setView(v)
+    const go = () => { if (accountLink()) setView('profile') }
+    window.addEventListener('hashchange', go)
+    return () => window.removeEventListener('hashchange', go)
+  }, [])
+  const chooseView = (v: ProfileView) => {
+    setView(v)
+    const url = new URL(window.location.href)
+    url.searchParams.set('view', v)
+    url.hash = ''
+    window.history.replaceState(window.history.state, '', url.toString())
+  }
   // /profile#language is where the sidebar globe lands (Sep 14): bring the
   // picker into view and focus it once the profile has rendered (the page
   // shows Loading until then), and again on a hash change when the globe is
@@ -190,7 +177,7 @@ export default function ProfilePage() {
     go()
     window.addEventListener('hashchange', go)
     return () => window.removeEventListener('hashchange', go)
-  }, [profile])
+  }, [profile, view])
   // /profile#face opens the picture, name and ID editor (X體育設定's 修改名字,
   // Oct 14), once the profile has rendered.
   useEffect(() => {
@@ -199,57 +186,6 @@ export default function ProfilePage() {
     window.addEventListener('hashchange', go)
     return () => window.removeEventListener('hashchange', go)
   }, [profile])
-  const [tab,         setTab]         = useState<Tab>('duels')
-  // X先知's links to its settings (今日運勢's birth details, the personality
-  // type) land on www's account page as /profile#xtell-…: open its tab,
-  // where those sections scroll themselves into view.
-  useEffect(() => {
-    const go = () => { if (window.location.hash.startsWith('#xtell')) setTab('xtell') }
-    go()
-    window.addEventListener('hashchange', go)
-    return () => window.removeEventListener('hashchange', go)
-  }, [])
-  const [duels,       setDuels]       = useState<any[]>([])
-  const [xcreates,    setXcreates]    = useState<any[]>([])
-  const [votes,       setVotes]       = useState<any[]>([])
-  const [xdirects,    setXdirects]    = useState<any[]>([])
-  const [xtalks,      setXtalks]      = useState<any[]>([])
-  const [xcuts,       setXcuts]       = useState<any[]>([])
-  const [xworlds,     setXworlds]     = useState<any[]>([])
-  const [xarchs,      setXarchs]      = useState<any[]>([])
-  const [xpersonas,   setXpersonas]   = useState<any[]>([])
-  const [xgames,      setXgames]      = useState<any[]>([])
-  // Which beta surfaces this account can see — the XDirect/XGame tabs
-  // follow the same gate as their nav items, so a non-beta user's profile
-  // doesn't advertise doors the server would slam. (owner ask, Aug 6)
-  useEffect(() => {
-  }, [])
-  // Per-tab "has fetched at least once" flags. Initial render of an empty
-  // array would otherwise show "No X yet" before the first fetch resolved,
-  // making it look like the user has nothing when really we just haven't
-  // asked the server yet.
-  const [tabsLoaded,  setTabsLoaded]  = useState<{ duels: boolean; xcreates: boolean; votes: boolean; xdirects: boolean; xcuts: boolean; xworlds: boolean; xarchs: boolean; xpersonas: boolean; xtalks: boolean; xgames: boolean }>({
-    duels: false, xcreates: false, votes: false, xdirects: false, xcuts: false, xworlds: false, xarchs: false, xpersonas: false, xtalks: false, xgames: false,
-  })
-  // XCreate pagination — 12 cards per page, server-side `range` so we
-  // don't load the entire history into the browser when a user has
-  // hundreds of runs.
-  const XCREATES_PAGE_SIZE = 12
-  const [xcreatePage, setXcreatePage] = useState(0)
-  const [xcreateTotal, setXcreateTotal] = useState<number | null>(null)
-  // XCreate type filter — 'all' shows every mode, otherwise filters by mode.
-  // Filtering and paging are both done server-side now, so changing either
-  // re-fetches the matching page from /api/profile/xcreates.
-  // Default to 'image' (CC, July 17): it's the most-used mode and 'all'
-  // pulls every row's slots jsonb on first open — noticeably slow.
-  const [xcreateFilter, setXcreateFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
-  // Content-mode filters for the XDuels / XVotes tabs (CC, July 19) —
-  // same pills as XCreates; these lists are client-cached so filtering
-  // is instant.
-  // Default 'image' across all three content tabs (CC, July 19) —
-  // matches XCreates; image grids are the most scannable landing view.
-  const [duelFilter, setDuelFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
-  const [voteFilter, setVoteFilter] = useState<'all' | 'text' | 'image' | 'video'>('image')
   // Credit activity ledger lives with the balance card, not the content
   // tabs (CC, July 19).
   const [showActivity, setShowActivity] = useState(false)
@@ -264,13 +200,9 @@ export default function ProfilePage() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [showActivity])
-  // Bump this to force a re-fetch (Refresh button). Adding it to the
-  // tabs effect's deps means setting `xcreateRefreshTick + 1` triggers
-  // exactly one new fetch without disturbing filter/page state.
-  const [xcreateRefreshTick, setXcreateRefreshTick] = useState(0)
   const [deleting,    setDeleting]    = useState<string | null>(null)
   const [copyId,      setCopyId]      = useState<string | null>(null)
-  const [deleteModal, setDeleteModal] = useState<{ type: 'duel' | 'xcreate'; id: string; prompt: string } | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ type: 'duel' | 'xcreate'; id: string; prompt: string; onDone: () => void } | null>(null)
   const [lightbox,    setLightbox]    = useState<string | null>(null)
   // XCreate output-preview modal — shows the chosen slot's full text /
   // image / video without leaving the profile page. The conversation view
@@ -350,14 +282,14 @@ export default function ProfilePage() {
   }, [])
 
   // Show delete confirmation modal
-  const handleDelete = (type: 'duel' | 'xcreate', id: string, prompt?: string) => {
-    setDeleteModal({ type, id, prompt: prompt ?? '' })
+  const handleDelete = (type: 'duel' | 'xcreate', id: string, prompt: string, onDone: () => void) => {
+    setDeleteModal({ type, id, prompt, onDone })
   }
 
   // Actually perform the soft-delete after user confirms via modal
   const confirmDelete = async () => {
     if (!deleteModal) return
-    const { type, id } = deleteModal
+    const { type, id, onDone } = deleteModal
     setDeleteModal(null)
     setDeleting(id)
     try {
@@ -366,15 +298,23 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, id }),
       })
-      if (res.ok) {
-        if (type === 'duel') setDuels(prev => prev.filter(d => d.id !== id))
-        else {
-          setXcreates(prev => prev.filter(x => x.id !== id))
-          setXcreateTotal(t => (t ?? 1) - 1)
-        }
-      }
+      // The Library takes the card out of its section (and its count).
+      if (res.ok) onDone()
     } catch { /* silent */ }
     setDeleting(null)
+  }
+
+  // What the Library borrows from the page: the share and delete flows
+  // (the confirm modal lives here), the XCreate preview modal, and X先知's
+  // rename / erase under the owner policy.
+  const libraryActions: LibraryActions = {
+    share: id => handleShare('duel', id),
+    copiedId: copyId,
+    deletingId: deleting,
+    requestDelete: handleDelete,
+    openXcreate: row => setPreviewItem(row),
+    renameReading: (id, title) => renameReading(sb(), id, title),
+    eraseReading: id => eraseReading(sb(), id),
   }
 
   // Copy permalink
@@ -388,103 +328,11 @@ export default function ProfilePage() {
     })
   }
 
-  // Load tab data
+  // The credit ledger, read when its panel opens (the Library's sections
+  // load their own work, see ./Library).
   useEffect(() => {
     if (!user) return
     const client = sb()
-    const markLoaded = (k: 'duels' | 'xcreates' | 'votes' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs' | 'xpersonas' | 'xtalks' | 'xgames') =>
-      setTabsLoaded(prev => ({ ...prev, [k]: true }))
-    if (site === 'modelxd' && tab === 'duels') {
-      // Try with deleted_at filter; fall back if column doesn't exist yet.
-      client.from('duels').select('*').eq('user_id', user.id).is('deleted_at', null)
-        .order('created_at', { ascending: false }).limit(50)
-        .then(({ data, error }) => {
-          if (error) {
-            // Fallback: deleted_at column doesn't exist yet
-            client.from('duels').select('*').eq('user_id', user.id)
-              .order('created_at', { ascending: false }).limit(50)
-              .then(({ data: fb }) => { setDuels(fb ?? []); markLoaded('duels') })
-          } else {
-            setDuels(data ?? []); markLoaded('duels')
-          }
-        })
-    } else if (tab === 'xcreates') {
-      // XCreates are fetched + re-signed server-side, one page at a time, by
-      // the dedicated effect below (keyed on page/filter). Nothing to do in
-      // this per-tab effect.
-    } else if (tab === 'xgames') {
-      // Games are server-held sessions with owner-read RLS — same query the
-      // Nav history uses, with a fallback for a pre-migration-72 `game`
-      // column. XTalk Discussions are NOT here: they live in client state
-      // and have no row to link to (see Nav.tsx).
-      const gsel = (cols: string) => client.from('xtalk_sessions')
-        .select(cols).eq('user_id', user.id).neq('game', 'discussion')
-        .order('updated_at', { ascending: false }).limit(50)
-      gsel('id, status, day, winner, created_at, title, game').then(async (res: any) => {
-        const r = res.error ? await gsel('id, status, day, winner, created_at, title') : res
-        setXgames(((r.data ?? []) as any[]).map(g => ({ game: 'werewolf', ...g })))
-        markLoaded('xgames')
-      })
-    } else if (tab === 'xcuts') {
-      // The cutting room's own list API (owner-scoped): profile is where
-      // people look for their existing work, so every X-app lists here.
-      fetch('/api/xcut/projects').then(r => r.ok ? r.json() : { projects: [] })
-        .then(d => { setXcuts(d.projects ?? []); markLoaded('xcuts') })
-        .catch(() => markLoaded('xcuts'))
-    } else if (tab === 'xworlds') {
-      fetch('/api/xworld').then(r => r.ok ? r.json() : { items: [] })
-        .then(d => { setXworlds(d.items ?? []); markLoaded('xworlds') })
-        .catch(() => markLoaded('xworlds'))
-    } else if (tab === 'xarchs') {
-      fetch('/api/xarch/projects').then(r => r.ok ? r.json() : { projects: [] })
-        .then(d => { setXarchs(d.projects ?? []); markLoaded('xarchs') })
-        .catch(() => markLoaded('xarchs'))
-    } else if (tab === 'xpersonas') {
-      // Owner-read RLS on x_characters (migration 75): the roster, newest first.
-      client.from('x_characters').select('id, name, avatar_path, msg_count, created_at')
-        .eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
-        .then(({ data }: any) => { setXpersonas(data ?? []); markLoaded('xpersonas') })
-    } else if (tab === 'xtalks') {
-      // Persisted discussion rooms (Aug 6) — the same rows the /xtalk nav
-      // history lists, linking back into the live room.
-      client.from('xtalk_sessions').select('id, title, created_at, updated_at')
-        .eq('user_id', user.id).eq('game', 'discussion')
-        .order('updated_at', { ascending: false }).limit(50)
-        .then(({ data }: any) => { setXtalks(data ?? []); markLoaded('xtalks') })
-    } else if (tab === 'xdirects') {
-      client.from('xdirector_conversations').select('id, title, created_at, updated_at')
-        .eq('user_id', user.id).is('deleted_at', null)
-        .order('updated_at', { ascending: false }).limit(50)
-        .then(({ data, error }: any) => {
-          if (error) {
-            client.from('xdirector_conversations').select('id, title, created_at, updated_at')
-              .eq('user_id', user.id)
-              .order('updated_at', { ascending: false }).limit(50)
-              .then(({ data: fb }: any) => { setXdirects(fb ?? []); markLoaded('xdirects') })
-          } else { setXdirects(data ?? []); markLoaded('xdirects') }
-        })
-    } else if (tab === 'votes') {
-      // Try duel_votes table; fall back to showing user's own duels that have votes.
-      client.from('duel_votes').select('*, duels(id, prompt, mode, slots)').eq('user_id', user.id)
-        .order('created_at', { ascending: false }).limit(50)
-        .then(({ data, error }) => {
-          if (error) {
-            // duel_votes table doesn't exist yet — show own duels with votes
-            client.from('duels').select('*').eq('user_id', user.id).not('vote1', 'is', null)
-              .order('created_at', { ascending: false }).limit(50)
-              .then(({ data: fb }) => {
-                // Reshape to match expected format
-                setVotes((fb ?? []).map((d: any) => ({
-                  id: d.id, duel_id: d.id, vote_choice: d.vote1,
-                  created_at: d.created_at, duels: { id: d.id, prompt: d.prompt, mode: d.mode, slots: d.slots },
-                })))
-                markLoaded('votes')
-              })
-          } else {
-            setVotes(data ?? []); markLoaded('votes')
-          }
-        })
-    }
     if (showActivity) {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
       setTxLoaded(false)
@@ -495,35 +343,7 @@ export default function ProfilePage() {
       client.from('user_credits').select('*').eq('user_id', user.id).maybeSingle()
         .then(({ data: c }) => setCredits((c as UserCredits | null) ?? null))
     }
-  // xcreateRefreshTick is a dep so bumping it manually re-fetches the
-  // 200-row xcreate cache. Filter + pagination are now both client-side
-  // so they intentionally don't appear here.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, user, xcreateRefreshTick, showActivity, site])
-
-  // Fetch the visible XCreate page from the server, which fetches + re-signs
-  // ONLY that page's rows (one batched sign per bucket) and returns them
-  // ready to render. Server-paged, so the browser never over-fetches the
-  // whole history or signs anything itself. Re-runs on page/filter/refresh.
-  useEffect(() => {
-    if (tab !== 'xcreates' || !user) return
-    let cancelled = false
-    setTabsLoaded(s => ({ ...s, xcreates: false }))
-    ;(async () => {
-      try {
-        const res  = await fetch(`/api/profile/xcreates?page=${xcreatePage}&filter=${xcreateFilter}`)
-        const json = await res.json().catch(() => ({}))
-        if (cancelled) return
-        setXcreates(json.rows ?? [])
-        setXcreateTotal(json.total ?? 0)
-      } catch {
-        if (!cancelled) { setXcreates([]); setXcreateTotal(0) }
-      } finally {
-        if (!cancelled) setTabsLoaded(s => ({ ...s, xcreates: true }))
-      }
-    })()
-    return () => { cancelled = true }
-  }, [tab, user, xcreatePage, xcreateFilter, xcreateRefreshTick])
+  }, [user, showActivity])
 
   // Kick off a Stripe Checkout Session for the selected tier. The server
   // re-validates the tier id and builds a session keyed to the signed-in
@@ -691,6 +511,8 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const libraryLoader = useMemo(() => (user?.id ? makeLoader(user.id) : null), [user?.id])
+
   if (!profile) return (
     <>
       {isXTell ? <XTellAuthGate /> : <ModelXDProfileAuth />}
@@ -789,7 +611,9 @@ export default function ProfilePage() {
       <div className="cursor-ring" ref={ringRef} />
 
       <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className={isXTell ? "xduel-page xtell-profile" : "xduel-page"}>
-        <div className="arena" style={{ maxWidth: 1040 }}>
+        <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: !isXTell && view !== 'profile' ? 1240 : 1040 }}>
+          {!isXTell && <ProfileViewTabs view={view} onChange={chooseView} />}
+          {(isXTell || view === 'profile') && <>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
 
           {/* Eyebrow — ties the profile page into the same section-label
@@ -1335,643 +1159,19 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></> : <>
-          {/* Privacy summary — sits right above the content tabs so the
-              public/private expectations frame what's below (CC, July 19). */}
-          <div style={{
-            marginBottom: 10,
-            fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6,
-          }}>
-            {t('profile.privacy')}
-          </div>
-
-          {/* ── Tabs ── */}
-          <div style={{
-            display: 'flex', gap: 0, marginBottom: 32,
-            borderBottom: '1px solid var(--border)',
-          }}>
-            {([
-              ['duels', '⚔ ' + t('nav.xduel')],
-              ['xcreates', '✦ ' + t('nav.xcreate')],
-              ['xdirects', '▶ ' + t('nav.xdirect')],
-              ['xcuts', '✂ ' + t('nav.xcut')],
-              ['xworlds', '🌐 ' + t('nav.xworld')],
-              ['xarchs', '📐 ' + t('nav.xarch')],
-              ['xpersonas', '👤 ' + t('nav.xpersona')],
-              ['xtalks', '💬 ' + t('nav.xtalk')],
-              ['xgames', '◉ ' + t('nav.xgame')],
-              ['xtell', '☯ ' + t('nav.xtell')],
-              ['votes', '⊞ ' + t('nav.xvote')],
-            ] as [Tab, string][]).map(([tb, label]) => {
-              const active = tab === tb
-              return (
-                <button
-                  key={tb}
-                  onClick={() => { setTab(tb); if (tb === 'xcreates') setXcreatePage(0) }}
-                  style={{
-                    padding: '12px 20px', background: 'transparent', border: 'none',
-                    borderBottom: active ? '2px solid var(--red)' : '2px solid transparent',
-                    color: active ? 'var(--white)' : 'var(--muted2)',
-                    fontWeight: active ? 700 : 500,
-                    fontSize: 11,
-                    fontFamily: 'var(--font-mono), monospace',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    marginBottom: -1,
-                    transition: 'color 0.2s, border-color 0.2s',
-                  }}
-                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--white)' }}
-                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--muted2)' }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* ── XDuels tab ── */}
-          {tab === 'duels' && (() => {
-            const visibleDuels = duelFilter === 'all' ? duels : duels.filter(d => d.mode === duelFilter)
-            return (
-            !tabsLoaded.duels
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : <>
-              <ModePills value={duelFilter} onChange={setDuelFilter} />
-              {visibleDuels.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{duelFilter === 'all' ? t('profile.noduels') : t('profile.noduels')}</div>
-              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-                  {visibleDuels.map(item => {
-                    const slots   = (item.slots ?? []).filter(Boolean)
-                    const mode    = item.mode
-                    const modeColor = mode === 'video' ? '#34d399' : mode === 'image' ? '#a78bfa' : '#4a9eff'
-                    const preview = slots[0]
-                    const isDel   = deleting === item.id
-                    const copied  = copyId === item.id
-                    return (
-                      <div
-                        key={item.id}
-                        style={{
-                          background: 'var(--bg)',
-                          border: '1px solid var(--border2)',
-                          borderRadius: 10,
-                          overflow: 'hidden',
-                          transition: 'border-color 0.2s, transform 0.2s',
-                          opacity: isDel ? 0.4 : 1,
-                          display: 'flex', flexDirection: 'column' as const,
-                        }}
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'translateY(0)' }}
-                      >
-                        {preview && (
-                          <a href={`/xduel/${item.id}`} style={{ textDecoration: 'none' }}>
-                            {preview.isVideo
-                              // preload + #t=0.1: mobile Chrome skips preloading video data entirely
-// (data-saver heuristics), so a non-playing <video> painted NOTHING —
-// every thumbnail blank on phones (owner, Aug 21). The media fragment
-// makes the browser decode a frame near the start as the display frame.
-// contain on a fixed black stage, not cover: cover in a wide box
-// crops a 9:16 portrait video to a thin mid-slice — the shape read
-// as wrong the moment portrait runs existed (owner, Aug 21).
-? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', height: 160, objectFit: 'contain', display: 'block', background: '#000' }} />
-                              : preview.isImage
-                              ? <img src={preview.text} alt="" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
-                              : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
-                            }
-                          </a>
-                        )}
-                        <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column' as const }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{
-                              fontSize: 9, fontWeight: 700, color: modeColor,
-                              background: modeColor + '18',
-                              padding: '3px 8px', borderRadius: 3,
-                              textTransform: 'uppercase' as const,
-                              letterSpacing: '0.1em',
-                              fontFamily: 'var(--font-mono), monospace',
-                            }}>{mode}</span>
-                            <span style={{
-                              fontSize: 10, color: 'var(--muted2)', marginLeft: 'auto',
-                              fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em',
-                            }}>{new Date(item.created_at).toLocaleDateString()}</span>
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4, marginBottom: 8 }}>{item.prompt}</div>
-                          <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
-                            <button
-                              onClick={() => handleShare('duel', item.id)}
-                              style={{
-                                flex: 1, padding: '6px 0', borderRadius: 5,
-                                background: 'transparent', border: '1px solid var(--border2)',
-                                color: copied ? 'var(--green)' : 'var(--muted2)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
-                                transition: 'all 0.15s',
-                              }}
-                            >{copied ? t('common.copied') : t('common.share')}</button>
-                            <button
-                              onClick={() => handleDelete('duel', item.id, item.prompt)}
-                              disabled={isDel}
-                              style={{
-                                flex: 1, padding: '6px 0', borderRadius: 5,
-                                background: 'transparent', border: '1px solid var(--border2)',
-                                color: 'var(--red)', fontSize: 10, fontWeight: 600, cursor: isDel ? 'default' : 'pointer',
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
-                                transition: 'all 0.15s', opacity: isDel ? 0.5 : 1,
-                              }}
-                            >{isDel ? '…' : t('common.delete')}</button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>}
-              </>
-            )
-          })()}
-
-          {/* ── XCreates tab ── */}
-          {tab === 'xcreates' && (() => {
-            // Filter + paginate the cached list client-side. Switching the
-            // filter is instant (no network round-trip); Refresh button
-            // below triggers a re-fetch into `xcreates` state.
-            // The server already returns this page filtered, paged, and
-            // signed — `xcreates` holds exactly the current page's rows.
-            const visibleSlice = xcreates
-            const totalCount   = xcreateTotal ?? 0
-            return (
-            <>
-              {/* Toolbar: filter pills on the left, Refresh button on the
-                  right. Filter clicks are instant; Refresh re-fetches the
-                  cache. */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                marginBottom: 16, flexWrap: 'wrap' as const,
-              }}>
-                {([
-                  { id: 'all',   label: t('common.all'),  color: 'var(--muted2)' },
-                  { id: 'text',  label: t('mode.text'),   color: '#4a9eff' },
-                  { id: 'image', label: t('mode.image'),  color: '#a78bfa' },
-                  { id: 'video', label: t('mode.video'),  color: '#34d399' },
-                ] as const).map(opt => {
-                  const active = xcreateFilter === opt.id
-                  return (
-                    <button key={opt.id}
-                      onClick={() => { setXcreateFilter(opt.id); setXcreatePage(0) }}
-                      style={{
-                        padding: '6px 14px', borderRadius: 999,
-                        background: active ? opt.color + '22' : 'transparent',
-                        border: `1px solid ${active ? opt.color + '88' : 'var(--border2)'}`,
-                        color: active ? opt.color : 'var(--muted2)',
-                        fontSize: 11, fontWeight: 700,
-                        fontFamily: 'var(--font-mono), monospace',
-                        letterSpacing: '0.1em', textTransform: 'uppercase',
-                        cursor: 'pointer', transition: 'all 0.15s',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  )
-                })}
-                <button
-                  onClick={() => { setXcreateRefreshTick(t => t + 1) }}
-                  style={{
-                    marginLeft: 'auto',
-                    padding: '6px 14px', borderRadius: 999,
-                    background: 'transparent', border: '1px solid var(--border2)',
-                    color: 'var(--muted2)', fontSize: 11, fontWeight: 700,
-                    fontFamily: 'var(--font-mono), monospace',
-                    letterSpacing: '0.1em', textTransform: 'uppercase',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                  title="Re-fetch the latest from the server"
-                >
-                  ↻ Refresh
-                </button>
-              </div>
-              {!tabsLoaded.xcreates ? (
-                <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              ) : visibleSlice.length === 0 ? (
-                <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>
-                  {xcreateFilter === 'all'
-                    ? 'No XCreates yet — head to XCreate to start.'
-                    : `No ${xcreateFilter} XCreates yet.`}
-                </div>
-              ) : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-                  {visibleSlice.map(item => {
-                    const slots   = (item.slots ?? []).filter(Boolean)
-                    const mode    = item.mode
-                    const modeColor = mode === 'video' ? '#34d399' : mode === 'image' ? '#a78bfa' : '#4a9eff'
-                    const chosen  = slots.find((s: any) => s.id === item.chosen_model_id)
-                    const preview = chosen ?? slots[0]
-                    const isDel   = deleting === item.id
-                    const copied  = copyId === item.id
-                    return (
-                      <div
-                        key={item.id}
-                        // Default click opens the output-preview modal so the
-                        // user can see their generation full-size without
-                        // leaving the page. The "Detail" button below
-                        // opens the conversation view (xcreate?id=...).
-                        // Inner buttons stop propagation.
-                        onClick={() => setPreviewItem(item)}
-                        style={{
-                          background: 'var(--bg)',
-                          border: '1px solid var(--border2)',
-                          borderRadius: 10,
-                          overflow: 'hidden',
-                          transition: 'border-color 0.2s, transform 0.2s',
-                          opacity: isDel ? 0.4 : 1,
-                          cursor: 'pointer',
-                          display: 'flex', flexDirection: 'column' as const,
-                        }}
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.transform = 'translateY(-2px)' }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.transform = 'translateY(0)' }}
-                      >
-                        {preview && (
-                          preview.isVideo
-                            // preload + #t=0.1: mobile Chrome skips preloading video data entirely
-// (data-saver heuristics), so a non-playing <video> painted NOTHING —
-// every thumbnail blank on phones (owner, Aug 21). The media fragment
-// makes the browser decode a frame near the start as the display frame.
-// contain on a fixed black stage, not cover: cover in a wide box
-// crops a 9:16 portrait video to a thin mid-slice — the shape read
-// as wrong the moment portrait runs existed (owner, Aug 21).
-? <video src={`${preview.text}#t=0.1`} preload="metadata" muted loop playsInline style={{ width: '100%', height: 160, objectFit: 'contain', display: 'block', background: '#000' }} />
-                            : preview.isImage
-                            ? <img src={preview.text} alt="" onClick={e => { e.stopPropagation(); setLightbox(preview.text) }} style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }} />
-                            : <div style={{ padding: '14px 14px 4px', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.65, maxHeight: 90, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, black 55%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)' }}>{preview.text?.slice(0, 180)}</div>
-                        )}
-                        <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column' as const }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{
-                              fontSize: 9, fontWeight: 700, color: modeColor,
-                              background: modeColor + '18',
-                              padding: '3px 8px', borderRadius: 3,
-                              textTransform: 'uppercase' as const,
-                              letterSpacing: '0.1em',
-                              fontFamily: 'var(--font-mono), monospace',
-                            }}>{mode}</span>
-                            <span style={{
-                              fontSize: 10, color: 'var(--muted2)', marginLeft: 'auto',
-                              fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.04em',
-                            }}>{new Date(item.created_at).toLocaleDateString()}</span>
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4, marginBottom: 8 }}>{item.prompt}</div>
-                          <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
-                            {/* No Share button on XCreates — they're a private studio.
-                                Detail opens the conversation view (xcreate?id=...);
-                                Delete removes the run. */}
-                            <button
-                              onClick={e => { e.stopPropagation(); window.open(`/xcreate?id=${item.id}`, '_blank', 'noopener') }}
-                              style={{
-                                flex: 1, padding: '6px 0', borderRadius: 5,
-                                background: 'transparent', border: '1px solid var(--border2)',
-                                color: 'var(--muted2)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
-                                transition: 'all 0.15s',
-                              }}
-                            >↗ Detail</button>
-                            <button
-                              onClick={e => { e.stopPropagation(); handleDelete('xcreate', item.id, item.prompt) }}
-                              disabled={isDel}
-                              style={{
-                                flex: 1, padding: '6px 0', borderRadius: 5,
-                                background: 'transparent', border: '1px solid var(--border2)',
-                                color: 'var(--red)', fontSize: 10, fontWeight: 600, cursor: isDel ? 'default' : 'pointer',
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase',
-                                transition: 'all 0.15s', opacity: isDel ? 0.5 : 1,
-                              }}
-                            >{isDel ? '…' : t('common.delete')}</button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>}
-              {/* Pagination footer — computed off the filtered slice so
-                  pagination shrinks/grows with the active filter. */}
-              {tabsLoaded.xcreates && totalCount > XCREATES_PAGE_SIZE && (() => {
-                const totalPages = Math.ceil(totalCount / XCREATES_PAGE_SIZE)
-                const canPrev = xcreatePage > 0
-                const canNext = xcreatePage < totalPages - 1
-                const btn = (label: string, enabled: boolean, onClick: () => void) => (
-                  <button onClick={onClick} disabled={!enabled} style={{
-                    padding: '8px 16px', borderRadius: 6,
-                    background: enabled ? 'var(--surface)' : 'transparent',
-                    border: '1px solid var(--border2)',
-                    color: enabled ? 'var(--white)' : 'var(--muted)',
-                    fontSize: 12, fontWeight: 600,
-                    fontFamily: 'var(--font-mono), monospace',
-                    letterSpacing: '0.06em', textTransform: 'uppercase',
-                    cursor: enabled ? 'pointer' : 'default',
-                    opacity: enabled ? 1 : 0.4,
-                    transition: 'border-color 0.15s, background 0.15s',
-                  }}>{label}</button>
-                )
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 24 }}>
-                    {btn('← Prev', canPrev, () => setXcreatePage(p => Math.max(0, p - 1)))}
-                    <span style={{ fontSize: 12, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
-                      Page {xcreatePage + 1} of {totalPages}
-                    </span>
-                    {btn('Next →', canNext, () => setXcreatePage(p => Math.min(totalPages - 1, p + 1)))}
-                  </div>
-                )
-              })()}
-            </>
-            )
-          })()}
-
-          {/* ── Votes tab ── */}
-          {tab === 'votes' && (() => {
-            const visibleVotes = voteFilter === 'all' ? votes : votes.filter((v: any) => v.duels?.mode === voteFilter)
-            return (
-            !tabsLoaded.votes
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : <>
-              <ModePills value={voteFilter} onChange={setVoteFilter} />
-              {visibleVotes.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.novotes')}</div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {visibleVotes.map((v: any) => {
-                    const duel = v.duels
-                    const isTie = v.vote_choice === 'T'
-                    return (
-                      <a key={v.id} href={`/xduel/${v.duel_id}`} style={{ textDecoration: 'none' }}>
-                        <div
-                          style={{
-                            background: 'var(--surface)', border: '1px solid var(--border2)',
-                            borderRadius: 8, padding: '14px 18px',
-                            display: 'flex', alignItems: 'center', gap: 16,
-                            transition: 'border-color 0.2s, background 0.2s',
-                          }}
-                          onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
-                          onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
-                              {duel?.prompt ?? 'Duel'}
-                            </div>
-                            <div style={{
-                              fontSize: 10, color: 'var(--muted2)',
-                              fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em',
-                              textTransform: 'uppercase',
-                            }}>
-                              {duel?.mode ?? 'text'}  ·  {new Date(v.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          {isTie
-                            ? <span style={{
-                                fontSize: 9, fontWeight: 700, color: 'var(--muted2)',
-                                background: 'var(--surface2)',
-                                padding: '4px 10px', borderRadius: 3, flexShrink: 0,
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em',
-                                textTransform: 'uppercase',
-                              }}>Tie</span>
-                            : <span style={{
-                                fontSize: 9, fontWeight: 700, color: 'var(--green)',
-                                background: 'var(--green-dim)',
-                                padding: '4px 10px', borderRadius: 3, flexShrink: 0,
-                                fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em',
-                                textTransform: 'uppercase',
-                              }}>Voted</span>
-                          }
-                        </div>
-                      </a>
-                    )
-                  })}
-                </div>}
-              </>
-            )
-          })()}
-
-          {/* ── XDirect tab — director conversations/boards, same rows the
-              Nav history shows, linked back into the stage. ── */}
-          {tab === 'xdirects' && (
-            !tabsLoaded.xdirects
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xdirects.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxdirects')}</div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {xdirects.map((c: any) => (
-                    <a key={c.id} href={`/xdirect?c=${c.id}`} style={{ textDecoration: 'none' }}>
-                      <div
-                        style={{
-                          background: 'var(--surface)', border: '1px solid var(--border2)',
-                          borderRadius: 8, padding: '14px 18px',
-                          display: 'flex', alignItems: 'center', gap: 16,
-                          transition: 'border-color 0.2s, background 0.2s',
-                        }}
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
-                            {c.title || t('profile.untitled')}
-                          </div>
-                          <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            {t('nav.xdirect')}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-          )}
-
-          {tab === 'xarchs' && (
-            !tabsLoaded.xarchs
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xarchs.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxarch')}</div>
-              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-                  {xarchs.map((p: any) => (
-                    <a key={p.id} href={`/xarch?p=${p.id}`} style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, overflow: 'hidden' }}>
-                      <div style={{ aspectRatio: '16 / 10', background: '#fff', display: 'grid', placeItems: 'center' }}>
-                        {p.thumb_url && <img src={p.thumb_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
-                      </div>
-                      <div style={{ padding: '8px 12px' }}>
-                        <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📐 {p.title}</div>
-                        <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', marginTop: 3 }}>
-                          ${((p.spent_cents ?? 0) / 100).toFixed(2)}  ·  {new Date(p.updated_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-          )}
-          {tab === 'xpersonas' && (
-            !tabsLoaded.xpersonas
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xpersonas.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.nopersonas')}</div>
-              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-                  {xpersonas.map((c: any) => (
-                    <a key={c.id} href={`/xpersona?c=${c.id}`} style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, padding: '14px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {c.avatar_path
-                        ? <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${c.avatar_path}`} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                        : <span style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--red-dim)', color: 'var(--red)', fontWeight: 800, fontSize: 18 }}>{(c.name || '?').slice(0, 1)}</span>}
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, color: 'var(--white)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', marginTop: 3 }}>
-                          {c.msg_count > 0 ? t('xc.msgs').replace('{n}', String(c.msg_count)) : t('xc.fresh')}
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-          )}
-          {tab === 'xworlds' && (
-            !tabsLoaded.xworlds
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xworlds.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxworlds')}</div>
-              : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-                  {xworlds.map((w: any) => (
-                    <a key={w.id} href={`/xworld?w=${w.id}`} style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 8, overflow: 'hidden' }}>
-                      <div style={{ aspectRatio: '16 / 10', background: 'var(--surface2)', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 11 }}>
-                        {w.status === 'done'
-                          ? <img src={w.thumbnail_url ?? `/api/xworld/${w.id}/model?asset=preview`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : w.status}
-                      </div>
-                      <div style={{ padding: '8px 12px' }}>
-                        <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {w.kind === 'object' ? '🧊 ' : '🌐 '}{w.prompt || t('nav.xworld')}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', marginTop: 3 }}>
-                          ${((w.billed_cents ?? 0) / 100).toFixed(2)}  ·  {new Date(w.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-          )}
-          {/* ── XTalk tab — persisted discussion rooms, linking back into
-              the live conversation. ── */}
-          {tab === 'xcuts' && (
-            !tabsLoaded.xcuts
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xcuts.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.noxcuts')}</div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {xcuts.map((c: any) => (
-                    <a key={c.id} href={`/xcut?p=${c.id}`} style={{ textDecoration: 'none' }}>
-                      <div
-                        style={{
-                          background: 'var(--surface)', border: '1px solid var(--border2)',
-                          borderRadius: 8, padding: '14px 18px',
-                          display: 'flex', alignItems: 'center', gap: 16,
-                          transition: 'border-color 0.2s, background 0.2s',
-                        }}
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
-                            {c.title || t('nav.xcut')}
-                          </div>
-                          <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            {Math.round(c.duration_s ?? 0)}s{c.render?.url ? '  ·  ' + t('profile.xcut.rendered') : ''}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                        {c.render?.url && <span style={{ fontSize: 10, color: 'var(--green)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em' }}>MP4</span>}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-          )}
-          {tab === 'xtalks' && (
-            !tabsLoaded.xtalks
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xtalks.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.notalks')}</div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {xtalks.map((c: any) => (
-                    <a key={c.id} href={`/xtalk/${c.id}`} style={{ textDecoration: 'none' }}>
-                      <div
-                        style={{
-                          background: 'var(--surface)', border: '1px solid var(--border2)',
-                          borderRadius: 8, padding: '14px 18px',
-                          display: 'flex', alignItems: 'center', gap: 16,
-                          transition: 'border-color 0.2s, background 0.2s',
-                        }}
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
-                            {c.title || t('xt.tpl.discussion.name')}
-                          </div>
-                          <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            {t('xt.tpl.discussion.name')}  ·  {new Date(c.updated_at ?? c.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-          )}
-
-          {/* ── X先知 tab — the same settings and saved visits as the
-              account page on xtell.modelxd.com; a visit opens on /xtell. ── */}
-          {tab === 'xtell' && (
-            <div className="xtell-site is-in-www xtell-profile-tab">
-              <DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} basePath="/xtell" />
-            </div>
-          )}
-
-          {/* ── XGame tab — every game session (Werewolf, Gomoku, …); the
-              permalink is the row. LIVE badge for games still running. ── */}
-          {tab === 'xgames' && (
-            !tabsLoaded.xgames
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('common.loading')}</div>
-              : xgames.length === 0
-              ? <div style={{ color: 'var(--muted)', textAlign: 'center', padding: 60, fontSize: 13 }}>{t('profile.nogames')}</div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {xgames.map((g: any) => {
-                    const gameName = g.game === 'gomoku' ? t('xg.game.gomoku') : t('xt.tpl.werewolf.name')
-                    return (
-                      <a key={g.id} href={`/xgame/${g.id}`} style={{ textDecoration: 'none' }}>
-                        <div
-                          style={{
-                            background: 'var(--surface)', border: '1px solid var(--border2)',
-                            borderRadius: 8, padding: '14px 18px',
-                            display: 'flex', alignItems: 'center', gap: 16,
-                            transition: 'border-color 0.2s, background 0.2s',
-                          }}
-                          onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--surface2)' }}
-                          onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border2)'; el.style.background = 'var(--surface)' }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, color: 'var(--white)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4, fontWeight: 500 }}>
-                              {g.title || gameName}
-                            </div>
-                            <div style={{ fontSize: 10, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                              {gameName}  ·  {new Date(g.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          {g.status === 'active' && (
-                            <span style={{
-                              fontSize: 9, fontWeight: 700, color: 'var(--red)',
-                              background: 'var(--red-dim)',
-                              padding: '4px 10px', borderRadius: 3, flexShrink: 0,
-                              fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.1em',
-                              textTransform: 'uppercase',
-                            }}>LIVE</span>
-                          )}
-                        </div>
-                      </a>
-                    )
-                  })}
-                </div>
-          )}
-
-          {/* ── Credits tab ──
-              Rendered as a proper striped ledger: one bordered container,
-              row dividers instead of per-row borders, alternating row
-              background for legibility, mono numerics pinned to the right. */}
-
           </>}
 
+          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></>
+            : view === 'profile'
+              // X先知's settings on www (Oct 15): the birth details and the
+              // personality type sit with the account; the readings are a
+              // Library section.
+              ? <div className="xtell-site is-in-www xtell-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>
+              : view === 'library' && libraryLoader
+                ? <ProfileLibrary loader={libraryLoader} actions={libraryActions} />
+                : view === 'favorite' ? <FavoritePanel /> : null}
+
+          {(isXTell || view === 'profile') && <>
           {/* ── Danger zone — delete account (Privacy Policy §5) ── */}
           <div style={{ marginTop: 56, border: '1px solid rgba(232,69,60,0.35)', borderRadius: 10, padding: '18px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -2029,6 +1229,7 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+          </>}
 
         </div>
       </div>

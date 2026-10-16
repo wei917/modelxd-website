@@ -450,6 +450,10 @@ export default function Nav() {
     const el = document.getElementById('language') as HTMLSelectElement | null
     if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }) }
     if (window.location.hash !== '#language') window.history.replaceState(window.history.state, '', '/profile#language')
+    // replaceState fires no hashchange. /profile listens for one to switch
+    // to its Profile view (Oct 15: the picker only exists there), then
+    // focuses the picker itself.
+    if (!el) window.dispatchEvent(new HashChangeEvent('hashchange'))
   }
 
   return (
