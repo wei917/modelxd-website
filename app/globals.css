@@ -4579,33 +4579,19 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
    search has its own; one duel and two XCreate cards show before the next
    section. Only what is on screen is styled here; the account blocks under
    Profile keep their own inline styles. */
-.pview-tabs {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0 0 8px; border-bottom: 1px solid var(--border);
+.pview-bar {
+  /* X先知's colours on www (.xtell-site.is-in-www), so the bar is its bar. */
+  --xtell-white: #ffffff; --xtell-rule: #e4d9cd; --xtell-ink: #302d29;
+  --xtell-vermilion: #984c36; --xtell-tint: #efe5da;
 }
-.pview-tab {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  min-height: 58px; padding: 0 8px; margin-bottom: -1px;
-  background: none; border: 0; border-bottom: 3px solid transparent;
-  color: var(--muted2); font-family: var(--font-body), sans-serif; font-size: 17px; font-weight: 600;
-  white-space: nowrap; cursor: pointer;
-}
-.pview-tab:hover { color: var(--white); }
-.pview-tab.is-on { color: var(--red); border-bottom-color: var(--red); }
-.pview-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.pview-icon { display: flex; align-items: center; justify-content: center; height: 42px; color: inherit; }
+@media (max-width: 1100px) { .pview-icon { height: 36px; } }
+@media (max-width: 700px) { .pview-icon { height: 30px; } .pview-icon svg { width: 24px; height: 24px; } }
 
 .plib { padding-bottom: 24px; }
-.plib-title {
-  margin: 28px 0 20px; font-family: var(--font-display), sans-serif;
-  font-size: clamp(28px, 4vw, 36px); font-weight: 800; color: var(--white);
-}
-.plib-toolbar {
-  display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) minmax(0, 220px);
-  grid-template-areas: "picker search sort"; gap: 16px; margin-bottom: 8px;
-}
-.plib-picker { grid-area: picker; position: relative; }
-.plib-search { grid-area: search; }
-.plib-sort { grid-area: sort; }
+.plib-toolbar { display: flex; justify-content: space-between; gap: 16px; margin: 8px 0; }
+.plib-picker { position: relative; width: 220px; }
+.plib-field.plib-sort { width: 220px; }
 .plib-field {
   position: relative; display: flex; align-items: center; gap: 10px;
   width: 100%; min-height: 48px; padding: 0 14px; box-sizing: border-box;
@@ -4616,11 +4602,6 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-picker-btn { cursor: pointer; text-align: left; }
 .plib-picker-btn > span { flex: 1; font-weight: 600; white-space: nowrap; }
 .plib-picker-btn[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
-.plib-search input {
-  flex: 1; min-width: 0; min-height: 44px; border: 0; outline: 0; background: transparent;
-  font: inherit; color: inherit;
-}
-.plib-search input::placeholder { color: var(--muted); }
 .plib-sort select {
   flex: 1; min-width: 0; min-height: 44px; border: 0; outline: 0; background: transparent;
   font: inherit; font-weight: 600; color: inherit; appearance: none; -webkit-appearance: none; cursor: pointer;
@@ -4788,21 +4769,13 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   background: #fff; color: var(--white); font-size: 15px; font-weight: 600; cursor: pointer;
 }
 .plib-privacy { margin: 20px 0 0; font-size: 13px; color: var(--muted2); }
-.plib-fav-empty { flex-direction: column; gap: 8px; padding: 48px 20px; color: var(--muted2); }
-.plib-fav-empty strong { font-size: 18px; color: var(--white); }
-.plib-fav-empty svg { color: var(--red); }
 
 @media (max-width: 760px) {
   /* www's account page uses the phone's width: 16px sides, the tab bar
      edge to edge (the shared .arena keeps 40px). */
-  .arena.profile-arena { padding: 0 16px 64px; }
-  .profile-arena .pview-tabs { margin-inline: -16px; }
-  .pview-tab { font-size: 16px; gap: 8px; min-height: 54px; }
-  .plib-title { margin: 22px 0 16px; }
-  .plib-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "picker sort" "search search"; gap: 12px;
-  }
+  .arena.profile-arena { padding: 16px 16px 64px; }
+  .plib-toolbar { gap: 12px; margin-top: 4px; }
+  .plib-picker, .plib-field.plib-sort { width: auto; flex: 1 1 0; min-width: 0; }
   .plib-picker-pop { min-width: min(300px, calc(100vw - 32px)); }
   .plib-section { padding: 22px 0 24px; }
   .plib-head { gap: 10px; }

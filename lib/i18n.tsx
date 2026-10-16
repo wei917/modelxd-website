@@ -2714,17 +2714,14 @@ export const STRINGS: Record<string, Entry> = {
   'profile.deleteconfirm': { en: 'Type DELETE to confirm', 'zh-Hant': '輸入 DELETE 以確認', 'zh-Hans': '输入 DELETE 以确认', ja: '確認のため DELETE と入力してください', ko: '확인을 위해 DELETE를 입력하세요' },
   'profile.deleting':      { en: 'Deleting…', 'zh-Hant': '刪除中…', 'zh-Hans': '删除中…', ja: '削除中…', ko: '삭제 중…' },
   'profile.hideactivity':{ en: '◈ Hide activity', 'zh-Hant': '◈ 隱藏紀錄', 'zh-Hans': '◈ 隐藏记录', ja: '◈ 履歴を隠す', ko: '◈ 내역 숨기기' },
-  // /profile's three views and the Library (Oct 15; approved design
+  // /profile's two views and the Library (Oct 15; approved design
   // library-designs-20261014/03): Profile (the account), Library (your
-  // work, one section per app), Favorite (bookmarks, still to come).
+  // work, one section per app). Favorite waits for bookmarks.
   'profile.view.label':    { en: 'Account sections', 'zh-Hant': '帳號分頁', 'zh-Hans': '账号分页', ja: 'アカウントの表示', ko: '계정 메뉴' },
   'profile.view.profile':  { en: 'Profile', 'zh-Hant': '個人檔案', 'zh-Hans': '个人资料', ja: 'プロフィール', ko: '프로필' },
   'profile.view.library':  { en: 'Library', 'zh-Hant': '作品庫', 'zh-Hans': '作品库', ja: 'ライブラリ', ko: '라이브러리' },
-  'profile.view.favorite': { en: 'Favorite', 'zh-Hant': '收藏', 'zh-Hans': '收藏', ja: 'お気に入り', ko: '즐겨찾기' },
-  'lib.title':          { en: 'My library', 'zh-Hant': '我的作品庫', 'zh-Hans': '我的作品库', ja: 'マイライブラリ', ko: '내 라이브러리' },
   'lib.sections':       { en: 'Sections {n}', 'zh-Hant': '顯示區塊 {n}', 'zh-Hans': '显示区块 {n}', ja: '表示する区分 {n}', ko: '표시 구역 {n}' },
   'lib.sections.pick':  { en: 'Show these apps', 'zh-Hant': '要顯示的應用', 'zh-Hans': '要显示的应用', ja: '表示するアプリ', ko: '표시할 앱' },
-  'lib.search':         { en: 'Search the shown sections…', 'zh-Hant': '搜尋目前區塊中的作品…', 'zh-Hans': '搜索当前区块中的作品…', ja: '表示中の区分から検索…', ko: '표시된 구역에서 검색…' },
   'lib.sort':           { en: 'Sort', 'zh-Hant': '排序', 'zh-Hans': '排序', ja: '並べ替え', ko: '정렬' },
   'lib.sort.newest':    { en: 'Newest first', 'zh-Hant': '最新優先', 'zh-Hans': '最新优先', ja: '新しい順', ko: '최신순' },
   'lib.sort.oldest':    { en: 'Oldest first', 'zh-Hant': '最舊優先', 'zh-Hans': '最旧优先', ja: '古い順', ko: '오래된순' },
@@ -2749,9 +2746,6 @@ export const STRINGS: Record<string, Entry> = {
   'lib.badge.tie':      { en: 'Tie', 'zh-Hant': '平手', 'zh-Hans': '平手', ja: '引き分け', ko: '무승부' },
   'lib.badge.3d':       { en: '3D', 'zh-Hant': '3D', 'zh-Hans': '3D', ja: '3D', ko: '3D' },
   'lib.badge.pending':  { en: 'In progress', 'zh-Hant': '製作中', 'zh-Hans': '制作中', ja: '作成中', ko: '제작 중' },
-  'fav.title':          { en: 'Favorites', 'zh-Hant': '我的收藏', 'zh-Hans': '我的收藏', ja: 'お気に入り', ko: '즐겨찾기' },
-  'fav.empty.title':    { en: 'Bookmarks are coming', 'zh-Hant': '書籤功能即將推出', 'zh-Hans': '书签功能即将推出', ja: 'ブックマークは近日公開', ko: '북마크 기능이 곧 나옵니다' },
-  'fav.empty.body':     { en: 'Soon you can bookmark work across ModelXD and find it here.', 'zh-Hant': '之後你可以在 ModelXD 各處把作品加入書籤，在這裡找到它們。', 'zh-Hans': '之后你可以在 ModelXD 各处把作品加入书签，在这里找到它们。', ja: 'ModelXD のあちこちで作品をブックマークして、ここで見られるようになります。', ko: '곧 ModelXD 곳곳에서 작품을 북마크하고 여기서 찾을 수 있습니다.' },
   'profile.privacy':     { en: '🔒 Your XDuels are public (they appear in XVote). Everything else is private.', 'zh-Hant': '🔒 你的 XDuel 是公開的（會出現在 XVote）。其他一切都是私人的。', 'zh-Hans': '🔒 你的 XDuel 是公开的（会出现在 XVote）。其他一切都是私人的。', ja: '🔒 あなたのXDuelは公開されます（XVoteに表示）。それ以外はすべて非公開です。', ko: '🔒 XDuel은 공개됩니다(XVote에 표시). 그 외의 모든 것은 비공개입니다.' },
   'profile.noduels':     { en: 'No XDuels yet — head to XDuel to start.', 'zh-Hant': '還沒有 XDuel——前往 XDuel 開始吧。', 'zh-Hans': '还没有 XDuel——前往 XDuel 开始吧。', ja: 'まだXDuelがありません——XDuelで始めましょう。', ko: '아직 XDuel이 없습니다 — XDuel에서 시작하세요.' },
   'profile.novotes':     { en: 'No votes yet — head to the Vote page to start voting on community duels.', 'zh-Hant': '還沒有投票——前往投票頁為社群對決投票吧。', 'zh-Hans': '还没有投票——前往投票页为社区对决投票吧。', ja: 'まだ投票がありません——投票ページでコミュニティの対決に投票しましょう。', ko: '아직 투표가 없습니다 — 투표 페이지에서 커뮤니티 대결에 투표하세요.' },

@@ -551,10 +551,10 @@ app/
 ├── xeval/page.tsx              # Benchmark ladders (see docs/XEVAL-PAGE.md)
 ├── xtell/page.tsx  xtell/client.tsx   # X先知 temples (see docs/XTELL-PAGE.md)
 ├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
-├── profile/page.tsx            # Three views (Oct 15): Profile (picture, name,
-│                               #   wallet, ledger, plan, referral, X先知
-│                               #   settings, delete account), Library and
-│                               #   Favorite (bookmarks, pending). Library =
+├── profile/page.tsx            # Two views (Oct 15) under X先知's own top bar
+│                               #   style: Profile (picture, name, wallet,
+│                               #   ledger, plan, referral, X先知 settings,
+│                               #   delete account) and Library. Library =
 │                               #   profile/Library.tsx: one section per app
 │                               #   (X Duel + XCreate on by default, the rest
 │                               #   from the section picker, fetched only when

@@ -10,7 +10,8 @@
 // section that is off is not mounted, so it never queries, signs a URL or
 // counts anything. Each section asks for a small preview first (3 duels, 4
 // cards), "View all" pages through 12 at a time, and its type filter is its
-// own. Search and sort apply to every section that is on.
+// own. Sort applies to every section that is on (owner, Oct 15: no search
+// box, no page title, no Favorite until bookmarks exist).
 //
 // Data comes through one `Loader` (makeLoader below), so a local preview
 // can hand the same components sample rows without signing in.
@@ -291,9 +292,8 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
     return next
   })
 
-  const [qInput, setQInput] = useState('')
-  const [q, setQ] = useState('')
-  useEffect(() => { const id = setTimeout(() => setQ(qInput.trim()), 300); return () => clearTimeout(id) }, [qInput])
+  // The loaders still take a search (q); the page offers none for now.
+  const q = ''
   const [sort, setSort] = useState<Sort>('newest')
 
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -309,8 +309,6 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
   const shown = SECTIONS.filter(s => on.includes(s.key))
   return (
     <div className="plib">
-      <h1 className="plib-title">{t('lib.title')}</h1>
-
       <div className="plib-toolbar">
         <div className="plib-picker" ref={pickerRef}>
           <button type="button" className="plib-field plib-picker-btn" aria-haspopup="true" aria-expanded={pickerOpen} onClick={() => setPickerOpen(v => !v)}>
@@ -331,10 +329,6 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
             </div>
           )}
         </div>
-        <label className="plib-field plib-search">
-          <LibIcon name="search" size={20} />
-          <input type="search" value={qInput} onChange={e => setQInput(e.target.value)} placeholder={t('lib.search')} aria-label={t('lib.search')} />
-        </label>
         <label className="plib-field plib-sort">
           <LibIcon name="sort" size={20} />
           <select value={sort} onChange={e => setSort(e.target.value as Sort)} aria-label={t('lib.sort')}>
@@ -661,35 +655,32 @@ function MediaBox({ m }: { m?: Media }) {
   return <span className="plib-mediabox plib-mediabox-text"><span>{m.text}</span></span>
 }
 
-// ── The top bar: Profile, Library, Favorite ─────────────────────────────
+// ── The top bar: Profile, Library ───────────────────────────────────────
+// X先知's own top bar on www (XTellNav embedded: .xtell-embedded-bar and its
+// temple row), with two items: the same white strip across the content
+// area, icon over a 12px label, centred, sticky under the phone's top bar
+// (owner, Oct 15: "top bar should match XTell's"). Favorite returns when
+// bookmarks exist.
 
-export type ProfileView = 'profile' | 'library' | 'favorite'
+export type ProfileView = 'profile' | 'library'
 
 export function ProfileViewTabs({ view, onChange }: { view: ProfileView; onChange: (v: ProfileView) => void }) {
   const { t } = useLang()
-  const tabs: [ProfileView, string, string][] = [['profile', 'user', 'profile.view.profile'], ['library', 'image', 'profile.view.library'], ['favorite', 'heart', 'profile.view.favorite']]
+  const tabs: [ProfileView, string, string][] = [['profile', 'user', 'profile.view.profile'], ['library', 'image', 'profile.view.library']]
   return (
-    <nav className="pview-tabs" aria-label={t('profile.view.label')}>
-      {tabs.map(([v, icon, key]) => (
-        <button key={v} type="button" className={view === v ? 'pview-tab is-on' : 'pview-tab'} aria-current={view === v ? 'page' : undefined} onClick={() => onChange(v)}>
-          <LibIcon name={icon} size={24} /><span>{t(key)}</span>
-        </button>
-      ))}
-    </nav>
-  )
-}
-
-// ── Favorite (the shell; bookmarks are a separate, pending decision) ────
-
-export function FavoritePanel() {
-  const { t } = useLang()
-  return (
-    <div className="plib">
-      <h1 className="plib-title">{t('fav.title')}</h1>
-      <div className="plib-empty plib-fav-empty">
-        <LibIcon name="heart" size={34} />
-        <strong>{t('fav.empty.title')}</strong>
-        <span>{t('fav.empty.body')}</span>
+    <div className="xtell-embedded-bar pview-bar">
+      <div className="xtell-embedded-inner">
+        <div className="xtell-temple-wrap">
+          <nav className="xtell-temple-nav" aria-label={t('profile.view.label')}>
+            {tabs.map(([v, icon, key]) => (
+              <a key={v} href={`/profile?view=${v}`} aria-current={view === v ? 'page' : undefined}
+                onClick={e => { e.preventDefault(); onChange(v) }}>
+                <span className="xtell-nav-icon pview-icon"><LibIcon name={icon} size={30} /></span>
+                <span>{t(key)}</span>
+              </a>
+            ))}
+          </nav>
+        </div>
       </div>
     </div>
   )
