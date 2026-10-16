@@ -43,6 +43,11 @@ rating system (XDRating) surfaced on XBoard.
 ## Environments
 
 - **Production**: `www.modelxd.com` (main branch)
+- **`dev.modelxd.com` is the main website** (owner, Oct 16: "are you
+  kidding me? dev.modelxd.com is the main website"): real users are here
+  while www is behind the password gate, and every metric counts it (the
+  visit log labels it `production` by host, `lib/visit-env.ts`). Never
+  treat or filter it as test traffic.
 - **Beta**: `dev.modelxd.com` (dev branch) — wears a BETA sticker in the Nav
   with an exit link to the official site. Detected by hostname at runtime
   (`h.startsWith('dev.') || localhost`), not env vars, because SSR must render
@@ -64,6 +69,13 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `140_dev_is_real_site.sql` applied 2026-10-16 by the owner: dev.modelxd.com
+  rows logged as 'preview' became 'production' (the owner's browsers
+  'internal'), and `site_visit_by_product` counts every app a visit opened
+  (page views) with the time in it, landing as the fallback. Checked live:
+  no dev row left as 'preview' (155 dev visits now count), 7 days by app =
+  X先知 18 browsers / 49 visits, X體育 3 / 22, XGame 2 / 3; 42501 for the
+  publishable key.
   `139_site_page_views.sql` applied 2026-10-16 by the owner:
   `site_page_views`, one row per page a visit opens (X先知 rooms as
   'xtell/<room>', other pages by path with ids masked; `lib/page-key.ts`),
@@ -1008,9 +1020,12 @@ IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`). There is no
 Google Ads tag on the site (removed Oct 3, owner): ads still count their own
 clicks, and gclid reaches this log from the click URL. `/api/visit` bypasses the www password gate
 so ad clicks that land on `/coming-soon` still count. **Reports filter
-`env = 'production'`**; the owner's own accounts and every browser that has
-signed in with one are logged as `internal` instead (migration 129,
-`site_internal_users`); queries and definitions are in `docs/SITE-VISITS.md`.
+`env = 'production'`**, which since Oct 16 means the real site by HOST
+(dev.modelxd.com, www and the old subdomains; `lib/visit-env.ts`, migration
+140 relabelled dev's past rows), not Vercel's label; the owner's own accounts
+and every browser that has signed in with one are logged as `internal`
+instead (migration 129, `site_internal_users`); queries and definitions are
+in `docs/SITE-VISITS.md`.
 The daily picture is the admin page **`/admin/traffic`**: filters at the top
 (range, country), the part they narrow (tiles for the RANGE as a whole with
 today and yesterday under them, from `site_visit_summary()` in 118; then

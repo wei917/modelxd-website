@@ -17,6 +17,7 @@ export const runtime = 'nodejs'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { xtellAdmin, dailyMissing } from '@/lib/xtell-admin'
 import { asVote } from '@/lib/xtell-feedback'
+import { visitEnv } from '@/lib/visit-env'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const unavailable = () => Response.json({ error: 'votes_unavailable' }, { status: 503 })
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     : await admin.from('xtell_answer_votes').upsert({
         ...key, vote,
         temple: /^[a-z]{2,20}$/.test(String((visit as any).temple)) ? (visit as any).temple : 'other',
-        env: process.env.VERCEL_ENV ?? 'development',
+        env: visitEnv((req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '').split(',')[0].trim()),
         country: req.headers.get('x-vercel-ip-country')?.slice(0, 2) ?? null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,reading_id,qid,model_id' })
