@@ -30,6 +30,9 @@
 // its earlier rows are flipped to env 'internal' once, and from then on its
 // visits, taps and shares are logged as 'internal', signed in or not. The
 // reports count env 'production' only.
+//
+// A visit report can carry the page view it is on (supabase/139, Oct 15):
+// { page: { id, key, active } }, one row in site_page_views per page view.
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,6 +47,8 @@ import { asShareReport } from '@/lib/xtell-feedback'
 const LOG = '[api/visit]'
 const VISITOR_COOKIE = 'modelxd_vid'
 const INTERNAL_COOKIE = 'modelxd_internal'
+// A page key (lib/page-key.ts): 'xtell/ziwei', '/xsports/mlb', '/xtalk/:id'.
+const PAGE_KEY = /^[a-z0-9/:_.-]{1,120}$/
 const YEAR = 365 * 86400
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const AD_PARAMS = ['gclid', 'gbraid', 'wbraid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const
@@ -208,6 +213,22 @@ export async function POST(req: NextRequest) {
       p_active_seconds: count(b.active, 86400),
     })
     if (error && !warned) { warned = true; console.warn(`${LOG} log_site_visit failed: ${error.message}`) }
+
+    // The page view the visit is on (supabase/139): a short key, never a URL.
+    const page = (b.page && typeof b.page === 'object' ? b.page : null) as Record<string, unknown> | null
+    if (page && typeof page.id === 'string' && UUID.test(page.id) && typeof page.key === 'string' && PAGE_KEY.test(page.key)) {
+      const { error: pageError } = await service().rpc('log_page_view', {
+        p_id:             page.id,
+        p_visit_id:       b.id,
+        p_visitor_id:     visitorId,
+        p_env:            envOf(internalVisit),
+        p_host:           host.slice(0, 100) || null,
+        p_page:           page.key,
+        p_country:        country?.slice(0, 2) ?? null,
+        p_active_seconds: count(page.active, 86400),
+      })
+      if (pageError && !warned) { warned = true; console.warn(`${LOG} log_page_view failed: ${pageError.message}`) }
+    }
   } catch (err) {
     if (!warned) { warned = true; console.warn(`${LOG} failed:`, err instanceof Error ? err.message : err) }
   }

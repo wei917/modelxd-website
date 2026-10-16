@@ -137,6 +137,10 @@ export function productDays(data: ProductRow[], today: string): { days: ProductD
   }
 }
 
+/** A row of site_page_window() (migration 139): one page or X先知 room over
+ *  the range (lib/page-key.ts keys: 'xtell/ziwei', '/xsports/mlb'). */
+export type PageRow = { page: string; views: number; browsers: number; total_seconds: number }
+
 /** A row of site_ad_funnel() (migration 123): what the browsers an ad brought
  *  did over the range, per source ('google', 'chatgpt'). */
 export type FunnelRow = { source: string; browsers: number; stayed_30s: number; tapped: number; signed_in: number; median_seconds: number }

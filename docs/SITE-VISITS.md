@@ -98,6 +98,18 @@ with 15 to 25 browsers a day that read as nonsense (Oct 6: top 10% 43 s under
 an average of 3 m 20 s; owner: "percentile is misleading"). The average of the
 top tenth is now 27 m 26 s for that day, and it is never below the average.
 
+**Rooms and pages** (Oct 16, migration 139). Owner: "record which page so
+we can tell which temple they enter". Every visit report carries the page
+view it is on: `{ page: { id, key, active } }` → `site_page_views` through
+`log_page_view()`. The key is never a URL: X先知 names its room
+(`setPageKey('xtell/<room>')` in app/xtell/client.tsx; the street is
+`xtell`), anything else is its path with ids masked (`lib/page-key.ts`:
+`/xtalk/:id`, `/xsports/mlb`). A new page view starts on a route change or a
+room change; its time is counted like the visit's (tab in front, pausing
+after 5 minutes without input). `site_page_window(p_days, p_tz, p_country)`
+gives views, browsers and time per page for the "Rooms and pages" card. The
+privacy page already says the visit log records "the pages you open".
+
 **Browsers by app** (Oct 15, migration 138). Every report covers the whole
 site (every host and page), so the owner asked for a breakdown: "a line
 chart as well, each line is one xapp". `site_visit_by_product(p_days, p_tz,

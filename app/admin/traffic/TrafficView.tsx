@@ -17,7 +17,8 @@
 import type { CheerModelRow } from '@/lib/xsports-cheer-stats'
 import { Fragment, useState } from 'react'
 import Link from 'next/link'
-import type { AccountRow, CountryDay, DayRow, FunnelRow, ProductDay, ProductTotal, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
+import { STRINGS } from '../../../lib/i18n'
+import type { AccountRow, CountryDay, DayRow, FunnelRow, PageRow, ProductDay, ProductTotal, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -455,11 +456,24 @@ const PRODUCT_NAMES: Record<string, string> = {
   xdev: 'XDev', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
 }
 const productName = (p: string) => PRODUCT_NAMES[p] ?? `/${p}`
+/** A page view's key as the table shows it: an X先知 room by its Chinese
+ *  name (the street is 'xtell'), an app's path by the app, anything else as
+ *  the path it is. */
+function pageName(key: string): string {
+  if (key === 'xtell' || key === '/xtell') return 'X先知 street'
+  const room = key.match(/^xtell\/([a-z]+)$/)?.[1]
+  if (room) return `X先知 ${STRINGS[`xtell.site.focus.${room}.name`]?.['zh-Hant'] ?? room}`
+  if (key === '/') return 'www home'
+  const app = key.match(/^\/(x[a-z]+)(\/.*)?$/)
+  if (app && PRODUCT_NAMES[app[1]]) return `${PRODUCT_NAMES[app[1]]}${app[2] ?? ''}`
+  return key
+}
+const NEEDS_139 = 'Rooms and pages appear once supabase/139_site_page_views.sql has been run.'
 const NEEDS_138 = 'Browsers per app appear once supabase/138_site_visit_by_product.sql has been run.'
 
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, products, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports, cheerModels }: {
+export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, products, pages, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports, cheerModels }: {
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
@@ -473,6 +487,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   accounts: AccountRow[] | null
   /** Browsers per app in the range and country (138), or null until it has been run. */
   products: { days: ProductDay[]; totals: ProductTotal[] } | null
+  /** Page views per page and X先知 room in the range and country (139), or null until it has been run. */
+  pages: PageRow[] | null
   /** The range as a whole (migration 118), or null until it has been run:
    *  the tiles then show today, and say so. */
   whole: Summary | null
@@ -623,6 +639,30 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                         </table>
                       </div>
                     </>
+                  )}
+              </Card>
+            )}
+            {upgraded && (
+              <Card title="Rooms and pages"
+                note={`Which X先知 room or page each visit opened, and the time spent there (tab in front). Recorded since Oct 16.${country ? ` ${where} only.` : ''}`}>
+                {!pages ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>{NEEDS_139}</p>
+                  : pages.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No page views in this range{country ? ` from ${where}` : ''} yet.</p>
+                  : (
+                    <div style={wrap}>
+                      <table style={table}>
+                        <thead>
+                          <tr><th style={{ ...th, ...first }}>Room or page</th><th style={th}>Browsers</th><th style={th}>Views</th><th style={th}>Time</th></tr>
+                        </thead>
+                        <tbody>
+                          {pages.slice(0, 25).map(p => (
+                            <tr key={p.page}>
+                              <td style={{ ...td, ...first, whiteSpace: 'normal' }}>{pageName(p.page)}</td>
+                              <td style={td}>{num(p.browsers)}</td><td style={td}>{num(p.views)}</td><td style={td}>{stay(Number(p.total_seconds))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
               </Card>
             )}
