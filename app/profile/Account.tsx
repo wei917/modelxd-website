@@ -94,10 +94,13 @@ export default function AccountPanel(p: AccountProps) {
             ? <img src={p.photo} alt="" referrerPolicy="no-referrer" />
             : <span>{initial}</span>}
         </span>
-        <span className="acct-you-text">
-          <span className="acct-name">{p.name ?? 'Anonymous'}</span>
-          <span className="acct-sub">{[p.handle ? `@${p.handle}` : null, p.email].filter(Boolean).join(' · ')}</span>
-        </span>
+        {/* Labelled, so each is plain (owner, Oct 16). An X or LINE account
+            may have no email; that line is left out. */}
+        <dl className="acct-ids">
+          <div><dt>{t('acct.f.name')}</dt><dd className="acct-name">{p.name ?? 'Anonymous'}</dd></div>
+          {p.handle && <div><dt>{t('acct.f.id')}</dt><dd>@{p.handle}</dd></div>}
+          {p.email && <div><dt>{t('acct.f.email')}</dt><dd>{p.email}</dd></div>}
+        </dl>
         {/* Edit, Log out and the language, on the top row (owner, Oct 16). */}
         <span className="acct-you-acts">
           <button type="button" className="acct-btn" onClick={p.onEdit}>{t('face.edit')}</button>
