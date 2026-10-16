@@ -3066,7 +3066,9 @@ body:has(.xtell-nav), .xtell-site, .xtell-auth {
   --xtell-ink: #292b29;
   --xtell-secondary: #656761;
   --xtell-rule: #dedfd8;
-  --xtell-vermilion: #a6382e;
+  /* XDuel's red (.btn-battle) for X先知's buttons and red text, as on www's
+     /profile (owner, Oct 16); it was a darker vermilion. */
+  --xtell-vermilion: #d63b32;
   --xtell-tint: #f1e8e2;
   --xtell-white: #ffffff;
   --xtell-serif: Georgia, 'Songti TC', 'Noto Serif CJK TC', 'Yu Mincho', serif;
@@ -3271,7 +3273,7 @@ html[data-site="xtell"] body, html[data-site="xtell"] .xtell-site, html[data-sit
   --xtell-ink: #302d29;
   --xtell-secondary: #74685f;
   --xtell-rule: #e4d9cd;
-  --xtell-vermilion: #984c36;
+  --xtell-vermilion: #d63b32; /* XDuel's red (owner, Oct 16); was #984c36 */
   --xtell-tint: #efe5da;
   --xtell-scene: #ecdccf;
   --xtell-scene-ink: #624536;
