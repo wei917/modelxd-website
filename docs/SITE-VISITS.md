@@ -98,6 +98,17 @@ with 15 to 25 browsers a day that read as nonsense (Oct 6: top 10% 43 s under
 an average of 3 m 20 s; owner: "percentile is misleading"). The average of the
 top tenth is now 27 m 26 s for that day, and it is never below the average.
 
+**Browsers by app** (Oct 15, migration 138). Every report covers the whole
+site (every host and page), so the owner asked for a breakdown: "a line
+chart as well, each line is one xapp". `site_visit_by_product(p_days, p_tz,
+p_country)` gives browsers, visits and time per day per app, and per app for
+the range (day null). The app is where the visit landed: the `xtell.` and
+`xcreate.` hosts, or the first part of the www path (`/xtell`, `/xcreate`,
+`/xsports`, `/xpersona`, ...; `/` and `/coming-soon` are www's home). A
+visit that moves on keeps the app it landed on. The chart draws X先知, X創作,
+X體育 and www home in fixed colours and folds the rest into Other pages; the
+table lists every app.
+
 **Signed in / not signed in** (Sep 30). A browser counts as signed in on a
 day if any of its visits that day carried an account. The numbers over
 everyone mix two very different groups and describe neither: from Sep 28 to

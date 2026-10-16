@@ -17,7 +17,7 @@
 import type { CheerModelRow } from '@/lib/xsports-cheer-stats'
 import { Fragment, useState } from 'react'
 import Link from 'next/link'
-import type { AccountRow, CountryDay, DayRow, FunnelRow, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
+import type { AccountRow, CountryDay, DayRow, FunnelRow, ProductDay, ProductTotal, ShareLine, SigninDay, SigninTotal, StayLine, Summary, TapTotals, VoteLine } from './data'
 
 type Series<R> = { key: keyof R & string; label: string; color: string }
 type TipLine = { label: string; value: string; color?: string }
@@ -437,9 +437,29 @@ const ofAll = (n: number, all: number) => (all > 0 ? `${num(n)} (${Math.round((1
 /** XTell share counter words (lib/xtell-feedback.ts). */
 const SHARE_KIND: Record<string, string> = { answer: 'Answer', daily: "Today's fortune", almanac: 'Almanac', cookie: 'Fortune cookie', tarot: 'Tarot', qian: '籤 (stick)' }
 const SHARE_HOW: Record<string, string> = { save: 'Save to Photos (iPhone)', download: 'Download', share: 'Share…', copy: 'Copy link' }
+/** One line per app, each in a colour that stays with the app whatever the
+ *  range or country (owner, Oct 15: "each line is one xapp"). Every other
+ *  landing page is Other, the neutral. */
+const PRODUCTS: Series<ProductDay>[] = [
+  { key: 'xtell', label: 'X先知', color: BLUE },
+  { key: 'xcreate', label: 'X創作', color: ORANGE },
+  { key: 'xsports', label: 'X體育', color: AQUA },
+  { key: 'www', label: 'www home', color: YELLOW },
+  { key: 'other', label: 'Other pages', color: NEUTRAL },
+]
+/** The table's names for what site_visit_by_product() returns: an app, www's
+ *  home, or the first part of another path. */
+const PRODUCT_NAMES: Record<string, string> = {
+  xtell: 'X先知', xcreate: 'X創作', xsports: 'X體育', www: 'www home and password page', xpersona: 'XPersona',
+  xduel: 'XDuel', xtalk: 'XTalk', xgame: 'XGame', xdirect: 'XDirect', xcut: 'XCut', xworld: 'XWorld', xarch: 'XArch',
+  xdev: 'XDev', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
+}
+const productName = (p: string) => PRODUCT_NAMES[p] ?? `/${p}`
+const NEEDS_138 = 'Browsers per app appear once supabase/138_site_visit_by_product.sql has been run.'
+
 const NEEDS_117 = 'The country filter, stay for signed-in and not signed-in browsers, and the fixed charts appear once supabase/117_site_visit_groups_country.sql has been run.'
 
-export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports, cheerModels }: {
+export default function TrafficView({ rows, whole, taps, votes, shares, funnel, accounts, products, days, ranges, tz, topStay, upgraded, country, picker, names, countryDays, countryCodes, signinDays, signinTotals, sports, cheerModels }: {
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
@@ -451,6 +471,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   funnel: FunnelRow[] | null
   /** Accounts per country, every country (123), or null until it has been run. */
   accounts: AccountRow[] | null
+  /** Browsers per app in the range and country (138), or null until it has been run. */
+  products: { days: ProductDay[]; totals: ProductTotal[] } | null
   /** The range as a whole (migration 118), or null until it has been run:
    *  the tiles then show today, and say so. */
   whole: Summary | null
@@ -501,6 +523,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
     ...countryCodes.slice(0, 3).map((c, i) => ({ key: COUNTRY_KEYS[i], label: nameOf(c), color: COUNTRY_COLORS[i] })),
     ...(countryDays.some(d => d.other > 0) ? [{ key: 'other' as const, label: 'Other', color: NEUTRAL }] : []),
   ]
+  // Only the apps with a browser in the range get a line.
+  const productSeries = products ? PRODUCTS.filter(s => products.days.some(d => (d[s.key] as number) > 0)) : []
   const methodSeries = METHODS.filter(m => m.key !== 'other' || signinDays.some(d => d.other > 0))
   const totalOf = (k: SigninTotal['key']) => signinTotals.find(t => t.key === k)
   const methodSummary = methodSeries.map(m => {
@@ -574,6 +598,34 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
             <Card title="Visits by source" note="ChatGPT ads carry utm_source=chatgpt; Google Ads carry a click id." legend={SOURCES}>
               <Columns rows={rows} series={SOURCES} />
             </Card>
+            {upgraded && (
+              <Card title="Browsers by app"
+                note={`Where each visit landed: an app's own address, or its path on www. A browser counts once a day for each app it landed on; the table is the whole range.${country ? ` ${where} only.` : ''}`}
+                legend={productSeries.length > 1 ? productSeries : undefined}>
+                {!products ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>{NEEDS_138}</p>
+                  : products.totals.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: INK2 }}>No visits in this range{country ? ` from ${where}` : ''} yet.</p>
+                  : (
+                    <>
+                      <Lines rows={products.days} series={productSeries} format={num} />
+                      <div style={{ ...wrap, marginTop: 14 }}>
+                        <table style={table}>
+                          <thead>
+                            <tr><th style={{ ...th, ...first }}>App</th><th style={th}>Browsers</th><th style={th}>Visits</th><th style={th}>Time</th></tr>
+                          </thead>
+                          <tbody>
+                            {products.totals.map(t => (
+                              <tr key={t.product}>
+                                <td style={{ ...td, ...first, whiteSpace: 'normal' }}>{productName(t.product)}</td>
+                                <td style={td}>{num(t.browsers)}</td><td style={td}>{num(t.visits)}</td><td style={td}>{stay(t.seconds)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+              </Card>
+            )}
             {funnel && (
               <Card title="From ads"
                 note={`Browsers whose visit in this range came from an ad${country ? ` (${where})` : ''}, and what they did after: all their visits in the range count, later ones too. Pressed = tapped Google, LINE or X (counted since Oct 1; X since Oct 2).`}>
