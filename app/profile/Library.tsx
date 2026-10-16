@@ -405,12 +405,24 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
   return (
     <section className={`plib-section plib-view-${def.view}${collapsed ? ' is-shut' : ''}`} aria-labelledby={`plib-h-${def.key}`}>
       <header className="plib-head">
-        <span className="plib-head-icon"><LibIcon name={def.icon} size={30} /></span>
+        <span className="plib-head-icon"><LibIcon name={def.icon} size={22} /></span>
         <h2 id={`plib-h-${def.key}`} className="plib-head-name">{t(def.nameKey)}</h2>
         {state === 'ready' && <span className="plib-count">{count}</span>}
         <span className={def.isPublic ? 'plib-vis is-public' : 'plib-vis'}>
-          <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={15} />{t(def.isPublic ? 'lib.public' : 'lib.private')}
+          <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={14} />{t(def.isPublic ? 'lib.public' : 'lib.private')}
         </span>
+        {/* The type filter is the site's own segmented control (.mode-seg, as on
+            X對決, XVote and XBoard), beside the badge (owner, Oct 16). */}
+        {def.modes && (
+          <span className="mode-seg plib-seg" role="group" aria-label={t('lib.type')}>
+            {(['all', 'text', 'image', 'video'] as Mode[]).map(m => (
+              <button key={m} type="button" className={`mode-seg-btn${mode === m ? ' active' : ''}`} aria-pressed={mode === m} onClick={() => setMode(m)}>
+                {m !== 'all' && <span className={`mode-dot${mode === m ? ' active' : ''}`} />}
+                {t(m === 'all' ? 'common.all' : 'mode.' + m)}
+              </button>
+            ))}
+          </span>
+        )}
         <span className="plib-head-end">
           {state === 'ready' && (expanded
             ? <button type="button" className="plib-viewall" onClick={() => setExpanded(false)}>{t('lib.showless')}</button>
@@ -423,16 +435,6 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
       </header>
 
       {<div id={bodyId} className="plib-body">
-        {def.modes && (
-          <div className="plib-modes" role="group" aria-label={t('lib.type')}>
-            {(['all', 'text', 'image', 'video'] as Mode[]).map(m => (
-              <button key={m} type="button" className={mode === m ? 'plib-mode is-on' : 'plib-mode'} aria-pressed={mode === m} onClick={() => setMode(m)}>
-                {t(m === 'all' ? 'common.all' : 'mode.' + m)}
-              </button>
-            ))}
-          </div>
-        )}
-
         {state === 'loading'
           ? <SkeletonRow view={def.view} n={Math.min(limit, 4)} />
           : state === 'error'

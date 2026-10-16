@@ -19,6 +19,7 @@ import { userName, userPhoto } from '../../lib/user-face'
 import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
 import ProfileLibrary, { makeLoader, ProfileViewTabs, type ProfileView, type LibraryActions } from './Library'
 import { renameReading, eraseReading } from '../../lib/xtell-history'
+import AccountPanel from './Account'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -305,6 +306,45 @@ export default function ProfilePage() {
     setDeleting(null)
   }
 
+  // The picture / name editor and the post-checkout banner, shared by the
+  // door's account page and www's Profile tab (./Account).
+  const faceEditorNode = profile && editingFace && user && (
+      <FaceEditor
+        user={user}
+        current={{ name: profile.display_name, photo: profile.avatar_url }}
+        handleInfo={handleInfo}
+        onClose={() => {
+          setEditingFace(false)
+          // Closed: a reload must not open it again.
+          if (window.location.hash === '#face') history.replaceState(null, '', window.location.pathname + window.location.search)
+        }}
+        onSaved={face => setProfile(prev => prev && { ...prev, display_name: face.name, avatar_url: face.photo })}
+        onHandle={setHandleInfo}
+      />
+  )
+  const checkoutBannerNode = checkoutBanner && (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: checkoutBanner === 'success' ? '#22c55e18' : '#e8453c18',
+        border: `1px solid ${checkoutBanner === 'success' ? '#22c55e55' : '#e8453c55'}`,
+        color:  checkoutBanner === 'success' ? 'var(--green)' : 'var(--red)',
+        borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+        fontSize: 13,
+      }}>
+        <span style={{ fontSize: 16 }}>{checkoutBanner === 'success' ? '✓' : '⊘'}</span>
+        <span style={{ flex: 1 }}>
+          {checkoutBanner === 'success'
+            ? 'Payment received — your balance will update shortly.'
+            : 'Checkout canceled. No charge was made.'}
+        </span>
+        <button
+          onClick={() => setCheckoutBanner(null)}
+          style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16, opacity: 0.7 }}
+          aria-label="Dismiss"
+        >×</button>
+      </div>
+  )
+
   // What the Library borrows from the page: the share and delete flows
   // (the confirm modal lives here), the XCreate preview modal, and X先知's
   // rename / erase under the owner policy.
@@ -334,7 +374,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    if (showActivity) {
+    if (showActivity || (!isXTell && view === 'profile')) {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
       setTxLoaded(false)
       client.from('credit_transactions').select('*').eq('user_id', user.id)
@@ -344,7 +384,7 @@ export default function ProfilePage() {
       client.from('user_credits').select('*').eq('user_id', user.id).maybeSingle()
         .then(({ data: c }) => setCredits((c as UserCredits | null) ?? null))
     }
-  }, [user, showActivity])
+  }, [user, showActivity, view, isXTell])
 
   // Kick off a Stripe Checkout Session for the selected tier. The server
   // re-validates the tier id and builds a session keyed to the signed-in
@@ -619,8 +659,22 @@ export default function ProfilePage() {
       <div className={isXTell ? undefined : 'xtell-site is-in-www xtell-www-page pv-xtell'}>
       {!isXTell && <ProfileViewTabs view={view} onChange={chooseView} />}
       <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className="xduel-page xtell-profile">
-        <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: !isXTell && view === 'library' ? 1240 : 1040 }}>
-          {(isXTell || view === 'profile') && <>
+        <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: isXTell ? 1040 : view === 'library' ? 1240 : 760 }}>
+          {!isXTell && view === 'profile' && (
+            <AccountPanel
+              name={profile.display_name} photo={profile.avatar_url}
+              handle={handleInfo?.handle ?? null} email={user?.email ?? null}
+              onEdit={() => setEditingFace(true)} faceEditor={faceEditorNode}
+              onSignOut={async () => { await sb().auth.signOut(); window.location.href = '/' }}
+              credits={credits} onTopUp={() => setCheckoutOpen(true)}
+              txns={txns} txLoaded={txLoaded} banner={checkoutBannerNode}
+              plan={plan} planBusy={planBusy} planAction={(a, when) => void planAction(a, when)}
+              referral={referral} refBusy={refBusy} refCopied={refCopied} onVerifyCard={verifyCard}
+              onCopyRef={() => { if (referral) navigator.clipboard?.writeText(referral.link).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1800) }).catch(() => {}) }}
+              xtellSettings={<div className="xtell-site is-in-www xtell-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>}
+            />
+          )}
+          {isXTell && <>
           {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
 
           {/* Eyebrow — ties the profile page into the same section-label
@@ -714,20 +768,7 @@ export default function ProfilePage() {
                     {t('auth.signout')}
                   </button>
                 </div>
-                {editingFace && user && (
-                  <FaceEditor
-                    user={user}
-                    current={{ name: profile.display_name, photo: profile.avatar_url }}
-                    handleInfo={handleInfo}
-                    onClose={() => {
-                      setEditingFace(false)
-                      // Closed: a reload must not open it again.
-                      if (window.location.hash === '#face') history.replaceState(null, '', window.location.pathname + window.location.search)
-                    }}
-                    onSaved={face => setProfile(prev => prev && { ...prev, display_name: face.name, avatar_url: face.photo })}
-                    onHandle={setHandleInfo}
-                  />
-                )}
+                {faceEditorNode}
               </div>
             </div>
 
@@ -895,28 +936,7 @@ export default function ProfilePage() {
               user back to /profile?checkout=success|cancel. The success
               banner sits next to a polling effect that refreshes the
               balance once the webhook lands. */}
-          {checkoutBanner && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              background: checkoutBanner === 'success' ? '#22c55e18' : '#e8453c18',
-              border: `1px solid ${checkoutBanner === 'success' ? '#22c55e55' : '#e8453c55'}`,
-              color:  checkoutBanner === 'success' ? 'var(--green)' : 'var(--red)',
-              borderRadius: 10, padding: '12px 16px', marginBottom: 16,
-              fontSize: 13,
-            }}>
-              <span style={{ fontSize: 16 }}>{checkoutBanner === 'success' ? '✓' : '⊘'}</span>
-              <span style={{ flex: 1 }}>
-                {checkoutBanner === 'success'
-                  ? 'Payment received — your balance will update shortly.'
-                  : 'Checkout canceled. No charge was made.'}
-              </span>
-              <button
-                onClick={() => setCheckoutBanner(null)}
-                style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16, opacity: 0.7 }}
-                aria-label="Dismiss"
-              >×</button>
-            </div>
-          )}
+          {checkoutBannerNode}
 
           {/* ── Referral ──
               $10 welcome for everyone; a referred friend gets $5 more and the
@@ -1169,14 +1189,11 @@ export default function ProfilePage() {
           </>}
 
           {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></>
-            : view === 'profile'
-              // X先知's settings on www (Oct 15): the birth details and the
-              // personality type sit with the account; the readings are a
-              // Library section.
-              ? <div className="xtell-site is-in-www xtell-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>
-              : libraryLoader
-                ? <ProfileLibrary loader={libraryLoader} actions={libraryActions} />
-                : null}
+            // www: the Profile tab (AccountPanel above) holds X先知's
+            // settings; its readings are a Library section.
+            : view === 'library' && libraryLoader
+              ? <ProfileLibrary loader={libraryLoader} actions={libraryActions} />
+              : null}
 
           {(isXTell || view === 'profile') && <>
           {/* ── Danger zone — delete account (Privacy Policy §5) ── */}

@@ -2717,6 +2717,19 @@ export const STRINGS: Record<string, Entry> = {
   // /profile's two views and the Library (Oct 15; approved design
   // library-designs-20261014/03): Profile (the account), Library (your
   // work, one section per app). Favorite waits for bookmarks.
+  // www's Profile tab (app/profile/Account.tsx, Oct 16).
+  'acct.settings':   { en: 'Settings', 'zh-Hant': '設定', 'zh-Hans': '设置', ja: '設定', ko: '설정' },
+  'acct.language':   { en: 'Language', 'zh-Hant': '語言', 'zh-Hans': '语言', ja: '言語', ko: '언어' },
+  'acct.signedin.as': { en: 'Signed in as {email}', 'zh-Hant': '目前登入：{email}', 'zh-Hans': '当前登录：{email}', ja: '{email} でログイン中', ko: '{email}(으)로 로그인됨' },
+  'acct.activity':   { en: 'Activity', 'zh-Hant': '點數紀錄', 'zh-Hans': '点数记录', ja: 'クレジット履歴', ko: '크레딧 내역' },
+  'acct.thismonth':  { en: 'This month {amount}', 'zh-Hant': '本月花費 {amount}', 'zh-Hans': '本月花费 {amount}', ja: '今月の利用 {amount}', ko: '이번 달 사용 {amount}' },
+  'acct.today':      { en: 'Today', 'zh-Hant': '今天', 'zh-Hans': '今天', ja: '今日', ko: '오늘' },
+  'acct.yesterday':  { en: 'Yesterday', 'zh-Hant': '昨天', 'zh-Hans': '昨天', ja: '昨日', ko: '어제' },
+  'acct.in':         { en: 'Credits added', 'zh-Hant': '加值與贈點', 'zh-Hans': '充值与赠点', ja: 'チャージ・付与', ko: '충전·지급' },
+  'acct.other':      { en: 'Other', 'zh-Hant': '其他', 'zh-Hans': '其他', ja: 'その他', ko: '기타' },
+  'acct.charges':    { en: '{n} items', 'zh-Hant': '{n} 筆', 'zh-Hans': '{n} 笔', ja: '{n} 件', ko: '{n}건' },
+  'acct.more':       { en: 'Show earlier days', 'zh-Hant': '顯示更早的紀錄', 'zh-Hans': '显示更早的记录', ja: 'さらに前を表示', ko: '이전 기록 보기' },
+  'acct.limit':      { en: 'Showing the latest {n} entries.', 'zh-Hant': '只顯示最近 {n} 筆。', 'zh-Hans': '只显示最近 {n} 笔。', ja: '最新 {n} 件のみ表示しています。', ko: '최근 {n}건만 표시합니다.' },
   'profile.view.label':    { en: 'Account sections', 'zh-Hant': '帳號分頁', 'zh-Hans': '账号分页', ja: 'アカウントの表示', ko: '계정 메뉴' },
   'profile.view.profile':  { en: 'Profile', 'zh-Hant': '個人檔案', 'zh-Hans': '个人资料', ja: 'プロフィール', ko: '프로필' },
   'profile.view.library':  { en: 'Library', 'zh-Hant': '作品庫', 'zh-Hans': '作品库', ja: 'ライブラリ', ko: '라이브러리' },
