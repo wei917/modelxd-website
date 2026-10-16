@@ -42,6 +42,8 @@ export const CHEER_MEDIA: readonly CheerMedia[] = [
   { file: 'blue-homerun.jpg', kind: 'image', set: 'dodgers', tags: ['homerun'], shows: 'you holding up a 「全壘打！」 sign' },
   { file: 'blue-win.jpg', kind: 'image', set: 'dodgers', tags: ['win'], shows: 'you jumping for joy in blue and white confetti' },
   { file: 'blue-night.jpg', kind: 'image', set: 'dodgers', tags: ['win'], shows: 'you waving to the fans in confetti under the lights' },
+  { file: 'blue-clip-1.mp4', kind: 'video', set: 'dodgers', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the blue pom-poms' },
+  { file: 'blue-clip-2.mp4', kind: 'video', set: 'dodgers', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the blue pom-poms' },
 ]
 
 /** At most one picture or clip per room every ten minutes. */
@@ -60,8 +62,7 @@ export function askedMedia(text: string): 'selfie' | 'dance' | 'any' | null {
  *  among the room's recent ones, chosen at random (`rand` for the checks). */
 export function pickMedia(tag: string, recent: readonly string[], rand: () => number = Math.random, set: 'xd' | 'dodgers' = 'xd'): CheerMedia | null {
   const fits = (m: CheerMedia) => (tag === 'any' ? m.kind === 'image' : m.tags.includes(tag))
-  // From the set; her red XD set when the set has none for this (the blue
-  // clips came after the blue photos).
+  // From the set; her red XD set for anything the set has none of.
   const inSet = CHEER_MEDIA.filter(m => (m.set ?? 'xd') === set && fits(m))
   const all = inSet.length ? inSet : CHEER_MEDIA.filter(m => (m.set ?? 'xd') === 'xd' && fits(m))
   const fresh = all.filter(m => !recent.includes(m.file))
