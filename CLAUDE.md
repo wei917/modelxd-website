@@ -64,6 +64,12 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `138_site_visit_by_product.sql` applied 2026-10-15 by the owner: one new
+  function, `site_visit_by_product`, for /admin/traffic's "Browsers by app"
+  card (a line per app and a table; the app is where a visit LANDED: the
+  xtell./xcreate. host or the first part of the www path). Checked live:
+  rows for the service key (14 days: X先知 832 browsers, www 13, X創作 4),
+  42501 for the publishable key.
   `137_xsports_cheer_jobs.sql` applied 2026-10-16 by the owner: 晴晴's
   fresh photo/clip jobs (`xsports_cheer_jobs`) and fans' 👍 / 👎 on her
   posts (`xsports_media_votes`). Checked live: 42501 for the publishable
@@ -1006,6 +1012,9 @@ the average stay of the longest-staying fifth and tenth since migration 128,
 Oct 7, not percentiles), then fixed charts that
 are always every country (browsers by country, sign-ins by Google / LINE / X;
 since Oct 2 by the button used, `signInMethod()` in `lib/signin-tap.ts`).
+The filtered part also has "Browsers by app" (Oct 15, migration 138): a
+line per app (X先知, X創作, X體育, www home, other pages) and a table of every
+landing app for the range; the whole log is every host, not only X先知.
 Three service-key functions in `117_site_visit_groups_country.sql`; before
 117 is run the page falls back to `site_visit_daily()` (115, 116), and
 without 118 (`site_visit_summary()`, applied Oct 1) the tiles are today's and

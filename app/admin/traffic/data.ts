@@ -102,6 +102,41 @@ export type SigninRow = { day: string | null; provider: string; logins: number; 
 /** Browsers per day for the three biggest countries, and the rest. */
 export type CountryDay = { day: string; c0: number; c1: number; c2: number; other: number }
 
+/** A row of site_visit_by_product() (migration 138): where visits landed (an
+ *  app's own address, or the first part of its www path), per day; day is
+ *  null on the rows for the whole range. */
+export type ProductRow = { day: string | null; product: string; visits: number; browsers: number; total_seconds: number }
+
+/** The apps the chart gives a line each (owner, Oct 15: "each line is one
+ *  xapp"); every other landing page is folded into other. */
+export const CHART_PRODUCTS = ['xtell', 'xcreate', 'xsports', 'www'] as const
+/** Browsers per day per charted app. A browser counts once per app it
+ *  landed on that day, so other can count one browser twice. */
+export type ProductDay = { day: string; xtell: number; xcreate: number; xsports: number; www: number; other: number }
+/** One product over the whole range, as the table under the chart shows it. */
+export type ProductTotal = { product: string; visits: number; browsers: number; seconds: number }
+
+/** The by-product rows as the chart's days (every day from the first through
+ *  today) and the range's totals, busiest first. */
+export function productDays(data: ProductRow[], today: string): { days: ProductDay[]; totals: ProductTotal[] } {
+  const empty = (day: string): ProductDay => ({ day, xtell: 0, xcreate: 0, xsports: 0, www: 0, other: 0 })
+  const byDay = new Map<string, ProductDay>()
+  for (const r of data) {
+    if (!r.day) continue
+    const d = byDay.get(r.day) ?? empty(r.day)
+    const k = (CHART_PRODUCTS as readonly string[]).includes(r.product) ? (r.product as (typeof CHART_PRODUCTS)[number]) : 'other'
+    d[k] += r.browsers
+    byDay.set(r.day, d)
+  }
+  const first = [...byDay.keys()].sort()[0]
+  return {
+    days: daysThrough(first, today).map(d => byDay.get(d) ?? empty(d)),
+    totals: data.filter(r => r.day === null)
+      .map(r => ({ product: r.product, visits: r.visits, browsers: r.browsers, seconds: Number(r.total_seconds) }))
+      .sort((x, y) => y.browsers - x.browsers || x.product.localeCompare(y.product)),
+  }
+}
+
 /** A row of site_ad_funnel() (migration 123): what the browsers an ad brought
  *  did over the range, per source ('google', 'chatgpt'). */
 export type FunnelRow = { source: string; browsers: number; stayed_30s: number; tapped: number; signed_in: number; median_seconds: number }

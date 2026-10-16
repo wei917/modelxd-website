@@ -28,7 +28,7 @@ import { getAdminUser } from '@/lib/admin'
 import TrafficView from './TrafficView'
 import { DAILY_CAP_USD, spendDays, taipeiDay } from '@/lib/xsports-ai-spend'
 import { cheerModelStats } from '@/lib/xsports-cheer-stats'
-import { askedCountry, countryDays, countryNames, fillDaily, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow, type AccountRow, type FunnelRow } from './data'
+import { askedCountry, countryDays, countryNames, fillDaily, productDays, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type ProductRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow, type AccountRow, type FunnelRow } from './data'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,7 +76,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   // Taps on the sign-in buttons (migration 120) follow the country too, and
   // so do XTell's answer votes and share presses (122), and what ad visitors
   // did (123). Accounts per country (123) are every country.
-  const [byCountry, signins, range, tapped, voted, shared, funnel, accounts] = upgraded
+  const [byCountry, signins, range, tapped, voted, shared, funnel, accounts, byProduct] = upgraded
     ? await Promise.all([
         sb.rpc('site_visit_by_country', { p_days: days, p_tz: TZ, p_top: 5 }),
         sb.rpc('site_signins_daily', { p_days: days, p_tz: TZ }),
@@ -86,8 +86,9 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
         sb.rpc('xtell_share_window', { p_days: days, p_tz: TZ, p_country: wanted }),
         sb.rpc('site_ad_funnel', { p_days: days, p_tz: TZ, p_country: wanted }),
         sb.rpc('site_registered_users', { p_days: days, p_tz: TZ }),
+        sb.rpc('site_visit_by_product', { p_days: days, p_tz: TZ, p_country: wanted }),
       ])
-    : [null, null, null, null, null, null, null, null]
+    : [null, null, null, null, null, null, null, null, null]
   if (byCountry?.error) console.error('[admin/traffic] site_visit_by_country:', byCountry.error.message)
   if (signins?.error) console.error('[admin/traffic] site_signins_daily:', signins.error.message)
   if (range?.error && range.error.code !== NOT_THERE) console.error('[admin/traffic] site_visit_summary:', range.error.message)
@@ -96,6 +97,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   if (shared?.error && shared.error.code !== NOT_THERE) console.error('[admin/traffic] xtell_share_window:', shared.error.message)
   if (funnel?.error && funnel.error.code !== NOT_THERE) console.error('[admin/traffic] site_ad_funnel:', funnel.error.message)
   if (accounts?.error && accounts.error.code !== NOT_THERE) console.error('[admin/traffic] site_registered_users:', accounts.error.message)
+  if (byProduct?.error && byProduct.error.code !== NOT_THERE) console.error('[admin/traffic] site_visit_by_product:', byProduct.error.message)
   const accountRows = accounts && !accounts.error ? (accounts.data ?? []) as AccountRow[] : null
   // The teachers' names for the votes card.
   const voteRows = (voted && !voted.error ? voted.data ?? [] : []) as VoteRow[]
@@ -117,6 +119,8 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
       shares={shared && !shared.error ? shareLines((shared.data ?? []) as ShareRow[]) : null}
       funnel={funnel && !funnel.error ? (funnel.data ?? []) as FunnelRow[] : null}
       accounts={accountRows}
+      // Browsers per app (migration 138), following the range and the country.
+      products={byProduct && !byProduct.error ? productDays((byProduct.data ?? []) as ProductRow[], today) : null}
       days={days}
       ranges={RANGES}
       tz="Taiwan time"
