@@ -4617,7 +4617,14 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
   padding: 8px; background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 7px;
   box-shadow: 0 14px 36px rgba(0,0,0,.12);
 }
-.plib-picker-head { padding: 6px 10px 8px; font-size: 13px; color: var(--muted2); }
+.plib-picker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 6px 8px 10px; font-size: 13px; color: var(--muted2); }
+.plib-picker-all { display: flex; gap: 2px; }
+.plib-picker-all button {
+  padding: 3px 8px; border: 0; border-radius: 5px; background: none; color: var(--red);
+  font: 500 12px var(--font-body), sans-serif; white-space: nowrap; cursor: pointer;
+}
+.plib-picker-all button:hover:not(:disabled) { background: var(--xtell-tint, rgba(0,0,0,.05)); }
+.plib-picker-all button:disabled { color: var(--muted); opacity: .5; cursor: default; }
 .plib-picker-row {
   display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px;
   border-radius: 8px; font-size: 15px; color: var(--white); cursor: pointer;
@@ -4637,7 +4644,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-count { font-size: 12px; color: var(--muted2); font-variant-numeric: tabular-nums; }
 /* The site's segmented type control, compact, in the section header. */
 .plib-seg { border-radius: 8px; }
-.plib-seg .mode-seg-btn { padding: 4px 10px; font-size: 11px; }
+.plib-seg .mode-seg-btn { min-height: 30px; padding: 4px 10px; font-size: 11px; }
 .plib-vis {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
   border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--muted2); font-size: 12px; font-weight: 500;
@@ -4765,6 +4772,8 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .plib-empty button { background: none; border: 0; padding: 0; color: var(--red); font: inherit; text-decoration: underline; text-underline-offset: 5px; cursor: pointer; }
 .plib-error { border-style: solid; border-color: var(--red-dim); }
 .plib-empty-all { margin-top: 20px; }
+.plib-foot { display: none; }
+@media (max-width: 760px) { .plib-foot { display: flex; justify-content: center; margin-top: 10px; } }
 .plib-paging { opacity: .45; pointer-events: none; transition: opacity .15s; }
 .plib-section { scroll-margin-top: 96px; }
 .plib-pager { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 18px; }
@@ -4786,22 +4795,23 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   /* www's account page uses the phone's width: 16px sides, the tab bar
      edge to edge (the shared .arena keeps 40px). */
   .arena.profile-arena { padding: 16px 16px 64px; }
-  .plib-toolbar { gap: 8px; margin-top: 0; }
-  .plib-picker, .plib-field.plib-sort { flex: 1 1 0; min-width: 0; }
-  .plib-picker-btn { width: 100%; }
+  .plib-toolbar { gap: 6px; margin: 0; position: relative; }
+  /* The menu hangs from the toolbar's right edge, so it stays on screen. */
+  .plib-picker { position: static; }
   .plib-head-name { font-size: 17px; }
-  .plib-seg { order: 10; flex-basis: 100%; width: max-content; max-width: 100%; }
+  .plib-seg .mode-seg-btn { min-height: 32px; padding: 4px 8px; }
+  .plib-head-end { display: none; }
   .plib-picker-pop { min-width: min(300px, calc(100vw - 32px)); }
   .plib-section { padding: 18px 0 20px; }
-  .plib-head { gap: 10px; }
-  .plib-head-icon svg { width: 20px; height: 20px; }
+  .plib-head { gap: 8px; margin-bottom: 10px; }
+  .plib-head-icon svg { width: 18px; height: 18px; }
   .plib-count { font-size: 12px; }
   .plib-vis { font-size: 12px; padding: 2px 8px; }
   .plib-viewall { font-size: 13px; }
   .plib-head-end { gap: 6px; }
   /* As in the phone design: no collapse arrow; View all is the control. */
   .plib-collapse { display: none; }
-  .plib-field { padding: 0 12px; gap: 8px; }
+  .plib-field { padding: 0 10px; gap: 6px; }
   .plib-grid { gap: 12px; }
   .plib-grid-duel { grid-template-columns: 1fr; }
   .plib-grid-media, .plib-grid-thumb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4818,6 +4828,9 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 /* www /profile keeps the site's own background (owner, Oct 16: "the
    background color does not match other pages'"); the rest is X先知's. */
 .xtell-site.pv-xtell { --xtell-paper: #fdfdfb; --bg: #fdfdfb; background: #fdfdfb; }
+/* The page starts just under the tab bar (owner, Oct 16: too much space). */
+.pv-xtell > .xtell-profile { padding-top: 0; }
+.pv-xtell .arena.profile-arena { padding-top: 16px; }
 
 /* www /profile in X先知's type (owner, Oct 16). The account blocks are
    inline-styled for the old look: small all-caps JetBrains Mono labels and

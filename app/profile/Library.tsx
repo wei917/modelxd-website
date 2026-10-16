@@ -286,11 +286,13 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
       if (Array.isArray(saved)) setOn(SECTIONS.map(s => s.key).filter(k => saved.includes(k)))
     } catch { /* keep the default */ }
   }, [])
-  const toggle = (k: SectionKey) => setOn(prev => {
-    const next = prev.includes(k) ? prev.filter(x => x !== k) : SECTIONS.map(s => s.key).filter(x => x === k || prev.includes(x))
+  const save = (next: SectionKey[]) => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(next)) } catch { /* fine */ }
     return next
-  })
+  }
+  const toggle = (k: SectionKey) => setOn(prev =>
+    save(prev.includes(k) ? prev.filter(x => x !== k) : SECTIONS.map(s => s.key).filter(x => x === k || prev.includes(x))))
+  const setAll = (all: boolean) => setOn(save(all ? SECTIONS.map(s => s.key) : []))
 
   // The loaders still take a search (q); the page offers none for now.
   const q = ''
@@ -318,7 +320,13 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
           </button>
           {pickerOpen && (
             <div className="plib-picker-pop" role="group" aria-label={t('lib.sections.pick')}>
-              <div className="plib-picker-head">{t('lib.sections.pick')}</div>
+              <div className="plib-picker-head">
+                <span>{t('lib.sections.pick')}</span>
+                <span className="plib-picker-all">
+                  <button type="button" onClick={() => setAll(true)} disabled={on.length === SECTIONS.length}>{t('lib.pick.all')}</button>
+                  <button type="button" onClick={() => setAll(false)} disabled={on.length === 0}>{t('lib.pick.none')}</button>
+                </span>
+              </div>
               {SECTIONS.map(s => (
                 <label key={s.key} className="plib-picker-row">
                   <input type="checkbox" checked={on.includes(s.key)} onChange={() => toggle(s.key)} />
@@ -412,6 +420,11 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
   // there is open again on a phone, with no resize event needed.
   const count = total ?? items.length
   const pages = expanded && total != null ? Math.ceil(total / PAGE) : 1
+  // In the header on a desktop; under the cards on a phone, where the header
+  // row holds the type filter beside the badge (owner, Oct 16).
+  const viewAll = state === 'ready' && (expanded
+    ? <button type="button" className="plib-viewall" onClick={() => setExpanded(false)}>{t('lib.showless')}</button>
+    : count > items.length && <button type="button" className="plib-viewall" onClick={() => setExpanded(true)}>{t('lib.viewall').replace('{n}', String(count))}<LibIcon name="arrow" size={14} /></button>)
   const bodyId = `plib-body-${def.key}`
   return (
     <section ref={sectionRef} className={`plib-section plib-view-${def.view}${collapsed ? ' is-shut' : ''}`} aria-labelledby={`plib-h-${def.key}`}>
@@ -435,9 +448,7 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
           </span>
         )}
         <span className="plib-head-end">
-          {state === 'ready' && (expanded
-            ? <button type="button" className="plib-viewall" onClick={() => setExpanded(false)}>{t('lib.showless')}</button>
-            : count > items.length && <button type="button" className="plib-viewall" onClick={() => setExpanded(true)}>{t('lib.viewall').replace('{n}', String(count))}<LibIcon name="arrow" size={14} /></button>)}
+          {viewAll}
           <button type="button" className={collapsed ? 'plib-collapse is-collapsed' : 'plib-collapse'} aria-expanded={!collapsed} aria-controls={bodyId}
             aria-label={t(collapsed ? 'lib.expand' : 'lib.collapse')} onClick={() => setCollapsed(c => !c)}>
             <LibIcon name="chevron" size={16} />
@@ -461,6 +472,7 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
             </div>}
         {/* Stays put while the next page loads, so the numbers never jump. */}
         {pages > 1 && state !== 'error' && <Pager page={page} pages={pages} onGo={goPage} />}
+        {viewAll && <div className="plib-foot">{viewAll}</div>}
       </div>}
     </section>
   )

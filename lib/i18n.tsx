@@ -2735,6 +2735,8 @@ export const STRINGS: Record<string, Entry> = {
   'profile.view.library':  { en: 'Library', 'zh-Hant': '作品庫', 'zh-Hans': '作品库', ja: 'ライブラリ', ko: '라이브러리' },
   'lib.sections':       { en: 'Sections {n}', 'zh-Hant': '顯示區塊 {n}', 'zh-Hans': '显示区块 {n}', ja: '表示する区分 {n}', ko: '표시 구역 {n}' },
   'lib.sections.pick':  { en: 'Show these apps', 'zh-Hant': '要顯示的應用', 'zh-Hans': '要显示的应用', ja: '表示するアプリ', ko: '표시할 앱' },
+  'lib.pick.all':       { en: 'Select all', 'zh-Hant': '全選', 'zh-Hans': '全选', ja: 'すべて選択', ko: '모두 선택' },
+  'lib.pick.none':      { en: 'Deselect all', 'zh-Hant': '全不選', 'zh-Hans': '全不选', ja: 'すべて解除', ko: '모두 해제' },
   'lib.sort':           { en: 'Sort', 'zh-Hant': '排序', 'zh-Hans': '排序', ja: '並べ替え', ko: '정렬' },
   'lib.sort.newest':    { en: 'Newest first', 'zh-Hant': '最新優先', 'zh-Hans': '最新优先', ja: '新しい順', ko: '최신순' },
   'lib.sort.oldest':    { en: 'Oldest first', 'zh-Hant': '最舊優先', 'zh-Hans': '最旧优先', ja: '古い順', ko: '오래된순' },
