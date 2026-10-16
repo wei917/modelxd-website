@@ -303,11 +303,51 @@ function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: 
   return { mod, calls, stored, released, spent }
 }
 
-// ── lib/xsports-cheer-fresh.ts: an admin's ask, made fresh (Oct 16) ───────
+// ── lib/xsports-cheer-fresh.ts + lib/xsports-cheer-models.ts (Oct 16) ─────
 const FRESH = `${SB}/storage/v1/object/public/x-characters/c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer/fresh/`
-function freshRoom(o: { g?: any; videoFails?: boolean; off?: string; listed?: string[] } = {}) {
+const MODELS_URL = `${SB}/storage/v1/object/public/x-characters/c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer/models.json`
+// The catalog rows the lists name, with their real shape options (Oct 16).
+const PIC = (provider: string, model_name: string, display_name: string, image: any) => ({ provider, model_name, display_name, enabled: true, blocked_features: [], output_modalities: ['image'], modes: ['text_to_image', 'image_edit', 'reference_frames'], output_config: { image } })
+const VID = (provider: string, model_name: string, display_name: string, video: any) => ({ provider, model_name, display_name, enabled: true, blocked_features: [], output_modalities: ['video'], modes: ['image_to_video'], output_config: { video } })
+const CATALOG: Record<string, any> = Object.fromEntries([
+  PIC('google', 'gemini-3.1-flash-image', 'Nano Banana 2', { sizes: ['1024', '512', '2048', '4096'], aspect_ratios: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'] }),
+  PIC('openai', 'gpt-image-2.5-flare', 'GPT Image 2.5 Flare', { sizes: ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', '1536x1152', '1152x1536'] }),
+  PIC('xai', 'grok-imagine-image-2.0', 'Grok Imagine Image 2.0', { sizes: ['1024', '2048'], aspect_ratios: ['1:1', '16:9', '9:16', '4:3', '3:4'] }),
+  PIC('alibaba', 'qwen-image-2.0-pro', 'Qwen Image 2.0 Pro', { sizes: ['1024x1024', '512x512', '1920x1080', '1080x1920', '1920x1440', '1440x1920', '2048x2048'], aspect_ratios: ['1:1', '16:9', '9:16', '4:3', '3:4'] }),
+  PIC('openai', 'gpt-image-2', 'GPT Image 2', { sizes: ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', '1536x1152', '1152x1536'] }),
+  VID('alibaba', 'happyhorse-1.1-i2v', 'HappyHorse 1.1 Image to Video', { audio: true, durations_by_resolution: { '480p': { min: 3, max: 15 }, '720p': { min: 3, max: 15 }, '1080p': { min: 3, max: 15 } } }),
+  VID('google', 'gemini-omni-1.1-flash', 'Gemini Omni 1.1 Flash', { audio: true, sizes: ['720p'], aspect_ratios: ['16:9', '9:16'], durations_by_resolution: { '720p': [3, 4, 5, 6, 7, 8, 9, 10] } }),
+  VID('alibaba', 'wan3.0-video', 'Wan 3.0', { audio: true, sizes: ['480p', '720p', '1080p'], aspect_ratios: ['16:9', '9:16', '4:3', '3:4', '1:1'], durations_by_resolution: { '720p': { min: 2, max: 30 } } }),
+  VID('minimax', 'MiniMax-H3', 'MiniMax H3', { audio: true, sizes: ['768p', '2k'], aspect_ratios: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'], durations_by_resolution: { '2k': { min: 4, max: 15 }, '768p': { min: 4, max: 15 } } }),
+  VID('xai', 'grok-imagine-video', 'Grok Imagine Video', { sizes: ['480p', '720p'] }),
+].map(m => [`${m.provider}/${m.model_name}`, m]))
+const freshFetch = (o: { lists?: unknown; listsStatus?: number }, fetched: string[]) => async (url: string) => {
+  fetched.push(url)
+  if (url === MODELS_URL) return o.listsStatus ? new Response('nope', { status: o.listsStatus }) : new Response(typeof o.lists === 'string' ? o.lists : JSON.stringify(o.lists ?? { photo: ['google/gemini-3.1-flash-image'], clip: ['alibaba/happyhorse-1.1-i2v'] }))
+  return new Response('jpeg-bytes')
+}
+function cheerModels(o: { lists?: unknown; listsStatus?: number; off?: string[] } = {}) {
+  const fetched: string[] = []
+  const mod = load('lib/xsports-cheer-models.ts', {
+    './models': { getModelByProviderName: async (provider: string, name: string) => { const m = CATALOG[`${provider}/${name}`]; return m ? { ...m, enabled: !(o.off ?? []).includes(name) } : null } },
+    './xsports-cheer-media': cheerMedia,
+    './xsports-cheer': { publicBase: () => `${SB}/storage/v1/object/public/x-characters`, usable: (m: any) => !!m && m.enabled !== false && !(m.blocked_features ?? []).includes('xsports') },
+  }, { process: { env: { NEXT_PUBLIC_SUPABASE_URL: SB } }, fetch: freshFetch(o, fetched) })
+  return { mod, fetched }
+}
+function freshRoom(o: { g?: any; lists?: unknown; fail?: string[]; off?: string[]; jobRow?: any; insertError?: string } = {}) {
   const images: { model: string; prompt: string; size: string; ports: string[]; ratio?: string }[] = [], videos: any[] = [], uploads: { bucket: string; path: string; type: string }[] = []
-  const fetched: string[] = [], spent: number[] = [], ran: string[][] = [], disk = new Map<string, Buffer>()
+  const fetched: string[] = [], spent: number[] = [], ran: string[][] = [], disk = new Map<string, Buffer>(), jobs: { op: string; row: any; id?: string }[] = []
+  const models = cheerModels({ lists: o.lists, off: o.off })
+  const jobTable = () => {
+    const q: any = {
+      insert: async (row: any) => { jobs.push({ op: 'insert', row }); return { error: o.insertError ? { message: o.insertError } : null } },
+      update: (row: any) => ({ eq: async (_c: string, id: string) => { jobs.push({ op: 'update', row, id }); return { error: null } } }),
+      select: () => q, eq: () => q,
+      maybeSingle: async () => ({ data: o.jobRow ?? null, error: null }),
+    }
+    return q
+  }
   const mod = load('lib/xsports-cheer-fresh.ts', {
     'crypto': { randomUUID: () => UUID },
     'node:fs/promises': { mkdtemp: async (p: string) => p + 'X', writeFile: async (f: string, b: Buffer) => { disk.set(f, b) }, readFile: async (f: string) => disk.get(f) ?? Buffer.from(''), rm: async () => {} },
@@ -316,19 +356,19 @@ function freshRoom(o: { g?: any; videoFails?: boolean; off?: string; listed?: st
     './providers': {
       generateImage: async (model: any, prompt: string, _q: string, size: string, atts: any[], _prev: unknown, _hist: unknown, _ctx: unknown, opts: any) => {
         images.push({ model: model.model_name, prompt, size, ports: atts.map(a => a.port), ratio: opts?.aspect_ratio })
+        if ((o.fail ?? []).includes(model.model_name)) throw new Error(`fixture: ${model.model_name} refused`)
         return { buffer: Buffer.from('png'), mediaType: 'image/png', cost: 0.053 }
       },
       generateVideo: async (model: any, prompt: string, size: string, seconds: number, atts: any[], _p: unknown, _c: unknown, opts: any) => {
-        videos.push({ model: model.model_name, prompt, size, seconds, ports: atts.map(a => a.port), url: atts[0]?.url, watermark: opts?.watermark })
-        if (o.videoFails) throw new Error('fixture: the clip failed')
-        return { buffer: Buffer.from('raw-mp4'), mediaType: 'video/mp4', durationSeconds: 5, cost: 0.9 }
+        videos.push({ model: model.model_name, prompt, size, seconds, ports: atts.map(a => a.port), url: atts[0]?.url, ...opts })
+        if ((o.fail ?? []).includes(model.model_name)) throw new Error(`fixture: ${model.model_name} failed`)
+        return { buffer: Buffer.from('raw-mp4'), mediaType: 'video/mp4', durationSeconds: seconds, cost: 0.9 }
       },
     },
-    './models': { getModelByProviderName: async (provider: string, name: string) => ({ provider, model_name: name, enabled: o.off !== name, blocked_features: [] }) },
-    './xsports-store': { xsportsAdmin: () => ({ storage: { from: (bucket: string) => ({
-      upload: async (path: string, _b: unknown, opt: any) => { uploads.push({ bucket, path, type: opt?.contentType }); return { error: null } },
-      list: async (_dir: string, opt: any) => ({ data: (o.listed ?? []).filter(n => n.includes(opt?.search ?? '')).map(name => ({ name })), error: null }),
-    }) } }) },
+    './xsports-store': { xsportsAdmin: () => ({
+      from: (t: string) => { if (t !== 'xsports_cheer_jobs') throw new Error('fixture: table ' + t); return jobTable() },
+      storage: { from: (bucket: string) => ({ upload: async (path: string, _b: unknown, opt: any) => { uploads.push({ bucket, path, type: opt?.contentType }); return { error: null } } }) },
+    }) },
     './xsports-ai-spend': { addSpend: async (usd: number) => { spent.push(usd) } },
     './xsports-room-ai': { gameFor: async () => o.g ?? game('live', [play(1)]) },
     './xcut-render': { ffmpegPath: () => 'ffmpeg', run: async (_bin: string, args: string[]) => { ran.push(args); disk.set(args[args.length - 1], Buffer.from('mp4-small')) } },
@@ -337,14 +377,15 @@ function freshRoom(o: { g?: any; videoFails?: boolean; off?: string; listed?: st
       publicBase: () => `${SB}/storage/v1/object/public/x-characters`,
       mediaUrl: (m: any) => `${SB}/storage/v1/object/public/x-characters/c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer/${m.file}`,
       teamSide: (g: any) => (g.home?.abbr === 'LAD' ? 'home' : g.away?.abbr === 'LAD' ? 'away' : null),
-      usable: (m: any) => !!m && m.enabled !== false,
     },
+    './xsports-cheer-models': models.mod,
     'sharp': { __esModule: true, default: () => { const q: any = { resize: () => q, jpeg: () => q, toBuffer: async () => Buffer.from('jpg') }; return q } },
   }, {
     process: { env: { NEXT_PUBLIC_SUPABASE_URL: SB } }, Buffer,
-    fetch: async (url: string) => { fetched.push(url); return new Response('jpeg-bytes') },
+    fetch: freshFetch({ lists: o.lists }, fetched),
   })
-  return { mod, images, videos, uploads, fetched, spent, ran }
+  const done = () => jobs.filter(j => j.op === 'update').at(-1)?.row
+  return { mod, images, videos, uploads, fetched, spent, ran, jobs, done }
 }
 
 async function cheerleader() {
@@ -468,7 +509,7 @@ async function post(content: string, o: { confirmed?: boolean; confirm?: boolean
     '@/lib/xsports-store': { xsportsAdmin: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: o.displayName === null ? null : { display_name: o.displayName ?? '阿明', avatar_url: null } }) }) }) }) }) },
     '@/lib/xsports-room': {
       addRoomMessage: async (_k: unknown, m: any) => ({ id: 7, ...m }), confirmName: async (id: string) => { confirmedNow.push(id) }, member: async () => ({ confirmed: o.confirmed ?? true, mutedUntil: null }),
-      ownIds: async () => [], recentMessages: async () => [], roomKeyOf: (league: string, game: unknown, lang: string) => ({ league, game: String(game), lang }),
+      ownIds: async () => [], ownVotes: async () => ({}), recentMessages: async () => [], roomKeyOf: (league: string, game: unknown, lang: string) => ({ league, game: String(game), lang }),
       roomMissing: () => false, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
     },
     '@/lib/xsports-ais': ais,
@@ -517,62 +558,119 @@ async function roomRoute() {
   ok(done.status === 200 && done.confirmedNow.length === 0, 'route: a confirmed name is not asked again')
 }
 
+async function models() {
+  const { mod } = cheerModels()
+  const P = (k: string, r: string) => JSON.stringify(mod.photoParams(CATALOG[k], r))
+  ok(P('google/gemini-3.1-flash-image', '2:3') === '{"size":"1024","aspect_ratio":"2:3"}' && P('google/gemini-3.1-flash-image', '9:16') === '{"size":"1024","aspect_ratio":"9:16"}', 'photoParams: Nano Banana 2 takes its 1K tier and the ratio')
+  ok(P('openai/gpt-image-2', '2:3') === '{"size":"1024x1536"}' && P('openai/gpt-image-2', '3:4') === '{"size":"1152x1536"}' && P('openai/gpt-image-2', '9:16') === '{"size":"1152x2048"}', 'photoParams: GPT Image takes the size of that shape')
+  ok(P('alibaba/qwen-image-2.0-pro', '2:3') === '{"size":"1440x1920"}' && P('alibaba/qwen-image-2.0-pro', '9:16') === '{"size":"1080x1920"}', 'photoParams: Qwen takes its nearest portrait size (3:4 for 2:3)')
+  ok(P('xai/grok-imagine-image-2.0', '2:3') === '{"size":"1024","aspect_ratio":"3:4"}' && P('xai/grok-imagine-image-2.0', '9:16') === '{"size":"1024","aspect_ratio":"9:16"}', 'photoParams: Grok takes its nearest portrait ratio')
+  const C = (k: string, sec: number) => JSON.stringify(mod.clipParams(CATALOG[k], sec))
+  ok(C('alibaba/happyhorse-1.1-i2v', 3) === '{"size":"720p","ratio":"2:3","fits":true}' && JSON.parse(C('alibaba/happyhorse-1.1-i2v', 20)).fits === false, 'clipParams: HappyHorse 720p from a 2:3 frame, 3 to 15 s')
+  ok(C('google/gemini-omni-1.1-flash', 3) === '{"size":"720p","ratio":"9:16","fits":true}' && JSON.parse(C('google/gemini-omni-1.1-flash', 11)).fits === false, 'clipParams: Gemini Omni 720p from a 9:16 frame (all it takes), 3 to 10 s')
+  ok(C('alibaba/wan3.0-video', 5) === '{"size":"720p","ratio":"3:4","fits":true}', 'clipParams: Wan 3.0 720p from a 3:4 frame')
+  ok(C('minimax/MiniMax-H3', 3) === '{"size":"768p","ratio":"3:4","fits":false}' && JSON.parse(C('minimax/MiniMax-H3', 5)).fits === true, 'clipParams: MiniMax H3 768p from 3:4, 4 s or more (no 3 s)')
+
+  const file = cheerModels({ lists: { photo: ['xai/grok-imagine-image-2.0'], clip: ['alibaba/wan3.0-video'] } })
+  const l1 = await file.mod.cheerLists()
+  ok(l1.photo.join() === 'xai/grok-imagine-image-2.0' && l1.clip.join() === 'alibaba/wan3.0-video' && file.fetched[0] === MODELS_URL, "cheerLists: the lists come from the JSON file in her folder")
+  await file.mod.cheerLists()
+  ok(file.fetched.length === 1, 'cheerLists: read at most once a minute')
+  const broken = await cheerModels({ lists: '{ not json' }).mod.cheerLists()
+  const missing = await cheerModels({ listsStatus: 404 }).mod.cheerLists()
+  const halfBad = await cheerModels({ lists: { photo: ['not a model entry'], clip: ['alibaba/wan3.0-video'] } }).mod.cheerLists()
+  const D = cheerModels().mod.DEFAULT_MODELS
+  ok(broken.photo.join() === D.photo.join() && missing.clip.join() === D.clip.join() && halfBad.photo.join() === D.photo.join() && halfBad.clip.join() === 'alibaba/wan3.0-video', 'cheerLists: a broken or missing file, or a bad list, falls back to the defaults')
+
+  const all = { photo: [...D.photo, 'google/no-such-model'], clip: [...D.clip, 'xai/grok-imagine-video'] }
+  const keys = (ms: any[]) => ms.map((m: any) => `${m.provider}/${m.model_name}`).sort().join()
+  const c3 = await cheerModels({ lists: all }).mod.drawClipModels(3)
+  const c5 = await cheerModels({ lists: all }).mod.drawClipModels(5)
+  ok(keys(c3) === ['alibaba/happyhorse-1.1-i2v', 'alibaba/wan3.0-video', 'google/gemini-omni-1.1-flash'].join() && keys(c5).includes('minimax/MiniMax-H3') && !keys(c5).includes('grok-imagine-video'), 'drawClipModels: image to video with sound that takes the length (no H3 for 3 s; never one without sound)')
+  const p = await cheerModels({ lists: all, off: ['gpt-image-2'] }).mod.drawPhotoModels()
+  ok(keys(p) === ['alibaba/qwen-image-2.0-pro', 'google/gemini-3.1-flash-image', 'openai/gpt-image-2.5-flare', 'xai/grok-imagine-image-2.0'].join(), 'drawPhotoModels: the listed ones that are on and take a reference (an unknown or switched-off one is skipped)')
+  const firsts = new Set<string>()
+  const many = cheerModels({ lists: { photo: D.photo, clip: D.clip } })
+  for (let n = 0; n < 200; n++) firsts.add((await many.mod.drawPhotoModels())[0].model_name)
+  ok(firsts.size === D.photo.length, 'drawPhotoModels: a random order each ask: every model is drawn first')
+}
+
 async function fresh() {
   const K2 = { league: 'mlb', game: '849818', lang: 'zh-Hant' }
   const lad = (status: string, events: any[]) => ({ ...game(status, events), away: { name: 'Brewers', abbr: 'MIL', runs: 0 }, home: { name: 'Dodgers', abbr: 'LAD', runs: 0 } })
+  const keep = () => 0.99 // a shuffle that keeps the list's order
   const f0 = freshRoom()
   const id = f0.mod.newFreshId()
   ok(f0.mod.isFreshId(id) && !f0.mod.isFreshId(UUID) && !f0.mod.isFreshId('../' + id) && !f0.mod.isFreshId(id + '.jpg') && !f0.mod.isFreshId(42), 'isFreshId: when it began, then a uuid; nothing else')
   ok(f0.mod.lightNow(new Date('2026-10-16T23:00:00Z')).includes('night-game') && f0.mod.lightNow(new Date('2026-10-16T17:00:00Z')).includes('afternoon'), 'lightNow: night lights after 6 pm in the US East, sun in the afternoon')
 
+  const st = freshRoom()
+  await st.mod.startFresh(K2, id, { action: 'dance', seconds: 3, adminId: 'a1' })
+  await st.mod.startFresh(K2, id, { action: 'shout', name: '大谷', seconds: 3, adminId: 'a1' })
+  const [r1, r2] = st.jobs.map(j => j.row)
+  ok(r1.kind === 'video' && r1.seconds === 3 && r1.admin_id === 'a1' && r1.game_id === '849818' && r2.kind === 'image' && r2.seconds === null && r2.name === '大谷', 'startFresh: a row for the ask: a clip with its length, a photo without one')
+  let threw = false
+  try { await freshRoom({ insertError: 'relation "xsports_cheer_jobs" does not exist' }).mod.startFresh(K2, id, { action: 'selfie', seconds: 5, adminId: 'a1' }) } catch { threw = true }
+  ok(threw, 'startFresh: before 137 it throws (the route says not_set_up)')
+
   const sf = freshRoom()
   await sf.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0)
-  ok(sf.images.length === 1 && sf.images[0].model === 'gemini-3.1-flash-image' && sf.images[0].size === '1024' && sf.images[0].ratio === '2:3' && sf.images[0].ports.join() === 'reference_image' && sf.fetched[0]?.endsWith('/cheer/selfie.jpg') && sf.images[0].prompt.includes('selfie') && sf.images[0].prompt.includes('"XD" emblem'), 'makeFresh: a selfie is Nano Banana 2 (2:3, its 1K tier) with her own photo as the reference, her red look')
+  ok(sf.images.length === 1 && sf.images[0].model === 'gemini-3.1-flash-image' && sf.images[0].size === '1024' && sf.images[0].ratio === '2:3' && sf.images[0].ports.join() === 'reference_image' && sf.fetched.some(u => u.endsWith('/cheer/selfie.jpg')) && sf.images[0].prompt.includes('selfie') && sf.images[0].prompt.includes('"XD" emblem'), 'makeFresh: a selfie from the drawn photo model, 2:3, with her own photo as the reference, her red look')
   ok(sf.images[0].prompt.startsWith('A realistic photograph') && sf.images[0].prompt.includes("not the reference's"), "makeFresh: a real photo, in a pose of its own (not the reference's)")
-  ok(sf.uploads.map(u => u.path.split('/').pop() + ':' + u.type).join() === id + '.jpg:image/jpeg' && sf.videos.length === 0 && sf.spent.join() === '0.053', "makeFresh: it goes to her folder's fresh/ as <id>.jpg; counted toward the day")
+  const d1 = sf.done()
+  ok(sf.uploads.map(u => u.path.split('/').pop() + ':' + u.type).join() === id + '.jpg:image/jpeg' && sf.videos.length === 0 && d1?.status === 'done' && d1.model === 'google/gemini-3.1-flash-image' && d1.url === FRESH + id + '.jpg' && d1.usd === 0.053 && d1.tried.join() === 'google/gemini-3.1-flash-image' && typeof d1.ms === 'number', "makeFresh: the photo goes to her folder's fresh/; its row says done, by which model, the cost and time")
   const sb = freshRoom({ g: lad('live', [play(1)]) })
   await sb.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0)
-  ok(sb.fetched[0]?.endsWith('/cheer/blue-selfie.jpg') && sb.images[0].prompt.includes('royal-blue') && sb.images[0].prompt.includes('Absolutely no logos'), 'makeFresh: in a Dodgers game, Dodger blue with no marks')
-  const dn = freshRoom()
-  await dn.mod.makeFresh(K2, id, 'dance', '', {}, () => 0)
-  ok(dn.uploads.map(u => u.path.split('/').pop()).join() === `${id}-frame.jpg,${id}.mp4` && dn.uploads[1].type === 'video/mp4', 'makeFresh: a dance is a picture (kept as its first frame), then <id>.mp4')
-  const d3 = freshRoom()
-  await d3.mod.makeFresh(K2, id, 'dance', '', { seconds: 3 }, () => 0)
-  ok(d3.videos[0]?.seconds === 3, 'makeFresh: a 3-second clip when asked')
-  ok(dn.videos[0]?.model === 'happyhorse-1.1-i2v' && dn.videos[0].size === '720x1080' && dn.videos[0].seconds === 5 && dn.videos[0].ports.join() === 'first_frame' && dn.videos[0].url === FRESH + id + '-frame.jpg' && dn.videos[0].watermark === false && dn.videos[0].prompt.includes('pom-poms'), 'makeFresh: the clip is HappyHorse 1.1 from that frame by its link, 5 s, watermark off')
-  ok(!dn.ran[0]?.includes('-an') && dn.ran[0].includes('0:a:0?') && dn.ran[0].includes('aac') && dn.ran[0].includes('scale=720:-2') && dn.ran[0].includes('+faststart') && dn.videos[0].prompt.includes('Sound:') && dn.spent.join() === '0.053,0.9', "makeFresh: re-encoded small for phones, keeping the model's own sound; the picture and the clip both counted")
+  ok(sb.fetched.some(u => u.endsWith('/cheer/blue-selfie.jpg')) && sb.images[0].prompt.includes('royal-blue') && sb.images[0].prompt.includes('Absolutely no logos'), 'makeFresh: in a Dodgers game, Dodger blue with no marks')
+  const fo = freshRoom({ lists: { photo: ['openai/gpt-image-2', 'google/gemini-3.1-flash-image'], clip: ['alibaba/happyhorse-1.1-i2v'] }, fail: ['gpt-image-2'] })
+  await fo.mod.makeFresh(K2, id, 'selfie', '', {}, keep)
+  ok(fo.images.map(i => i.model).join() === 'gpt-image-2,gemini-3.1-flash-image' && fo.images[0].size === '1024x1536' && fo.done()?.model === 'google/gemini-3.1-flash-image' && fo.done()?.tried.join() === 'openai/gpt-image-2,google/gemini-3.1-flash-image', 'makeFresh: a model that fails hands the photo to the next one; both are on its row')
+
+  const om = freshRoom({ lists: { photo: ['google/gemini-3.1-flash-image'], clip: ['google/gemini-omni-1.1-flash'] } })
+  await om.mod.makeFresh(K2, id, 'dance', '', { seconds: 3 }, () => 0)
+  const v0 = om.videos[0]
+  ok(om.images[0]?.ratio === '9:16' && v0?.model === 'gemini-omni-1.1-flash' && v0.size === '720p' && v0.seconds === 3 && v0.aspect_ratio === '9:16' && v0.mode === 'image_to_video' && v0.generate_audio === true && v0.watermark === false && v0.ports.join() === 'first_frame' && v0.url === FRESH + id + '-frame-9x16.jpg', 'makeFresh: a clip by Gemini Omni starts from a 9:16 frame (its shape), read by link, with sound, watermark off')
+  const d2 = om.done()
+  ok(om.uploads.map(u => u.path.split('/').pop()).join() === `${id}-frame-9x16.jpg,${id}.mp4` && d2?.model === 'google/gemini-omni-1.1-flash' && d2.frame_model === 'google/gemini-3.1-flash-image' && d2.usd === 0.953 && d2.url === FRESH + id + '.mp4', "makeFresh: the clip's row names its model and its first frame's, and the cost of both")
+  ok(!om.ran[0]?.includes('-an') && om.ran[0].includes('0:a:0?') && om.ran[0].includes('aac') && om.ran[0].includes('scale=720:-2') && om.ran[0].includes('+faststart') && v0.prompt.includes('Sound:'), "makeFresh: re-encoded small for phones, keeping the model's own sound")
+  const cf = freshRoom({ lists: { photo: ['google/gemini-3.1-flash-image'], clip: ['google/gemini-omni-1.1-flash', 'alibaba/happyhorse-1.1-i2v'] }, fail: ['gemini-omni-1.1-flash'] })
+  await cf.mod.makeFresh(K2, id, 'cheer', '', { seconds: 5 }, keep)
+  ok(cf.videos.map(v => v.model).join() === 'gemini-omni-1.1-flash,happyhorse-1.1-i2v' && cf.videos[1].url === FRESH + id + '-frame-2x3.jpg' && cf.images.length === 1 && cf.done()?.model === 'alibaba/happyhorse-1.1-i2v' && cf.done()?.tried.join() === 'google/gemini-3.1-flash-image,google/gemini-omni-1.1-flash,alibaba/happyhorse-1.1-i2v', 'makeFresh: a clip model that fails hands the same frame, re-cut to its shape, to the next one')
+  const h3 = freshRoom({ lists: { photo: ['google/gemini-3.1-flash-image'], clip: ['minimax/MiniMax-H3'] } })
+  await h3.mod.makeFresh(K2, id, 'dance', '', { seconds: 3 }, () => 0)
+  ok(h3.done()?.status === 'failed' && /3-second/.test(h3.done()?.error) && h3.images.length === 0, 'makeFresh: no listed clip model takes 3 s: it fails before spending anything')
   const ch = freshRoom()
   await ch.mod.makeFresh(K2, id, 'cheer', '', {}, () => 0)
-  ok(ch.fetched[0]?.endsWith('/cheer/megaphone.jpg') && ch.images[0].prompt.includes('megaphone') && ch.videos[0]?.prompt.includes('chant') && ch.uploads.at(-1)?.path.endsWith(id + '.mp4'), 'makeFresh: a cheer clip leads a chant')
+  ok(ch.fetched.some(u => u.endsWith('/cheer/megaphone.jpg')) && ch.images[0].prompt.includes('megaphone') && ch.videos[0]?.prompt.includes('chant'), 'makeFresh: a cheer clip leads a chant')
   const so = freshRoom()
   await so.mod.makeFresh(K2, id, 'shout', '大谷', {}, () => 0)
-  ok(so.images[0]?.prompt.startsWith('A realistic photograph') && so.images[0].prompt.includes('comic-style speech bubble') && so.images[0].prompt.includes('without quotation marks: 大谷 加油！') && !so.images[0].prompt.includes('line art') && so.fetched[0]?.endsWith('/cheer/selfie.jpg') && so.uploads.map(u => u.path.split('/').pop()).join() === id + '.jpg' && so.videos.length === 0, 'makeFresh: a 加油 is a real photo of her with the name in a comic speech bubble, not a cartoon')
+  ok(so.images[0]?.prompt.startsWith('A realistic photograph') && so.images[0].prompt.includes('comic-style speech bubble') && so.images[0].prompt.includes('without quotation marks: 大谷 加油！') && so.fetched.some(u => u.endsWith('/cheer/selfie.jpg')) && so.uploads.map(u => u.path.split('/').pop()).join() === id + '.jpg' && so.videos.length === 0, 'makeFresh: a 加油 is a real photo of her with the name in a comic speech bubble')
   const sv = freshRoom()
   await sv.mod.makeFresh(K2, id, 'shout', '大谷', { video: true, seconds: 3 }, () => 0)
-  ok(sv.uploads.map(u => u.path.split('/').pop()).join() === `${id}-frame.jpg,${id}.mp4` && sv.videos[0]?.seconds === 3 && sv.videos[0].prompt.includes('speech bubble and its words stay exactly as they are') && sv.images[0].prompt.includes('大谷 加油！'), 'makeFresh: a 加油 clip is the photo with the bubble, moved, the bubble kept still')
+  ok(sv.videos[0]?.seconds === 3 && sv.videos[0].prompt.includes('speech bubble and its words stay exactly as they are') && sv.done()?.model === 'alibaba/happyhorse-1.1-i2v', 'makeFresh: a 加油 clip is the photo with the bubble, moved, the bubble kept still')
   const so2 = freshRoom()
   await so2.mod.makeFresh(K2, id, 'shout', '大谷', {}, () => 0.99)
   ok(so2.mod.SHOUT_POSES.length >= 5 && so.images[0].prompt.includes(so2.mod.SHOUT_POSES[0]) && so2.images[0].prompt.includes(so2.mod.SHOUT_POSES[so2.mod.SHOUT_POSES.length - 1]), 'makeFresh: the 加油 pose is picked from several, not always the same')
-  const bad = freshRoom({ videoFails: true })
-  let threw = false
-  try { await bad.mod.makeFresh(K2, id, 'dance', '', {}, () => 0) } catch { threw = true }
-  ok(!threw && bad.uploads.map(u => u.path.split('/').pop() + ':' + u.type).join() === `${id}-frame.jpg:image/jpeg,${id}.failed:text/plain`, 'makeFresh: a clip that fails leaves <id>.failed (and never throws)')
-  const off = freshRoom({ off: 'gemini-3.1-flash-image' })
-  await off.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0)
-  ok(off.images.length === 0 && off.uploads.map(u => u.path.split('/').pop()).join() === id + '.failed', 'makeFresh: no drawing model, nothing drawn; it says failed')
+  const none = freshRoom({ lists: { photo: ['openai/gpt-image-2'], clip: ['alibaba/happyhorse-1.1-i2v'] }, fail: ['gpt-image-2'] })
+  threw = false
+  try { await none.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0) } catch { threw = true }
+  ok(!threw && none.done()?.status === 'failed' && /refused/.test(none.done()?.error) && none.uploads.length === 0, 'makeFresh: when every model fails, its row says failed and why (it never throws)')
 
-  const st = async (listed: string[], jid = id, now?: number) => freshRoom({ listed }).mod.freshStatus(jid, now)
-  const vid = await st([id + '-frame.jpg', id + '.mp4'])
-  const pic = await st([id + '.jpg'])
-  ok(vid.status === 'done' && vid.kind === 'video' && vid.url === FRESH + id + '.mp4' && pic.status === 'done' && pic.kind === 'image' && pic.url === FRESH + id + '.jpg', 'freshStatus: done, with its link and kind')
-  ok((await st([id + '-frame.jpg'])).status === 'working' && (await st([])).status === 'working' && (await st([id + '.failed'])).status === 'failed', 'freshStatus: a first frame alone is still working; .failed is failed')
-  ok((await st([], id, Date.now() + 15 * 60_000)).status === 'failed', 'freshStatus: a job past 14 minutes has failed')
+  const look = (row: any, now?: number) => freshRoom({ jobRow: row }).mod.freshStatus(id, now)
+  const t = new Date().toISOString()
+  const done = await look({ status: 'done', kind: 'video', url: FRESH + id + '.mp4', model: 'alibaba/happyhorse-1.1-i2v', ms: 98000, usd: '0.9530', created_at: t })
+  ok(done.status === 'done' && done.kind === 'video' && done.url === FRESH + id + '.mp4' && done.model === 'alibaba/happyhorse-1.1-i2v' && done.ms === 98000 && done.usd === 0.953, 'freshStatus: done, with its link, kind, model, time and cost')
+  ok((await look({ status: 'working', created_at: t })).status === 'working' && (await look({ status: 'failed', created_at: t })).status === 'failed' && (await look(null)).status === 'failed', 'freshStatus: working; failed; no row is failed')
+  ok((await look({ status: 'working', created_at: t }, Date.now() + 15 * 60_000)).status === 'failed', 'freshStatus: a job past 14 minutes has failed')
+  const fp = freshRoom()
+  await fp.mod.freshPosted(id, 77)
+  ok(fp.jobs[0]?.op === 'update' && fp.jobs[0].row.posted_message_id === 77 && fp.jobs[0].id === id, 'freshPosted: the job is linked to the message it became')
 }
 
 // ── app/api/xsports/cheer: an admin's asks of 晴晴 (Oct 16) ───────────────
 const FID = 'mg1abcde-' + UUID
-async function cheerCall(method: 'GET' | 'POST', body: Record<string, unknown>, o: { admin?: boolean; verdict?: string; face?: boolean; status?: any } = {}) {
-  const waits: Promise<unknown>[] = [], cues: any[] = [], made: any[] = []
+async function cheerCall(method: 'GET' | 'POST', body: Record<string, unknown>, o: { admin?: boolean; verdict?: string; face?: boolean; status?: any; noTable?: boolean } = {}) {
+  const waits: Promise<unknown>[] = [], cues: any[] = [], made: any[] = [], started: any[] = [], posted: any[] = []
   const route = load('app/api/xsports/cheer/route.ts', {
     'next/server': { after: (p: Promise<unknown>) => { waits.push(p) } },
     '@/lib/admin': { getAdminUser: async () => (o.admin === false ? null : { id: 'a1', email: 'admin@fixture.test' }) },
@@ -582,14 +680,17 @@ async function cheerCall(method: 'GET' | 'POST', body: Record<string, unknown>, 
     '@/lib/xsports-cheer-media': cheerMedia,
     '@/lib/xsports-cheer': {
       cheerFace: async () => (o.face === false ? null : { handle: '晴晴', name: '晴晴', avatar: 'https://x/a.jpg' }),
-      roomCheer: async (_k: unknown, cue: any) => { cues.push(cue) },
+      roomCheer: async (_k: unknown, cue: any) => { cues.push(cue); return { id: 77 } },
     },
     '@/lib/xsports-cheer-fresh': {
       isFreshId: (s: unknown) => s === FID,
       newFreshId: () => FID,
-      makeFresh: async (k: any, id: string, action: string, name?: string, o?: any) => { made.push({ k, id, action, name, o }) },
+      startFresh: async (k: any, id: string, a: any) => { if (o.noTable) throw new Error('relation "xsports_cheer_jobs" does not exist'); started.push({ k, id, ...a }) },
+      makeFresh: async (k: any, id: string, action: string, name?: string, opts?: any) => { made.push({ k, id, action, name, o: opts }) },
       freshStatus: async () => o.status ?? { status: 'working' },
+      freshPosted: async (id: string, mid: number) => { posted.push({ id, mid }) },
     },
+    '@/lib/xsports-cheer-models': { modelLabel: async (k: string | null) => (k ? `label:${k}` : null) },
   })
   const res: Response = method === 'GET'
     ? await route.GET(new Request(`http://fixture.invalid/api/xsports/cheer?draft=${encodeURIComponent(String(body.draft ?? ''))}`))
@@ -597,37 +698,98 @@ async function cheerCall(method: 'GET' | 'POST', body: Record<string, unknown>, 
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league: 'mlb', game: 849811, lang: 'zh-Hant', ...body }),
     }))
   await Promise.all(waits)
-  return { status: res.status, body: await res.json().catch(() => null), cues, made }
+  return { status: res.status, body: await res.json().catch(() => null), cues, made, started, posted }
 }
 
 async function cheerRoute() {
   const fan = await cheerCall('POST', { action: 'dance' }, { admin: false })
   const fanGet = await cheerCall('GET', { draft: FID }, { admin: false })
-  ok(fan.status === 403 && fanGet.status === 403 && fan.made.length + fan.cues.length === 0, 'cheer route: anyone but an admin gets 403 and nothing is made')
-  const dance = await cheerCall('POST', { action: 'dance' })
-  ok(dance.status === 200 && dance.body?.draft === FID && dance.made[0]?.action === 'dance' && dance.made[0].id === FID && dance.made[0].k?.game === '849811' && dance.cues.length === 0, "cheer route: an admin's dance starts one fresh clip and hands back its draft; nothing posted")
+  ok(fan.status === 403 && fanGet.status === 403 && fan.made.length + fan.cues.length + fan.started.length === 0, 'cheer route: anyone but an admin gets 403 and nothing is made')
+  const dance = await cheerCall('POST', { action: 'dance', seconds: 3 })
+  ok(dance.status === 200 && dance.body?.draft === FID && dance.started[0]?.adminId === 'a1' && dance.started[0].seconds === 3 && dance.made[0]?.action === 'dance' && dance.made[0].o?.seconds === 3 && dance.cues.length === 0, "cheer route: an admin's ask gets a row (who asked), then is made; its draft comes back; nothing posted")
+  const early = await cheerCall('POST', { action: 'selfie' }, { noTable: true })
+  ok(early.status === 503 && early.body?.code === 'not_set_up' && early.made.length === 0, 'cheer route: before 137, 503 not_set_up and nothing is made')
   const en = await cheerCall('POST', { action: 'selfie', lang: 'en' })
   const priv = await cheerCall('POST', { action: 'selfie' }, { face: false })
   const odd = await cheerCall('POST', { action: 'sing' })
   ok(en.status === 409 && priv.status === 409 && odd.status === 400 && en.made.length + priv.made.length + odd.made.length === 0, 'cheer route: 409 where she is not, or while she is private; an unknown action 400')
   const shout = await cheerCall('POST', { action: 'shout', name: ' 大谷 ' })
-  ok(shout.status === 200 && shout.made[0]?.name === '大谷' && shout.made[0].o?.video === false, 'cheer route: a 加油 is made with the cleaned name, a photo unless asked')
   const shoutClip = await cheerCall('POST', { action: 'shout', name: '大谷', video: true, seconds: 3 })
-  const dance3 = await cheerCall('POST', { action: 'dance', seconds: 3, video: true })
-  const dance9 = await cheerCall('POST', { action: 'dance', seconds: 9 })
-  ok(shoutClip.made[0]?.o?.video === true && shoutClip.made[0].o.seconds === 3 && dance3.made[0]?.o?.seconds === 3 && dance3.made[0].o.video === false && dance9.made[0]?.o?.seconds === 5, 'cheer route: a clip of 3 or 5 seconds (anything else 5); only a 加油 takes `video`')
+  const dance9 = await cheerCall('POST', { action: 'dance', seconds: 9, video: true })
+  ok(shout.made[0]?.name === '大谷' && shout.made[0].o?.video === false && shoutClip.made[0]?.o?.video === true && shoutClip.made[0].o.seconds === 3 && dance9.made[0]?.o?.seconds === 5 && dance9.made[0].o.video === false, 'cheer route: the cleaned name; a clip of 3 or 5 seconds (anything else 5); only a 加油 takes `video`')
   const noname = await cheerCall('POST', { action: 'shout', name: '   ' })
   const refused = await cheerCall('POST', { action: 'shout', name: '壞字' }, { verdict: 'refused' })
   const nocheck = await cheerCall('POST', { action: 'shout', name: '大谷' }, { verdict: 'unavailable' })
   ok(noname.status === 400 && refused.status === 422 && refused.body?.code === 'name_refused' && nocheck.status === 503 && noname.made.length + refused.made.length + nocheck.made.length === 0, 'cheer route: no name 400; a name moderation refuses 422; a check that cannot run refuses (503); nothing made')
-  const look = await cheerCall('GET', { draft: FID }, { status: { status: 'done', url: FRESH + FID + '.mp4', kind: 'video' } })
+  const doneSt = { status: 'done', url: FRESH + FID + '.mp4', kind: 'video', model: 'alibaba/happyhorse-1.1-i2v', ms: 98000, usd: 0.95 }
+  const look = await cheerCall('GET', { draft: FID }, { status: doneSt })
   const badGet = await cheerCall('GET', { draft: 'x' })
-  ok(look.status === 200 && look.body?.status === 'done' && look.body.url === FRESH + FID + '.mp4' && badGet.status === 400, "cheer route: GET says where a draft is; a draft that is not one is 400")
-  const post = await cheerCall('POST', { action: 'dance', draft: FID }, { status: { status: 'done', url: FRESH + FID + '.mp4', kind: 'video' } })
-  ok(post.status === 200 && post.cues[0]?.trigger === 'admin' && post.cues[0].action === 'dance' && post.cues[0].media?.url === FRESH + FID + '.mp4' && post.cues[0].media.kind === 'video' && post.made.length === 0, 'cheer route: posting a finished draft asks her with it')
-  const early = await cheerCall('POST', { action: 'dance', draft: FID })
+  ok(look.status === 200 && look.body?.status === 'done' && look.body.url === FRESH + FID + '.mp4' && look.body.label === 'label:alibaba/happyhorse-1.1-i2v' && look.body.ms === 98000 && badGet.status === 400, "cheer route: GET says where a draft is, and for the admin which model made it; a draft that is not one is 400")
+  const post = await cheerCall('POST', { action: 'dance', draft: FID }, { status: doneSt })
+  ok(post.status === 200 && post.cues[0]?.trigger === 'admin' && post.cues[0].media?.url === FRESH + FID + '.mp4' && post.cues[0].media.kind === 'video' && post.posted[0]?.id === FID && post.posted[0].mid === 77 && post.made.length === 0, 'cheer route: posting a finished draft asks her with it, and links the job to her message')
+  const notYet = await cheerCall('POST', { action: 'dance', draft: FID })
   const forged = await cheerCall('POST', { action: 'dance', draft: 'https://evil.test/x.mp4' })
-  ok(early.status === 409 && early.body?.code === 'not_ready' && forged.status === 400 && early.cues.length + forged.cues.length === 0, 'cheer route: a draft not done yet is 409; anything that is not a draft id 400')
+  ok(notYet.status === 409 && notYet.body?.code === 'not_ready' && forged.status === 400 && notYet.cues.length + forged.cues.length === 0, 'cheer route: a draft not done yet is 409; anything that is not a draft id 400')
+}
+
+// ── app/api/xsports/room/vote: 👍 / 👎 on her pictures and clips (Oct 16) ─
+async function voteCall(body: Record<string, unknown>, o: { user?: boolean; msg?: any; error?: boolean } = {}) {
+  const ops: any[] = []
+  const route = load('app/api/xsports/room/vote/route.ts', {
+    '@/lib/supabase-server': { createSupabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: o.user === false ? null : { id: 'u1' } } }) } }) },
+    '@/lib/xsports-store': { xsportsAdmin: () => ({ from: (t: string) => {
+      if (t === 'xsports_room_messages') { const q: any = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: o.msg === undefined ? { id: 5, kind: 'ai', model_name: '晴晴', media_url: 'https://x/a.jpg' } : o.msg }) }; return q }
+      return {
+        upsert: async (row: any, opt: any) => { ops.push({ op: 'upsert', row, opt }); return { error: o.error ? { message: 'fixture' } : null } },
+        delete: () => { const q: any = { eq: (c: string, v: unknown) => { ops.push({ op: 'delete-eq', c, v }); return q }, then: (a: any, b: any) => Promise.resolve({ error: o.error ? { message: 'fixture' } : null }).then(a, b) }; return q },
+      }
+    } }) },
+    '@/lib/xsports-ais': ais,
+  })
+  const res: Response = await route.POST(new Request('http://fixture.invalid/api/xsports/room/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }))
+  return { status: res.status, body: await res.json().catch(() => null), ops }
+}
+
+async function voteRoute() {
+  const out = await voteCall({ id: 5, vote: 1 }, { user: false })
+  ok(out.status === 401 && out.ops.length === 0, 'vote: signed out, 401')
+  const odd = await voteCall({ id: 5, vote: 2 })
+  const noId = await voteCall({ id: 'x', vote: 1 })
+  ok(odd.status === 400 && noId.status === 400, 'vote: only 1, -1 or 0 on a message id')
+  const fanMsg = await voteCall({ id: 5, vote: 1 }, { msg: { id: 5, kind: 'human', model_name: null, media_url: null } })
+  const words = await voteCall({ id: 5, vote: 1 }, { msg: { id: 5, kind: 'ai', model_name: '晴晴', media_url: null } })
+  ok(fanMsg.status === 400 && words.status === 400 && fanMsg.ops.length + words.ops.length === 0, "vote: only on her pictures and clips (not a fan's message, not her words alone)")
+  const up = await voteCall({ id: 5, vote: 1 })
+  const down = await voteCall({ id: 5, vote: -1 })
+  ok(up.status === 200 && up.ops[0]?.op === 'upsert' && up.ops[0].row.vote === 1 && up.ops[0].row.user_id === 'u1' && up.ops[0].opt.onConflict === 'message_id,user_id' && down.ops[0]?.row.vote === -1, 'vote: 👍 or 👎, one per person (a change replaces it)')
+  const back = await voteCall({ id: 5, vote: 0 })
+  ok(back.status === 200 && back.ops.map((o: any) => `${o.c}=${o.v}`).join() === 'message_id=5,user_id=u1', 'vote: 0 takes your vote back')
+  const fail = await voteCall({ id: 5, vote: 1 }, { error: true })
+  ok(fail.status === 503, 'vote: a store that fails says so (503)')
+}
+
+// ── lib/xsports-cheer-stats.ts: which models do better (Oct 16) ──────────
+async function stats() {
+  const mod = load('lib/xsports-cheer-stats.ts', {})
+  const table = (data: any, error: any = null) => { const q: any = { select: () => q, gte: () => q, limit: async () => ({ data, error }), in: async () => ({ data, error }) }; return q }
+  const jobs = [
+    { kind: 'image', status: 'done', model: 'g/a', frame_model: null, tried: ['g/b', 'g/a'], ms: 9000, usd: 0.067, posted_message_id: 101 },
+    { kind: 'image', status: 'done', model: 'g/a', frame_model: null, tried: ['g/a'], ms: 11000, usd: 0.067, posted_message_id: null },
+    { kind: 'video', status: 'done', model: 'v/v', frame_model: 'g/a', tried: ['g/a', 'v/w', 'v/v'], ms: 100000, usd: 1, posted_message_id: 102 },
+    { kind: 'image', status: 'failed', model: null, frame_model: null, tried: ['g/b', 'g/c'], ms: 3000, usd: null, posted_message_id: null },
+  ]
+  const sb = (jobsError?: boolean) => ({ from: (t: string) => ({
+    xsports_cheer_jobs: table(jobs, jobsError ? { message: 'no table' } : null),
+    xsports_media_votes: table([{ message_id: 101, vote: 1 }, { message_id: 101, vote: 1 }, { message_id: 101, vote: -1 }, { message_id: 102, vote: -1 }]),
+    xsports_room_reports: table([{ message_id: 101 }]),
+    ai_models: table([['g', 'a', 'A', ['image']], ['g', 'b', 'B', ['image']], ['g', 'c', 'C', ['image']], ['v', 'v', 'V', ['video']], ['v', 'w', 'W', ['video']]].map(([provider, model_name, display_name, output_modalities]) => ({ provider, model_name, display_name, output_modalities }))),
+  } as any)[t] })
+  const rows = await mod.cheerModelStats(sb(), 7)
+  const by = Object.fromEntries(rows.map((r: any) => [r.label, r]))
+  ok(by.A?.made === 2 && by.A.failed === 0 && by.A.posted === 1 && by.A.up === 2 && by.A.down === 1 && by.A.reports === 1 && by.A.medianMs === 11000 && Math.abs(by.A.avgUsd - 0.067) < 1e-9 && by.A.kind === 'image', 'stats: a model made, posted, 👍 / 👎 and reports on what it made, its time and cost')
+  ok(by.B?.failed === 2 && by.B.made === 0 && by.C?.failed === 1 && by.W?.failed === 1 && by.W.kind === 'video' && by.V?.made === 1 && by.V.down === 1 && by.V.kind === 'video', "stats: a model tried and passed over failed that ask; a clip's first frame is not a failure")
+  ok(rows.map((r: any) => r.label).join() === 'A,C,B,V,W', 'stats: photos first, then clips; best liked, then most made')
+  ok((await mod.cheerModelStats(sb(true), 7)) === null, 'stats: null before 137 (the page says so)')
 }
 
 // ── The room's GET: a page at a time, back to the first (Oct 14) ──────────
@@ -647,7 +809,7 @@ async function get(query: string, stored: number, user: { id: string; email: str
         calls.push({ limit, before })
         return Array.from({ length: stored }, (_, i) => i + 1).filter(id => !before || id < before).slice(-limit).map(id => ({ id, kind: 'human' }))
       },
-      ownIds: async () => [], roomKeyOf: (league: string, game: unknown, lang: string) => ({ league, game: String(game), lang }), roomMissing: () => false,
+      ownIds: async () => [], ownVotes: async (_u: string, ids: number[]) => Object.fromEntries(ids.map(i => [i, 1])), roomKeyOf: (league: string, game: unknown, lang: string) => ({ league, game: String(game), lang }), roomMissing: () => false,
       addRoomMessage: async () => null, confirmName: async () => {}, member: async () => null, secondsSinceLast: async () => null, MESSAGE_MAX: 500,
     },
     '@/lib/xsports-ais': ais,
@@ -679,7 +841,10 @@ async function roomPages() {
   await commentators()
   await topPair()
   await cheerleader()
+  await models()
   await fresh()
+  await voteRoute()
+  await stats()
   await roomRoute()
   await cheerRoute()
   await roomPages()

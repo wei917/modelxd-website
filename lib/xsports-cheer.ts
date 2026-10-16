@@ -189,8 +189,9 @@ export const FAN_LINE = `[You are a ${CHEERLEADER.team.name} fan (道奇迷), an
 
 /** Cheer once in the room, if she can take the floor (a fan's @ waits up to
  *  a minute for it). A cue from a tick is checked again once she has the
- *  floor: another page may have cheered meanwhile. Never throws. */
-export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
+ *  floor: another page may have cheered meanwhile. Never throws; says what
+ *  she posted (null: nothing). */
+export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<RoomMessage | null> {
   // A fan's @ or an admin's ask: answered as soon as she has the floor.
   const asked = cue.trigger === 'user' || cue.trigger === 'admin'
   let st = null
@@ -199,15 +200,15 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
     if (st) break
     await new Promise(r => setTimeout(r, 1500))
   }
-  if (!st) return
+  if (!st) return null
   try {
     const c = await character()
-    if (!c || c.visibility !== 'public') return
+    if (!c || c.visibility !== 'public') return null
     const g = await gameFor(k.league, Number(k.game))
     let use: CheerCue = cue
     if (!asked) {
       const again = cheerDue(g, await lastCheerAt(k))
-      if (!again) return
+      if (!again) return null
       use = again
     }
     // Her own model, or the cheap one past the day's cap (ModelXD chose it).
@@ -218,7 +219,7 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
       model = await getModelByProviderName(CHEAP_AIS[0].provider, CHEAP_AIS[0].model_name).catch(() => null)
       thinking = 'none'
     }
-    if (!usable(model)) return
+    if (!usable(model)) return null
     const levels: string[] = model.output_config?.text?.thinking_levels ?? []
     if (thinking && !levels.includes(thinking)) thinking = null
     const recent = await recentMessages(k, 20).catch(() => [])
@@ -253,11 +254,12 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
         .then(() => resolve(out.trim()), reject)
     })
     if (cost) await addSpend(cost).catch(() => {})
-    if (!text) { resting.set(roomId(k), Date.now()); return }
-    await addRoomMessage(k, { kind: 'ai', author_name: CHEERLEADER.name, author_avatar: photo(c), content: text.slice(0, 1200), model_name: CHEERLEADER.name, reply_to: cue.trigger === 'user' ? cue.asker.id : null, ...(media ? { media_url: media.url, media_kind: media.kind } : {}) })
+    if (!text) { resting.set(roomId(k), Date.now()); return null }
+    return await addRoomMessage(k, { kind: 'ai', author_name: CHEERLEADER.name, author_avatar: photo(c), content: text.slice(0, 1200), model_name: CHEERLEADER.name, reply_to: cue.trigger === 'user' ? cue.asker.id : null, ...(media ? { media_url: media.url, media_kind: media.kind } : {}) })
   } catch (e: any) {
     resting.set(roomId(k), Date.now())
     console.warn('[xsports/cheer]', k.league, k.game, k.lang, cue.trigger, e?.message ?? e)
+    return null
   } finally {
     // The commentators' own state (their last word, what they have seen) is
     // left as it was.

@@ -1371,7 +1371,7 @@ function ClipView({ src, className, c }: { src: string; className: string; c: Co
  *  three for a clip) and until it is posted or let go (owner, Oct 16: "fresh
  *  each time"). Kept for this tab and room (sessionStorage), so closing her
  *  card, or the page, keeps it; onReady says when it is ready. */
-type CheerJob = { id: string; action: CheerAction; name?: string; video?: boolean; seconds?: ClipSeconds; status: 'working' | 'done' | 'failed'; url?: string; kind?: 'image' | 'video'; at: number }
+type CheerJob = { id: string; action: CheerAction; name?: string; video?: boolean; seconds?: ClipSeconds; status: 'working' | 'done' | 'failed'; url?: string; kind?: 'image' | 'video'; at: number; label?: string | null; ms?: number | null; usd?: number | null }
 const CHEER_JOB_GIVE_UP_MS = 15 * 60_000
 
 function useCheerJob(league: string, game: string, room: string, c: Copy, onReady: () => void) {
@@ -1400,7 +1400,7 @@ function useCheerJob(league: string, game: string, room: string, c: Copy, onRead
         const j = await res.json().catch(() => ({}))
         if (stop) return
         if (j.status === 'done' && typeof j.url === 'string' && /^https:\/\//.test(j.url)) {
-          setJob({ ...job, status: 'done', url: j.url, kind: j.kind === 'video' ? 'video' : 'image' })
+          setJob({ ...job, status: 'done', url: j.url, kind: j.kind === 'video' ? 'video' : 'image', label: typeof j.label === 'string' ? j.label : null, ms: Number.isFinite(j.ms) ? j.ms : null, usd: Number.isFinite(j.usd) ? j.usd : null })
           ready.current()
         } else if (j.status === 'failed' || res.status === 400 || res.status === 403) setJob({ ...job, status: 'failed' })
       } catch { /* asked again on the next tick */ }
@@ -1449,6 +1449,15 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
   const named = shoutName(name)
   const { job, busy, err } = cj
   const label = (a: CheerAction) => (a === 'selfie' ? c.actSelfie : a === 'dance' ? c.actDance : a === 'cheer' ? c.actCheer : c.actShout)
+  // How long it has been working (owner, Oct 16: "should have a timer because
+  // video takes a long time to generate").
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (job?.status !== 'working') return
+    const t = setInterval(() => tick(n => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [job?.status])
+  const clock = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
   return (
     <div className="xs-cheer-acts">
       <p className="lbl">{c.askHer}</p>
@@ -1479,7 +1488,7 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
       ) : null}
       {job?.status === 'working' ? (
         <div className="shout">
-          <p className="wait" role="status"><span className="spin" aria-hidden />{freshKind(job.action, job.video) === 'video' ? c.cheerMakingClip(job.seconds ?? 5) : c.cheerMakingPhoto}<small>{c.cheerMayClose}</small></p>
+          <p className="wait" role="status"><span className="spin" aria-hidden />{freshKind(job.action, job.video) === 'video' ? c.cheerMakingClip(job.seconds ?? 5) : c.cheerMakingPhoto}<b className="clock">{clock(Date.now() - job.at)}</b><small>{c.cheerMayClose}</small></p>
           {/* Letting go here only frees the buttons; what was started still finishes, unposted. */}
           <button type="button" className="quiet" onClick={() => { cj.clear(); setNaming(false) }}>{c.cheerDiscard}</button>
         </div>
@@ -1489,6 +1498,8 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
           {job.kind === 'video'
             ? <ClipView src={job.url} className="pic" c={c} />
             : <img className="pic" src={job.url} alt={job.action === 'shout' ? `「${job.name ?? ''} 加油！」` : ''} />}
+          {/* Which model made it, for the admin only (fans vote without it). */}
+          {job.label ? <p className="made">{[job.label, job.ms ? clock(job.ms) : null, job.usd != null ? `$${job.usd.toFixed(2)}` : null].filter(Boolean).join(' · ')}</p> : null}
           <div className="row">
             <button type="button" className="go" disabled={busy} onClick={async () => { if (await cj.post()) onPosted() }}>{busy ? c.loading : c.cheerPost}</button>
             <button type="button" disabled={busy} onClick={() => void cj.make(job.action, job.name, { video: job.video, seconds: job.seconds })}>{c.cheerAnother}</button>
@@ -1511,9 +1522,11 @@ function CheerActions({ c, cj, onPosted }: { c: Copy; cj: ReturnType<typeof useC
   )
 }
 
-const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, onCard, onRemove, onReport }: {
+const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, onCard, onRemove, onReport, vote, onVote }: {
   m: RoomMsg; lang: string; c: Copy; mine: boolean; reported: boolean; signedIn: boolean | null
   onCard: (m: RoomMsg) => void; onRemove: (m: RoomMsg) => void; onReport: (m: RoomMsg) => void
+  // 👍 / 👎 on 晴晴's pictures and clips (signed in; supabase/137).
+  vote?: 1 | -1; onVote?: (m: RoomMsg, v: 1 | -1) => void
 }) {
   const ai = m.kind === 'ai'
   // 晴晴, the room's cheerleader: her photo, her name and a 啦啦隊 tag.
@@ -1549,6 +1562,16 @@ const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, on
         {m.media_url && /^https:\/\//.test(m.media_url) ? (m.media_kind === 'video'
           ? <ClipView src={m.media_url} className="media" c={c} />
           : <a className="media" href={m.media_url} target="_blank" rel="noopener noreferrer"><img src={m.media_url} alt="" loading="lazy" /></a>) : null}
+        {onVote && m.media_url ? (
+          <span className="votes">
+            <button type="button" aria-pressed={vote === 1} aria-label={c.voteUp} onClick={() => onVote(m, 1)}>
+              <svg viewBox="0 0 24 24" aria-hidden><path d="M7 10v10H4V10h3zm3 10h7.2a2 2 0 0 0 2-1.6l1.3-6.4A2 2 0 0 0 18.5 9.6H14l.8-3.9a1.6 1.6 0 0 0-2.9-1.2L8 10v8a2 2 0 0 0 2 2z" /></svg>
+            </button>
+            <button type="button" aria-pressed={vote === -1} aria-label={c.voteDown} onClick={() => onVote(m, -1)}>
+              <svg viewBox="0 0 24 24" aria-hidden><path d="M17 14V4h3v10h-3zM14 4H6.8a2 2 0 0 0-2 1.6L3.5 12a2 2 0 0 0 2 2.4H10l-.8 3.9a1.6 1.6 0 0 0 2.9 1.2L16 14V6a2 2 0 0 0-2-2z" /></svg>
+            </button>
+          </span>
+        ) : null}
       </div>
     </div>
   )
@@ -1618,6 +1641,11 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   // An admin reading (the room says): her card offers her actions, and what
   // they asked her for is made (and kept) here.
   const [admin, setAdmin] = useState(false)
+  // Your 👍 / 👎 on her pictures and clips (owner, Oct 16: "user can thumb up
+  // or down or report? so we know which models are better").
+  const [votes, setVotes] = useState<Record<number, 1 | -1>>({})
+  const votesRef = useRef(votes)
+  votesRef.current = votes
   const cheerJob = useCheerJob(league, String(pk), room, c, () => { setFlash(c.cheerReady); setFlashOk(true) })
   const [olderBusy, setOlderBusy] = useState(false)
   const [olderFailed, setOlderFailed] = useState(false)
@@ -1658,6 +1686,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
       if (Array.isArray(j.ais) && j.ais.length) setAis(j.ais as Commentator[])
       if ('cheer' in j) setCheer(j.cheer ?? null)
       if ('admin' in j) setAdmin(j.admin === true)
+      if (j.votes && typeof j.votes === 'object') setVotes(prev => ({ ...prev, ...(j.votes as Record<number, 1 | -1>) }))
       setMsgs(prev => {
         const have = new Set(prev.map(m => m.id))
         const hole = more && rows.length > 0 && prev.length > 0 && !rows.some(m => have.has(m.id))
@@ -1958,6 +1987,21 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
     } catch { setDlgErr(c.roomDown) } finally { setDlgBusy(false) }
   }
 
+  // A 👍 or 👎 on one of her pictures or clips; the same again takes it back.
+  const castVote = useCallback(async (m: RoomMsg, v: 1 | -1) => {
+    const before = votesRef.current[m.id]
+    const next: 1 | -1 | 0 = before === v ? 0 : v
+    setVotes(prev => { const o = { ...prev }; if (next) o[m.id] = next; else delete o[m.id]; return o })
+    try {
+      const res = await fetch('/api/xsports/room/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, vote: next }) })
+      if (!res.ok) throw new Error(String(res.status))
+    } catch {
+      setVotes(prev => { const o = { ...prev }; if (before) o[m.id] = before; else delete o[m.id]; return o })
+      setFlashOk(false)
+      setFlash(c.voteFailed)
+    }
+  }, [c])
+
   // Who an @ can name here: whichever commentator is up (@AI), each
   // commentator by its @handle (owner, Oct 14: "can user choose which AI to
   // mention?"), then the fans who have spoken, newest first (never yourself).
@@ -1989,7 +2033,8 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   for (let i = start; i < end; i++) {
     const it = items[i]
     rows.push(it.m
-      ? <RoomRow key={it.key} m={it.m} lang={lang} c={c} mine={mine.has(it.m.id)} reported={reported.has(it.m.id)} signedIn={signedIn} onCard={setCard} onRemove={askRemove} onReport={openReport} />
+      ? <RoomRow key={it.key} m={it.m} lang={lang} c={c} mine={mine.has(it.m.id)} reported={reported.has(it.m.id)} signedIn={signedIn} onCard={setCard} onRemove={askRemove} onReport={openReport}
+          vote={votes[it.m.id]} onVote={signedIn && isCheer(it.m) && it.m.media_url ? castVote : undefined} />
       : <div key={it.key} className="xs-sep"><span>{it.sep}</span></div>)
   }
 

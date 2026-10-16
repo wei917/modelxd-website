@@ -4,47 +4,52 @@
 // Made after the tap (app/api/xsports/cheer, in `after`) into her folder's
 // fresh/, shown to the admin, and posted only if that admin chooses to:
 // nothing made here reaches a room unseen.
-// A picture is a real photo, never a drawing: Nano Banana 2 (Gemini 3.1
-// Flash Image; owner, Oct 16, on GPT Image 2's half a minute: "tooo slow")
-// with one of her reviewed photos for who she is (Dodger blue in Dodgers
-// games), in a pose picked at random (Oct 16: "why the cheerleader pose is
-// the same?"), about ten seconds; a 加油 one has a comic speech bubble with
-// the name (Oct 16: "why it's cartoon style": it was drawn as a cartoon),
-// and can be a clip too. A clip is such a picture moved by HappyHorse 1.1
-// for 3 or 5 seconds (Oct 16: "3 or 5 seconds"; watermark off; it makes the
-// sound too: "please use models with audio support"), re-encoded small with
-// that sound, one to two minutes. ModelXD pays, about $0.07 a picture and
-// $0.18 a second of clip on top, each counted toward the day's XSports
-// total.
-// A job is files, not rows: <id>.jpg or <id>.mp4 once done, <id>.failed if
-// not (and <id>-frame.jpg, a clip's first frame); the id starts with when
-// the job began. Server-only.
+// A picture is a real photo, never a drawing (Oct 16: "why it's cartoon
+// style"), with one of her reviewed photos for who she is (Dodger blue in
+// Dodgers games), in a pose picked at random (Oct 16: "why the cheerleader
+// pose is the same?"); a 加油 one has a comic speech bubble with the name,
+// and can be a clip too. A clip is such a picture moved for 3 or 5 seconds
+// (Oct 16: "3 or 5 seconds"), with the model's own sound (Oct 16: "please
+// use models with audio support"), re-encoded small. The models are drawn at
+// random from lists kept in a JSON file (lib/xsports-cheer-models; Oct 16:
+// "we should always have a list and randomly use one ... so we know which
+// models are better"); when one fails the next one tries. A clip's first
+// frame is drawn in the shape its video model takes. ModelXD pays; each call
+// counts toward the day's XSports total.
+// A job is a row of xsports_cheer_jobs (supabase/137: what was asked, every
+// model tried, the one that made it, the time and the cost, the message it
+// became); its files are in her folder's fresh/. Server-only.
 
 import { randomUUID } from 'crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as providers from './providers'
-import { getModelByProviderName } from './models'
 import { xsportsAdmin } from './xsports-store'
 import { addSpend } from './xsports-ai-spend'
 import { gameFor } from './xsports-room-ai'
 import { ffmpegPath, run } from './xcut-render'
-import { CHEER_MEDIA, CHEER_MEDIA_DIR, type CheerAction, type CheerMediaKind, type ClipSeconds } from './xsports-cheer-media'
-import { mediaUrl, publicBase, teamSide, usable } from './xsports-cheer'
+import { CHEER_MEDIA, CHEER_MEDIA_DIR, freshKind, type CheerAction, type CheerMediaKind, type ClipSeconds } from './xsports-cheer-media'
+import { mediaUrl, publicBase, teamSide } from './xsports-cheer'
+import { clipParams, drawClipModels, drawPhotoModels, FRAME_PX, modelKey, photoParams, type FrameRatio } from './xsports-cheer-models'
 import type { RoomKey } from './xsports-room'
 
 const DIR = `${CHEER_MEDIA_DIR}/fresh`
+const JOBS = 'xsports_cheer_jobs'
 /** A job not done by then has failed (the route's 800 s, and a little). */
 export const FRESH_MAX_MS = 14 * 60_000
+/** Models tried for one picture or one clip before it gives up. */
+const TRIES = 3
 
-export type FreshStatus = { status: 'working' } | { status: 'failed' } | { status: 'done'; url: string; kind: CheerMediaKind }
+export type FreshStatus =
+  | { status: 'working' }
+  | { status: 'failed' }
+  | { status: 'done'; url: string; kind: CheerMediaKind; model: string | null; ms: number | null; usd: number | null }
 
 /** A new job's id: when it began (ms, base 36), then a random uuid. */
 export const newFreshId = () => `${Date.now().toString(36)}-${randomUUID()}`
 export const isFreshId = (s: unknown): s is string =>
   typeof s === 'string' && /^[0-9a-z]{8,10}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s)
-const startedAt = (id: string) => parseInt(id.split('-')[0], 36)
 
 type Look = 'xd' | 'dodgers'
 
@@ -114,86 +119,147 @@ export function shoutPrompt(name: string, l: Look, pose: string): string {
   return `${LOOK[l]} ${IDENTITY} ${pose} Over the photo, a big white comic-style speech bubble with a black outline comes from her mouth, holding bold black hand-lettered text, exactly this and nothing else, without quotation marks: ${name} 加油！ ${lightNow()} ${RULES[l]} The speech bubble's words are the only text in the picture. ${TAIL}`
 }
 
-/** The image model: Nano Banana 2, about ten seconds a picture (our own
- *  calls: median 9.5 s, against GPT Image 2's 26-32 s for hers). */
-export const PICTURE_MODEL = { provider: 'google', model_name: 'gemini-3.1-flash-image' }
+/** A job's row, before anything is made (the route). Throws before 137. */
+export async function startFresh(k: RoomKey, id: string, a: { action: CheerAction; name?: string; video?: boolean; seconds: ClipSeconds; adminId: string | null }): Promise<void> {
+  const kind = freshKind(a.action, a.video)
+  const { error } = await xsportsAdmin().from(JOBS).insert({
+    id, admin_id: a.adminId, league: k.league, game_id: k.game, lang: k.lang,
+    action: a.action, name: a.name ?? null, kind, seconds: kind === 'video' ? a.seconds : null,
+  })
+  if (error) throw new Error(error.message)
+}
 
-/** A picture: Nano Banana 2 with one of her reviewed photos as the
- *  reference, 2:3 at its 1K tier, as 720 by 1080 JPEG like the set. */
-async function picture(prompt: string, refFile: string): Promise<Buffer> {
+const jpeg = async (buf: Buffer, ratio: FrameRatio) => {
+  const sharp = (await import('sharp')).default
+  const [w, h] = FRAME_PX[ratio]
+  return sharp(buf).resize(w, h, { fit: 'cover' }).jpeg({ quality: 84, mozjpeg: true }).toBuffer()
+}
+
+/** A photo in `ratio` from the first of `models` that makes one, with her
+ *  reviewed photo as the reference; each model tried goes on `tried`. */
+async function photo(models: any[], prompt: string, refFile: string, ratio: FrameRatio, tried: string[]): Promise<{ jpg: Buffer; model: any; usd: number }> {
   const ref = CHEER_MEDIA.find(m => m.file === refFile)
   if (!ref) throw new Error(`no reference photo ${refFile}`)
   const res = await fetch(mediaUrl(ref))
   if (!res.ok) throw new Error(`reference photo: ${res.status}`)
-  const model = await getModelByProviderName(PICTURE_MODEL.provider, PICTURE_MODEL.model_name)
-  if (!model || !usable(model)) throw new Error(`${PICTURE_MODEL.model_name} is not available`)
-  const r = await providers.generateImage(model, prompt, 'medium', '1024',
-    [{ buffer: Buffer.from(await res.arrayBuffer()), mediaType: 'image/jpeg', port: 'reference_image' }], null, null, { userId: null }, { aspect_ratio: '2:3' })
-  if (Number(r.cost) > 0) await addSpend(Number(r.cost)).catch(() => {})
-  const sharp = (await import('sharp')).default
-  return sharp(r.buffer).resize(720, 1080, { fit: 'cover' }).jpeg({ quality: 84, mozjpeg: true }).toBuffer()
+  const refBuf = Buffer.from(await res.arrayBuffer())
+  let last: unknown = null
+  for (const m of models.slice(0, TRIES)) {
+    tried.push(modelKey(m))
+    try {
+      const p = photoParams(m, ratio)
+      const r = await providers.generateImage(m, prompt, 'medium', p.size,
+        [{ buffer: refBuf, mediaType: 'image/jpeg', port: 'reference_image' }], null, null, { userId: null }, p.aspect_ratio ? { aspect_ratio: p.aspect_ratio } : undefined)
+      const usd = Number(r.cost) || 0
+      if (usd > 0) await addSpend(usd).catch(() => {})
+      return { jpg: await jpeg(r.buffer, ratio), model: m, usd }
+    } catch (e: any) {
+      last = e
+      console.warn('[xsports/cheer] photo', modelKey(m), e?.message ?? e)
+    }
+  }
+  throw last ?? new Error('no photo model could make it')
 }
 
-/** A clip from a picture: HappyHorse 1.1, 3 or 5 seconds with its own
- *  sound, watermark off; then small for phones (720 wide, H.264 and AAC,
- *  plays as it loads). */
-async function clip(frame: Buffer, frameUrl: string, move: string, seconds: ClipSeconds): Promise<Buffer> {
-  const model = await getModelByProviderName('alibaba', 'happyhorse-1.1-i2v')
-  if (!model || !usable(model)) throw new Error('happyhorse-1.1-i2v is not available')
-  const v = await providers.generateVideo(model, move, '720x1080', seconds,
-    [{ buffer: frame, mediaType: 'image/jpeg', url: frameUrl, port: 'first_frame' }], undefined, { userId: null }, { watermark: false })
-  if (Number(v.cost) > 0) await addSpend(Number(v.cost)).catch(() => {})
-  const dir = await mkdtemp(join(tmpdir(), 'cheer-'))
-  try {
-    const raw = join(dir, 'raw.mp4'), out = join(dir, 'out.mp4')
-    await writeFile(raw, v.buffer)
-    await run(ffmpegPath(), ['-y', '-loglevel', 'error', '-i', raw, '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p', '-vf', 'scale=720:-2', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', out], 120_000)
-    return await readFile(out)
-  } finally {
-    await rm(dir, { recursive: true, force: true }).catch(() => {})
+/** A clip from `frame` (made in the first model's shape) by the first of
+ *  `models` that makes one: `seconds` long with its own sound, watermark
+ *  off; then small for phones (720 wide, H.264 and AAC, plays as it loads).
+ *  Each model reads its first frame, in its own shape, from a link. */
+async function film(models: any[], frame: { jpg: Buffer; ratio: FrameRatio }, link: (name: string, jpg: Buffer) => Promise<string>, move: string, seconds: ClipSeconds, tried: string[]): Promise<{ mp4: Buffer; model: any; usd: number }> {
+  let last: unknown = null
+  for (const m of models.slice(0, TRIES)) {
+    tried.push(modelKey(m))
+    try {
+      const p = clipParams(m, seconds)
+      const jpg = p.ratio === frame.ratio ? frame.jpg : await jpeg(frame.jpg, p.ratio)
+      const url = await link(`frame-${p.ratio.replace(':', 'x')}`, jpg)
+      const v = await providers.generateVideo(m, move, p.size, seconds,
+        [{ buffer: jpg, mediaType: 'image/jpeg', url, port: 'first_frame' }], undefined, { userId: null },
+        { watermark: false, aspect_ratio: p.ratio, mode: 'image_to_video', generate_audio: true })
+      const usd = Number(v.cost) || 0
+      if (usd > 0) await addSpend(usd).catch(() => {})
+      const dir = await mkdtemp(join(tmpdir(), 'cheer-'))
+      try {
+        const raw = join(dir, 'raw.mp4'), out = join(dir, 'out.mp4')
+        await writeFile(raw, v.buffer)
+        await run(ffmpegPath(), ['-y', '-loglevel', 'error', '-i', raw, '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p', '-vf', 'scale=720:-2', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', out], 120_000)
+        return { mp4: await readFile(out), model: m, usd }
+      } finally {
+        await rm(dir, { recursive: true, force: true }).catch(() => {})
+      }
+    } catch (e: any) {
+      last = e
+      console.warn('[xsports/cheer] clip', modelKey(m), e?.message ?? e)
+    }
   }
+  throw last ?? new Error('no clip model could make it')
 }
 
 /** Make one for an admin's ask in this room (her team's blue in its games):
- *  a clip of `seconds` for a dance, a cheer, or a 加油 asked as `video`.
- *  Never throws: a failure leaves <id>.failed. */
+ *  a photo, or a clip of `seconds` for a dance, a cheer, or a 加油 asked as
+ *  `video`. Its row says how it went. Never throws. */
 export async function makeFresh(k: RoomKey, id: string, action: CheerAction, name = '', o: { seconds?: ClipSeconds; video?: boolean } = {}, rand: () => number = Math.random): Promise<void> {
+  const t0 = Date.now()
   const seconds: ClipSeconds = o.seconds === 3 ? 3 : 5
+  const tried: string[] = []
   const store = xsportsAdmin().storage.from('x-characters')
   const put = async (file: string, body: Buffer, type: string) => {
     const { error } = await store.upload(`${DIR}/${file}`, body, { contentType: type, upsert: true })
     if (error) throw new Error(`upload ${file}: ${error.message}`)
+    return `${publicBase()}/${DIR}/${file}`
+  }
+  const finish = async (patch: Record<string, unknown>) => {
+    const { error } = await xsportsAdmin().from(JOBS).update({ ...patch, tried, ms: Date.now() - t0, finished_at: new Date().toISOString() }).eq('id', id)
+    if (error) console.warn('[xsports/cheer] job', id, error.message)
   }
   try {
     const g = await gameFor(k.league, Number(k.game))
     const look: Look = teamSide(g) ? 'dodgers' : 'xd'
+    // What she does in it, which of her photos says who she is, and how she
+    // moves in a clip.
+    let prompt: string, ref: string, move: string | null
     if (action === 'shout') {
-      const photo = await picture(shoutPrompt(name, look, pick(SHOUT_POSES, rand)), look === 'dodgers' ? 'blue-selfie.jpg' : 'selfie.jpg')
-      if (!o.video) { await put(`${id}.jpg`, photo, 'image/jpeg'); return }
-      await put(`${id}-frame.jpg`, photo, 'image/jpeg')
-      await put(`${id}.mp4`, await clip(photo, `${publicBase()}/${DIR}/${id}-frame.jpg`, SHOUT_MOVE, seconds), 'video/mp4')
+      prompt = shoutPrompt(name, look, pick(SHOUT_POSES, rand))
+      ref = look === 'dodgers' ? 'blue-selfie.jpg' : 'selfie.jpg'
+      move = SHOUT_MOVE
+    } else {
+      const scene = pick(SCENES[action], rand)
+      prompt = `${LOOK[look]} ${IDENTITY} ${scene.still(look)} ${lightNow()} ${RULES[look]} ${TAIL}`
+      ref = scene.ref[look]
+      move = scene.move?.(look) ?? null
+    }
+    const photos = await drawPhotoModels(rand)
+    if (!photos.length) throw new Error('no photo model in the list can make her photo')
+    if (freshKind(action, o.video) === 'image' || !move) {
+      const p = await photo(photos, prompt, ref, '2:3', tried)
+      await finish({ status: 'done', model: modelKey(p.model), url: await put(`${id}.jpg`, p.jpg, 'image/jpeg'), usd: p.usd })
       return
     }
-    const scene = pick(SCENES[action], rand)
-    const still = await picture(`${LOOK[look]} ${IDENTITY} ${scene.still(look)} ${lightNow()} ${RULES[look]} ${TAIL}`, scene.ref[look])
-    if (!scene.move) { await put(`${id}.jpg`, still, 'image/jpeg'); return }
-    // HappyHorse reads its first frame from a link.
-    await put(`${id}-frame.jpg`, still, 'image/jpeg')
-    await put(`${id}.mp4`, await clip(still, `${publicBase()}/${DIR}/${id}-frame.jpg`, scene.move(look), seconds), 'video/mp4')
+    const clips = await drawClipModels(seconds, rand)
+    if (!clips.length) throw new Error(`no clip model in the list makes ${seconds}-second clips with sound`)
+    const ratio = clipParams(clips[0], seconds).ratio
+    const f = await photo(photos, prompt, ref, ratio, tried)
+    const c = await film(clips, { jpg: f.jpg, ratio }, (n, jpg) => put(`${id}-${n}.jpg`, jpg, 'image/jpeg'), move, seconds, tried)
+    await finish({ status: 'done', model: modelKey(c.model), frame_model: modelKey(f.model), url: await put(`${id}.mp4`, c.mp4, 'video/mp4'), usd: Math.round((f.usd + c.usd) * 10_000) / 10_000 })
   } catch (e: any) {
     console.warn('[xsports/cheer] fresh', action, id, e?.message ?? e)
-    await put(`${id}.failed`, Buffer.from(String(e?.message ?? 'failed').slice(0, 300)), 'text/plain').catch(() => {})
+    await finish({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) }).catch(() => {})
   }
 }
 
-/** Where a job is: done (its link and kind), failed (or past FRESH_MAX_MS),
- *  or still working. */
+/** Where a job is: done (its link, kind, model, time and cost), failed (or
+ *  past FRESH_MAX_MS), or still working. */
 export async function freshStatus(id: string, now = Date.now()): Promise<FreshStatus> {
-  const { data, error } = await xsportsAdmin().storage.from('x-characters').list(DIR, { search: id, limit: 10 })
+  const { data, error } = await xsportsAdmin().from(JOBS).select('status, kind, url, model, ms, usd, created_at').eq('id', id).maybeSingle()
   if (error) throw new Error(error.message)
-  const names = new Set(((data ?? []) as { name: string }[]).map(f => f.name))
-  if (names.has(`${id}.mp4`)) return { status: 'done', url: `${publicBase()}/${DIR}/${id}.mp4`, kind: 'video' }
-  if (names.has(`${id}.jpg`)) return { status: 'done', url: `${publicBase()}/${DIR}/${id}.jpg`, kind: 'image' }
-  if (names.has(`${id}.failed`) || now - startedAt(id) > FRESH_MAX_MS) return { status: 'failed' }
+  if (!data) return { status: 'failed' }
+  if (data.status === 'done' && data.url) return { status: 'done', url: data.url, kind: data.kind === 'video' ? 'video' : 'image', model: data.model ?? null, ms: data.ms ?? null, usd: data.usd == null ? null : Number(data.usd) }
+  if (data.status === 'failed' || now - Date.parse(data.created_at) > FRESH_MAX_MS) return { status: 'failed' }
   return { status: 'working' }
+}
+
+/** The job became this message (its votes and reports are the model's). */
+export async function freshPosted(id: string, messageId: number): Promise<void> {
+  const { error } = await xsportsAdmin().from(JOBS).update({ posted_message_id: messageId }).eq('id', id)
+  if (error) console.warn('[xsports/cheer] posted', id, error.message)
 }

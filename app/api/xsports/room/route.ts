@@ -3,8 +3,11 @@
 //        (the newest, or those older than <id>; more: whether older ones
 //        exist) (anyone), and `mine`: the ids of those the caller wrote
 //        (signed in), so the page can offer 刪除; with the newest page,
-//        `ais`: the room's two commentators now (its @ list), `cheer`:
-//        晴晴 where she cheers (lib/xsports-cheer), else null, and `admin`:
+//        `votes`: the caller's 👍 (1) / 👎 (-1) on 晴晴's pictures and clips
+//        among them (supabase/137; app/api/xsports/room/vote); with the
+//        newest page, `ais`: the room's two commentators now (its @ list),
+//        `cheer`: 晴晴 where she cheers (lib/xsports-cheer), else null, and
+//        `admin`:
 //        whether the caller is an admin (her card then offers her actions,
 //        app/api/xsports/cheer, which checks again)
 //   POST { league, game, lang, content, confirmName? }
@@ -30,8 +33,8 @@ import { moderate } from '@/lib/moderation'
 import { userName, userPhoto } from '@/lib/user-face'
 import { ensureHandle } from '@/lib/profile-handle'
 import { xsportsAdmin } from '@/lib/xsports-store'
-import { addRoomMessage, confirmName, member, ownIds, recentMessages, roomKeyOf, roomMissing, secondsSinceLast, MESSAGE_MAX } from '@/lib/xsports-room'
-import { askedAis, asksCheer, cheersIn } from '@/lib/xsports-ais'
+import { addRoomMessage, confirmName, member, ownIds, ownVotes, recentMessages, roomKeyOf, roomMissing, secondsSinceLast, MESSAGE_MAX } from '@/lib/xsports-room'
+import { askedAis, asksCheer, cheersIn, isCheer } from '@/lib/xsports-ais'
 import { cheerFace, roomCheer } from '@/lib/xsports-cheer'
 import { roomPair, roomSpeak } from '@/lib/xsports-room-ai'
 
@@ -52,12 +55,14 @@ export async function GET(req: Request) {
     const sb = await createSupabaseServer()
     const { data: { user } } = await sb.auth.getUser()
     if (user) mine = await ownIds(user.id, messages.filter(m => m.kind === 'human').map(m => m.id)).catch(() => [])
+    // Their votes on her pictures and clips here.
+    const votes = user ? await ownVotes(user.id, messages.filter(m => isCheer(m) && m.media_url).map(m => m.id)).catch(() => ({})) : {}
     // The room's two commentators now, with the newest page (the @ list).
     const ais = before ? undefined : (await roomPair(k).catch(() => null))?.pair
     // And the room's cheerleader, where she cheers (her name, @ and photo).
     const cheer = before ? undefined : cheersIn(k) ? await cheerFace().catch(() => null) : null
     const admin = before ? undefined : isAdminEmail(user?.email)
-    return Response.json({ messages, mine, more: messages.length === PAGE, ais, cheer, admin })
+    return Response.json({ messages, mine, votes, more: messages.length === PAGE, ais, cheer, admin })
   } catch (e: any) {
     if (roomMissing(e)) return fail('room_unavailable', 503)
     console.warn('[xsports/room] read', e?.message ?? e)

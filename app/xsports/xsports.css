@@ -810,3 +810,12 @@ a.xs-unhide { display: inline-flex; align-items: center; text-decoration: none; 
 .xs-cheer-acts .len span { margin-right: 4px; }
 .xs-cheer-acts .len button { min-height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; }
 .xs-cheer-acts .len button[aria-checked="true"] { border-color: #c2185b; background: #c2185b; color: #fff; }
+
+/* 👍 / 👎 under her pictures and clips (Oct 16): yours marked. */
+.xs-msg .votes { display: flex; gap: 6px; margin-top: 6px; }
+.xs-msg .votes button { display: grid; place-items: center; width: 36px; height: 30px; border: 1px solid #f7cddc; border-radius: 999px; background: #fff; color: var(--xs-ink-2); cursor: pointer; }
+.xs-msg .votes button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.xs-msg .votes button[aria-pressed="true"] { border-color: #c2185b; background: #c2185b; color: #fff; }
+.xs-msg .votes button[aria-pressed="true"] svg { fill: currentColor; }
+.xs-cheer-acts .wait .clock { grid-column: 2; font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: #c2185b; }
+.xs-cheer-acts .made { margin: 0; text-align: center; font-size: 12px; color: var(--xs-ink-2); }
