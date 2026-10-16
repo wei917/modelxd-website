@@ -357,7 +357,7 @@ async function cheerleader() {
   ok(nolead.stored.length === 1 && !nolead.stored[0].media_url, 'roomCheer: a tying run gets words only')
   const homer = cheerRoom({ last: T0 + 90_000, g: game('live', hr) })
   await homer.mod.roomCheer(K2, { trigger: 'moment', event: hr[1] })
-  ok(/\/cheer\/(homerun\.jpg|dance-\d\.mp4)$/.test(String(homer.stored[0]?.media_url)), 'roomCheer: a home run comes with the 全壘打 sign or a dance clip')
+  ok(/\/cheer\/(homerun\.jpg|clip-\d\.mp4)$/.test(String(homer.stored[0]?.media_url)), 'roomCheer: a home run comes with the 全壘打 sign or a dance clip')
   const pre = cheerRoom({ media: false })
   await pre.mod.roomCheer(K2, { trigger: 'first' })
   ok(pre.stored.length === 1 && !pre.stored[0].media_url && !pre.calls[0].prompt.includes('comes with'), 'roomCheer: before 136, words only')

@@ -29,9 +29,9 @@ export const CHEER_MEDIA: readonly CheerMedia[] = [
   { file: 'homerun.jpg', kind: 'image', tags: ['homerun'], shows: 'you holding up a 「全壘打！」 sign' },
   { file: 'win.jpg', kind: 'image', tags: ['win'], shows: 'you jumping for joy in falling confetti' },
   { file: 'night.jpg', kind: 'image', tags: ['win'], shows: 'you waving to the fans in confetti under the lights' },
-  { file: 'dance-1.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
-  { file: 'dance-2.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
-  { file: 'dance-3.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+  { file: 'clip-1.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+  { file: 'clip-2.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
+  { file: 'clip-3.mp4', kind: 'video', tags: ['dance', 'homerun'], shows: 'a short clip of you dancing with the pom-poms' },
 ]
 
 /** At most one picture or clip per room every ten minutes. */
