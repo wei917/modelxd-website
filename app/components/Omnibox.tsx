@@ -38,7 +38,10 @@ type Row = {
  * yet. A block-list would quietly leak onto the next marketing page someone
  * adds; this way a new route has to opt in. (CC, Aug 5)
  */
-const SURFACES = ['/xduel', '/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/profile', '/xdirector']
+// /profile left on Oct 15: its top is X先知's bar (Profile · Library), as
+// /xtell's is (owner: "why the top bar in the profile page is still the
+// search bar?").
+const SURFACES = ['/xduel', '/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const PAGES: { key: string; i18n: string; href: string }[] = [
