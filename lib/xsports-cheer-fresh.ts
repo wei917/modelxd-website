@@ -5,8 +5,9 @@
 // the admin, and posted only if that admin chooses to: nothing made here
 // reaches a room unseen. A picture is GPT Image 2 with one of her reviewed
 // photos as the face reference (Dodger blue in Dodgers games), about a
-// minute; a clip is such a picture moved by HappyHorse 1.1 (watermark off)
-// and re-encoded small, about three. ModelXD pays, about $0.05 a picture and
+// minute; a clip is such a picture moved by HappyHorse 1.1 (watermark off;
+// it makes the sound too: owner, Oct 16, "please use models with audio
+// support") and re-encoded small with that sound, about three. ModelXD pays, about $0.05 a picture and
 // $0.95 a clip, each counted toward the day's XSports total.
 // A job is files, not rows: <id>.jpg or <id>.mp4 once done, <id>.failed if
 // not (and <id>-frame.jpg, a clip's first frame); the id starts with when
@@ -51,7 +52,7 @@ const RULES: Record<Look, string> = {
   dodgers: 'Absolutely no logos, letters, numbers, team names or emblems anywhere on her or in the scene; no signs, ads or text.',
 }
 const TAIL = 'Realistic photograph, natural skin texture, sporty, wholesome and tasteful; camera at eye or chest height, never from below.'
-const MOVE_TAIL = 'The camera stays still at the same framing; the background stays soft. Sporty, wholesome, natural motion; her face and uniform stay the same.'
+const MOVE_TAIL = 'The camera stays still at the same framing; the background stays soft. Sporty, wholesome, natural motion; her face and uniform stay the same. Sound: an upbeat cheer beat and a cheering stadium crowd; she does not speak or sing.'
 const poms = (l: Look) => (l === 'dodgers' ? 'blue-and-white' : 'red-and-white')
 
 /** Night-game lights or afternoon sun, by the hour in the US East. */
@@ -103,8 +104,9 @@ async function picture(prompt: string, refFile: string): Promise<Buffer> {
   return sharp(r.buffer).resize(720, 1080, { fit: 'cover' }).jpeg({ quality: 84, mozjpeg: true }).toBuffer()
 }
 
-/** A clip from a picture: HappyHorse 1.1, five seconds, watermark off; then
- *  small for phones (720 wide, H.264, no sound, plays as it loads). */
+/** A clip from a picture: HappyHorse 1.1, five seconds with its own sound,
+ *  watermark off; then small for phones (720 wide, H.264 and AAC, plays as
+ *  it loads). */
 async function clip(frame: Buffer, frameUrl: string, move: string): Promise<Buffer> {
   const model = await getModelByProviderName('alibaba', 'happyhorse-1.1-i2v')
   if (!model || !usable(model)) throw new Error('happyhorse-1.1-i2v is not available')
@@ -115,7 +117,7 @@ async function clip(frame: Buffer, frameUrl: string, move: string): Promise<Buff
   try {
     const raw = join(dir, 'raw.mp4'), out = join(dir, 'out.mp4')
     await writeFile(raw, v.buffer)
-    await run(ffmpegPath(), ['-y', '-loglevel', 'error', '-i', raw, '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p', '-vf', 'scale=720:-2', '-movflags', '+faststart', out], 120_000)
+    await run(ffmpegPath(), ['-y', '-loglevel', 'error', '-i', raw, '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p', '-vf', 'scale=720:-2', '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', out], 120_000)
     return await readFile(out)
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {})

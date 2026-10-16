@@ -534,7 +534,7 @@ async function fresh() {
   await dn.mod.makeFresh(K2, id, 'dance', '', () => 0)
   ok(dn.uploads.map(u => u.path.split('/').pop()).join() === `${id}-frame.jpg,${id}.mp4` && dn.uploads[1].type === 'video/mp4', 'makeFresh: a dance is a picture (kept as its first frame), then <id>.mp4')
   ok(dn.videos[0]?.model === 'happyhorse-1.1-i2v' && dn.videos[0].size === '720x1080' && dn.videos[0].seconds === 5 && dn.videos[0].ports.join() === 'first_frame' && dn.videos[0].url === FRESH + id + '-frame.jpg' && dn.videos[0].watermark === false && dn.videos[0].prompt.includes('pom-poms'), 'makeFresh: the clip is HappyHorse 1.1 from that frame by its link, 5 s, watermark off')
-  ok(dn.ran[0]?.includes('-an') && dn.ran[0].includes('scale=720:-2') && dn.ran[0].includes('+faststart') && dn.spent.join() === '0.053,0.9', 'makeFresh: re-encoded small for phones; the picture and the clip both counted')
+  ok(!dn.ran[0]?.includes('-an') && dn.ran[0].includes('0:a:0?') && dn.ran[0].includes('aac') && dn.ran[0].includes('scale=720:-2') && dn.ran[0].includes('+faststart') && dn.videos[0].prompt.includes('Sound:') && dn.spent.join() === '0.053,0.9', "makeFresh: re-encoded small for phones, keeping the model's own sound; the picture and the clip both counted")
   const ch = freshRoom()
   await ch.mod.makeFresh(K2, id, 'cheer', '', () => 0)
   ok(ch.fetched[0]?.endsWith('/cheer/megaphone.jpg') && ch.images[0].prompt.includes('megaphone') && ch.videos[0]?.prompt.includes('chant') && ch.uploads.at(-1)?.path.endsWith(id + '.mp4'), 'makeFresh: a cheer clip leads a chant')

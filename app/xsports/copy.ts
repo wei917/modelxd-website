@@ -97,6 +97,10 @@ export interface Copy {
   cheerRetry: string
   cheerCostNote: string
   cheerAsked: string
+  // A clip: silent until its speaker button; a tap plays it full screen (Oct 16).
+  clipFull: string
+  soundOn: string
+  soundOff: string
   cheerActFailed: string
   cheerNameRefused: string
   /** The @AI row of the public chat's @ list: whichever commentator is up. */
@@ -328,6 +332,9 @@ const en: Copy = {
   cheerRetry: 'Try again',
   cheerCostNote: 'Made new each time: a photo about $0.05, a clip about $0.95',
   cheerAsked: '晴晴 is on it: her post appears in a moment',
+  clipFull: 'Play full screen',
+  soundOn: 'Turn sound on',
+  soundOff: 'Turn sound off',
   cheerActFailed: "That didn't work. Try again.",
   cheerNameRefused: "That name can't go in her bubble. Try another.",
   aiAny: 'Whichever commentator is up',
@@ -542,6 +549,9 @@ const zhHant: Copy = {
   cheerRetry: '再試一次',
   cheerCostNote: '每次都是新做的：照片約 $0.05，影片約 $0.95',
   cheerAsked: '晴晴收到了，馬上貼出來',
+  clipFull: '全螢幕播放',
+  soundOn: '開啟聲音',
+  soundOff: '關閉聲音',
   cheerActFailed: '沒有成功，請再試一次',
   cheerNameRefused: '這個名字不能放進對話框，換一個試試',
   aiAny: '輪到的球評',
@@ -756,6 +766,9 @@ const zhHans: Copy = {
   cheerRetry: '再试一次',
   cheerCostNote: '每次都是新做的：照片约 $0.05，视频约 $0.95',
   cheerAsked: '晴晴收到了，马上发出来',
+  clipFull: '全屏播放',
+  soundOn: '开启声音',
+  soundOff: '关闭声音',
   cheerActFailed: '没有成功，请再试一次',
   cheerNameRefused: '这个名字不能放进对话框，换一个试试',
   aiAny: '轮到的球评',
@@ -970,6 +983,9 @@ const ja: Copy = {
   cheerRetry: 'もう一度',
   cheerCostNote: '毎回新しく作ります：写真 約$0.05、動画 約$0.95',
   cheerAsked: '晴晴が受け取りました。まもなく投稿されます',
+  clipFull: '全画面で再生',
+  soundOn: '音をオン',
+  soundOff: '音をオフ',
   cheerActFailed: 'うまくいきませんでした。もう一度お試しください',
   cheerNameRefused: 'この名前は吹き出しに入れられません。別の名前でお試しください',
   aiAny: '次の番の解説',
@@ -1184,6 +1200,9 @@ const ko: Copy = {
   cheerRetry: '다시 시도',
   cheerCostNote: '매번 새로 만들어요: 사진 약 $0.05, 영상 약 $0.95',
   cheerAsked: '晴晴이 받았어요. 곧 올라옵니다',
+  clipFull: '전체 화면으로 재생',
+  soundOn: '소리 켜기',
+  soundOff: '소리 끄기',
   cheerActFailed: '실패했어요. 다시 시도해 주세요',
   cheerNameRefused: '이 이름은 말풍선에 넣을 수 없어요. 다른 이름으로 해 보세요',
   aiAny: '차례인 해설',
