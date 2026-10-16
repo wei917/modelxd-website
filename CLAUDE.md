@@ -64,10 +64,12 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `136_xsports_room_media.sql` written 2026-10-15, NOT RUN yet: `media_url`
+  `136_xsports_room_media.sql` applied 2026-10-15 by the owner: `media_url`
   (https only) and `media_kind` (image/video) on `xsports_room_messages`,
   readable like the other public columns (column grants), server-written.
-  Proven on PGlite (11/11). Until it runs, 晴晴 posts words only.
+  Proven on PGlite first (11/11). Checked live: the publishable key reads
+  both columns and still gets 42501 on user_id; the service key's insert
+  with kind 'gif' or an http link gets 23514, nothing stored.
   `135_xsports_ai_spend.sql` applied 2026-10-15 by the owner: the X體育
   commentators' spend per Taipei day (`xsports_ai_spend`,
   `add_xsports_ai_spend()`, service role only; proven on PGlite first,
