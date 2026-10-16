@@ -21,6 +21,7 @@ import { mlbToday, type GameCard, type GameState, type PlayEvent, type League, t
 import type { Clip } from '../../lib/xsports-highlights'
 import { nextSpeaker } from '../../lib/xsports-turn'
 import { ALL_AIS, aiByName, CHEERLEADER, gameDraw, isCheer, type Commentator } from '../../lib/xsports-ais'
+import { SHOUT_NAME_MAX, shoutName, type CheerAction } from '../../lib/xsports-cheer-media'
 import OddsChart from './OddsChart'
 import { useHidden, personKey, isHidden } from './hidden'
 import { useRoomLang } from './room-lang'
@@ -1318,6 +1319,68 @@ const AI_MD: Components = {
 
 /** One message, drawn once: it changes only when it or its buttons do, so a
  *  new message (or a keystroke in the box) leaves every other row alone. */
+/** An admin's asks of 晴晴, in her card (owner, Oct 16: "admins can tap her
+ *  profile and ask her do something"): a dance clip, a selfie, a cheer clip
+ *  (she posts as soon as she has the floor, with words of her own), or
+ *  幫某人加油: a comic picture drawn on the spot, shown here first, then
+ *  posted or drawn again. Only admins get it (the room says;
+ *  app/api/xsports/cheer checks again). */
+function CheerActions({ c, league, game, room, onDone }: { c: Copy; league: string; game: string; room: string; onDone: () => void }) {
+  const [busy, setBusy] = useState<CheerAction | null>(null)
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+  const [pic, setPic] = useState<string | null>(null)
+  const [err, setErr] = useState('')
+  const named = shoutName(name)
+  const ask = async (action: CheerAction, extra: object = {}) => {
+    const res = await fetch('/api/xsports/cheer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ league, game, lang: room, action, ...extra }) })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(j?.code ?? String(res.status))
+    return j
+  }
+  const run = async (action: CheerAction, step: () => Promise<void>) => {
+    setErr('')
+    setBusy(action)
+    try { await step() } catch (e: any) { setErr(e?.message === 'name_refused' ? c.cheerNameRefused : c.cheerActFailed) } finally { setBusy(null) }
+  }
+  const draw = () => run('shout', async () => {
+    setPic(null)
+    const j = await ask('shout', { name: named })
+    setPic(typeof j.picture === 'string' ? j.picture : null)
+  })
+  return (
+    <div className="xs-cheer-acts">
+      <p className="lbl">{c.askHer}</p>
+      <div className="row">
+        {(['dance', 'selfie', 'cheer'] as const).map(a => (
+          <button key={a} type="button" disabled={!!busy} onClick={() => run(a, async () => { await ask(a); onDone() })}>
+            {busy === a ? c.loading : a === 'dance' ? c.actDance : a === 'selfie' ? c.actSelfie : c.actCheer}
+          </button>
+        ))}
+        <button type="button" aria-pressed={naming} disabled={!!busy} onClick={() => { setNaming(v => !v); setPic(null); setErr('') }}>{c.actShout}</button>
+      </div>
+      {naming ? (
+        <div className="shout">
+          {pic ? <img className="pic" src={pic} alt={`「${named} 加油！」`} /> : (
+            <input value={name} maxLength={SHOUT_NAME_MAX * 2} placeholder={c.shoutName} aria-label={c.shoutName} autoFocus enterKeyHint="go" disabled={!!busy}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => { if (isSubmitEnter(e as any) && named && !busy) { e.preventDefault(); draw() } }} />
+          )}
+          {pic ? (
+            <div className="row">
+              <button type="button" className="go" disabled={!!busy} onClick={() => run('shout', async () => { await ask('shout', { name: named, picture: pic }); onDone() })}>{busy === 'shout' ? c.loading : c.shoutPost}</button>
+              <button type="button" disabled={!!busy} onClick={draw}>{c.shoutRedo}</button>
+            </div>
+          ) : (
+            <button type="button" className="go" disabled={!!busy || !named} onClick={draw}>{busy === 'shout' ? c.shoutDrawing : c.shoutDraw}</button>
+          )}
+        </div>
+      ) : null}
+      {err ? <p className="err" role="alert">{err}</p> : null}
+    </div>
+  )
+}
+
 const RoomRow = memo(function RoomRow({ m, lang, c, mine, reported, signedIn, onCard, onRemove, onReport }: {
   m: RoomMsg; lang: string; c: Copy; mine: boolean; reported: boolean; signedIn: boolean | null
   onCard: (m: RoomMsg) => void; onRemove: (m: RoomMsg) => void; onReport: (m: RoomMsg) => void
@@ -1422,6 +1485,8 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
   const [ais, setAis] = useState<Commentator[]>(() => gameDraw(league, String(pk)).slice(0, 2))
   // 晴晴, where she cheers (the room says; null elsewhere).
   const [cheer, setCheer] = useState<{ handle: string; name: string; avatar: string | null } | null>(null)
+  // An admin reading (the room says): her card offers her actions.
+  const [admin, setAdmin] = useState(false)
   const [olderBusy, setOlderBusy] = useState(false)
   const [olderFailed, setOlderFailed] = useState(false)
   const [pagedBack, setPagedBack] = useState(false)
@@ -1460,6 +1525,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
       if (!more) setStartId(rows[0]?.id ?? Infinity)
       if (Array.isArray(j.ais) && j.ais.length) setAis(j.ais as Commentator[])
       if ('cheer' in j) setCheer(j.cheer ?? null)
+      if ('admin' in j) setAdmin(j.admin === true)
       setMsgs(prev => {
         const have = new Set(prev.map(m => m.id))
         const hole = more && rows.length > 0 && prev.length > 0 && !rows.some(m => have.has(m.id))
@@ -1835,6 +1901,7 @@ function Thread({ league, pk, lang, room, c, g, signedIn, onSignIn, onViewers }:
                 : face ? <img className="face" src={face} alt="" referrerPolicy="no-referrer" /> : <span className="face" aria-hidden>{(card.author_name.trim()[0] ?? '?').toUpperCase()}</span>}
               <span>{ai ? `${cheer ? c.cheerRole : c.aiCommentator}${h ? ` · @${h}` : ''}` : card.author_handle ? `@${card.author_handle}` : ''}</span>
             </div>
+            {cheer && admin ? <CheerActions c={c} league={league} game={String(pk)} room={room} onDone={() => { close(); setFlash(c.cheerAsked); setFlashOk(true) }} /> : null}
             <div className="xs-card-acts">
               {ai ? <>
                 {h ? <button type="button" onClick={() => { hide.hideAi(h); hidden(h, () => hide.showAi(h)) }}>{eye}{c.hideAi(h)}</button> : null}

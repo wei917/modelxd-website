@@ -770,3 +770,17 @@ a.xs-unhide { display: inline-flex; align-items: center; text-decoration: none; 
 .xs-card-acts svg { flex-shrink: 0; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .xs-flash .undo { margin-left: 10px; font-size: 12px; font-weight: 800; color: var(--xs-red); text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .xs-switch, .xs-switch i { transition: none; } }
+
+/* An admin's asks of 晴晴 in her card (Oct 16): her rose, four buttons; the
+   加油 picture shown before it is posted. */
+.xs-cheer-acts { margin: 0 0 14px; padding: 12px; border: 1px solid #f7cddc; border-radius: 14px; background: #fff3f7; }
+.xs-cheer-acts .lbl { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: #c2185b; }
+.xs-cheer-acts .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.xs-cheer-acts button { min-height: 44px; padding: 0 10px; border: 1px solid #f7cddc; border-radius: 10px; background: #fff; font-size: 14px; font-weight: 700; color: var(--xs-ink); }
+.xs-cheer-acts button[aria-pressed="true"] { border-color: #c2185b; color: #c2185b; }
+.xs-cheer-acts button.go { border-color: #c2185b; background: #c2185b; color: #fff; }
+.xs-cheer-acts button:disabled { opacity: .55; }
+.xs-cheer-acts .shout { display: grid; gap: 8px; margin-top: 10px; }
+.xs-cheer-acts input { min-height: 44px; padding: 0 12px; border: 1px solid #f7cddc; border-radius: 10px; background: #fff; font-size: 16px; color: var(--xs-ink); }
+.xs-cheer-acts .pic { justify-self: center; width: min(200px, 100%); aspect-ratio: 2 / 3; border-radius: 12px; object-fit: cover; background: #fde4ee; }
+.xs-cheer-acts .err { margin: 8px 0 0; font-size: 13px; color: var(--xs-red); }
