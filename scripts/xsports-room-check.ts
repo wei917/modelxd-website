@@ -306,7 +306,7 @@ function cheerRoom(o: { capped?: boolean; last?: number | null; lastAfterLock?: 
 // ── lib/xsports-cheer-fresh.ts: an admin's ask, made fresh (Oct 16) ───────
 const FRESH = `${SB}/storage/v1/object/public/x-characters/c9a73e58-b5b4-48bf-a794-0b8bb347af89/cheer/fresh/`
 function freshRoom(o: { g?: any; videoFails?: boolean; off?: string; listed?: string[] } = {}) {
-  const images: { model: string; prompt: string; size: string; ports: string[] }[] = [], videos: any[] = [], uploads: { bucket: string; path: string; type: string }[] = []
+  const images: { model: string; prompt: string; size: string; ports: string[]; ratio?: string }[] = [], videos: any[] = [], uploads: { bucket: string; path: string; type: string }[] = []
   const fetched: string[] = [], spent: number[] = [], ran: string[][] = [], disk = new Map<string, Buffer>()
   const mod = load('lib/xsports-cheer-fresh.ts', {
     'crypto': { randomUUID: () => UUID },
@@ -314,8 +314,8 @@ function freshRoom(o: { g?: any; videoFails?: boolean; off?: string; listed?: st
     'node:os': { tmpdir: () => '/tmp' },
     'node:path': { join: (...a: string[]) => a.join('/') },
     './providers': {
-      generateImage: async (model: any, prompt: string, _q: string, size: string, atts: any[]) => {
-        images.push({ model: model.model_name, prompt, size, ports: atts.map(a => a.port) })
+      generateImage: async (model: any, prompt: string, _q: string, size: string, atts: any[], _prev: unknown, _hist: unknown, _ctx: unknown, opts: any) => {
+        images.push({ model: model.model_name, prompt, size, ports: atts.map(a => a.port), ratio: opts?.aspect_ratio })
         return { buffer: Buffer.from('png'), mediaType: 'image/png', cost: 0.053 }
       },
       generateVideo: async (model: any, prompt: string, size: string, seconds: number, atts: any[], _p: unknown, _c: unknown, opts: any) => {
@@ -433,7 +433,9 @@ async function cheerleader() {
   ok(!String(hi.stored[0]?.media_url).includes('/cheer/blue-'), 'roomCheer: elsewhere from her red XD set')
   ok(cheerMedia.pickMedia('dance', [], () => 0.99, 'dodgers').file === 'blue-clip-2.mp4' && cheerMedia.pickMedia('dance', [], () => 0.99).file === 'clip-2.mp4', 'pickMedia: a dance clip in Dodger blue in her team\'s games, in red elsewhere')
   // An admin's asks from her card (Oct 16), made fresh ("fresh each time").
-  ok(cheerMedia.CHEER_ACTIONS.join() === 'selfie,dance,cheer,shout' && cheerMedia.freshKind('dance') === 'video' && cheerMedia.freshKind('cheer') === 'video' && cheerMedia.freshKind('selfie') === 'image' && cheerMedia.freshKind('shout') === 'image', 'freshKind: a dance or a cheer is a clip; a selfie or a 加油 a picture')
+  ok(cheerMedia.CHEER_ACTIONS.join() === 'selfie,dance,cheer,shout' && cheerMedia.freshKind('dance') === 'video' && cheerMedia.freshKind('cheer') === 'video' && cheerMedia.freshKind('selfie') === 'image' && cheerMedia.freshKind('shout') === 'image' && cheerMedia.freshKind('shout', true) === 'video' && cheerMedia.freshKind('selfie', true) === 'image', 'freshKind: a dance or a cheer is a clip; a selfie a photo; a 加油 either')
+  ok(cheerMedia.clipSeconds(3) === 3 && cheerMedia.clipSeconds(5) === 5 && cheerMedia.clipSeconds(7) === 5 && cheerMedia.clipSeconds('3') === 5 && cheerMedia.clipSeconds(undefined) === 5 && cheerMedia.CLIP_SECONDS.join() === '3,5', 'clipSeconds: 3 or 5, anything else 5')
+  ok(cheerMedia.freshShows('shout', '大谷', 'video').includes('clip of you cheering for 大谷') && cheerMedia.freshShows('shout', '大谷').includes('photo of you cheering for 大谷'), 'freshShows: a 加油 clip or photo, told as such')
   ok(cheerMedia.shoutName('  大谷 ') === '大谷' && cheerMedia.shoutName('「山本」') === '山本' && cheerMedia.shoutName('\u202eabc') === 'abc' && cheerMedia.shoutName('x'.repeat(17)) === '' && cheerMedia.shoutName('x'.repeat(16)).length === 16 && cheerMedia.shoutName(42) === '' && cheerMedia.shoutName('   ') === '', 'shoutName: cleaned like a website name, no brackets, at most 16; too long or empty is none')
   const clipUrl = FRESH + 'mg1abcde-' + UUID + '.mp4'
   const ad = cheerRoom({ last: Date.now() - 10_000, mediaRows: [{ media_url: 'https://x/cheer/wave.jpg', created_at: new Date(Date.now() - 60_000).toISOString() }] })
@@ -524,29 +526,39 @@ async function fresh() {
   ok(f0.mod.lightNow(new Date('2026-10-16T23:00:00Z')).includes('night-game') && f0.mod.lightNow(new Date('2026-10-16T17:00:00Z')).includes('afternoon'), 'lightNow: night lights after 6 pm in the US East, sun in the afternoon')
 
   const sf = freshRoom()
-  await sf.mod.makeFresh(K2, id, 'selfie', '', () => 0)
-  ok(sf.images.length === 1 && sf.images[0].model === 'gpt-image-2' && sf.images[0].size === '1024x1536' && sf.images[0].ports.join() === 'reference_image' && sf.fetched[0]?.endsWith('/cheer/selfie.jpg') && sf.images[0].prompt.includes('selfie') && sf.images[0].prompt.includes('"XD" emblem'), 'makeFresh: a selfie is GPT Image 2 with her own photo as the face reference, her red look')
+  await sf.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0)
+  ok(sf.images.length === 1 && sf.images[0].model === 'gemini-3.1-flash-image' && sf.images[0].size === '1024' && sf.images[0].ratio === '2:3' && sf.images[0].ports.join() === 'reference_image' && sf.fetched[0]?.endsWith('/cheer/selfie.jpg') && sf.images[0].prompt.includes('selfie') && sf.images[0].prompt.includes('"XD" emblem'), 'makeFresh: a selfie is Nano Banana 2 (2:3, its 1K tier) with her own photo as the reference, her red look')
+  ok(sf.images[0].prompt.startsWith('A realistic photograph') && sf.images[0].prompt.includes("not the reference's"), "makeFresh: a real photo, in a pose of its own (not the reference's)")
   ok(sf.uploads.map(u => u.path.split('/').pop() + ':' + u.type).join() === id + '.jpg:image/jpeg' && sf.videos.length === 0 && sf.spent.join() === '0.053', "makeFresh: it goes to her folder's fresh/ as <id>.jpg; counted toward the day")
   const sb = freshRoom({ g: lad('live', [play(1)]) })
-  await sb.mod.makeFresh(K2, id, 'selfie', '', () => 0)
+  await sb.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0)
   ok(sb.fetched[0]?.endsWith('/cheer/blue-selfie.jpg') && sb.images[0].prompt.includes('royal-blue') && sb.images[0].prompt.includes('Absolutely no logos'), 'makeFresh: in a Dodgers game, Dodger blue with no marks')
   const dn = freshRoom()
-  await dn.mod.makeFresh(K2, id, 'dance', '', () => 0)
+  await dn.mod.makeFresh(K2, id, 'dance', '', {}, () => 0)
   ok(dn.uploads.map(u => u.path.split('/').pop()).join() === `${id}-frame.jpg,${id}.mp4` && dn.uploads[1].type === 'video/mp4', 'makeFresh: a dance is a picture (kept as its first frame), then <id>.mp4')
+  const d3 = freshRoom()
+  await d3.mod.makeFresh(K2, id, 'dance', '', { seconds: 3 }, () => 0)
+  ok(d3.videos[0]?.seconds === 3, 'makeFresh: a 3-second clip when asked')
   ok(dn.videos[0]?.model === 'happyhorse-1.1-i2v' && dn.videos[0].size === '720x1080' && dn.videos[0].seconds === 5 && dn.videos[0].ports.join() === 'first_frame' && dn.videos[0].url === FRESH + id + '-frame.jpg' && dn.videos[0].watermark === false && dn.videos[0].prompt.includes('pom-poms'), 'makeFresh: the clip is HappyHorse 1.1 from that frame by its link, 5 s, watermark off')
   ok(!dn.ran[0]?.includes('-an') && dn.ran[0].includes('0:a:0?') && dn.ran[0].includes('aac') && dn.ran[0].includes('scale=720:-2') && dn.ran[0].includes('+faststart') && dn.videos[0].prompt.includes('Sound:') && dn.spent.join() === '0.053,0.9', "makeFresh: re-encoded small for phones, keeping the model's own sound; the picture and the clip both counted")
   const ch = freshRoom()
-  await ch.mod.makeFresh(K2, id, 'cheer', '', () => 0)
+  await ch.mod.makeFresh(K2, id, 'cheer', '', {}, () => 0)
   ok(ch.fetched[0]?.endsWith('/cheer/megaphone.jpg') && ch.images[0].prompt.includes('megaphone') && ch.videos[0]?.prompt.includes('chant') && ch.uploads.at(-1)?.path.endsWith(id + '.mp4'), 'makeFresh: a cheer clip leads a chant')
   const so = freshRoom()
-  await so.mod.makeFresh(K2, id, 'shout', '大谷', () => 0)
-  ok(so.images[0]?.prompt.includes('comic') && so.images[0].prompt.includes('「大谷 加油！」') && so.fetched[0]?.endsWith('/cheer/cheer.jpg') && so.uploads.map(u => u.path.split('/').pop()).join() === id + '.jpg' && so.videos.length === 0, 'makeFresh: a 加油 is a comic picture with the name in the bubble')
+  await so.mod.makeFresh(K2, id, 'shout', '大谷', {}, () => 0)
+  ok(so.images[0]?.prompt.startsWith('A realistic photograph') && so.images[0].prompt.includes('comic-style speech bubble') && so.images[0].prompt.includes('without quotation marks: 大谷 加油！') && !so.images[0].prompt.includes('line art') && so.fetched[0]?.endsWith('/cheer/selfie.jpg') && so.uploads.map(u => u.path.split('/').pop()).join() === id + '.jpg' && so.videos.length === 0, 'makeFresh: a 加油 is a real photo of her with the name in a comic speech bubble, not a cartoon')
+  const sv = freshRoom()
+  await sv.mod.makeFresh(K2, id, 'shout', '大谷', { video: true, seconds: 3 }, () => 0)
+  ok(sv.uploads.map(u => u.path.split('/').pop()).join() === `${id}-frame.jpg,${id}.mp4` && sv.videos[0]?.seconds === 3 && sv.videos[0].prompt.includes('speech bubble and its words stay exactly as they are') && sv.images[0].prompt.includes('大谷 加油！'), 'makeFresh: a 加油 clip is the photo with the bubble, moved, the bubble kept still')
+  const so2 = freshRoom()
+  await so2.mod.makeFresh(K2, id, 'shout', '大谷', {}, () => 0.99)
+  ok(so2.mod.SHOUT_POSES.length >= 5 && so.images[0].prompt.includes(so2.mod.SHOUT_POSES[0]) && so2.images[0].prompt.includes(so2.mod.SHOUT_POSES[so2.mod.SHOUT_POSES.length - 1]), 'makeFresh: the 加油 pose is picked from several, not always the same')
   const bad = freshRoom({ videoFails: true })
   let threw = false
-  try { await bad.mod.makeFresh(K2, id, 'dance', '', () => 0) } catch { threw = true }
+  try { await bad.mod.makeFresh(K2, id, 'dance', '', {}, () => 0) } catch { threw = true }
   ok(!threw && bad.uploads.map(u => u.path.split('/').pop() + ':' + u.type).join() === `${id}-frame.jpg:image/jpeg,${id}.failed:text/plain`, 'makeFresh: a clip that fails leaves <id>.failed (and never throws)')
-  const off = freshRoom({ off: 'gpt-image-2' })
-  await off.mod.makeFresh(K2, id, 'selfie', '', () => 0)
+  const off = freshRoom({ off: 'gemini-3.1-flash-image' })
+  await off.mod.makeFresh(K2, id, 'selfie', '', {}, () => 0)
   ok(off.images.length === 0 && off.uploads.map(u => u.path.split('/').pop()).join() === id + '.failed', 'makeFresh: no drawing model, nothing drawn; it says failed')
 
   const st = async (listed: string[], jid = id, now?: number) => freshRoom({ listed }).mod.freshStatus(jid, now)
@@ -575,7 +587,7 @@ async function cheerCall(method: 'GET' | 'POST', body: Record<string, unknown>, 
     '@/lib/xsports-cheer-fresh': {
       isFreshId: (s: unknown) => s === FID,
       newFreshId: () => FID,
-      makeFresh: async (k: any, id: string, action: string, name?: string) => { made.push({ k, id, action, name }) },
+      makeFresh: async (k: any, id: string, action: string, name?: string, o?: any) => { made.push({ k, id, action, name, o }) },
       freshStatus: async () => o.status ?? { status: 'working' },
     },
   })
@@ -599,7 +611,11 @@ async function cheerRoute() {
   const odd = await cheerCall('POST', { action: 'sing' })
   ok(en.status === 409 && priv.status === 409 && odd.status === 400 && en.made.length + priv.made.length + odd.made.length === 0, 'cheer route: 409 where she is not, or while she is private; an unknown action 400')
   const shout = await cheerCall('POST', { action: 'shout', name: ' 大谷 ' })
-  ok(shout.status === 200 && shout.made[0]?.name === '大谷', 'cheer route: a 加油 is made with the cleaned name')
+  ok(shout.status === 200 && shout.made[0]?.name === '大谷' && shout.made[0].o?.video === false, 'cheer route: a 加油 is made with the cleaned name, a photo unless asked')
+  const shoutClip = await cheerCall('POST', { action: 'shout', name: '大谷', video: true, seconds: 3 })
+  const dance3 = await cheerCall('POST', { action: 'dance', seconds: 3, video: true })
+  const dance9 = await cheerCall('POST', { action: 'dance', seconds: 9 })
+  ok(shoutClip.made[0]?.o?.video === true && shoutClip.made[0].o.seconds === 3 && dance3.made[0]?.o?.seconds === 3 && dance3.made[0].o.video === false && dance9.made[0]?.o?.seconds === 5, 'cheer route: a clip of 3 or 5 seconds (anything else 5); only a 加油 takes `video`')
   const noname = await cheerCall('POST', { action: 'shout', name: '   ' })
   const refused = await cheerCall('POST', { action: 'shout', name: '壞字' }, { verdict: 'refused' })
   const nocheck = await cheerCall('POST', { action: 'shout', name: '大谷' }, { verdict: 'unavailable' })

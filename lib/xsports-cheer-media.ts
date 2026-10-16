@@ -85,17 +85,25 @@ export function pickMedia(tag: string, recent: readonly string[], rand: () => nu
 export const CHEER_ACTIONS = ['selfie', 'dance', 'cheer', 'shout'] as const
 export type CheerAction = typeof CHEER_ACTIONS[number]
 
-/** Made fresh for an admin: a picture (about a minute) or a clip (about
- *  three: a picture, then moved). */
-export const freshKind = (a: CheerAction): CheerMediaKind => (a === 'dance' || a === 'cheer' ? 'video' : 'image')
+/** Made fresh for an admin: a photo, or a clip (a photo, then moved). A
+ *  selfie is a photo, a dance or a cheer a clip, a 加油 either (owner,
+ *  Oct 16: "it should support generate short video too"). */
+export const freshKind = (a: CheerAction, video = false): CheerMediaKind => (a === 'dance' || a === 'cheer' || (a === 'shout' && video) ? 'video' : 'image')
+
+/** A clip's length in seconds (owner, Oct 16: "3 or 5 seconds"). */
+export const CLIP_SECONDS = [3, 5] as const
+export type ClipSeconds = typeof CLIP_SECONDS[number]
+export const clipSeconds = (v: unknown): ClipSeconds => (v === 3 ? 3 : 5)
 
 /** What the fresh one shows, told to her so her words fit it. */
-export function freshShows(a: CheerAction, name?: string): string {
+export function freshShows(a: CheerAction, name?: string, kind: CheerMediaKind = freshKind(a)): string {
   switch (a) {
     case 'selfie': return 'a selfie you just took at the game'
     case 'dance': return 'a short clip of you dancing with the pom-poms, just filmed'
     case 'cheer': return 'a short clip of you leading a cheer, just filmed'
-    case 'shout': return `a comic picture of you shouting 「${name ?? ''} 加油！」 in a big speech bubble`
+    case 'shout': return kind === 'video'
+      ? `a short clip of you cheering for ${name ?? ''}, a big speech bubble saying 「${name ?? ''} 加油！」`
+      : `a photo of you cheering for ${name ?? ''}, a big speech bubble saying 「${name ?? ''} 加油！」`
   }
 }
 

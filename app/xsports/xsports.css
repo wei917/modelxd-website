@@ -806,3 +806,7 @@ a.xs-unhide { display: inline-flex; align-items: center; text-decoration: none; 
 .clip .snd .spk { fill: #fff; }
 .clip .snd:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .xs-cheer-acts .pic.clip { overflow: hidden; }
+.xs-cheer-acts .len { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--xs-ink-2); }
+.xs-cheer-acts .len span { margin-right: 4px; }
+.xs-cheer-acts .len button { min-height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; }
+.xs-cheer-acts .len button[aria-checked="true"] { border-color: #c2185b; background: #c2185b; color: #fff; }
