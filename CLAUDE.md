@@ -64,6 +64,15 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `139_site_page_views.sql` applied 2026-10-16 by the owner:
+  `site_page_views`, one row per page a visit opens (X先知 rooms as
+  'xtell/<room>', other pages by path with ids masked; `lib/page-key.ts`),
+  written by /api/visit with the visit report; `site_page_window` for the
+  "Rooms and pages" card; `site_mark_browser_internal` now flips page views
+  too. Checked live: table and window answer the service key (empty until
+  the code ships), 42501 for the publishable key on the table and all three
+  functions. The internal list has 5 accounts since Oct 16 (the owner added
+  two by hand).
   `138_site_visit_by_product.sql` applied 2026-10-15 by the owner: one new
   function, `site_visit_by_product`, for /admin/traffic's "Browsers by app"
   card (a line per app and a table; the app is where a visit LANDED: the
@@ -1012,7 +1021,8 @@ the average stay of the longest-staying fifth and tenth since migration 128,
 Oct 7, not percentiles), then fixed charts that
 are always every country (browsers by country, sign-ins by Google / LINE / X;
 since Oct 2 by the button used, `signInMethod()` in `lib/signin-tap.ts`).
-The filtered part also has "Browsers by app" (Oct 15, migration 138): a
+The filtered part also has "Rooms and pages" (Oct 16, migration 139: which
+X先知 room or page each visit opened, and the time there) and "Browsers by app" (Oct 15, migration 138): a
 line per app (X先知, X創作, X體育, www home, other pages) and a table of every
 landing app for the range; the whole log is every host, not only X先知.
 Three service-key functions in `117_site_visit_groups_country.sql`; before

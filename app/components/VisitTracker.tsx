@@ -16,9 +16,16 @@
 //
 // Mounted once in the root layout, on every front door, except where
 // consent is required (lib/consent.ts).
+//
+// Each visit also has page views (supabase/139; owner, Oct 15: "record which
+// page so we can tell which temple they enter"): the page the visitor is on,
+// as a short key (lib/page-key.ts: an X先知 room is 'xtell/<room>', anything
+// else its path with ids masked), timed like the visit. A new page view
+// starts on a route change or when an app names a new part of its page.
 
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
+import { PAGE_EVENT, currentPageKey } from '../../lib/page-key'
 
 const KEY = 'modelxd:visit'
 const IDLE_MS = 5 * 60_000        // counting pauses after this long without input
@@ -38,7 +45,11 @@ type Visit = {
   activeMs: number
   lastInput: number
   path: string
+  /** The page view the visit is on now. */
+  page?: Page
 }
+
+type Page = { id: string; key: string; activeMs: number }
 
 // One page load counts one page view, even when React runs the effect twice
 // (Strict Mode in dev): module state survives the remount.
@@ -75,13 +86,18 @@ function startVisit(now: number, path: string, arrival: boolean): Visit {
     for (const k of AD_PARAMS) { const val = q.get(k); if (val) ad[k] = val.slice(0, 200) }
     try { referrer = document.referrer ? new URL(document.referrer).host : '' } catch { /* opaque */ }
   }
-  return { id: uuid(), landing: window.location.pathname, referrer, ad, pages: 1, activeMs: 0, lastInput: now, path }
+  return { id: uuid(), landing: window.location.pathname, referrer, ad, pages: 1, activeMs: 0, lastInput: now, path, page: newPage() }
+}
+
+function newPage(): Page {
+  return { id: uuid(), key: currentPageKey(), activeMs: 0 }
 }
 
 function send(v: Visit, leaving: boolean) {
   const body = JSON.stringify({
     id: v.id, landing: v.landing, referrer: v.referrer, ad: v.ad,
     pages: v.pages, active: Math.round(v.activeMs / 1000),
+    ...(v.page ? { page: { id: v.page.id, key: v.page.key, active: Math.round(v.page.activeMs / 1000) } } : {}),
   })
   try {
     // A beacon survives the page closing; fetch (keepalive) is used otherwise
@@ -110,7 +126,9 @@ export default function VisitTracker() {
       v.pages += 1
       v.path = pathname
       v.lastInput = now   // a page load is the visitor doing something
+      v.page = newPage()  // and a page view of its own
     }
+    if (!v.page) v.page = newPage()
     loadCounted = true
     visit.current = v
     write(v)
@@ -127,9 +145,28 @@ export default function VisitTracker() {
       const cur = visit.current
       if (cur && shown) {
         const until = Math.min(t, cur.lastInput + IDLE_MS)
-        if (until > lastTick) cur.activeMs += until - lastTick
+        if (until > lastTick) {
+          cur.activeMs += until - lastTick
+          if (cur.page) cur.page.activeMs += until - lastTick
+        }
       }
       lastTick = t
+    }
+
+    // The visitor moved to another page, or an app named another part of its
+    // page: close the page view where it stood and start the next.
+    const onPage = () => {
+      const cur = visit.current
+      if (!cur) return
+      const key = currentPageKey()
+      if (cur.page?.key === key) return
+      const t = Date.now()
+      accrue(t)
+      if (cur.page) send(cur, false)
+      cur.page = newPage()
+      write(cur)
+      send(cur, false)
+      lastReport = t
     }
 
     // Input, or coming back to the tab. After a long break that is a new
@@ -198,11 +235,13 @@ export default function VisitTracker() {
     for (const e of INPUTS) window.addEventListener(e, onInput, { passive: true, capture: true })
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', onPageHide)
+    window.addEventListener(PAGE_EVENT, onPage)
     return () => {
       window.clearInterval(tick)
       for (const e of INPUTS) window.removeEventListener(e, onInput, { capture: true })
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener(PAGE_EVENT, onPage)
     }
     // The visit outlives route changes; the effect below counts those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,6 +254,7 @@ export default function VisitTracker() {
     cur.pages += 1
     cur.path = pathname
     write(cur)
+    window.dispatchEvent(new Event(PAGE_EVENT))
   }, [pathname])
 
   return null

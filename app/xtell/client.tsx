@@ -17,6 +17,7 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useSite } from '../../lib/useSite'
+import { setPageKey } from '../../lib/page-key'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { SIGN_IN_FIRST } from '../../lib/xtell-guest'
@@ -269,6 +270,9 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
   const t = useT()
   const { show: showSignIn } = useAuthModal()
   const [temple, setTemple] = useState<Temple | null>(null)
+  // The visit log's page key (lib/page-key.ts, supabase/139): which room the
+  // visitor is in, so the dashboard can tell which temple people enter.
+  useEffect(() => { setPageKey(temple ? `xtell/${temple}` : 'xtell') }, [temple])
   // www's card grid: the same purposes as the standalone street filter it.
   const [purpose, setPurpose] = useState<(typeof PURPOSES)[number]['key'] | null>(null)
   // ?reading=<id> reopens a saved visit (supabase/105): the row is fetched
