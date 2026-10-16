@@ -95,28 +95,37 @@ export default function AccountPanel(p: AccountProps) {
             : <span>{initial}</span>}
         </span>
         {/* Labelled, so each is plain (owner, Oct 16). An X or LINE account
-            may have no email; that line is left out. */}
+            may have no email; that line is left out. The section is one grid
+            (globals.css .acct-you): on a desktop the language sits at the
+            right after 登出; on a phone it is the last of these lines and
+            登出 goes under the picture (owner, Oct 16). */}
         <dl className="acct-ids">
           <div><dt>{t('acct.f.name')}</dt><dd className="acct-name">{p.name ?? 'Anonymous'}</dd></div>
           {p.handle && <div><dt>{t('acct.f.id')}</dt><dd>@{p.handle}</dd></div>}
           {p.email && <div><dt>{t('acct.f.email')}</dt><dd>{p.email}</dd></div>}
+          <div className="acct-f-lang">
+            <dt>
+              <label htmlFor="language">
+                <span className="acct-lang-full">{t('acct.language.label')}</span>
+                <span className="acct-lang-short">{t('acct.language')}</span>
+              </label>
+            </dt>
+            {/* id="language": the sidebar globe and /profile#language land
+                here. The menu is see-through over its label: a phone zooms
+                into any form field under 16px. */}
+            <dd>
+              <span className="acct-btn acct-lang">
+                <span aria-hidden="true">{LANGS.find(l => l.code === lang)?.label ?? lang}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6l6-6"/></svg>
+                <select id="language" value={lang} onChange={e => setLang(e.target.value as Lang)}>
+                  {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                </select>
+              </span>
+            </dd>
+          </div>
         </dl>
-        {/* Edit, Log out and the language, on the top row (owner, Oct 16). */}
-        <span className="acct-you-acts">
-          <button type="button" className="acct-btn" onClick={p.onEdit}>{t('face.edit')}</button>
-          <button type="button" className="acct-btn" onClick={p.onSignOut}>{t('auth.signout')}</button>
-          {/* id="language": the sidebar globe and /profile#language land here.
-              The menu is see-through over its label: a phone zooms into any
-              form field under 16px. */}
-          <label className="acct-lang-label" htmlFor="language">{t('acct.language.label')}</label>
-          <label className="acct-btn acct-lang">
-            <span aria-hidden="true">{LANGS.find(l => l.code === lang)?.label ?? lang}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6l6-6"/></svg>
-            <select id="language" value={lang} onChange={e => setLang(e.target.value as Lang)}>
-              {LANGS.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-            </select>
-          </label>
-        </span>
+        <button type="button" className="acct-btn acct-edit" onClick={p.onEdit}>{t('face.edit')}</button>
+        <button type="button" className="acct-btn acct-out" onClick={p.onSignOut}>{t('auth.signout')}</button>
         {p.faceEditor}
       </section>
 
