@@ -88,9 +88,14 @@ export interface Copy {
   actShout: string
   shoutName: string
   shoutDraw: string
-  shoutDrawing: string
-  shoutRedo: string
-  shoutPost: string
+  cheerMaking: Record<'selfie' | 'dance' | 'cheer' | 'shout', string>
+  cheerMayClose: string
+  cheerReady: string
+  cheerPost: string
+  cheerAnother: string
+  cheerDiscard: string
+  cheerRetry: string
+  cheerCostNote: string
   cheerAsked: string
   cheerActFailed: string
   cheerNameRefused: string
@@ -314,9 +319,14 @@ const en: Copy = {
   actShout: 'Cheer someone on',
   shoutName: 'Name in the bubble',
   shoutDraw: 'Draw it',
-  shoutDrawing: 'Drawing… about a minute',
-  shoutRedo: 'Draw again',
-  shoutPost: 'Post it',
+  cheerMaking: { selfie: 'Taking a selfie… about a minute', dance: 'Filming a dance… about 3 minutes', cheer: 'Filming a cheer… about 3 minutes', shout: 'Drawing… about a minute' },
+  cheerMayClose: "You can close this; you'll be told when it's ready.",
+  cheerReady: "晴晴's is ready: tap her name to see it",
+  cheerPost: 'Post it',
+  cheerAnother: 'Make another',
+  cheerDiscard: 'Discard',
+  cheerRetry: 'Try again',
+  cheerCostNote: 'Made new each time: a photo about $0.05, a clip about $0.95',
   cheerAsked: '晴晴 is on it: her post appears in a moment',
   cheerActFailed: "That didn't work. Try again.",
   cheerNameRefused: "That name can't go in her bubble. Try another.",
@@ -523,9 +533,14 @@ const zhHant: Copy = {
   actShout: '幫某人加油',
   shoutName: '要加油的名字',
   shoutDraw: '畫出來',
-  shoutDrawing: '畫圖中，約一分鐘…',
-  shoutRedo: '重畫',
-  shoutPost: '貼出',
+  cheerMaking: { selfie: '自拍中，約一分鐘…', dance: '拍跳舞影片中，約三分鐘…', cheer: '拍應援影片中，約三分鐘…', shout: '畫圖中，約一分鐘…' },
+  cheerMayClose: '可以先關掉，好了會告訴你',
+  cheerReady: '晴晴好了！點她的名字看看',
+  cheerPost: '貼出',
+  cheerAnother: '換一個',
+  cheerDiscard: '不要了',
+  cheerRetry: '再試一次',
+  cheerCostNote: '每次都是新做的：照片約 $0.05，影片約 $0.95',
   cheerAsked: '晴晴收到了，馬上貼出來',
   cheerActFailed: '沒有成功，請再試一次',
   cheerNameRefused: '這個名字不能放進對話框，換一個試試',
@@ -732,9 +747,14 @@ const zhHans: Copy = {
   actShout: '帮某人加油',
   shoutName: '要加油的名字',
   shoutDraw: '画出来',
-  shoutDrawing: '画图中，约一分钟…',
-  shoutRedo: '重画',
-  shoutPost: '发出',
+  cheerMaking: { selfie: '自拍中，约一分钟…', dance: '拍跳舞视频中，约三分钟…', cheer: '拍应援视频中，约三分钟…', shout: '画图中，约一分钟…' },
+  cheerMayClose: '可以先关掉，好了会告诉你',
+  cheerReady: '晴晴好了！点她的名字看看',
+  cheerPost: '发出',
+  cheerAnother: '换一个',
+  cheerDiscard: '不要了',
+  cheerRetry: '再试一次',
+  cheerCostNote: '每次都是新做的：照片约 $0.05，视频约 $0.95',
   cheerAsked: '晴晴收到了，马上发出来',
   cheerActFailed: '没有成功，请再试一次',
   cheerNameRefused: '这个名字不能放进对话框，换一个试试',
@@ -941,9 +961,14 @@ const ja: Copy = {
   actShout: '誰かを応援',
   shoutName: '吹き出しに入れる名前',
   shoutDraw: '描く',
-  shoutDrawing: '描いています（1分ほど）…',
-  shoutRedo: '描き直す',
-  shoutPost: '投稿する',
+  cheerMaking: { selfie: '自撮り中…1分ほど', dance: 'ダンス動画を撮影中…3分ほど', cheer: '応援動画を撮影中…3分ほど', shout: '描いています…1分ほど' },
+  cheerMayClose: '閉じても大丈夫です。できたらお知らせします',
+  cheerReady: '晴晴の準備ができました。名前をタップして確認',
+  cheerPost: '投稿する',
+  cheerAnother: '別のを作る',
+  cheerDiscard: 'やめる',
+  cheerRetry: 'もう一度',
+  cheerCostNote: '毎回新しく作ります：写真 約$0.05、動画 約$0.95',
   cheerAsked: '晴晴が受け取りました。まもなく投稿されます',
   cheerActFailed: 'うまくいきませんでした。もう一度お試しください',
   cheerNameRefused: 'この名前は吹き出しに入れられません。別の名前でお試しください',
@@ -1150,9 +1175,14 @@ const ko: Copy = {
   actShout: '누군가 응원하기',
   shoutName: '말풍선에 넣을 이름',
   shoutDraw: '그리기',
-  shoutDrawing: '그리는 중 (약 1분)…',
-  shoutRedo: '다시 그리기',
-  shoutPost: '올리기',
+  cheerMaking: { selfie: '셀카 찍는 중… 약 1분', dance: '춤 영상 찍는 중… 약 3분', cheer: '응원 영상 찍는 중… 약 3분', shout: '그리는 중… 약 1분' },
+  cheerMayClose: '닫아도 돼요. 다 되면 알려 드릴게요',
+  cheerReady: '晴晴 준비 완료! 이름을 눌러 확인하세요',
+  cheerPost: '올리기',
+  cheerAnother: '다른 걸로',
+  cheerDiscard: '그만두기',
+  cheerRetry: '다시 시도',
+  cheerCostNote: '매번 새로 만들어요: 사진 약 $0.05, 영상 약 $0.95',
   cheerAsked: '晴晴이 받았어요. 곧 올라옵니다',
   cheerActFailed: '실패했어요. 다시 시도해 주세요',
   cheerNameRefused: '이 이름은 말풍선에 넣을 수 없어요. 다른 이름으로 해 보세요',

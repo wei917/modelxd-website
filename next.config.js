@@ -27,6 +27,8 @@ const nextConfig = {
     '/api/xcut/render': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
     // Platform video export (Oct 1) re-encodes with the same binary.
     '/api/xcreate/export-video': ['./node_modules/ffmpeg-static/ffmpeg'],
+    // 晴晴's fresh clips for admins (Oct 16) are re-encoded small.
+    '/api/xsports/cheer': ['./node_modules/ffmpeg-static/ffmpeg'],
   },
   webpack: (config) => {
     config.watchOptions = {

@@ -15,10 +15,10 @@
 // (lib/xsports-cheer-media; supabase/136): a fan asking for a selfie, a
 // dance or a photo, a home run, the final out, her first word in a room; at
 // most one per room every ten minutes.
-// An admin can ask her from her card (owner, Oct 16): a dance clip, a selfie,
-// a cheer clip from the set, whenever asked, or a comic picture of her
-// shouting 「<name> 加油！」, drawn on the spot and posted only after the
-// admin has seen it (drawShout; app/api/xsports/cheer).
+// An admin can ask her from her card (owner, Oct 16): a selfie, a dance clip,
+// a cheer clip or a comic picture of her shouting 「<name> 加油！」, made
+// fresh each time and posted only after the admin has seen it
+// (lib/xsports-cheer-fresh; app/api/xsports/cheer), whenever it comes.
 
 import * as providers from './providers'
 import { getModelByProviderName } from './models'
@@ -26,8 +26,7 @@ import { FEATURE } from './model-features'
 import { xsportsAdmin } from './xsports-store'
 import { stateBlock } from './xsports-prompt'
 import { addRoomMessage, claimSpeaker, recentMessages, releaseSpeaker, roomMedia, type RoomKey, type RoomMessage } from './xsports-room'
-import { randomUUID } from 'crypto'
-import { adminPick, askedMedia, CHEER_MEDIA, CHEER_MEDIA_DIR, MEDIA_GAP_MS, pickMedia, type CheerAction, type CheerMedia, type CheerMediaKind } from './xsports-cheer-media'
+import { askedMedia, CHEER_MEDIA_DIR, freshShows, MEDIA_GAP_MS, pickMedia, type CheerAction, type CheerMedia, type CheerMediaKind } from './xsports-cheer-media'
 import { addSpend, overCapToday } from './xsports-ai-spend'
 import { aiByName, CHEAP_AIS, CHEERLEADER } from './xsports-ais'
 import { gameFor } from './xsports-room-ai'
@@ -41,9 +40,9 @@ export type CheerCue =
   | { trigger: 'first' | 'final' }
   | { trigger: 'moment'; event: PlayEvent }
   | { trigger: 'user'; asker: { name: string; text: string; id: number } }
-  // An admin's ask from her card; a 加油 carries the name and the picture
-  // drawn for it (isShoutPicture).
-  | { trigger: 'admin'; action: CheerAction; name?: string; picture?: string }
+  // An admin's ask from her card, with what was made fresh for it and seen
+  // (a 加油 carries the name).
+  | { trigger: 'admin'; action: CheerAction; name?: string; media?: { url: string; kind: CheerMediaKind } }
 
 /** What 晴晴 should cheer now, if anything, given when she last spoke in
  *  the room (ms; null: never). A live game she has not cheered yet: the
@@ -90,7 +89,8 @@ async function modelById(id: string): Promise<any> {
   models.set(id, { at: Date.now(), m: data ?? null })
   return data ?? null
 }
-const usable = (m: any) => !!m && m.enabled !== false && !(m.blocked_features ?? []).includes(FEATURE.xsports)
+/** A catalog row X體育 may use (on, and not blocked for xsports). */
+export const usable = (m: any) => !!m && m.enabled !== false && !(m.blocked_features ?? []).includes(FEATURE.xsports)
 const photo = (c: any): string | null => (c?.avatar_path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${c.avatar_path}` : null)
 
 /** 晴晴 as the page shows her (null while her character is not public). */
@@ -122,7 +122,7 @@ export function mediaTag(cue: CheerCue): string | null {
     case 'first': return 'hello'
     case 'final': return 'win'
     case 'moment': return cue.event.type === 'home_run' || cue.event.type === 'grand_slam' ? 'homerun' : null
-    // An admin's ask brings its own (adminPick, or the picture drawn).
+    // An admin's ask brings its own, made fresh.
     case 'admin': return null
   }
 }
@@ -138,8 +138,9 @@ async function recentMedia(k: RoomKey): Promise<{ last: number | null; files: st
   const rows = (data ?? []) as { media_url: string; created_at: string }[]
   return { last: rows[0] ? Date.parse(rows[0].created_at) : null, files: rows.map(r => String(r.media_url).split('/').pop() ?? '') }
 }
-const publicBase = () => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters`
-const mediaUrl = (m: CheerMedia) => `${publicBase()}/${CHEER_MEDIA_DIR}/${m.file}`
+/** Where her folder's files are read from (the public x-characters bucket). */
+export const publicBase = () => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters`
+export const mediaUrl = (m: CheerMedia) => `${publicBase()}/${CHEER_MEDIA_DIR}/${m.file}`
 /** A picture or clip as it goes up with her words. */
 type Shown = { url: string; kind: CheerMediaKind; shows: string }
 const shown = (m: CheerMedia | null): Shown | null => (m ? { url: mediaUrl(m), kind: m.kind, shows: m.shows } : null)
@@ -230,10 +231,8 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
     const side = teamSide(g)
     const set = side ? 'dodgers' : 'xd'
     if (use.trigger === 'admin') {
-      const seen = await recentMedia(k).catch(() => null)
-      if (seen) media = use.action === 'shout'
-        ? (use.picture ? { url: use.picture, kind: 'image', shows: `a comic picture of you shouting 「${use.name ?? ''} 加油！」 in a big speech bubble` } : null)
-        : shown(adminPick(use.action, seen.files, set))
+      // What the admin saw and chose to post.
+      if (use.media && roomMedia()) media = { ...use.media, shows: freshShows(use.action, use.name) }
     } else if (tag) {
       const seen = await recentMedia(k).catch(() => null)
       if (seen && seen.last !== null && Date.now() - seen.last < MEDIA_GAP_MS) later = use.trigger === 'user'
@@ -264,44 +263,4 @@ export async function roomCheer(k: RoomKey, cue: CheerCue): Promise<void> {
     // left as it was.
     await releaseSpeaker(k, {}).catch(() => {})
   }
-}
-
-/** What the 加油 picture is asked to be. */
-export function shoutPrompt(name: string, blue: boolean): string {
-  const colors = blue ? 'royal blue and white' : 'red and white'
-  return `A bright comic-book panel, clean manga-style line art with flat colors: the same young woman as in the reference photo (keep her face, hair, ribbon and outfit), an original fictional Taiwanese baseball cheerleader, waist-up, both pom-poms raised, shouting with joy. A big white comic speech bubble from her mouth holds bold hand-lettered text, exactly this and nothing else: 「${name} 加油！」 Behind her, speed lines and a starburst in ${colors}. Wholesome and tasteful. No team names or logos, no numbers, signs or any other text anywhere.`
-}
-
-/** 晴晴 shouting 「<name> 加油！」 in a comic picture, drawn now for an admin
- *  (owner, Oct 16: "幫某人加油(with comic like picture with dialog +name
- *  text)"): GPT Image 2 with her own cheer photo as the face reference (her
- *  Dodger-blue one in Dodgers games), kept in her folder's shout/ and handed
- *  back to the admin, who sees it before it is posted. Counts toward the
- *  day's XSports total. Throws when it cannot draw. */
-export async function drawShout(k: RoomKey, name: string): Promise<string> {
-  const g = await gameFor(k.league, Number(k.game))
-  const blue = !!teamSide(g)
-  const ref = CHEER_MEDIA.find(m => m.file === (blue ? 'blue-cheer.jpg' : 'cheer.jpg'))
-  if (!ref) throw new Error('no reference photo')
-  const res = await fetch(mediaUrl(ref))
-  if (!res.ok) throw new Error(`reference photo: ${res.status}`)
-  const model = await getModelByProviderName('openai', 'gpt-image-2')
-  if (!model || !usable(model)) throw new Error('gpt-image-2 is not available')
-  const r = await providers.generateImage(model, shoutPrompt(name, blue), 'medium', '1024x1536',
-    [{ buffer: Buffer.from(await res.arrayBuffer()), mediaType: 'image/jpeg', port: 'reference_image' }], null, null, { userId: null })
-  if (Number(r.cost) > 0) await addSpend(Number(r.cost)).catch(() => {})
-  // Like the set: 720 by 1080 JPEG.
-  const sharp = (await import('sharp')).default
-  const jpg = await sharp(r.buffer).resize(720, 1080, { fit: 'cover' }).jpeg({ quality: 84, mozjpeg: true }).toBuffer()
-  const path = `${CHEER_MEDIA_DIR}/shout/${randomUUID()}.jpg`
-  const { error } = await xsportsAdmin().storage.from('x-characters').upload(path, jpg, { contentType: 'image/jpeg', upsert: false })
-  if (error) throw new Error(`upload: ${error.message}`)
-  return `${publicBase()}/${path}`
-}
-
-/** A picture drawShout made (the only kind an admin's 加油 can post). */
-export function isShoutPicture(url: unknown): url is string {
-  if (typeof url !== 'string') return false
-  const pre = `${publicBase()}/${CHEER_MEDIA_DIR}/shout/`
-  return url.startsWith(pre) && /^[0-9a-f-]{36}\.jpg$/.test(url.slice(pre.length))
 }
