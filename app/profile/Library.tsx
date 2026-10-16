@@ -329,8 +329,11 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
             </div>
           )}
         </div>
+        {/* The menu itself is see-through over its label: a phone zooms into
+            any form field under 16px, so the words shown are a span. */}
         <label className="plib-field plib-sort">
           <LibIcon name="sort" size={20} />
+          <span className="plib-sort-label" aria-hidden="true">{t('lib.sort.' + sort)}</span>
           <select value={sort} onChange={e => setSort(e.target.value as Sort)} aria-label={t('lib.sort')}>
             <option value="newest">{t('lib.sort.newest')}</option>
             <option value="oldest">{t('lib.sort.oldest')}</option>
@@ -359,57 +362,65 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
   const [items, setItems] = useState<Item[]>([])
   const [total, setTotal] = useState<number | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [moreBusy, setMoreBusy] = useState(false)
-  const [moreFailed, setMoreFailed] = useState(false)
+  // "View all" pages through the app's work, one page of PAGE at a time
+  // (owner, Oct 16: pagination, not "load more").
+  const [page, setPage] = useState(1)
   const [retry, setRetry] = useState(0)
+  const sectionRef = useRef<HTMLElement>(null)
   // A small first look per app, smaller on a phone (one duel, two cards) so
   // the next app is in reach; the rows are asked for, not fetched and hidden.
   const phone = useIsPhone()
   const limit = expanded ? PAGE : phone ? def.previewPhone : def.preview
-  // Every fresh load (new search, sort, type, size) starts a new generation;
-  // a "Show more" answer from an older one is dropped, never appended.
+  // Every load starts a new generation; an answer from an older one (a page
+  // clicked past, a type changed) is dropped.
   const gen = useRef(0)
+  // A new search, sort, type or size starts again at page 1.
+  useEffect(() => { setPage(1) }, [q, sort, mode, expanded])
 
   useEffect(() => {
     if (phone === null) return
     const mine = ++gen.current
-    setState('loading'); setMoreBusy(false); setMoreFailed(false)
-    loader(def.key, { q, sort, mode, offset: 0, limit })
-      .then(r => { if (gen.current !== mine) return; setItems(r.items); setTotal(r.total); setState('ready') })
-      .catch(() => { if (gen.current === mine) setState('error') })
-  }, [def.key, q, sort, mode, limit, loader, retry, phone])
-
-  // The offset is what is on screen: a deleted card is gone on the server
-  // too, so the next page starts exactly after the last one shown. Rows
-  // already shown are skipped if the list moved underneath.
-  const loadMore = () => {
-    const mine = gen.current
-    setMoreBusy(true); setMoreFailed(false)
-    loader(def.key, { q, sort, mode, offset: items.length, limit: PAGE })
+    setState('loading')
+    loader(def.key, { q, sort, mode, offset: expanded ? (page - 1) * PAGE : 0, limit })
       .then(r => {
         if (gen.current !== mine) return
-        setItems(prev => { const seen = new Set(prev.map(i => i.id)); return [...prev, ...r.items.filter(i => !seen.has(i.id))] })
-        if (r.total != null) setTotal(r.total)
+        // A page past the end (the last card on it was deleted elsewhere):
+        // step back to the last page that has any.
+        if (expanded && page > 1 && r.items.length === 0 && r.total != null) { setPage(Math.max(1, Math.ceil(r.total / PAGE))); return }
+        setItems(r.items); setTotal(r.total); setState('ready')
       })
-      .catch(() => { if (gen.current === mine) setMoreFailed(true) })
-      .finally(() => { if (gen.current === mine) setMoreBusy(false) })
+      .catch(() => { if (gen.current === mine) setState('error') })
+  }, [def.key, q, sort, mode, limit, loader, retry, phone, expanded, page])
+
+  const goPage = (n: number) => {
+    setPage(n)
+    sectionRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
-  const removeItem = (id: string) => { setItems(prev => prev.filter(i => i.id !== id)); setTotal(n => (n == null ? n : Math.max(0, n - 1))) }
+  // A deleted card leaves the page one short; the last one on a page takes
+  // the reader to the page before it.
+  const removeItem = (id: string) => {
+    setItems(prev => {
+      const next = prev.filter(i => i.id !== id)
+      if (next.length === 0 && expanded && page > 1) setPage(page - 1)
+      return next
+    })
+    setTotal(n => (n == null ? n : Math.max(0, n - 1)))
+  }
 
   // A phone has no collapse arrow (as in the design), so folding is CSS that
   // only applies at desktop width (.plib-section.is-shut): a section folded
   // there is open again on a phone, with no resize event needed.
   const count = total ?? items.length
-  const hasMore = expanded && total != null && items.length < total
+  const pages = expanded && total != null ? Math.ceil(total / PAGE) : 1
   const bodyId = `plib-body-${def.key}`
   return (
-    <section className={`plib-section plib-view-${def.view}${collapsed ? ' is-shut' : ''}`} aria-labelledby={`plib-h-${def.key}`}>
+    <section ref={sectionRef} className={`plib-section plib-view-${def.view}${collapsed ? ' is-shut' : ''}`} aria-labelledby={`plib-h-${def.key}`}>
       <header className="plib-head">
-        <span className="plib-head-icon"><LibIcon name={def.icon} size={22} /></span>
+        <span className="plib-head-icon"><LibIcon name={def.icon} size={18} /></span>
         <h2 id={`plib-h-${def.key}`} className="plib-head-name">{t(def.nameKey)}</h2>
         {state === 'ready' && <span className="plib-count">{count}</span>}
         <span className={def.isPublic ? 'plib-vis is-public' : 'plib-vis'}>
-          <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={14} />{t(def.isPublic ? 'lib.public' : 'lib.private')}
+          <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={12} />{t(def.isPublic ? 'lib.public' : 'lib.private')}
         </span>
         {/* The type filter is the site's own segmented control (.mode-seg, as on
             X對決, XVote and XBoard), beside the badge (owner, Oct 16). */}
@@ -426,16 +437,17 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
         <span className="plib-head-end">
           {state === 'ready' && (expanded
             ? <button type="button" className="plib-viewall" onClick={() => setExpanded(false)}>{t('lib.showless')}</button>
-            : count > items.length && <button type="button" className="plib-viewall" onClick={() => setExpanded(true)}>{t('lib.viewall').replace('{n}', String(count))}<LibIcon name="arrow" size={18} /></button>)}
+            : count > items.length && <button type="button" className="plib-viewall" onClick={() => setExpanded(true)}>{t('lib.viewall').replace('{n}', String(count))}<LibIcon name="arrow" size={14} /></button>)}
           <button type="button" className={collapsed ? 'plib-collapse is-collapsed' : 'plib-collapse'} aria-expanded={!collapsed} aria-controls={bodyId}
             aria-label={t(collapsed ? 'lib.expand' : 'lib.collapse')} onClick={() => setCollapsed(c => !c)}>
-            <LibIcon name="chevron" size={20} />
+            <LibIcon name="chevron" size={16} />
           </button>
         </span>
       </header>
 
       {<div id={bodyId} className="plib-body">
-        {state === 'loading'
+        {/* Turning a page keeps the old page, dimmed, until the new one is in. */}
+        {state === 'loading' && !(expanded && items.length > 0)
           ? <SkeletonRow view={def.view} n={Math.min(limit, 4)} />
           : state === 'error'
           ? <div className="plib-empty plib-error" role="alert">{t('lib.error')} <button type="button" onClick={() => setRetry(n => n + 1)}>{t('lib.retry')}</button></div>
@@ -444,15 +456,44 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
               {q ? t('lib.nomatch') : t('lib.empty')}
               {mode !== 'all' && <button type="button" onClick={() => setMode('all')}>{t('lib.showall')}</button>}
             </div>
-          : <>
+          : <div className={state === 'loading' ? 'plib-paging' : undefined} aria-busy={state === 'loading' || undefined}>
               <Items def={def} items={items} actions={actions} onRemoved={removeItem} expanded={expanded} />
-              {hasMore && <div className="plib-more">
-                {moreFailed && <span role="alert">{t('lib.error')}</span>}
-                <button type="button" onClick={loadMore} disabled={moreBusy}>{moreBusy ? t('common.loading') : moreFailed ? t('lib.retry') : t('lib.more')}</button>
-              </div>}
-            </>}
+            </div>}
+        {/* Stays put while the next page loads, so the numbers never jump. */}
+        {pages > 1 && state !== 'error' && <Pager page={page} pages={pages} onGo={goPage} />}
       </div>}
     </section>
+  )
+}
+
+// Page numbers: the first, the last, and the two either side of this one,
+// with a gap mark between runs (1 … 4 5 6 … 24).
+function pageList(page: number, pages: number): (number | 'gap')[] {
+  const keep = new Set([1, pages, page - 1, page, page + 1].filter(n => n >= 1 && n <= pages))
+  const out: (number | 'gap')[] = []
+  let last = 0
+  for (const n of [...keep].sort((a, b) => a - b)) {
+    if (n - last === 2) out.push(last + 1)
+    else if (n - last > 2) out.push('gap')
+    out.push(n); last = n
+  }
+  return out
+}
+
+function Pager({ page, pages, onGo }: { page: number; pages: number; onGo: (n: number) => void }) {
+  const { t } = useLang()
+  return (
+    <nav className="plib-pager" aria-label={t('lib.pages')}>
+      <button type="button" className="plib-page is-step" disabled={page <= 1} onClick={() => onGo(page - 1)} aria-label={t('lib.prev')}>
+        <LibIcon name="chevron" size={14} />
+      </button>
+      {pageList(page, pages).map((n, i) => n === 'gap'
+        ? <span key={`g${i}`} className="plib-page-gap" aria-hidden="true">…</span>
+        : <button key={n} type="button" className={n === page ? 'plib-page is-on' : 'plib-page'} aria-current={n === page ? 'page' : undefined} onClick={() => n !== page && onGo(n)}>{n}</button>)}
+      <button type="button" className="plib-page is-step is-next" disabled={page >= pages} onClick={() => onGo(page + 1)} aria-label={t('lib.next')}>
+        <LibIcon name="chevron" size={14} />
+      </button>
+    </nav>
   )
 }
 
@@ -486,10 +527,10 @@ function Items({ def, items, actions, onRemoved, expanded }: { def: SectionDef; 
               <time dateTime={it.created}>{date(it.created)}</time>
               <span className="plib-card-acts">
                 <button type="button" onClick={() => actions.share(it.id)} aria-label={t('common.share')} title={t('common.share')}>
-                  <LibIcon name={actions.copiedId === it.id ? 'check' : 'link'} size={17} />
+                  <LibIcon name={actions.copiedId === it.id ? 'check' : 'link'} size={15} />
                 </button>
                 <button type="button" onClick={() => actions.requestDelete('duel', it.id, it.title, () => onRemoved(it.id))} aria-label={t('common.delete')} title={t('common.delete')}>
-                  <LibIcon name="trash" size={17} />
+                  <LibIcon name="trash" size={15} />
                 </button>
               </span>
             </div>
