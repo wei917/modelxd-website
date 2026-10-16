@@ -38,7 +38,7 @@ export default function StudioWorks({ type, userId }: { type: StudioType; userId
     <section className="xcs-sec" aria-label={t('xcs.sec.works')}>
       <div className="xcs-sec-head">
         <h2>{t('xcs.sec.works')}</h2>
-        <Link href="/profile">{t('xcs.sec.library')} ›</Link>
+        <Link href="/profile?view=library">{t('xcs.sec.library')} ›</Link>
       </div>
       <div className="xcs-works">
         {rows.map(r => {

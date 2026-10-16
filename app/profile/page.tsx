@@ -135,13 +135,13 @@ export default function ProfilePage() {
   // library-designs-20261014/03, Favorite left out until bookmarks exist):
   // Profile (the account: picture, name, wallet, plan, referral, X先知
   // settings, deleting the account) and Library (your work, one section per
-  // app). Library is where /profile
-  // opens; every link that means the account opens Profile: #language (the
+  // app). /profile opens on Profile (owner, Oct 16); links to your work say
+  // ?view=library. The account links force Profile even then: #language (the
   // sidebar globe), #face (X體育設定's 修改名字), #xtell-… (X先知's links to
   // its birth details and personality type, which scroll themselves into
   // view) and the returns from Stripe (?checkout=, ?verify=). ?view= keeps
   // a chosen view across a reload. X先知's own front door is unchanged.
-  const [view, setView] = useState<ProfileView>('library')
+  const [view, setView] = useState<ProfileView>('profile')
   const accountLink = () => {
     const h = window.location.hash
     const q = new URLSearchParams(window.location.search)
