@@ -4589,21 +4589,24 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 @media (max-width: 700px) { .pview-icon { height: 30px; } .pview-icon svg { width: 24px; height: 24px; } }
 
 .plib { padding-bottom: 24px; }
-.plib-toolbar { display: flex; justify-content: space-between; gap: 16px; margin: 8px 0; }
-.plib-picker { position: relative; width: 220px; }
-.plib-field.plib-sort { width: 220px; }
+/* Section picker and sort side by side at the right, compact (owner, Oct 16:
+   "rearrange section selector and sort dropdown"). */
+.plib-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin: 4px 0 6px; }
+.plib-picker { position: relative; }
+.plib-picker .plib-picker-pop { left: auto; right: 0; }
 .plib-field {
-  position: relative; display: flex; align-items: center; gap: 10px;
-  width: 100%; min-height: 46px; padding: 0 14px; box-sizing: border-box;
+  position: relative; display: flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 10px; box-sizing: border-box;
   background: var(--xtell-white, #fff); border: 1px solid var(--border2); border-radius: 5px;
-  color: var(--white); font-family: var(--font-body), sans-serif; font-size: 15px;
+  color: var(--white); font-family: var(--font-body), sans-serif; font-size: 14px;
 }
+.plib-field svg { width: 16px; height: 16px; }
 .plib-field:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
 .plib-picker-btn { cursor: pointer; text-align: left; }
 .plib-picker-btn > span { flex: 1; font-weight: 500; white-space: nowrap; }
 .plib-picker-btn[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
 .plib-sort select {
-  flex: 1; min-width: 0; min-height: 44px; border: 0; outline: 0; background: transparent;
+  flex: 1; min-width: 0; min-height: 34px; border: 0; outline: 0; background: transparent;
   font: inherit; font-weight: 500; color: inherit; appearance: none; -webkit-appearance: none; cursor: pointer;
 }
 .plib-sort > svg:last-child { pointer-events: none; }
@@ -4626,10 +4629,13 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-head-icon { display: inline-flex; color: var(--white); }
 /* X先知's section heading: the serif, regular weight (.xtell-section-heading). */
 .plib-head-name {
-  margin: 0; font-family: var(--xtell-serif, var(--font-display)), serif; font-size: clamp(24px, 3vw, 28px);
+  margin: 0; font-family: var(--xtell-serif, var(--font-display)), serif; font-size: 22px;
   font-weight: 400; line-height: 1.3; letter-spacing: -.01em; color: var(--white);
 }
-.plib-count { font-size: 15px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+.plib-count { font-size: 14px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+/* The site's segmented type control, compact, in the section header. */
+.plib-seg { border-radius: 8px; }
+.plib-seg .mode-seg-btn { padding: 6px 12px; font-size: 11px; }
 .plib-vis {
   display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
   border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--muted2); font-size: 13px; font-weight: 500;
@@ -4638,7 +4644,7 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-head-end { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 .plib-viewall {
   display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0;
-  background: none; border: 0; color: var(--red); font-size: 15px; font-weight: 500; cursor: pointer; white-space: nowrap;
+  background: none; border: 0; color: var(--red); font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;
 }
 .plib-viewall:hover { text-decoration: underline; text-underline-offset: 5px; }
 .plib-collapse {
@@ -4648,19 +4654,11 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-collapse svg { transform: rotate(180deg); transition: transform .15s; }
 .plib-collapse.is-collapsed svg { transform: none; }
 .plib-collapse:hover { background: var(--xtell-tint, rgba(0,0,0,.05)); }
-.plib-viewall:focus-visible, .plib-collapse:focus-visible, .plib-mode:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.plib-viewall:focus-visible, .plib-collapse:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 /* Folding is desktop-only: the arrow is not on a phone, so neither is the fold. */
 @media (min-width: 761px) {
   .plib-section.is-shut .plib-body, .plib-section.is-shut .plib-viewall { display: none; }
 }
-
-.plib-modes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-/* X先知's chips (.xtell-as-chip / .xtell-pin): outlined, vermilion on a tint when chosen. */
-.plib-mode {
-  min-height: 36px; padding: 0 16px; border: 1px solid var(--border2); border-radius: 999px;
-  background: var(--xtell-white, #fff); color: var(--white); font-size: 14px; font-weight: 400; cursor: pointer;
-}
-.plib-mode.is-on { border-color: var(--red); background: var(--xtell-tint, var(--red-dim)); color: var(--red); font-weight: 600; }
 
 .plib-grid { display: grid; gap: 20px; }
 .plib-grid-duel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -4676,10 +4674,10 @@ html[data-site="xtell"] .xtell-nav-actions { flex: none; margin-left: auto; }
 .plib-card-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 14px; min-width: 0; }
 .plib-card-title {
   display: block; padding: 0; background: none; border: 0; text-align: left; cursor: pointer;
-  font-family: var(--font-body), sans-serif; font-size: 16px; font-weight: 500; line-height: 1.4; color: var(--white);
+  font-family: var(--font-body), sans-serif; font-size: 15px; font-weight: 500; line-height: 1.4; color: var(--white);
   text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.plib-card time, .plib-card-meta { font-size: 14px; color: var(--muted2); }
+.plib-card time, .plib-card-meta { font-size: 13px; color: var(--muted2); }
 .plib-card-foot { display: flex; align-items: center; gap: 8px; }
 .plib-card-acts { display: flex; gap: 2px; margin-left: auto; }
 .plib-card-acts button, .plib-card-acts a {
@@ -4776,8 +4774,11 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   /* www's account page uses the phone's width: 16px sides, the tab bar
      edge to edge (the shared .arena keeps 40px). */
   .arena.profile-arena { padding: 16px 16px 64px; }
-  .plib-toolbar { gap: 12px; margin-top: 4px; }
-  .plib-picker, .plib-field.plib-sort { width: auto; flex: 1 1 0; min-width: 0; }
+  .plib-toolbar { gap: 8px; margin-top: 0; }
+  .plib-picker, .plib-field.plib-sort { flex: 1 1 0; min-width: 0; }
+  .plib-picker-btn { width: 100%; }
+  .plib-head-name { font-size: 20px; }
+  .plib-seg { order: 10; flex-basis: 100%; width: max-content; max-width: 100%; }
   .plib-picker-pop { min-width: min(300px, calc(100vw - 32px)); }
   .plib-section { padding: 22px 0 24px; }
   .plib-head { gap: 10px; }
@@ -4789,7 +4790,6 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   /* As in the phone design: no collapse arrow; View all is the control. */
   .plib-collapse { display: none; }
   .plib-field { padding: 0 12px; gap: 8px; }
-  .plib-mode { min-height: 36px; padding: 0 16px; font-size: 14px; }
   .plib-grid { gap: 12px; }
   .plib-grid-duel { grid-template-columns: 1fr; }
   .plib-grid-media, .plib-grid-thumb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4803,6 +4803,10 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 }
 @media (prefers-reduced-motion: reduce) { .plib-skel { animation: none; } .plib-collapse svg { transition: none; } }
 
+/* www /profile keeps the site's own background (owner, Oct 16: "the
+   background color does not match other pages'"); the rest is X先知's. */
+.xtell-site.pv-xtell { --xtell-paper: #fdfdfb; --bg: #fdfdfb; background: #fdfdfb; }
+
 /* www /profile in X先知's type (owner, Oct 16). The account blocks are
    inline-styled for the old look: small all-caps JetBrains Mono labels and
    heavy display numbers. Here the labels become plain body text at a
@@ -4815,3 +4819,85 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .pv-xtell [style*="--font-display"], .pv-xtell .xtell-profile-summary h1 {
   font-family: var(--xtell-serif), serif !important; font-weight: 400 !important; letter-spacing: -.01em !important;
 }
+
+/* ── www /profile: the Profile tab (app/profile/Account.tsx, Oct 16) ─────
+   One column of plain sections in X先知's type and sizes: serif headings at
+   18px, 14px text, 13px notes, 5px buttons, a warm rule between sections. */
+.acct { font-size: 14px; color: var(--white); padding-bottom: 8px; }
+.acct-you { position: relative; display: flex; align-items: center; gap: 14px; padding: 6px 0 20px; }
+.acct-avatar {
+  width: 56px; height: 56px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border2); background: var(--xtell-tint, var(--surface2));
+  color: var(--red); font: 400 22px var(--xtell-serif), serif;
+}
+.acct-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.acct-you-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.acct-name { font: 400 22px/1.3 var(--xtell-serif), serif; color: var(--white); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-sub { font-size: 13px; color: var(--muted2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-section { padding: 20px 0; border-top: 1px solid var(--xtell-rule, var(--border)); }
+.acct-h { margin: 0 0 12px; font: 400 18px/1.4 var(--xtell-serif), serif; color: var(--white); }
+.acct-h-note { margin-left: 6px; font: 400 13px var(--font-body), sans-serif; color: var(--muted2); }
+.acct-h3 { margin: 18px 0 8px; font-size: 14px; font-weight: 600; color: var(--white); }
+.acct-balance { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.acct-balance-num { font: 400 30px/1.1 var(--xtell-serif), serif; font-variant-numeric: tabular-nums; }
+.acct-note { margin: 6px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted2); }
+.acct-text { margin: 0; font-size: 14px; line-height: 1.6; }
+.acct-text.is-warn { color: var(--red); }
+.acct-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 8px 0; font-size: 14px; }
+.acct-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.acct-btn {
+  min-height: 36px; padding: 0 14px; border-radius: 5px; border: 1px solid var(--border2);
+  background: var(--xtell-white, #fff); color: var(--white); font: inherit; font-size: 14px; font-weight: 500;
+  white-space: nowrap; cursor: pointer;
+}
+.acct-btn:hover { border-color: var(--red); color: var(--red); }
+.acct-btn.is-primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
+.acct-btn.is-primary:hover { filter: brightness(.94); color: #fff; }
+.acct-btn:disabled { opacity: .6; cursor: default; }
+.acct-select { min-height: 36px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--white); font: inherit; font-size: 14px; }
+.acct-ref { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.acct-ref code {
+  flex: 1; min-width: 0; padding: 8px 10px; border-radius: 5px; border: 1px solid var(--border2);
+  background: var(--xtell-tint, var(--surface2)); font: 13px var(--font-body), sans-serif;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.acct-stats { display: flex; flex-wrap: wrap; gap: 16px; margin: 10px 0 0; font-size: 13px; color: var(--muted2); }
+.acct-stats b { color: var(--white); font-weight: 600; }
+.acct-month { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 6px; font-size: 13px; color: var(--muted2); }
+.acct-chip { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border2); background: var(--xtell-white, #fff); color: var(--white); font-size: 13px; }
+.acct-day { margin-top: 12px; }
+.acct-day-head { display: flex; justify-content: space-between; gap: 12px; padding: 6px 2px; font-size: 13px; color: var(--muted2); border-bottom: 1px solid var(--xtell-rule, var(--border)); }
+.acct-apps, .acct-charges { list-style: none; margin: 0; padding: 0; }
+.acct-app {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto 14px; align-items: center; gap: 12px;
+  width: 100%; min-height: 44px; padding: 0 2px; background: none; border: 0;
+  border-bottom: 1px solid var(--xtell-rule, var(--border)); font: inherit; font-size: 14px; color: var(--white);
+  text-align: left; cursor: pointer;
+}
+.acct-app:hover { background: var(--xtell-tint, var(--surface2)); }
+.acct-app:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+.acct-app-count { font-size: 13px; color: var(--muted2); }
+.acct-amt { font-variant-numeric: tabular-nums; color: var(--white); white-space: nowrap; }
+.acct-amt.is-in { color: var(--green); }
+.acct-caret { font-size: 11px; color: var(--muted2); }
+.acct-charges li {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px;
+  padding: 7px 2px 7px 12px; font-size: 13px; color: var(--muted2); border-bottom: 1px dashed var(--xtell-rule, var(--border));
+}
+.acct-charge-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-more { margin-top: 12px; }
+.acct-empty { margin: 12px 0 0; font-size: 13px; color: var(--muted2); }
+.acct-xtell .xtell-profile-tab { background: transparent; }
+@media (max-width: 760px) {
+  .acct-balance-num { font-size: 26px; }
+  .acct-app { gap: 8px; }
+  .acct-ref { flex-wrap: wrap; }
+  .acct-ref code { flex-basis: 100%; }
+}
+/* X先知's two settings blocks inside the Profile tab: rows of this section,
+   not boxed cards with their own big headings. */
+.acct-xtell .xtell-dy-account { margin: 0; padding: 12px 0; border: 0; border-bottom: 1px solid var(--xtell-rule, var(--border)); border-radius: 0; background: none; box-shadow: none; }
+.acct-xtell .xtell-dy-account:last-child { border-bottom: 0; padding-bottom: 0; }
+.acct-xtell .xtell-dy-title { font: 600 14px/1.5 var(--font-body), sans-serif; }
+.acct-xtell .xtell-dy-account { font-size: 13px; }
