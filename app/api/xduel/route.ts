@@ -11,6 +11,7 @@ export const maxDuration = 800
 
 import { isVerifiedAccount } from '@/lib/verified-account'
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
+import { allowedFor, FEATURE }            from '@/lib/model-features'
 import { processAttachment }              from '@/lib/attachment'
 import { sanitizeProviderError, ACCOUNT_LIMIT, SAFETY } from '@/lib/provider-errors'
 import * as providers                     from '@/lib/providers'
@@ -377,6 +378,11 @@ export async function POST(req: Request) {
   let pool: ModelInfo[]
   try { pool = await getModelsByMode(mode) }
   catch (err) { refundQuota(); return Response.json({ error: String(err) }, { status: 400 }) }
+  // The `xduel` block key has existed since model-features was written, and
+  // the picker and /api/v1 honour theirs, but the DRAW never did: it shuffled
+  // whatever getModelsByMode returned, so blocking a model from XDuel did
+  // nothing at all. Same gap as Discussion's picker (known debt #2).
+  pool = allowedFor(pool, FEATURE.xduel)
   if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
   // Match the pool to the attachment the user actually sent.
