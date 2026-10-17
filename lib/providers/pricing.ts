@@ -222,12 +222,18 @@ export function calcSpeechCost(
     characters?:         number | null
     inputTextTokens?:    number | null
     outputAudioTokens?:  number | null
+    /** Seconds of audio produced — the billing unit for music models that
+     *  charge by length rather than per song or per character. */
+    durationSeconds?:    number | null
   } = {},
 ): number {
   const p = pricing(model)
   const t = p.tokens ?? {}
   // A song is priced per request, so nothing it produced changes the bill.
   if (typeof p.per_song === 'number') return p.per_song
+  if (typeof p.per_audio_second === 'number') {
+    return Math.max(0, usage.durationSeconds ?? 0) * p.per_audio_second
+  }
   let cost = 0
   if (typeof p.per_1m_characters === 'number' && (usage.characters ?? 0) > 0) {
     cost += ((usage.characters ?? 0) / 1_000_000) * p.per_1m_characters
@@ -247,6 +253,7 @@ export function speechPricePerMinute(model: ModelInfo): number {
   // song price instead, so callers that want $/min get the song price back
   // rather than a number invented from a speaking rate.
   if (typeof p.per_song === 'number') return p.per_song
+  if (typeof p.per_audio_second === 'number') return 60 * p.per_audio_second
   if (typeof p.per_1m_characters === 'number') return (900 / 1_000_000) * p.per_1m_characters
   const perSec = (25 / 1_000_000) * resolveTokenRate((p.tokens ?? {}).audio_output)
   return perSec * 60
@@ -318,6 +325,8 @@ export function estimateCost(
   // English per second at 25 audio tokens/s.
   if (mode === 'audio') {
     if (typeof p.per_song === 'number') return p.per_song
+    // Length is a control the user set, not a guess: quote exactly it.
+    if (typeof p.per_audio_second === 'number') return (opts.seconds ?? 60) * p.per_audio_second
     if (typeof p.per_1m_characters === 'number') return (promptChars / 1_000_000) * p.per_1m_characters
     const seconds = Math.max(1, promptChars / 14)
     return calcSpeechCost(model, { inputTextTokens: Math.ceil(promptChars / 4), outputAudioTokens: Math.round(seconds * 25) })

@@ -480,6 +480,10 @@ interface SlotOptions {
   voice?: string | null
   format?: string | null
   language?: string | null
+  /** Music: song length in seconds. Only rows declaring
+   *  output_config.audio.durations offer it — Lyria has no length
+   *  parameter, so its card shows no length control. */
+  seconds?: number | null
   /** How to say it (accent, mood, pace), for the rows takesSpeechStyle()
    *  allows: Gemini TTS, OpenAI TTS and Alibaba's -instruct- models. */
   style?: string | null
@@ -1311,6 +1315,10 @@ function CreateStudio() {
         language: clamp(opts.language, langIds),
         format:   clamp(opts.format, formats),
         style:    takesSpeechStyle(model as any) && typeof opts.style === 'string' ? opts.style.slice(0, SPEECH_STYLE_MAX) : null,
+        // Music length, clamped to what the row offers. Unset on a row with
+        // no durations (Lyria takes no length at all).
+        seconds:  typeof opts.seconds === 'number' && (cfg.durations ?? []).includes(opts.seconds)
+          ? opts.seconds : ((cfg.durations ?? [])[0] ?? null),
       }
     }
     // Text mode: no watermark concept. Thinking level clamps to the
@@ -2473,6 +2481,7 @@ function CreateStudio() {
         format:         opts.format ?? null,
         language:       opts.language ?? null,
         style:          mode === 'audio' && typeof opts.style === 'string' && opts.style.trim() ? opts.style.trim() : null,
+        seconds:        opts.seconds ?? null,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }

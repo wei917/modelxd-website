@@ -12,6 +12,8 @@
 // openai.svg is the blossom mark (from simple-icons v13, before the
 // icon was dropped upstream), black fill per OpenAI's own light-mode
 // usage. Nominative use: it labels OpenAI's models as theirs.
+// elevenlabs.svg is their own icon.svg (the two-bar mark), inverted to
+// white-on-black: theirs is black-on-white and vanishes on our cards.
 // minimax.svg is NOT from simple-icons (there is no MiniMax icon
 // there): it is the waveform mark traced off MiniMax's own brand
 // lockup, kept as a stroked path so it stays crisp at 16px, with
@@ -22,7 +24,7 @@
 // It shows for ByteDance's models whoever we buy them from (lib/model-maker).
 import { makerKey } from '../../lib/model-maker'
 
-const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'minimax', 'modelxd', 'bytedance']
+const KNOWN = ['openai', 'google', 'alibaba', 'anthropic', 'xai', 'runway', 'moonshot', 'minimax', 'elevenlabs', 'modelxd', 'bytedance']
 
 // Ours is the brand mark itself (the same PNG the Nav lockup uses), not a
 // simple-icons SVG — XEval lists ModelXD Autopilot alongside the vendors and
