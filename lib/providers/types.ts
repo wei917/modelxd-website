@@ -62,6 +62,10 @@ export interface ModelPricing {
   per_1m_characters?: number
   /** $ per web-search call. See the note above. */
   per_search?:       number
+  /** $ per SECOND of generated audio. ElevenLabs Music bills $0.15 a
+   *  minute of output; we always ask for an exact length so the bill is
+   *  known before the call rather than guessed from the file. */
+  per_audio_second?: number
   /** $ per generated SONG, flat. Music models price the request, not its
    *  length or its tokens: Lyria 3.5 and 3 Pro are $0.08 a song whatever
    *  comes out, Lyria 3 Clip $0.04 for its fixed 30 seconds. A fourth
@@ -213,6 +217,11 @@ export interface OutputModalityConfig {
   languages?:    AudioLanguage[]
   /** Audio output only: speaking-rate bounds the provider accepts. */
   speed_range?:  { min: number; max: number }
+  /** Audio output only: song lengths in SECONDS the row offers, first =
+   *  default. Only music models that take a length have this — Lyria has no
+   *  duration parameter at all, so its row leaves it unset and its card
+   *  shows no length control. */
+  durations?:    number[]
 }
 
 export interface OutputConfig {

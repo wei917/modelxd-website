@@ -18,6 +18,7 @@ import * as anthropic  from './anthropic'
 import * as runway     from './runway'
 import * as replicate from './replicate'
 import * as minimax    from './minimax'
+import * as elevenlabs from './elevenlabs'
 import * as moonshot   from './moonshot'
 import { startCall, endCall, logMediaUrl } from './call-log'
 import { estimateCost, supportsWebSearch } from './pricing'
@@ -47,7 +48,7 @@ export interface CallContext {
   userId?: string | null
 }
 
-const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot', 'minimax', 'replicate']
+const SUPPORTED_PROVIDERS = ['openai', 'google', 'alibaba', 'xai', 'anthropic', 'runway', 'moonshot', 'minimax', 'replicate', 'elevenlabs']
 
 // Providers whose text path can ingest a raw PDF natively (full fidelity:
 // text + page images). A model only takes the native path when it ALSO
@@ -479,6 +480,8 @@ export interface SpeechOptions {
   style?:    string | null
   /** MiniMax only: language_boost hint. */
   language?: string | null
+  /** Music only: how long the song should be, in seconds. */
+  seconds?:  number | null
 }
 
 export async function generateSpeech(
@@ -508,8 +511,10 @@ export async function generateSpeech(
       result = await alibaba.generateSpeech(model, text, options)
     } else if (model.provider === 'openai') {
       result = await openai.generateSpeech(model, text, options)
+    } else if (model.provider === 'elevenlabs' && isMusic) {
+      result = await elevenlabs.generateMusic(model, text, { seconds: options?.seconds ?? null })
     } else {
-      noImplementation(model, 'text', ['google', 'minimax', 'alibaba', 'openai'])
+      noImplementation(model, 'text', ['google', 'minimax', 'alibaba', 'openai', 'elevenlabs'])
     }
     endCall(requestId, desc, {
       status:         'success',
