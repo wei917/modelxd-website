@@ -234,6 +234,12 @@ export interface ModelInfo {
   model_pricing:     ModelPricing | null
   input_config:      InputConfig  | null
   output_config:     OutputConfig | null
+  /** Surfaces this model must NOT be offered for (lib/model-features.ts).
+   *  The column has always been fetched by `select('*')`, but went undeclared
+   *  here, so `allowedFor()` could not be applied to a ModelInfo[] without a
+   *  type error — which is why XDuel's draw silently ignored the `xduel`
+   *  key for as long as it existed. */
+  blocked_features?: string[] | null
 }
 
 export interface TextResult {
