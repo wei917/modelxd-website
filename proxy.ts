@@ -38,6 +38,8 @@
 //   - /favicon, /robots, /logo  — public static files
 
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { hiddenApp } from '@/lib/hidden-apps'
 import { verifySiteToken } from '@/lib/site-token'
 import { siteOfHost, isSiteRoute, isXTellPath, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
 import { resolveLang, acceptTags, LANG_COOKIE, LANG_HEADER } from '@/lib/lang'
@@ -148,7 +150,45 @@ function siteSwitch(req: NextRequest): NextResponse | null {
   return res
 }
 
+// An admin-only app (lib/hidden-apps; owner, Oct 16: "admin only, others go
+// there will get page not found") answers page not found, and its APIs 404,
+// to anyone not on ADMIN_EMAILS, on every host but this machine. The sign-in
+// is read from the request's cookies; a session refreshed while reading it
+// is saved on the answer, whichever it is (Supabase rotates refresh tokens:
+// dropping the new one would sign the person out). An 'unlisted' app only
+// leaves the menus; its address works for anyone.
+async function adminOnlyGate(req: NextRequest, pass: NextResponse): Promise<NextResponse | null> {
+  const app = hiddenApp(req.nextUrl.pathname)
+  if (!app || app.level !== 'admin') return null
+  const host = bareHost(requestHost(req))
+  if (host === 'localhost' || host === '127.0.0.1') return null
+  const fresh: { name: string; value: string; options: CookieOptions }[] = []
+  let admin = false
+  try {
+    const admins = (process.env.ADMIN_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    if (admins.length) {
+      const sb = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+        cookies: { getAll: () => req.cookies.getAll(), setAll: cs => { fresh.push(...cs) } },
+      })
+      const { data: { user } } = await sb.auth.getUser()
+      admin = !!user?.email && admins.includes(user.email.toLowerCase())
+    }
+  } catch { admin = false }
+  const res = admin ? pass
+    : req.nextUrl.pathname.startsWith('/api/') ? NextResponse.json({ error: 'not_found', code: 'not_found' }, { status: 404 })
+    : NextResponse.rewrite(new URL('/_hidden-app', req.url))
+  for (const c of fresh) res.cookies.set(c.name, c.value, c.options)
+  return res
+}
+
 export async function proxy(req: NextRequest) {
+  const res = await siteGate(req)
+  // A redirect (the password page, a door sending a path home) goes as is.
+  if (res.status >= 300 && res.status < 400) return res
+  return (await adminOnlyGate(req, res)) ?? res
+}
+
+async function siteGate(req: NextRequest): Promise<NextResponse> {
   const switched = siteSwitch(req)
   if (switched) return switched
 

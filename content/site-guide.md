@@ -236,7 +236,7 @@ account; projects are listed on XArch and on your Profile.
 The home for your AI characters. Create, edit and delete them here: a name
 and avatar, the persona you write, their appearance, photos, a voice (a
 preset, or a custom one designed from a text description), and the model
-each one runs on. Up to 20 characters per account. A character is private unless you switch on 公開 (Public): ModelXD may then feature it in public places, like the X體育 live chat rooms, where everyone sees its name, photo and words. Each card has a **Talk**
+each one runs on. Up to 20 characters per account. A character is private unless you switch on 公開 (Public): ModelXD may then feature it in public places on the site, where everyone sees its name, photo and words. Each card has a **Talk**
 button that opens the character's chat in XTalk. Saving a character is free;
 talking to one bills the chosen model's list price. Available to every
 signed-in account; your characters are also listed on your Profile.
@@ -423,6 +423,7 @@ and web-search settings (like an XCreate slot), and each reply is
 billed at that model's listed price with the cost shown under the reply. Readings are for reflection and entertainment, never advice —
 health, money and legal questions belong with professionals.
 
+<!-- app:xsports -->
 ### XSports（X體育）— live games with fans, AI commentators and highlights
 
 `/xsports`. Today's MLB and NBA games, with scores, free to look at without
@@ -465,6 +466,7 @@ reopened when you come back; 清除對話 deletes it and starts over. On
 a phone the room shows the score first, then 戰況 / 公開聊天室 / AI 私聊 /
 數據 / 賠率. Prototype: the
 game data comes from free public feeds.
+<!-- /app:xsports -->
 
 ## Accounts, credits and pricing
 

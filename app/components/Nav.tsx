@@ -1,5 +1,6 @@
 'use client'
 
+import { isHiddenHref } from '../../lib/hidden-apps'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -15,7 +16,7 @@ import XTellNav from './xtell/XTellNav'
 import { useFace } from '../../lib/use-face'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
-const NAV_LINKS = [
+const ALL_NAV_LINKS = [
   { href: '/xduel',       i18n: 'nav.xduel',       protected: true,  icon: 'duel'   },
   { href: '/xcreate',     i18n: 'nav.xcreate',     protected: true,  icon: 'create' },
   { href: '/xdirect',     i18n: 'nav.xdirect',     protected: true,  icon: 'director' },
@@ -37,6 +38,8 @@ const NAV_LINKS = [
   // XDev — API keys + MCP for external agents. Open since Aug 24.
   { href: '/xdev',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
 ]
+// A hidden app (lib/hidden-apps), whichever its level, is not in the menu.
+const NAV_LINKS = ALL_NAV_LINKS.filter(l => !isHiddenHref(l.href))
 
 // Inline SVG icons (no icon-font dependency). 18px, inherit color via
 // currentColor so the active/hover states tint them automatically.

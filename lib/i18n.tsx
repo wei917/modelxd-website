@@ -825,7 +825,7 @@ export const STRINGS: Record<string, Entry> = {
   'xc.addphoto':   { en: 'Add photo', 'zh-Hant': '新增照片', 'zh-Hans': '添加照片', ja: '写真を追加', ko: '사진 추가' },
   'xc.search':     { en: 'Web search', 'zh-Hant': '網路搜尋', 'zh-Hans': '联网搜索', ja: 'ウェブ検索', ko: '웹 검색' },
   'xc.public':     { en: 'Public', 'zh-Hant': '公開', 'zh-Hans': '公开', ja: '公開', ko: '공개' },
-  'xc.publicnote': { en: 'Public: ModelXD may feature this character in public places, like the X體育 live chat rooms, where everyone sees its name, photo and words. Off: only you.', 'zh-Hant': '公開：ModelXD 可以讓這個角色出現在公開的地方（例如 X體育的直播聊天室），大家都看得到它的名字、照片和說的話。不公開：只有你看得到。', 'zh-Hans': '公开：ModelXD 可以让这个角色出现在公开的地方（例如 X体育的直播聊天室），大家都看得到它的名字、照片和说的话。不公开：只有你看得到。', ja: '公開：ModelXD がこのキャラクターを公開の場（Xスポーツのライブチャットなど）に登場させることがあり、名前・写真・発言が誰にでも見えます。オフ：あなただけ。', ko: '공개: ModelXD가 이 캐릭터를 공개된 곳(X스포츠 라이브 채팅방 등)에 등장시킬 수 있고, 이름·사진·말이 모두에게 보입니다. 끄면: 나만 봅니다.' },
+  'xc.publicnote': { en: 'Public: ModelXD may feature this character in public places on the site, where everyone sees its name, photo and words. Off: only you.', 'zh-Hant': '公開：ModelXD 可以讓這個角色出現在網站上公開的地方，大家都看得到它的名字、照片和說的話。不公開：只有你看得到。', 'zh-Hans': '公开：ModelXD 可以让这个角色出现在网站上公开的地方，大家都看得到它的名字、照片和说的话。不公开：只有你看得到。', ja: '公開：ModelXD がこのキャラクターをサイト上の公開の場に登場させることがあり、名前・写真・発言が誰にでも見えます。オフ：あなただけ。', ko: '공개: ModelXD가 이 캐릭터를 사이트의 공개된 곳에 등장시킬 수 있고, 이름·사진·말이 모두에게 보입니다. 끄면: 나만 봅니다.' },
   'xc.crop':       { en: 'Adjust your avatar', 'zh-Hant': '調整頭像', 'zh-Hans': '调整头像', ja: 'アイコンを調整', ko: '아바타 조정' },
   'xc.cropsave':   { en: 'Use photo', 'zh-Hant': '使用照片', 'zh-Hans': '使用照片', ja: 'この写真を使う', ko: '사진 사용' },
   'xt.tpl.discussion.title': { en: 'Put Them in One Room.', 'zh-Hant': '把他們放進同一個房間。', 'zh-Hans': '把他们放进同一个房间。', ja: '同じ部屋に入れてみる。', ko: '한 방에 몰아넣기.' },

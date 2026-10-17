@@ -17,6 +17,7 @@
 // It is the front desk, not the studio.
 
 import { readFile } from 'fs/promises'
+import { isHiddenHref, withoutHidden } from '@/lib/hidden-apps'
 import path from 'path'
 import { XCREATE_TEMPLATES } from '@/app/xcreate/templates'
 import { houseCall } from '@/lib/house-llm'
@@ -58,6 +59,8 @@ const ROUTES: Record<string, string> = {
   '/xdev':      'XDev (keys + API docs)',
   '/xsports':  'XSports (watch MLB live with an AI buddy)',
 }
+// Never a hidden app (lib/hidden-apps), whichever its level.
+for (const r of Object.keys(ROUTES)) if (isHiddenHref(r)) delete ROUTES[r]
 
 // The template catalog is derived from the real XCREATE_TEMPLATES export,
 // never hand-copied. A template added to the studio becomes routable here on
@@ -106,7 +109,9 @@ async function guide(): Promise<string> {
   // short enough that editing the markdown shows up while you are working.
   if (guideCache && Date.now() - guideCache.at < 60_000) return guideCache.text
   const p = path.join(process.cwd(), 'content', 'site-guide.md')
-  const text = await readFile(p, 'utf8')
+  // A hidden app's part is left out (lib/hidden-apps): the agent never
+  // describes it or sends anyone there.
+  const text = withoutHidden(await readFile(p, 'utf8'))
   guideCache = { text, at: Date.now() }
   return text
 }
