@@ -62,6 +62,11 @@ export interface ModelPricing {
   per_1m_characters?: number
   /** $ per web-search call. See the note above. */
   per_search?:       number
+  /** $ per generated SONG, flat. Music models price the request, not its
+   *  length or its tokens: Lyria 3.5 and 3 Pro are $0.08 a song whatever
+   *  comes out, Lyria 3 Clip $0.04 for its fixed 30 seconds. A fourth
+   *  billing shape beside tokens, per_1m_characters and per_video_second. */
+  per_song?:         number
   /**
    * The long-request tier. Above `threshold_input_tokens` of INPUT, some
    * providers reprice the WHOLE request, not just the excess, and cached
@@ -118,7 +123,8 @@ export type ModelMode =
   | 'extend_video'      // video → longer video, model continues the clip (Wan 2.7, Seedance 2.5, Veo 3.1)
   | 'audio_to_video'    // song/audio drives the performance (Wan 3.0 reference_audio; mp3/wav ≤15s)
   // audio-output
-  | 'text_to_speech'    // text → spoken audio (Gemini TTS, MiniMax T2A)
+  | 'text_to_speech'   // text → spoken audio (Gemini TTS, MiniMax T2A)
+  | 'text_to_music'    // text → a song, lyrics and all (Lyria 3.5)
   | 'start_end_frames'
   // shared (image / video)
   | 'reference_frames'

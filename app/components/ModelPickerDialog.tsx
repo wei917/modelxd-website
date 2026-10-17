@@ -29,6 +29,7 @@ export type ModelMode =
   | 'text_to_image' | 'image_edit' | 'region_edit'
   | 'text_to_video' | 'image_to_video' | 'video_to_video' | 'video_edit' | 'extend_video' | 'audio_to_video'
   | 'text_to_speech'
+  | 'text_to_music'
   | 'start_end_frames' | 'reference_frames'
 
 /** Deliberately loose: both call sites have their own richer row types, and
@@ -486,7 +487,7 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
                   // some non-text input. If the model has any text-only mode
                   // (text_to_text / text_to_image / text_to_video), it can run
                   // without attachments and the badge is misleading.
-                  const TEXT_ONLY: ModelMode[] = ['text_to_text', 'text_to_image', 'text_to_video', 'text_to_speech']
+                  const TEXT_ONLY: ModelMode[] = ['text_to_text', 'text_to_image', 'text_to_video', 'text_to_speech', 'text_to_music']
                   const declared  = (m.modes ?? []) as ModelMode[]
                   const hasModes  = declared.length > 0
                   const hasTextOnly = declared.some(x => TEXT_ONLY.includes(x))
