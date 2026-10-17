@@ -51,6 +51,10 @@ type Copy = {
   make: string
   makeSoon: string
   another: string
+  /** A kept read opening from its link (/xcreate?remake=<id>). */
+  opening: string
+  /** Its link names no read of this account (deleted, mistyped, someone else's). */
+  missingRead: string
   showAll: (n: number) => string
   showLess: string
   otherCast: (n: number) => string
@@ -140,6 +144,8 @@ const en: Copy = {
   make: 'Make my version',
   makeSoon: 'Making it comes next. For now you can read a video and choose what to swap.',
   another: 'Try another video',
+  opening: 'Opening your read…',
+  missingRead: "This read isn't in your Library. It may have been deleted, or belong to another account.",
   showAll: n => `Show all ${n} shots`,
   showLess: 'Show fewer',
   otherCast: n => `${n} more people (on screen briefly)`,
@@ -226,6 +232,8 @@ const zhHant: Copy = {
   make: '做同款',
   makeSoon: '製作功能下一步上線。現在可以先讀影片、設定要換什麼。',
   another: '換一支影片',
+  opening: '正在打開這次的分析…',
+  missingRead: '你的作品庫裡沒有這次分析，可能已刪除，或屬於另一個帳號。',
   showAll: n => `看全部 ${n} 個鏡頭`,
   showLess: '收起',
   otherCast: n => `其他 ${n} 個角色（短暫出現）`,
@@ -307,6 +315,8 @@ const zhHans: Copy = {
   product: '你的产品照片（选填）',
   makeSoon: '制作功能下一步上线。现在可以先读视频、设定要换什么。',
   another: '换一个视频',
+  opening: '正在打开这次的分析…',
+  missingRead: '你的作品库里没有这次分析，可能已删除，或属于另一个账号。',
   showAll: n => `看全部 ${n} 个镜头`,
   otherCast: n => `其他 ${n} 个角色（短暂出现）`,
   paste: '粘贴',
@@ -384,6 +394,8 @@ const ja: Copy = {
   make: '自分版を作る',
   makeSoon: '制作はこの次に公開します。今は動画を読み込んで、入れ替えるものを選べます。',
   another: '別の動画にする',
+  opening: 'この分析を開いています…',
+  missingRead: 'この分析はライブラリにありません。削除されたか、別のアカウントのものかもしれません。',
   showAll: n => `全 ${n} カットを見る`,
   showLess: '閉じる',
   otherCast: n => `ほか ${n} 人（少しだけ登場）`,
@@ -470,6 +482,8 @@ const ko: Copy = {
   make: '내 버전 만들기',
   makeSoon: '제작은 다음 단계에 열립니다. 지금은 영상을 읽고 바꿀 것을 고를 수 있어요.',
   another: '다른 영상으로',
+  opening: '이 분석을 여는 중…',
+  missingRead: '라이브러리에 이 분석이 없습니다. 삭제되었거나 다른 계정의 것일 수 있습니다.',
   showAll: n => `컷 ${n}개 모두 보기`,
   showLess: '접기',
   otherCast: n => `그 밖의 ${n}명 (잠깐 등장)`,

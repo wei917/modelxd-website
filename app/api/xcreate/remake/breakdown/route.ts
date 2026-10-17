@@ -12,6 +12,8 @@
 // Since Oct 13 the read also names the materials to swap (people, things,
 // places); for X and uploads a small picture of each is cut from the file
 // while we still hold it and sent back inline (lib/remake/previews.ts).
+// Since Oct 17 each read is also kept as a Library item and the answer
+// carries its id (lib/remake/saved.ts), so the page has a link to come back to.
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -28,6 +30,7 @@ import { classifyLink } from '@/lib/remake/source'
 import { readXVideo, XReadError } from '@/lib/remake/x'
 import { breakdownPrompt, joinPieces, knownSoFar, normalizeBreakdown, READ_PIECE_SECONDS } from '@/lib/remake/breakdown'
 import { makePreviews } from '@/lib/remake/previews'
+import { saveRead } from '@/lib/remake/saved'
 import { ffmpegPath } from '@/lib/xcut-render'
 import {
   BREAKDOWN_DAILY_CAP, BREAKDOWN_EVENT, BREAKDOWN_FPS, BREAKDOWN_MODEL, REMAKE_MAX_SOURCE_SECONDS,
@@ -159,6 +162,9 @@ export async function POST(req: NextRequest) {
       left: Math.max(0, BREAKDOWN_DAILY_CAP - used - 1),
       previews,
     }
+    // Kept as a Library item (Oct 17), so the page gets a link to come back to.
+    const id = await saveRead(admin, user.id, result).catch(err => { console.warn(`${LOG} save: ${(err as Error).message}`); return null })
+    if (id) result.id = id
     return Response.json(result)
   } catch (err) {
     if (err instanceof XReadError) {

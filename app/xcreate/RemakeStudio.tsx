@@ -19,6 +19,11 @@
 // own player instead) and the ways to replace it. Photos and recordings stay
 // in the tab until making exists; nothing is uploaded yet.
 //
+// Each read is kept as a Library item (Oct 17; owner: "there is no uuid link
+// to continue?"): the address becomes /xcreate?remake=<id>, the choices
+// follow the read there a moment after each change, and the link (or the
+// Library card) opens it again on any device (lib/remake/saved.ts).
+//
 // Under the paste box, "try a popular one" (Oct 13): the trending feed's
 // published videos, most liked first (/api/xcreate/remake/examples). A tap
 // fills the link; reading stays a tap of its own (reads are counted).
@@ -68,6 +73,8 @@ type Draft = {
   link: string
   start: number
   result: BreakdownResult | null
+  /** The read's Library item (lib/remake/saved.ts); its id is the page's link. */
+  rowId: string | null
   length: number
   fromShot: number
   cast: Record<string, CastPick>
@@ -98,6 +105,31 @@ const freshPicks = (b: Breakdown): Pick<Draft, 'cast' | 'things' | 'places' | 'm
   places: Object.fromEntries((b.places ?? []).map(x => [x.id, { choice: 'keep', text: '' }])),
   music: 'none', voices: {}, texts: {},
 })
+/** What the viewer chose, as kept on their read (photos and recordings never). */
+const CHOICE_KEYS = ['length', 'fromShot', 'cast', 'things', 'places', 'music', 'voices', 'texts', 'theme', 'setting', 'look', 'language'] as const
+type Choices = Pick<Draft, typeof CHOICE_KEYS[number]>
+const choicesOf = (x: Draft): Choices => Object.fromEntries(CHOICE_KEYS.map(k => [k, x[k]])) as Choices
+const isRecord = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v)
+/** A kept read's choices over the fresh picks for its materials; anything
+ *  malformed falls back to the fresh pick. */
+function restoreChoices(b: Breakdown, saved: Record<string, unknown> | null): Partial<Draft> {
+  const fresh = freshPicks(b)
+  if (!saved) return fresh
+  const merge = <T,>(base: Record<string, T>, over: unknown) => isRecord(over) ? { ...base, ...over } as Record<string, T> : base
+  const str = (v: unknown, fallback: string) => typeof v === 'string' ? v : fallback
+  const num = (v: unknown, fallback: number) => typeof v === 'number' && Number.isFinite(v) ? v : fallback
+  return {
+    cast: merge(fresh.cast, saved.cast), things: merge(fresh.things, saved.things), places: merge(fresh.places, saved.places),
+    voices: merge(fresh.voices, saved.voices), texts: merge(fresh.texts, saved.texts),
+    music: str(saved.music, fresh.music) as MusicChoice,
+    ...(typeof saved.length === 'number' ? { length: num(saved.length, 30) } : {}),
+    ...(typeof saved.fromShot === 'number' ? { fromShot: num(saved.fromShot, 0) } : {}),
+    ...(typeof saved.theme === 'string' ? { theme: saved.theme } : {}),
+    ...(typeof saved.setting === 'string' ? { setting: saved.setting } : {}),
+    ...(typeof saved.look === 'string' && (REMAKE_LOOKS as readonly string[]).includes(saved.look) ? { look: saved.look as RemakeLook } : {}),
+    ...(typeof saved.language === 'string' ? { language: saved.language as Lang } : {}),
+  }
+}
 /** A speaker id made safe for an element id. */
 const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '_')
 
@@ -116,10 +148,14 @@ const ICONS = {
 const HeartIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6.1 4.5c2.2 0 3.6 1.2 4.4 2.4h3c.8-1.2 2.2-2.4 4.4-2.4 3.8 0 5.7 3.9 4.1 7.2C19.5 16.4 12 21 12 21z" /></svg>
 const PlayIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z" /></svg>
 
-export default function RemakeStudio({ signedIn, onSignIn }: {
+export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRemakeId }: {
   signedIn: boolean
   /** Opens sign-in; `next` is where to come back to. */
   onSignIn: (next?: string) => void
+  /** A kept read to open (/xcreate?remake=<id>, Oct 17). */
+  remakeId?: string | null
+  /** The read on the page changed: its id goes in the address, or none. */
+  onRemakeId?: (id: string | null) => void
 }) {
   const { lang } = useLang()
   const c = remakeCopy(lang)
@@ -133,7 +169,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   // the choices (drafts before Oct 13 kept a photo link in the cast; dropped).
   const [d, setD] = useState<Draft>(() => {
     const base: Draft = {
-      link: '', start: 0, result: null, length: 30, fromShot: 0,
+      link: '', start: 0, result: null, rowId: null, length: 30, fromShot: 0,
       cast: {}, things: {}, places: {}, music: 'none', voices: {}, texts: {},
       theme: '', setting: '', look: 'keep', language: lang,
     }
@@ -149,7 +185,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
     return base
   })
   const set = (patch: Partial<Draft>) => setD(prev => ({ ...prev, ...patch }))
-  const [stage, setStage] = useState<'idle' | 'uploading' | 'reading'>('idle')
+  const [stage, setStage] = useState<'idle' | 'uploading' | 'reading' | 'opening'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [files, setFiles] = useState<Record<string, Picked>>({})
   const [allShots, setAllShots] = useState(false)
@@ -169,6 +205,53 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
   useEffect(() => {
     try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)) } catch { /* storage unavailable */ }
   }, [d])
+
+  /** Set when a kept read was just loaded, so loading it does not count as a change to save. */
+  const skipSave = useRef(false)
+
+  // A kept read opens from its link (Oct 17): /xcreate?remake=<id>. The read
+  // that just finished already sits in the draft under the same id.
+  useEffect(() => {
+    if (!remakeId || remakeId === d.rowId) return
+    // The request is the sign-in check: the page learns who is signed in only
+    // after its first draw, so asking `signedIn` here would put the sign-in
+    // dialog in front of a signed-in viewer for a moment.
+    let live = true
+    setStage('opening'); setError(null)
+    fetch(`/api/xcreate/remake/${remakeId}`).then(async res => {
+      if (!live) return
+      if (res.status === 401) { onSignIn(`/xcreate?remake=${remakeId}`); return }
+      const body = await res.json().catch(() => null)
+      if (!res.ok || !body?.result?.breakdown) { setError(c.missingRead); return }
+      const r = body.result as BreakdownResult
+      setAllShots(false); setAllTexts(false); setExtrasOpen(false); setPeek(null)
+      setFiles(prev => { for (const f of Object.values(prev)) URL.revokeObjectURL(f.url); return {} })
+      skipSave.current = true
+      setD(prev => ({ ...prev, link: r.source.url ?? '', start: r.source.start, result: r, rowId: remakeId, fromShot: 0, length: 30, ...restoreChoices(r.breakdown, body.choices ?? null) }))
+    }).catch(() => { if (live) setError(c.missingRead) })
+      .finally(() => { if (live) setStage('idle') })
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remakeId])
+
+  // A read restored from the tab's draft gets its link back in the address.
+  useEffect(() => {
+    if (!remakeId && d.rowId && d.result) onRemakeId?.(d.rowId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // The choices follow the read to its Library item, a moment after the last change.
+  const choicesKey = JSON.stringify(choicesOf(d))
+  useEffect(() => {
+    if (!d.rowId || !d.result) return
+    if (skipSave.current) { skipSave.current = false; return }
+    const id = d.rowId
+    const t = window.setTimeout(() => {
+      void fetch(`/api/xcreate/remake/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choices: JSON.parse(choicesKey) }) }).catch(() => { /* kept in the tab anyway */ })
+    }, 1200)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choicesKey, d.rowId])
 
   useEffect(() => {
     let live = true
@@ -227,7 +310,10 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
       fresh.current = true
       setAllShots(false); setAllTexts(false); setExtrasOpen(false); setPeek(null)
       setFiles(prev => { for (const f of Object.values(prev)) URL.revokeObjectURL(f.url); return {} })
-      set({ result: r, fromShot: 0, length: dur <= 15 ? 0 : dur <= 30 ? 15 : 30, ...freshPicks(r.breakdown) })
+      // Kept as a Library item: its id becomes the page's link (none if saving failed).
+      skipSave.current = true
+      set({ result: r, rowId: r.id ?? null, fromShot: 0, length: dur <= 15 ? 0 : dur <= 30 ? 15 : 30, ...freshPicks(r.breakdown) })
+      onRemakeId?.(r.id ?? null)
     } catch {
       setError(c.errors.read_failed)
     } finally {
@@ -515,7 +601,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
           <div className="xcs-remake-reel" aria-hidden="true">
             <div>{Array.from({ length: 14 }, (_, k) => <i key={k} style={{ animationDelay: `${k * 110}ms` }} />)}</div>
           </div>
-          <p><span>{stage === 'reading' ? c.reading : c.uploading}</span><b className="xcs-film-clock">{tick(Math.max(0, (now - since) / 1000))}</b></p>
+          <p><span>{stage === 'reading' ? c.reading : stage === 'opening' ? c.opening : c.uploading}</span><b className="xcs-film-clock">{tick(Math.max(0, (now - since) / 1000))}</b></p>
         </div>
         : <>
           <button className="xcs-primary xcs-remake-go" disabled={signedIn && !d.link.trim()} onClick={readLink}>
@@ -749,7 +835,7 @@ export default function RemakeStudio({ signedIn, onSignIn }: {
         <p className="xcs-remake-bar-sum"><b>{c.about(price)}</b><span>{c.shots(stretchCount, String(chosenSeconds))}</span></p>
         <button className="xcs-primary" disabled>{c.make}</button>
       </div>
-      <button type="button" className="xcs-remake-again" onClick={() => { set({ result: null, link: '', start: 0 }); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{c.another}</button>
+      <button type="button" className="xcs-remake-again" onClick={() => { set({ result: null, rowId: null, link: '', start: 0 }); onRemakeId?.(null); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{c.another}</button>
     </div>}
   </section>
 }

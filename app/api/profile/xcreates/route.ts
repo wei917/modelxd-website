@@ -80,9 +80,12 @@ export async function GET(req: NextRequest) {
     if (withDeletedFilter) q = q.is('deleted_at', null)
     // Film is the studio's fifth type: a video row whose first slot names it
     // (lib/film/driver.ts). It gets its own filter and leaves Video (Oct 1).
+    // A 同款 read (Oct 17, lib/remake/saved.ts) is kept the same way under
+    // `options.remake`: its own filter, and out of Video too.
     if (filter === 'film') q = q.eq('mode', 'video').not('slots->0->options->>film', 'is', null)
+    else if (filter === 'remake') q = q.eq('mode', 'video').not('slots->0->options->>remake', 'is', null)
     else if (filter !== 'all') q = q.eq('mode', filter)
-    if (filter === 'video') q = q.is('slots->0->options->>film', null)
+    if (filter === 'video') q = q.is('slots->0->options->>film', null).is('slots->0->options->>remake', null)
     // The studio's own grid (Oct 3): runs made in the studio only, not XDirect
     // board nodes, upload "Source:" rows or XCut renders (they carry a node_kind).
     if (studioOnly) q = q.is('node_kind', null)

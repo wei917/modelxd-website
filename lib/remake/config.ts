@@ -79,8 +79,12 @@ export type BreakdownResult = {
   left: number
   /** A small picture of each person, thing and place, cut from the original
    *  (id → JPEG data URL). X and uploads only: YouTube is never downloaded.
-   *  Sent once and never stored on our side. */
+   *  An upload's are kept with its Library item (lib/remake/saved.ts) and
+   *  come back as signed links; an X post's are sent once and never kept. */
   previews?: Record<string, string>
+  /** The read's Library item (lib/remake/saved.ts), opened again at
+   *  /xcreate?remake=<id>. Absent if saving failed. */
+  id?: string
 }
 
 /** What the user swaps. Phase 1 keeps it on the page; phase 2 sends it with
