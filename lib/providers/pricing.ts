@@ -226,6 +226,8 @@ export function calcSpeechCost(
 ): number {
   const p = pricing(model)
   const t = p.tokens ?? {}
+  // A song is priced per request, so nothing it produced changes the bill.
+  if (typeof p.per_song === 'number') return p.per_song
   let cost = 0
   if (typeof p.per_1m_characters === 'number' && (usage.characters ?? 0) > 0) {
     cost += ((usage.characters ?? 0) / 1_000_000) * p.per_1m_characters
@@ -241,6 +243,10 @@ export function calcSpeechCost(
  *  ceiling there, not a promise). */
 export function speechPricePerMinute(model: ModelInfo): number {
   const p = pricing(model)
+  // A per-song row has no per-minute price to give; the label shows the flat
+  // song price instead, so callers that want $/min get the song price back
+  // rather than a number invented from a speaking rate.
+  if (typeof p.per_song === 'number') return p.per_song
   if (typeof p.per_1m_characters === 'number') return (900 / 1_000_000) * p.per_1m_characters
   const perSec = (25 / 1_000_000) * resolveTokenRate((p.tokens ?? {}).audio_output)
   return perSec * 60
@@ -311,6 +317,7 @@ export function estimateCost(
   // the bill depends on how long the model takes to say it. ~14 chars of
   // English per second at 25 audio tokens/s.
   if (mode === 'audio') {
+    if (typeof p.per_song === 'number') return p.per_song
     if (typeof p.per_1m_characters === 'number') return (promptChars / 1_000_000) * p.per_1m_characters
     const seconds = Math.max(1, promptChars / 14)
     return calcSpeechCost(model, { inputTextTokens: Math.ceil(promptChars / 4), outputAudioTokens: Math.round(seconds * 25) })

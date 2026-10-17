@@ -493,7 +493,14 @@ export async function generateSpeech(
   const t0        = Date.now()
   try {
     let result: SpeechResult
-    if (model.provider === 'google') {
+    // One audio entry point: the route, the bucket, the signing and the
+    // logging are all shared, and only the provider call differs. A row that
+    // declares text_to_music is a song, not a voice — it takes no voice,
+    // format or style, so none are passed.
+    const isMusic = (model.modes ?? []).includes('text_to_music')
+    if (model.provider === 'google' && isMusic) {
+      result = await google.generateMusic(model, text)
+    } else if (model.provider === 'google') {
       result = await google.generateSpeech(model, text, options)
     } else if (model.provider === 'minimax') {
       result = await minimax.generateSpeech(model, text, options)

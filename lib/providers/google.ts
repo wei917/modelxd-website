@@ -1206,3 +1206,60 @@ export async function generateSpeech(
   console.log(`${TAG} tts ok bytes=${buffer.length} dur=${durationSeconds?.toFixed(1) ?? '?'}s audioTok=${outputAudioTokens} cost=$${cost.toFixed(6)}`)
   return { buffer, mediaType, durationSeconds, cost, characters: null, inputTextTokens, outputAudioTokens, usageMetadata: usage }
 }
+
+// ── text to music (Lyria, Interactions API) ─────────────────────────────────
+//
+// Same endpoint as the TTS above, different body: no voice and no speech
+// metadata, because a song has neither. Billing is flat per song (Lyria 3.5
+// $0.08, Clip $0.04 for its fixed 30 seconds), so nothing in the response
+// changes the price and `usage` is kept only for the log.
+//
+// Duration is not a parameter. Lyria 3 Clip always returns 30 seconds; for
+// 3.5 the length has to be asked for in the prompt, which means the UI can
+// offer no duration control and should not pretend to.
+
+export async function generateMusic(
+  model: ModelInfo,
+  prompt: string,
+): Promise<SpeechResult> {
+  const TAG = `[google/${model.model_name}]`
+  const key = process.env.GOOGLE_AI_API_KEY
+  if (!key) throw new Error('GOOGLE_AI_API_KEY is not set')
+
+  const body = {
+    model: model.model_name,
+    input: [{ type: 'user_input', content: [{ type: 'text', text: prompt }] }],
+    response_format: { type: 'audio' },
+  }
+  console.log(`${TAG} music chars=${prompt.length}`)
+
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+  })
+  const json: any = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const msg = json?.error?.message ?? JSON.stringify(json).slice(0, 300)
+    throw new Error(`Lyria ${res.status}: ${msg}`)
+  }
+  // Same shapes the TTS reads: output_audio, or a content part on a step.
+  const parts: any[] = [
+    json?.output_audio,
+    ...((json?.steps ?? []).flatMap((st: any) => st?.content ?? [])),
+    ...((json?.output ?? []).flatMap((st: any) => st?.content ?? [])),
+  ].filter(Boolean)
+  const audio = parts.find(p => typeof p?.data === 'string' && p.data.length > 64)
+  if (!audio) throw new Error(`Lyria returned no audio: ${JSON.stringify(json).slice(0, 300)}`)
+  const buffer = Buffer.from(audio.data, 'base64')
+  const mediaType = String(audio.mime_type ?? audio.mimeType ?? 'audio/mpeg').split(';')[0]
+
+  const cost = calcSpeechCost(model)     // flat per_song; usage cannot move it
+  const durationSeconds = wavSeconds(buffer)   // undefined for mp3, which is the default
+  console.log(`${TAG} music ok bytes=${buffer.length} type=${mediaType} dur=${durationSeconds?.toFixed(1) ?? '?'}s cost=$${cost.toFixed(4)}`)
+  return {
+    buffer, mediaType, durationSeconds, cost,
+    characters: null,
+    usageMetadata: json?.usage ?? json?.usage_metadata ?? undefined,
+  }
+}

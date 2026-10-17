@@ -119,7 +119,10 @@ interface OutputConfig {
  *  model's output_modalities include 'image' (Nano Banana / Gemini 3 Image
  *  with reference shots) and a video output for video-output models. */
 function modeMatchesMode(modePattern: string, m: Mode): boolean {
-  if (m === 'audio') return modePattern === 'text_to_speech'
+  // Speech and music are both the Audio tab: one writes a script, the
+  // other a song, and the slot card tells them apart by the options the
+  // row declares (a music row has no voices, so no voice picker).
+  if (m === 'audio') return modePattern === 'text_to_speech' || modePattern === 'text_to_music'
   if (m === 'text')  return (
     modePattern === 'text_to_text'  ||
     modePattern === 'image_to_text' ||
@@ -440,6 +443,7 @@ type ModelMode =
   | 'extend_video'
   | 'audio_to_video'
   | 'text_to_speech'
+  | 'text_to_music'
   | 'start_end_frames'
   | 'reference_frames'
 
