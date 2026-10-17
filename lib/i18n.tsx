@@ -2811,7 +2811,10 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.showconfigs': { en: 'Show Configs', 'zh-Hant': '顯示設定', 'zh-Hans': '显示设置', ja: '設定を表示', ko: '설정 표시' },
   'xcreate.hideconfigs': { en: 'Hide Configs', 'zh-Hant': '隱藏設定', 'zh-Hans': '隐藏设置', ja: '設定を隠す', ko: '설정 숨기기' },
   'xcreate.savemore':    { en: 'Select more, save more', 'zh-Hant': '選越多，省越多', 'zh-Hans': '选越多，省越多', ja: '多く選ぶほどお得', ko: '많이 고를수록 더 할인' },
-  'mode.audio': { en: 'Audio', 'zh-Hant': '語音', 'zh-Hans': '语音', ja: '音声', ko: '음성' },
+  // The tab holds speech AND music, so it cannot be named for speech:
+  // 語音 / 音声 / 음성 all mean voice specifically, and were right only
+  // while the tab was TTS alone (owner, Oct 17).
+  'mode.audio': { en: 'Audio', 'zh-Hant': '音訊', 'zh-Hans': '音频', ja: 'オーディオ', ko: '오디오' },
   // XCreate's fifth type (Sep 29): Claude directs and edits a whole film.
   // 成片 is the word for this in Chinese video apps (剪映's 一鍵成片).
   'mode.film': { en: 'Film', 'zh-Hant': '成片', 'zh-Hans': '成片', ja: 'ムービー', ko: '필름' },
