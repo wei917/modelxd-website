@@ -353,7 +353,12 @@ export default function ProfilePage() {
     copiedId: copyId,
     deletingId: deleting,
     requestDelete: handleDelete,
-    openXcreate: row => setPreviewItem(row),
+    // A 同款 read (Oct 17) has nothing to preview here: it opens back into 同款.
+    openXcreate: row => {
+      const r = row as { id?: string; slots?: { options?: { remake?: unknown } }[] }
+      if (r?.id && r.slots?.[0]?.options?.remake) { window.location.href = `/xcreate?remake=${r.id}`; return }
+      setPreviewItem(row)
+    },
     renameReading: (id, title) => renameReading(sb(), id, title),
     eraseReading: id => eraseReading(sb(), id),
   }

@@ -1083,6 +1083,8 @@ function CreateStudio() {
   const searchTypeParam = useSearchParams()?.get('type') ?? null
   // ?film=<id> is one film, the fifth type (Sep 29): its progress, then the video.
   const searchFilmParam = useSearchParams()?.get('film') ?? null
+  // ?remake=<id> is one kept 同款 read (Oct 17): it opens back into RemakeStudio.
+  const searchRemakeParam = useSearchParams()?.get('remake') ?? null
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -1661,6 +1663,8 @@ function CreateStudio() {
         // A film's row (the fifth type) opens back into the film view.
         const filmRef = (data as any).slots?.[0]?.options?.film
         if (typeof filmRef === 'string') { openFilm(filmRef); return }
+        // A 同款 read (Oct 17) opens back into 同款 under its own link.
+        if ((data as any).slots?.[0]?.options?.remake) { openRemake(String(idParam)); return }
         // Rows are born at run start, so this ?id= may name a run that is
         // still generating — resume its job (live cards + polling) instead
         // of restoring a half-written snapshot. Owner-read RLS on
@@ -3478,22 +3482,39 @@ function CreateStudio() {
   const [filmId, setFilmId] = useState<string | null>(null)
   // The sixth type, 同款 (Remake, Oct 10), has its own page too (RemakeStudio).
   const [remakeOpen, setRemakeOpen] = useState(false)
+  // A kept read is ?remake=<id> (Oct 17), set once a read is saved.
+  const [remakeId, setRemakeId] = useState<string | null>(null)
   const setFilmUrl = (id: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
     url.searchParams.delete('id')
     url.searchParams.delete('job')
+    url.searchParams.delete('remake')
     if (id) url.searchParams.set('film', id)
     else url.searchParams.delete('film')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }
-  const openFilm = (id: string | null) => { setRemakeOpen(false); setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
+  const setRemakeUrl = (id: string | null) => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
+    url.searchParams.delete('id')
+    url.searchParams.delete('job')
+    url.searchParams.delete('film')
+    if (id) url.searchParams.set('remake', id)
+    else url.searchParams.delete('remake')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }
+  const openFilm = (id: string | null) => { setRemakeOpen(false); setRemakeId(null); setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
+  const openRemake = (id: string | null) => {
+    setFilmOpen(false); setFilmId(null)
+    setRemakeOpen(true); setRemakeId(id); setRemakeUrl(id)
+  }
   const switchType = (next: StudioType) => {
     setFromOpen(false)
     if (next === 'film') { openFilm(null); return }
     if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
     if (next === 'remake') { setRemakeOpen(true); return }
-    if (remakeOpen) setRemakeOpen(false)
+    if (remakeOpen) { setRemakeOpen(false); setRemakeId(null); setRemakeUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
     if (toolId) leaveTool()
     if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
@@ -3508,14 +3529,14 @@ function CreateStudio() {
   const toolUrl = (id: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
-    url.searchParams.delete('id'); url.searchParams.delete('job')
+    url.searchParams.delete('id'); url.searchParams.delete('job'); url.searchParams.delete('remake')
     if (id) url.searchParams.set('tool', id); else url.searchParams.delete('tool')
     return url.pathname + url.search + url.hash
   }
   const applyTool = async (tool: XTool, { push = true }: { push?: boolean } = {}) => {
     const live = toolLiveRef.current
     if (live.filmOpen) { setFilmOpen(false); setFilmId(null) }
-    if (live.remakeOpen) setRemakeOpen(false)
+    if (live.remakeOpen) { setRemakeOpen(false); setRemakeId(null) }
     if (live.phase !== 'setup' || live.slotsLen > 0) {
       stopPolling(); activeJobRef.current = null; galleryLoadedRef.current = null
       setPhase('setup'); setSlots([]); setChosenIdx(null); setChatHistory([]); setXcreateId(null); setRetryOfId(null)
@@ -3581,6 +3602,12 @@ function CreateStudio() {
     setFilmOpen(true)
     setFilmId(searchFilmParam.toLowerCase())
   }, [searchFilmParam])
+  useEffect(() => {
+    if (!searchRemakeParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchRemakeParam)) return
+    setFilmOpen(false)
+    setRemakeOpen(true)
+    setRemakeId(searchRemakeParam.toLowerCase())
+  }, [searchRemakeParam])
   useEffect(() => () => publishStudioType(null), [])
   // ?type= is a seed, consumed and stripped like ?model=.
   useEffect(() => {
@@ -4411,7 +4438,8 @@ function CreateStudio() {
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
           {remakeOpen ? (
-            <RemakeStudio signedIn={!!userId} onSignIn={next => showAuth(next ?? '/xcreate?type=remake')} />
+            <RemakeStudio signedIn={!!userId} onSignIn={next => showAuth(next ?? '/xcreate?type=remake')}
+              remakeId={remakeId} onRemakeId={id => { setRemakeId(id); setRemakeUrl(id) }} />
           ) : filmOpen ? (
             <>
               <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
