@@ -2,7 +2,7 @@
 // in 同款's tab (lib/fan-template, Oct 18).
 //
 //   POST { front, consent, outfits: [{ text, photo? }] x2-5, scene?: { blade?, sofa?,
-//          carpet?: { text?, photo? } }, music, language }
+//          carpet?, floor?: { text?, photo? } }, music, language }
 //        → { id, job }: the reserve is taken, the run is a Library item, and
 //          the work goes on after the answer (GET .../fan/<id> follows it)
 //
@@ -43,7 +43,7 @@ function parse(userId: string, b: any): FanRequest | string {
     return text || photo ? { ...(text ? { text } : {}), ...(photo ? { photo } : {}) } : undefined
   }
   const scene: FanScene = {}
-  for (const k of ['blade', 'sofa', 'carpet'] as const) { const p = part(b.scene?.[k]); if (p) scene[k] = p }
+  for (const k of ['blade', 'sofa', 'carpet', 'floor'] as const) { const p = part(b.scene?.[k]); if (p) scene[k] = p }
   const m = b.music ?? {}
   const choice: FanMusic['choice'] = ['style', 'mine', 'none'].includes(m.choice) ? m.choice : 'style'
   const track = choice === 'mine' ? own(m.track) : undefined

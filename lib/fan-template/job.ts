@@ -20,7 +20,7 @@ import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
 import { finishOverlay, joinOpening, personSpan, pressTime } from './cut'
 import {
-  BLADE, DEFAULT_BLADE, HOLDING, HUB_GOLD, PLATE, PRESS_DEFAULT, REMOTE, ROLL, SHEET, TIMING,
+  BLADE, DEFAULT_BLADE, HOLDING, HUB_GOLD, PLATE, PRESS_DEFAULT, REMOTE, SHEET, TIMING, roll as rollShot,
   bladePrompt, fanMusicPrompt, fanQuote, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
 } from './recipe'
 
@@ -88,7 +88,7 @@ async function saveJob(sb: SupabaseClient, job: FanJob) {
 /** sheet, the set and the blades if asked for, start, roll, holding, remote,
  *  a picture and a clip per outfit after the first, music, video. */
 function totalSteps(req: FanRequest): number {
-  return 7 + 2 * (req.outfits.length - 1) + (req.scene?.sofa || req.scene?.carpet ? 1 : 0) + (req.scene?.blade ? 1 : 0)
+  return 7 + 2 * (req.outfits.length - 1) + (req.scene?.sofa || req.scene?.carpet || req.scene?.floor ? 1 : 0) + (req.scene?.blade ? 1 : 0)
 }
 function doneSteps(job: FanJob): number {
   const a = job.assets
@@ -229,13 +229,13 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
   try {
     // 1. the sheet, from the front photo (the side views are drawn)
     const sheet = await pic('sheet', async () => picture(pictureModels, SHEET, [jpeg(await userPhoto(sb, req.front))], '16:9', ctx, 'high'))
-    // 2. the set: the sofa and carpet the user asked for painted in (if any),
+    // 2. the set: the sofa, carpet and floor the user asked for painted in (if any),
     //    the blades' material (if any), then the user and outfit 1 on the
     //    sofa's edge
     const sc = req.scene ?? {}
-    const set = sc.sofa || sc.carpet
+    const set = sc.sofa || sc.carpet || sc.floor
       ? await pic('set', async () => {
-        const refs = await Promise.all([sc.sofa?.photo, sc.carpet?.photo].filter((p): p is string => !!p).map(p => userPhoto(sb, p)))
+        const refs = await Promise.all([sc.sofa?.photo, sc.carpet?.photo, sc.floor?.photo].filter((p): p is string => !!p).map(p => userPhoto(sb, p)))
         return picture(pictureModels, setPrompt(sc), [await get(sb, PLATE.bucket, PLATE.path), ...refs].map(jpeg), '9:16', ctx, 'high')
       })
       : null
@@ -248,7 +248,7 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     })
     // 3. the opening: the roll (free), then the remote (first + last frame)
     job.status = 'opening'; await saveJob(sb, job)
-    const roll = await clip('roll', () => makeClip(ctx, shot(0, ROLL), start, '9:16', { audio: true }))
+    const roll = await clip('roll', () => makeClip(ctx, shot(0, rollShot(req.scene)), start, '9:16', { audio: true }))
     const landed = await lastFrame(ff, roll)
     const holding = await pic('holding', () => picture(pictureModels, HOLDING, [jpeg(landed)], '9:16', ctx, 'high'))
     const remote = await clip('remote', () => makeClip(ctx, shot(1, REMOTE), landed, '9:16', { lastFrame: holding, audio: true }))
