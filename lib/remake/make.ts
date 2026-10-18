@@ -407,7 +407,6 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
         await fs.writeFile(f, clipBuf.get(i) ?? await get(sb, B.video, job.assets.clips[s.n]))
         clipFiles.push(f)
       }
-      const font = path.join(process.cwd(), 'public/fonts/NotoSansTC-Regular.ttf')
       const cut = path.join(tmp, 'cut.mp4')
       const voices: { path: string; t: number }[] = []
       for (const [k, v] of plan.voices.entries()) {
@@ -425,7 +424,7 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
         voices.push({ path: f, t: Math.round((line.t - req.from) * 10) / 10 })
       }
       // The stretch's own clock (0 = its start) is the remake's.
-      await assemble({ ffmpeg: ff, font, aspect, shots: plan.shots.map((s, i) => ({ ...s, t0: shots[i]?.t0 ?? s.t0, t1: shots[i]?.t1 ?? s.t1 })), clips: clipFiles, voices, out: cut })
+      await assemble({ ffmpeg: ff, lang: req.language, aspect, shots: plan.shots.map((s, i) => ({ ...s, t0: shots[i]?.t0 ?? s.t0, t1: shots[i]?.t1 ?? s.t1 })), clips: clipFiles, voices, out: cut })
       let final = cut
       if (job.assets.music) {
         const m = path.join(tmp, 'music.mp3')

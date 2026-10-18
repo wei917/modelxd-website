@@ -33,10 +33,11 @@ const nextConfig = {
     '/api/xcreate/remake/breakdown': ['./node_modules/ffmpeg-static/ffmpeg'],
     // ...and its make job cuts, captions and mixes the remake (Oct 17). A
     // glob, because a dynamic segment's [id] reads as a character class.
-    '/api/xcreate/remake/*/make': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
+    // fonts/ is the burned-in text's (lib/caption-text.ts), not XCut's.
+    '/api/xcreate/remake/*/make': ['./node_modules/ffmpeg-static/ffmpeg', './fonts/**'],
     // The 風扇變裝 template's runs draw the fan, the captions and the sound (Oct 18).
-    '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
-    '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
+    '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg', './fonts/**'],
+    '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg', './fonts/**'],
   },
   webpack: (config) => {
     config.watchOptions = {

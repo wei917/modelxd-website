@@ -80,7 +80,10 @@ class Reader {
     if (!this.last) throw new Error('a take has no frames')
     return this.last
   }
-  kill() { this.proc.kill() }
+  // A take read only partway (the last one: 2.4 s of a 4 s clip) leaves its
+  // decoder blocked writing to a full pipe, where SIGTERM never lands (Oct 18:
+  // one ffmpeg left behind per run). Closing the pipe and SIGKILL end it.
+  kill() { this.proc.stdout?.destroy(); this.proc.kill('SIGKILL') }
 }
 
 export async function renderFanOverlay(o: FanOptions): Promise<void> {
