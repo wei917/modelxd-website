@@ -160,7 +160,8 @@ export async function driveFan(userId: string, id: string): Promise<void> {
   const sb = service()
   const me = crypto.randomUUID()
   const job = await loadFanJob(sb, userId, id)
-  if (!job || !isFanActive(job.status)) return
+  // A settled run is finished business, whatever its status says.
+  if (!job || job.settled || !isFanActive(job.status)) return
   if (job.leaseUntil > Date.now() && job.leaseBy !== me) return
   job.leaseUntil = Date.now() + LEASE_MS; job.leaseBy = me
   await saveJob(sb, job)
@@ -187,7 +188,8 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
   }
   const pictureModels = MODELS.pictures.map(n => (rows ?? []).find((r: any) => r.model_name === n) as ModelInfo | undefined).filter((m): m is ModelInfo => !!m)
   if (!pictureModels.length) throw new Error('no picture model is on')
-  const spend = async (usd: number) => { job.spentUsd = Math.round((job.spentUsd + (usd || 0)) * 10000) / 10000; await saveJob(sb, job) }
+  // Work still in flight after a failure is counted but never saved.
+  const spend = async (usd: number) => { job.spentUsd = Math.round((job.spentUsd + (usd || 0)) * 10000) / 10000; if (job.status !== 'failed') await saveJob(sb, job) }
   const ff = ffmpegPath()
   const ctx: ProduceContext = {
     userId: job.userId, surface: 'xcreate-fan', imageModel: pictureModels[0], videoModel: model(MODELS.video), speechModel: model(MODELS.video),

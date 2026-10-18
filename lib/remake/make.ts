@@ -222,7 +222,9 @@ export async function driveMake(userId: string, rowId: string): Promise<void> {
   const sb = service()
   const me = crypto.randomUUID()
   let job = await loadJob(sb, userId, rowId)
-  if (!job || !isActive(job.status)) return
+  // A settled job is finished business, whatever its status says (Oct 18: a
+  // failed job's late clip set it back to 'clips', and a page load revived it).
+  if (!job || job.settled || !isActive(job.status)) return
   if (job.leaseUntil > Date.now() && job.leaseBy !== me) return
   job.leaseUntil = Date.now() + LEASE_MS; job.leaseBy = me
   await saveJob(sb, job)
@@ -249,7 +251,9 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
   }
   /** Backups that are in the catalog and switched on; a missing one is skipped. */
   const backups = (names: string[]) => names.map(n => (rows ?? []).find((r: any) => r.model_name === n) as ModelInfo | undefined).filter((m): m is ModelInfo => !!m)
-  const spend = async (usd: number) => { job.spentUsd = Math.round((job.spentUsd + (usd || 0)) * 10000) / 10000; await saveJob(sb, job) }
+  // After a failure, work still in flight (a clip in another branch) may
+  // finish: it is counted but never saved, so it cannot bring the job back.
+  const spend = async (usd: number) => { job.spentUsd = Math.round((job.spentUsd + (usd || 0)) * 10000) / 10000; if (job.status !== 'failed') await saveJob(sb, job) }
   const aspect: Aspect = toAspect(breakdown.aspect)
   const ff = ffmpegPath()
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `remake-${job.id.slice(0, 8)}-`))
@@ -340,7 +344,7 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
         if (job.assets.clips[s.n]) buf = await get(sb, B.video, job.assets.clips[s.n])
         else {
           const first = await keyFrame(i)
-          job.status = 'clips'
+          if (job.status !== 'failed') job.status = 'clips'
           const r = await makeClip(ctx, s, first, aspect, { lastFrame: s.still ? first : undefined, audio: true })
           job.assets.clips[s.n] = await put(sb, B.video, assetPath(job, `clip-${s.n}.mp4`), r.buffer, 'video/mp4')
           await spend(r.cost)

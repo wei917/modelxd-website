@@ -20,6 +20,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const sb = service()
   const job = await loadFanJob(sb, user.id, id)
   if (!job) return Response.json({ code: 'not_found' }, { status: 404 })
-  if (isFanActive(job.status) && job.leaseUntil < Date.now()) after(() => driveFan(user.id, id))
+  if (isFanActive(job.status) && !job.settled && job.leaseUntil < Date.now()) after(() => driveFan(user.id, id))
   return Response.json({ job: await fanView(sb, job), request: { title: job.request.title, outfits: job.request.outfits.map(o => o.text), music: job.request.music } })
 }
