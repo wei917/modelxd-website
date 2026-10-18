@@ -132,8 +132,8 @@ side views are drawn for you) and 2 to 5 outfits, each described in words or
 shown with a photo; you roll off a sofa, press a remote, and each pass of a
 ceiling fan changes your outfit, with music in a style you pick. The room is
 a palace salon (gilded sofa, Persian rug, marble floor) under a walnut fan
-with a gold hub; optionally describe or show your own fan blades, sofa and
-carpet. No captions are added. About 9 seconds and $1.60 for two outfits, up to about 19 seconds and
+with a gold hub; optionally describe or show your own fan blades, sofa,
+carpet and floor. No captions are added. About 9 seconds and $1.60 for two outfits, up to about 19 seconds and
 $3 for five (a little more is reserved; you pay what it used).
 
 **Region editing (inpainting).** When editing an image, an "Edit region"

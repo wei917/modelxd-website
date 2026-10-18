@@ -30,11 +30,11 @@ type Copy = {
   outfitPhotoClear: string
   addOutfit: string
   removeOutfit: (n: number) => string
-  /** Optional: the fan's blades, the sofa and the carpet, in words or a photo. */
+  /** Optional: the fan's blades, the sofa, the carpet and the floor, in words or a photo. */
   sceneLabel: string
   sceneNote: string
-  scene: { blade: string; sofa: string; carpet: string }
-  scenePlaceholder: { blade: string; sofa: string; carpet: string }
+  scene: { blade: string; sofa: string; carpet: string; floor: string }
+  scenePlaceholder: { blade: string; sofa: string; carpet: string; floor: string }
   scenePhoto: string
   musicLabel: string
   musicChoices: { style: string; mine: string; none: string }
@@ -82,9 +82,9 @@ const en: Copy = {
   addOutfit: 'Add an outfit',
   removeOutfit: n => `Remove outfit ${n}`,
   sceneLabel: 'Scene (optional)',
-  sceneNote: 'Describe it or add a reference photo. Left empty: the walnut fan, the palace sofa and the Persian rug.',
-  scene: { blade: 'Fan blades', sofa: 'Sofa', carpet: 'Carpet' },
-  scenePlaceholder: { blade: 'e.g. walnut wood', sofa: 'e.g. pink velvet sofa', carpet: 'e.g. white shaggy rug' },
+  sceneNote: 'Describe it or add a reference photo. Left empty: the walnut fan, the palace sofa, the Persian rug and the marble floor.',
+  scene: { blade: 'Fan blades', sofa: 'Sofa', carpet: 'Carpet', floor: 'Floor' },
+  scenePlaceholder: { blade: 'e.g. walnut wood', sofa: 'e.g. pink velvet sofa', carpet: 'e.g. white shaggy rug', floor: 'e.g. herringbone oak' },
   scenePhoto: 'Add a reference photo',
   musicLabel: 'Music',
   musicChoices: { style: 'New track', mine: 'My track', none: 'No music' },
@@ -132,9 +132,9 @@ const zhHant: Copy = {
   addOutfit: '加一套',
   removeOutfit: n => `移除第 ${n} 套`,
   sceneLabel: '場景（可不填）',
-  sceneNote: '寫下想要的樣子，或放一張參考照片。不填就用胡桃木吊扇、宮廷沙發和波斯地毯。',
-  scene: { blade: '扇葉', sofa: '沙發', carpet: '地毯' },
-  scenePlaceholder: { blade: '例如：胡桃木紋', sofa: '例如：粉紅色絲絨沙發', carpet: '例如：白色長毛地毯' },
+  sceneNote: '寫下想要的樣子，或放一張參考照片。不填就用胡桃木吊扇、宮廷沙發、波斯地毯和大理石地板。',
+  scene: { blade: '扇葉', sofa: '沙發', carpet: '地毯', floor: '地板' },
+  scenePlaceholder: { blade: '例如：胡桃木紋', sofa: '例如：粉紅色絲絨沙發', carpet: '例如：白色長毛地毯', floor: '例如：人字拼橡木地板' },
   scenePhoto: '加參考照片',
   musicLabel: '音樂',
   musicChoices: { style: '新配樂', mine: '我的音樂', none: '不要音樂' },
@@ -179,9 +179,9 @@ const zhHans: Copy = {
   outfitPhoto: '加穿搭照片',
   outfitPhotoClear: '移除照片',
   sceneLabel: '场景（可不填）',
-  sceneNote: '写下想要的样子，或放一张参考照片。不填就用胡桃木吊扇、宫廷沙发和波斯地毯。',
-  scene: { blade: '扇叶', sofa: '沙发', carpet: '地毯' },
-  scenePlaceholder: { blade: '例如：胡桃木纹', sofa: '例如：粉色丝绒沙发', carpet: '例如：白色长毛地毯' },
+  sceneNote: '写下想要的样子，或放一张参考照片。不填就用胡桃木吊扇、宫廷沙发、波斯地毯和大理石地板。',
+  scene: { blade: '扇叶', sofa: '沙发', carpet: '地毯', floor: '地板' },
+  scenePlaceholder: { blade: '例如：胡桃木纹', sofa: '例如：粉色丝绒沙发', carpet: '例如：白色长毛地毯', floor: '例如：人字拼橡木地板' },
   scenePhoto: '加参考照片',
   musicLabel: '音乐',
   musicChoices: { style: '新配乐', mine: '我的音乐', none: '不要音乐' },
@@ -227,9 +227,9 @@ const ja: Copy = {
   addOutfit: 'コーデを追加',
   removeOutfit: n => `コーデ ${n} を外す`,
   sceneLabel: 'シーン（任意）',
-  sceneNote: '言葉で書くか、参考写真を追加してください。空欄ならウォールナットのファン、宮殿風のソファ、ペルシャ絨毯になります。',
-  scene: { blade: 'ファンの羽根', sofa: 'ソファ', carpet: 'ラグ' },
-  scenePlaceholder: { blade: '例：ウォールナットの木目', sofa: '例：ピンクのベルベットのソファ', carpet: '例：白いシャギーラグ' },
+  sceneNote: '言葉で書くか、参考写真を追加してください。空欄ならウォールナットのファン、宮殿風のソファ、ペルシャ絨毯、大理石の床になります。',
+  scene: { blade: 'ファンの羽根', sofa: 'ソファ', carpet: 'ラグ', floor: '床' },
+  scenePlaceholder: { blade: '例：ウォールナットの木目', sofa: '例：ピンクのベルベットのソファ', carpet: '例：白いシャギーラグ', floor: '例：ヘリンボーンのオーク材' },
   scenePhoto: '参考写真を追加',
   musicLabel: '音楽',
   musicChoices: { style: '新しい曲', mine: '自分の曲', none: '音楽なし' },
@@ -277,9 +277,9 @@ const ko: Copy = {
   addOutfit: '코디 추가',
   removeOutfit: n => `코디 ${n} 빼기`,
   sceneLabel: '장면 (선택)',
-  sceneNote: '원하는 모습을 적거나 참고 사진을 넣으세요. 비워 두면 월넛 팬, 궁전풍 소파, 페르시안 러그로 만듭니다.',
-  scene: { blade: '팬 날개', sofa: '소파', carpet: '러그' },
-  scenePlaceholder: { blade: '예: 월넛 원목', sofa: '예: 핑크 벨벳 소파', carpet: '예: 흰색 털 러그' },
+  sceneNote: '원하는 모습을 적거나 참고 사진을 넣으세요. 비워 두면 월넛 팬, 궁전풍 소파, 페르시안 러그, 대리석 바닥으로 만듭니다.',
+  scene: { blade: '팬 날개', sofa: '소파', carpet: '러그', floor: '바닥' },
+  scenePlaceholder: { blade: '예: 월넛 원목', sofa: '예: 핑크 벨벳 소파', carpet: '예: 흰색 털 러그', floor: '예: 헤링본 오크 마루' },
   scenePhoto: '참고 사진 추가',
   musicLabel: '음악',
   musicChoices: { style: '새 음악', mine: '내 음악', none: '음악 없음' },

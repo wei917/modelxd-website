@@ -3,7 +3,7 @@
 // "the template card should be in 做同款 tab and a new section besides 影片連結
 // and popular videos"; "template needs to be more accurate"). The user gives
 // one front photo (the side views are drawn), 2 to 5 outfits, optionally the
-// fan's blades, the sofa and the carpet (words or a reference photo; owner:
+// fan's blades, the sofa, the carpet and the floor (words or a reference photo; owner:
 // "users can describe or upload reference images") and the music. No
 // captions (owner: "users can use their own app to do that"). The run is the
 // method in lib/fan-template, followed here until the video is on its Library
@@ -25,8 +25,8 @@ const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
 const tick = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
 
-type SceneKey = 'blade' | 'sofa' | 'carpet'
-const SCENE: SceneKey[] = ['blade', 'sofa', 'carpet']
+type SceneKey = 'blade' | 'sofa' | 'carpet' | 'floor'
+const SCENE: SceneKey[] = ['blade', 'sofa', 'carpet', 'floor']
 /** An outfit row; the id keeps its photo with it when rows come and go. */
 type Row = { id: number; text: string }
 type Draft = { rows: Row[]; scene: Record<SceneKey, string>; music: FanMusic['choice']; style: FanMusicStyle; consent: boolean }
@@ -43,7 +43,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
   const { lang } = useLang()
   const c = fanCopy(lang)
   const [d, setD] = useState<Draft>(() => {
-    const base: Draft = { rows: (DEFAULT_OUTFITS[lang] ?? DEFAULT_OUTFITS.en).map((text, id) => ({ id, text })), scene: { blade: '', sofa: '', carpet: '' }, music: 'style', style: 'runway', consent: false }
+    const base: Draft = { rows: (DEFAULT_OUTFITS[lang] ?? DEFAULT_OUTFITS.en).map((text, id) => ({ id, text })), scene: { blade: '', sofa: '', carpet: '', floor: '' }, music: 'style', style: 'runway', consent: false }
     if (typeof window === 'undefined') return base
     try {
       const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null')
@@ -52,7 +52,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
         return {
           ...base,
           ...(texts && texts.length >= MIN_OUTFITS ? { rows: texts.map((text, id) => ({ id, text })) } : {}),
-          scene: { blade: String(saved.scene?.blade ?? ''), sofa: String(saved.scene?.sofa ?? ''), carpet: String(saved.scene?.carpet ?? '') },
+          scene: { blade: String(saved.scene?.blade ?? ''), sofa: String(saved.scene?.sofa ?? ''), carpet: String(saved.scene?.carpet ?? ''), floor: String(saved.scene?.floor ?? '') },
           ...(['style', 'mine', 'none'].includes(saved.music) ? { music: saved.music } : {}),
           ...(FAN_MUSIC_STYLES.includes(saved.style) ? { style: saved.style } : {}),
         }

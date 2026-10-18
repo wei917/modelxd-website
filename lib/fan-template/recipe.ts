@@ -48,7 +48,7 @@ export type FanMusic = { choice: 'style' | 'mine' | 'none'; style: FanMusicStyle
 export type FanOutfit = { text: string; photo?: string }
 /** A part of the scene the user chose: words, a reference photo, or both. */
 export type FanScenePart = { text?: string; photo?: string }
-export type FanScene = { blade?: FanScenePart; sofa?: FanScenePart; carpet?: FanScenePart }
+export type FanScene = { blade?: FanScenePart; sofa?: FanScenePart; carpet?: FanScenePart; floor?: FanScenePart }
 export type FanRequest = {
   /** The user's front photo in their upload folder. */
   front: string
@@ -68,7 +68,7 @@ export type FanRequest = {
  *  reserve leaves room for a refusal sending a picture or clip elsewhere. */
 export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: number; reserveCents: number; seconds: number } {
   const n = Math.min(MAX_OUTFITS, Math.max(MIN_OUTFITS, outfits))
-  const extras = (scene?.sofa || scene?.carpet ? 1 : 0) + (scene?.blade ? 1 : 0)
+  const extras = (scene?.sofa || scene?.carpet || scene?.floor ? 1 : 0) + (scene?.blade ? 1 : 0)
   const aboutCents = 114 + 48 * (n - 1) + 7 * extras
   return { aboutCents, reserveCents: Math.ceil((aboutCents + 90) / 50) * 50, seconds: Math.round(9.2 + 3.2 * (n - 2)) }
 }
@@ -77,9 +77,9 @@ export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: numbe
  *  and weight line (the template does not ask for them). */
 export const SHEET = '請以我上傳的正面照片作為唯一人物身分參考，完整保留人物的五官、臉型、膚色、髮型及個人辨識度。\n\n生成一張白色背景的寫實四格人物設定圖：左上為正面臉部近照、左下為側面臉部近照、中間為正面全身照、右邊為側面全身照。\n\n四格均為同一人物，穿著同一套簡約米白色居家服，赤腳自然站立。確保每格的樣貌、身高、體型及身材比例一致，不加入文字、配件或其他人物。'
 
-/** Step 2a (optional): the sofa and the carpet the user asked for, painted
- *  into the set; picture 1 is the set, their reference photos follow. The
- *  shapes and places stay, so the roll and the landing do too. */
+/** Step 2a (optional): the sofa, the carpet and the floor the user asked
+ *  for, painted into the set; picture 1 is the set, their reference photos
+ *  follow. The shapes and places stay, so the roll and the landing do too. */
 export function setPrompt(scene: FanScene): string {
   let next = 2
   const changes: string[] = []
@@ -90,7 +90,8 @@ export function setPrompt(scene: FanScene): string {
   }
   say(scene.sofa, 'the sofa\'s upholstery and color', 'sofa')
   say(scene.carpet, 'the rug on the floor becomes this carpet or rug', 'carpet or rug')
-  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room and the floor, the person lying on the sofa (pose, clothes, face), the small silver remote on the rug, the light and the shadows. The sofa keeps its exact outline, size, seat height and position; the rug keeps its size and position, flat on the floor, a perfect rectangle with its edges parallel to the edges of the picture. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
+  say(scene.floor, 'the floor around the rug becomes this floor', 'floor')
+  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room${scene.floor ? '' : ' and the floor'}, the person lying on the sofa (pose, clothes, face), the small silver remote on the rug, the light and the shadows. The sofa keeps its exact outline, size, seat height and position; the rug keeps its size and position, flat on the floor, a perfect rectangle with its edges parallel to the edges of the picture. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
 }
 
 /** The blades' material (optional): a flat picture of it, painted on our
@@ -113,14 +114,30 @@ export function startPrompt(outfit: FanOutfit): string {
   return `編輯第一張圖片。把躺在沙發座墊邊緣的人換成第二張人物設定圖裡的人：臉、五官、膚色、髮型、身材和性別完全照設定圖。人物的姿勢、在沙發上的位置、大小、頭朝畫面上方的方向都不變，仍然仰躺在沙發座墊靠地毯那一側的邊緣，看向鏡頭。人物穿著：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${KEEP}`
 }
 
-/** Step 3a, the roll (t4's prompt; owner: "just over a little bit is fine"). */
-export const ROLL = {
-  seconds: 4,
-  clip: `寫實風格的時尚影片，9:16 直式，長度 4 秒，一個連續鏡頭，從這張圖片開始。攝影機完全固定，以精確的 90 度角垂直向下拍攝，俯視地板。攝影機不跟著人物移動：沙發、地毯、地板和遙控器在畫面中的位置從頭到尾完全不動。不得推近、拉遠、水平移動、上下傾斜、旋轉或改變拍攝角度。畫面中沒有吊扇。
-0.0–1.5 秒：人物仰躺在沙發座墊靠邊的地方。人物朝畫面右側輕輕翻身成側躺，身體越過座墊邊緣，自然地從沙發上掉到下方約 40 公分的地毯上，以仰躺姿勢落地，頭朝畫面上方，腳朝畫面下方。只翻一點點：不翻成趴著，不連續翻滾，落地後也不再翻身。身體始終貼著沙發或地面，不漂浮、不滑行、不站起來。
-1.5–4.0 秒：人物抬眼看向上方的攝影機，放鬆肩膀、伸直雙腿，雙手放在身體兩側，靜靜躺著，一直看著鏡頭。
-動作自然，人體結構真實，布料動態合理。不得出現重複人物、多餘肢體、臉部變化、漂浮的身體部位或場景切換。`,
-  sound: 'Quiet room tone, a soft thump as the person lands on the rug, a rustle of fabric. No music, no singing.',
+/** Step 3a, the roll: a real fall (owner, Oct 18: "make falling on the
+ *  ground more natural ... like hitting a floor"; of three tries "B is the
+ *  best"): over the sofa's edge, a fast drop at real speed, a jolt on
+ *  landing, then onto the back, eyes on the camera. Seen from straight above a
+ *  drop shows only as speed and impact, so the words ask for both. */
+export function roll(scene?: FanScene) {
+  return {
+    seconds: 4,
+    clip: `Realistic fashion video, 9:16, 4 seconds, one continuous shot starting from this picture. The camera is locked exactly overhead, looking straight down at the floor; it never moves, zooms, pans, tilts or rotates, and the sofa, the rug, the floor and the remote stay exactly where they are in the frame. No ceiling fan in the picture.
+0.0–0.8 s: the person, lying on their back at the edge of the sofa seat, rolls onto their side toward the right of the frame until their weight tips over the edge.
+0.8–1.2 s: gravity takes over: they drop off the sofa, about 45 cm, at full real-time speed, not slow motion, and land hard on the rug on their shoulder and hip. The impact is visible: the whole body jolts, the hair whips up and falls back, the clothes bounce, the arms and legs flop once.
+1.2–4.0 s: they roll the rest of the way onto their back on the rug, head toward the top of the frame and feet toward the bottom, settle and lie still, eyes looking straight up into the camera, arms at their sides.
+Real weight and momentum, natural anatomy, real fabric. They never lie face down, never roll more than once, never float, glide or slide.`,
+    sound: landingSound(scene),
+  }
+}
+/** The landing as it would sound on this room's floor (owner, Oct 18: "this
+ *  is 大理石地板 not 木頭地板"): through a thick rug onto stone by default,
+ *  the user's own floor or carpet when they gave one. */
+function landingSound(scene?: FanScene): string {
+  const on = scene?.floor?.text || scene?.carpet?.text
+    ? `on ${scene?.carpet?.text ? `this carpet (${scene.carpet.text})` : 'the rug'} over ${scene?.floor?.text ? `this floor (${scene.floor.text})` : 'a stone floor'}, sounding exactly like a body hitting that floor`
+    : 'on a thick rug laid over a marble floor: a deep, short, dense impact, no hollow wooden knock and no echo'
+  return `Quiet room tone; at about 1.1 s a heavy, dull, muffled thud as the body lands ${on}; then a soft rustle of fabric. No music, no singing.`
 }
 
 /** Step 3b's end frame: the remote in hand, eyes on the camera (t4). */
