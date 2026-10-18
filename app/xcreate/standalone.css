@@ -483,13 +483,56 @@
    (.xduel-page) is a scroll box that never scrolls and would swallow the
    sticky (globals.css explains it), so this page lets it overflow. */
 .xcs-page .xduel-page:has(.xcs-remake) { overflow-y: visible; }
-.xcs-remake-soon { text-align: center; margin-bottom: -18px; }
+/* The music's tuning (Oct 17): the styles to move toward as chips, then
+   three sliders, red from the original's place to the thumb. */
+.xcs-remake-tune { display: grid; gap: 14px; }
+.xcs-remake-tune-to { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
+.xcs-remake-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.xcs-remake-chips button { min-height: 36px; padding: 0 13px; border: 1px solid var(--border2); border-radius: 999px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.xcs-remake-chips button:hover { border-color: var(--red); }
+.xcs-remake-chips button[aria-pressed='true'] { border-color: var(--red); background: var(--red); color: #fff; }
+.xcs-remake-slider { display: grid; gap: 2px; font-size: 13px; font-weight: 600; }
+.xcs-remake-slider-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.xcs-remake-slider-head b { font-family: var(--font-mono), monospace; font-size: 12px; font-weight: 600; color: var(--red); font-variant-numeric: tabular-nums; }
+.xcs-remake-slider input { -webkit-appearance: none; appearance: none; width: 100%; height: 32px; margin: 0; background: transparent; cursor: pointer; }
+.xcs-remake-slider input::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--xc-soft, #ecebe4) 0 var(--lo), var(--red) var(--lo) var(--hi), var(--xc-soft, #ecebe4) var(--hi) 100%); }
+.xcs-remake-slider input::-moz-range-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--xc-soft, #ecebe4) 0 var(--lo), var(--red) var(--lo) var(--hi), var(--xc-soft, #ecebe4) var(--hi) 100%); }
+.xcs-remake-slider input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border: 2px solid var(--red); border-radius: 50%; background: var(--xc-paper, #fff); box-shadow: 0 1px 4px rgba(0, 0, 0, .18); }
+.xcs-remake-slider input::-moz-range-thumb { width: 20px; height: 20px; border: 2px solid var(--red); border-radius: 50%; background: var(--xc-paper, #fff); box-shadow: 0 1px 4px rgba(0, 0, 0, .18); }
+.xcs-remake-slider input:focus-visible { outline: none; }
+.xcs-remake-slider input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(205, 66, 54, .2); }
+.xcs-remake-slider input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(205, 66, 54, .2); }
+.xcs-remake-slider-ends { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; font-weight: 500; color: var(--muted2); }
+
+/* The remake as it is made (Oct 17): its state and clock, the stretch's
+   shots filling in red step by step, then the video. */
+.xcs-remake-made { display: grid; gap: 12px; padding: 18px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--xc-paper, #fff); scroll-margin: 90px; }
+.xcs-remake-made-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; }
+.xcs-remake-made-state { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; }
+.xcs-remake-made-state::before { content: ''; flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+.xcs-remake-made:not(.is-done):not(.is-failed) .xcs-remake-made-state::before { animation: xcs-remake-pulse 1.4s ease-in-out infinite; }
+.xcs-remake-made.is-done .xcs-remake-made-state::before { background: var(--green, #2f9e44); }
+.xcs-remake-made.is-failed .xcs-remake-made-state::before { background: var(--muted2); }
+@keyframes xcs-remake-pulse { 50% { opacity: .25; transform: scale(.7); } }
+.xcs-remake-made-head .xcs-film-clock { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+.xcs-remake-made-strip { position: relative; display: flex; height: 40px; border-radius: 8px; overflow: hidden; background: var(--xc-soft, #f1f2ec); }
+.xcs-remake-made-strip i { flex: 1 1 0; background: var(--xc-ink, #242724); opacity: calc(.08 + var(--k, .5) * .14); box-shadow: inset 1.5px 0 0 var(--xc-paper, #fff); }
+.xcs-remake-made-strip b { position: absolute; top: 0; bottom: 0; left: 0; background: var(--red); opacity: .88; transition: width .8s ease; }
+.xcs-remake-made-strip b::after { content: ''; position: absolute; top: 0; bottom: 0; right: -28px; width: 28px; background: linear-gradient(to right, rgba(205, 66, 54, .55), rgba(205, 66, 54, 0)); animation: xcs-remake-glow 1.6s ease-in-out infinite; }
+@keyframes xcs-remake-glow { 50% { opacity: .2; } }
+.xcs-remake-made-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0; font-size: 12.5px; color: var(--muted2); font-variant-numeric: tabular-nums; }
+.xcs-remake-made .xcs-film-note { margin: 0; }
+.xcs-remake-player video { display: block; width: 100%; height: auto; max-height: 72vh; border-radius: 12px; background: #000; object-fit: contain; }
+.xcs-remake-download { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 12px; font-weight: 700; text-decoration: none; }
+.xcs-remake-makenote { text-align: center; margin-bottom: -18px; }
 .xcs-remake-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -20px; padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: rgba(255, 255, 255, .94); -webkit-backdrop-filter: saturate(1.4) blur(12px); backdrop-filter: saturate(1.4) blur(12px); box-shadow: 0 -8px 24px rgba(0, 0, 0, .05); }
 .xcs-remake-bar-sum { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 13px; }
 .xcs-remake-bar-sum b { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
 .xcs-remake-bar-sum span { font-size: 12px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .xcs-remake-bar .xcs-primary { flex-shrink: 0; min-height: 48px; padding: 0 22px; border-radius: 12px; font-size: 15px; font-weight: 700; }
 .xcs-remake-bar .xcs-primary:disabled { opacity: .5; }
+/* Once a remake is done, Download is the red button; another version is quieter. */
+.xcs-remake-bar .xcs-primary.is-again { background: var(--xc-paper, #fff); color: var(--red); box-shadow: inset 0 0 0 1.5px var(--red); }
 .xcs-remake-again { align-self: center; min-height: 44px; margin-top: -18px; padding: 0 16px; border: 0; background: transparent; color: var(--muted2); font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .xcs-remake-again:hover { color: var(--red); }
 @media (max-width: 420px) {
@@ -509,7 +552,9 @@
   .xcs-remake-bar { bottom: 16px; margin: 0; padding: 10px 10px 10px 20px; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 32px rgba(0, 0, 0, .1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .xcs-remake-hero .is-yours b, .xcs-remake-read > *, .xcs-remake-reel i, .xcs-remake-cast.is-flash { animation: none; }
+  .xcs-remake-hero .is-yours b, .xcs-remake-read > *, .xcs-remake-reel i, .xcs-remake-cast.is-flash,
+  .xcs-remake-made-state::before, .xcs-remake-made-strip b::after { animation: none !important; }
+  .xcs-remake-made-strip b { transition: none; }
   .xcs-remake-strip-sel { transition: none; }
 }
 

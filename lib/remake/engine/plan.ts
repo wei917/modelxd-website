@@ -61,6 +61,9 @@ export type PlanShot = {
    *  different from that shot's first frame (clothes, pose, who is there), in
    *  English. Its keyframe is an edit of that frame, so the room stays put. */
   change?: string
+  /** Nobody changes place during the shot and the camera is locked: the clip
+   *  gets the same first and last frame, so its camera cannot drift. */
+  still?: boolean
 }
 export type PlanVoice = { t: number; who: string; text: string; voice: string; style: string }
 export type RemakePlan = {
@@ -135,6 +138,7 @@ How the remake is produced (write for this):
 - A keyframe is the first frame of a shot: describe framing, who is where, the setting and light. At most 2 sheet characters per keyframe. Never ask for text, letters or logos in a picture.
 - A clip is made from its keyframe by an image-to-video model, 1 to 15 whole seconds, then cut to the shot's length. Describe one clear action with timing ("at 0.5 s he..."), the camera move, and end with "No cuts." Fast shots under a second still get their own 1-second clip.
 - If a shot is the same continuous moment as the previous one (same place, same people, the action carries on), set "continues": true: it starts from the previous clip's last frame and needs no keyframe.
+- Set "still": true for a shot in which nobody changes place and the camera is locked (only small movement: breathing, a blink, a smile, a slight turn of the head or hand): its clip is made with the same picture as its first and last frame, which keeps the camera perfectly still. Any shot where someone moves across the frame, rolls, walks, falls, or the camera moves is "still": false.
 - A shot marked "same_set_as": n is filmed on exactly the same set, from exactly the same locked camera, as shot n: its first frame is made by EDITING shot n's first frame, so the room, the furniture, the framing and the light come out identical. For it, write "change": only what is different from shot n's first frame (her clothes, pose, expression, who is there), in English, never the room again. Its keyframe text is still written in full.
 - On-screen text and spoken lines are rewritten for the new theme, in ${req.language}, about the same length and timing as the original's. Never copy the original's lyrics, slogans or brand names. Voices come from text to speech: pick a voice from ${VOICES.join(', ')} and give a short delivery style in English.
 - Every shot says what it sounds like ("sound": crowd roar, sparks, a scream, footsteps...): the video model makes the clip's own sound from it, and a shot with no sound direction comes out nearly silent. Match the original's energy: if the crowd roars through a shot, say so.
@@ -144,7 +148,7 @@ How the remake is produced (write for this):
 Return JSON only:
 {"title": string (${req.language}), "logline": string (${req.language}), "look": string (English: the drawing style only, never the place or the frame shape), "world": string (English: the setting and its light, pasted into every keyframe; signs and screens carry no lettering),
  "characters": [{"id": string, "name": string, "source": "keep"|"describe"|"famous"|"photo"|"extra", "canon": string}],
- "shots": [{"n": int, "t0": number, "t1": number, "continues": bool, "keyframe": string, "change": string (only for a same_set_as shot, else ""), "refs": [ids], "product": bool, "clip": string, "clip_seconds": int, "sound": string, "transition_in": string, "text": string}],
+ "shots": [{"n": int, "t0": number, "t1": number, "continues": bool, "keyframe": string, "change": string (only for a same_set_as shot, else ""), "still": bool, "refs": [ids], "product": bool, "clip": string, "clip_seconds": int, "sound": string, "transition_in": string, "text": string}],
  "voices": [{"t": number, "who": id, "text": string, "voice": string, "style": string}],
  "sound": string (English: the ambience and effects the clips should carry)}
 The shots must be exactly the original shots given, in order, with the same t0 and t1.`

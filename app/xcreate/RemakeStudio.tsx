@@ -2,8 +2,11 @@
 // 同款 (Remake), XCreate's sixth type (owner, Oct 10: "paste a link to do the
 // same video。做同款。 但是換掉人物或主角 主題 背景"). Phase 1: paste a link or
 // upload a video, read it into a shot list (/api/xcreate/remake/breakdown),
-// pick the length and what to swap. Making the remake is phase 2, so the
-// make button waits. Plan: docs/REMAKE-PLAN.md.
+// pick the length and what to swap, then make it (Oct 17; owner: "build the
+// entire tab page and let me try it"): the photos and tracks upload, the price
+// is reserved, and the page follows the job (/api/xcreate/remake/<id>/make,
+// lib/remake/make.ts) until the video is on the read's Library item. Plan:
+// docs/REMAKE-PLAN.md.
 //
 // The page is drawn around the original's cut rhythm (Oct 11): the heading
 // shows one edit twice (the original, then yours), the read shows the real
@@ -17,7 +20,12 @@
 // of tiles shows them all at once; each card carries a picture of the
 // original (cut from X and uploaded videos; YouTube plays the moment in its
 // own player instead) and the ways to replace it. Photos and recordings stay
-// in the tab until making exists; nothing is uploaded yet.
+// in the tab until Make is pressed, and only the ones a choice uses go up.
+//
+// The music (Oct 17; owner: "keep the original style music or tune it with
+// slider like more pop or country style"): a new track in the original's
+// style, the same moved toward another style with sliders, the user's own
+// track, or none. Never the original's recording.
 //
 // Each read is kept as a Library item (Oct 17; owner: "there is no uuid link
 // to continue?"): the address becomes /xcreate?remake=<id>, the choices
@@ -34,10 +42,11 @@ import { createSupabaseBrowser } from '@/lib/supabase-client'
 import { pendingAttachment, commitAttachments } from '../components/AttachmentButton'
 import ModeIcon from '../components/ModeIcon'
 import {
-  REMAKE_LENGTHS, REMAKE_LOOKS, estimateRemakeCents,
-  type Breakdown, type BreakdownResult, type CastChoice, type Character, type MusicChoice, type Place,
+  DEFAULT_TUNE, MUSIC_TARGETS, REMAKE_LENGTHS, REMAKE_LOOKS, estimateRemakeCents,
+  type Breakdown, type BreakdownResult, type CastChoice, type Character, type MusicChoice, type MusicTune, type Place,
   type PlaceChoice, type RemakeLook, type Shot, type Thing, type ThingChoice, type VoiceChoice,
 } from '@/lib/remake/config'
+import type { MakeView } from '@/lib/remake/make'
 import { remakeCopy, REMAKE_LANGUAGES } from './remake-copy'
 
 const DRAFT_KEY = 'xcreate.remake-draft'
@@ -47,7 +56,8 @@ const THING_CHOICES: ThingChoice[] = ['keep', 'photo', 'describe', 'remove']
 /** A logo is never carried over, so it has no "keep". */
 const LOGO_CHOICES: ThingChoice[] = ['remove', 'photo', 'describe']
 const PLACE_CHOICES: PlaceChoice[] = ['keep', 'photo', 'describe']
-const MUSIC_CHOICES: MusicChoice[] = ['none', 'mine']
+const MUSIC_CHOICES: MusicChoice[] = ['keep', 'tune', 'mine', 'none']
+const POLL_MS = 4000
 const VOICE_CHOICES: VoiceChoice[] = ['ai', 'mine', 'none']
 const SHOTS_FIRST = 6
 const TEXTS_FIRST = 5
@@ -81,6 +91,8 @@ type Draft = {
   things: Record<string, ThingPick>
   places: Record<string, PlacePick>
   music: MusicChoice
+  /** The music sliders (MusicChoice 'tune'). */
+  tune: MusicTune
   /** By speaker (a line's `who`). */
   voices: Record<string, VoicePick>
   /** On-screen text, original → the user's; empty = rewritten for the theme. */
@@ -90,8 +102,8 @@ type Draft = {
   look: RemakeLook
   language: Lang
 }
-/** A photo or recording the user picked: kept in the tab only, never in the draft. */
-type Picked = { url: string; name: string }
+/** A photo or recording the user picked: kept in the tab only, never in the draft; uploaded when making starts. */
+type Picked = { url: string; name: string; file: File }
 /** A popular video to try (/api/xcreate/remake/examples). `summary` is our
  *  words; `prompt` is the author's, shown under the read of that video. */
 type Example = { url: string; handle: string; likes: number; models: string[]; prompt: string; summary: Partial<Record<Lang, string>> }
@@ -103,10 +115,10 @@ const freshPicks = (b: Breakdown): Pick<Draft, 'cast' | 'things' | 'places' | 'm
   cast: Object.fromEntries(b.characters.map(ch => [ch.id, { choice: 'keep', text: '', consent: false }])),
   things: Object.fromEntries((b.things ?? []).map(t => [t.id, { choice: thingDefault(t), text: '' }])),
   places: Object.fromEntries((b.places ?? []).map(x => [x.id, { choice: 'keep', text: '' }])),
-  music: 'none', voices: {}, texts: {},
+  music: b.music.present ? 'keep' : 'none', voices: {}, texts: {},
 })
 /** What the viewer chose, as kept on their read (photos and recordings never). */
-const CHOICE_KEYS = ['length', 'fromShot', 'cast', 'things', 'places', 'music', 'voices', 'texts', 'theme', 'setting', 'look', 'language'] as const
+const CHOICE_KEYS = ['length', 'fromShot', 'cast', 'things', 'places', 'music', 'tune', 'voices', 'texts', 'theme', 'setting', 'look', 'language'] as const
 type Choices = Pick<Draft, typeof CHOICE_KEYS[number]>
 const choicesOf = (x: Draft): Choices => Object.fromEntries(CHOICE_KEYS.map(k => [k, x[k]])) as Choices
 const isRecord = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -121,7 +133,8 @@ function restoreChoices(b: Breakdown, saved: Record<string, unknown> | null): Pa
   return {
     cast: merge(fresh.cast, saved.cast), things: merge(fresh.things, saved.things), places: merge(fresh.places, saved.places),
     voices: merge(fresh.voices, saved.voices), texts: merge(fresh.texts, saved.texts),
-    music: str(saved.music, fresh.music) as MusicChoice,
+    music: (['keep', 'tune', 'mine', 'none'].includes(String(saved.music)) ? saved.music : fresh.music) as MusicChoice,
+    ...(isRecord(saved.tune) ? { tune: { ...DEFAULT_TUNE, ...saved.tune } as MusicTune } : {}),
     ...(typeof saved.length === 'number' ? { length: num(saved.length, 30) } : {}),
     ...(typeof saved.fromShot === 'number' ? { fromShot: num(saved.fromShot, 0) } : {}),
     ...(typeof saved.theme === 'string' ? { theme: saved.theme } : {}),
@@ -170,7 +183,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   const [d, setD] = useState<Draft>(() => {
     const base: Draft = {
       link: '', start: 0, result: null, rowId: null, length: 30, fromShot: 0,
-      cast: {}, things: {}, places: {}, music: 'none', voices: {}, texts: {},
+      cast: {}, things: {}, places: {}, music: 'keep', tune: DEFAULT_TUNE, voices: {}, texts: {},
       theme: '', setting: '', look: 'keep', language: lang,
     }
     if (typeof window === 'undefined') return base
@@ -179,7 +192,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
       if (saved && typeof saved === 'object') {
         const cast = Object.fromEntries(Object.entries(saved.cast ?? {}).map(([k, v]: [string, any]) =>
           [k, { choice: v?.choice ?? 'keep', text: v?.text ?? '', consent: !!v?.consent }]))
-        return { ...base, ...saved, cast }
+        return { ...base, ...saved, cast, tune: { ...DEFAULT_TUNE, ...(saved.tune ?? {}) } }
       }
     } catch { /* storage unavailable */ }
     return base
@@ -196,6 +209,15 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   const [since, setSince] = useState(0)
   const [now, setNow] = useState(0)
   const [examples, setExamples] = useState<Example[]>([])
+  /** The read's remake (lib/remake/make.ts), followed while it is made. */
+  const [make, setMake] = useState<MakeView | null>(null)
+  const [starting, setStarting] = useState(false)
+  const [makeError, setMakeError] = useState<{ text: string; topUp: boolean } | null>(null)
+  /** Bumped when a remake starts, so the page follows it. */
+  const [follow, setFollow] = useState(0)
+  const [makeNow, setMakeNow] = useState(0)
+  const makeRow = useRef<string | null>(null)
+  const makeRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const linkRef = useRef<HTMLInputElement>(null)
   const readRef = useRef<HTMLDivElement>(null)
@@ -271,6 +293,48 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
       .catch(() => { /* no row */ })
     return () => { live = false }
   }, [])
+
+  // The read's remake, followed until it is done. The first look happens even
+  // in a background tab; after that a hidden tab stops asking and asks again
+  // the moment it is looked at. A look also restarts a pass whose lease ran
+  // out (the route does that), so an open page keeps its remake moving.
+  useEffect(() => {
+    if (makeRow.current !== d.rowId) { makeRow.current = d.rowId; setMake(null); setMakeError(null) }
+    const id = d.rowId
+    if (!id) return
+    let stopped = false, finished = false, first = true, asking = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const look = async () => {
+      if (stopped || finished || asking) return
+      if (timer) { clearTimeout(timer); timer = undefined }
+      if (first || !document.hidden) {
+        first = false; asking = true
+        try {
+          const res = await fetch(`/api/xcreate/remake/${id}/make`)
+          if (res.status === 401 || res.status === 404) finished = true
+          else if (res.ok) {
+            const v = ((await res.json()) as { job?: MakeView | null }).job ?? null
+            if (!stopped) setMake(v)
+            if (!v || v.status === 'done' || v.status === 'failed') finished = true
+          }
+        } catch { /* offline for a moment; the next look retries */ }
+        asking = false
+      }
+      if (!stopped && !finished) timer = setTimeout(look, POLL_MS)
+    }
+    const onVisible = () => { if (!document.hidden) void look() }
+    document.addEventListener('visibilitychange', onVisible)
+    void look()
+    return () => { stopped = true; if (timer) clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible) }
+  }, [d.rowId, follow])
+
+  const makeActive = !!make && make.status !== 'done' && make.status !== 'failed'
+  useEffect(() => {
+    if (!makeActive) return
+    setMakeNow(Date.now())
+    const t = window.setInterval(() => setMakeNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [makeActive])
 
   // The clock beside the reading reel: a long read takes up to two minutes.
   useEffect(() => {
@@ -432,11 +496,12 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     setD(prev => ({ ...prev, places: { ...prev.places, [id]: { ...(prev.places[id] ?? { choice: 'keep', text: '' }), ...patch } } }))
   const setVoice = (who: string, patch: Partial<VoicePick>) =>
     setD(prev => ({ ...prev, voices: { ...prev.voices, [who]: { ...(prev.voices[who] ?? { choice: 'ai', consent: false }), ...patch } } }))
+  const setTune = (patch: Partial<MusicTune>) => setD(prev => ({ ...prev, tune: { ...prev.tune, ...patch } }))
   const pickFile = (key: string, file: File | undefined) => {
     if (!file) return
     setFiles(prev => {
       if (prev[key]) URL.revokeObjectURL(prev[key].url)
-      return { ...prev, [key]: { url: URL.createObjectURL(file), name: file.name } }
+      return { ...prev, [key]: { url: URL.createObjectURL(file), name: file.name, file } }
     })
   }
   const inShots = (has: (s: Shot) => boolean) => { const n = shots.filter(has).length; return n ? c.inShots(n) : undefined }
@@ -452,7 +517,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     ...castOrder.main.map(ch => personTile(ch, false)),
     ...things.map(t => ({ key: t.id, label: t.name, pic: pictureOr(t.id, t.kind === 'logo' ? <ICONS.logo /> : <ICONS.thing />), changed: thingPick(t).choice !== thingDefault(t) })),
     ...places.map(x => ({ key: x.id, label: x.name, pic: pictureOr(x.id, <ICONS.place />), changed: placePick(x.id).choice !== 'keep' })),
-    ...(b.music.present ? [{ key: 'music', label: c.music, pic: <ICONS.music />, changed: d.music !== 'none' }] : []),
+    ...(b.music.present ? [{ key: 'music', label: c.music, pic: <ICONS.music />, changed: d.music !== 'keep' }] : []),
     ...speakers.map(sp => ({ key: `v-${safe(sp.who)}`, label: `${c.voiceLabel} ${roles.get(sp.who) ?? sp.who}`, pic: <ICONS.voice />, changed: voicePick(sp.who).choice !== 'ai' })),
     ...(texts.length ? [{ key: 'text', label: c.kinds.text, pic: <ICONS.text />, changed: texts.some(t => !!d.texts[t]?.trim()) }] : []),
     ...castOrder.extra.map(ch => personTile(ch, true)),
@@ -565,6 +630,125 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     <h3 className="xcs-remake-kind"><span>{label}</span>{n ? <b>{n}</b> : null}</h3>
   const hasProduct = things.some(t => t.kind === 'product')
   const shownTexts = allTexts ? texts : texts.slice(0, TEXTS_FIRST)
+
+  // The music's tuning (Oct 17): a style to move toward, how far, and the
+  // tempo and energy against the original's. The tempo reads in BPM when the
+  // read heard one (the same sum the music prompt makes: ±50 is ±25%).
+  const slider = (key: 'amount' | 'tempo' | 'energy', label: string, ends: [string, string], value: string | null) => {
+    // Red from the original's place to the thumb: the left end for how far,
+    // the middle for tempo and energy.
+    const min = key === 'amount' ? 0 : -50, max = key === 'amount' ? 100 : 50, v = d.tune[key]
+    const at = ((v - min) / (max - min)) * 100, zero = ((0 - min) / (max - min)) * 100
+    return <label className="xcs-remake-slider">
+      <span className="xcs-remake-slider-head"><span>{label}</span>{value && <b>{value}</b>}</span>
+      <input type="range" min={min} max={max} step={5} value={v}
+        style={{ ['--lo' as string]: `${Math.min(at, zero)}%`, ['--hi' as string]: `${Math.max(at, zero)}%` }}
+        onChange={e => setTune({ [key]: Number(e.target.value) })} />
+      <span className="xcs-remake-slider-ends" aria-hidden="true"><span>{ends[0]}</span><span>{ends[1]}</span></span>
+    </label>
+  }
+  const bpm = b?.music.bpm ?? null
+  const tuneControls = <div className="xcs-remake-tune">
+    <p className="xcs-film-note">{c.musicTuneNote}</p>
+    <div className="xcs-remake-tune-to" role="group" aria-label={c.tuneToward}>
+      <span>{c.tuneToward}</span>
+      <div className="xcs-remake-chips">
+        {MUSIC_TARGETS.map(t => <button key={t} type="button" aria-pressed={d.tune.target === t} onClick={() => setTune({ target: t })}>{c.targets[t]}</button>)}
+      </div>
+    </div>
+    {slider('amount', c.tuneAmount, c.tuneAmountEnds, `${d.tune.amount}%`)}
+    {slider('tempo', c.tuneTempo, c.tuneTempoEnds, bpm ? `${Math.round(bpm * (1 + d.tune.tempo / 200))} BPM` : d.tune.tempo ? `${d.tune.tempo > 0 ? '+' : ''}${d.tune.tempo / 2}%` : null)}
+    {slider('energy', c.tuneEnergy, c.tuneEnergyEnds, null)}
+    <label className="xcs-remake-consent">
+      <input type="checkbox" checked={d.tune.vocals} onChange={e => setTune({ vocals: e.target.checked })} />
+      <span>{c.tuneVocals}</span>
+    </label>
+  </div>
+
+  /** A failed start, in the viewer's words. */
+  const makeErrorText = (body: any): { text: string; topUp: boolean } => {
+    const code = String(body?.code ?? ''), e = c.makeErrors
+    if (code === 'insufficient_credits') return { text: e.insufficient_credits(money(Number(body?.requiredCents) || 0), money(Number(body?.balanceCents) || 0)), topUp: true }
+    const known = (e as Record<string, unknown>)[code]
+    return { text: typeof known === 'string' ? known : e.start_failed, topUp: false }
+  }
+  /** Make it: every choice checked here first (a photo swap needs its photo,
+   *  a person's photo or voice the tick), then only the files a choice uses
+   *  go up, and the route reserves the price and starts the job. */
+  const startMake = async () => {
+    if (!d.rowId || !b || starting || makeActive) return
+    if (!signedIn) { onSignIn(`/xcreate?remake=${d.rowId}`); return }
+    if (d.music === 'mine' && !files.music) { setMakeError({ text: c.makeErrors.no_track, topUp: false }); return }
+    const keys: string[] = []
+    let missing = false
+    const need = (key: string, ok = true) => { if (files[key] && ok) keys.push(key); else missing = true }
+    for (const ch of b.characters) { const p = castPick(ch.id); if (p.choice === 'photo') need(`c:${ch.id}`, p.consent) }
+    for (const t of things) if (thingPick(t).choice === 'photo') need(`t:${t.id}`)
+    for (const x of places) if (placePick(x.id).choice === 'photo') need(`p:${x.id}`)
+    for (const sp of speakers) { const p = voicePick(sp.who); if (p.choice === 'mine') need(`v:${sp.who}`, p.consent) }
+    if (missing) { setMakeError({ text: c.makeErrors.missing_photo, topUp: false }); return }
+    if (d.music === 'mine') keys.push('music')
+    if (!hasProduct && files.product) keys.push('product')
+    setStarting(true); setMakeError(null)
+    try {
+      const at: Record<string, string> = {}
+      try {
+        const up = await commitAttachments(keys.map(k => pendingAttachment(files[k].file, 'xcreate')))
+        keys.forEach((k, i) => { at[k] = up[i].storagePath })
+      } catch { setMakeError({ text: c.makeErrors.upload_failed, topUp: false }); return }
+      const withFile = <T extends object>(o: Record<string, T>, prefix: string, field: string) =>
+        Object.fromEntries(Object.entries(o).map(([id, p]) => [id, at[`${prefix}:${id}`] ? { ...p, [field]: at[`${prefix}:${id}`] } : p]))
+      const choices = {
+        from: fromT, seconds: chosenSeconds,
+        cast: withFile(d.cast, 'c', 'photo'), things: withFile(d.things, 't', 'photo'), places: withFile(d.places, 'p', 'photo'),
+        voices: withFile(Object.fromEntries(speakers.map(sp => [sp.who, voicePick(sp.who)])), 'v', 'recording'),
+        texts: d.texts, theme: d.theme, setting: d.setting, look: d.look, language: d.language,
+        ...(at.product ? { product: at.product } : {}),
+        music: { choice: d.music, tune: d.tune, ...(at.music ? { track: at.music } : {}) },
+      }
+      const res = await fetch(`/api/xcreate/remake/${d.rowId}/make`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choices }) })
+      if (res.status === 401) { onSignIn(`/xcreate?remake=${d.rowId}`); return }
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok || !body?.job) { setMakeError(makeErrorText(body)); return }
+      setMake(body.job as MakeView)
+      setFollow(n => n + 1)
+      window.setTimeout(() => makeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+    } catch {
+      setMakeError({ text: c.makeErrors.start_failed, topUp: false })
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  // The remake as it is made: the stretch's shots as a strip that fills in
+  // red, step by step, then the video.
+  const madeShots = shots.filter(inStretch)
+  const madeShare = make ? (make.status === 'done' ? 1 : Math.min(0.97, make.done / Math.max(1, make.total))) : 0
+  const madePanel = make && <div ref={makeRef} className={`xcs-remake-made is-${make.status}`} aria-live="polite">
+    <p className="xcs-remake-made-head">
+      <span className="xcs-remake-made-state">{c.makeStages[make.status]}</span>
+      {makeActive && <span className="xcs-film-clock">{tick(Math.max(0, (makeNow - Date.parse(make.createdAt)) / 1000))}</span>}
+    </p>
+    {makeActive && <div className="xcs-remake-made-strip" aria-hidden="true">
+      {madeShots.map((s, i) => {
+        const w = (Math.min(s.t1, endT) - Math.max(s.t0, fromT)) / Math.max(0.1, endT - fromT)
+        return <i key={i} style={{ flexGrow: Math.max(0.02, w), ['--k' as string]: TIGHTNESS[s.framing] ?? 0.5 }} />
+      })}
+      <b style={{ width: pct(madeShare) }} />
+    </div>}
+    {makeActive && <p className="xcs-remake-made-meta">
+      <span>{c.makeSteps(make.done, make.total)}</span>
+      <span>{c.makeSpent(money(make.spentCents), money(make.reservedCents))}</span>
+    </p>}
+    {make.status === 'done' && make.video && <div className="xcs-remake-player">
+      <video src={make.video} controls playsInline preload="metadata" style={{ aspectRatio: b?.aspect.replace(':', ' / ') }} />
+    </div>}
+    {make.status === 'done' && <>
+      {make.download && <a className="xcs-primary xcs-remake-download" href={make.download}>{c.download}</a>}
+      <p className="xcs-film-note">{[c.makeSaved, make.chargedCents != null ? c.makeCharged(money(make.chargedCents)) : ''].filter(Boolean).join(lang === 'en' || lang === 'ko' ? ' ' : '')}</p>
+    </>}
+    {make.status === 'failed' && <p className="xcs-film-note">{c.makeFailedNote}</p>}
+  </div>
 
   return <section className="xcs-film xcs-remake" aria-labelledby="xcs-remake-title">
     <header className="xcs-heading">
@@ -761,7 +945,10 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
               look: c.musicLine(b.music.mood, null, b.music.cuts_on_beat),
               children: <>
                 {seg(MUSIC_CHOICES, d.music, o => c.musicChoices[o], o => set({ music: o }))}
-                {d.music === 'mine' ? audioPicker('music') : <p className="xcs-film-note">{c.noMusicNote}</p>}
+                {d.music === 'keep' && <p className="xcs-film-note">{c.musicKeepNote}</p>}
+                {d.music === 'tune' && tuneControls}
+                {d.music === 'mine' && audioPicker('music')}
+                {d.music === 'none' && <p className="xcs-film-note">{c.noMusicNote}</p>}
               </>,
             })}
             {speakers.map(sp => {
@@ -830,10 +1017,14 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
         </div>
       </section>
 
-      <p className="xcs-film-note xcs-remake-soon">{c.makeSoon}</p>
+      {madePanel}
+      {makeError && <p className="xcs-film-error" role="alert">{makeError.text} {makeError.topUp && <a href="/profile">{c.topUp}</a>}</p>}
+      {!make && <p className="xcs-film-note xcs-remake-makenote">{c.makeNote}</p>}
       <div className="xcs-remake-bar">
         <p className="xcs-remake-bar-sum"><b>{c.about(price)}</b><span>{c.shots(stretchCount, String(chosenSeconds))}</span></p>
-        <button className="xcs-primary" disabled>{c.make}</button>
+        <button className={`xcs-primary${make?.status === 'done' ? ' is-again' : ''}`} disabled={starting || makeActive || !d.rowId} onClick={() => void startMake()}>
+          {starting ? c.makeStarting : make && makeActive ? c.makeStages[make.status] : make ? c.makeAgain : c.make}
+        </button>
       </div>
       <button type="button" className="xcs-remake-again" onClick={() => { set({ result: null, rowId: null, link: '', start: 0 }); onRemakeId?.(null); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{c.another}</button>
     </div>}

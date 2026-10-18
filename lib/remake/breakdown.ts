@@ -38,7 +38,9 @@ Return JSON only, in exactly this shape:
     "sound": string (dialogue, sound effects or music cue in this shot, or "")
   } ],
   "lines": [ { "t": number, "who": string, "text": string (verbatim), "language": string } ],
-  "music": { "present": boolean, "bpm": number | null, "mood": string, "cuts_on_beat": boolean }
+  "music": { "present": boolean, "bpm": number | null, "mood": string, "cuts_on_beat": boolean,
+             "genre": string (genre, sub-genre and era, in English), "instruments": [string] (in English), "key": string (key and mode if heard, else ""),
+             "energy": string (how the energy moves over the video, with times), "vocals": string ("none", or voice type, delivery and language) }
 }
 
 Rules:
@@ -47,7 +49,8 @@ Rules:
 - The first shot starts at 0.
 - Leave out rating cards, studio or channel logos, sponsor slates and end screens: they are not part of what would be remade. Times stay those of the video.
 - Characters, things and places are the materials a remake swaps out. List every person who appears. As things, list only what the video depends on: the product it shows or sells, the props the action needs, and every logo or brand mark on screen; not the app's or channel's watermark, not every object in the background. Each distinct setting is one place, and shots in the same setting share its id.
-- "best" is a moment inside a shot where that person or thing is clearly in view, and "box" is where it is in the frame at that moment.`
+- "best" is a moment inside a shot where that person or thing is clearly in view, and "box" is where it is in the frame at that moment.
+- "lines" are words a person in the video SPEAKS. Words sung in the music are not lines: leave them out, and never write down song lyrics. Describe the music only by its style; never name the song or the artist.`
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English', 'zh-Hant': 'Traditional Chinese (as written in Taiwan)', 'zh-Hans': 'Simplified Chinese',
@@ -197,7 +200,11 @@ export function normalizeBreakdown(raw: string, maxSeconds: number, known: strin
     title: str(b.title, 120), summary: str(b.summary, 400), hook: str(b.hook, 300),
     look: { style: str(b.look?.style, 160), palette: str(b.look?.palette, 160), light: str(b.look?.light, 160) },
     characters, things, places, shots, lines,
-    music: { present: !!m.present, bpm: Number.isFinite(num(m.bpm)) ? Math.round(num(m.bpm)) : null, mood: str(m.mood, 160), cuts_on_beat: !!m.cuts_on_beat },
+    music: {
+      present: !!m.present, bpm: Number.isFinite(num(m.bpm)) ? Math.round(num(m.bpm)) : null, mood: str(m.mood, 160), cuts_on_beat: !!m.cuts_on_beat,
+      genre: str(m.genre, 160), instruments: (Array.isArray(m.instruments) ? m.instruments : []).map((x: any) => str(x, 60)).filter(Boolean).slice(0, 10),
+      key: str(m.key, 40), energy: str(m.energy, 400), vocals: str(m.vocals, 160),
+    },
   }
 }
 

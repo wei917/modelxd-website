@@ -1,7 +1,8 @@
 // 同款 (Remake), XCreate's sixth type (Oct 10): the page's words in five
 // languages. The type's name itself is i18n `mode.remake`.
 import type { Lang } from '@/lib/i18n'
-import type { CastChoice, MusicChoice, RemakeLook, ThingChoice, ThingKind, VoiceChoice } from '@/lib/remake/config'
+import type { CastChoice, MusicChoice, MusicTarget, RemakeLook, ThingChoice, ThingKind, VoiceChoice } from '@/lib/remake/config'
+import type { MakeStatus } from '@/lib/remake/make'
 
 type Copy = {
   title: string
@@ -49,7 +50,6 @@ type Copy = {
   product: string
   /** The make bar's button; the price sits beside it. */
   make: string
-  makeSoon: string
   another: string
   /** A kept read opening from its link (/xcreate?remake=<id>). */
   opening: string
@@ -74,6 +74,31 @@ type Copy = {
   logoNote: string
   musicChoices: Record<MusicChoice, string>
   noMusicNote: string
+  /** Music (Oct 17): a new track in the original's style, or tuned toward another. */
+  musicKeepNote: string
+  musicTuneNote: string
+  targets: Record<MusicTarget, string>
+  tuneToward: string
+  tuneAmount: string
+  tuneAmountEnds: [string, string]
+  tuneTempo: string
+  tuneTempoEnds: [string, string]
+  tuneEnergy: string
+  tuneEnergyEnds: [string, string]
+  tuneVocals: string
+  /** Making (Oct 17). */
+  makeNote: string
+  makeStarting: string
+  makeStages: Record<MakeStatus, string>
+  makeSteps: (done: number, total: number) => string
+  makeSpent: (spent: string, reserved: string) => string
+  makeSaved: string
+  makeCharged: (charged: string) => string
+  download: string
+  makeAgain: string
+  makeFailedNote: string
+  topUp: string
+  makeErrors: { insufficient_credits: (need: string, have: string) => string; refused: string; moderation_unavailable: string; no_track: string; upload_failed: string; start_failed: string; missing_photo: string }
   voiceLabel: string
   voiceChoices: Record<VoiceChoice, string>
   linesCount: (n: number) => string
@@ -142,7 +167,6 @@ const en: Copy = {
   language: 'Language for voices and captions',
   product: 'Your product photo (optional)',
   make: 'Make my version',
-  makeSoon: 'Making it comes next. For now you can read a video and choose what to swap.',
   another: 'Try another video',
   opening: 'Opening your read…',
   missingRead: "This read isn't in your Library. It may have been deleted, or belong to another account.",
@@ -161,8 +185,31 @@ const en: Copy = {
   thingPlaceholder: 'e.g. a cup of bubble tea',
   myLogo: 'My logo',
   logoNote: "The original's logo never appears in your version.",
-  musicChoices: { none: 'No music', mine: 'My track' },
-  noMusicNote: "The original's music is never reused. Without your track, each shot keeps its own sound.",
+  musicChoices: { keep: 'Original style', tune: 'Tune it', mine: 'My track', none: 'No music' },
+  noMusicNote: 'No music: each shot keeps its own sound.',
+  musicKeepNote: "A new track in the original's style, tempo and mood, written for your version. The original's recording and melody are never used.",
+  musicTuneNote: "A new track that starts from the original's style and moves toward the one you pick.",
+  targets: { pop: 'Pop', country: 'Country', rock: 'Rock', edm: 'EDM', hiphop: 'Hip-hop', lofi: 'Lo-fi', jazz: 'Jazz', classical: 'Classical', kpop: 'K-pop', cinematic: 'Cinematic' },
+  tuneToward: 'Toward',
+  tuneAmount: 'How far',
+  tuneAmountEnds: ['Original', 'All the way'],
+  tuneTempo: 'Tempo',
+  tuneTempoEnds: ['Slower', 'Faster'],
+  tuneEnergy: 'Energy',
+  tuneEnergyEnds: ['Calmer', 'More intense'],
+  tuneVocals: 'With vocals (new lyrics)',
+  makeNote: 'The price is reserved up front; you pay only what is used, and the rest comes back.',
+  makeStarting: 'Starting…',
+  makeStages: { planning: 'Planning the shots', pictures: 'Making the pictures', clips: 'Making the clips', music: 'Making the music', cutting: 'Cutting it together', done: 'Done', failed: 'It did not finish' },
+  makeSteps: (d, t) => `${d} of ${t} steps`,
+  makeSpent: (s, r) => `${s} used of ${r} reserved`,
+  makeSaved: 'Saved to your Library.',
+  makeCharged: c => `Charged ${c}; the rest of the reserve came back.`,
+  download: 'Download',
+  makeAgain: 'Make another version',
+  makeFailedNote: 'Nothing was charged; the reserve came back.',
+  topUp: 'Top up',
+  makeErrors: { insufficient_credits: (n, h) => `Making this reserves ${n}, and your balance is ${h}.`, refused: 'Some of the words you typed cannot be used. Please change them.', moderation_unavailable: 'The words could not be checked just now. Please try again.', no_track: 'Choose your music file first.', upload_failed: 'Your files could not be uploaded. Please try again.', start_failed: 'It could not start. Nothing was charged.', missing_photo: 'Add the photo (and tick the box) for each swap set to a photo.' },
   voiceLabel: 'Voice',
   voiceChoices: { ai: 'AI voice', mine: 'My recording', none: 'No voice' },
   linesCount: n => n === 1 ? '1 line' : `${n} lines`,
@@ -230,7 +277,6 @@ const zhHant: Copy = {
   language: '配音和字幕的語言',
   product: '你的產品照片（選填）',
   make: '做同款',
-  makeSoon: '製作功能下一步上線。現在可以先讀影片、設定要換什麼。',
   another: '換一支影片',
   opening: '正在打開這次的分析…',
   missingRead: '你的作品庫裡沒有這次分析，可能已刪除，或屬於另一個帳號。',
@@ -249,8 +295,31 @@ const zhHant: Copy = {
   thingPlaceholder: '例如：一杯珍珠奶茶',
   myLogo: '我的標誌',
   logoNote: '原片的標誌不會出現在你的版本裡。',
-  musicChoices: { none: '不要音樂', mine: '我的音樂' },
-  noMusicNote: '原片的音樂不會沿用。沒有你的音樂時，每個鏡頭保留自己的聲音。',
+  musicChoices: { keep: '原片風格', tune: '調整風格', mine: '我的音樂', none: '不要音樂' },
+  noMusicNote: '不要音樂：每個鏡頭保留自己的聲音。',
+  musicKeepNote: '為你的版本寫一首新曲，風格、速度和氣氛跟原片一樣；不會用到原片的錄音或旋律。',
+  musicTuneNote: '一首新曲：從原片的風格出發，往你選的風格調整。',
+  targets: { pop: '流行', country: '鄉村', rock: '搖滾', edm: '電音', hiphop: '嘻哈', lofi: 'Lo-fi', jazz: '爵士', classical: '古典', kpop: 'K-pop', cinematic: '電影配樂' },
+  tuneToward: '往',
+  tuneAmount: '調整多少',
+  tuneAmountEnds: ['原片', '完全換'],
+  tuneTempo: '速度',
+  tuneTempoEnds: ['慢一點', '快一點'],
+  tuneEnergy: '能量',
+  tuneEnergyEnds: ['平靜', '激昂'],
+  tuneVocals: '加人聲（新歌詞）',
+  makeNote: '先預留費用，只收實際用掉的，其餘退回。',
+  makeStarting: '開始中…',
+  makeStages: { planning: '規劃鏡頭', pictures: '製作畫面', clips: '製作影片片段', music: '製作音樂', cutting: '剪接成片', done: '完成', failed: '沒有做完' },
+  makeSteps: (d, t) => `第 ${d} / ${t} 步`,
+  makeSpent: (s, r) => `已用 ${s}，預留 ${r}`,
+  makeSaved: '已存到你的作品庫。',
+  makeCharged: c => `收費 ${c}，其餘預留已退回。`,
+  download: '下載',
+  makeAgain: '再做一個版本',
+  makeFailedNote: '沒有收費，預留已退回。',
+  topUp: '去儲值',
+  makeErrors: { insufficient_credits: (n, h) => `製作要先預留 ${n}，你的餘額是 ${h}。`, refused: '你輸入的部分文字無法使用，請修改後再試。', moderation_unavailable: '現在無法檢查文字，請稍後再試。', no_track: '請先選擇你的音樂檔。', upload_failed: '檔案上傳失敗，請再試一次。', start_failed: '無法開始，沒有收費。', missing_photo: '設定為照片的項目，請加上照片（並勾選同意）。' },
   voiceLabel: '配音',
   voiceChoices: { ai: 'AI 配音', mine: '我的錄音', none: '不要聲音' },
   linesCount: n => `${n} 句`,
@@ -313,7 +382,6 @@ const zhHans: Copy = {
   looks: { keep: '照原片', anime: '动画', realistic: '写实', '3d': '3D' },
   language: '配音和字幕的语言',
   product: '你的产品照片（选填）',
-  makeSoon: '制作功能下一步上线。现在可以先读视频、设定要换什么。',
   another: '换一个视频',
   opening: '正在打开这次的分析…',
   missingRead: '你的作品库里没有这次分析，可能已删除，或属于另一个账号。',
@@ -327,8 +395,31 @@ const zhHans: Copy = {
   thingChoices: { keep: '保留', photo: '我的照片', describe: '描述', remove: '去掉' },
   myLogo: '我的标志',
   logoNote: '原片的标志不会出现在你的版本里。',
-  musicChoices: { none: '不要音乐', mine: '我的音乐' },
-  noMusicNote: '原片的音乐不会沿用。没有你的音乐时，每个镜头保留自己的声音。',
+  musicChoices: { keep: '原片风格', tune: '调整风格', mine: '我的音乐', none: '不要音乐' },
+  noMusicNote: '不要音乐：每个镜头保留自己的声音。',
+  musicKeepNote: '为你的版本写一首新曲，风格、速度和氛围跟原片一样；不会用到原片的录音或旋律。',
+  musicTuneNote: '一首新曲：从原片的风格出发，往你选的风格调整。',
+  targets: { pop: '流行', country: '乡村', rock: '摇滚', edm: '电音', hiphop: '嘻哈', lofi: 'Lo-fi', jazz: '爵士', classical: '古典', kpop: 'K-pop', cinematic: '电影配乐' },
+  tuneToward: '往',
+  tuneAmount: '调整多少',
+  tuneAmountEnds: ['原片', '完全换'],
+  tuneTempo: '速度',
+  tuneTempoEnds: ['慢一点', '快一点'],
+  tuneEnergy: '能量',
+  tuneEnergyEnds: ['平静', '激昂'],
+  tuneVocals: '加人声（新歌词）',
+  makeNote: '先预留费用，只收实际用掉的，其余退回。',
+  makeStarting: '开始中…',
+  makeStages: { planning: '规划镜头', pictures: '制作画面', clips: '制作视频片段', music: '制作音乐', cutting: '剪辑成片', done: '完成', failed: '没有做完' },
+  makeSteps: (d, t) => `第 ${d} / ${t} 步`,
+  makeSpent: (s, r) => `已用 ${s}，预留 ${r}`,
+  makeSaved: '已存到你的作品库。',
+  makeCharged: c => `收费 ${c}，其余预留已退回。`,
+  download: '下载',
+  makeAgain: '再做一个版本',
+  makeFailedNote: '没有收费，预留已退回。',
+  topUp: '去充值',
+  makeErrors: { insufficient_credits: (n, h) => `制作要先预留 ${n}，你的余额是 ${h}。`, refused: '你输入的部分文字无法使用，请修改后再试。', moderation_unavailable: '现在无法检查文字，请稍后再试。', no_track: '请先选择你的音乐文件。', upload_failed: '文件上传失败，请再试一次。', start_failed: '无法开始，没有收费。', missing_photo: '设为照片的项目，请加上照片（并勾选同意）。' },
   voiceChoices: { ai: 'AI 配音', mine: '我的录音', none: '不要声音' },
   audioPick: '选音频文件',
   textAuto: '自动改写成你的主题',
@@ -392,7 +483,6 @@ const ja: Copy = {
   language: '声と字幕の言語',
   product: '商品の写真（任意）',
   make: '自分版を作る',
-  makeSoon: '制作はこの次に公開します。今は動画を読み込んで、入れ替えるものを選べます。',
   another: '別の動画にする',
   opening: 'この分析を開いています…',
   missingRead: 'この分析はライブラリにありません。削除されたか、別のアカウントのものかもしれません。',
@@ -411,8 +501,31 @@ const ja: Copy = {
   thingPlaceholder: '例：タピオカミルクティー',
   myLogo: '自分のロゴ',
   logoNote: '元の動画のロゴは、自分版には使いません。',
-  musicChoices: { none: '音楽なし', mine: '自分の曲' },
-  noMusicNote: '元の動画の音楽は使いません。自分の曲がなければ、各カットの音だけになります。',
+  musicChoices: { keep: '元のスタイル', tune: 'スタイルを調整', mine: '自分の曲', none: '音楽なし' },
+  noMusicNote: '音楽なし：各カットの音だけになります。',
+  musicKeepNote: 'あなたの版のために、元の動画と同じスタイル・テンポ・雰囲気の新しい曲を作ります。元の録音やメロディは使いません。',
+  musicTuneNote: '元のスタイルから、選んだスタイルへ寄せた新しい曲を作ります。',
+  targets: { pop: 'ポップ', country: 'カントリー', rock: 'ロック', edm: 'EDM', hiphop: 'ヒップホップ', lofi: 'Lo-fi', jazz: 'ジャズ', classical: 'クラシック', kpop: 'K-POP', cinematic: '映画音楽' },
+  tuneToward: '寄せる先',
+  tuneAmount: 'どのくらい',
+  tuneAmountEnds: ['元のまま', '完全に'],
+  tuneTempo: 'テンポ',
+  tuneTempoEnds: ['ゆっくり', '速く'],
+  tuneEnergy: 'エネルギー',
+  tuneEnergyEnds: ['穏やか', '激しく'],
+  tuneVocals: '歌あり（新しい歌詞）',
+  makeNote: '料金は先に確保し、実際に使った分だけ請求します。残りは戻ります。',
+  makeStarting: '開始中…',
+  makeStages: { planning: 'カットを計画中', pictures: '画像を作成中', clips: '動画を作成中', music: '音楽を作成中', cutting: '編集中', done: '完成', failed: '最後までできませんでした' },
+  makeSteps: (d, t) => `${t} ステップ中 ${d}`,
+  makeSpent: (s, r) => `${r} 確保中 ${s} 使用`,
+  makeSaved: 'ライブラリに保存しました。',
+  makeCharged: c => `${c} を請求し、残りは戻りました。`,
+  download: 'ダウンロード',
+  makeAgain: '別の版を作る',
+  makeFailedNote: '請求はありません。確保した分は戻りました。',
+  topUp: 'チャージ',
+  makeErrors: { insufficient_credits: (n, h) => `作成には ${n} を確保します。残高は ${h} です。`, refused: '入力した言葉の一部が使えません。変更してください。', moderation_unavailable: '今は言葉を確認できません。もう一度お試しください。', no_track: '先に曲のファイルを選んでください。', upload_failed: 'ファイルをアップロードできませんでした。もう一度お試しください。', start_failed: '開始できませんでした。請求はありません。', missing_photo: '写真にした項目には写真を追加し、同意にチェックしてください。' },
   voiceLabel: '声',
   voiceChoices: { ai: 'AI の声', mine: '自分の録音', none: '声なし' },
   linesCount: n => `セリフ ${n}`,
@@ -480,7 +593,6 @@ const ko: Copy = {
   language: '목소리와 자막 언어',
   product: '내 제품 사진 (선택)',
   make: '내 버전 만들기',
-  makeSoon: '제작은 다음 단계에 열립니다. 지금은 영상을 읽고 바꿀 것을 고를 수 있어요.',
   another: '다른 영상으로',
   opening: '이 분석을 여는 중…',
   missingRead: '라이브러리에 이 분석이 없습니다. 삭제되었거나 다른 계정의 것일 수 있습니다.',
@@ -499,8 +611,31 @@ const ko: Copy = {
   thingPlaceholder: '예: 버블티 한 잔',
   myLogo: '내 로고',
   logoNote: '원본의 로고는 내 버전에 나오지 않아요.',
-  musicChoices: { none: '음악 없음', mine: '내 음악' },
-  noMusicNote: '원본 음악은 쓰지 않아요. 내 음악이 없으면 각 컷의 소리만 남아요.',
+  musicChoices: { keep: '원본 스타일', tune: '스타일 조정', mine: '내 음악', none: '음악 없음' },
+  noMusicNote: '음악 없음: 각 컷의 소리만 남아요.',
+  musicKeepNote: '내 버전을 위해 원본과 같은 스타일·템포·분위기의 새 곡을 만들어요. 원본 녹음이나 멜로디는 쓰지 않아요.',
+  musicTuneNote: '원본 스타일에서 출발해 고른 스타일 쪽으로 옮긴 새 곡을 만들어요.',
+  targets: { pop: '팝', country: '컨트리', rock: '록', edm: 'EDM', hiphop: '힙합', lofi: 'Lo-fi', jazz: '재즈', classical: '클래식', kpop: 'K-pop', cinematic: '영화 음악' },
+  tuneToward: '방향',
+  tuneAmount: '얼마나',
+  tuneAmountEnds: ['원본', '완전히'],
+  tuneTempo: '템포',
+  tuneTempoEnds: ['느리게', '빠르게'],
+  tuneEnergy: '에너지',
+  tuneEnergyEnds: ['차분하게', '강렬하게'],
+  tuneVocals: '보컬 포함 (새 가사)',
+  makeNote: '요금은 먼저 예약하고, 실제로 쓴 만큼만 청구해요. 나머지는 돌려드려요.',
+  makeStarting: '시작하는 중…',
+  makeStages: { planning: '컷 계획 중', pictures: '이미지 만드는 중', clips: '영상 만드는 중', music: '음악 만드는 중', cutting: '편집하는 중', done: '완성', failed: '끝까지 만들지 못했어요' },
+  makeSteps: (d, t) => `${t}단계 중 ${d}`,
+  makeSpent: (s, r) => `예약 ${r} 중 ${s} 사용`,
+  makeSaved: '라이브러리에 저장했어요.',
+  makeCharged: c => `${c} 청구, 나머지는 돌려드렸어요.`,
+  download: '다운로드',
+  makeAgain: '다른 버전 만들기',
+  makeFailedNote: '청구하지 않았어요. 예약한 금액은 돌려드렸어요.',
+  topUp: '충전',
+  makeErrors: { insufficient_credits: (n, h) => `만들려면 ${n}을 예약해야 하는데 잔액은 ${h}이에요.`, refused: '입력한 문구 중 일부는 쓸 수 없어요. 바꿔 주세요.', moderation_unavailable: '지금은 문구를 확인할 수 없어요. 다시 시도해 주세요.', no_track: '먼저 음악 파일을 골라 주세요.', upload_failed: '파일을 올리지 못했어요. 다시 시도해 주세요.', start_failed: '시작하지 못했어요. 청구하지 않았어요.', missing_photo: '사진으로 정한 항목에는 사진을 넣고 동의에 체크해 주세요.' },
   voiceLabel: '목소리',
   voiceChoices: { ai: 'AI 목소리', mine: '내 녹음', none: '목소리 없음' },
   linesCount: n => `대사 ${n}개`,

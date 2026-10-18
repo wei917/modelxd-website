@@ -65,14 +65,22 @@ export async function compose(aspect: Aspect, images: Buffer[]): Promise<Buffer>
   return sharp({ create: { width: W, height: H, channels: 3, background: '#808080' } }).composite(parts).jpeg({ quality: 92 }).toBuffer()
 }
 
-export async function makeKeyframe(ctx: ProduceContext, plan: RemakePlan, shot: PlanShot, sheets: Map<string, Buffer>, product: Buffer | null, aspect: Aspect): Promise<Made> {
+/** `place`: the user's photo of the setting (a place swapped for a photo),
+ *  last in the row; the frame is set there. */
+export async function makeKeyframe(ctx: ProduceContext, plan: RemakePlan, shot: PlanShot, sheets: Map<string, Buffer>, product: Buffer | null, aspect: Aspect, place: Buffer | null = null): Promise<Made> {
   const refs = shot.refs.filter(id => sheets.has(id))
   const images = refs.map(id => sheets.get(id)!)
   const withProduct = shot.product && !!product
   if (withProduct) images.push(product!)
+  if (place) images.push(place)
   const who = refs.map(id => { const c = plan.characters.find(x => x.id === id)!; return `${c.name}: ${c.canon}` })
+  const uses = [
+    refs.length > 1 ? 'the characters from these reference sheets, left to right' : refs.length ? 'the character from this reference sheet' : '',
+    withProduct ? `the product in the photo ${place ? 'after the sheets' : 'at the right'}, exactly as it looks` : '',
+    place ? 'the place in the photo at the right as the setting: its room or location, its materials and its light' : '',
+  ].filter(Boolean)
   const lead = images.length
-    ? `Use ${refs.length > 1 ? 'the characters from these reference sheets, left to right' : refs.length ? 'the character from this reference sheet' : 'nothing from the sheets'}${withProduct ? `${refs.length ? ' and' : ''} the product in the photo at the right, exactly as it looks` : ''}, keeping faces, builds and clothes exactly${who.length ? ` (${who.join('; ')})` : ''}. Make a completely new picture: one single full-frame ${aspect} film frame, not a reference sheet, no gray backdrop.`
+    ? `Use ${uses.join(' and ')}${refs.length ? `, keeping faces, builds and clothes exactly${who.length ? ` (${who.join('; ')})` : ''}` : ''}. Make a completely new picture: one single full-frame ${aspect} film frame, not a reference sheet, no gray backdrop.`
     : `One single full-frame ${aspect} film frame.`
   const prompt = `${plan.look} ${lead} ${plan.world ?? ''} ${shot.keyframe} ${NO_TEXT}`
   const atts = images.length ? [{ buffer: await compose(aspect, images), mediaType: 'image/jpeg' } as any] : []
