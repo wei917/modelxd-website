@@ -64,7 +64,8 @@ export function isXTellPath(pathname: string): boolean {
 
 /** The street and a temple on it, for this base. */
 export const doorHome = (base: string): string => base || '/'
-export const templeHref = (base: string, key: string): string => `${base || '/'}#${key}`
+/** A room's link: ?t=<room> on the street's page (lib/xtell-room.ts). */
+export const templeHref = (base: string, key: string): string => `${base || '/'}?t=${key}`
 
 function isDoor(v: string | null | undefined): v is 'xtell' {
   return v === 'xtell'

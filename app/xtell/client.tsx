@@ -16,6 +16,8 @@
 //      as a 批文. The model interprets the chart; it never computes one.
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { goToRoom } from '../../lib/xtell-room'
 import { useSite } from '../../lib/useSite'
 import { setPageKey } from '../../lib/page-key'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
@@ -269,7 +271,10 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
   const standalone = standaloneOverride ?? site === 'xtell'
   const t = useT()
   const { show: showSignIn } = useAuthModal()
-  const [temple, setTemple] = useState<Temple | null>(null)
+  // The room is ?t=<room> (lib/xtell-room.ts, Oct 18): read on the server
+  // too, so a room link (an ad, a share) opens on the room, not the street.
+  const roomParam = useSearchParams()?.get('t') ?? null
+  const [temple, setTemple] = useState<Temple | null>(() => standalone && TEMPLES.includes(roomParam as Temple) ? roomParam as Temple : null)
   // The visit log's page key (lib/page-key.ts, supabase/139): which room the
   // visitor is in, so the dashboard can tell which temple people enter.
   useEffect(() => { setPageKey(temple ? `xtell/${temple}` : 'xtell') }, [temple])
@@ -297,7 +302,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
     setReadingParam(row.id)
     setSaved(null)
     setDailyRow(row)
-    if (standalone) window.location.hash = key
+    if (standalone) goToRoom(key)
     setTemple(key)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -316,55 +321,41 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
           if (data?.temple === 'daily') { openDaily(data as SavedDaily); return }
           if (!data || !TEMPLES.includes(data.temple)) return
           setSaved(data as SavedReading)
-          if (standalone) window.location.hash = data.temple
+          if (standalone) goToRoom(data.temple, { replace: true })
           setTemple(data.temple as Temple)
         })
     })
   }, [standalone])
+  // The room follows the address: a room link, Back, a shared link (?t=).
+  // `navigated` is a change of room after the page opened; the first look
+  // (and React's second run of it in development) is not one.
+  const lastRoom = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     if (!standalone) return
-    const sync = (navigated: boolean) => {
-      const key = window.location.hash.slice(1) as Temple
-      // Only an actual navigation out of a visit (a hash change to no
-      // temple: the header's street link, Back) drops ?reading=. The first
-      // sync on mount never does: an account link arrives as /?reading=<id>
-      // with no hash yet, and clearing it there lost the visit before its
-      // row had even loaded (Codex retest: recast then reload opened the
-      // empty form). The row fetch sets the hash to its temple, which keeps it.
-      const store = sessionStore()
-      if (navigated && !TEMPLES.includes(key)) {
-        setReadingParam(null)
-        setDailyRow(null)
-        // Back on the street (the header link, Back): the suggestion was
-        // left behind, so a later visit to that room starts clean (Codex
-        // review: it re-filled the old question on a manual entry).
-        if (store) clearHandoff(store)
-      }
-      setTemple(TEMPLES.includes(key) ? key : null)
-      // The guide's suggestion for this room: the one just clicked (in
-      // memory), or, on the first sync after a page load only, the stored
-      // one (a reload, or back from signing in). Storage is only that
-      // fallback; a navigation never revives it.
-      setHandoff(h => !TEMPLES.includes(key) ? null : h && h.feature.temple === key ? h : !navigated && store ? readHandoff(store, key) : null)
+    const key = roomParam as Temple
+    const navigated = lastRoom.current !== undefined && lastRoom.current !== roomParam
+    lastRoom.current = roomParam
+    // Only an actual navigation out of a visit (to no room: the header's
+    // street link, Back) drops ?reading=. The first look never does: an
+    // account link arrives as /?reading=<id> with no room yet, and clearing it
+    // there lost the visit before its row had even loaded (Codex retest:
+    // recast then reload opened the empty form). The row fetch names its room.
+    const store = sessionStore()
+    if (navigated && !TEMPLES.includes(key)) {
+      setReadingParam(null)
+      setDailyRow(null)
+      // Back on the street (the header link, Back): the suggestion was left
+      // behind, so a later visit to that room starts clean (Codex review: it
+      // re-filled the old question on a manual entry).
+      if (store) clearHandoff(store)
     }
-    // A shared link (lib/xtell-share.ts) names its room as ?t=, which a link
-    // preview can read and a hash cannot. It becomes the hash the street
-    // already understands; ?ref= and utm_source stay for the referral and the
-    // visit log.
-    try {
-      const url = new URL(window.location.href)
-      const shared = url.searchParams.get('t') as Temple | null
-      if (shared !== null) {
-        url.searchParams.delete('t')
-        if (TEMPLES.includes(shared) && !url.hash) url.hash = shared
-        window.history.replaceState(window.history.state, '', url)
-      }
-    } catch { /* the room can still be chosen by hand */ }
-    sync(false)
-    const onHash = () => sync(true)
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
-  }, [standalone])
+    setTemple(TEMPLES.includes(key) ? key : null)
+    // The guide's suggestion for this room: the one just clicked (in memory),
+    // or, on the first look after a page load only, the stored one (a reload,
+    // or back from signing in). Storage is only that fallback; a navigation
+    // never revives it.
+    setHandoff(h => !TEMPLES.includes(key) ? null : h && h.feature.temple === key ? h : !navigated && store ? readHandoff(store, key) : null)
+  }, [roomParam, standalone])
   // Resume from inside a temple (its history list): seed the room from the
   // saved row without a page load. Same path ?reading= takes.
   const resume = (row: SavedReading) => {
@@ -375,12 +366,12 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
     setDailyRow(null)
     setReadingParam(row.id)
     setSaved(row)
-    if (standalone) window.location.hash = row.temple
+    if (standalone) goToRoom(row.temple)
     setTemple(row.temple as Temple)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
   const chooseTemple = (key: Temple | null) => {
-    if (standalone) window.location.hash = key ?? ''
+    if (standalone) goToRoom(key)
     setTemple(key)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }

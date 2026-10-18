@@ -6,10 +6,10 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT, useLang } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
-import { isXTellPath } from '../../lib/site'
 import { XTellMark } from './xtell/XTellNav'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
 import { countSigninTap, type SignInVia } from '../../lib/signin-tap'
+import { goToRoom } from '../../lib/xtell-room'
 
 // Same glyphs as Nav's NavIcon (app/components/Nav.tsx) — keep in sync.
 function AuthFeatureIcon({ name }: { name: string }) {
@@ -88,9 +88,9 @@ export default function AuthModal() {
     // links now carry the whole intent — /xcreate?template=tool-upscale,
     // /xcreate?agent=1&q=... — and dropping the search meant signing in
     // threw away the thing the visitor had just asked for and landed them
-    // on a bare studio. (CC, Aug 5) XTell's temple is the hash (/#bazi on
-    // its door, /xtell#bazi on www), so it comes back to that temple.
-    const destination = nextPath ?? (window.location.pathname + window.location.search + (isXTell || isXTellPath(window.location.pathname) ? window.location.hash : ''))
+    // on a bare studio. (CC, Aug 5) XTell's temple is in the query too
+    // (?t=, since Oct 18), so it comes back to that temple.
+    const destination = nextPath ?? (window.location.pathname + window.location.search)
     // Cookie values cannot carry ';' or ',' raw, and a redirect target is
     // attacker-influenceable in principle — encode it, and let the callback
     // decode. Path-only values are unaffected.
@@ -257,11 +257,11 @@ export default function AuthModal() {
           {required && isXTell && (
             <button type="button" onClick={() => {
               release()
-              // Inside a temple, clear the hash in place (what the 探索殿堂 link
+              // Inside a temple, leave it in place (what the 探索殿堂 link
               // does) so the explorer keeps the temple just left instead of
               // reloading to the default one. Elsewhere (account page) go home.
               const p = window.location.pathname
-              if ((p === '/' || p === '/xtell') && window.location.hash) { window.location.hash = ''; window.scrollTo({ top: 0 }) }
+              if ((p === '/' || p === '/xtell') && new URLSearchParams(window.location.search).has('t')) { goToRoom(null); window.scrollTo({ top: 0 }) }
               else window.location.href = '/'
             }}
               style={{ display: 'block', margin: '10px auto 0', border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>

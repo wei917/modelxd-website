@@ -5,10 +5,10 @@
 // itself every few seconds; the top bar does not follow it (Oct 10, owner:
 // it is not a room you are in).
 //
-// Turning is display only: it never changes the address, the hash or the
-// room, never opens a form, sends a reading or spends anything. Entering is
-// the link (href="/#<temple>", or "/xtell#<temple>" on www), the same
-// native link the top bar uses.
+// Turning is display only: it never changes the address or the room, never
+// opens a form, sends a reading or spends anything. Entering is the link
+// (href="/?t=<temple>", or "/xtell?t=<temple>" on www), opened in place as
+// the top bar's are (lib/xtell-room.ts).
 //
 // It holds still while the pointer or keyboard focus is on it, while the tab
 // is hidden, and from the start when the visitor asks for less motion; any
@@ -20,7 +20,8 @@ import { useLang } from '../../../lib/i18n'
 import { TempleArtwork, artKind, type TempleKey } from './TempleArtwork'
 import { HERO_ART, HERO_SECONDS, heroTemples, stepSlide, mayRotate } from '../../../lib/xtell-hero'
 import { useXTellBase } from './XTellBase'
-import { templeHref } from '../../../lib/site'
+import { doorHome, templeHref } from '../../../lib/site'
+import { goToRoom, opensInPlace } from '../../../lib/xtell-room'
 
 export default function XTellHero() {
   const { lang, t } = useLang()
@@ -114,7 +115,10 @@ export default function XTellHero() {
           <p className="xtell-hero-kicker"><span>{name}</span></p>
           <h2 className="xtell-hero-title">{t('xtell.site.focus.' + current + '.lead')}</h2>
           <p className="xtell-hero-sub">{t('xtell.site.focus.' + current + '.eyebrow')}</p>
-          <a className="xtell-hero-enter" href={templeHref(base, current)}>
+          <a className="xtell-hero-enter" href={templeHref(base, current)} onClick={e => {
+            if (!opensInPlace(e, doorHome(base))) return
+            e.preventDefault(); goToRoom(current); window.scrollTo({ top: 0, behavior: 'instant' })
+          }}>
             <span>{t('xtell.site.focus.enter').replace('{temple}', short)}</span><span aria-hidden="true">→</span>
           </a>
         </div>
