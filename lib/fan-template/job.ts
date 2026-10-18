@@ -20,8 +20,8 @@ import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
 import { finishOverlay, joinOpening, personSpan, pressTime } from './cut'
 import {
-  FAN_RESERVE_CENTS, HOLDING, OUTFITS, PLATE, PRESS_DEFAULT, REMOTE, ROLL, SHEET, SHEET_FRONT_ONLY, TIMING,
-  fanMusicPrompt, outfitPrompt, startPrompt, stillClip, type FanRequest,
+  BLADE, HOLDING, PLATE, PRESS_DEFAULT, REMOTE, ROLL, SHEET, TIMING,
+  bladePrompt, fanMusicPrompt, fanQuote, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
 } from './recipe'
 
 const LOG = '[fan:job]'
@@ -46,7 +46,7 @@ export type FanJob = {
   chargedCents?: number
   refundedCents?: number
   settled?: boolean
-  assets: { sheet?: string; start?: string; roll?: string; holding?: string; remote?: string; keys: Record<string, string>; clips: Record<string, string>; music?: string; video?: string }
+  assets: { sheet?: string; set?: string; blade?: string; start?: string; roll?: string; holding?: string; remote?: string; keys: Record<string, string>; clips: Record<string, string>; music?: string; video?: string }
   /** Seconds into the remote clip when she presses (a model read it). */
   press?: number
   /** Where she lies across the frame, 0-1. */
@@ -85,19 +85,23 @@ async function saveJob(sb: SupabaseClient, job: FanJob) {
   }
 }
 
-/** sheet, start, roll, holding, remote, 4 outfits, 4 clips, music, video. */
-const TOTAL = 15
+/** sheet, the set and the blades if asked for, start, roll, holding, remote,
+ *  a picture and a clip per outfit after the first, music, video. */
+function totalSteps(req: FanRequest): number {
+  return 7 + 2 * (req.outfits.length - 1) + (req.scene?.sofa || req.scene?.carpet ? 1 : 0) + (req.scene?.blade ? 1 : 0)
+}
 function doneSteps(job: FanJob): number {
   const a = job.assets
-  return [a.sheet, a.start, a.roll, a.holding, a.remote, a.music, a.video].filter(Boolean).length + Object.keys(a.keys).length + Object.keys(a.clips).length
+  return [a.sheet, a.set, a.blade, a.start, a.roll, a.holding, a.remote, a.music, a.video].filter(Boolean).length + Object.keys(a.keys).length + Object.keys(a.clips).length
     + (job.request.music.choice === 'none' && a.video ? 1 : 0)
 }
 
 export async function fanView(sb: SupabaseClient, job: FanJob): Promise<FanView> {
   const ready = !!job.assets.video && job.status === 'done'
+  const total = totalSteps(job.request)
   return {
     id: job.id, status: job.status, createdAt: job.createdAt,
-    done: Math.min(TOTAL, doneSteps(job)), total: TOTAL,
+    done: Math.min(total, doneSteps(job)), total,
     reservedCents: job.reservedCents, spentCents: Math.round(job.spentUsd * 100), chargedCents: job.chargedCents ?? null,
     video: ready ? await signed(sb, B.video, job.assets.video!).catch(() => null) : null,
     download: ready ? await signed(sb, B.video, job.assets.video!, 3600, `fan-outfit-${job.id.slice(0, 8)}.mp4`).catch(() => null) : null,
@@ -113,34 +117,35 @@ export async function fanView(sb: SupabaseClient, job: FanJob): Promise<FanView>
 export async function startFan(userId: string, request: FanRequest, card: { title: string }): Promise<FanJob> {
   const sb = service()
   const id = crypto.randomUUID()
+  const reserve = fanQuote(request.outfits.length, request.scene).reserveCents
   const job: FanJob = {
     v: 1, id, userId, status: 'sheet', createdAt: nowIso(), updatedAt: nowIso(), leaseUntil: 0, leaseBy: '',
-    request, reservedCents: FAN_RESERVE_CENTS, spentUsd: 0, assets: { keys: {}, clips: {} },
+    request, reservedCents: reserve, spentUsd: 0, assets: { keys: {}, clips: {} },
   }
   try {
     await debitCredits({
-      userId, amountCents: FAN_RESERVE_CENTS, referenceType: 'xcreate_fan_reserve', referenceId: id,
-      description: `XCreate 風扇變裝 reserve (${formatCents(FAN_RESERVE_CENTS)})`, metadata: { jobId: id },
+      userId, amountCents: reserve, referenceType: 'xcreate_fan_reserve', referenceId: id,
+      description: `XCreate 風扇變裝 reserve (${formatCents(reserve)})`, metadata: { jobId: id },
     })
   } catch (e) {
     if (e instanceof InsufficientCreditsError) {
       const balance = (await getUserCredits(userId))?.balance_cents ?? 0
-      throw new FanError(402, 'insufficient_credits', { requiredCents: FAN_RESERVE_CENTS, balanceCents: balance })
+      throw new FanError(402, 'insufficient_credits', { requiredCents: reserve, balanceCents: balance })
     }
     throw e
   }
   try {
     const { error } = await sb.from('xcreates').insert({
       id, user_id: userId, mode: 'video', prompt: request.outfits.map(o => o.text).join(' / ').slice(0, 500), title: card.title.slice(0, 120),
-      slots: [{ provider: 'alibaba', model_name: MODELS.video, name: 'Wan 3.0', text: null, isImage: false, isVideo: true, isAudio: false, cost: 0, error: null, errorRef: null, options: { fan: { v: 1, title: request.title } } }],
+      slots: [{ provider: 'alibaba', model_name: MODELS.video, name: 'Wan 3.0', text: null, isImage: false, isVideo: true, isAudio: false, cost: 0, error: null, errorRef: null, options: { fan: { v: 1, outfits: request.outfits.length } } }],
     })
     if (error) throw new Error(`row: ${error.message}`)
     await saveJob(sb, job)
   } catch (e) {
-    await refund(job, FAN_RESERVE_CENTS, 'could not start').catch(() => {})
+    await refund(job, reserve, 'could not start').catch(() => {})
     throw e
   }
-  console.log(`${LOG} ${id} started for ${userId.slice(0, 8)}, reserved ${FAN_RESERVE_CENTS}¢`)
+  console.log(`${LOG} ${id} started for ${userId.slice(0, 8)}, ${request.outfits.length} outfits, reserved ${reserve}¢`)
   return job
 }
 
@@ -198,12 +203,13 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
   }
   const jpeg = (b: Buffer) => ({ buffer: b, mediaType: 'image/jpeg' }) as any
   /** A saved picture, or make it, save it and count its price. */
-  const pic = async (key: 'sheet' | 'start' | 'holding' | `key-${number}`, make: () => Promise<{ buffer: Buffer; cost: number }>): Promise<Buffer> => {
-    const kept = key.startsWith('key-') ? job.assets.keys[key.slice(4)] : job.assets[key as 'sheet' | 'start' | 'holding']
+  type Named = 'sheet' | 'set' | 'blade' | 'start' | 'holding'
+  const pic = async (key: Named | `key-${number}`, make: () => Promise<{ buffer: Buffer; cost: number }>): Promise<Buffer> => {
+    const kept = key.startsWith('key-') ? job.assets.keys[key.slice(4)] : job.assets[key as Named]
     if (kept) return get(sb, B.image, kept)
     const r = await make()
     const p = await put(sb, B.image, assetPath(job, `${key}.jpg`), r.buffer, 'image/jpeg')
-    if (key.startsWith('key-')) job.assets.keys[key.slice(4)] = p; else job.assets[key as 'sheet' | 'start' | 'holding'] = p
+    if (key.startsWith('key-')) job.assets.keys[key.slice(4)] = p; else job.assets[key as Named] = p
     await spend(r.cost)
     return r.buffer
   }
@@ -221,15 +227,24 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
 
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `fan-${job.id.slice(0, 8)}-`))
   try {
-    // 1. the sheet, from the user's photos
-    const sheet = await pic('sheet', async () => {
-      const photos = [await userPhoto(sb, req.front), ...(req.side ? [await userPhoto(sb, req.side)] : [])]
-      return picture(pictureModels, req.side ? SHEET : SHEET_FRONT_ONLY, photos.map(jpeg), '16:9', ctx, 'high')
-    })
-    // 2. the user and outfit 1 on the set's sofa edge
+    // 1. the sheet, from the front photo (the side views are drawn)
+    const sheet = await pic('sheet', async () => picture(pictureModels, SHEET, [jpeg(await userPhoto(sb, req.front))], '16:9', ctx, 'high'))
+    // 2. the set: the sofa and carpet the user asked for painted in (if any),
+    //    the blades' material (if any), then the user and outfit 1 on the
+    //    sofa's edge
+    const sc = req.scene ?? {}
+    const set = sc.sofa || sc.carpet
+      ? await pic('set', async () => {
+        const refs = await Promise.all([sc.sofa?.photo, sc.carpet?.photo].filter((p): p is string => !!p).map(p => userPhoto(sb, p)))
+        return picture(pictureModels, setPrompt(sc), [await get(sb, PLATE.bucket, PLATE.path), ...refs].map(jpeg), '9:16', ctx, 'high')
+      })
+      : null
+    const blade = sc.blade
+      ? await pic('blade', async () => picture(pictureModels, bladePrompt(sc.blade!), sc.blade!.photo ? [jpeg(await userPhoto(sb, sc.blade!.photo))] : [], '9:16', ctx, 'medium'))
+      : undefined
     const start = await pic('start', async () => {
-      const plate = await get(sb, PLATE.bucket, PLATE.path)
-      return picture(pictureModels, startPrompt(req.outfits[0]), [plate, sheet, ...(outfitPhotos[0] ? [outfitPhotos[0]] : [])].map(jpeg), '9:16', ctx, 'high')
+      const room = set ?? await get(sb, PLATE.bucket, PLATE.path)
+      return picture(pictureModels, startPrompt(req.outfits[0]), [room, sheet, ...(outfitPhotos[0] ? [outfitPhotos[0]] : [])].map(jpeg), '9:16', ctx, 'high')
     })
     // 3. the opening: the roll (free), then the remote (first + last frame)
     job.status = 'opening'; await saveJob(sb, job)
@@ -237,17 +252,18 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     const landed = await lastFrame(ff, roll)
     const holding = await pic('holding', () => picture(pictureModels, HOLDING, [jpeg(landed)], '9:16', ctx, 'high'))
     const remote = await clip('remote', () => makeClip(ctx, shot(1, REMOTE), landed, '9:16', { lastFrame: holding, audio: true }))
-    // 4. outfits 2-5: 2 is an edit of the remote frame, 3-5 edits of 2 (one
-    //    base, so no edit drifts from a chain of edits)
+    // 4. outfits 2..n (2 to 5 in all): 2 is an edit of the remote frame, the
+    //    rest edits of 2 (one base, so no edit drifts from a chain of edits)
     job.status = 'outfits'; await saveJob(sb, job)
+    const ns = req.outfits.slice(1).map((_, i) => i + 2)
     const keys = new Map<number, Buffer>()
     const outfitPic = (n: number, base: Buffer) => pic(`key-${n}`, () => picture(pictureModels, outfitPrompt(n, req.outfits[n - 1]), [base, sheet, ...(outfitPhotos[n - 1] ? [outfitPhotos[n - 1]!] : [])].map(jpeg), '9:16', ctx, 'high'))
     keys.set(2, await outfitPic(2, holding))
-    await Promise.all([3, 4, 5].map(async (n, i) => { await new Promise(r => setTimeout(r, i * 1500)); keys.set(n, await outfitPic(n, keys.get(2)!)) }))
+    await Promise.all(ns.slice(1).map(async (n, i) => { await new Promise(r => setTimeout(r, i * 1500)); keys.set(n, await outfitPic(n, keys.get(2)!)) }))
     // 5. still clips: the same picture as first and last frame (the camera cannot move)
     job.status = 'clips'; await saveJob(sb, job)
     const clips = new Map<number, Buffer>()
-    await Promise.all([2, 3, 4, 5].map(async (n, i) => {
+    await Promise.all(ns.map(async (n, i) => {
       await new Promise(r => setTimeout(r, i * 2000))
       clips.set(n, await clip(`clip-${n}`, () => makeClip(ctx, shot(n, stillClip(n)), keys.get(n)!, '9:16', { lastFrame: keys.get(n)!, audio: true })))
     }))
@@ -256,13 +272,13 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     job.status = 'finishing'; await saveJob(sb, job)
     const file = async (name: string, buf: Buffer) => { const f = path.join(tmp, name); await fs.writeFile(f, buf); return f }
     const rollF = await file('roll.mp4', roll), remoteF = await file('remote.mp4', remote)
-    const clipF = await Promise.all([2, 3, 4, 5].map(n => file(`clip-${n}.mp4`, clips.get(n)!)))
+    const clipF = await Promise.all(ns.map(n => file(`clip-${n}.mp4`, clips.get(n)!)))
     if (job.press == null) {
       const r = await pressTime(model(MODELS.eyes), ff, remoteF, job.userId, PRESS_DEFAULT)
       job.press = r.t; await spend(r.cost)
     }
     if (!job.span) {
-      const r = await personSpan(model(MODELS.eyes), [2, 3, 4, 5].map(n => keys.get(n)!), job.userId)
+      const r = await personSpan(model(MODELS.eyes), ns.map(n => keys.get(n)!), job.userId)
       job.span = [r.x0, r.x1]; await spend(r.cost)
     }
     const openingF = path.join(tmp, 'opening.mp4')
@@ -272,24 +288,25 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     const period = 3 * step
     const fanStart = rollEnd + Math.max(0, job.press - remoteFrom)
     const first = fanStart + firstCrossing(period)
-    const cross = [0, 1, 2, 3].map(k => first + k * step)
-    const end = cross[3] + tail
+    const cross = ns.map((_, k) => first + k * step)
+    const end = cross[cross.length - 1] + tail
     const bounds = [0, ...cross, end]
     const takeStart = [0, ...cross.map(c => Math.max(0, c - lead))]
     const W = 720, H = 1280
     const [x0, x1] = job.span
+    // The hub over the person; the blades are BLADE's (owner: 360 px wide,
+    // the tip at 1200 px, a round end), in the user's material if any.
     const hubX = Math.round(W * (x0 + x1) / 2)
-    // As wide as her body and a little more, at most about t4's (340 px).
-    const bladeWidth = Math.round(Math.max(W * 0.34, Math.min(W * 0.5, W * (x1 - x0) * 1.08)))
     const takes = [openingF, ...clipF]
     const overlay = path.join(tmp, 'fan.mp4')
     await renderFanOverlay({
-      out: overlay, ffmpeg: ff, fan: await get(sb, FAN_ASSET.bucket, FAN_ASSET.path), W, H, duration: end, hub: [hubX, -150], bladeWidth,
+      out: overlay, ffmpeg: ff, fan: await get(sb, FAN_ASSET.bucket, FAN_ASSET.path), W, H, duration: end,
+      hub: [hubX, BLADE.hubY], bladeWidth: BLADE.width, length: BLADE.length, bladeTexture: blade,
       start: fanStart, period, takes: takes.map((video, k) => ({ video, start: takeStart[k] })),
     })
     const cut = path.join(tmp, 'cut.mp4')
-    await finishOverlay(ff, overlay, takes, bounds, takeStart, req.outfits.map(o => [req.title, o.text].filter(Boolean).join('\n')), req.language, cut)
-    console.log(`${LOG} ${job.id} press ${job.press}s, fan ${fanStart.toFixed(2)}s, changes ${cross.map(c => c.toFixed(2)).join(' ')}, hub ${hubX}, blade ${bladeWidth}px`)
+    await finishOverlay(ff, overlay, takes, bounds, takeStart, cut)
+    console.log(`${LOG} ${job.id} ${req.outfits.length} outfits, press ${job.press}s, fan ${fanStart.toFixed(2)}s, changes ${cross.map(c => c.toFixed(2)).join(' ')}, hub ${hubX}${blade ? ', own blades' : ''}${set ? ', own set' : ''}`)
 
     // 7. the music
     if (req.music.choice !== 'none' && !job.assets.music) {

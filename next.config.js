@@ -35,9 +35,10 @@ const nextConfig = {
     // glob, because a dynamic segment's [id] reads as a character class.
     // fonts/ is the burned-in text's (lib/caption-text.ts), not XCut's.
     '/api/xcreate/remake/*/make': ['./node_modules/ffmpeg-static/ffmpeg', './fonts/**'],
-    // The 風扇變裝 template's runs draw the fan, the captions and the sound (Oct 18).
-    '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg', './fonts/**'],
-    '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg', './fonts/**'],
+    // The 風扇變裝 template's runs draw the fan and lay the sound (Oct 18; no
+    // captions, so no fonts).
+    '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg'],
+    '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg'],
   },
   webpack: (config) => {
     config.watchOptions = {

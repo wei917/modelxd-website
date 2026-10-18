@@ -1,15 +1,14 @@
 // lib/fan-template/cut.ts: the 風扇變裝 template's finish (Oct 18; t4's
 // finish, made automatic). The opening is the roll's first seconds and the
-// remote clip joined; a model looks at the frames to find when she presses
-// the remote (the fan starts there) and how wide she lies (the blade is just
-// wider); then the fan is drawn over the takes (fan.ts), and each take's own
-// sound and the captions go on top.
+// remote clip joined; a model looks at the frames to find when the person
+// presses the remote (the fan starts there) and where they lie (the hub goes
+// over them); then the fan is drawn over the takes (fan.ts), and each take's own
+// sound goes under it. No words on the video (owner, Oct 18).
 
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { streamText } from '@/lib/providers'
 import type { ModelInfo } from '@/lib/providers/types'
-import { captionFilters, fitCaption } from '@/lib/caption-text'
 import { run } from '@/lib/remake/store'
 import { TIMING } from './recipe'
 
@@ -75,11 +74,10 @@ export async function joinOpening(ff: string, roll: string, remote: string, out:
 }
 
 /** Each take's own room sound while its outfit is on screen, joined at the
- *  changes; the captions on top (the title at the top, the outfit at the
- *  bottom), switching under the blade with half-open windows so two
- *  captions never share a frame. A caption takes the font that has its
- *  letters and wraps to fit the 720 px frame (lib/caption-text.ts). */
-export async function finishOverlay(ff: string, video: string, clips: string[], bounds: number[], takeStart: number[], texts: string[], lang: string, out: string) {
+ *  changes, under the drawn fan. No captions (owner, Oct 18: "we don't add
+ *  captions. users can use their own app to do that"), so the picture is
+ *  copied as it is. */
+export async function finishOverlay(ff: string, video: string, clips: string[], bounds: number[], takeStart: number[], out: string) {
   const dir = path.dirname(out)
   const inputs: string[] = []
   const parts: string[] = []
@@ -93,18 +91,5 @@ export async function finishOverlay(ff: string, video: string, clips: string[], 
   for (let k = 1; k < clips.length; k++) { parts.push(`[${acc}][a${k}]acrossfade=d=${TIMING.overlap}[x${k}]`); acc = `x${k}` }
   const sound = path.join(dir, 'sound.m4a')
   await run(ff, ['-v', 'error', '-y', ...inputs, '-filter_complex', parts.join(';'), '-map', `[${acc}]`, '-c:a', 'aac', '-b:a', '160k', sound], { maxBuffer: 32 * 1024 * 1024 })
-  const draws: string[] = []
-  for (let k = 0; k < texts.length; k++) {
-    const lines = String(texts[k] ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-    const style = `fontcolor=white:borderw=3:bordercolor=black@0.7:enable='gte(t,${bounds[k].toFixed(3)})*lt(t,${bounds[k + 1].toFixed(3)})'`
-    const [top, bottom] = lines.length > 1 ? lines : [null, lines[0]]
-    // The title's first line starts 150 px down; the outfit's last line ends
-    // about 110 px above the bottom, its first lines stacked above it.
-    const t = top ? fitCaption(top.slice(0, 60), lang, 648, 40, 26) : null
-    if (t) draws.push(...await captionFilters(t, dir, `cap-${k}-t`, 150 + Math.round(t.size * 0.88), 'top', style))
-    const b = bottom ? fitCaption(bottom.slice(0, 60), lang, 648, 44, 28) : null
-    if (b) draws.push(...await captionFilters(b, dir, `cap-${k}-b`, 1169, 'bottom', style))
-  }
-  await run(ff, ['-v', 'error', '-y', '-i', video, '-i', sound, ...(draws.length ? ['-vf', draws.join(',')] : []), '-map', '0:v', '-map', '1:a',
-    '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-movflags', '+faststart', out], { maxBuffer: 32 * 1024 * 1024 })
+  await run(ff, ['-v', 'error', '-y', '-i', video, '-i', sound, '-map', '0:v', '-map', '1:a', '-c', 'copy', '-movflags', '+faststart', out], { maxBuffer: 32 * 1024 * 1024 })
 }

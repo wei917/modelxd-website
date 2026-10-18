@@ -53,7 +53,7 @@ import type { MakeView } from '@/lib/remake/make'
 import { remakeCopy, REMAKE_LANGUAGES } from './remake-copy'
 import FanTemplate, { FAN_CARD_VIDEO, FAN_POSTER } from './FanTemplate'
 import { fanCopy } from './fan-copy'
-import { FAN_ABOUT_CENTS } from '@/lib/fan-template/recipe'
+import { MIN_OUTFITS, fanQuote } from '@/lib/fan-template/recipe'
 
 const DRAFT_KEY = 'xcreate.remake-draft'
 const MAX_VIDEO_BYTES = 300_000_000
@@ -887,7 +887,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
               <span className="xcs-fan-card-body">
                 <b>{fc.name}</b>
                 <span>{fc.pitch}</span>
-                <span className="xcs-fan-card-foot"><span>{fc.about(money(FAN_ABOUT_CENTS))}</span><span className="is-go">{fc.use} →</span></span>
+                <span className="xcs-fan-card-foot"><span>{fc.from(money(fanQuote(MIN_OUTFITS).aboutCents))}</span><span className="is-go">{fc.use} →</span></span>
               </span>
             </button>
           </div>

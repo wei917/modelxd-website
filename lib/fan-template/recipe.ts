@@ -5,51 +5,93 @@
 //
 // The method is the run the owner called "very close" (t4, Oct 17), made
 // repeatable:
-//   1. a four-view sheet of the user from their photos (@quinqueen's prompt,
-//      word for word: https://higgsfield.ai/@quinqueen/blogs/chatgpt-higgsfield-reel2);
+//   1. a four-view sheet of the user from one front photo (@quinqueen's
+//      prompt: https://higgsfield.ai/@quinqueen/blogs/chatgpt-higgsfield-reel2);
+//      the side views are drawn, never asked for (owner, Oct 18);
 //   2. the set is fixed: t4's start frame (an AI sample woman on the sofa's
-//      edge, the empty mat, the remote; PLATE). The user and outfit 1 are
-//      edited into it, so the room and the camera are the same in every run.
-//      The prompts say "the person", never she (Oct 18): anyone can use it;
+//      edge, the empty mat, the remote; PLATE). A sofa and a carpet the user
+//      describes or shows are painted into it first (optional); then the user
+//      and outfit 1 are edited in, so the room and the camera are the same in
+//      every run. The prompts say "the person", never she (Oct 18);
 //   3. the opening: a free roll from the sofa onto the mat (Wan image to
 //      video: a pinned landing makes people glide), then the remote picked up
 //      with one hand, eyes on the camera (Wan first + last frame);
-//   4. outfits 2-5 are edits of that frame in the creator's poses, each a
-//      still clip with the same picture as its first and last frame;
-//   5. our own fan at one steady speed makes the changes (fan.ts), then the
-//      captions, the clips' own sound and the music.
+//   4. outfits 2 to 5 (2 to 5 in all; owner, Oct 18: "the min is 2 outfits")
+//      are edits of that frame in the creator's poses, each a still clip with
+//      the same picture as its first and last frame;
+//   5. our own fan at one steady speed makes the changes (fan.ts), its blades
+//      in the user's material if they gave one, then the clips' own sound and
+//      the music. No words on the video (owner, Oct 18: "we don't add
+//      captions. users can use their own app to do that").
 
 import type { MusicTarget } from '@/lib/remake/config'
 
 /** The fixed set: t4's start frame, 1152x2048. */
 export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-sofa.jpg' }
-/** The card's loop, the demo with music and its poster, in the public landing bucket. */
-export const DEMO = { card: 'templates/fan-outfit-card.mp4', video: 'templates/fan-outfit-demo.mp4', poster: 'templates/fan-outfit-poster.jpg' }
-export const OUTFITS = 5
-/** What a run reserves (cents); it pays what was used, about $3 at list prices. */
-export const FAN_RESERVE_CENTS = 400
-export const FAN_ABOUT_CENTS = 300
+/** The card's loop, the demo with music and its poster, in the public landing
+ *  bucket: t4 again with no captions and the round blade tips (v2, Oct 18). */
+export const DEMO = { card: 'templates/fan-outfit-v2-card.mp4', video: 'templates/fan-outfit-v2-demo.mp4', poster: 'templates/fan-outfit-v2-poster.jpg' }
+export const MIN_OUTFITS = 2
+export const MAX_OUTFITS = 5
 
 export type FanMusicStyle = 'anime' | Extract<MusicTarget, 'pop' | 'kpop' | 'edm' | 'lofi' | 'rock'>
 export const FAN_MUSIC_STYLES: FanMusicStyle[] = ['pop', 'anime', 'kpop', 'edm', 'rock', 'lofi']
 export type FanMusic = { choice: 'style' | 'mine' | 'none'; style: FanMusicStyle; track?: string }
 export type FanOutfit = { text: string; photo?: string }
+/** A part of the scene the user chose: words, a reference photo, or both. */
+export type FanScenePart = { text?: string; photo?: string }
+export type FanScene = { blade?: FanScenePart; sofa?: FanScenePart; carpet?: FanScenePart }
 export type FanRequest = {
-  /** The user's photos in their upload folder: the front one is needed. */
+  /** The user's front photo in their upload folder. */
   front: string
-  side?: string
+  /** 2 to 5, in order. */
   outfits: FanOutfit[]
-  /** The caption's top line, the same over every outfit. */
-  title: string
+  /** Optional: unset parts keep the set's own (the chrome fan, the cream
+   *  sofa, the woven mat). */
+  scene?: FanScene
   music: FanMusic
   language: string
 }
 
-/** Step 1, 人物四視圖指令 (@quinqueen), without the height and weight line
- *  (the template does not ask for them). */
-export const SHEET = '請以我上傳的正面及側面照片作為唯一人物身分參考，完整保留人物的五官、臉型、膚色、髮型及個人辨識度。\n\n生成一張白色背景的寫實四格人物設定圖：左上為正面臉部近照、左下為側面臉部近照、中間為正面全身照、右邊為側面全身照。\n\n四格均為同一人物，穿著同一套簡約米白色居家服，赤腳自然站立。確保每格的樣貌、身高、體型及身材比例一致，不加入文字、配件或其他人物。'
-/** Only a front photo: the same, said for one photo. */
-export const SHEET_FRONT_ONLY = SHEET.replace('正面及側面照片', '正面照片')
+/** What a run of n outfits costs at list price (cents), what it reserves and
+ *  about how long it is. Measured on Oct 18's runs ($3.03 for five): seven
+ *  pictures at ~$0.07, Wan at $0.10 a second (roll 4 s, remote 5 s, 4 s per
+ *  extra outfit), the music by the second; each scene picture ~$0.07. The
+ *  reserve leaves room for a refusal sending a picture or clip elsewhere. */
+export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: number; reserveCents: number; seconds: number } {
+  const n = Math.min(MAX_OUTFITS, Math.max(MIN_OUTFITS, outfits))
+  const extras = (scene?.sofa || scene?.carpet ? 1 : 0) + (scene?.blade ? 1 : 0)
+  const aboutCents = 114 + 48 * (n - 1) + 7 * extras
+  return { aboutCents, reserveCents: Math.ceil((aboutCents + 90) / 50) * 50, seconds: Math.round(9.2 + 3.2 * (n - 2)) }
+}
+
+/** Step 1, 人物四視圖指令 (@quinqueen) for one front photo, without the height
+ *  and weight line (the template does not ask for them). */
+export const SHEET = '請以我上傳的正面照片作為唯一人物身分參考，完整保留人物的五官、臉型、膚色、髮型及個人辨識度。\n\n生成一張白色背景的寫實四格人物設定圖：左上為正面臉部近照、左下為側面臉部近照、中間為正面全身照、右邊為側面全身照。\n\n四格均為同一人物，穿著同一套簡約米白色居家服，赤腳自然站立。確保每格的樣貌、身高、體型及身材比例一致，不加入文字、配件或其他人物。'
+
+/** Step 2a (optional): the sofa and the carpet the user asked for, painted
+ *  into the set; picture 1 is the set, their reference photos follow. The
+ *  shapes and places stay, so the roll and the landing do too. */
+export function setPrompt(scene: FanScene): string {
+  let next = 2
+  const changes: string[] = []
+  const say = (p: FanScenePart | undefined, what: string, like: string) => {
+    if (!p) return
+    const ref = p.photo ? `${like} in picture ${next++}` : ''
+    changes.push(`${what}: ${[p.text, ref && `the material, color and look of the ${ref}`].filter(Boolean).join(', ')}`)
+  }
+  say(scene.sofa, 'the sofa\'s upholstery and color', 'sofa')
+  say(scene.carpet, 'the mat on the floor becomes this carpet or rug', 'carpet or rug')
+  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room and the wooden floor, the person lying on the sofa (pose, clothes, face), the small silver remote on the mat, the light and the shadows. The sofa keeps its exact outline, size, seat height and position; the mat keeps its size and position, flat on the floor. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
+}
+
+/** The blades' material (optional): a flat picture of it, painted on our
+ *  drawn blades (fan.ts); its height runs along the blade. A reference photo
+ *  of a fan is picture 1. */
+export function bladePrompt(blade: FanScenePart): string {
+  const what = [blade.text, blade.photo && 'the same material, color and finish as the blades of the fan in this picture'].filter(Boolean).join(', ')
+  return `A flat, evenly lit, straight-on close-up photograph of the surface of a ceiling fan blade: ${what}. The material fills the whole picture edge to edge, its grain or pattern running from top to bottom. No blade outline, no edges, no background, no shadows, no room reflections, no objects, no text.`
+}
 
 const KEEP = '其他全部完全不變：攝影機角度、比例、構圖、光線、沙發、墊子、地板、遙控器。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。'
 const OUTFIT_PHOTO = '服裝的版型、剪裁、布料、顏色、圖案與鞋子完全照最後一張圖片，但不要用那張圖片裡的人。'
@@ -57,7 +99,7 @@ const OUTFIT_PHOTO = '服裝的版型、剪裁、布料、顏色、圖案與鞋�
  *  (test run, Oct 18: the same sneakers under every outfit). */
 const SHOES = '鞋子也要換成搭配這套穿搭的鞋。'
 
-/** Step 2: the user, in outfit 1, on the set's sofa edge (picture 1 is the
+/** Step 2b: the user, in outfit 1, on the set's sofa edge (picture 1 is the
  *  set, picture 2 the sheet, picture 3 the outfit photo if any). */
 export function startPrompt(outfit: FanOutfit): string {
   return `編輯第一張圖片。把躺在沙發座墊邊緣的人換成第二張人物設定圖裡的人：臉、五官、膚色、髮型、身材和性別完全照設定圖。人物的姿勢、在沙發上的位置、大小、頭朝畫面上方的方向都不變，仍然仰躺在沙發座墊靠墊子那一側的邊緣，看向鏡頭。人物穿著：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${KEEP}`
@@ -83,7 +125,8 @@ export const REMOTE = {
   sound: 'Quiet room tone, a soft click of a remote button. No music, no singing.',
 }
 
-/** Outfits 2-5 in the creator's poses (their timeline, 5.5-15.0 s). */
+/** Outfits 2-5 in the creator's poses (their timeline, 5.5-15.0 s); fewer
+ *  outfits take the first ones. */
 export const POSES: { pose: string; clip: string }[] = [
   { pose: '人物仰躺在墊子上同一個位置，雙手放在腰部附近、手肘朝外，腳踝輕輕交叉，頭部微微轉向一側。', clip: 'breathing softly, at 1.5 s the head turns a few degrees' },
   { pose: '人物仰躺在墊子上同一個位置，一隻手放在臀部，另一隻手放在墊子上，雙膝略微偏向一側。', clip: 'breathing gently, at 1.2 s one slow blink' },
@@ -109,6 +152,9 @@ export const stillClip = (n: number) => ({
 export const TIMING = { rollEnd: 3.0, remoteFrom: 0.4, step: 3.2, tail: 1.8, lead: 0.6, overlap: 0.2 }
 /** Where the press is when the eyes cannot tell (t4's: 2.2 s into the clip). */
 export const PRESS_DEFAULT = 2.2
+/** The blades: 360 px wide (owner, Oct 18: "360 px is good"), the tip 1200 px
+ *  down the frame (hub 150 px above it; "1200 is good"), a round end. */
+export const BLADE = { width: 360, length: 1350, hubY: -150 }
 
 /** The music: an original instrumental for the template's length, hits at
  *  the fan's start and each change. 'anime' is the trend's own sound (the
@@ -131,15 +177,12 @@ export function fanMusicPrompt(style: FanMusicStyle, seconds: number, accents: n
   ].join(' ')
 }
 
-/** The page's opening outfits and title, in the page's language: five
- *  everyday looks (t3's). */
+/** The page's opening outfits, in the page's language: five everyday looks
+ *  (t3's); the page starts with all five, the user keeps 2 to 5. */
 export const DEFAULT_OUTFITS: Record<string, string[]> = {
   'zh-Hant': ['米色針織外套配淺色牛仔褲', '紅色大衣配黑色長褲', '深藍碎花長洋裝', '黑色皮衣配黑色長褲', '粉色毛呢外套配百褶裙'],
   'zh-Hans': ['米色针织外套配浅色牛仔裤', '红色大衣配黑色长裤', '深蓝碎花长连衣裙', '黑色皮衣配黑色长裤', '粉色毛呢外套配百褶裙'],
   en: ['Beige knit cardigan with light jeans', 'Red wool coat with black trousers', 'Navy floral maxi dress', 'Black leather jacket with black trousers', 'Pink wool coat with a pleated skirt'],
   ja: ['ベージュのニットカーディガンとライトデニム', '赤いウールコートと黒のパンツ', 'ネイビーの花柄ロングワンピース', '黒のレザージャケットと黒のパンツ', 'ピンクのウールコートとプリーツスカート'],
   ko: ['베이지 니트 가디건과 연청 청바지', '빨간 울 코트와 검정 바지', '네이비 꽃무늬 롱 원피스', '검정 가죽 재킷과 검정 바지', '핑크 울 코트와 플리츠 스커트'],
-}
-export const DEFAULT_TITLE: Record<string, string> = {
-  'zh-Hant': '日常穿搭系列', 'zh-Hans': '日常穿搭系列', en: 'Outfit of the week', ja: '毎日コーデ', ko: '데일리 코디',
 }

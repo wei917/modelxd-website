@@ -127,10 +127,13 @@ video comes out. Each read has its own link and stays in your Library with
 the video made from it. The original's footage, sound, music and words are
 never reused.
 
-**Templates in 同款.** 風扇變裝 (fan outfit change): add your photo and five
-outfits; you roll off a sofa, press a remote, and each pass of a ceiling fan
-changes your outfit, with a caption and music in a style you pick. About 18
-seconds and about $3 ($4 is reserved; you pay what it used).
+**Templates in 同款.** 風扇變裝 (fan outfit change): add one front photo (the
+side views are drawn for you) and 2 to 5 outfits, each described in words or
+shown with a photo; you roll off a sofa, press a remote, and each pass of a
+ceiling fan changes your outfit, with music in a style you pick. Optionally
+describe or show the fan's blades, the sofa and the carpet. No captions are
+added. About 9 seconds and $1.60 for two outfits, up to about 19 seconds and
+$3 for five (a little more is reserved; you pay what it used).
 
 **Region editing (inpainting).** When editing an image, an "Edit region"
 button appears if a selected model supports masks (currently GPT Image 2):
