@@ -201,6 +201,15 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     return base
   })
   const set = (patch: Partial<Draft>) => setD(prev => ({ ...prev, ...patch }))
+  /** The read's signed links (the original, the pictures), fetched fresh and
+   *  laid over the draft's; the choices in the tab stay as they are. */
+  const freshenSigned = (id: string) => {
+    fetch(`/api/xcreate/remake/${id}`).then(r => r.ok ? r.json() : null).then(body => {
+      const r = body?.result as BreakdownResult | undefined
+      if (!r) return
+      setD(prev => prev.rowId === id && prev.result ? { ...prev, result: { ...prev.result, previews: r.previews ?? prev.result.previews, original: r.original } } : prev)
+    }).catch(() => { /* stays as it is */ })
+  }
   const [stage, setStage] = useState<'idle' | 'uploading' | 'reading' | 'opening'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [files, setFiles] = useState<Record<string, Picked>>({})
@@ -241,7 +250,10 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   // A kept read opens from its link (Oct 17): /xcreate?remake=<id>. The read
   // that just finished already sits in the draft under the same id.
   useEffect(() => {
-    if (!remakeId || remakeId === d.rowId) return
+    if (!remakeId) return
+    // Already in the tab's draft: keep its choices, but its links may be an
+    // hour old or older than the player (Oct 17: "still cannot find the video").
+    if (remakeId === d.rowId) { if (d.result) freshenSigned(remakeId); return }
     // The request is the sign-in check: the page learns who is signed in only
     // after its first draw, so asking `signedIn` here would put the sign-in
     // dialog in front of a signed-in viewer for a moment.
@@ -520,18 +532,13 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   const setVoice = (who: string, patch: Partial<VoicePick>) =>
     setD(prev => ({ ...prev, voices: { ...prev.voices, [who]: { ...(prev.voices[who] ?? { choice: 'ai', consent: false }), ...patch } } }))
   const setTune = (patch: Partial<MusicTune>) => setD(prev => ({ ...prev, tune: { ...prev.tune, ...patch } }))
-  /** The original and the pictures are links signed for an hour, and a read
-   *  restored from the tab keeps the old ones: the first that fails fetches
-   *  the read again for fresh links (once per read). */
+  /** The original and the pictures are links signed for an hour: the first
+   *  that fails while the page is open fetches fresh ones (once per read). */
   const refreshSigned = () => {
     const id = d.rowId
     if (!id || refreshed.current === id) return
     refreshed.current = id
-    fetch(`/api/xcreate/remake/${id}`).then(r => r.ok ? r.json() : null).then(body => {
-      const r = body?.result as BreakdownResult | undefined
-      if (!r) return
-      setD(prev => prev.rowId === id && prev.result ? { ...prev, result: { ...prev.result, previews: r.previews ?? prev.result.previews, original: r.original } } : prev)
-    }).catch(() => { /* stays as it is */ })
+    freshenSigned(id)
   }
   const pickFile = (key: string, file: File | undefined) => {
     if (!file) return
