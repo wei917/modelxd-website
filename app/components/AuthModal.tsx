@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT, useLang } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
+import { MAIN_ORIGIN } from '../../lib/site'
 import { XTellMark } from './xtell/XTellNav'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
 import { countSigninTap, type SignInVia } from '../../lib/signin-tap'
@@ -31,7 +32,7 @@ function brandLinked(copy: string, className = 'xtell-auth-maker') {
   if (i < 0) return copy
   return <>
     {copy.slice(0, i)}
-    <a href="https://www.modelxd.com" target="_blank" rel="noopener" className={className}>
+    <a href={MAIN_ORIGIN} target="_blank" rel="noopener" className={className}>
       <img src="/logo.png" alt="" width={16} height={16} />ModelXD
     </a>
     {copy.slice(i + 'ModelXD'.length)}

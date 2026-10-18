@@ -13,7 +13,7 @@ import { useFace } from '../../../lib/use-face'
 import { pinnedFirst } from '../../../lib/xtell-pins'
 import { usePins } from './usePins'
 import { useXTellBase } from './XTellBase'
-import { doorHome, templeHref } from '../../../lib/site'
+import { doorHome, templeHref, MAIN_ORIGIN } from '../../../lib/site'
 import { goToRoom, opensInPlace } from '../../../lib/xtell-room'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
@@ -177,6 +177,6 @@ export function XTellFooter() {
     {/* A way to reach us (owner, Sep 27: the street had none): 聯絡我們 as
         a mail link (owner, Oct 4), the address in its hover text, and the
         bug report form, which works signed out too. */}
-    <nav aria-label={t('xtell.site.legal')}><a href={`mailto:${SUPPORT_EMAIL}`} title={SUPPORT_EMAIL}>{t('nav.contact')}</a><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href="https://www.modelxd.com" target="_blank" rel="noopener">ModelXD</a></span></nav>
+    <nav aria-label={t('xtell.site.legal')}><a href={`mailto:${SUPPORT_EMAIL}`} title={SUPPORT_EMAIL}>{t('nav.contact')}</a><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xtell-footer-maker">by <a href={MAIN_ORIGIN} target="_blank" rel="noopener">ModelXD</a></span></nav>
   </footer>
 }
