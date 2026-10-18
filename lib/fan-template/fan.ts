@@ -45,9 +45,16 @@ export type FanOptions = {
    *  width makes it a semicircle. Default 0.6 of the half width. */
   tip?: number
   /** The blades' material, a flat picture of it (the user's choice, owner
-   *  Oct 18), painted on the blades past the hub, its height along the blade;
-   *  the hub keeps the picture's chrome. Unset: the picture's own blades. */
+   *  Oct 18), painted on the blades past the hub, its height along the blade.
+   *  Unset: the picture's own blades. */
   bladeTexture?: Buffer
+  /** The hub's metal as a colour over the chrome's light and shade (e.g.
+   *  gold), so it matches a luxury set (owner, Oct 18: "elegant, luxury").
+   *  Unset: chrome. */
+  hubTint?: [number, number, number]
+  /** How much of the moving light the blades keep: 1 for polished metal; a
+   *  third by default for a material (its colours stay true). */
+  sheen?: number
   warpFrom?: number; warpFull?: number
   /** When the fan starts turning (s), seconds per full turn, spin-up time constant. */
   start: number; period: number; ramp?: number
@@ -146,7 +153,7 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
   // The user's material: where the hub disc ends (every angle still opaque
   // inside it), and the picture, sampled across and along the blade.
   let hubOut = 0
-  if (o.bladeTexture) {
+  if (o.bladeTexture || o.hubTint) {
     for (let r = 1; r < half; r++) {
       let all = true
       for (let a = 0; a < 360 && all; a += 2) all = alphaAt(half + r * Math.cos(a * Math.PI / 180), half + r * Math.sin(a * Math.PI / 180)) >= 128
@@ -155,6 +162,7 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
   }
   const material = o.bladeTexture ? await sharp(o.bladeTexture).removeAlpha().resize(256, 768, { fit: 'cover' }).raw().toBuffer({ resolveWithObject: true }) : null
   const reach = (o.length ?? ROWS) - hubOut
+  const bladeSheen = o.sheen ?? 1 / 3
   const sharpTex = new Float32Array(ROWS * COLS * 4)
   for (let r = 0; r < ROWS; r++) {
     const rr = r / scale
@@ -192,6 +200,11 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
           const m = Math.min(1, Math.max(0, 0.5 - f / g))
           R *= m; G *= m; B *= m; A *= m
         }
+      }
+      // The hub's metal: the chrome's light and shade in the tint's colour.
+      if (o.hubTint && A > 0 && r <= hubOut) {
+        const L = 0.299 * R + 0.587 * G + 0.114 * B
+        R = L * o.hubTint[0]; G = L * o.hubTint[1]; B = L * o.hubTint[2]
       }
       const p = (r * COLS + c) * 4
       sharpTex[p] = R; sharpTex[p + 1] = G; sharpTex[p + 2] = B; sharpTex[p + 3] = A
@@ -273,8 +286,9 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
             fB += w * (tex[i00 + 2] * w00 + tex[i01 + 2] * w01 + tex[i10 + 2] * w10 + tex[i11 + 2] * w11)
           }
           if (fA > 0) {
-            // A material keeps a third of the chrome's moving light (its own colours stay true).
-            const m = material && r > hubOut ? 1 + (sheen[i] - 1) / 3 : sheen[i], cap = 255 * fA
+            // A material keeps a third of the chrome's moving light unless
+            // told otherwise (its own colours stay true).
+            const m = material && r > hubOut ? 1 + (sheen[i] - 1) * bladeSheen : sheen[i], cap = 255 * fA
             R = Math.min(cap, fR * m) + (1 - fA) * R; G = Math.min(cap, fG * m) + (1 - fA) * G; B = Math.min(cap, fB * m) + (1 - fA) * B
           }
         }

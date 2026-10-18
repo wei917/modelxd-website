@@ -43,7 +43,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
   const { lang } = useLang()
   const c = fanCopy(lang)
   const [d, setD] = useState<Draft>(() => {
-    const base: Draft = { rows: (DEFAULT_OUTFITS[lang] ?? DEFAULT_OUTFITS.en).map((text, id) => ({ id, text })), scene: { blade: '', sofa: '', carpet: '' }, music: 'style', style: 'pop', consent: false }
+    const base: Draft = { rows: (DEFAULT_OUTFITS[lang] ?? DEFAULT_OUTFITS.en).map((text, id) => ({ id, text })), scene: { blade: '', sofa: '', carpet: '' }, music: 'style', style: 'runway', consent: false }
     if (typeof window === 'undefined') return base
     try {
       const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null')
