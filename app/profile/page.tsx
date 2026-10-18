@@ -353,10 +353,12 @@ export default function ProfilePage() {
     copiedId: copyId,
     deletingId: deleting,
     requestDelete: handleDelete,
-    // A 同款 read (Oct 17) has nothing to preview here: it opens back into 同款.
+    // A 同款 read (Oct 17) has nothing to preview here: it opens back into
+    // 同款; a 風扇變裝 run (Oct 18) opens back into its template there.
     openXcreate: row => {
-      const r = row as { id?: string; slots?: { options?: { remake?: unknown } }[] }
+      const r = row as { id?: string; slots?: { options?: { remake?: unknown; fan?: unknown } }[] }
       if (r?.id && r.slots?.[0]?.options?.remake) { window.location.href = `/xcreate?remake=${r.id}`; return }
+      if (r?.id && r.slots?.[0]?.options?.fan) { window.location.href = `/xcreate?fan=${r.id}`; return }
       setPreviewItem(row)
     },
     renameReading: (id, title) => renameReading(sb(), id, title),

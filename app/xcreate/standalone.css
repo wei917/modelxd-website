@@ -505,6 +505,44 @@
 .xcs-remake-slider input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(205, 66, 54, .2); }
 .xcs-remake-slider-ends { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; font-weight: 500; color: var(--muted2); }
 
+/* 範本 (Oct 18): the 風扇變裝 template's card in 同款's tab, under the
+   popular videos, and its own page (FanTemplate.tsx) with the 同款 parts. */
+.xcs-fan-section .xcs-remake-try-head { display: grid; gap: 2px; }
+.xcs-fan-section .xcs-remake-try-head span { font-size: 12.5px; font-weight: 400; color: var(--muted2); }
+.xcs-fan-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: stretch; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.xcs-fan-card:hover { border-color: var(--red); box-shadow: 0 6px 18px rgba(0, 0, 0, .06); }
+.xcs-fan-card video { display: block; width: 96px; aspect-ratio: 9 / 16; border-radius: 10px; object-fit: cover; background: var(--xc-ink, #242724); }
+.xcs-fan-card-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 4px 2px; }
+.xcs-fan-card-body b { font-size: 16px; font-weight: 700; }
+.xcs-fan-card-body > span:not(.xcs-fan-card-foot) { font-size: 13.5px; line-height: 1.55; color: var(--muted2); }
+.xcs-fan-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; font-size: 13px; font-weight: 600; color: var(--muted2); }
+.xcs-fan-card-foot .is-go { color: var(--red); }
+.xcs-fan-back { align-self: flex-start; min-height: 40px; padding: 0 2px; border: 0; background: none; color: var(--muted2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.xcs-fan-back:hover { color: var(--red); }
+.xcs-fan .xcs-fan-head { margin-bottom: 18px; }
+.xcs-fan > .xcs-remake-sec { margin-top: 26px; }
+.xcs-fan-demo { width: min(100%, calc(min(46vh, 420px) * 9 / 16)); margin: 0 auto 8px; border-radius: 14px; overflow: hidden; background: var(--xc-ink, #242724); }
+.xcs-fan-demo video { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; }
+.xcs-fan-photos { display: flex; gap: 16px; flex-wrap: wrap; }
+.xcs-fan-photo { display: grid; justify-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.xcs-fan-photo .xcs-remake-photo-tile { width: 88px; height: 112px; }
+.xcs-fan-photo.is-on .xcs-remake-photo-tile { border-style: solid; border-color: var(--red); }
+.xcs-fan-outfits { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.xcs-fan-outfits li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'n n' 'text pic'; gap: 6px 10px; align-items: center; }
+.xcs-fan-outfit-n { grid-area: n; font-size: 12.5px; font-weight: 700; color: var(--muted2); }
+.xcs-fan-outfits .xcs-remake-input { grid-area: text; }
+.xcs-fan-outfit-add { grid-area: pic; display: inline-flex; align-items: center; min-height: 46px; padding: 0 12px; border: 1.5px dashed var(--border2); border-radius: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted2); white-space: nowrap; cursor: pointer; }
+.xcs-fan-outfit-add:hover { border-color: var(--red); color: var(--red); }
+.xcs-fan-outfit-pic { grid-area: pic; position: relative; width: 46px; height: 46px; }
+.xcs-fan-outfit-pic img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
+.xcs-fan-outfit-pic button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--xc-ink, #242724); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
+.xcs-fan-progress { position: relative; height: 10px; border-radius: 999px; background: var(--xc-soft, #f1f2ec); overflow: hidden; }
+.xcs-fan-progress b { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--red); transition: width .8s ease; }
+.xcs-fan-again { justify-self: center; }
+@media (max-width: 420px) {
+  .xcs-fan-outfit-add { padding: 0 10px; font-size: 12px; }
+}
+
 /* The remake as it is made (Oct 17): its state and clock, the stretch's
    shots filling in red step by step, then the video. */
 .xcs-remake-made { display: grid; gap: 12px; padding: 18px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--xc-paper, #fff); scroll-margin: 90px; }
