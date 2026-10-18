@@ -11,10 +11,15 @@
 // is not kept, docs/REMAKE-PLAN.md), so a reopened X read shows its cards
 // without pictures. YouTube is never downloaded: its cards play the moment in
 // YouTube's player, and its Library card uses YouTube's own thumbnail.
+// An upload's read also remembers the upload itself (their video folder), so
+// the page can play the original (Oct 17; owner: "add player"). Those files
+// sit under <user>/originals/, which the orphan sweep never walks (it lists
+// only the old root originals/): if it ever does, it must count `upload` on
+// these rows as referenced.
 // Server only (service key).
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { UPLOAD_BUCKETS } from '@/lib/platform-specs'
+import { isOwnUpload, UPLOAD_BUCKETS } from '@/lib/platform-specs'
 import { BREAKDOWN_MODEL, type BreakdownResult } from './config'
 
 export type SavedRemake = {
@@ -24,6 +29,9 @@ export type SavedRemake = {
   costUsd: number
   /** Material id → path in the viewer's image folder (uploads only). */
   previews?: Record<string, string>
+  /** The upload the read came from, in the viewer's video folder (uploads
+   *  only; reads before Oct 17 have none, so they show no player). */
+  upload?: string
   /** The viewer's choices, as the page keeps them (photos and recordings never). */
   choices?: Record<string, unknown>
 }
@@ -55,12 +63,22 @@ function slotFor(saved: SavedRemake, picture: string | null) {
   }
 }
 
+/** A link to play the viewer's own upload for an hour; null for anything
+ *  outside their video folder. */
+export async function signOriginal(admin: SupabaseClient, userId: string, upload: string | null | undefined): Promise<string | null> {
+  if (!upload || !isOwnUpload(userId, upload)) return null
+  const { data } = await admin.storage.from(UPLOAD_BUCKETS.video).createSignedUrl(upload, SIGN_SECONDS)
+  return data?.signedUrl ?? null
+}
+
 /** Keeps a finished read: the upload's pictures go to the viewer's image
- *  folder, the read and its source to a new row. Returns the row id, or null
- *  if saving failed (the read itself still goes back to the page). */
-export async function saveRead(admin: SupabaseClient, userId: string, result: BreakdownResult): Promise<string | null> {
+ *  folder, the read, its source and the upload's path to a new row. Returns
+ *  the row id, or null if saving failed (the read itself still goes back to
+ *  the page). */
+export async function saveRead(admin: SupabaseClient, userId: string, result: BreakdownResult, upload?: string | null): Promise<string | null> {
   const rowId = crypto.randomUUID()
   const saved: SavedRemake = { v: 1, source: result.source, breakdown: result.breakdown, costUsd: result.costUsd }
+  if (upload && isOwnUpload(userId, upload)) saved.upload = upload
   let picture: string | null = youtubeThumb(result.source.url)
   if (result.source.kind === 'upload' && result.previews) {
     const kept: Record<string, string> = {}
@@ -104,8 +122,9 @@ export async function loadRead(admin: SupabaseClient, userId: string, id: string
     previews = {}
     entries.forEach(([mid], i) => { const url = data?.[i]?.signedUrl; if (url) previews![mid] = url })
   }
+  const original = await signOriginal(admin, userId, saved.upload)
   return {
-    result: { breakdown: saved.breakdown, source: saved.source, costUsd: saved.costUsd, left: -1, previews },
+    result: { breakdown: saved.breakdown, source: saved.source, costUsd: saved.costUsd, left: -1, previews, ...(original ? { original } : {}) },
     choices: saved.choices && typeof saved.choices === 'object' ? saved.choices : null,
   }
 }
