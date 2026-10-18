@@ -22,10 +22,6 @@ export type RemakeRequest = {
   product: boolean
   /** The source's real shape when known (X and uploads); the breakdown's is a guess. */
   aspect?: string
-  /** An effect drawn over the whole remake in the edit instead of by the
-   *  models. 'fan': a ceiling fan's blade passes make the changes (the fan
-   *  outfit-change trend), so no picture or clip may contain a fan. */
-  overlay?: 'fan'
 }
 
 export type PlanCharacter = {
@@ -142,8 +138,8 @@ How the remake is produced (write for this):
 - A shot marked "same_set_as": n is filmed on exactly the same set, from exactly the same locked camera, as shot n: its first frame is made by EDITING shot n's first frame, so the room, the furniture, the framing and the light come out identical. For it, write "change": only what is different from shot n's first frame (her clothes, pose, expression, who is there), in English, never the room again. Its keyframe text is still written in full.
 - On-screen text and spoken lines are rewritten for the new theme, in ${req.language}, about the same length and timing as the original's. Never copy the original's lyrics, slogans or brand names. Voices come from text to speech: pick a voice from ${VOICES.join(', ')} and give a short delivery style in English.
 - Every shot says what it sounds like ("sound": crowd roar, sparks, a scream, footsteps...): the video model makes the clip's own sound from it, and a shot with no sound direction comes out nearly silent. Match the original's energy: if the crowd roars through a shot, say so.
-- Nothing from the original is reused: not its footage, sound, music, logos or text.${req.overlay === 'fan' ? `
-- A ceiling fan is added over the whole remake in the edit, by our own effect: its blades sweep across the frame at one steady speed, and each change of clothes happens under a passing blade. So never draw, mention or imply a ceiling fan, fan blades, a motor housing or their shadows in any keyframe, change or clip. After any opening move, every shot is the person lying still in that shot's pose, with only small natural movement (breathing, a blink, a slight smile or head turn) and no change of position, so the shot ends on the frame it starts with; write each clip that way. Sound: quiet room tone and a fan's soft whir, never music or singing (the music is chosen later).` : ''}
+- "world" is the original's setting as the read describes it ("places", and the props in "things"): keep its furniture, plants and props and where they are, unless the user changed the place or the theme moves the story elsewhere. Never strip a furnished room bare.
+- Nothing from the original is reused: not its footage, sound, music, logos or text.
 
 Return JSON only:
 {"title": string (${req.language}), "logline": string (${req.language}), "look": string (English: the drawing style only, never the place or the frame shape), "world": string (English: the setting and its light, pasted into every keyframe; signs and screens carry no lettering),
@@ -154,6 +150,8 @@ Return JSON only:
 The shots must be exactly the original shots given, in order, with the same t0 and t1.`
   const user = JSON.stringify({
     original: { title: req.breakdown.title, summary: req.breakdown.summary, hook: req.breakdown.hook, look: req.breakdown.look, music: req.breakdown.music, aspect: req.aspect ?? req.breakdown.aspect },
+    places: (req.breakdown.places ?? []).map(p => ({ id: p.id, name: p.name, look: p.look })),
+    things: (req.breakdown.things ?? []).map(t => ({ id: t.id, kind: t.kind, name: t.name, look: t.look })),
     stretch: { from_seconds: req.from, seconds: req.seconds },
     shots: shots.map((s, i) => sets[i] == null ? s : { ...s, same_set_as: sets[i]! + 1 }),
     lines: req.breakdown.lines.filter(l => l.t >= req.from && l.t < req.from + req.seconds).map(l => ({ ...l, t: Math.round((l.t - req.from) * 10) / 10 })),

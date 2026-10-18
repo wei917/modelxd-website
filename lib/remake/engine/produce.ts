@@ -14,6 +14,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { generateImage, generateVideo, generateSpeech } from '../../providers'
 import type { ModelInfo } from '../../providers/types'
+import { SAFETY } from '../../provider-errors'
 import type { PlanCharacter, PlanShot, PlanVoice, RemakePlan } from './plan'
 
 const run = promisify(execFile)
@@ -39,8 +40,53 @@ export type ProduceContext = {
   speechModel: ModelInfo
   /** Store a picture and return a link the video model can fetch. */
   sign: (buffer: Buffer, name: string) => Promise<string>
+  /** Other makers' models for a picture or clip the first one refuses. */
+  imageBackups?: ModelInfo[]
+  editBackups?: ModelInfo[]
+  videoBackup?: ModelInfo
 }
 type Made = { buffer: Buffer; cost: number }
+
+/** A refusal on safety grounds: the maker's verdict on its own filter, not
+ *  the picture's (XDuel's rule, Sep 16; Oct 18: OpenAI refused a short dress
+ *  on a woman lying down and the whole remake stopped). */
+const refused = (e: unknown) => SAFETY.test(String((e as Error)?.message ?? e))
+/** Said once every maker refused a picture: the same picture, toned down. */
+const MODEST = ' An elegant, modest fashion photo: the outfit covers the body well, nothing see-through or revealing.'
+
+/** A picture model's size for a shape: the nearest of its pixel sizes, or its
+ *  largest square size with the shape as an option (Grok, Gemini). */
+export function sizeFor(model: ModelInfo, aspect: Aspect): { size: string; options: Record<string, unknown> } {
+  const sizes: string[] = (model as any).output_config?.image?.sizes ?? []
+  const [aw, ah] = aspect.split(':').map(Number)
+  const pixels = sizes.map(sz => sz.match(/^(\d+)x(\d+)$/)).filter(Boolean).map(m => ({ size: m![0], r: Number(m![1]) / Number(m![2]), a: Number(m![1]) * Number(m![2]) }))
+  if (pixels.length) {
+    const best = pixels.sort((x, y) => Math.abs(Math.log(x.r * ah / aw)) - Math.abs(Math.log(y.r * ah / aw)) || y.a - x.a)[0]
+    return { size: best.size, options: {} }
+  }
+  return { size: sizes.includes('2048') ? '2048' : sizes[0] ?? '1024', options: { aspect_ratio: aspect } }
+}
+
+/** One picture on the first model that does not refuse it: the next maker
+ *  gets the same words, and once all of them have refused, the last one
+ *  gets the picture toned down. Any other error stops at once. */
+export async function picture(models: ModelInfo[], prompt: string, attachments: any[], aspect: Aspect, ctx: ProduceContext, quality: 'medium' | 'high', gen: typeof generateImage = generateImage): Promise<Made> {
+  const tries: [ModelInfo, string][] = [...models.map(m => [m, prompt] as [ModelInfo, string]), [models[models.length - 1], prompt + MODEST]]
+  let last: unknown
+  for (const [i, [model, words]] of tries.entries()) {
+    const { size, options } = sizeFor(model, aspect)
+    try {
+      const r: any = await gen(model, words, quality as any, size, attachments, null, null, { userId: ctx.userId, surface: ctx.surface } as any, options)
+      if (i > 0) console.log(`[remake:produce] picture made by ${model.model_name}${words !== prompt ? ', toned down' : ''} after a refusal`)
+      return { buffer: r.buffer, cost: r.cost ?? 0 }
+    } catch (e) {
+      if (!refused(e)) throw e
+      console.warn(`[remake:produce] ${model.model_name} refused a picture: ${String((e as Error)?.message ?? e).slice(0, 160)}`)
+      last = e
+    }
+  }
+  throw last
+}
 
 export async function makeSheet(ctx: ProduceContext, look: string, ch: PlanCharacter, photo?: Buffer): Promise<Made> {
   const views = 'Character reference sheet on a plain mid-gray backdrop with even light. Four full-body views side by side, the same character each time: front, three-quarter, side profile, back; plus one large head-and-shoulders close-up of the face at the right. Same proportions in every view.'
@@ -48,8 +94,7 @@ export async function makeSheet(ctx: ProduceContext, look: string, ch: PlanChara
     ? `${look} Use the person in this photo: exactly the same face, hair and build, drawn in this film's style. ${views} ${ch.canon} ${NO_TEXT}`
     : `${look} ${views} ${ch.canon} ${NO_TEXT}`
   const atts = photo ? [{ buffer: photo, mediaType: 'image/jpeg' } as any] : []
-  const r: any = await generateImage(ctx.imageModel, prompt, 'medium' as any, '2048', atts, null, null, { userId: ctx.userId, surface: ctx.surface } as any, photo ? {} : { aspect_ratio: '16:9' })
-  return { buffer: r.buffer, cost: r.cost ?? 0 }
+  return picture([ctx.imageModel, ...(ctx.imageBackups ?? [])], prompt, atts, '16:9', ctx, 'medium')
 }
 
 /** One input picture for an edit: the sheets (and product) side by side on a
@@ -84,12 +129,8 @@ export async function makeKeyframe(ctx: ProduceContext, plan: RemakePlan, shot: 
     : `One single full-frame ${aspect} film frame.`
   const prompt = `${plan.look} ${lead} ${plan.world ?? ''} ${shot.keyframe} ${NO_TEXT}`
   const atts = images.length ? [{ buffer: await compose(aspect, images), mediaType: 'image/jpeg' } as any] : []
-  const r: any = await generateImage(ctx.imageModel, prompt, 'medium' as any, '2048', atts, null, null, { userId: ctx.userId, surface: ctx.surface } as any, images.length ? {} : { aspect_ratio: aspect })
-  return { buffer: r.buffer, cost: r.cost ?? 0 }
+  return picture([ctx.imageModel, ...(ctx.imageBackups ?? [])], prompt, atts, aspect, ctx, 'medium')
 }
-
-/** An edit model's output size for each shape (GPT Image 2.5's sizes). */
-const EDIT_SIZE: Record<Aspect, string> = { '16:9': '2048x1152', '9:16': '1152x2048', '4:3': '1536x1152', '3:4': '1152x1536', '1:1': '2048x2048' }
 
 /** The first frame of a shot on the same set as an earlier one (plan.ts
  *  `sameSet`): an EDIT of that shot's first frame, changing only what the
@@ -106,10 +147,8 @@ export async function makeSetKeyframe(ctx: ProduceContext & { editModel?: ModelI
     ? ` The ${refs.length > 1 ? 'people are the characters on the reference sheets that follow' : 'person is the character on the reference sheet that follows'}: keep face, hair and build exactly (${who.join('; ')}). A sheet is only a reference; the result is one single full-frame picture like the first one.`
     : ''
   const prompt = `Edit the first picture. Keep everything in it exactly as it is: the room, the floor, every object and where it is, the camera position and angle, the framing, the light and shadows, and the photo's look. Change only this: ${change}${sheetNote} ${NO_TEXT}`
-  const model = ctx.editModel ?? ctx.imageModel
   const atts = [base, ...refs.map(id => sheets.get(id)!)].map(b => ({ buffer: b, mediaType: 'image/jpeg' }) as any)
-  const r: any = await generateImage(model, prompt, 'high' as any, EDIT_SIZE[aspect], atts, null, null, { userId: ctx.userId, surface: ctx.surface } as any)
-  return { buffer: r.buffer, cost: r.cost ?? 0 }
+  return picture([ctx.editModel ?? ctx.imageModel, ...(ctx.editBackups ?? [])], prompt, atts, aspect, ctx, 'high')
 }
 
 /** A shot's clip from its first frame. `opts.lastFrame` pins the end as well
@@ -125,10 +164,22 @@ export async function makeClip(ctx: ProduceContext, shot: PlanShot, firstFrame: 
   const prompt = `${base}${/no cuts\.?$/i.test(base) ? '' : ' No cuts.'}${sound} Keep every face, body and outfit exactly as in the first frame, and keep its look.`
   const atts: any[] = [{ buffer: firstFrame, mediaType: 'image/jpeg', url, port: 'first_frame' }]
   if (opts.lastFrame) atts.push({ buffer: opts.lastFrame, mediaType: 'image/jpeg', url: await ctx.sign(opts.lastFrame, `shot-${shot.n}-last-${Date.now()}.jpg`), port: 'last_frame' })
-  const r: any = await generateVideo(opts.videoModel ?? ctx.videoModel, prompt, '720p', shot.clip_seconds, atts, undefined,
-    { userId: ctx.userId, surface: ctx.surface } as any,
-    { ...(opts.lastFrame ? { mode: 'start_end_frames' } : { aspect_ratio: aspect, mode: 'image_to_video' }), generate_audio: opts.audio ?? true, prompt_extend: false, watermark: false } as any)
-  return { buffer: r.buffer, cost: r.cost ?? 0 }
+  const call = { userId: ctx.userId, surface: ctx.surface } as any
+  try {
+    const r: any = await generateVideo(opts.videoModel ?? ctx.videoModel, prompt, '720p', shot.clip_seconds, atts, undefined, call,
+      { ...(opts.lastFrame ? { mode: 'start_end_frames' } : { aspect_ratio: aspect, mode: 'image_to_video' }), generate_audio: opts.audio ?? true, prompt_extend: false, watermark: false } as any)
+    return { buffer: r.buffer, cost: r.cost ?? 0 }
+  } catch (e) {
+    // Another maker's image-to-video model from the first frame alone (its
+    // shortest clip may be longer; the cut trims it).
+    const backup = ctx.videoBackup
+    if (!refused(e) || !backup) throw e
+    console.warn(`[remake:produce] shot ${shot.n} clip refused, trying ${backup.model_name}: ${String((e as Error)?.message ?? e).slice(0, 160)}`)
+    const min = Number((backup as any).output_config?.video?.durations_by_resolution?.['720p']?.min ?? 3)
+    const r: any = await generateVideo(backup, prompt, '720p', Math.max(min, shot.clip_seconds), [atts[0]], undefined, call,
+      { aspect_ratio: aspect, mode: 'image_to_video', generate_audio: opts.audio ?? true, watermark: false } as any)
+    return { buffer: r.buffer, cost: r.cost ?? 0 }
+  }
 }
 
 export async function makeVoice(ctx: ProduceContext, v: PlanVoice): Promise<Made> {
