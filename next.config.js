@@ -31,6 +31,9 @@ const nextConfig = {
     '/api/xsports/cheer': ['./node_modules/ffmpeg-static/ffmpeg'],
     // 同款 cuts a picture of each material from the video it reads (Oct 13).
     '/api/xcreate/remake/breakdown': ['./node_modules/ffmpeg-static/ffmpeg'],
+    // ...and its make job cuts, captions and mixes the remake (Oct 17). A
+    // glob, because a dynamic segment's [id] reads as a character class.
+    '/api/xcreate/remake/*/make': ['./node_modules/ffmpeg-static/ffmpeg', './public/fonts/**'],
   },
   webpack: (config) => {
     config.watchOptions = {

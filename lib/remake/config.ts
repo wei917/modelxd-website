@@ -68,7 +68,26 @@ export type Breakdown = {
   places: Place[]
   shots: Shot[]
   lines: Line[]
-  music: { present: boolean; bpm: number | null; mood: string; cuts_on_beat: boolean }
+  music: BreakdownMusic
+}
+
+/** The original's music as the read heard it. The style fields (Oct 17) let a
+ *  music model write a NEW piece in the same style (lib/remake/music.ts);
+ *  reads before then have only the first four. */
+export type BreakdownMusic = {
+  present: boolean
+  bpm: number | null
+  mood: string
+  cuts_on_beat: boolean
+  /** Genre, sub-genre and era, in English. */
+  genre?: string
+  instruments?: string[]
+  /** Key and mode if it can be heard, else "". */
+  key?: string
+  /** How the energy moves over the video. */
+  energy?: string
+  /** "none", or the voice type, delivery and language. */
+  vocals?: string
 }
 
 export type BreakdownResult = {
@@ -93,15 +112,28 @@ export type CastChoice = 'keep' | 'photo' | 'describe' | 'famous'
 /** A logo is never carried over: it starts as 'remove'. */
 export type ThingChoice = 'keep' | 'photo' | 'describe' | 'remove'
 export type PlaceChoice = 'keep' | 'photo' | 'describe'
-/** No music model yet (plan, decision 4): none, or the user's own track. */
-export type MusicChoice = 'none' | 'mine'
+/** The remake's music (owner, Oct 17: "allow users to keep the original style
+ *  music or tune it with slider like more pop or country style"): a new track
+ *  in the original's style, the same tuned toward another style, the user's
+ *  own track, or none. Never the original's recording. */
+export type MusicChoice = 'keep' | 'tune' | 'mine' | 'none'
+export const MUSIC_TARGETS = ['pop', 'country', 'rock', 'edm', 'hiphop', 'lofi', 'jazz', 'classical', 'kpop', 'cinematic'] as const
+export type MusicTarget = typeof MUSIC_TARGETS[number]
+/** The tuning's sliders. `amount` 0–100: how far toward `target` (0 keeps
+ *  the original's style, 100 is all `target`); `tempo` and `energy` -50–50
+ *  (slower/calmer to faster/more intense); `vocals` off = instrumental. */
+export type MusicTune = { target: MusicTarget; amount: number; tempo: number; energy: number; vocals: boolean }
+export const DEFAULT_TUNE: MusicTune = { target: 'pop', amount: 50, tempo: 0, energy: 0, vocals: false }
 export type VoiceChoice = 'ai' | 'mine' | 'none'
 export type RemakeLook = 'keep' | 'anime' | 'realistic' | '3d'
 export const REMAKE_LOOKS: RemakeLook[] = ['keep', 'anime', 'realistic', '3d']
 
 /** A rough price for a remake of `seconds`, in cents: pictures and clips cost
  *  about $0.20–0.30 a finished second, plus $1–2 of planning and review
- *  (plan, Oct 10). Shown as "about"; phase 2 measures it before charging. */
+ *  (plan, Oct 10) and $0.20 for the music and the small checks. Shown as
+ *  "about" and reserved when making starts (lib/remake/make.ts); the user
+ *  pays what was used. The fan runs (Oct 17) used about half of it: Wan
+ *  clips at $0.10 a second, each same-set edit about $0.06. */
 export function estimateRemakeCents(seconds: number): number {
-  return Math.round((Math.max(5, seconds) * 0.25 + 1.5) * 100)
+  return Math.round((Math.max(5, seconds) * 0.25 + 1.7) * 100)
 }

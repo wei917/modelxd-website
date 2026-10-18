@@ -6,6 +6,8 @@
 // for a new composition, and both models refuse copyrighted lyrics and
 // artist voices anyway.
 
+import type { BreakdownMusic, MusicTarget, MusicTune } from './config'
+
 export type MusicStyle = {
   present: boolean
   /** Genre and era, e.g. "J-rock anime opening, 2020s". */
@@ -54,20 +56,50 @@ export function normalizeMusicStyle(text: string): MusicStyle | null {
   } catch { return null }
 }
 
-/** The music model's prompt: a new piece in the original's style, at the
- *  remake's length. `instrumental` leaves the voice out even when the
- *  original had one (an AI singer is the riskiest part to get wrong);
- *  `accents` are the remake's change times, so the piece can hit them. */
-export function musicPrompt(style: MusicStyle, seconds: number, opts: { instrumental?: boolean; accents?: number[] } = {}): string {
+const TARGET_WORDS: Record<MusicTarget, string> = {
+  pop: 'pop', country: 'country', rock: 'rock', edm: 'EDM / electronic dance', hiphop: 'hip-hop', lofi: 'lo-fi chill',
+  jazz: 'jazz', classical: 'classical orchestral', kpop: 'K-pop', cinematic: 'cinematic orchestral score',
+}
+
+/** The page's language as the music model hears it, for sung lyrics. */
+export const SUNG_LANGUAGE: Record<string, string> = {
+  en: 'English', 'zh-Hant': 'Mandarin Chinese (as sung in Taiwan)', 'zh-Hans': 'Mandarin Chinese', ja: 'Japanese', ko: 'Korean',
+}
+
+/** The read's music as a style the prompt can use. */
+export function styleFromRead(m: BreakdownMusic): MusicStyle {
+  return {
+    present: m.present, genre: m.genre ?? '', instruments: m.instruments ?? [], bpm: m.bpm,
+    key: m.key ?? '', energy: m.energy ?? '', vocals: m.vocals || 'none', mood: m.mood,
+  }
+}
+
+/** The music model's prompt: a new piece in the original's style at the
+ *  remake's length, or that style tuned toward another (the page's sliders).
+ *  `instrumental` leaves the voice out even when the original had one (an AI
+ *  singer is the riskiest part to get wrong); `accents` are the remake's
+ *  change times, so the piece can hit them. */
+export function musicPrompt(style: MusicStyle, seconds: number, opts: { instrumental?: boolean; accents?: number[]; tune?: MusicTune | null; language?: string } = {}): string {
+  const t = opts.tune
+  const original = style.genre || 'music'
+  const target = t ? TARGET_WORDS[t.target] : ''
+  const amount = t ? Math.max(0, Math.min(100, Math.round(t.amount))) : 0
+  const genre = !t || amount === 0 ? `${original} piece`
+    : amount <= 35 ? `${original} piece with a light touch of ${target}`
+    : amount <= 70 ? `blend of ${original} and ${target}, about ${amount}% ${target}`
+    : `${target} piece with only hints of the original ${original}`
+  const bpm = style.bpm && t ? Math.round(style.bpm * (1 + Math.max(-50, Math.min(50, t.tempo)) / 200)) : style.bpm
+  const energy = !t || Math.abs(t.energy) < 10 ? '' : t.energy <= -30 ? 'Much calmer than the original.' : t.energy < 0 ? 'A little calmer than the original.' : t.energy < 30 ? 'A little more intense than the original.' : 'Much more intense than the original.'
+  const vocals = t ? t.vocals : !opts.instrumental && !!style.vocals && !/^none$/i.test(style.vocals)
   const parts = [
-    `An original ${style.genre || 'instrumental'} piece, newly composed: its own melody and arrangement, not a cover and not based on any existing song.`,
-    style.bpm ? `${style.bpm} BPM, a steady tempo throughout.` : '',
-    style.key ? `In ${style.key}.` : '',
-    style.instruments.length ? `Instruments: ${style.instruments.join(', ')}.` : '',
+    `An original ${genre}, newly composed: its own melody and arrangement, not a cover and not based on any existing song.`,
+    bpm ? `${bpm} BPM, a steady tempo throughout.` : '',
+    style.key && (!t || amount <= 35) ? `In ${style.key}.` : '',
+    style.instruments.length && (!t || amount <= 70) ? `Instruments: ${style.instruments.join(', ')}${t && amount > 35 ? `, mixed with ${target} instruments` : ''}.` : '',
     style.mood ? `Mood: ${style.mood}.` : '',
-    style.energy ? `Energy: ${style.energy}.` : '',
-    opts.instrumental || !style.vocals || /^none$/i.test(style.vocals) ? 'Instrumental only, no vocals.' : `Vocals: ${style.vocals}, with new, original lyrics.`,
-    opts.accents?.length ? `Strong hits or accents at ${opts.accents.map(t => `${t.toFixed(1)} s`).join(', ')}.` : '',
+    style.energy && !t ? `Energy: ${style.energy}.` : energy,
+    vocals ? `Vocals: ${style.vocals && !/^none$/i.test(style.vocals) ? style.vocals : 'a lead singer'}, with new, original lyrics${opts.language ? ` in ${opts.language}` : ''}.` : 'Instrumental only, no vocals.',
+    opts.accents?.length ? `Strong hits or accents at ${opts.accents.map(x => `${x.toFixed(1)} s`).join(', ')}.` : '',
     `Exactly ${Math.round(seconds)} seconds long, ending cleanly on the last beat.`,
   ]
   return parts.filter(Boolean).join(' ')

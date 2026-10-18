@@ -27,6 +27,7 @@ function parse(text: string): RemakePlan | null {
       sh.product = !!sh.product
       sh.sound = typeof sh.sound === 'string' ? sh.sound : ''
       sh.change = typeof sh.change === 'string' ? sh.change : ''
+      sh.still = !!sh.still
     }
     return p as RemakePlan
   } catch { return null }
