@@ -47,6 +47,11 @@ export const XTELL_LOCAL_PORT = '3001'
 
 export const WWW_ORIGIN = 'https://www.modelxd.com'
 
+/** Where a "ModelXD" link sends a visitor: the main website, dev.modelxd.com
+ *  while www is behind its password (owner, Oct 18: "change those links to
+ *  dev version first"). Point it back at WWW_ORIGIN when www opens. */
+export const MAIN_ORIGIN = 'https://dev.modelxd.com'
+
 /** The XTell door's content is also www's page at /xtell, inside www's own
  *  shell (owner, Oct 4: no subdomains; dev.modelxd.com/xtell first, www stays
  *  behind its password). The subdomain keeps serving the door until it is
